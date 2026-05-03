@@ -21,7 +21,7 @@ function formatTime(ms: number, locale: 'ko' | 'en' = 'ko') {
 export function WorkspacePanel() {
   const t = useTranslations('Workspace');
   const tSidebar = useTranslations('Sidebar');
-  const { artifacts, isOpen, setOpen, removeArtifact, sendTo, targetsFor } =
+  const { artifacts, isOpen, setOpen, removeArtifact, sendTo, targetsFor, setDragging } =
     useWorkspace();
   const router = useRouter();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -129,7 +129,17 @@ export function WorkspacePanel() {
               return (
                 <li
                   key={a.id}
-                  className="border-b border-line-soft px-4 py-3 last:border-b-0"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData(
+                      'application/x-workspace-artifact',
+                      a.id,
+                    );
+                    setDragging({ artifactId: a.id, sourceFeature: a.featureKey });
+                  }}
+                  onDragEnd={() => setDragging(null)}
+                  className="cursor-grab border-b border-line-soft px-4 py-3 last:border-b-0 active:cursor-grabbing"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">

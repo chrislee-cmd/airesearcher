@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Link, usePathname } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { FEATURES, type FeatureKey } from '@/lib/features';
 import { useInterviewJob } from './interview-job-provider';
 import { useTranscriptJobs } from './transcript-job-provider';
+import { useWorkspace } from './workspace-provider';
+import { SEND_TO_MAP } from '@/lib/workspace';
 
 type SidebarProject = { id: string; name: string };
 
@@ -27,6 +29,18 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const workspace = useWorkspace();
+  const router = useRouter();
+  const [dragOverFeature, setDragOverFeature] = useState<FeatureKey | null>(null);
+
+  const dragging = workspace.dragging;
+  // While an artifact is being dragged, every feature listed in
+  // SEND_TO_MAP[source] is "compatible" — others still accept the drop
+  // (user can override the suggestion) but render at lower emphasis.
+  const compatibleTargets = dragging
+    ? new Set(SEND_TO_MAP[dragging.sourceFeature] ?? [])
+    : null;
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -113,13 +127,45 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
           {FEATURES.map((f) => {
             const active = pathname === f.href;
             const busy = !!featureBusy[f.key];
+            const isDragOver = dragOverFeature === f.key;
+            const isCompatible = compatibleTargets?.has(f.key) ?? false;
+            const isDimmed = !!dragging && !isCompatible && f.key !== dragging.sourceFeature;
+            // Non-source incompatible items dim slightly so the eye
+            // is drawn to the recommended drop targets, but they still
+            // accept the drop in case the user knows better.
             return (
               <li key={f.key}>
                 <Link
                   href={f.href}
+                  onDragOver={(e) => {
+                    if (!dragging) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    if (dragOverFeature !== f.key) setDragOverFeature(f.key);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverFeature === f.key) setDragOverFeature(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverFeature(null);
+                    const id = e.dataTransfer.getData(
+                      'application/x-workspace-artifact',
+                    );
+                    if (!id) return;
+                    const path = workspace.sendTo(id, f.key);
+                    workspace.setDragging(null);
+                    if (path) router.push(path);
+                  }}
                   className={`flex items-center justify-between gap-2 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
                     active
                       ? 'border-amore text-ink-2 font-semibold'
+                      : isDragOver
+                      ? 'border-amore bg-paper-soft text-ink-2'
+                      : isCompatible
+                      ? 'border-amore text-ink-2'
+                      : isDimmed
+                      ? 'border-transparent text-mute-soft'
                       : 'border-transparent text-mute hover:text-ink-2'
                   }`}
                 >

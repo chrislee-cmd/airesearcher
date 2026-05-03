@@ -17,6 +17,11 @@ import {
 
 const STORAGE_KEY = 'workspace:artifacts:v1';
 
+export type DragInfo = {
+  artifactId: string;
+  sourceFeature: FeatureKey;
+};
+
 type Ctx = {
   artifacts: WorkspaceArtifact[];
   isOpen: boolean;
@@ -31,6 +36,10 @@ type Ctx = {
   clearAll: () => void;
   sendTo: (artifactId: string, target: FeatureKey) => string | null;
   targetsFor: (source: FeatureKey) => FeatureKey[];
+  // Drag state — set by WorkspacePanel when an artifact starts dragging,
+  // read by Sidebar to highlight compatible drop targets.
+  dragging: DragInfo | null;
+  setDragging: (info: DragInfo | null) => void;
 };
 
 const WorkspaceCtx = createContext<Ctx | null>(null);
@@ -65,6 +74,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [artifacts, setArtifacts] = useState<WorkspaceArtifact[]>([]);
   const [isOpen, setOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [dragging, setDragging] = useState<DragInfo | null>(null);
 
   useEffect(() => {
     setArtifacts(readStorage());
@@ -132,8 +142,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       clearAll,
       sendTo,
       targetsFor,
+      dragging,
+      setDragging,
     }),
-    [artifacts, isOpen, addArtifact, removeArtifact, clearAll, sendTo, targetsFor],
+    [
+      artifacts,
+      isOpen,
+      addArtifact,
+      removeArtifact,
+      clearAll,
+      sendTo,
+      targetsFor,
+      dragging,
+    ],
   );
 
   return <WorkspaceCtx.Provider value={value}>{children}</WorkspaceCtx.Provider>;
