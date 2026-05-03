@@ -102,7 +102,8 @@
     "interviewsView": {
       "stage1Title": "1단계 — 파일을 .md로 변환",
       "stage1Help": "각 파일을 1크레딧으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
-      "convertAll": "변환 시작",
+      "convertAll": "분석 시작",
+      "pipelineHint": "변환 → 분석 → CSV·XLSX 다운로드까지 자동으로 이어집니다.",
       "convertingPhase": "변환 중",
       "viewMd": "마크다운 보기",
       "hideMd": "접기",

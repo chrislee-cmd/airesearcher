@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import * as XLSX from 'xlsx';
 import {
   useInterviewJob,
   type AnalysisRow,
@@ -43,56 +42,10 @@ export function InterviewAnalyzer() {
     if (e.currentTarget === e.target) setDragOver(false);
   }
 
-  function buildMatrix() {
-    if (!job.analysis) return null;
-    const header = [t('question'), ...job.filenameOrder];
-    const rows = job.analysis.rows.map((row) => {
-      const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
-      return [
-        row.question,
-        ...job.filenameOrder.map((f) => {
-          const c = cellsByFile.get(f);
-          if (!c) return '';
-          const parts: string[] = [];
-          if (c.summary) parts.push(c.summary);
-          if (c.voc) parts.push(`"${c.voc}"`);
-          return parts.join('\n\n');
-        }),
-      ];
-    });
-    return [header, ...rows];
-  }
-
-  function exportCsv() {
-    const matrix = buildMatrix();
-    if (!matrix) return;
-    const csv = matrix
-      .map((row) =>
-        row
-          .map((cell) => {
-            const needsQuote = /[",\n]/.test(cell);
-            const escaped = cell.replace(/"/g, '""');
-            return needsQuote ? `"${escaped}"` : escaped;
-          })
-          .join(','),
-      )
-      .join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    triggerDownload(blob, 'interview-analysis.csv');
-  }
-
-  function exportXlsx() {
-    const matrix = buildMatrix();
-    if (!matrix) return;
-    const ws = XLSX.utils.aoa_to_sheet(matrix);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
-    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
-    const blob = new Blob([buf], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    triggerDownload(blob, 'interview-analysis.xlsx');
-  }
+  // Export helpers live in the provider so the auto-download chain after
+  // streaming finishes can reuse them. The component just passes through.
+  const exportCsv = job.exportCsv;
+  const exportXlsx = job.exportXlsx;
 
   return (
     <div className="space-y-10">
@@ -102,6 +55,7 @@ export function InterviewAnalyzer() {
           {t('stage1Title')}
         </h2>
         <p className="mt-1 text-[12px] text-mute">{t('stage1Help')}</p>
+        <p className="mt-1 text-[11.5px] text-mute-soft">{t('pipelineHint')}</p>
 
         <div
           onDragOver={onDragOver}
@@ -461,11 +415,3 @@ function RetentionBadge({
   );
 }
 
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}

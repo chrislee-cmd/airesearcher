@@ -102,7 +102,8 @@
     "interviewsView": {
       "stage1Title": "Step 1 — Convert files to .md",
       "stage1Help": "Each file costs 1 credit. Audio/video is transcribed then formatted as markdown; text files are wrapped as-is.",
-      "convertAll": "Start conversion",
+      "convertAll": "Start",
+      "pipelineHint": "Convert → analyze → auto-download CSV+XLSX in one click.",
       "convertingPhase": "converting",
       "viewMd": "View markdown",
       "hideMd": "Hide",

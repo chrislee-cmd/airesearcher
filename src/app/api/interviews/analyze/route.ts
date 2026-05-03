@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
@@ -65,9 +65,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
-  const openai = createOpenAI({ apiKey });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
+  const anthropic = createAnthropic({ apiKey });
 
   const userPrompt = extractions
     .map((e, idx) => {
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   const filenames = extractions.map((e) => e.filename);
 
   const result = streamObject({
-    model: openai('gpt-4o-mini'),
+    model: anthropic('claude-sonnet-4-6'),
     schema: interviewMatrixSchema,
     system: SYSTEM,
     prompt: userPrompt,

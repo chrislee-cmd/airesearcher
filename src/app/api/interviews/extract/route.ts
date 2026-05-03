@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { fileExtractionSchema } from '@/lib/interview-schema';
@@ -47,15 +47,15 @@ export async function POST(request: Request) {
   }
   const { filename, markdown } = parsed.data;
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
-  const openai = createOpenAI({ apiKey });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
+  const anthropic = createAnthropic({ apiKey });
 
   const result = streamObject({
-    model: openai('gpt-4o-mini'),
+    model: anthropic('claude-sonnet-4-6'),
     schema: fileExtractionSchema,
     system: SYSTEM,
-    prompt: `파일명: ${filename}\n\n인터뷰 마크다운:\n\n${markdown.slice(0, 80000)}`,
+    prompt: `파일명: ${filename}\n\n인터뷰 마크다운:\n\n${markdown.slice(0, 200000)}`,
     temperature: 0.1,
   });
 

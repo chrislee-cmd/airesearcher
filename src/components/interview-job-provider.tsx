@@ -5,10 +5,12 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { parsePartialJson } from 'ai';
+import * as XLSX from 'xlsx';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
@@ -110,7 +112,6 @@ type Ctx = {
   analyzing: boolean;
   analysis: AnalysisResult | null;
   analyzeError: string | null;
-  // Whether any background work is in flight — drives the topbar pill.
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -121,7 +122,72 @@ type Ctx = {
   startConvertAll: () => void;
   startAnalyze: () => void;
   stopAnalyze: () => void;
+  exportCsv: () => void;
+  exportXlsx: () => void;
 };
+
+function buildMatrix(
+  result: AnalysisResult,
+  filenameOrder: string[],
+): string[][] {
+  const header = ['문항', ...filenameOrder];
+  const rows = result.rows.map((row) => {
+    const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
+    return [
+      row.question,
+      ...filenameOrder.map((f) => {
+        const c = cellsByFile.get(f);
+        if (!c) return '';
+        const parts: string[] = [];
+        if (c.summary) parts.push(c.summary);
+        if (c.voc) parts.push(`"${c.voc}"`);
+        return parts.join('\n\n');
+      }),
+    ];
+  });
+  return [header, ...rows];
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function makeCsvBlob(matrix: string[][]) {
+  const csv = matrix
+    .map((row) =>
+      row
+        .map((cell) => {
+          const needsQuote = /[",\n]/.test(cell);
+          const escaped = cell.replace(/"/g, '""');
+          return needsQuote ? `"${escaped}"` : escaped;
+        })
+        .join(','),
+    )
+    .join('\n');
+  return new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+}
+
+function makeXlsxBlob(matrix: string[][]) {
+  const ws = XLSX.utils.aoa_to_sheet(matrix);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  return new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+function downloadMatrix(result: AnalysisResult, filenameOrder: string[]) {
+  if (!filenameOrder.length || !result.rows.length) return;
+  const matrix = buildMatrix(result, filenameOrder);
+  triggerDownload(makeCsvBlob(matrix), 'interview-analysis.csv');
+  triggerDownload(makeXlsxBlob(matrix), 'interview-analysis.xlsx');
+}
 
 const InterviewJobContext = createContext<Ctx | null>(null);
 
@@ -140,6 +206,9 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   const [items, setItems] = useState<ConvItem[]>([]);
   const [convertingAll, setConvertingAll] = useState(false);
   const [thinkingLog, setThinkingLog] = useState<ThinkingEvent[]>([]);
+  // Captured at submit() time so the useObject onFinish callback (which
+  // runs in a stale closure scope) still knows which files to label.
+  const currentFilenamesRef = useRef<string[]>([]);
 
   type DistributiveOmit<T, K extends keyof T> = T extends T
     ? Omit<T, K>
@@ -176,6 +245,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     onFinish: ({ object }) => {
       if (object) {
         pushThinking({ type: 'aggregate_done', rows: object.rows.length });
+        // Auto-download both formats once the matrix is finalised.
+        downloadMatrix(object as AnalysisResult, currentFilenamesRef.current);
       }
       router.refresh();
     },
@@ -455,6 +526,10 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     }
     setConvertingAll(false);
     router.refresh();
+    // Auto-chain into Pass A → Pass B once conversion finishes.
+    track('interview_analyze_start', { fileCount: filenameOrder.length });
+    setThinkingLog([]);
+    void runAnalyzePipeline();
   }
 
   function startAnalyze() {
@@ -480,7 +555,23 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     if (extractions.length === 0) return;
 
     pushThinking({ type: 'aggregate_start' });
+    currentFilenamesRef.current = extractions.map((e) => e.filename);
     submit({ extractions });
+  }
+
+  function exportCsv() {
+    if (!analysis || !filenameOrder.length) return;
+    triggerDownload(
+      makeCsvBlob(buildMatrix(analysis, filenameOrder)),
+      'interview-analysis.csv',
+    );
+  }
+  function exportXlsx() {
+    if (!analysis || !filenameOrder.length) return;
+    triggerDownload(
+      makeXlsxBlob(buildMatrix(analysis, filenameOrder)),
+      'interview-analysis.xlsx',
+    );
   }
 
   const value: Ctx = {
@@ -502,6 +593,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     startConvertAll,
     startAnalyze,
     stopAnalyze,
+    exportCsv,
+    exportXlsx,
   };
 
   return (
