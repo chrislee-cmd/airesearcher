@@ -2,7 +2,10 @@
 
 create extension if not exists "pgcrypto";
 
--- profiles ---------------------------------------------------------------
+-- ENUMS ------------------------------------------------------------------
+create type public.member_role as enum ('owner', 'admin', 'member', 'viewer');
+
+-- TABLES -----------------------------------------------------------------
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text unique,
@@ -12,49 +15,6 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
-
-create policy "profiles_self_select" on public.profiles
-  for select using (auth.uid() = id);
-create policy "profiles_self_update" on public.profiles
-  for update using (auth.uid() = id);
-
--- Auto-create profile on user signup
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  new_org uuid;
-begin
-  insert into public.profiles (id, email, full_name, avatar_url)
-  values (new.id, new.email,
-          new.raw_user_meta_data->>'full_name',
-          new.raw_user_meta_data->>'avatar_url')
-  on conflict (id) do nothing;
-
-  -- Create personal org with 10 starter credits
-  insert into public.organizations (name, owner_id, credit_balance)
-  values (coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Workspace'),
-          new.id, 10)
-  returning id into new_org;
-
-  insert into public.organization_members (org_id, user_id, role)
-  values (new_org, new.id, 'owner');
-
-  insert into public.credit_transactions (org_id, user_id, delta, reason)
-  values (new_org, new.id, 10, 'signup_grant');
-
-  return new;
-end $$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
--- organizations ----------------------------------------------------------
 create table public.organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -62,20 +22,6 @@ create table public.organizations (
   credit_balance int not null default 0 check (credit_balance >= 0),
   created_at timestamptz not null default now()
 );
-
-alter table public.organizations enable row level security;
-
-create policy "org_member_select" on public.organizations
-  for select using (
-    exists (select 1 from public.organization_members m
-            where m.org_id = id and m.user_id = auth.uid())
-  );
-
-create policy "org_owner_update" on public.organizations
-  for update using (auth.uid() = owner_id);
-
--- organization_members ---------------------------------------------------
-create type public.member_role as enum ('owner', 'admin', 'member', 'viewer');
 
 create table public.organization_members (
   org_id uuid not null references public.organizations(id) on delete cascade,
@@ -88,9 +34,40 @@ create table public.organization_members (
   check (user_id is not null or invited_email is not null)
 );
 
-alter table public.organization_members enable row level security;
+create table public.credit_transactions (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.organizations(id) on delete cascade,
+  user_id uuid references auth.users(id),
+  delta int not null,
+  reason text not null,
+  feature text,
+  generation_id uuid,
+  created_at timestamptz not null default now()
+);
 
--- helper: am I a member of this org with role >= ?
+create table public.generations (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.organizations(id) on delete cascade,
+  user_id uuid not null references auth.users(id),
+  feature text not null,
+  input text,
+  output text,
+  credits_spent int not null default 0,
+  visibility text not null default 'org' check (visibility in ('private', 'org', 'shared')),
+  created_at timestamptz not null default now()
+);
+
+create table public.generation_shares (
+  generation_id uuid references public.generations(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  permission text not null default 'view' check (permission in ('view', 'edit')),
+  primary key (generation_id, user_id)
+);
+
+create index on public.generations (org_id, created_at desc);
+create index on public.organization_members (user_id);
+
+-- HELPER FUNCTIONS -------------------------------------------------------
 create or replace function public.has_org_role(p_org uuid, p_min text)
 returns boolean
 language sql security definer set search_path = public
@@ -107,32 +84,6 @@ as $$
         else false end
   )
 $$;
-
-create policy "members_select" on public.organization_members
-  for select using (public.has_org_role(org_id, 'viewer'));
-create policy "members_insert_admin" on public.organization_members
-  for insert with check (public.has_org_role(org_id, 'admin'));
-create policy "members_update_admin" on public.organization_members
-  for update using (public.has_org_role(org_id, 'admin'));
-create policy "members_delete_admin" on public.organization_members
-  for delete using (public.has_org_role(org_id, 'admin'));
-
--- credits ---------------------------------------------------------------
-create table public.credit_transactions (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
-  user_id uuid references auth.users(id),
-  delta int not null,
-  reason text not null,
-  feature text,
-  generation_id uuid,
-  created_at timestamptz not null default now()
-);
-
-alter table public.credit_transactions enable row level security;
-
-create policy "credits_select_member" on public.credit_transactions
-  for select using (public.has_org_role(org_id, 'viewer'));
 
 create or replace function public.spend_credits(
   p_org_id uuid, p_amount int, p_feature text, p_generation_id uuid
@@ -158,29 +109,38 @@ begin
   return true;
 end $$;
 
--- generations ----------------------------------------------------------
-create table public.generations (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
-  user_id uuid not null references auth.users(id),
-  feature text not null,
-  input text,
-  output text,
-  credits_spent int not null default 0,
-  visibility text not null default 'org' check (visibility in ('private', 'org', 'shared')),
-  created_at timestamptz not null default now()
-);
-
+-- RLS --------------------------------------------------------------------
+alter table public.profiles enable row level security;
+alter table public.organizations enable row level security;
+alter table public.organization_members enable row level security;
+alter table public.credit_transactions enable row level security;
 alter table public.generations enable row level security;
-
-create table public.generation_shares (
-  generation_id uuid references public.generations(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete cascade,
-  permission text not null default 'view' check (permission in ('view', 'edit')),
-  primary key (generation_id, user_id)
-);
-
 alter table public.generation_shares enable row level security;
+
+create policy "profiles_self_select" on public.profiles
+  for select using (auth.uid() = id);
+create policy "profiles_self_update" on public.profiles
+  for update using (auth.uid() = id);
+
+create policy "org_member_select" on public.organizations
+  for select using (
+    exists (select 1 from public.organization_members m
+            where m.org_id = id and m.user_id = auth.uid())
+  );
+create policy "org_owner_update" on public.organizations
+  for update using (auth.uid() = owner_id);
+
+create policy "members_select" on public.organization_members
+  for select using (public.has_org_role(org_id, 'viewer'));
+create policy "members_insert_admin" on public.organization_members
+  for insert with check (public.has_org_role(org_id, 'admin'));
+create policy "members_update_admin" on public.organization_members
+  for update using (public.has_org_role(org_id, 'admin'));
+create policy "members_delete_admin" on public.organization_members
+  for delete using (public.has_org_role(org_id, 'admin'));
+
+create policy "credits_select_member" on public.credit_transactions
+  for select using (public.has_org_role(org_id, 'viewer'));
 
 create policy "gen_select" on public.generations
   for select using (
@@ -189,17 +149,14 @@ create policy "gen_select" on public.generations
     or exists (select 1 from public.generation_shares s
                where s.generation_id = id and s.user_id = auth.uid())
   );
-
 create policy "gen_insert_member" on public.generations
   for insert with check (
     user_id = auth.uid() and public.has_org_role(org_id, 'member')
   );
-
 create policy "gen_update_owner_or_admin" on public.generations
   for update using (
     user_id = auth.uid() or public.has_org_role(org_id, 'admin')
   );
-
 create policy "gen_delete_owner_or_admin" on public.generations
   for delete using (
     user_id = auth.uid() or public.has_org_role(org_id, 'admin')
@@ -211,7 +168,6 @@ create policy "shares_select" on public.generation_shares
     or exists (select 1 from public.generations g
                where g.id = generation_id and g.user_id = auth.uid())
   );
-
 create policy "shares_manage_by_owner" on public.generation_shares
   for all using (
     exists (select 1 from public.generations g
@@ -220,5 +176,36 @@ create policy "shares_manage_by_owner" on public.generation_shares
                    or public.has_org_role(g.org_id, 'admin')))
   );
 
-create index on public.generations (org_id, created_at desc);
-create index on public.organization_members (user_id);
+-- AUTO-PROVISION ON SIGNUP ----------------------------------------------
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  new_org uuid;
+begin
+  insert into public.profiles (id, email, full_name, avatar_url)
+  values (new.id, new.email,
+          new.raw_user_meta_data->>'full_name',
+          new.raw_user_meta_data->>'avatar_url')
+  on conflict (id) do nothing;
+
+  insert into public.organizations (name, owner_id, credit_balance)
+  values (coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Workspace'),
+          new.id, 10)
+  returning id into new_org;
+
+  insert into public.organization_members (org_id, user_id, role)
+  values (new_org, new.id, 'owner');
+
+  insert into public.credit_transactions (org_id, user_id, delta, reason)
+  values (new_org, new.id, 10, 'signup_grant');
+
+  return new;
+end $$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
