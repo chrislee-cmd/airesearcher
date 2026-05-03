@@ -6,6 +6,7 @@ import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
+import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 
 export default async function AppLayout({
   children,
@@ -26,6 +27,7 @@ export default async function AppLayout({
 
   return (
     <InterviewJobProvider>
+     <TranscriptJobProvider>
       <div className="flex flex-1">
         <Sidebar
           projects={projects.map((p) => ({ id: p.id, name: p.name }))}
@@ -39,6 +41,7 @@ export default async function AppLayout({
           <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
       </div>
+     </TranscriptJobProvider>
     </InterviewJobProvider>
   );
 }

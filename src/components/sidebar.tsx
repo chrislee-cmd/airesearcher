@@ -5,6 +5,7 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { FEATURES, type FeatureKey } from '@/lib/features';
 import { useInterviewJob } from './interview-job-provider';
+import { useTranscriptJobs } from './transcript-job-provider';
 
 type SidebarProject = { id: string; name: string };
 
@@ -15,11 +16,13 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
   const tBrand = useTranslations('Brand');
 
   const interviewJob = useInterviewJob();
+  const transcriptJobs = useTranscriptJobs();
   // Per-feature in-flight state. Keyed by FeatureKey so future features
   // can light up without further sidebar plumbing — they just register
   // their own "working" flag here.
   const featureBusy: Partial<Record<FeatureKey, boolean>> = {
     interviews: interviewJob.isWorking,
+    quotes: transcriptJobs.isWorking,
   };
 
   const [dropdownOpen, setDropdownOpen] = useState(false);

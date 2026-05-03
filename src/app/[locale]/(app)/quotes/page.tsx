@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { TranscriptUploader } from '@/components/transcript-uploader';
+import { TranscriptStudio } from '@/components/transcript-studio';
 
 export default async function Page({
   params,
@@ -25,7 +25,7 @@ export default async function Page({
       </p>
 
       <div className="mt-8">
-        <TranscriptUploader />
+        <TranscriptStudio />
       </div>
     </div>
   );
