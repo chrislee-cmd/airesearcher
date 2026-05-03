@@ -7,6 +7,9 @@ import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
+import { WorkspaceProvider } from '@/components/workspace-provider';
+import { WorkspacePanel } from '@/components/workspace-panel';
+import { WorkspaceBridge } from '@/components/workspace-bridge';
 
 export default async function AppLayout({
   children,
@@ -28,19 +31,23 @@ export default async function AppLayout({
   return (
     <InterviewJobProvider>
      <TranscriptJobProvider>
-      <div className="flex flex-1">
-        <Sidebar
-          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-        />
-        <div className="flex flex-1 flex-col">
-          <Topbar
-            credits={credits}
-            userEmail={user?.email ?? null}
-            isAuthed={!!user}
+      <WorkspaceProvider>
+        <div className="flex flex-1">
+          <Sidebar
+            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
           />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <div className="flex flex-1 flex-col">
+            <Topbar
+              credits={credits}
+              userEmail={user?.email ?? null}
+              isAuthed={!!user}
+            />
+            <main className="flex-1 overflow-auto p-6">{children}</main>
+          </div>
         </div>
-      </div>
+        <WorkspaceBridge />
+        <WorkspacePanel />
+      </WorkspaceProvider>
      </TranscriptJobProvider>
     </InterviewJobProvider>
   );

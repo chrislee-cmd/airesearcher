@@ -9,7 +9,13 @@ import {
   type TranscriptJob,
   type TranscriptJobStatus,
 } from './transcript-job-provider';
+import { useWorkspace } from './workspace-provider';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
+
+function safeFilename(title: string) {
+  const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  return cleaned.replace(/\.md$/i, '');
+}
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -36,6 +42,7 @@ export function TranscriptStudio() {
   const tUp = useTranslations('Features.uploader');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
+  const workspace = useWorkspace();
 
   const [dragOver, setDragOver] = useState(false);
   const [busyUpload, setBusyUpload] = useState(false);
@@ -167,7 +174,37 @@ export function TranscriptStudio() {
     setDragOver(false);
     if (e.dataTransfer.files?.length) {
       startUploads(Array.from(e.dataTransfer.files));
+      return;
     }
+    let ids: string[] = [];
+    const manyRaw = e.dataTransfer.getData(
+      'application/x-workspace-artifacts',
+    );
+    if (manyRaw) {
+      try {
+        ids = JSON.parse(manyRaw) as string[];
+      } catch {
+        ids = [];
+      }
+    }
+    if (ids.length === 0) {
+      const id = e.dataTransfer.getData('application/x-workspace-artifact');
+      if (id) ids = [id];
+    }
+    if (ids.length === 0) return;
+    const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
+    const files: File[] = [];
+    for (const id of ids) {
+      const a = lookup.get(id);
+      if (!a) continue;
+      files.push(
+        new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        }),
+      );
+    }
+    if (files.length > 0) startUploads(files);
+    workspace.setDragging(null);
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();

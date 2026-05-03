@@ -173,6 +173,26 @@
     "downloadMd": "Download .md",
     "downloadDocx": "Download .docx"
   },
+  "Workspace": {
+    "eyebrow": "Workspace",
+    "expand": "Open workspace",
+    "collapse": "Collapse",
+    "empty": "No artifacts yet",
+    "emptyHint": "Generated outputs from each tool will appear here.",
+    "actions": "Actions",
+    "view": "View",
+    "copy": "Copy",
+    "sendTo": "Send to…",
+    "delete": "Delete",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "select": "Select",
+    "selectAll": "Select all",
+    "nSelected": "{count} selected",
+    "bulkActions": "Bulk actions",
+    "sendSelectedTo": "Send selected to…",
+    "deleteSelected": "Delete selected"
+  },
   "Members": {
     "title": "Member management",
     "invite": "Invite member",

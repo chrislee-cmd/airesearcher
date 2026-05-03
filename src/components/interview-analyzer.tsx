@@ -9,6 +9,15 @@ import {
   type ConvStatus,
 } from './interview-job-provider';
 import { ThinkingPanel } from './thinking-panel';
+import { useWorkspace } from './workspace-provider';
+
+// Sanitize the artifact title and ensure exactly one .md extension —
+// many artifacts already carry .md in the title, so blindly appending
+// would produce "foo.md.md".
+function safeFilename(title: string) {
+  const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  return cleaned.replace(/\.md$/i, '');
+}
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -25,13 +34,49 @@ export function InterviewAnalyzer() {
   const tCommon = useTranslations('Common');
 
   const job = useInterviewJob();
+  const workspace = useWorkspace();
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files?.length) job.addFiles(e.dataTransfer.files);
+    // Native file drop — the original path.
+    if (e.dataTransfer.files?.length) {
+      job.addFiles(e.dataTransfer.files);
+      return;
+    }
+    // Workspace artifact drop — synthesize markdown File(s) from the
+    // artifact content so they flow through Stage 1 like real uploads.
+    let ids: string[] = [];
+    const manyRaw = e.dataTransfer.getData(
+      'application/x-workspace-artifacts',
+    );
+    if (manyRaw) {
+      try {
+        ids = JSON.parse(manyRaw) as string[];
+      } catch {
+        ids = [];
+      }
+    }
+    if (ids.length === 0) {
+      const id = e.dataTransfer.getData('application/x-workspace-artifact');
+      if (id) ids = [id];
+    }
+    if (ids.length === 0) return;
+    const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
+    const files: File[] = [];
+    for (const id of ids) {
+      const a = lookup.get(id);
+      if (!a) continue;
+      files.push(
+        new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        }),
+      );
+    }
+    if (files.length > 0) job.addFiles(files);
+    workspace.setDragging(null);
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
