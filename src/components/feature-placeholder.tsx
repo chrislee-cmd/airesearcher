@@ -48,7 +48,8 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
       } else {
         setResult(json.output);
         track('generate_success', { feature });
-        const title = `${t(`${feature}.title`)} · ${new Date().toLocaleString()}`;
+        const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        const title = `${feature}_${ts}.md`;
         workspace.addArtifact({
           featureKey: feature,
           title,

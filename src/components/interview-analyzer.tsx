@@ -11,10 +11,12 @@ import {
 import { ThinkingPanel } from './thinking-panel';
 import { useWorkspace } from './workspace-provider';
 
-// Title can contain ":" / "/" from toLocaleString — strip them so the
-// synthesized filename is safe across OSes and the analyzer's UI.
+// Sanitize the artifact title and ensure exactly one .md extension —
+// many artifacts already carry .md in the title, so blindly appending
+// would produce "foo.md.md".
 function safeFilename(title: string) {
-  return title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  return cleaned.replace(/\.md$/i, '');
 }
 
 const ACCEPT =

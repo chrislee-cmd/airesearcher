@@ -13,7 +13,8 @@ import { useWorkspace } from './workspace-provider';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function safeFilename(title: string) {
-  return title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+  return cleaned.replace(/\.md$/i, '');
 }
 
 const ACCEPT =

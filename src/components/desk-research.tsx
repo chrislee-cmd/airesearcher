@@ -149,10 +149,18 @@ export function DeskResearch() {
       const resp = json as DeskResponse;
       setData(resp);
       track('generate_success', { feature: 'desk' });
+      // Filename-style title so the artifact reads/handles like the .md
+      // download the desk page produces. Slug the keyword so the title
+      // stays valid as a real filename when dragged into a dropzone.
+      const date = new Date().toISOString().slice(0, 10);
+      const slug = keyword
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[\\/:*?"<>|]+/g, '');
       workspace.addArtifact({
         id: `desk_${resp.generation_id}`,
         featureKey: 'desk',
-        title: `${t('desk.title')} — ${keyword.trim()}`,
+        title: `desk_${slug}_${date}.md`,
         content: resp.output,
       });
     } catch (e) {

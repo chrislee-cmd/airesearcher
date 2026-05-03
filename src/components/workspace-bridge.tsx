@@ -37,10 +37,14 @@ export function WorkspaceBridge() {
         const json = await res.json();
         const md: string = json.markdown ?? '';
         if (!md.trim() || cancelled) return;
+        // Replace whatever extension the source had with .md — the
+        // artifact body IS markdown so the workspace title should
+        // reflect that.
+        const base = (filename || 'transcript').replace(/\.[^./\\]+$/, '');
         workspace.addArtifact({
           id: `tx_${jobId}`,
           featureKey: 'quotes',
-          title: filename || 'Transcript',
+          title: `${base}.md`,
           content: md,
         });
       } catch {
