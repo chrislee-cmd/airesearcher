@@ -68,6 +68,25 @@
       "description": "Convert audio/video interviews into verbatim transcripts.",
       "cost": "1 credit"
     },
+    "uploader": {
+      "dropHere": "Drop audio, video, or document files here, or click to browse",
+      "dropActive": "Release to drop",
+      "supported": "Supported: mp3, m4a, wav, mp4, mov, webm, txt, md · 25MB per file",
+      "browse": "Choose files",
+      "queued": "queued",
+      "transcribing": "transcribing",
+      "done": "done",
+      "error": "error",
+      "remove": "Remove",
+      "clear": "Clear",
+      "transcribeAll": "Start transcription",
+      "noFiles": "No files",
+      "fileTooLarge": "File too large (max 25MB)",
+      "viewTranscript": "View transcript",
+      "hideTranscript": "Hide",
+      "filesQueued": "{count} files queued",
+      "filesDone": "{done}/{total} done"
+    },
     "transcripts": {
       "title": "Script Generator",
       "description": "Generate interview scripts and discussion guides.",

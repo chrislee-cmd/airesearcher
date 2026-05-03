@@ -68,6 +68,25 @@
       "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
       "cost": "1크레딧"
     },
+    "uploader": {
+      "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
+      "dropActive": "여기에 놓으세요",
+      "supported": "지원: mp3, m4a, wav, mp4, mov, webm, txt, md · 파일당 최대 25MB",
+      "browse": "파일 선택",
+      "queued": "대기",
+      "transcribing": "변환 중",
+      "done": "완료",
+      "error": "오류",
+      "remove": "제거",
+      "clear": "초기화",
+      "transcribeAll": "전사 시작",
+      "noFiles": "파일이 없습니다",
+      "fileTooLarge": "파일이 너무 큽니다 (최대 25MB)",
+      "viewTranscript": "전사록 보기",
+      "hideTranscript": "접기",
+      "filesQueued": "{count}개 파일 대기 중",
+      "filesDone": "{done}/{total} 완료"
+    },
     "transcripts": {
       "title": "스크립트 생성기",
       "description": "오디오/영상 인터뷰를 정확한 스크립트로 변환합니다.",
