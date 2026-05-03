@@ -79,7 +79,7 @@ function EventLine({ evt }: { evt: ThinkingEvent }) {
           </div>
           {evt.summary && (
             <div className="ml-6 text-mute">
-              <span className="mr-2 text-mute-soft">summary:</span>
+              <span className="mr-2 text-mute-soft">발췌:</span>
               {evt.summary}
             </div>
           )}
