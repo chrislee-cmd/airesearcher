@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
@@ -9,6 +9,7 @@ import {
   type TranscriptJob,
   type TranscriptJobStatus,
 } from './transcript-job-provider';
+import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -39,7 +40,24 @@ export function TranscriptStudio() {
   const [dragOver, setDragOver] = useState(false);
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<string>('multi');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // `startUploads` is wrapped in useCallback with empty deps, so the closure
+  // around `runUploads` is captured once. We mirror live state into refs so
+  // the captured runUploads still reads the current language.
+  const languageRef = useRef<string>(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
+
+  // Default the selector to the browser locale on mount. SSR-safe — initial
+  // value is "multi" so the server and first client render agree.
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setLanguage(pickFromBrowser(navigator.language));
+    }
+  }, []);
 
   const startUploads = useCallback(
     (files: File[]) => {
@@ -92,10 +110,20 @@ export function TranscriptStudio() {
                 );
               }
             };
-            xhr.onload = () =>
-              xhr.status >= 200 && xhr.status < 300
-                ? resolve()
-                : reject(new Error(`storage upload ${xhr.status}`));
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+                return;
+              }
+              const detail = (xhr.responseText || '').slice(0, 300);
+              reject(
+                new Error(
+                  detail
+                    ? `storage upload ${xhr.status}: ${detail}`
+                    : `storage upload ${xhr.status}`,
+                ),
+              );
+            };
             xhr.onerror = () => reject(new Error('upload network error'));
             xhr.send(file);
           });
@@ -110,6 +138,7 @@ export function TranscriptStudio() {
               filename: file.name,
               mime_type: file.type || undefined,
               size_bytes: file.size,
+              language: languageRef.current,
             }),
           });
           if (!startRes.ok) {
@@ -159,6 +188,27 @@ export function TranscriptStudio() {
   return (
     <div className="space-y-8">
       <section>
+        <div className="mb-3 flex items-center gap-3">
+          <label
+            htmlFor="transcript-language"
+            className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
+          >
+            언어
+          </label>
+          <select
+            id="transcript-language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            disabled={busyUpload}
+            className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.label} ({l.code})
+              </option>
+            ))}
+          </select>
+        </div>
         <div
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
@@ -266,6 +316,7 @@ function JobRow({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const pill = pillFor(job.status);
+  const inFlight = job.status === 'submitting' || job.status === 'transcribing';
 
   return (
     <li className="border border-line bg-paper [border-radius:4px]">
@@ -289,6 +340,12 @@ function JobRow({
               <span className="text-warning">{job.error_message}</span>
             )}
           </div>
+          {inFlight && (
+            <ProgressEstimate
+              startedAt={job.created_at}
+              sizeBytes={job.size_bytes}
+            />
+          )}
         </div>
         {job.status === 'done' && (
           <div className="flex items-center gap-2">
@@ -350,6 +407,59 @@ function JobPreview({ id }: { id: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * Deepgram async API doesn't expose progress, so this is a heuristic ETA bar.
+ * We show elapsed time honestly and a *推定* fill driven by file size, capped
+ * at 95% so it never claims to be done before the webhook lands.
+ */
+function ProgressEstimate({
+  startedAt,
+  sizeBytes,
+}: {
+  startedAt: string;
+  sizeBytes: number | null;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const startMs = new Date(startedAt).getTime();
+  const elapsedSec = Math.max(0, Math.floor((now - startMs) / 1000));
+
+  // ETA heuristic: ~1.5s per MB of source file. Floor at 30s, ceiling at 30min.
+  // Video files have much less audio per byte, so this overestimates a bit
+  // for video — fine, better than under-promising.
+  const sizeMb = sizeBytes ? sizeBytes / (1024 * 1024) : 0;
+  const etaSec = Math.max(30, Math.min(30 * 60, Math.round(sizeMb * 1.5)));
+  const remainSec = Math.max(0, etaSec - elapsedSec);
+  const pct = Math.min(95, Math.round((elapsedSec / etaSec) * 100));
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-[11px] text-mute-soft tabular-nums">
+        <span>
+          {formatClock(elapsedSec)} 경과 · 약 {formatClock(remainSec)} 남음 (추정)
+        </span>
+        <span>{pct}%</span>
+      </div>
+      <div className="mt-1 h-1 w-full overflow-hidden bg-line-soft [border-radius:9999px]">
+        <div
+          className="h-full bg-amore transition-[width] duration-[400ms]"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatClock(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function pillFor(status: TranscriptJobStatus): { text: string; cls: string } {

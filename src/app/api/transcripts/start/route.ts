@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { getLanguage } from '@/lib/transcripts/languages';
 
 export const maxDuration = 60;
 
@@ -10,6 +11,7 @@ const Body = z.object({
   filename: z.string().min(1),
   mime_type: z.string().optional(),
   size_bytes: z.number().int().nonnegative().optional(),
+  language: z.string().optional(),
 });
 
 function getDeploymentBaseUrl(): string {
@@ -31,7 +33,8 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { storage_key, filename, mime_type, size_bytes } = parsed.data;
+  const { storage_key, filename, mime_type, size_bytes, language } = parsed.data;
+  const langEntry = getLanguage(language);
 
   const dgKey = process.env.DEEPGRAM_API_KEY;
   const webhookSecret = process.env.DEEPGRAM_WEBHOOK_SECRET;
@@ -89,8 +92,8 @@ export async function POST(request: Request) {
   const dgUrl =
     'https://api.deepgram.com/v1/listen?' +
     new URLSearchParams({
-      model: 'nova-3',
-      language: 'multi',
+      model: langEntry.dgModel,
+      language: langEntry.dgLanguage,
       diarize: 'true',
       punctuate: 'true',
       utterances: 'true',
