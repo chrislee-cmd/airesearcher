@@ -30,8 +30,7 @@ export function EmailPasswordForm() {
         router.replace('/dashboard');
         router.refresh();
       } else {
-        const origin =
-          process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+        const origin = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -51,21 +50,26 @@ export function EmailPasswordForm() {
     });
   }
 
+  const inputCls =
+    'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+  const labelCls =
+    'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
+
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs text-neutral-500">{t('email')}</label>
+        <label className={labelCls}>{t('email')}</label>
         <input
           type="email"
           required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+          className={inputCls}
         />
       </div>
       <div>
-        <label className="block text-xs text-neutral-500">{t('password')}</label>
+        <label className={labelCls}>{t('password')}</label>
         <input
           type="password"
           required
@@ -73,19 +77,19 @@ export function EmailPasswordForm() {
           autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+          className={inputCls}
         />
       </div>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {info && <p className="text-xs text-emerald-700">{info}</p>}
+      {error && <p className="text-[11.5px] text-warning">{error}</p>}
+      {info && <p className="text-[11.5px] text-mute">{info}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-900"
+        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:4px]"
       >
-        {pending ? '...' : t(mode)}
+        {pending ? '…' : t(mode)}
       </button>
 
       <button
@@ -95,7 +99,7 @@ export function EmailPasswordForm() {
           setError(null);
           setInfo(null);
         }}
-        className="block w-full text-center text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+        className="block w-full text-center text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2"
       >
         {mode === 'signIn' ? t('switchToSignUp') : t('switchToSignIn')}
       </button>

@@ -14,27 +14,28 @@ export async function Topbar({
 }) {
   const t = await getTranslations('Common');
   return (
-    <header className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <header className="flex h-14 items-center justify-between border-b border-line bg-paper px-8">
       <div className="flex items-center gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          Research Console
+        </span>
         {isAuthed && credits !== null && (
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-            {t('creditsRemaining', { count: credits })}
-          </span>
+          <>
+            <span className="text-mute-soft">·</span>
+            <span className="text-[11px] tabular-nums text-mute">
+              {t('creditsRemaining', { count: credits })}
+            </span>
+          </>
         )}
       </div>
-      <div className="flex items-center gap-3">
-        {isAuthed ? (
-          <>
-            <span className="hidden text-xs text-neutral-500 sm:inline">{userEmail}</span>
-            <LanguageSwitcher />
-            <SignOutButton />
-          </>
-        ) : (
-          <>
-            <LanguageSwitcher />
-            <SignInButton />
-          </>
+      <div className="flex items-center gap-4">
+        {isAuthed && (
+          <span className="hidden text-[11px] text-mute-soft sm:inline">
+            {userEmail}
+          </span>
         )}
+        <LanguageSwitcher />
+        {isAuthed ? <SignOutButton /> : <SignInButton />}
       </div>
     </header>
   );
