@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import { z } from 'zod';
+import { streamObject } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
+import { interviewMatrixSchema } from '@/lib/interview-schema';
 
 export const maxDuration = 300;
 
@@ -50,12 +52,20 @@ export async function POST(request: Request) {
   }
   const { files } = parsed.data;
 
+  // Pre-check credit balance so we don't burn tokens for an insolvent caller.
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('credit_balance')
+    .eq('id', org.org_id)
+    .single();
+  if (!orgRow || (orgRow.credit_balance ?? 0) < 3) {
+    return NextResponse.json({ error: 'insufficient' }, { status: 402 });
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
-  const openai = new OpenAI({ apiKey });
 
-  // Allocate ~120k chars total across files so we stay under gpt-4o-mini's
-  // 128k token context. Each file gets a fair share, capped at 50k chars.
+  // Allocate ~120k chars total so we stay under gpt-4o-mini's 128k context.
   const perFileBudget = Math.min(50000, Math.floor(120000 / files.length));
   const userPrompt = files
     .map(
@@ -64,93 +74,40 @@ export async function POST(request: Request) {
     )
     .join('\n\n---\n\n');
 
-  let result: {
-    questions: string[];
-    rows: { question: string; cells: { filename: string; summary: string; voc: string }[] }[];
-  };
+  const openai = createOpenAI({ apiKey });
+  const filenames = files.map((f) => f.filename);
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.2,
-      max_tokens: 16384,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'interview_matrix',
-          strict: true,
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              questions: {
-                type: 'array',
-                items: { type: 'string' },
-              },
-              rows: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    question: { type: 'string' },
-                    cells: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        additionalProperties: false,
-                        properties: {
-                          filename: { type: 'string' },
-                          summary: { type: 'string' },
-                          voc: { type: 'string' },
-                        },
-                        required: ['filename', 'summary', 'voc'],
-                      },
-                    },
-                  },
-                  required: ['question', 'cells'],
-                },
-              },
-            },
-            required: ['questions', 'rows'],
-          },
-        },
-      },
-      messages: [
-        { role: 'system', content: SYSTEM },
-        { role: 'user', content: userPrompt },
-      ],
-    });
-    const content = completion.choices[0]?.message?.content ?? '{}';
-    result = JSON.parse(content);
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'analyze_failed' },
-      { status: 502 },
-    );
-  }
+  const result = streamObject({
+    model: openai('gpt-4o-mini'),
+    schema: interviewMatrixSchema,
+    system: SYSTEM,
+    prompt: userPrompt,
+    temperature: 0.2,
+    onFinish: async ({ object }) => {
+      // Stream is done — persist final object and atomically spend credit.
+      if (!object) return;
+      const supa = await createClient();
+      const { data: gen } = await supa
+        .from('generations')
+        .insert({
+          org_id: org.org_id,
+          user_id: user.id,
+          feature: 'interviews',
+          input: filenames.join(', '),
+          output: JSON.stringify(object),
+          credits_spent: 3,
+        })
+        .select('id')
+        .single();
+      if (gen) {
+        const spend = await spendCredits(org.org_id, 'interviews', gen.id);
+        if (!spend.ok) {
+          // race / drained between pre-check and finish — undo the gen row
+          await supa.from('generations').delete().eq('id', gen.id);
+        }
+      }
+    },
+  });
 
-  // Persist + spend a single 'interviews' credit (3) per analysis run.
-  const { data: gen, error: insertErr } = await supabase
-    .from('generations')
-    .insert({
-      org_id: org.org_id,
-      user_id: user.id,
-      feature: 'interviews',
-      input: files.map((f) => f.filename).join(', '),
-      output: JSON.stringify(result),
-      credits_spent: 3,
-    })
-    .select('id')
-    .single();
-  if (insertErr || !gen) {
-    return NextResponse.json({ error: insertErr?.message ?? 'db_error' }, { status: 500 });
-  }
-  const spend = await spendCredits(org.org_id, 'interviews', gen.id);
-  if (!spend.ok) {
-    await supabase.from('generations').delete().eq('id', gen.id);
-    return NextResponse.json({ error: spend.reason }, { status: 402 });
-  }
-
-  return NextResponse.json({ ...result, generation_id: gen.id });
+  return result.toTextStreamResponse();
 }

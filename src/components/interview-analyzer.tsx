@@ -2,9 +2,11 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
+import { interviewMatrixSchema } from '@/lib/interview-schema';
 import * as XLSX from 'xlsx';
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -35,6 +37,35 @@ type AnalysisResult = {
   rows: AnalysisRow[];
 };
 
+// Drop incomplete cells from a partial streamed object so we don't crash
+// when the model is mid-string. Defensive — useObject already gives us
+// DeepPartial<T>, which means string fields can be undefined.
+function normalizePartial(obj: unknown): AnalysisResult | null {
+  if (!obj || typeof obj !== 'object') return null;
+  const o = obj as Record<string, unknown>;
+  const rawRows = Array.isArray(o.rows) ? o.rows : [];
+  const rows: AnalysisRow[] = [];
+  for (const r of rawRows) {
+    if (!r || typeof r !== 'object') continue;
+    const rr = r as Record<string, unknown>;
+    const question = typeof rr.question === 'string' ? rr.question : '';
+    if (!question) continue;
+    const rawCells = Array.isArray(rr.cells) ? rr.cells : [];
+    const cells = rawCells
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .map((c) => ({
+        filename: typeof c.filename === 'string' ? c.filename : '',
+        summary: typeof c.summary === 'string' ? c.summary : '',
+        voc: typeof c.voc === 'string' ? c.voc : '',
+      }));
+    rows.push({ question, cells });
+  }
+  const questions = Array.isArray(o.questions)
+    ? (o.questions.filter((q) => typeof q === 'string') as string[])
+    : rows.map((r) => r.question);
+  return { questions, rows };
+}
+
 function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -51,10 +82,25 @@ export function InterviewAnalyzer() {
   const [items, setItems] = useState<ConvItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [convertingAll, setConvertingAll] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    object,
+    submit,
+    isLoading: analyzing,
+    error: analyzeStreamError,
+    stop: stopAnalyze,
+  } = useObject({
+    api: '/api/interviews/analyze',
+    schema: interviewMatrixSchema,
+    onFinish: () => router.refresh(),
+  });
+
+  const analysis = useMemo<AnalysisResult | null>(
+    () => normalizePartial(object ?? null),
+    [object],
+  );
+  const analyzeError = analyzeStreamError ? analyzeStreamError.message : null;
 
   const queuedCount = items.filter((i) => i.status === 'queued').length;
   const doneCount = items.filter((i) => i.status === 'done').length;
@@ -83,7 +129,6 @@ export function InterviewAnalyzer() {
       };
     });
     setItems((prev) => [...prev, ...next]);
-    setAnalysis(null);
   }, []);
 
   function onDrop(e: React.DragEvent) {
@@ -102,12 +147,10 @@ export function InterviewAnalyzer() {
 
   function remove(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
-    setAnalysis(null);
   }
 
   function clear() {
     setItems([]);
-    setAnalysis(null);
   }
 
   function toggleExpand(id: string) {
@@ -181,7 +224,6 @@ export function InterviewAnalyzer() {
   async function runConvertAll() {
     if (convertingAll) return;
     setConvertingAll(true);
-    setAnalysis(null);
     const queue = items.filter((i) => i.status === 'queued').map((i) => i.id);
     for (const id of queue) {
       await convertOne(id);
@@ -192,42 +234,13 @@ export function InterviewAnalyzer() {
 
   function startAnalyze() {
     requireAuth(() => {
-      void runAnalyze();
-    });
-  }
-
-  async function runAnalyze() {
-    if (analyzing) return;
-    setAnalyzing(true);
-    setAnalyzeError(null);
-    setAnalysis(null);
-    track('interview_analyze_start', { fileCount: filenameOrder.length });
-
-    const payload = {
-      files: items
-        .filter((i) => i.status === 'done' && i.markdown)
-        .map((i) => ({ filename: i.file.name, markdown: i.markdown! })),
-    };
-
-    try {
-      const res = await fetch('/api/interviews/analyze', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+      track('interview_analyze_start', { fileCount: filenameOrder.length });
+      submit({
+        files: items
+          .filter((i) => i.status === 'done' && i.markdown)
+          .map((i) => ({ filename: i.file.name, markdown: i.markdown! })),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setAnalyzeError(json.error ?? res.statusText);
-      } else {
-        setAnalysis({ questions: json.questions, rows: json.rows });
-        track('interview_analyze_success', {});
-        router.refresh();
-      }
-    } catch (e) {
-      setAnalyzeError(e instanceof Error ? e.message : 'network_error');
-    } finally {
-      setAnalyzing(false);
-    }
+    });
   }
 
   function buildMatrix(result: AnalysisResult): string[][] {
@@ -390,6 +403,25 @@ export function InterviewAnalyzer() {
           >
             {analyzing ? t('analyzing') : t('analyze')}
           </button>
+          {analyzing && (
+            <>
+              <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                streaming
+                {analysis && (
+                  <span className="ml-1 tabular-nums text-mute-soft">
+                    {analysis.rows.length} rows
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={() => stopAnalyze()}
+                className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning [border-radius:4px]"
+              >
+                stop
+              </button>
+            </>
+          )}
           {filenameOrder.length === 0 && (
             <span className="text-[11.5px] text-mute-soft">
               {t('noConverted')}
@@ -400,7 +432,7 @@ export function InterviewAnalyzer() {
           )}
         </div>
 
-        {analysis && (
+        {analysis && analysis.rows.length > 0 && (
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
               <button
