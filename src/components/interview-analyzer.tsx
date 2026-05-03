@@ -1,83 +1,17 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { experimental_useObject as useObject } from '@ai-sdk/react';
-import { useRouter } from '@/i18n/navigation';
-import { useRequireAuth } from './auth-provider';
-import { track } from './mixpanel-provider';
-import { interviewMatrixSchema } from '@/lib/interview-schema';
 import * as XLSX from 'xlsx';
+import {
+  useInterviewJob,
+  type AnalysisRow,
+  type ConvItem,
+  type ConvStatus,
+} from './interview-job-provider';
 
-const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-type ConvStatus = 'queued' | 'converting' | 'done' | 'error';
-
-type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
-
-type ExtractItem = {
-  question: string;
-  summary: string;
-  verbatim: string;
-};
-
-type ConvItem = {
-  id: string;
-  file: File;
-  status: ConvStatus;
-  markdown?: string;
-  error?: string;
-  expanded?: boolean;
-  inputChars?: number;
-  outputChars?: number;
-  formatPath?: 'regex' | 'llm';
-  extractStatus?: ExtractStatus;
-  extractItems?: ExtractItem[];
-  extractInvalid?: number;
-  extractTotal?: number;
-  extractError?: string;
-};
-
-type AnalysisRow = {
-  question: string;
-  cells: { filename: string; summary: string; voc: string }[];
-};
-
-type AnalysisResult = {
-  questions: string[];
-  rows: AnalysisRow[];
-};
-
-// Drop incomplete cells from a partial streamed object so we don't crash
-// when the model is mid-string. Defensive — useObject already gives us
-// DeepPartial<T>, which means string fields can be undefined.
-function normalizePartial(obj: unknown): AnalysisResult | null {
-  if (!obj || typeof obj !== 'object') return null;
-  const o = obj as Record<string, unknown>;
-  const rawRows = Array.isArray(o.rows) ? o.rows : [];
-  const rows: AnalysisRow[] = [];
-  for (const r of rawRows) {
-    if (!r || typeof r !== 'object') continue;
-    const rr = r as Record<string, unknown>;
-    const question = typeof rr.question === 'string' ? rr.question : '';
-    if (!question) continue;
-    const rawCells = Array.isArray(rr.cells) ? rr.cells : [];
-    const cells = rawCells
-      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
-      .map((c) => ({
-        filename: typeof c.filename === 'string' ? c.filename : '',
-        summary: typeof c.summary === 'string' ? c.summary : '',
-        voc: typeof c.voc === 'string' ? c.voc : '',
-      }));
-    rows.push({ question, cells });
-  }
-  const questions = Array.isArray(o.questions)
-    ? (o.questions.filter((q) => typeof q === 'string') as string[])
-    : rows.map((r) => r.question);
-  return { questions, rows };
-}
 
 function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;
@@ -89,65 +23,15 @@ export function InterviewAnalyzer() {
   const t = useTranslations('Features.interviewsView');
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
-  const requireAuth = useRequireAuth();
-  const router = useRouter();
 
-  const [items, setItems] = useState<ConvItem[]>([]);
+  const job = useInterviewJob();
   const [dragOver, setDragOver] = useState(false);
-  const [convertingAll, setConvertingAll] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    object,
-    submit,
-    isLoading: analyzing,
-    error: analyzeStreamError,
-    stop: stopAnalyze,
-  } = useObject({
-    api: '/api/interviews/analyze',
-    schema: interviewMatrixSchema,
-    onFinish: () => router.refresh(),
-  });
-
-  const analysis = useMemo<AnalysisResult | null>(
-    () => normalizePartial(object ?? null),
-    [object],
-  );
-  const analyzeError = analyzeStreamError ? analyzeStreamError.message : null;
-
-  const queuedCount = items.filter((i) => i.status === 'queued').length;
-  const doneCount = items.filter((i) => i.status === 'done').length;
-  const allFiles = items.map((i) => i.file.name);
-
-  const filenameOrder = useMemo(
-    () =>
-      items
-        .filter((i) => i.status === 'done' && i.markdown)
-        .map((i) => i.file.name),
-    [items],
-  );
-
-  const addFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files);
-    const next: ConvItem[] = arr.map((file) => {
-      const oversize = file.size > MAX_BYTES;
-      return {
-        id:
-          (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random()}`) as string,
-        file,
-        status: oversize ? 'error' : 'queued',
-        error: oversize ? 'fileTooLarge' : undefined,
-      };
-    });
-    setItems((prev) => [...prev, ...next]);
-  }, []);
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files?.length) job.addFiles(e.dataTransfer.files);
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
@@ -158,186 +42,14 @@ export function InterviewAnalyzer() {
     if (e.currentTarget === e.target) setDragOver(false);
   }
 
-  function remove(id: string) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  }
-
-  function clear() {
-    setItems([]);
-  }
-
-  function toggleExpand(id: string) {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, expanded: !i.expanded } : i)),
-    );
-  }
-
-  async function convertOne(id: string) {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, status: 'converting', error: undefined } : i,
-      ),
-    );
-    const target = items.find((i) => i.id === id);
-    if (!target) return;
-    track('interview_convert_start', {
-      type: target.file.type,
-      size: target.file.size,
-    });
-
-    const fd = new FormData();
-    fd.append('file', target.file);
-
-    try {
-      const res = await fetch('/api/interviews/convert', {
-        method: 'POST',
-        body: fd,
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === id
-              ? { ...i, status: 'error', error: json.error ?? res.statusText }
-              : i,
-          ),
-        );
-      } else {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === id
-              ? {
-                  ...i,
-                  status: 'done',
-                  markdown: json.markdown,
-                  inputChars: json.input_chars,
-                  outputChars: json.output_chars,
-                  formatPath: json.format_path,
-                }
-              : i,
-          ),
-        );
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'network_error';
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === id ? { ...i, status: 'error', error: msg } : i,
-        ),
-      );
-    }
-  }
-
-  function startConvertAll() {
-    requireAuth(() => {
-      void runConvertAll();
-    });
-  }
-
-  async function runConvertAll() {
-    if (convertingAll) return;
-    setConvertingAll(true);
-    const queue = items.filter((i) => i.status === 'queued').map((i) => i.id);
-    for (const id of queue) {
-      await convertOne(id);
-    }
-    setConvertingAll(false);
-    router.refresh();
-  }
-
-  function startAnalyze() {
-    requireAuth(() => {
-      track('interview_analyze_start', { fileCount: filenameOrder.length });
-      void runAnalyzePipeline();
-    });
-  }
-
-  async function extractOne(id: string): Promise<ExtractItem[] | null> {
-    const target = items.find((i) => i.id === id);
-    if (!target?.markdown) return null;
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? { ...i, extractStatus: 'extracting', extractError: undefined }
-          : i,
-      ),
-    );
-    try {
-      const res = await fetch('/api/interviews/extract', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          filename: target.file.name,
-          markdown: target.markdown,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === id
-              ? {
-                  ...i,
-                  extractStatus: 'error',
-                  extractError: json.error ?? res.statusText,
-                }
-              : i,
-          ),
-        );
-        return null;
-      }
-      const next: ExtractItem[] = json.items ?? [];
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? {
-                ...i,
-                extractStatus: 'done',
-                extractItems: next,
-                extractInvalid: json.verbatim_invalid,
-                extractTotal: json.verbatim_total,
-              }
-            : i,
-        ),
-      );
-      return next;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'network_error';
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === id ? { ...i, extractStatus: 'error', extractError: msg } : i,
-        ),
-      );
-      return null;
-    }
-  }
-
-  async function runAnalyzePipeline() {
-    const ready = items.filter((i) => i.status === 'done' && i.markdown);
-    if (ready.length === 0) return;
-
-    // Pass A: per-file extraction (sequential — keeps things deterministic
-    // and the per-file status pills update one at a time for clarity).
-    const extractions: { filename: string; items: ExtractItem[] }[] = [];
-    for (const file of ready) {
-      const extracted = await extractOne(file.id);
-      if (extracted) {
-        extractions.push({ filename: file.file.name, items: extracted });
-      }
-    }
-    if (extractions.length === 0) return;
-
-    // Pass B: stream the cross-file matrix from the per-file extractions.
-    submit({ extractions });
-  }
-
-  function buildMatrix(result: AnalysisResult): string[][] {
-    const header = [t('question'), ...filenameOrder];
-    const rows = result.rows.map((row) => {
+  function buildMatrix() {
+    if (!job.analysis) return null;
+    const header = [t('question'), ...job.filenameOrder];
+    const rows = job.analysis.rows.map((row) => {
       const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
       return [
         row.question,
-        ...filenameOrder.map((f) => {
+        ...job.filenameOrder.map((f) => {
           const c = cellsByFile.get(f);
           if (!c) return '';
           const parts: string[] = [];
@@ -351,8 +63,8 @@ export function InterviewAnalyzer() {
   }
 
   function exportCsv() {
-    if (!analysis) return;
-    const matrix = buildMatrix(analysis);
+    const matrix = buildMatrix();
+    if (!matrix) return;
     const csv = matrix
       .map((row) =>
         row
@@ -369,8 +81,8 @@ export function InterviewAnalyzer() {
   }
 
   function exportXlsx() {
-    if (!analysis) return;
-    const matrix = buildMatrix(analysis);
+    const matrix = buildMatrix();
+    if (!matrix) return;
     const ws = XLSX.utils.aoa_to_sheet(matrix);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
@@ -414,7 +126,7 @@ export function InterviewAnalyzer() {
             accept={ACCEPT}
             className="hidden"
             onChange={(e) => {
-              if (e.target.files?.length) addFiles(e.target.files);
+              if (e.target.files?.length) job.addFiles(e.target.files);
               e.target.value = '';
             }}
           />
@@ -436,37 +148,40 @@ export function InterviewAnalyzer() {
           </button>
         </div>
 
-        {items.length > 0 && (
+        {job.items.length > 0 && (
           <div className="mt-5">
             <div className="flex items-center justify-between border-b border-line-soft pb-2 text-[11.5px] text-mute">
               <span className="tabular-nums">
-                {tUp('filesDone', { done: doneCount, total: items.length })}
+                {tUp('filesDone', {
+                  done: job.doneCount,
+                  total: job.items.length,
+                })}
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={clear}
-                  disabled={convertingAll || analyzing}
+                  onClick={job.clear}
+                  disabled={job.convertingAll || job.analyzing}
                   className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
                 >
                   {tUp('clear')}
                 </button>
                 <button
-                  onClick={startConvertAll}
-                  disabled={queuedCount === 0 || convertingAll}
+                  onClick={job.startConvertAll}
+                  disabled={job.queuedCount === 0 || job.convertingAll}
                   className="border border-ink bg-ink px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:4px]"
                 >
-                  {convertingAll ? tCommon('loading') : t('convertAll')}
+                  {job.convertingAll ? tCommon('loading') : t('convertAll')}
                 </button>
               </div>
             </div>
 
             <ul className="mt-3 border border-line bg-paper [border-radius:4px]">
-              {items.map((item) => (
+              {job.items.map((item) => (
                 <ConvRow
                   key={item.id}
                   item={item}
-                  onRemove={() => remove(item.id)}
-                  onToggle={() => toggleExpand(item.id)}
+                  onRemove={() => job.remove(item.id)}
+                  onToggle={() => job.toggleExpand(item.id)}
                   t={t}
                   tUp={tUp}
                 />
@@ -488,42 +203,42 @@ export function InterviewAnalyzer() {
 
         <div className="mt-4 flex items-center gap-3">
           <button
-            onClick={startAnalyze}
-            disabled={filenameOrder.length === 0 || analyzing}
+            onClick={job.startAnalyze}
+            disabled={job.filenameOrder.length === 0 || job.analyzing}
             className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
           >
-            {analyzing ? t('analyzing') : t('analyze')}
+            {job.analyzing ? t('analyzing') : t('analyze')}
           </button>
-          {analyzing && (
+          {job.analyzing && (
             <>
               <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
                 <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
                 streaming
-                {analysis && (
+                {job.analysis && (
                   <span className="ml-1 tabular-nums text-mute-soft">
-                    {analysis.rows.length} rows
+                    {job.analysis.rows.length} rows
                   </span>
                 )}
               </span>
               <button
-                onClick={() => stopAnalyze()}
+                onClick={() => job.stopAnalyze()}
                 className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning [border-radius:4px]"
               >
                 stop
               </button>
             </>
           )}
-          {filenameOrder.length === 0 && (
+          {job.filenameOrder.length === 0 && (
             <span className="text-[11.5px] text-mute-soft">
               {t('noConverted')}
             </span>
           )}
-          {analyzeError && (
-            <span className="text-[11.5px] text-warning">{analyzeError}</span>
+          {job.analyzeError && (
+            <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
           )}
         </div>
 
-        {analysis && analysis.rows.length > 0 && (
+        {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
               <button
@@ -540,8 +255,8 @@ export function InterviewAnalyzer() {
               </button>
             </div>
             <ResultTable
-              filenames={filenameOrder}
-              rows={analysis.rows}
+              filenames={job.filenameOrder}
+              rows={job.analysis.rows}
               t={t}
             />
           </div>
@@ -724,8 +439,6 @@ function RetentionBadge({
 }) {
   const ratio = input > 0 ? output / input : 1;
   const pct = (ratio * 100).toFixed(1);
-  // Color tiers: regex path almost always near 100%; LLM path expected ~95-100%.
-  // Below 90% is the threshold for "noticeably shorter — verify."
   const cls =
     ratio >= 0.99
       ? 'text-amore'

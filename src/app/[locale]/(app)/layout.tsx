@@ -5,6 +5,7 @@ import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
+import { InterviewJobProvider } from '@/components/interview-job-provider';
 
 export default async function AppLayout({
   children,
@@ -24,18 +25,20 @@ export default async function AppLayout({
   const projects = org ? await listProjects(org.org_id) : [];
 
   return (
-    <div className="flex flex-1">
-      <Sidebar
-        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-      />
-      <div className="flex flex-1 flex-col">
-        <Topbar
-          credits={credits}
-          userEmail={user?.email ?? null}
-          isAuthed={!!user}
+    <InterviewJobProvider>
+      <div className="flex flex-1">
+        <Sidebar
+          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
         />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <div className="flex flex-1 flex-col">
+          <Topbar
+            credits={credits}
+            userEmail={user?.email ?? null}
+            isAuthed={!!user}
+          />
+          <main className="flex-1 overflow-auto p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </InterviewJobProvider>
   );
 }
