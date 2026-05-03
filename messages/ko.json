@@ -173,6 +173,20 @@
     "downloadMd": ".md 다운로드",
     "downloadDocx": ".docx 다운로드"
   },
+  "Workspace": {
+    "eyebrow": "워크스페이스",
+    "expand": "워크스페이스 열기",
+    "collapse": "접기",
+    "empty": "아직 산출물이 없습니다",
+    "emptyHint": "각 도구에서 결과를 만들면 여기에 모입니다.",
+    "actions": "동작",
+    "view": "내용 보기",
+    "copy": "복사",
+    "sendTo": "다른 도구로 보내기",
+    "delete": "삭제",
+    "copied": "복사되었습니다",
+    "copyFailed": "복사에 실패했습니다"
+  },
   "Members": {
     "title": "멤버 관리",
     "invite": "멤버 초대",

@@ -1,10 +1,12 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
+import { useWorkspace } from './workspace-provider';
 import type { FeatureKey } from '@/lib/features';
+import { prefillKey } from '@/lib/workspace';
 
 export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const t = useTranslations('Features');
@@ -13,6 +15,18 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const requireAuth = useRequireAuth();
+  const workspace = useWorkspace();
+
+  useEffect(() => {
+    try {
+      const k = prefillKey(feature);
+      const pre = sessionStorage.getItem(k);
+      if (pre) {
+        setInput(pre);
+        sessionStorage.removeItem(k);
+      }
+    } catch {}
+  }, [feature]);
 
   function onClickRun() {
     requireAuth(() => void doRun());
@@ -34,6 +48,15 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
       } else {
         setResult(json.output);
         track('generate_success', { feature });
+        const title = `${t(`${feature}.title`)} · ${new Date().toLocaleString()}`;
+        workspace.addArtifact({
+          featureKey: feature,
+          title,
+          content:
+            typeof json.output === 'string'
+              ? json.output
+              : JSON.stringify(json.output, null, 2),
+        });
       }
     } finally {
       setRunning(false);
