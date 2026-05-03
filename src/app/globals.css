@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+
+@theme {
+  /* Brand accents */
+  --color-amore: #1F5795;
+  --color-amore-soft: #3d72ad;
+  --color-amore-bg: #eaf0f8;
+  --color-pacific: #001C58;
+  --color-pacific-bg: #e6e9f1;
+
+  /* Text */
+  --color-ink: #000000;
+  --color-ink-2: #1a1a1a;
+  --color-mute: #5a5a5a;
+  --color-mute-soft: #9b9b9b;
+  --color-gray-warm: #7d7d7d;
+
+  /* Lines / surfaces */
+  --color-line: #e1e3e8;
+  --color-line-soft: #f1f3f6;
+  --color-paper: #ffffff;
+  --color-paper-soft: #fafafb;
+
+  /* Signal (limited) */
+  --color-warning: #fb923c;
+  --color-warning-bg: #fff8f0;
+  --color-warning-line: #fed7aa;
+
+  --font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  --radius-sm: 4px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html, body {
+  background: var(--color-paper);
+  color: var(--color-ink-2);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Editorial primitives shared across pages */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-amore);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.eyebrow-mute {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-mute-soft);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.accent-line {
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: var(--color-amore);
+  vertical-align: middle;
 }

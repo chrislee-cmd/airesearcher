@@ -1,10 +1,12 @@
 import { setRequestLocale } from 'next-intl/server';
-import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
+import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
+import { InterviewJobProvider } from '@/components/interview-job-provider';
+import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 
 export default async function AppLayout({
   children,
@@ -18,18 +20,28 @@ export default async function AppLayout({
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect({ href: '/login', locale });
 
-  const org = await getActiveOrg();
-  const credits = org ? await getOrgCredits(org.org_id) : 0;
+  const org = user ? await getActiveOrg() : null;
+  const credits = org ? await getOrgCredits(org.org_id) : null;
+  const projects = org ? await listProjects(org.org_id) : [];
 
   return (
-    <div className="flex flex-1">
-      <Sidebar orgName={org?.org_name ?? '—'} />
-      <div className="flex flex-1 flex-col">
-        <Topbar credits={credits} userEmail={user!.email ?? ''} />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+    <InterviewJobProvider>
+     <TranscriptJobProvider>
+      <div className="flex flex-1">
+        <Sidebar
+          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+        />
+        <div className="flex flex-1 flex-col">
+          <Topbar
+            credits={credits}
+            userEmail={user?.email ?? null}
+            isAuthed={!!user}
+          />
+          <main className="flex-1 overflow-auto p-6">{children}</main>
+        </div>
       </div>
-    </div>
+     </TranscriptJobProvider>
+    </InterviewJobProvider>
   );
 }

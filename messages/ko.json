@@ -4,18 +4,51 @@
     "signInTitle": "AI Researcher 로그인",
     "signInSubtitle": "마케팅·UX 리서치를 위한 AI 도구",
     "google": "Google로 계속하기",
-    "signOut": "로그아웃"
+    "signOut": "로그아웃",
+    "email": "이메일",
+    "password": "비밀번호",
+    "signIn": "로그인",
+    "signUp": "회원가입",
+    "switchToSignUp": "계정이 없으신가요? 회원가입",
+    "switchToSignIn": "이미 계정이 있으신가요? 로그인",
+    "or": "또는",
+    "checkEmail": "확인 메일을 보냈습니다. 메일함을 확인해주세요.",
+    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다."
   },
   "Sidebar": {
     "dashboard": "대시보드",
-    "quotes": "인용문 생성기",
+    "quotes": "전사록 생성기",
     "transcripts": "스크립트 생성기",
     "interviews": "인터뷰 결과 생성기",
     "reports": "전체 리포트 생성기",
+    "scheduler": "참석자 스케쥴러",
+    "moderator": "AI 모더레이터",
+    "analyzer": "정성·정량 통합 분석기",
+    "desk": "데스크 리서치",
+    "keywords": "키워드 크롤링",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
-    "credits": "크레딧"
+    "credits": "크레딧",
+    "viewProjects": "프로젝트 보기",
+    "working": "작업중"
+  },
+  "Projects": {
+    "title": "프로젝트",
+    "description": "리서치 프로젝트 단위로 산출물을 묶어 관리합니다.",
+    "newProject": "새 프로젝트",
+    "name": "이름",
+    "descriptionField": "설명",
+    "create": "만들기",
+    "noProjects": "아직 만들어진 프로젝트가 없습니다.",
+    "openProject": "열기",
+    "folderView": "폴더",
+    "listView": "리스트",
+    "createdAt": "생성일",
+    "items": "산출물",
+    "navigate": "프로젝트로 이동",
+    "noActiveOrg": "조직 정보를 불러오는 중이거나 로그인이 필요합니다.",
+    "delete": "삭제"
   },
   "Common": {
     "language": "언어",
@@ -34,9 +67,28 @@
   },
   "Features": {
     "quotes": {
-      "title": "인용문 생성기",
-      "description": "원시 인터뷰 데이터에서 핵심 인용문을 추출합니다.",
+      "title": "전사록 생성기",
+      "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
       "cost": "1크레딧"
+    },
+    "uploader": {
+      "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
+      "dropActive": "여기에 놓으세요",
+      "supported": "지원: mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx · 파일당 최대 25MB",
+      "browse": "파일 선택",
+      "queued": "대기",
+      "transcribing": "변환 중",
+      "done": "완료",
+      "error": "오류",
+      "remove": "제거",
+      "clear": "초기화",
+      "transcribeAll": "전사 시작",
+      "noFiles": "파일이 없습니다",
+      "fileTooLarge": "파일이 너무 큽니다 (최대 25MB)",
+      "viewTranscript": "전사록 보기",
+      "hideTranscript": "접기",
+      "filesQueued": "{count}개 파일 대기 중",
+      "filesDone": "{done}/{total} 완료"
     },
     "transcripts": {
       "title": "스크립트 생성기",
@@ -45,13 +97,58 @@
     },
     "interviews": {
       "title": "인터뷰 결과 생성기",
-      "description": "단일 인터뷰의 핵심 인사이트와 테마를 정리합니다.",
-      "cost": "3크레딧"
+      "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
+      "cost": "변환 1크레딧/파일 · 분석 3크레딧"
+    },
+    "interviewsView": {
+      "stage1Title": "1단계 — 파일을 .md로 변환",
+      "stage1Help": "각 파일을 1크레딧으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
+      "convertAll": "분석 시작",
+      "pipelineHint": "변환 → 분석 → CSV·XLSX 다운로드까지 자동으로 이어집니다.",
+      "convertingPhase": "변환 중",
+      "viewMd": "마크다운 보기",
+      "hideMd": "접기",
+      "stage2Title": "2단계 — 공통 문항 분석",
+      "stage2Help": "변환이 끝난 모든 파일에서 공통 문항을 추출하고, 파일별 답변 요약과 VOC 인용구를 표로 만듭니다. (3크레딧)",
+      "analyze": "분석 시작",
+      "analyzing": "분석 중…",
+      "exportCsv": "CSV 내보내기",
+      "exportXlsx": "XLSX 내보내기",
+      "question": "문항",
+      "summary": "요약",
+      "voc": "VOC 인용구",
+      "noConverted": "먼저 1단계를 진행해주세요.",
+      "needTwoFiles": "분석은 변환된 파일이 1개 이상일 때 가능합니다."
     },
     "reports": {
       "title": "전체 리포트 생성기",
       "description": "모든 인터뷰를 종합한 마케팅·UX 리서치 리포트를 작성합니다.",
       "cost": "5크레딧"
+    },
+    "scheduler": {
+      "title": "참석자 스케쥴러",
+      "description": "후보자 가용 시간을 받아 인터뷰 일정 후보를 정리하고, 참석자 안내문을 생성합니다.",
+      "cost": "1크레딧"
+    },
+    "moderator": {
+      "title": "AI 모더레이터",
+      "description": "리서치 가설을 입력하면 인터뷰 진행을 위한 모더레이터 스크립트와 추가 질문을 제안합니다.",
+      "cost": "3크레딧"
+    },
+    "analyzer": {
+      "title": "정성·정량 통합 분석기",
+      "description": "정성 응답과 정량 데이터를 함께 입력하면, 패턴을 매칭해 통합 인사이트를 도출합니다.",
+      "cost": "5크레딧"
+    },
+    "desk": {
+      "title": "데스크 리서치",
+      "description": "주제·산업·키워드를 입력하면 공개 출처 위주의 데스크 리서치 요약을 생성합니다.",
+      "cost": "3크레딧"
+    },
+    "keywords": {
+      "title": "키워드 크롤링",
+      "description": "검색 키워드를 입력하면 관련 페이지 상위 결과를 수집하고 헤드라인·요약을 정리합니다.",
+      "cost": "2크레딧"
     }
   },
   "Members": {

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { track } from './mixpanel-provider';
+import { useRequireAuth } from './auth-provider';
 import type { FeatureKey } from '@/lib/features';
 
 export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
@@ -11,8 +12,13 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const requireAuth = useRequireAuth();
 
-  async function run() {
+  function onClickRun() {
+    requireAuth(() => void doRun());
+  }
+
+  async function doRun() {
     setRunning(true);
     setResult(null);
     track('generate_clicked', { feature });
@@ -35,39 +41,51 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t(`${feature}.title`)}</h1>
-          <p className="mt-1 text-sm text-neutral-500">{t(`${feature}.description`)}</p>
-        </div>
-        <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t(`${feature}.title`)}
+        </h1>
+        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
           {t(`${feature}.cost`)}
         </span>
       </div>
+      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        {t(`${feature}.description`)}
+      </p>
 
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        rows={10}
-        placeholder="..."
-        className="mt-6 w-full rounded-lg border border-neutral-200 bg-white p-3 text-sm focus:border-neutral-400 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900"
-      />
+      <div className="mt-8">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          rows={12}
+          placeholder="원시 인터뷰 텍스트를 붙여넣으세요…"
+          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none [border-radius:4px]"
+        />
+      </div>
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-4 flex items-center justify-end gap-3">
+        <span className="text-[11px] tabular-nums text-mute-soft">
+          {input.length.toLocaleString()} chars
+        </span>
         <button
-          onClick={run}
+          onClick={onClickRun}
           disabled={running || !input.trim()}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
         >
           {running ? tCommon('loading') : tCommon('generate')}
         </button>
       </div>
 
       {result && (
-        <pre className="mt-6 whitespace-pre-wrap rounded-lg border border-neutral-200 bg-white p-4 text-sm dark:border-neutral-800 dark:bg-neutral-900">
-          {result}
-        </pre>
+        <div className="mt-10">
+          <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+            결과
+          </h2>
+          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
+            {result}
+          </pre>
+        </div>
       )}
     </div>
   );

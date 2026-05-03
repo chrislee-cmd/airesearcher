@@ -1,4 +1,5 @@
-import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
+import { ChapterHeader } from '@/components/editorial';
 
 export default async function SettingsPage({
   params,
@@ -7,12 +8,10 @@ export default async function SettingsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations('Sidebar');
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-semibold tracking-tight">{t('settings')}</h1>
-      <p className="mt-2 text-sm text-neutral-500">Coming soon.</p>
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
+      <ChapterHeader title="설정" description="이 영역은 곧 출시됩니다." />
     </div>
   );
 }

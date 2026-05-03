@@ -11,14 +11,14 @@ export function SignOutButton() {
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.replace('/login');
+    router.replace('/dashboard');
     router.refresh();
   }
 
   return (
     <button
       onClick={signOut}
-      className="rounded-md border border-neutral-200 px-3 py-1 text-xs text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-ink-2 [border-radius:4px]"
     >
       {t('signOut')}
     </button>

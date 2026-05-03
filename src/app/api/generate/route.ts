@@ -6,7 +6,17 @@ import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 
 const Body = z.object({
-  feature: z.enum(['quotes', 'transcripts', 'interviews', 'reports']),
+  feature: z.enum([
+    'quotes',
+    'transcripts',
+    'interviews',
+    'reports',
+    'scheduler',
+    'moderator',
+    'analyzer',
+    'desk',
+    'keywords',
+  ]),
   input: z.string().min(1),
 });
 
