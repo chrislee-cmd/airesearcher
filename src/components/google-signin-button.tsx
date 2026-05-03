@@ -2,18 +2,21 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
 
 export function GoogleSignInButton({ label }: { label: string }) {
   const [loading, setLoading] = useState(false);
+  const locale = useLocale();
 
   async function signIn() {
     setLoading(true);
     const supabase = createClient();
-    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    const origin = window.location.origin;
+    const next = `/${locale}/dashboard`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent('/ko/dashboard')}`,
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     });

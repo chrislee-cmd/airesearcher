@@ -30,11 +30,10 @@ export function EmailPasswordForm() {
         router.replace('/dashboard');
         router.refresh();
       } else {
-        const origin = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${origin}/auth/callback` },
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
         });
         if (error) {
           setError(error.message);
