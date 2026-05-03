@@ -26,6 +26,7 @@
     "analyzer": "Mixed-Methods Analyzer",
     "desk": "Desk Research",
     "keywords": "Keyword Crawling",
+    "recruiting": "Recruiting",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -149,7 +150,21 @@
       "title": "Keyword Crawling",
       "description": "Crawl top results for a keyword and capture their headlines and summaries.",
       "cost": "2 credits"
+    },
+    "recruiting": {
+      "title": "Recruiting",
+      "description": "Generate screener questions and recruitment posts for research participant sourcing.",
+      "cost": "3 credits"
     }
+  },
+  "Moderator": {
+    "benchmarkLabel": "BENCHMARK",
+    "benchmarkTitle": "AI Interview Services",
+    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card to visit the service.",
+    "thisService": "OUR PRODUCT",
+    "visit": "Visit site",
+    "prev": "Previous",
+    "next": "Next"
   },
   "Members": {
     "title": "Member management",
