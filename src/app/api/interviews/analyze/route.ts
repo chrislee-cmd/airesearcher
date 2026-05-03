@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateObject } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
@@ -25,37 +23,66 @@ const Body = z.object({
     .max(20),
 });
 
-// LLM only deduplicates questions and maps each file's items to the
-// standard question list. The matrix itself is built deterministically
-// on the server below — eliminating the empty-cell failure mode where
-// Sonnet would emit cells: [] for every row.
-const aggregateSchema = z.object({
-  questions: z.array(z.string()),
-  /**
-   * mappings[fileIdx] is an array of length === questions.length.
-   * Each entry is the index into extractions[fileIdx].items that answers
-   * the standard question at that position, or -1 if no item matches.
-   */
-  mappings: z.array(z.array(z.number().int())),
-});
+// === Deterministic question clustering ===
+// We build the matrix entirely on the server: flatten every (file, item)
+// into a list, group by question similarity, and emit one row per cluster.
+// This guarantees every file's questions surface in the output (no LLM
+// laziness can drop a respondent column), and never returns empty rows.
 
-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / VOC) 항목들을 받아 두 가지를 결정합니다:
+function normalizeQuestion(s: string): string {
+  return s
+    .toLowerCase()
+    // strip punctuation / spaces / quotes / particles that don't change meaning
+    .replace(/[\s.,?!()'"‘’“”~`*\-_:;…]/g, '');
+}
 
-1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록.
-   - **핵심**: 모든 파일의 질문을 동등하게 반영하세요. 첫 번째 파일에 편향되지 마세요.
-   - 한 파일에서만 나온 질문도 포함. 자주 묻는 질문이 우선.
-   - 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
+function jaccard(aChars: Set<string>, bChars: Set<string>): number {
+  if (aChars.size === 0 && bChars.size === 0) return 0;
+  let inter = 0;
+  for (const c of aChars) if (bChars.has(c)) inter += 1;
+  const union = aChars.size + bChars.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
 
-2) **mappings** — 입력 파일마다 길이가 questions.length 와 정확히 같은 정수 배열. 위치 i의 값은 그 파일의 items 중 questions[i] 에 해당하는 항목의 인덱스 (0부터). 매칭되는 항목이 없으면 -1.
-   - **중요**: 모든 파일에 대해 mapping을 성실히 채워야 합니다. 어떤 파일도 -1로만 가득 차면 안 됩니다.
-   - 의미가 같으면 표현이 달라도 매칭하세요 (예: "자기소개" 와 "본인 소개" 는 같음).
-   - 부분적으로 매칭되어도 OK — 표준 문항 의도와 그 항목의 의도가 통하면 매칭.
+type FlatItem = {
+  fileIdx: number;
+  itemIdx: number;
+  question: string;
+  voc: string;
+  norm: Set<string>;
+};
 
-# 출력 규칙
-- mappings.length === 입력 파일 수
-- 각 mappings[fileIdx].length === questions.length
-- 인덱스 값은 -1 또는 0..(items.length-1) 범위 정수
-- 정의된 JSON 스키마 외 텍스트 금지`;
+function clusterItems(items: FlatItem[], threshold = 0.5): FlatItem[][] {
+  const used = new Set<number>();
+  const clusters: FlatItem[][] = [];
+  for (let i = 0; i < items.length; i++) {
+    if (used.has(i)) continue;
+    const seed = items[i];
+    const cluster: FlatItem[] = [seed];
+    used.add(i);
+    for (let j = i + 1; j < items.length; j++) {
+      if (used.has(j)) continue;
+      const cand = items[j];
+      // Avoid mapping two items from the same file to one cluster — the
+      // matrix only has one cell per file per question. The first item
+      // wins; later same-file items split into a new cluster of their own.
+      if (cluster.some((m) => m.fileIdx === cand.fileIdx)) continue;
+      if (jaccard(seed.norm, cand.norm) >= threshold) {
+        cluster.push(cand);
+        used.add(j);
+      }
+    }
+    clusters.push(cluster);
+  }
+  return clusters;
+}
+
+function pickCanonical(cluster: FlatItem[]): string {
+  // Longest question text in the cluster — usually the most informative phrasing.
+  return cluster.reduce((a, b) =>
+    a.question.length >= b.question.length ? a : b,
+  ).question;
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -80,110 +107,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
-  const anthropic = createAnthropic({ apiKey });
-
   const filenames = extractions.map((e) => e.filename);
 
-  const fileListBlock = `# Files (${filenames.length})\n${filenames
-    .map((f, i) => `${i + 1}. ${f}`)
-    .join('\n')}`;
-
-  const dataBlock = extractions
-    .map((e, fi) => {
-      const lines = e.items
-        .map(
-          (it, ii) =>
-            `  [${ii}] Q: ${it.question}\n      VOC: ${it.voc}`,
-        )
-        .join('\n');
-      return `## File ${fi + 1}: ${e.filename}\n${lines}`;
-    })
-    .join('\n\n---\n\n');
-
-  const userPrompt = `${fileListBlock}\n\n# Items per file (0-indexed)\n\n${dataBlock}`;
-
-  let aggregate: z.infer<typeof aggregateSchema>;
-  try {
-    const result = await generateObject({
-      model: anthropic('claude-sonnet-4-6'),
-      schema: aggregateSchema,
-      system: SYSTEM,
-      prompt: userPrompt,
-      temperature: 0.1,
+  // Flatten every item across all files
+  const flat: FlatItem[] = [];
+  extractions.forEach((ext, fileIdx) => {
+    ext.items.forEach((it, itemIdx) => {
+      const q = (it.question ?? '').trim();
+      if (!q) return;
+      flat.push({
+        fileIdx,
+        itemIdx,
+        question: q,
+        voc: it.voc ?? '',
+        norm: new Set(normalizeQuestion(q)),
+      });
     });
-    aggregate = result.object;
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'analyze_failed' },
-      { status: 502 },
-    );
-  }
-
-  // Defensive: pad / clamp mappings to the expected shape
-  const Q = aggregate.questions.length;
-  const safeMappings: number[][] = filenames.map((_, fi) => {
-    const row = aggregate.mappings[fi] ?? [];
-    const padded = row.slice(0, Q);
-    while (padded.length < Q) padded.push(-1);
-    return padded;
   });
 
-  // Fallback matcher — sometimes Sonnet returns -1 for an entire file's
-  // mapping even though that file clearly has matching items. For each
-  // (file, standard-question) pair where the model said "no match", try
-  // a deterministic char-overlap match against that file's item.question
-  // list. Bridges over LLM laziness without hand-holding the prompt.
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[\s.,?!()'"‘’“”~`*\-_:;]/g, '');
-  const used = new Set<string>(); // "fileIdx:itemIdx" already mapped to a question
-  for (let fi = 0; fi < extractions.length; fi++) {
-    for (let qi = 0; qi < Q; qi++) {
-      if (safeMappings[fi][qi] !== -1) {
-        used.add(`${fi}:${safeMappings[fi][qi]}`);
-      }
-    }
-  }
-  for (let fi = 0; fi < extractions.length; fi++) {
-    for (let qi = 0; qi < Q; qi++) {
-      if (safeMappings[fi][qi] !== -1) continue;
-      const stdQ = norm(aggregate.questions[qi]);
-      if (!stdQ) continue;
-      let best = { idx: -1, score: 0 };
-      for (let ii = 0; ii < extractions[fi].items.length; ii++) {
-        if (used.has(`${fi}:${ii}`)) continue;
-        const candQ = norm(extractions[fi].items[ii].question);
-        if (!candQ) continue;
-        const a = new Set(stdQ);
-        const b = new Set(candQ);
-        let inter = 0;
-        for (const c of a) if (b.has(c)) inter += 1;
-        const score = inter / Math.max(a.size, b.size);
-        if (score > best.score) best = { idx: ii, score };
-      }
-      if (best.idx >= 0 && best.score >= 0.45) {
-        safeMappings[fi][qi] = best.idx;
-        used.add(`${fi}:${best.idx}`);
-      }
-    }
-  }
+  const clusters = clusterItems(flat, 0.5);
 
-  // Build the matrix on the server from the input extractions + index map.
+  // Sort clusters by the file/item order of their first member so the
+  // matrix follows interview flow as much as possible.
+  clusters.sort((a, b) => {
+    if (a[0].fileIdx !== b[0].fileIdx) return a[0].fileIdx - b[0].fileIdx;
+    return a[0].itemIdx - b[0].itemIdx;
+  });
+
   const matrix = {
-    questions: aggregate.questions,
-    rows: aggregate.questions.map((question, qIdx) => ({
-      question,
-      cells: extractions.map((ext, fileIdx) => {
-        const itemIdx = safeMappings[fileIdx]?.[qIdx] ?? -1;
-        if (itemIdx < 0 || itemIdx >= ext.items.length) {
-          return { filename: ext.filename, voc: '' };
-        }
-        return { filename: ext.filename, voc: ext.items[itemIdx].voc };
-      }),
-    })),
+    questions: clusters.map(pickCanonical),
+    rows: clusters.map((cluster) => {
+      const canonical = pickCanonical(cluster);
+      return {
+        question: canonical,
+        cells: filenames.map((filename, fi) => {
+          const member = cluster.find((m) => m.fileIdx === fi);
+          return {
+            filename,
+            voc: member?.voc ?? '',
+          };
+        }),
+      };
+    }),
   };
 
   const { data: gen, error: insertErr } = await supabase
