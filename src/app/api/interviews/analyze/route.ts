@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { generateObject } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
@@ -133,6 +135,101 @@ function pickCanonical(cluster: FlatItem[]): string {
   ).question;
 }
 
+// === Pass 3: LLM semantic consolidation ===
+// After deterministic clustering some rows still represent the *same*
+// question phrased differently across files (e.g. "왜 신경 쓰게 되셨나요?"
+// vs "특별히 신경 쓰게 된 계기는?"). Bigrams can't see that semantic link;
+// Sonnet can. We send only the canonical questions (no VOC bodies) and ask
+// for index-grouping. On any failure we fall back to the deterministic
+// result — the user never gets fewer rows than what's already correct.
+const consolidationSchema = z.object({
+  groups: z.array(z.array(z.number().int())),
+});
+
+async function llmConsolidate(
+  questions: string[],
+  apiKey: string,
+): Promise<number[][] | null> {
+  if (questions.length < 2) return null;
+  const anthropic = createAnthropic({ apiKey });
+  const numbered = questions.map((q, i) => `[${i}] ${q}`).join('\n');
+  const SYSTEM = `당신은 인터뷰 질문 정규화 도우미입니다.
+
+입력으로 인덱스가 붙은 한국어 질문 리스트가 주어집니다. 의미가 사실상 같은 질문(어휘·표현·어미는 달라도 본질이 같은 것)끼리 묶어서 인덱스 배열의 배열로 반환하세요.
+
+# 규칙
+- 모든 인덱스가 정확히 한 번씩 등장해야 합니다 (누락·중복 금지).
+- 묶을 게 없으면 단일 원소 배열로 둡니다 (예: [3] 혼자).
+- 의미가 미묘하게 다르면 묶지 마세요. 확실히 같은 것만 묶습니다.
+- 출력은 정의된 JSON 스키마(groups)만, 그 외 텍스트 금지.`;
+
+  try {
+    const result = await generateObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: consolidationSchema,
+      system: SYSTEM,
+      prompt: `질문 목록 (총 ${questions.length}개):\n\n${numbered}`,
+      temperature: 0,
+    });
+    return result.object.groups;
+  } catch (e) {
+    console.warn('[analyze] llmConsolidate failed:', e);
+    return null;
+  }
+}
+
+function applyConsolidation(
+  clusters: FlatItem[][],
+  groups: number[][],
+): FlatItem[][] {
+  // Validate groups: every cluster index must appear exactly once. If not,
+  // bail out — fall back to deterministic result.
+  const seen = new Set<number>();
+  for (const g of groups) {
+    for (const idx of g) {
+      if (idx < 0 || idx >= clusters.length || seen.has(idx)) {
+        console.warn(
+          '[analyze] consolidation invalid (bad index or duplicate):',
+          { idx, groups },
+        );
+        return clusters;
+      }
+      seen.add(idx);
+    }
+  }
+  if (seen.size !== clusters.length) {
+    console.warn(
+      '[analyze] consolidation invalid (missing indices):',
+      { seen: seen.size, expected: clusters.length },
+    );
+    return clusters;
+  }
+
+  // Merge clusters per group, but if two clusters share a fileIdx, keep
+  // the first occurrence and split the rest into their own group — one
+  // cell per file per question is invariant.
+  const merged: FlatItem[][] = [];
+  for (const g of groups) {
+    const primary: FlatItem[] = [];
+    const overflow: FlatItem[][] = [];
+    const fileSeen = new Set<number>();
+    for (const idx of g) {
+      for (const item of clusters[idx]) {
+        if (fileSeen.has(item.fileIdx)) {
+          // Same file already represented in primary — start its own group.
+          overflow.push([item]);
+        } else {
+          primary.push(item);
+          fileSeen.add(item.fileIdx);
+        }
+      }
+    }
+    if (primary.length > 0) merged.push(primary);
+    for (const o of overflow) merged.push(o);
+  }
+  return merged;
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -188,7 +285,22 @@ export async function POST(request: Request) {
     });
   });
 
-  const clusters = clusterItems(flat, 0.45, 0.28);
+  let clusters = clusterItems(flat, 0.45, 0.28);
+  const beforeConsolidation = clusters.length;
+
+  // Pass 3 — LLM semantic consolidation. Skip silently on missing key or
+  // any failure (deterministic clusters are still valid).
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (apiKey && clusters.length >= 2) {
+    const canonicals = clusters.map(pickCanonical);
+    const groups = await llmConsolidate(canonicals, apiKey);
+    if (groups) clusters = applyConsolidation(clusters, groups);
+  }
+  console.log('[analyze] consolidation:', {
+    before: beforeConsolidation,
+    after: clusters.length,
+    saved: beforeConsolidation - clusters.length,
+  });
 
   // Sort clusters by the file/item order of their first member so the
   // matrix follows interview flow as much as possible.
