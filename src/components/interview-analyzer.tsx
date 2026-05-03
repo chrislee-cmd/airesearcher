@@ -9,6 +9,13 @@ import {
   type ConvStatus,
 } from './interview-job-provider';
 import { ThinkingPanel } from './thinking-panel';
+import { useWorkspace } from './workspace-provider';
+
+// Title can contain ":" / "/" from toLocaleString — strip them so the
+// synthesized filename is safe across OSes and the analyzer's UI.
+function safeFilename(title: string) {
+  return title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+}
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -25,13 +32,33 @@ export function InterviewAnalyzer() {
   const tCommon = useTranslations('Common');
 
   const job = useInterviewJob();
+  const workspace = useWorkspace();
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files?.length) job.addFiles(e.dataTransfer.files);
+    // Native file drop — the original path.
+    if (e.dataTransfer.files?.length) {
+      job.addFiles(e.dataTransfer.files);
+      return;
+    }
+    // Workspace artifact drop — synthesize a markdown File from the
+    // artifact's content so it flows through Stage 1 like a real upload.
+    const artifactId = e.dataTransfer.getData(
+      'application/x-workspace-artifact',
+    );
+    if (artifactId) {
+      const a = workspace.artifacts.find((x) => x.id === artifactId);
+      if (a) {
+        const file = new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        });
+        job.addFiles([file]);
+      }
+      workspace.setDragging(null);
+    }
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();

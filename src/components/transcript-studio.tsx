@@ -9,7 +9,12 @@ import {
   type TranscriptJob,
   type TranscriptJobStatus,
 } from './transcript-job-provider';
+import { useWorkspace } from './workspace-provider';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
+
+function safeFilename(title: string) {
+  return title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
+}
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -36,6 +41,7 @@ export function TranscriptStudio() {
   const tUp = useTranslations('Features.uploader');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
+  const workspace = useWorkspace();
 
   const [dragOver, setDragOver] = useState(false);
   const [busyUpload, setBusyUpload] = useState(false);
@@ -167,6 +173,20 @@ export function TranscriptStudio() {
     setDragOver(false);
     if (e.dataTransfer.files?.length) {
       startUploads(Array.from(e.dataTransfer.files));
+      return;
+    }
+    const artifactId = e.dataTransfer.getData(
+      'application/x-workspace-artifact',
+    );
+    if (artifactId) {
+      const a = workspace.artifacts.find((x) => x.id === artifactId);
+      if (a) {
+        const file = new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        });
+        startUploads([file]);
+      }
+      workspace.setDragging(null);
     }
   }
   function onDragOver(e: React.DragEvent) {
