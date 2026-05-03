@@ -1,2 +1,2 @@
 @AGENTS.md
-@WORKFLOW.md
+@PROJECT.md
