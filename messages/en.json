@@ -171,15 +171,6 @@
     "groupNone": "Clear",
     "skippedTitle": "Sources skipped — missing API keys"
   },
-  "Moderator": {
-    "benchmarkLabel": "BENCHMARK",
-    "benchmarkTitle": "AI Interview Services",
-    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card to visit the service.",
-    "thisService": "OUR PRODUCT",
-    "visit": "Visit site",
-    "prev": "Previous",
-    "next": "Next"
-  },
   "Members": {
     "title": "Member management",
     "invite": "Invite member",
@@ -190,6 +181,15 @@
     "viewer": "Viewer",
     "email": "Email",
     "removeMember": "Remove"
+  },
+  "Moderator": {
+    "benchmarkLabel": "BENCHMARK",
+    "benchmarkTitle": "AI Interview Services",
+    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card to visit the service.",
+    "thisService": "OUR PRODUCT",
+    "visit": "Visit site",
+    "prev": "Previous",
+    "next": "Next"
   },
   "Org": {
     "switcher": "Select organization",
