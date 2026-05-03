@@ -1,0 +1,745 @@
+diff --git a/src/app/api/interviews/analyze/route.ts b/src/app/api/interviews/analyze/route.ts
+index 2438368..5c97e51 100644
+--- a/src/app/api/interviews/analyze/route.ts
++++ b/src/app/api/interviews/analyze/route.ts
+@@ -1,7 +1,5 @@
+ import { NextResponse } from 'next/server';
+ import { z } from 'zod';
+-import { generateObject } from 'ai';
+-import { createAnthropic } from '@ai-sdk/anthropic';
+ import { createClient } from '@/lib/supabase/server';
+ import { getActiveOrg } from '@/lib/org';
+ import { spendCredits } from '@/lib/credits';
+@@ -16,8 +14,7 @@ const Body = z.object({
+         items: z.array(
+           z.object({
+             question: z.string(),
+-            summary: z.string(),
+-            verbatim: z.string(),
++            voc: z.string(),
+           }),
+         ),
+       }),
+@@ -26,31 +23,110 @@ const Body = z.object({
+     .max(20),
+ });
+ 
+-// LLM only deduplicates questions and maps each file's items to the
+-// standard question list. The matrix itself is built deterministically
+-// on the server below — eliminating the empty-cell failure mode where
+-// Sonnet would emit cells: [] for every row.
+-const aggregateSchema = z.object({
+-  questions: z.array(z.string()),
+-  /**
+-   * mappings[fileIdx] is an array of length === questions.length.
+-   * Each entry is the index into extractions[fileIdx].items that answers
+-   * the standard question at that position, or -1 if no item matches.
+-   */
+-  mappings: z.array(z.array(z.number().int())),
+-});
++// === Deterministic question clustering ===
++// Build the matrix entirely on the server: flatten every (file, item),
++// cluster by character-bigram Jaccard similarity, then run a second pass
++// to merge orphan single-file rows into nearby clusters they didn't seed.
++// Guarantees every file's questions surface — no LLM laziness can drop a
++// respondent column.
++
++function normalizeQuestion(s: string): string {
++  return s
++    .toLowerCase()
++    .replace(/[\s.,?!()'"‘’“”~`*\-_:;…]/g, '');
++}
++
++function bigrams(s: string): Set<string> {
++  const out = new Set<string>();
++  if (s.length === 0) return out;
++  if (s.length === 1) {
++    out.add(s);
++    return out;
++  }
++  for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2));
++  return out;
++}
+ 
+-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 항목들을 받아 두 가지를 결정합니다:
++function jaccard(a: Set<string>, b: Set<string>): number {
++  if (a.size === 0 && b.size === 0) return 0;
++  let inter = 0;
++  for (const t of a) if (b.has(t)) inter += 1;
++  const union = a.size + b.size - inter;
++  return union === 0 ? 0 : inter / union;
++}
+ 
+-1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록. 한 파일에서만 나온 질문도 포함. 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
++type FlatItem = {
++  fileIdx: number;
++  itemIdx: number;
++  question: string;
++  voc: string;
++  bigrams: Set<string>;
++};
++
++function clusterItems(
++  items: FlatItem[],
++  strict = 0.45,
++  relaxed = 0.28,
++): FlatItem[][] {
++  const used = new Set<number>();
++  const clusters: FlatItem[][] = [];
++
++  // Pass 1 — strict greedy seed-and-grow.
++  for (let i = 0; i < items.length; i++) {
++    if (used.has(i)) continue;
++    const seed = items[i];
++    const cluster: FlatItem[] = [seed];
++    used.add(i);
++    for (let j = i + 1; j < items.length; j++) {
++      if (used.has(j)) continue;
++      const cand = items[j];
++      // One cell per file per question.
++      if (cluster.some((m) => m.fileIdx === cand.fileIdx)) continue;
++      if (jaccard(seed.bigrams, cand.bigrams) >= strict) {
++        cluster.push(cand);
++        used.add(j);
++      }
++    }
++    clusters.push(cluster);
++  }
+ 
+-2) **mappings** — 입력 파일마다 길이가 questions.length 와 정확히 같은 정수 배열. 위치 i의 값은 그 파일의 items 중 questions[i] 에 해당하는 항목의 인덱스 (0부터). 매칭되는 항목이 없으면 -1.
++  // Pass 2 — try to merge orphan single-member clusters into a larger
++  // cluster, scored by *average* similarity vs all members. This rescues
++  // items that didn't match any seed but match a cluster as a whole
++  // (e.g. last file's slightly-rephrased question).
++  for (let ci = 0; ci < clusters.length; ci++) {
++    const cluster = clusters[ci];
++    if (cluster.length !== 1) continue;
++    const orphan = cluster[0];
++    let bestIdx = -1;
++    let bestScore = relaxed;
++    for (let cj = 0; cj < clusters.length; cj++) {
++      if (cj === ci) continue;
++      const target = clusters[cj];
++      if (target.length < 2) continue;
++      if (target.some((m) => m.fileIdx === orphan.fileIdx)) continue;
++      let total = 0;
++      for (const m of target) total += jaccard(orphan.bigrams, m.bigrams);
++      const avg = total / target.length;
++      if (avg > bestScore) {
++        bestScore = avg;
++        bestIdx = cj;
++      }
++    }
++    if (bestIdx >= 0) {
++      clusters[bestIdx].push(orphan);
++      clusters[ci] = [];
++    }
++  }
++
++  return clusters.filter((c) => c.length > 0);
++}
+ 
+-# 출력 규칙
+-- mappings.length === 입력 파일 수
+-- 각 mappings[fileIdx].length === questions.length
+-- 인덱스 값은 -1 또는 0..(items.length-1) 범위 정수
+-- 정의된 JSON 스키마 외 텍스트 금지`;
++function pickCanonical(cluster: FlatItem[]): string {
++  return cluster.reduce((a, b) =>
++    a.question.length >= b.question.length ? a : b,
++  ).question;
++}
+ 
+ export async function POST(request: Request) {
+   const supabase = await createClient();
+@@ -75,76 +151,71 @@ export async function POST(request: Request) {
+     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
+   }
+ 
+-  const apiKey = process.env.ANTHROPIC_API_KEY;
+-  if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
+-  const anthropic = createAnthropic({ apiKey });
+-
+   const filenames = extractions.map((e) => e.filename);
+ 
+-  const fileListBlock = `# Files (${filenames.length})\n${filenames
+-    .map((f, i) => `${i + 1}. ${f}`)
+-    .join('\n')}`;
+-
+-  const dataBlock = extractions
+-    .map((e, fi) => {
+-      const lines = e.items
+-        .map(
+-          (it, ii) =>
+-            `  [${ii}] Q: ${it.question}\n      A: ${it.summary}`,
+-        )
+-        .join('\n');
+-      return `## File ${fi + 1}: ${e.filename}\n${lines}`;
+-    })
+-    .join('\n\n---\n\n');
+-
+-  const userPrompt = `${fileListBlock}\n\n# Items per file (0-indexed)\n\n${dataBlock}`;
+-
+-  let aggregate: z.infer<typeof aggregateSchema>;
+-  try {
+-    const result = await generateObject({
+-      model: anthropic('claude-sonnet-4-6'),
+-      schema: aggregateSchema,
+-      system: SYSTEM,
+-      prompt: userPrompt,
+-      temperature: 0.1,
++  // Diagnostic: log per-file item counts so empty columns are visible
++  // in Vercel logs even if the UI hides them.
++  console.log(
++    '[analyze] extractions:',
++    extractions.map((e) => ({
++      filename: e.filename,
++      itemCount: e.items.length,
++      sample: e.items.slice(0, 2).map((it) => ({
++        q: it.question.slice(0, 40),
++        vocLen: it.voc.length,
++      })),
++    })),
++  );
++
++  const flat: FlatItem[] = [];
++  extractions.forEach((ext, fileIdx) => {
++    ext.items.forEach((it, itemIdx) => {
++      const q = (it.question ?? '').trim();
++      if (!q) return;
++      const norm = normalizeQuestion(q);
++      flat.push({
++        fileIdx,
++        itemIdx,
++        question: q,
++        voc: it.voc ?? '',
++        bigrams: bigrams(norm),
++      });
+     });
+-    aggregate = result.object;
+-  } catch (e) {
+-    return NextResponse.json(
+-      { error: e instanceof Error ? e.message : 'analyze_failed' },
+-      { status: 502 },
+-    );
+-  }
++  });
++
++  const clusters = clusterItems(flat, 0.45, 0.28);
+ 
+-  // Defensive: pad / clamp mappings to the expected shape
+-  const Q = aggregate.questions.length;
+-  const safeMappings: number[][] = filenames.map((_, fi) => {
+-    const row = aggregate.mappings[fi] ?? [];
+-    const padded = row.slice(0, Q);
+-    while (padded.length < Q) padded.push(-1);
+-    return padded;
++  // Sort clusters by file/item flow of their first member.
++  clusters.sort((a, b) => {
++    if (a[0].fileIdx !== b[0].fileIdx) return a[0].fileIdx - b[0].fileIdx;
++    return a[0].itemIdx - b[0].itemIdx;
+   });
+ 
+-  // Build the matrix on the server from the input extractions + index map.
+   const matrix = {
+-    questions: aggregate.questions,
+-    rows: aggregate.questions.map((question, qIdx) => ({
+-      question,
+-      cells: extractions.map((ext, fileIdx) => {
+-        const itemIdx = safeMappings[fileIdx]?.[qIdx] ?? -1;
+-        if (itemIdx < 0 || itemIdx >= ext.items.length) {
+-          return { filename: ext.filename, summary: '', voc: '' };
+-        }
+-        const item = ext.items[itemIdx];
+-        return {
+-          filename: ext.filename,
+-          summary: item.summary,
+-          voc: item.verbatim,
+-        };
+-      }),
+-    })),
++    questions: clusters.map(pickCanonical),
++    rows: clusters.map((cluster) => {
++      const canonical = pickCanonical(cluster);
++      return {
++        question: canonical,
++        cells: filenames.map((filename, fi) => {
++          const member = cluster.find((m) => m.fileIdx === fi);
++          return {
++            filename,
++            voc: member?.voc ?? '',
++          };
++        }),
++      };
++    }),
+   };
+ 
++  const filledByFile = filenames.map((_, fi) =>
++    matrix.rows.reduce((acc, r) => acc + (r.cells[fi].voc ? 1 : 0), 0),
++  );
++  console.log(
++    '[analyze] matrix:',
++    { rows: matrix.rows.length, filledByFile, filenames },
++  );
++
+   const { data: gen, error: insertErr } = await supabase
+     .from('generations')
+     .insert({
+diff --git a/src/app/api/interviews/extract/route.ts b/src/app/api/interviews/extract/route.ts
+index 95f029c..dcac49b 100644
+--- a/src/app/api/interviews/extract/route.ts
++++ b/src/app/api/interviews/extract/route.ts
+@@ -15,28 +15,21 @@ const Body = z.object({
+ 
+ const SYSTEM = `당신은 인터뷰 분석가입니다. 단일 인터뷰 마크다운(질문은 보통 \`## Q.\` 또는 진행자 발화로 표기)을 받아 다음을 수행하세요:
+ 
+-1) **모든 질문 추출**
++1) **모든 질문 추출 (question)**
+    - 진행자(M / 진행자 / 면접관 / Moderator / Interviewer)가 던진 모든 질문을 빠짐없이 정리하세요.
+    - 너무 짧은 후속 확인성 발화("그래요?", "맞나요?")는 제외.
+    - 결과는 보통 10~40개 사이입니다. 1~2개로 줄이지 마세요.
+    - 인터뷰 진행 순서를 따라 정렬.
+ 
+-2) **응답 발췌(summary)** — 요약이 아니라 **정제된 발췌**입니다
+-   - 해당 질문에 대한 응답자의 실제 답변을 본문에서 발췌하세요. 요약·해석·재서술·평가 금지.
+-   - 응답자의 원문 표현·어휘·말투를 그대로 유지합니다.
+-   - 단순 disfluency만 정제: "음·어·그·뭐·이제" 같은 의미 없는 추임새, 명백한 반복, 중간에 끊긴 단어, 녹음 잡음("(웃음)" 등) 제거.
+-   - 응답이 길면 핵심 흐름이 살아있도록 1~3문장 정도까지 이어붙여도 좋습니다. 짧으면 그대로 짧게 둡니다.
+-   - 새 문장을 만들지 말고, 본문에 등장한 표현만 사용하세요. 가벼운 어미 다듬기(예: 끊긴 "근데...."를 마침표로 종결)는 허용하지만 의미 변경은 금지.
+-   - 응답이 없거나 의미 있는 답이 없으면 빈 문자열.
+-
+-3) **VOC 인용구(verbatim) — 중요**
+-   - summary 안에서 **가장 인상적인 한 줄**을 골라 \`verbatim\` 에 그대로 복사하세요. (summary는 여러 문장 발췌, verbatim은 그 안의 핵심 한 줄)
+-   - 반드시 입력된 마크다운에 **그대로 존재하는 응답자 발화**여야 합니다.
+-   - 번역·요약·문장 합치기·정규화 금지. 띄어쓰기와 구두점도 원문 그대로.
++2) **VOC 인용구(voc) — 핵심**
++   - 그 질문에 대한 응답자의 답변에서 **가장 잘 대표하는 부분**을 발췌해서 \`voc\` 필드에 넣으세요.
++   - **반드시 입력된 마크다운에 그대로 존재하는 응답자의 발화**여야 합니다. 번역·요약·재서술·문장 합치기 금지.
++   - **길이는 한 문장에서 한 문단까지 자유롭게.** 한 문장으로 충분하면 한 문장, 핵심 흐름이 길면 여러 문장 발췌.
+    - 큰따옴표/작은따옴표는 포함하지 마세요 (시스템이 따로 감쌉니다).
+-   - 응답자가 직접 발화한 부분이 마크다운에 명확히 없다면 빈 문자열.
++   - 본문에서 그대로 복사한 연속된 텍스트만 사용. 떨어진 문장 두 개를 합치는 것 금지 (붙어있는 문장은 OK).
++   - 응답자가 직접 발화한 부분이 마크다운에 명확히 없거나 의미 있는 답이 없으면 빈 문자열.
+ 
+-4) 한국어로 작성. 출력은 정의된 JSON 스키마만, 그 외 텍스트 금지. 한 항목씩 순서대로 emit하세요.`;
++3) 한국어로 작성. 출력은 정의된 JSON 스키마(question, voc)만, 그 외 필드/텍스트 금지. 한 항목씩 순서대로 emit하세요.`;
+ 
+ export async function POST(request: Request) {
+   const supabase = await createClient();
+diff --git a/src/components/interview-analyzer.tsx b/src/components/interview-analyzer.tsx
+index 27e0aba..1843d9f 100644
+--- a/src/components/interview-analyzer.tsx
++++ b/src/components/interview-analyzer.tsx
+@@ -153,7 +153,7 @@ export function InterviewAnalyzer() {
+         </h2>
+         <p className="mt-1 text-[12px] text-mute">{t('stage2Help')}</p>
+         <p className="mt-1 text-[11.5px] text-mute-soft">
+-          파일별로 (질문 / 요약 / verbatim) 추출 → 표준 문항으로 묶어 표 정리. VOC는 원문에 실제 존재하는 문장만 통과합니다.
++          파일별로 (질문 / VOC) 추출 → 의미가 같은 질문끼리 묶어 표로 정리합니다.
+         </p>
+ 
+         <div className="mt-4 flex items-center gap-3">
+@@ -278,12 +278,12 @@ function ConvRow({
+                   }
+                   title={
+                     (item.extractInvalid ?? 0) > 0
+-                      ? `${item.extractInvalid}/${item.extractTotal}개 verbatim이 원문과 일치하지 않아 비워졌습니다.`
+-                      : '모든 verbatim이 원문에서 검증되었습니다.'
++                      ? `${item.extractInvalid}/${item.extractTotal}개 VOC가 원문과 정확히 일치하지 않습니다 (참고용).`
++                      : '모든 VOC가 원문에서 검증되었습니다.'
+                   }
+                 >
+                   Q {item.extractTotal} ·{' '}
+-                  {item.extractTotal - (item.extractInvalid ?? 0)} verbatim
++                  {item.extractTotal - (item.extractInvalid ?? 0)} VOC
+                 </span>
+               )}
+             {item.extractStatus === 'error' && item.extractError && (
+@@ -365,11 +365,8 @@ function ResultTable({
+                       key={f}
+                       className="border-l border-line px-4 py-3 align-top"
+                     >
+-                      {c?.summary && (
+-                        <div className="text-mute">{c.summary}</div>
+-                      )}
+                       {c?.voc && (
+-                        <div className="mt-2 italic text-mute-soft">
++                        <div className="italic text-mute-soft">
+                           “{c.voc}”
+                         </div>
+                       )}
+diff --git a/src/components/interview-job-provider.tsx b/src/components/interview-job-provider.tsx
+index c88ce6f..84709cf 100644
+--- a/src/components/interview-job-provider.tsx
++++ b/src/components/interview-job-provider.tsx
+@@ -22,8 +22,7 @@ export type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
+ 
+ export type ExtractItem = {
+   question: string;
+-  summary: string;
+-  verbatim: string;
++  voc: string;
+ };
+ 
+ export type ConvItem = {
+@@ -45,7 +44,7 @@ export type ConvItem = {
+ 
+ export type AnalysisRow = {
+   question: string;
+-  cells: { filename: string; summary: string; voc: string }[];
++  cells: { filename: string; voc: string }[];
+ };
+ 
+ export type AnalysisResult = {
+@@ -68,7 +67,6 @@ function normalizePartial(obj: unknown): AnalysisResult | null {
+       .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+       .map((c) => ({
+         filename: typeof c.filename === 'string' ? c.filename : '',
+-        summary: typeof c.summary === 'string' ? c.summary : '',
+         voc: typeof c.voc === 'string' ? c.voc : '',
+       }));
+     rows.push({ question, cells });
+@@ -87,8 +85,7 @@ export type ThinkingEvent =
+       type: 'item';
+       filename: string;
+       question: string;
+-      summary: string;
+-      verbatim: string;
++      voc: string;
+       ts: number;
+     }
+   | {
+@@ -136,11 +133,7 @@ function buildMatrix(
+       row.question,
+       ...filenameOrder.map((f) => {
+         const c = cellsByFile.get(f);
+-        if (!c) return '';
+-        const parts: string[] = [];
+-        if (c.summary) parts.push(c.summary);
+-        if (c.voc) parts.push(`"${c.voc}"`);
+-        return parts.join('\n\n');
++        return c?.voc ? `"${c.voc}"` : '';
+       }),
+     ];
+   });
+@@ -454,17 +447,13 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
+         for (const it of itemsField) {
+           if (!it || typeof it !== 'object') continue;
+           const ii = it as Record<string, unknown>;
+-          if (
+-            typeof ii.question === 'string' &&
+-            typeof ii.summary === 'string' &&
+-            typeof ii.verbatim === 'string'
+-          ) {
+-            complete.push({
+-              question: ii.question,
+-              summary: ii.summary,
+-              verbatim: ii.verbatim,
+-            });
+-          }
++          // Only `question` is strictly required for the row to be useful;
++          // `voc` may stream in slightly later or be empty for "no answer".
++          if (typeof ii.question !== 'string' || !ii.question.trim()) continue;
++          complete.push({
++            question: ii.question,
++            voc: typeof ii.voc === 'string' ? ii.voc : '',
++          });
+         }
+         liveItems = complete;
+         while (emitted < complete.length) {
+@@ -473,8 +462,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
+             type: 'item',
+             filename: target.file.name,
+             question: it.question,
+-            summary: it.summary,
+-            verbatim: it.verbatim,
++            voc: it.voc,
+           });
+           emitted += 1;
+         }
+@@ -495,18 +483,17 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
+       return null;
+     }
+ 
+-    // Verify each verbatim is actually present in the source markdown
+-    // (whitespace-normalised substring match). The check moved client-side
+-    // because the server now streams unverified rows for the live panel.
++    // Soft verify each VOC is present in the source markdown (count misses
++    // for the thinking panel but never drop the quote — if the substring
++    // check fails the user still gets the model's best guess).
+     const normSrc = target.markdown.replace(/\s+/g, ' ').trim();
+     let invalid = 0;
+     const verified: ExtractItem[] = liveItems.map((it) => {
+-      const v = (it.verbatim ?? '').trim();
+-      if (!v) return { ...it, verbatim: '' };
++      const v = (it.voc ?? '').trim();
++      if (!v) return { question: it.question, voc: '' };
+       const normV = v.replace(/\s+/g, ' ').trim();
+-      if (normSrc.includes(normV)) return it;
+-      invalid += 1;
+-      return { ...it, verbatim: '' };
++      if (!normSrc.includes(normV)) invalid += 1;
++      return it;
+     });
+ 
+     pushThinking({
+diff --git a/src/components/thinking-panel.tsx b/src/components/thinking-panel.tsx
+index 0060ab8..6e909de 100644
+--- a/src/components/thinking-panel.tsx
++++ b/src/components/thinking-panel.tsx
+@@ -77,16 +77,10 @@ function EventLine({ evt }: { evt: ThinkingEvent }) {
+             <span className="mr-2 text-amore">Q.</span>
+             {evt.question}
+           </div>
+-          {evt.summary && (
+-            <div className="ml-6 text-mute">
+-              <span className="mr-2 text-mute-soft">발췌:</span>
+-              {evt.summary}
+-            </div>
+-          )}
+-          {evt.verbatim && (
++          {evt.voc && (
+             <div className="ml-6 italic text-mute-soft">
+-              <span className="not-italic mr-2 text-mute-soft">verbatim:</span>“
+-              {evt.verbatim}”
++              <span className="not-italic mr-2 text-mute-soft">VOC:</span>“
++              {evt.voc}”
+             </div>
+           )}
+         </div>
+@@ -94,7 +88,7 @@ function EventLine({ evt }: { evt: ThinkingEvent }) {
+     case 'complete':
+       return (
+         <div className="mt-1 border-t border-line-soft pt-1 text-amore">
+-          ✓ {evt.filename}: {evt.total - evt.invalid}/{evt.total} verbatim verified
++          ✓ {evt.filename}: {evt.total - evt.invalid}/{evt.total} VOC verified
+           {evt.invalid > 0 && (
+             <span className="text-warning"> ({evt.invalid} dropped)</span>
+           )}
+diff --git a/src/components/workspace-provider.tsx b/src/components/workspace-provider.tsx
+new file mode 100644
+index 0000000..5a0187a
+--- /dev/null
++++ b/src/components/workspace-provider.tsx
+@@ -0,0 +1,146 @@
++'use client';
++
++import {
++  createContext,
++  useCallback,
++  useContext,
++  useEffect,
++  useMemo,
++  useState,
++} from 'react';
++import type { FeatureKey } from '@/lib/features';
++import {
++  type WorkspaceArtifact,
++  prefillKey,
++  SEND_TO_MAP,
++} from '@/lib/workspace';
++
++const STORAGE_KEY = 'workspace:artifacts:v1';
++
++type Ctx = {
++  artifacts: WorkspaceArtifact[];
++  isOpen: boolean;
++  setOpen: (v: boolean) => void;
++  addArtifact: (
++    a: Omit<WorkspaceArtifact, 'id' | 'createdAt'> & {
++      id?: string;
++      createdAt?: number;
++    },
++  ) => WorkspaceArtifact;
++  removeArtifact: (id: string) => void;
++  clearAll: () => void;
++  sendTo: (artifactId: string, target: FeatureKey) => string | null;
++  targetsFor: (source: FeatureKey) => FeatureKey[];
++};
++
++const WorkspaceCtx = createContext<Ctx | null>(null);
++
++function readStorage(): WorkspaceArtifact[] {
++  if (typeof window === 'undefined') return [];
++  try {
++    const raw = window.localStorage.getItem(STORAGE_KEY);
++    if (!raw) return [];
++    const parsed = JSON.parse(raw);
++    if (!Array.isArray(parsed)) return [];
++    return parsed as WorkspaceArtifact[];
++  } catch {
++    return [];
++  }
++}
++
++function writeStorage(items: WorkspaceArtifact[]) {
++  if (typeof window === 'undefined') return;
++  try {
++    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
++  } catch {
++    // quota or serialization failure — ignore
++  }
++}
++
++function makeId() {
++  return `wa_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
++}
++
++export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
++  const [artifacts, setArtifacts] = useState<WorkspaceArtifact[]>([]);
++  const [isOpen, setOpen] = useState(false);
++  const [hydrated, setHydrated] = useState(false);
++
++  useEffect(() => {
++    setArtifacts(readStorage());
++    setHydrated(true);
++  }, []);
++
++  useEffect(() => {
++    if (!hydrated) return;
++    writeStorage(artifacts);
++  }, [artifacts, hydrated]);
++
++  // Cross-tab sync.
++  useEffect(() => {
++    function onStorage(e: StorageEvent) {
++      if (e.key !== STORAGE_KEY) return;
++      setArtifacts(readStorage());
++    }
++    window.addEventListener('storage', onStorage);
++    return () => window.removeEventListener('storage', onStorage);
++  }, []);
++
++  const addArtifact: Ctx['addArtifact'] = useCallback((input) => {
++    const next: WorkspaceArtifact = {
++      id: input.id ?? makeId(),
++      featureKey: input.featureKey,
++      title: input.title,
++      content: input.content,
++      createdAt: input.createdAt ?? Date.now(),
++    };
++    setArtifacts((prev) => [next, ...prev]);
++    return next;
++  }, []);
++
++  const removeArtifact = useCallback((id: string) => {
++    setArtifacts((prev) => prev.filter((a) => a.id !== id));
++  }, []);
++
++  const clearAll = useCallback(() => setArtifacts([]), []);
++
++  const sendTo = useCallback<Ctx['sendTo']>(
++    (artifactId, target) => {
++      const a = artifacts.find((x) => x.id === artifactId);
++      if (!a) return null;
++      try {
++        sessionStorage.setItem(prefillKey(target), a.content);
++      } catch {
++        // ignore
++      }
++      return `/${target}`;
++    },
++    [artifacts],
++  );
++
++  const targetsFor = useCallback<Ctx['targetsFor']>((source) => {
++    return SEND_TO_MAP[source] ?? [];
++  }, []);
++
++  const value = useMemo<Ctx>(
++    () => ({
++      artifacts,
++      isOpen,
++      setOpen,
++      addArtifact,
++      removeArtifact,
++      clearAll,
++      sendTo,
++      targetsFor,
++    }),
++    [artifacts, isOpen, addArtifact, removeArtifact, clearAll, sendTo, targetsFor],
++  );
++
++  return <WorkspaceCtx.Provider value={value}>{children}</WorkspaceCtx.Provider>;
++}
++
++export function useWorkspace() {
++  const ctx = useContext(WorkspaceCtx);
++  if (!ctx) throw new Error('useWorkspace must be used inside <WorkspaceProvider>');
++  return ctx;
++}
+diff --git a/src/lib/interview-schema.ts b/src/lib/interview-schema.ts
+index a82de56..1af313b 100644
+--- a/src/lib/interview-schema.ts
++++ b/src/lib/interview-schema.ts
+@@ -1,12 +1,11 @@
+ import { z } from 'zod';
+ 
+ // Per-file extraction (Pass A): for one interview, the model returns the
+-// list of questions, each with a factual summary and a verbatim quote
+-// taken directly from the source markdown.
++// list of questions and a single VOC quote (sentence-to-paragraph) copied
++// verbatim from the source markdown for each.
+ export const extractItemSchema = z.object({
+   question: z.string(),
+-  summary: z.string(),
+-  verbatim: z.string(),
++  voc: z.string(),
+ });
+ 
+ export const fileExtractionSchema = z.object({
+@@ -21,9 +20,7 @@ export type FileExtractionWithName = {
+   items: ExtractItem[];
+ };
+ 
+-// Cross-file matrix (Pass B): the final table. Cells expose `summary`
+-// and `voc` (= verbatim) per file for backward compat with the UI / CSV /
+-// XLSX exports already shipped.
++// Cross-file matrix (Pass B): one canonical question per row, one VOC cell per file.
+ export const interviewMatrixSchema = z.object({
+   questions: z.array(z.string()),
+   rows: z.array(
+@@ -32,7 +29,6 @@ export const interviewMatrixSchema = z.object({
+       cells: z.array(
+         z.object({
+           filename: z.string(),
+-          summary: z.string(),
+           voc: z.string(),
+         }),
+       ),
+diff --git a/src/lib/workspace.ts b/src/lib/workspace.ts
+new file mode 100644
+index 0000000..80e4d28
+--- /dev/null
++++ b/src/lib/workspace.ts
+@@ -0,0 +1,30 @@
++import type { FeatureKey } from '@/lib/features';
++
++export type WorkspaceArtifact = {
++  id: string;
++  featureKey: FeatureKey;
++  title: string;
++  content: string;
++  createdAt: number;
++};
++
++// Which target features can accept an artifact produced by source.
++// Conservative defaults — every target listed accepts free-text input today
++// via the FeaturePlaceholder textarea (or its specialized analog).
++export const SEND_TO_MAP: Partial<Record<FeatureKey, FeatureKey[]>> = {
++  quotes: ['interviews', 'reports', 'analyzer', 'moderator'],
++  transcripts: ['interviews', 'reports', 'analyzer'],
++  interviews: ['reports', 'analyzer'],
++  reports: ['analyzer'],
++  moderator: ['scheduler'],
++  analyzer: ['reports'],
++  desk: ['reports', 'analyzer'],
++  keywords: ['desk', 'reports'],
++  recruiting: ['scheduler', 'moderator'],
++};
++
++export const PREFILL_PREFIX = 'workspace:prefill:';
++
++export function prefillKey(target: FeatureKey) {
++  return `${PREFILL_PREFIX}${target}`;
++}
