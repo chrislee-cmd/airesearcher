@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
 
@@ -46,6 +47,7 @@ export function TranscriptUploader() {
   const t = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
+  const router = useRouter();
 
   const [items, setItems] = useState<Item[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -170,6 +172,8 @@ export function TranscriptUploader() {
       await processOne(id);
     }
     setRunning(false);
+    // Refresh server components (topbar credits) after the batch.
+    router.refresh();
   }
 
   return (

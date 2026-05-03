@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
 import * as XLSX from 'xlsx';
@@ -45,6 +46,7 @@ export function InterviewAnalyzer() {
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
+  const router = useRouter();
 
   const [items, setItems] = useState<ConvItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -185,6 +187,7 @@ export function InterviewAnalyzer() {
       await convertOne(id);
     }
     setConvertingAll(false);
+    router.refresh();
   }
 
   function startAnalyze() {
@@ -218,6 +221,7 @@ export function InterviewAnalyzer() {
       } else {
         setAnalysis({ questions: json.questions, rows: json.rows });
         track('interview_analyze_success', {});
+        router.refresh();
       }
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : 'network_error');
