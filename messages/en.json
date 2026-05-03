@@ -185,9 +185,13 @@
   "Moderator": {
     "benchmarkLabel": "BENCHMARK",
     "benchmarkTitle": "AI Interview Services",
-    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card to visit the service.",
+    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card's request button to send an inquiry email to our team.",
     "thisService": "OUR PRODUCT",
-    "visit": "Visit site",
+    "inquiry": "Request demo",
+    "inquirySending": "Sending…",
+    "inquirySent": "Inquiry submitted successfully",
+    "inquiryError": "Failed to send. Please try again shortly.",
+    "inquiryFromHint": "Sent as {email}",
     "prev": "Previous",
     "next": "Next"
   },
