@@ -30,7 +30,8 @@
     "organizations": "조직",
     "settings": "설정",
     "credits": "크레딧",
-    "viewProjects": "프로젝트 보기"
+    "viewProjects": "프로젝트 보기",
+    "working": "작업중"
   },
   "Projects": {
     "title": "프로젝트",

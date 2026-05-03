@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, usePathname } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { FEATURES } from '@/lib/features';
+import { FEATURES, type FeatureKey } from '@/lib/features';
+import { useInterviewJob } from './interview-job-provider';
 
 type SidebarProject = { id: string; name: string };
 
@@ -12,6 +13,14 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
   const t = useTranslations('Sidebar');
   const tProjects = useTranslations('Projects');
   const tBrand = useTranslations('Brand');
+
+  const interviewJob = useInterviewJob();
+  // Per-feature in-flight state. Keyed by FeatureKey so future features
+  // can light up without further sidebar plumbing — they just register
+  // their own "working" flag here.
+  const featureBusy: Partial<Record<FeatureKey, boolean>> = {
+    interviews: interviewJob.isWorking,
+  };
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -100,17 +109,27 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
         <ul>
           {FEATURES.map((f) => {
             const active = pathname === f.href;
+            const busy = !!featureBusy[f.key];
             return (
               <li key={f.key}>
                 <Link
                   href={f.href}
-                  className={`block px-4 py-2 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
+                  className={`flex items-center justify-between gap-2 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
                     active
                       ? 'border-amore text-ink-2 font-semibold'
                       : 'border-transparent text-mute hover:text-ink-2'
                   }`}
                 >
-                  {t(f.key)}
+                  <span className="truncate">{t(f.key)}</span>
+                  {busy && (
+                    <span
+                      title={t('working')}
+                      className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
+                    >
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                      {t('working')}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
