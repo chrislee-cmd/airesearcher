@@ -36,8 +36,60 @@ export function DeskResearch() {
     new Set<DeskSourceId>(['naver_news', 'naver_blog', 'google_news']),
   );
   const [running, setRunning] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DeskResponse | null>(null);
+
+  function buildFilename(kw: string): string {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const slug = kw.trim().replace(/\s+/g, '-').slice(0, 60) || 'desk-research';
+    return `desk-${slug}-${stamp}`;
+  }
+
+  function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function downloadMarkdown(markdown: string, kw: string) {
+    track('export_clicked', { feature: 'desk', format: 'md' });
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    triggerDownload(blob, `${buildFilename(kw)}.md`);
+  }
+
+  async function downloadDocx(markdown: string, kw: string) {
+    setExporting(true);
+    track('export_clicked', { feature: 'desk', format: 'docx' });
+    try {
+      const filename = buildFilename(kw);
+      const res = await fetch('/api/desk/export', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          markdown,
+          filename,
+          title: kw ? `데스크 리서치 — ${kw}` : '데스크 리서치',
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? res.statusText);
+        return;
+      }
+      const blob = await res.blob();
+      triggerDownload(blob, `${filename}.docx`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'export_failed');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const grouped = useMemo(() => {
     const map = new Map<DeskSourceGroup, typeof DESK_SOURCES>();
@@ -249,9 +301,28 @@ export function DeskResearch() {
           )}
 
           <section className="mt-10">
-            <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-              {tDesk('reportTitle')}
-            </h2>
+            <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+              <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+                {tDesk('reportTitle')}
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadMarkdown(data.output, keyword)}
+                  className="border border-line bg-paper px-3 py-1.5 text-[11.5px] font-semibold text-ink-2 hover:border-amore hover:text-amore [border-radius:4px]"
+                >
+                  {tDesk('downloadMd')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void downloadDocx(data.output, keyword)}
+                  disabled={exporting}
+                  className="border border-line bg-paper px-3 py-1.5 text-[11.5px] font-semibold text-ink-2 hover:border-amore hover:text-amore disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                >
+                  {exporting ? tCommon('loading') : tDesk('downloadDocx')}
+                </button>
+              </div>
+            </div>
             <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
               {data.output}
             </pre>

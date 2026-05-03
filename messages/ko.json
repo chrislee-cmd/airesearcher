@@ -169,7 +169,9 @@
     "collected": "수집된 기사",
     "groupAll": "전체 선택",
     "groupNone": "전체 해제",
-    "skippedTitle": "API 키가 없어 건너뛴 소스"
+    "skippedTitle": "API 키가 없어 건너뛴 소스",
+    "downloadMd": ".md 다운로드",
+    "downloadDocx": ".docx 다운로드"
   },
   "Moderator": {
     "benchmarkLabel": "BENCHMARK",
