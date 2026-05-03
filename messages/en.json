@@ -169,7 +169,9 @@
     "collected": "Collected articles",
     "groupAll": "Select all",
     "groupNone": "Clear",
-    "skippedTitle": "Sources skipped — missing API keys"
+    "skippedTitle": "Sources skipped — missing API keys",
+    "downloadMd": "Download .md",
+    "downloadDocx": "Download .docx"
   },
   "Members": {
     "title": "Member management",
