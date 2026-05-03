@@ -166,7 +166,10 @@
     "error": "Error",
     "similarKeywords": "Expanded keywords",
     "reportTitle": "Summary report",
-    "collected": "Collected articles"
+    "collected": "Collected articles",
+    "groupAll": "Select all",
+    "groupNone": "Clear",
+    "skippedTitle": "Sources skipped — missing API keys"
   },
   "Moderator": {
     "benchmarkLabel": "BENCHMARK",
