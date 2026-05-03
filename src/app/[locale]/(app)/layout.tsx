@@ -4,7 +4,6 @@ import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
-import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
@@ -35,15 +34,11 @@ export default async function AppLayout({
         <div className="flex flex-1">
           <Sidebar
             projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+            email={user?.email ?? null}
+            credits={credits}
+            isAuthed={!!user}
           />
-          <div className="flex flex-1 flex-col">
-            <Topbar
-              credits={credits}
-              userEmail={user?.email ?? null}
-              isAuthed={!!user}
-            />
-            <main className="flex-1 overflow-auto p-6">{children}</main>
-          </div>
+          <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
         <WorkspaceBridge />
         <WorkspacePanel />

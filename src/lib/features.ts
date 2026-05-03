@@ -8,7 +8,8 @@ export type FeatureKey =
   | 'analyzer'
   | 'desk'
   | 'keywords'
-  | 'recruiting';
+  | 'recruiting'
+  | 'survey';
 
 export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'quotes', href: '/quotes', cost: 1 },
@@ -21,8 +22,22 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'desk', href: '/desk', cost: 3 },
   { key: 'keywords', href: '/keywords', cost: 2 },
   { key: 'recruiting', href: '/recruiting', cost: 3 },
+  { key: 'survey', href: '/survey', cost: 3 },
 ];
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, f.cost]),
 ) as Record<FeatureKey, number>;
+
+// Sidebar grouping. Features not listed here are still routable but
+// hidden from the sidebar — useful for legacy or work-in-progress flows.
+export type FeatureGroupKey = 'design' | 'conduct' | 'analysis';
+
+export const FEATURE_GROUPS: {
+  key: FeatureGroupKey;
+  features: FeatureKey[];
+}[] = [
+  { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
+  { key: 'conduct', features: ['moderator', 'survey'] },
+  { key: 'analysis', features: ['quotes', 'reports', 'analyzer'] },
+];
