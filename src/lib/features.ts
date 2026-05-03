@@ -39,5 +39,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey'] },
-  { key: 'analysis', features: ['quotes', 'reports', 'analyzer'] },
+  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer'] },
 ];
