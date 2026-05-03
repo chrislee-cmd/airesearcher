@@ -17,26 +17,15 @@ export function Eyebrow({
 }
 
 export function ChapterHeader({
-  num,
-  eyebrow,
   title,
   description,
 }: {
-  num?: string | number;
-  eyebrow: string;
   title: string;
   description?: string;
 }) {
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2.5">
-        <span className="accent-line" />
-        <span className="eyebrow">
-          {num !== undefined ? `Chapter ${String(num).padStart(2, '0')} · ` : ''}
-          {eyebrow}
-        </span>
-      </div>
-      <h1 className="mt-3 border-b border-line pb-3 text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+      <h1 className="border-b border-line pb-3 text-[24px] font-bold tracking-[-0.02em] text-ink">
         {title}
       </h1>
       {description && (

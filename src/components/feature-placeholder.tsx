@@ -4,15 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
-import { ChapterHeader } from './editorial';
 import type { FeatureKey } from '@/lib/features';
-
-const CHAPTER_NUM: Record<FeatureKey, number> = {
-  quotes: 1,
-  transcripts: 2,
-  interviews: 3,
-  reports: 4,
-};
 
 export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const t = useTranslations('Features');
@@ -49,22 +41,20 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   }
 
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
-      <ChapterHeader
-        num={CHAPTER_NUM[feature]}
-        eyebrow={feature.toUpperCase()}
-        title={t(`${feature}.title`)}
-        description={t(`${feature}.description`)}
-      />
-
-      <div className="mt-2 flex items-center gap-2 text-[10.5px] uppercase tracking-[0.22em] text-mute-soft">
-        <span>Cost</span>
-        <span className="h-px w-3 bg-line" />
-        <span className="text-amore">{t(`${feature}.cost`)}</span>
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t(`${feature}.title`)}
+        </h1>
+        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+          {t(`${feature}.cost`)}
+        </span>
       </div>
+      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        {t(`${feature}.description`)}
+      </p>
 
-      <div className="mt-6">
-        <div className="eyebrow-mute mb-2">Input</div>
+      <div className="mt-8">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -75,13 +65,13 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-3">
-        <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+        <span className="text-[11px] tabular-nums text-mute-soft">
           {input.length.toLocaleString()} chars
         </span>
         <button
           onClick={onClickRun}
           disabled={running || !input.trim()}
-          className="border border-ink bg-ink px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
         >
           {running ? tCommon('loading') : tCommon('generate')}
         </button>
@@ -89,11 +79,10 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
 
       {result && (
         <div className="mt-10">
-          <div className="flex items-center gap-2.5">
-            <span className="accent-line" />
-            <span className="eyebrow">Output</span>
-          </div>
-          <pre className="mt-3 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
+          <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+            결과
+          </h2>
+          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
             {result}
           </pre>
         </div>

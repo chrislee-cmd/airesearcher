@@ -42,11 +42,7 @@ export function LoginDialog({
       >
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2.5">
-              <span className="accent-line" />
-              <span className="eyebrow">Sign in</span>
-            </div>
-            <h2 className="mt-3 text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+            <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
               {t('signInTitle')}
             </h2>
             <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">

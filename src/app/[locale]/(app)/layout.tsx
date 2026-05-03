@@ -23,7 +23,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex flex-1">
-      <Sidebar orgName={org?.org_name ?? null} />
+      <Sidebar />
       <div className="flex flex-1 flex-col">
         <Topbar
           credits={credits}

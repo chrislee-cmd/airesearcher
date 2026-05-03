@@ -18,11 +18,7 @@ export default async function LoginPage({
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:4px]">
-        <div className="flex items-center gap-2.5">
-          <span className="accent-line" />
-          <span className="eyebrow">Sign in</span>
-        </div>
-        <h1 className="mt-3 text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+        <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
           {t('signInTitle')}
         </h1>
         <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">

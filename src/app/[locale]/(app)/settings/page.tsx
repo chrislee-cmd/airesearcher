@@ -11,11 +11,7 @@ export default async function SettingsPage({
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
-      <ChapterHeader
-        eyebrow="Workspace"
-        title="설정"
-        description="이 영역은 곧 출시됩니다."
-      />
+      <ChapterHeader title="설정" description="이 영역은 곧 출시됩니다." />
     </div>
   );
 }

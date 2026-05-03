@@ -21,7 +21,6 @@ export default async function MembersPage({
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
       <ChapterHeader
-        eyebrow="Workspace"
         title={t('title')}
         description="조직 멤버를 초대하고 권한을 관리합니다. 모든 산출물은 조직 단위로 공유되며, 역할에 따라 접근 범위가 달라집니다."
       />
