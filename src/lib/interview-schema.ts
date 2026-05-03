@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 // Per-file extraction (Pass A): for one interview, the model returns the
-// list of questions, each with a factual summary and a verbatim quote
-// taken directly from the source markdown.
+// list of questions, each with a representative VOC quote taken directly
+// from the source markdown. The VOC is sentence- to paragraph-length —
+// long enough to convey the answer in the respondent's own voice.
 export const extractItemSchema = z.object({
   question: z.string(),
-  summary: z.string(),
-  verbatim: z.string(),
+  voc: z.string(),
 });
 
 export const fileExtractionSchema = z.object({
@@ -21,9 +21,9 @@ export type FileExtractionWithName = {
   items: ExtractItem[];
 };
 
-// Cross-file matrix (Pass B): the final table. Cells expose `summary`
-// and `voc` (= verbatim) per file for backward compat with the UI / CSV /
-// XLSX exports already shipped.
+// Cross-file matrix (Pass B): the final table. One cell per file per
+// standard question. The cell content is the VOC quote (verbatim from
+// source) — no separate "summary" field anymore.
 export const interviewMatrixSchema = z.object({
   questions: z.array(z.string()),
   rows: z.array(
@@ -32,7 +32,6 @@ export const interviewMatrixSchema = z.object({
       cells: z.array(
         z.object({
           filename: z.string(),
-          summary: z.string(),
           voc: z.string(),
         }),
       ),

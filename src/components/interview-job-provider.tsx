@@ -22,8 +22,7 @@ export type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
 
 export type ExtractItem = {
   question: string;
-  summary: string;
-  verbatim: string;
+  voc: string;
 };
 
 export type ConvItem = {
@@ -45,7 +44,7 @@ export type ConvItem = {
 
 export type AnalysisRow = {
   question: string;
-  cells: { filename: string; summary: string; voc: string }[];
+  cells: { filename: string; voc: string }[];
 };
 
 export type AnalysisResult = {
@@ -68,7 +67,6 @@ function normalizePartial(obj: unknown): AnalysisResult | null {
       .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
       .map((c) => ({
         filename: typeof c.filename === 'string' ? c.filename : '',
-        summary: typeof c.summary === 'string' ? c.summary : '',
         voc: typeof c.voc === 'string' ? c.voc : '',
       }));
     rows.push({ question, cells });
@@ -87,8 +85,7 @@ export type ThinkingEvent =
       type: 'item';
       filename: string;
       question: string;
-      summary: string;
-      verbatim: string;
+      voc: string;
       ts: number;
     }
   | {
@@ -134,14 +131,7 @@ function buildMatrix(
     const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
     return [
       row.question,
-      ...filenameOrder.map((f) => {
-        const c = cellsByFile.get(f);
-        if (!c) return '';
-        const parts: string[] = [];
-        if (c.summary) parts.push(c.summary);
-        if (c.voc) parts.push(`"${c.voc}"`);
-        return parts.join('\n\n');
-      }),
+      ...filenameOrder.map((f) => cellsByFile.get(f)?.voc ?? ''),
     ];
   });
   return [header, ...rows];
@@ -179,13 +169,6 @@ function makeXlsxBlob(matrix: string[][]) {
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
-}
-
-function downloadMatrix(result: AnalysisResult, filenameOrder: string[]) {
-  if (!filenameOrder.length || !result.rows.length) return;
-  const matrix = buildMatrix(result, filenameOrder);
-  triggerDownload(makeCsvBlob(matrix), 'interview-analysis.csv');
-  triggerDownload(makeXlsxBlob(matrix), 'interview-analysis.xlsx');
 }
 
 const InterviewJobContext = createContext<Ctx | null>(null);
@@ -267,7 +250,6 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       const result = normalizePartial(json) ?? { questions: [], rows: [] };
       setAnalysis(result);
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
-      downloadMatrix(result, currentFilenamesRef.current);
       router.refresh();
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
@@ -456,13 +438,11 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           const ii = it as Record<string, unknown>;
           if (
             typeof ii.question === 'string' &&
-            typeof ii.summary === 'string' &&
-            typeof ii.verbatim === 'string'
+            typeof ii.voc === 'string'
           ) {
             complete.push({
               question: ii.question,
-              summary: ii.summary,
-              verbatim: ii.verbatim,
+              voc: ii.voc,
             });
           }
         }
@@ -473,8 +453,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
             type: 'item',
             filename: target.file.name,
             question: it.question,
-            summary: it.summary,
-            verbatim: it.verbatim,
+            voc: it.voc,
           });
           emitted += 1;
         }
@@ -495,18 +474,22 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       return null;
     }
 
-    // Verify each verbatim is actually present in the source markdown
-    // (whitespace-normalised substring match). The check moved client-side
-    // because the server now streams unverified rows for the live panel.
+    // Verbatim verification (best-effort, non-destructive).
+    // Earlier we blanked the voc when its whitespace-normalised text was
+    // not a substring of the source. That was too strict for files where
+    // the markdown shape (CSV, list, survey export) differs from the
+    // model's quote text — Sonnet at temp 0.1 with explicit "copy from
+    // source" instruction rarely hallucinates, and a near-miss is far
+    // more useful than an empty cell. Keep the voc, just count misses
+    // so the file pill can flag suspicious output.
     const normSrc = target.markdown.replace(/\s+/g, ' ').trim();
     let invalid = 0;
     const verified: ExtractItem[] = liveItems.map((it) => {
-      const v = (it.verbatim ?? '').trim();
-      if (!v) return { ...it, verbatim: '' };
+      const v = (it.voc ?? '').trim();
+      if (!v) return { ...it, voc: '' };
       const normV = v.replace(/\s+/g, ' ').trim();
-      if (normSrc.includes(normV)) return it;
-      invalid += 1;
-      return { ...it, verbatim: '' };
+      if (!normSrc.includes(normV)) invalid += 1;
+      return it;
     });
 
     pushThinking({

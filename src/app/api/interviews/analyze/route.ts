@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateObject } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
@@ -16,8 +14,7 @@ const Body = z.object({
         items: z.array(
           z.object({
             question: z.string(),
-            summary: z.string(),
-            verbatim: z.string(),
+            voc: z.string(),
           }),
         ),
       }),
@@ -26,31 +23,115 @@ const Body = z.object({
     .max(20),
 });
 
-// LLM only deduplicates questions and maps each file's items to the
-// standard question list. The matrix itself is built deterministically
-// on the server below — eliminating the empty-cell failure mode where
-// Sonnet would emit cells: [] for every row.
-const aggregateSchema = z.object({
-  questions: z.array(z.string()),
-  /**
-   * mappings[fileIdx] is an array of length === questions.length.
-   * Each entry is the index into extractions[fileIdx].items that answers
-   * the standard question at that position, or -1 if no item matches.
-   */
-  mappings: z.array(z.array(z.number().int())),
-});
+// === Deterministic question clustering ===
+// We build the matrix entirely on the server: flatten every (file, item)
+// into a list, group by question similarity, and emit one row per cluster.
+// This guarantees every file's questions surface in the output (no LLM
+// laziness can drop a respondent column), and never returns empty rows.
 
-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 항목들을 받아 두 가지를 결정합니다:
+function normalizeQuestion(s: string): string {
+  return s
+    .toLowerCase()
+    // strip punctuation / spaces / quotes / particles that don't change meaning
+    .replace(/[\s.,?!()'"‘’“”~`*\-_:;…]/g, '');
+}
 
-1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록. 한 파일에서만 나온 질문도 포함. 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
+// Character bigrams over the normalized string. Bigrams are more
+// discriminating than single-char Jaccard while still tolerating Korean
+// particle/ending variations like 하시나요/하세요/하나요 — exactly the
+// pattern that was making one file's column come out empty.
+function bigrams(s: string): Set<string> {
+  const out = new Set<string>();
+  if (s.length === 0) return out;
+  if (s.length === 1) {
+    out.add(s);
+    return out;
+  }
+  for (let i = 0; i < s.length - 1; i++) out.add(s.slice(i, i + 2));
+  return out;
+}
 
-2) **mappings** — 입력 파일마다 길이가 questions.length 와 정확히 같은 정수 배열. 위치 i의 값은 그 파일의 items 중 questions[i] 에 해당하는 항목의 인덱스 (0부터). 매칭되는 항목이 없으면 -1.
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter += 1;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
 
-# 출력 규칙
-- mappings.length === 입력 파일 수
-- 각 mappings[fileIdx].length === questions.length
-- 인덱스 값은 -1 또는 0..(items.length-1) 범위 정수
-- 정의된 JSON 스키마 외 텍스트 금지`;
+type FlatItem = {
+  fileIdx: number;
+  itemIdx: number;
+  question: string;
+  voc: string;
+  bg: Set<string>;
+};
+
+// Pass 1: greedy seed-and-grow at the strict threshold.
+// Pass 2: every single-member cluster tries again against larger clusters
+// at a relaxed threshold, scored by *average* similarity across all
+// members. This rescues a file whose phrasing matches the cluster as a
+// whole but didn't match the seed item — the exact failure mode behind
+// the empty respondent column.
+function clusterItems(
+  items: FlatItem[],
+  strict = 0.45,
+  relaxed = 0.28,
+): FlatItem[][] {
+  const used = new Set<number>();
+  const clusters: FlatItem[][] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    if (used.has(i)) continue;
+    const seed = items[i];
+    const cluster: FlatItem[] = [seed];
+    used.add(i);
+    for (let j = i + 1; j < items.length; j++) {
+      if (used.has(j)) continue;
+      const cand = items[j];
+      if (cluster.some((m) => m.fileIdx === cand.fileIdx)) continue;
+      if (jaccard(seed.bg, cand.bg) >= strict) {
+        cluster.push(cand);
+        used.add(j);
+      }
+    }
+    clusters.push(cluster);
+  }
+
+  for (let ci = 0; ci < clusters.length; ci++) {
+    const cluster = clusters[ci];
+    if (cluster.length !== 1) continue;
+    const orphan = cluster[0];
+    let bestIdx = -1;
+    let bestScore = relaxed;
+    for (let cj = 0; cj < clusters.length; cj++) {
+      if (cj === ci) continue;
+      const target = clusters[cj];
+      if (target.length < 2) continue;
+      if (target.some((m) => m.fileIdx === orphan.fileIdx)) continue;
+      let total = 0;
+      for (const m of target) total += jaccard(orphan.bg, m.bg);
+      const avg = total / target.length;
+      if (avg > bestScore) {
+        bestScore = avg;
+        bestIdx = cj;
+      }
+    }
+    if (bestIdx >= 0) {
+      clusters[bestIdx].push(orphan);
+      clusters[ci] = [];
+    }
+  }
+
+  return clusters.filter((c) => c.length > 0);
+}
+
+function pickCanonical(cluster: FlatItem[]): string {
+  // Longest question text in the cluster — usually the most informative phrasing.
+  return cluster.reduce((a, b) =>
+    a.question.length >= b.question.length ? a : b,
+  ).question;
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -75,75 +156,72 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
-  const anthropic = createAnthropic({ apiKey });
-
   const filenames = extractions.map((e) => e.filename);
 
-  const fileListBlock = `# Files (${filenames.length})\n${filenames
-    .map((f, i) => `${i + 1}. ${f}`)
-    .join('\n')}`;
+  // Diagnostic: per-file item counts in Vercel logs so empty columns can
+  // be traced back to "extract returned 0 items" vs. "clustering dropped them".
+  console.log(
+    '[analyze] extractions:',
+    extractions.map((e, i) => ({
+      idx: i,
+      filename: e.filename,
+      itemCount: e.items.length,
+      sample: e.items.slice(0, 2).map((it) => ({
+        q: it.question.slice(0, 40),
+        vocLen: it.voc.length,
+      })),
+    })),
+  );
 
-  const dataBlock = extractions
-    .map((e, fi) => {
-      const lines = e.items
-        .map(
-          (it, ii) =>
-            `  [${ii}] Q: ${it.question}\n      A: ${it.summary}`,
-        )
-        .join('\n');
-      return `## File ${fi + 1}: ${e.filename}\n${lines}`;
-    })
-    .join('\n\n---\n\n');
-
-  const userPrompt = `${fileListBlock}\n\n# Items per file (0-indexed)\n\n${dataBlock}`;
-
-  let aggregate: z.infer<typeof aggregateSchema>;
-  try {
-    const result = await generateObject({
-      model: anthropic('claude-sonnet-4-6'),
-      schema: aggregateSchema,
-      system: SYSTEM,
-      prompt: userPrompt,
-      temperature: 0.1,
+  const flat: FlatItem[] = [];
+  extractions.forEach((ext, fileIdx) => {
+    ext.items.forEach((it, itemIdx) => {
+      const q = (it.question ?? '').trim();
+      if (!q) return;
+      flat.push({
+        fileIdx,
+        itemIdx,
+        question: q,
+        voc: it.voc ?? '',
+        bg: bigrams(normalizeQuestion(q)),
+      });
     });
-    aggregate = result.object;
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'analyze_failed' },
-      { status: 502 },
-    );
-  }
-
-  // Defensive: pad / clamp mappings to the expected shape
-  const Q = aggregate.questions.length;
-  const safeMappings: number[][] = filenames.map((_, fi) => {
-    const row = aggregate.mappings[fi] ?? [];
-    const padded = row.slice(0, Q);
-    while (padded.length < Q) padded.push(-1);
-    return padded;
   });
 
-  // Build the matrix on the server from the input extractions + index map.
+  const clusters = clusterItems(flat, 0.45, 0.28);
+
+  // Sort clusters by the file/item order of their first member so the
+  // matrix follows interview flow as much as possible.
+  clusters.sort((a, b) => {
+    if (a[0].fileIdx !== b[0].fileIdx) return a[0].fileIdx - b[0].fileIdx;
+    return a[0].itemIdx - b[0].itemIdx;
+  });
+
   const matrix = {
-    questions: aggregate.questions,
-    rows: aggregate.questions.map((question, qIdx) => ({
-      question,
-      cells: extractions.map((ext, fileIdx) => {
-        const itemIdx = safeMappings[fileIdx]?.[qIdx] ?? -1;
-        if (itemIdx < 0 || itemIdx >= ext.items.length) {
-          return { filename: ext.filename, summary: '', voc: '' };
-        }
-        const item = ext.items[itemIdx];
-        return {
-          filename: ext.filename,
-          summary: item.summary,
-          voc: item.verbatim,
-        };
-      }),
-    })),
+    questions: clusters.map(pickCanonical),
+    rows: clusters.map((cluster) => {
+      const canonical = pickCanonical(cluster);
+      return {
+        question: canonical,
+        cells: filenames.map((filename, fi) => {
+          const member = cluster.find((m) => m.fileIdx === fi);
+          return {
+            filename,
+            voc: member?.voc ?? '',
+          };
+        }),
+      };
+    }),
   };
+
+  const filledByFile = filenames.map((_, fi) =>
+    matrix.rows.reduce((acc, r) => acc + (r.cells[fi].voc ? 1 : 0), 0),
+  );
+  console.log('[analyze] matrix:', {
+    rows: matrix.rows.length,
+    filledByFile,
+    filenames,
+  });
 
   const { data: gen, error: insertErr } = await supabase
     .from('generations')
