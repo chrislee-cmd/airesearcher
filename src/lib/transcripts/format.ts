@@ -102,7 +102,20 @@ export function deepgramToMarkdown(
     }
   }
 
-  const speakerNumbers = new Set(blocks.map((b) => b.speaker));
+  // Merge adjacent blocks from the same speaker. Deepgram's utterance
+  // segmentation can split a single turn into many short rows; collapsing them
+  // gives the reader one timestamped line per speaker turn.
+  const merged: Block[] = [];
+  for (const b of blocks) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.speaker === b.speaker) {
+      prev.text = prev.text ? `${prev.text} ${b.text}`.trim() : b.text;
+    } else {
+      merged.push({ ...b });
+    }
+  }
+
+  const speakerNumbers = new Set(merged.map((b) => b.speaker));
   const speakers = speakerNumbers.size;
 
   const front = [
@@ -114,7 +127,7 @@ export function deepgramToMarkdown(
     '',
   ].join('\n');
 
-  const body = blocks
+  const body = merged
     .map(
       (b) =>
         `[${toTimestamp(b.start)}] Speaker ${b.speaker + 1}: ${b.text}`,

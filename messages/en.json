@@ -75,7 +75,7 @@
     "uploader": {
       "dropHere": "Drop audio, video, or document files here, or click to browse",
       "dropActive": "Release to drop",
-      "supported": "Supported: mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx · 25MB per file",
+      "supported": "Supported: mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx",
       "browse": "Choose files",
       "queued": "queued",
       "transcribing": "transcribing",
