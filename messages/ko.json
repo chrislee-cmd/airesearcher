@@ -71,7 +71,7 @@
     "uploader": {
       "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
       "dropActive": "여기에 놓으세요",
-      "supported": "지원: mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx · hwp · 파일당 최대 25MB",
+      "supported": "지원: mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx · 파일당 최대 25MB",
       "browse": "파일 선택",
       "queued": "대기",
       "transcribing": "변환 중",

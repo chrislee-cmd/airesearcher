@@ -1,21 +1,9 @@
 import mammoth from 'mammoth';
 
-type HwpChar = { type: number; value: string | number };
-type HwpParagraph = { content?: HwpChar[] };
-type HwpSection = { content?: HwpParagraph[] };
-type HwpDoc = { sections?: HwpSection[] };
-
-export type FileKind =
-  | 'audio'
-  | 'video'
-  | 'text'
-  | 'docx'
-  | 'hwp'
-  | 'unsupported';
+export type FileKind = 'audio' | 'video' | 'text' | 'docx' | 'unsupported';
 
 const TEXT_RE = /\.(txt|md|markdown|csv|json|log)$/i;
 const DOCX_RE = /\.(docx|doc)$/i;
-const HWP_RE = /\.(hwp|hwpx)$/i;
 
 export function classifyFile(file: File): FileKind {
   if (file.type.startsWith('audio/')) return 'audio';
@@ -34,7 +22,6 @@ export function classifyFile(file: File): FileKind {
   ) {
     return 'docx';
   }
-  if (HWP_RE.test(file.name)) return 'hwp';
   return 'unsupported';
 }
 
@@ -50,39 +37,5 @@ export async function extractDocText(file: File): Promise<string> {
     const { value } = await mammoth.extractRawText({ buffer: buf });
     return value;
   }
-  if (kind === 'hwp') {
-    return extractHwpText(await file.arrayBuffer());
-  }
   throw new Error(`unsupported_file_type: ${file.type || file.name}`);
-}
-
-async function extractHwpText(buffer: ArrayBuffer): Promise<string> {
-  // hwp.js is CJS-only. Use dynamic import so Next.js bundles it on the
-  // server runtime without trying to bring it into the browser bundle.
-  // The package parses HWP 5.x binary files into sections → paragraphs →
-  // HWPChar nodes; CharType.Char (0) holds the rendered character.
-  const mod = (await import('hwp.js')) as unknown as {
-    parse?: (data: Uint8Array, opts?: unknown) => HwpDoc;
-    default?: { parse: (data: Uint8Array, opts?: unknown) => HwpDoc };
-  };
-  const parse = mod.parse ?? mod.default?.parse;
-  if (!parse) throw new Error('hwp_parser_missing');
-  const doc = parse(new Uint8Array(buffer), { type: 'array' });
-
-  const lines: string[] = [];
-  for (const section of doc.sections ?? []) {
-    for (const paragraph of section.content ?? []) {
-      let line = '';
-      for (const ch of paragraph.content ?? []) {
-        if (ch?.type === 0 && typeof ch.value === 'string') {
-          line += ch.value;
-        } else if (ch?.type === 0 && typeof ch.value === 'number') {
-          line += String.fromCharCode(ch.value);
-        }
-      }
-      lines.push(line);
-    }
-    lines.push('');
-  }
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }

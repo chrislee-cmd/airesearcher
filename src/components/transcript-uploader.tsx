@@ -8,7 +8,7 @@ import { track } from './mixpanel-provider';
 const MAX_BYTES = 25 * 1024 * 1024;
 
 const ACCEPT =
-  'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,.hwp,.hwpx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 type Status = 'queued' | 'transcribing' | 'done' | 'error';
 
@@ -27,11 +27,10 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileKind(file: File): 'audio' | 'video' | 'text' | 'docx' | 'hwp' | 'other' {
+function fileKind(file: File): 'audio' | 'video' | 'text' | 'docx' | 'other' {
   if (file.type.startsWith('audio/')) return 'audio';
   if (file.type.startsWith('video/')) return 'video';
   if (/\.(docx|doc)$/i.test(file.name)) return 'docx';
-  if (/\.(hwp|hwpx)$/i.test(file.name)) return 'hwp';
   if (
     file.type.startsWith('text/') ||
     file.type === 'application/json' ||
