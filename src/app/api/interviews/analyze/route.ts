@@ -302,11 +302,20 @@ export async function POST(request: Request) {
     saved: beforeConsolidation - clusters.length,
   });
 
-  // Sort clusters by the file/item order of their first member so the
-  // matrix follows interview flow as much as possible.
+  // Sort clusters so the user sees the most-overlapping rows first, then
+  // by interview flow position averaged across all members. The previous
+  // sort keyed on `cluster[0]` (= the seed) which always came from the
+  // earliest-listed file — pushing every cluster that *only* contained
+  // the last file's items to the bottom of the matrix and creating the
+  // illusion that the last column was empty.
+  function avgItemIdx(c: FlatItem[]): number {
+    let sum = 0;
+    for (const m of c) sum += m.itemIdx;
+    return sum / c.length;
+  }
   clusters.sort((a, b) => {
-    if (a[0].fileIdx !== b[0].fileIdx) return a[0].fileIdx - b[0].fileIdx;
-    return a[0].itemIdx - b[0].itemIdx;
+    if (a.length !== b.length) return b.length - a.length; // most files first
+    return avgItemIdx(a) - avgItemIdx(b);                  // earlier in interview first
   });
 
   const matrix = {
