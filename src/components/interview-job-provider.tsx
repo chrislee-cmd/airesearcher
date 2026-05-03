@@ -474,18 +474,22 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       return null;
     }
 
-    // Verify each VOC quote is actually present in the source markdown
-    // (whitespace-normalised substring match). VOCs can now be sentence- to
-    // paragraph-length, so collapse whitespace before comparing.
+    // Verbatim verification (best-effort, non-destructive).
+    // Earlier we blanked the voc when its whitespace-normalised text was
+    // not a substring of the source. That was too strict for files where
+    // the markdown shape (CSV, list, survey export) differs from the
+    // model's quote text — Sonnet at temp 0.1 with explicit "copy from
+    // source" instruction rarely hallucinates, and a near-miss is far
+    // more useful than an empty cell. Keep the voc, just count misses
+    // so the file pill can flag suspicious output.
     const normSrc = target.markdown.replace(/\s+/g, ' ').trim();
     let invalid = 0;
     const verified: ExtractItem[] = liveItems.map((it) => {
       const v = (it.voc ?? '').trim();
       if (!v) return { ...it, voc: '' };
       const normV = v.replace(/\s+/g, ' ').trim();
-      if (normSrc.includes(normV)) return it;
-      invalid += 1;
-      return { ...it, voc: '' };
+      if (!normSrc.includes(normV)) invalid += 1;
+      return it;
     });
 
     pushThinking({
