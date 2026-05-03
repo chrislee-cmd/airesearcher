@@ -78,13 +78,24 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
     } catch {}
   }, [collapsed, hydrated]);
 
-  // Force-open the group whose feature matches current path.
+  // Auto-open the group whose feature matches current path — but only
+  // when the path actually changes. After that, user toggle wins so
+  // closing a section while on a page inside it stays closed.
   const activeGroup = FEATURE_GROUPS.find((g) =>
     g.features.some((k) => {
       const f = FEATURE_BY_KEY.get(k);
       return f && pathname === f.href;
     }),
   )?.key;
+  useEffect(() => {
+    if (!activeGroup) return;
+    setCollapsed((prev) => {
+      if (!prev.has(activeGroup)) return prev;
+      const next = new Set(prev);
+      next.delete(activeGroup);
+      return next;
+    });
+  }, [activeGroup]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -177,8 +188,7 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
 
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
         {FEATURE_GROUPS.map((g) => {
-          const isCollapsed =
-            collapsed.has(g.key) && activeGroup !== g.key;
+          const isCollapsed = collapsed.has(g.key);
           return (
             <section key={g.key} className="mt-3 first:mt-2">
               <button
