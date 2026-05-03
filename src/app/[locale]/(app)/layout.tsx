@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
+import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 
@@ -20,10 +21,13 @@ export default async function AppLayout({
 
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
+  const projects = org ? await listProjects(org.org_id) : [];
 
   return (
     <div className="flex flex-1">
-      <Sidebar />
+      <Sidebar
+        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+      />
       <div className="flex flex-1 flex-col">
         <Topbar
           credits={credits}

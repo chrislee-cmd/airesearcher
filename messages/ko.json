@@ -24,7 +24,25 @@
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
-    "credits": "크레딧"
+    "credits": "크레딧",
+    "viewProjects": "프로젝트 보기"
+  },
+  "Projects": {
+    "title": "프로젝트",
+    "description": "리서치 프로젝트 단위로 산출물을 묶어 관리합니다.",
+    "newProject": "새 프로젝트",
+    "name": "이름",
+    "descriptionField": "설명",
+    "create": "만들기",
+    "noProjects": "아직 만들어진 프로젝트가 없습니다.",
+    "openProject": "열기",
+    "folderView": "폴더",
+    "listView": "리스트",
+    "createdAt": "생성일",
+    "items": "산출물",
+    "navigate": "프로젝트로 이동",
+    "noActiveOrg": "조직 정보를 불러오는 중이거나 로그인이 필요합니다.",
+    "delete": "삭제"
   },
   "Common": {
     "language": "언어",

@@ -24,7 +24,25 @@
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
-    "credits": "Credits"
+    "credits": "Credits",
+    "viewProjects": "View Projects"
+  },
+  "Projects": {
+    "title": "Projects",
+    "description": "Group research outputs by project for cleaner organization.",
+    "newProject": "New project",
+    "name": "Name",
+    "descriptionField": "Description",
+    "create": "Create",
+    "noProjects": "No projects yet.",
+    "openProject": "Open",
+    "folderView": "Folders",
+    "listView": "List",
+    "createdAt": "Created",
+    "items": "items",
+    "navigate": "Go to project",
+    "noActiveOrg": "Loading workspace, or sign-in required.",
+    "delete": "Delete"
   },
   "Common": {
     "language": "Language",
