@@ -22,7 +22,7 @@ const NAV_GROUPS = [
   },
 ];
 
-export function Sidebar({ orgName }: { orgName: string }) {
+export function Sidebar({ orgName }: { orgName: string | null }) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
   const tBrand = useTranslations('Brand');
@@ -31,7 +31,7 @@ export function Sidebar({ orgName }: { orgName: string }) {
     <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-200 bg-white px-3 py-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="px-3 pb-4">
         <div className="text-sm font-semibold tracking-tight">{tBrand('name')}</div>
-        <div className="mt-0.5 truncate text-xs text-neutral-500">{orgName}</div>
+        <div className="mt-0.5 truncate text-xs text-neutral-500">{orgName ?? '—'}</div>
       </div>
       <nav className="flex-1 space-y-5">
         {NAV_GROUPS.map((group) => (

@@ -25,23 +25,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-  const isPublic =
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/auth') ||
-    pathname === '/' ||
-    /^\/(ko|en)(\/(login)?)?$/.test(pathname) ||
-    /^\/(ko|en)\/login/.test(pathname);
-
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
+  // Refresh session cookies, but do NOT gate any route here.
+  // Pages render publicly; gated actions open the login dialog from the client.
+  await supabase.auth.getUser();
 
   return supabaseResponse;
 }

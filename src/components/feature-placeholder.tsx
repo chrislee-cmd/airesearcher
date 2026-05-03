@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { track } from './mixpanel-provider';
+import { useRequireAuth } from './auth-provider';
 import type { FeatureKey } from '@/lib/features';
 
 export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
@@ -11,8 +12,13 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const requireAuth = useRequireAuth();
 
-  async function run() {
+  function onClickRun() {
+    requireAuth(() => void doRun());
+  }
+
+  async function doRun() {
     setRunning(true);
     setResult(null);
     track('generate_clicked', { feature });
@@ -56,7 +62,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
 
       <div className="mt-3 flex justify-end">
         <button
-          onClick={run}
+          onClick={onClickRun}
           disabled={running || !input.trim()}
           className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
         >
