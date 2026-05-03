@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
+import { useWorkspace } from './workspace-provider';
 import {
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
@@ -30,6 +31,7 @@ export function DeskResearch() {
   const tCommon = useTranslations('Common');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
+  const workspace = useWorkspace();
 
   const [keyword, setKeyword] = useState('');
   const [selected, setSelected] = useState<Set<DeskSourceId>>(
@@ -144,8 +146,15 @@ export function DeskResearch() {
         setError(json.error ?? res.statusText);
         return;
       }
-      setData(json as DeskResponse);
+      const resp = json as DeskResponse;
+      setData(resp);
       track('generate_success', { feature: 'desk' });
+      workspace.addArtifact({
+        id: `desk_${resp.generation_id}`,
+        featureKey: 'desk',
+        title: `${t('desk.title')} — ${keyword.trim()}`,
+        content: resp.output,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown_error');
     } finally {

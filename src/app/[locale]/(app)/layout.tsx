@@ -9,6 +9,7 @@ import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
+import { WorkspaceBridge } from '@/components/workspace-bridge';
 
 export default async function AppLayout({
   children,
@@ -44,6 +45,7 @@ export default async function AppLayout({
             <main className="flex-1 overflow-auto p-6">{children}</main>
           </div>
         </div>
+        <WorkspaceBridge />
         <WorkspacePanel />
       </WorkspaceProvider>
      </TranscriptJobProvider>
