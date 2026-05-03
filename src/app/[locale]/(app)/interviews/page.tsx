@@ -1,8 +1,32 @@
-import { setRequestLocale } from 'next-intl/server';
-import { FeaturePlaceholder } from '@/components/feature-placeholder';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { InterviewAnalyzer } from '@/components/interview-analyzer';
 
-export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <FeaturePlaceholder feature="interviews" />;
+  const t = await getTranslations('Features');
+
+  return (
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t('interviews.title')}
+        </h1>
+        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+          {t('interviews.cost')}
+        </span>
+      </div>
+      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        {t('interviews.description')}
+      </p>
+
+      <div className="mt-8">
+        <InterviewAnalyzer />
+      </div>
+    </div>
+  );
 }

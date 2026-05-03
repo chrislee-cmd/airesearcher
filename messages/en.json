@@ -94,8 +94,27 @@
     },
     "interviews": {
       "title": "Interview Result Generator",
-      "description": "Summarize themes and insights from a single interview.",
-      "cost": "3 credits"
+      "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
+      "cost": "1cr/file convert · 3cr analyze"
+    },
+    "interviewsView": {
+      "stage1Title": "Step 1 — Convert files to .md",
+      "stage1Help": "Each file costs 1 credit. Audio/video is transcribed then formatted as markdown; text files are wrapped as-is.",
+      "convertAll": "Start conversion",
+      "convertingPhase": "converting",
+      "viewMd": "View markdown",
+      "hideMd": "Hide",
+      "stage2Title": "Step 2 — Cross-file question analysis",
+      "stage2Help": "Extracts the shared questions from every converted file, then summarizes each respondent and pulls a VOC quote. (3 credits)",
+      "analyze": "Run analysis",
+      "analyzing": "Analyzing…",
+      "exportCsv": "Export CSV",
+      "exportXlsx": "Export XLSX",
+      "question": "Question",
+      "summary": "Summary",
+      "voc": "VOC quote",
+      "noConverted": "Run step 1 first.",
+      "needTwoFiles": "At least one converted file is required."
     },
     "reports": {
       "title": "Full Report Generator",

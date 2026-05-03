@@ -94,8 +94,27 @@
     },
     "interviews": {
       "title": "인터뷰 결과 생성기",
-      "description": "단일 인터뷰의 핵심 인사이트와 테마를 정리합니다.",
-      "cost": "3크레딧"
+      "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
+      "cost": "변환 1크레딧/파일 · 분석 3크레딧"
+    },
+    "interviewsView": {
+      "stage1Title": "1단계 — 파일을 .md로 변환",
+      "stage1Help": "각 파일을 1크레딧으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
+      "convertAll": "변환 시작",
+      "convertingPhase": "변환 중",
+      "viewMd": "마크다운 보기",
+      "hideMd": "접기",
+      "stage2Title": "2단계 — 공통 문항 분석",
+      "stage2Help": "변환이 끝난 모든 파일에서 공통 문항을 추출하고, 파일별 답변 요약과 VOC 인용구를 표로 만듭니다. (3크레딧)",
+      "analyze": "분석 시작",
+      "analyzing": "분석 중…",
+      "exportCsv": "CSV 내보내기",
+      "exportXlsx": "XLSX 내보내기",
+      "question": "문항",
+      "summary": "요약",
+      "voc": "VOC 인용구",
+      "noConverted": "먼저 1단계를 진행해주세요.",
+      "needTwoFiles": "분석은 변환된 파일이 1개 이상일 때 가능합니다."
     },
     "reports": {
       "title": "전체 리포트 생성기",
