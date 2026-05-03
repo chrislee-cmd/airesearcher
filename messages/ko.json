@@ -4,7 +4,16 @@
     "signInTitle": "AI Researcher 로그인",
     "signInSubtitle": "마케팅·UX 리서치를 위한 AI 도구",
     "google": "Google로 계속하기",
-    "signOut": "로그아웃"
+    "signOut": "로그아웃",
+    "email": "이메일",
+    "password": "비밀번호",
+    "signIn": "로그인",
+    "signUp": "회원가입",
+    "switchToSignUp": "계정이 없으신가요? 회원가입",
+    "switchToSignIn": "이미 계정이 있으신가요? 로그인",
+    "or": "또는",
+    "checkEmail": "확인 메일을 보냈습니다. 메일함을 확인해주세요.",
+    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다."
   },
   "Sidebar": {
     "dashboard": "대시보드",

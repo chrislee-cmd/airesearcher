@@ -4,7 +4,16 @@
     "signInTitle": "Sign in to AI Researcher",
     "signInSubtitle": "AI tools for marketing & UX research",
     "google": "Continue with Google",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "switchToSignUp": "Don't have an account? Sign up",
+    "switchToSignIn": "Already have an account? Sign in",
+    "or": "or",
+    "checkEmail": "Confirmation email sent — please check your inbox.",
+    "invalidCredentials": "Invalid email or password."
   },
   "Sidebar": {
     "dashboard": "Dashboard",
