@@ -157,15 +157,6 @@
       "cost": "3 credits"
     }
   },
-  "Moderator": {
-    "benchmarkLabel": "BENCHMARK",
-    "benchmarkTitle": "AI Interview Services",
-    "benchmarkDescription": "Compare leading AI moderator and interview services worldwide. Click a card to visit the service.",
-    "thisService": "OUR PRODUCT",
-    "visit": "Visit site",
-    "prev": "Previous",
-    "next": "Next"
-  },
   "Members": {
     "title": "Member management",
     "invite": "Invite member",
