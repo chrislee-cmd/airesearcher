@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Researcher
 
-## Getting Started
+SaaS for marketing & UX research — quote, transcript, interview, and full report generation, with team workspaces, role-based sharing, credits, i18n (KO default + EN), and Mixpanel analytics.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, Turbopack) + TypeScript + Tailwind v4
+- **Supabase** — Google OAuth + Postgres with RLS
+- **next-intl** — i18n routing (`/ko/*`, `/en/*`)
+- **mixpanel-browser** — product analytics
+- **Vercel** — deployment
+
+## Setup
+
+### 1. Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Create a project at https://supabase.com
+2. Fill `.env.local` with Project URL + anon key + service role key
+3. **Auth → Providers → Google**: enable, paste Google OAuth client ID/secret. Add `https://YOUR-PROJECT.supabase.co/auth/v1/callback` to Google authorized redirect URIs.
+4. **Auth → URL Configuration**: add `http://localhost:3000` and your prod URL to "Site URL" + "Additional Redirect URLs".
+5. Apply the schema:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm exec supabase link --project-ref YOUR-REF
+pnpm exec supabase db push
+```
 
-## Learn More
+(Or paste `supabase/migrations/0001_init.sql` into the SQL editor.)
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Visit http://localhost:3000 — redirects to `/ko` (default Korean) → `/ko/login`.
 
-## Deploy on Vercel
+## Features
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Feature | Cost |
+|---|---|
+| Quote Generator | 1 credit |
+| Transcript Generator | 2 credits |
+| Interview Result Generator | 3 credits |
+| Full Report Generator | 5 credits |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each new user gets a personal organization seeded with **10 credits** on first sign-in (handled by the `handle_new_user` trigger in the migration).
+
+## Organizations & roles
+
+- `owner` — created on signup, full access
+- `admin` — manage members + content
+- `member` — generate, see org content
+- `viewer` — read-only
+
+Sharing: each generation has `visibility` (`private` | `org` | `shared`); `shared` items grant access via the `generation_shares` table.
+
+## Mixpanel
+
+Token wired via `NEXT_PUBLIC_MIXPANEL_TOKEN`. Track events with:
+
+```ts
+import { track } from '@/components/mixpanel-provider';
+track('event_name', { ...props });
+```
+
+## Deploying to Vercel
+
+```bash
+pnpm exec vercel link
+pnpm exec vercel env pull .env.local
+pnpm exec vercel deploy --prod
+```
+
+Set the same env vars in the Vercel dashboard. Update `NEXT_PUBLIC_SITE_URL` to the production URL and add it to Supabase **Auth → URL Configuration**.
+
+## Project structure
+
+```
+src/
+  app/
+    [locale]/
+      layout.tsx          # i18n + Mixpanel provider
+      page.tsx            # / → /login or /dashboard
+      login/page.tsx
+      (app)/
+        layout.tsx        # sidebar + topbar (auth required)
+        dashboard/
+        quotes/ transcripts/ interviews/ reports/
+        members/ settings/
+    api/
+      generate/route.ts
+      members/{invite,role,remove}/route.ts
+    auth/callback/route.ts
+  components/             # sidebar, topbar, language-switcher, etc.
+  i18n/                   # next-intl config
+  lib/
+    supabase/             # client / server / middleware helpers
+    credits.ts org.ts features.ts
+  proxy.ts                # Next.js 16 proxy (formerly middleware)
+messages/{ko,en}.json
+supabase/migrations/0001_init.sql
+```

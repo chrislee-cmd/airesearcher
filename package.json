@@ -9,17 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.1",
+    "mixpanel-browser": "^2.78.0",
     "next": "16.2.4",
+    "next-intl": "^4.11.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mixpanel-browser": "^2.66.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "supabase": "^2.98.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

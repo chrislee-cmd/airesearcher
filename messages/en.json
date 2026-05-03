@@ -1,0 +1,73 @@
+{
+  "Brand": { "name": "AI Researcher" },
+  "Auth": {
+    "signInTitle": "Sign in to AI Researcher",
+    "signInSubtitle": "AI tools for marketing & UX research",
+    "google": "Continue with Google",
+    "signOut": "Sign out"
+  },
+  "Sidebar": {
+    "dashboard": "Dashboard",
+    "quotes": "Quote Generator",
+    "transcripts": "Transcript Generator",
+    "interviews": "Interview Result Generator",
+    "reports": "Full Report Generator",
+    "members": "Members",
+    "organizations": "Organizations",
+    "settings": "Settings",
+    "credits": "Credits"
+  },
+  "Common": {
+    "language": "Language",
+    "korean": "한국어",
+    "english": "English",
+    "credits": "credits",
+    "creditsRemaining": "{count} credits left",
+    "generate": "Generate",
+    "loading": "Loading...",
+    "comingSoon": "Coming soon",
+    "share": "Share",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create"
+  },
+  "Features": {
+    "quotes": {
+      "title": "Quote Generator",
+      "description": "Extract key quotes from raw interview data.",
+      "cost": "1 credit"
+    },
+    "transcripts": {
+      "title": "Transcript Generator",
+      "description": "Turn audio/video interviews into accurate transcripts.",
+      "cost": "2 credits"
+    },
+    "interviews": {
+      "title": "Interview Result Generator",
+      "description": "Summarize themes and insights from a single interview.",
+      "cost": "3 credits"
+    },
+    "reports": {
+      "title": "Full Report Generator",
+      "description": "Synthesize all interviews into a marketing/UX research report.",
+      "cost": "5 credits"
+    }
+  },
+  "Members": {
+    "title": "Member management",
+    "invite": "Invite member",
+    "role": "Role",
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member",
+    "viewer": "Viewer",
+    "email": "Email",
+    "removeMember": "Remove"
+  },
+  "Org": {
+    "switcher": "Select organization",
+    "create": "Create organization",
+    "name": "Organization name"
+  }
+}
