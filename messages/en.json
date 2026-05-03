@@ -151,6 +151,17 @@
       "cost": "2 credits"
     }
   },
+  "Desk": {
+    "keywordLabel": "Keyword",
+    "keywordPlaceholder": "e.g. generative AI marketing, single-household grocery",
+    "sourcesLabel": "Sources",
+    "sourcesUnit": "selected",
+    "search": "Search",
+    "error": "Error",
+    "similarKeywords": "Expanded keywords",
+    "reportTitle": "Summary report",
+    "collected": "Collected articles"
+  },
   "Members": {
     "title": "Member management",
     "invite": "Invite member",
