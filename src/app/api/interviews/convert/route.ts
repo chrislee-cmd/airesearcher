@@ -3,11 +3,11 @@ import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
+import { classifyFile, extractDocText } from '@/lib/file-extract';
 
 export const maxDuration = 300;
 
 const MAX_BYTES = 25 * 1024 * 1024;
-const TEXT_RE = /\.(txt|md|markdown|csv|json|log)$/i;
 
 const SYSTEM = `당신은 인터뷰 텍스트를 깔끔한 Markdown 인터뷰 노트로 정리하는 작성자입니다.
 - 인터뷰어의 질문은 \`## Q. <원문 질문>\` 형태로 시작합니다.
@@ -44,27 +44,25 @@ export async function POST(request: Request) {
 
   let rawText = '';
   try {
-    const isAv = file.type.startsWith('audio/') || file.type.startsWith('video/');
-    const isText = file.type.startsWith('text/') || file.type === 'application/json' || TEXT_RE.test(file.name);
-
-    if (isAv) {
+    const kind = classifyFile(file);
+    if (kind === 'audio' || kind === 'video') {
       const tx = await openai.audio.transcriptions.create({
         file,
         model: 'gpt-4o-mini-transcribe',
         response_format: 'text',
       });
       rawText = typeof tx === 'string' ? tx : (tx as { text?: string }).text ?? '';
-    } else if (isText) {
-      rawText = await file.text();
-    } else {
+    } else if (kind === 'unsupported') {
       return NextResponse.json(
         { error: 'unsupported_file_type', mime: file.type, name: file.name },
         { status: 415 },
       );
+    } else {
+      rawText = await extractDocText(file);
     }
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'transcription_failed' },
+      { error: e instanceof Error ? e.message : 'extraction_failed' },
       { status: 502 },
     );
   }

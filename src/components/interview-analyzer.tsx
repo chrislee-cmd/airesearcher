@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT =
-  'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log';
+  'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,.hwp,.hwpx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 type ConvStatus = 'queued' | 'converting' | 'done' | 'error';
 
