@@ -17,10 +17,13 @@
   },
   "Sidebar": {
     "dashboard": "Dashboard",
-    "quotes": "Quote Generator",
-    "transcripts": "Transcript Generator",
+    "quotes": "Transcript Generator",
+    "transcripts": "Script Generator",
     "interviews": "Interview Result Generator",
     "reports": "Full Report Generator",
+    "scheduler": "Participant Scheduler",
+    "moderator": "AI Moderator",
+    "analyzer": "Mixed-Methods Analyzer",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -61,13 +64,13 @@
   },
   "Features": {
     "quotes": {
-      "title": "Quote Generator",
-      "description": "Extract key quotes from raw interview data.",
+      "title": "Transcript Generator",
+      "description": "Convert audio/video interviews into verbatim transcripts.",
       "cost": "1 credit"
     },
     "transcripts": {
-      "title": "Transcript Generator",
-      "description": "Turn audio/video interviews into accurate transcripts.",
+      "title": "Script Generator",
+      "description": "Generate interview scripts and discussion guides.",
       "cost": "2 credits"
     },
     "interviews": {
@@ -78,6 +81,21 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
+      "cost": "5 credits"
+    },
+    "scheduler": {
+      "title": "Participant Scheduler",
+      "description": "Take candidate availability and propose interview slots with attendee notices.",
+      "cost": "1 credit"
+    },
+    "moderator": {
+      "title": "AI Moderator",
+      "description": "Generate moderator scripts and follow-up questions from your research hypotheses.",
+      "cost": "3 credits"
+    },
+    "analyzer": {
+      "title": "Mixed-Methods Analyzer",
+      "description": "Combine qualitative and quantitative inputs to surface integrated insights.",
       "cost": "5 credits"
     }
   },
