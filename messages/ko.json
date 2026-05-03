@@ -168,6 +168,15 @@
     "reportTitle": "요약 보고서",
     "collected": "수집된 기사"
   },
+  "Moderator": {
+    "benchmarkLabel": "BENCHMARK",
+    "benchmarkTitle": "AI 인터뷰 서비스",
+    "benchmarkDescription": "전 세계에서 운영 중인 주요 AI 모더레이터·인터뷰 서비스를 한눈에 비교합니다. 카드를 클릭하면 각 서비스 페이지로 이동합니다.",
+    "thisService": "OUR PRODUCT",
+    "visit": "사이트 방문",
+    "prev": "이전",
+    "next": "다음"
+  },
   "Members": {
     "title": "멤버 관리",
     "invite": "멤버 초대",
