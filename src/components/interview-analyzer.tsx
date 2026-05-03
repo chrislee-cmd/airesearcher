@@ -19,6 +19,9 @@ type ConvItem = {
   markdown?: string;
   error?: string;
   expanded?: boolean;
+  inputChars?: number;
+  outputChars?: number;
+  formatPath?: 'regex' | 'llm';
 };
 
 type AnalysisRow = {
@@ -145,7 +148,14 @@ export function InterviewAnalyzer() {
         setItems((prev) =>
           prev.map((i) =>
             i.id === id
-              ? { ...i, status: 'done', markdown: json.markdown }
+              ? {
+                  ...i,
+                  status: 'done',
+                  markdown: json.markdown,
+                  inputChars: json.input_chars,
+                  outputChars: json.output_chars,
+                  formatPath: json.format_path,
+                }
               : i,
           ),
         );
@@ -443,6 +453,15 @@ function ConvRow({
             >
               {pill.text}
             </span>
+            {item.status === 'done' &&
+              item.inputChars !== undefined &&
+              item.outputChars !== undefined && (
+                <RetentionBadge
+                  input={item.inputChars}
+                  output={item.outputChars}
+                  path={item.formatPath}
+                />
+              )}
             {item.error && (
               <span className="text-warning">
                 {item.error === 'fileTooLarge' ? tUp('fileTooLarge') : item.error}
@@ -550,6 +569,38 @@ function ResultTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RetentionBadge({
+  input,
+  output,
+  path,
+}: {
+  input: number;
+  output: number;
+  path?: 'regex' | 'llm';
+}) {
+  const ratio = input > 0 ? output / input : 1;
+  const pct = (ratio * 100).toFixed(1);
+  // Color tiers: regex path almost always near 100%; LLM path expected ~95-100%.
+  // Below 90% is the threshold for "noticeably shorter — verify."
+  const cls =
+    ratio >= 0.99
+      ? 'text-amore'
+      : ratio >= 0.9
+      ? 'text-mute'
+      : 'text-warning';
+  const fmt = (n: number) => n.toLocaleString();
+  return (
+    <span
+      className={cls}
+      title={`원문 ${fmt(input)}자 → 변환 ${fmt(output)}자${
+        path ? ` · ${path === 'regex' ? '정규식' : 'LLM'} 변환` : ''
+      }`}
+    >
+      {fmt(input)} → {fmt(output)} chars · {pct}%
+    </span>
   );
 }
 

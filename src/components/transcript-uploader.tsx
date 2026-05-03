@@ -19,6 +19,7 @@ type Item = {
   transcript?: string;
   error?: string;
   expanded?: boolean;
+  outputChars?: number;
 };
 
 function formatBytes(n: number) {
@@ -131,7 +132,13 @@ export function TranscriptUploader() {
         setItems((prev) =>
           prev.map((i) =>
             i.id === id
-              ? { ...i, status: 'done', transcript: json.transcript, expanded: true }
+              ? {
+                  ...i,
+                  status: 'done',
+                  transcript: json.transcript,
+                  outputChars: json.output_chars,
+                  expanded: true,
+                }
               : i,
           ),
         );
@@ -279,6 +286,11 @@ function FileRow({
           <div className="mt-0.5 flex items-center gap-3 text-[11px] text-mute-soft tabular-nums">
             <span>{formatBytes(item.file.size)}</span>
             <StatusPill status={item.status} t={t} />
+            {item.status === 'done' && item.outputChars !== undefined && (
+              <span className="text-amore">
+                {item.outputChars.toLocaleString()} chars
+              </span>
+            )}
             {item.error && (
               <span className="text-warning">
                 {item.error === 'fileTooLarge' ? t('fileTooLarge') : item.error}

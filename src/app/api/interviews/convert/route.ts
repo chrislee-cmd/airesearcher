@@ -144,5 +144,7 @@ export async function POST(request: Request) {
     filename: file.name,
     generation_id: gen.id,
     format_path: formatPath,
+    input_chars: rawText.length,
+    output_chars: markdown.length,
   });
 }

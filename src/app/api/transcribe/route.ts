@@ -88,5 +88,6 @@ export async function POST(request: Request) {
     transcript,
     filename: file.name,
     generation_id: gen.id,
+    output_chars: transcript.length,
   });
 }
