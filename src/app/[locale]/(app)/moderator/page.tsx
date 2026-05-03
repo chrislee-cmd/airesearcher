@@ -1,8 +1,35 @@
-import { setRequestLocale } from 'next-intl/server';
-import { FeaturePlaceholder } from '@/components/feature-placeholder';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { ModeratorServicesCarousel } from '@/components/moderator-services-carousel';
 
-export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <FeaturePlaceholder feature="moderator" />;
+  const t = await getTranslations('Features');
+  const tCommon = await getTranslations('Common');
+
+  return (
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t('moderator.title')}
+        </h1>
+        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+          {t('moderator.cost')}
+        </span>
+      </div>
+      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        {t('moderator.description')}
+      </p>
+
+      <ModeratorServicesCarousel />
+
+      <p className="mt-12 text-[11.5px] uppercase tracking-[0.22em] text-mute-soft">
+        {tCommon('comingSoon')}
+      </p>
+    </div>
+  );
 }
