@@ -5,6 +5,7 @@ import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { tryRegexMarkdown } from '@/lib/markdown-format';
+import { hashBytes, getCache, setCache } from '@/lib/cache';
 
 export const maxDuration = 300;
 
@@ -37,6 +38,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'empty_file' }, { status: 400 });
   }
 
+  // Content-addressed cache check. Same bytes = same markdown, regardless
+  // of who uploads it. Bump CACHE_V if SYSTEM prompt or output shape changes.
+  const CACHE_V = 'v2';
+  const fileBuffer = await file.arrayBuffer();
+  const fileHash = hashBytes(fileBuffer);
+  const cacheKey = `interviews:convert:${CACHE_V}:${fileHash}`;
+  const cached = await getCache<{
+    markdown: string;
+    format_path: 'regex' | 'llm';
+    input_chars: number;
+    output_chars: number;
+  }>(cacheKey);
+  if (cached) {
+    return NextResponse.json({
+      ...cached,
+      filename: file.name,
+      cached: true,
+    });
+  }
+
   // Lazy OpenAI client — only built when the path actually needs it
   // (audio/video transcription, or LLM markdown fallback).
   let _openai: OpenAI | null = null;
@@ -54,8 +75,14 @@ export async function POST(request: Request) {
     const kind = classifyFile(file);
     if (kind === 'audio' || kind === 'video') {
       stage = 'transcribe';
+      // Re-wrap the buffered bytes since we already consumed file.arrayBuffer()
+      // for hashing — the original File instance is still usable but reading
+      // its body twice would re-stream. Build a fresh File from the buffer.
+      const audioFile = new File([fileBuffer], file.name, {
+        type: file.type || 'application/octet-stream',
+      });
       const tx = await getOpenAI().audio.transcriptions.create({
-        file,
+        file: audioFile,
         model: 'gpt-4o-mini-transcribe',
         response_format: 'text',
       });
@@ -67,7 +94,12 @@ export async function POST(request: Request) {
       );
     } else {
       stage = `extract_${kind}`;
-      rawText = await extractDocText(file);
+      // Same trick — feed the already-buffered bytes back as a File so
+      // extractDocText doesn't try to drain a stream we already consumed.
+      const docFile = new File([fileBuffer], file.name, {
+        type: file.type || 'application/octet-stream',
+      });
+      rawText = await extractDocText(docFile);
     }
     if (!rawText.trim()) {
       return NextResponse.json(
@@ -139,6 +171,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
+  // Write the result into the content-addressed cache so future uploads
+  // of the same bytes skip transcription / LLM formatting entirely.
+  await setCache(cacheKey, {
+    markdown,
+    format_path: formatPath,
+    input_chars: rawText.length,
+    output_chars: markdown.length,
+  });
+
   return NextResponse.json({
     markdown,
     filename: file.name,
@@ -146,5 +187,6 @@ export async function POST(request: Request) {
     format_path: formatPath,
     input_chars: rawText.length,
     output_chars: markdown.length,
+    cached: false,
   });
 }

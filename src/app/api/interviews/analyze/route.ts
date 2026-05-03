@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { streamObject } from 'ai';
+import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
-import { interviewMatrixSchema } from '@/lib/interview-schema';
 
 export const maxDuration = 300;
 
@@ -27,37 +26,31 @@ const Body = z.object({
     .max(20),
 });
 
-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 데이터를 받아 행렬을 채우세요.
+// LLM only deduplicates questions and maps each file's items to the
+// standard question list. The matrix itself is built deterministically
+// on the server below — eliminating the empty-cell failure mode where
+// Sonnet would emit cells: [] for every row.
+const aggregateSchema = z.object({
+  questions: z.array(z.string()),
+  /**
+   * mappings[fileIdx] is an array of length === questions.length.
+   * Each entry is the index into extractions[fileIdx].items that answers
+   * the standard question at that position, or -1 if no item matches.
+   */
+  mappings: z.array(z.array(z.number().int())),
+});
 
-# 입력
-사용자 메시지 상단에 \`# FILES (N개)\` 섹션이 나오고, 그 뒤에 각 파일별 추출 데이터가 옵니다.
+const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 항목들을 받아 두 가지를 결정합니다:
 
-# 출력 — JSON 스키마를 정확히 따르세요
-{
-  "questions": [string],     // 표준 문항 목록, 인터뷰 진행 순서대로
-  "rows": [
-    {
-      "question": string,    // questions[] 의 한 항목
-      "cells": [             // *반드시* 입력 파일 개수(N)와 같은 길이
-        { "filename": string, "summary": string, "voc": string }
-      ]
-    }
-  ]
-}
+1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록. 한 파일에서만 나온 질문도 포함. 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
 
-# 절대 규칙 — 어떤 경우에도 어기지 말 것
-1. **\`rows\`는 비울 수 없다.** \`questions\`에 들어간 모든 표준 문항은 \`rows\`에도 같은 순서로 등장해야 한다.
-2. **각 \`row.cells\`의 길이는 입력 파일 개수와 정확히 같다.** 파일 리스트의 모든 filename에 대해 cell이 하나씩 존재해야 하며, 순서도 입력 파일 순서를 따른다.
-3. **\`cell.filename\`은 입력 파일 리스트의 정확한 문자열 중 하나여야 한다.** 임의 변형 금지.
-4. **\`cell.summary\` / \`cell.voc\`는 입력 데이터의 해당 항목에서 글자 그대로 복사한다.** 번역·요약·재작성 금지. (입력의 \`summary\`는 이미 응답자 원문에서 정제·발췌된 텍스트이며, 그 자체로 그대로 옮긴다.)
-5. **매칭되는 항목이 없는 cell은 빈 문자열 두 개**(\`summary: ""\`, \`voc: ""\`)이지만, **filename은 비울 수 없다** — 매칭 없어도 cell은 반드시 존재해야 한다.
+2) **mappings** — 입력 파일마다 길이가 questions.length 와 정확히 같은 정수 배열. 위치 i의 값은 그 파일의 items 중 questions[i] 에 해당하는 항목의 인덱스 (0부터). 매칭되는 항목이 없으면 -1.
 
-# 절차
-1) 각 파일의 모든 질문을 모은 뒤, 의미가 거의 동일한 질문은 하나의 표준 문항으로 묶는다.
-2) 표준 문항 목록을 \`questions\`에 인터뷰 흐름 순서대로 채운다.
-3) 표준 문항마다 \`row\`를 만들고, 입력 파일 리스트 순서대로 모든 파일의 cell을 채운다.
-
-한국어로 작성. JSON 외 텍스트 금지.`;
+# 출력 규칙
+- mappings.length === 입력 파일 수
+- 각 mappings[fileIdx].length === questions.length
+- 인덱스 값은 -1 또는 0..(items.length-1) 범위 정수
+- 정의된 JSON 스키마 외 텍스트 금지`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -88,53 +81,90 @@ export async function POST(request: Request) {
 
   const filenames = extractions.map((e) => e.filename);
 
-  const fileListBlock = `# FILES (${filenames.length}개) — 각 row.cells 는 정확히 이 ${filenames.length}개 항목을 이 순서대로 포함해야 합니다\n${filenames
+  const fileListBlock = `# Files (${filenames.length})\n${filenames
     .map((f, i) => `${i + 1}. ${f}`)
     .join('\n')}`;
 
   const dataBlock = extractions
-    .map((e, idx) => {
+    .map((e, fi) => {
       const lines = e.items
         .map(
-          (it, i) =>
-            `  ${i + 1}. Q: ${it.question}\n     summary: ${it.summary}\n     verbatim: ${it.verbatim}`,
+          (it, ii) =>
+            `  [${ii}] Q: ${it.question}\n      A: ${it.summary}`,
         )
         .join('\n');
-      return `## File ${idx + 1}: ${e.filename}\n${lines}`;
+      return `## File ${fi + 1}: ${e.filename}\n${lines}`;
     })
     .join('\n\n---\n\n');
 
-  const userPrompt = `${fileListBlock}\n\n# DATA\n\n${dataBlock}`;
+  const userPrompt = `${fileListBlock}\n\n# Items per file (0-indexed)\n\n${dataBlock}`;
 
-  const result = streamObject({
-    model: anthropic('claude-sonnet-4-6'),
-    schema: interviewMatrixSchema,
-    system: SYSTEM,
-    prompt: userPrompt,
-    temperature: 0.1,
-    onFinish: async ({ object }) => {
-      if (!object) return;
-      const supa = await createClient();
-      const { data: gen } = await supa
-        .from('generations')
-        .insert({
-          org_id: org.org_id,
-          user_id: user.id,
-          feature: 'interviews',
-          input: filenames.join(', '),
-          output: JSON.stringify(object),
-          credits_spent: 3,
-        })
-        .select('id')
-        .single();
-      if (gen) {
-        const spend = await spendCredits(org.org_id, 'interviews', gen.id);
-        if (!spend.ok) {
-          await supa.from('generations').delete().eq('id', gen.id);
-        }
-      }
-    },
+  let aggregate: z.infer<typeof aggregateSchema>;
+  try {
+    const result = await generateObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: aggregateSchema,
+      system: SYSTEM,
+      prompt: userPrompt,
+      temperature: 0.1,
+    });
+    aggregate = result.object;
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'analyze_failed' },
+      { status: 502 },
+    );
+  }
+
+  // Defensive: pad / clamp mappings to the expected shape
+  const Q = aggregate.questions.length;
+  const safeMappings: number[][] = filenames.map((_, fi) => {
+    const row = aggregate.mappings[fi] ?? [];
+    const padded = row.slice(0, Q);
+    while (padded.length < Q) padded.push(-1);
+    return padded;
   });
 
-  return result.toTextStreamResponse();
+  // Build the matrix on the server from the input extractions + index map.
+  const matrix = {
+    questions: aggregate.questions,
+    rows: aggregate.questions.map((question, qIdx) => ({
+      question,
+      cells: extractions.map((ext, fileIdx) => {
+        const itemIdx = safeMappings[fileIdx]?.[qIdx] ?? -1;
+        if (itemIdx < 0 || itemIdx >= ext.items.length) {
+          return { filename: ext.filename, summary: '', voc: '' };
+        }
+        const item = ext.items[itemIdx];
+        return {
+          filename: ext.filename,
+          summary: item.summary,
+          voc: item.verbatim,
+        };
+      }),
+    })),
+  };
+
+  const { data: gen, error: insertErr } = await supabase
+    .from('generations')
+    .insert({
+      org_id: org.org_id,
+      user_id: user.id,
+      feature: 'interviews',
+      input: filenames.join(', '),
+      output: JSON.stringify(matrix),
+      credits_spent: 3,
+    })
+    .select('id')
+    .single();
+  if (insertErr || !gen) {
+    return NextResponse.json({ error: insertErr?.message ?? 'db_error' }, { status: 500 });
+  }
+  const spend = await spendCredits(org.org_id, 'interviews', gen.id);
+  if (!spend.ok) {
+    await supabase.from('generations').delete().eq('id', gen.id);
+    return NextResponse.json({ error: spend.reason }, { status: 402 });
+  }
+
+  return NextResponse.json(matrix);
 }

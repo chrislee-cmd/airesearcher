@@ -9,13 +9,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { parsePartialJson } from 'ai';
 import * as XLSX from 'xlsx';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
-import { interviewMatrixSchema } from '@/lib/interview-schema';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -241,30 +239,48 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const clearThinking = useCallback(() => setThinkingLog([]), []);
 
-  const {
-    object,
-    submit,
-    isLoading: analyzing,
-    error: analyzeStreamError,
-    stop: stopAnalyze,
-  } = useObject({
-    api: '/api/interviews/analyze',
-    schema: interviewMatrixSchema,
-    onFinish: ({ object }) => {
-      if (object) {
-        pushThinking({ type: 'aggregate_done', rows: object.rows.length });
-        // Auto-download both formats once the matrix is finalised.
-        downloadMatrix(object as AnalysisResult, currentFilenamesRef.current);
-      }
-      router.refresh();
-    },
-  });
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const analyzeAbortRef = useRef<AbortController | null>(null);
 
-  const analysis = useMemo<AnalysisResult | null>(
-    () => normalizePartial(object ?? null),
-    [object],
-  );
-  const analyzeError = analyzeStreamError ? analyzeStreamError.message : null;
+  async function submit(payload: {
+    extractions: { filename: string; items: ExtractItem[] }[];
+  }) {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    setAnalysis(null);
+    const ac = new AbortController();
+    analyzeAbortRef.current = ac;
+    try {
+      const res = await fetch('/api/interviews/analyze', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: ac.signal,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setAnalyzeError(json.error ?? 'analyze_failed');
+        return;
+      }
+      const result = normalizePartial(json) ?? { questions: [], rows: [] };
+      setAnalysis(result);
+      pushThinking({ type: 'aggregate_done', rows: result.rows.length });
+      downloadMatrix(result, currentFilenamesRef.current);
+      router.refresh();
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        setAnalyzeError(e instanceof Error ? e.message : 'network_error');
+      }
+    } finally {
+      setAnalyzing(false);
+      analyzeAbortRef.current = null;
+    }
+  }
+  function stopAnalyze() {
+    analyzeAbortRef.current?.abort();
+  }
 
   const queuedCount = items.filter((i) => i.status === 'queued').length;
   const doneCount = items.filter((i) => i.status === 'done').length;
