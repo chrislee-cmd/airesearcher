@@ -7,7 +7,8 @@ export type FeatureKey =
   | 'moderator'
   | 'analyzer'
   | 'desk'
-  | 'keywords';
+  | 'keywords'
+  | 'recruiting';
 
 export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'quotes', href: '/quotes', cost: 1 },
@@ -19,6 +20,7 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'analyzer', href: '/analyzer', cost: 5 },
   { key: 'desk', href: '/desk', cost: 3 },
   { key: 'keywords', href: '/keywords', cost: 2 },
+  { key: 'recruiting', href: '/recruiting', cost: 3 },
 ];
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(

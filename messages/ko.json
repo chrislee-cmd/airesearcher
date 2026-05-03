@@ -26,6 +26,7 @@
     "analyzer": "정성·정량 통합 분석기",
     "desk": "데스크 리서치",
     "keywords": "키워드 크롤링",
+    "recruiting": "리크루팅",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -149,6 +150,11 @@
       "title": "키워드 크롤링",
       "description": "검색 키워드를 입력하면 관련 페이지 상위 결과를 수집하고 헤드라인·요약을 정리합니다.",
       "cost": "2크레딧"
+    },
+    "recruiting": {
+      "title": "리크루팅",
+      "description": "리서치 대상자 모집을 위한 스크리너 문항과 모집 공고문을 생성합니다.",
+      "cost": "3크레딧"
     }
   },
   "Members": {

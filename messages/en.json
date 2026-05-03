@@ -26,6 +26,7 @@
     "analyzer": "Mixed-Methods Analyzer",
     "desk": "Desk Research",
     "keywords": "Keyword Crawling",
+    "recruiting": "Recruiting",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -149,6 +150,11 @@
       "title": "Keyword Crawling",
       "description": "Crawl top results for a keyword and capture their headlines and summaries.",
       "cost": "2 credits"
+    },
+    "recruiting": {
+      "title": "Recruiting",
+      "description": "Generate screener questions and recruitment posts for research participant sourcing.",
+      "cost": "3 credits"
     }
   },
   "Members": {
