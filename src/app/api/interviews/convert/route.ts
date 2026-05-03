@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
+import { tryRegexMarkdown } from '@/lib/markdown-format';
 
 export const maxDuration = 300;
 
@@ -36,11 +37,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'empty_file' }, { status: 400 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
+  // Lazy OpenAI client — only built when the path actually needs it
+  // (audio/video transcription, or LLM markdown fallback).
+  let _openai: OpenAI | null = null;
+  function getOpenAI(): OpenAI {
+    if (_openai) return _openai;
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('missing_openai_key');
+    _openai = new OpenAI({ apiKey });
+    return _openai;
   }
-  const openai = new OpenAI({ apiKey });
 
   let rawText = '';
   let stage = 'classify';
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
     const kind = classifyFile(file);
     if (kind === 'audio' || kind === 'video') {
       stage = 'transcribe';
-      const tx = await openai.audio.transcriptions.create({
+      const tx = await getOpenAI().audio.transcriptions.create({
         file,
         model: 'gpt-4o-mini-transcribe',
         response_format: 'text',
@@ -79,25 +85,35 @@ export async function POST(request: Request) {
   }
 
   // Format raw transcript into structured Markdown.
-  let markdown = '';
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: SYSTEM },
-        {
-          role: 'user',
-          content: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
-        },
-      ],
-    });
-    markdown = completion.choices[0]?.message?.content?.trim() ?? rawText;
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'format_failed' },
-      { status: 502 },
-    );
+  // Fast path: if the text already has consistent speaker labels (M:/R:,
+  // Q:/A:, 진행자:/응답자:, etc.), parse it deterministically — no LLM call.
+  // Fallback: hand to gpt-4o-mini for unstructured transcripts (Whisper output, free-form notes).
+  let markdown: string;
+  let formatPath: 'regex' | 'llm' = 'regex';
+  const regexMd = tryRegexMarkdown(rawText, file.name);
+  if (regexMd) {
+    markdown = regexMd;
+  } else {
+    formatPath = 'llm';
+    try {
+      const completion = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: SYSTEM },
+          {
+            role: 'user',
+            content: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
+          },
+        ],
+      });
+      markdown = completion.choices[0]?.message?.content?.trim() ?? rawText;
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'format_failed', stage: 'format' },
+        { status: 502 },
+      );
+    }
   }
 
   const { data: gen, error: insertErr } = await supabase
@@ -127,5 +143,6 @@ export async function POST(request: Request) {
     markdown,
     filename: file.name,
     generation_id: gen.id,
+    format_path: formatPath,
   });
 }
