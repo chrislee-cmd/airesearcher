@@ -9,6 +9,7 @@ import {
   type ConvItem,
   type ConvStatus,
 } from './interview-job-provider';
+import { ThinkingPanel } from './thinking-panel';
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.csv,.json,.log,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -237,6 +238,8 @@ export function InterviewAnalyzer() {
             <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
           )}
         </div>
+
+        <ThinkingPanel />
 
         {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">

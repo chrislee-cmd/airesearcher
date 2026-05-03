@@ -14,6 +14,8 @@ const Body = z.object({
     'scheduler',
     'moderator',
     'analyzer',
+    'desk',
+    'keywords',
   ]),
   input: z.string().min(1),
 });

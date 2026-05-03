@@ -24,6 +24,8 @@
     "scheduler": "Participant Scheduler",
     "moderator": "AI Moderator",
     "analyzer": "Mixed-Methods Analyzer",
+    "desk": "Desk Research",
+    "keywords": "Keyword Crawling",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -135,6 +137,16 @@
       "title": "Mixed-Methods Analyzer",
       "description": "Combine qualitative and quantitative inputs to surface integrated insights.",
       "cost": "5 credits"
+    },
+    "desk": {
+      "title": "Desk Research",
+      "description": "Generate a desk-research summary from a topic, industry, or keyword set using public sources.",
+      "cost": "3 credits"
+    },
+    "keywords": {
+      "title": "Keyword Crawling",
+      "description": "Crawl top results for a keyword and capture their headlines and summaries.",
+      "cost": "2 credits"
     }
   },
   "Members": {

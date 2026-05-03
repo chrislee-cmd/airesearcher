@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { parsePartialJson } from 'ai';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
@@ -77,6 +78,29 @@ function normalizePartial(obj: unknown): AnalysisResult | null {
   return { questions, rows };
 }
 
+export type ThinkingEvent =
+  | { id: string; type: 'reading'; filename: string; chars: number; ts: number }
+  | { id: string; type: 'snippet'; filename: string; text: string; ts: number }
+  | {
+      id: string;
+      type: 'item';
+      filename: string;
+      question: string;
+      summary: string;
+      verbatim: string;
+      ts: number;
+    }
+  | {
+      id: string;
+      type: 'complete';
+      filename: string;
+      total: number;
+      invalid: number;
+      ts: number;
+    }
+  | { id: string; type: 'aggregate_start'; ts: number }
+  | { id: string; type: 'aggregate_done'; rows: number; ts: number };
+
 type Ctx = {
   items: ConvItem[];
   filenameOrder: string[];
@@ -88,6 +112,8 @@ type Ctx = {
   analyzeError: string | null;
   // Whether any background work is in flight — drives the topbar pill.
   isWorking: boolean;
+  thinkingLog: ThinkingEvent[];
+  clearThinking: () => void;
   addFiles: (files: FileList | File[]) => void;
   remove: (id: string) => void;
   clear: () => void;
@@ -113,6 +139,30 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const [items, setItems] = useState<ConvItem[]>([]);
   const [convertingAll, setConvertingAll] = useState(false);
+  const [thinkingLog, setThinkingLog] = useState<ThinkingEvent[]>([]);
+
+  type DistributiveOmit<T, K extends keyof T> = T extends T
+    ? Omit<T, K>
+    : never;
+  type ThinkingEventInput = DistributiveOmit<ThinkingEvent, 'id' | 'ts'>;
+
+  const pushThinking = useCallback((evt: ThinkingEventInput) => {
+    setThinkingLog((prev) =>
+      [
+        ...prev,
+        {
+          ...evt,
+          id:
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`,
+          ts: Date.now(),
+        } as ThinkingEvent,
+      ].slice(-300),
+    );
+  }, []);
+
+  const clearThinking = useCallback(() => setThinkingLog([]), []);
 
   const {
     object,
@@ -123,7 +173,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   } = useObject({
     api: '/api/interviews/analyze',
     schema: interviewMatrixSchema,
-    onFinish: () => router.refresh(),
+    onFinish: ({ object }) => {
+      if (object) {
+        pushThinking({ type: 'aggregate_done', rows: object.rows.length });
+      }
+      router.refresh();
+    },
   });
 
   const analysis = useMemo<AnalysisResult | null>(
@@ -242,6 +297,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   ): Promise<ExtractItem[] | null> {
     const target = snapshot.find((i) => i.id === id);
     if (!target?.markdown) return null;
+
     setItems((prev) =>
       prev.map((i) =>
         i.id === id
@@ -249,6 +305,21 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           : i,
       ),
     );
+
+    pushThinking({
+      type: 'reading',
+      filename: target.file.name,
+      chars: target.markdown.length,
+    });
+    // Surface a real snippet from the file so the user can see *what*
+    // the model is reading, not just an abstract status.
+    const snippet = target.markdown.replace(/\s+/g, ' ').trim().slice(0, 220);
+    if (snippet) {
+      pushThinking({ type: 'snippet', filename: target.file.name, text: snippet });
+    }
+
+    let liveItems: ExtractItem[] = [];
+
     try {
       const res = await fetch('/api/interviews/extract', {
         method: 'POST',
@@ -258,36 +329,67 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           markdown: target.markdown,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = errBody.error ?? res.statusText ?? 'extract_failed';
         setItems((prev) =>
           prev.map((i) =>
-            i.id === id
-              ? {
-                  ...i,
-                  extractStatus: 'error',
-                  extractError: json.error ?? res.statusText,
-                }
-              : i,
+            i.id === id ? { ...i, extractStatus: 'error', extractError: msg } : i,
           ),
         );
         return null;
       }
-      const next: ExtractItem[] = json.items ?? [];
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? {
-                ...i,
-                extractStatus: 'done',
-                extractItems: next,
-                extractInvalid: json.verbatim_invalid,
-                extractTotal: json.verbatim_total,
-              }
-            : i,
-        ),
-      );
-      return next;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let emitted = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parsed = await parsePartialJson(buffer);
+        if (!parsed.value || typeof parsed.value !== 'object') continue;
+        const itemsField = (parsed.value as { items?: unknown }).items;
+        if (!Array.isArray(itemsField)) continue;
+
+        const complete: ExtractItem[] = [];
+        for (const it of itemsField) {
+          if (!it || typeof it !== 'object') continue;
+          const ii = it as Record<string, unknown>;
+          if (
+            typeof ii.question === 'string' &&
+            typeof ii.summary === 'string' &&
+            typeof ii.verbatim === 'string'
+          ) {
+            complete.push({
+              question: ii.question,
+              summary: ii.summary,
+              verbatim: ii.verbatim,
+            });
+          }
+        }
+        liveItems = complete;
+        while (emitted < complete.length) {
+          const it = complete[emitted];
+          pushThinking({
+            type: 'item',
+            filename: target.file.name,
+            question: it.question,
+            summary: it.summary,
+            verbatim: it.verbatim,
+          });
+          emitted += 1;
+        }
+        // Mid-stream UI: progressively expose how many items are in so far.
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, extractTotal: complete.length } : i,
+          ),
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'network_error';
       setItems((prev) =>
@@ -297,6 +399,42 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       );
       return null;
     }
+
+    // Verify each verbatim is actually present in the source markdown
+    // (whitespace-normalised substring match). The check moved client-side
+    // because the server now streams unverified rows for the live panel.
+    const normSrc = target.markdown.replace(/\s+/g, ' ').trim();
+    let invalid = 0;
+    const verified: ExtractItem[] = liveItems.map((it) => {
+      const v = (it.verbatim ?? '').trim();
+      if (!v) return { ...it, verbatim: '' };
+      const normV = v.replace(/\s+/g, ' ').trim();
+      if (normSrc.includes(normV)) return it;
+      invalid += 1;
+      return { ...it, verbatim: '' };
+    });
+
+    pushThinking({
+      type: 'complete',
+      filename: target.file.name,
+      total: liveItems.length,
+      invalid,
+    });
+
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              extractStatus: 'done',
+              extractItems: verified,
+              extractInvalid: invalid,
+              extractTotal: liveItems.length,
+            }
+          : i,
+      ),
+    );
+    return verified;
   }
 
   function startConvertAll() {
@@ -322,6 +460,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   function startAnalyze() {
     requireAuth(() => {
       track('interview_analyze_start', { fileCount: filenameOrder.length });
+      setThinkingLog([]);
       void runAnalyzePipeline();
     });
   }
@@ -340,6 +479,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     }
     if (extractions.length === 0) return;
 
+    pushThinking({ type: 'aggregate_start' });
     submit({ extractions });
   }
 
@@ -353,6 +493,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     analysis,
     analyzeError,
     isWorking,
+    thinkingLog,
+    clearThinking,
     addFiles,
     remove,
     clear,
