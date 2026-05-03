@@ -1,5 +1,10 @@
 import mammoth from 'mammoth';
 
+type HwpChar = { type: number; value: string | number };
+type HwpParagraph = { content?: HwpChar[] };
+type HwpSection = { content?: HwpParagraph[] };
+type HwpDoc = { sections?: HwpSection[] };
+
 export type FileKind =
   | 'audio'
   | 'video'
@@ -52,13 +57,17 @@ export async function extractDocText(file: File): Promise<string> {
 }
 
 async function extractHwpText(buffer: ArrayBuffer): Promise<string> {
-  // hwp.js is CJS-only and parses HWP 5.x binary files into a tree of
-  // sections → paragraphs → HWPChar nodes. CharType.Char (0) holds the
-  // actual rendered character; Inline / Extended chars are control codes
-  // we can ignore for plain-text extraction.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const hwp = require('hwp.js');
-  const doc = hwp.parse(new Uint8Array(buffer), { type: 'array' });
+  // hwp.js is CJS-only. Use dynamic import so Next.js bundles it on the
+  // server runtime without trying to bring it into the browser bundle.
+  // The package parses HWP 5.x binary files into sections → paragraphs →
+  // HWPChar nodes; CharType.Char (0) holds the rendered character.
+  const mod = (await import('hwp.js')) as unknown as {
+    parse?: (data: Uint8Array, opts?: unknown) => HwpDoc;
+    default?: { parse: (data: Uint8Array, opts?: unknown) => HwpDoc };
+  };
+  const parse = mod.parse ?? mod.default?.parse;
+  if (!parse) throw new Error('hwp_parser_missing');
+  const doc = parse(new Uint8Array(buffer), { type: 'array' });
 
   const lines: string[] = [];
   for (const section of doc.sections ?? []) {

@@ -43,9 +43,11 @@ export async function POST(request: Request) {
   const openai = new OpenAI({ apiKey });
 
   let rawText = '';
+  let stage = 'classify';
   try {
     const kind = classifyFile(file);
     if (kind === 'audio' || kind === 'video') {
+      stage = 'transcribe';
       const tx = await openai.audio.transcriptions.create({
         file,
         model: 'gpt-4o-mini-transcribe',
@@ -58,11 +60,20 @@ export async function POST(request: Request) {
         { status: 415 },
       );
     } else {
+      stage = `extract_${kind}`;
       rawText = await extractDocText(file);
     }
+    if (!rawText.trim()) {
+      return NextResponse.json(
+        { error: 'no_text_extracted', stage, name: file.name },
+        { status: 422 },
+      );
+    }
   } catch (e) {
+    const err = e instanceof Error ? e : new Error('extraction_failed');
+    console.error('[interviews/convert] stage=%s name=%s', stage, file.name, err);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'extraction_failed' },
+      { error: err.message, stage, name: file.name, mime: file.type },
       { status: 502 },
     );
   }
