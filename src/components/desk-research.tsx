@@ -1,17 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
-import { DESK_SOURCES, type DeskArticle, type DeskSourceId } from '@/lib/desk-sources';
+import {
+  DESK_SOURCES,
+  DESK_SOURCE_GROUPS,
+  type DeskArticle,
+  type DeskSourceGroup,
+  type DeskSourceId,
+} from '@/lib/desk-sources';
+
+type Skipped = { source: DeskSourceId; missing: string };
 
 type DeskResponse = {
   output: string;
   generation_id: string;
   similar_keywords: string[];
   articles: DeskArticle[];
+  skipped?: Skipped[];
 };
+
+const GROUP_ORDER: DeskSourceGroup[] = ['naver', 'kakao', 'youtube', 'global'];
 
 export function DeskResearch() {
   const t = useTranslations('Features');
@@ -22,17 +33,37 @@ export function DeskResearch() {
 
   const [keyword, setKeyword] = useState('');
   const [selected, setSelected] = useState<Set<DeskSourceId>>(
-    new Set<DeskSourceId>(['google_news']),
+    new Set<DeskSourceId>(['naver_news', 'naver_blog', 'google_news']),
   );
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DeskResponse | null>(null);
 
-  function toggleSource(id: DeskSourceId) {
+  const grouped = useMemo(() => {
+    const map = new Map<DeskSourceGroup, typeof DESK_SOURCES>();
+    for (const g of GROUP_ORDER) map.set(g, []);
+    for (const s of DESK_SOURCES) map.get(s.group)!.push(s);
+    return map;
+  }, []);
+
+  function toggle(id: DeskSourceId) {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleGroup(group: DeskSourceGroup) {
+    const ids = DESK_SOURCES.filter((s) => s.group === group).map((s) => s.id);
+    const allOn = ids.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (allOn) next.delete(id);
+        else next.add(id);
+      }
       return next;
     });
   }
@@ -71,6 +102,7 @@ export function DeskResearch() {
   }
 
   const canRun = !running && keyword.trim().length > 0 && selected.size > 0;
+  const isEn = locale === 'en';
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
@@ -86,7 +118,6 @@ export function DeskResearch() {
         {t('desk.description')}
       </p>
 
-      {/* Keyword input */}
       <section className="mt-8">
         <label
           className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore"
@@ -103,42 +134,68 @@ export function DeskResearch() {
         />
       </section>
 
-      {/* Source picker */}
       <section className="mt-8">
         <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
           {tDesk('sourcesLabel')}
         </span>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {DESK_SOURCES.map((s) => {
-            const checked = selected.has(s.id);
+        <div className="mt-3 space-y-5">
+          {GROUP_ORDER.map((g) => {
+            const meta = DESK_SOURCE_GROUPS[g];
+            const items = grouped.get(g) ?? [];
+            const allOn = items.every((s) => selected.has(s.id));
             return (
-              <label
-                key={s.id}
-                className={`flex cursor-pointer items-start gap-3 border p-3 transition-colors [border-radius:4px] ${
-                  checked
-                    ? 'border-amore bg-amore-bg'
-                    : 'border-line bg-paper hover:bg-paper-soft'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleSource(s.id)}
-                  className="mt-[2px] accent-amore"
-                />
-                <span>
-                  <span className="block text-[13px] font-semibold text-ink-2">
-                    {locale === 'en' ? s.labelEn : s.label}
-                  </span>
-                  <span className="mt-0.5 block text-[11.5px] text-mute">{s.hint}</span>
-                </span>
-              </label>
+              <div key={g} className="border border-line bg-paper [border-radius:4px]">
+                <div className="flex items-center justify-between border-b border-line px-3 py-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[13px] font-semibold text-ink-2">
+                      {isEn ? meta.labelEn : meta.label}
+                    </span>
+                    <span className="text-[10.5px] text-mute-soft">{meta.hint}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g)}
+                    className="text-[10.5px] uppercase tracking-[.18em] text-mute hover:text-amore"
+                  >
+                    {allOn ? tDesk('groupNone') : tDesk('groupAll')}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {items.map((s) => {
+                    const checked = selected.has(s.id);
+                    return (
+                      <label
+                        key={s.id}
+                        className={`flex cursor-pointer items-start gap-2.5 border p-2.5 transition-colors [border-radius:4px] ${
+                          checked
+                            ? 'border-amore bg-amore-bg'
+                            : 'border-line bg-paper hover:bg-paper-soft'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggle(s.id)}
+                          className="mt-[2px] accent-amore"
+                        />
+                        <span>
+                          <span className="block text-[12.5px] font-semibold text-ink-2">
+                            {isEn ? s.labelEn : s.label}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-mute">
+                            {s.hint}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
       </section>
 
-      {/* Run */}
       <div className="mt-6 flex items-center justify-end gap-3">
         <span className="text-[11px] tabular-nums text-mute-soft">
           {selected.size} {tDesk('sourcesUnit')}
@@ -160,6 +217,19 @@ export function DeskResearch() {
 
       {data && (
         <>
+          {data.skipped && data.skipped.length > 0 && (
+            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 [border-radius:4px]">
+              <div className="font-semibold">{tDesk('skippedTitle')}</div>
+              <ul className="mt-1.5 space-y-0.5 font-mono text-[11.5px] text-mute">
+                {data.skipped.map((s) => (
+                  <li key={s.source}>
+                    · {s.source} — {s.missing}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {data.similar_keywords.length > 0 && (
             <section className="mt-10">
               <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
@@ -194,7 +264,7 @@ export function DeskResearch() {
               </h2>
               <ul className="mt-3 divide-y divide-line border border-line bg-paper [border-radius:4px]">
                 {data.articles.map((a) => (
-                  <li key={a.url} className="px-4 py-3">
+                  <li key={`${a.source}-${a.url}`} className="px-4 py-3">
                     <a
                       href={a.url}
                       target="_blank"
