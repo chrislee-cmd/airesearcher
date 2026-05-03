@@ -77,16 +77,10 @@ function EventLine({ evt }: { evt: ThinkingEvent }) {
             <span className="mr-2 text-amore">Q.</span>
             {evt.question}
           </div>
-          {evt.summary && (
-            <div className="ml-6 text-mute">
-              <span className="mr-2 text-mute-soft">발췌:</span>
-              {evt.summary}
-            </div>
-          )}
-          {evt.verbatim && (
-            <div className="ml-6 italic text-mute-soft">
-              <span className="not-italic mr-2 text-mute-soft">verbatim:</span>“
-              {evt.verbatim}”
+          {evt.voc && (
+            <div className="ml-6 italic text-mute">
+              <span className="not-italic mr-2 text-mute-soft">VOC:</span>“
+              {evt.voc}”
             </div>
           )}
         </div>

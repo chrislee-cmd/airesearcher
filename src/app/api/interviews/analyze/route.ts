@@ -16,8 +16,7 @@ const Body = z.object({
         items: z.array(
           z.object({
             question: z.string(),
-            summary: z.string(),
-            verbatim: z.string(),
+            voc: z.string(),
           }),
         ),
       }),
@@ -40,7 +39,7 @@ const aggregateSchema = z.object({
   mappings: z.array(z.array(z.number().int())),
 });
 
-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 항목들을 받아 두 가지를 결정합니다:
+const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / VOC) 항목들을 받아 두 가지를 결정합니다:
 
 1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록. 한 파일에서만 나온 질문도 포함. 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
 
@@ -90,7 +89,7 @@ export async function POST(request: Request) {
       const lines = e.items
         .map(
           (it, ii) =>
-            `  [${ii}] Q: ${it.question}\n      A: ${it.summary}`,
+            `  [${ii}] Q: ${it.question}\n      VOC: ${it.voc}`,
         )
         .join('\n');
       return `## File ${fi + 1}: ${e.filename}\n${lines}`;
@@ -133,14 +132,9 @@ export async function POST(request: Request) {
       cells: extractions.map((ext, fileIdx) => {
         const itemIdx = safeMappings[fileIdx]?.[qIdx] ?? -1;
         if (itemIdx < 0 || itemIdx >= ext.items.length) {
-          return { filename: ext.filename, summary: '', voc: '' };
+          return { filename: ext.filename, voc: '' };
         }
-        const item = ext.items[itemIdx];
-        return {
-          filename: ext.filename,
-          summary: item.summary,
-          voc: item.verbatim,
-        };
+        return { filename: ext.filename, voc: ext.items[itemIdx].voc };
       }),
     })),
   };

@@ -153,7 +153,7 @@ export function InterviewAnalyzer() {
         </h2>
         <p className="mt-1 text-[12px] text-mute">{t('stage2Help')}</p>
         <p className="mt-1 text-[11.5px] text-mute-soft">
-          파일별로 (질문 / 요약 / verbatim) 추출 → 표준 문항으로 묶어 표 정리. VOC는 원문에 실제 존재하는 문장만 통과합니다.
+          파일별로 (질문 / VOC 인용구) 추출 → 표준 문항으로 묶어 표 정리. 셀 내용은 원문에 실제 존재하는 응답자 발화만 통과합니다.
         </p>
 
         <div className="mt-4 flex items-center gap-3">
@@ -365,13 +365,8 @@ function ResultTable({
                       key={f}
                       className="border-l border-line px-4 py-3 align-top"
                     >
-                      {c?.summary && (
-                        <div className="text-mute">{c.summary}</div>
-                      )}
                       {c?.voc && (
-                        <div className="mt-2 italic text-mute-soft">
-                          “{c.voc}”
-                        </div>
+                        <div className="italic text-mute">“{c.voc}”</div>
                       )}
                     </td>
                   );
