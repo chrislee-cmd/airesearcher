@@ -27,20 +27,37 @@ const Body = z.object({
     .max(20),
 });
 
-const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 데이터를 받아 다음을 수행하세요:
+const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / 요약 / verbatim) 데이터를 받아 행렬을 채우세요.
 
-1) **표준 문항 만들기**
-   - 모든 파일에 등장한 질문들의 합집합을 만든 뒤, 표현만 다른 동일 의도의 질문은 하나의 표준 문항으로 통합하세요.
-   - 한 파일에서만 나온 질문도 포함합니다.
-   - 인터뷰 진행 순서를 최대한 유지하세요.
+# 입력
+사용자 메시지 상단에 \`# FILES (N개)\` 섹션이 나오고, 그 뒤에 각 파일별 추출 데이터가 옵니다.
 
-2) **셀 채우기**
-   - 각 표준 문항에 대해 입력된 모든 파일을 순회하면서, 그 파일의 항목 중 표준 문항과 매칭되는 것을 찾아 \`summary\` 와 \`voc\`를 그대로 옮기세요.
-     - "voc" 필드에는 입력의 \`verbatim\` 문자열을 **글자 그대로** 옮기세요. 변경·번역·요약 금지.
-     - 매칭되는 항목이 없으면 summary와 voc 모두 빈 문자열.
-   - 같은 파일에 매칭 후보가 여러 개라면 가장 직접적으로 답한 항목 하나를 선택.
+# 출력 — JSON 스키마를 정확히 따르세요
+{
+  "questions": [string],     // 표준 문항 목록, 인터뷰 진행 순서대로
+  "rows": [
+    {
+      "question": string,    // questions[] 의 한 항목
+      "cells": [             // *반드시* 입력 파일 개수(N)와 같은 길이
+        { "filename": string, "summary": string, "voc": string }
+      ]
+    }
+  ]
+}
 
-3) 한국어로 작성. 출력은 정의된 JSON 스키마만, 그 외 텍스트 금지.`;
+# 절대 규칙 — 어떤 경우에도 어기지 말 것
+1. **\`rows\`는 비울 수 없다.** \`questions\`에 들어간 모든 표준 문항은 \`rows\`에도 같은 순서로 등장해야 한다.
+2. **각 \`row.cells\`의 길이는 입력 파일 개수와 정확히 같다.** 파일 리스트의 모든 filename에 대해 cell이 하나씩 존재해야 하며, 순서도 입력 파일 순서를 따른다.
+3. **\`cell.filename\`은 입력 파일 리스트의 정확한 문자열 중 하나여야 한다.** 임의 변형 금지.
+4. **\`cell.summary\` / \`cell.voc\`는 입력 데이터의 해당 항목에서 글자 그대로 복사한다.** 번역·요약·재작성 금지.
+5. **매칭되는 항목이 없는 cell은 빈 문자열 두 개**(\`summary: ""\`, \`voc: ""\`)이지만, **filename은 비울 수 없다** — 매칭 없어도 cell은 반드시 존재해야 한다.
+
+# 절차
+1) 각 파일의 모든 질문을 모은 뒤, 의미가 거의 동일한 질문은 하나의 표준 문항으로 묶는다.
+2) 표준 문항 목록을 \`questions\`에 인터뷰 흐름 순서대로 채운다.
+3) 표준 문항마다 \`row\`를 만들고, 입력 파일 리스트 순서대로 모든 파일의 cell을 채운다.
+
+한국어로 작성. JSON 외 텍스트 금지.`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -69,7 +86,13 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
-  const userPrompt = extractions
+  const filenames = extractions.map((e) => e.filename);
+
+  const fileListBlock = `# FILES (${filenames.length}개) — 각 row.cells 는 정확히 이 ${filenames.length}개 항목을 이 순서대로 포함해야 합니다\n${filenames
+    .map((f, i) => `${i + 1}. ${f}`)
+    .join('\n')}`;
+
+  const dataBlock = extractions
     .map((e, idx) => {
       const lines = e.items
         .map(
@@ -81,7 +104,7 @@ export async function POST(request: Request) {
     })
     .join('\n\n---\n\n');
 
-  const filenames = extractions.map((e) => e.filename);
+  const userPrompt = `${fileListBlock}\n\n# DATA\n\n${dataBlock}`;
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),

@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -209,6 +210,13 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   // Captured at submit() time so the useObject onFinish callback (which
   // runs in a stale closure scope) still knows which files to label.
   const currentFilenamesRef = useRef<string[]>([]);
+  // Mirror of `items` for code paths that run inside async closures
+  // (extractOne / runAnalyzePipeline) where the state captured at call
+  // time would otherwise be stale and miss freshly-converted files.
+  const itemsRef = useRef<ConvItem[]>(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   type DistributiveOmit<T, K extends keyof T> = T extends T
     ? Omit<T, K>
@@ -517,17 +525,23 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   async function runConvertAll() {
     if (convertingAll) return;
     setConvertingAll(true);
-    const snapshot = items;
-    const queue = snapshot
+    const initial = itemsRef.current;
+    const queue = initial
       .filter((i) => i.status === 'queued')
       .map((i) => i.id);
     for (const id of queue) {
-      await convertOne(id, snapshot);
+      // Pass the *current* items each iteration so convertOne always
+      // sees the latest File reference (in case anyone removed/added).
+      await convertOne(id, itemsRef.current);
     }
     setConvertingAll(false);
     router.refresh();
     // Auto-chain into Pass A → Pass B once conversion finishes.
-    track('interview_analyze_start', { fileCount: filenameOrder.length });
+    const ready = itemsRef.current.filter(
+      (i) => i.status === 'done' && i.markdown,
+    );
+    if (ready.length === 0) return;
+    track('interview_analyze_start', { fileCount: ready.length });
     setThinkingLog([]);
     void runAnalyzePipeline();
   }
@@ -541,13 +555,14 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   }
 
   async function runAnalyzePipeline() {
-    const snapshot = items;
-    const ready = snapshot.filter((i) => i.status === 'done' && i.markdown);
+    const ready = itemsRef.current.filter(
+      (i) => i.status === 'done' && i.markdown,
+    );
     if (ready.length === 0) return;
 
     const extractions: { filename: string; items: ExtractItem[] }[] = [];
     for (const file of ready) {
-      const extracted = await extractOne(file.id, snapshot);
+      const extracted = await extractOne(file.id, itemsRef.current);
       if (extracted) {
         extractions.push({ filename: file.file.name, items: extracted });
       }
