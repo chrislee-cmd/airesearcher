@@ -15,6 +15,14 @@ const ACCEPT =
 
 type ConvStatus = 'queued' | 'converting' | 'done' | 'error';
 
+type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
+
+type ExtractItem = {
+  question: string;
+  summary: string;
+  verbatim: string;
+};
+
 type ConvItem = {
   id: string;
   file: File;
@@ -25,6 +33,11 @@ type ConvItem = {
   inputChars?: number;
   outputChars?: number;
   formatPath?: 'regex' | 'llm';
+  extractStatus?: ExtractStatus;
+  extractItems?: ExtractItem[];
+  extractInvalid?: number;
+  extractTotal?: number;
+  extractError?: string;
 };
 
 type AnalysisRow = {
@@ -235,12 +248,87 @@ export function InterviewAnalyzer() {
   function startAnalyze() {
     requireAuth(() => {
       track('interview_analyze_start', { fileCount: filenameOrder.length });
-      submit({
-        files: items
-          .filter((i) => i.status === 'done' && i.markdown)
-          .map((i) => ({ filename: i.file.name, markdown: i.markdown! })),
-      });
+      void runAnalyzePipeline();
     });
+  }
+
+  async function extractOne(id: string): Promise<ExtractItem[] | null> {
+    const target = items.find((i) => i.id === id);
+    if (!target?.markdown) return null;
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === id
+          ? { ...i, extractStatus: 'extracting', extractError: undefined }
+          : i,
+      ),
+    );
+    try {
+      const res = await fetch('/api/interviews/extract', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          filename: target.file.name,
+          markdown: target.markdown,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === id
+              ? {
+                  ...i,
+                  extractStatus: 'error',
+                  extractError: json.error ?? res.statusText,
+                }
+              : i,
+          ),
+        );
+        return null;
+      }
+      const next: ExtractItem[] = json.items ?? [];
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                extractStatus: 'done',
+                extractItems: next,
+                extractInvalid: json.verbatim_invalid,
+                extractTotal: json.verbatim_total,
+              }
+            : i,
+        ),
+      );
+      return next;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'network_error';
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id ? { ...i, extractStatus: 'error', extractError: msg } : i,
+        ),
+      );
+      return null;
+    }
+  }
+
+  async function runAnalyzePipeline() {
+    const ready = items.filter((i) => i.status === 'done' && i.markdown);
+    if (ready.length === 0) return;
+
+    // Pass A: per-file extraction (sequential — keeps things deterministic
+    // and the per-file status pills update one at a time for clarity).
+    const extractions: { filename: string; items: ExtractItem[] }[] = [];
+    for (const file of ready) {
+      const extracted = await extractOne(file.id);
+      if (extracted) {
+        extractions.push({ filename: file.file.name, items: extracted });
+      }
+    }
+    if (extractions.length === 0) return;
+
+    // Pass B: stream the cross-file matrix from the per-file extractions.
+    submit({ extractions });
   }
 
   function buildMatrix(result: AnalysisResult): string[][] {
@@ -394,6 +482,9 @@ export function InterviewAnalyzer() {
           {t('stage2Title')}
         </h2>
         <p className="mt-1 text-[12px] text-mute">{t('stage2Help')}</p>
+        <p className="mt-1 text-[11.5px] text-mute-soft">
+          파일별로 (질문 / 요약 / verbatim) 추출 → 표준 문항으로 묶어 표 정리. VOC는 원문에 실제 존재하는 문장만 통과합니다.
+        </p>
 
         <div className="mt-4 flex items-center gap-3">
           <button
@@ -502,6 +593,30 @@ function ConvRow({
                   path={item.formatPath}
                 />
               )}
+            {item.extractStatus === 'extracting' && (
+              <span className="text-amore uppercase tracking-[0.22em] text-[10px] font-semibold">
+                추출 중
+              </span>
+            )}
+            {item.extractStatus === 'done' &&
+              item.extractTotal !== undefined && (
+                <span
+                  className={
+                    (item.extractInvalid ?? 0) > 0 ? 'text-warning' : 'text-amore'
+                  }
+                  title={
+                    (item.extractInvalid ?? 0) > 0
+                      ? `${item.extractInvalid}/${item.extractTotal}개 verbatim이 원문과 일치하지 않아 비워졌습니다.`
+                      : '모든 verbatim이 원문에서 검증되었습니다.'
+                  }
+                >
+                  Q {item.extractTotal} ·{' '}
+                  {item.extractTotal - (item.extractInvalid ?? 0)} verbatim
+                </span>
+              )}
+            {item.extractStatus === 'error' && item.extractError && (
+              <span className="text-warning">{item.extractError}</span>
+            )}
             {item.error && (
               <span className="text-warning">
                 {item.error === 'fileTooLarge' ? tUp('fileTooLarge') : item.error}
