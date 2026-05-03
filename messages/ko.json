@@ -157,6 +157,17 @@
       "cost": "3크레딧"
     }
   },
+  "Desk": {
+    "keywordLabel": "키워드",
+    "keywordPlaceholder": "예: 생성형 AI 마케팅, 1인 가구 식료품 소비",
+    "sourcesLabel": "수집 소스",
+    "sourcesUnit": "개 선택",
+    "search": "검색",
+    "error": "오류",
+    "similarKeywords": "확장된 유사 키워드",
+    "reportTitle": "요약 보고서",
+    "collected": "수집된 기사"
+  },
   "Members": {
     "title": "멤버 관리",
     "invite": "멤버 초대",
