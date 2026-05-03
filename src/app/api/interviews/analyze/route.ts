@@ -21,12 +21,20 @@ const Body = z.object({
 
 const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다.
 여러 인터뷰 마크다운 노트를 입력 받아 다음을 수행합니다:
-1) 모든 인터뷰에서 일관되게 다루어진 "기준 문항" 목록을 추출합니다. 비슷한 의도의 질문은 하나의 표준 문항으로 통합합니다.
-2) 각 기준 문항에 대해, 입력된 파일별로:
-   - "summary" — 해당 응답자의 답을 1~2문장으로 요약 (사실만, 평가 금지)
-   - "voc" — 응답자의 발언을 그대로 옮긴 한 줄 인용구 (Voice of Customer). 큰따옴표는 포함하지 마세요.
-3) 한 응답자가 해당 문항에 답하지 않았다면 summary와 voc 모두 빈 문자열로 둡니다.
-출력은 정의된 JSON 스키마를 정확히 따르고, 그 외 텍스트는 포함하지 마세요. 한국어로 작성하세요.`;
+
+1) **질문 추출** — 입력된 모든 인터뷰에서 진행자(Moderator/M/진행자/면접관)가 던진 모든 질문을 빠짐없이 수집하세요.
+   - 단 한 인터뷰에서만 나온 질문도 포함합니다. "공통이 아니어도" 모두 포함.
+   - 의미가 거의 동일한 질문(표현만 다른 같은 의도)은 하나의 표준 문항으로 묶으세요.
+   - 너무 사소한 후속 확인성 질문("그래요?", "맞나요?")은 제외합니다.
+   - 일반적으로 결과는 10~40개 사이의 표준 문항이 됩니다. 1~2개로 줄이지 마세요.
+   - 문항 순서는 인터뷰 진행 순서를 최대한 따릅니다.
+
+2) **답변 정리** — 각 표준 문항에 대해, 입력된 파일별로:
+   - "summary" — 응답자의 답을 1~2문장으로 사실 위주 요약. 평가·해석 금지.
+   - "voc" — 응답자가 실제로 한 말을 그대로 옮긴 한 줄 인용구 (Voice of Customer). 큰따옴표는 포함하지 마세요.
+   - 한 응답자가 그 문항에 답하지 않았으면 summary와 voc 모두 빈 문자열.
+
+3) 출력은 정의된 JSON 스키마를 정확히 따르고, 그 외 텍스트는 포함하지 마세요. 한국어로 작성하세요.`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -46,10 +54,13 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
   const openai = new OpenAI({ apiKey });
 
+  // Allocate ~120k chars total across files so we stay under gpt-4o-mini's
+  // 128k token context. Each file gets a fair share, capped at 50k chars.
+  const perFileBudget = Math.min(50000, Math.floor(120000 / files.length));
   const userPrompt = files
     .map(
       (f, idx) =>
-        `## File ${idx + 1}: ${f.filename}\n\n${f.markdown.slice(0, 12000)}`,
+        `## File ${idx + 1}: ${f.filename}\n\n${f.markdown.slice(0, perFileBudget)}`,
     )
     .join('\n\n---\n\n');
 
@@ -62,6 +73,7 @@ export async function POST(request: Request) {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.2,
+      max_tokens: 16384,
       response_format: {
         type: 'json_schema',
         json_schema: {

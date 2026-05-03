@@ -227,14 +227,18 @@ export function InterviewAnalyzer() {
   }
 
   function buildMatrix(result: AnalysisResult): string[][] {
-    const header = [t('question'), ...filenameOrder.flatMap((f) => [`${f} — ${t('summary')}`, `${f} — ${t('voc')}`])];
+    const header = [t('question'), ...filenameOrder];
     const rows = result.rows.map((row) => {
       const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
       return [
         row.question,
-        ...filenameOrder.flatMap((f) => {
+        ...filenameOrder.map((f) => {
           const c = cellsByFile.get(f);
-          return [c?.summary ?? '', c?.voc ?? ''];
+          if (!c) return '';
+          const parts: string[] = [];
+          if (c.summary) parts.push(c.summary);
+          if (c.voc) parts.push(`"${c.voc}"`);
+          return parts.join('\n\n');
         }),
       ];
     });
@@ -516,29 +520,11 @@ function ResultTable({
             {filenames.map((f) => (
               <th
                 key={f}
-                colSpan={2}
-                className="border-l border-line px-4 py-2 text-left text-[10.5px] uppercase tracking-[0.18em] text-mute-soft"
+                className="border-l border-line px-4 py-3 text-left text-[10.5px] tracking-[0.05em]"
               >
                 <div className="truncate font-semibold text-ink-2">{f}</div>
               </th>
             ))}
-          </tr>
-          <tr className="border-t border-line-soft">
-            <th className="sticky left-0 z-10 bg-paper-soft" />
-            {filenames.flatMap((f) => [
-              <th
-                key={`${f}-s`}
-                className="border-l border-line px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft"
-              >
-                {t('summary')}
-              </th>,
-              <th
-                key={`${f}-v`}
-                className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft"
-              >
-                {t('voc')}
-              </th>,
-            ])}
           </tr>
         </thead>
         <tbody>
@@ -549,19 +535,23 @@ function ResultTable({
                 <td className="sticky left-0 z-10 bg-paper px-4 py-3 font-medium text-ink-2">
                   {row.question}
                 </td>
-                {filenames.flatMap((f) => {
+                {filenames.map((f) => {
                   const c = cellsByFile.get(f);
-                  return [
+                  return (
                     <td
-                      key={`${f}-s`}
-                      className="border-l border-line px-4 py-3 text-mute"
+                      key={f}
+                      className="border-l border-line px-4 py-3 align-top"
                     >
-                      {c?.summary ?? ''}
-                    </td>,
-                    <td key={`${f}-v`} className="px-4 py-3 italic text-mute">
-                      {c?.voc ? `“${c.voc}”` : ''}
-                    </td>,
-                  ];
+                      {c?.summary && (
+                        <div className="text-mute">{c.summary}</div>
+                      )}
+                      {c?.voc && (
+                        <div className="mt-2 italic text-mute-soft">
+                          “{c.voc}”
+                        </div>
+                      )}
+                    </td>
+                  );
                 })}
               </tr>
             );
