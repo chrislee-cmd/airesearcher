@@ -33,8 +33,10 @@ type Ctx = {
     },
   ) => WorkspaceArtifact;
   removeArtifact: (id: string) => void;
+  removeArtifacts: (ids: string[]) => void;
   clearAll: () => void;
   sendTo: (artifactId: string, target: FeatureKey) => string | null;
+  sendMany: (artifactIds: string[], target: FeatureKey) => string | null;
   targetsFor: (source: FeatureKey) => FeatureKey[];
   // Drag state — set by WorkspacePanel when an artifact starts dragging,
   // read by Sidebar to highlight compatible drop targets.
@@ -112,6 +114,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setArtifacts((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  const removeArtifacts = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const set = new Set(ids);
+    setArtifacts((prev) => prev.filter((a) => !set.has(a.id)));
+  }, []);
+
   const clearAll = useCallback(() => setArtifacts([]), []);
 
   const sendTo = useCallback<Ctx['sendTo']>(
@@ -120,6 +128,27 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (!a) return null;
       try {
         sessionStorage.setItem(prefillKey(target), a.content);
+      } catch {
+        // ignore
+      }
+      return `/${target}`;
+    },
+    [artifacts],
+  );
+
+  const sendMany = useCallback<Ctx['sendMany']>(
+    (artifactIds, target) => {
+      // Preserve panel order (newest-first) so concatenation is predictable.
+      const lookup = new Map(artifacts.map((a) => [a.id, a] as const));
+      const picked = artifactIds
+        .map((id) => lookup.get(id))
+        .filter((a): a is WorkspaceArtifact => !!a);
+      if (picked.length === 0) return null;
+      const concatenated = picked
+        .map((a) => `# ${a.title}\n\n${a.content}`)
+        .join('\n\n---\n\n');
+      try {
+        sessionStorage.setItem(prefillKey(target), concatenated);
       } catch {
         // ignore
       }
@@ -139,8 +168,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setOpen,
       addArtifact,
       removeArtifact,
+      removeArtifacts,
       clearAll,
       sendTo,
+      sendMany,
       targetsFor,
       dragging,
       setDragging,
@@ -150,8 +181,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       isOpen,
       addArtifact,
       removeArtifact,
+      removeArtifacts,
       clearAll,
       sendTo,
+      sendMany,
       targetsFor,
       dragging,
     ],

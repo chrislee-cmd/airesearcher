@@ -149,6 +149,20 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOverFeature(null);
+                    const manyRaw = e.dataTransfer.getData(
+                      'application/x-workspace-artifacts',
+                    );
+                    if (manyRaw) {
+                      try {
+                        const ids = JSON.parse(manyRaw) as string[];
+                        const path = workspace.sendMany(ids, f.key);
+                        workspace.setDragging(null);
+                        if (path) router.push(path);
+                        return;
+                      } catch {
+                        // fall through to single-id path
+                      }
+                    }
                     const id = e.dataTransfer.getData(
                       'application/x-workspace-artifact',
                     );

@@ -185,7 +185,13 @@
     "sendTo": "Send to…",
     "delete": "Delete",
     "copied": "Copied",
-    "copyFailed": "Copy failed"
+    "copyFailed": "Copy failed",
+    "select": "Select",
+    "selectAll": "Select all",
+    "nSelected": "{count} selected",
+    "bulkActions": "Bulk actions",
+    "sendSelectedTo": "Send selected to…",
+    "deleteSelected": "Delete selected"
   },
   "Members": {
     "title": "Member management",

@@ -185,7 +185,13 @@
     "sendTo": "다른 도구로 보내기",
     "delete": "삭제",
     "copied": "복사되었습니다",
-    "copyFailed": "복사에 실패했습니다"
+    "copyFailed": "복사에 실패했습니다",
+    "select": "선택",
+    "selectAll": "전체 선택",
+    "nSelected": "{count}개 선택됨",
+    "bulkActions": "일괄 동작",
+    "sendSelectedTo": "선택 항목 보내기",
+    "deleteSelected": "선택 삭제"
   },
   "Members": {
     "title": "멤버 관리",

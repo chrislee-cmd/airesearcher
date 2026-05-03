@@ -175,19 +175,35 @@ export function TranscriptStudio() {
       startUploads(Array.from(e.dataTransfer.files));
       return;
     }
-    const artifactId = e.dataTransfer.getData(
-      'application/x-workspace-artifact',
+    let ids: string[] = [];
+    const manyRaw = e.dataTransfer.getData(
+      'application/x-workspace-artifacts',
     );
-    if (artifactId) {
-      const a = workspace.artifacts.find((x) => x.id === artifactId);
-      if (a) {
-        const file = new File([a.content], `${safeFilename(a.title)}.md`, {
-          type: 'text/markdown',
-        });
-        startUploads([file]);
+    if (manyRaw) {
+      try {
+        ids = JSON.parse(manyRaw) as string[];
+      } catch {
+        ids = [];
       }
-      workspace.setDragging(null);
     }
+    if (ids.length === 0) {
+      const id = e.dataTransfer.getData('application/x-workspace-artifact');
+      if (id) ids = [id];
+    }
+    if (ids.length === 0) return;
+    const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
+    const files: File[] = [];
+    for (const id of ids) {
+      const a = lookup.get(id);
+      if (!a) continue;
+      files.push(
+        new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        }),
+      );
+    }
+    if (files.length > 0) startUploads(files);
+    workspace.setDragging(null);
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();

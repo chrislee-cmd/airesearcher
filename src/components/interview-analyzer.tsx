@@ -44,21 +44,37 @@ export function InterviewAnalyzer() {
       job.addFiles(e.dataTransfer.files);
       return;
     }
-    // Workspace artifact drop — synthesize a markdown File from the
-    // artifact's content so it flows through Stage 1 like a real upload.
-    const artifactId = e.dataTransfer.getData(
-      'application/x-workspace-artifact',
+    // Workspace artifact drop — synthesize markdown File(s) from the
+    // artifact content so they flow through Stage 1 like real uploads.
+    let ids: string[] = [];
+    const manyRaw = e.dataTransfer.getData(
+      'application/x-workspace-artifacts',
     );
-    if (artifactId) {
-      const a = workspace.artifacts.find((x) => x.id === artifactId);
-      if (a) {
-        const file = new File([a.content], `${safeFilename(a.title)}.md`, {
-          type: 'text/markdown',
-        });
-        job.addFiles([file]);
+    if (manyRaw) {
+      try {
+        ids = JSON.parse(manyRaw) as string[];
+      } catch {
+        ids = [];
       }
-      workspace.setDragging(null);
     }
+    if (ids.length === 0) {
+      const id = e.dataTransfer.getData('application/x-workspace-artifact');
+      if (id) ids = [id];
+    }
+    if (ids.length === 0) return;
+    const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
+    const files: File[] = [];
+    for (const id of ids) {
+      const a = lookup.get(id);
+      if (!a) continue;
+      files.push(
+        new File([a.content], `${safeFilename(a.title)}.md`, {
+          type: 'text/markdown',
+        }),
+      );
+    }
+    if (files.length > 0) job.addFiles(files);
+    workspace.setDragging(null);
   }
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
