@@ -41,9 +41,15 @@ const aggregateSchema = z.object({
 
 const SYSTEM = `당신은 마케팅·UX 리서치 분석가입니다. 이미 파일별로 추출된 (질문 / VOC) 항목들을 받아 두 가지를 결정합니다:
 
-1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록. 한 파일에서만 나온 질문도 포함. 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
+1) **표준 문항 목록 (questions)** — 모든 파일의 질문 합집합에서 의미가 거의 동일한 것은 하나로 묶어 표준화한 목록.
+   - **핵심**: 모든 파일의 질문을 동등하게 반영하세요. 첫 번째 파일에 편향되지 마세요.
+   - 한 파일에서만 나온 질문도 포함. 자주 묻는 질문이 우선.
+   - 인터뷰 진행 순서를 최대한 따른다. 보통 10~40개.
 
 2) **mappings** — 입력 파일마다 길이가 questions.length 와 정확히 같은 정수 배열. 위치 i의 값은 그 파일의 items 중 questions[i] 에 해당하는 항목의 인덱스 (0부터). 매칭되는 항목이 없으면 -1.
+   - **중요**: 모든 파일에 대해 mapping을 성실히 채워야 합니다. 어떤 파일도 -1로만 가득 차면 안 됩니다.
+   - 의미가 같으면 표현이 달라도 매칭하세요 (예: "자기소개" 와 "본인 소개" 는 같음).
+   - 부분적으로 매칭되어도 OK — 표준 문항 의도와 그 항목의 의도가 통하면 매칭.
 
 # 출력 규칙
 - mappings.length === 입력 파일 수
@@ -123,6 +129,47 @@ export async function POST(request: Request) {
     while (padded.length < Q) padded.push(-1);
     return padded;
   });
+
+  // Fallback matcher — sometimes Sonnet returns -1 for an entire file's
+  // mapping even though that file clearly has matching items. For each
+  // (file, standard-question) pair where the model said "no match", try
+  // a deterministic char-overlap match against that file's item.question
+  // list. Bridges over LLM laziness without hand-holding the prompt.
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[\s.,?!()'"‘’“”~`*\-_:;]/g, '');
+  const used = new Set<string>(); // "fileIdx:itemIdx" already mapped to a question
+  for (let fi = 0; fi < extractions.length; fi++) {
+    for (let qi = 0; qi < Q; qi++) {
+      if (safeMappings[fi][qi] !== -1) {
+        used.add(`${fi}:${safeMappings[fi][qi]}`);
+      }
+    }
+  }
+  for (let fi = 0; fi < extractions.length; fi++) {
+    for (let qi = 0; qi < Q; qi++) {
+      if (safeMappings[fi][qi] !== -1) continue;
+      const stdQ = norm(aggregate.questions[qi]);
+      if (!stdQ) continue;
+      let best = { idx: -1, score: 0 };
+      for (let ii = 0; ii < extractions[fi].items.length; ii++) {
+        if (used.has(`${fi}:${ii}`)) continue;
+        const candQ = norm(extractions[fi].items[ii].question);
+        if (!candQ) continue;
+        const a = new Set(stdQ);
+        const b = new Set(candQ);
+        let inter = 0;
+        for (const c of a) if (b.has(c)) inter += 1;
+        const score = inter / Math.max(a.size, b.size);
+        if (score > best.score) best = { idx: ii, score };
+      }
+      if (best.idx >= 0 && best.score >= 0.45) {
+        safeMappings[fi][qi] = best.idx;
+        used.add(`${fi}:${best.idx}`);
+      }
+    }
+  }
 
   // Build the matrix on the server from the input extractions + index map.
   const matrix = {
