@@ -9,6 +9,8 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import {
@@ -57,6 +59,77 @@ function splitKeywords(raw: string): string[] {
     .split(/[,\n\t、·]+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+// Render the LLM-produced report markdown using the design-system tokens.
+// We strip out raw URLs that the model occasionally drops outside of a
+// markdown link by matching the canonical `[label](url)` form via remark — bare
+// URLs are turned into auto-links by remark-gfm (so they still resolve), but
+// we cap their visible width with break-all + truncate. Headings/lists/quotes
+// follow the editorial style (1px lines, no shadows, single amore accent).
+function DeskMarkdown({ source }: { source: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => (
+          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-[22px] font-bold tracking-[-0.02em] text-ink first:mt-0">
+            {children}
+          </h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="mb-3 mt-8 text-[17px] font-bold tracking-[-0.018em] text-ink-2 first:mt-0">
+            {children}
+          </h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="mb-2 mt-5 text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
+            {children}
+          </h3>
+        ),
+        p: ({ children }) => (
+          <p className="my-2.5 text-[13.5px] leading-[1.8] text-ink-2">{children}</p>
+        ),
+        ul: ({ children }) => (
+          <ul className="my-2.5 list-disc space-y-1 pl-5 text-[13.5px] leading-[1.8] marker:text-mute-soft">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="my-2.5 list-decimal space-y-1 pl-5 text-[13.5px] leading-[1.8] marker:text-mute-soft">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => <li className="text-ink-2">{children}</li>,
+        a: ({ href, children }) => (
+          <a
+            href={href ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-words text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-[13px] italic text-ink-2">
+            {children}
+          </blockquote>
+        ),
+        code: ({ children }) => (
+          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-[12px] text-ink-2 [border-radius:3px]">
+            {children}
+          </code>
+        ),
+        hr: () => <hr className="my-6 border-line-soft" />,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-ink">{children}</strong>
+        ),
+      }}
+    >
+      {source}
+    </ReactMarkdown>
+  );
 }
 
 export function DeskResearch() {
@@ -603,9 +676,9 @@ export function DeskResearch() {
                 </button>
               </div>
             </div>
-            <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
-              {data.output}
-            </pre>
+            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 [border-radius:4px]">
+              <DeskMarkdown source={data.output} />
+            </article>
           </section>
 
           {data.articles.length > 0 && (
