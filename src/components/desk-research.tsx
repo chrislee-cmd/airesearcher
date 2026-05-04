@@ -1,6 +1,13 @@
 'use client';
 
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
@@ -13,7 +20,7 @@ import {
 } from '@/lib/desk-sources';
 
 type Skipped = { source: DeskSourceId; missing: string };
-type DeskResponse = {
+type FinalPayload = {
   output: string;
   generation_id: string;
   similar_keywords: string[];
@@ -42,6 +49,16 @@ function daysAgoIso(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Split a free-form input on common delimiters so paste-and-Enter works the
+// same as type-with-comma. Korean comma `、` and 중점 `·` get included since
+// users mix them in pasted lists.
+function splitKeywords(raw: string): string[] {
+  return raw
+    .split(/[,\n\t、·]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function DeskResearch() {
   const t = useTranslations('Features');
   const tDesk = useTranslations('Desk');
@@ -61,7 +78,15 @@ export function DeskResearch() {
   const [running, setRunning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<DeskResponse | null>(null);
+  const [data, setData] = useState<FinalPayload | null>(null);
+  const [thoughts, setThoughts] = useState<string[]>([]);
+  const thoughtsScroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (thoughtsScroller.current) {
+      thoughtsScroller.current.scrollTop = thoughtsScroller.current.scrollHeight;
+    }
+  }, [thoughts.length]);
 
   const grouped = useMemo(() => {
     const map = new Map<DeskSourceGroup, typeof DESK_SOURCES>();
@@ -71,25 +96,60 @@ export function DeskResearch() {
   }, []);
 
   // ─── keyword tag input ────────────────────────────────────────────────────
-  function addKeyword(raw: string) {
-    const v = raw.trim();
-    if (!v) return;
-    if (keywords.includes(v)) return;
-    if (keywords.length >= 10) return;
-    setKeywords([...keywords, v]);
+  function pushKeywords(parts: string[]) {
+    if (parts.length === 0) return;
+    setKeywords((prev) => {
+      const seen = new Set(prev);
+      const out = [...prev];
+      for (const p of parts) {
+        if (!p || seen.has(p)) continue;
+        if (out.length >= 10) break;
+        out.push(p);
+        seen.add(p);
+      }
+      return out;
+    });
   }
   function removeKeyword(idx: number) {
     setKeywords(keywords.filter((_, i) => i !== idx));
+  }
+  function commitDraft(raw?: string): string[] {
+    const source = raw ?? keywordDraft;
+    const parts = splitKeywords(source);
+    pushKeywords(parts);
+    setKeywordDraft('');
+    // Build the next-state array synchronously for the caller (setState is
+    // async). De-dupe against current keywords plus the parts we just added.
+    const seen = new Set(keywords);
+    const merged = [...keywords];
+    for (const p of parts) {
+      if (!p || seen.has(p)) continue;
+      if (merged.length >= 10) break;
+      merged.push(p);
+      seen.add(p);
+    }
+    return merged;
   }
   function onKeywordKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
       if (keywordDraft.trim()) {
         e.preventDefault();
-        addKeyword(keywordDraft);
-        setKeywordDraft('');
+        commitDraft();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
       }
     } else if (e.key === 'Backspace' && !keywordDraft && keywords.length) {
       setKeywords(keywords.slice(0, -1));
+    }
+  }
+  function onKeywordPaste(e: ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text');
+    if (/[,\n\t、·]/.test(pasted)) {
+      e.preventDefault();
+      const merged = (keywordDraft + pasted).trim();
+      const parts = splitKeywords(merged);
+      pushKeywords(parts);
+      setKeywordDraft('');
     }
   }
 
@@ -100,7 +160,7 @@ export function DeskResearch() {
       setDateFrom('');
       setDateTo('');
     } else if (p === 'custom') {
-      // keep existing values; user will edit manually
+      // keep existing
     } else {
       const days = RANGE_PRESETS.find((x) => x.id === p)?.days ?? null;
       if (days != null) {
@@ -132,22 +192,13 @@ export function DeskResearch() {
     });
   }
 
-  // ─── run ──────────────────────────────────────────────────────────────────
-  function commitDraftIfAny(): string[] {
-    const v = keywordDraft.trim();
-    if (!v || keywords.includes(v)) return keywords;
-    const next = [...keywords, v].slice(0, 10);
-    setKeywords(next);
-    setKeywordDraft('');
-    return next;
-  }
-
+  // ─── run + stream consumption ─────────────────────────────────────────────
   function onClickRun() {
     requireAuth(() => void doRun());
   }
 
   async function doRun() {
-    const finalKeywords = commitDraftIfAny();
+    const finalKeywords = commitDraft();
     if (finalKeywords.length === 0) {
       setError(tDesk('errorNoKeyword'));
       return;
@@ -155,7 +206,9 @@ export function DeskResearch() {
     setRunning(true);
     setError(null);
     setData(null);
+    setThoughts([]);
     track('generate_clicked', { feature: 'desk', kw_count: finalKeywords.length });
+
     try {
       const res = await fetch('/api/desk', {
         method: 'POST',
@@ -168,13 +221,52 @@ export function DeskResearch() {
           dateTo: dateTo || undefined,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? res.statusText);
+
+      // Non-streaming JSON error path (auth/validation/credit failures).
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? res.statusText);
         return;
       }
-      setData(json as DeskResponse);
-      track('generate_success', { feature: 'desk' });
+      const ctype = res.headers.get('content-type') ?? '';
+      if (!ctype.includes('ndjson')) {
+        // Server returned a non-stream response — fall back to JSON.
+        const j = await res.json().catch(() => ({}));
+        if (j?.kind === 'final') setData(j.data as FinalPayload);
+        else if (j?.error) setError(j.error);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          try {
+            const evt = JSON.parse(line) as
+              | { kind: 'thought'; text: string }
+              | { kind: 'final'; data: FinalPayload }
+              | { kind: 'error'; error: string };
+            if (evt.kind === 'thought') {
+              setThoughts((prev) => [...prev, evt.text]);
+            } else if (evt.kind === 'final') {
+              setData(evt.data);
+              track('generate_success', { feature: 'desk' });
+            } else if (evt.kind === 'error') {
+              setError(evt.error);
+            }
+          } catch {
+            // ignore malformed line
+          }
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown_error');
     } finally {
@@ -235,6 +327,7 @@ export function DeskResearch() {
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
   const canRun = !running && hasKeywords && selected.size > 0;
+  const showPanel = running || thoughts.length > 0;
 
   // ─── render ───────────────────────────────────────────────────────────────
   return (
@@ -254,9 +347,8 @@ export function DeskResearch() {
 
       {/* Two-column control panel */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* ── Left column: keywords + date range ─────────────────────────── */}
+        {/* ── Left: keywords + date range ─────────────────────────────────── */}
         <div className="space-y-6">
-          {/* Keywords */}
           <section>
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('keywordLabel')}
@@ -282,6 +374,10 @@ export function DeskResearch() {
                 value={keywordDraft}
                 onChange={(e) => setKeywordDraft(e.target.value)}
                 onKeyDown={onKeywordKeyDown}
+                onPaste={onKeywordPaste}
+                onBlur={() => {
+                  if (keywordDraft.trim()) commitDraft();
+                }}
                 placeholder={
                   keywords.length === 0
                     ? tDesk('keywordPlaceholder')
@@ -295,7 +391,6 @@ export function DeskResearch() {
             </span>
           </section>
 
-          {/* Date range */}
           <section>
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('rangeLabel')}
@@ -345,7 +440,7 @@ export function DeskResearch() {
           </section>
         </div>
 
-        {/* ── Right column: source groups (compact) ──────────────────────── */}
+        {/* ── Right: source groups (compact) ──────────────────────────────── */}
         <div>
           <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
             {tDesk('sourcesLabel')}
@@ -408,6 +503,43 @@ export function DeskResearch() {
           {running ? tCommon('loading') : tDesk('search')}
         </button>
       </div>
+
+      {/* Thinking panel — conversational progress */}
+      {showPanel && (
+        <section className="mt-6 border border-line bg-paper-soft [border-radius:4px]">
+          <header className="flex items-center justify-between border-b border-line-soft px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-block h-1.5 w-1.5 [border-radius:9999px] ${
+                  running ? 'animate-pulse bg-amore' : 'bg-mute-soft'
+                }`}
+              />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                {tDesk(running ? 'thinkingActive' : 'thinkingDone')}
+              </span>
+            </div>
+            {!running && thoughts.length > 0 && (
+              <button
+                onClick={() => setThoughts([])}
+                className="text-[10px] uppercase tracking-[0.18em] text-mute-soft hover:text-ink-2"
+              >
+                clear
+              </button>
+            )}
+          </header>
+          <div
+            ref={thoughtsScroller}
+            className="max-h-[280px] overflow-y-auto px-4 py-3 text-[12.5px] leading-[1.7]"
+          >
+            {thoughts.map((line, i) => (
+              <div key={i} className="py-0.5 text-ink-2">
+                <span className="mr-2 text-amore">›</span>
+                {line}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {error && (
         <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:4px]">

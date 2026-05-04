@@ -194,7 +194,9 @@
     "groupNone": "Clear",
     "skippedTitle": "Sources skipped — missing API keys",
     "downloadMd": "Download .md",
-    "downloadDocx": "Download .docx"
+    "downloadDocx": "Download .docx",
+    "thinkingActive": "Working on it",
+    "thinkingDone": "Activity"
   },
   "Workspace": {
     "eyebrow": "Workspace",

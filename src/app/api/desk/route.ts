@@ -7,7 +7,11 @@ import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { crawlSource, dedupeArticles, sourceMissingKey } from '@/lib/desk-crawl';
 import type { DeskDateRange } from '@/lib/desk-crawl';
-import type { DeskArticle, DeskSourceId } from '@/lib/desk-sources';
+import {
+  DESK_SOURCES,
+  type DeskArticle,
+  type DeskSourceId,
+} from '@/lib/desk-sources';
 
 export const maxDuration = 300;
 
@@ -28,9 +32,6 @@ const SOURCE_IDS = [
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const Body = z.object({
-  // Multiple keywords. The first non-empty keyword is used as the primary
-  // label (filename, report title); LLM expansion only fires when exactly one
-  // keyword is given (multi means user is explicit).
   keywords: z.array(z.string().min(1).max(120)).min(1).max(10),
   sources: z.array(z.enum(SOURCE_IDS)).min(1),
   locale: z.enum(['ko', 'en']).optional(),
@@ -130,6 +131,10 @@ async function summarize(
   return completion.choices[0]?.message?.content?.trim() ?? '';
 }
 
+function sourceLabelKo(id: DeskSourceId): string {
+  return DESK_SOURCES.find((s) => s.id === id)?.label ?? id;
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -142,12 +147,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { keywords, sources, locale = 'ko', dateFrom, dateTo } = parsed.data;
-  const range: DeskDateRange = {
-    from: dateFrom,
-    to: dateTo,
-  };
+  const range: DeskDateRange = { from: dateFrom, to: dateTo };
 
-  // Reject impossible ranges early — saves a credit spend on garbage input.
   if (range.from && range.to && range.from > range.to) {
     return NextResponse.json({ error: 'invalid_date_range' }, { status: 400 });
   }
@@ -182,11 +183,7 @@ export async function POST(request: Request) {
   }
   if (usable.length === 0) {
     return NextResponse.json(
-      {
-        error: 'no_usable_sources',
-        skipped,
-        hint: '선택한 모든 소스에 API 키가 설정되어 있지 않습니다.',
-      },
+      { error: 'no_usable_sources', skipped },
       { status: 400 },
     );
   }
@@ -212,56 +209,124 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
-  // Only expand when user gave a single keyword. Multi-keyword input means
-  // they curated the search themselves — adding LLM-generated cousins would
-  // dilute the signal and inflate API quota usage.
-  const similar =
-    cleanKeywords.length === 1 ? await expandKeywords(openai, cleanKeywords[0]) : [];
-  const allKeywords = [...cleanKeywords, ...similar];
+  // ─── Streaming work loop ───────────────────────────────────────────────
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      const thought = (text: string) => send({ kind: 'thought', text });
 
-  const tasks: Promise<DeskArticle[]>[] = [];
-  for (const kw of allKeywords) {
-    for (const src of usable) {
-      tasks.push(crawlSource(src, kw, locale, range));
-    }
-  }
-  const settled = await Promise.allSettled(tasks);
-  const collected: DeskArticle[] = [];
-  for (const r of settled) {
-    if (r.status === 'fulfilled') collected.push(...r.value);
-  }
-  const articles = dedupeArticles(collected).slice(0, 80);
+      try {
+        const kwLabel = cleanKeywords.map((k) => `‘${k}’`).join(', ');
+        thought(
+          `키워드 ${cleanKeywords.length}개를 받았어요${cleanKeywords.length > 1 ? ` (${kwLabel})` : ` — ${kwLabel}`}. 검색 준비할게요.`,
+        );
 
-  if (articles.length === 0) {
-    const output = `# 데스크 리서치 요약\n\n키워드 \`${cleanKeywords.join(', ')}\` 로 수집된 항목이 없습니다. 키워드·기간·소스 조합을 바꿔 보세요.`;
-    await supabase.from('generations').update({ output }).eq('id', generation.id);
-    return NextResponse.json({
-      output,
-      generation_id: generation.id,
-      similar_keywords: similar,
-      articles: [],
-      skipped,
-    });
-  }
+        let similar: string[] = [];
+        if (cleanKeywords.length === 1) {
+          thought('한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…');
+          similar = await expandKeywords(openai, cleanKeywords[0]);
+          if (similar.length) {
+            thought(`유사 키워드: ${similar.map((k) => `‘${k}’`).join(', ')} — 이 표현들도 함께 검색합니다.`);
+          } else {
+            thought('유사 키워드는 못 만들었어요. 입력 키워드만으로 갑니다.');
+          }
+        } else {
+          thought('여러 키워드라 사용자가 직접 큐레이션한 걸로 보고, 유사 키워드 확장은 건너뜁니다.');
+        }
 
-  let output = '';
-  try {
-    output = await summarize(openai, cleanKeywords, similar, range, articles, locale);
-  } catch (err) {
-    console.error('[desk] summarize failed', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'summarize_failed' },
-      { status: 502 },
-    );
-  }
+        const allKeywords = [...cleanKeywords, ...similar];
+        const totalTasks = allKeywords.length * usable.length;
+        const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
+        thought(`이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${totalTasks}회 검색을 동시에 돌릴게요. (${sourceList})`);
+        if (range.from || range.to) {
+          thought(`기간은 ${range.from ?? '전체'} ~ ${range.to ?? '오늘'} 으로 좁혀서 봅니다.`);
+        }
 
-  await supabase.from('generations').update({ output }).eq('id', generation.id);
+        // Fire all tasks. Each task emits a thought when it lands so the
+        // panel feels alive — order is by completion, not start.
+        const collected: DeskArticle[] = [];
+        const tasks = allKeywords.flatMap((kw) =>
+          usable.map((src) =>
+            crawlSource(src, kw, locale, range).then(
+              (items) => {
+                thought(`${sourceLabelKo(src)} · ‘${kw}’ — ${items.length}건 가져왔어요.`);
+                collected.push(...items);
+              },
+              (err) => {
+                thought(`${sourceLabelKo(src)} · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`);
+              },
+            ),
+          ),
+        );
+        await Promise.all(tasks);
 
-  return NextResponse.json({
-    output,
-    generation_id: generation.id,
-    similar_keywords: similar,
-    articles,
-    skipped,
+        const articles = dedupeArticles(collected).slice(0, 80);
+        thought(`수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요.`);
+
+        if (articles.length === 0) {
+          const output = `# 데스크 리서치 요약\n\n키워드 \`${cleanKeywords.join(', ')}\` 로 수집된 항목이 없습니다. 키워드·기간·소스 조합을 바꿔 보세요.`;
+          await supabase.from('generations').update({ output }).eq('id', generation.id);
+          send({
+            kind: 'final',
+            data: {
+              output,
+              generation_id: generation.id,
+              similar_keywords: similar,
+              articles: [],
+              skipped,
+            },
+          });
+          controller.close();
+          return;
+        }
+
+        thought('이제 GPT한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…');
+        let output = '';
+        try {
+          output = await summarize(openai, cleanKeywords, similar, range, articles, locale);
+        } catch (err) {
+          console.error('[desk] summarize failed', err);
+          send({
+            kind: 'error',
+            error: err instanceof Error ? err.message : 'summarize_failed',
+          });
+          controller.close();
+          return;
+        }
+
+        await supabase.from('generations').update({ output }).eq('id', generation.id);
+        thought('보고서 받았어요. 화면에 띄울게요.');
+
+        send({
+          kind: 'final',
+          data: {
+            output,
+            generation_id: generation.id,
+            similar_keywords: similar,
+            articles,
+            skipped,
+          },
+        });
+        controller.close();
+      } catch (err) {
+        console.error('[desk] stream failed', err);
+        send({
+          kind: 'error',
+          error: err instanceof Error ? err.message : 'stream_failed',
+        });
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'content-type': 'application/x-ndjson; charset=utf-8',
+      'cache-control': 'no-store, no-transform',
+      'x-accel-buffering': 'no',
+    },
   });
 }
