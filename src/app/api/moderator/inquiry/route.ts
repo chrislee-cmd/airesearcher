@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { createClient } from '@/lib/supabase/server';
 
 const Body = z.object({
@@ -8,7 +8,6 @@ const Body = z.object({
 });
 
 const TO_EMAIL = process.env.INQUIRY_TO_EMAIL || 'chris.lee@meteor-research.com';
-const FROM_EMAIL = process.env.INQUIRY_FROM_EMAIL || 'AI Researcher <onboarding@resend.dev>';
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -25,13 +24,20 @@ export async function POST(req: Request) {
   }
   const { service } = parsed.data;
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error('[moderator/inquiry] RESEND_API_KEY is missing');
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  if (!gmailUser || !gmailPass) {
+    console.error('[moderator/inquiry] GMAIL_USER or GMAIL_APP_PASSWORD missing');
     return NextResponse.json({ error: 'email_not_configured' }, { status: 500 });
   }
 
-  const resend = new Resend(apiKey);
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, '') },
+  });
+
   const subject = `[AI Researcher] ${service} 도입 문의 — ${user.email}`;
   const text = [
     'AI 모더레이터 페이지에서 도입 문의가 접수되었습니다.',
@@ -42,16 +48,16 @@ export async function POST(req: Request) {
     `• 접수 시각: ${new Date().toISOString()}`,
   ].join('\n');
 
-  const { error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to: TO_EMAIL,
-    replyTo: user.email,
-    subject,
-    text,
-  });
-
-  if (error) {
-    console.error('[moderator/inquiry] resend error', error);
+  try {
+    await transporter.sendMail({
+      from: `AI Researcher <${gmailUser}>`,
+      to: TO_EMAIL,
+      replyTo: user.email,
+      subject,
+      text,
+    });
+  } catch (err) {
+    console.error('[moderator/inquiry] gmail smtp error', err);
     return NextResponse.json({ error: 'send_failed' }, { status: 502 });
   }
 
