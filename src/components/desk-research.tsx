@@ -204,6 +204,19 @@ export function DeskResearch() {
     return merged;
   }
   function onKeywordKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    // Skip while a Korean/Japanese/Chinese IME is composing — Enter at that
+    // moment is consumed by the IME to commit the syllable, and reading
+    // keywordDraft now would miss the last character (e.g. "CJ 푸드" instead
+    // of "CJ 푸드빌"). The user has to press Enter again, which is the
+    // standard expectation for Korean web inputs.
+    if (
+      e.nativeEvent.isComposing ||
+      // Legacy IME signal — some browsers still emit keyCode 229 instead of
+      // setting isComposing.
+      e.keyCode === 229
+    ) {
+      return;
+    }
     if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
       if (keywordDraft.trim()) {
         e.preventDefault();
