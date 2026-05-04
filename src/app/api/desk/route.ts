@@ -6,6 +6,7 @@ import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { crawlSource, dedupeArticles, sourceMissingKey } from '@/lib/desk-crawl';
+import type { DeskDateRange } from '@/lib/desk-crawl';
 import type { DeskArticle, DeskSourceId } from '@/lib/desk-sources';
 
 export const maxDuration = 300;
@@ -24,10 +25,17 @@ const SOURCE_IDS = [
   'reddit',
 ] as const;
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 const Body = z.object({
-  keyword: z.string().min(1).max(200),
+  // Multiple keywords. The first non-empty keyword is used as the primary
+  // label (filename, report title); LLM expansion only fires when exactly one
+  // keyword is given (multi means user is explicit).
+  keywords: z.array(z.string().min(1).max(120)).min(1).max(10),
   sources: z.array(z.enum(SOURCE_IDS)).min(1),
   locale: z.enum(['ko', 'en']).optional(),
+  dateFrom: z.string().regex(ISO_DATE).optional(),
+  dateTo: z.string().regex(ISO_DATE).optional(),
 });
 
 const EXPAND_SYSTEM = `당신은 데스크 리서치를 위해 사용자가 입력한 키워드의 검색 적합 유사 키워드를 만드는 보조자입니다.
@@ -94,15 +102,17 @@ function formatArticleListForLLM(articles: DeskArticle[]): string {
 
 async function summarize(
   openai: OpenAI,
-  keyword: string,
+  keywords: string[],
   similar: string[],
+  range: DeskDateRange,
   articles: DeskArticle[],
   locale: 'ko' | 'en',
 ): Promise<string> {
   const userMsg = [
     `요청 언어: ${locale === 'ko' ? '한국어' : 'English'}`,
-    `메인 키워드: ${keyword}`,
+    `메인 키워드: ${keywords.join(', ')}`,
     `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
+    `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
     `수집 항목 수: ${articles.length}`,
     '',
     '--- 항목 목록 ---',
@@ -131,7 +141,23 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { keyword, sources, locale = 'ko' } = parsed.data;
+  const { keywords, sources, locale = 'ko', dateFrom, dateTo } = parsed.data;
+  const range: DeskDateRange = {
+    from: dateFrom,
+    to: dateTo,
+  };
+
+  // Reject impossible ranges early — saves a credit spend on garbage input.
+  if (range.from && range.to && range.from > range.to) {
+    return NextResponse.json({ error: 'invalid_date_range' }, { status: 400 });
+  }
+
+  const cleanKeywords = Array.from(
+    new Set(keywords.map((k) => k.trim()).filter(Boolean)),
+  ).slice(0, 10);
+  if (cleanKeywords.length === 0) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
@@ -147,8 +173,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
   }
 
-  // Filter sources whose API keys are missing — collect warnings instead of
-  // failing the whole run.
   const skipped: { source: DeskSourceId; missing: string }[] = [];
   const usable: DeskSourceId[] = [];
   for (const s of sources as DeskSourceId[]) {
@@ -161,7 +185,7 @@ export async function POST(request: Request) {
       {
         error: 'no_usable_sources',
         skipped,
-        hint: '선택한 모든 소스에 API 키가 설정되어 있지 않습니다. .env.local 또는 Vercel 환경변수를 확인하세요.',
+        hint: '선택한 모든 소스에 API 키가 설정되어 있지 않습니다.',
       },
       { status: 400 },
     );
@@ -173,7 +197,7 @@ export async function POST(request: Request) {
       org_id: org.org_id,
       user_id: user.id,
       feature: 'desk',
-      input: JSON.stringify({ keyword, sources, locale }),
+      input: JSON.stringify({ keywords: cleanKeywords, sources, locale, dateFrom, dateTo }),
       output: null,
       credits_spent: FEATURE_COSTS.desk,
     })
@@ -188,13 +212,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
-  const similar = await expandKeywords(openai, keyword);
-  const allKeywords = [keyword, ...similar];
+  // Only expand when user gave a single keyword. Multi-keyword input means
+  // they curated the search themselves — adding LLM-generated cousins would
+  // dilute the signal and inflate API quota usage.
+  const similar =
+    cleanKeywords.length === 1 ? await expandKeywords(openai, cleanKeywords[0]) : [];
+  const allKeywords = [...cleanKeywords, ...similar];
 
   const tasks: Promise<DeskArticle[]>[] = [];
   for (const kw of allKeywords) {
     for (const src of usable) {
-      tasks.push(crawlSource(src, kw, locale));
+      tasks.push(crawlSource(src, kw, locale, range));
     }
   }
   const settled = await Promise.allSettled(tasks);
@@ -205,7 +233,7 @@ export async function POST(request: Request) {
   const articles = dedupeArticles(collected).slice(0, 80);
 
   if (articles.length === 0) {
-    const output = `# 데스크 리서치 요약\n\n키워드 \`${keyword}\` 로 수집된 항목이 없습니다. 다른 키워드 또는 다른 소스를 선택해 보세요.`;
+    const output = `# 데스크 리서치 요약\n\n키워드 \`${cleanKeywords.join(', ')}\` 로 수집된 항목이 없습니다. 키워드·기간·소스 조합을 바꿔 보세요.`;
     await supabase.from('generations').update({ output }).eq('id', generation.id);
     return NextResponse.json({
       output,
@@ -218,7 +246,7 @@ export async function POST(request: Request) {
 
   let output = '';
   try {
-    output = await summarize(openai, keyword, similar, articles, locale);
+    output = await summarize(openai, cleanKeywords, similar, range, articles, locale);
   } catch (err) {
     console.error('[desk] summarize failed', err);
     return NextResponse.json(
