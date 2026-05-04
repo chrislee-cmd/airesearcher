@@ -12,6 +12,7 @@ import {
 import { useInterviewJob } from './interview-job-provider';
 import { useTranscriptJobs } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
+import { useGenerationJobs } from './generation-job-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
 import { SidebarAccount } from './sidebar-account';
 
@@ -37,10 +38,16 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
 
   const interviewJob = useInterviewJob();
   const transcriptJobs = useTranscriptJobs();
-  const featureBusy: Partial<Record<FeatureKey, boolean>> = {
-    interviews: interviewJob.isWorking,
-    quotes: transcriptJobs.isWorking,
-  };
+  const generationJobs = useGenerationJobs();
+  // A feature is "busy" if its dedicated job provider says so OR a
+  // one-shot generation is running in the GenerationJobProvider.
+  // The sidebar reads this on every render so the indicator follows
+  // the user across navigation.
+  function isBusy(key: FeatureKey): boolean {
+    if (key === 'interviews') return interviewJob.isWorking;
+    if (key === 'quotes') return transcriptJobs.isWorking;
+    return generationJobs.isWorking(key);
+  }
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -206,7 +213,7 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
                     const f = FEATURE_BY_KEY.get(key);
                     if (!f) return null;
                     const active = pathname === f.href;
-                    const busy = !!featureBusy[f.key];
+                    const busy = isBusy(f.key);
                     const isDragOver = dragOverFeature === f.key;
                     const isCompatible =
                       compatibleTargets?.has(f.key) ?? false;
