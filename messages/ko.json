@@ -233,5 +233,56 @@
     "switcher": "조직 선택",
     "create": "조직 만들기",
     "name": "조직 이름"
+  },
+  "Scheduler": {
+    "requirements": {
+      "title": "조사 요구 일정",
+      "description": "클라이언트와 사전 조율된 조사 진행 가능 일정을 입력하세요. 캘린더에 자동으로 반영됩니다.",
+      "startDate": "시작일",
+      "endDate": "종료일",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "duration": "1회 길이(분)",
+      "daysOfWeek": "요일",
+      "explicitSlots": "특정 일정",
+      "explicitSlotsHint": "위 규칙 외에 따로 가능한 시간을 추가합니다.",
+      "addSlot": "시간 추가",
+      "remove": "삭제",
+      "weekdayShort": ["일", "월", "화", "수", "목", "금", "토"]
+    },
+    "calendar": {
+      "title": "캘린더",
+      "month": "월",
+      "week": "주",
+      "day": "일",
+      "today": "오늘",
+      "prev": "이전",
+      "next": "다음",
+      "legendAvailable": "조사 가능 시간",
+      "legendConfirmed": "확정 일정",
+      "noRequirement": "조사 요구 일정을 먼저 입력하면 가능 슬롯이 표시됩니다.",
+      "pickHint": "참석자를 선택한 뒤 슬롯을 클릭하면 확정 일정으로 등록됩니다."
+    },
+    "attendees": {
+      "title": "참석자",
+      "description": "참석자를 추가하고 가능한 일정을 받아 캘린더에서 확정합니다.",
+      "addAttendee": "참석자 추가",
+      "name": "이름",
+      "email": "이메일",
+      "phone": "연락처",
+      "note": "메모",
+      "save": "저장",
+      "cancel": "취소",
+      "remove": "삭제",
+      "empty": "아직 추가된 참석자가 없습니다.",
+      "selectedNone": "왼쪽에서 참석자를 선택하세요.",
+      "confirmedSlot": "확정 일정",
+      "noConfirmed": "아직 확정된 일정이 없습니다.",
+      "clearSlot": "일정 해제",
+      "manualSlot": "직접 입력",
+      "date": "날짜",
+      "start": "시작",
+      "end": "종료"
+    }
   }
 }
