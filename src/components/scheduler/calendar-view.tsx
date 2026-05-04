@@ -284,7 +284,7 @@ function WeekGrid({
   const startMin = minutesFromHHmm(requirement.startTime || '09:00');
   const endMin = minutesFromHHmm(requirement.endTime || '19:00');
   const labels: number[] = [];
-  for (let m = Math.floor(startMin / 60) * 60; m <= endMin; m += 60) labels.push(m);
+  for (let m = Math.floor(startMin / 30) * 30; m <= endMin; m += 30) labels.push(m);
 
   return (
     <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-t border-line-soft">
@@ -332,19 +332,32 @@ function RowGroup({
   onPick: (date: string, start: string, end: string) => void;
 }) {
   const hh = String(Math.floor(mLabel / 60)).padStart(2, '0');
+  const mm = String(mLabel % 60).padStart(2, '0');
+  const isHour = mLabel % 60 === 0;
   return (
     <>
-      <div className="border-b border-line-soft px-2 py-2 text-right text-[10.5px] tabular-nums text-mute-soft">
-        {hh}:00
+      <div
+        className={
+          'border-b border-line-soft px-2 py-1.5 text-right text-[10.5px] tabular-nums ' +
+          (isHour ? 'text-mute' : 'text-mute-soft/70')
+        }
+      >
+        {isHour ? `${hh}:00` : `${hh}:${mm}`}
       </div>
       {days.map((d) => {
         const iso = toIso(d);
         const cellSlots = (slotsByDate.get(iso) ?? []).filter((s) => {
           const sm = minutesFromHHmm(s.start);
-          return sm >= mLabel && sm < mLabel + 60;
+          return sm >= mLabel && sm < mLabel + 30;
         });
         return (
-          <div key={iso + '-' + mLabel} className="min-h-[44px] border-b border-l border-line-soft p-1">
+          <div
+            key={iso + '-' + mLabel}
+            className={
+              'min-h-[28px] border-l border-line-soft p-0.5 ' +
+              (isHour ? 'border-b border-line-soft' : 'border-b border-dashed border-line-soft')
+            }
+          >
             <div className="flex flex-col gap-0.5">
               {cellSlots.map((s) => {
                 const confirmedHere = confirmedByCell.get(`${iso}T${s.start}`) ?? [];

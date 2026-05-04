@@ -72,14 +72,14 @@ function AttendeeList({
   const t = useTranslations('Scheduler.attendees');
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   function submit() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onAdd({ name: trimmed, email: email.trim() || undefined });
+    onAdd({ name: trimmed, phone: phone.trim() || undefined });
     setName('');
-    setEmail('');
+    setPhone('');
     setAdding(false);
   }
 
@@ -109,9 +109,9 @@ function AttendeeList({
             className={inputCls + ' w-full'}
           />
           <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('email')}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder={t('phone')}
             className={inputCls + ' w-full'}
           />
           <div className="flex justify-end gap-2">
@@ -120,7 +120,7 @@ function AttendeeList({
               onClick={() => {
                 setAdding(false);
                 setName('');
-                setEmail('');
+                setPhone('');
               }}
               className="px-2 py-1 text-[11.5px] text-mute hover:text-ink-2"
             >
@@ -156,8 +156,13 @@ function AttendeeList({
                 >
                   <div className="min-w-0">
                     <div className="truncate text-[12.5px] text-ink-2">{a.name}</div>
-                    {a.email && (
-                      <div className="truncate text-[11px] text-mute-soft">{a.email}</div>
+                    {a.phone && (
+                      <div className="truncate text-[11px] tabular-nums text-mute-soft">{a.phone}</div>
+                    )}
+                    {a.note && (
+                      <div className="mt-0.5 line-clamp-2 text-[11px] leading-[1.5] text-mute">
+                        {a.note}
+                      </div>
                     )}
                   </div>
                   {slot ? (
