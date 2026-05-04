@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { generateText, type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
@@ -70,79 +71,19 @@ const REPORT_SYSTEM = `당신은 데스크 리서치 보고서를 작성하는 �
 function getModel(): LanguageModel {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
-  // claude-sonnet-4-6 — same model the interview routes use, balances
-  // quality and cost for free-form Korean reports.
   return createAnthropic({ apiKey })('claude-sonnet-4-6');
-}
-
-async function expandKeywords(model: LanguageModel, keyword: string): Promise<string[]> {
-  try {
-    const { text } = await generateText({
-      model,
-      system: EXPAND_SYSTEM,
-      prompt: keyword,
-      temperature: 0.3,
-    });
-    return text
-      .trim()
-      .split(/[,\n]/)
-      .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
-      .filter(Boolean)
-      .filter((k) => k.toLowerCase() !== keyword.toLowerCase())
-      .slice(0, 4);
-  } catch (err) {
-    console.error('[desk] expandKeywords failed', err);
-    return [];
-  }
-}
-
-function formatArticleListForLLM(articles: DeskArticle[]): string {
-  return articles
-    .map((a, i) => {
-      const lines = [
-        `${i + 1}. [${a.source}] ${a.title}`,
-        `   url: ${a.url}`,
-        a.origin ? `   origin: ${a.origin}` : '',
-        a.publishedAt ? `   published: ${a.publishedAt}` : '',
-        a.keyword ? `   matched_keyword: ${a.keyword}` : '',
-        a.snippet ? `   snippet: ${a.snippet.slice(0, 280)}` : '',
-      ].filter(Boolean);
-      return lines.join('\n');
-    })
-    .join('\n\n');
-}
-
-async function summarize(
-  model: LanguageModel,
-  keywords: string[],
-  similar: string[],
-  range: DeskDateRange,
-  articles: DeskArticle[],
-  locale: 'ko' | 'en',
-): Promise<string> {
-  const userMsg = [
-    `요청 언어: ${locale === 'ko' ? '한국어' : 'English'}`,
-    `메인 키워드: ${keywords.join(', ')}`,
-    `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-    `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
-    `수집 항목 수: ${articles.length}`,
-    '',
-    '--- 항목 목록 ---',
-    formatArticleListForLLM(articles),
-  ].join('\n');
-
-  const { text } = await generateText({
-    model,
-    system: REPORT_SYSTEM,
-    prompt: userMsg,
-    temperature: 0.2,
-  });
-  return text.trim();
 }
 
 function sourceLabelKo(id: DeskSourceId): string {
   return DESK_SOURCES.find((s) => s.id === id)?.label ?? id;
 }
+
+type ProgressShape = {
+  phase?: 'expanding' | 'crawling' | 'summarizing';
+  crawl_total?: number;
+  crawl_done?: number;
+  events: string[];
+};
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -156,9 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { keywords, sources, locale = 'ko', dateFrom, dateTo } = parsed.data;
-  const range: DeskDateRange = { from: dateFrom, to: dateTo };
-
-  if (range.from && range.to && range.from > range.to) {
+  if (dateFrom && dateTo && dateFrom > dateTo) {
     return NextResponse.json({ error: 'invalid_date_range' }, { status: 400 });
   }
 
@@ -172,14 +111,7 @@ export async function POST(request: Request) {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  const model = (() => {
-    try {
-      return getModel();
-    } catch {
-      return null;
-    }
-  })();
-  if (!model) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   }
 
@@ -197,147 +129,303 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: generation, error: insertError } = await supabase
-    .from('generations')
+  const initialEvents: string[] = [
+    `키워드 ${cleanKeywords.length}개를 받았어요${
+      cleanKeywords.length > 1
+        ? ` (${cleanKeywords.map((k) => `‘${k}’`).join(', ')})`
+        : ` — ‘${cleanKeywords[0]}’`
+    }. 검색 준비할게요.`,
+  ];
+  if (dateFrom || dateTo) {
+    initialEvents.push(
+      `기간은 ${dateFrom ?? '전체'} ~ ${dateTo ?? '오늘'} 으로 좁혀서 봅니다.`,
+    );
+  }
+
+  // Insert the durable job row first (status=queued). The client polls /jobs
+  // or subscribes via Realtime — this request itself returns immediately.
+  const initialProgress: ProgressShape = { events: initialEvents };
+  const { data: job, error: insertErr } = await supabase
+    .from('desk_jobs')
     .insert({
       org_id: org.org_id,
       user_id: user.id,
-      feature: 'desk',
-      input: JSON.stringify({ keywords: cleanKeywords, sources, locale, dateFrom, dateTo }),
-      output: null,
+      keywords: cleanKeywords,
+      sources: usable as unknown as string[],
+      locale,
+      date_from: dateFrom ?? null,
+      date_to: dateTo ?? null,
+      status: 'queued',
+      progress: initialProgress as unknown as object,
+      skipped: skipped.length > 0 ? (skipped as unknown as object) : null,
       credits_spent: FEATURE_COSTS.desk,
     })
     .select('id')
     .single();
-  if (insertError || !generation) {
-    return NextResponse.json({ error: 'db_error' }, { status: 500 });
+  if (insertErr || !job) {
+    return NextResponse.json(
+      { error: insertErr?.message ?? 'db_error' },
+      { status: 500 },
+    );
   }
-  const spend = await spendCredits(org.org_id, 'desk', generation.id);
+
+  const spend = await spendCredits(org.org_id, 'desk');
   if (!spend.ok) {
-    await supabase.from('generations').delete().eq('id', generation.id);
+    await supabase.from('desk_jobs').delete().eq('id', job.id);
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
-  // ─── Streaming work loop ───────────────────────────────────────────────
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
-      const thought = (text: string) => send({ kind: 'thought', text });
+  // Schedule the heavy work to run after the response is returned. Vercel
+  // keeps the function alive up to maxDuration (300s) — enough headroom for
+  // even 10 keywords × 11 sources × API latency.
+  after(() =>
+    runJob({
+      jobId: job.id,
+      orgId: org.org_id,
+      userId: user.id,
+      keywords: cleanKeywords,
+      usable,
+      locale,
+      range: { from: dateFrom, to: dateTo },
+      initialEvents,
+    }),
+  );
 
+  return NextResponse.json({ job_id: job.id });
+}
+
+// ─── Background runner ───────────────────────────────────────────────────────
+async function runJob(args: {
+  jobId: string;
+  orgId: string;
+  userId: string;
+  keywords: string[];
+  usable: DeskSourceId[];
+  locale: 'ko' | 'en';
+  range: DeskDateRange;
+  initialEvents: string[];
+}) {
+  const { jobId, orgId, userId, keywords, usable, locale, range, initialEvents } = args;
+  const admin = createAdminClient();
+  const events: string[] = [...initialEvents];
+  let crawlDone = 0;
+  let crawlTotal = 0;
+
+  type Patch = Partial<{
+    status: 'queued' | 'expanding' | 'crawling' | 'summarizing' | 'done' | 'error';
+    progress: ProgressShape;
+    similar_keywords: string[];
+    output: string;
+    articles: unknown;
+    error_message: string;
+    generation_id: string;
+  }>;
+
+  async function patch(update: Patch) {
+    await admin.from('desk_jobs').update(update).eq('id', jobId);
+  }
+  function pushEvent(text: string) {
+    events.push(text);
+    if (events.length > 80) events.splice(0, events.length - 80);
+  }
+  async function pushAndPatch(text: string, phase?: ProgressShape['phase']) {
+    pushEvent(text);
+    await patch({
+      progress: {
+        phase,
+        crawl_total: crawlTotal,
+        crawl_done: crawlDone,
+        events: [...events],
+      },
+    });
+  }
+
+  try {
+    let model: LanguageModel;
+    try {
+      model = getModel();
+    } catch {
+      await patch({ status: 'error', error_message: 'missing_anthropic_key' });
+      return;
+    }
+
+    let similar: string[] = [];
+    if (keywords.length === 1) {
+      await patch({ status: 'expanding' });
+      await pushAndPatch(
+        '한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…',
+        'expanding',
+      );
       try {
-        const kwLabel = cleanKeywords.map((k) => `‘${k}’`).join(', ');
-        thought(
-          `키워드 ${cleanKeywords.length}개를 받았어요${cleanKeywords.length > 1 ? ` (${kwLabel})` : ` — ${kwLabel}`}. 검색 준비할게요.`,
-        );
-
-        let similar: string[] = [];
-        if (cleanKeywords.length === 1) {
-          thought('한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…');
-          similar = await expandKeywords(model, cleanKeywords[0]);
-          if (similar.length) {
-            thought(`유사 키워드: ${similar.map((k) => `‘${k}’`).join(', ')} — 이 표현들도 함께 검색합니다.`);
-          } else {
-            thought('유사 키워드는 못 만들었어요. 입력 키워드만으로 갑니다.');
-          }
-        } else {
-          thought('여러 키워드라 사용자가 직접 큐레이션한 걸로 보고, 유사 키워드 확장은 건너뜁니다.');
-        }
-
-        const allKeywords = [...cleanKeywords, ...similar];
-        const totalTasks = allKeywords.length * usable.length;
-        const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
-        thought(`이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${totalTasks}회 검색을 동시에 돌릴게요. (${sourceList})`);
-        if (range.from || range.to) {
-          thought(`기간은 ${range.from ?? '전체'} ~ ${range.to ?? '오늘'} 으로 좁혀서 봅니다.`);
-        }
-
-        // Fire all tasks. Each task emits a thought when it lands so the
-        // panel feels alive — order is by completion, not start.
-        const collected: DeskArticle[] = [];
-        const tasks = allKeywords.flatMap((kw) =>
-          usable.map((src) =>
-            crawlSource(src, kw, locale, range).then(
-              (items) => {
-                thought(`${sourceLabelKo(src)} · ‘${kw}’ — ${items.length}건 가져왔어요.`);
-                collected.push(...items);
-              },
-              (err) => {
-                thought(`${sourceLabelKo(src)} · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`);
-              },
-            ),
-          ),
-        );
-        await Promise.all(tasks);
-
-        // Cap kept high so the LLM has enough material for richer summaries;
-        // gpt-4o-mini still fits ~280-char snippets × 250 well within context.
-        const articles = dedupeArticles(collected).slice(0, 250);
-        thought(`수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요.`);
-
-        if (articles.length === 0) {
-          const output = `# 데스크 리서치 요약\n\n키워드 \`${cleanKeywords.join(', ')}\` 로 수집된 항목이 없습니다. 키워드·기간·소스 조합을 바꿔 보세요.`;
-          await supabase.from('generations').update({ output }).eq('id', generation.id);
-          send({
-            kind: 'final',
-            data: {
-              output,
-              generation_id: generation.id,
-              similar_keywords: similar,
-              articles: [],
-              skipped,
-            },
-          });
-          controller.close();
-          return;
-        }
-
-        thought('이제 GPT한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…');
-        let output = '';
-        try {
-          output = await summarize(model, cleanKeywords, similar, range, articles, locale);
-        } catch (err) {
-          console.error('[desk] summarize failed', err);
-          send({
-            kind: 'error',
-            error: err instanceof Error ? err.message : 'summarize_failed',
-          });
-          controller.close();
-          return;
-        }
-
-        await supabase.from('generations').update({ output }).eq('id', generation.id);
-        thought('보고서 받았어요. 화면에 띄울게요.');
-
-        send({
-          kind: 'final',
-          data: {
-            output,
-            generation_id: generation.id,
-            similar_keywords: similar,
-            articles,
-            skipped,
-          },
+        const { text } = await generateText({
+          model,
+          system: EXPAND_SYSTEM,
+          prompt: keywords[0],
+          temperature: 0.3,
         });
-        controller.close();
+        similar = text
+          .trim()
+          .split(/[,\n]/)
+          .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
+          .filter(Boolean)
+          .filter((k) => k.toLowerCase() !== keywords[0].toLowerCase())
+          .slice(0, 4);
       } catch (err) {
-        console.error('[desk] stream failed', err);
-        send({
-          kind: 'error',
-          error: err instanceof Error ? err.message : 'stream_failed',
-        });
-        controller.close();
+        console.error('[desk] expandKeywords failed', err);
       }
-    },
-  });
+      if (similar.length) {
+        await pushAndPatch(
+          `유사 키워드: ${similar.map((k) => `‘${k}’`).join(', ')} — 이 표현들도 함께 검색합니다.`,
+          'expanding',
+        );
+      } else {
+        await pushAndPatch('유사 키워드는 못 만들었어요. 입력 키워드만으로 갑니다.', 'expanding');
+      }
+      await patch({ similar_keywords: similar });
+    } else {
+      await pushAndPatch(
+        '여러 키워드라 사용자가 직접 큐레이션한 걸로 보고, 유사 키워드 확장은 건너뜁니다.',
+        'expanding',
+      );
+    }
 
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      'content-type': 'application/x-ndjson; charset=utf-8',
-      'cache-control': 'no-store, no-transform',
-      'x-accel-buffering': 'no',
-    },
-  });
+    const allKeywords = [...keywords, ...similar];
+    crawlTotal = allKeywords.length * usable.length;
+    await patch({ status: 'crawling' });
+    const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
+    await pushAndPatch(
+      `이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${crawlTotal}회 검색을 동시에 돌릴게요. (${sourceList})`,
+      'crawling',
+    );
+
+    const collected: DeskArticle[] = [];
+    const tasks = allKeywords.flatMap((kw) =>
+      usable.map((src) =>
+        crawlSource(src, kw, locale, range)
+          .then(async (items) => {
+            crawlDone += 1;
+            collected.push(...items);
+            await pushAndPatch(
+              `${sourceLabelKo(src)} · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
+              'crawling',
+            );
+          })
+          .catch(async (err) => {
+            crawlDone += 1;
+            await pushAndPatch(
+              `${sourceLabelKo(src)} · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
+              'crawling',
+            );
+          }),
+      ),
+    );
+    await Promise.all(tasks);
+
+    const articles = dedupeArticles(collected).slice(0, 250);
+    await pushAndPatch(
+      `수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요.`,
+      'crawling',
+    );
+
+    if (articles.length === 0) {
+      const output = `# 데스크 리서치 요약\n\n키워드 \`${keywords.join(', ')}\` 로 수집된 항목이 없습니다. 키워드·기간·소스 조합을 바꿔 보세요.`;
+      const { data: gen } = await admin
+        .from('generations')
+        .insert({
+          org_id: orgId,
+          user_id: userId,
+          feature: 'desk',
+          input: JSON.stringify({ keywords, sources: usable, locale, range }),
+          output,
+          credits_spent: FEATURE_COSTS.desk,
+        })
+        .select('id')
+        .single();
+      await patch({
+        status: 'done',
+        output,
+        articles: [] as unknown as object,
+        generation_id: gen?.id,
+      });
+      return;
+    }
+
+    await patch({ status: 'summarizing' });
+    await pushAndPatch(
+      '이제 Claude한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…',
+      'summarizing',
+    );
+
+    const userMsg = [
+      `요청 언어: ${locale === 'ko' ? '한국어' : 'English'}`,
+      `메인 키워드: ${keywords.join(', ')}`,
+      `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
+      `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
+      `수집 항목 수: ${articles.length}`,
+      '',
+      '--- 항목 목록 ---',
+      articles
+        .map((a, i) => {
+          const lines = [
+            `${i + 1}. [${a.source}] ${a.title}`,
+            `   url: ${a.url}`,
+            a.origin ? `   origin: ${a.origin}` : '',
+            a.publishedAt ? `   published: ${a.publishedAt}` : '',
+            a.keyword ? `   matched_keyword: ${a.keyword}` : '',
+            a.snippet ? `   snippet: ${a.snippet.slice(0, 280)}` : '',
+          ].filter(Boolean);
+          return lines.join('\n');
+        })
+        .join('\n\n'),
+    ].join('\n');
+
+    let output = '';
+    try {
+      const { text } = await generateText({
+        model,
+        system: REPORT_SYSTEM,
+        prompt: userMsg,
+        temperature: 0.2,
+      });
+      output = text.trim();
+    } catch (err) {
+      console.error('[desk] summarize failed', err);
+      await patch({
+        status: 'error',
+        error_message: err instanceof Error ? err.message : 'summarize_failed',
+      });
+      return;
+    }
+
+    await pushAndPatch('보고서 받았어요. 화면에 띄울게요.', 'summarizing');
+
+    const { data: gen } = await admin
+      .from('generations')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        feature: 'desk',
+        input: JSON.stringify({ keywords, sources: usable, locale, range }),
+        output,
+        credits_spent: FEATURE_COSTS.desk,
+      })
+      .select('id')
+      .single();
+
+    await patch({
+      status: 'done',
+      output,
+      articles: articles as unknown as object,
+      generation_id: gen?.id,
+    });
+  } catch (err) {
+    console.error('[desk] runJob fatal', err);
+    await admin
+      .from('desk_jobs')
+      .update({
+        status: 'error',
+        error_message: err instanceof Error ? err.message : 'unknown',
+      })
+      .eq('id', jobId);
+  }
 }

@@ -11,6 +11,7 @@ import {
 } from '@/lib/features';
 import { useInterviewJob } from './interview-job-provider';
 import { useTranscriptJobs } from './transcript-job-provider';
+import { useDeskJobs } from './desk-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
@@ -38,6 +39,7 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
 
   const interviewJob = useInterviewJob();
   const transcriptJobs = useTranscriptJobs();
+  const deskJobs = useDeskJobs();
   const generationJobs = useGenerationJobs();
   // A feature is "busy" if its dedicated job provider says so OR a
   // one-shot generation is running in the GenerationJobProvider.
@@ -46,6 +48,7 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
   function isBusy(key: FeatureKey): boolean {
     if (key === 'interviews') return interviewJob.isWorking;
     if (key === 'quotes') return transcriptJobs.isWorking;
+    if (key === 'desk') return deskJobs.isWorking;
     return generationJobs.isWorking(key);
   }
 
