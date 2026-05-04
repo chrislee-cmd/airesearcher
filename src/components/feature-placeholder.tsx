@@ -5,17 +5,30 @@ import { useEffect, useState } from 'react';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
+import { useGenerationJobs } from './generation-job-provider';
 import type { FeatureKey } from '@/lib/features';
 import { prefillKey } from '@/lib/workspace';
+
+type GenerationResult = { output: string };
 
 export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   const t = useTranslations('Features');
   const tCommon = useTranslations('Common');
   const [input, setInput] = useState('');
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
   const requireAuth = useRequireAuth();
   const workspace = useWorkspace();
+  const jobs = useGenerationJobs();
+
+  // The fetch/result for this feature lives at the layout-level
+  // provider so navigating away mid-run keeps it alive.
+  const job = jobs.get(feature);
+  const running = job.status === 'running';
+  const result =
+    job.status === 'done'
+      ? (job.result as GenerationResult | null)?.output ?? null
+      : job.status === 'error'
+      ? `Error: ${job.error}`
+      : null;
 
   useEffect(() => {
     try {
@@ -33,35 +46,35 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   }
 
   async function doRun() {
-    setRunning(true);
-    setResult(null);
     track('generate_clicked', { feature });
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ feature, input }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setResult(`Error: ${json.error ?? res.statusText}`);
-      } else {
-        setResult(json.output);
+    const submitted = input;
+    await jobs.start<GenerationResult>(feature, {
+      input: { feature, input: submitted },
+      run: async () => {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ feature, input: submitted }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? res.statusText);
+        }
         track('generate_success', { feature });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const title = `${feature}_${ts}.md`;
+        const content =
+          typeof json.output === 'string'
+            ? json.output
+            : JSON.stringify(json.output, null, 2);
         workspace.addArtifact({
           featureKey: feature,
           title,
-          content:
-            typeof json.output === 'string'
-              ? json.output
-              : JSON.stringify(json.output, null, 2),
+          content,
         });
-      }
-    } finally {
-      setRunning(false);
-    }
+        return { output: content };
+      },
+    });
   }
 
   return (
