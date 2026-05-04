@@ -90,9 +90,25 @@ export type ImportResult = {
   slots: { attendeeId: string; date: IsoDate; start: HHmm; end: HHmm }[];
 };
 
+function decodeCsvBuffer(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  const hasUtf8Bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+  if (hasUtf8Bom) return new TextDecoder('utf-8').decode(buf);
+  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+  if (!utf8.includes('�')) return utf8;
+  try {
+    return new TextDecoder('euc-kr', { fatal: false }).decode(buf);
+  } catch {
+    return utf8;
+  }
+}
+
 export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Promise<ImportResult> {
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+  const wb = isCsv
+    ? XLSX.read(decodeCsvBuffer(buf), { type: 'string', cellDates: true })
+    : XLSX.read(buf, { type: 'array', cellDates: true });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) return { attendees: [], slots: [] };
   const sheet = wb.Sheets[sheetName];
