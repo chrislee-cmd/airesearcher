@@ -27,12 +27,19 @@
     "desk": "데스크 리서치",
     "keywords": "키워드 크롤링",
     "recruiting": "리크루팅",
+    "survey": "AI 설문지",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
+    "buyCredits": "크레딧 구매",
     "credits": "크레딧",
     "viewProjects": "프로젝트 보기",
     "working": "작업중"
+  },
+  "SidebarGroups": {
+    "design": "조사 설계",
+    "conduct": "조사 진행",
+    "analysis": "조사 분석"
   },
   "Projects": {
     "title": "프로젝트",
@@ -154,6 +161,11 @@
     "recruiting": {
       "title": "리크루팅",
       "description": "리서치 대상자 모집을 위한 스크리너 문항과 모집 공고문을 생성합니다.",
+      "cost": "3크레딧"
+    },
+    "survey": {
+      "title": "AI 설문지",
+      "description": "리서치 목적과 가설을 입력하면 정량 설문 문항과 분기 로직을 생성합니다.",
       "cost": "3크레딧"
     }
   },

@@ -27,12 +27,19 @@
     "desk": "Desk Research",
     "keywords": "Keyword Crawling",
     "recruiting": "Recruiting",
+    "survey": "AI Survey",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
+    "buyCredits": "Buy credits",
     "credits": "Credits",
     "viewProjects": "View Projects",
     "working": "working"
+  },
+  "SidebarGroups": {
+    "design": "Research Design",
+    "conduct": "Research Conduct",
+    "analysis": "Research Analysis"
   },
   "Projects": {
     "title": "Projects",
@@ -154,6 +161,11 @@
     "recruiting": {
       "title": "Recruiting",
       "description": "Generate screener questions and recruitment posts for research participant sourcing.",
+      "cost": "3 credits"
+    },
+    "survey": {
+      "title": "AI Survey",
+      "description": "Generate quantitative survey questions and branching logic from your research goals and hypotheses.",
       "cost": "3 credits"
     }
   },

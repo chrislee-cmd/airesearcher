@@ -3,25 +3,40 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { FEATURES, type FeatureKey } from '@/lib/features';
+import {
+  FEATURES,
+  FEATURE_GROUPS,
+  type FeatureKey,
+  type FeatureGroupKey,
+} from '@/lib/features';
 import { useInterviewJob } from './interview-job-provider';
 import { useTranscriptJobs } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
+import { SidebarAccount } from './sidebar-account';
 
 type SidebarProject = { id: string; name: string };
 
-export function Sidebar({ projects }: { projects: SidebarProject[] }) {
+type Props = {
+  projects: SidebarProject[];
+  email: string | null;
+  credits: number | null;
+  isAuthed: boolean;
+};
+
+const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
+
+const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
+
+export function Sidebar({ projects, email, credits, isAuthed }: Props) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
   const tProjects = useTranslations('Projects');
   const tBrand = useTranslations('Brand');
+  const tGroups = useTranslations('SidebarGroups');
 
   const interviewJob = useInterviewJob();
   const transcriptJobs = useTranscriptJobs();
-  // Per-feature in-flight state. Keyed by FeatureKey so future features
-  // can light up without further sidebar plumbing — they just register
-  // their own "working" flag here.
   const featureBusy: Partial<Record<FeatureKey, boolean>> = {
     interviews: interviewJob.isWorking,
     quotes: transcriptJobs.isWorking,
@@ -33,14 +48,54 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
   const workspace = useWorkspace();
   const router = useRouter();
   const [dragOverFeature, setDragOverFeature] = useState<FeatureKey | null>(null);
-
   const dragging = workspace.dragging;
-  // While an artifact is being dragged, every feature listed in
-  // SEND_TO_MAP[source] is "compatible" — others still accept the drop
-  // (user can override the suggestion) but render at lower emphasis.
   const compatibleTargets = dragging
     ? new Set(SEND_TO_MAP[dragging.sourceFeature] ?? [])
     : null;
+
+  // Persist which groups are collapsed across reloads. Default = all open.
+  // Group containing the current page auto-opens regardless of saved state
+  // so deep links never land you on a hidden item.
+  const [collapsed, setCollapsed] = useState<Set<FeatureGroupKey>>(new Set());
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_STORAGE_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setCollapsed(new Set(arr as FeatureGroupKey[]));
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(
+        COLLAPSE_STORAGE_KEY,
+        JSON.stringify(Array.from(collapsed)),
+      );
+    } catch {}
+  }, [collapsed, hydrated]);
+
+  // Auto-open the group whose feature matches current path — but only
+  // when the path actually changes. After that, user toggle wins so
+  // closing a section while on a page inside it stays closed.
+  const activeGroup = FEATURE_GROUPS.find((g) =>
+    g.features.some((k) => {
+      const f = FEATURE_BY_KEY.get(k);
+      return f && pathname === f.href;
+    }),
+  )?.key;
+  useEffect(() => {
+    if (!activeGroup) return;
+    setCollapsed((prev) => {
+      if (!prev.has(activeGroup)) return prev;
+      const next = new Set(prev);
+      next.delete(activeGroup);
+      return next;
+    });
+  }, [activeGroup]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -56,6 +111,15 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
   const projectsActive =
     pathname === '/projects' || pathname.startsWith('/projects/');
 
+  function toggleGroup(g: FeatureGroupKey) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
+      return next;
+    });
+  }
+
   return (
     <aside className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r border-line bg-paper md:flex">
       <div className="px-7 pb-6 pt-7">
@@ -70,7 +134,7 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
         </Link>
       </div>
 
-      {/* Projects entry — link + chevron dropdown */}
+      {/* Projects entry */}
       <div className="px-3 pb-2">
         <div
           ref={dropdownRef}
@@ -122,113 +186,116 @@ export function Sidebar({ projects }: { projects: SidebarProject[] }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 pb-7">
-        <ul>
-          {FEATURES.map((f) => {
-            const active = pathname === f.href;
-            const busy = !!featureBusy[f.key];
-            const isDragOver = dragOverFeature === f.key;
-            const isCompatible = compatibleTargets?.has(f.key) ?? false;
-            const isDimmed = !!dragging && !isCompatible && f.key !== dragging.sourceFeature;
-            // Non-source incompatible items dim slightly so the eye
-            // is drawn to the recommended drop targets, but they still
-            // accept the drop in case the user knows better.
-            return (
-              <li key={f.key}>
-                <Link
-                  href={f.href}
-                  onDragOver={(e) => {
-                    if (!dragging) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                    if (dragOverFeature !== f.key) setDragOverFeature(f.key);
-                  }}
-                  onDragLeave={() => {
-                    if (dragOverFeature === f.key) setDragOverFeature(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOverFeature(null);
-                    const manyRaw = e.dataTransfer.getData(
-                      'application/x-workspace-artifacts',
+      <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        {FEATURE_GROUPS.map((g) => {
+          const isCollapsed = collapsed.has(g.key);
+          return (
+            <section key={g.key} className="mt-3 first:mt-2">
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.key)}
+                aria-expanded={!isCollapsed}
+                className="flex w-full items-center justify-between gap-2 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+              >
+                <span>{tGroups(g.key)}</span>
+                <Chevron open={!isCollapsed} small />
+              </button>
+              {!isCollapsed && (
+                <ul className="mt-0.5">
+                  {g.features.map((key) => {
+                    const f = FEATURE_BY_KEY.get(key);
+                    if (!f) return null;
+                    const active = pathname === f.href;
+                    const busy = !!featureBusy[f.key];
+                    const isDragOver = dragOverFeature === f.key;
+                    const isCompatible =
+                      compatibleTargets?.has(f.key) ?? false;
+                    const isDimmed =
+                      !!dragging &&
+                      !isCompatible &&
+                      f.key !== dragging.sourceFeature;
+                    return (
+                      <li key={f.key}>
+                        <Link
+                          href={f.href}
+                          onDragOver={(e) => {
+                            if (!dragging) return;
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'copy';
+                            if (dragOverFeature !== f.key)
+                              setDragOverFeature(f.key);
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverFeature === f.key)
+                              setDragOverFeature(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverFeature(null);
+                            const manyRaw = e.dataTransfer.getData(
+                              'application/x-workspace-artifacts',
+                            );
+                            if (manyRaw) {
+                              try {
+                                const ids = JSON.parse(manyRaw) as string[];
+                                const path = workspace.sendMany(ids, f.key);
+                                workspace.setDragging(null);
+                                if (path) router.push(path);
+                                return;
+                              } catch {}
+                            }
+                            const id = e.dataTransfer.getData(
+                              'application/x-workspace-artifact',
+                            );
+                            if (!id) return;
+                            const path = workspace.sendTo(id, f.key);
+                            workspace.setDragging(null);
+                            if (path) router.push(path);
+                          }}
+                          className={`flex items-center justify-between gap-2 px-4 py-1.5 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
+                            active
+                              ? 'border-amore text-ink-2 font-semibold'
+                              : isDragOver
+                              ? 'border-amore bg-paper-soft text-ink-2'
+                              : isCompatible
+                              ? 'border-amore text-ink-2'
+                              : isDimmed
+                              ? 'border-transparent text-mute-soft'
+                              : 'border-transparent text-mute hover:text-ink-2'
+                          }`}
+                        >
+                          <span className="truncate">{t(f.key)}</span>
+                          {busy && (
+                            <span
+                              title={t('working')}
+                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
+                            >
+                              <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                              {t('working')}
+                            </span>
+                          )}
+                        </Link>
+                      </li>
                     );
-                    if (manyRaw) {
-                      try {
-                        const ids = JSON.parse(manyRaw) as string[];
-                        const path = workspace.sendMany(ids, f.key);
-                        workspace.setDragging(null);
-                        if (path) router.push(path);
-                        return;
-                      } catch {
-                        // fall through to single-id path
-                      }
-                    }
-                    const id = e.dataTransfer.getData(
-                      'application/x-workspace-artifact',
-                    );
-                    if (!id) return;
-                    const path = workspace.sendTo(id, f.key);
-                    workspace.setDragging(null);
-                    if (path) router.push(path);
-                  }}
-                  className={`flex items-center justify-between gap-2 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
-                    active
-                      ? 'border-amore text-ink-2 font-semibold'
-                      : isDragOver
-                      ? 'border-amore bg-paper-soft text-ink-2'
-                      : isCompatible
-                      ? 'border-amore text-ink-2'
-                      : isDimmed
-                      ? 'border-transparent text-mute-soft'
-                      : 'border-transparent text-mute hover:text-ink-2'
-                  }`}
-                >
-                  <span className="truncate">{t(f.key)}</span>
-                  {busy && (
-                    <span
-                      title={t('working')}
-                      className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
-                    >
-                      <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
-                      {t('working')}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                  })}
+                </ul>
+              )}
+            </section>
+          );
+        })}
       </nav>
 
-      <div className="border-t border-line-soft px-7 py-5">
-        <div className="flex flex-col gap-2 text-[11px] text-mute-soft">
-          <Link
-            href="/members"
-            className={`transition-colors duration-[120ms] hover:text-ink-2 ${
-              pathname === '/members' ? 'text-ink-2' : ''
-            }`}
-          >
-            {t('members')}
-          </Link>
-          <Link
-            href="/settings"
-            className={`transition-colors duration-[120ms] hover:text-ink-2 ${
-              pathname === '/settings' ? 'text-ink-2' : ''
-            }`}
-          >
-            {t('settings')}
-          </Link>
-        </div>
-      </div>
+      <SidebarAccount email={email} credits={credits} isAuthed={isAuthed} />
     </aside>
   );
 }
 
-function Chevron({ open }: { open: boolean }) {
+function Chevron({ open, small }: { open: boolean; small?: boolean }) {
+  const size = small ? 8 : 10;
   return (
     <svg
-      width="10"
-      height="10"
+      width={size}
+      height={size}
       viewBox="0 0 10 10"
       fill="none"
       style={{
@@ -237,7 +304,13 @@ function Chevron({ open }: { open: boolean }) {
       }}
       aria-hidden
     >
-      <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2 3.5L5 6.5L8 3.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
