@@ -1,0 +1,130 @@
+'use client';
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from './auth-provider';
+import type { DeskArticle, DeskSourceId } from '@/lib/desk-sources';
+
+export type DeskJobStatus =
+  | 'queued'
+  | 'expanding'
+  | 'crawling'
+  | 'summarizing'
+  | 'done'
+  | 'error';
+
+export type DeskJobProgress = {
+  phase?: 'expanding' | 'crawling' | 'summarizing';
+  crawl_total?: number;
+  crawl_done?: number;
+  events: string[];
+};
+
+export type DeskJob = {
+  id: string;
+  keywords: string[];
+  sources: DeskSourceId[];
+  locale: string;
+  date_from: string | null;
+  date_to: string | null;
+  status: DeskJobStatus;
+  progress: DeskJobProgress;
+  similar_keywords: string[];
+  output: string | null;
+  articles: DeskArticle[] | null;
+  skipped: { source: DeskSourceId; missing: string }[] | null;
+  error_message: string | null;
+  generation_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const ACTIVE: DeskJobStatus[] = ['queued', 'expanding', 'crawling', 'summarizing'];
+
+type Ctx = {
+  jobs: DeskJob[];
+  isWorking: boolean;
+  /** Most recent job for the current user — what the screen renders. */
+  latestJob: DeskJob | null;
+  refresh: () => Promise<void>;
+};
+
+const DeskJobCtx = createContext<Ctx | null>(null);
+
+export function useDeskJobs() {
+  const v = useContext(DeskJobCtx);
+  if (!v) throw new Error('useDeskJobs must be used inside <DeskJobProvider>');
+  return v;
+}
+
+export function DeskJobProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const [jobs, setJobs] = useState<DeskJob[]>([]);
+  const channelRef = useRef<ReturnType<
+    ReturnType<typeof createClient>['channel']
+  > | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!user) {
+      setJobs([]);
+      return;
+    }
+    try {
+      const res = await fetch('/api/desk/jobs', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      setJobs(json.jobs ?? []);
+    } catch {
+      // ignore — realtime or next refresh will catch up
+    }
+  }, [user]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Realtime subscription on desk_jobs row changes — provider keeps the panel
+  // current even when the user is on another page.
+  useEffect(() => {
+    if (!user) {
+      if (channelRef.current) {
+        const supabase = createClient();
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      return;
+    }
+    const supabase = createClient();
+    const ch = supabase
+      .channel(`desk-jobs-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'desk_jobs' },
+        () => {
+          void refresh();
+        },
+      )
+      .subscribe();
+    channelRef.current = ch;
+    return () => {
+      supabase.removeChannel(ch);
+      if (channelRef.current === ch) channelRef.current = null;
+    };
+  }, [user, refresh]);
+
+  const latestJob = jobs[0] ?? null;
+  const isWorking = jobs.some((j) => ACTIVE.includes(j.status));
+
+  return (
+    <DeskJobCtx.Provider value={{ jobs, isWorking, latestJob, refresh }}>
+      {children}
+    </DeskJobCtx.Provider>
+  );
+}

@@ -6,6 +6,7 @@ import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
+import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
 import { WorkspaceBridge } from '@/components/workspace-bridge';
@@ -31,8 +32,9 @@ export default async function AppLayout({
   return (
     <InterviewJobProvider>
      <TranscriptJobProvider>
-      <GenerationJobProvider>
-       <WorkspaceProvider>
+      <DeskJobProvider>
+       <GenerationJobProvider>
+        <WorkspaceProvider>
         <div className="flex flex-1">
           <Sidebar
             projects={projects.map((p) => ({ id: p.id, name: p.name }))}
@@ -44,8 +46,9 @@ export default async function AppLayout({
         </div>
         <WorkspaceBridge />
         <WorkspacePanel />
-       </WorkspaceProvider>
-      </GenerationJobProvider>
+        </WorkspaceProvider>
+       </GenerationJobProvider>
+      </DeskJobProvider>
      </TranscriptJobProvider>
     </InterviewJobProvider>
   );
