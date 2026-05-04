@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import OpenAI from 'openai';
+import { generateText, type LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
@@ -66,24 +67,24 @@ const REPORT_SYSTEM = `당신은 데스크 리서치 보고서를 작성하는 �
 
 분량은 충실하게 작성하되 불필요하게 늘리지 않으며, 각 단락은 의미 있는 정보가 담길 때만 둡니다.`;
 
-function getOpenAI(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('missing_openai_key');
-  return new OpenAI({ apiKey });
+function getModel(): LanguageModel {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('missing_anthropic_key');
+  // claude-sonnet-4-6 — same model the interview routes use, balances
+  // quality and cost for free-form Korean reports.
+  return createAnthropic({ apiKey })('claude-sonnet-4-6');
 }
 
-async function expandKeywords(openai: OpenAI, keyword: string): Promise<string[]> {
+async function expandKeywords(model: LanguageModel, keyword: string): Promise<string[]> {
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const { text } = await generateText({
+      model,
+      system: EXPAND_SYSTEM,
+      prompt: keyword,
       temperature: 0.3,
-      messages: [
-        { role: 'system', content: EXPAND_SYSTEM },
-        { role: 'user', content: keyword },
-      ],
     });
-    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
-    return raw
+    return text
+      .trim()
       .split(/[,\n]/)
       .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
       .filter(Boolean)
@@ -112,7 +113,7 @@ function formatArticleListForLLM(articles: DeskArticle[]): string {
 }
 
 async function summarize(
-  openai: OpenAI,
+  model: LanguageModel,
   keywords: string[],
   similar: string[],
   range: DeskDateRange,
@@ -130,15 +131,13 @@ async function summarize(
     formatArticleListForLLM(articles),
   ].join('\n');
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+  const { text } = await generateText({
+    model,
+    system: REPORT_SYSTEM,
+    prompt: userMsg,
     temperature: 0.2,
-    messages: [
-      { role: 'system', content: REPORT_SYSTEM },
-      { role: 'user', content: userMsg },
-    ],
   });
-  return completion.choices[0]?.message?.content?.trim() ?? '';
+  return text.trim();
 }
 
 function sourceLabelKo(id: DeskSourceId): string {
@@ -173,15 +172,15 @@ export async function POST(request: Request) {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  const openai = (() => {
+  const model = (() => {
     try {
-      return getOpenAI();
+      return getModel();
     } catch {
       return null;
     }
   })();
-  if (!openai) {
-    return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
+  if (!model) {
+    return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   }
 
   const skipped: { source: DeskSourceId; missing: string }[] = [];
@@ -236,7 +235,7 @@ export async function POST(request: Request) {
         let similar: string[] = [];
         if (cleanKeywords.length === 1) {
           thought('한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…');
-          similar = await expandKeywords(openai, cleanKeywords[0]);
+          similar = await expandKeywords(model, cleanKeywords[0]);
           if (similar.length) {
             thought(`유사 키워드: ${similar.map((k) => `‘${k}’`).join(', ')} — 이 표현들도 함께 검색합니다.`);
           } else {
@@ -297,7 +296,7 @@ export async function POST(request: Request) {
         thought('이제 GPT한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…');
         let output = '';
         try {
-          output = await summarize(openai, cleanKeywords, similar, range, articles, locale);
+          output = await summarize(model, cleanKeywords, similar, range, articles, locale);
         } catch (err) {
           console.error('[desk] summarize failed', err);
           send({
