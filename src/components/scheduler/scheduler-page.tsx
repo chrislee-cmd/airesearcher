@@ -47,6 +47,20 @@ export function SchedulerPage() {
     setSlotFor(selectedId, { date, start, end });
   }
 
+  function bulkImport(payload: {
+    attendees: Attendee[];
+    slots: { attendeeId: string; date: string; start: string; end: string }[];
+  }) {
+    if (payload.attendees.length === 0) return;
+    setAttendees((prev) => [...prev, ...payload.attendees]);
+    setConfirmed((prev) => [
+      ...prev,
+      ...payload.slots.map((s) => ({ id: crypto.randomUUID(), ...s })),
+    ]);
+    const first = payload.attendees[0];
+    if (first) setSelectedId(first.id);
+  }
+
   return (
     <div className="mx-auto max-w-[1240px] px-2 pb-16 pt-8">
       <header className="border-b border-line pb-3">
@@ -74,6 +88,8 @@ export function SchedulerPage() {
           onUpdate={updateAttendee}
           onRemove={removeAttendee}
           onSetSlot={setSlotFor}
+          onImport={bulkImport}
+          durationMin={requirement.durationMin}
         />
       </div>
     </div>

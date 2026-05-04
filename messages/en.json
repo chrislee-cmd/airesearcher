@@ -248,7 +248,11 @@
       "explicitSlotsHint": "Add ad-hoc slots outside the rule above.",
       "addSlot": "Add slot",
       "remove": "Remove",
-      "weekdayShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      "weekdayShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "rangeHint": "Click a start day, then an end day on the calendar.",
+      "summaryEmpty": "No window set yet.",
+      "expand": "Expand",
+      "collapse": "Collapse"
     },
     "calendar": {
       "title": "Calendar",
@@ -282,7 +286,12 @@
       "manualSlot": "Manual entry",
       "date": "Date",
       "start": "Start",
-      "end": "End"
+      "end": "End",
+      "import": "Upload file",
+      "importHint": "CSV/XLSX — name, phone, date, start, end auto-detected. All other columns are preserved as custom fields.",
+      "importSuccess": "Imported {count} attendees.",
+      "importError": "Failed to read file.",
+      "customFields": "Custom fields"
     }
   }
 }

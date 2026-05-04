@@ -248,7 +248,11 @@
       "explicitSlotsHint": "위 규칙 외에 따로 가능한 시간을 추가합니다.",
       "addSlot": "시간 추가",
       "remove": "삭제",
-      "weekdayShort": ["일", "월", "화", "수", "목", "금", "토"]
+      "weekdayShort": ["일", "월", "화", "수", "목", "금", "토"],
+      "rangeHint": "캘린더에서 시작일과 종료일을 차례로 클릭하세요.",
+      "summaryEmpty": "아직 일정이 입력되지 않았습니다.",
+      "expand": "펼치기",
+      "collapse": "접기"
     },
     "calendar": {
       "title": "캘린더",
@@ -282,7 +286,12 @@
       "manualSlot": "직접 입력",
       "date": "날짜",
       "start": "시작",
-      "end": "종료"
+      "end": "종료",
+      "import": "파일 업로드",
+      "importHint": "CSV/XLSX — 이름·전화번호·날짜·시작시간·종료시간 자동 인식, 그 외 컬럼은 추가 정보로 보존됩니다.",
+      "importSuccess": "{count}명을 가져왔습니다.",
+      "importError": "파일을 읽지 못했습니다.",
+      "customFields": "추가 정보"
     }
   }
 }

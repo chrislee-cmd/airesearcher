@@ -1,8 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Attendee, ConfirmedSlot } from '@/lib/scheduler/types';
+import { parseAttendeeFile } from '@/lib/scheduler/csv';
+
+type ImportPayload = {
+  attendees: Attendee[];
+  slots: { attendeeId: string; date: string; start: string; end: string }[];
+};
 
 type Props = {
   attendees: Attendee[];
@@ -13,6 +19,8 @@ type Props = {
   onUpdate: (id: string, patch: Partial<Omit<Attendee, 'id'>>) => void;
   onRemove: (id: string) => void;
   onSetSlot: (attendeeId: string, slot: Omit<ConfirmedSlot, 'id' | 'attendeeId'> | null) => void;
+  onImport: (payload: ImportPayload) => void;
+  durationMin: number;
 };
 
 export function AttendeesPanel({
@@ -24,6 +32,8 @@ export function AttendeesPanel({
   onUpdate,
   onRemove,
   onSetSlot,
+  onImport,
+  durationMin,
 }: Props) {
   const t = useTranslations('Scheduler.attendees');
   const selected = attendees.find((a) => a.id === selectedId) ?? null;
@@ -31,9 +41,12 @@ export function AttendeesPanel({
 
   return (
     <section className="border border-line bg-paper p-5 [border-radius:4px]">
-      <header className="border-b border-line pb-3">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
-        <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('description')}</p>
+      <header className="flex items-start justify-between gap-3 border-b border-line pb-3">
+        <div>
+          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+          <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('description')}</p>
+        </div>
+        <ImportButton onImport={onImport} durationMin={durationMin} />
       </header>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
@@ -53,6 +66,64 @@ export function AttendeesPanel({
         />
       </div>
     </section>
+  );
+}
+
+function ImportButton({
+  onImport,
+  durationMin,
+}: {
+  onImport: (payload: ImportPayload) => void;
+  durationMin: number;
+}) {
+  const t = useTranslations('Scheduler.attendees');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const result = await parseAttendeeFile(file, durationMin);
+      onImport(result);
+      setStatus({ kind: 'ok', text: t('importSuccess', { count: result.attendees.length }) });
+    } catch {
+      setStatus({ kind: 'err', text: t('importError') });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        onChange={onPick}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="border border-line bg-paper px-3 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-50 [border-radius:4px]"
+      >
+        {busy ? '…' : `↑ ${t('import')}`}
+      </button>
+      <span
+        className={
+          'max-w-[260px] text-right text-[10.5px] ' +
+          (status?.kind === 'err' ? 'text-amore' : 'text-mute-soft')
+        }
+      >
+        {status?.text ?? t('importHint')}
+      </span>
+    </div>
   );
 }
 
@@ -268,6 +339,20 @@ function AttendeeDetail({
 
         <ManualSlotEntry attendeeId={attendee.id} onSetSlot={onSetSlot} />
       </div>
+
+      {attendee.customFields && Object.keys(attendee.customFields).length > 0 && (
+        <div className="mt-4 border-t border-line-soft pt-4">
+          <h3 className="text-[13px] font-semibold text-ink-2">{t('customFields')}</h3>
+          <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
+            {Object.entries(attendee.customFields).map(([k, v]) => (
+              <div key={k} className="flex flex-col gap-0.5">
+                <dt className="text-[10.5px] uppercase tracking-[0.06em] text-mute-soft">{k}</dt>
+                <dd className="break-words text-[12.5px] text-ink-2">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }

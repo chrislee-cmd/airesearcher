@@ -26,6 +26,7 @@ export type Attendee = {
   email?: string;
   phone?: string;
   note?: string;
+  customFields?: Record<string, string>;
 };
 
 export type ConfirmedSlot = {
