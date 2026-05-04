@@ -79,7 +79,8 @@ async function fetchGoogleNews(
   const res = await safeFetch(url, { headers: { 'user-agent': UA } });
   if (!res.ok) return [];
   const xml = await res.text();
-  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 10);
+  // Google News RSS returns ~100 per query; take all of them.
+  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
   return items
     .map((m) => {
       const block = m[1];
@@ -124,7 +125,7 @@ async function fetchHackerNews(keyword: string, range: DeskDateRange): Promise<D
   }
   const params = new URLSearchParams({
     query: keyword,
-    hitsPerPage: '10',
+    hitsPerPage: '50',
   });
   if (filters.length) params.set('numericFilters', filters.join(','));
   const res = await safeFetch(`https://hn.algolia.com/api/v1/search?${params}`);
@@ -162,7 +163,7 @@ type RedditChild = {
 };
 async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
   const res = await safeFetch(
-    `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=10&sort=relevance`,
+    `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=100&sort=relevance`,
     { headers: { 'user-agent': UA } },
   );
   if (!res.ok) return [];
@@ -210,9 +211,10 @@ async function fetchNaver(
   // Use `sort=date` whenever a range is set so we get the recent slice first
   // before post-filtering. KIN doesn't support date sort.
   const sort = (range.from || range.to) && type !== 'kin' ? 'date' : 'sim';
+  // Naver: max display=100 per call.
   const url = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(
     keyword,
-  )}&display=10&sort=${sort}`;
+  )}&display=100&sort=${sort}`;
   const res = await safeFetch(url, {
     headers: {
       'X-Naver-Client-Id': id,
@@ -259,9 +261,10 @@ async function fetchKakao(
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) return [];
   const sort = range.from || range.to ? 'recency' : 'accuracy';
+  // Kakao: max size=50 per call.
   const url = `https://dapi.kakao.com/v2/search/${type}?query=${encodeURIComponent(
     keyword,
-  )}&size=10&sort=${sort}`;
+  )}&size=50&sort=${sort}`;
   const res = await safeFetch(url, {
     headers: { Authorization: `KakaoAK ${key}` },
   });
@@ -304,11 +307,14 @@ async function fetchYouTube(
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
   const { after, before } = rangeToRfc3339(range);
+  // YouTube: max 50/page. Single page only — search.list costs 100 quota
+  // units per call and our daily quota is 10,000. Pagination would burn it
+  // very quickly when keywords × sources multiply.
   const params = new URLSearchParams({
     part: 'snippet',
     q: keyword,
     type: 'video',
-    maxResults: '10',
+    maxResults: '50',
     relevanceLanguage: locale === 'ko' ? 'ko' : 'en',
     key,
   });
