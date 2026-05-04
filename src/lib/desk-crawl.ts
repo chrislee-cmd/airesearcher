@@ -2,6 +2,8 @@ import type { DeskArticle, DeskSourceId } from './desk-sources';
 
 const UA = 'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
 
+export type DeskDateRange = { from?: string; to?: string }; // YYYY-MM-DD
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&amp;/g, '&')
@@ -33,16 +35,52 @@ function safeFetch(url: string, init?: RequestInit, timeoutMs = 10_000): Promise
   return fetch(url, { ...init, signal: ac.signal }).finally(() => clearTimeout(t));
 }
 
+// Universal post-filter — for sources whose API can't filter server-side. If
+// publishedAt is missing or unparseable we keep the item rather than dropping
+// it (false-negatives are worse than slight over-collection at this stage).
+function inRange(iso: string | undefined, range: DeskDateRange): boolean {
+  if (!range.from && !range.to) return true;
+  if (!iso) return true;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return true;
+  if (range.from) {
+    const f = Date.parse(`${range.from}T00:00:00Z`);
+    if (t < f) return false;
+  }
+  if (range.to) {
+    const e = Date.parse(`${range.to}T23:59:59Z`);
+    if (t > e) return false;
+  }
+  return true;
+}
+
+function rangeToRfc3339(range: DeskDateRange): { after?: string; before?: string } {
+  return {
+    after: range.from ? `${range.from}T00:00:00Z` : undefined,
+    before: range.to ? `${range.to}T23:59:59Z` : undefined,
+  };
+}
+
 // ─── Google News (RSS) ──────────────────────────────────────────────────────
-async function fetchGoogleNews(keyword: string, locale: 'ko' | 'en'): Promise<DeskArticle[]> {
+async function fetchGoogleNews(
+  keyword: string,
+  locale: 'ko' | 'en',
+  range: DeskDateRange,
+): Promise<DeskArticle[]> {
   const hl = locale === 'ko' ? 'ko' : 'en-US';
   const gl = locale === 'ko' ? 'KR' : 'US';
   const ceid = locale === 'ko' ? 'KR:ko' : 'US:en';
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
+  // Google News supports `after:YYYY-MM-DD before:YYYY-MM-DD` operators in q.
+  const parts = [keyword];
+  if (range.from) parts.push(`after:${range.from}`);
+  if (range.to) parts.push(`before:${range.to}`);
+  const q = parts.join(' ');
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
   const res = await safeFetch(url, { headers: { 'user-agent': UA } });
   if (!res.ok) return [];
   const xml = await res.text();
-  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 10);
+  // Google News RSS returns ~100 per query; take all of them.
+  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
   return items
     .map((m) => {
       const block = m[1];
@@ -62,7 +100,8 @@ async function fetchGoogleNews(keyword: string, locale: 'ko' | 'en'): Promise<De
         keyword,
       };
     })
-    .filter((a) => a.title && a.url);
+    .filter((a) => a.title && a.url)
+    .filter((a) => inRange(a.publishedAt, range));
 }
 
 // ─── Hacker News (Algolia) ──────────────────────────────────────────────────
@@ -74,10 +113,22 @@ type HNHit = {
   story_text?: string;
   created_at?: string;
 };
-async function fetchHackerNews(keyword: string): Promise<DeskArticle[]> {
-  const res = await safeFetch(
-    `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(keyword)}&hitsPerPage=10`,
-  );
+async function fetchHackerNews(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
+  const filters: string[] = [];
+  if (range.from) {
+    const ts = Math.floor(Date.parse(`${range.from}T00:00:00Z`) / 1000);
+    if (!Number.isNaN(ts)) filters.push(`created_at_i>${ts}`);
+  }
+  if (range.to) {
+    const ts = Math.floor(Date.parse(`${range.to}T23:59:59Z`) / 1000);
+    if (!Number.isNaN(ts)) filters.push(`created_at_i<${ts}`);
+  }
+  const params = new URLSearchParams({
+    query: keyword,
+    hitsPerPage: '50',
+  });
+  if (filters.length) params.set('numericFilters', filters.join(','));
+  const res = await safeFetch(`https://hn.algolia.com/api/v1/search?${params}`);
   if (!res.ok) return [];
   const json = (await res.json()) as { hits?: HNHit[] };
   const hits = json.hits ?? [];
@@ -110,9 +161,9 @@ type RedditChild = {
     subreddit_name_prefixed?: string;
   };
 };
-async function fetchReddit(keyword: string): Promise<DeskArticle[]> {
+async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
   const res = await safeFetch(
-    `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=10&sort=relevance`,
+    `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=100&sort=relevance`,
     { headers: { 'user-agent': UA } },
   );
   if (!res.ok) return [];
@@ -132,7 +183,8 @@ async function fetchReddit(keyword: string): Promise<DeskArticle[]> {
         keyword,
       };
     })
-    .filter((a) => a.title && a.url);
+    .filter((a) => a.title && a.url)
+    .filter((a) => inRange(a.publishedAt, range));
 }
 
 // ─── Naver Search API ───────────────────────────────────────────────────────
@@ -151,13 +203,18 @@ async function fetchNaver(
   type: NaverType,
   keyword: string,
   source: DeskSourceId,
+  range: DeskDateRange,
 ): Promise<DeskArticle[]> {
   const id = process.env.NAVER_CLIENT_ID;
   const secret = process.env.NAVER_CLIENT_SECRET;
   if (!id || !secret) return [];
+  // Use `sort=date` whenever a range is set so we get the recent slice first
+  // before post-filtering. KIN doesn't support date sort.
+  const sort = (range.from || range.to) && type !== 'kin' ? 'date' : 'sim';
+  // Naver: max display=100 per call.
   const url = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(
     keyword,
-  )}&display=10&sort=sim`;
+  )}&display=100&sort=${sort}`;
   const res = await safeFetch(url, {
     headers: {
       'X-Naver-Client-Id': id,
@@ -180,7 +237,8 @@ async function fetchNaver(
       const origin = it.bloggername || it.cafename;
       return { source, title, url: link, snippet, publishedAt, origin, keyword };
     })
-    .filter((a) => a.title && a.url);
+    .filter((a) => a.title && a.url)
+    .filter((a) => inRange(a.publishedAt, range));
 }
 
 // ─── Kakao Search API ───────────────────────────────────────────────────────
@@ -198,12 +256,15 @@ async function fetchKakao(
   type: KakaoType,
   keyword: string,
   source: DeskSourceId,
+  range: DeskDateRange,
 ): Promise<DeskArticle[]> {
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) return [];
+  const sort = range.from || range.to ? 'recency' : 'accuracy';
+  // Kakao: max size=50 per call.
   const url = `https://dapi.kakao.com/v2/search/${type}?query=${encodeURIComponent(
     keyword,
-  )}&size=10&sort=accuracy`;
+  )}&size=50&sort=${sort}`;
   const res = await safeFetch(url, {
     headers: { Authorization: `KakaoAK ${key}` },
   });
@@ -223,7 +284,8 @@ async function fetchKakao(
         keyword,
       };
     })
-    .filter((a) => a.title && a.url);
+    .filter((a) => a.title && a.url)
+    .filter((a) => inRange(a.publishedAt, range));
 }
 
 // ─── YouTube Data API v3 ────────────────────────────────────────────────────
@@ -237,17 +299,27 @@ type YouTubeItem = {
   };
 };
 
-async function fetchYouTube(keyword: string, locale: 'ko' | 'en'): Promise<DeskArticle[]> {
+async function fetchYouTube(
+  keyword: string,
+  locale: 'ko' | 'en',
+  range: DeskDateRange,
+): Promise<DeskArticle[]> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
+  const { after, before } = rangeToRfc3339(range);
+  // YouTube: max 50/page. Single page only — search.list costs 100 quota
+  // units per call and our daily quota is 10,000. Pagination would burn it
+  // very quickly when keywords × sources multiply.
   const params = new URLSearchParams({
     part: 'snippet',
     q: keyword,
     type: 'video',
-    maxResults: '10',
+    maxResults: '50',
     relevanceLanguage: locale === 'ko' ? 'ko' : 'en',
     key,
   });
+  if (after) params.set('publishedAfter', after);
+  if (before) params.set('publishedBefore', before);
   const res = await safeFetch(`https://www.googleapis.com/youtube/v3/search?${params}`);
   if (!res.ok) return [];
   const json = (await res.json()) as { items?: YouTubeItem[] };
@@ -292,31 +364,32 @@ export async function crawlSource(
   source: DeskSourceId,
   keyword: string,
   locale: 'ko' | 'en' = 'ko',
+  range: DeskDateRange = {},
 ): Promise<DeskArticle[]> {
   try {
     switch (source) {
       case 'google_news':
-        return await fetchGoogleNews(keyword, locale);
+        return await fetchGoogleNews(keyword, locale, range);
       case 'hacker_news':
-        return await fetchHackerNews(keyword);
+        return await fetchHackerNews(keyword, range);
       case 'reddit':
-        return await fetchReddit(keyword);
+        return await fetchReddit(keyword, range);
       case 'naver_news':
-        return await fetchNaver('news', keyword, source);
+        return await fetchNaver('news', keyword, source, range);
       case 'naver_blog':
-        return await fetchNaver('blog', keyword, source);
+        return await fetchNaver('blog', keyword, source, range);
       case 'naver_cafe':
-        return await fetchNaver('cafearticle', keyword, source);
+        return await fetchNaver('cafearticle', keyword, source, range);
       case 'naver_kin':
-        return await fetchNaver('kin', keyword, source);
+        return await fetchNaver('kin', keyword, source, range);
       case 'kakao_web':
-        return await fetchKakao('web', keyword, source);
+        return await fetchKakao('web', keyword, source, range);
       case 'kakao_blog':
-        return await fetchKakao('blog', keyword, source);
+        return await fetchKakao('blog', keyword, source, range);
       case 'kakao_cafe':
-        return await fetchKakao('cafe', keyword, source);
+        return await fetchKakao('cafe', keyword, source, range);
       case 'youtube':
-        return await fetchYouTube(keyword, locale);
+        return await fetchYouTube(keyword, locale, range);
     }
   } catch (err) {
     console.error('[desk-crawl]', source, keyword, err);

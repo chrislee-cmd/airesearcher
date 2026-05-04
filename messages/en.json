@@ -170,12 +170,23 @@
     }
   },
   "Desk": {
-    "keywordLabel": "Keyword",
-    "keywordPlaceholder": "e.g. generative AI marketing, single-household grocery",
+    "keywordLabel": "Keywords",
+    "keywordPlaceholder": "Type a keyword and press Enter",
+    "keywordAddMore": "Add another…",
+    "keywordHint": "Enter / comma / Tab to add, Backspace to remove (up to 10)",
+    "keywordUnit": "keywords",
+    "rangeLabel": "Date range",
+    "range_all": "All time",
+    "range_week": "Last week",
+    "range_month": "Last month",
+    "range_quarter": "Last 3 months",
+    "range_year": "Last year",
+    "range_custom": "Custom",
     "sourcesLabel": "Sources",
-    "sourcesUnit": "selected",
+    "sourcesUnit": "sources",
     "search": "Search",
     "error": "Error",
+    "errorNoKeyword": "Add at least one keyword",
     "similarKeywords": "Expanded keywords",
     "reportTitle": "Summary report",
     "collected": "Collected articles",
@@ -183,7 +194,9 @@
     "groupNone": "Clear",
     "skippedTitle": "Sources skipped — missing API keys",
     "downloadMd": "Download .md",
-    "downloadDocx": "Download .docx"
+    "downloadDocx": "Download .docx",
+    "thinkingActive": "Working on it",
+    "thinkingDone": "Activity"
   },
   "Workspace": {
     "eyebrow": "Workspace",
