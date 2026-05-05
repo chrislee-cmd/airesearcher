@@ -368,7 +368,9 @@
       "importHint": "CSV/XLSX — name, phone, date, start, end auto-detected. All other columns are preserved as custom fields.",
       "importSuccess": "Imported {count} attendees.",
       "importError": "Failed to read file.",
-      "customFields": "Custom fields"
+      "customFields": "Custom fields",
+      "exportCsv": "Export CSV",
+      "exportXlsx": "Export XLSX"
     }
   }
 }

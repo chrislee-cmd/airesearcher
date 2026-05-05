@@ -14,6 +14,7 @@ export function SchedulerPage() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [confirmed, setConfirmed] = useState<ConfirmedSlot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
 
   function addAttendee(input: Omit<Attendee, 'id'>) {
     const a: Attendee = { ...input, id: crypto.randomUUID() };
@@ -50,6 +51,7 @@ export function SchedulerPage() {
   function bulkImport(payload: {
     attendees: Attendee[];
     slots: { attendeeId: string; date: string; start: string; end: string }[];
+    headers: string[];
   }) {
     if (payload.attendees.length === 0) return;
     setAttendees((prev) => [...prev, ...payload.attendees]);
@@ -57,6 +59,11 @@ export function SchedulerPage() {
       ...prev,
       ...payload.slots.map((s) => ({ id: crypto.randomUUID(), ...s })),
     ]);
+    setImportHeaders((prev) => {
+      const next = [...prev];
+      for (const h of payload.headers) if (!next.includes(h)) next.push(h);
+      return next;
+    });
     const first = payload.attendees[0];
     if (first) setSelectedId(first.id);
   }
@@ -90,6 +97,7 @@ export function SchedulerPage() {
           onSetSlot={setSlotFor}
           onImport={bulkImport}
           durationMin={requirement.durationMin}
+          importHeaders={importHeaders}
         />
       </div>
     </div>

@@ -1,13 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Attendee, ConfirmedSlot } from '@/lib/scheduler/types';
-import { parseAttendeeFile } from '@/lib/scheduler/csv';
+import { downloadAttendees, parseAttendeeFile } from '@/lib/scheduler/csv';
 
 type ImportPayload = {
   attendees: Attendee[];
   slots: { attendeeId: string; date: string; start: string; end: string }[];
+  headers: string[];
 };
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
   onSetSlot: (attendeeId: string, slot: Omit<ConfirmedSlot, 'id' | 'attendeeId'> | null) => void;
   onImport: (payload: ImportPayload) => void;
   durationMin: number;
+  importHeaders: string[];
 };
 
 export function AttendeesPanel({
@@ -34,6 +36,7 @@ export function AttendeesPanel({
   onSetSlot,
   onImport,
   durationMin,
+  importHeaders,
 }: Props) {
   const t = useTranslations('Scheduler.attendees');
   const selected = attendees.find((a) => a.id === selectedId) ?? null;
@@ -46,7 +49,14 @@ export function AttendeesPanel({
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
           <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('description')}</p>
         </div>
-        <ImportButton onImport={onImport} durationMin={durationMin} />
+        <div className="flex items-start gap-2">
+          <ExportButtons
+            attendees={attendees}
+            confirmed={confirmed}
+            importHeaders={importHeaders}
+          />
+          <ImportButton onImport={onImport} durationMin={durationMin} />
+        </div>
       </header>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
@@ -127,6 +137,40 @@ function ImportButton({
   );
 }
 
+function ExportButtons({
+  attendees,
+  confirmed,
+  importHeaders,
+}: {
+  attendees: Attendee[];
+  confirmed: ConfirmedSlot[];
+  importHeaders: string[];
+}) {
+  const t = useTranslations('Scheduler.attendees');
+  const disabled = attendees.length === 0;
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => downloadAttendees('csv', attendees, confirmed, importHeaders)}
+        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:4px]"
+      >
+        ↓ {t('exportCsv')}
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => downloadAttendees('xlsx', attendees, confirmed, importHeaders)}
+        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:4px]"
+      >
+        ↓ {t('exportXlsx')}
+      </button>
+    </div>
+  );
+}
+
 function AttendeeList({
   attendees,
   confirmed,
@@ -154,7 +198,26 @@ function AttendeeList({
     setAdding(false);
   }
 
-  const slotByAttendee = new Map(confirmed.map((c) => [c.attendeeId, c]));
+  const slotByAttendee = useMemo(
+    () => new Map(confirmed.map((c) => [c.attendeeId, c])),
+    [confirmed],
+  );
+
+  const sortedAttendees = useMemo(() => {
+    const withIdx = attendees.map((a, i) => ({ a, i, slot: slotByAttendee.get(a.id) }));
+    withIdx.sort((x, y) => {
+      if (x.slot && y.slot) {
+        const xk = `${x.slot.date}T${x.slot.start}`;
+        const yk = `${y.slot.date}T${y.slot.start}`;
+        if (xk !== yk) return xk < yk ? -1 : 1;
+        return x.i - y.i;
+      }
+      if (x.slot) return -1;
+      if (y.slot) return 1;
+      return x.i - y.i;
+    });
+    return withIdx.map((w) => w.a);
+  }, [attendees, slotByAttendee]);
 
   return (
     <div className="border border-line-soft [border-radius:4px]">
@@ -212,7 +275,7 @@ function AttendeeList({
         <div className="px-3 py-6 text-center text-[12px] text-mute-soft">{t('empty')}</div>
       ) : (
         <ul>
-          {attendees.map((a) => {
+          {sortedAttendees.map((a) => {
             const slot = slotByAttendee.get(a.id);
             const active = a.id === selectedId;
             return (

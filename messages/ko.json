@@ -368,7 +368,9 @@
       "importHint": "CSV/XLSX — 이름·전화번호·날짜·시작시간·종료시간 자동 인식, 그 외 컬럼은 추가 정보로 보존됩니다.",
       "importSuccess": "{count}명을 가져왔습니다.",
       "importError": "파일을 읽지 못했습니다.",
-      "customFields": "추가 정보"
+      "customFields": "추가 정보",
+      "exportCsv": "CSV 내보내기",
+      "exportXlsx": "XLSX 내보내기"
     }
   }
 }

@@ -27,6 +27,7 @@ export type Attendee = {
   phone?: string;
   note?: string;
   customFields?: Record<string, string>;
+  sourceRow?: Record<string, string>;
 };
 
 export type ConfirmedSlot = {
