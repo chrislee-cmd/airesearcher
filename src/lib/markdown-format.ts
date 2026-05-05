@@ -1,23 +1,24 @@
 /**
- * If the input is already a `.md` file with plausible markdown structure
- * (or simply long-form prose with paragraph breaks), pass it through with
+ * If the extracted text already has plausible interview/document structure
+ * — markdown headers, lists, code fences, OR simply enough paragraph breaks
+ * to suggest it's prose, not a single wall of text — pass it through with
  * minimal cleanup. Skipping the LLM formatter here avoids the output-token
- * cap silently truncating large interviews — the failure mode where a
- * 113k-char source ended up as 9k chars of markdown because the model ran
- * out of output budget mid-document.
+ * cap silently truncating large interviews (the failure mode where a 113k
+ * char .md became 9k char output, or a 41k char .docx became 9.7k chars).
+ *
+ * No file-extension gate: a .docx interview extracted by mammoth typically
+ * has one paragraph per utterance, and the structural test below is a
+ * stronger signal than the extension anyway.
  */
 export function tryMarkdownPassthrough(
   rawText: string,
   filename: string,
 ): string | null {
-  const isMd = /\.md$/i.test(filename);
-  if (!isMd) return null;
-
-  // Look for any structural signal that the file is really markdown,
-  // not e.g. a single wall of text where formatting would actually help.
   const hasHeader = /^#{1,6}\s+/m.test(rawText);
   const hasList = /^\s*[-*+]\s+/m.test(rawText) || /^\s*\d+\.\s+/m.test(rawText);
-  const hasParagraphs = (rawText.match(/\n\s*\n/g) ?? []).length >= 3;
+  // Require enough paragraph breaks that a single huge run-on isn't
+  // accepted. 5+ blank-line separators ≈ at least 6 paragraphs of prose.
+  const hasParagraphs = (rawText.match(/\n\s*\n/g) ?? []).length >= 5;
   const hasCode = /```/.test(rawText);
   if (!(hasHeader || hasList || hasParagraphs || hasCode)) return null;
 
