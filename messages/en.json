@@ -231,7 +231,10 @@
     "downloadMd": "Download .md",
     "downloadDocx": "Download .docx",
     "thinkingActive": "Working on it",
-    "thinkingDone": "Activity"
+    "thinkingDone": "Activity",
+    "stop": "Stop",
+    "stopRequested": "Stopping…",
+    "cancelledNotice": "Run was cancelled by the user."
   },
   "Workspace": {
     "eyebrow": "Workspace",

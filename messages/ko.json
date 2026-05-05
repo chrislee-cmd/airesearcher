@@ -231,7 +231,10 @@
     "downloadMd": ".md 다운로드",
     "downloadDocx": ".docx 다운로드",
     "thinkingActive": "지금 진행 중",
-    "thinkingDone": "진행 기록"
+    "thinkingDone": "진행 기록",
+    "stop": "중지",
+    "stopRequested": "중지 중…",
+    "cancelledNotice": "사용자 요청으로 작업이 중단되었습니다."
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

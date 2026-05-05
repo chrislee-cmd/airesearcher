@@ -19,7 +19,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('desk_jobs')
     .select(
-      'id, keywords, sources, locale, date_from, date_to, status, progress, similar_keywords, output, articles, analytics, skipped, error_message, generation_id, created_at, updated_at',
+      'id, keywords, sources, locale, date_from, date_to, status, progress, similar_keywords, output, articles, analytics, skipped, error_message, generation_id, cancel_requested, created_at, updated_at',
     )
     .eq('id', id)
     .eq('org_id', org.org_id)

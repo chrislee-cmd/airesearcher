@@ -256,6 +256,23 @@ async function runJob(args: {
   async function patch(update: Patch) {
     await admin.from('desk_jobs').update(update).eq('id', jobId);
   }
+  // Cooperative cancel — the cancel endpoint just flips a row flag, runner
+  // checks at every phase boundary. We throw a tagged error so the outer
+  // try/catch can finalise status='cancelled' instead of 'error'.
+  class CancelledError extends Error {
+    constructor() {
+      super('cancelled');
+      this.name = 'CancelledError';
+    }
+  }
+  async function checkCancel() {
+    const { data } = await admin
+      .from('desk_jobs')
+      .select('cancel_requested')
+      .eq('id', jobId)
+      .single();
+    if (data?.cancel_requested) throw new CancelledError();
+  }
   function pushEvent(text: string) {
     events.push(text);
     if (events.length > 80) events.splice(0, events.length - 80);
@@ -280,6 +297,8 @@ async function runJob(args: {
       await patch({ status: 'error', error_message: 'missing_anthropic_key' });
       return;
     }
+
+    await checkCancel();
 
     let similar: string[] = [];
     if (keywords.length === 1) {
@@ -321,6 +340,8 @@ async function runJob(args: {
       );
     }
 
+    await checkCancel();
+
     const allKeywords = [...keywords, ...similar];
     crawlTotal = allKeywords.length * usable.length;
     await patch({ status: 'crawling' });
@@ -352,6 +373,7 @@ async function runJob(args: {
       ),
     );
     await Promise.all(tasks);
+    await checkCancel();
 
     // Now that per-source pulls aim at 500, the dedupe pool can balloon to
     // a few thousand. Keep a generous global cap so the LLM still gets fed,
@@ -487,6 +509,22 @@ async function runJob(args: {
       generation_id: gen?.id,
     });
   } catch (err) {
+    if (err instanceof CancelledError) {
+      pushEvent('사용자 요청으로 작업을 중단했어요.');
+      await admin
+        .from('desk_jobs')
+        .update({
+          status: 'cancelled',
+          progress: {
+            phase: undefined,
+            crawl_total: crawlTotal,
+            crawl_done: crawlDone,
+            events: [...events],
+          },
+        })
+        .eq('id', jobId);
+      return;
+    }
     console.error('[desk] runJob fatal', err);
     await admin
       .from('desk_jobs')

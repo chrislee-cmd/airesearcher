@@ -18,7 +18,8 @@ export type DeskJobStatus =
   | 'crawling'
   | 'summarizing'
   | 'done'
-  | 'error';
+  | 'error'
+  | 'cancelled';
 
 export type DeskJobProgress = {
   phase?: 'expanding' | 'crawling' | 'summarizing';
@@ -55,6 +56,7 @@ export type DeskJob = {
   skipped: { source: DeskSourceId; missing: string }[] | null;
   error_message: string | null;
   generation_id: string | null;
+  cancel_requested: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -67,6 +69,7 @@ type Ctx = {
   /** Most recent job for the current user — what the screen renders. */
   latestJob: DeskJob | null;
   refresh: () => Promise<void>;
+  cancelJob: (id: string) => Promise<void>;
 };
 
 const DeskJobCtx = createContext<Ctx | null>(null);
@@ -132,11 +135,27 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, refresh]);
 
+  const cancelJob = useCallback(async (id: string) => {
+    try {
+      await fetch(`/api/desk/jobs/${id}/cancel`, { method: 'POST' });
+      // Optimistic flag flip — Realtime will sync the actual status flip in
+      // a moment, but flipping cancel_requested locally lets the button show
+      // the requested state instantly.
+      setJobs((prev) =>
+        prev.map((j) => (j.id === id ? { ...j, cancel_requested: true } : j)),
+      );
+    } catch {
+      // ignore — user can retry
+    }
+  }, []);
+
   const latestJob = jobs[0] ?? null;
   const isWorking = jobs.some((j) => ACTIVE.includes(j.status));
 
   return (
-    <DeskJobCtx.Provider value={{ jobs, isWorking, latestJob, refresh }}>
+    <DeskJobCtx.Provider
+      value={{ jobs, isWorking, latestJob, refresh, cancelJob }}
+    >
       {children}
     </DeskJobCtx.Provider>
   );
