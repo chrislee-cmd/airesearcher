@@ -28,6 +28,7 @@
     "keywords": "Keyword Crawling",
     "recruiting": "Recruiting",
     "survey": "AI Survey",
+    "affinity_bubble": "Affinity Bubble",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -167,7 +168,20 @@
       "title": "AI Survey",
       "description": "Generate quantitative survey questions and branching logic from your research goals and hypotheses.",
       "cost": "1 credit"
+    },
+    "affinity_bubble": {
+      "title": "Affinity Bubble",
+      "description": "Partner solution that visualizes tens of thousands of reviews as semantic clusters.",
+      "cost": "External"
     }
+  },
+  "AffinityBubble": {
+    "eyebrow": "PARTNER",
+    "title": "Affinity Bubble",
+    "description": "Affinity Bubble clusters tens of thousands of user reviews / VOC into a single voronoi map of meaning. A great fit when you want to diagnose your product or a competitor's at a glance.",
+    "alt": "Affinity Bubble sample — clustering of Duolingo reviews",
+    "caption": "Sample: ~10K Duolingo reviews clustered into 5 user personas",
+    "inquiry": "Request a demo"
   },
   "Credits": {
     "pageTitle": "Buy credits",

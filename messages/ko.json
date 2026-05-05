@@ -28,6 +28,7 @@
     "keywords": "키워드 크롤링",
     "recruiting": "리크루팅",
     "survey": "AI 설문지",
+    "affinity_bubble": "Affinity Bubble",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -167,7 +168,20 @@
       "title": "AI 설문지",
       "description": "리서치 목적과 가설을 입력하면 정량 설문 문항과 분기 로직을 생성합니다.",
       "cost": "1크레딧"
+    },
+    "affinity_bubble": {
+      "title": "Affinity Bubble",
+      "description": "수만 건의 리뷰를 의미 클러스터로 시각화하는 파트너 솔루션입니다.",
+      "cost": "외부 솔루션"
     }
+  },
+  "AffinityBubble": {
+    "eyebrow": "PARTNER",
+    "title": "Affinity Bubble",
+    "description": "수만 건의 사용자 리뷰·VOC를 의미 단위로 클러스터링해 한 장의 voronoi 지도로 보여주는 파트너 솔루션입니다. 자사 서비스나 경쟁사 리뷰를 한눈에 진단하고 싶을 때 도입을 검토해 보세요.",
+    "alt": "Affinity Bubble 예시 — 듀오링고 리뷰 클러스터링",
+    "caption": "예시: 듀오링고 사용자 리뷰 ~10K건을 5개 페르소나로 군집화한 결과",
+    "inquiry": "도입 문의"
   },
   "Credits": {
     "pageTitle": "크레딧 구매",
