@@ -12,19 +12,18 @@ export type FeatureKey =
   | 'survey';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
-// Heavy LLM synthesis (reports / analyzer) sits at 5; medium aggregations
-// at 3; one-shot generations at 1. Per-file features (quotes / interviews
-// convert) charge per uploaded file with a 90-min duration guideline.
+// Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
+// All other utility-style generations sit at 1 credit so they don't gate exploration.
 export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
-  { key: 'quotes', href: '/quotes', cost: 1 },
+  { key: 'quotes', href: '/quotes', cost: 10 },
   { key: 'transcripts', href: '/transcripts', cost: 1 },
-  { key: 'interviews', href: '/interviews', cost: 3 },
-  { key: 'reports', href: '/reports', cost: 5 },
+  { key: 'interviews', href: '/interviews', cost: 10 },
+  { key: 'reports', href: '/reports', cost: 1 },
   { key: 'scheduler', href: '/scheduler', cost: 1 },
   { key: 'moderator', href: '/moderator', cost: 1 },
-  { key: 'analyzer', href: '/analyzer', cost: 5 },
-  { key: 'desk', href: '/desk', cost: 3 },
-  { key: 'keywords', href: '/keywords', cost: 2 },
+  { key: 'analyzer', href: '/analyzer', cost: 1 },
+  { key: 'desk', href: '/desk', cost: 25 },
+  { key: 'keywords', href: '/keywords', cost: 1 },
   { key: 'recruiting', href: '/recruiting', cost: 1 },
   { key: 'survey', href: '/survey', cost: 1 },
 ];

@@ -77,7 +77,7 @@
     "quotes": {
       "title": "Transcript Generator",
       "description": "Convert audio/video interviews into verbatim transcripts.",
-      "cost": "1 credit"
+      "cost": "10 credits"
     },
     "uploader": {
       "dropHere": "Drop audio, video, or document files here, or click to browse",
@@ -106,18 +106,18 @@
     "interviews": {
       "title": "Interview Result Generator",
       "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
-      "cost": "1cr/file convert · 3cr analyze"
+      "cost": "10 credits"
     },
     "interviewsView": {
       "stage1Title": "Step 1 — Convert files to .md",
-      "stage1Help": "Each file costs 1 credit. Audio/video is transcribed then formatted as markdown; text files are wrapped as-is.",
+      "stage1Help": "Each file is converted to markdown. Audio/video is transcribed first; text files are wrapped as-is.",
       "convertAll": "Start",
       "pipelineHint": "Convert → analyze → auto-download CSV+XLSX in one click.",
       "convertingPhase": "converting",
       "viewMd": "View markdown",
       "hideMd": "Hide",
       "stage2Title": "Step 2 — Cross-file question analysis",
-      "stage2Help": "Extracts the shared questions from every converted file, then summarizes each respondent and pulls a VOC quote. (3 credits)",
+      "stage2Help": "Extracts the shared questions from every converted file, then summarizes each respondent and pulls a VOC quote.",
       "analyze": "Run analysis",
       "analyzing": "Analyzing…",
       "exportCsv": "Export CSV",
@@ -131,7 +131,7 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
-      "cost": "5 credits"
+      "cost": "1 credit"
     },
     "scheduler": {
       "title": "Participant Scheduler",
@@ -146,17 +146,17 @@
     "analyzer": {
       "title": "Mixed-Methods Analyzer",
       "description": "Combine qualitative and quantitative inputs to surface integrated insights.",
-      "cost": "5 credits"
+      "cost": "1 credit"
     },
     "desk": {
       "title": "Desk Research",
       "description": "Generate a desk-research summary from a topic, industry, or keyword set using public sources.",
-      "cost": "3 credits"
+      "cost": "25 credits"
     },
     "keywords": {
       "title": "Keyword Crawling",
       "description": "Crawl top results for a keyword and capture their headlines and summaries.",
-      "cost": "2 credits"
+      "cost": "1 credit"
     },
     "recruiting": {
       "title": "Recruiting",
@@ -188,7 +188,7 @@
     "schemeUnitFile": "/file",
     "schemeUnitGen": "/run",
     "schemeUnitSearch": "/search",
-    "schemeNote": "Transcripts cost 1 credit per file (≤ 90 min recommended). Interview Result charges per file for conversion, plus a separate analysis cost per run.",
+    "schemeNote": "Transcripts and Interview Result are 10 credits per run (≤ 90 min interviews recommended). Desk Research includes the multi-source crawl plus the synthesis report in one price.",
     "comingSoonTitle": "Payments not wired yet",
     "comingSoonBody": "Until the gateway is integrated, top-ups go through the billing team. Email us with the credit amount you want and we'll process it within one business day.",
     "contactEmail": "billing@meteor-research.com"
