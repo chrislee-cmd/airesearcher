@@ -5,7 +5,7 @@ const UA = 'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.co
 // Per-source total budget. The route splits this evenly across keywords, so
 // each (keyword × source) pull only takes its slice. This stops the first
 // keyword from devouring the whole budget while later keywords starve.
-export const SOURCE_BUDGET = 500;
+export const SOURCE_BUDGET = 100;
 
 export type DeskDateRange = { from?: string; to?: string }; // YYYY-MM-DD
 
