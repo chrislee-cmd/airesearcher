@@ -287,29 +287,60 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         body: JSON.stringify({ rows: payload }),
         signal: ac.signal,
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setVerticalSynthError(json.error ?? 'vertical_synth_failed');
+      if (!res.ok || !res.body) {
+        // Server returned a non-stream error (often HTML from a gateway
+        // timeout). Read once as text — JSON.parse may fail.
+        const raw = await res.text().catch(() => '');
+        let parsed: { error?: string } = {};
+        try {
+          parsed = raw ? JSON.parse(raw) : {};
+        } catch {
+          parsed = {};
+        }
+        const fallback =
+          res.status === 504
+            ? 'timeout — 다시 시도해 주세요'
+            : `HTTP ${res.status}`;
+        setVerticalSynthError(parsed.error ?? fallback);
         return;
       }
-      const summaries: unknown = json.summaries;
-      if (!Array.isArray(summaries)) {
-        setVerticalSynthError('invalid_response');
+
+      // Stream the partial JSON object as it generates — this keeps the
+      // gateway proxy from 504-ing on a long synchronous response, and
+      // also lets the UI fill in summaries progressively.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let summaries: string[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const partial = await parsePartialJson(buffer);
+        if (!partial.value || typeof partial.value !== 'object') continue;
+        const candidate = (partial.value as { summaries?: unknown }).summaries;
+        if (!Array.isArray(candidate)) continue;
+        summaries = candidate
+          .map((s) => (typeof s === 'string' ? s : ''))
+          .slice(0, payload.length);
+        // Mid-stream paint so users see it filling in.
+        setAnalysis((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            rows: prev.rows.map((row, idx) => ({
+              ...row,
+              verticalSummary:
+                idx < summaries.length ? summaries[idx] : row.verticalSummary,
+            })),
+          };
+        });
+      }
+      if (summaries.length === 0) {
+        setVerticalSynthError('empty_response');
         return;
       }
-      setAnalysis((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          rows: prev.rows.map((row, idx) => ({
-            ...row,
-            verticalSummary:
-              typeof summaries[idx] === 'string'
-                ? (summaries[idx] as string)
-                : '',
-          })),
-        };
-      });
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setVerticalSynthError(

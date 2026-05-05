@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 
@@ -64,32 +64,27 @@ export async function POST(request: Request) {
 - 1차 요약을 단순 정제·압축하지 말고, **앞뒤 문항과의 맥락**을 명시적으로 녹여서 재서술합니다.
 - 예: "앞선 [도입 질문]에서 드러난 ...라는 배경 위에서, 이 문항은 ...에 대한 응답자들의 반응을 ...했다. 이는 뒤이은 [후속 질문]의 ...로 자연스럽게 연결된다."
 - 응답자 간 공통점·차이점·갈등은 유지하되, 그것이 인터뷰의 어느 단계에서 어떤 의미를 갖는지를 드러냅니다.
-- 분량은 정보 밀도에 비례해서 길어져도 좋습니다 (5~10문장 이상도 OK). 충분한 정보가 담긴 wordy하고 rich한 단락을 지향합니다.
+- 분량은 정보 밀도에 비례해서 길어져도 좋습니다 (3~6문장 권장, 의미 있다면 더 길어도 OK). 충분한 정보가 담긴 wordy하고 rich한 단락을 지향하되, 빈말로 늘리지 마세요.
 
 # 출력 규칙
 - 출력 순서는 입력 순서와 정확히 일치 (인덱스 0부터).
 - 입력 row 개수와 정확히 같은 개수의 summary 문자열을 반환.
 - 정의된 JSON 스키마(summaries 배열)만 반환, 그 외 텍스트 금지.`;
 
+  // Stream the response. The point isn't to render partials on the client
+  // (we only render once the array is complete) — it's to keep the HTTP
+  // connection sending bytes so the gateway proxy doesn't 504 while
+  // Sonnet is still composing 30+ wordy summaries.
   try {
     const anthropic = createAnthropic({ apiKey });
-    const result = await generateObject({
+    const result = streamObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: responseSchema,
       system: SYSTEM,
       prompt: `총 ${rows.length}개 문항입니다. 단계 1(전체 조망) → 단계 2(흐름 반영 재구성) 순으로 작업한 뒤, 각 문항별 재구성된 요약을 입력 순서대로 반환해주세요.\n\n${blocks.join('\n\n')}`,
       temperature: 0.3,
     });
-    let summaries = result.object.summaries;
-    if (summaries.length < rows.length) {
-      summaries = [
-        ...summaries,
-        ...Array(rows.length - summaries.length).fill(''),
-      ];
-    } else if (summaries.length > rows.length) {
-      summaries = summaries.slice(0, rows.length);
-    }
-    return NextResponse.json({ summaries });
+    return result.toTextStreamResponse();
   } catch (e) {
     console.warn('[vertical-synth] failed:', e);
     return NextResponse.json(
