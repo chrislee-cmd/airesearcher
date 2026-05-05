@@ -161,11 +161,25 @@ export function ReportGenerator() {
     }
   }
 
+  const [pptxBuilding, setPptxBuilding] = useState(false);
   async function downloadPptx() {
-    if (!result?.markdown) return;
+    if (!result?.markdown || pptxBuilding) return;
+    setPptxBuilding(true);
     try {
+      // Stage 3: ask the model to convert the canonical markdown into a
+      // typed slide outline. Then pptxgenjs renders each slide kind with
+      // its own layout (kpi grid, theme split, real bar charts, etc.).
+      const r = await fetch('/api/reports/slides', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ markdown: result.markdown }),
+      });
+      const json = await r.json();
+      if (!r.ok || !json.outline) {
+        throw new Error(json.error ?? `slides_failed: ${r.statusText}`);
+      }
       const { buildReportPptxBlob } = await import('@/lib/reports-pptx');
-      const blob = await buildReportPptxBlob(result.markdown);
+      const blob = await buildReportPptxBlob(json.outline);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -176,7 +190,9 @@ export function ReportGenerator() {
       setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (e) {
       console.error('[reports] pptx failed', e);
-      alert('PPTX 생성 중 오류가 발생했습니다.');
+      alert(`PPTX 생성 실패: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setPptxBuilding(false);
     }
   }
 
@@ -447,10 +463,10 @@ export function ReportGenerator() {
               <button
                 type="button"
                 onClick={downloadPptx}
-                disabled={!result}
+                disabled={!result || pptxBuilding}
                 className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
               >
-                PPTX
+                {pptxBuilding ? 'PPTX 생성 중…' : 'PPTX'}
               </button>
             </div>
           </div>

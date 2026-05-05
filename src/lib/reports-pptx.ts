@@ -1,343 +1,752 @@
-// Build a PPTX from the canonical report Markdown produced by
-// /api/reports/normalize. We don't try to faithfully reproduce the HTML
-// design — slides have a different rhythm — but we keep the same single
-// accent (#1F5795) and the same UPPERCASE eyebrow / 4px-radius vocabulary
+import type { SlideOutline, Slide } from '@/lib/reports-slides-schema';
+
+// PPTX renderer driven by the typed slide outline produced by
+// /api/reports/slides. Each slide kind has a dedicated layout — we don't
+// dump bullets onto a generic template. All slides keep the same single
+// amore accent (#1F5795), Pretendard, 4px radius, no shadow vocabulary
 // the rest of the system uses.
 
-type Slide = {
-  eyebrow: string;
-  title: string;
-  body: { kind: 'bullet'; text: string }[] | { kind: 'text'; text: string }[];
-  quotes?: { text: string; cite: string }[];
-};
-
-type ParsedSection = {
-  level: 1 | 2 | 3;
-  title: string;
-  body: string[];
-  quotes: { text: string; cite: string }[];
-};
-
 const ACCENT = '1F5795';
+const ACCENT_SOFT = '3D72AD';
+const ACCENT_BG = 'EAF0F8';
 const INK = '1A1A1A';
 const MUTE = '5A5A5A';
 const MUTE_SOFT = '9B9B9B';
 const LINE = 'E1E3E8';
+const LINE_SOFT = 'F1F3F6';
+const FONT = 'Pretendard';
 
-function parseFrontmatter(md: string): { meta: Record<string, string>; rest: string } {
-  const m = md.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!m) return { meta: {}, rest: md };
-  const meta: Record<string, string> = {};
-  for (const line of m[1].split('\n')) {
-    const idx = line.indexOf(':');
-    if (idx > 0) {
-      const key = line.slice(0, idx).trim();
-      const val = line.slice(idx + 1).trim();
-      if (key) meta[key] = val;
-    }
-  }
-  return { meta, rest: m[2] };
-}
+// LAYOUT_WIDE = 13.33 x 7.5 in
+const W = 13.33;
+const H = 7.5;
+const MARGIN_X = 0.7;
+const MARGIN_Y_TOP = 0.55;
+const HEADER_BOTTOM = 1.7;
 
-function parseSections(md: string): ParsedSection[] {
-  const lines = md.split('\n');
-  const sections: ParsedSection[] = [];
-  let current: ParsedSection | null = null;
-  let inBlockquote = false;
-  let bqBuf: string[] = [];
+type AnyPptxSlide = ReturnType<ReturnType<typeof createPptx>['pptx']['addSlide']>;
 
-  function flushQuote() {
-    if (bqBuf.length === 0 || !current) {
-      bqBuf = [];
-      inBlockquote = false;
-      return;
-    }
-    // First line is the quote, the next "— …" line is the cite.
-    let quote = bqBuf[0]?.replace(/^["“”]|["“”]$/g, '').trim() ?? '';
-    let cite = '';
-    for (const l of bqBuf.slice(1)) {
-      if (/^[—–-]/.test(l.trim())) cite = l.trim().replace(/^[—–-]\s*/, '');
-      else if (l.trim()) quote += ' ' + l.trim();
-    }
-    if (quote) current.quotes.push({ text: quote, cite });
-    bqBuf = [];
-    inBlockquote = false;
-  }
-
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, '');
-    const h = line.match(/^(#{1,3})\s+(.+)$/);
-    if (h) {
-      flushQuote();
-      const level = h[1].length as 1 | 2 | 3;
-      current = { level, title: h[2].trim(), body: [], quotes: [] };
-      sections.push(current);
-      continue;
-    }
-    const bq = line.match(/^>\s?(.*)$/);
-    if (bq && current) {
-      inBlockquote = true;
-      bqBuf.push(bq[1] ?? '');
-      continue;
-    }
-    if (inBlockquote) flushQuote();
-    if (current && line.trim()) {
-      current.body.push(line);
-    }
-  }
-  flushQuote();
-  return sections;
-}
-
-function buildSlideOutline(md: string): { cover: { title: string; subtitle: string; meta: Record<string, string> }; slides: Slide[] } {
-  const { meta, rest } = parseFrontmatter(md);
-  const sections = parseSections(rest);
-
-  const coverTitle = meta.title || sections.find((s) => s.level === 1)?.title || '리포트';
-  const coverSubtitle = meta.subtitle || '';
-
-  // Group h2 sections; h3 children become sub-bullets.
-  const slides: Slide[] = [];
-  let i = 0;
-  while (i < sections.length) {
-    const s = sections[i];
-    if (s.level === 1) {
-      i += 1;
-      continue;
-    }
-    if (s.level === 2) {
-      const eyebrow = s.title.match(/^Chapter\s/i) ? 'CHAPTER' : 'SECTION';
-      const bullets: string[] = [];
-      const quotes = [...s.quotes];
-      for (const para of s.body) {
-        const b = para.match(/^[-*]\s+(.+)$/);
-        if (b) bullets.push(b[1]);
-        else if (para.trim()) bullets.push(para.trim());
-      }
-      i += 1;
-      while (i < sections.length && sections[i].level === 3) {
-        const sub = sections[i];
-        bullets.push(`【${sub.title}】`);
-        for (const para of sub.body) {
-          const b = para.match(/^[-*]\s+(.+)$/);
-          if (b) bullets.push(`  · ${b[1]}`);
-          else if (para.trim()) bullets.push(`  ${para.trim()}`);
-        }
-        for (const q of sub.quotes) quotes.push(q);
-        i += 1;
-      }
-      slides.push({
-        eyebrow,
-        title: s.title,
-        body: bullets.map((t) => ({ kind: 'bullet' as const, text: t })),
-        quotes,
-      });
-      continue;
-    }
-    i += 1;
-  }
-
-  return {
-    cover: { title: coverTitle, subtitle: coverSubtitle, meta },
-    slides,
+function createPptx(PptxGenJS: new () => unknown) {
+  // We don't have type defs for the constructor here — pptxgenjs's d.ts
+  // exports a namespace + default. We just trust the runtime shape.
+  const pptx = new PptxGenJS() as unknown as {
+    layout: string;
+    title: string;
+    addSlide: () => unknown;
+    write: (opts: { outputType: string }) => Promise<unknown>;
   };
+  return { pptx };
 }
 
-export async function buildReportPptxBlob(markdown: string): Promise<Blob> {
-  // Dynamic import — pptxgenjs is heavy and only needed on click.
-  const { default: PptxGenJS } = await import('pptxgenjs');
-  const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
-  pptx.title = 'Research Report';
-
-  const outline = buildSlideOutline(markdown);
-
-  // Cover slide.
-  const cover = pptx.addSlide();
-  cover.background = { color: 'FFFFFF' };
-  cover.addShape('line', {
-    x: 0.6,
-    y: 1.0,
-    w: 0.4,
+function addEyebrow(slide: AnyPptxSlide, text: string) {
+  // Short accent line + UPPERCASE label, anchored top-left.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const s = slide as any;
+  s.addShape('line', {
+    x: MARGIN_X,
+    y: MARGIN_Y_TOP + 0.16,
+    w: 0.3,
     h: 0,
     line: { color: ACCENT, width: 1 },
   });
-  cover.addText('RESEARCH REPORT', {
-    x: 0.6,
-    y: 1.05,
+  s.addText(text, {
+    x: MARGIN_X + 0.36,
+    y: MARGIN_Y_TOP,
+    w: 8,
+    h: 0.32,
+    fontFace: FONT,
+    fontSize: 9,
+    color: ACCENT,
+    bold: true,
+    charSpacing: 22,
+  });
+}
+
+function addTitle(slide: AnyPptxSlide, title: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const s = slide as any;
+  s.addText(title, {
+    x: MARGIN_X,
+    y: MARGIN_Y_TOP + 0.42,
+    w: W - MARGIN_X * 2,
+    h: 0.85,
+    fontFace: FONT,
+    fontSize: 22,
+    bold: true,
+    color: INK,
+  });
+  s.addShape('line', {
+    x: MARGIN_X,
+    y: HEADER_BOTTOM,
+    w: W - MARGIN_X * 2,
+    h: 0,
+    line: { color: LINE, width: 1 },
+  });
+}
+
+function blank(pptx: ReturnType<typeof createPptx>['pptx']) {
+  const slide = pptx.addSlide() as AnyPptxSlide;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (slide as any).background = { color: 'FFFFFF' };
+  return slide;
+}
+
+function renderCover(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'cover' }>) {
+  const slide = blank(pptx);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  sl.addShape('line', {
+    x: MARGIN_X,
+    y: 1.1,
+    w: 0.45,
+    h: 0,
+    line: { color: ACCENT, width: 1 },
+  });
+  sl.addText('RESEARCH REPORT', {
+    x: MARGIN_X,
+    y: 1.2,
     w: 8,
     h: 0.3,
-    fontFace: 'Pretendard',
+    fontFace: FONT,
     fontSize: 10,
     color: ACCENT,
     bold: true,
     charSpacing: 22,
   });
-  cover.addText(outline.cover.title, {
-    x: 0.6,
-    y: 1.6,
-    w: 12,
+  sl.addText(s.title, {
+    x: MARGIN_X,
+    y: 1.8,
+    w: W - MARGIN_X * 2,
     h: 1.6,
-    fontFace: 'Pretendard',
+    fontFace: FONT,
     fontSize: 36,
     bold: true,
     color: INK,
   });
-  if (outline.cover.subtitle) {
-    cover.addText(outline.cover.subtitle, {
-      x: 0.6,
-      y: 3.1,
-      w: 12,
-      h: 0.5,
-      fontFace: 'Pretendard',
+  if (s.subtitle) {
+    sl.addText(s.subtitle, {
+      x: MARGIN_X,
+      y: 3.4,
+      w: W - MARGIN_X * 2,
+      h: 0.6,
+      fontFace: FONT,
       fontSize: 16,
       color: MUTE,
     });
   }
-  const metaRows = [
-    ['METHOD', outline.cover.meta.method ?? '—'],
-    ['SAMPLE', outline.cover.meta.sample ?? '—'],
-    ['PERIOD', outline.cover.meta.period ?? '—'],
-    ['CHAPTERS', String(outline.slides.filter((s) => s.eyebrow === 'CHAPTER').length || outline.slides.length)],
+  const meta = s.meta;
+  const rows: [string, string][] = [
+    ['METHOD', meta.method ?? '—'],
+    ['SAMPLE', meta.sample ?? '—'],
+    ['PERIOD', meta.period ?? '—'],
+    ['CHAPTERS', meta.chapters ?? '—'],
   ];
-  metaRows.forEach(([label, value], idx) => {
-    const x = 0.6 + idx * 3.05;
-    cover.addText(label, {
+  rows.forEach(([label, value], i) => {
+    const colW = (W - MARGIN_X * 2) / 4;
+    const x = MARGIN_X + i * colW;
+    sl.addText(label, {
       x,
-      y: 5.2,
-      w: 2.8,
+      y: 5.4,
+      w: colW - 0.2,
       h: 0.3,
-      fontFace: 'Pretendard',
+      fontFace: FONT,
       fontSize: 9,
       color: MUTE_SOFT,
       bold: true,
       charSpacing: 22,
     });
-    cover.addText(value, {
+    sl.addText(value, {
       x,
-      y: 5.55,
-      w: 2.8,
-      h: 0.5,
-      fontFace: 'Pretendard',
+      y: 5.75,
+      w: colW - 0.2,
+      h: 0.6,
+      fontFace: FONT,
       fontSize: 17,
       bold: true,
       color: INK,
     });
   });
-  cover.addShape('rect', {
-    x: 0.6,
-    y: 6.6,
-    w: 12.1,
+  sl.addShape('line', {
+    x: MARGIN_X,
+    y: 6.7,
+    w: W - MARGIN_X * 2,
     h: 0,
     line: { color: LINE, width: 1 },
   });
+}
 
-  // Content slides.
-  for (const s of outline.slides) {
-    const slide = pptx.addSlide();
-    slide.background = { color: 'FFFFFF' };
-    slide.addShape('line', {
-      x: 0.6,
-      y: 0.7,
-      w: 0.3,
-      h: 0,
-      line: { color: ACCENT, width: 1 },
+function renderSectionDivider(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'section_divider' }>) {
+  const slide = blank(pptx);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  sl.addShape('rect', {
+    x: 0,
+    y: 0,
+    w: W,
+    h: H,
+    fill: { color: ACCENT_BG },
+    line: { color: ACCENT_BG, width: 0 },
+  });
+  sl.addShape('line', {
+    x: MARGIN_X,
+    y: 3.0,
+    w: 0.5,
+    h: 0,
+    line: { color: ACCENT, width: 1.5 },
+  });
+  sl.addText(s.eyebrow, {
+    x: MARGIN_X,
+    y: 3.1,
+    w: 8,
+    h: 0.4,
+    fontFace: FONT,
+    fontSize: 12,
+    color: ACCENT,
+    bold: true,
+    charSpacing: 24,
+  });
+  sl.addText(s.title, {
+    x: MARGIN_X,
+    y: 3.7,
+    w: W - MARGIN_X * 2,
+    h: 1.4,
+    fontFace: FONT,
+    fontSize: 32,
+    bold: true,
+    color: INK,
+  });
+  if (s.subtitle) {
+    sl.addText(s.subtitle, {
+      x: MARGIN_X,
+      y: 5.0,
+      w: W - MARGIN_X * 2,
+      h: 0.5,
+      fontFace: FONT,
+      fontSize: 15,
+      color: MUTE,
     });
-    slide.addText(s.eyebrow, {
-      x: 0.95,
-      y: 0.55,
-      w: 6,
+  }
+}
+
+function renderKpiGrid(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'kpi_grid' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  const n = s.items.length;
+  const gap = 0.3;
+  const totalW = W - MARGIN_X * 2;
+  const cardW = (totalW - gap * (n - 1)) / n;
+  const cardH = 4.6;
+  s.items.forEach((item, i) => {
+    const x = MARGIN_X + i * (cardW + gap);
+    const y = 2.0;
+    sl.addShape('rect', {
+      x,
+      y,
+      w: cardW,
+      h: cardH,
+      fill: { color: 'FFFFFF' },
+      line: { color: LINE, width: 1 },
+    });
+    sl.addShape('line', {
+      x,
+      y,
+      w: cardW,
+      h: 0,
+      line: { color: ACCENT, width: 2 },
+    });
+    sl.addText(item.label, {
+      x: x + 0.25,
+      y: y + 0.3,
+      w: cardW - 0.5,
+      h: 0.35,
+      fontFace: FONT,
+      fontSize: 10,
+      color: MUTE_SOFT,
+      bold: true,
+      charSpacing: 22,
+    });
+    sl.addText(item.value, {
+      x: x + 0.25,
+      y: y + 0.85,
+      w: cardW - 0.5,
+      h: 1.4,
+      fontFace: FONT,
+      fontSize: 30,
+      bold: true,
+      color: INK,
+    });
+    if (item.note) {
+      sl.addText(item.note, {
+        x: x + 0.25,
+        y: y + 2.4,
+        w: cardW - 0.5,
+        h: 1.8,
+        fontFace: FONT,
+        fontSize: 12,
+        color: MUTE,
+        valign: 'top',
+      });
+    }
+  });
+}
+
+function renderInsightCards(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'insight_cards' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  const n = s.cards.length;
+  const cols = n <= 2 ? n : Math.min(3, n);
+  const rows = Math.ceil(n / cols);
+  const gap = 0.3;
+  const totalW = W - MARGIN_X * 2;
+  const cardW = (totalW - gap * (cols - 1)) / cols;
+  const totalH = H - 2.0 - 0.5;
+  const cardH = (totalH - gap * (rows - 1)) / rows;
+  s.cards.forEach((card, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = MARGIN_X + col * (cardW + gap);
+    const y = 2.0 + row * (cardH + gap);
+    sl.addShape('rect', {
+      x,
+      y,
+      w: cardW,
+      h: cardH,
+      fill: { color: 'FFFFFF' },
+      line: { color: LINE, width: 1 },
+    });
+    sl.addShape('line', {
+      x,
+      y,
+      w: 0.4,
+      h: 0,
+      line: { color: ACCENT, width: 2 },
+    });
+    sl.addText(`0${i + 1}`.slice(-2), {
+      x: x + 0.3,
+      y: y + 0.25,
+      w: 1,
       h: 0.3,
-      fontFace: 'Pretendard',
-      fontSize: 9,
+      fontFace: FONT,
+      fontSize: 10,
       color: ACCENT,
       bold: true,
       charSpacing: 22,
     });
-    slide.addText(s.title, {
-      x: 0.6,
-      y: 0.95,
-      w: 12.1,
-      h: 0.7,
-      fontFace: 'Pretendard',
-      fontSize: 22,
+    sl.addText(card.heading, {
+      x: x + 0.3,
+      y: y + 0.65,
+      w: cardW - 0.6,
+      h: 0.9,
+      fontFace: FONT,
+      fontSize: 16,
       bold: true,
       color: INK,
     });
-    slide.addShape('line', {
-      x: 0.6,
-      y: 1.7,
-      w: 12.1,
-      h: 0,
-      line: { color: LINE, width: 1 },
+    sl.addText(card.body, {
+      x: x + 0.3,
+      y: y + 1.65,
+      w: cardW - 0.6,
+      h: cardH - 1.85,
+      fontFace: FONT,
+      fontSize: 12,
+      color: MUTE,
+      valign: 'top',
     });
+  });
+}
 
-    const bulletItems = s.body
-      .filter((b) => b.text.trim())
-      .map((b) => ({
-        text: b.text,
-        options: {
-          fontFace: 'Pretendard',
-          fontSize: 12,
-          color: INK,
-          bullet: { type: 'bullet' as const },
-          paraSpaceAfter: 6,
-        },
-      }));
-    if (bulletItems.length > 0) {
-      slide.addText(bulletItems, {
-        x: 0.6,
-        y: 1.95,
-        w: s.quotes && s.quotes.length > 0 ? 7.6 : 12.1,
-        h: 5.0,
-        valign: 'top',
-      });
-    }
+function renderThemeSplit(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'theme_split' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
 
-    if (s.quotes && s.quotes.length > 0) {
-      const quoteText: { text: string; options?: object }[] = [];
-      for (const q of s.quotes.slice(0, 3)) {
-        quoteText.push({
-          text: `"${q.text}"`,
-          options: {
-            fontFace: 'Pretendard',
-            fontSize: 12,
-            italic: true,
-            color: MUTE,
-            paraSpaceAfter: 4,
-          },
-        });
-        if (q.cite) {
-          quoteText.push({
-            text: `— ${q.cite}\n`,
-            options: {
-              fontFace: 'Pretendard',
-              fontSize: 10,
-              color: MUTE_SOFT,
-              paraSpaceAfter: 14,
-            },
-          });
-        }
-      }
-      slide.addShape('rect', {
-        x: 8.4,
-        y: 1.95,
-        w: 0.02,
-        h: 4.8,
-        fill: { color: ACCENT },
-        line: { color: ACCENT, width: 0 },
-      });
-      slide.addText(quoteText, {
-        x: 8.55,
-        y: 1.95,
-        w: 4.1,
-        h: 5.0,
-        valign: 'top',
+  const hasQuote = !!s.verbatim;
+  const leftW = hasQuote ? 7.6 : W - MARGIN_X * 2;
+
+  const bullets = s.findings.map((b, i) => ({
+    text: b,
+    options: {
+      fontFace: FONT,
+      fontSize: 14,
+      color: INK,
+      bullet: { type: 'bullet' as const },
+      paraSpaceAfter: 8,
+      paraSpaceBefore: i === 0 ? 0 : 4,
+    },
+  }));
+  sl.addText(bullets, {
+    x: MARGIN_X,
+    y: 2.0,
+    w: leftW,
+    h: s.implication ? 4.3 : 4.9,
+    valign: 'top',
+  });
+
+  if (s.implication) {
+    sl.addShape('rect', {
+      x: MARGIN_X,
+      y: 6.4,
+      w: leftW,
+      h: 0.6,
+      fill: { color: ACCENT_BG },
+      line: { color: ACCENT_BG, width: 0 },
+    });
+    sl.addText(`→ ${s.implication}`, {
+      x: MARGIN_X + 0.2,
+      y: 6.4,
+      w: leftW - 0.4,
+      h: 0.6,
+      fontFace: FONT,
+      fontSize: 12,
+      bold: true,
+      color: ACCENT,
+      valign: 'middle',
+    });
+  }
+
+  if (hasQuote && s.verbatim) {
+    const qx = MARGIN_X + leftW + 0.4;
+    const qw = W - MARGIN_X - qx;
+    sl.addShape('rect', {
+      x: qx,
+      y: 2.0,
+      w: 0.04,
+      h: 4.8,
+      fill: { color: ACCENT },
+      line: { color: ACCENT, width: 0 },
+    });
+    sl.addText(`"${s.verbatim.text}"`, {
+      x: qx + 0.2,
+      y: 2.0,
+      w: qw - 0.2,
+      h: 4.0,
+      fontFace: FONT,
+      fontSize: 13,
+      italic: true,
+      color: MUTE,
+      valign: 'top',
+    });
+    if (s.verbatim.cite) {
+      sl.addText(`— ${s.verbatim.cite}`, {
+        x: qx + 0.2,
+        y: 6.1,
+        w: qw - 0.2,
+        h: 0.6,
+        fontFace: FONT,
+        fontSize: 11,
+        color: MUTE_SOFT,
       });
     }
   }
+}
 
-  // pptxgenjs in browser returns a Blob via outputType 'blob'.
-  const blob = (await pptx.write({ outputType: 'blob' })) as Blob;
-  return blob;
+function renderQuoteCard(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'quote_card' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  // Big mark
+  sl.addText('"', {
+    x: MARGIN_X,
+    y: 2.0,
+    w: 1,
+    h: 1.5,
+    fontFace: FONT,
+    fontSize: 80,
+    bold: true,
+    color: ACCENT,
+    valign: 'top',
+  });
+  sl.addText(s.quote, {
+    x: MARGIN_X + 1.0,
+    y: 2.3,
+    w: W - MARGIN_X * 2 - 1.0,
+    h: 3.6,
+    fontFace: FONT,
+    fontSize: 22,
+    italic: true,
+    color: INK,
+    valign: 'top',
+  });
+  if (s.cite) {
+    sl.addText(`— ${s.cite}`, {
+      x: MARGIN_X + 1.0,
+      y: 6.0,
+      w: W - MARGIN_X * 2 - 1.0,
+      h: 0.5,
+      fontFace: FONT,
+      fontSize: 14,
+      color: MUTE_SOFT,
+    });
+  }
+  if (s.context) {
+    sl.addText(s.context, {
+      x: MARGIN_X + 1.0,
+      y: 6.5,
+      w: W - MARGIN_X * 2 - 1.0,
+      h: 0.5,
+      fontFace: FONT,
+      fontSize: 12,
+      color: MUTE,
+    });
+  }
+}
+
+function renderBarChart(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'bar_chart' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+
+  // Native pptx bar chart, sorted by value desc.
+  const sorted = [...s.series].sort((a, b) => b.value - a.value);
+  const chartData = [
+    {
+      name: 'value',
+      labels: sorted.map((d) => d.label),
+      values: sorted.map((d) => d.value),
+    },
+  ];
+  // pptxgenjs expects ChartType enum but accepts string in practice.
+  sl.addChart('bar', chartData, {
+    x: MARGIN_X,
+    y: 2.0,
+    w: W - MARGIN_X * 2,
+    h: s.note ? 4.3 : 4.9,
+    barDir: 'bar',
+    barGrouping: 'standard',
+    chartColors: [ACCENT],
+    catAxisLabelFontFace: FONT,
+    catAxisLabelFontSize: 11,
+    catAxisLabelColor: INK,
+    valAxisLabelFontFace: FONT,
+    valAxisLabelFontSize: 10,
+    valAxisLabelColor: MUTE,
+    showValue: true,
+    dataLabelFontFace: FONT,
+    dataLabelFontSize: 10,
+    dataLabelColor: ACCENT,
+    dataLabelFormatCode: s.valueSuffix === '%' ? '0"%"' : 'General',
+    showLegend: false,
+    showTitle: false,
+  });
+  if (s.note) {
+    sl.addText(s.note, {
+      x: MARGIN_X,
+      y: 6.4,
+      w: W - MARGIN_X * 2,
+      h: 0.6,
+      fontFace: FONT,
+      fontSize: 11,
+      color: MUTE_SOFT,
+      italic: true,
+    });
+  }
+}
+
+function renderTable(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'table' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+
+  const headerRow = s.columns.map((c) => ({
+    text: c,
+    options: {
+      bold: true,
+      color: ACCENT,
+      fill: { color: LINE_SOFT },
+      fontFace: FONT,
+      fontSize: 11,
+      charSpacing: 22,
+    },
+  }));
+  const dataRows = s.rows.map((r) =>
+    r.map((cell) => ({
+      text: cell,
+      options: {
+        color: INK,
+        fontFace: FONT,
+        fontSize: 12,
+      },
+    })),
+  );
+  // Pad rows to column count.
+  for (const r of dataRows) {
+    while (r.length < s.columns.length)
+      r.push({ text: '', options: { color: INK, fontFace: FONT, fontSize: 12 } });
+  }
+  sl.addTable([headerRow, ...dataRows], {
+    x: MARGIN_X,
+    y: 2.0,
+    w: W - MARGIN_X * 2,
+    colW: Array(s.columns.length).fill((W - MARGIN_X * 2) / s.columns.length),
+    border: { type: 'solid', pt: 0.5, color: LINE },
+    fontFace: FONT,
+  });
+}
+
+function renderRecommendations(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'recommendations' }>) {
+  const slide = blank(pptx);
+  addEyebrow(slide, s.eyebrow);
+  addTitle(slide, s.title);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  const n = s.items.length;
+  const gap = 0.18;
+  const totalH = H - 2.0 - 0.5;
+  const cardH = (totalH - gap * (n - 1)) / n;
+  s.items.forEach((item, i) => {
+    const y = 2.0 + i * (cardH + gap);
+    const priorityColor =
+      item.priority === 'high' ? ACCENT : item.priority === 'medium' ? ACCENT_SOFT : MUTE_SOFT;
+    sl.addShape('rect', {
+      x: MARGIN_X,
+      y,
+      w: W - MARGIN_X * 2,
+      h: cardH,
+      fill: { color: 'FFFFFF' },
+      line: { color: LINE, width: 1 },
+    });
+    sl.addShape('rect', {
+      x: MARGIN_X,
+      y,
+      w: 0.08,
+      h: cardH,
+      fill: { color: priorityColor },
+      line: { color: priorityColor, width: 0 },
+    });
+    sl.addText(`0${i + 1}`.slice(-2), {
+      x: MARGIN_X + 0.3,
+      y: y + 0.2,
+      w: 0.7,
+      h: 0.4,
+      fontFace: FONT,
+      fontSize: 11,
+      color: priorityColor,
+      bold: true,
+      charSpacing: 22,
+    });
+    sl.addText(item.headline, {
+      x: MARGIN_X + 1.0,
+      y: y + 0.18,
+      w: W - MARGIN_X * 2 - 1.2,
+      h: 0.5,
+      fontFace: FONT,
+      fontSize: 15,
+      bold: true,
+      color: INK,
+    });
+    if (item.detail) {
+      sl.addText(item.detail, {
+        x: MARGIN_X + 1.0,
+        y: y + 0.7,
+        w: W - MARGIN_X * 2 - 1.2,
+        h: cardH - 0.85,
+        fontFace: FONT,
+        fontSize: 11.5,
+        color: MUTE,
+        valign: 'top',
+      });
+    }
+  });
+}
+
+function renderClosing(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'closing' }>) {
+  const slide = blank(pptx);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sl = slide as any;
+  sl.addShape('rect', {
+    x: 0,
+    y: 0,
+    w: W,
+    h: H,
+    fill: { color: 'FFFFFF' },
+    line: { color: 'FFFFFF', width: 0 },
+  });
+  sl.addShape('line', {
+    x: W / 2 - 0.4,
+    y: H / 2 - 0.6,
+    w: 0.8,
+    h: 0,
+    line: { color: ACCENT, width: 1 },
+  });
+  sl.addText(s.title, {
+    x: 0,
+    y: H / 2 - 0.4,
+    w: W,
+    h: 1.0,
+    fontFace: FONT,
+    fontSize: 40,
+    bold: true,
+    color: INK,
+    align: 'center',
+  });
+  if (s.subtitle) {
+    sl.addText(s.subtitle, {
+      x: 0,
+      y: H / 2 + 0.7,
+      w: W,
+      h: 0.5,
+      fontFace: FONT,
+      fontSize: 14,
+      color: MUTE,
+      align: 'center',
+    });
+  }
+}
+
+export async function buildReportPptxBlob(outline: SlideOutline): Promise<Blob> {
+  const mod = await import('pptxgenjs');
+  const PptxGenJS = (mod.default ?? mod) as unknown as new () => unknown;
+  const { pptx } = createPptx(PptxGenJS);
+  pptx.layout = 'LAYOUT_WIDE';
+  pptx.title = 'Research Report';
+
+  for (const slide of outline.slides) {
+    switch (slide.kind) {
+      case 'cover':
+        renderCover(pptx, slide);
+        break;
+      case 'section_divider':
+        renderSectionDivider(pptx, slide);
+        break;
+      case 'kpi_grid':
+        renderKpiGrid(pptx, slide);
+        break;
+      case 'insight_cards':
+        renderInsightCards(pptx, slide);
+        break;
+      case 'theme_split':
+        renderThemeSplit(pptx, slide);
+        break;
+      case 'quote_card':
+        renderQuoteCard(pptx, slide);
+        break;
+      case 'bar_chart':
+        renderBarChart(pptx, slide);
+        break;
+      case 'table':
+        renderTable(pptx, slide);
+        break;
+      case 'recommendations':
+        renderRecommendations(pptx, slide);
+        break;
+      case 'closing':
+        renderClosing(pptx, slide);
+        break;
+    }
+  }
+
+  return (await pptx.write({ outputType: 'blob' })) as Blob;
 }
