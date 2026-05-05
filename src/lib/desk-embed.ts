@@ -1,6 +1,12 @@
 import { embedMany } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { DeskArticle } from './desk-sources';
+import { getCacheMany, hashString, setCacheMany } from './cache';
+
+// Embeddings are deterministic for a given (model, input). Cross-user/cross-org
+// safe because we cache derived vectors of public content. Bumping the prefix
+// ('embed:v1') invalidates everything if we change the model.
+const EMBED_KEY_PREFIX = 'embed:v1:text-embedding-3-small:';
 
 // Pick a representative subset of articles by embedding them with OpenAI's
 // text-embedding-3-small, clustering into k buckets via k-means++, and taking
@@ -149,13 +155,48 @@ export async function pickRepresentativeArticles(
   });
 
   try {
-    const openai = createOpenAI({ apiKey });
-    const { embeddings } = await embedMany({
-      model: openai.embedding('text-embedding-3-small'),
-      values: inputs,
-      maxRetries: 1,
-    });
-    if (embeddings.length !== articles.length) {
+    // ── Cache lookup ─────────────────────────────────────────────────────
+    // Same article text (title + origin + snippet head) → same vector,
+    // forever. Hits dramatically cut OpenAI billing on repeat keywords.
+    const inputKeys = inputs.map((t) => `${EMBED_KEY_PREFIX}${hashString(t)}`);
+    const cached = await getCacheMany<number[]>(inputKeys);
+
+    const embeddings: number[][] = new Array(inputs.length);
+    const missIdx: number[] = [];
+    const missInputs: string[] = [];
+    for (let i = 0; i < inputs.length; i++) {
+      const hit = cached.get(inputKeys[i]);
+      if (hit && Array.isArray(hit)) {
+        embeddings[i] = hit;
+      } else {
+        missIdx.push(i);
+        missInputs.push(inputs[i]);
+      }
+    }
+
+    if (missInputs.length > 0) {
+      const openai = createOpenAI({ apiKey });
+      const result = await embedMany({
+        model: openai.embedding('text-embedding-3-small'),
+        values: missInputs,
+        maxRetries: 1,
+      });
+      if (result.embeddings.length !== missInputs.length) {
+        return stratifiedFallback(articles, k);
+      }
+      for (let j = 0; j < missIdx.length; j++) {
+        embeddings[missIdx[j]] = result.embeddings[j];
+      }
+      // Persist newly computed vectors for future runs.
+      void setCacheMany(
+        missIdx.map((i, j) => ({
+          key: inputKeys[i],
+          value: result.embeddings[j],
+        })),
+      );
+    }
+
+    if (embeddings.length !== articles.length || embeddings.some((v) => !v)) {
       return stratifiedFallback(articles, k);
     }
     const { centroids, assignments } = runKMeans(embeddings, k);
