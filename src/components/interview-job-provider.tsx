@@ -44,12 +44,28 @@ export type ConvItem = {
 
 export type AnalysisRow = {
   question: string;
+  // Horizontal (per-row) summary — synthesizes responses across all
+  // respondents for one question. Kept on the row for sheet 2 of the
+  // XLSX export.
+  summary?: string;
   cells: { filename: string; voc: string }[];
+};
+
+// Consolidated insight produced by the vertical synthesis pass. One
+// insight may fuse multiple AnalysisRows together (sourceIndices points
+// back into AnalysisResult.rows). When present, the final view shows
+// these instead of the original per-question matrix.
+export type ConsolidatedInsight = {
+  topic: string;
+  summary: string;
+  sourceIndices: number[];
+  representativeVocs: { filename: string; voc: string }[];
 };
 
 export type AnalysisResult = {
   questions: string[];
   rows: AnalysisRow[];
+  consolidated?: ConsolidatedInsight[];
 };
 
 function normalizePartial(obj: unknown): AnalysisResult | null {
@@ -108,6 +124,11 @@ type Ctx = {
   analyzing: boolean;
   analysis: AnalysisResult | null;
   analyzeError: string | null;
+  summarizing: boolean;
+  summarizeError: string | null;
+  verticallySynthesizing: boolean;
+  verticalSynthError: string | null;
+  verticalDone: boolean;
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -122,15 +143,46 @@ type Ctx = {
   exportXlsx: () => void;
 };
 
-function buildMatrix(
+// Sheet 1: consolidated insights (주제, 요약). 요약 cell carries the
+// summary plus a "대표 VOC" block underneath, so the spreadsheet view
+// matches what the user sees in the app. Falls back to per-question
+// rows if the vertical pass hasn't run yet.
+function buildFinalMatrix(result: AnalysisResult): string[][] {
+  const header = ['주제', '요약'];
+  if (result.consolidated && result.consolidated.length > 0) {
+    return [
+      header,
+      ...result.consolidated.map((c) => {
+        const vocBlock =
+          c.representativeVocs.length > 0
+            ? '\n\n[대표 VOC]\n' +
+              c.representativeVocs
+                .map((v) => `• "${v.voc}" — ${v.filename}`)
+                .join('\n')
+            : '';
+        return [c.topic, c.summary + vocBlock];
+      }),
+    ];
+  }
+  return [
+    header,
+    ...result.rows.map((row) => [row.question, row.summary ?? '']),
+  ];
+}
+
+// Sheet 2: 문항 + horizontal summary + every respondent's column. By
+// design vertical summary is NOT included here — sheet 2 is the
+// "raw matrix" view for cross-checking against original verbatims.
+function buildRespondentMatrix(
   result: AnalysisResult,
   filenameOrder: string[],
 ): string[][] {
-  const header = ['문항', ...filenameOrder];
+  const header = ['문항', '요약', ...filenameOrder];
   const rows = result.rows.map((row) => {
     const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
     return [
       row.question,
+      row.summary ?? '',
       ...filenameOrder.map((f) => cellsByFile.get(f)?.voc ?? ''),
     ];
   });
@@ -161,10 +213,12 @@ function makeCsvBlob(matrix: string[][]) {
   return new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
 }
 
-function makeXlsxBlob(matrix: string[][]) {
-  const ws = XLSX.utils.aoa_to_sheet(matrix);
+function makeXlsxBlob(sheets: { name: string; matrix: string[][] }[]) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
+  for (const s of sheets) {
+    const ws = XLSX.utils.aoa_to_sheet(s.matrix);
+    XLSX.utils.book_append_sheet(wb, ws, s.name);
+  }
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -226,6 +280,217 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summarizeError, setSummarizeError] = useState<string | null>(null);
+  const summarizeAbortRef = useRef<AbortController | null>(null);
+  const [verticallySynthesizing, setVerticallySynthesizing] = useState(false);
+  const [verticalSynthError, setVerticalSynthError] = useState<string | null>(
+    null,
+  );
+  const verticalSynthAbortRef = useRef<AbortController | null>(null);
+
+  // Holistic pass: send every (question, horizontal-summary) at once so
+  // the model can reason about the whole interview arc, then rewrite each
+  // row's summary to reflect its position in that arc.
+  async function runVerticalSynth(rowsForSynth: AnalysisRow[]) {
+    // Pass per-row VOC pools so the model can pick representative quotes
+    // for each consolidated insight. Empty cells are filtered out so the
+    // model isn't tempted to surface "" as a quote.
+    const payload = rowsForSynth
+      .map((r) => ({
+        question: r.question,
+        summary: r.summary ?? '',
+        vocs: r.cells
+          .filter((c) => c.voc && c.voc.trim().length > 0)
+          .map((c) => ({ filename: c.filename, voc: c.voc })),
+      }))
+      .filter((r) => r.question);
+    if (payload.length === 0) return;
+    // Build a per-row voc lookup keyed by normalized text so we can
+    // verify representative VOCs against the source pool — anything
+    // not found is dropped (defends against model paraphrasing).
+    const vocPoolByIdx = new Map<number, Map<string, { filename: string; voc: string }>>();
+    payload.forEach((r, idx) => {
+      const m = new Map<string, { filename: string; voc: string }>();
+      for (const v of r.vocs) {
+        const key = v.voc.replace(/\s+/g, ' ').trim();
+        if (key) m.set(key, v);
+      }
+      vocPoolByIdx.set(idx, m);
+    });
+    setVerticallySynthesizing(true);
+    setVerticalSynthError(null);
+    const ac = new AbortController();
+    verticalSynthAbortRef.current = ac;
+    try {
+      const res = await fetch('/api/interviews/vertical-synth', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rows: payload }),
+        signal: ac.signal,
+      });
+      if (!res.ok || !res.body) {
+        // Server returned a non-stream error (often HTML from a gateway
+        // timeout). Read once as text — JSON.parse may fail.
+        const raw = await res.text().catch(() => '');
+        let parsed: { error?: string } = {};
+        try {
+          parsed = raw ? JSON.parse(raw) : {};
+        } catch {
+          parsed = {};
+        }
+        const fallback =
+          res.status === 504
+            ? 'timeout — 다시 시도해 주세요'
+            : `HTTP ${res.status}`;
+        setVerticalSynthError(parsed.error ?? fallback);
+        return;
+      }
+
+      // Stream consolidated insights as they generate — keeps the gateway
+      // proxy from 504-ing and lets the UI fill in rows progressively.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let insights: ConsolidatedInsight[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const partial = await parsePartialJson(buffer);
+        if (!partial.value || typeof partial.value !== 'object') continue;
+        const candidate = (partial.value as { insights?: unknown }).insights;
+        if (!Array.isArray(candidate)) continue;
+        const next: ConsolidatedInsight[] = [];
+        for (const entry of candidate) {
+          if (!entry || typeof entry !== 'object') continue;
+          const e = entry as Record<string, unknown>;
+          const topic = typeof e.topic === 'string' ? e.topic : '';
+          const summary = typeof e.summary === 'string' ? e.summary : '';
+          // Skip half-streamed entries with neither field yet — would
+          // flash empty rows during the partial-JSON parse window.
+          if (!topic && !summary) continue;
+          const rawIdx = Array.isArray(e.sourceIndices) ? e.sourceIndices : [];
+          const sourceIndices: number[] = [];
+          for (const v of rawIdx) {
+            if (typeof v === 'number' && Number.isInteger(v)) {
+              sourceIndices.push(v);
+            }
+          }
+          // Validate VOCs against the source rows' pools — drop any quote
+          // the model paraphrased or invented. Whitespace-normalized
+          // substring match: tolerates the model trimming, but rejects
+          // novel phrasing.
+          const allowedKeys = new Set<string>();
+          const allowedByKey = new Map<string, { filename: string; voc: string }>();
+          for (const idx of sourceIndices) {
+            const pool = vocPoolByIdx.get(idx);
+            if (!pool) continue;
+            for (const [k, v] of pool) {
+              allowedKeys.add(k);
+              if (!allowedByKey.has(k)) allowedByKey.set(k, v);
+            }
+          }
+          const rawVocs = Array.isArray(e.representativeVocs)
+            ? e.representativeVocs
+            : [];
+          const representativeVocs: { filename: string; voc: string }[] = [];
+          const seenKeys = new Set<string>();
+          for (const rv of rawVocs) {
+            if (!rv || typeof rv !== 'object') continue;
+            const r = rv as Record<string, unknown>;
+            const v = typeof r.voc === 'string' ? r.voc : '';
+            if (!v) continue;
+            const key = v.replace(/\s+/g, ' ').trim();
+            if (!key || seenKeys.has(key)) continue;
+            // Accept only if the normalised quote matches an allowed
+            // entry (exact key) or is a substring of one.
+            let matched = allowedByKey.get(key);
+            if (!matched) {
+              for (const ak of allowedKeys) {
+                if (ak.includes(key) || key.includes(ak)) {
+                  matched = allowedByKey.get(ak);
+                  break;
+                }
+              }
+            }
+            if (!matched) continue;
+            seenKeys.add(key);
+            representativeVocs.push(matched);
+          }
+          next.push({ topic, summary, sourceIndices, representativeVocs });
+        }
+        insights = next;
+        setAnalysis((prev) => {
+          if (!prev) return prev;
+          return { ...prev, consolidated: insights };
+        });
+      }
+      if (insights.length === 0) {
+        setVerticalSynthError('empty_response');
+        return;
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        setVerticalSynthError(
+          e instanceof Error ? e.message : 'network_error',
+        );
+      }
+    } finally {
+      setVerticallySynthesizing(false);
+      verticalSynthAbortRef.current = null;
+    }
+  }
+
+  async function runSummarize(result: AnalysisResult) {
+    if (result.rows.length === 0) return;
+    setSummarizing(true);
+    setSummarizeError(null);
+    const ac = new AbortController();
+    summarizeAbortRef.current = ac;
+    try {
+      const res = await fetch('/api/interviews/summarize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rows: result.rows }),
+        signal: ac.signal,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        const issue = Array.isArray(json.issues) && json.issues[0];
+        const detail = issue
+          ? ` (${issue.path?.join('.')} ${issue.code})`
+          : '';
+        setSummarizeError((json.error ?? 'summarize_failed') + detail);
+        return;
+      }
+      const summaries: unknown = json.summaries;
+      if (!Array.isArray(summaries)) {
+        setSummarizeError('invalid_response');
+        return;
+      }
+      const rowsWithSummary: AnalysisRow[] = result.rows.map((row, idx) => ({
+        ...row,
+        summary:
+          typeof summaries[idx] === 'string' ? (summaries[idx] as string) : '',
+      }));
+      setAnalysis((prev) => {
+        if (!prev) return prev;
+        return { ...prev, rows: rowsWithSummary };
+      });
+      // Chain vertical synthesis — operates on the row list we just built
+      // so we don't depend on React having flushed setAnalysis yet.
+      void runVerticalSynth(rowsWithSummary);
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        setSummarizeError(e instanceof Error ? e.message : 'network_error');
+      }
+    } finally {
+      setSummarizing(false);
+      summarizeAbortRef.current = null;
+    }
+  }
 
   async function submit(payload: {
     extractions: { filename: string; items: ExtractItem[] }[];
@@ -251,6 +516,9 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       setAnalysis(result);
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
       router.refresh();
+      // Fire row-level summary as a follow-up — table renders immediately,
+      // 요약 column fills in when the second LLM call returns.
+      void runSummarize(result);
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setAnalyzeError(e instanceof Error ? e.message : 'network_error');
@@ -275,8 +543,15 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     [items],
   );
 
-  const isWorking = convertingAll || analyzing || items.some(
-    (i) => i.extractStatus === 'extracting',
+  const isWorking =
+    convertingAll ||
+    analyzing ||
+    summarizing ||
+    verticallySynthesizing ||
+    items.some((i) => i.extractStatus === 'extracting');
+
+  const verticalDone = !!(
+    analysis?.consolidated && analysis.consolidated.length > 0
   );
 
   const addFiles = useCallback((files: FileList | File[]) => {
@@ -606,15 +881,25 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   function exportCsv() {
     if (!analysis || !filenameOrder.length) return;
+    // CSV is single-sheet by format — emit the final summary view.
     triggerDownload(
-      makeCsvBlob(buildMatrix(analysis, filenameOrder)),
+      makeCsvBlob(buildFinalMatrix(analysis)),
       'interview-analysis.csv',
     );
   }
   function exportXlsx() {
     if (!analysis || !filenameOrder.length) return;
+    // Sheet 1: final summary (문항, 요약). Sheet 2: 응답자별 행렬 with the
+    // horizontal summary preserved (vertical summary intentionally omitted
+    // so sheet 2 stays the "raw" cross-respondent matrix).
     triggerDownload(
-      makeXlsxBlob(buildMatrix(analysis, filenameOrder)),
+      makeXlsxBlob([
+        { name: '최종 요약', matrix: buildFinalMatrix(analysis) },
+        {
+          name: '응답자별',
+          matrix: buildRespondentMatrix(analysis, filenameOrder),
+        },
+      ]),
       'interview-analysis.xlsx',
     );
   }
@@ -628,6 +913,11 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     analyzing,
     analysis,
     analyzeError,
+    summarizing,
+    summarizeError,
+    verticallySynthesizing,
+    verticalSynthError,
+    verticalDone,
     isWorking,
     thinkingLog,
     clearThinking,

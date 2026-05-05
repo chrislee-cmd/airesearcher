@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
   type AnalysisRow,
+  type ConsolidatedInsight,
   type ConvItem,
   type ConvStatus,
 } from './interview-job-provider';
@@ -243,6 +244,23 @@ export function InterviewAnalyzer() {
         {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
+              {job.summarizing && (
+                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  요약 생성 중
+                </span>
+              )}
+              {job.verticallySynthesizing && (
+                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  전체 흐름 분석 중
+                </span>
+              )}
+              {(job.summarizeError || job.verticalSynthError) && (
+                <span className="text-[11.5px] text-warning">
+                  {job.summarizeError ?? job.verticalSynthError}
+                </span>
+              )}
               <button
                 onClick={exportCsv}
                 className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"
@@ -256,11 +274,19 @@ export function InterviewAnalyzer() {
                 {t('exportXlsx')}
               </button>
             </div>
-            <ResultTable
-              filenames={job.filenameOrder}
-              rows={job.analysis.rows}
-              t={t}
-            />
+            {job.verticalDone && job.analysis.consolidated ? (
+              <FinalSummaryTable
+                insights={job.analysis.consolidated}
+                t={t}
+              />
+            ) : (
+              <ResultTable
+                filenames={job.filenameOrder}
+                rows={job.analysis.rows}
+                summarizing={job.summarizing}
+                t={t}
+              />
+            )}
           </div>
         )}
       </section>
@@ -371,10 +397,12 @@ function ConvRow({
 function ResultTable({
   filenames,
   rows,
+  summarizing,
   t,
 }: {
   filenames: string[];
   rows: AnalysisRow[];
+  summarizing: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
@@ -384,6 +412,9 @@ function ResultTable({
           <tr>
             <th className="sticky left-0 z-10 bg-paper-soft px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('question')}
+            </th>
+            <th className="border-l border-line px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('summary')}
             </th>
             {filenames.map((f) => (
               <th
@@ -403,6 +434,17 @@ function ResultTable({
                 <td className="sticky left-0 z-10 bg-paper px-4 py-3 font-medium text-ink-2">
                   {row.question}
                 </td>
+                <td className="border-l border-line px-4 py-3 align-top text-ink-2">
+                  {row.summary ? (
+                    <div className="leading-[1.7] whitespace-pre-wrap">
+                      {row.summary}
+                    </div>
+                  ) : summarizing ? (
+                    <span className="text-[11px] uppercase tracking-[0.22em] text-mute-soft">
+                      …
+                    </span>
+                  ) : null}
+                </td>
                 {filenames.map((f) => {
                   const c = cellsByFile.get(f);
                   return (
@@ -419,6 +461,74 @@ function ResultTable({
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Final view rendered after vertical synthesis completes. Shows the
+// consolidated insights — multiple original questions may have been
+// fused into one row. Respondent columns are intentionally hidden;
+// they live on in the XLSX sheet 2 export.
+function FinalSummaryTable({
+  insights,
+  t,
+}: {
+  insights: ConsolidatedInsight[];
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div className="overflow-hidden border border-line bg-paper [border-radius:4px]">
+      <table className="w-full text-[12.5px]">
+        <thead className="border-b border-line bg-paper-soft">
+          <tr>
+            <th className="w-[28%] px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('question')}
+            </th>
+            <th className="border-l border-line px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('summary')}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {insights.map((insight, idx) => (
+            <tr key={idx} className="border-t border-line-soft align-top">
+              <td className="px-5 py-4 font-medium text-ink-2">
+                <div>{insight.topic}</div>
+                {insight.sourceIndices.length > 1 && (
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+                    {insight.sourceIndices.length}개 문항 융합
+                  </div>
+                )}
+              </td>
+              <td className="border-l border-line px-5 py-4 align-top text-ink-2">
+                <div className="leading-[1.8] whitespace-pre-wrap">
+                  {insight.summary}
+                </div>
+                {insight.representativeVocs.length > 0 && (
+                  <div className="mt-4 border-t border-line-soft pt-3">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                      대표 VOC
+                    </div>
+                    <ul className="space-y-1.5">
+                      {insight.representativeVocs.map((v, i) => (
+                        <li
+                          key={i}
+                          className="text-[12px] italic leading-[1.65] text-mute"
+                        >
+                          “{v.voc}”
+                          <span className="ml-2 not-italic text-[10.5px] tracking-[0.05em] text-mute-soft">
+                            — {v.filename}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
