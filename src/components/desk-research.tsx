@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
+import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import {
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
@@ -119,7 +120,7 @@ export function DeskResearch() {
   const tCommon = useTranslations('Common');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
-  const { latestJob, isWorking } = useDeskJobs();
+  const { latestJob, isWorking, cancelJob } = useDeskJobs();
   const isEn = locale === 'en';
 
   // ─── inputs ────────────────────────────────────────────────────────────────
@@ -526,6 +527,16 @@ export function DeskResearch() {
                   : ''}
               </span>
             </div>
+            {isWorking && job && (
+              <button
+                type="button"
+                onClick={() => void cancelJob(job.id)}
+                disabled={job.cancel_requested}
+                className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                {job.cancel_requested ? tDesk('stopRequested') : tDesk('stop')}
+              </button>
+            )}
           </header>
           <div
             ref={thoughtsScroller}
@@ -550,6 +561,12 @@ export function DeskResearch() {
       {job?.status === 'error' && job.error_message && (
         <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:4px]">
           {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
+        </div>
+      )}
+
+      {job?.status === 'cancelled' && (
+        <div className="mt-6 border border-line bg-paper-soft p-4 text-[12.5px] text-mute [border-radius:4px]">
+          {tDesk('cancelledNotice')}
         </div>
       )}
 
@@ -585,6 +602,8 @@ export function DeskResearch() {
               </div>
             </section>
           )}
+
+          {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
 
           <section className="mt-10">
             <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
