@@ -86,6 +86,13 @@ export function ReportGenerator() {
   const jobs = useGenerationJobs();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Each srcDoc update fully reloads the iframe — scroll resets to 0.
+  // We watch the iframe's scroll, remember the last position, and
+  // restore it after each reload. If the user is near the bottom we
+  // auto-follow new content (chat-style); if they scrolled up to read,
+  // we stay where they were.
+  const lastScrollRef = useRef(0);
+  const followBottomRef = useRef(true);
 
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -104,6 +111,26 @@ export function ReportGenerator() {
     job.status === 'done' ? (job.result as ReportResult | null) : null;
   const errorMessage =
     job.status === 'error' ? job.error ?? 'unknown_error' : null;
+
+  function onIframeLoad() {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    const docEl = win.document.documentElement;
+    if (followBottomRef.current) {
+      win.scrollTo(0, docEl.scrollHeight);
+    } else {
+      win.scrollTo(0, lastScrollRef.current);
+    }
+    win.addEventListener(
+      'scroll',
+      () => {
+        lastScrollRef.current = win.scrollY;
+        const remaining = docEl.scrollHeight - (win.scrollY + win.innerHeight);
+        followBottomRef.current = remaining < 40;
+      },
+      { passive: true },
+    );
+  }
 
   function downloadHtml() {
     if (!result?.html) return;
@@ -204,6 +231,9 @@ export function ReportGenerator() {
     setStreamingHtml('');
     setStage('normalize');
     setTab('md');
+    // Fresh run — start auto-following new content again.
+    lastScrollRef.current = 0;
+    followBottomRef.current = true;
 
     await jobs.start<ReportResult>('reports', {
       input: { count: submitted.length },
@@ -436,6 +466,7 @@ export function ReportGenerator() {
               title="리포트 미리보기"
               srcDoc={previewHtml}
               sandbox="allow-same-origin allow-modals"
+              onLoad={onIframeLoad}
               className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
             />
           ) : (
