@@ -15,6 +15,7 @@ import {
   SOURCE_BUDGET,
 } from '@/lib/desk-crawl';
 import { pickRepresentativeArticles } from '@/lib/desk-embed';
+import { getCache, hashString, setCache } from '@/lib/cache';
 import type { DeskDateRange } from '@/lib/desk-crawl';
 import {
   DESK_SOURCES,
@@ -324,20 +325,33 @@ async function runJob(args: {
         '한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…',
         'expanding',
       );
+      // Same keyword + locale always yields the same suggestions (modulo
+      // model/temperature drift, which we accept). Cache cross-org/cross-user
+      // because the output isn't user-specific. Bump 'v1' if EXPAND_SYSTEM
+      // changes meaningfully.
+      const expandKey = `desk-expand:v1:${locale}:${hashString(keywords[0].trim().toLowerCase())}`;
       try {
-        const { text } = await generateText({
-          model,
-          system: EXPAND_SYSTEM,
-          prompt: keywords[0],
-          temperature: 0.3,
-        });
-        similar = text
-          .trim()
-          .split(/[,\n]/)
-          .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
-          .filter(Boolean)
-          .filter((k) => k.toLowerCase() !== keywords[0].toLowerCase())
-          .slice(0, 4);
+        const cached = await getCache<string[]>(expandKey);
+        if (cached && Array.isArray(cached)) {
+          similar = cached;
+        } else {
+          const { text } = await generateText({
+            model,
+            system: EXPAND_SYSTEM,
+            prompt: keywords[0],
+            temperature: 0.3,
+          });
+          similar = text
+            .trim()
+            .split(/[,\n]/)
+            .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
+            .filter(Boolean)
+            .filter((k) => k.toLowerCase() !== keywords[0].toLowerCase())
+            .slice(0, 4);
+          if (similar.length > 0) {
+            void setCache(expandKey, similar);
+          }
+        }
       } catch (err) {
         console.error('[desk] expandKeywords failed', err);
       }

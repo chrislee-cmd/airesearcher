@@ -19,17 +19,56 @@ export async function getCache<T>(key: string): Promise<T | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from('cache_entries')
-    .select('value')
+    .select('value, hits')
     .eq('key', key)
     .maybeSingle();
   if (!data) return null;
-  // Best-effort hit counter (don't await failures).
+  // Fire-and-forget hit counter — the previous version wrote `undefined`,
+  // which the JS client dropped silently, so the column never advanced.
   void admin
     .from('cache_entries')
-    .update({ hits: undefined as unknown as number, last_hit_at: new Date().toISOString() })
+    .update({
+      hits: ((data.hits as number | null) ?? 0) + 1,
+      last_hit_at: new Date().toISOString(),
+    })
     .eq('key', key)
     .then(() => {});
   return data.value as T;
+}
+
+/**
+ * Look up many keys at once. Returns a map keyed by `key` containing only the
+ * hits — callers compute the misses by diffing. Used for batch operations
+ * (e.g. embeddings) where hitting `cache_entries` once per item is wasteful.
+ */
+export async function getCacheMany<T>(
+  keys: string[],
+): Promise<Map<string, T>> {
+  const out = new Map<string, T>();
+  if (keys.length === 0) return out;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('cache_entries')
+    .select('key, value')
+    .in('key', keys);
+  for (const row of data ?? []) {
+    out.set(row.key as string, row.value as T);
+  }
+  return out;
+}
+
+/** Batch upsert. Best-effort — failures are swallowed. */
+export async function setCacheMany<T>(
+  entries: { key: string; value: T }[],
+): Promise<void> {
+  if (entries.length === 0) return;
+  const admin = createAdminClient();
+  await admin
+    .from('cache_entries')
+    .upsert(
+      entries.map(({ key, value }) => ({ key, value: value as unknown as object })),
+      { onConflict: 'key' },
+    );
 }
 
 export async function setCache<T>(key: string, value: T): Promise<void> {
