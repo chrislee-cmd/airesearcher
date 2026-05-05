@@ -17,6 +17,24 @@ export type DeskSourceId =
 
 export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global';
 
+// Target region for crawling. Independent of UI locale: a Korean researcher
+// can target the US, and an English-speaking researcher can target Korea.
+// 'GLOBAL' means "no specific country" (Google News pulls international, etc).
+export type DeskRegion =
+  | 'KR'
+  | 'US'
+  | 'SG'
+  | 'MY'
+  | 'TH'
+  | 'JP'
+  | 'GLOBAL';
+
+export const DESK_REGIONS: DeskRegion[] = ['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL'];
+
+// Sources that only return Korean-language content. Hidden when region != 'KR'
+// because they will return zero results for non-KR keywords (and waste credits).
+export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao'];
+
 export type DeskSourceMeta = {
   id: DeskSourceId;
   group: DeskSourceGroup;

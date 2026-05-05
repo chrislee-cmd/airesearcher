@@ -19,6 +19,7 @@ import type { DeskDateRange } from '@/lib/desk-crawl';
 import {
   DESK_SOURCES,
   type DeskArticle,
+  type DeskRegion,
   type DeskSourceId,
 } from '@/lib/desk-sources';
 
@@ -44,6 +45,7 @@ const Body = z.object({
   keywords: z.array(z.string().min(1).max(120)).min(1).max(10),
   sources: z.array(z.enum(SOURCE_IDS)).min(1),
   locale: z.enum(['ko', 'en']).optional(),
+  region: z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']).optional(),
   dateFrom: z.string().regex(ISO_DATE).optional(),
   dateTo: z.string().regex(ISO_DATE).optional(),
 });
@@ -144,7 +146,10 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { keywords, sources, locale = 'ko', dateFrom, dateTo } = parsed.data;
+  const { keywords, sources, locale = 'ko', region: regionInput, dateFrom, dateTo } = parsed.data;
+  // Default region from locale: Korean researchers default to KR sources,
+  // English researchers default to GLOBAL (Google News will use US/en).
+  const region = regionInput ?? (locale === 'ko' ? 'KR' : 'GLOBAL');
   if (dateFrom && dateTo && dateFrom > dateTo) {
     return NextResponse.json({ error: 'invalid_date_range' }, { status: 400 });
   }
@@ -234,6 +239,7 @@ export async function POST(request: Request) {
       keywords: cleanKeywords,
       usable,
       locale,
+      region,
       range: { from: dateFrom, to: dateTo },
       initialEvents,
     }),
@@ -250,10 +256,11 @@ async function runJob(args: {
   keywords: string[];
   usable: DeskSourceId[];
   locale: 'ko' | 'en';
+  region: DeskRegion;
   range: DeskDateRange;
   initialEvents: string[];
 }) {
-  const { jobId, orgId, userId, keywords, usable, locale, range, initialEvents } = args;
+  const { jobId, orgId, userId, keywords, usable, locale, region, range, initialEvents } = args;
   const admin = createAdminClient();
   const events: string[] = [...initialEvents];
   let crawlDone = 0;
@@ -379,7 +386,7 @@ async function runJob(args: {
     const collected: DeskArticle[] = [];
     const tasks = allKeywords.flatMap((kw) =>
       usable.map((src) =>
-        crawlSource(src, kw, locale, range, perKwLimit)
+        crawlSource(src, kw, region, range, perKwLimit)
           .then(async (items) => {
             crawlDone += 1;
             collected.push(...items);

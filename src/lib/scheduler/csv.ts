@@ -1,14 +1,59 @@
 import * as XLSX from 'xlsx';
 import type { Attendee, ConfirmedSlot, HHmm, IsoDate } from './types';
 
-const NAME_KEYS = ['name', '이름', '성함', '닉네임', '참석자'];
-const PHONE_KEYS = ['phone', 'mobile', 'tel', 'cellphone', '전화', '전화번호', '연락처', '휴대폰', '핸드폰'];
-const EMAIL_KEYS = ['email', '메일', '이메일'];
-const NOTE_KEYS = ['note', 'memo', 'comment', '메모', '비고'];
-const DATE_KEYS = ['date', 'day', '날짜', '일자', '일정일'];
-const START_KEYS = ['start', 'starttime', 'from', 'begin', '시작', '시작시간'];
-const END_KEYS = ['end', 'endtime', 'to', 'finish', '종료', '종료시간'];
-const TIME_KEYS = ['time', '시간'];
+// Header aliases — kept inline (no separate i18n table) so a translator can
+// drop a new locale's variants without touching messages/. Coverage: EN, KO,
+// MS (Bahasa Melayu/Indonesia), TH, ZH, JA.
+const NAME_KEYS = [
+  'name', 'fullname', 'attendee', 'participant',
+  '이름', '성함', '닉네임', '참석자',
+  'nama', 'peserta',
+  'ชื่อ', 'ผู้เข้าร่วม',
+  '姓名', '名前',
+];
+const PHONE_KEYS = [
+  'phone', 'mobile', 'tel', 'cellphone', 'contact',
+  '전화', '전화번호', '연락처', '휴대폰', '핸드폰',
+  'telefon', 'nohp', 'notelefon',
+  'โทรศัพท์', 'เบอร์โทร',
+  '电话', '手机', '電話', '携帯',
+];
+const EMAIL_KEYS = [
+  'email', 'mail', 'emailaddress',
+  '메일', '이메일',
+  'emel', 'surel',
+  'อีเมล',
+  '邮箱', '電子郵件', 'メール', 'メールアドレス',
+];
+const NOTE_KEYS = [
+  'note', 'memo', 'comment', 'remark', 'notes',
+  '메모', '비고',
+  'catatan', 'nota',
+  'หมายเหตุ', 'บันทึก',
+  '备注', '備考',
+];
+const DATE_KEYS = [
+  'date', 'day',
+  '날짜', '일자', '일정일',
+  'tanggal', 'tarikh',
+  'วันที่',
+  '日期', '日付',
+];
+const START_KEYS = [
+  'start', 'starttime', 'from', 'begin',
+  '시작', '시작시간',
+  'mulai', 'mula',
+  'เริ่ม', 'เวลาเริ่ม',
+  '开始', '開始',
+];
+const END_KEYS = [
+  'end', 'endtime', 'to', 'finish',
+  '종료', '종료시간',
+  'selesai', 'tamat', 'akhir',
+  'สิ้นสุด', 'จบ',
+  '结束', '終了',
+];
+const TIME_KEYS = ['time', '시간', 'masa', 'waktu', 'เวลา', '时间', '時間'];
 
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/[\s_\-./]/g, '');
@@ -95,12 +140,27 @@ function decodeCsvBuffer(buf: ArrayBuffer): string {
   const hasUtf8Bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
   if (hasUtf8Bom) return new TextDecoder('utf-8').decode(buf);
   const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buf);
-  if (!utf8.includes('�')) return utf8;
-  try {
-    return new TextDecoder('euc-kr', { fatal: false }).decode(buf);
-  } catch {
-    return utf8;
+  // Replacement-char count is the cheap proxy for "decoded as wrong codec".
+  // 0 means clean UTF-8. We try a couple of common East/SE-Asian legacy codecs
+  // and keep whichever produces the fewest replacement chars.
+  const utf8Bad = (utf8.match(/�/g) ?? []).length;
+  if (utf8Bad === 0) return utf8;
+  const candidates = ['euc-kr', 'windows-874', 'shift-jis', 'gbk'];
+  let best = utf8;
+  let bestBad = utf8Bad;
+  for (const enc of candidates) {
+    try {
+      const decoded = new TextDecoder(enc, { fatal: false }).decode(buf);
+      const bad = (decoded.match(/�/g) ?? []).length;
+      if (bad < bestBad) {
+        best = decoded;
+        bestBad = bad;
+      }
+    } catch {
+      // unsupported codec on this runtime — skip
+    }
   }
+  return best;
 }
 
 export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Promise<ImportResult> {

@@ -260,7 +260,18 @@
     "thinkingDone": "진행 기록",
     "stop": "중지",
     "stopRequested": "중지 중…",
-    "cancelledNotice": "사용자 요청으로 작업이 중단되었습니다."
+    "cancelledNotice": "사용자 요청으로 작업이 중단되었습니다.",
+    "regionLabel": "검색 지역",
+    "regionKrOnlyHidden": "한국 전용 소스(네이버·카카오·다음)는 다른 지역에서 결과가 거의 없어 숨겼습니다.",
+    "region": {
+      "KR": "한국",
+      "US": "미국",
+      "SG": "싱가포르",
+      "MY": "말레이시아",
+      "TH": "태국",
+      "JP": "일본",
+      "GLOBAL": "글로벌"
+    }
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

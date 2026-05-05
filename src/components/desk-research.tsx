@@ -16,8 +16,11 @@ import { useRequireAuth } from './auth-provider';
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import {
+  DESK_REGIONS,
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
+  KR_ONLY_GROUPS,
+  type DeskRegion,
   type DeskSourceGroup,
   type DeskSourceId,
 } from '@/lib/desk-sources';
@@ -132,6 +135,26 @@ export function DeskResearch() {
   const [selected, setSelected] = useState<Set<DeskSourceId>>(
     new Set<DeskSourceId>(['naver_news', 'naver_blog', 'google_news']),
   );
+  const [region, setRegion] = useState<DeskRegion>('KR');
+
+  // When the user picks a non-KR region, auto-drop Naver/Kakao selections —
+  // those APIs only return Korean-language content and would waste the budget.
+  function changeRegion(next: DeskRegion) {
+    setRegion(next);
+    if (next !== 'KR') {
+      setSelected((prev) => {
+        const out = new Set<DeskSourceId>();
+        for (const id of prev) {
+          const meta = DESK_SOURCES.find((s) => s.id === id);
+          if (meta && KR_ONLY_GROUPS.includes(meta.group)) continue;
+          out.add(id);
+        }
+        // Make sure at least Google News stays on so the run isn't empty.
+        if (out.size === 0) out.add('google_news');
+        return out;
+      });
+    }
+  }
   const [submitting, setSubmitting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -258,6 +281,7 @@ export function DeskResearch() {
           keywords: finalKeywords,
           sources: Array.from(selected),
           locale: locale === 'en' ? 'en' : 'ko',
+          region,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
         }),
@@ -451,10 +475,40 @@ export function DeskResearch() {
 
         <div>
           <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+            {tDesk('regionLabel')}
+          </span>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {DESK_REGIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => changeRegion(r)}
+                className={
+                  'border px-2.5 py-1 text-[11.5px] [border-radius:4px] ' +
+                  (region === r
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-line bg-paper text-ink-2 hover:text-amore')
+                }
+              >
+                {tDesk(`region.${r}`)}
+              </button>
+            ))}
+          </div>
+          {region !== 'KR' && (
+            <p className="mt-1.5 text-[11px] text-mute-soft">
+              {tDesk('regionKrOnlyHidden')}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
             {tDesk('sourcesLabel')}
           </span>
           <div className="mt-2 space-y-3">
-            {GROUP_ORDER.map((g) => {
+            {GROUP_ORDER.filter(
+              (g) => region === 'KR' || !KR_ONLY_GROUPS.includes(g),
+            ).map((g) => {
               const meta = DESK_SOURCE_GROUPS[g];
               const items = grouped.get(g) ?? [];
               const allOn = items.every((s) => selected.has(s.id));

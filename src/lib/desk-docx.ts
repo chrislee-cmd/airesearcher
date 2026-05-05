@@ -188,7 +188,15 @@ export async function deskMarkdownToDocx(
   const doc = new Document({
     styles: {
       default: {
-        document: { run: { font: 'Pretendard', size: 22 } },
+        // Per-script font fallback: Pretendard has no Thai glyphs, so Latin
+        // uses Inter and complex scripts (Thai/Arabic) use Sarabun. CJK keeps
+        // Pretendard.
+        document: {
+          run: {
+            font: { ascii: 'Inter', cs: 'Sarabun', eastAsia: 'Pretendard' },
+            size: 22,
+          },
+        },
       },
     },
     numbering: {
