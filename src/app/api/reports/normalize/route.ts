@@ -5,10 +5,9 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 
-// Hobby plan caps Serverless Functions at 300s. Pair with maxOutputTokens
-// chosen so streaming finishes inside that budget at Sonnet's typical
-// ~90 tok/s (≈ 27k tokens for the full 300s, headroom for headers).
-export const maxDuration = 300;
+// Pro plan allows up to 800s for Serverless Functions; pair with a
+// matching maxOutputTokens below so very long reports don't truncate.
+export const maxDuration = 800;
 
 const MAX_FILES = 20;
 const MAX_BYTES_PER_FILE = 25 * 1024 * 1024;
@@ -175,7 +174,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 표준 보고서 양식 Markdown으로 정리하세요.\n\n${corpus}`,
     temperature: 0.2,
-    maxOutputTokens: 28000,
+    maxOutputTokens: 64000,
   });
 
   return result.toTextStreamResponse();

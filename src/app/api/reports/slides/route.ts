@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { slideOutlineSchema } from '@/lib/reports-slides-schema';
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 const Body = z.object({
   markdown: z.string().min(1).max(200_000),
