@@ -17,6 +17,7 @@ export default async function CreditsPage({
 
   const t = await getTranslations('Credits');
   const tSidebar = await getTranslations('Sidebar');
+  const tFeatures = await getTranslations('Features');
 
   const supabase = await createClient();
   const {
@@ -24,15 +25,6 @@ export default async function CreditsPage({
   } = await supabase.auth.getUser();
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
-
-  // Per-feature unit displayed beside the cost number — file vs run vs
-  // search. Keeps the scheme table compact instead of restating "1 credit
-  // per file" on every row.
-  function unit(key: string): string {
-    if (key === 'quotes' || key === 'transcripts') return t('schemeUnitFile');
-    if (key === 'desk' || key === 'keywords') return t('schemeUnitSearch');
-    return t('schemeUnitGen');
-  }
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
@@ -73,8 +65,7 @@ export default async function CreditsPage({
         <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURE_GROUPS.flatMap((g) =>
             g.features.map((key) => {
-              const f = FEATURE_BY_KEY.get(key);
-              if (!f) return null;
+              if (!FEATURE_BY_KEY.has(key)) return null;
               return (
                 <div
                   key={key}
@@ -83,9 +74,8 @@ export default async function CreditsPage({
                   <span className="text-[12.5px] text-mute">
                     {tSidebar(key)}
                   </span>
-                  <span className="text-[12.5px] tabular-nums text-ink-2">
-                    <span className="font-semibold">{f.cost}</span>
-                    <span className="text-mute-soft">{unit(key)}</span>
+                  <span className="text-[12.5px] text-ink-2">
+                    {tFeatures(`${key}.cost`)}
                   </span>
                 </div>
               );

@@ -77,7 +77,7 @@
     "quotes": {
       "title": "전사록 생성기",
       "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
-      "cost": "10크레딧"
+      "cost": "25크레딧"
     },
     "uploader": {
       "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
@@ -131,12 +131,12 @@
     "reports": {
       "title": "전체 리포트 생성기",
       "description": "모든 인터뷰를 종합한 마케팅·UX 리서치 리포트를 작성합니다.",
-      "cost": "1크레딧"
+      "cost": "50크레딧"
     },
     "scheduler": {
       "title": "참석자 스케쥴러",
       "description": "후보자 가용 시간을 받아 인터뷰 일정 후보를 정리하고, 참석자 안내문을 생성합니다.",
-      "cost": "1크레딧"
+      "cost": "무료 · CSV 업로드 5크레딧"
     },
     "moderator": {
       "title": "AI 모더레이터",
@@ -185,10 +185,7 @@
     "purchase": "구매하기",
     "contactSales": "영업 문의",
     "schemeTitle": "피처별 크레딧",
-    "schemeUnitFile": "/파일",
-    "schemeUnitGen": "/생성",
-    "schemeUnitSearch": "/검색",
-    "schemeNote": "전사록과 인터뷰 결과 생성기는 1회 실행당 10크레딧 (인터뷰 90분 이하 권장). 데스크 리서치는 다중 소스 크롤 + 종합 리포트가 포함된 가격입니다.",
+    "schemeNote": "마퀴 4개(전사록·인터뷰 결과·데스크·전체 리포트)는 LLM 실비 + 실비 기반 단가입니다. 인터뷰는 90분 이하 권장. 참석자 스케쥴러는 일반 사용 무료, CSV 업로드 시 자동 매칭 비용으로 5크레딧 차감됩니다.",
     "comingSoonTitle": "결제 시스템 준비 중",
     "comingSoonBody": "결제 모듈 연동 전이라 지금은 영업팀 문의로 충전됩니다. 아래 이메일로 보유 희망 크레딧을 알려주시면 1영업일 내 처리합니다.",
     "contactEmail": "billing@meteor-research.com"

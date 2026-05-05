@@ -77,7 +77,7 @@
     "quotes": {
       "title": "Transcript Generator",
       "description": "Convert audio/video interviews into verbatim transcripts.",
-      "cost": "10 credits"
+      "cost": "25 credits"
     },
     "uploader": {
       "dropHere": "Drop audio, video, or document files here, or click to browse",
@@ -131,12 +131,12 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
-      "cost": "1 credit"
+      "cost": "50 credits"
     },
     "scheduler": {
       "title": "Participant Scheduler",
       "description": "Take candidate availability and propose interview slots with attendee notices.",
-      "cost": "1 credit"
+      "cost": "Free · 5 credits per CSV upload"
     },
     "moderator": {
       "title": "AI Moderator",
@@ -185,10 +185,7 @@
     "purchase": "Buy",
     "contactSales": "Contact sales",
     "schemeTitle": "Credits per feature",
-    "schemeUnitFile": "/file",
-    "schemeUnitGen": "/run",
-    "schemeUnitSearch": "/search",
-    "schemeNote": "Transcripts and Interview Result are 10 credits per run (≤ 90 min interviews recommended). Desk Research includes the multi-source crawl plus the synthesis report in one price.",
+    "schemeNote": "The four marquee features (Transcript, Interview Result, Desk Research, Full Report) carry the variable-cost pricing. Interviews ≤ 90 min recommended. Participant Scheduler is free in normal use; CSV uploads incur a 5-credit auto-match charge.",
     "comingSoonTitle": "Payments not wired yet",
     "comingSoonBody": "Until the gateway is integrated, top-ups go through the billing team. Email us with the credit amount you want and we'll process it within one business day.",
     "contactEmail": "billing@meteor-research.com"
