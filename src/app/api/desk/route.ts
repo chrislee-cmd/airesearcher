@@ -353,7 +353,10 @@ async function runJob(args: {
     );
     await Promise.all(tasks);
 
-    const articles = dedupeArticles(collected).slice(0, 250);
+    // Now that per-source pulls aim at 500, the dedupe pool can balloon to
+    // a few thousand. Keep a generous global cap so the LLM still gets fed,
+    // but bounded enough to fit the model context.
+    const articles = dedupeArticles(collected).slice(0, 1500);
     await pushAndPatch(
       `수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요.`,
       'crawling',

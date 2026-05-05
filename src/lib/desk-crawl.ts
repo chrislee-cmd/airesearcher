@@ -2,6 +2,10 @@ import type { DeskArticle, DeskSourceId } from './desk-sources';
 
 const UA = 'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
 
+// Per-source target. Each source paginates up to this; smaller-cap sources
+// (e.g. YouTube due to quota) stop early. Tweak here, not at call sites.
+const TARGET = 500;
+
 export type DeskDateRange = { from?: string; to?: string }; // YYYY-MM-DD
 
 function decodeEntities(s: string): string {
@@ -123,9 +127,10 @@ async function fetchHackerNews(keyword: string, range: DeskDateRange): Promise<D
     const ts = Math.floor(Date.parse(`${range.to}T23:59:59Z`) / 1000);
     if (!Number.isNaN(ts)) filters.push(`created_at_i<${ts}`);
   }
+  // Algolia HN supports hitsPerPage up to 1000 in a single call.
   const params = new URLSearchParams({
     query: keyword,
-    hitsPerPage: '50',
+    hitsPerPage: String(TARGET),
   });
   if (filters.length) params.set('numericFilters', filters.join(','));
   const res = await safeFetch(`https://hn.algolia.com/api/v1/search?${params}`);
@@ -162,19 +167,31 @@ type RedditChild = {
   };
 };
 async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
-  const res = await safeFetch(
-    `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=100&sort=relevance`,
-    { headers: { 'user-agent': UA } },
-  );
-  if (!res.ok) return [];
-  const json = (await res.json()) as { data?: { children?: RedditChild[] } };
-  const posts = json.data?.children ?? [];
-  return posts
-    .map((p) => {
+  // Reddit's public search.json caps `limit` at 100 per call but supports
+  // cursor pagination via `after`. Loop until target or end of feed.
+  const out: DeskArticle[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < Math.ceil(TARGET / 100); page++) {
+    const params = new URLSearchParams({
+      q: keyword,
+      limit: '100',
+      sort: 'relevance',
+    });
+    if (after) params.set('after', after);
+    const res = await safeFetch(
+      `https://www.reddit.com/search.json?${params}`,
+      { headers: { 'user-agent': UA } },
+    );
+    if (!res.ok) break;
+    const json = (await res.json()) as {
+      data?: { children?: RedditChild[]; after?: string | null };
+    };
+    const posts = json.data?.children ?? [];
+    for (const p of posts) {
       const d = p.data ?? {};
       const url = d.url_overridden_by_dest || (d.permalink ? `https://www.reddit.com${d.permalink}` : '');
-      return {
-        source: 'reddit' as const,
+      const item: DeskArticle = {
+        source: 'reddit',
         title: d.title ?? '',
         url,
         snippet: d.selftext ? d.selftext.trim().slice(0, 280) : undefined,
@@ -182,9 +199,15 @@ async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskA
         origin: d.subreddit_name_prefixed || 'reddit',
         keyword,
       };
-    })
-    .filter((a) => a.title && a.url)
-    .filter((a) => inRange(a.publishedAt, range));
+      if (item.title && item.url && inRange(item.publishedAt, range)) {
+        out.push(item);
+      }
+    }
+    after = json.data?.after ?? null;
+    if (!after || posts.length === 0) break;
+    if (out.length >= TARGET) break;
+  }
+  return out.slice(0, TARGET);
 }
 
 // ─── Naver Search API ───────────────────────────────────────────────────────
@@ -211,34 +234,48 @@ async function fetchNaver(
   // Use `sort=date` whenever a range is set so we get the recent slice first
   // before post-filtering. KIN doesn't support date sort.
   const sort = (range.from || range.to) && type !== 'kin' ? 'date' : 'sim';
-  // Naver: max display=100 per call.
-  const url = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(
-    keyword,
-  )}&display=100&sort=${sort}`;
-  const res = await safeFetch(url, {
-    headers: {
-      'X-Naver-Client-Id': id,
-      'X-Naver-Client-Secret': secret,
-      accept: 'application/json',
-    },
-  });
-  if (!res.ok) return [];
-  const json = (await res.json()) as { items?: NaverItem[] };
-  return (json.items ?? [])
-    .map((it) => {
+  // Naver: max display=100, start in 1..1000. Loop pages of 100 until target.
+  const display = 100;
+  const out: DeskArticle[] = [];
+  for (let start = 1; start <= 1000 && out.length < TARGET; start += display) {
+    const url = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(
+      keyword,
+    )}&display=${display}&start=${start}&sort=${sort}`;
+    const res = await safeFetch(url, {
+      headers: {
+        'X-Naver-Client-Id': id,
+        'X-Naver-Client-Secret': secret,
+        accept: 'application/json',
+      },
+    });
+    if (!res.ok) break;
+    const json = (await res.json()) as { items?: NaverItem[]; total?: number };
+    const items = json.items ?? [];
+    if (items.length === 0) break;
+    for (const it of items) {
       const title = it.title ? stripHtml(it.title) : '';
       const link = it.link ?? '';
+      if (!title || !link) continue;
       const snippet = it.description ? stripHtml(it.description).slice(0, 280) : undefined;
       const publishedAt = it.pubDate
         ? it.pubDate
         : it.postdate && it.postdate.length === 8
           ? `${it.postdate.slice(0, 4)}-${it.postdate.slice(4, 6)}-${it.postdate.slice(6, 8)}`
           : undefined;
-      const origin = it.bloggername || it.cafename;
-      return { source, title, url: link, snippet, publishedAt, origin, keyword };
-    })
-    .filter((a) => a.title && a.url)
-    .filter((a) => inRange(a.publishedAt, range));
+      if (!inRange(publishedAt, range)) continue;
+      out.push({
+        source,
+        title,
+        url: link,
+        snippet,
+        publishedAt,
+        origin: it.bloggername || it.cafename,
+        keyword,
+      });
+    }
+    if (items.length < display) break;
+  }
+  return out.slice(0, TARGET);
 }
 
 // ─── Kakao Search API ───────────────────────────────────────────────────────
@@ -261,31 +298,42 @@ async function fetchKakao(
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) return [];
   const sort = range.from || range.to ? 'recency' : 'accuracy';
-  // Kakao: max size=50 per call.
-  const url = `https://dapi.kakao.com/v2/search/${type}?query=${encodeURIComponent(
-    keyword,
-  )}&size=50&sort=${sort}`;
-  const res = await safeFetch(url, {
-    headers: { Authorization: `KakaoAK ${key}` },
-  });
-  if (!res.ok) return [];
-  const json = (await res.json()) as { documents?: KakaoDoc[] };
-  return (json.documents ?? [])
-    .map((d) => {
+  // Kakao: max size=50, page up to 50. Loop until is_end or target hit.
+  const size = 50;
+  const out: DeskArticle[] = [];
+  for (let page = 1; page <= Math.ceil(TARGET / size) && out.length < TARGET; page++) {
+    const url = `https://dapi.kakao.com/v2/search/${type}?query=${encodeURIComponent(
+      keyword,
+    )}&size=${size}&page=${page}&sort=${sort}`;
+    const res = await safeFetch(url, {
+      headers: { Authorization: `KakaoAK ${key}` },
+    });
+    if (!res.ok) break;
+    const json = (await res.json()) as {
+      documents?: KakaoDoc[];
+      meta?: { is_end?: boolean; pageable_count?: number };
+    };
+    const docs = json.documents ?? [];
+    if (docs.length === 0) break;
+    for (const d of docs) {
       const title = d.title ? stripHtml(d.title) : '';
+      const link = d.url ?? '';
+      if (!title || !link) continue;
       const snippet = d.contents ? stripHtml(d.contents).slice(0, 280) : undefined;
-      return {
+      if (!inRange(d.datetime, range)) continue;
+      out.push({
         source,
         title,
-        url: d.url ?? '',
+        url: link,
         snippet,
         publishedAt: d.datetime,
         origin: d.blogname || d.cafename,
         keyword,
-      };
-    })
-    .filter((a) => a.title && a.url)
-    .filter((a) => inRange(a.publishedAt, range));
+      });
+    }
+    if (json.meta?.is_end) break;
+  }
+  return out.slice(0, TARGET);
 }
 
 // ─── YouTube Data API v3 ────────────────────────────────────────────────────
@@ -307,9 +355,10 @@ async function fetchYouTube(
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
   const { after, before } = rangeToRfc3339(range);
-  // YouTube: max 50/page. Single page only — search.list costs 100 quota
-  // units per call and our daily quota is 10,000. Pagination would burn it
-  // very quickly when keywords × sources multiply.
+  // YouTube: max 50/page. We intentionally do NOT paginate even though the
+  // shared TARGET is higher — search.list costs 100 quota units/call and the
+  // daily quota is 10,000. Going to 500 here would burn 1000u per (kw × src),
+  // i.e. half the daily budget on a single search with 5 keywords.
   const params = new URLSearchParams({
     part: 'snippet',
     q: keyword,
