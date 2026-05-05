@@ -44,6 +44,7 @@ export type ConvItem = {
 
 export type AnalysisRow = {
   question: string;
+  summary?: string;
   cells: { filename: string; voc: string }[];
 };
 
@@ -108,6 +109,8 @@ type Ctx = {
   analyzing: boolean;
   analysis: AnalysisResult | null;
   analyzeError: string | null;
+  summarizing: boolean;
+  summarizeError: string | null;
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -126,11 +129,12 @@ function buildMatrix(
   result: AnalysisResult,
   filenameOrder: string[],
 ): string[][] {
-  const header = ['문항', ...filenameOrder];
+  const header = ['문항', '요약', ...filenameOrder];
   const rows = result.rows.map((row) => {
     const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
     return [
       row.question,
+      row.summary ?? '',
       ...filenameOrder.map((f) => cellsByFile.get(f)?.voc ?? ''),
     ];
   });
@@ -226,6 +230,53 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summarizeError, setSummarizeError] = useState<string | null>(null);
+  const summarizeAbortRef = useRef<AbortController | null>(null);
+
+  async function runSummarize(result: AnalysisResult) {
+    if (result.rows.length === 0) return;
+    setSummarizing(true);
+    setSummarizeError(null);
+    const ac = new AbortController();
+    summarizeAbortRef.current = ac;
+    try {
+      const res = await fetch('/api/interviews/summarize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rows: result.rows }),
+        signal: ac.signal,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSummarizeError(json.error ?? 'summarize_failed');
+        return;
+      }
+      const summaries: unknown = json.summaries;
+      if (!Array.isArray(summaries)) {
+        setSummarizeError('invalid_response');
+        return;
+      }
+      setAnalysis((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rows: prev.rows.map((row, idx) => ({
+            ...row,
+            summary:
+              typeof summaries[idx] === 'string' ? (summaries[idx] as string) : '',
+          })),
+        };
+      });
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        setSummarizeError(e instanceof Error ? e.message : 'network_error');
+      }
+    } finally {
+      setSummarizing(false);
+      summarizeAbortRef.current = null;
+    }
+  }
 
   async function submit(payload: {
     extractions: { filename: string; items: ExtractItem[] }[];
@@ -251,6 +302,9 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       setAnalysis(result);
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
       router.refresh();
+      // Fire row-level summary as a follow-up — table renders immediately,
+      // 요약 column fills in when the second LLM call returns.
+      void runSummarize(result);
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setAnalyzeError(e instanceof Error ? e.message : 'network_error');
@@ -275,7 +329,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     [items],
   );
 
-  const isWorking = convertingAll || analyzing || items.some(
+  const isWorking = convertingAll || analyzing || summarizing || items.some(
     (i) => i.extractStatus === 'extracting',
   );
 
@@ -628,6 +682,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     analyzing,
     analysis,
     analyzeError,
+    summarizing,
+    summarizeError,
     isWorking,
     thinkingLog,
     clearThinking,

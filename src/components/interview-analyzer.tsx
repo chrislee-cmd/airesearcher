@@ -243,6 +243,17 @@ export function InterviewAnalyzer() {
         {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
+              {job.summarizing && (
+                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  요약 생성 중
+                </span>
+              )}
+              {job.summarizeError && (
+                <span className="text-[11.5px] text-warning">
+                  {job.summarizeError}
+                </span>
+              )}
               <button
                 onClick={exportCsv}
                 className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"
@@ -259,6 +270,7 @@ export function InterviewAnalyzer() {
             <ResultTable
               filenames={job.filenameOrder}
               rows={job.analysis.rows}
+              summarizing={job.summarizing}
               t={t}
             />
           </div>
@@ -371,10 +383,12 @@ function ConvRow({
 function ResultTable({
   filenames,
   rows,
+  summarizing,
   t,
 }: {
   filenames: string[];
   rows: AnalysisRow[];
+  summarizing: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
@@ -384,6 +398,9 @@ function ResultTable({
           <tr>
             <th className="sticky left-0 z-10 bg-paper-soft px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('question')}
+            </th>
+            <th className="border-l border-line px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('summary')}
             </th>
             {filenames.map((f) => (
               <th
@@ -402,6 +419,17 @@ function ResultTable({
               <tr key={idx} className="border-t border-line-soft align-top">
                 <td className="sticky left-0 z-10 bg-paper px-4 py-3 font-medium text-ink-2">
                   {row.question}
+                </td>
+                <td className="border-l border-line px-4 py-3 align-top text-ink-2">
+                  {row.summary ? (
+                    <div className="leading-[1.7] whitespace-pre-wrap">
+                      {row.summary}
+                    </div>
+                  ) : summarizing ? (
+                    <span className="text-[11px] uppercase tracking-[0.22em] text-mute-soft">
+                      …
+                    </span>
+                  ) : null}
                 </td>
                 {filenames.map((f) => {
                   const c = cellsByFile.get(f);
