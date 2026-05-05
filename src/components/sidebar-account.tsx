@@ -5,6 +5,7 @@ import { Link, useRouter, usePathname } from '@/i18n/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { useTransition } from 'react';
+import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider';
 
 type Props = {
   email: string | null;
@@ -25,6 +26,7 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
+  const { status } = usePaywall();
 
   useEffect(() => {
     if (!open) return;
@@ -74,11 +76,21 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
           <div className="truncate text-[12px] font-semibold text-ink-2">
             {displayName}
           </div>
-          {credits !== null && (
+          {status?.isUnlimited ? (
+            <div className="mt-0.5 text-[10.5px] tabular-nums text-amore">
+              {tCommon('unlimitedAccess')}
+            </div>
+          ) : status?.isTrialActive && status.trialEndsAt ? (
+            <div className="mt-0.5 text-[10.5px] tabular-nums text-amore">
+              {tCommon('trialRemaining', {
+                remaining: formatTrialRemaining(status.trialEndsAt),
+              })}
+            </div>
+          ) : credits !== null ? (
             <div className="mt-0.5 text-[10.5px] tabular-nums text-mute-soft">
               {tCommon('creditsRemaining', { count: credits })}
             </div>
-          )}
+          ) : null}
         </div>
         <button
           type="button"

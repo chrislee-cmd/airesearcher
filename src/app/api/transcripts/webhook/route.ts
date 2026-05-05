@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { spendCreditsAdmin } from '@/lib/credits';
 import { deepgramToMarkdown, type DeepgramResult } from '@/lib/transcripts/format';
 
 export const maxDuration = 60;
@@ -80,30 +81,12 @@ export async function POST(request: Request) {
     })
     .eq('id', job.id);
 
-  // Charge 1 credit. Webhook runs without a user session, so we can't
-  // call the RLS-bound spend_credits RPC (it uses auth.uid()). Deduct
-  // directly via service role + log the transaction.
+  // Charge for the transcripts feature via the service-role RPC, which
+  // handles the trial / unlimited free-pass branches uniformly with the
+  // user-facing endpoints. Previously this path manually deducted 1 credit
+  // under the wrong feature label ('quotes') and bypassed trial logic.
   try {
-    const { data: orgRow } = await admin
-      .from('organizations')
-      .select('credit_balance')
-      .eq('id', job.org_id)
-      .single();
-    const balance = orgRow?.credit_balance ?? 0;
-    if (balance >= 1) {
-      await admin
-        .from('organizations')
-        .update({ credit_balance: balance - 1 })
-        .eq('id', job.org_id);
-      await admin.from('credit_transactions').insert({
-        org_id: job.org_id,
-        user_id: job.user_id,
-        delta: -1,
-        reason: 'feature_use',
-        feature: 'quotes',
-        generation_id: job.id,
-      });
-    }
+    await spendCreditsAdmin(job.org_id, job.user_id, 'transcripts', job.id);
   } catch (e) {
     console.warn('[transcripts/webhook] credit deduction failed', e);
   }
