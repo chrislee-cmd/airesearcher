@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
   type AnalysisRow,
+  type ConsolidatedInsight,
   type ConvItem,
   type ConvStatus,
 } from './interview-job-provider';
@@ -273,8 +274,11 @@ export function InterviewAnalyzer() {
                 {t('exportXlsx')}
               </button>
             </div>
-            {job.verticalDone ? (
-              <FinalSummaryTable rows={job.analysis.rows} t={t} />
+            {job.verticalDone && job.analysis.consolidated ? (
+              <FinalSummaryTable
+                insights={job.analysis.consolidated}
+                t={t}
+              />
             ) : (
               <ResultTable
                 filenames={job.filenameOrder}
@@ -463,15 +467,15 @@ function ResultTable({
   );
 }
 
-// Final view rendered after vertical synthesis completes. Respondent
-// columns are intentionally hidden — they live on in the XLSX sheet 2
-// export. Layout is a wide 2-column grid optimised for reading the
-// rich, wordy summary text.
+// Final view rendered after vertical synthesis completes. Shows the
+// consolidated insights — multiple original questions may have been
+// fused into one row. Respondent columns are intentionally hidden;
+// they live on in the XLSX sheet 2 export.
 function FinalSummaryTable({
-  rows,
+  insights,
   t,
 }: {
-  rows: AnalysisRow[];
+  insights: ConsolidatedInsight[];
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
@@ -488,14 +492,19 @@ function FinalSummaryTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, idx) => (
+          {insights.map((insight, idx) => (
             <tr key={idx} className="border-t border-line-soft align-top">
               <td className="px-5 py-4 font-medium text-ink-2">
-                {row.question}
+                <div>{insight.topic}</div>
+                {insight.sourceIndices.length > 1 && (
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+                    {insight.sourceIndices.length}개 문항 융합
+                  </div>
+                )}
               </td>
               <td className="border-l border-line px-5 py-4 align-top text-ink-2">
                 <div className="leading-[1.8] whitespace-pre-wrap">
-                  {row.verticalSummary || row.summary || ''}
+                  {insight.summary}
                 </div>
               </td>
             </tr>

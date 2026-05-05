@@ -24,8 +24,18 @@ const Body = z.object({
     .max(200),
 });
 
+// Output is now a *consolidated* insight list — multiple input questions
+// can be fused into one insight row, so insights.length is typically <
+// rows.length. Each insight references its source question indices so the
+// UI can show provenance / link back to the response matrix.
 const responseSchema = z.object({
-  summaries: z.array(z.string()),
+  insights: z.array(
+    z.object({
+      topic: z.string(),
+      summary: z.string(),
+      sourceIndices: z.array(z.number().int()),
+    }),
+  ),
 });
 
 export async function POST(request: Request) {
@@ -52,24 +62,31 @@ export async function POST(request: Request) {
 
   const SYSTEM = `당신은 인터뷰 분석 도우미입니다.
 
-입력으로 인터뷰의 **모든 문항과 각 문항별 1차 요약**이 주어집니다. 당신의 임무는 다음과 같습니다:
+입력으로 인터뷰의 **모든 문항과 각 문항별 1차 요약**이 인덱스와 함께 주어집니다. 당신의 임무는 1:1 재서술이 아니라, 관련된 문항들을 **융합**하여 새로운 인사이트로 재구성하는 것입니다.
 
-# 단계 1 — 전체 조망 (절대 위에서부터 순서대로 작성하지 말 것)
-- 먼저 모든 문항을 한 번에 훑어보고, 인터뷰 전체의 흐름·구조·논리를 파악합니다.
-- 어떤 문항이 도입/맥락 제공이고, 어떤 문항이 핵심 탐구이며, 어떤 문항이 상세 후속/검증인지 식별합니다.
-- 문항들 사이의 관계를 holistic하게 매핑합니다 (예: A에서 B로의 전환, A와 C의 대비, A→B→C의 인과).
+# 단계 1 — 전체 조망
+모든 문항을 한 번에 훑고, 어떤 문항들이 의미상 같은 주제를 다루는지 그룹핑합니다. 비슷한 영역을 탐색하는 문항(예: 등급 산정 기준, 장기 고객 혜택, 멤버십 개선 요구)들은 한 묶음으로 봐야 합니다.
 
-# 단계 2 — 흐름을 반영한 요약 재구성
-- 각 문항에 대해, 그 문항이 인터뷰 전체 흐름 안에서 차지하는 위치·역할을 반영한 풍부한(rich, wordy) 요약을 작성합니다.
-- 1차 요약을 단순 정제·압축하지 말고, **앞뒤 문항과의 맥락**을 명시적으로 녹여서 재서술합니다.
-- 예: "앞선 [도입 질문]에서 드러난 ...라는 배경 위에서, 이 문항은 ...에 대한 응답자들의 반응을 ...했다. 이는 뒤이은 [후속 질문]의 ...로 자연스럽게 연결된다."
-- 응답자 간 공통점·차이점·갈등은 유지하되, 그것이 인터뷰의 어느 단계에서 어떤 의미를 갖는지를 드러냅니다.
-- 분량은 정보 밀도에 비례해서 길어져도 좋습니다 (3~6문장 권장, 의미 있다면 더 길어도 OK). 충분한 정보가 담긴 wordy하고 rich한 단락을 지향하되, 빈말로 늘리지 마세요.
+# 단계 2 — 융합 인사이트 작성
+각 그룹에 대해 하나의 통합 인사이트 row를 만듭니다.
+- **topic**: 그 그룹이 다루는 핵심 주제를 한 줄로 (질문 형식 가능, 예: "등급 산정 기준과 장기 고객 혜택에 대한 인식")
+- **summary**: 그 그룹에 속한 문항들의 데이터를 융합 분석한 인사이트 본문. 단일 문항만 다루는 그룹이라도, 그 인사이트가 본질적이면 단독 row로 둬도 됩니다.
+- **sourceIndices**: 이 인사이트가 합성한 원본 문항들의 인덱스 배열 (반드시 입력 인덱스 그대로).
+
+# 절대 하지 말 것 (매우 중요)
+- ❌ "이 문항은 ~를 탐색하는 문항이다", "~에 대한 평소 인식을 묻는 문항이다" 같이 **문항의 취지·목적을 설명하는 메타 서술**. 이건 분석이 아니라 filler입니다.
+- ❌ "문항 8과 연결된다", "이후 문항 41, 42의 ~로 이어진다" 같이 **다른 문항을 인덱스로 참조**하는 문장. 참조하지 말고, 그 문항의 데이터를 이미 본 summary에 **직접 융합**하세요.
+- ❌ 입력 1차 요약을 그대로 옮기거나 단순 압축. 반드시 그룹 내 다른 문항들의 응답과 교차해서 새로운 통찰을 도출.
+
+# 작성 원칙
+- 응답자들의 발화에서 드러나는 패턴, 모순, 강도, 그리고 그 이면의 욕구·불만을 직접 서술합니다.
+- 응답자 간 공통점·차이점·갈등이 인사이트의 핵심이라면 그것을 명시적으로 보여주세요.
+- 분량은 정보 밀도에 비례 — 융합된 그룹일수록 풍부한 단락(5~10문장 이상도 가능). 단일 문항 그룹은 짧을 수 있음. 빈말로 늘리지 마세요.
 
 # 출력 규칙
-- 출력 순서는 입력 순서와 정확히 일치 (인덱스 0부터).
-- 입력 row 개수와 정확히 같은 개수의 summary 문자열을 반환.
-- 정의된 JSON 스키마(summaries 배열)만 반환, 그 외 텍스트 금지.`;
+- 모든 입력 인덱스는 정확히 한 번씩만 sourceIndices에 등장 (누락 금지, 중복 금지).
+- insights 배열의 순서는 인터뷰 흐름을 반영해서 자연스럽게 (앞쪽 인덱스를 다루는 그룹이 대체로 앞쪽).
+- 정의된 JSON 스키마(insights)만 반환, 그 외 텍스트 금지.`;
 
   // Stream the response. The point isn't to render partials on the client
   // (we only render once the array is complete) — it's to keep the HTTP
@@ -81,7 +98,7 @@ export async function POST(request: Request) {
       model: anthropic('claude-sonnet-4-6'),
       schema: responseSchema,
       system: SYSTEM,
-      prompt: `총 ${rows.length}개 문항입니다. 단계 1(전체 조망) → 단계 2(흐름 반영 재구성) 순으로 작업한 뒤, 각 문항별 재구성된 요약을 입력 순서대로 반환해주세요.\n\n${blocks.join('\n\n')}`,
+      prompt: `총 ${rows.length}개 문항입니다. 단계 1(주제 그룹핑) → 단계 2(융합 인사이트 작성) 순으로 작업해주세요. 결과 row 개수는 입력보다 줄어들어도 좋습니다 — 의미적으로 묶이는 문항은 반드시 묶어서 하나의 인사이트로 통합하세요.\n\n${blocks.join('\n\n')}`,
       temperature: 0.3,
     });
     return result.toTextStreamResponse();

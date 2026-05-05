@@ -46,20 +46,25 @@ export type AnalysisRow = {
   question: string;
   // Horizontal (per-row) summary — synthesizes responses across all
   // respondents for one question. Kept on the row for sheet 2 of the
-  // XLSX export even after vertical synthesis overwrites the view.
+  // XLSX export.
   summary?: string;
-  // Vertical (whole-interview) rewrite — Sonnet reads every row's
-  // question + horizontal summary at once, then rewrites each row to
-  // reflect its position in the overall interview arc. Wordy by design.
-  // When present, the UI flips to a 2-column view (문항, 요약) and the
-  // respondent columns are removed from sight (still in sheet 2 export).
-  verticalSummary?: string;
   cells: { filename: string; voc: string }[];
+};
+
+// Consolidated insight produced by the vertical synthesis pass. One
+// insight may fuse multiple AnalysisRows together (sourceIndices points
+// back into AnalysisResult.rows). When present, the final view shows
+// these instead of the original per-question matrix.
+export type ConsolidatedInsight = {
+  topic: string;
+  summary: string;
+  sourceIndices: number[];
 };
 
 export type AnalysisResult = {
   questions: string[];
   rows: AnalysisRow[];
+  consolidated?: ConsolidatedInsight[];
 };
 
 function normalizePartial(obj: unknown): AnalysisResult | null {
@@ -137,16 +142,20 @@ type Ctx = {
   exportXlsx: () => void;
 };
 
-// Sheet 1: final summary only (문항, 요약). 요약 prefers verticalSummary
-// (the whole-interview-aware rewrite); falls back to the horizontal
-// summary if the vertical pass hasn't run.
+// Sheet 1: consolidated insights (주제, 요약). Falls back to the raw
+// per-question rows if the vertical pass hasn't run yet.
 function buildFinalMatrix(result: AnalysisResult): string[][] {
-  const header = ['문항', '요약'];
-  const rows = result.rows.map((row) => [
-    row.question,
-    row.verticalSummary ?? row.summary ?? '',
-  ]);
-  return [header, ...rows];
+  const header = ['주제', '요약'];
+  if (result.consolidated && result.consolidated.length > 0) {
+    return [
+      header,
+      ...result.consolidated.map((c) => [c.topic, c.summary]),
+    ];
+  }
+  return [
+    header,
+    ...result.rows.map((row) => [row.question, row.summary ?? '']),
+  ];
 }
 
 // Sheet 2: 문항 + horizontal summary + every respondent's column. By
@@ -305,13 +314,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      // Stream the partial JSON object as it generates — this keeps the
-      // gateway proxy from 504-ing on a long synchronous response, and
-      // also lets the UI fill in summaries progressively.
+      // Stream consolidated insights as they generate — keeps the gateway
+      // proxy from 504-ing and lets the UI fill in rows progressively.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let summaries: string[] = [];
+      let insights: ConsolidatedInsight[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -319,25 +327,33 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         buffer += decoder.decode(value, { stream: true });
         const partial = await parsePartialJson(buffer);
         if (!partial.value || typeof partial.value !== 'object') continue;
-        const candidate = (partial.value as { summaries?: unknown }).summaries;
+        const candidate = (partial.value as { insights?: unknown }).insights;
         if (!Array.isArray(candidate)) continue;
-        summaries = candidate
-          .map((s) => (typeof s === 'string' ? s : ''))
-          .slice(0, payload.length);
-        // Mid-stream paint so users see it filling in.
+        const next: ConsolidatedInsight[] = [];
+        for (const entry of candidate) {
+          if (!entry || typeof entry !== 'object') continue;
+          const e = entry as Record<string, unknown>;
+          const topic = typeof e.topic === 'string' ? e.topic : '';
+          const summary = typeof e.summary === 'string' ? e.summary : '';
+          // Skip half-streamed entries with neither field yet — would
+          // flash empty rows during the partial-JSON parse window.
+          if (!topic && !summary) continue;
+          const rawIdx = Array.isArray(e.sourceIndices) ? e.sourceIndices : [];
+          const sourceIndices: number[] = [];
+          for (const v of rawIdx) {
+            if (typeof v === 'number' && Number.isInteger(v)) {
+              sourceIndices.push(v);
+            }
+          }
+          next.push({ topic, summary, sourceIndices });
+        }
+        insights = next;
         setAnalysis((prev) => {
           if (!prev) return prev;
-          return {
-            ...prev,
-            rows: prev.rows.map((row, idx) => ({
-              ...row,
-              verticalSummary:
-                idx < summaries.length ? summaries[idx] : row.verticalSummary,
-            })),
-          };
+          return { ...prev, consolidated: insights };
         });
       }
-      if (summaries.length === 0) {
+      if (insights.length === 0) {
         setVerticalSynthError('empty_response');
         return;
       }
@@ -456,8 +472,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     verticallySynthesizing ||
     items.some((i) => i.extractStatus === 'extracting');
 
-  const verticalDone = !!analysis?.rows.some(
-    (r) => r.verticalSummary && r.verticalSummary.length > 0,
+  const verticalDone = !!(
+    analysis?.consolidated && analysis.consolidated.length > 0
   );
 
   const addFiles = useCallback((files: FileList | File[]) => {
