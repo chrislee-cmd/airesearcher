@@ -121,7 +121,7 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
           <PopoverLink href="/members" onClick={() => setOpen(false)}>
             {t('members')}
           </PopoverLink>
-          <PopoverLink href="/settings" onClick={() => setOpen(false)}>
+          <PopoverLink href="/credits" onClick={() => setOpen(false)}>
             {t('buyCredits')}
           </PopoverLink>
           <div className="my-1 h-px bg-line-soft" />
