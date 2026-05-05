@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
+import { DeskStatsPanel } from './desk-stats-panel';
 import {
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
@@ -584,6 +585,10 @@ export function DeskResearch() {
                 ))}
               </div>
             </section>
+          )}
+
+          {job.articles && job.articles.length > 0 && (
+            <DeskStatsPanel articles={job.articles} />
           )}
 
           <section className="mt-10">
