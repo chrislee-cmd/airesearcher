@@ -1,12 +1,14 @@
 -- 0009_trial_and_unlimited.sql
 --
 -- Adds two billing concepts to `organizations`:
---   1. `trial_ends_at`  — KST-aligned trial cutoff. Inside the window every
---      feature is free; after it, `spend_credits` enforces the balance check.
+--   1. `trial_ends_at`  — trial cutoff = signup time + 24h (so a user who
+--      signs up at 22:00 still gets a full day, not just until midnight).
+--      Inside the window every feature is free; after it, `spend_credits`
+--      enforces the balance check.
 --   2. `is_unlimited`   — permanent free pass for ops/super-admin orgs.
 --
 -- Updates `handle_new_user` so newly-signed-up orgs get
--- `trial_ends_at = next KST midnight`, and updates `spend_credits` to short-
+-- `trial_ends_at = now() + 24 hours`, and updates `spend_credits` to short-
 -- circuit on either flag while still logging usage to `credit_transactions`
 -- (with `delta = 0` and a distinguishing `reason`) so we can audit.
 --
@@ -30,8 +32,9 @@ update public.organizations
    and is_unlimited = false;
 
 -- ── trigger: handle_new_user ──────────────────────────────────────────────
--- Recompute `trial_ends_at` as the next KST midnight after signup. We compute
--- in the Asia/Seoul wall-clock space and convert back to UTC `timestamptz`.
+-- Trial = 24 hours from signup. Wall-clock alignment (e.g. next KST midnight)
+-- would short-change anyone signing up late at night, so we use a fixed
+-- duration instead.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -39,7 +42,6 @@ security definer set search_path = public
 as $$
 declare
   new_org uuid;
-  v_trial_ends_at timestamptz;
 begin
   insert into public.profiles (id, email, full_name, avatar_url)
   values (new.id, new.email,
@@ -47,15 +49,9 @@ begin
           new.raw_user_meta_data->>'avatar_url')
   on conflict (id) do nothing;
 
-  -- Next KST midnight: take "now" in Seoul, drop the time, add 1 day, then
-  -- treat that local timestamp as Seoul time and store as UTC.
-  v_trial_ends_at :=
-    (date_trunc('day', timezone('Asia/Seoul', now())) + interval '1 day')
-      at time zone 'Asia/Seoul';
-
   insert into public.organizations (name, owner_id, credit_balance, trial_ends_at)
   values (coalesce(new.raw_user_meta_data->>'full_name', new.email, 'Workspace'),
-          new.id, 10, v_trial_ends_at)
+          new.id, 10, now() + interval '24 hours')
   returning id into new_org;
 
   insert into public.organization_members (org_id, user_id, role)
