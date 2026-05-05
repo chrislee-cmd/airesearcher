@@ -2,9 +2,10 @@ import type { DeskArticle, DeskSourceId } from './desk-sources';
 
 const UA = 'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
 
-// Per-source target. Each source paginates up to this; smaller-cap sources
-// (e.g. YouTube due to quota) stop early. Tweak here, not at call sites.
-const TARGET = 500;
+// Per-source total budget. The route splits this evenly across keywords, so
+// each (keyword × source) pull only takes its slice. This stops the first
+// keyword from devouring the whole budget while later keywords starve.
+export const SOURCE_BUDGET = 500;
 
 export type DeskDateRange = { from?: string; to?: string }; // YYYY-MM-DD
 
@@ -70,11 +71,11 @@ async function fetchGoogleNews(
   keyword: string,
   locale: 'ko' | 'en',
   range: DeskDateRange,
+  limit: number,
 ): Promise<DeskArticle[]> {
   const hl = locale === 'ko' ? 'ko' : 'en-US';
   const gl = locale === 'ko' ? 'KR' : 'US';
   const ceid = locale === 'ko' ? 'KR:ko' : 'US:en';
-  // Google News supports `after:YYYY-MM-DD before:YYYY-MM-DD` operators in q.
   const parts = [keyword];
   if (range.from) parts.push(`after:${range.from}`);
   if (range.to) parts.push(`before:${range.to}`);
@@ -83,7 +84,7 @@ async function fetchGoogleNews(
   const res = await safeFetch(url, { headers: { 'user-agent': UA } });
   if (!res.ok) return [];
   const xml = await res.text();
-  // Google News RSS returns ~100 per query; take all of them.
+  // RSS isn't paginated — just trim to this keyword's slice.
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
   return items
     .map((m) => {
@@ -105,7 +106,8 @@ async function fetchGoogleNews(
       };
     })
     .filter((a) => a.title && a.url)
-    .filter((a) => inRange(a.publishedAt, range));
+    .filter((a) => inRange(a.publishedAt, range))
+    .slice(0, limit);
 }
 
 // ─── Hacker News (Algolia) ──────────────────────────────────────────────────
@@ -117,7 +119,11 @@ type HNHit = {
   story_text?: string;
   created_at?: string;
 };
-async function fetchHackerNews(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
+async function fetchHackerNews(
+  keyword: string,
+  range: DeskDateRange,
+  limit: number,
+): Promise<DeskArticle[]> {
   const filters: string[] = [];
   if (range.from) {
     const ts = Math.floor(Date.parse(`${range.from}T00:00:00Z`) / 1000);
@@ -127,10 +133,10 @@ async function fetchHackerNews(keyword: string, range: DeskDateRange): Promise<D
     const ts = Math.floor(Date.parse(`${range.to}T23:59:59Z`) / 1000);
     if (!Number.isNaN(ts)) filters.push(`created_at_i<${ts}`);
   }
-  // Algolia HN supports hitsPerPage up to 1000 in a single call.
+  // Algolia HN supports hitsPerPage up to 1000.
   const params = new URLSearchParams({
     query: keyword,
-    hitsPerPage: String(TARGET),
+    hitsPerPage: String(Math.min(1000, Math.max(1, limit))),
   });
   if (filters.length) params.set('numericFilters', filters.join(','));
   const res = await safeFetch(`https://hn.algolia.com/api/v1/search?${params}`);
@@ -166,12 +172,16 @@ type RedditChild = {
     subreddit_name_prefixed?: string;
   };
 };
-async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskArticle[]> {
+async function fetchReddit(
+  keyword: string,
+  range: DeskDateRange,
+  limit: number,
+): Promise<DeskArticle[]> {
   // Reddit's public search.json caps `limit` at 100 per call but supports
-  // cursor pagination via `after`. Loop until target or end of feed.
+  // cursor pagination via `after`. Loop until limit or end of feed.
   const out: DeskArticle[] = [];
   let after: string | null = null;
-  for (let page = 0; page < Math.ceil(TARGET / 100); page++) {
+  for (let page = 0; page < Math.ceil(limit / 100); page++) {
     const params = new URLSearchParams({
       q: keyword,
       limit: '100',
@@ -205,9 +215,9 @@ async function fetchReddit(keyword: string, range: DeskDateRange): Promise<DeskA
     }
     after = json.data?.after ?? null;
     if (!after || posts.length === 0) break;
-    if (out.length >= TARGET) break;
+    if (out.length >= limit) break;
   }
-  return out.slice(0, TARGET);
+  return out.slice(0, limit);
 }
 
 // ─── Naver Search API ───────────────────────────────────────────────────────
@@ -227,6 +237,7 @@ async function fetchNaver(
   keyword: string,
   source: DeskSourceId,
   range: DeskDateRange,
+  limit: number,
 ): Promise<DeskArticle[]> {
   const id = process.env.NAVER_CLIENT_ID;
   const secret = process.env.NAVER_CLIENT_SECRET;
@@ -234,10 +245,10 @@ async function fetchNaver(
   // Use `sort=date` whenever a range is set so we get the recent slice first
   // before post-filtering. KIN doesn't support date sort.
   const sort = (range.from || range.to) && type !== 'kin' ? 'date' : 'sim';
-  // Naver: max display=100, start in 1..1000. Loop pages of 100 until target.
+  // Naver: max display=100, start in 1..1000. Loop pages of 100 until limit.
   const display = 100;
   const out: DeskArticle[] = [];
-  for (let start = 1; start <= 1000 && out.length < TARGET; start += display) {
+  for (let start = 1; start <= 1000 && out.length < limit; start += display) {
     const url = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(
       keyword,
     )}&display=${display}&start=${start}&sort=${sort}`;
@@ -275,7 +286,7 @@ async function fetchNaver(
     }
     if (items.length < display) break;
   }
-  return out.slice(0, TARGET);
+  return out.slice(0, limit);
 }
 
 // ─── Kakao Search API ───────────────────────────────────────────────────────
@@ -294,14 +305,15 @@ async function fetchKakao(
   keyword: string,
   source: DeskSourceId,
   range: DeskDateRange,
+  limit: number,
 ): Promise<DeskArticle[]> {
   const key = process.env.KAKAO_REST_API_KEY;
   if (!key) return [];
   const sort = range.from || range.to ? 'recency' : 'accuracy';
-  // Kakao: max size=50, page up to 50. Loop until is_end or target hit.
+  // Kakao: max size=50, page up to 50. Loop until is_end or limit hit.
   const size = 50;
   const out: DeskArticle[] = [];
-  for (let page = 1; page <= Math.ceil(TARGET / size) && out.length < TARGET; page++) {
+  for (let page = 1; page <= Math.ceil(limit / size) && out.length < limit; page++) {
     const url = `https://dapi.kakao.com/v2/search/${type}?query=${encodeURIComponent(
       keyword,
     )}&size=${size}&page=${page}&sort=${sort}`;
@@ -333,7 +345,7 @@ async function fetchKakao(
     }
     if (json.meta?.is_end) break;
   }
-  return out.slice(0, TARGET);
+  return out.slice(0, limit);
 }
 
 // ─── YouTube Data API v3 ────────────────────────────────────────────────────
@@ -351,19 +363,19 @@ async function fetchYouTube(
   keyword: string,
   locale: 'ko' | 'en',
   range: DeskDateRange,
+  limit: number,
 ): Promise<DeskArticle[]> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
   const { after, before } = rangeToRfc3339(range);
-  // YouTube: max 50/page. We intentionally do NOT paginate even though the
-  // shared TARGET is higher — search.list costs 100 quota units/call and the
-  // daily quota is 10,000. Going to 500 here would burn 1000u per (kw × src),
-  // i.e. half the daily budget on a single search with 5 keywords.
+  // YouTube: max 50/page. We intentionally do NOT paginate — search.list
+  // costs 100 quota units/call and daily quota is 10,000. The per-keyword
+  // limit caps the single-call maxResults at 50.
   const params = new URLSearchParams({
     part: 'snippet',
     q: keyword,
     type: 'video',
-    maxResults: '50',
+    maxResults: String(Math.min(50, Math.max(1, limit))),
     relevanceLanguage: locale === 'ko' ? 'ko' : 'en',
     key,
   });
@@ -390,7 +402,7 @@ async function fetchYouTube(
       keyword,
     });
   }
-  return out;
+  return out.slice(0, limit);
 }
 
 // ─── Dispatch + missing-key detection ───────────────────────────────────────
@@ -414,31 +426,35 @@ export async function crawlSource(
   keyword: string,
   locale: 'ko' | 'en' = 'ko',
   range: DeskDateRange = {},
+  // Caller decides how big this single (keyword × source) pull may be.
+  // Defaults to the full source budget for back-compat with single-keyword
+  // callers; the route divides SOURCE_BUDGET / N_keywords.
+  limit: number = SOURCE_BUDGET,
 ): Promise<DeskArticle[]> {
   try {
     switch (source) {
       case 'google_news':
-        return await fetchGoogleNews(keyword, locale, range);
+        return await fetchGoogleNews(keyword, locale, range, limit);
       case 'hacker_news':
-        return await fetchHackerNews(keyword, range);
+        return await fetchHackerNews(keyword, range, limit);
       case 'reddit':
-        return await fetchReddit(keyword, range);
+        return await fetchReddit(keyword, range, limit);
       case 'naver_news':
-        return await fetchNaver('news', keyword, source, range);
+        return await fetchNaver('news', keyword, source, range, limit);
       case 'naver_blog':
-        return await fetchNaver('blog', keyword, source, range);
+        return await fetchNaver('blog', keyword, source, range, limit);
       case 'naver_cafe':
-        return await fetchNaver('cafearticle', keyword, source, range);
+        return await fetchNaver('cafearticle', keyword, source, range, limit);
       case 'naver_kin':
-        return await fetchNaver('kin', keyword, source, range);
+        return await fetchNaver('kin', keyword, source, range, limit);
       case 'kakao_web':
-        return await fetchKakao('web', keyword, source, range);
+        return await fetchKakao('web', keyword, source, range, limit);
       case 'kakao_blog':
-        return await fetchKakao('blog', keyword, source, range);
+        return await fetchKakao('blog', keyword, source, range, limit);
       case 'kakao_cafe':
-        return await fetchKakao('cafe', keyword, source, range);
+        return await fetchKakao('cafe', keyword, source, range, limit);
       case 'youtube':
-        return await fetchYouTube(keyword, locale, range);
+        return await fetchYouTube(keyword, locale, range, limit);
     }
   } catch (err) {
     console.error('[desk-crawl]', source, keyword, err);

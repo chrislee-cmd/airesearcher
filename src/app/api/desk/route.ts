@@ -7,7 +7,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
-import { crawlSource, dedupeArticles, sourceMissingKey } from '@/lib/desk-crawl';
+import {
+  crawlSource,
+  dedupeArticles,
+  sourceMissingKey,
+  SOURCE_BUDGET,
+} from '@/lib/desk-crawl';
 import type { DeskDateRange } from '@/lib/desk-crawl';
 import {
   DESK_SOURCES,
@@ -345,16 +350,24 @@ async function runJob(args: {
     const allKeywords = [...keywords, ...similar];
     crawlTotal = allKeywords.length * usable.length;
     await patch({ status: 'crawling' });
+    // Split each source's budget evenly across keywords. Without this, the
+    // first keyword's pull races to the source's full 500 cap and rate-limits
+    // / latency starve the later keywords. ceil() means small budgets still
+    // give every keyword at least 1 slot.
+    const perKwLimit = Math.max(
+      1,
+      Math.ceil(SOURCE_BUDGET / Math.max(allKeywords.length, 1)),
+    );
     const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
     await pushAndPatch(
-      `이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${crawlTotal}회 검색을 동시에 돌릴게요. (${sourceList})`,
+      `이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${crawlTotal}회 검색을 동시에 돌릴게요. 키워드당 소스별 ${perKwLimit}건씩 균등 분배합니다. (${sourceList})`,
       'crawling',
     );
 
     const collected: DeskArticle[] = [];
     const tasks = allKeywords.flatMap((kw) =>
       usable.map((src) =>
-        crawlSource(src, kw, locale, range)
+        crawlSource(src, kw, locale, range, perKwLimit)
           .then(async (items) => {
             crawlDone += 1;
             collected.push(...items);
