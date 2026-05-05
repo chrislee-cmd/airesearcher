@@ -160,7 +160,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음은 1차 정리된 표준 양식 Markdown입니다. 이 내용을 그대로 보존하면서, 위 디자인 토큰과 구조 규칙을 따르는 단일 HTML 리포트를 작성하세요. Markdown의 섹션 헤더(\`# Cover\`, \`## Methodology\`, \`## Executive Summary\`, \`## Persona\`, \`## Chapter ...\`, \`## Recommendations\`, \`## Appendix\`)는 HTML 챕터 구조에 1:1로 매핑하세요.\n\n${markdown}`,
     temperature: 0.4,
-    maxOutputTokens: 32000,
+    maxOutputTokens: 48000,
     onFinish: async ({ text }) => {
       let html = text.trim();
       if (html.startsWith('```')) {

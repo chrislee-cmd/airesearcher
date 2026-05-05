@@ -8,12 +8,12 @@ import { z } from 'zod';
 const Cover = z.object({
   kind: z.literal('cover'),
   title: z.string(),
-  subtitle: z.string().nullable(),
+  subtitle: z.string().optional(),
   meta: z.object({
-    method: z.string().nullable(),
-    sample: z.string().nullable(),
-    period: z.string().nullable(),
-    chapters: z.string().nullable(),
+    method: z.string().optional(),
+    sample: z.string().optional(),
+    period: z.string().optional(),
+    chapters: z.string().optional(),
   }),
 });
 
@@ -21,7 +21,7 @@ const SectionDivider = z.object({
   kind: z.literal('section_divider'),
   eyebrow: z.string(), // e.g. "CHAPTER 02"
   title: z.string(),
-  subtitle: z.string().nullable(),
+  subtitle: z.string().optional(),
 });
 
 const KpiGrid = z.object({
@@ -33,7 +33,7 @@ const KpiGrid = z.object({
       z.object({
         label: z.string(), // small uppercase tag
         value: z.string(), // big number / phrase
-        note: z.string().nullable(),
+        note: z.string().optional(),
       }),
     )
     .min(2)
@@ -63,10 +63,10 @@ const ThemeSplit = z.object({
   verbatim: z
     .object({
       text: z.string(),
-      cite: z.string().nullable(),
+      cite: z.string().optional(),
     })
-    .nullable(),
-  implication: z.string().nullable(),
+    .optional(),
+  implication: z.string().optional(),
 });
 
 const QuoteCard = z.object({
@@ -74,16 +74,16 @@ const QuoteCard = z.object({
   eyebrow: z.string(),
   title: z.string(),
   quote: z.string(),
-  cite: z.string().nullable(),
-  context: z.string().nullable(),
+  cite: z.string().optional(),
+  context: z.string().optional(),
 });
 
 const BarChart = z.object({
   kind: z.literal('bar_chart'),
   eyebrow: z.string(),
   title: z.string(),
-  note: z.string().nullable(),
-  valueSuffix: z.string().nullable(), // '%', 'pt', etc.
+  note: z.string().optional(),
+  valueSuffix: z.string().optional(), // '%', 'pt', etc.
   series: z
     .array(
       z.object({
@@ -111,8 +111,8 @@ const Recommendations = z.object({
     .array(
       z.object({
         headline: z.string(),
-        detail: z.string().nullable(),
-        priority: z.enum(['high', 'medium', 'low']).nullable(),
+        detail: z.string().optional(),
+        priority: z.enum(['high', 'medium', 'low']).optional(),
       }),
     )
     .min(1)
@@ -122,7 +122,7 @@ const Recommendations = z.object({
 const Closing = z.object({
   kind: z.literal('closing'),
   title: z.string(),
-  subtitle: z.string().nullable(),
+  subtitle: z.string().optional(),
 });
 
 export const slideSchema = z.discriminatedUnion('kind', [

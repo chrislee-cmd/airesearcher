@@ -172,7 +172,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 표준 보고서 양식 Markdown으로 정리하세요.\n\n${corpus}`,
     temperature: 0.2,
-    maxOutputTokens: 32000,
+    maxOutputTokens: 48000,
   });
 
   return result.toTextStreamResponse();
