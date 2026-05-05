@@ -2,6 +2,7 @@ import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { generateObject, generateText, type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -108,6 +109,16 @@ function getModel(): LanguageModel {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
   return createAnthropic({ apiKey })('claude-sonnet-4-6');
+}
+
+// Analytics runs on a separate provider (OpenAI gpt-4o-mini) so its rate
+// limit pool doesn't share Anthropic's 30k input tokens/min bucket. The
+// long-form report stays on Sonnet for quality; only the structured chart
+// extraction moves to OpenAI.
+function getAnalyticsModel(): LanguageModel | null {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return createOpenAI({ apiKey })('gpt-4o-mini');
 }
 
 function sourceLabelKo(id: DeskSourceId): string {
@@ -420,6 +431,39 @@ async function runJob(args: {
       return;
     }
 
+    // ── Concurrency throttle ──────────────────────────────────────────────
+    // Anthropic 30k input tokens/min is shared across the whole org. Without
+    // this gate, 5 simultaneous users all fire summarize within a few seconds
+    // and the slowest 3 hit 429. We poll the desk_jobs table for how many
+    // other rows are currently in 'summarizing' state and wait our turn.
+    // The whole loop is bounded by MAX_WAIT_MS so we never silently extend
+    // past the function's maxDuration.
+    const MAX_CONCURRENT_SUMMARIZE = 2;
+    const MAX_WAIT_MS = 90_000;
+    const POLL_MS = 4000;
+    const waitStart = Date.now();
+    while (true) {
+      await checkCancel();
+      const { count } = await admin
+        .from('desk_jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'summarizing')
+        .neq('id', jobId);
+      if ((count ?? 0) < MAX_CONCURRENT_SUMMARIZE) break;
+      if (Date.now() - waitStart > MAX_WAIT_MS) {
+        await pushAndPatch(
+          '대기열이 길어요. 그래도 한 번 시도해 볼게요.',
+          'summarizing',
+        );
+        break;
+      }
+      await pushAndPatch(
+        `다른 사용자 ${count}명이 보고서 작성 중이에요. 잠시 기다릴게요…`,
+        'summarizing',
+      );
+      await new Promise((r) => setTimeout(r, POLL_MS));
+    }
+
     await patch({ status: 'summarizing' });
     await pushAndPatch(
       '이제 Claude한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…',
@@ -484,11 +528,14 @@ async function runJob(args: {
     //  4) summarize 직후 6초 대기. retry-after 헤더 기준 1분 윈도우가 풀리는
     //     데 보통 충분합니다 (한도가 다 안 차면 무해한 sleep).
     let analytics: { charts: { type: 'bar' | 'pie'; title: string; insight: string; unit: 'percent' | 'count'; data: { label: string; value: number }[] }[] } | null = null;
+    const analyticsModel = getAnalyticsModel();
     try {
-      await new Promise((r) => setTimeout(r, 6000));
+      if (!analyticsModel) {
+        throw new Error('missing_openai_key');
+      }
       const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
       const result = await generateObject({
-        model,
+        model: analyticsModel,
         system: ANALYTICS_SYSTEM,
         prompt: [
           `메인 키워드: ${keywords.join(', ')}`,
