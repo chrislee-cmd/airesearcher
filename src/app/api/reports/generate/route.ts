@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
-import { classifyFile, extractDocText } from '@/lib/file-extract';
 
 export const maxDuration = 300;
 
-const MAX_FILES = 20;
-const MAX_BYTES_PER_FILE = 25 * 1024 * 1024;
-const MAX_TOTAL_INPUT_CHARS = 400_000;
+const MAX_MARKDOWN_CHARS = 200_000;
+
+const Body = z.object({
+  markdown: z.string().min(1).max(MAX_MARKDOWN_CHARS),
+  sources: z.array(z.string()).max(50).default([]),
+});
 
 // Embed the design system spec directly in the system prompt so the model
 // produces a self-contained HTML doc that already matches our editorial
@@ -136,70 +139,17 @@ export async function POST(request: Request) {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  const formData = await request.formData();
-  const entries = formData.getAll('files');
-  const files: File[] = entries.filter((e): e is File => e instanceof File);
-  if (files.length === 0) {
-    return NextResponse.json({ error: 'no_files' }, { status: 400 });
+  const parsed = Body.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  if (files.length > MAX_FILES) {
-    return NextResponse.json({ error: 'too_many_files' }, { status: 400 });
-  }
-
-  // Extract text from every uploaded file. Only docx + plain text/markdown
-  // are accepted here — the dropzone already filters, but we re-check on
-  // the server because nothing about a multipart request is trustworthy.
-  const sources: { name: string; text: string }[] = [];
-  for (const file of files) {
-    if (file.size === 0) continue;
-    if (file.size > MAX_BYTES_PER_FILE) {
-      return NextResponse.json(
-        { error: 'file_too_large', name: file.name },
-        { status: 413 },
-      );
-    }
-    const kind = classifyFile(file);
-    if (kind !== 'text' && kind !== 'docx') {
-      return NextResponse.json(
-        { error: 'unsupported_file_type', name: file.name },
-        { status: 415 },
-      );
-    }
-    try {
-      const text = await extractDocText(file);
-      if (text.trim()) sources.push({ name: file.name, text });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'extraction_failed';
-      return NextResponse.json(
-        { error: msg, name: file.name },
-        { status: 502 },
-      );
-    }
-  }
-  if (sources.length === 0) {
-    return NextResponse.json({ error: 'no_text_extracted' }, { status: 422 });
-  }
-
-  // Pack the bundle. Per-file budget keeps very large uploads from
-  // monopolizing the prompt window.
-  const perFileBudget = Math.max(
-    8_000,
-    Math.floor(MAX_TOTAL_INPUT_CHARS / sources.length),
-  );
-  const corpus = sources
-    .map((s) => {
-      const body = s.text.length > perFileBudget
-        ? `${s.text.slice(0, perFileBudget)}\n\n[...truncated ${s.text.length - perFileBudget} chars]`
-        : s.text;
-      return `===== FILE: ${s.name} =====\n${body}`;
-    })
-    .join('\n\n');
+  const { markdown, sources } = parsed.data;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
-  const inputSummary = sources.map((s) => s.name).join(', ');
+  const inputSummary = sources.length > 0 ? sources.join(', ') : '(normalized markdown)';
 
   // Stream the HTML directly to the client so the user sees the report
   // building in real time. Credit spend + DB write happen in onFinish so
@@ -208,7 +158,7 @@ export async function POST(request: Request) {
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: SYSTEM,
-    prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 이 자료들을 종합하여 위 요구사항(디자인 토큰 + 구조)을 따르는 단일 HTML 리포트를 작성하세요.\n\n${corpus}`,
+    prompt: `다음은 1차 정리된 표준 양식 Markdown입니다. 이 내용을 그대로 보존하면서, 위 디자인 토큰과 구조 규칙을 따르는 단일 HTML 리포트를 작성하세요. Markdown의 섹션 헤더(\`# Cover\`, \`## Methodology\`, \`## Executive Summary\`, \`## Persona\`, \`## Chapter ...\`, \`## Recommendations\`, \`## Appendix\`)는 HTML 챕터 구조에 1:1로 매핑하세요.\n\n${markdown}`,
     temperature: 0.4,
     maxOutputTokens: 16384,
     onFinish: async ({ text }) => {

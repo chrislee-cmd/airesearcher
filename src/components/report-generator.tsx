@@ -15,12 +15,67 @@ import { useGenerationJobs } from './generation-job-provider';
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
 
-type ReportResult = { html: string; sources: string[] };
+type Stage = 'normalize' | 'generate';
+
+type ReportResult = {
+  markdown: string;
+  html: string;
+  sources: string[];
+};
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+// Read a fetch response as a text stream, calling onChunk with the
+// running accumulator throttled to ~150ms. Returns the full final string.
+async function consumeStream(
+  res: Response,
+  onChunk: (acc: string) => void,
+): Promise<string> {
+  if (!res.body) throw new Error('no_stream');
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let acc = '';
+  let lastFlush = 0;
+  let tail: ReturnType<typeof setTimeout> | null = null;
+  const flush = () => {
+    lastFlush = Date.now();
+    onChunk(acc);
+  };
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      acc += decoder.decode(value, { stream: true });
+      const now = Date.now();
+      if (now - lastFlush >= 150) {
+        if (tail) {
+          clearTimeout(tail);
+          tail = null;
+        }
+        flush();
+      } else if (!tail) {
+        tail = setTimeout(() => {
+          tail = null;
+          flush();
+        }, 180);
+      }
+    }
+  } finally {
+    if (tail) clearTimeout(tail);
+  }
+  return acc;
+}
+
+function stripCodeFence(s: string): string {
+  let t = s.trim();
+  if (t.startsWith('```')) {
+    t = t.replace(/^```(?:html|markdown|md)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  }
+  return t;
 }
 
 export function ReportGenerator() {
@@ -30,14 +85,18 @@ export function ReportGenerator() {
   const workspace = useWorkspace();
   const jobs = useGenerationJobs();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
-  // streamingHtml is updated chunk-by-chunk while the model is generating.
-  // It feeds the iframe so the user watches the report build in real time.
-  // Once done, we stop touching it and let job.result drive the iframe.
+  // Live-streaming buffers — cleared at the start of each run, fed
+  // chunk-by-chunk during normalize / generate so the user sees both
+  // stages build progressively.
+  const [streamingMd, setStreamingMd] = useState<string>('');
   const [streamingHtml, setStreamingHtml] = useState<string>('');
+  const [stage, setStage] = useState<Stage | null>(null);
+  const [tab, setTab] = useState<'html' | 'md'>('html');
 
   const job = jobs.get('reports');
   const running = job.status === 'running';
@@ -46,9 +105,7 @@ export function ReportGenerator() {
   const errorMessage =
     job.status === 'error' ? job.error ?? 'unknown_error' : null;
 
-  // Build a one-shot blob URL on click, trigger the download, then revoke.
-  // Avoids holding a long-lived object URL across renders.
-  function downloadReport() {
+  function downloadHtml() {
     if (!result?.html) return;
     const url = URL.createObjectURL(
       new Blob([result.html], { type: 'text/html;charset=utf-8' }),
@@ -62,6 +119,40 @@ export function ReportGenerator() {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  // Trigger the browser's print dialog on the iframe content. The user
+  // picks "Save as PDF" — this gives a high-fidelity PDF without dragging
+  // in a heavy client-side renderer or a server Chromium.
+  function downloadPdf() {
+    if (!result?.html) return;
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.focus();
+      win.print();
+    } catch (e) {
+      console.error('[reports] print failed', e);
+    }
+  }
+
+  async function downloadPptx() {
+    if (!result?.markdown) return;
+    try {
+      const { buildReportPptxBlob } = await import('@/lib/reports-pptx');
+      const blob = await buildReportPptxBlob(result.markdown);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${new Date().toISOString().slice(0, 10)}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (e) {
+      console.error('[reports] pptx failed', e);
+      alert('PPTX 생성 중 오류가 발생했습니다.');
+    }
+  }
+
   function addFiles(incoming: FileList | File[]) {
     const accepted: File[] = [];
     const rejectedNames: string[] = [];
@@ -70,7 +161,6 @@ export function ReportGenerator() {
       else rejectedNames.push(f.name);
     }
     setFiles((prev) => {
-      // Dedup by (name, size) to avoid the user double-dropping the same file.
       const seen = new Set(prev.map((p) => `${p.name}::${p.size}`));
       const next = [...prev];
       for (const f of accepted) {
@@ -87,7 +177,6 @@ export function ReportGenerator() {
 
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) addFiles(e.target.files);
-    // Reset so the same file can be re-picked after a remove.
     e.target.value = '';
   }
 
@@ -109,64 +198,46 @@ export function ReportGenerator() {
     if (files.length === 0) return;
     track('generate_clicked', { feature: 'reports', file_count: files.length });
     const submitted = files;
-    setStreamingHtml('');
     const sourceNames = submitted.map((f) => f.name);
+
+    setStreamingMd('');
+    setStreamingHtml('');
+    setStage('normalize');
+    setTab('md');
+
     await jobs.start<ReportResult>('reports', {
       input: { count: submitted.length },
       run: async () => {
+        // ─ Stage 1: normalize uploads → canonical markdown ─
         const fd = new FormData();
         for (const f of submitted) fd.append('files', f);
-        const res = await fetch('/api/reports/generate', {
+        const r1 = await fetch('/api/reports/normalize', {
           method: 'POST',
           body: fd,
         });
-        if (!res.ok) {
-          // Errors come back as JSON before any streaming starts.
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error ?? res.statusText);
+        if (!r1.ok) {
+          const j = await r1.json().catch(() => ({}));
+          throw new Error(j.error ?? `normalize_failed: ${r1.statusText}`);
         }
-        if (!res.body) throw new Error('no_stream');
+        const mdRaw = await consumeStream(r1, setStreamingMd);
+        const markdown = stripCodeFence(mdRaw);
+        if (!markdown) throw new Error('empty_markdown');
+        setStreamingMd(markdown);
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let acc = '';
-        // Throttle setState so we don't reload the iframe on every tiny
-        // chunk — the model can emit dozens of small SSE deltas per second
-        // and re-rendering srcDoc that fast flickers visibly. ~150ms feels
-        // live without thrashing.
-        let lastFlush = 0;
-        let tail: ReturnType<typeof setTimeout> | null = null;
-        const flush = () => {
-          lastFlush = Date.now();
-          setStreamingHtml(acc);
-        };
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            acc += decoder.decode(value, { stream: true });
-            const now = Date.now();
-            if (now - lastFlush >= 150) {
-              if (tail) {
-                clearTimeout(tail);
-                tail = null;
-              }
-              flush();
-            } else if (!tail) {
-              tail = setTimeout(() => {
-                tail = null;
-                flush();
-              }, 180);
-            }
-          }
-        } finally {
-          if (tail) clearTimeout(tail);
+        // ─ Stage 2: canonical markdown → design-system HTML ─
+        setStage('generate');
+        setTab('html');
+        const r2 = await fetch('/api/reports/generate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ markdown, sources: sourceNames }),
+        });
+        if (!r2.ok) {
+          const j = await r2.json().catch(() => ({}));
+          throw new Error(j.error ?? `generate_failed: ${r2.statusText}`);
         }
-
-        let html = acc.trim();
-        if (html.startsWith('```')) {
-          html = html.replace(/^```(?:html)?\s*/i, '').replace(/```\s*$/i, '').trim();
-        }
+        const htmlRaw = await consumeStream(r2, setStreamingHtml);
+        let html = stripCodeFence(htmlRaw);
         if (!/<!doctype html|<html/i.test(html)) {
           html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${html}</body></html>`;
         }
@@ -179,12 +250,17 @@ export function ReportGenerator() {
           title,
           content: html,
         });
-        return { html, sources: sourceNames };
+        return { html, markdown, sources: sourceNames };
       },
     });
+    setStage(null);
   }
 
   const canRun = files.length > 0 && !running;
+  const showResultPanel = running || result;
+
+  const previewHtml = result?.html ?? (streamingHtml || ' ');
+  const previewMd = result?.markdown ?? streamingMd;
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
@@ -284,32 +360,89 @@ export function ReportGenerator() {
         </div>
       )}
 
-      {(running || result) && (
+      {showResultPanel && (
         <div className="mt-10">
-          <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-            <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-              {running ? '생성 중…' : '결과'}
-            </h2>
-            <button
-              type="button"
-              onClick={downloadReport}
-              disabled={!result}
-              className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-            >
-              HTML 다운로드
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+                {running
+                  ? stage === 'normalize'
+                    ? '1/2 표준 양식 변환 중…'
+                    : '2/2 리포트 작성 중…'
+                  : '결과'}
+              </h2>
+              <div className="flex items-center gap-1 text-[11.5px]">
+                <button
+                  type="button"
+                  onClick={() => setTab('html')}
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                    tab === 'html'
+                      ? 'border border-ink bg-ink text-paper'
+                      : 'border border-line bg-paper text-mute hover:border-ink-2'
+                  }`}
+                >
+                  HTML 리포트
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab('md')}
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                    tab === 'md'
+                      ? 'border border-ink bg-ink text-paper'
+                      : 'border border-line bg-paper text-mute hover:border-ink-2'
+                  }`}
+                >
+                  표준 양식 (.md)
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={downloadHtml}
+                disabled={!result}
+                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                HTML
+              </button>
+              <button
+                type="button"
+                onClick={downloadPdf}
+                disabled={!result}
+                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                title="브라우저 인쇄 → PDF로 저장"
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                onClick={downloadPptx}
+                disabled={!result}
+                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                PPTX
+              </button>
+            </div>
           </div>
           {result && result.sources.length > 0 && (
             <p className="mt-3 text-[11.5px] text-mute-soft">
               출처: {result.sources.join(', ')}
             </p>
           )}
-          <iframe
-            title="리포트 미리보기"
-            srcDoc={result?.html ?? (streamingHtml || ' ')}
-            sandbox="allow-same-origin"
-            className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
-          />
+
+          {tab === 'html' ? (
+            <iframe
+              ref={iframeRef}
+              title="리포트 미리보기"
+              srcDoc={previewHtml}
+              sandbox="allow-same-origin allow-modals"
+              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
+            />
+          ) : (
+            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:4px]">
+              {previewMd || '(아직 생성되지 않았습니다)'}
+            </pre>
+          )}
         </div>
       )}
     </div>
