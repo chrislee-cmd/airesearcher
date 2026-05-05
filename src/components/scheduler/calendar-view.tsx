@@ -8,6 +8,7 @@ import type {
   ConfirmedSlot,
   Requirement,
 } from '@/lib/scheduler/types';
+import { requirementTz } from '@/lib/scheduler/types';
 import {
   addDays,
   expandRequirementSlots,
@@ -18,6 +19,7 @@ import {
   startOfWeek,
   toIso,
 } from '@/lib/scheduler/slots';
+import { getViewerTimezone, tzShortOffset } from '@/lib/scheduler/timezone';
 
 type Props = {
   requirement: Requirement;
@@ -43,6 +45,12 @@ export function CalendarView({
     if (requirement.startDate) return fromIso(requirement.startDate);
     return new Date();
   });
+
+  const sourceTz = requirementTz(requirement);
+  const viewerTz = useMemo(() => getViewerTimezone(), []);
+  const sourceOffset = useMemo(() => tzShortOffset(sourceTz), [sourceTz]);
+  const viewerOffset = useMemo(() => tzShortOffset(viewerTz), [viewerTz]);
+  const tzMismatch = sourceTz !== viewerTz;
 
   const slots = useMemo(() => expandRequirementSlots(requirement), [requirement]);
   const attendeeById = useMemo(() => {
@@ -89,7 +97,20 @@ export function CalendarView({
   return (
     <section className="border border-line bg-paper p-5 [border-radius:4px]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+          <p className="text-[11px] text-mute-soft">
+            {t('timezoneSource', { tz: sourceTz, offset: sourceOffset })}
+            {tzMismatch && (
+              <>
+                {' · '}
+                <span className="text-amore">
+                  {t('timezoneViewer', { tz: viewerTz, offset: viewerOffset })}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <ModeToggle mode={mode} onChange={setMode} labels={{ month: t('month'), week: t('week'), day: t('day') }} />
           <div className="ml-2 flex items-center gap-1">
@@ -101,6 +122,9 @@ export function CalendarView({
           </div>
         </div>
       </header>
+      {tzMismatch && (
+        <p className="mt-2 text-[11px] text-mute">{t('timezoneMismatchHint')}</p>
+      )}
 
       <div className="mt-4">
         {mode === 'month' && (

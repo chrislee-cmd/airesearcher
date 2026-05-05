@@ -329,7 +329,19 @@
       "rangeHint": "Click a start day, then an end day on the calendar.",
       "summaryEmpty": "No window set yet.",
       "expand": "Expand",
-      "collapse": "Collapse"
+      "collapse": "Collapse",
+      "timezoneLabel": "Timezone",
+      "tz": {
+        "seoul": "Seoul",
+        "tokyo": "Tokyo",
+        "singapore": "Singapore",
+        "kualaLumpur": "Kuala Lumpur",
+        "bangkok": "Bangkok",
+        "losAngeles": "Los Angeles",
+        "newYork": "New York",
+        "london": "London",
+        "utc": "UTC"
+      }
     },
     "calendar": {
       "title": "Calendar",
@@ -342,7 +354,10 @@
       "legendAvailable": "Available",
       "legendConfirmed": "Confirmed",
       "noRequirement": "Enter the research window above to see available slots.",
-      "pickHint": "Select an attendee, then click a slot to confirm it."
+      "pickHint": "Select an attendee, then click a slot to confirm it.",
+      "timezoneSource": "Times in {tz} ({offset})",
+      "timezoneViewer": "You're in {tz} ({offset})",
+      "timezoneMismatchHint": "Times shown follow the source timezone — convert before sharing with attendees in other regions."
     },
     "attendees": {
       "title": "Attendees",
