@@ -34,6 +34,10 @@ export function ReportGenerator() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
+  // streamingHtml is updated chunk-by-chunk while the model is generating.
+  // It feeds the iframe so the user watches the report build in real time.
+  // Once done, we stop touching it and let job.result drive the iframe.
+  const [streamingHtml, setStreamingHtml] = useState<string>('');
 
   const job = jobs.get('reports');
   const running = job.status === 'running';
@@ -105,6 +109,8 @@ export function ReportGenerator() {
     if (files.length === 0) return;
     track('generate_clicked', { feature: 'reports', file_count: files.length });
     const submitted = files;
+    setStreamingHtml('');
+    const sourceNames = submitted.map((f) => f.name);
     await jobs.start<ReportResult>('reports', {
       input: { count: submitted.length },
       run: async () => {
@@ -114,19 +120,66 @@ export function ReportGenerator() {
           method: 'POST',
           body: fd,
         });
-        const json = await res.json();
         if (!res.ok) {
+          // Errors come back as JSON before any streaming starts.
+          const json = await res.json().catch(() => ({}));
           throw new Error(json.error ?? res.statusText);
         }
+        if (!res.body) throw new Error('no_stream');
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let acc = '';
+        // Throttle setState so we don't reload the iframe on every tiny
+        // chunk — the model can emit dozens of small SSE deltas per second
+        // and re-rendering srcDoc that fast flickers visibly. ~150ms feels
+        // live without thrashing.
+        let lastFlush = 0;
+        let tail: ReturnType<typeof setTimeout> | null = null;
+        const flush = () => {
+          lastFlush = Date.now();
+          setStreamingHtml(acc);
+        };
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            acc += decoder.decode(value, { stream: true });
+            const now = Date.now();
+            if (now - lastFlush >= 150) {
+              if (tail) {
+                clearTimeout(tail);
+                tail = null;
+              }
+              flush();
+            } else if (!tail) {
+              tail = setTimeout(() => {
+                tail = null;
+                flush();
+              }, 180);
+            }
+          }
+        } finally {
+          if (tail) clearTimeout(tail);
+        }
+
+        let html = acc.trim();
+        if (html.startsWith('```')) {
+          html = html.replace(/^```(?:html)?\s*/i, '').replace(/```\s*$/i, '').trim();
+        }
+        if (!/<!doctype html|<html/i.test(html)) {
+          html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${html}</body></html>`;
+        }
+
         track('generate_success', { feature: 'reports' });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const title = `report_${ts}.html`;
         workspace.addArtifact({
           featureKey: 'reports',
           title,
-          content: json.html,
+          content: html,
         });
-        return { html: json.html as string, sources: json.sources ?? [] };
+        return { html, sources: sourceNames };
       },
     });
   }
@@ -231,28 +284,29 @@ export function ReportGenerator() {
         </div>
       )}
 
-      {result && (
+      {(running || result) && (
         <div className="mt-10">
           <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
             <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-              결과
+              {running ? '생성 중…' : '결과'}
             </h2>
             <button
               type="button"
               onClick={downloadReport}
-              className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 [border-radius:4px]"
+              disabled={!result}
+              className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
             >
               HTML 다운로드
             </button>
           </div>
-          {result.sources.length > 0 && (
+          {result && result.sources.length > 0 && (
             <p className="mt-3 text-[11.5px] text-mute-soft">
               출처: {result.sources.join(', ')}
             </p>
           )}
           <iframe
             title="리포트 미리보기"
-            srcDoc={result.html}
+            srcDoc={result?.html ?? (streamingHtml || ' ')}
             sandbox="allow-same-origin"
             className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
           />
