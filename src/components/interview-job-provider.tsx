@@ -310,16 +310,21 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     );
   }, []);
 
-  // Reads `items` lazily inside async — closures may be stale, but we look
-  // up by id so the lookup still resolves the right ConvItem regardless.
-  async function convertOne(id: string, snapshot: ConvItem[]) {
+  // Result type carrying everything the analyze pipeline needs without
+  // having to re-read itemsRef (which lags behind setItems by a render).
+  type ConvertedFile = { id: string; file: File; markdown: string };
+
+  async function convertOne(
+    id: string,
+    snapshot: ConvItem[],
+  ): Promise<ConvertedFile | null> {
     setItems((prev) =>
       prev.map((i) =>
         i.id === id ? { ...i, status: 'converting', error: undefined } : i,
       ),
     );
     const target = snapshot.find((i) => i.id === id);
-    if (!target) return;
+    if (!target) return null;
     track('interview_convert_start', {
       type: target.file.type,
       size: target.file.size,
@@ -342,22 +347,23 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
               : i,
           ),
         );
-      } else {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === id
-              ? {
-                  ...i,
-                  status: 'done',
-                  markdown: json.markdown,
-                  inputChars: json.input_chars,
-                  outputChars: json.output_chars,
-                  formatPath: json.format_path,
-                }
-              : i,
-          ),
-        );
+        return null;
       }
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                status: 'done',
+                markdown: json.markdown,
+                inputChars: json.input_chars,
+                outputChars: json.output_chars,
+                formatPath: json.format_path,
+              }
+            : i,
+        ),
+      );
+      return { id, file: target.file, markdown: json.markdown };
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'network_error';
       setItems((prev) =>
@@ -365,15 +371,21 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           i.id === id ? { ...i, status: 'error', error: msg } : i,
         ),
       );
+      return null;
     }
   }
 
+  // extractOne now takes the file/markdown directly — no more snapshot
+  // lookup. The previous design read from a `snapshot` arg or itemsRef,
+  // which suffered from React stale-ref: after the last convertOne setItems
+  // hadn't flushed yet, ready arrays missed the last file and extractOne
+  // was never invoked for it. Passing data explicitly removes that race.
   async function extractOne(
     id: string,
-    snapshot: ConvItem[],
+    file: File,
+    markdown: string,
   ): Promise<ExtractItem[] | null> {
-    const target = snapshot.find((i) => i.id === id);
-    if (!target?.markdown) return null;
+    if (!markdown) return null;
 
     setItems((prev) =>
       prev.map((i) =>
@@ -385,14 +397,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
     pushThinking({
       type: 'reading',
-      filename: target.file.name,
-      chars: target.markdown.length,
+      filename: file.name,
+      chars: markdown.length,
     });
-    // Surface a real snippet from the file so the user can see *what*
-    // the model is reading, not just an abstract status.
-    const snippet = target.markdown.replace(/\s+/g, ' ').trim().slice(0, 220);
+    const snippet = markdown.replace(/\s+/g, ' ').trim().slice(0, 220);
     if (snippet) {
-      pushThinking({ type: 'snippet', filename: target.file.name, text: snippet });
+      pushThinking({ type: 'snippet', filename: file.name, text: snippet });
     }
 
     let liveItems: ExtractItem[] = [];
@@ -402,8 +412,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          filename: target.file.name,
-          markdown: target.markdown,
+          filename: file.name,
+          markdown,
         }),
       });
       if (!res.ok || !res.body) {
@@ -451,7 +461,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           const it = complete[emitted];
           pushThinking({
             type: 'item',
-            filename: target.file.name,
+            filename: file.name,
             question: it.question,
             voc: it.voc,
           });
@@ -482,7 +492,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     // source" instruction rarely hallucinates, and a near-miss is far
     // more useful than an empty cell. Keep the voc, just count misses
     // so the file pill can flag suspicious output.
-    const normSrc = target.markdown.replace(/\s+/g, ' ').trim();
+    const normSrc = markdown.replace(/\s+/g, ' ').trim();
     let invalid = 0;
     const verified: ExtractItem[] = liveItems.map((it) => {
       const v = (it.voc ?? '').trim();
@@ -494,7 +504,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
     pushThinking({
       type: 'complete',
-      filename: target.file.name,
+      filename: file.name,
       total: liveItems.length,
       invalid,
     });
@@ -528,42 +538,63 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     const queue = initial
       .filter((i) => i.status === 'queued')
       .map((i) => i.id);
+    // Collect successfully-converted files directly from convertOne's
+    // return value. Reading from itemsRef after the loop missed the last
+    // file because React hadn't yet flushed the final setItems → useEffect
+    // → itemsRef.current update by the time the auto-chain ran.
+    const justConverted: ConvertedFile[] = [];
     for (const id of queue) {
-      // Pass the *current* items each iteration so convertOne always
-      // sees the latest File reference (in case anyone removed/added).
-      await convertOne(id, itemsRef.current);
+      const result = await convertOne(id, itemsRef.current);
+      if (result) justConverted.push(result);
     }
     setConvertingAll(false);
     router.refresh();
-    // Auto-chain into Pass A → Pass B once conversion finishes.
-    const ready = itemsRef.current.filter(
-      (i) => i.status === 'done' && i.markdown,
-    );
+
+    // Combine with any files that were already done before this batch
+    // (user converted earlier, then queued more). Use itemsRef for those —
+    // its lag doesn't matter for files that were stable before this run.
+    const queuedSet = new Set(queue);
+    const previouslyDone: ConvertedFile[] = itemsRef.current
+      .filter(
+        (i) =>
+          !queuedSet.has(i.id) &&
+          i.status === 'done' &&
+          typeof i.markdown === 'string' &&
+          i.markdown.length > 0,
+      )
+      .map((i) => ({ id: i.id, file: i.file, markdown: i.markdown! }));
+    const ready = [...previouslyDone, ...justConverted];
     if (ready.length === 0) return;
+
     track('interview_analyze_start', { fileCount: ready.length });
     setThinkingLog([]);
-    void runAnalyzePipeline();
+    void runAnalyzePipeline(ready);
   }
 
   function startAnalyze() {
     requireAuth(() => {
-      track('interview_analyze_start', { fileCount: filenameOrder.length });
+      const ready: ConvertedFile[] = itemsRef.current
+        .filter(
+          (i) =>
+            i.status === 'done' &&
+            typeof i.markdown === 'string' &&
+            i.markdown.length > 0,
+        )
+        .map((i) => ({ id: i.id, file: i.file, markdown: i.markdown! }));
+      track('interview_analyze_start', { fileCount: ready.length });
       setThinkingLog([]);
-      void runAnalyzePipeline();
+      void runAnalyzePipeline(ready);
     });
   }
 
-  async function runAnalyzePipeline() {
-    const ready = itemsRef.current.filter(
-      (i) => i.status === 'done' && i.markdown,
-    );
+  async function runAnalyzePipeline(ready: ConvertedFile[]) {
     if (ready.length === 0) return;
 
     const extractions: { filename: string; items: ExtractItem[] }[] = [];
-    for (const file of ready) {
-      const extracted = await extractOne(file.id, itemsRef.current);
+    for (const cf of ready) {
+      const extracted = await extractOne(cf.id, cf.file, cf.markdown);
       if (extracted) {
-        extractions.push({ filename: file.file.name, items: extracted });
+        extractions.push({ filename: cf.file.name, items: extracted });
       }
     }
     if (extractions.length === 0) return;
