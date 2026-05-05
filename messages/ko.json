@@ -329,7 +329,19 @@
       "rangeHint": "캘린더에서 시작일과 종료일을 차례로 클릭하세요.",
       "summaryEmpty": "아직 일정이 입력되지 않았습니다.",
       "expand": "펼치기",
-      "collapse": "접기"
+      "collapse": "접기",
+      "timezoneLabel": "타임존",
+      "tz": {
+        "seoul": "서울",
+        "tokyo": "도쿄",
+        "singapore": "싱가포르",
+        "kualaLumpur": "쿠알라룸푸르",
+        "bangkok": "방콕",
+        "losAngeles": "로스앤젤레스",
+        "newYork": "뉴욕",
+        "london": "런던",
+        "utc": "UTC"
+      }
     },
     "calendar": {
       "title": "캘린더",
@@ -342,7 +354,10 @@
       "legendAvailable": "조사 가능 시간",
       "legendConfirmed": "확정 일정",
       "noRequirement": "조사 요구 일정을 먼저 입력하면 가능 슬롯이 표시됩니다.",
-      "pickHint": "참석자를 선택한 뒤 슬롯을 클릭하면 확정 일정으로 등록됩니다."
+      "pickHint": "참석자를 선택한 뒤 슬롯을 클릭하면 확정 일정으로 등록됩니다.",
+      "timezoneSource": "기준: {tz} ({offset})",
+      "timezoneViewer": "보는 곳: {tz} ({offset})",
+      "timezoneMismatchHint": "표시된 시각은 기준 타임존을 따릅니다. 다른 지역의 참석자에게 안내할 때는 환산 시간을 함께 전달하세요."
     },
     "attendees": {
       "title": "참석자",

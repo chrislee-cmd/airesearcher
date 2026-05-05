@@ -11,6 +11,10 @@ export type Requirement = {
   durationMin: number;
   daysOfWeek: DayOfWeek[];
   explicitSlots: ExplicitSlot[];
+  // IANA timezone the slot times are authored in. Optional for backwards
+  // compatibility with existing localStorage state — readers must fall back
+  // to 'Asia/Seoul' when the field is missing.
+  timezone?: string;
 };
 
 export type ExplicitSlot = {
@@ -48,4 +52,11 @@ export const DEFAULT_REQUIREMENT: Requirement = {
   durationMin: 60,
   daysOfWeek: [1, 2, 3, 4, 5],
   explicitSlots: [],
+  timezone: 'Asia/Seoul',
 };
+
+// Read with backwards-compat default: legacy stored requirements have no
+// `timezone` field — they were authored in KST.
+export function requirementTz(req: Requirement): string {
+  return req.timezone || 'Asia/Seoul';
+}

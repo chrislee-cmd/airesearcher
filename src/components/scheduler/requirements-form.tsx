@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DayOfWeek, ExplicitSlot, Requirement } from '@/lib/scheduler/types';
+import { requirementTz } from '@/lib/scheduler/types';
+import { TIMEZONES, tzShortOffset } from '@/lib/scheduler/timezone';
 import { DateRangeCalendar } from './date-range-calendar';
 
 type Props = {
@@ -103,6 +105,19 @@ export function RequirementsForm({ value, onChange }: Props) {
                   />
                 </Field>
               </div>
+              <Field label={t('timezoneLabel')}>
+                <select
+                  value={requirementTz(value)}
+                  onChange={(e) => set('timezone', e.target.value)}
+                  className={inputCls}
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.id} value={tz.id}>
+                      {t(`tz.${tz.key}`)} ({tzShortOffset(tz.id)})
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
 
             {/* Right: duration + weekdays + explicit slots */}
