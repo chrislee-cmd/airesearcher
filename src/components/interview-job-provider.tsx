@@ -44,7 +44,16 @@ export type ConvItem = {
 
 export type AnalysisRow = {
   question: string;
+  // Horizontal (per-row) summary — synthesizes responses across all
+  // respondents for one question. Kept on the row for sheet 2 of the
+  // XLSX export even after vertical synthesis overwrites the view.
   summary?: string;
+  // Vertical (whole-interview) rewrite — Sonnet reads every row's
+  // question + horizontal summary at once, then rewrites each row to
+  // reflect its position in the overall interview arc. Wordy by design.
+  // When present, the UI flips to a 2-column view (문항, 요약) and the
+  // respondent columns are removed from sight (still in sheet 2 export).
+  verticalSummary?: string;
   cells: { filename: string; voc: string }[];
 };
 
@@ -111,6 +120,9 @@ type Ctx = {
   analyzeError: string | null;
   summarizing: boolean;
   summarizeError: string | null;
+  verticallySynthesizing: boolean;
+  verticalSynthError: string | null;
+  verticalDone: boolean;
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -125,7 +137,22 @@ type Ctx = {
   exportXlsx: () => void;
 };
 
-function buildMatrix(
+// Sheet 1: final summary only (문항, 요약). 요약 prefers verticalSummary
+// (the whole-interview-aware rewrite); falls back to the horizontal
+// summary if the vertical pass hasn't run.
+function buildFinalMatrix(result: AnalysisResult): string[][] {
+  const header = ['문항', '요약'];
+  const rows = result.rows.map((row) => [
+    row.question,
+    row.verticalSummary ?? row.summary ?? '',
+  ]);
+  return [header, ...rows];
+}
+
+// Sheet 2: 문항 + horizontal summary + every respondent's column. By
+// design vertical summary is NOT included here — sheet 2 is the
+// "raw matrix" view for cross-checking against original verbatims.
+function buildRespondentMatrix(
   result: AnalysisResult,
   filenameOrder: string[],
 ): string[][] {
@@ -165,10 +192,12 @@ function makeCsvBlob(matrix: string[][]) {
   return new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
 }
 
-function makeXlsxBlob(matrix: string[][]) {
-  const ws = XLSX.utils.aoa_to_sheet(matrix);
+function makeXlsxBlob(sheets: { name: string; matrix: string[][] }[]) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
+  for (const s of sheets) {
+    const ws = XLSX.utils.aoa_to_sheet(s.matrix);
+    XLSX.utils.book_append_sheet(wb, ws, s.name);
+  }
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -233,6 +262,65 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   const [summarizing, setSummarizing] = useState(false);
   const [summarizeError, setSummarizeError] = useState<string | null>(null);
   const summarizeAbortRef = useRef<AbortController | null>(null);
+  const [verticallySynthesizing, setVerticallySynthesizing] = useState(false);
+  const [verticalSynthError, setVerticalSynthError] = useState<string | null>(
+    null,
+  );
+  const verticalSynthAbortRef = useRef<AbortController | null>(null);
+
+  // Holistic pass: send every (question, horizontal-summary) at once so
+  // the model can reason about the whole interview arc, then rewrite each
+  // row's summary to reflect its position in that arc.
+  async function runVerticalSynth(rowsForSynth: AnalysisRow[]) {
+    const payload = rowsForSynth
+      .map((r) => ({ question: r.question, summary: r.summary ?? '' }))
+      .filter((r) => r.question);
+    if (payload.length === 0) return;
+    setVerticallySynthesizing(true);
+    setVerticalSynthError(null);
+    const ac = new AbortController();
+    verticalSynthAbortRef.current = ac;
+    try {
+      const res = await fetch('/api/interviews/vertical-synth', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rows: payload }),
+        signal: ac.signal,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setVerticalSynthError(json.error ?? 'vertical_synth_failed');
+        return;
+      }
+      const summaries: unknown = json.summaries;
+      if (!Array.isArray(summaries)) {
+        setVerticalSynthError('invalid_response');
+        return;
+      }
+      setAnalysis((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rows: prev.rows.map((row, idx) => ({
+            ...row,
+            verticalSummary:
+              typeof summaries[idx] === 'string'
+                ? (summaries[idx] as string)
+                : '',
+          })),
+        };
+      });
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        setVerticalSynthError(
+          e instanceof Error ? e.message : 'network_error',
+        );
+      }
+    } finally {
+      setVerticallySynthesizing(false);
+      verticalSynthAbortRef.current = null;
+    }
+  }
 
   async function runSummarize(result: AnalysisResult) {
     if (result.rows.length === 0) return;
@@ -257,17 +345,18 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         setSummarizeError('invalid_response');
         return;
       }
+      const rowsWithSummary: AnalysisRow[] = result.rows.map((row, idx) => ({
+        ...row,
+        summary:
+          typeof summaries[idx] === 'string' ? (summaries[idx] as string) : '',
+      }));
       setAnalysis((prev) => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          rows: prev.rows.map((row, idx) => ({
-            ...row,
-            summary:
-              typeof summaries[idx] === 'string' ? (summaries[idx] as string) : '',
-          })),
-        };
+        return { ...prev, rows: rowsWithSummary };
       });
+      // Chain vertical synthesis — operates on the row list we just built
+      // so we don't depend on React having flushed setAnalysis yet.
+      void runVerticalSynth(rowsWithSummary);
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setSummarizeError(e instanceof Error ? e.message : 'network_error');
@@ -329,8 +418,15 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     [items],
   );
 
-  const isWorking = convertingAll || analyzing || summarizing || items.some(
-    (i) => i.extractStatus === 'extracting',
+  const isWorking =
+    convertingAll ||
+    analyzing ||
+    summarizing ||
+    verticallySynthesizing ||
+    items.some((i) => i.extractStatus === 'extracting');
+
+  const verticalDone = !!analysis?.rows.some(
+    (r) => r.verticalSummary && r.verticalSummary.length > 0,
   );
 
   const addFiles = useCallback((files: FileList | File[]) => {
@@ -660,15 +756,25 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   function exportCsv() {
     if (!analysis || !filenameOrder.length) return;
+    // CSV is single-sheet by format — emit the final summary view.
     triggerDownload(
-      makeCsvBlob(buildMatrix(analysis, filenameOrder)),
+      makeCsvBlob(buildFinalMatrix(analysis)),
       'interview-analysis.csv',
     );
   }
   function exportXlsx() {
     if (!analysis || !filenameOrder.length) return;
+    // Sheet 1: final summary (문항, 요약). Sheet 2: 응답자별 행렬 with the
+    // horizontal summary preserved (vertical summary intentionally omitted
+    // so sheet 2 stays the "raw" cross-respondent matrix).
     triggerDownload(
-      makeXlsxBlob(buildMatrix(analysis, filenameOrder)),
+      makeXlsxBlob([
+        { name: '최종 요약', matrix: buildFinalMatrix(analysis) },
+        {
+          name: '응답자별',
+          matrix: buildRespondentMatrix(analysis, filenameOrder),
+        },
+      ]),
       'interview-analysis.xlsx',
     );
   }
@@ -684,6 +790,9 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     analyzeError,
     summarizing,
     summarizeError,
+    verticallySynthesizing,
+    verticalSynthError,
+    verticalDone,
     isWorking,
     thinkingLog,
     clearThinking,

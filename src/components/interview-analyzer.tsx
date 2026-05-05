@@ -249,9 +249,15 @@ export function InterviewAnalyzer() {
                   요약 생성 중
                 </span>
               )}
-              {job.summarizeError && (
+              {job.verticallySynthesizing && (
+                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  전체 흐름 분석 중
+                </span>
+              )}
+              {(job.summarizeError || job.verticalSynthError) && (
                 <span className="text-[11.5px] text-warning">
-                  {job.summarizeError}
+                  {job.summarizeError ?? job.verticalSynthError}
                 </span>
               )}
               <button
@@ -267,12 +273,16 @@ export function InterviewAnalyzer() {
                 {t('exportXlsx')}
               </button>
             </div>
-            <ResultTable
-              filenames={job.filenameOrder}
-              rows={job.analysis.rows}
-              summarizing={job.summarizing}
-              t={t}
-            />
+            {job.verticalDone ? (
+              <FinalSummaryTable rows={job.analysis.rows} t={t} />
+            ) : (
+              <ResultTable
+                filenames={job.filenameOrder}
+                rows={job.analysis.rows}
+                summarizing={job.summarizing}
+                t={t}
+              />
+            )}
           </div>
         )}
       </section>
@@ -447,6 +457,49 @@ function ResultTable({
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Final view rendered after vertical synthesis completes. Respondent
+// columns are intentionally hidden — they live on in the XLSX sheet 2
+// export. Layout is a wide 2-column grid optimised for reading the
+// rich, wordy summary text.
+function FinalSummaryTable({
+  rows,
+  t,
+}: {
+  rows: AnalysisRow[];
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div className="overflow-hidden border border-line bg-paper [border-radius:4px]">
+      <table className="w-full text-[12.5px]">
+        <thead className="border-b border-line bg-paper-soft">
+          <tr>
+            <th className="w-[28%] px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('question')}
+            </th>
+            <th className="border-l border-line px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('summary')}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={idx} className="border-t border-line-soft align-top">
+              <td className="px-5 py-4 font-medium text-ink-2">
+                {row.question}
+              </td>
+              <td className="border-l border-line px-5 py-4 align-top text-ink-2">
+                <div className="leading-[1.8] whitespace-pre-wrap">
+                  {row.verticalSummary || row.summary || ''}
+                </div>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
