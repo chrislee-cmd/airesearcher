@@ -28,6 +28,7 @@
     "keywords": "Keyword Crawling",
     "recruiting": "Recruiting",
     "survey": "AI Survey",
+    "quant": "Quantitative Analysis",
     "affinity_bubble": "Affinity Bubble",
     "members": "Members",
     "organizations": "Organizations",
@@ -169,11 +170,36 @@
       "description": "Generate quantitative survey questions and branching logic from your research goals and hypotheses.",
       "cost": "1 credit"
     },
+    "quant": {
+      "title": "Quantitative Analysis",
+      "description": "Upload a CSV/XLSX of survey responses and explore question × banner cross-tabs interactively.",
+      "cost": "1 credit"
+    },
     "affinity_bubble": {
       "title": "Affinity Bubble",
       "description": "Partner solution that visualizes tens of thousands of reviews as semantic clusters.",
       "cost": "External"
     }
+  },
+  "Quant": {
+    "dropHere": "Drop a CSV/XLSX file here, or click to upload",
+    "supported": "Supported: .csv · .xlsx · .xls (one row per respondent, columns = questions/attributes)",
+    "parsing": "Parsing…",
+    "parseError": "Couldn't read the file",
+    "loaded": "DATA",
+    "respondents": "{count} respondents",
+    "columns": "{count} columns",
+    "reset": "Re-upload",
+    "questionLabel": "QUESTION (rows)",
+    "questionHint": "Pick the column whose values become the rows — typically the answer column (satisfaction, preference, …).",
+    "bannerLabel": "BANNER (columns)",
+    "bannerHint": "Pick the segment to cross by — gender, age group, customer tier, etc.",
+    "samePickError": "Pick two different columns for rows and banner.",
+    "pickPrompt": "Choose row + banner columns above to render the cross-tab.",
+    "mode_count": "Count",
+    "mode_colpct": "Col %",
+    "mode_rowpct": "Row %",
+    "exportCsv": "Export CSV"
   },
   "AffinityBubble": {
     "eyebrow": "PARTNER",

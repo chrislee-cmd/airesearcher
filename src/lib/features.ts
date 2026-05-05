@@ -10,6 +10,7 @@ export type FeatureKey =
   | 'keywords'
   | 'recruiting'
   | 'survey'
+  | 'quant'
   | 'affinity_bubble';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
@@ -32,6 +33,10 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'keywords', href: '/keywords', cost: 1 },
   { key: 'recruiting', href: '/recruiting', cost: 1 },
   { key: 'survey', href: '/survey', cost: 1 },
+  // Quantitative analyzer runs entirely client-side (CSV/XLSX parsing
+  // + crosstab in the browser), so the cost is symbolic rather than
+  // covering server compute.
+  { key: 'quant', href: '/quant', cost: 1 },
   // Affinity Bubble is a partner showcase, not an in-app generator;
   // cost stays 0, the page just previews the offering and links out.
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
@@ -100,5 +105,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey'] },
-  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'affinity_bubble'] },
+  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'quant', 'affinity_bubble'] },
 ];
