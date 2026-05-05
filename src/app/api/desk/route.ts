@@ -14,6 +14,7 @@ import {
   sourceMissingKey,
   SOURCE_BUDGET,
 } from '@/lib/desk-crawl';
+import { pickRepresentativeArticles } from '@/lib/desk-embed';
 import type { DeskDateRange } from '@/lib/desk-crawl';
 import {
   DESK_SOURCES,
@@ -465,6 +466,38 @@ async function runJob(args: {
     }
 
     await patch({ status: 'summarizing' });
+
+    // ── Sample down to a representative subset for the LLM ──────────────
+    // Anthropic Tier 1 한도 = 30k input tokens / min. 1500건 풀을 그대로 보내면
+    // 단일 호출에 ~300k tokens 가 필요해 즉시 429. 임베딩 클러스터링으로
+    // 의미적으로 다양한 80건만 추려서 보냄. 실패 시 키워드/소스 균등 fallback.
+    // UI/DB 에는 1500 풀 그대로 저장됨.
+    const SUMMARIZE_SAMPLE_K = 80;
+    let articlesForLLM = articles;
+    if (articles.length > SUMMARIZE_SAMPLE_K) {
+      await pushAndPatch(
+        `${articles.length}건은 한 번에 다 못 넣어서, 임베딩으로 의미가 다양한 ${SUMMARIZE_SAMPLE_K}건을 골라낼게요…`,
+        'summarizing',
+      );
+      try {
+        articlesForLLM = await pickRepresentativeArticles(
+          articles,
+          SUMMARIZE_SAMPLE_K,
+        );
+        await pushAndPatch(
+          `대표 ${articlesForLLM.length}건 골랐어요.`,
+          'summarizing',
+        );
+      } catch (err) {
+        console.error('[desk] sampling failed', err);
+        articlesForLLM = articles.slice(0, SUMMARIZE_SAMPLE_K);
+        await pushAndPatch(
+          '의미 분석은 실패했지만 80건으로 줄여서 진행할게요.',
+          'summarizing',
+        );
+      }
+    }
+
     await pushAndPatch(
       '이제 Claude한테 한 편의 데스크 리서치 보고서로 묶어 달라고 요청할게요…',
       'summarizing',
@@ -475,18 +508,17 @@ async function runJob(args: {
       `메인 키워드: ${keywords.join(', ')}`,
       `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
       `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
-      `수집 항목 수: ${articles.length}`,
+      `전체 수집: ${articles.length}건 (이 중 의미가 다양한 ${articlesForLLM.length}건을 본문에 첨부)`,
       '',
       '--- 항목 목록 ---',
-      articles
+      articlesForLLM
         .map((a, i) => {
           const lines = [
             `${i + 1}. [${a.source}] ${a.title}`,
             `   url: ${a.url}`,
             a.origin ? `   origin: ${a.origin}` : '',
             a.publishedAt ? `   published: ${a.publishedAt}` : '',
-            a.keyword ? `   matched_keyword: ${a.keyword}` : '',
-            a.snippet ? `   snippet: ${a.snippet.slice(0, 280)}` : '',
+            a.snippet ? `   snippet: ${a.snippet.slice(0, 200)}` : '',
           ].filter(Boolean);
           return lines.join('\n');
         })
