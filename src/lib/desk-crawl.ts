@@ -1,4 +1,27 @@
-import type { DeskArticle, DeskSourceId } from './desk-sources';
+import type { DeskArticle, DeskRegion, DeskSourceId } from './desk-sources';
+
+// Map target region to Google News (`hl`/`gl`/`ceid`) and YouTube
+// (`regionCode`/`relevanceLanguage`). GLOBAL falls back to en/US — Google News
+// requires a country code.
+const GOOGLE_NEWS_BY_REGION: Record<DeskRegion, { hl: string; gl: string; ceid: string }> = {
+  KR:     { hl: 'ko',    gl: 'KR', ceid: 'KR:ko' },
+  US:     { hl: 'en-US', gl: 'US', ceid: 'US:en' },
+  SG:     { hl: 'en-SG', gl: 'SG', ceid: 'SG:en' },
+  MY:     { hl: 'en-MY', gl: 'MY', ceid: 'MY:en' },
+  TH:     { hl: 'th',    gl: 'TH', ceid: 'TH:th' },
+  JP:     { hl: 'ja',    gl: 'JP', ceid: 'JP:ja' },
+  GLOBAL: { hl: 'en',    gl: 'US', ceid: 'US:en' },
+};
+
+const YOUTUBE_BY_REGION: Record<DeskRegion, { regionCode: string; lang: string }> = {
+  KR:     { regionCode: 'KR', lang: 'ko' },
+  US:     { regionCode: 'US', lang: 'en' },
+  SG:     { regionCode: 'SG', lang: 'en' },
+  MY:     { regionCode: 'MY', lang: 'ms' },
+  TH:     { regionCode: 'TH', lang: 'th' },
+  JP:     { regionCode: 'JP', lang: 'ja' },
+  GLOBAL: { regionCode: 'US', lang: 'en' },
+};
 
 const UA = 'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
 
@@ -69,13 +92,11 @@ function rangeToRfc3339(range: DeskDateRange): { after?: string; before?: string
 // ─── Google News (RSS) ──────────────────────────────────────────────────────
 async function fetchGoogleNews(
   keyword: string,
-  locale: 'ko' | 'en',
+  region: DeskRegion,
   range: DeskDateRange,
   limit: number,
 ): Promise<DeskArticle[]> {
-  const hl = locale === 'ko' ? 'ko' : 'en-US';
-  const gl = locale === 'ko' ? 'KR' : 'US';
-  const ceid = locale === 'ko' ? 'KR:ko' : 'US:en';
+  const { hl, gl, ceid } = GOOGLE_NEWS_BY_REGION[region];
   const parts = [keyword];
   if (range.from) parts.push(`after:${range.from}`);
   if (range.to) parts.push(`before:${range.to}`);
@@ -361,13 +382,14 @@ type YouTubeItem = {
 
 async function fetchYouTube(
   keyword: string,
-  locale: 'ko' | 'en',
+  region: DeskRegion,
   range: DeskDateRange,
   limit: number,
 ): Promise<DeskArticle[]> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
   const { after, before } = rangeToRfc3339(range);
+  const yt = YOUTUBE_BY_REGION[region];
   // YouTube: max 50/page. We intentionally do NOT paginate — search.list
   // costs 100 quota units/call and daily quota is 10,000. The per-keyword
   // limit caps the single-call maxResults at 50.
@@ -376,7 +398,8 @@ async function fetchYouTube(
     q: keyword,
     type: 'video',
     maxResults: String(Math.min(50, Math.max(1, limit))),
-    relevanceLanguage: locale === 'ko' ? 'ko' : 'en',
+    regionCode: yt.regionCode,
+    relevanceLanguage: yt.lang,
     key,
   });
   if (after) params.set('publishedAfter', after);
@@ -424,7 +447,7 @@ export function sourceMissingKey(source: DeskSourceId): string | null {
 export async function crawlSource(
   source: DeskSourceId,
   keyword: string,
-  locale: 'ko' | 'en' = 'ko',
+  region: DeskRegion = 'KR',
   range: DeskDateRange = {},
   // Caller decides how big this single (keyword × source) pull may be.
   // Defaults to the full source budget for back-compat with single-keyword
@@ -434,7 +457,7 @@ export async function crawlSource(
   try {
     switch (source) {
       case 'google_news':
-        return await fetchGoogleNews(keyword, locale, range, limit);
+        return await fetchGoogleNews(keyword, region, range, limit);
       case 'hacker_news':
         return await fetchHackerNews(keyword, range, limit);
       case 'reddit':
@@ -454,7 +477,7 @@ export async function crawlSource(
       case 'kakao_cafe':
         return await fetchKakao('cafe', keyword, source, range, limit);
       case 'youtube':
-        return await fetchYouTube(keyword, locale, range, limit);
+        return await fetchYouTube(keyword, region, range, limit);
     }
   } catch (err) {
     console.error('[desk-crawl]', source, keyword, err);

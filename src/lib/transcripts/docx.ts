@@ -91,7 +91,11 @@ export async function markdownToDocx(markdown: string): Promise<Buffer> {
     styles: {
       default: {
         document: {
-          run: { font: 'Pretendard', size: 22 },
+          // Per-script font fallback: Pretendard has no Thai glyphs.
+          run: {
+            font: { ascii: 'Inter', cs: 'Sarabun', eastAsia: 'Pretendard' },
+            size: 22,
+          },
         },
       },
     },

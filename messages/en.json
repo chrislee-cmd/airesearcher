@@ -260,7 +260,18 @@
     "thinkingDone": "Activity",
     "stop": "Stop",
     "stopRequested": "Stopping…",
-    "cancelledNotice": "Run was cancelled by the user."
+    "cancelledNotice": "Run was cancelled by the user.",
+    "regionLabel": "Target region",
+    "regionKrOnlyHidden": "Korea-only sources (Naver/Kakao/Daum) are hidden — they return little for non-KR queries.",
+    "region": {
+      "KR": "Korea",
+      "US": "United States",
+      "SG": "Singapore",
+      "MY": "Malaysia",
+      "TH": "Thailand",
+      "JP": "Japan",
+      "GLOBAL": "Global"
+    }
   },
   "Workspace": {
     "eyebrow": "Workspace",
