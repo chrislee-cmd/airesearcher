@@ -86,6 +86,11 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   const channelRef = useRef<ReturnType<
     ReturnType<typeof createClient>['channel']
   > | null>(null);
+  // Session boundary: only jobs created at/after this moment are surfaced.
+  // Reset on mount (refresh) and on user change (login/logout/relogin) so
+  // past runs never leak into a fresh session.
+  const sessionStartRef = useRef<string>(new Date().toISOString());
+  const lastUserIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -96,9 +101,21 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/desk/jobs', { cache: 'no-store' });
       if (!res.ok) return;
       const json = await res.json();
-      setJobs(json.jobs ?? []);
+      const all: DeskJob[] = json.jobs ?? [];
+      const cutoff = sessionStartRef.current;
+      setJobs(all.filter((j) => j.created_at >= cutoff));
     } catch {
       // ignore — realtime or next refresh will catch up
+    }
+  }, [user]);
+
+  // Reset the session cutoff whenever the signed-in user changes.
+  useEffect(() => {
+    const uid = user?.id ?? null;
+    if (lastUserIdRef.current !== uid) {
+      sessionStartRef.current = new Date().toISOString();
+      lastUserIdRef.current = uid;
+      setJobs([]);
     }
   }, [user]);
 
