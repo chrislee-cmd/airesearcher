@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { generateText } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
-import { tryRegexMarkdown } from '@/lib/markdown-format';
+import {
+  tryRegexMarkdown,
+  tryMarkdownPassthrough,
+} from '@/lib/markdown-format';
 import { hashBytes, getCache, setCache } from '@/lib/cache';
 
 export const maxDuration = 300;
@@ -40,7 +45,7 @@ export async function POST(request: Request) {
 
   // Content-addressed cache check. Same bytes = same markdown, regardless
   // of who uploads it. Bump CACHE_V if SYSTEM prompt or output shape changes.
-  const CACHE_V = 'v2';
+  const CACHE_V = 'v3';
   const fileBuffer = await file.arrayBuffer();
   const fileHash = hashBytes(fileBuffer);
   const cacheKey = `interviews:convert:${CACHE_V}:${fileHash}`;
@@ -117,30 +122,43 @@ export async function POST(request: Request) {
   }
 
   // Format raw transcript into structured Markdown.
-  // Fast path: if the text already has consistent speaker labels (M:/R:,
-  // Q:/A:, 진행자:/응답자:, etc.), parse it deterministically — no LLM call.
-  // Fallback: hand to gpt-4o-mini for unstructured transcripts (Whisper output, free-form notes).
+  // Path 1 (regex): consistent speaker labels (M:/R:, Q:/A:, 진행자:/응답자:).
+  // Path 2 (passthrough): file is already a `.md` with markdown structure.
+  //   This avoids the LLM output-token cap silently truncating large
+  //   already-formatted interviews — the failure mode where 113k chars
+  //   came back as 9k chars because gpt-4o-mini ran out of budget.
+  // Path 3 (llm): unstructured transcripts (Whisper output, free-form
+  //   notes). Anthropic Sonnet 4.6 with explicit max_tokens=16k for
+  //   stability — much higher cap than gpt-4o-mini's defaults.
   let markdown: string;
   let formatPath: 'regex' | 'llm' = 'regex';
   const regexMd = tryRegexMarkdown(rawText, file.name);
+  const passthroughMd = regexMd ? null : tryMarkdownPassthrough(rawText, file.name);
   if (regexMd) {
     markdown = regexMd;
+  } else if (passthroughMd) {
+    markdown = passthroughMd;
   } else {
     formatPath = 'llm';
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      return NextResponse.json(
+        { error: 'missing_anthropic_key', stage: 'format' },
+        { status: 500 },
+      );
+    }
     try {
-      const completion = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
+      const anthropic = createAnthropic({ apiKey: anthropicKey });
+      const result = await generateText({
+        model: anthropic('claude-sonnet-4-6'),
+        system: SYSTEM,
+        prompt: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
         temperature: 0.2,
-        messages: [
-          { role: 'system', content: SYSTEM },
-          {
-            role: 'user',
-            content: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
-          },
-        ],
+        maxOutputTokens: 16384,
       });
-      markdown = completion.choices[0]?.message?.content?.trim() ?? rawText;
+      markdown = result.text.trim() || rawText;
     } catch (e) {
+      console.error('[interviews/convert] format failed', file.name, e);
       return NextResponse.json(
         { error: e instanceof Error ? e.message : 'format_failed', stage: 'format' },
         { status: 502 },

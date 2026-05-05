@@ -1,4 +1,35 @@
 /**
+ * If the input is already a `.md` file with plausible markdown structure
+ * (or simply long-form prose with paragraph breaks), pass it through with
+ * minimal cleanup. Skipping the LLM formatter here avoids the output-token
+ * cap silently truncating large interviews — the failure mode where a
+ * 113k-char source ended up as 9k chars of markdown because the model ran
+ * out of output budget mid-document.
+ */
+export function tryMarkdownPassthrough(
+  rawText: string,
+  filename: string,
+): string | null {
+  const isMd = /\.md$/i.test(filename);
+  if (!isMd) return null;
+
+  // Look for any structural signal that the file is really markdown,
+  // not e.g. a single wall of text where formatting would actually help.
+  const hasHeader = /^#{1,6}\s+/m.test(rawText);
+  const hasList = /^\s*[-*+]\s+/m.test(rawText) || /^\s*\d+\.\s+/m.test(rawText);
+  const hasParagraphs = (rawText.match(/\n\s*\n/g) ?? []).length >= 3;
+  const hasCode = /```/.test(rawText);
+  if (!(hasHeader || hasList || hasParagraphs || hasCode)) return null;
+
+  // Minimal cleanup: normalize line endings, collapse 3+ blank lines.
+  const cleaned = rawText
+    .replace(/\r\n?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return `---\nfile: ${filename}\n---\n\n${cleaned}\n`;
+}
+
+/**
  * Try to convert a raw interview transcript into structured Markdown using
  * deterministic regex parsing. Returns null when the input does not look
  * like a labeled interview, so callers can fall back to an LLM step.
