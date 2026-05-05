@@ -1,71 +1,59 @@
 import { z } from 'zod';
 
-// Schema describing a presentation outline. Used by /api/reports/slides
-// (server-side generateObject) and /lib/reports-pptx (client-side
-// pptxgenjs renderer). Each slide kind has its own layout — we don't
-// just dump bullets onto a generic template.
+// Schema for the slide outline produced by /api/reports/slides.
+// Kept intentionally lean — Anthropic refuses schemas whose compiled
+// grammar gets too large, so we drop array .min/.max and enums and
+// flatten nested objects (Cover meta, ThemeSplit verbatim) to top-level
+// fields. The runtime renderer in /lib/reports-pptx tolerates anything
+// missing.
 
 const Cover = z.object({
   kind: z.literal('cover'),
   title: z.string(),
   subtitle: z.string().optional(),
-  meta: z.object({
-    method: z.string().optional(),
-    sample: z.string().optional(),
-    period: z.string().optional(),
-    chapters: z.string().optional(),
-  }),
+  metaMethod: z.string().optional(),
+  metaSample: z.string().optional(),
+  metaPeriod: z.string().optional(),
+  metaChapters: z.string().optional(),
 });
 
 const SectionDivider = z.object({
   kind: z.literal('section_divider'),
-  eyebrow: z.string(), // e.g. "CHAPTER 02"
+  eyebrow: z.string(),
   title: z.string(),
   subtitle: z.string().optional(),
 });
 
+const KpiGridItem = z.object({
+  label: z.string(),
+  value: z.string(),
+  note: z.string().optional(),
+});
 const KpiGrid = z.object({
   kind: z.literal('kpi_grid'),
   eyebrow: z.string(),
   title: z.string(),
-  items: z
-    .array(
-      z.object({
-        label: z.string(), // small uppercase tag
-        value: z.string(), // big number / phrase
-        note: z.string().optional(),
-      }),
-    )
-    .min(2)
-    .max(4),
+  items: z.array(KpiGridItem),
 });
 
+const InsightCard = z.object({
+  heading: z.string(),
+  body: z.string(),
+});
 const InsightCards = z.object({
   kind: z.literal('insight_cards'),
   eyebrow: z.string(),
   title: z.string(),
-  cards: z
-    .array(
-      z.object({
-        heading: z.string(),
-        body: z.string(),
-      }),
-    )
-    .min(2)
-    .max(4),
+  cards: z.array(InsightCard),
 });
 
 const ThemeSplit = z.object({
   kind: z.literal('theme_split'),
   eyebrow: z.string(),
   title: z.string(),
-  findings: z.array(z.string()).min(1).max(6),
-  verbatim: z
-    .object({
-      text: z.string(),
-      cite: z.string().optional(),
-    })
-    .optional(),
+  findings: z.array(z.string()),
+  verbatimText: z.string().optional(),
+  verbatimCite: z.string().optional(),
   implication: z.string().optional(),
 });
 
@@ -78,45 +66,30 @@ const QuoteCard = z.object({
   context: z.string().optional(),
 });
 
+const BarSeriesItem = z.object({
+  label: z.string(),
+  value: z.number(),
+});
 const BarChart = z.object({
   kind: z.literal('bar_chart'),
   eyebrow: z.string(),
   title: z.string(),
   note: z.string().optional(),
-  valueSuffix: z.string().optional(), // '%', 'pt', etc.
-  series: z
-    .array(
-      z.object({
-        label: z.string(),
-        value: z.number(),
-      }),
-    )
-    .min(2)
-    .max(8),
+  valueSuffix: z.string().optional(),
+  series: z.array(BarSeriesItem),
 });
 
-const TableSlide = z.object({
-  kind: z.literal('table'),
-  eyebrow: z.string(),
-  title: z.string(),
-  columns: z.array(z.string()).min(2).max(5),
-  rows: z.array(z.array(z.string())).min(1).max(8),
+const Recommendation = z.object({
+  headline: z.string(),
+  detail: z.string().optional(),
+  // Plain string instead of enum — model picks 'high'/'medium'/'low'.
+  priority: z.string().optional(),
 });
-
 const Recommendations = z.object({
   kind: z.literal('recommendations'),
   eyebrow: z.string(),
   title: z.string(),
-  items: z
-    .array(
-      z.object({
-        headline: z.string(),
-        detail: z.string().optional(),
-        priority: z.enum(['high', 'medium', 'low']).optional(),
-      }),
-    )
-    .min(1)
-    .max(6),
+  items: z.array(Recommendation),
 });
 
 const Closing = z.object({
@@ -133,13 +106,12 @@ export const slideSchema = z.discriminatedUnion('kind', [
   ThemeSplit,
   QuoteCard,
   BarChart,
-  TableSlide,
   Recommendations,
   Closing,
 ]);
 
 export const slideOutlineSchema = z.object({
-  slides: z.array(slideSchema).min(3).max(40),
+  slides: z.array(slideSchema),
 });
 
 export type SlideOutline = z.infer<typeof slideOutlineSchema>;

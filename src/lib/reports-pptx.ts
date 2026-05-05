@@ -13,7 +13,6 @@ const INK = '1A1A1A';
 const MUTE = '5A5A5A';
 const MUTE_SOFT = '9B9B9B';
 const LINE = 'E1E3E8';
-const LINE_SOFT = 'F1F3F6';
 const FONT = 'Pretendard';
 
 // LAYOUT_WIDE = 13.33 x 7.5 in
@@ -133,12 +132,11 @@ function renderCover(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Sli
       color: MUTE,
     });
   }
-  const meta = s.meta;
   const rows: [string, string][] = [
-    ['METHOD', meta.method ?? '—'],
-    ['SAMPLE', meta.sample ?? '—'],
-    ['PERIOD', meta.period ?? '—'],
-    ['CHAPTERS', meta.chapters ?? '—'],
+    ['METHOD', s.metaMethod ?? '—'],
+    ['SAMPLE', s.metaSample ?? '—'],
+    ['PERIOD', s.metaPeriod ?? '—'],
+    ['CHAPTERS', s.metaChapters ?? '—'],
   ];
   rows.forEach(([label, value], i) => {
     const colW = (W - MARGIN_X * 2) / 4;
@@ -367,7 +365,7 @@ function renderThemeSplit(pptx: ReturnType<typeof createPptx>['pptx'], s: Extrac
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sl = slide as any;
 
-  const hasQuote = !!s.verbatim;
+  const hasQuote = !!s.verbatimText;
   const leftW = hasQuote ? 7.6 : W - MARGIN_X * 2;
 
   const bullets = s.findings.map((b, i) => ({
@@ -411,7 +409,7 @@ function renderThemeSplit(pptx: ReturnType<typeof createPptx>['pptx'], s: Extrac
     });
   }
 
-  if (hasQuote && s.verbatim) {
+  if (hasQuote && s.verbatimText) {
     const qx = MARGIN_X + leftW + 0.4;
     const qw = W - MARGIN_X - qx;
     sl.addShape('rect', {
@@ -422,7 +420,7 @@ function renderThemeSplit(pptx: ReturnType<typeof createPptx>['pptx'], s: Extrac
       fill: { color: ACCENT },
       line: { color: ACCENT, width: 0 },
     });
-    sl.addText(`"${s.verbatim.text}"`, {
+    sl.addText(`"${s.verbatimText}"`, {
       x: qx + 0.2,
       y: 2.0,
       w: qw - 0.2,
@@ -433,8 +431,8 @@ function renderThemeSplit(pptx: ReturnType<typeof createPptx>['pptx'], s: Extrac
       color: MUTE,
       valign: 'top',
     });
-    if (s.verbatim.cite) {
-      sl.addText(`— ${s.verbatim.cite}`, {
+    if (s.verbatimCite) {
+      sl.addText(`— ${s.verbatimCite}`, {
         x: qx + 0.2,
         y: 6.1,
         w: qw - 0.2,
@@ -553,48 +551,6 @@ function renderBarChart(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<
   }
 }
 
-function renderTable(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'table' }>) {
-  const slide = blank(pptx);
-  addEyebrow(slide, s.eyebrow);
-  addTitle(slide, s.title);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sl = slide as any;
-
-  const headerRow = s.columns.map((c) => ({
-    text: c,
-    options: {
-      bold: true,
-      color: ACCENT,
-      fill: { color: LINE_SOFT },
-      fontFace: FONT,
-      fontSize: 11,
-      charSpacing: 22,
-    },
-  }));
-  const dataRows = s.rows.map((r) =>
-    r.map((cell) => ({
-      text: cell,
-      options: {
-        color: INK,
-        fontFace: FONT,
-        fontSize: 12,
-      },
-    })),
-  );
-  // Pad rows to column count.
-  for (const r of dataRows) {
-    while (r.length < s.columns.length)
-      r.push({ text: '', options: { color: INK, fontFace: FONT, fontSize: 12 } });
-  }
-  sl.addTable([headerRow, ...dataRows], {
-    x: MARGIN_X,
-    y: 2.0,
-    w: W - MARGIN_X * 2,
-    colW: Array(s.columns.length).fill((W - MARGIN_X * 2) / s.columns.length),
-    border: { type: 'solid', pt: 0.5, color: LINE },
-    fontFace: FONT,
-  });
-}
 
 function renderRecommendations(pptx: ReturnType<typeof createPptx>['pptx'], s: Extract<Slide, { kind: 'recommendations' }>) {
   const slide = blank(pptx);
@@ -608,8 +564,12 @@ function renderRecommendations(pptx: ReturnType<typeof createPptx>['pptx'], s: E
   const cardH = (totalH - gap * (n - 1)) / n;
   s.items.forEach((item, i) => {
     const y = 2.0 + i * (cardH + gap);
-    const priorityColor =
-      item.priority === 'high' ? ACCENT : item.priority === 'medium' ? ACCENT_SOFT : MUTE_SOFT;
+    const p = item.priority?.toLowerCase() ?? '';
+    const priorityColor = p.includes('high')
+      ? ACCENT
+      : p.includes('med')
+      ? ACCENT_SOFT
+      : MUTE_SOFT;
     sl.addShape('rect', {
       x: MARGIN_X,
       y,
@@ -735,9 +695,6 @@ export async function buildReportPptxBlob(outline: SlideOutline): Promise<Blob> 
         break;
       case 'bar_chart':
         renderBarChart(pptx, slide);
-        break;
-      case 'table':
-        renderTable(pptx, slide);
         break;
       case 'recommendations':
         renderRecommendations(pptx, slide);
