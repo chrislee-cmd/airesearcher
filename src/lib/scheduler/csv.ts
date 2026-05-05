@@ -88,6 +88,7 @@ function addMinutes(t: HHmm, mins: number): HHmm {
 export type ImportResult = {
   attendees: Attendee[];
   slots: { attendeeId: string; date: IsoDate; start: HHmm; end: HHmm }[];
+  headers: string[];
 };
 
 function decodeCsvBuffer(buf: ArrayBuffer): string {
@@ -110,7 +111,7 @@ export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Pr
     ? XLSX.read(decodeCsvBuffer(buf), { type: 'string', cellDates: true })
     : XLSX.read(buf, { type: 'array', cellDates: true });
   const sheetName = wb.SheetNames[0];
-  if (!sheetName) return { attendees: [], slots: [] };
+  if (!sheetName) return { attendees: [], slots: [], headers: [] };
   const sheet = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
     defval: '',
@@ -118,7 +119,7 @@ export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Pr
     dateNF: 'yyyy-mm-dd',
   });
 
-  if (rows.length === 0) return { attendees: [], slots: [] };
+  if (rows.length === 0) return { attendees: [], slots: [], headers: [] };
   const headers = Object.keys(rows[0]);
 
   const nameKey = findKey(headers, NAME_KEYS);
@@ -141,11 +142,13 @@ export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Pr
     if (!rawName) continue;
 
     const customFields: Record<string, string> = {};
+    const sourceRow: Record<string, string> = {};
     for (const h of headers) {
-      if (reservedKeys.has(h)) continue;
       const v = row[h];
-      if (v == null || v === '') continue;
-      customFields[h] = typeof v === 'string' ? v : String(v);
+      const s = v == null ? '' : typeof v === 'string' ? v : String(v);
+      sourceRow[h] = s;
+      if (reservedKeys.has(h) || s === '') continue;
+      customFields[h] = s;
     }
 
     const attendee: Attendee = {
@@ -155,6 +158,7 @@ export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Pr
       email: emailKey ? String(row[emailKey] ?? '').trim() || undefined : undefined,
       note: noteKey ? String(row[noteKey] ?? '').trim() || undefined : undefined,
       customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+      sourceRow,
     };
     attendees.push(attendee);
 
@@ -166,5 +170,128 @@ export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Pr
     }
   }
 
-  return { attendees, slots };
+  return { attendees, slots, headers };
+}
+
+const CONFIRMED_DATE = 'confirmed_date';
+const CONFIRMED_START = 'confirmed_start';
+const CONFIRMED_END = 'confirmed_end';
+
+export type ExportFormat = 'csv' | 'xlsx';
+
+export function buildExportRows(
+  attendees: Attendee[],
+  confirmed: ConfirmedSlot[],
+  importHeaders: string[],
+): { headers: string[]; rows: Record<string, string>[] } {
+  const slotByAttendee = new Map(confirmed.map((c) => [c.attendeeId, c]));
+
+  const customFieldKeys = new Set<string>();
+  for (const a of attendees) {
+    if (a.customFields) for (const k of Object.keys(a.customFields)) customFieldKeys.add(k);
+  }
+
+  const baseHeaders: string[] = [];
+  if (importHeaders.length > 0) {
+    baseHeaders.push(...importHeaders);
+    for (const a of attendees) {
+      if (!a.sourceRow) continue;
+      for (const k of Object.keys(a.sourceRow)) {
+        if (!baseHeaders.includes(k)) baseHeaders.push(k);
+      }
+    }
+  } else {
+    baseHeaders.push('name', 'email', 'phone', 'note');
+    for (const k of customFieldKeys) {
+      if (!baseHeaders.includes(k)) baseHeaders.push(k);
+    }
+  }
+
+  const headers = [...baseHeaders];
+  for (const k of [CONFIRMED_DATE, CONFIRMED_START, CONFIRMED_END]) {
+    if (!headers.includes(k)) headers.push(k);
+  }
+
+  const rows: Record<string, string>[] = attendees.map((a) => {
+    const row: Record<string, string> = {};
+    for (const h of baseHeaders) row[h] = '';
+
+    if (a.sourceRow) {
+      for (const [k, v] of Object.entries(a.sourceRow)) row[k] = v;
+    } else {
+      row.name = a.name;
+      if (a.email) row.email = a.email;
+      if (a.phone) row.phone = a.phone;
+      if (a.note) row.note = a.note;
+      if (a.customFields) {
+        for (const [k, v] of Object.entries(a.customFields)) row[k] = v;
+      }
+    }
+
+    const slot = slotByAttendee.get(a.id);
+    row[CONFIRMED_DATE] = slot?.date ?? '';
+    row[CONFIRMED_START] = slot?.start ?? '';
+    row[CONFIRMED_END] = slot?.end ?? '';
+    return row;
+  });
+
+  return { headers, rows };
+}
+
+function csvEscape(v: string): string {
+  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+export function attendeesToCsv(
+  attendees: Attendee[],
+  confirmed: ConfirmedSlot[],
+  importHeaders: string[],
+): string {
+  const { headers, rows } = buildExportRows(attendees, confirmed, importHeaders);
+  const lines = [headers.map(csvEscape).join(',')];
+  for (const r of rows) lines.push(headers.map((h) => csvEscape(r[h] ?? '')).join(','));
+  return '﻿' + lines.join('\r\n');
+}
+
+export function attendeesToXlsxBlob(
+  attendees: Attendee[],
+  confirmed: ConfirmedSlot[],
+  importHeaders: string[],
+): Blob {
+  const { headers, rows } = buildExportRows(attendees, confirmed, importHeaders);
+  const aoa: (string | number)[][] = [headers, ...rows.map((r) => headers.map((h) => r[h] ?? ''))];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'attendees');
+  const buf: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+export function downloadAttendees(
+  format: ExportFormat,
+  attendees: Attendee[],
+  confirmed: ConfirmedSlot[],
+  importHeaders: string[],
+  baseName = 'attendees',
+) {
+  if (typeof window === 'undefined') return;
+  const stamp = new Date().toISOString().slice(0, 10);
+  const filename = `${baseName}-${stamp}.${format}`;
+  const blob =
+    format === 'csv'
+      ? new Blob([attendeesToCsv(attendees, confirmed, importHeaders)], {
+          type: 'text/csv;charset=utf-8',
+        })
+      : attendeesToXlsxBlob(attendees, confirmed, importHeaders);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
