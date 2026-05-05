@@ -458,7 +458,11 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       });
       const json = await res.json();
       if (!res.ok) {
-        setSummarizeError(json.error ?? 'summarize_failed');
+        const issue = Array.isArray(json.issues) && json.issues[0];
+        const detail = issue
+          ? ` (${issue.path?.join('.')} ${issue.code})`
+          : '';
+        setSummarizeError((json.error ?? 'summarize_failed') + detail);
         return;
       }
       const summaries: unknown = json.summaries;

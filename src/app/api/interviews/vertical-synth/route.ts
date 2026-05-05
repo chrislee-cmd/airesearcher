@@ -29,7 +29,7 @@ const Body = z.object({
       }),
     )
     .min(1)
-    .max(200),
+    .max(800),
 });
 
 // Output is now a *consolidated* insight list — multiple input questions

@@ -20,7 +20,7 @@ const Body = z.object({
       }),
     )
     .min(1)
-    .max(200),
+    .max(800),
 });
 
 const responseSchema = z.object({
@@ -36,7 +36,14 @@ export async function POST(request: Request) {
 
   const parsed = Body.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+    console.warn(
+      '[summarize] invalid_input:',
+      parsed.error.issues.slice(0, 5),
+    );
+    return NextResponse.json(
+      { error: 'invalid_input', issues: parsed.error.issues.slice(0, 5) },
+      { status: 400 },
+    );
   }
   const { rows } = parsed.data;
 
