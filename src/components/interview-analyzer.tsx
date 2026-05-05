@@ -436,20 +436,27 @@ function RetentionBadge({
 }) {
   const ratio = input > 0 ? output / input : 1;
   const pct = (ratio * 100).toFixed(1);
-  const cls =
-    ratio >= 0.99
-      ? 'text-amore'
-      : ratio >= 0.9
-      ? 'text-mute'
-      : 'text-warning';
+  // < 30% retention almost always means the LLM hit its output-token cap
+  // and truncated the document silently. Flag it explicitly so the user
+  // doesn't trust the resulting matrix as a complete representation.
+  const isLow = ratio < 0.3;
+  const cls = isLow
+    ? 'font-semibold text-warning'
+    : ratio >= 0.99
+    ? 'text-amore'
+    : ratio >= 0.9
+    ? 'text-mute'
+    : 'text-warning';
   const fmt = (n: number) => n.toLocaleString();
+  const baseTitle = `원문 ${fmt(input)}자 → 변환 ${fmt(output)}자${
+    path ? ` · ${path === 'regex' ? '정규식' : 'LLM'} 변환` : ''
+  }`;
+  const title = isLow
+    ? `${baseTitle}\n⚠ 보존율이 낮습니다 (${pct}%). LLM 출력 토큰 한계로 뒷부분이 잘렸을 가능성이 큽니다 — 분석 결과가 인터뷰 일부만 반영할 수 있습니다.`
+    : baseTitle;
   return (
-    <span
-      className={cls}
-      title={`원문 ${fmt(input)}자 → 변환 ${fmt(output)}자${
-        path ? ` · ${path === 'regex' ? '정규식' : 'LLM'} 변환` : ''
-      }`}
-    >
+    <span className={cls} title={title}>
+      {isLow && '⚠ '}
       {fmt(input)} → {fmt(output)} chars · {pct}%
     </span>
   );

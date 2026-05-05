@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { generateText } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits } from '@/lib/credits';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
-import { tryRegexMarkdown } from '@/lib/markdown-format';
+import {
+  tryRegexMarkdown,
+  tryMarkdownPassthrough,
+} from '@/lib/markdown-format';
 import { hashBytes, getCache, setCache } from '@/lib/cache';
 
 export const maxDuration = 300;
@@ -40,7 +45,7 @@ export async function POST(request: Request) {
 
   // Content-addressed cache check. Same bytes = same markdown, regardless
   // of who uploads it. Bump CACHE_V if SYSTEM prompt or output shape changes.
-  const CACHE_V = 'v2';
+  const CACHE_V = 'v5';
   const fileBuffer = await file.arrayBuffer();
   const fileHash = hashBytes(fileBuffer);
   const cacheKey = `interviews:convert:${CACHE_V}:${fileHash}`;
@@ -117,34 +122,52 @@ export async function POST(request: Request) {
   }
 
   // Format raw transcript into structured Markdown.
-  // Fast path: if the text already has consistent speaker labels (M:/R:,
-  // Q:/A:, 진행자:/응답자:, etc.), parse it deterministically — no LLM call.
-  // Fallback: hand to gpt-4o-mini for unstructured transcripts (Whisper output, free-form notes).
+  // Path 1 (regex): consistent speaker labels (M:/R:, Q:/A:, 진행자:/응답자:).
+  // Path 2 (passthrough): extracted text already has structure (headers,
+  //   lists, paragraph breaks, or code fences). No LLM call → no output-
+  //   token cap → no silent truncation. Covers most user-uploaded .md and
+  //   .docx interviews where each speaker line is its own paragraph.
+  // Path 3 (llm): unstructured transcripts (Whisper output, free-form
+  //   notes). Anthropic Sonnet 4.6 with explicit maxOutputTokens=16k.
+  // Path 4 (raw fallback): if Sonnet fails (rate limit, network, etc.),
+  //   fall through to raw text rather than 502'ing the whole request.
+  //   Better to give the user the unformatted markdown + low-retention
+  //   warning than to lose the conversion entirely.
   let markdown: string;
   let formatPath: 'regex' | 'llm' = 'regex';
   const regexMd = tryRegexMarkdown(rawText, file.name);
+  const passthroughMd = regexMd ? null : tryMarkdownPassthrough(rawText, file.name);
   if (regexMd) {
     markdown = regexMd;
+  } else if (passthroughMd) {
+    markdown = passthroughMd;
   } else {
     formatPath = 'llm';
-    try {
-      const completion = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: SYSTEM },
-          {
-            role: 'user',
-            content: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
-          },
-        ],
-      });
-      markdown = completion.choices[0]?.message?.content?.trim() ?? rawText;
-    } catch (e) {
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : 'format_failed', stage: 'format' },
-        { status: 502 },
-      );
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      // No LLM available → degrade to raw text rather than blocking upload.
+      console.warn('[interviews/convert] no anthropic key, using raw fallback', file.name);
+      markdown = `---\nfile: ${file.name}\n---\n\n${rawText.replace(/\r\n?/g, '\n').trim()}\n`;
+    } else {
+      try {
+        const anthropic = createAnthropic({ apiKey: anthropicKey });
+        const result = await generateText({
+          model: anthropic('claude-sonnet-4-6'),
+          system: SYSTEM,
+          prompt: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
+          temperature: 0.2,
+          maxOutputTokens: 16384,
+        });
+        markdown = result.text.trim() || rawText;
+      } catch (e) {
+        // Common case: Anthropic per-minute rate limit on big inputs.
+        // Don't 502 — the downstream extract step is willing to work on
+        // raw text. The retention badge already flags low retention; here
+        // we keep retention high by skipping the formatter entirely.
+        const msg = e instanceof Error ? e.message : 'format_failed';
+        console.warn('[interviews/convert] llm format failed, raw fallback:', file.name, msg);
+        markdown = `---\nfile: ${file.name}\nformat_fallback: raw\nformat_error: ${msg.replace(/\n/g, ' ').slice(0, 200)}\n---\n\n${rawText.replace(/\r\n?/g, '\n').trim()}\n`;
+      }
     }
   }
 
