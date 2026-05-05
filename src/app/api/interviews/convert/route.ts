@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   // Content-addressed cache check. Same bytes = same markdown, regardless
   // of who uploads it. Bump CACHE_V if SYSTEM prompt or output shape changes.
-  const CACHE_V = 'v4';
+  const CACHE_V = 'v5';
   const fileBuffer = await file.arrayBuffer();
   const fileHash = hashBytes(fileBuffer);
   const cacheKey = `interviews:convert:${CACHE_V}:${fileHash}`;

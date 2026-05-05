@@ -1,14 +1,21 @@
 /**
- * If the extracted text already has plausible interview/document structure
- * — markdown headers, lists, code fences, OR simply enough paragraph breaks
- * to suggest it's prose, not a single wall of text — pass it through with
- * minimal cleanup. Skipping the LLM formatter here avoids the output-token
- * cap silently truncating large interviews (the failure mode where a 113k
- * char .md became 9k char output, or a 41k char .docx became 9.7k chars).
+ * Pass extracted text through with minimal cleanup whenever it looks like
+ * structured content — or when the LLM formatter wouldn't help anyway.
  *
- * No file-extension gate: a .docx interview extracted by mammoth typically
- * has one paragraph per utterance, and the structural test below is a
- * stronger signal than the extension anyway.
+ * Why so permissive: the LLM formatter has a finite output budget (~16k
+ * tokens ≈ 8-15k Korean chars). Any input that produces more than that
+ * will get silently truncated, losing 70-90% of the document. Passthrough
+ * never loses data, so it's strictly better whenever the formatter risks
+ * truncating. The only case the LLM is preferred is short, unstructured
+ * text where it can genuinely impose useful formatting.
+ *
+ * Triggers (any one is enough):
+ *   - markdown header / list / code fence (real markdown)
+ *   - blank-line paragraph breaks (typical .docx export)
+ *   - many non-empty lines (≥10) — covers timestamp and short-utterance
+ *     transcripts that previously fell through
+ *   - `.md` extension — user explicitly intended markdown
+ *   - input > 25k chars — LLM truncation risk outweighs formatting gain
  */
 export function tryMarkdownPassthrough(
   rawText: string,
@@ -16,11 +23,26 @@ export function tryMarkdownPassthrough(
 ): string | null {
   const hasHeader = /^#{1,6}\s+/m.test(rawText);
   const hasList = /^\s*[-*+]\s+/m.test(rawText) || /^\s*\d+\.\s+/m.test(rawText);
-  // Require enough paragraph breaks that a single huge run-on isn't
-  // accepted. 5+ blank-line separators ≈ at least 6 paragraphs of prose.
-  const hasParagraphs = (rawText.match(/\n\s*\n/g) ?? []).length >= 5;
+  const hasParagraphs = (rawText.match(/\n\s*\n/g) ?? []).length >= 3;
   const hasCode = /```/.test(rawText);
-  if (!(hasHeader || hasList || hasParagraphs || hasCode)) return null;
+  const nonEmptyLines = rawText.split('\n').filter((l) => l.trim().length > 0).length;
+  const hasManyLines = nonEmptyLines >= 10;
+  const isMd = /\.md$/i.test(filename);
+  const tooLargeForLlm = rawText.length > 25_000;
+
+  if (
+    !(
+      hasHeader ||
+      hasList ||
+      hasParagraphs ||
+      hasCode ||
+      hasManyLines ||
+      isMd ||
+      tooLargeForLlm
+    )
+  ) {
+    return null;
+  }
 
   // Minimal cleanup: normalize line endings, collapse 3+ blank lines.
   const cleaned = rawText
