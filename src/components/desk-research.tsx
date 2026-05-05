@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
-import { DeskStatsPanel } from './desk-stats-panel';
+import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import {
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
@@ -587,9 +587,7 @@ export function DeskResearch() {
             </section>
           )}
 
-          {job.articles && job.articles.length > 0 && (
-            <DeskStatsPanel articles={job.articles} />
-          )}
+          {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
 
           <section className="mt-10">
             <div className="flex items-center justify-between gap-3 border-b border-line pb-3">

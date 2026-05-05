@@ -27,6 +27,18 @@ export type DeskJobProgress = {
   events: string[];
 };
 
+export type DeskChart = {
+  type: 'bar' | 'pie';
+  title: string;
+  insight: string;
+  unit: 'percent' | 'count';
+  data: { label: string; value: number }[];
+};
+
+export type DeskAnalytics = {
+  charts: DeskChart[];
+};
+
 export type DeskJob = {
   id: string;
   keywords: string[];
@@ -39,6 +51,7 @@ export type DeskJob = {
   similar_keywords: string[];
   output: string | null;
   articles: DeskArticle[] | null;
+  analytics: DeskAnalytics | null;
   skipped: { source: DeskSourceId; missing: string }[] | null;
   error_message: string | null;
   generation_id: string | null;
