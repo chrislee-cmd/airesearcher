@@ -18,6 +18,14 @@ const Body = z.object({
       z.object({
         question: z.string(),
         summary: z.string(),
+        vocs: z
+          .array(
+            z.object({
+              filename: z.string(),
+              voc: z.string(),
+            }),
+          )
+          .default([]),
       }),
     )
     .min(1)
@@ -26,14 +34,22 @@ const Body = z.object({
 
 // Output is now a *consolidated* insight list — multiple input questions
 // can be fused into one insight row, so insights.length is typically <
-// rows.length. Each insight references its source question indices so the
-// UI can show provenance / link back to the response matrix.
+// rows.length. Each insight also picks representative VOCs from the
+// source rows' VOC pool (≥2 when physically available).
 const responseSchema = z.object({
   insights: z.array(
     z.object({
       topic: z.string(),
       summary: z.string(),
       sourceIndices: z.array(z.number().int()),
+      representativeVocs: z
+        .array(
+          z.object({
+            filename: z.string(),
+            voc: z.string(),
+          }),
+        )
+        .default([]),
     }),
   ),
 });
@@ -57,7 +73,12 @@ export async function POST(request: Request) {
   }
 
   const blocks = rows.map((row, idx) => {
-    return `[${idx}] 문항: ${row.question}\n초기 요약: ${row.summary || '(요약 없음)'}`;
+    const vocLines = row.vocs
+      .filter((v) => v.voc && v.voc.trim().length > 0)
+      .map((v) => `  - (${v.filename}) "${v.voc.trim()}"`)
+      .join('\n');
+    const vocBlock = vocLines.length > 0 ? `응답 VOC:\n${vocLines}` : '응답 VOC: (없음)';
+    return `[${idx}] 문항: ${row.question}\n초기 요약: ${row.summary || '(요약 없음)'}\n${vocBlock}`;
   });
 
   const SYSTEM = `당신은 인터뷰 분석 도우미입니다.
@@ -72,6 +93,7 @@ export async function POST(request: Request) {
 - **topic**: 그 그룹이 다루는 핵심 주제를 한 줄로 (질문 형식 가능, 예: "등급 산정 기준과 장기 고객 혜택에 대한 인식")
 - **summary**: 그 그룹에 속한 문항들의 데이터를 융합 분석한 인사이트 본문. 단일 문항만 다루는 그룹이라도, 그 인사이트가 본질적이면 단독 row로 둬도 됩니다.
 - **sourceIndices**: 이 인사이트가 합성한 원본 문항들의 인덱스 배열 (반드시 입력 인덱스 그대로).
+- **representativeVocs**: 이 인사이트의 핵심을 가장 잘 보여주는 응답자 발화를 입력의 "응답 VOC" 풀에서 **그대로 복사**해서 골라줍니다. 최소 2개를 목표로 하되, 그룹의 VOC 풀이 1개뿐이면 1개만, 0개면 빈 배열도 허용. filename은 발화의 출처 그대로, voc는 입력에 있는 문자열 그대로(절대 변형/창작 금지).
 
 # 절대 하지 말 것 (매우 중요)
 - ❌ "이 문항은 ~를 탐색하는 문항이다", "~에 대한 평소 인식을 묻는 문항이다" 같이 **문항의 취지·목적을 설명하는 메타 서술**. 이건 분석이 아니라 filler입니다.

@@ -59,6 +59,7 @@ export type ConsolidatedInsight = {
   topic: string;
   summary: string;
   sourceIndices: number[];
+  representativeVocs: { filename: string; voc: string }[];
 };
 
 export type AnalysisResult = {
@@ -142,14 +143,25 @@ type Ctx = {
   exportXlsx: () => void;
 };
 
-// Sheet 1: consolidated insights (주제, 요약). Falls back to the raw
-// per-question rows if the vertical pass hasn't run yet.
+// Sheet 1: consolidated insights (주제, 요약). 요약 cell carries the
+// summary plus a "대표 VOC" block underneath, so the spreadsheet view
+// matches what the user sees in the app. Falls back to per-question
+// rows if the vertical pass hasn't run yet.
 function buildFinalMatrix(result: AnalysisResult): string[][] {
   const header = ['주제', '요약'];
   if (result.consolidated && result.consolidated.length > 0) {
     return [
       header,
-      ...result.consolidated.map((c) => [c.topic, c.summary]),
+      ...result.consolidated.map((c) => {
+        const vocBlock =
+          c.representativeVocs.length > 0
+            ? '\n\n[대표 VOC]\n' +
+              c.representativeVocs
+                .map((v) => `• "${v.voc}" — ${v.filename}`)
+                .join('\n')
+            : '';
+        return [c.topic, c.summary + vocBlock];
+      }),
     ];
   }
   return [
@@ -281,10 +293,31 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   // the model can reason about the whole interview arc, then rewrite each
   // row's summary to reflect its position in that arc.
   async function runVerticalSynth(rowsForSynth: AnalysisRow[]) {
+    // Pass per-row VOC pools so the model can pick representative quotes
+    // for each consolidated insight. Empty cells are filtered out so the
+    // model isn't tempted to surface "" as a quote.
     const payload = rowsForSynth
-      .map((r) => ({ question: r.question, summary: r.summary ?? '' }))
+      .map((r) => ({
+        question: r.question,
+        summary: r.summary ?? '',
+        vocs: r.cells
+          .filter((c) => c.voc && c.voc.trim().length > 0)
+          .map((c) => ({ filename: c.filename, voc: c.voc })),
+      }))
       .filter((r) => r.question);
     if (payload.length === 0) return;
+    // Build a per-row voc lookup keyed by normalized text so we can
+    // verify representative VOCs against the source pool — anything
+    // not found is dropped (defends against model paraphrasing).
+    const vocPoolByIdx = new Map<number, Map<string, { filename: string; voc: string }>>();
+    payload.forEach((r, idx) => {
+      const m = new Map<string, { filename: string; voc: string }>();
+      for (const v of r.vocs) {
+        const key = v.voc.replace(/\s+/g, ' ').trim();
+        if (key) m.set(key, v);
+      }
+      vocPoolByIdx.set(idx, m);
+    });
     setVerticallySynthesizing(true);
     setVerticalSynthError(null);
     const ac = new AbortController();
@@ -345,7 +378,48 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
               sourceIndices.push(v);
             }
           }
-          next.push({ topic, summary, sourceIndices });
+          // Validate VOCs against the source rows' pools — drop any quote
+          // the model paraphrased or invented. Whitespace-normalized
+          // substring match: tolerates the model trimming, but rejects
+          // novel phrasing.
+          const allowedKeys = new Set<string>();
+          const allowedByKey = new Map<string, { filename: string; voc: string }>();
+          for (const idx of sourceIndices) {
+            const pool = vocPoolByIdx.get(idx);
+            if (!pool) continue;
+            for (const [k, v] of pool) {
+              allowedKeys.add(k);
+              if (!allowedByKey.has(k)) allowedByKey.set(k, v);
+            }
+          }
+          const rawVocs = Array.isArray(e.representativeVocs)
+            ? e.representativeVocs
+            : [];
+          const representativeVocs: { filename: string; voc: string }[] = [];
+          const seenKeys = new Set<string>();
+          for (const rv of rawVocs) {
+            if (!rv || typeof rv !== 'object') continue;
+            const r = rv as Record<string, unknown>;
+            const v = typeof r.voc === 'string' ? r.voc : '';
+            if (!v) continue;
+            const key = v.replace(/\s+/g, ' ').trim();
+            if (!key || seenKeys.has(key)) continue;
+            // Accept only if the normalised quote matches an allowed
+            // entry (exact key) or is a substring of one.
+            let matched = allowedByKey.get(key);
+            if (!matched) {
+              for (const ak of allowedKeys) {
+                if (ak.includes(key) || key.includes(ak)) {
+                  matched = allowedByKey.get(ak);
+                  break;
+                }
+              }
+            }
+            if (!matched) continue;
+            seenKeys.add(key);
+            representativeVocs.push(matched);
+          }
+          next.push({ topic, summary, sourceIndices, representativeVocs });
         }
         insights = next;
         setAnalysis((prev) => {

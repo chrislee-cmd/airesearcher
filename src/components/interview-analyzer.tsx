@@ -506,6 +506,26 @@ function FinalSummaryTable({
                 <div className="leading-[1.8] whitespace-pre-wrap">
                   {insight.summary}
                 </div>
+                {insight.representativeVocs.length > 0 && (
+                  <div className="mt-4 border-t border-line-soft pt-3">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                      대표 VOC
+                    </div>
+                    <ul className="space-y-1.5">
+                      {insight.representativeVocs.map((v, i) => (
+                        <li
+                          key={i}
+                          className="text-[12px] italic leading-[1.65] text-mute"
+                        >
+                          “{v.voc}”
+                          <span className="ml-2 not-italic text-[10.5px] tracking-[0.05em] text-mute-soft">
+                            — {v.filename}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </td>
             </tr>
           ))}
