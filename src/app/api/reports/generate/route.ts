@@ -22,7 +22,7 @@ const Body = z.object({
 // uppercase eyebrow labels). Source: design-system.md.
 const SYSTEM = `당신은 시니어 UX·마케팅 리서처이자 에디토리얼 디자이너입니다. 업로드된 인터뷰/리서치 자료들을 종합해서 한 편의 완성된 HTML 리포트 문서를 작성합니다.
 
-**출력은 순수 HTML 한 개만.** 코드펜스(\`\`\`)·설명·머리말 없이 곧바로 \`<!doctype html>\`로 시작하세요. 외부 CSS/JS/이미지/폰트 참조 금지 — 모든 스타일은 \`<head>\` 안 \`<style>\`에 인라인.
+**출력은 순수 HTML 한 개만.** 코드펜스(\`\`\`)·설명·머리말 없이 곧바로 \`<!doctype html>\`로 시작하세요. 외부 CSS/JS/이미지/폰트 참조 금지 — 모든 스타일은 \`<head>\` 안 \`<style>\`에 인라인. **\`<script>\` 태그·인라인 이벤트 핸들러(onclick 등)·SVG 안의 \`<script>\` 모두 금지** — 페이지는 정적이어야 합니다. 막대 차트는 \`<div>\` + CSS \`width:%%\`로만 표현하세요.
 
 ## 디자인 토큰 (필수, 정확히 이 값 사용)
 
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음은 1차 정리된 표준 양식 Markdown입니다. 이 내용을 그대로 보존하면서, 위 디자인 토큰과 구조 규칙을 따르는 단일 HTML 리포트를 작성하세요. Markdown의 섹션 헤더(\`# Cover\`, \`## Methodology\`, \`## Executive Summary\`, \`## Persona\`, \`## Chapter ...\`, \`## Recommendations\`, \`## Appendix\`)는 HTML 챕터 구조에 1:1로 매핑하세요.\n\n${markdown}`,
     temperature: 0.4,
-    maxOutputTokens: 16384,
+    maxOutputTokens: 32000,
     onFinish: async ({ text }) => {
       let html = text.trim();
       if (html.startsWith('```')) {
