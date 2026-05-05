@@ -470,8 +470,23 @@ async function runJob(args: {
     await pushAndPatch('보고서 받았어요. 이제 정량 분석 차트를 짜볼게요…', 'summarizing');
 
     // ── Analytics charts (LLM-derived, content-grounded) ───────────────────
+    //
+    // Anthropic 조직 한도 = 30k input tokens / minute (Tier 1). summarize
+    // 가 방금 같은 분 안에서 큰 입력을 태웠으니, 여기서는 아래 셋을 함께
+    // 적용해 두 번째 호출이 윈도우를 못 넘기게 합니다.
+    //
+    //  1) 프롬프트에서 기사 헤드라인 60개 제거 — 보고서 본문이 이미 인사이트를
+    //     포함하고 있어서 차트 설계에는 충분합니다.
+    //  2) 보고서 본문도 12k자로 자름 (대략 4~5k tokens) — 더 길어도 차트
+    //     생성에 추가 정보가 거의 없습니다.
+    //  3) 차트 JSON 출력은 1~2k tokens면 충분하므로 maxOutputTokens 를 명시
+    //     해서 SDK 기본값(128k) 이 사용량 추적에 잡히지 않게.
+    //  4) summarize 직후 6초 대기. retry-after 헤더 기준 1분 윈도우가 풀리는
+    //     데 보통 충분합니다 (한도가 다 안 차면 무해한 sleep).
     let analytics: { charts: { type: 'bar' | 'pie'; title: string; insight: string; unit: 'percent' | 'count'; data: { label: string; value: number }[] }[] } | null = null;
     try {
+      await new Promise((r) => setTimeout(r, 6000));
+      const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
       const result = await generateObject({
         model,
         system: ANALYTICS_SYSTEM,
@@ -480,16 +495,12 @@ async function runJob(args: {
           `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
           '',
           '--- 직전에 작성한 보고서 ---',
-          output,
-          '',
-          '--- 보조 자료: 수집 항목 헤드라인 (해석에 참고만) ---',
-          articles
-            .slice(0, 60)
-            .map((a, i) => `${i + 1}. [${a.source} · ${a.keyword}] ${a.title}`)
-            .join('\n'),
+          trimmedReport,
         ].join('\n'),
         schema: AnalyticsSchema,
         temperature: 0.2,
+        maxOutputTokens: 4000,
+        maxRetries: 1,
       });
       analytics = result.object;
       await pushAndPatch(
