@@ -28,6 +28,7 @@
     "keywords": "Keyword Crawling",
     "recruiting": "Recruiting",
     "survey": "AI Survey",
+    "affinity_bubble": "Affinity Bubble",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -77,7 +78,7 @@
     "quotes": {
       "title": "Transcript Generator",
       "description": "Convert audio/video interviews into verbatim transcripts.",
-      "cost": "1 credit"
+      "cost": "25 credits"
     },
     "uploader": {
       "dropHere": "Drop audio, video, or document files here, or click to browse",
@@ -101,23 +102,23 @@
     "transcripts": {
       "title": "Script Generator",
       "description": "Generate interview scripts and discussion guides.",
-      "cost": "2 credits"
+      "cost": "1 credit"
     },
     "interviews": {
       "title": "Interview Result Generator",
       "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
-      "cost": "1cr/file convert · 3cr analyze"
+      "cost": "10 credits"
     },
     "interviewsView": {
       "stage1Title": "Step 1 — Convert files to .md",
-      "stage1Help": "Each file costs 1 credit. Audio/video is transcribed then formatted as markdown; text files are wrapped as-is.",
+      "stage1Help": "Each file is converted to markdown. Audio/video is transcribed first; text files are wrapped as-is.",
       "convertAll": "Start",
       "pipelineHint": "Convert → analyze → auto-download CSV+XLSX in one click.",
       "convertingPhase": "converting",
       "viewMd": "View markdown",
       "hideMd": "Hide",
       "stage2Title": "Step 2 — Cross-file question analysis",
-      "stage2Help": "Extracts the shared questions from every converted file, then summarizes each respondent and pulls a VOC quote. (3 credits)",
+      "stage2Help": "Extracts the shared questions from every converted file, then summarizes each respondent and pulls a VOC quote.",
       "analyze": "Run analysis",
       "analyzing": "Analyzing…",
       "exportCsv": "Export CSV",
@@ -131,43 +132,77 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
-      "cost": "5 credits"
+      "cost": "50 credits"
     },
     "scheduler": {
       "title": "Participant Scheduler",
       "description": "Take candidate availability and propose interview slots with attendee notices.",
-      "cost": "1 credit"
+      "cost": "Free · 5 credits per CSV upload"
     },
     "moderator": {
       "title": "AI Moderator",
       "description": "Generate moderator scripts and follow-up questions from your research hypotheses.",
-      "cost": "3 credits"
+      "cost": "1 credit"
     },
     "analyzer": {
       "title": "Mixed-Methods Analyzer",
       "description": "Combine qualitative and quantitative inputs to surface integrated insights.",
-      "cost": "5 credits"
+      "cost": "1 credit"
     },
     "desk": {
       "title": "Desk Research",
       "description": "Generate a desk-research summary from a topic, industry, or keyword set using public sources.",
-      "cost": "3 credits"
+      "cost": "25 credits"
     },
     "keywords": {
       "title": "Keyword Crawling",
       "description": "Crawl top results for a keyword and capture their headlines and summaries.",
-      "cost": "2 credits"
+      "cost": "1 credit"
     },
     "recruiting": {
       "title": "Recruiting",
       "description": "Generate screener questions and recruitment posts for research participant sourcing.",
-      "cost": "3 credits"
+      "cost": "1 credit"
     },
     "survey": {
       "title": "AI Survey",
       "description": "Generate quantitative survey questions and branching logic from your research goals and hypotheses.",
-      "cost": "3 credits"
+      "cost": "1 credit"
+    },
+    "affinity_bubble": {
+      "title": "Affinity Bubble",
+      "description": "Partner solution that visualizes tens of thousands of reviews as semantic clusters.",
+      "cost": "External"
     }
+  },
+  "AffinityBubble": {
+    "eyebrow": "PARTNER",
+    "title": "Affinity Bubble",
+    "description": "Affinity Bubble clusters tens of thousands of user reviews / VOC into a single voronoi map of meaning. A great fit when you want to diagnose your product or a competitor's at a glance.",
+    "alt": "Affinity Bubble sample — clustering of Duolingo reviews",
+    "caption": "Sample: ~10K Duolingo reviews clustered into 5 user personas",
+    "inquiry": "Request a demo"
+  },
+  "Credits": {
+    "pageTitle": "Buy credits",
+    "pageEyebrow": "BILLING",
+    "pageSubtitle": "Top up the credits you spend on research generations.",
+    "currentBalance": "Current balance",
+    "creditsUnit": "credits",
+    "bundleStarter": "Starter",
+    "bundleTeam": "Team",
+    "bundleStudio": "Studio",
+    "bundleEnterprise": "Enterprise",
+    "popular": "Popular",
+    "perCredit": "per credit",
+    "discountOff": "{percent}% off",
+    "purchase": "Buy",
+    "contactSales": "Contact sales",
+    "schemeTitle": "Credits per feature",
+    "schemeNote": "The four marquee features (Transcript, Interview Result, Desk Research, Full Report) carry the variable-cost pricing. Interviews ≤ 90 min recommended. Participant Scheduler is free in normal use; CSV uploads incur a 5-credit auto-match charge.",
+    "comingSoonTitle": "Payments not wired yet",
+    "comingSoonBody": "Until the gateway is integrated, top-ups go through the billing team. Email us with the credit amount you want and we'll process it within one business day.",
+    "contactEmail": "billing@meteor-research.com"
   },
   "Desk": {
     "keywordLabel": "Keywords",

@@ -9,20 +9,81 @@ export type FeatureKey =
   | 'desk'
   | 'keywords'
   | 'recruiting'
-  | 'survey';
+  | 'survey'
+  | 'affinity_bubble';
 
+// Credit costs are scaled around 1 credit ≈ ₩2,000.
+// Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
+// All other utility-style generations sit at 1 credit so they don't gate exploration.
+// `cost` is the canonical (most common) price displayed in headers.
+// For features with conditional pricing (e.g. scheduler — only the CSV
+// upload path charges), the cost is the *base* price; the conditional
+// surcharge is described in the locale `Features.<key>.cost` string and
+// enforced on the server when applicable.
 export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
-  { key: 'quotes', href: '/quotes', cost: 1 },
-  { key: 'transcripts', href: '/transcripts', cost: 2 },
-  { key: 'interviews', href: '/interviews', cost: 3 },
-  { key: 'reports', href: '/reports', cost: 5 },
-  { key: 'scheduler', href: '/scheduler', cost: 1 },
-  { key: 'moderator', href: '/moderator', cost: 3 },
-  { key: 'analyzer', href: '/analyzer', cost: 5 },
-  { key: 'desk', href: '/desk', cost: 3 },
-  { key: 'keywords', href: '/keywords', cost: 2 },
-  { key: 'recruiting', href: '/recruiting', cost: 3 },
-  { key: 'survey', href: '/survey', cost: 3 },
+  { key: 'quotes', href: '/quotes', cost: 25 },
+  { key: 'transcripts', href: '/transcripts', cost: 1 },
+  { key: 'interviews', href: '/interviews', cost: 10 },
+  { key: 'reports', href: '/reports', cost: 50 },
+  { key: 'scheduler', href: '/scheduler', cost: 0 },
+  { key: 'moderator', href: '/moderator', cost: 1 },
+  { key: 'analyzer', href: '/analyzer', cost: 1 },
+  { key: 'desk', href: '/desk', cost: 25 },
+  { key: 'keywords', href: '/keywords', cost: 1 },
+  { key: 'recruiting', href: '/recruiting', cost: 1 },
+  { key: 'survey', href: '/survey', cost: 1 },
+  // Affinity Bubble is a partner showcase, not an in-app generator;
+  // cost stays 0, the page just previews the offering and links out.
+  { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
+];
+
+// Single source of truth for credit pricing — read by both the
+// purchase page and the sidebar copy.
+export const CREDIT_PRICE_KRW = 2000;
+
+export type CreditBundleId = 'starter' | 'team' | 'studio' | 'enterprise';
+
+export type CreditBundle = {
+  id: CreditBundleId;
+  credits: number;
+  // Total list price in KRW (null = "contact sales").
+  priceKrw: number | null;
+  // Effective per-credit price (computed). Convenience.
+  perCreditKrw: number | null;
+  discountPct: number;
+  popular?: boolean;
+};
+
+export const CREDIT_BUNDLES: CreditBundle[] = [
+  {
+    id: 'starter',
+    credits: 100,
+    priceKrw: 200_000,
+    perCreditKrw: 2_000,
+    discountPct: 0,
+  },
+  {
+    id: 'team',
+    credits: 500,
+    priceKrw: 900_000,
+    perCreditKrw: 1_800,
+    discountPct: 10,
+    popular: true,
+  },
+  {
+    id: 'studio',
+    credits: 1_500,
+    priceKrw: 2_550_000,
+    perCreditKrw: 1_700,
+    discountPct: 15,
+  },
+  {
+    id: 'enterprise',
+    credits: 5_000,
+    priceKrw: null,
+    perCreditKrw: null,
+    discountPct: 25,
+  },
 ];
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
@@ -39,5 +100,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey'] },
-  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer'] },
+  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'affinity_bubble'] },
 ];

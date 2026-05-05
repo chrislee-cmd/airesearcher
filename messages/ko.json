@@ -28,6 +28,7 @@
     "keywords": "키워드 크롤링",
     "recruiting": "리크루팅",
     "survey": "AI 설문지",
+    "affinity_bubble": "Affinity Bubble",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -77,7 +78,7 @@
     "quotes": {
       "title": "전사록 생성기",
       "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
-      "cost": "1크레딧"
+      "cost": "25크레딧"
     },
     "uploader": {
       "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
@@ -101,23 +102,23 @@
     "transcripts": {
       "title": "스크립트 생성기",
       "description": "오디오/영상 인터뷰를 정확한 스크립트로 변환합니다.",
-      "cost": "2크레딧"
+      "cost": "1크레딧"
     },
     "interviews": {
       "title": "인터뷰 결과 생성기",
       "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
-      "cost": "변환 1크레딧/파일 · 분석 3크레딧"
+      "cost": "10크레딧"
     },
     "interviewsView": {
       "stage1Title": "1단계 — 파일을 .md로 변환",
-      "stage1Help": "각 파일을 1크레딧으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
+      "stage1Help": "각 파일을 마크다운으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
       "convertAll": "분석 시작",
       "pipelineHint": "변환 → 분석 → CSV·XLSX 다운로드까지 자동으로 이어집니다.",
       "convertingPhase": "변환 중",
       "viewMd": "마크다운 보기",
       "hideMd": "접기",
       "stage2Title": "2단계 — 공통 문항 분석",
-      "stage2Help": "변환이 끝난 모든 파일에서 공통 문항을 추출하고, 파일별 답변 요약과 VOC 인용구를 표로 만듭니다. (3크레딧)",
+      "stage2Help": "변환이 끝난 모든 파일에서 공통 문항을 추출하고, 파일별 답변 요약과 VOC 인용구를 표로 만듭니다.",
       "analyze": "분석 시작",
       "analyzing": "분석 중…",
       "exportCsv": "CSV 내보내기",
@@ -131,43 +132,77 @@
     "reports": {
       "title": "전체 리포트 생성기",
       "description": "모든 인터뷰를 종합한 마케팅·UX 리서치 리포트를 작성합니다.",
-      "cost": "5크레딧"
+      "cost": "50크레딧"
     },
     "scheduler": {
       "title": "참석자 스케쥴러",
       "description": "후보자 가용 시간을 받아 인터뷰 일정 후보를 정리하고, 참석자 안내문을 생성합니다.",
-      "cost": "1크레딧"
+      "cost": "무료 · CSV 업로드 5크레딧"
     },
     "moderator": {
       "title": "AI 모더레이터",
       "description": "리서치 가설을 입력하면 인터뷰 진행을 위한 모더레이터 스크립트와 추가 질문을 제안합니다.",
-      "cost": "3크레딧"
+      "cost": "1크레딧"
     },
     "analyzer": {
       "title": "정성·정량 통합 분석기",
       "description": "정성 응답과 정량 데이터를 함께 입력하면, 패턴을 매칭해 통합 인사이트를 도출합니다.",
-      "cost": "5크레딧"
+      "cost": "1크레딧"
     },
     "desk": {
       "title": "데스크 리서치",
       "description": "주제·산업·키워드를 입력하면 공개 출처 위주의 데스크 리서치 요약을 생성합니다.",
-      "cost": "3크레딧"
+      "cost": "25크레딧"
     },
     "keywords": {
       "title": "키워드 크롤링",
       "description": "검색 키워드를 입력하면 관련 페이지 상위 결과를 수집하고 헤드라인·요약을 정리합니다.",
-      "cost": "2크레딧"
+      "cost": "1크레딧"
     },
     "recruiting": {
       "title": "리크루팅",
       "description": "리서치 대상자 모집을 위한 스크리너 문항과 모집 공고문을 생성합니다.",
-      "cost": "3크레딧"
+      "cost": "1크레딧"
     },
     "survey": {
       "title": "AI 설문지",
       "description": "리서치 목적과 가설을 입력하면 정량 설문 문항과 분기 로직을 생성합니다.",
-      "cost": "3크레딧"
+      "cost": "1크레딧"
+    },
+    "affinity_bubble": {
+      "title": "Affinity Bubble",
+      "description": "수만 건의 리뷰를 의미 클러스터로 시각화하는 파트너 솔루션입니다.",
+      "cost": "외부 솔루션"
     }
+  },
+  "AffinityBubble": {
+    "eyebrow": "PARTNER",
+    "title": "Affinity Bubble",
+    "description": "수만 건의 사용자 리뷰·VOC를 의미 단위로 클러스터링해 한 장의 voronoi 지도로 보여주는 파트너 솔루션입니다. 자사 서비스나 경쟁사 리뷰를 한눈에 진단하고 싶을 때 도입을 검토해 보세요.",
+    "alt": "Affinity Bubble 예시 — 듀오링고 리뷰 클러스터링",
+    "caption": "예시: 듀오링고 사용자 리뷰 ~10K건을 5개 페르소나로 군집화한 결과",
+    "inquiry": "도입 문의"
+  },
+  "Credits": {
+    "pageTitle": "크레딧 구매",
+    "pageEyebrow": "BILLING",
+    "pageSubtitle": "리서치 결과물 생성에 사용하는 크레딧을 충전합니다.",
+    "currentBalance": "현재 보유 크레딧",
+    "creditsUnit": "크레딧",
+    "bundleStarter": "Starter",
+    "bundleTeam": "Team",
+    "bundleStudio": "Studio",
+    "bundleEnterprise": "Enterprise",
+    "popular": "인기",
+    "perCredit": "크레딧당",
+    "discountOff": "{percent}% 할인",
+    "purchase": "구매하기",
+    "contactSales": "영업 문의",
+    "schemeTitle": "피처별 크레딧",
+    "schemeNote": "마퀴 4개(전사록·인터뷰 결과·데스크·전체 리포트)는 LLM 실비 + 실비 기반 단가입니다. 인터뷰는 90분 이하 권장. 참석자 스케쥴러는 일반 사용 무료, CSV 업로드 시 자동 매칭 비용으로 5크레딧 차감됩니다.",
+    "comingSoonTitle": "결제 시스템 준비 중",
+    "comingSoonBody": "결제 모듈 연동 전이라 지금은 영업팀 문의로 충전됩니다. 아래 이메일로 보유 희망 크레딧을 알려주시면 1영업일 내 처리합니다.",
+    "contactEmail": "billing@meteor-research.com"
   },
   "Desk": {
     "keywordLabel": "키워드",
