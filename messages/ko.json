@@ -28,6 +28,7 @@
     "keywords": "키워드 크롤링",
     "recruiting": "리크루팅",
     "survey": "AI 설문지",
+    "quant": "정량조사 분석",
     "affinity_bubble": "Affinity Bubble",
     "members": "멤버",
     "organizations": "조직",
@@ -169,11 +170,36 @@
       "description": "리서치 목적과 가설을 입력하면 정량 설문 문항과 분기 로직을 생성합니다.",
       "cost": "1크레딧"
     },
+    "quant": {
+      "title": "정량조사 분석",
+      "description": "CSV·XLSX 응답 데이터를 업로드하면 질문 × 배너 교차분석을 즉시 인터랙티브하게 살펴볼 수 있습니다.",
+      "cost": "1크레딧"
+    },
     "affinity_bubble": {
       "title": "Affinity Bubble",
       "description": "수만 건의 리뷰를 의미 클러스터로 시각화하는 파트너 솔루션입니다.",
       "cost": "외부 솔루션"
     }
+  },
+  "Quant": {
+    "dropHere": "CSV·XLSX 파일을 끌어다 놓거나 클릭해서 업로드",
+    "supported": "지원: .csv · .xlsx · .xls (응답자 1행, 컬럼 = 질문/속성)",
+    "parsing": "파싱 중…",
+    "parseError": "파일을 읽지 못했어요",
+    "loaded": "DATA",
+    "respondents": "응답자 {count}명",
+    "columns": "컬럼 {count}개",
+    "reset": "다시 업로드",
+    "questionLabel": "QUESTION (행)",
+    "questionHint": "응답을 행으로 보고 싶은 질문/항목을 고르세요. 보통 만족도·선호 같은 응답값.",
+    "bannerLabel": "BANNER (열)",
+    "bannerHint": "교차해서 비교할 세그먼트(성별·연령대·고객 등급 등)를 고르세요.",
+    "samePickError": "행과 열에 서로 다른 컬럼을 선택해주세요.",
+    "pickPrompt": "위에서 행/열 컬럼을 선택하면 교차표가 그려집니다.",
+    "mode_count": "빈도",
+    "mode_colpct": "열 %",
+    "mode_rowpct": "행 %",
+    "exportCsv": "CSV 내보내기"
   },
   "AffinityBubble": {
     "eyebrow": "PARTNER",
