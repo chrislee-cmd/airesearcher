@@ -56,7 +56,7 @@ export function RequirementsForm({ value, onChange }: Props) {
   const summary = buildSummary(value, weekdayShort, t('summaryEmpty'));
 
   return (
-    <section className="border border-line bg-paper [border-radius:4px]">
+    <section data-coach="scheduler:requirements" className="border border-line bg-paper [border-radius:4px]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

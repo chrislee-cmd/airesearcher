@@ -1,6 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { QuantAnalyzer } from '@/components/quant-analyzer';
-import { Coachmark } from '@/components/coachmark';
+import { CoachmarkTour } from '@/components/coachmark-tour';
 
 export default async function QuantPage({
   params,
@@ -26,7 +26,7 @@ export default async function QuantPage({
       </p>
 
       <div className="mt-8">
-        <Coachmark feature="quant" />
+        <CoachmarkTour feature="quant" />
         <QuantAnalyzer />
       </div>
     </div>

@@ -104,6 +104,7 @@ export function InterviewAnalyzer() {
         <p className="mt-1 text-[11.5px] text-mute-soft">{t('pipelineHint')}</p>
 
         <div
+          data-coach="interviews:upload"
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -167,6 +168,7 @@ export function InterviewAnalyzer() {
                   {tUp('clear')}
                 </button>
                 <button
+                  data-coach="interviews:convert"
                   onClick={job.startConvertAll}
                   disabled={job.queuedCount === 0 || job.convertingAll}
                   className="border border-ink bg-ink px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:4px]"
@@ -204,6 +206,7 @@ export function InterviewAnalyzer() {
 
         <div className="mt-4 flex items-center gap-3">
           <button
+            data-coach="interviews:analyze"
             onClick={job.startAnalyze}
             disabled={job.filenameOrder.length === 0 || job.analyzing}
             className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
@@ -243,7 +246,7 @@ export function InterviewAnalyzer() {
 
         {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">
-            <div className="mb-3 flex items-center justify-end gap-2">
+            <div data-coach="interviews:export" className="mb-3 flex items-center justify-end gap-2">
               {job.summarizing && (
                 <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
                   <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />

@@ -1,6 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { TranscriptStudio } from '@/components/transcript-studio';
-import { Coachmark } from '@/components/coachmark';
+import { CoachmarkTour } from '@/components/coachmark-tour';
 
 export default async function Page({
   params,
@@ -26,7 +26,7 @@ export default async function Page({
       </p>
 
       <div className="mt-8">
-        <Coachmark feature="quotes" />
+        <CoachmarkTour feature="quotes" />
         <TranscriptStudio />
       </div>
     </div>

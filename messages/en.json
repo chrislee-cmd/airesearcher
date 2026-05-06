@@ -75,53 +75,121 @@
   "Coachmark": {
     "eyebrow": "First time here?",
     "dismiss": "Got it",
+    "prev": "Back",
+    "next": "Next",
+    "finish": "Done",
+    "skip": "Skip",
+    "skipAll": "Skip tour",
+    "stepLabel": "{current}/{total}",
     "desk": {
       "title": "Desk research — quick start",
-      "steps": [
-        "Pick a target region and date range, then add at least one keyword. With a single keyword, the AI expands it into four similar keywords automatically.",
-        "Toggle sources — Naver, Daum, YouTube, Google News, etc. When you target a non-Korean region, Korea-only sources are hidden.",
-        "Hitting search runs the job in the background. The final report and charts auto-register in the workspace when done."
-      ]
+      "steps": {
+        "region": {
+          "title": "Pick a region",
+          "body": "Outside Korea? Korea-only sources like Naver and Daum are hidden automatically."
+        },
+        "keyword": {
+          "title": "Add keywords",
+          "body": "Hit Enter or comma to add a keyword. With just one, the AI expands it into four similar keywords."
+        },
+        "sources": {
+          "title": "Choose sources",
+          "body": "Toggle Naver, Daum, YouTube, and Google News. Flat 25 credits per run."
+        },
+        "search": {
+          "title": "Kick off search",
+          "body": "Runs in the background — feel free to navigate away. Results land in your workspace when done."
+        }
+      }
     },
     "interviews": {
       "title": "Interview result generator — flow",
-      "steps": [
-        "Step 1 — drop interview files (audio/video/text) and convert them to markdown. Audio and video are transcribed automatically.",
-        "Step 2 — run the analysis to extract shared questions and build a per-respondent matrix with summaries and VOC quotes.",
-        "Export the matrix as CSV/XLSX. The consolidated insights digest also auto-registers in the workspace."
-      ]
+      "steps": {
+        "upload": {
+          "title": "Upload files",
+          "body": "Audio, video, or text — all welcome. Audio and video are transcribed automatically."
+        },
+        "convert": {
+          "title": "Step 1 — convert",
+          "body": "Convert every file to markdown in one shot. The analysis step kicks in right after."
+        },
+        "analyze": {
+          "title": "Step 2 — analyze",
+          "body": "Extracts shared questions and builds a matrix of per-file summaries and VOC quotes. 10 credits."
+        },
+        "export": {
+          "title": "Export",
+          "body": "Download as CSV/XLSX, or send the result to another tool from your workspace."
+        }
+      }
     },
     "reports": {
       "title": "Full report generator — guide",
-      "steps": [
-        "Upload .docx, .md, or text files — interview transcripts, desk research, raw notes — and we'll synthesize them into a single report.",
-        "Generation costs 50 credits and is free during your trial window.",
-        "Outputs include an HTML preview, .docx, and .pptx, and the report is saved to your workspace automatically."
-      ]
+      "steps": {
+        "upload": {
+          "title": "Upload sources",
+          "body": ".docx, .md, or text — combine interviews, desk research, and notes into a single report."
+        },
+        "generate": {
+          "title": "Generate the report",
+          "body": "50 credits. You get an HTML preview plus .docx and .pptx downloads."
+        },
+        "preview": {
+          "title": "Review the result",
+          "body": "The HTML preview renders here. Saved to your workspace so you can revisit it later."
+        }
+      }
     },
     "quotes": {
       "title": "Transcript generator — getting started",
-      "steps": [
-        "Upload audio or video (mp3, m4a, wav, mp4, etc.) and Deepgram transcribes it automatically with multi-language detection.",
-        "Output is formatted as a markdown transcript with speaker diarization and timecodes.",
-        "Download as .docx, .md, or .csv, or send the transcript directly into the interview result generator."
-      ]
+      "steps": {
+        "upload": {
+          "title": "Upload audio or video",
+          "body": "mp3, m4a, wav, mp4, and friends. Deepgram detects the language automatically."
+        },
+        "language": {
+          "title": "Pick a language",
+          "body": "Auto-detect works, but choosing the exact language nudges accuracy higher."
+        },
+        "download": {
+          "title": "Download results",
+          "body": "Grab .docx, .md, or .csv — or send straight into the interview result generator."
+        }
+      }
     },
     "scheduler": {
       "title": "Participant scheduler — how to use",
-      "steps": [
-        "Enter the research window (date range, time, weekdays) and the calendar fills with candidate slots.",
-        "Add attendees manually or import a CSV/XLSX file, then click a slot to confirm a meeting time.",
-        "Confirmed schedules export as CSV/XLSX. The feature is free; only the CSV auto-match step costs 5 credits."
-      ]
+      "steps": {
+        "requirements": {
+          "title": "Research window",
+          "body": "Set the date range, time, and weekdays — candidate slots fill the calendar automatically."
+        },
+        "attendees": {
+          "title": "Add attendees",
+          "body": "Type them in or import a CSV/XLSX. Only the CSV auto-match step costs 5 credits."
+        },
+        "calendar": {
+          "title": "Confirm a slot",
+          "body": "Pick an attendee on the left, then click a slot in the calendar to lock it in."
+        }
+      }
     },
     "quant": {
       "title": "Quantitative analysis — quick start",
-      "steps": [
-        "Upload a CSV/XLSX with one row per respondent and columns as questions/attributes. Headers in Korean, English, Japanese, etc. are detected automatically.",
-        "Choose a row (question) and column (banner — gender, age band, etc.) to render the cross-tab instantly.",
-        "Toggle between count, column %, and row % modes; export the cross-tab as CSV when done."
-      ]
+      "steps": {
+        "upload": {
+          "title": "Upload data",
+          "body": "CSV/XLSX with one row per respondent, columns as questions. Multilingual headers detected automatically."
+        },
+        "pickers": {
+          "title": "Pick row and column",
+          "body": "Row = question, column = banner (gender, age band, etc.). The cross-tab renders instantly."
+        },
+        "modes": {
+          "title": "Display modes",
+          "body": "Toggle count, column %, and row % to compare. Export the cross-tab as CSV anytime."
+        }
+      }
     }
   },
   "Common": {

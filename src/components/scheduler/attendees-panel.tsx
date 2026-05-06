@@ -43,7 +43,7 @@ export function AttendeesPanel({
   const selectedSlot = selected ? confirmed.find((c) => c.attendeeId === selected.id) ?? null : null;
 
   return (
-    <section className="border border-line bg-paper p-5 [border-radius:4px]">
+    <section data-coach="scheduler:attendees" className="border border-line bg-paper p-5 [border-radius:4px]">
       <header className="flex items-start justify-between gap-3 border-b border-line pb-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
