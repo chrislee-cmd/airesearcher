@@ -296,7 +296,7 @@
     },
     "recruiting": {
       "title": "Recruiting",
-      "description": "Generate screener questions and recruitment posts for research participant sourcing.",
+      "description": "Upload an RFP, brief, or email and extract participant criteria and study schedule, broken down item by item.",
       "cost": "1 credit"
     },
     "survey": {
