@@ -11,6 +11,7 @@ import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
 import { WorkspaceBridge } from '@/components/workspace-bridge';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
+import { PaywallProvider } from '@/components/paywall-provider';
 
 export default async function AppLayout({
   children,
@@ -30,26 +31,28 @@ export default async function AppLayout({
   const projects = org ? await listProjects(org.org_id) : [];
 
   return (
-    <InterviewJobProvider>
-     <TranscriptJobProvider>
-      <DeskJobProvider>
-       <GenerationJobProvider>
-        <WorkspaceProvider>
-        <div className="flex flex-1">
-          <Sidebar
-            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-            email={user?.email ?? null}
-            credits={credits}
-            isAuthed={!!user}
-          />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
-        </div>
-        <WorkspaceBridge />
-        <WorkspacePanel />
-        </WorkspaceProvider>
-       </GenerationJobProvider>
-      </DeskJobProvider>
-     </TranscriptJobProvider>
-    </InterviewJobProvider>
+    <PaywallProvider>
+     <InterviewJobProvider>
+      <TranscriptJobProvider>
+       <DeskJobProvider>
+        <GenerationJobProvider>
+         <WorkspaceProvider>
+         <div className="flex flex-1">
+           <Sidebar
+             projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+             email={user?.email ?? null}
+             credits={credits}
+             isAuthed={!!user}
+           />
+           <main className="flex-1 overflow-auto p-6">{children}</main>
+         </div>
+         <WorkspaceBridge />
+         <WorkspacePanel />
+         </WorkspaceProvider>
+        </GenerationJobProvider>
+       </DeskJobProvider>
+      </TranscriptJobProvider>
+     </InterviewJobProvider>
+    </PaywallProvider>
   );
 }

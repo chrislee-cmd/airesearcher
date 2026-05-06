@@ -43,6 +43,13 @@
     "conduct": "Research Conduct",
     "analysis": "Research Analysis"
   },
+  "Paywall": {
+    "eyebrow": "Out of credits",
+    "title": "This action needs credits",
+    "body": "Your free trial has ended and this action needs credits. Current balance: {balance}. Top up on the credits page and try again.",
+    "later": "Later",
+    "cta": "Buy credits"
+  },
   "Projects": {
     "title": "Projects",
     "description": "Group research outputs by project for cleaner organization.",
@@ -66,6 +73,8 @@
     "english": "English",
     "credits": "credits",
     "creditsRemaining": "{count} credits left",
+    "trialRemaining": "Free trial · {remaining} left",
+    "unlimitedAccess": "Unlimited access",
     "generate": "Generate",
     "loading": "Loading...",
     "comingSoon": "Coming soon",
