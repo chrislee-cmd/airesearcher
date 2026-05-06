@@ -13,6 +13,7 @@ import { WorkspaceBridge } from '@/components/workspace-bridge';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
+import { TrialInitializer } from '@/components/trial-initializer';
 
 export default async function AppLayout({
   children,
@@ -50,6 +51,7 @@ export default async function AppLayout({
          </div>
          <WorkspaceBridge />
          <WorkspacePanel />
+         <TrialInitializer enabled={!!user} />
          </WorkspaceProvider>
         </GenerationJobProvider>
        </DeskJobProvider>
