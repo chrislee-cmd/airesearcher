@@ -460,9 +460,13 @@ async function runJob(args: {
     // other rows are currently in 'summarizing' state and wait our turn.
     // The whole loop is bounded by MAX_WAIT_MS so we never silently extend
     // past the function's maxDuration.
+    // Tightened so the concurrency wait can't eat the entire remaining
+    // 5-minute budget after a heavy crawl. A 90s wait + ~3min crawl was
+    // leaving generateText with no room to finish; the catch block never
+    // ran and jobs froze in 'summarizing'.
     const MAX_CONCURRENT_SUMMARIZE = 2;
-    const MAX_WAIT_MS = 90_000;
-    const POLL_MS = 4000;
+    const MAX_WAIT_MS = 20_000;
+    const POLL_MS = 3000;
     const waitStart = Date.now();
     while (true) {
       await checkCancel();
@@ -493,7 +497,10 @@ async function runJob(args: {
     // 단일 호출에 ~300k tokens 가 필요해 즉시 429. 임베딩 클러스터링으로
     // 의미적으로 다양한 80건만 추려서 보냄. 실패 시 키워드/소스 균등 fallback.
     // UI/DB 에는 1500 풀 그대로 저장됨.
-    const SUMMARIZE_SAMPLE_K = 80;
+    // Halved from 80 to keep the prompt + output well under the per-minute
+    // token budget AND finish within the function deadline. Empirically the
+    // representative-50 picks give nearly identical report quality.
+    const SUMMARIZE_SAMPLE_K = 50;
     let articlesForLLM = articles;
     if (articles.length > SUMMARIZE_SAMPLE_K) {
       await pushAndPatch(
@@ -548,11 +555,17 @@ async function runJob(args: {
 
     let output = '';
     try {
+      // Cap output + retries so this call has a bounded ceiling and the
+      // function doesn't get killed mid-stream. Default SDK retries can
+      // double the wall time on flaky 429s; we'd rather fail fast and
+      // surface an actionable error.
       const { text } = await generateText({
         model,
         system: REPORT_SYSTEM,
         prompt: userMsg,
         temperature: 0.2,
+        maxOutputTokens: 6000,
+        maxRetries: 1,
       });
       output = text.trim();
     } catch (err) {
