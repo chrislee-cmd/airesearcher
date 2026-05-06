@@ -271,17 +271,30 @@ async function dispatchElevenLabs(args: {
     );
   }
 
-  const json = (await resp.json().catch(() => ({}))) as {
-    request_id?: string;
-    task_id?: string;
-  };
-  const requestId = json.request_id ?? json.task_id ?? null;
+  // Log the raw response so we can confirm the actual field names ElevenLabs
+  // returns (request_id vs task_id vs id). Stash it in raw_result for the
+  // first few jobs while we calibrate.
+  const rawText = await resp.text().catch(() => '');
+  console.log('[transcripts/start] elevenlabs raw response:', rawText.slice(0, 2000));
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = JSON.parse(rawText) as Record<string, unknown>;
+  } catch {
+    /* ignore */
+  }
+  const requestId =
+    (parsed.request_id as string | undefined) ??
+    (parsed.task_id as string | undefined) ??
+    (parsed.id as string | undefined) ??
+    (parsed.transcription_id as string | undefined) ??
+    null;
 
   await supabase
     .from('transcript_jobs')
     .update({
       status: 'transcribing',
       provider_request_id: requestId,
+      raw_result: parsed as object,
     })
     .eq('id', jobId);
 
