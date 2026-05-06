@@ -42,6 +42,17 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
 ];
 
+// Features still in development — hidden from the sidebar and gated at
+// the route level for everyone except super-admin orgs (organizations
+// with `is_unlimited = true`). Move a key out of this list to GA the
+// feature for all users.
+export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
+  'recruiting',
+  'transcripts',  // 스크립트 생성기 (audio→script). The 전사록 path is `quotes`.
+  'survey',
+  'analyzer',
+]);
+
 // Single source of truth for credit pricing — read by both the
 // purchase page and the sidebar copy.
 export const CREDIT_PRICE_KRW = 2000;

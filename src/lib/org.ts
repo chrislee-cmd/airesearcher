@@ -26,3 +26,18 @@ export async function getActiveOrg(): Promise<OrgMembership | null> {
   const orgs = await getCurrentUserOrgs();
   return orgs[0] ?? null;
 }
+
+// Lightweight flags read for gating preview features and other admin-only
+// surfaces. Returns false-y defaults when the row is missing so callers
+// don't need to null-check.
+export async function getOrgFlags(orgId: string): Promise<{
+  isUnlimited: boolean;
+}> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('organizations')
+    .select('is_unlimited')
+    .eq('id', orgId)
+    .single();
+  return { isUnlimited: Boolean(data?.is_unlimited) };
+}

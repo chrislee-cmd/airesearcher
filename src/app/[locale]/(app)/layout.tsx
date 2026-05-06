@@ -1,6 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
-import { getActiveOrg } from '@/lib/org';
+import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
@@ -31,6 +31,7 @@ export default async function AppLayout({
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
   const projects = org ? await listProjects(org.org_id) : [];
+  const flags = org ? await getOrgFlags(org.org_id) : { isUnlimited: false };
 
   return (
     <PaywallProvider>
@@ -46,6 +47,7 @@ export default async function AppLayout({
              email={user?.email ?? null}
              credits={credits}
              isAuthed={!!user}
+             showPreviewFeatures={flags.isUnlimited}
            />
            <main className="flex-1 overflow-auto p-6">{children}</main>
          </div>
