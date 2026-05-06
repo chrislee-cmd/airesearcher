@@ -31,12 +31,14 @@ type PartialSurvey = Partial<Survey> & {
 };
 
 type Criterion = RecruitingBriefType['criteria'][number];
-type Phase = RecruitingBriefType['schedule'][number];
 
 type EditableBrief = {
   summary: string;
   criteria: Criterion[];
-  schedule: Phase[];
+  // Schedule is no longer surfaced in the UI but we keep it on the
+  // editable brief so the survey-generation prompt still receives the
+  // server-extracted timeline as context.
+  schedule: RecruitingBriefType['schedule'];
 };
 
 const QUESTION_KIND_LABEL: Record<SurveyQuestion['kind'], string> = {
@@ -65,15 +67,6 @@ function isCompleteCriterion(
     typeof c.label === 'string' &&
     typeof c.detail === 'string' &&
     typeof c.required === 'boolean'
-  );
-}
-
-function isCompletePhase(p: Partial<Phase>): p is Phase {
-  return (
-    typeof p.phase === 'string' &&
-    typeof p.note === 'string' &&
-    (p.startDate === null || typeof p.startDate === 'string') &&
-    (p.endDate === null || typeof p.endDate === 'string')
   );
 }
 
@@ -301,37 +294,6 @@ export function RecruitingBrief() {
       };
     });
   }
-  function updatePhase<K extends keyof Phase>(
-    idx: number,
-    field: K,
-    value: Phase[K],
-  ) {
-    setEdited((prev) => {
-      if (!prev) return prev;
-      const next = [...prev.schedule];
-      next[idx] = { ...next[idx], [field]: value };
-      return { ...prev, schedule: next };
-    });
-  }
-  function removePhase(idx: number) {
-    setEdited((prev) => {
-      if (!prev) return prev;
-      return { ...prev, schedule: prev.schedule.filter((_, i) => i !== idx) };
-    });
-  }
-  function addPhase() {
-    setEdited((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        schedule: [
-          ...prev.schedule,
-          { phase: '', startDate: null, endDate: null, note: '' },
-        ],
-      };
-    });
-  }
-
   async function generateSurvey() {
     if (!edited) return;
     const briefForApi: RecruitingBriefType = {
@@ -499,9 +461,6 @@ export function RecruitingBrief() {
   const previewCriteria = edited
     ? edited.criteria
     : (partial?.criteria ?? []).filter(isCompleteCriterion);
-  const previewSchedule = edited
-    ? edited.schedule
-    : (partial?.schedule ?? []).filter(isCompletePhase);
   const summaryText = edited?.summary ?? partial?.summary ?? '';
   const showResultPanel = running || partial || edited;
 
@@ -657,10 +616,12 @@ export function RecruitingBrief() {
             />
           </div>
 
-          {/* Fixed-height editable panel — criteria on the left, schedule
-              on the right. Each side scrolls independently. */}
-          <div className="mt-4 grid h-[480px] gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <section className="flex min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
+          {/* Fixed-height editable criteria panel. Schedule extraction
+              still happens server-side and is forwarded to the survey
+              prompt for context, but it is no longer surfaced in the UI
+              per product feedback (only criteria need to be editable). */}
+          <div className="mt-4 h-[480px]">
+            <section className="flex h-full min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
               <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
                 <h3 className="text-[12px] font-semibold text-ink-2">
                   대상자 조건 ({previewCriteria.length})
@@ -694,48 +655,6 @@ export function RecruitingBrief() {
                           />
                         ) : (
                           <CriterionStreamingView c={c} />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-
-            <section className="flex min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
-              <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
-                <h3 className="text-[12px] font-semibold text-ink-2">
-                  조사 일정 ({previewSchedule.length})
-                </h3>
-                {edited && (
-                  <button
-                    type="button"
-                    onClick={addPhase}
-                    className="text-[11px] text-mute hover:text-ink-2"
-                  >
-                    + 단계 추가
-                  </button>
-                )}
-              </header>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {previewSchedule.length === 0 ? (
-                  <p className="px-3 py-4 text-[12px] text-mute-soft">
-                    {running ? '분석 중…' : '추출된 일정이 없습니다.'}
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-line-soft">
-                    {previewSchedule.map((p, i) => (
-                      <li key={i} className="px-3 py-2 text-[12px]">
-                        {edited ? (
-                          <PhaseEditor
-                            value={p}
-                            onChange={(field, value) =>
-                              updatePhase(i, field, value)
-                            }
-                            onRemove={() => removePhase(i)}
-                          />
-                        ) : (
-                          <PhaseStreamingView p={p} />
                         )}
                       </li>
                     ))}
@@ -890,25 +809,33 @@ export function RecruitingBrief() {
                         </tr>
                       </thead>
                       <tbody>
-                        {surveyRows.map((r, i) => (
-                          <tr key={i} className="align-top">
-                            <td className="border-b border-line-soft px-3 py-2 tabular-nums text-mute">
-                              {r.index}
-                            </td>
-                            <td className="border-b border-line-soft px-3 py-2 text-mute">
-                              {r.section}
-                            </td>
-                            <td className="border-b border-line-soft px-3 py-2 text-ink-2">
-                              {r.question}
-                            </td>
-                            <td className="border-b border-line-soft px-3 py-2 text-ink-2">
-                              {r.option}
-                            </td>
-                            <td className="border-b border-line-soft px-3 py-2 text-mute-soft">
-                              {r.logic}
-                            </td>
-                          </tr>
-                        ))}
+                        {surveyRows.map((r, i) => {
+                          // De-dup the question/section/index/logic
+                          // columns: only show them on the first option
+                          // row of each question group, blank for the
+                          // following option rows.
+                          const isFirst =
+                            i === 0 || surveyRows[i - 1].index !== r.index;
+                          return (
+                            <tr key={i} className="align-top">
+                              <td className="border-b border-line-soft px-3 py-2 tabular-nums text-mute">
+                                {isFirst ? r.index : ''}
+                              </td>
+                              <td className="border-b border-line-soft px-3 py-2 text-mute">
+                                {isFirst ? r.section : ''}
+                              </td>
+                              <td className="border-b border-line-soft px-3 py-2 text-ink-2">
+                                {isFirst ? r.question : ''}
+                              </td>
+                              <td className="border-b border-line-soft px-3 py-2 text-ink-2">
+                                {r.option}
+                              </td>
+                              <td className="border-b border-line-soft px-3 py-2 text-mute-soft">
+                                {isFirst ? r.logic : ''}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1006,77 +933,3 @@ function CriterionEditor({
   );
 }
 
-function PhaseStreamingView({ p }: { p: Phase }) {
-  const range =
-    !p.startDate && !p.endDate
-      ? '미정'
-      : p.startDate && p.endDate && p.startDate === p.endDate
-        ? p.startDate
-        : p.startDate && p.endDate
-          ? `${p.startDate} ~ ${p.endDate}`
-          : (p.startDate ?? p.endDate ?? '');
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="font-semibold text-ink">{p.phase}</span>
-        <span className="shrink-0 tabular-nums text-[11px] text-mute-soft">
-          {range}
-        </span>
-      </div>
-      {p.note && <div className="mt-1 text-[12px] text-mute">{p.note}</div>}
-    </div>
-  );
-}
-
-function PhaseEditor({
-  value,
-  onChange,
-  onRemove,
-}: {
-  value: Phase;
-  onChange: <K extends keyof Phase>(field: K, val: Phase[K]) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={value.phase}
-          onChange={(e) => onChange('phase', e.target.value)}
-          placeholder="단계명"
-          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12px] font-semibold text-ink focus:border-ink-2 focus:outline-none [border-radius:3px]"
-        />
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-[10.5px] text-mute hover:text-amore"
-        >
-          삭제
-        </button>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="date"
-          value={value.startDate ?? ''}
-          onChange={(e) => onChange('startDate', e.target.value || null)}
-          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[11.5px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
-        />
-        <span className="text-[11px] text-mute-soft">~</span>
-        <input
-          type="date"
-          value={value.endDate ?? ''}
-          onChange={(e) => onChange('endDate', e.target.value || null)}
-          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[11.5px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
-        />
-      </div>
-      <input
-        type="text"
-        value={value.note}
-        onChange={(e) => onChange('note', e.target.value)}
-        placeholder="메모"
-        className="w-full border border-line-soft bg-paper px-2 py-1 text-[12px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
-      />
-    </div>
-  );
-}

@@ -89,10 +89,52 @@ type ResponseState = {
   syncedAt: number | null;
 };
 
+// Persist the last successful sync per form in localStorage so navigating
+// away and back doesn't blow away the table. We only persist `data` and
+// `syncedAt` — `loading`/`error` are session-only signals.
+const STORAGE_KEY = 'recruiting_responses_v1';
+
+type PersistedEntry = { data: FormResponses; syncedAt: number };
+
+function loadPersisted(): Record<string, PersistedEntry> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, PersistedEntry>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePersisted(map: Record<string, PersistedEntry>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Quota / serialization errors are non-fatal for the UI.
+  }
+}
+
 export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props) {
   const [forms, setForms] = useState<PublishedForm[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
-  const [responses, setResponses] = useState<Record<string, ResponseState>>({});
+  const [responses, setResponses] = useState<Record<string, ResponseState>>(
+    () => {
+      const persisted = loadPersisted();
+      const out: Record<string, ResponseState> = {};
+      for (const [formId, entry] of Object.entries(persisted)) {
+        out[formId] = {
+          data: entry.data,
+          loading: false,
+          error: null,
+          syncedAt: entry.syncedAt,
+        };
+      }
+      return out;
+    },
+  );
 
   const fetchList = useCallback(async () => {
     try {
@@ -114,6 +156,38 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
     void fetchList();
   }, [fetchList, publishVersion]);
 
+  const removeForm = useCallback(async (formId: string) => {
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm(
+        '이 폼을 목록에서 제거할까요? Google Forms 자체는 그대로 남습니다.',
+      );
+      if (!ok) return;
+    }
+    try {
+      const res = await fetch(
+        `/api/recruiting/google/forms/${encodeURIComponent(formId)}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `delete_failed: ${res.statusText}`);
+      }
+    } catch (e) {
+      // Surface the failure but don't block local cleanup if the row is
+      // already gone server-side.
+      console.error('[recruiting] delete form failed', e);
+    }
+    setForms((prev) => (prev ? prev.filter((x) => x.formId !== formId) : prev));
+    setResponses((prev) => {
+      const next = { ...prev };
+      delete next[formId];
+      return next;
+    });
+    const persisted = loadPersisted();
+    delete persisted[formId];
+    writePersisted(persisted);
+  }, []);
+
   const fetchResponses = useCallback(
     async (formId: string) => {
       setResponses((prev) => ({
@@ -133,15 +207,16 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         if (!res.ok) {
           throw new Error(j.error ?? `responses_failed: ${res.statusText}`);
         }
+        const data = j as FormResponses;
+        const syncedAt = Date.now();
         setResponses((prev) => ({
           ...prev,
-          [formId]: {
-            data: j as FormResponses,
-            loading: false,
-            error: null,
-            syncedAt: Date.now(),
-          },
+          [formId]: { data, loading: false, error: null, syncedAt },
         }));
+        // Persist to localStorage so the table survives navigation.
+        const persisted = loadPersisted();
+        persisted[formId] = { data, syncedAt };
+        writePersisted(persisted);
       } catch (e) {
         setResponses((prev) => ({
           ...prev,
@@ -273,6 +348,14 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
                   >
                     XLSX
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void removeForm(f.formId)}
+                    title="이 폼을 목록에서 제거 (Google Forms 원본은 유지)"
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-amore [border-radius:4px]"
+                  >
+                    제거
                   </button>
                 </div>
               </header>
