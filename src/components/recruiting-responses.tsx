@@ -304,6 +304,10 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
   );
 }
 
+const DEFAULT_TIME_COL_WIDTH = 160;
+const DEFAULT_VALUE_COL_WIDTH = 200;
+const MIN_COL_WIDTH = 60;
+
 function ResponseTable({
   columns,
   rows,
@@ -311,20 +315,87 @@ function ResponseTable({
   columns: FormColumn[];
   rows: FormResponseRow[];
 }) {
+  // Per-column widths in px. The first slot is the "응답시각" column,
+  // the rest line up with `columns`. Disabling cell wrap means rows
+  // are always one line tall, so the user can drag any column header's
+  // right edge to widen/narrow that column.
+  const [widths, setWidths] = useState<number[]>(() => [
+    DEFAULT_TIME_COL_WIDTH,
+    ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
+  ]);
+  // If the column set changes (different form selected), reset widths.
+  // Seed during render via identity-tracking to satisfy React's
+  // set-state-in-effect rule.
+  const [seededColumns, setSeededColumns] = useState(columns);
+  if (columns !== seededColumns) {
+    setSeededColumns(columns);
+    setWidths([
+      DEFAULT_TIME_COL_WIDTH,
+      ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
+    ]);
+  }
+
+  const dragRef = useRef<{ idx: number; startX: number; startW: number } | null>(
+    null,
+  );
+
+  function startResize(idx: number, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = {
+      idx,
+      startX: e.clientX,
+      startW: widths[idx] ?? DEFAULT_VALUE_COL_WIDTH,
+    };
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const next = Math.max(MIN_COL_WIDTH, d.startW + (ev.clientX - d.startX));
+      setWidths((prev) => {
+        const out = [...prev];
+        out[d.idx] = next;
+        return out;
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-[12px]">
+      <table
+        className="border-collapse text-[12px]"
+        style={{ tableLayout: 'fixed' }}
+      >
+        <colgroup>
+          {widths.map((w, i) => (
+            <col key={i} style={{ width: `${w}px` }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="bg-paper text-left">
-            <th className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2">
-              응답시각
+            <th
+              className="sticky left-0 z-[2] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2"
+              style={{ position: 'relative' }}
+            >
+              <span className="block truncate">응답시각</span>
+              <ResizeHandle onMouseDown={(e) => startResize(0, e)} />
             </th>
-            {columns.map((c) => (
+            {columns.map((c, i) => (
               <th
                 key={c.questionId}
                 className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2"
+                style={{ position: 'relative' }}
               >
-                {c.title}
+                <span className="block truncate" title={c.title}>
+                  {c.title}
+                </span>
+                <ResizeHandle onMouseDown={(e) => startResize(i + 1, e)} />
               </th>
             ))}
           </tr>
@@ -332,13 +403,14 @@ function ResponseTable({
         <tbody>
           {rows.map((r) => (
             <tr key={r.responseId} className="align-top">
-              <td className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
+              <td className="sticky left-0 z-[1] overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
                 {formatTime(r.lastSubmittedTime)}
               </td>
               {columns.map((c) => (
                 <td
                   key={c.questionId}
-                  className="border-b border-line-soft px-3 py-2 text-ink-2"
+                  className="overflow-hidden whitespace-nowrap border-b border-line-soft px-3 py-2 text-ink-2"
+                  title={r.answers[c.questionId] ?? ''}
                 >
                   {r.answers[c.questionId] ?? ''}
                 </td>
@@ -348,5 +420,22 @@ function ResponseTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ResizeHandle({
+  onMouseDown,
+}: {
+  onMouseDown: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <span
+      onMouseDown={onMouseDown}
+      role="separator"
+      aria-orientation="vertical"
+      className="absolute right-0 top-0 z-[3] h-full w-[6px] -translate-x-[1px] cursor-col-resize select-none bg-transparent hover:bg-line"
+      // Prevent text selection during drag
+      style={{ userSelect: 'none' }}
+    />
   );
 }

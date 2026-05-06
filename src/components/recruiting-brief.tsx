@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -13,7 +14,7 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { RecruitingResponses } from './recruiting-responses';
-import type { RecruitingBrief } from '@/lib/recruiting-schema';
+import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
 type GoogleStatus = {
@@ -27,6 +28,15 @@ type PartialSurvey = Partial<Survey> & {
     title: string;
     questions: Partial<SurveyQuestion>[];
   }>[];
+};
+
+type Criterion = RecruitingBriefType['criteria'][number];
+type Phase = RecruitingBriefType['schedule'][number];
+
+type EditableBrief = {
+  summary: string;
+  criteria: Criterion[];
+  schedule: Phase[];
 };
 
 const QUESTION_KIND_LABEL: Record<SurveyQuestion['kind'], string> = {
@@ -47,14 +57,9 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-type PartialBrief = Partial<RecruitingBrief> & {
-  criteria?: Partial<RecruitingBrief['criteria'][number]>[];
-  schedule?: Partial<RecruitingBrief['schedule'][number]>[];
-};
-
 function isCompleteCriterion(
-  c: Partial<RecruitingBrief['criteria'][number]>,
-): c is RecruitingBrief['criteria'][number] {
+  c: Partial<Criterion>,
+): c is Criterion {
   return (
     typeof c.category === 'string' &&
     typeof c.label === 'string' &&
@@ -63,9 +68,7 @@ function isCompleteCriterion(
   );
 }
 
-function isCompletePhase(
-  p: Partial<RecruitingBrief['schedule'][number]>,
-): p is RecruitingBrief['schedule'][number] {
+function isCompletePhase(p: Partial<Phase>): p is Phase {
   return (
     typeof p.phase === 'string' &&
     typeof p.note === 'string' &&
@@ -74,11 +77,111 @@ function isCompletePhase(
   );
 }
 
-function formatDateRange(start: string | null, end: string | null): string {
-  if (!start && !end) return '미정';
-  if (start && end && start === end) return start;
-  if (start && end) return `${start} ~ ${end}`;
-  return start ?? end ?? '';
+function escapeCsvCell(s: string): string {
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+// One row in the flat survey design table. A choice question with N
+// options expands to N rows, each carrying the same question text in
+// the first column and the option label in the second. Text/scale
+// questions get a single row with empty option.
+type SurveyRow = {
+  index: number;
+  section: string;
+  question: string;
+  option: string;
+  logic: string;
+};
+
+function buildSurveyRows(survey: Survey | PartialSurvey | null): SurveyRow[] {
+  if (!survey?.sections) return [];
+  const rows: SurveyRow[] = [];
+  let qIndex = 0;
+  for (const section of survey.sections) {
+    if (!section) continue;
+    const sectionTitle = section.title ?? '';
+    for (const q of section.questions ?? []) {
+      if (!q || typeof q.title !== 'string') continue;
+      qIndex += 1;
+      const kind = (q.kind ?? '') as SurveyQuestion['kind'];
+      const kindLabel = QUESTION_KIND_LABEL[kind] ?? kind;
+      const requiredLabel = q.required ? '필수' : '선택';
+      let logic = `${kindLabel} · ${requiredLabel}`;
+      if (kind === 'scale') {
+        const lo = q.scaleMin ?? 1;
+        const hi = q.scaleMax ?? 5;
+        const labels =
+          q.scaleMinLabel || q.scaleMaxLabel
+            ? ` (${q.scaleMinLabel ?? ''} → ${q.scaleMaxLabel ?? ''})`
+            : '';
+        logic += ` · ${lo}~${hi}${labels}`;
+      }
+      const opts = q.options ?? [];
+      if (opts.length > 0) {
+        for (const opt of opts) {
+          rows.push({
+            index: qIndex,
+            section: sectionTitle,
+            question: q.title,
+            option: opt,
+            logic,
+          });
+        }
+      } else {
+        rows.push({
+          index: qIndex,
+          section: sectionTitle,
+          question: q.title,
+          option: '',
+          logic,
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+function buildSurveyCsv(rows: SurveyRow[]): string {
+  const header = ['#', '섹션', '질문', '옵션', '로직'];
+  const out = [header.map(escapeCsvCell).join(',')];
+  for (const r of rows) {
+    out.push(
+      [String(r.index), r.section, r.question, r.option, r.logic]
+        .map(escapeCsvCell)
+        .join(','),
+    );
+  }
+  return out.join('\n');
+}
+
+async function downloadSurveyXlsx(rows: SurveyRow[], baseName: string) {
+  const XLSX = await import('xlsx');
+  const aoa: (string | number)[][] = [
+    ['#', '섹션', '질문', '옵션', '로직'],
+    ...rows.map((r) => [r.index, r.section, r.question, r.option, r.logic]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Survey');
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  downloadBlob(
+    new Blob([buf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+    `${baseName}.xlsx`,
+  );
 }
 
 export function RecruitingBrief() {
@@ -92,7 +195,10 @@ export function RecruitingBrief() {
   const [pasted, setPasted] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
-  const [partial, setPartial] = useState<PartialBrief | null>(null);
+  // Streaming partial brief (Anthropic streamObject) — gets replaced by
+  // `edited` once the run completes so the user can tweak it inline.
+  const [partial, setPartial] = useState<Partial<RecruitingBriefType> | null>(null);
+  const [edited, setEdited] = useState<EditableBrief | null>(null);
 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [surveyPartial, setSurveyPartial] = useState<PartialSurvey | null>(null);
@@ -106,8 +212,6 @@ export function RecruitingBrief() {
     responderUri: string;
     editUri: string;
   } | null>(null);
-  // Bumped each time we publish a new form so the responses panel
-  // refetches its list without polling /list on a tight loop.
   const [publishVersion, setPublishVersion] = useState(0);
   const [publishError, setPublishError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -120,9 +224,23 @@ export function RecruitingBrief() {
   const job = jobs.get('recruiting');
   const running = job.status === 'running';
   const result =
-    job.status === 'done' ? (job.result as RecruitingBrief | null) : null;
+    job.status === 'done' ? (job.result as RecruitingBriefType | null) : null;
   const errorMessage =
     job.status === 'error' ? job.error ?? 'unknown_error' : null;
+
+  // Hydrate the editable brief once the job finishes. We seed during
+  // render (React's recommended pattern over a useEffect+setState) by
+  // tracking the result identity we've already absorbed; subsequent
+  // user edits live in `edited` untouched.
+  const [seededFor, setSeededFor] = useState<RecruitingBriefType | null>(null);
+  if (result && result !== seededFor) {
+    setSeededFor(result);
+    setEdited({
+      summary: result.summary ?? '',
+      criteria: result.criteria.map((c) => ({ ...c })),
+      schedule: result.schedule.map((p) => ({ ...p })),
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -138,9 +256,6 @@ export function RecruitingBrief() {
         }
       })
       .catch(() => {});
-    // Strip the one-shot ?google=… query so a refresh doesn't replay the
-    // notice. The error itself is captured at mount via the useState
-    // initializer above, which keeps this effect free of setState.
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.has('google')) {
@@ -156,7 +271,74 @@ export function RecruitingBrief() {
     };
   }, []);
 
-  async function generateSurvey(brief: RecruitingBrief) {
+  function updateCriterion<K extends keyof Criterion>(
+    idx: number,
+    field: K,
+    value: Criterion[K],
+  ) {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.criteria];
+      next[idx] = { ...next[idx], [field]: value };
+      return { ...prev, criteria: next };
+    });
+  }
+  function removeCriterion(idx: number) {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return { ...prev, criteria: prev.criteria.filter((_, i) => i !== idx) };
+    });
+  }
+  function addCriterion() {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        criteria: [
+          ...prev.criteria,
+          { category: '기타', label: '', detail: '', required: false },
+        ],
+      };
+    });
+  }
+  function updatePhase<K extends keyof Phase>(
+    idx: number,
+    field: K,
+    value: Phase[K],
+  ) {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.schedule];
+      next[idx] = { ...next[idx], [field]: value };
+      return { ...prev, schedule: next };
+    });
+  }
+  function removePhase(idx: number) {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return { ...prev, schedule: prev.schedule.filter((_, i) => i !== idx) };
+    });
+  }
+  function addPhase() {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        schedule: [
+          ...prev.schedule,
+          { phase: '', startDate: null, endDate: null, note: '' },
+        ],
+      };
+    });
+  }
+
+  async function generateSurvey() {
+    if (!edited) return;
+    const briefForApi: RecruitingBriefType = {
+      summary: edited.summary,
+      criteria: edited.criteria,
+      schedule: edited.schedule,
+    };
     setSurvey(null);
     setSurveyPartial(null);
     setSurveyError(null);
@@ -167,7 +349,7 @@ export function RecruitingBrief() {
       const res = await fetch('/api/recruiting/survey', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ brief }),
+        body: JSON.stringify({ brief: briefForApi }),
       });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
@@ -272,8 +454,9 @@ export function RecruitingBrief() {
     const submittedPaste = pasted;
 
     setPartial(null);
+    setEdited(null);
 
-    await jobs.start<RecruitingBrief>('recruiting', {
+    await jobs.start<RecruitingBriefType>('recruiting', {
       input: { count: submittedFiles.length },
       run: async () => {
         const fd = new FormData();
@@ -298,11 +481,11 @@ export function RecruitingBrief() {
           buffer += decoder.decode(value, { stream: true });
           const parsed = await parsePartialJson(buffer);
           if (parsed.value && typeof parsed.value === 'object') {
-            setPartial(parsed.value as PartialBrief);
+            setPartial(parsed.value as Partial<RecruitingBriefType>);
           }
         }
 
-        const finalParsed = JSON.parse(buffer) as RecruitingBrief;
+        const finalParsed = JSON.parse(buffer) as RecruitingBriefType;
         setPartial(finalParsed);
         track('generate_success', { feature: 'recruiting' });
         return finalParsed;
@@ -311,10 +494,21 @@ export function RecruitingBrief() {
   }
 
   const canRun = (files.length > 0 || pasted.trim().length > 0) && !running;
-  const view: PartialBrief | null = result ?? partial;
+  // While streaming, render the partial; after completion the user
+  // edits `edited`. Both shapes share criteria/schedule arrays.
+  const previewCriteria = edited
+    ? edited.criteria
+    : (partial?.criteria ?? []).filter(isCompleteCriterion);
+  const previewSchedule = edited
+    ? edited.schedule
+    : (partial?.schedule ?? []).filter(isCompletePhase);
+  const summaryText = edited?.summary ?? partial?.summary ?? '';
+  const showResultPanel = running || partial || edited;
 
-  const criteria = (view?.criteria ?? []).filter(isCompleteCriterion);
-  const schedule = (view?.schedule ?? []).filter(isCompletePhase);
+  const surveyRows = useMemo(
+    () => buildSurveyRows(survey ?? surveyPartial),
+    [survey, surveyPartial],
+  );
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
@@ -330,39 +524,60 @@ export function RecruitingBrief() {
         {t('recruiting.description')}
       </p>
 
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-        }}
-        className={`mt-8 flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed bg-paper px-6 py-12 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-          dragOver
-            ? 'border-amore bg-amore-bg'
-            : 'border-line hover:border-ink-2'
-        }`}
-      >
-        <div className="text-[13px] font-semibold text-ink-2">
-          파일을 끌어다 놓거나 클릭해서 업로드
+      {/* 2-column input row: paste textarea on the left, file dropzone
+          on the right. Either alone or both together is accepted. */}
+      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <div className="flex h-[220px] flex-col">
+          <label className="mb-2 block text-[12px] font-semibold text-ink-2">
+            텍스트 붙여넣기
+          </label>
+          <textarea
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            disabled={running}
+            placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
+            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 [border-radius:4px]"
+          />
         </div>
-        <div className="text-[11.5px] text-mute-soft">
-          .pdf · .docx · .xlsx · .csv · .txt — 최대 10개, 파일당 25MB
+        <div className="flex h-[220px] flex-col">
+          <label className="mb-2 block text-[12px] font-semibold text-ink-2">
+            파일 업로드
+          </label>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
+            }}
+            className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed bg-paper px-6 text-center transition-colors duration-[120ms] [border-radius:4px] ${
+              dragOver
+                ? 'border-amore bg-amore-bg'
+                : 'border-line hover:border-ink-2'
+            }`}
+          >
+            <div className="text-[13px] font-semibold text-ink-2">
+              파일을 끌어다 놓거나 클릭해서 업로드
+            </div>
+            <div className="text-[11.5px] text-mute-soft">
+              .pdf · .docx · .xlsx · .csv · .txt — 최대 10개, 파일당 25MB
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={ACCEPT}
+              multiple
+              onChange={onPick}
+              className="hidden"
+            />
+          </div>
         </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          multiple
-          onChange={onPick}
-          className="hidden"
-        />
       </div>
 
       {rejected.length > 0 && (
@@ -395,20 +610,6 @@ export function RecruitingBrief() {
         </ul>
       )}
 
-      <div className="mt-6">
-        <label className="mb-2 block text-[12px] font-semibold text-ink-2">
-          또는 텍스트 붙여넣기
-        </label>
-        <textarea
-          value={pasted}
-          onChange={(e) => setPasted(e.target.value)}
-          disabled={running}
-          rows={6}
-          placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-          className="w-full resize-y border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 [border-radius:4px]"
-        />
-      </div>
-
       <div className="mt-4 flex items-center justify-end gap-3">
         <span className="text-[11px] tabular-nums text-mute-soft">
           {files.length}개 파일 · {pasted.length}자
@@ -428,100 +629,163 @@ export function RecruitingBrief() {
         </div>
       )}
 
-      {(running || view) && (
+      {showResultPanel && (
         <div className="mt-10">
-          <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-            {running ? '추출 중…' : '추출 결과'}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+            <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+              {running ? '추출 중…' : '추출 결과'}
+            </h2>
+            <span className="text-[11px] text-mute-soft">
+              인라인 편집 가능 — 수정 후 “설문 생성”을 누르세요
+            </span>
+          </div>
 
-          {view?.summary && (
-            <p className="mt-4 border border-line-soft bg-paper px-4 py-3 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:4px]">
-              {view.summary}
-            </p>
-          )}
+          <div className="mt-3">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-mute-soft">
+              요약
+            </label>
+            <textarea
+              value={summaryText}
+              onChange={(e) =>
+                setEdited((prev) =>
+                  prev ? { ...prev, summary: e.target.value } : prev,
+                )
+              }
+              disabled={!edited}
+              rows={2}
+              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 [border-radius:4px]"
+            />
+          </div>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-            <section>
-              <h3 className="mb-3 text-[13px] font-semibold text-ink-2">
-                대상자 조건 ({criteria.length})
-              </h3>
-              {criteria.length === 0 ? (
-                <p className="text-[12px] text-mute-soft">
-                  {running ? '분석 중…' : '추출된 조건이 없습니다.'}
-                </p>
-              ) : (
-                <ul className="divide-y divide-line border border-line bg-paper [border-radius:4px]">
-                  {criteria.map((c, i) => (
-                    <li key={i} className="px-4 py-3 text-[12.5px]">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10.5px] uppercase tracking-[0.04em] text-mute-soft">
-                          {c.category}
-                        </span>
-                        {c.required ? (
-                          <span className="border border-amore px-1.5 py-px text-[10px] text-amore [border-radius:3px]">
-                            필수
-                          </span>
+          {/* Fixed-height editable panel — criteria on the left, schedule
+              on the right. Each side scrolls independently. */}
+          <div className="mt-4 grid h-[480px] gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <section className="flex min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
+              <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
+                <h3 className="text-[12px] font-semibold text-ink-2">
+                  대상자 조건 ({previewCriteria.length})
+                </h3>
+                {edited && (
+                  <button
+                    type="button"
+                    onClick={addCriterion}
+                    className="text-[11px] text-mute hover:text-ink-2"
+                  >
+                    + 항목 추가
+                  </button>
+                )}
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {previewCriteria.length === 0 ? (
+                  <p className="px-3 py-4 text-[12px] text-mute-soft">
+                    {running ? '분석 중…' : '추출된 조건이 없습니다.'}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-line-soft">
+                    {previewCriteria.map((c, i) => (
+                      <li key={i} className="px-3 py-2 text-[12px]">
+                        {edited ? (
+                          <CriterionEditor
+                            value={c}
+                            onChange={(field, value) =>
+                              updateCriterion(i, field, value)
+                            }
+                            onRemove={() => removeCriterion(i)}
+                          />
                         ) : (
-                          <span className="border border-line px-1.5 py-px text-[10px] text-mute [border-radius:3px]">
-                            우대
-                          </span>
+                          <CriterionStreamingView c={c} />
                         )}
-                      </div>
-                      <div className="mt-1 font-semibold text-ink">
-                        {c.label}
-                      </div>
-                      <div className="mt-0.5 text-mute">{c.detail}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
 
-            <section>
-              <h3 className="mb-3 text-[13px] font-semibold text-ink-2">
-                조사 일정 ({schedule.length})
-              </h3>
-              {schedule.length === 0 ? (
-                <p className="text-[12px] text-mute-soft">
-                  {running ? '분석 중…' : '추출된 일정이 없습니다.'}
-                </p>
-              ) : (
-                <ol className="space-y-2">
-                  {schedule.map((p, i) => (
-                    <li
-                      key={i}
-                      className="border border-line bg-paper px-4 py-3 text-[12.5px] [border-radius:4px]"
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold text-ink">
-                          {p.phase}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-[11px] text-mute-soft">
-                          {formatDateRange(p.startDate, p.endDate)}
-                        </span>
-                      </div>
-                      {p.note && (
-                        <div className="mt-1 text-[12px] text-mute">
-                          {p.note}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              )}
+            <section className="flex min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
+              <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
+                <h3 className="text-[12px] font-semibold text-ink-2">
+                  조사 일정 ({previewSchedule.length})
+                </h3>
+                {edited && (
+                  <button
+                    type="button"
+                    onClick={addPhase}
+                    className="text-[11px] text-mute hover:text-ink-2"
+                  >
+                    + 단계 추가
+                  </button>
+                )}
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {previewSchedule.length === 0 ? (
+                  <p className="px-3 py-4 text-[12px] text-mute-soft">
+                    {running ? '분석 중…' : '추출된 일정이 없습니다.'}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-line-soft">
+                    {previewSchedule.map((p, i) => (
+                      <li key={i} className="px-3 py-2 text-[12px]">
+                        {edited ? (
+                          <PhaseEditor
+                            value={p}
+                            onChange={(field, value) =>
+                              updatePhase(i, field, value)
+                            }
+                            onRemove={() => removePhase(i)}
+                          />
+                        ) : (
+                          <PhaseStreamingView p={p} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
           </div>
 
-          {result && (
+          {edited && (
             <div className="mt-10 border-t border-line pt-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
                   설문 (Google Forms)
                 </h2>
                 <div className="flex items-center gap-2">
+                  {survey && surveyRows.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const csv = buildSurveyCsv(surveyRows);
+                          downloadBlob(
+                            new Blob(['﻿' + csv], {
+                              type: 'text/csv;charset=utf-8',
+                            }),
+                            `${survey.title || 'survey'}.csv`,
+                          );
+                        }}
+                        className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 [border-radius:4px]"
+                      >
+                        CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void downloadSurveyXlsx(
+                            surveyRows,
+                            survey.title || 'survey',
+                          )
+                        }
+                        className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 [border-radius:4px]"
+                      >
+                        XLSX
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
-                    onClick={() => requireAuth(() => void generateSurvey(result))}
+                    onClick={() => requireAuth(() => void generateSurvey())}
                     disabled={surveyRunning}
                     className="border border-ink bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
                   >
@@ -545,7 +809,8 @@ export function RecruitingBrief() {
                       <button
                         type="button"
                         onClick={() => {
-                          window.location.href = '/api/recruiting/google/start';
+                          window.location.href =
+                            '/api/recruiting/google/start';
                         }}
                         className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
                       >
@@ -596,81 +861,57 @@ export function RecruitingBrief() {
                 </div>
               )}
 
-              {(surveyRunning || surveyPartial) && (
-                <div className="mt-6 space-y-6">
-                  {surveyPartial?.title && (
-                    <div className="border border-line bg-paper p-4 [border-radius:4px]">
-                      <div className="text-[14px] font-semibold text-ink">
-                        {surveyPartial.title}
-                      </div>
-                      {surveyPartial.description && (
-                        <div className="mt-1 text-[12.5px] text-mute">
-                          {surveyPartial.description}
-                        </div>
-                      )}
+              {(surveyRunning || surveyRows.length > 0) && (
+                <div className="mt-6">
+                  {(surveyPartial?.title || survey?.title) && (
+                    <div className="mb-3 text-[13px] font-semibold text-ink">
+                      {survey?.title ?? surveyPartial?.title}
                     </div>
                   )}
-                  {(surveyPartial?.sections ?? []).map((section, sIdx) => {
-                    if (!section || typeof section !== 'object') return null;
-                    const questions = (section.questions ?? []).filter(
-                      (q): q is SurveyQuestion =>
-                        !!q &&
-                        typeof q.title === 'string' &&
-                        typeof q.kind === 'string',
-                    );
-                    return (
-                      <section
-                        key={sIdx}
-                        className="border border-line bg-paper [border-radius:4px]"
-                      >
-                        <header className="border-b border-line-soft px-4 py-2.5 text-[12.5px] font-semibold text-ink-2">
-                          {section.title || `섹션 ${sIdx + 1}`}
-                        </header>
-                        <ol className="divide-y divide-line-soft">
-                          {questions.map((q, qIdx) => (
-                            <li
-                              key={qIdx}
-                              className="px-4 py-3 text-[12.5px]"
-                            >
-                              <div className="flex flex-wrap items-baseline gap-2">
-                                <span className="text-[10.5px] uppercase tracking-[0.04em] text-mute-soft">
-                                  {QUESTION_KIND_LABEL[q.kind] ?? q.kind}
-                                </span>
-                                {q.required && (
-                                  <span className="border border-amore px-1.5 py-px text-[10px] text-amore [border-radius:3px]">
-                                    필수
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-1 font-semibold text-ink">
-                                {qIdx + 1}. {q.title}
-                              </div>
-                              {q.description && (
-                                <div className="mt-0.5 text-mute">
-                                  {q.description}
-                                </div>
-                              )}
-                              {q.options && q.options.length > 0 && (
-                                <ul className="mt-2 space-y-1 text-mute">
-                                  {q.options.map((opt, i) => (
-                                    <li key={i}>· {opt}</li>
-                                  ))}
-                                </ul>
-                              )}
-                              {q.kind === 'scale' && (
-                                <div className="mt-1 text-[11.5px] text-mute-soft">
-                                  {q.scaleMin}~{q.scaleMax}
-                                  {q.scaleMinLabel || q.scaleMaxLabel
-                                    ? ` (${q.scaleMinLabel} → ${q.scaleMaxLabel})`
-                                    : ''}
-                                </div>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      </section>
-                    );
-                  })}
+                  <div className="h-[480px] overflow-auto border border-line bg-paper [border-radius:4px]">
+                    <table className="w-full min-w-[760px] border-collapse text-[12px]">
+                      <thead className="sticky top-0 z-[1] bg-paper">
+                        <tr className="text-left">
+                          <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2 w-[42px]">
+                            #
+                          </th>
+                          <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2 w-[120px]">
+                            섹션
+                          </th>
+                          <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2">
+                            질문
+                          </th>
+                          <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2">
+                            옵션
+                          </th>
+                          <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2 w-[180px]">
+                            로직
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {surveyRows.map((r, i) => (
+                          <tr key={i} className="align-top">
+                            <td className="border-b border-line-soft px-3 py-2 tabular-nums text-mute">
+                              {r.index}
+                            </td>
+                            <td className="border-b border-line-soft px-3 py-2 text-mute">
+                              {r.section}
+                            </td>
+                            <td className="border-b border-line-soft px-3 py-2 text-ink-2">
+                              {r.question}
+                            </td>
+                            <td className="border-b border-line-soft px-3 py-2 text-ink-2">
+                              {r.option}
+                            </td>
+                            <td className="border-b border-line-soft px-3 py-2 text-mute-soft">
+                              {r.logic}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -684,6 +925,158 @@ export function RecruitingBrief() {
           hasResponsesScope={google.hasResponses}
         />
       )}
+    </div>
+  );
+}
+
+function CriterionStreamingView({ c }: { c: Criterion }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10.5px] uppercase tracking-[0.04em] text-mute-soft">
+          {c.category}
+        </span>
+        <span
+          className={
+            c.required
+              ? 'border border-amore px-1.5 py-px text-[10px] text-amore [border-radius:3px]'
+              : 'border border-line px-1.5 py-px text-[10px] text-mute [border-radius:3px]'
+          }
+        >
+          {c.required ? '필수' : '우대'}
+        </span>
+      </div>
+      <div className="mt-1 font-semibold text-ink">{c.label}</div>
+      <div className="mt-0.5 text-mute">{c.detail}</div>
+    </div>
+  );
+}
+
+function CriterionEditor({
+  value,
+  onChange,
+  onRemove,
+}: {
+  value: Criterion;
+  onChange: <K extends keyof Criterion>(field: K, val: Criterion[K]) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value.category}
+          onChange={(e) => onChange('category', e.target.value)}
+          placeholder="카테고리"
+          className="w-[140px] border border-line-soft bg-paper px-2 py-1 text-[10.5px] uppercase tracking-[0.04em] text-mute-soft focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        />
+        <label className="flex items-center gap-1 text-[10.5px] text-mute">
+          <input
+            type="checkbox"
+            checked={value.required}
+            onChange={(e) => onChange('required', e.target.checked)}
+            className="h-3 w-3"
+          />
+          필수
+        </label>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-auto text-[10.5px] text-mute hover:text-amore"
+        >
+          삭제
+        </button>
+      </div>
+      <input
+        type="text"
+        value={value.label}
+        onChange={(e) => onChange('label', e.target.value)}
+        placeholder="라벨"
+        className="w-full border border-line-soft bg-paper px-2 py-1 text-[12px] font-semibold text-ink focus:border-ink-2 focus:outline-none [border-radius:3px]"
+      />
+      <textarea
+        value={value.detail}
+        onChange={(e) => onChange('detail', e.target.value)}
+        placeholder="세부 설명"
+        rows={2}
+        className="w-full resize-none border border-line-soft bg-paper px-2 py-1 text-[12px] leading-[1.5] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
+      />
+    </div>
+  );
+}
+
+function PhaseStreamingView({ p }: { p: Phase }) {
+  const range =
+    !p.startDate && !p.endDate
+      ? '미정'
+      : p.startDate && p.endDate && p.startDate === p.endDate
+        ? p.startDate
+        : p.startDate && p.endDate
+          ? `${p.startDate} ~ ${p.endDate}`
+          : (p.startDate ?? p.endDate ?? '');
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-semibold text-ink">{p.phase}</span>
+        <span className="shrink-0 tabular-nums text-[11px] text-mute-soft">
+          {range}
+        </span>
+      </div>
+      {p.note && <div className="mt-1 text-[12px] text-mute">{p.note}</div>}
+    </div>
+  );
+}
+
+function PhaseEditor({
+  value,
+  onChange,
+  onRemove,
+}: {
+  value: Phase;
+  onChange: <K extends keyof Phase>(field: K, val: Phase[K]) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value.phase}
+          onChange={(e) => onChange('phase', e.target.value)}
+          placeholder="단계명"
+          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12px] font-semibold text-ink focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-[10.5px] text-mute hover:text-amore"
+        >
+          삭제
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="date"
+          value={value.startDate ?? ''}
+          onChange={(e) => onChange('startDate', e.target.value || null)}
+          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[11.5px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        />
+        <span className="text-[11px] text-mute-soft">~</span>
+        <input
+          type="date"
+          value={value.endDate ?? ''}
+          onChange={(e) => onChange('endDate', e.target.value || null)}
+          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[11.5px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        />
+      </div>
+      <input
+        type="text"
+        value={value.note}
+        onChange={(e) => onChange('note', e.target.value)}
+        placeholder="메모"
+        className="w-full border border-line-soft bg-paper px-2 py-1 text-[12px] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
+      />
     </div>
   );
 }
