@@ -94,7 +94,7 @@ export function CreditsUsagePredictor() {
   }
 
   return (
-    <section className="mt-12">
+    <section className="mt-12 max-w-[560px]">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
