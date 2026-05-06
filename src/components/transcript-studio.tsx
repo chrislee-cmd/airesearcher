@@ -282,7 +282,7 @@ export function TranscriptStudio() {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-3">
+          <div data-coach="quotes:language" className="flex items-center gap-3">
             <label
               htmlFor="transcript-language"
               className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
@@ -305,6 +305,7 @@ export function TranscriptStudio() {
           </div>
         </div>
         <div
+          data-coach="quotes:upload"
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -443,7 +444,7 @@ function JobRow({
           )}
         </div>
         {job.status === 'done' && (
-          <div className="flex items-center gap-2">
+          <div data-coach="quotes:download" className="flex items-center gap-2">
             <a
               href={`/api/transcripts/jobs/${job.id}/download/md`}
               className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"

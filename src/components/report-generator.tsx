@@ -323,6 +323,7 @@ export function ReportGenerator() {
       </p>
 
       <div
+        data-coach="reports:upload"
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -387,11 +388,12 @@ export function ReportGenerator() {
         </ul>
       )}
 
-      <div className="mt-4 flex items-center justify-end gap-3">
+      <div data-coach="reports:preview" className="mt-4 flex items-center justify-end gap-3">
         <span className="text-[11px] tabular-nums text-mute-soft">
           {files.length}개 파일
         </span>
         <button
+          data-coach="reports:generate"
           onClick={onClickRun}
           disabled={!canRun}
           className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"

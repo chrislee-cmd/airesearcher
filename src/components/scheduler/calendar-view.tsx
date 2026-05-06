@@ -95,7 +95,7 @@ export function CalendarView({
   }
 
   return (
-    <section className="border border-line bg-paper p-5 [border-radius:4px]">
+    <section data-coach="scheduler:calendar" className="border border-line bg-paper p-5 [border-radius:4px]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
