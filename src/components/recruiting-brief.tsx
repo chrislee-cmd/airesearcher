@@ -12,12 +12,14 @@ import { parsePartialJson } from 'ai';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useGenerationJobs } from './generation-job-provider';
+import { RecruitingResponses } from './recruiting-responses';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
 type GoogleStatus = {
   connected: boolean;
   email: string | null;
+  hasResponses: boolean;
 };
 
 type PartialSurvey = Partial<Survey> & {
@@ -104,6 +106,9 @@ export function RecruitingBrief() {
     responderUri: string;
     editUri: string;
   } | null>(null);
+  // Bumped each time we publish a new form so the responses panel
+  // refetches its list without polling /list on a tight loop.
+  const [publishVersion, setPublishVersion] = useState(0);
   const [publishError, setPublishError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
@@ -125,7 +130,11 @@ export function RecruitingBrief() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (!cancelled && j) {
-          setGoogle({ connected: !!j.connected, email: j.email ?? null });
+          setGoogle({
+            connected: !!j.connected,
+            email: j.email ?? null,
+            hasResponses: !!j.hasResponses,
+          });
         }
       })
       .catch(() => {});
@@ -202,6 +211,7 @@ export function RecruitingBrief() {
         throw new Error(j.error ?? `publish_failed: ${res.statusText}`);
       }
       setPublished(j);
+      setPublishVersion((v) => v + 1);
       track('generate_success', { feature: 'recruiting_publish' });
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : 'publish_failed');
@@ -666,6 +676,13 @@ export function RecruitingBrief() {
             </div>
           )}
         </div>
+      )}
+
+      {google?.connected && (
+        <RecruitingResponses
+          publishVersion={publishVersion}
+          hasResponsesScope={google.hasResponses}
+        />
       )}
     </div>
   );

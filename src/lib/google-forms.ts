@@ -2,6 +2,52 @@ import type { Survey, SurveyQuestion } from './survey-schema';
 
 const FORMS_BASE = 'https://forms.googleapis.com/v1/forms';
 
+export type FormColumn = {
+  questionId: string;
+  itemId: string;
+  title: string;
+};
+
+export type FormResponseRow = {
+  responseId: string;
+  createTime: string;
+  lastSubmittedTime: string;
+  // questionId → joined string answer (multi-select gets ", "-joined)
+  answers: Record<string, string>;
+};
+
+export type FormResponses = {
+  formId: string;
+  title: string;
+  columns: FormColumn[];
+  rows: FormResponseRow[];
+};
+
+// Minimal slice of the forms.googleapis.com schema we read.
+type FormItem = {
+  itemId?: string;
+  title?: string;
+  questionItem?: { question?: { questionId?: string } };
+  pageBreakItem?: unknown;
+  textItem?: unknown;
+};
+type FormGetResponse = {
+  formId: string;
+  info?: { title?: string; documentTitle?: string };
+  items?: FormItem[];
+};
+type AnswerValue = { answers?: { value?: string }[] };
+type FormResponse = {
+  responseId: string;
+  createTime: string;
+  lastSubmittedTime: string;
+  answers?: Record<string, { textAnswers?: AnswerValue }>;
+};
+type ResponsesListBody = {
+  responses?: FormResponse[];
+  nextPageToken?: string;
+};
+
 type CreateItemRequest = { createItem: { item: Record<string, unknown>; location: { index: number } } };
 type UpdateFormInfoRequest = {
   updateFormInfo: { info: { description?: string }; updateMask: string };
@@ -160,5 +206,98 @@ export async function createGoogleForm(
     formId: created.formId,
     responderUri: created.responderUri ?? `https://docs.google.com/forms/d/${created.formId}/viewform`,
     editUri: `https://docs.google.com/forms/d/${created.formId}/edit`,
+  };
+}
+
+async function fetchFormSchema(
+  accessToken: string,
+  formId: string,
+): Promise<FormGetResponse> {
+  const res = await fetch(`${FORMS_BASE}/${formId}`, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`forms_get_failed: ${res.status} ${txt}`);
+  }
+  return (await res.json()) as FormGetResponse;
+}
+
+async function fetchAllResponses(
+  accessToken: string,
+  formId: string,
+): Promise<FormResponse[]> {
+  const all: FormResponse[] = [];
+  let pageToken: string | undefined;
+  // Forms API caps page size at 5000 — usually one page is enough but
+  // we paginate defensively in case a recruit form goes wider than that.
+  do {
+    const url = new URL(`${FORMS_BASE}/${formId}/responses`);
+    url.searchParams.set('pageSize', '5000');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const res = await fetch(url, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`forms_responses_failed: ${res.status} ${txt}`);
+    }
+    const body = (await res.json()) as ResponsesListBody;
+    if (body.responses) all.push(...body.responses);
+    pageToken = body.nextPageToken;
+  } while (pageToken);
+  return all;
+}
+
+export async function getFormResponses(
+  accessToken: string,
+  formId: string,
+): Promise<FormResponses> {
+  const [schema, raw] = await Promise.all([
+    fetchFormSchema(accessToken, formId),
+    fetchAllResponses(accessToken, formId),
+  ]);
+
+  // Build a stable column order from the form items: only items that
+  // are actual questions (skip page breaks / text/section headers).
+  const columns: FormColumn[] = [];
+  for (const item of schema.items ?? []) {
+    const q = item.questionItem?.question;
+    if (q?.questionId && item.itemId && item.title) {
+      columns.push({
+        questionId: q.questionId,
+        itemId: item.itemId,
+        title: item.title,
+      });
+    }
+  }
+
+  const rows: FormResponseRow[] = raw.map((r) => {
+    const answers: Record<string, string> = {};
+    for (const [questionId, ans] of Object.entries(r.answers ?? {})) {
+      const values = ans.textAnswers?.answers ?? [];
+      answers[questionId] = values
+        .map((v) => v.value ?? '')
+        .filter(Boolean)
+        .join(', ');
+    }
+    return {
+      responseId: r.responseId,
+      createTime: r.createTime,
+      lastSubmittedTime: r.lastSubmittedTime,
+      answers,
+    };
+  });
+
+  // Newest responses first — recruiters care about latest signups.
+  rows.sort((a, b) =>
+    a.lastSubmittedTime < b.lastSubmittedTime ? 1 : -1,
+  );
+
+  return {
+    formId: schema.formId,
+    title: schema.info?.title ?? '',
+    columns,
+    rows,
   };
 }

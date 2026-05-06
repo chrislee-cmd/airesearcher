@@ -7,13 +7,27 @@ const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 // forms.body is the minimum scope to create + edit a form via the API.
-// userinfo.email is captured so we can show the user which Google
-// account is connected without an extra round-trip later.
+// forms.responses.readonly lets the recruiting page sync responses back
+// from the published form. userinfo.email is captured so we can show
+// the user which Google account is connected without an extra round-
+// trip later.
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/forms.body',
+  'https://www.googleapis.com/auth/forms.responses.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
   'openid',
 ];
+
+// Existing connected users have an older `scope` string lacking this
+// entry; the UI checks via `hasResponsesScope` and prompts to reconnect
+// rather than letting response fetches silently 403.
+export const RESPONSES_SCOPE =
+  'https://www.googleapis.com/auth/forms.responses.readonly';
+
+export function hasResponsesScope(stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  return stored.split(/\s+/).includes(RESPONSES_SCOPE);
+}
 
 export function getGoogleEnv() {
   const clientId = process.env.GOOGLE_CLIENT_ID;

@@ -41,6 +41,15 @@ export async function POST(request: Request) {
 
   try {
     const result = await createGoogleForm(accessToken, parsed.data.survey);
+    // Persist so the responses panel can render across refreshes and
+    // the auto-poll knows which forms to fetch for this user.
+    await admin.from('recruiting_forms').upsert({
+      form_id: result.formId,
+      user_id: user.id,
+      title: parsed.data.survey.title || '',
+      responder_uri: result.responderUri,
+      edit_uri: result.editUri,
+    });
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'forms_create_failed';
