@@ -11,6 +11,7 @@ import {
 } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
+import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
 function safeFilename(title: string) {
   const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
@@ -48,15 +49,20 @@ export function TranscriptStudio() {
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
+  const [modelKey, setModelKey] = useState<string>(DEFAULT_MODEL_KEY);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `runUploads` is captured once. We mirror live state into refs so
-  // the captured runUploads still reads the current language.
+  // the captured runUploads still reads the current language/model.
   const languageRef = useRef<string>(language);
+  const modelRef = useRef<string>(modelKey);
   useEffect(() => {
     languageRef.current = language;
   }, [language]);
+  useEffect(() => {
+    modelRef.current = modelKey;
+  }, [modelKey]);
 
   // Default the selector to the browser locale on mount. SSR-safe — initial
   // value is "multi" so the server and first client render agree.
@@ -146,6 +152,7 @@ export function TranscriptStudio() {
               mime_type: file.type || undefined,
               size_bytes: file.size,
               language: languageRef.current,
+              model: modelRef.current,
             }),
           });
           if (!startRes.ok) {
@@ -155,6 +162,7 @@ export function TranscriptStudio() {
           track('transcript_start', {
             type: file.type,
             size: file.size,
+            model: modelRef.current,
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'upload_failed';
@@ -225,26 +233,49 @@ export function TranscriptStudio() {
   return (
     <div className="space-y-8">
       <section>
-        <div className="mb-3 flex items-center gap-3">
-          <label
-            htmlFor="transcript-language"
-            className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
-          >
-            언어
-          </label>
-          <select
-            id="transcript-language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            disabled={busyUpload}
-            className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.flag} {l.label} ({l.code})
-              </option>
-            ))}
-          </select>
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="transcript-model"
+              className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
+            >
+              모델
+            </label>
+            <select
+              id="transcript-model"
+              value={modelKey}
+              onChange={(e) => setModelKey(e.target.value)}
+              disabled={busyUpload}
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
+            >
+              {TRANSCRIPT_MODELS.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="transcript-language"
+              className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
+            >
+              언어
+            </label>
+            <select
+              id="transcript-language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              disabled={busyUpload}
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.label} ({l.code})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div
           onDragOver={onDragOver}
