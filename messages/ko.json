@@ -67,6 +67,11 @@
     "noActiveOrg": "조직 정보를 불러오는 중이거나 로그인이 필요합니다.",
     "delete": "삭제"
   },
+  "ComingSoon": {
+    "eyebrow": "준비 중",
+    "toast": "출시 준비중이에요",
+    "body": "이 기능은 곧 만나보실 수 있어요. 준비가 끝나면 가장 먼저 알려드릴게요."
+  },
   "Common": {
     "language": "언어",
     "korean": "한국어",

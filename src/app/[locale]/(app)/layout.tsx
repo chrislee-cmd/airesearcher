@@ -12,6 +12,7 @@ import { WorkspacePanel } from '@/components/workspace-panel';
 import { WorkspaceBridge } from '@/components/workspace-bridge';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
+import { ToastProvider } from '@/components/toast-provider';
 
 export default async function AppLayout({
   children,
@@ -32,6 +33,7 @@ export default async function AppLayout({
 
   return (
     <PaywallProvider>
+     <ToastProvider>
      <InterviewJobProvider>
       <TranscriptJobProvider>
        <DeskJobProvider>
@@ -53,6 +55,7 @@ export default async function AppLayout({
        </DeskJobProvider>
       </TranscriptJobProvider>
      </InterviewJobProvider>
+     </ToastProvider>
     </PaywallProvider>
   );
 }
