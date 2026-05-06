@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   FEATURES,
   FEATURE_GROUPS,
+  PREVIEW_FEATURES,
   type FeatureKey,
   type FeatureGroupKey,
 } from '@/lib/features';
@@ -24,13 +25,23 @@ type Props = {
   email: string | null;
   credits: number | null;
   isAuthed: boolean;
+  // Preview features (recruiting / transcripts script-gen / survey /
+  // analyzer) are dev-in-progress and stay hidden from regular users.
+  // Flipped on for super-admin orgs (organizations.is_unlimited).
+  showPreviewFeatures?: boolean;
 };
 
 const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
 
 const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
 
-export function Sidebar({ projects, email, credits, isAuthed }: Props) {
+export function Sidebar({
+  projects,
+  email,
+  credits,
+  isAuthed,
+  showPreviewFeatures = false,
+}: Props) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
   const tProjects = useTranslations('Projects');
@@ -212,7 +223,12 @@ export function Sidebar({ projects, email, credits, isAuthed }: Props) {
               </button>
               {!isCollapsed && (
                 <ul className="mt-0.5">
-                  {g.features.map((key) => {
+                  {g.features
+                    .filter(
+                      (key) =>
+                        showPreviewFeatures || !PREVIEW_FEATURES.has(key),
+                    )
+                    .map((key) => {
                     const f = FEATURE_BY_KEY.get(key);
                     if (!f) return null;
                     const active = pathname === f.href;
