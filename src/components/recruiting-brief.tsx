@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -12,6 +13,28 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
+import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
+
+type GoogleStatus = {
+  connected: boolean;
+  email: string | null;
+};
+
+type PartialSurvey = Partial<Survey> & {
+  sections?: Partial<{
+    title: string;
+    questions: Partial<SurveyQuestion>[];
+  }>[];
+};
+
+const QUESTION_KIND_LABEL: Record<SurveyQuestion['kind'], string> = {
+  short_answer: '단답',
+  long_answer: '장문',
+  single_choice: '단일 선택',
+  multi_choice: '복수 선택',
+  dropdown: '드롭다운',
+  scale: '척도',
+};
 
 const ACCEPT = '.pdf,.docx,.xlsx,.xls,.csv,.txt';
 const ACCEPT_RE = /\.(pdf|docx|xlsx|xls|csv|txt)$/i;
@@ -69,12 +92,123 @@ export function RecruitingBrief() {
   const [rejected, setRejected] = useState<string[]>([]);
   const [partial, setPartial] = useState<PartialBrief | null>(null);
 
+  const [survey, setSurvey] = useState<Survey | null>(null);
+  const [surveyPartial, setSurveyPartial] = useState<PartialSurvey | null>(null);
+  const [surveyRunning, setSurveyRunning] = useState(false);
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+
+  const [google, setGoogle] = useState<GoogleStatus | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<{
+    formId: string;
+    responderUri: string;
+    editUri: string;
+  } | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get('google');
+    if (!g || g === 'connected') return null;
+    return `Google 연결 실패: ${g}`;
+  });
+
   const job = jobs.get('recruiting');
   const running = job.status === 'running';
   const result =
     job.status === 'done' ? (job.result as RecruitingBrief | null) : null;
   const errorMessage =
     job.status === 'error' ? job.error ?? 'unknown_error' : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/recruiting/google/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!cancelled && j) {
+          setGoogle({ connected: !!j.connected, email: j.email ?? null });
+        }
+      })
+      .catch(() => {});
+    // Strip the one-shot ?google=… query so a refresh doesn't replay the
+    // notice. The error itself is captured at mount via the useState
+    // initializer above, which keeps this effect free of setState.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('google')) {
+        params.delete('google');
+        const next =
+          window.location.pathname +
+          (params.toString() ? `?${params.toString()}` : '');
+        window.history.replaceState(null, '', next);
+      }
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function generateSurvey(brief: RecruitingBrief) {
+    setSurvey(null);
+    setSurveyPartial(null);
+    setSurveyError(null);
+    setPublished(null);
+    setSurveyRunning(true);
+    track('generate_clicked', { feature: 'recruiting_survey' });
+    try {
+      const res = await fetch('/api/recruiting/survey', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ brief }),
+      });
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `survey_failed: ${res.statusText}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parsed = await parsePartialJson(buffer);
+        if (parsed.value && typeof parsed.value === 'object') {
+          setSurveyPartial(parsed.value as PartialSurvey);
+        }
+      }
+      const finalSurvey = JSON.parse(buffer) as Survey;
+      setSurvey(finalSurvey);
+      setSurveyPartial(finalSurvey);
+      track('generate_success', { feature: 'recruiting_survey' });
+    } catch (e) {
+      setSurveyError(e instanceof Error ? e.message : 'survey_failed');
+    } finally {
+      setSurveyRunning(false);
+    }
+  }
+
+  async function publishToGoogle() {
+    if (!survey) return;
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await fetch('/api/recruiting/google/forms/create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ survey }),
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        throw new Error(j.error ?? `publish_failed: ${res.statusText}`);
+      }
+      setPublished(j);
+      track('generate_success', { feature: 'recruiting_publish' });
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : 'publish_failed');
+    } finally {
+      setPublishing(false);
+    }
+  }
 
   function addFiles(incoming: FileList | File[]) {
     const accepted: File[] = [];
@@ -367,6 +501,170 @@ export function RecruitingBrief() {
               )}
             </section>
           </div>
+
+          {result && (
+            <div className="mt-10 border-t border-line pt-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+                  설문 (Google Forms)
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => requireAuth(() => void generateSurvey(result))}
+                    disabled={surveyRunning}
+                    className="border border-ink bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                  >
+                    {surveyRunning
+                      ? '생성 중…'
+                      : survey
+                        ? '재생성'
+                        : '설문 생성'}
+                  </button>
+                  {survey &&
+                    (google?.connected ? (
+                      <button
+                        type="button"
+                        onClick={() => void publishToGoogle()}
+                        disabled={publishing}
+                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                      >
+                        {publishing ? '발행 중…' : 'Google Forms로 발행'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = '/api/recruiting/google/start';
+                        }}
+                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+                      >
+                        Google 계정 연결
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {google && (
+                <p className="mt-2 text-[11px] text-mute-soft">
+                  {google.connected
+                    ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
+                    : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                </p>
+              )}
+              {surveyError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  설문 생성 오류: {surveyError}
+                </div>
+              )}
+              {publishError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  발행 오류: {publishError}
+                </div>
+              )}
+              {published && (
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] [border-radius:4px]">
+                  <div className="font-semibold text-ink">발행 완료</div>
+                  <div className="mt-1 flex flex-wrap gap-3 text-[12px]">
+                    <a
+                      href={published.editUri}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-amore underline-offset-2 hover:underline"
+                    >
+                      편집 화면 열기
+                    </a>
+                    <a
+                      href={published.responderUri}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-ink-2 underline-offset-2 hover:underline"
+                    >
+                      응답 폼 열기
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {(surveyRunning || surveyPartial) && (
+                <div className="mt-6 space-y-6">
+                  {surveyPartial?.title && (
+                    <div className="border border-line bg-paper p-4 [border-radius:4px]">
+                      <div className="text-[14px] font-semibold text-ink">
+                        {surveyPartial.title}
+                      </div>
+                      {surveyPartial.description && (
+                        <div className="mt-1 text-[12.5px] text-mute">
+                          {surveyPartial.description}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(surveyPartial?.sections ?? []).map((section, sIdx) => {
+                    if (!section || typeof section !== 'object') return null;
+                    const questions = (section.questions ?? []).filter(
+                      (q): q is SurveyQuestion =>
+                        !!q &&
+                        typeof q.title === 'string' &&
+                        typeof q.kind === 'string',
+                    );
+                    return (
+                      <section
+                        key={sIdx}
+                        className="border border-line bg-paper [border-radius:4px]"
+                      >
+                        <header className="border-b border-line-soft px-4 py-2.5 text-[12.5px] font-semibold text-ink-2">
+                          {section.title || `섹션 ${sIdx + 1}`}
+                        </header>
+                        <ol className="divide-y divide-line-soft">
+                          {questions.map((q, qIdx) => (
+                            <li
+                              key={qIdx}
+                              className="px-4 py-3 text-[12.5px]"
+                            >
+                              <div className="flex flex-wrap items-baseline gap-2">
+                                <span className="text-[10.5px] uppercase tracking-[0.04em] text-mute-soft">
+                                  {QUESTION_KIND_LABEL[q.kind] ?? q.kind}
+                                </span>
+                                {q.required && (
+                                  <span className="border border-amore px-1.5 py-px text-[10px] text-amore [border-radius:3px]">
+                                    필수
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 font-semibold text-ink">
+                                {qIdx + 1}. {q.title}
+                              </div>
+                              {q.description && (
+                                <div className="mt-0.5 text-mute">
+                                  {q.description}
+                                </div>
+                              )}
+                              {q.options && q.options.length > 0 && (
+                                <ul className="mt-2 space-y-1 text-mute">
+                                  {q.options.map((opt, i) => (
+                                    <li key={i}>· {opt}</li>
+                                  ))}
+                                </ul>
+                              )}
+                              {q.kind === 'scale' && (
+                                <div className="mt-1 text-[11.5px] text-mute-soft">
+                                  {q.scaleMin}~{q.scaleMax}
+                                  {q.scaleMinLabel || q.scaleMaxLabel
+                                    ? ` (${q.scaleMinLabel} → ${q.scaleMaxLabel})`
+                                    : ''}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ol>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
