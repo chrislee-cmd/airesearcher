@@ -1,0 +1,352 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  FormColumn,
+  FormResponseRow,
+  FormResponses,
+} from '@/lib/google-forms';
+
+type PublishedForm = {
+  formId: string;
+  title: string;
+  responderUri: string;
+  editUri: string;
+  createdAt: string;
+};
+
+type Props = {
+  // Bumped by the parent every time a new form is published so we can
+  // refresh the list without polling /list on a tight loop.
+  publishVersion: number;
+  // null = unknown yet, false = connected but old scope.
+  hasResponsesScope: boolean | null;
+};
+
+const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes per spec
+
+function formatTime(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function escapeCsvCell(s: string): string {
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function buildCsv(data: FormResponses): string {
+  const header = ['응답시각', ...data.columns.map((c) => c.title)];
+  const rows = data.rows.map((r) => [
+    formatTime(r.lastSubmittedTime),
+    ...data.columns.map((c) => r.answers[c.questionId] ?? ''),
+  ]);
+  return [header, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(','))
+    .join('\n');
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+async function downloadXlsx(data: FormResponses, baseName: string) {
+  const XLSX = await import('xlsx');
+  const header = ['응답시각', ...data.columns.map((c) => c.title)];
+  const aoa: (string | number)[][] = [
+    header,
+    ...data.rows.map((r) => [
+      formatTime(r.lastSubmittedTime),
+      ...data.columns.map((c) => r.answers[c.questionId] ?? ''),
+    ]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Responses');
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  downloadBlob(
+    new Blob([buf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+    `${baseName}.xlsx`,
+  );
+}
+
+type ResponseState = {
+  data: FormResponses | null;
+  loading: boolean;
+  error: string | null;
+  syncedAt: number | null;
+};
+
+export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props) {
+  const [forms, setForms] = useState<PublishedForm[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [responses, setResponses] = useState<Record<string, ResponseState>>({});
+
+  const fetchList = useCallback(async () => {
+    try {
+      const res = await fetch('/api/recruiting/google/forms/list');
+      if (!res.ok) {
+        if (res.status === 401) return; // not signed in yet — silent
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `list_failed: ${res.statusText}`);
+      }
+      const j = (await res.json()) as { forms: PublishedForm[] };
+      setForms(j.forms);
+      setListError(null);
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : 'list_failed');
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchList();
+  }, [fetchList, publishVersion]);
+
+  const fetchResponses = useCallback(
+    async (formId: string) => {
+      setResponses((prev) => ({
+        ...prev,
+        [formId]: {
+          data: prev[formId]?.data ?? null,
+          loading: true,
+          error: null,
+          syncedAt: prev[formId]?.syncedAt ?? null,
+        },
+      }));
+      try {
+        const res = await fetch(
+          `/api/recruiting/google/forms/${encodeURIComponent(formId)}/responses`,
+        );
+        const j = await res.json();
+        if (!res.ok) {
+          throw new Error(j.error ?? `responses_failed: ${res.statusText}`);
+        }
+        setResponses((prev) => ({
+          ...prev,
+          [formId]: {
+            data: j as FormResponses,
+            loading: false,
+            error: null,
+            syncedAt: Date.now(),
+          },
+        }));
+      } catch (e) {
+        setResponses((prev) => ({
+          ...prev,
+          [formId]: {
+            data: prev[formId]?.data ?? null,
+            loading: false,
+            error: e instanceof Error ? e.message : 'responses_failed',
+            syncedAt: prev[formId]?.syncedAt ?? null,
+          },
+        }));
+      }
+    },
+    [],
+  );
+
+  // Auto-poll every 30 min while the tab is visible. We pull all forms
+  // sequentially to stay well under the Forms API per-user quota.
+  const formsRef = useRef<PublishedForm[] | null>(null);
+  formsRef.current = forms;
+  useEffect(() => {
+    if (!hasResponsesScope) return;
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      const list = formsRef.current ?? [];
+      for (const f of list) void fetchResponses(f.formId);
+    };
+    const id = window.setInterval(tick, POLL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [fetchResponses, hasResponsesScope]);
+
+  if (!forms || forms.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-10 border-t border-line pt-8">
+      <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+        발행한 폼 응답
+      </h2>
+      <p className="mt-1 text-[11px] text-mute-soft">
+        30분마다 자동 동기화되며, 새로고침 버튼으로 즉시 갱신할 수 있습니다.
+      </p>
+      {listError && (
+        <div className="mt-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
+          폼 목록 로드 오류: {listError}
+        </div>
+      )}
+      {hasResponsesScope === false && (
+        <div className="mt-3 border border-line-soft bg-paper p-3 text-[12px] text-ink-2 [border-radius:4px]">
+          응답 동기화는 새 권한이 필요합니다.{' '}
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/recruiting/google/start';
+            }}
+            className="text-amore underline-offset-2 hover:underline"
+          >
+            Google 재연결
+          </button>
+        </div>
+      )}
+
+      <ul className="mt-5 space-y-6">
+        {forms.map((f) => {
+          const state = responses[f.formId];
+          return (
+            <li key={f.formId} className="border border-line bg-paper [border-radius:4px]">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold text-ink">
+                    {f.title || '(제목 없음)'}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-mute-soft">
+                    <span>발행 {formatTime(f.createdAt)}</span>
+                    <a
+                      href={f.editUri}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-mute hover:text-ink-2 hover:underline"
+                    >
+                      편집
+                    </a>
+                    <a
+                      href={f.responderUri}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-mute hover:text-ink-2 hover:underline"
+                    >
+                      응답 폼
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="tabular-nums text-[11px] text-mute-soft">
+                    {state?.syncedAt
+                      ? `동기화 ${formatTime(new Date(state.syncedAt).toISOString())}`
+                      : '아직 동기화 안 됨'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void fetchResponses(f.formId)}
+                    disabled={state?.loading || hasResponsesScope === false}
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                  >
+                    {state?.loading ? '동기화 중…' : '새로고침'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!state?.data) return;
+                      const csv = buildCsv(state.data);
+                      downloadBlob(
+                        new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }),
+                        `${f.title || 'responses'}.csv`,
+                      );
+                    }}
+                    disabled={!state?.data || state.data.rows.length === 0}
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                  >
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!state?.data) return;
+                      void downloadXlsx(state.data, f.title || 'responses');
+                    }}
+                    disabled={!state?.data || state.data.rows.length === 0}
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                  >
+                    XLSX
+                  </button>
+                </div>
+              </header>
+
+              {state?.error && (
+                <div className="border-b border-line-soft bg-amore-bg px-4 py-2 text-[12px] text-amore">
+                  오류: {state.error}
+                </div>
+              )}
+
+              {state?.data ? (
+                state.data.rows.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-[12px] text-mute-soft">
+                    아직 수집된 응답이 없습니다.
+                  </div>
+                ) : (
+                  <ResponseTable columns={state.data.columns} rows={state.data.rows} />
+                )
+              ) : (
+                <div className="px-4 py-6 text-center text-[12px] text-mute-soft">
+                  새로고침을 눌러 응답을 불러오세요.
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function ResponseTable({
+  columns,
+  rows,
+}: {
+  columns: FormColumn[];
+  rows: FormResponseRow[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] border-collapse text-[12px]">
+        <thead>
+          <tr className="bg-paper text-left">
+            <th className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2">
+              응답시각
+            </th>
+            {columns.map((c) => (
+              <th
+                key={c.questionId}
+                className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2"
+              >
+                {c.title}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.responseId} className="align-top">
+              <td className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
+                {formatTime(r.lastSubmittedTime)}
+              </td>
+              {columns.map((c) => (
+                <td
+                  key={c.questionId}
+                  className="border-b border-line-soft px-3 py-2 text-ink-2"
+                >
+                  {r.answers[c.questionId] ?? ''}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
