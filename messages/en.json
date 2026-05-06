@@ -297,7 +297,7 @@
     "recruiting": {
       "title": "Recruiting",
       "description": "Upload an RFP, brief, or email and extract participant criteria and study schedule, broken down item by item.",
-      "cost": "1 credit"
+      "cost": "10 credits / sample"
     },
     "survey": {
       "title": "AI Survey",
@@ -307,7 +307,7 @@
     "quant": {
       "title": "Quantitative Analysis",
       "description": "Upload a CSV/XLSX of survey responses and explore question × banner cross-tabs interactively.",
-      "cost": "1 credit"
+      "cost": "15 credits"
     },
     "affinity_bubble": {
       "title": "Affinity Bubble",
@@ -360,6 +360,15 @@
     "contactSales": "Contact sales",
     "schemeTitle": "Credits per feature",
     "schemeNote": "The four marquee features (Transcript, Interview Result, Desk Research, Full Report) carry the variable-cost pricing. Interviews ≤ 90 min recommended. Participant Scheduler is free in normal use; CSV uploads incur a 5-credit auto-match charge.",
+    "predictorTitle": "Usage simulator",
+    "predictorSubtitle": "Pick a bundle and drag the sliders to model your usage. Spending more on one feature naturally leaves less for the others.",
+    "predictorBudgetLabel": "Spent / Budget",
+    "predictorRemaining": "{count} credits remaining",
+    "predictorPerUse": "{cost} credits / use",
+    "predictorUses": "{count} uses",
+    "predictorAtCap": "Not enough budget left to increase this — reduce another feature first.",
+    "predictorResetEven": "Even split",
+    "predictorResetZero": "Reset to zero",
     "comingSoonTitle": "Payments not wired yet",
     "comingSoonBody": "Until the gateway is integrated, top-ups go through the billing team. Email us with the credit amount you want and we'll process it within one business day.",
     "contactEmail": "billing@meteor-research.com",

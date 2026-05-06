@@ -2,10 +2,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
-import { FEATURES, FEATURE_GROUPS } from '@/lib/features';
 import { CreditsBundles } from '@/components/credits-bundles';
-
-const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
+import { CreditsUsagePredictor } from '@/components/credits-usage-predictor';
 
 export default async function CreditsPage({
   params,
@@ -16,8 +14,6 @@ export default async function CreditsPage({
   setRequestLocale(locale);
 
   const t = await getTranslations('Credits');
-  const tSidebar = await getTranslations('Sidebar');
-  const tFeatures = await getTranslations('Features');
 
   const supabase = await createClient();
   const {
@@ -58,34 +54,7 @@ export default async function CreditsPage({
 
       <CreditsBundles />
 
-      <section className="mt-12">
-        <h2 className="border-b border-line pb-2 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-          {t('schemeTitle')}
-        </h2>
-        <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURE_GROUPS.flatMap((g) =>
-            g.features.map((key) => {
-              if (!FEATURE_BY_KEY.has(key)) return null;
-              return (
-                <div
-                  key={key}
-                  className="flex items-baseline justify-between border-b border-line-soft py-1.5"
-                >
-                  <span className="text-[12.5px] text-mute">
-                    {tSidebar(key)}
-                  </span>
-                  <span className="text-[12.5px] text-ink-2">
-                    {tFeatures(`${key}.cost`)}
-                  </span>
-                </div>
-              );
-            }),
-          )}
-        </div>
-        <p className="mt-4 max-w-[820px] text-[11.5px] leading-[1.7] text-mute-soft">
-          {t('schemeNote')}
-        </p>
-      </section>
+      <CreditsUsagePredictor />
     </div>
   );
 }
