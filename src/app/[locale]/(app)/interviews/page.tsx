@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { InterviewAnalyzer } from '@/components/interview-analyzer';
+import { Coachmark } from '@/components/coachmark';
 
 export default async function Page({
   params,
@@ -25,6 +26,7 @@ export default async function Page({
       </p>
 
       <div className="mt-8">
+        <Coachmark feature="interviews" />
         <InterviewAnalyzer />
       </div>
     </div>

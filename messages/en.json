@@ -72,6 +72,58 @@
     "toast": "This feature is on the way",
     "body": "We're putting the finishing touches on this one. We'll let you know the moment it's ready."
   },
+  "Coachmark": {
+    "eyebrow": "First time here?",
+    "dismiss": "Got it",
+    "desk": {
+      "title": "Desk research — quick start",
+      "steps": [
+        "Pick a target region and date range, then add at least one keyword. With a single keyword, the AI expands it into four similar keywords automatically.",
+        "Toggle sources — Naver, Daum, YouTube, Google News, etc. When you target a non-Korean region, Korea-only sources are hidden.",
+        "Hitting search runs the job in the background. The final report and charts auto-register in the workspace when done."
+      ]
+    },
+    "interviews": {
+      "title": "Interview result generator — flow",
+      "steps": [
+        "Step 1 — drop interview files (audio/video/text) and convert them to markdown. Audio and video are transcribed automatically.",
+        "Step 2 — run the analysis to extract shared questions and build a per-respondent matrix with summaries and VOC quotes.",
+        "Export the matrix as CSV/XLSX. The consolidated insights digest also auto-registers in the workspace."
+      ]
+    },
+    "reports": {
+      "title": "Full report generator — guide",
+      "steps": [
+        "Upload .docx, .md, or text files — interview transcripts, desk research, raw notes — and we'll synthesize them into a single report.",
+        "Generation costs 50 credits and is free during your trial window.",
+        "Outputs include an HTML preview, .docx, and .pptx, and the report is saved to your workspace automatically."
+      ]
+    },
+    "quotes": {
+      "title": "Transcript generator — getting started",
+      "steps": [
+        "Upload audio or video (mp3, m4a, wav, mp4, etc.) and Deepgram transcribes it automatically with multi-language detection.",
+        "Output is formatted as a markdown transcript with speaker diarization and timecodes.",
+        "Download as .docx, .md, or .csv, or send the transcript directly into the interview result generator."
+      ]
+    },
+    "scheduler": {
+      "title": "Participant scheduler — how to use",
+      "steps": [
+        "Enter the research window (date range, time, weekdays) and the calendar fills with candidate slots.",
+        "Add attendees manually or import a CSV/XLSX file, then click a slot to confirm a meeting time.",
+        "Confirmed schedules export as CSV/XLSX. The feature is free; only the CSV auto-match step costs 5 credits."
+      ]
+    },
+    "quant": {
+      "title": "Quantitative analysis — quick start",
+      "steps": [
+        "Upload a CSV/XLSX with one row per respondent and columns as questions/attributes. Headers in Korean, English, Japanese, etc. are detected automatically.",
+        "Choose a row (question) and column (banner — gender, age band, etc.) to render the cross-tab instantly.",
+        "Toggle between count, column %, and row % modes; export the cross-tab as CSV when done."
+      ]
+    }
+  },
   "Common": {
     "language": "Language",
     "korean": "한국어",
