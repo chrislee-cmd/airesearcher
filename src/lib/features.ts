@@ -31,12 +31,9 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'analyzer', href: '/analyzer', cost: 1 },
   { key: 'desk', href: '/desk', cost: 25 },
   { key: 'keywords', href: '/keywords', cost: 1 },
-  { key: 'recruiting', href: '/recruiting', cost: 1 },
+  { key: 'recruiting', href: '/recruiting', cost: 10 },
   { key: 'survey', href: '/survey', cost: 1 },
-  // Quantitative analyzer runs entirely client-side (CSV/XLSX parsing
-  // + crosstab in the browser), so the cost is symbolic rather than
-  // covering server compute.
-  { key: 'quant', href: '/quant', cost: 1 },
+  { key: 'quant', href: '/quant', cost: 15 },
   // Affinity Bubble is a partner showcase, not an in-app generator;
   // cost stays 0, the page just previews the offering and links out.
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },

@@ -297,7 +297,7 @@
     "recruiting": {
       "title": "Recruiting",
       "description": "Upload an RFP, brief, or email and extract participant criteria and study schedule, broken down item by item.",
-      "cost": "1 credit"
+      "cost": "10 credits / sample"
     },
     "survey": {
       "title": "AI Survey",
@@ -307,7 +307,7 @@
     "quant": {
       "title": "Quantitative Analysis",
       "description": "Upload a CSV/XLSX of survey responses and explore question × banner cross-tabs interactively.",
-      "cost": "1 credit"
+      "cost": "15 credits"
     },
     "affinity_bubble": {
       "title": "Affinity Bubble",

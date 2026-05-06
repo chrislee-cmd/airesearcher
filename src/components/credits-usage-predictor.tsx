@@ -4,8 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
-  FEATURES,
-  PREVIEW_FEATURES,
+  FEATURE_COSTS,
   type CreditBundleId,
   type FeatureKey,
 } from '@/lib/features';
@@ -17,11 +16,21 @@ const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   enterprise: 'bundleEnterprise',
 };
 
-// Only chargeable, non-preview features participate. Preview keys are hidden
-// from non-super-admin orgs anyway and 0-cost features have nothing to predict.
-const PREDICTOR_FEATURES = FEATURES.filter(
-  (f) => f.cost > 0 && !PREVIEW_FEATURES.has(f.key),
-);
+// Curated list shown in the simulator — the chargeable headline features only.
+// Sorted by descending per-use cost so the heaviest line items come first and
+// the trade-off ("one report ≈ five interviews") reads top-down.
+const PREDICTOR_FEATURE_KEYS: FeatureKey[] = [
+  'reports',
+  'desk',
+  'quotes',
+  'quant',
+  'recruiting',
+  'interviews',
+];
+const PREDICTOR_FEATURES = PREDICTOR_FEATURE_KEYS.map((key) => ({
+  key,
+  cost: FEATURE_COSTS[key],
+})).sort((a, b) => b.cost - a.cost);
 
 // "Enterprise" is contact-sales (priceKrw=null) and bundle-size 5,000 dwarfs the
 // rest of the UI; restrict the predictor to bundles with a real price.
@@ -170,7 +179,7 @@ export function CreditsUsagePredictor() {
       </div>
 
       {/* Per-feature sliders */}
-      <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+      <div className="mt-5 flex flex-col">
         {PREDICTOR_FEATURES.map((f) => {
           const count = counts[f.key] ?? 0;
           const others = totalSpent - count * f.cost;
