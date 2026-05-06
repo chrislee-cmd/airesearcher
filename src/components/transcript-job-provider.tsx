@@ -27,6 +27,7 @@ export type TranscriptJob = {
   speakers_count: number | null;
   status: TranscriptJobStatus;
   error_message: string | null;
+  provider: 'deepgram' | 'elevenlabs' | null;
   created_at: string;
   updated_at: string;
 };
