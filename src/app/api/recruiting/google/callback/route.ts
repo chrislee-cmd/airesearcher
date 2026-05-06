@@ -16,18 +16,29 @@ export async function GET(request: Request) {
   const state = url.searchParams.get('state') ?? '';
   const errorParam = url.searchParams.get('error');
 
+  // next-intl uses `localePrefix: 'always'` so every page route lives
+  // under /<locale>/. The user's preferred locale is in NEXT_LOCALE; fall
+  // back to the project default 'ko' if the cookie is missing.
+  const localeFromCookie = request.headers
+    .get('cookie')
+    ?.split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('NEXT_LOCALE='))
+    ?.slice('NEXT_LOCALE='.length);
+  const locale = localeFromCookie === 'en' ? 'en' : 'ko';
+  const back = (status: string) =>
+    new URL(`/${locale}/recruiting?google=${status}`, url);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(new URL('/recruiting?google=unauth', url));
+    return NextResponse.redirect(back('unauth'));
   }
   if (errorParam) {
-    return NextResponse.redirect(
-      new URL(`/recruiting?google=denied`, url),
-    );
+    return NextResponse.redirect(back('denied'));
   }
   if (!code) {
-    return NextResponse.redirect(new URL('/recruiting?google=missing_code', url));
+    return NextResponse.redirect(back('missing_code'));
   }
 
   const [stateUserId, nonce] = state.split('.');
@@ -43,22 +54,18 @@ export async function GET(request: Request) {
     stateUserId !== user.id ||
     cookieNonce !== nonce
   ) {
-    return NextResponse.redirect(new URL('/recruiting?google=bad_state', url));
+    return NextResponse.redirect(back('bad_state'));
   }
 
   let tokens;
   try {
     tokens = await exchangeCodeForTokens(code);
   } catch {
-    return NextResponse.redirect(
-      new URL('/recruiting?google=token_exchange_failed', url),
-    );
+    return NextResponse.redirect(back('token_exchange_failed'));
   }
 
   if (!tokens.refresh_token) {
-    return NextResponse.redirect(
-      new URL('/recruiting?google=no_refresh_token', url),
-    );
+    return NextResponse.redirect(back('no_refresh_token'));
   }
 
   const email = decodeIdTokenEmail(tokens.id_token);
@@ -71,12 +78,10 @@ export async function GET(request: Request) {
     updated_at: new Date().toISOString(),
   });
   if (error) {
-    return NextResponse.redirect(
-      new URL('/recruiting?google=store_failed', url),
-    );
+    return NextResponse.redirect(back('store_failed'));
   }
 
-  const res = NextResponse.redirect(new URL('/recruiting?google=connected', url));
+  const res = NextResponse.redirect(back('connected'));
   // Clear the nonce cookie now that we've consumed it.
   res.cookies.set('g_oauth_nonce', '', { path: '/', maxAge: 0 });
   return res;
