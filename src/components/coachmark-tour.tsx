@@ -136,18 +136,37 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
     return null;
   }
 
-  // Tooltip placement: prefer below the spotlight, flip up if too close to
-  // the bottom edge. Horizontal: clamp inside viewport with 16px margin.
-  const placeBelow = rect.top + rect.height + TOOLTIP_GAP + 220 < window.innerHeight;
-  const tooltipTop = placeBelow
-    ? rect.top + rect.height + TOOLTIP_GAP
-    : rect.top - TOOLTIP_GAP - 220;
-  const rawLeft = rect.left + rect.width / 2 - TOOLTIP_W / 2;
-  const tooltipLeft = Math.max(16, Math.min(window.innerWidth - TOOLTIP_W - 16, rawLeft));
+  // Tooltip placement.
+  // - Default: below the target (small gap).
+  // - Too close to bottom edge: flip above.
+  // - Target too tall to fit either side without clipping (e.g. a full-page
+  //   calendar): dock the tooltip to bottom-center of the viewport so it's
+  //   always readable, even if it overlaps the spotlight slightly.
+  const TOOLTIP_H = 220; // approximate; we just need a placement budget
+  const fitsBelow = rect.top + rect.height + TOOLTIP_GAP + TOOLTIP_H + 16 < window.innerHeight;
+  const fitsAbove = rect.top - TOOLTIP_GAP - TOOLTIP_H - 16 > 0;
+  let tooltipTop: number;
+  let tooltipLeft: number;
+  if (fitsBelow) {
+    tooltipTop = rect.top + rect.height + TOOLTIP_GAP;
+    const raw = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+    tooltipLeft = Math.max(16, Math.min(window.innerWidth - TOOLTIP_W - 16, raw));
+  } else if (fitsAbove) {
+    tooltipTop = rect.top - TOOLTIP_GAP - TOOLTIP_H;
+    const raw = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+    tooltipLeft = Math.max(16, Math.min(window.innerWidth - TOOLTIP_W - 16, raw));
+  } else {
+    // Docked fallback — target is taller than the viewport allows.
+    tooltipTop = window.innerHeight - TOOLTIP_H - 24;
+    tooltipLeft = window.innerWidth - TOOLTIP_W - 24;
+  }
 
   return (
+    // Outer container is pointer-events-none so the user can still scroll
+    // the page (long forms, full-page calendar) while the tour is open.
+    // Only the tooltip card opts back into pointer-events.
     <div
-      className="fixed inset-0 z-[100]"
+      className="pointer-events-none fixed inset-0 z-[100]"
       role="dialog"
       aria-modal="true"
       aria-label={tCommon('eyebrow')}
@@ -155,7 +174,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
       {/* Spotlight: a transparent rectangle whose enormous outset shadow
           dims everything else. Pure CSS — no SVG mask, no extra repaints. */}
       <div
-        className="pointer-events-none absolute transition-[top,left,width,height] duration-200 ease-out [border-radius:6px]"
+        className="absolute transition-[top,left,width,height] duration-200 ease-out [border-radius:6px]"
         style={{
           top: rect.top,
           left: rect.left,
@@ -167,7 +186,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
 
       {/* Tooltip card */}
       <div
-        className="absolute border border-line bg-paper p-5 [border-radius:4px]"
+        className="pointer-events-auto absolute border border-line bg-paper p-5 [border-radius:4px] shadow-[0_8px_24px_rgba(15,17,21,0.18)]"
         style={{
           top: tooltipTop,
           left: tooltipLeft,
