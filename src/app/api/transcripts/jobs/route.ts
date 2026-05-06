@@ -13,7 +13,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, created_at, updated_at',
+      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, provider, created_at, updated_at',
     )
     .eq('org_id', org.org_id)
     .order('created_at', { ascending: false })

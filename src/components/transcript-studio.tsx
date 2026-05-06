@@ -72,6 +72,33 @@ export function TranscriptStudio() {
     }
   }, []);
 
+  // Poll ElevenLabs jobs. Workspace webhook delivery proved unreliable
+  // (no delivery attempts ever recorded), so the client drives completion
+  // by hitting our /poll endpoint, which proxies the ElevenLabs GET. When
+  // it flips DB to `done`, realtime in TranscriptJobProvider picks it up.
+  useEffect(() => {
+    const pending = job.jobs.filter(
+      (j) => j.status === 'transcribing' && j.provider === 'elevenlabs',
+    );
+    if (pending.length === 0) return;
+    let cancelled = false;
+    const tick = () => {
+      pending.forEach((j) => {
+        fetch(`/api/transcripts/jobs/${j.id}/poll`, { method: 'POST' }).catch(
+          () => {},
+        );
+      });
+    };
+    tick(); // first hit immediately so completed jobs flip fast on mount
+    const id = setInterval(() => {
+      if (!cancelled) tick();
+    }, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [job.jobs]);
+
   const startUploads = useCallback(
     (files: File[]) => {
       requireAuth(() => {

@@ -205,7 +205,6 @@ async function dispatchElevenLabs(args: {
   const { supabase, jobId, signedUrl, apiModel, languageCode } = args;
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  const webhookSecret = process.env.ELEVENLABS_WEBHOOK_SECRET;
   if (!apiKey) {
     await supabase
       .from('transcript_jobs')
@@ -213,31 +212,20 @@ async function dispatchElevenLabs(args: {
       .eq('id', jobId);
     return NextResponse.json({ error: 'missing_elevenlabs_key' }, { status: 500 });
   }
-  if (!webhookSecret) {
-    await supabase
-      .from('transcript_jobs')
-      .update({ status: 'error', error_message: 'missing_elevenlabs_webhook_secret' })
-      .eq('id', jobId);
-    return NextResponse.json(
-      { error: 'missing_elevenlabs_webhook_secret' },
-      { status: 500 },
-    );
-  }
 
   // ElevenLabs Speech-to-Text: multipart/form-data with `cloud_storage_url`
-  // (the API fetches it itself — no re-upload). `webhook=true` switches to
-  // async delivery: result is POSTed to the webhook URL configured in the
-  // ElevenLabs dashboard. The dashboard webhook should target
-  // `${base}/api/transcripts/webhook/elevenlabs`. We attach `webhook_metadata`
-  // so the callback can identify our job row without trusting query params.
+  // (the API fetches it itself — no re-upload). We do NOT use `webhook=true`
+  // — the workspace webhook delivery proved unreliable in practice (no
+  // delivery attempts ever recorded in their analytics dashboard despite
+  // valid registration). Instead we save the `transcription_id` and let the
+  // client poll our /api/transcripts/jobs/[id]/poll endpoint, which proxies
+  // GET /v1/speech-to-text/transcripts/{id} on demand.
   const form = new FormData();
   form.append('model_id', apiModel);
   form.append('cloud_storage_url', signedUrl);
   form.append('diarize', 'true');
   form.append('timestamps_granularity', 'word');
   form.append('tag_audio_events', 'true');
-  form.append('webhook', 'true');
-  form.append('webhook_metadata', JSON.stringify({ job_id: jobId }));
   if (languageCode) form.append('language_code', languageCode);
 
   let resp: Response;
@@ -271,36 +259,26 @@ async function dispatchElevenLabs(args: {
     );
   }
 
-  // Log the raw response so we can confirm the actual field names ElevenLabs
-  // returns (request_id vs task_id vs id). Stash it in raw_result for the
-  // first few jobs while we calibrate.
-  const rawText = await resp.text().catch(() => '');
-  console.log('[transcripts/start] elevenlabs raw response:', rawText.slice(0, 2000));
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = JSON.parse(rawText) as Record<string, unknown>;
-  } catch {
-    /* ignore */
-  }
-  const requestId =
-    (parsed.request_id as string | undefined) ??
-    (parsed.task_id as string | undefined) ??
-    (parsed.id as string | undefined) ??
-    (parsed.transcription_id as string | undefined) ??
-    null;
+  // ElevenLabs returns: { request_id, transcription_id, message }
+  // We store `transcription_id` in `provider_request_id` because that is the
+  // id the polling endpoint (GET /v1/speech-to-text/transcripts/{id}) needs.
+  const parsed = (await resp.json().catch(() => ({}))) as {
+    request_id?: string;
+    transcription_id?: string;
+  };
+  const transcriptionId = parsed.transcription_id ?? parsed.request_id ?? null;
 
   await supabase
     .from('transcript_jobs')
     .update({
       status: 'transcribing',
-      provider_request_id: requestId,
-      raw_result: parsed as object,
+      provider_request_id: transcriptionId,
     })
     .eq('id', jobId);
 
   return NextResponse.json({
     job_id: jobId,
     provider: 'elevenlabs',
-    request_id: requestId,
+    request_id: transcriptionId,
   });
 }
