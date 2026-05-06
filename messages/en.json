@@ -233,6 +233,7 @@
     "methodLabel": "Payment method",
     "methodCard": "Card",
     "methodCardHint": "Instant credits via Stripe",
+    "methodCardSoon": "Coming soon",
     "methodBank": "Bank transfer",
     "methodBankHint": "Credits applied within 1 business day",
     "taxInvoiceLabel": "Issue tax invoice (세금계산서)",

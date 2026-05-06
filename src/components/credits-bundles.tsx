@@ -20,6 +20,11 @@ const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
 
 type Method = 'stripe' | 'bank_transfer';
 
+// Card payments are wired but the Stripe webhook isn't registered yet, so we
+// disable the option until the gateway is fully live. Flip to false to make
+// it selectable.
+const STRIPE_DISABLED = true;
+
 type TaxInvoiceState = {
   enabled: boolean;
   bizNo: string;
@@ -41,7 +46,9 @@ const EMPTY_TAX: TaxInvoiceState = {
 export function CreditsBundles() {
   const t = useTranslations('Credits');
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
-  const [method, setMethod] = useState<Method>('stripe');
+  const [method, setMethod] = useState<Method>(
+    STRIPE_DISABLED ? 'bank_transfer' : 'stripe',
+  );
   const [tax, setTax] = useState<TaxInvoiceState>(EMPTY_TAX);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,9 +236,10 @@ export function CreditsBundles() {
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <MethodOption
                         active={method === 'stripe'}
-                        onClick={() => setMethod('stripe')}
+                        onClick={() => !STRIPE_DISABLED && setMethod('stripe')}
                         label={t('methodCard')}
-                        hint={t('methodCardHint')}
+                        hint={STRIPE_DISABLED ? t('methodCardSoon') : t('methodCardHint')}
+                        disabled={STRIPE_DISABLED}
                       />
                       <MethodOption
                         active={method === 'bank_transfer'}
@@ -327,19 +335,24 @@ function MethodOption({
   onClick,
   label,
   hint,
+  disabled,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   hint: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={
         'flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left [border-radius:4px] ' +
-        (active
+        (disabled
+          ? 'cursor-not-allowed border-line-soft bg-paper text-mute-soft'
+          : active
           ? 'border-ink bg-paper text-ink-2'
           : 'border-line bg-paper text-mute hover:text-ink-2')
       }

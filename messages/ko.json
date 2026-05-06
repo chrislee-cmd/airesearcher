@@ -233,6 +233,7 @@
     "methodLabel": "결제 방법",
     "methodCard": "카드 결제",
     "methodCardHint": "Stripe로 즉시 적립",
+    "methodCardSoon": "준비중입니다",
     "methodBank": "계좌이체",
     "methodBankHint": "송금 확인 후 1영업일 내 적립",
     "taxInvoiceLabel": "세금계산서 발행 필요",
