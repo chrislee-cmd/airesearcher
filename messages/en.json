@@ -36,7 +36,8 @@
     "buyCredits": "Buy credits",
     "credits": "Credits",
     "viewProjects": "View Projects",
-    "working": "working"
+    "working": "working",
+    "done": "done"
   },
   "SidebarGroups": {
     "design": "Research Design",

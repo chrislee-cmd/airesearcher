@@ -64,6 +64,48 @@ export function Sidebar({
     return generationJobs.isWorking(key);
   }
 
+  // Per-feature busy → idle transitions raise a green "작업완료" badge.
+  // It persists until the user either visits the feature page or
+  // refreshes — page refresh wipes this in-memory state, navigation
+  // clears it via the pathname effect below.
+  const prevBusyRef = useRef<Map<FeatureKey, boolean>>(new Map());
+  const [doneFlags, setDoneFlags] = useState<Set<FeatureKey>>(new Set());
+  useEffect(() => {
+    const transitioned: FeatureKey[] = [];
+    for (const f of FEATURES) {
+      const cur = isBusy(f.key);
+      const prev = prevBusyRef.current.get(f.key) ?? false;
+      if (prev && !cur) transitioned.push(f.key);
+      prevBusyRef.current.set(f.key, cur);
+    }
+    if (transitioned.length === 0) return;
+    setDoneFlags((prev) => {
+      const next = new Set(prev);
+      for (const k of transitioned) next.add(k);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    interviewJob.isWorking,
+    transcriptJobs.isWorking,
+    deskJobs.isWorking,
+    generationJobs,
+  ]);
+  // Clear the flag once the user actually visits the feature.
+  useEffect(() => {
+    const matched = FEATURES.find((f) => f.href === pathname);
+    if (!matched) return;
+    setDoneFlags((prev) => {
+      if (!prev.has(matched.key)) return prev;
+      const next = new Set(prev);
+      next.delete(matched.key);
+      return next;
+    });
+  }, [pathname]);
+  function isRecentlyDone(key: FeatureKey): boolean {
+    return doneFlags.has(key);
+  }
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -304,15 +346,26 @@ export function Sidebar({
                           }`}
                         >
                           <span className="truncate">{t(f.key)}</span>
-                          {busy && (
+                          {busy ? (
                             <span
                               title={t('working')}
                               className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
                             >
-                              <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                              <Spinner />
                               {t('working')}
                             </span>
-                          )}
+                          ) : isRecentlyDone(f.key) ? (
+                            <span
+                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em]"
+                              style={{ color: 'var(--color-success, #16a34a)' }}
+                            >
+                              <span
+                                className="inline-block h-1.5 w-1.5 [border-radius:9999px]"
+                                style={{ background: 'var(--color-success, #16a34a)' }}
+                              />
+                              {t('done')}
+                            </span>
+                          ) : null}
                         </Link>
                       </li>
                     );
@@ -349,6 +402,29 @@ function Chevron({ open, small }: { open: boolean; small?: boolean }) {
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Spinner() {
+  // 9px circular ring with a 3/4 arc that rotates — reads as "infinite
+  // loading" without the heavier visual weight of a full spinner.
+  return (
+    <svg
+      width={9}
+      height={9}
+      viewBox="0 0 16 16"
+      fill="none"
+      className="animate-spin"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
       />
     </svg>
   );
