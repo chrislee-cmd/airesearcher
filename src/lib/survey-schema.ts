@@ -53,11 +53,13 @@ export const surveySchema = z.object({
         title: z
           .string()
           .describe(
-            '섹션명. 예: "스크리닝", "사용 경험", "구매 행태", "감사 인사".',
+            '섹션명. 스크리너 설문이므로 본 조사형 섹션(사용 경험/구매 행태/만족도 등)은 만들지 말 것. 허용 섹션 예: "기본 정보", "자격 조건", "동의 및 일정", "인적사항".',
           ),
         questions: z.array(surveyQuestionSchema),
       }),
     )
-    .describe('3~6개 섹션 권장. 첫 섹션은 보통 스크리닝.'),
+    .describe(
+      '스크리너 설문 — 섹션은 2~4개. 본 조사용 섹션 금지. 마지막 섹션은 항상 "인적사항".',
+    ),
 });
 export type Survey = z.infer<typeof surveySchema>;

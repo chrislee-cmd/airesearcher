@@ -213,7 +213,16 @@ export function RecruitingBrief() {
   const [started, setStarted] = useState<{ to: string } | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [startModalOpen, setStartModalOpen] = useState(false);
-  const [startBody, setStartBody] = useState('');
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [mailFields, setMailFields] = useState({
+    purpose: '',
+    target: '',
+    method: '1:1 온라인 인터뷰, 60분',
+    schedule: '추후 협의',
+    location: '온라인 인터뷰',
+    incentive: '현금 7만원',
+  });
   const [publishError, setPublishError] = useState<string | null>(null);
   const [googleAuthError, setGoogleAuthError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -412,24 +421,73 @@ export function RecruitingBrief() {
     }
   }
 
-  function buildStartBody(uri: string) {
+  function buildMailBody(uri: string, fields: typeof mailFields) {
     return [
-      '목적: 여행 숙박 시설 결정 과정 이해',
-      '대상 : 향후 3개월 이내에 제주도나 후쿠오카 여행 계획이 있는 사람',
-      '방식: 1:1 온라인 인터뷰, 60분',
-      '일정 : 4월 20~24일 사이, 세부 일정 추후 협의',
-      '장소 : 온라인 인터뷰',
-      '조사 사례 : 현금 7만원',
+      `목적: ${fields.purpose}`,
+      `대상 : ${fields.target}`,
+      `방식: ${fields.method}`,
+      `일정 : ${fields.schedule}`,
+      `장소 : ${fields.location}`,
+      `조사 사례 : ${fields.incentive}`,
       `인터뷰 신청서 링크 : ${uri}`,
     ].join('\n');
   }
 
-  function openStartModal() {
+  // Resilient fetch+json that surfaces a clean error when the server
+  // returns HTML (e.g. a 404 page from a deployment that lacks the
+  // route, which used to bubble up as a confusing JSON parse error).
+  async function safeJson(res: Response): Promise<{ ok: boolean; data: Record<string, unknown>; status: number }> {
+    const text = await res.text();
+    try {
+      return { ok: res.ok, data: JSON.parse(text) as Record<string, unknown>, status: res.status };
+    } catch {
+      return {
+        ok: false,
+        data: { error: `non_json_response (${res.status})` },
+        status: res.status,
+      };
+    }
+  }
+
+  async function openStartModal() {
     if (!published) return;
     setStartError(null);
     setStarted(null);
-    setStartBody(buildStartBody(published.responderUri));
+    setDraftError(null);
     setStartModalOpen(true);
+
+    if (!edited) return;
+    setDraftLoading(true);
+    try {
+      const res = await fetch('/api/recruiting/start/draft', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          brief: {
+            summary: edited.summary,
+            criteria: edited.criteria,
+            schedule: edited.schedule,
+          },
+        }),
+      });
+      const { ok, data } = await safeJson(res);
+      if (!ok || !data.draft) {
+        throw new Error((data.error as string) ?? 'draft_failed');
+      }
+      const d = data.draft as Partial<typeof mailFields>;
+      setMailFields((prev) => ({
+        purpose: d.purpose || prev.purpose,
+        target: d.target || prev.target,
+        method: d.method || prev.method,
+        schedule: d.schedule || prev.schedule,
+        location: d.location || prev.location,
+        incentive: d.incentive || prev.incentive,
+      }));
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : 'draft_failed');
+    } finally {
+      setDraftLoading(false);
+    }
   }
 
   async function confirmStartRecruiting() {
@@ -437,19 +495,20 @@ export function RecruitingBrief() {
     setStarting(true);
     setStartError(null);
     try {
+      const body = buildMailBody(published.responderUri, mailFields);
       const res = await fetch('/api/recruiting/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           responderUri: published.responderUri,
-          body: startBody,
+          body,
         }),
       });
-      const j = await res.json();
-      if (!res.ok) {
-        throw new Error(j.error ?? `start_failed: ${res.statusText}`);
+      const { ok, data } = await safeJson(res);
+      if (!ok) {
+        throw new Error((data.error as string) ?? `start_failed: ${res.statusText}`);
       }
-      setStarted({ to: j.to ?? 'lee880728@gmail.com' });
+      setStarted({ to: (data.to as string) ?? 'lee880728@gmail.com' });
       setStartModalOpen(false);
       track('generate_success', { feature: 'recruiting_start' });
     } catch (e) {
@@ -814,7 +873,7 @@ export function RecruitingBrief() {
                       published ? (
                         <button
                           type="button"
-                          onClick={() => openStartModal()}
+                          onClick={() => void openStartModal()}
                           disabled={starting}
                           className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
                         >
@@ -1024,18 +1083,71 @@ export function RecruitingBrief() {
             className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:6px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-1 text-[14px] font-semibold text-ink">
+            <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold text-ink">
               리크루팅 메일 발송
+              {draftLoading && (
+                <span className="text-[11px] font-normal text-mute">
+                  · 추출된 조건으로 초안 생성 중…
+                </span>
+              )}
             </div>
-            <div className="mb-3 text-[11.5px] text-mute">
-              내용을 검토·수정한 뒤 최종 승인하면 lee880728@gmail.com으로 발송됩니다.
+            <div className="mb-4 text-[11.5px] text-mute">
+              각 항목을 검토·수정한 뒤 최종 승인하면 lee880728@gmail.com으로 발송됩니다.
             </div>
-            <textarea
-              value={startBody}
-              onChange={(e) => setStartBody(e.target.value)}
-              rows={12}
-              className="mb-3 w-full resize-y border border-line bg-paper p-3 text-[12.5px] leading-[1.6] text-ink focus:border-ink-2 focus:outline-none [border-radius:4px]"
-            />
+
+            <div className="mb-4 grid grid-cols-1 gap-3">
+              {(
+                [
+                  { key: 'purpose', label: '목적', multiline: false },
+                  { key: 'target', label: '대상', multiline: true },
+                  { key: 'method', label: '방식', multiline: false },
+                  { key: 'schedule', label: '일정', multiline: false },
+                  { key: 'location', label: '장소', multiline: false },
+                  { key: 'incentive', label: '조사 사례', multiline: false },
+                ] as const
+              ).map(({ key, label, multiline }) => (
+                <label key={key} className="block">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
+                    {label}
+                  </div>
+                  {multiline ? (
+                    <textarea
+                      value={mailFields[key]}
+                      onChange={(e) =>
+                        setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      rows={2}
+                      disabled={draftLoading}
+                      className="w-full resize-y border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.5] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:4px]"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={mailFields[key]}
+                      onChange={(e) =>
+                        setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      disabled={draftLoading}
+                      className="w-full border border-line bg-paper px-3 py-2 text-[12.5px] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:4px]"
+                    />
+                  )}
+                </label>
+              ))}
+              <div className="block">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
+                  인터뷰 신청서 링크 (자동)
+                </div>
+                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute [border-radius:4px]">
+                  {published?.responderUri ?? ''}
+                </div>
+              </div>
+            </div>
+
+            {draftError && (
+              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute [border-radius:4px]">
+                초안 자동 생성 실패 — 직접 입력해주세요. ({draftError})
+              </div>
+            )}
             {startError && (
               <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
                 메일 발송 오류: {startError}
@@ -1053,7 +1165,12 @@ export function RecruitingBrief() {
               <button
                 type="button"
                 onClick={() => void confirmStartRecruiting()}
-                disabled={starting || !startBody.trim()}
+                disabled={
+                  starting ||
+                  draftLoading ||
+                  !mailFields.purpose.trim() ||
+                  !mailFields.target.trim()
+                }
                 className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
               >
                 {starting ? '발송 중…' : '최종 승인'}
