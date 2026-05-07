@@ -64,6 +64,49 @@ export function Sidebar({
     return generationJobs.isWorking(key);
   }
 
+  // Track per-feature busy → idle transitions so we can show a brief
+  // green "작업완료" badge after a job finishes. The window is 5s so
+  // the badge survives one navigation but doesn't linger forever.
+  const DONE_WINDOW_MS = 5000;
+  const prevBusyRef = useRef<Map<FeatureKey, boolean>>(new Map());
+  const [recentlyDone, setRecentlyDone] = useState<Map<FeatureKey, number>>(new Map());
+  useEffect(() => {
+    const now = Date.now();
+    const transitioned: FeatureKey[] = [];
+    for (const f of FEATURES) {
+      const cur = isBusy(f.key);
+      const prev = prevBusyRef.current.get(f.key) ?? false;
+      if (prev && !cur) transitioned.push(f.key);
+      prevBusyRef.current.set(f.key, cur);
+    }
+    if (transitioned.length === 0) return;
+    setRecentlyDone((prev) => {
+      const next = new Map(prev);
+      for (const k of transitioned) next.set(k, now);
+      return next;
+    });
+    const id = window.setTimeout(() => {
+      setRecentlyDone((prev) => {
+        const next = new Map(prev);
+        const cutoff = Date.now() - DONE_WINDOW_MS;
+        for (const [k, t] of next) if (t <= cutoff) next.delete(k);
+        return next;
+      });
+    }, DONE_WINDOW_MS + 100);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    interviewJob.isWorking,
+    transcriptJobs.isWorking,
+    deskJobs.isWorking,
+    // generationJobs.isWorking is a function — re-evaluate on its identity
+    generationJobs,
+  ]);
+  function isRecentlyDone(key: FeatureKey): boolean {
+    const t = recentlyDone.get(key);
+    return !!t && Date.now() - t < DONE_WINDOW_MS;
+  }
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -304,15 +347,26 @@ export function Sidebar({
                           }`}
                         >
                           <span className="truncate">{t(f.key)}</span>
-                          {busy && (
+                          {busy ? (
                             <span
                               title={t('working')}
                               className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
                             >
-                              <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                              <Spinner />
                               {t('working')}
                             </span>
-                          )}
+                          ) : isRecentlyDone(f.key) ? (
+                            <span
+                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em]"
+                              style={{ color: 'var(--color-success, #16a34a)' }}
+                            >
+                              <span
+                                className="inline-block h-1.5 w-1.5 [border-radius:9999px]"
+                                style={{ background: 'var(--color-success, #16a34a)' }}
+                              />
+                              {t('done')}
+                            </span>
+                          ) : null}
                         </Link>
                       </li>
                     );
@@ -349,6 +403,29 @@ function Chevron({ open, small }: { open: boolean; small?: boolean }) {
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Spinner() {
+  // 9px circular ring with a 3/4 arc that rotates — reads as "infinite
+  // loading" without the heavier visual weight of a full spinner.
+  return (
+    <svg
+      width={9}
+      height={9}
+      viewBox="0 0 16 16"
+      fill="none"
+      className="animate-spin"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
       />
     </svg>
   );
