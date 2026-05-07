@@ -5,7 +5,8 @@ export type DbBackedFeature =
   | 'interview'
   | 'transcript'
   | 'desk'
-  | 'scheduler';
+  | 'scheduler'
+  | 'recruiting';
 
 export type WorkspaceArtifact = {
   id: string;

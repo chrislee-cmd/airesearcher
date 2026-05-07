@@ -7,6 +7,7 @@ import { CalendarView } from './calendar-view';
 import { AttendeesPanel } from './attendees-panel';
 import { DEFAULT_REQUIREMENT } from '@/lib/scheduler/types';
 import type { Attendee, ConfirmedSlot, Requirement } from '@/lib/scheduler/types';
+import { useWorkspace } from '../workspace-provider';
 
 function readActiveProjectId(): string | null {
   try {
@@ -17,6 +18,24 @@ function readActiveProjectId(): string | null {
   } catch {
     return null;
   }
+}
+
+function buildSchedulerMarkdown(
+  attendees: Attendee[],
+  confirmed: ConfirmedSlot[],
+): string {
+  const byAttendee = new Map<string, ConfirmedSlot>();
+  for (const c of confirmed) byAttendee.set(c.attendeeId, c);
+  const lines = [`# 스케쥴러 — ${attendees.length}명`, ''];
+  for (const a of attendees) {
+    const slot = byAttendee.get(a.id);
+    if (slot) {
+      lines.push(`- ${a.name} — ${slot.date} ${slot.start}–${slot.end}`);
+    } else {
+      lines.push(`- ${a.name} — 미확정`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export function SchedulerPage() {
@@ -61,7 +80,10 @@ export function SchedulerPage() {
 
   // Debounced autosave so the canvas survives refresh / device switch.
   // Skips the initial empty mount so we don't create a phantom row on
-  // every page visit.
+  // every page visit. After a successful save we also (re)register a
+  // workspace artifact — using a stable id so repeat saves overwrite
+  // the same row rather than spamming the panel.
+  const workspace = useWorkspace();
   const initialized = useRef(false);
   useEffect(() => {
     if (!initialized.current) {
@@ -69,18 +91,42 @@ export function SchedulerPage() {
       return;
     }
     const id = window.setTimeout(() => {
-      void fetch('/api/scheduler/sessions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          attendees,
-          selected_slots: confirmed,
-          meta: { requirement, importHeaders },
-          project_id: readActiveProjectId(),
-        }),
-      }).catch((err) => console.warn('[scheduler] autosave failed', err));
+      const projectId = readActiveProjectId();
+      void (async () => {
+        try {
+          const res = await fetch('/api/scheduler/sessions', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              attendees,
+              selected_slots: confirmed,
+              meta: { requirement, importHeaders },
+              project_id: projectId,
+            }),
+          });
+          if (!res.ok) return;
+          // Skip workspace registration until the canvas actually has
+          // something — empty session shouldn't create a workspace row.
+          if (attendees.length === 0) return;
+          const json = (await res.json().catch(() => ({}))) as { id?: string };
+          if (!json.id) return;
+          const stamp = new Date().toISOString().slice(0, 10);
+          workspace.addArtifact({
+            id: `scheduler_${json.id}`,
+            featureKey: 'scheduler',
+            title: `scheduler-${stamp}-${attendees.length}명.md`,
+            content: buildSchedulerMarkdown(attendees, confirmed),
+            dbFeature: 'scheduler',
+            dbId: json.id,
+            projectId,
+          });
+        } catch (err) {
+          console.warn('[scheduler] autosave failed', err);
+        }
+      })();
     }, 1500);
     return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attendees, confirmed, requirement, importHeaders]);
 
   function bulkImport(payload: {

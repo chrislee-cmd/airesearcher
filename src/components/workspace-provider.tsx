@@ -115,13 +115,33 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       dbId: input.dbId,
       projectId: input.projectId ?? null,
     };
+    let isNew = true;
     setArtifacts((prev) => {
-      // De-dupe by id — bridges may try to add the same item across renders.
-      if (prev.some((a) => a.id === next.id)) return prev;
+      // Upsert by id — repeat calls (e.g. scheduler autosave) update
+      // title/content/projectId in place rather than spamming new rows.
+      const idx = prev.findIndex((a) => a.id === next.id);
+      if (idx >= 0) {
+        isNew = false;
+        const merged: WorkspaceArtifact = {
+          ...prev[idx],
+          title: next.title,
+          content: next.content,
+          dbFeature: next.dbFeature ?? prev[idx].dbFeature,
+          dbId: next.dbId ?? prev[idx].dbId,
+          // Preserve projectId set locally by the modal picker. Fall back
+          // to whatever the caller passed in.
+          projectId: prev[idx].projectId ?? next.projectId ?? null,
+        };
+        const copy = prev.slice();
+        copy[idx] = merged;
+        return copy;
+      }
       return [next, ...prev];
     });
-    setLastAddedId(next.id);
-    setLastAddedAt(Date.now());
+    if (isNew) {
+      setLastAddedId(next.id);
+      setLastAddedAt(Date.now());
+    }
     return next;
   }, []);
 
