@@ -14,6 +14,7 @@ const Body = z.object({
   size_bytes: z.number().int().nonnegative().optional(),
   language: z.string().optional(),
   model: z.string().optional(),
+  project_id: z.string().uuid().nullable().optional(),
 });
 
 function getDeploymentBaseUrl(): string {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { storage_key, filename, mime_type, size_bytes, language, model } =
+  const { storage_key, filename, mime_type, size_bytes, language, model, project_id } =
     parsed.data;
   const langEntry = getLanguage(language);
   const modelEntry = getModel(model);
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     .from('transcript_jobs')
     .insert({
       org_id: org.org_id,
+      project_id: project_id ?? null,
       user_id: user.id,
       storage_key,
       filename,

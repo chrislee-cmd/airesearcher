@@ -11,6 +11,7 @@ import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
 import { WorkspaceBridge } from '@/components/workspace-bridge';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
+import { ActiveProjectProvider } from '@/components/active-project-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
@@ -40,6 +41,7 @@ export default async function AppLayout({
       <TranscriptJobProvider>
        <DeskJobProvider>
         <GenerationJobProvider>
+         <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
          <div className="flex flex-1">
            <Sidebar
@@ -55,6 +57,7 @@ export default async function AppLayout({
          <WorkspacePanel />
          <TrialInitializer enabled={!!user} />
          </WorkspaceProvider>
+         </ActiveProjectProvider>
         </GenerationJobProvider>
        </DeskJobProvider>
       </TranscriptJobProvider>

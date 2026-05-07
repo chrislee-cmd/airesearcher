@@ -78,6 +78,17 @@ function stripCodeFence(s: string): string {
   return t;
 }
 
+function readActiveProjectId(): string | null {
+  try {
+    const raw = window.localStorage.getItem('active_project:v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string } | null;
+    return parsed?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function persistReportSnapshot(snapshot: {
   inputs: { filename: string; size?: number; mime?: string }[];
   markdown: string;
@@ -87,7 +98,7 @@ async function persistReportSnapshot(snapshot: {
     await fetch('/api/reports/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify({ ...snapshot, project_id: readActiveProjectId() }),
     });
   } catch (err) {
     console.warn('[reports] persist snapshot failed', err);
