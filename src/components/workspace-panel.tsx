@@ -209,6 +209,9 @@ export function WorkspacePanel() {
   const viewedArtifact = viewing ? artifacts.find((a) => a.id === viewing) : null;
   const allSelected = selected.size > 0 && selected.size === artifacts.length;
   const flashActive = !!lastAddedAt && Date.now() - lastAddedAt < FLASH_MS;
+  // The trigger badge surfaces "stuff that needs your attention" — i.e.
+  // unfiled artifacts. Items already in a project are out of frame.
+  const unfiledCount = artifacts.filter((a) => !a.projectId).length;
 
   return (
     <>
@@ -222,7 +225,7 @@ export function WorkspacePanel() {
       >
         <span className="inline-block h-1 w-5 bg-amore" />
         {t('eyebrow')}
-        <span className="tabular-nums text-mute-soft">· {artifacts.length}</span>
+        <span className="tabular-nums text-mute-soft">· {unfiledCount}</span>
       </button>
 
       {isOpen && (
