@@ -21,6 +21,7 @@ type GoogleStatus = {
   connected: boolean;
   email: string | null;
   hasResponses: boolean;
+  hasDrive: boolean;
 };
 
 type PartialSurvey = Partial<Survey> & {
@@ -206,12 +207,18 @@ export function RecruitingBrief() {
     editUri: string;
   } | null>(null);
   const [publishVersion, setPublishVersion] = useState(0);
-  const [publishError, setPublishError] = useState<string | null>(() => {
+  const [starting, setStarting] = useState(false);
+  const [started, setStarted] = useState<{ to: string } | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [startModalOpen, setStartModalOpen] = useState(false);
+  const [startBody, setStartBody] = useState('');
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [googleAuthError, setGoogleAuthError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     const g = params.get('google');
     if (!g || g === 'connected') return null;
-    return `Google 연결 실패: ${g}`;
+    return g;
   });
 
   const job = jobs.get('recruiting');
@@ -245,6 +252,7 @@ export function RecruitingBrief() {
             connected: !!j.connected,
             email: j.email ?? null,
             hasResponses: !!j.hasResponses,
+            hasDrive: !!j.hasDrive,
           });
         }
       })
@@ -344,6 +352,8 @@ export function RecruitingBrief() {
     if (!survey) return;
     setPublishing(true);
     setPublishError(null);
+    setStarted(null);
+    setStartError(null);
     try {
       const res = await fetch('/api/recruiting/google/forms/create', {
         method: 'POST',
@@ -361,6 +371,53 @@ export function RecruitingBrief() {
       setPublishError(e instanceof Error ? e.message : 'publish_failed');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  function buildStartBody(uri: string) {
+    return [
+      '목적: 여행 숙박 시설 결정 과정 이해',
+      '대상 : 향후 3개월 이내에 제주도나 후쿠오카 여행 계획이 있는 사람',
+      '방식: 1:1 온라인 인터뷰, 60분',
+      '일정 : 4월 20~24일 사이, 세부 일정 추후 협의',
+      '장소 : 온라인 인터뷰',
+      '조사 사례 : 현금 7만원',
+      `인터뷰 신청서 링크 : ${uri}`,
+    ].join('\n');
+  }
+
+  function openStartModal() {
+    if (!published) return;
+    setStartError(null);
+    setStarted(null);
+    setStartBody(buildStartBody(published.responderUri));
+    setStartModalOpen(true);
+  }
+
+  async function confirmStartRecruiting() {
+    if (!published) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await fetch('/api/recruiting/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          responderUri: published.responderUri,
+          body: startBody,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        throw new Error(j.error ?? `start_failed: ${res.statusText}`);
+      }
+      setStarted({ to: j.to ?? 'lee880728@gmail.com' });
+      setStartModalOpen(false);
+      track('generate_success', { feature: 'recruiting_start' });
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : 'start_failed');
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -716,14 +773,25 @@ export function RecruitingBrief() {
                   </button>
                   {survey &&
                     (google?.connected ? (
-                      <button
-                        type="button"
-                        onClick={() => void publishToGoogle()}
-                        disabled={publishing}
-                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                      >
-                        {publishing ? '발행 중…' : 'Google Forms로 발행'}
-                      </button>
+                      published ? (
+                        <button
+                          type="button"
+                          onClick={() => openStartModal()}
+                          disabled={starting}
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                        >
+                          {starting ? '메일 발송 중…' : '리크루팅 시작'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void publishToGoogle()}
+                          disabled={publishing}
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                        >
+                          {publishing ? '발행 중…' : 'Google Forms로 발행'}
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -740,10 +808,49 @@ export function RecruitingBrief() {
               </div>
 
               {google && (
-                <p className="mt-2 text-[11px] text-mute-soft">
-                  {google.connected
-                    ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
-                    : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-mute-soft">
+                  <span>
+                    {google.connected
+                      ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
+                      : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                  </span>
+                  {google.connected ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm('Google 연결을 해제할까요? 다른 계정으로 다시 연결할 수 있습니다.')) return;
+                        await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
+                        window.location.reload();
+                      }}
+                      className="text-mute underline underline-offset-2 hover:text-amore"
+                    >
+                      연결 해제
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = '/api/recruiting/google/start';
+                      }}
+                      className="text-amore underline underline-offset-2"
+                    >
+                      Google 계정 연결
+                    </button>
+                  )}
+                </p>
+              )}
+              {google?.connected && !google.hasDrive && (
+                <p className="mt-1 text-[11px] text-amore">
+                  공개(anyone with link) 권한 부여를 위해 Google 계정을 다시 연결해주세요.{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = '/api/recruiting/google/start';
+                    }}
+                    className="underline underline-offset-2"
+                  >
+                    재연결
+                  </button>
                 </p>
               )}
               {surveyError && (
@@ -754,6 +861,21 @@ export function RecruitingBrief() {
               {publishError && (
                 <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
                   발행 오류: {publishError}
+                </div>
+              )}
+              {googleAuthError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  Google 연결 오류: {googleAuthError} — 연결 해제 후 다시 시도해주세요.
+                </div>
+              )}
+              {startError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  메일 발송 오류: {startError}
+                </div>
+              )}
+              {started && (
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink [border-radius:4px]">
+                  리크루팅 메일을 {started.to}로 발송했습니다.
                 </div>
               )}
               {published && (
@@ -851,6 +973,56 @@ export function RecruitingBrief() {
           publishVersion={publishVersion}
           hasResponsesScope={google.hasResponses}
         />
+      )}
+
+      {startModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/50 p-4"
+          onClick={() => {
+            if (!starting) setStartModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:6px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 text-[14px] font-semibold text-ink">
+              리크루팅 메일 발송
+            </div>
+            <div className="mb-3 text-[11.5px] text-mute">
+              내용을 검토·수정한 뒤 최종 승인하면 lee880728@gmail.com으로 발송됩니다.
+            </div>
+            <textarea
+              value={startBody}
+              onChange={(e) => setStartBody(e.target.value)}
+              rows={12}
+              className="mb-3 w-full resize-y border border-line bg-paper p-3 text-[12.5px] leading-[1.6] text-ink focus:border-ink-2 focus:outline-none [border-radius:4px]"
+            />
+            {startError && (
+              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
+                메일 발송 오류: {startError}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStartModalOpen(false)}
+                disabled={starting}
+                className="border border-line bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmStartRecruiting()}
+                disabled={starting || !startBody.trim()}
+                className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                {starting ? '발송 중…' : '최종 승인'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

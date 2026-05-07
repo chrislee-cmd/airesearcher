@@ -14,6 +14,7 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/forms.body',
   'https://www.googleapis.com/auth/forms.responses.readonly',
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
   'openid',
 ];
@@ -23,10 +24,16 @@ export const GOOGLE_SCOPES = [
 // rather than letting response fetches silently 403.
 export const RESPONSES_SCOPE =
   'https://www.googleapis.com/auth/forms.responses.readonly';
+export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 export function hasResponsesScope(stored: string | null | undefined): boolean {
   if (!stored) return false;
   return stored.split(/\s+/).includes(RESPONSES_SCOPE);
+}
+
+export function hasDriveFileScope(stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  return stored.split(/\s+/).includes(DRIVE_FILE_SCOPE);
 }
 
 export function getGoogleEnv() {
