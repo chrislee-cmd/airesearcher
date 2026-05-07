@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { RequirementsForm } from './requirements-form';
 import { CalendarView } from './calendar-view';
@@ -47,6 +47,29 @@ export function SchedulerPage() {
     if (!selectedId) return;
     setSlotFor(selectedId, { date, start, end });
   }
+
+  // Debounced autosave so the canvas survives refresh / device switch.
+  // Skips the initial empty mount so we don't create a phantom row on
+  // every page visit.
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      return;
+    }
+    const id = window.setTimeout(() => {
+      void fetch('/api/scheduler/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          attendees,
+          selected_slots: confirmed,
+          meta: { requirement, importHeaders },
+        }),
+      }).catch((err) => console.warn('[scheduler] autosave failed', err));
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [attendees, confirmed, requirement, importHeaders]);
 
   function bulkImport(payload: {
     attendees: Attendee[];
