@@ -813,7 +813,7 @@ export function RecruitingBrief() {
                       ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
                       : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
                   </span>
-                  {google.connected && (
+                  {google.connected ? (
                     <button
                       type="button"
                       onClick={async () => {
@@ -824,6 +824,16 @@ export function RecruitingBrief() {
                       className="text-mute underline underline-offset-2 hover:text-amore"
                     >
                       연결 해제
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = '/api/recruiting/google/start';
+                      }}
+                      className="text-amore underline underline-offset-2"
+                    >
+                      Google 계정 연결
                     </button>
                   )}
                 </p>
