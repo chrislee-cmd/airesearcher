@@ -78,6 +78,22 @@ function stripCodeFence(s: string): string {
   return t;
 }
 
+async function persistReportSnapshot(snapshot: {
+  inputs: { filename: string; size?: number; mime?: string }[];
+  markdown: string;
+  html: string;
+}): Promise<void> {
+  try {
+    await fetch('/api/reports/jobs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    });
+  } catch (err) {
+    console.warn('[reports] persist snapshot failed', err);
+  }
+}
+
 export function ReportGenerator() {
   const t = useTranslations('Features');
   const tCommon = useTranslations('Common');
@@ -295,6 +311,17 @@ export function ReportGenerator() {
           featureKey: 'reports',
           title,
           content: html,
+        });
+        // Persist the finished report so the dashboard can list past
+        // runs after a refresh. Non-fatal — UI keeps working on failure.
+        void persistReportSnapshot({
+          inputs: submitted.map((f) => ({
+            filename: f.name,
+            size: f.size,
+            mime: f.type || undefined,
+          })),
+          markdown,
+          html,
         });
         return { html, markdown, sources: sourceNames };
       },
