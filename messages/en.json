@@ -489,7 +489,8 @@
     "nSelected": "{count} selected",
     "bulkActions": "Bulk actions",
     "sendSelectedTo": "Send selected to…",
-    "deleteSelected": "Delete selected"
+    "deleteSelected": "Delete selected",
+    "assignProject": "Assign project"
   },
   "Members": {
     "title": "Member management",

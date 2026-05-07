@@ -1,11 +1,24 @@
 import type { FeatureKey } from '@/lib/features';
 
+export type DbBackedFeature =
+  | 'report'
+  | 'interview'
+  | 'transcript'
+  | 'desk'
+  | 'scheduler';
+
 export type WorkspaceArtifact = {
   id: string;
   featureKey: FeatureKey;
   title: string;
   content: string;
   createdAt: number;
+  // DB linkage so each row in the workspace panel can be reassigned to
+  // a project via /api/artifacts/assign. When absent the row shows the
+  // dropdown disabled (local-only artifact).
+  dbFeature?: DbBackedFeature;
+  dbId?: string;
+  projectId?: string | null;
 };
 
 // Which target features can accept an artifact produced by source.

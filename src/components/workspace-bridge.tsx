@@ -57,6 +57,8 @@ export function WorkspaceBridge() {
           featureKey: 'quotes',
           title: `${base}.md`,
           content: md,
+          dbFeature: 'transcript',
+          dbId: jobId,
         });
       } catch {
         // ignore — next status update retries
@@ -90,6 +92,8 @@ export function WorkspaceBridge() {
         featureKey: 'desk',
         title: `desk-${kw}-${stamp}.md`,
         content: j.output,
+        dbFeature: 'desk',
+        dbId: j.id,
       });
     }
   }, [desk.jobs, workspace]);

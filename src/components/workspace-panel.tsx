@@ -1,27 +1,42 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import type { FeatureKey } from '@/lib/features';
+import type { WorkspaceArtifact } from '@/lib/workspace';
 import { useWorkspace } from './workspace-provider';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
 
+// Window for the new-row flash + trigger pulse after addArtifact fires.
+const FLASH_MS = 2400;
+
+type Project = { id: string; name: string };
+
 export function WorkspacePanel() {
   const t = useTranslations('Workspace');
   const tSidebar = useTranslations('Sidebar');
+  const tDashboard = useTranslations('Dashboard');
   const {
     artifacts,
     isOpen,
     setOpen,
     removeArtifact,
     removeArtifacts,
+    setProjectId,
     sendTo,
     sendMany,
     targetsFor,
     setDragging,
+    lastAddedId,
+    lastAddedAt,
   } = useWorkspace();
   const router = useRouter();
 
@@ -30,6 +45,8 @@ export function WorkspacePanel() {
   const [viewing, setViewing] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [pulse, setPulse] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Drop selections that no longer exist (artifact deleted elsewhere).
@@ -42,6 +59,7 @@ export function WorkspacePanel() {
     });
   }, [artifacts]);
 
+  // Click-outside to close menus.
   useEffect(() => {
     if (!openMenu) return;
     function onClick(e: MouseEvent) {
@@ -54,11 +72,49 @@ export function WorkspacePanel() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [openMenu]);
 
+  // Auto-clear toast.
   useEffect(() => {
     if (!toast) return;
     const id = window.setTimeout(() => setToast(null), 1500);
     return () => window.clearTimeout(id);
   }, [toast]);
+
+  // Trigger-button pulse on new artifact.
+  useEffect(() => {
+    if (!lastAddedAt) return;
+    setPulse(true);
+    const id = window.setTimeout(() => setPulse(false), FLASH_MS);
+    return () => window.clearTimeout(id);
+  }, [lastAddedAt]);
+
+  // Escape closes the modal.
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, setOpen]);
+
+  // Lazy-fetch projects when modal opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/projects', { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setProjects((json.projects ?? []) as Project[]);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   function flash(msg: string) {
     setToast(msg);
@@ -78,7 +134,10 @@ export function WorkspacePanel() {
     const path = sendTo(artifactId, target);
     setOpenMenu(null);
     setOpenSendSub(false);
-    if (path) router.push(path);
+    if (path) {
+      setOpen(false);
+      router.push(path);
+    }
   }
 
   function onSendBulk(target: FeatureKey) {
@@ -86,7 +145,10 @@ export function WorkspacePanel() {
     const path = sendMany(ids, target);
     setOpenMenu(null);
     setOpenSendSub(false);
-    if (path) router.push(path);
+    if (path) {
+      setOpen(false);
+      router.push(path);
+    }
   }
 
   function toggleSelect(id: string) {
@@ -106,9 +168,29 @@ export function WorkspacePanel() {
     );
   }
 
-  // The intersection of compatible targets across every selected artifact's
-  // source feature. Targets that aren't valid for *every* selected source
-  // are filtered out so a bulk "send to" never silently drops some items.
+  async function onAssignProject(
+    artifact: WorkspaceArtifact,
+    nextProjectId: string | null,
+  ) {
+    setProjectId(artifact.id, nextProjectId);
+    if (artifact.dbFeature && artifact.dbId) {
+      try {
+        await fetch('/api/artifacts/assign', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            feature: artifact.dbFeature,
+            id: artifact.dbId,
+            project_id: nextProjectId,
+          }),
+        });
+      } catch {
+        // local state already updated; treat as best-effort
+      }
+    }
+  }
+
+  // Bulk send-to intersection (unchanged from previous version).
   const bulkTargets = useMemo<FeatureKey[]>(() => {
     if (selected.size === 0) return [];
     const sources = artifacts
@@ -124,264 +206,294 @@ export function WorkspacePanel() {
     return Array.from(intersect);
   }, [artifacts, selected, targetsFor]);
 
-  if (!isOpen) {
-    return (
+  const viewedArtifact = viewing ? artifacts.find((a) => a.id === viewing) : null;
+  const allSelected = selected.size > 0 && selected.size === artifacts.length;
+  const flashActive = !!lastAddedAt && Date.now() - lastAddedAt < FLASH_MS;
+
+  return (
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 border border-line bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px] ${
+          pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
+        }`}
       >
         <span className="inline-block h-1 w-5 bg-amore" />
         {t('eyebrow')}
         <span className="tabular-nums text-mute-soft">· {artifacts.length}</span>
       </button>
-    );
-  }
 
-  const viewedArtifact = viewing ? artifacts.find((a) => a.id === viewing) : null;
-  const allSelected = selected.size > 0 && selected.size === artifacts.length;
-
-  return (
-    <div className="fixed bottom-5 right-5 z-40 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col border border-line bg-paper [border-radius:4px]">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-px w-5 bg-amore" />
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
-            {t('eyebrow')}
-          </span>
-          <span className="text-[11px] tabular-nums text-mute-soft">
-            · {artifacts.length}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(false);
-            setOpenMenu(null);
-            setViewing(null);
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setOpen(false);
+              setOpenMenu(null);
+              setViewing(null);
+            }
           }}
-          aria-label={t('collapse')}
-          className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
         >
-          ×
-        </button>
-      </header>
-
-      {/* Selection toolbar — only visible when at least one item is checked,
-          OR when there are items so the user has a place to start. */}
-      {artifacts.length > 0 && (
-        <div className="flex items-center justify-between gap-2 border-b border-line-soft px-4 py-2 text-[11px]">
-          <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleSelectAll}
-              className="h-3 w-3 accent-amore"
-            />
-            <span>
-              {selected.size > 0
-                ? t('nSelected', { count: selected.size })
-                : t('selectAll')}
-            </span>
-          </label>
-          {selected.size > 0 && (
-            <div
-              className="relative"
-              ref={openMenu === 'bulk' ? menuRef : undefined}
-            >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="flex max-h-[80vh] w-full max-w-[640px] flex-col border border-line bg-paper [border-radius:4px]"
+          >
+            <header className="flex items-center justify-between border-b border-line px-5 py-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-px w-5 bg-amore" />
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+                  {t('eyebrow')}
+                </span>
+                <span className="text-[11px] tabular-nums text-mute-soft">
+                  · {artifacts.length}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
-                  setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
-                  setOpenSendSub(false);
+                  setOpen(false);
+                  setOpenMenu(null);
+                  setViewing(null);
                 }}
-                className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+                aria-label={t('collapse')}
+                className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
               >
-                {t('bulkActions')}
+                ×
               </button>
-              {openMenu === 'bulk' && (
-                <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
-                  <div className="relative">
-                    <MenuItem
-                      disabled={bulkTargets.length === 0}
-                      onClick={() => setOpenSendSub((v) => !v)}
-                      trailing={bulkTargets.length > 0 ? '›' : undefined}
+            </header>
+
+            {artifacts.length > 0 && (
+              <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
+                <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="h-3 w-3 accent-amore"
+                  />
+                  <span>
+                    {selected.size > 0
+                      ? t('nSelected', { count: selected.size })
+                      : t('selectAll')}
+                  </span>
+                </label>
+                {selected.size > 0 && (
+                  <div
+                    className="relative"
+                    ref={openMenu === 'bulk' ? menuRef : undefined}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
+                        setOpenSendSub(false);
+                      }}
+                      className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
                     >
-                      {t('sendSelectedTo')}
-                    </MenuItem>
-                    {openSendSub && bulkTargets.length > 0 && (
-                      <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
-                        {bulkTargets.map((tgt) => (
+                      {t('bulkActions')}
+                    </button>
+                    {openMenu === 'bulk' && (
+                      <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                        <div className="relative">
                           <MenuItem
-                            key={tgt}
-                            onClick={() => onSendBulk(tgt)}
+                            disabled={bulkTargets.length === 0}
+                            onClick={() => setOpenSendSub((v) => !v)}
+                            trailing={bulkTargets.length > 0 ? '›' : undefined}
                           >
-                            {tSidebar(tgt)}
+                            {t('sendSelectedTo')}
                           </MenuItem>
-                        ))}
+                          {openSendSub && bulkTargets.length > 0 && (
+                            <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                              {bulkTargets.map((tgt) => (
+                                <MenuItem
+                                  key={tgt}
+                                  onClick={() => onSendBulk(tgt)}
+                                >
+                                  {tSidebar(tgt)}
+                                </MenuItem>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="my-1 h-px bg-line-soft" />
+                        <MenuItem
+                          danger
+                          onClick={() => {
+                            removeArtifacts(Array.from(selected));
+                            setSelected(new Set());
+                            setOpenMenu(null);
+                          }}
+                        >
+                          {t('deleteSelected')}
+                        </MenuItem>
                       </div>
                     )}
                   </div>
-                  <div className="my-1 h-px bg-line-soft" />
-                  <MenuItem
-                    danger
-                    onClick={() => {
-                      removeArtifacts(Array.from(selected));
-                      setSelected(new Set());
-                      setOpenMenu(null);
-                    }}
-                  >
-                    {t('deleteSelected')}
-                  </MenuItem>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+                )}
+              </div>
+            )}
 
-      <div className="max-h-[60vh] min-h-[180px] overflow-y-auto">
-        {artifacts.length === 0 ? (
-          <div className="px-4 py-10 text-center">
-            <p className="text-[12px] text-mute-soft">{t('empty')}</p>
-            <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
-          </div>
-        ) : (
-          <ul>
-            {artifacts.map((a) => {
-              const targets = targetsFor(a.featureKey);
-              const isMenuOpen = openMenu === a.id;
-              const isSelected = selected.has(a.id);
-              return (
-                <li
-                  key={a.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = 'copy';
-                    // If the dragged item is part of a multi-selection,
-                    // carry the whole set; otherwise carry just this one.
-                    const ids =
-                      isSelected && selected.size > 1
-                        ? Array.from(selected)
-                        : [a.id];
-                    if (ids.length > 1) {
-                      e.dataTransfer.setData(MIME_MANY, JSON.stringify(ids));
-                    }
-                    // Always set single MIME so legacy drop handlers get
-                    // at least the primary item.
-                    e.dataTransfer.setData(MIME_SINGLE, a.id);
-                    setDragging({
-                      artifactId: a.id,
-                      sourceFeature: a.featureKey,
-                    });
-                  }}
-                  onDragEnd={() => setDragging(null)}
-                  className={`cursor-grab border-b border-line-soft px-4 py-2.5 last:border-b-0 active:cursor-grabbing ${
-                    isSelected ? 'bg-paper-soft' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(a.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-3 w-3 shrink-0 accent-amore"
-                      aria-label={t('select')}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
-                        {tSidebar(a.featureKey)}
-                      </div>
-                      <div className="mt-0.5 truncate text-[12.5px] text-ink-2">
-                        {a.title}
-                      </div>
-                    </div>
-                    <div
-                      className="relative shrink-0"
-                      ref={isMenuOpen ? menuRef : undefined}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenMenu(isMenuOpen ? null : a.id);
-                          setOpenSendSub(false);
+            <div className="min-h-[180px] flex-1 overflow-y-auto">
+              {artifacts.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-[12px] text-mute-soft">{t('empty')}</p>
+                  <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
+                </div>
+              ) : (
+                <ul>
+                  {artifacts.map((a) => {
+                    const targets = targetsFor(a.featureKey);
+                    const isMenuOpen = openMenu === a.id;
+                    const isSelected = selected.has(a.id);
+                    const isFresh = flashActive && lastAddedId === a.id;
+                    return (
+                      <li
+                        key={a.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'copy';
+                          const ids =
+                            isSelected && selected.size > 1
+                              ? Array.from(selected)
+                              : [a.id];
+                          if (ids.length > 1) {
+                            e.dataTransfer.setData(MIME_MANY, JSON.stringify(ids));
+                          }
+                          e.dataTransfer.setData(MIME_SINGLE, a.id);
+                          setDragging({
+                            artifactId: a.id,
+                            sourceFeature: a.featureKey,
+                          });
                         }}
-                        aria-label={t('actions')}
-                        className="flex h-7 w-7 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+                        onDragEnd={() => setDragging(null)}
+                        className={`cursor-grab border-b border-line-soft px-5 py-2.5 last:border-b-0 active:cursor-grabbing ${
+                          isSelected ? 'bg-paper-soft' : ''
+                        } ${isFresh ? 'workspace-row-flash' : ''}`}
                       >
-                        <span className="text-[16px] leading-none">⋯</span>
-                      </button>
-                      {isMenuOpen && (
-                        <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
-                          <MenuItem
-                            onClick={() => {
-                              setViewing(a.id);
-                              setOpenMenu(null);
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(a.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-3 w-3 shrink-0 accent-amore"
+                            aria-label={t('select')}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
+                              {tSidebar(a.featureKey)}
+                            </div>
+                            <div className="mt-0.5 truncate text-[12.5px] text-ink-2">
+                              {a.title}
+                            </div>
+                          </div>
+                          <select
+                            value={a.projectId ?? '__unfiled__'}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              void onAssignProject(a, v === '__unfiled__' ? null : v);
                             }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:4px]"
+                            aria-label={t('assignProject')}
                           >
-                            {t('view')}
-                          </MenuItem>
-                          <MenuItem onClick={() => onCopy(a.content)}>
-                            {t('copy')}
-                          </MenuItem>
-                          <div className="relative">
-                            <MenuItem
-                              disabled={targets.length === 0}
-                              onClick={() => setOpenSendSub((v) => !v)}
-                              trailing={targets.length > 0 ? '›' : undefined}
+                            <option value="__unfiled__">{tDashboard('unfiled')}</option>
+                            {projects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div
+                            className="relative shrink-0"
+                            ref={isMenuOpen ? menuRef : undefined}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenu(isMenuOpen ? null : a.id);
+                                setOpenSendSub(false);
+                              }}
+                              aria-label={t('actions')}
+                              className="flex h-7 w-7 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
                             >
-                              {t('sendTo')}
-                            </MenuItem>
-                            {openSendSub && targets.length > 0 && (
-                              <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
-                                {targets.map((tgt) => (
+                              <span className="text-[16px] leading-none">⋯</span>
+                            </button>
+                            {isMenuOpen && (
+                              <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                                <MenuItem
+                                  onClick={() => {
+                                    setViewing(a.id);
+                                    setOpenMenu(null);
+                                  }}
+                                >
+                                  {t('view')}
+                                </MenuItem>
+                                <MenuItem onClick={() => onCopy(a.content)}>
+                                  {t('copy')}
+                                </MenuItem>
+                                <div className="relative">
                                   <MenuItem
-                                    key={tgt}
-                                    onClick={() => onSend(a.id, tgt)}
+                                    disabled={targets.length === 0}
+                                    onClick={() => setOpenSendSub((v) => !v)}
+                                    trailing={targets.length > 0 ? '›' : undefined}
                                   >
-                                    {tSidebar(tgt)}
+                                    {t('sendTo')}
                                   </MenuItem>
-                                ))}
+                                  {openSendSub && targets.length > 0 && (
+                                    <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                                      {targets.map((tgt) => (
+                                        <MenuItem
+                                          key={tgt}
+                                          onClick={() => onSend(a.id, tgt)}
+                                        >
+                                          {tSidebar(tgt)}
+                                        </MenuItem>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="my-1 h-px bg-line-soft" />
+                                <MenuItem
+                                  danger
+                                  onClick={() => {
+                                    removeArtifact(a.id);
+                                    setOpenMenu(null);
+                                  }}
+                                >
+                                  {t('delete')}
+                                </MenuItem>
                               </div>
                             )}
                           </div>
-                          <div className="my-1 h-px bg-line-soft" />
-                          <MenuItem
-                            danger
-                            onClick={() => {
-                              removeArtifact(a.id);
-                              setOpenMenu(null);
-                            }}
-                          >
-                            {t('delete')}
-                          </MenuItem>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
 
-      {toast && (
-        <div className="border-t border-line-soft px-4 py-2 text-[11px] text-mute">
-          {toast}
+            {toast && (
+              <div className="border-t border-line-soft px-5 py-2 text-[11px] text-mute">
+                {toast}
+              </div>
+            )}
+          </div>
+
+          {viewedArtifact && (
+            <ViewerOverlay
+              title={viewedArtifact.title}
+              content={viewedArtifact.content}
+              onClose={() => setViewing(null)}
+            />
+          )}
         </div>
       )}
-
-      {viewedArtifact && (
-        <ViewerOverlay
-          title={viewedArtifact.title}
-          content={viewedArtifact.content}
-          onClose={() => setViewing(null)}
-        />
-      )}
-    </div>
+    </>
   );
 }
 
@@ -426,7 +538,7 @@ function ViewerOverlay({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
       onClick={onClose}
     >
       <div

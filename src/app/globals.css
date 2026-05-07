@@ -63,3 +63,20 @@ html, body {
   background: var(--color-amore);
   vertical-align: middle;
 }
+
+/* Workspace micro-interactions: trigger pulse + new-row flash. */
+@keyframes workspaceTriggerPulse {
+  0%   { box-shadow: 0 0 0 0 var(--color-amore); }
+  60%  { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.workspace-trigger-pulse {
+  animation: workspaceTriggerPulse 1.2s ease-out 2;
+}
+@keyframes workspaceRowFlash {
+  0%   { background-color: color-mix(in srgb, var(--color-amore) 16%, transparent); }
+  100% { background-color: transparent; }
+}
+.workspace-row-flash {
+  animation: workspaceRowFlash 2s ease-out 1;
+}
