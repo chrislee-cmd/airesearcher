@@ -52,35 +52,16 @@ const SERVICES: Service[] = [
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
 
+const AUTO_ROLL_MS = 5000;
+
 export function ModeratorServicesCarousel() {
   const t = useTranslations('Moderator');
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
   const { user } = useAuth();
   const requireAuth = useRequireAuth();
   const [statusMap, setStatusMap] = useState<Record<string, Status>>({});
   const tipTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const updateButtons = useCallback(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanPrev(scrollLeft > 4);
-    setCanNext(scrollLeft + clientWidth < scrollWidth - 4);
-  }, []);
-
-  useEffect(() => {
-    updateButtons();
-    const el = trackRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateButtons, { passive: true });
-    window.addEventListener('resize', updateButtons);
-    return () => {
-      el.removeEventListener('scroll', updateButtons);
-      window.removeEventListener('resize', updateButtons);
-    };
-  }, [updateButtons]);
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const timers = tipTimers.current;
@@ -89,13 +70,17 @@ export function ModeratorServicesCarousel() {
     };
   }, []);
 
-  const scrollByCard = (dir: 1 | -1) => {
-    const el = trackRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>('[data-card]');
-    const step = card ? card.offsetWidth + 20 : el.clientWidth * 0.8;
-    el.scrollBy({ left: dir * step, behavior: 'smooth' });
-  };
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % SERVICES.length);
+    }, AUTO_ROLL_MS);
+    return () => clearInterval(id);
+  }, [paused]);
+
+  const goTo = useCallback((i: number) => {
+    setIndex(((i % SERVICES.length) + SERVICES.length) % SERVICES.length);
+  }, []);
 
   const submitInquiry = (service: Service) => {
     requireAuth(() => {
@@ -122,114 +107,107 @@ export function ModeratorServicesCarousel() {
     }, 3000);
   }
 
+  const s = SERVICES[index];
+  const status = statusMap[s.key] ?? 'idle';
+  const sending = status === 'sending';
+  const showTip = status === 'sent' || status === 'error';
+  const tipText = status === 'error' ? t('inquiryError') : t('inquirySent');
+
   return (
-    <section className="mt-12">
-      <div className="flex items-end justify-between gap-4 border-b border-line pb-3">
-        <div>
+    <section
+      className="mt-12"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div
+        className={`relative grid grid-cols-1 gap-0 border bg-paper md:grid-cols-[280px_1fr] [border-radius:4px] ${
+          s.accent ? 'border-amore' : 'border-line'
+        }`}
+        aria-live="polite"
+      >
+        {s.accent && (
+          <span className="absolute right-3 top-3 border border-amore bg-amore-bg px-2 py-[2px] text-[10px] font-medium tracking-[0.06em] text-amore [border-radius:2px]">
+            {t('thisService')}
+          </span>
+        )}
+
+        <div className="flex flex-col justify-center border-b border-line-soft p-6 md:border-b-0 md:border-r">
           <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-mute-soft">
-            {t('benchmarkLabel')}
+            {s.region}
           </p>
-          <h2 className="mt-2 text-[20px] font-bold tracking-[-0.018em] text-ink-2">
-            {t('benchmarkTitle')}
-          </h2>
+          <h3 className="mt-2 text-[28px] font-bold tracking-[-0.02em] text-ink-2">
+            {s.name}
+          </h3>
+          <a
+            href={s.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-3 inline-block text-[11.5px] tabular-nums text-mute hover:text-ink"
+          >
+            {s.href.replace(/^https?:\/\//, '')}
+          </a>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={t('prev')}
-            onClick={() => scrollByCard(-1)}
-            disabled={!canPrev}
-            className="flex h-8 w-8 items-center justify-center border border-line bg-paper text-[14px] text-ink-2 transition-colors duration-[120ms] hover:bg-paper-soft disabled:cursor-not-allowed disabled:opacity-30 [border-radius:4px]"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            aria-label={t('next')}
-            onClick={() => scrollByCard(1)}
-            disabled={!canNext}
-            className="flex h-8 w-8 items-center justify-center border border-line bg-paper text-[14px] text-ink-2 transition-colors duration-[120ms] hover:bg-paper-soft disabled:cursor-not-allowed disabled:opacity-30 [border-radius:4px]"
-          >
-            ›
-          </button>
+
+        <div className="flex flex-col p-6">
+          <p className="text-[13px] leading-[1.65] text-ink-2">{s.tagline}</p>
+          <ul className="mt-4 space-y-1.5 border-t border-line-soft pt-3">
+            {s.highlights.map((h) => (
+              <li
+                key={h}
+                className="flex items-start gap-2 text-[12px] leading-[1.55] text-ink-2"
+              >
+                <span className="mt-[7px] inline-block h-[3px] w-[3px] shrink-0 bg-mute" />
+                {h}
+              </li>
+            ))}
+          </ul>
+
+          <div className="relative mt-5">
+            <button
+              type="button"
+              onClick={() => submitInquiry(s)}
+              disabled={sending}
+              className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50 [border-radius:4px]"
+            >
+              {sending ? t('inquirySending') : t('inquiry')}
+            </button>
+            {showTip && (
+              <div
+                role="status"
+                className={`absolute -top-2 left-0 z-10 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-[11.5px] font-medium [border-radius:4px] ${
+                  status === 'error'
+                    ? 'border-warning-line bg-warning-bg text-warning'
+                    : 'border-amore bg-amore-bg text-amore'
+                }`}
+              >
+                {tipText}
+              </div>
+            )}
+          </div>
+          {user && (
+            <p className="mt-2 text-[10.5px] tabular-nums text-mute-soft">
+              {t('inquiryFromHint', { email: user.email ?? '' })}
+            </p>
+          )}
         </div>
       </div>
 
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('benchmarkDescription')}
-      </p>
-
-      <div
-        ref={trackRef}
-        className="mt-6 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {SERVICES.map((s) => {
-          const status = statusMap[s.key] ?? 'idle';
-          const sending = status === 'sending';
-          const showTip = status === 'sent' || status === 'error';
-          const tipText = status === 'error' ? t('inquiryError') : t('inquirySent');
+      <div className="mt-5 flex items-center justify-center gap-2">
+        {SERVICES.map((item, i) => {
+          const active = i === index;
           return (
-            <div
-              key={s.key}
-              data-card
-              className={`group relative flex w-[300px] shrink-0 snap-start flex-col border bg-paper p-5 [border-radius:4px] ${
-                s.accent ? 'border-amore' : 'border-line'
+            <button
+              key={item.key}
+              type="button"
+              aria-label={item.name}
+              aria-current={active}
+              onClick={() => goTo(i)}
+              className={`h-[6px] transition-all duration-[160ms] [border-radius:999px] ${
+                active ? 'w-6 bg-ink' : 'w-[6px] bg-line hover:bg-mute-soft'
               }`}
-            >
-              {s.accent && (
-                <span className="absolute right-3 top-3 border border-amore bg-amore-bg px-2 py-[2px] text-[10px] font-medium tracking-[0.06em] text-amore [border-radius:2px]">
-                  {t('thisService')}
-                </span>
-              )}
-              <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-mute-soft">
-                {s.region}
-              </p>
-              <h3 className="mt-2 text-[18px] font-semibold tracking-[-0.01em] text-ink-2">
-                {s.name}
-              </h3>
-              <p className="mt-2 text-[12.5px] leading-[1.65] text-mute">
-                {s.tagline}
-              </p>
-              <ul className="mt-4 space-y-1.5 border-t border-line-soft pt-3">
-                {s.highlights.map((h) => (
-                  <li
-                    key={h}
-                    className="flex items-start gap-2 text-[12px] leading-[1.55] text-ink-2"
-                  >
-                    <span className="mt-[7px] inline-block h-[3px] w-[3px] shrink-0 bg-mute" />
-                    {h}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="relative mt-5">
-                <button
-                  type="button"
-                  onClick={() => submitInquiry(s)}
-                  disabled={sending}
-                  className="w-full border border-ink bg-ink px-3 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50 [border-radius:4px]"
-                >
-                  {sending ? t('inquirySending') : t('inquiry')}
-                </button>
-                {showTip && (
-                  <div
-                    role="status"
-                    className={`absolute -top-2 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-[11.5px] font-medium [border-radius:4px] ${
-                      status === 'error'
-                        ? 'border-warning-line bg-warning-bg text-warning'
-                        : 'border-amore bg-amore-bg text-amore'
-                    }`}
-                  >
-                    {tipText}
-                  </div>
-                )}
-              </div>
-              {user && (
-                <p className="mt-2 text-[10.5px] tabular-nums text-mute-soft">
-                  {t('inquiryFromHint', { email: user.email ?? '' })}
-                </p>
-              )}
-            </div>
+            />
           );
         })}
       </div>
