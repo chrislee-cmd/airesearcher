@@ -272,7 +272,7 @@ export function DeskResearch() {
     }
     setSubmitting(true);
     setError(null);
-    track('generate_clicked', { feature: 'desk', kw_count: finalKeywords.length });
+    track('desk_generate_click', { feature: 'desk', kw_count: finalKeywords.length });
     try {
       const res = await fetch('/api/desk', {
         method: 'POST',
@@ -292,7 +292,7 @@ export function DeskResearch() {
         return;
       }
       // Provider's realtime subscription will pick up the new row.
-      track('generate_success', { feature: 'desk', job_id: json.job_id });
+      track('desk_generate_success', { feature: 'desk', job_id: json.job_id });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown_error');
     } finally {
@@ -328,13 +328,13 @@ export function DeskResearch() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   function downloadMarkdown(markdown: string) {
-    track('export_clicked', { feature: 'desk', format: 'md' });
+    track('desk_export_md_click', { feature: 'desk', format: 'md' });
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
     triggerDownload(blob, `${buildFilename()}.md`);
   }
   async function downloadDocx(markdown: string) {
     setExporting(true);
-    track('export_clicked', { feature: 'desk', format: 'docx' });
+    track('desk_export_docx_click', { feature: 'desk', format: 'docx' });
     try {
       const filename = buildFilename();
       const res = await fetch('/api/desk/export', {

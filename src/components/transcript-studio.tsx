@@ -186,7 +186,7 @@ export function TranscriptStudio() {
             const err = await startRes.json().catch(() => ({}));
             throw new Error(err.error ?? `start ${startRes.status}`);
           }
-          track('transcript_start', {
+          track('transcripts_upload_start', {
             type: file.type,
             size: file.size,
             model: modelRef.current,

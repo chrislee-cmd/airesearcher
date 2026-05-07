@@ -239,7 +239,7 @@ export function ReportGenerator() {
 
   async function doRun() {
     if (files.length === 0) return;
-    track('generate_clicked', { feature: 'reports', file_count: files.length });
+    track('reports_generate_click', { feature: 'reports', file_count: files.length });
     const submitted = files;
     const sourceNames = submitted.map((f) => f.name);
 
@@ -288,7 +288,7 @@ export function ReportGenerator() {
           html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${html}</body></html>`;
         }
 
-        track('generate_success', { feature: 'reports' });
+        track('reports_generate_success', { feature: 'reports' });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const title = `report_${ts}.html`;
         workspace.addArtifact({

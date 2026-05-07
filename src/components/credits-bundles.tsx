@@ -6,6 +6,7 @@ import {
   CREDIT_BUNDLES,
   type CreditBundleId,
 } from '@/lib/features';
+import { track } from '@/components/mixpanel-provider';
 
 function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
@@ -75,6 +76,15 @@ export function CreditsBundles() {
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
+    track(
+      method === 'stripe' ? 'credits_pay_card_click' : 'credits_quote_request_click',
+      {
+        bundle: selected.id,
+        credits: selected.credits,
+        price_krw: selected.priceKrw,
+        tax_invoice: tax.enabled,
+      },
+    );
     if (method === 'stripe') {
       // Stripe path stays for when the gateway is enabled in the future.
       setSubmitting(true);
@@ -183,11 +193,19 @@ export function CreditsBundles() {
               <div className="flex-1" />
               <button
                 type="button"
-                onClick={() =>
-                  isContact
-                    ? (window.location.href = `mailto:${t('contactEmail')}?subject=Enterprise%20plan`)
-                    : open(b.id)
-                }
+                onClick={() => {
+                  if (isContact) {
+                    track('credits_contact_sales_click', { bundle: b.id });
+                    window.location.href = `mailto:${t('contactEmail')}?subject=Enterprise%20plan`;
+                  } else {
+                    track('credits_bundle_purchase_click', {
+                      bundle: b.id,
+                      credits: b.credits,
+                      price_krw: b.priceKrw,
+                    });
+                    open(b.id);
+                  }
+                }}
                 className={`mt-5 px-4 py-2 text-[11.5px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:4px] ${
                   b.popular
                     ? 'border border-ink bg-ink text-paper hover:bg-ink-2'

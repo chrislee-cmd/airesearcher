@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { track } from '@/components/mixpanel-provider';
 
 export function EmailPasswordForm() {
   const t = useTranslations('Auth');
@@ -19,6 +20,7 @@ export function EmailPasswordForm() {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    track(mode === 'signIn' ? 'auth_signin_click' : 'auth_signup_click');
     startTransition(async () => {
       const supabase = createClient();
       if (mode === 'signIn') {
@@ -27,6 +29,7 @@ export function EmailPasswordForm() {
           setError(t('invalidCredentials'));
           return;
         }
+        track('auth_signin_success');
         router.replace('/dashboard');
         router.refresh();
       } else {
@@ -40,6 +43,7 @@ export function EmailPasswordForm() {
           return;
         }
         if (data.session) {
+          track('auth_signup_success');
           router.replace('/dashboard');
           router.refresh();
         } else {

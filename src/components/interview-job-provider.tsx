@@ -600,7 +600,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     );
     const target = snapshot.find((i) => i.id === id);
     if (!target) return null;
-    track('interview_convert_start', {
+    track('interviews_convert_start', {
       type: target.file.type,
       size: target.file.size,
     });
@@ -841,7 +841,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     const ready = [...previouslyDone, ...justConverted];
     if (ready.length === 0) return;
 
-    track('interview_analyze_start', { fileCount: ready.length });
+    track('interviews_analyze_auto_start', { fileCount: ready.length });
     setThinkingLog([]);
     void runAnalyzePipeline(ready);
   }
@@ -856,7 +856,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
             i.markdown.length > 0,
         )
         .map((i) => ({ id: i.id, file: i.file, markdown: i.markdown! }));
-      track('interview_analyze_start', { fileCount: ready.length });
+      track('interviews_analyze_click', { fileCount: ready.length });
       setThinkingLog([]);
       void runAnalyzePipeline(ready);
     });
