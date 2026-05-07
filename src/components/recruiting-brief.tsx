@@ -13,6 +13,7 @@ import { parsePartialJson } from 'ai';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useGenerationJobs } from './generation-job-provider';
+import { useWorkspace } from './workspace-provider';
 import { RecruitingResponses } from './recruiting-responses';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
@@ -183,6 +184,7 @@ export function RecruitingBrief() {
   const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
+  const workspace = useWorkspace();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
@@ -367,6 +369,42 @@ export function RecruitingBrief() {
       setPublished(j);
       setPublishVersion((v) => v + 1);
       track('recruiting_publish_success', { feature: 'recruiting_publish' });
+      // Register the published form as a workspace artifact so it shows
+      // up in the modal and can be assigned to a project. The Google
+      // form id is durable across renders, so addArtifact's upsert keeps
+      // re-publishes from spamming new rows.
+      const formId: string | undefined = j.formId ?? j.form_id;
+      if (formId) {
+        const md = [
+          `# ${survey.title || 'Recruiting form'}`,
+          '',
+          `- 응답 링크: ${j.responderUri ?? ''}`,
+          `- 편집 링크: ${j.editUri ?? ''}`,
+          '',
+          ...survey.sections.flatMap((s) => [
+            `## ${s.title || ''}`,
+            ...s.questions.map((q, i) => `${i + 1}. ${q.title}`),
+            '',
+          ]),
+        ].join('\n');
+        let activeProjectId: string | null = null;
+        try {
+          const raw = window.localStorage.getItem('active_project:v1');
+          if (raw) {
+            const parsed = JSON.parse(raw) as { id?: string } | null;
+            activeProjectId = parsed?.id ?? null;
+          }
+        } catch {}
+        workspace.addArtifact({
+          id: `recruiting_${formId}`,
+          featureKey: 'recruiting',
+          title: `${survey.title || 'recruiting'}.md`,
+          content: md,
+          dbFeature: 'recruiting',
+          dbId: formId,
+          projectId: activeProjectId,
+        });
+      }
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : 'publish_failed');
     } finally {

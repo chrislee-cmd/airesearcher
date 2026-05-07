@@ -3,17 +3,37 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 
-const FEATURE_TO_TABLE: Record<string, string> = {
-  report: 'report_jobs',
-  interview: 'interview_jobs',
-  transcript: 'transcript_jobs',
-  desk: 'desk_jobs',
-  scheduler: 'scheduler_sessions',
+// recruiting_forms uses `form_id text primary key` — every other table
+// keys on a uuid `id` column. The id-column override below keeps the
+// callers free of that detail.
+type AssignTarget = {
+  table: string;
+  idColumn: string;
+  // recruiting_forms predates org-scoping; older rows have no org_id.
+  // For recruiting we still scope writes by user_id to stay safe.
+  scopeColumn: 'org_id' | 'user_id';
+};
+
+const FEATURES: Record<string, AssignTarget> = {
+  report: { table: 'report_jobs', idColumn: 'id', scopeColumn: 'org_id' },
+  interview: { table: 'interview_jobs', idColumn: 'id', scopeColumn: 'org_id' },
+  transcript: { table: 'transcript_jobs', idColumn: 'id', scopeColumn: 'org_id' },
+  desk: { table: 'desk_jobs', idColumn: 'id', scopeColumn: 'org_id' },
+  scheduler: { table: 'scheduler_sessions', idColumn: 'id', scopeColumn: 'org_id' },
+  recruiting: { table: 'recruiting_forms', idColumn: 'form_id', scopeColumn: 'user_id' },
 };
 
 const Body = z.object({
-  feature: z.enum(['report', 'interview', 'transcript', 'desk', 'scheduler']),
-  id: z.string().uuid(),
+  feature: z.enum([
+    'report',
+    'interview',
+    'transcript',
+    'desk',
+    'scheduler',
+    'recruiting',
+  ]),
+  // recruiting form ids are Google API strings, not uuids
+  id: z.string().min(1),
   project_id: z.string().uuid().nullable(),
 });
 
@@ -29,7 +49,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'invalid' }, { status: 400 });
 
   const { feature, id, project_id } = parsed.data;
-  const table = FEATURE_TO_TABLE[feature];
+  const target = FEATURES[feature];
 
   if (project_id) {
     const { data: project } = await supabase
@@ -41,11 +61,12 @@ export async function POST(req: Request) {
     if (!project) return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
   }
 
+  const scopeValue = target.scopeColumn === 'org_id' ? org.org_id : user.id;
   const { error } = await supabase
-    .from(table)
+    .from(target.table)
     .update({ project_id })
-    .eq('id', id)
-    .eq('org_id', org.org_id);
+    .eq(target.idColumn, id)
+    .eq(target.scopeColumn, scopeValue);
 
   if (error) {
     console.error('[artifacts/assign] update error', error);

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getActiveOrg } from '@/lib/org';
 import { refreshAccessToken } from '@/lib/google-oauth';
 import { createGoogleForm } from '@/lib/google-forms';
 import { surveySchema, type Survey, type SurveyQuestion } from '@/lib/survey-schema';
@@ -106,11 +107,14 @@ export async function POST(request: Request) {
 
   try {
     const result = await createGoogleForm(accessToken, survey);
-    // Persist so the responses panel can render across refreshes and
-    // the auto-poll knows which forms to fetch for this user.
+    // Stamp org_id at creation so the dashboard's recruiting count
+    // attributes new forms to the user's active org. Older rows can
+    // remain null — they show up under "unfiled" until backfilled.
+    const org = await getActiveOrg();
     await admin.from('recruiting_forms').upsert({
       form_id: result.formId,
       user_id: user.id,
+      org_id: org?.org_id ?? null,
       title: survey.title || '',
       responder_uri: result.responderUri,
       edit_uri: result.editUri,
