@@ -389,6 +389,8 @@
     "submitting": "Processing…",
     "payWithCard": "Pay by card",
     "issueBankReference": "Get transfer details",
+    "requestQuote": "Request quote",
+    "quoteSentToast": "Quote request sent.",
     "bankTitle": "Bank transfer instructions",
     "bankBody": "Wire to the account below. Credits are applied within one business day after we confirm the deposit. Use the reference code as the sender name on your transfer.",
     "bankBankName": "Bank",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
@@ -52,24 +52,22 @@ export function CreditsBundles() {
   const [tax, setTax] = useState<TaxInvoiceState>(EMPTY_TAX);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bankResult, setBankResult] = useState<{
-    bankReference: string;
-    bankName?: string;
-    accountNumber?: string;
-    accountHolder?: string;
-    amountKrw: number;
-  } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   const selected = CREDIT_BUNDLES.find((b) => b.id === selectedBundle) ?? null;
 
   function open(id: CreditBundleId) {
     setSelectedBundle(id);
     setError(null);
-    setBankResult(null);
   }
   function close() {
     setSelectedBundle(null);
-    setBankResult(null);
     setTax(EMPTY_TAX);
     setMethod('stripe');
     setError(null);
@@ -77,6 +75,30 @@ export function CreditsBundles() {
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
+    if (method === 'stripe') {
+      // Stripe path stays for when the gateway is enabled in the future.
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/billing/checkout', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ bundleId: selected.id, method: 'stripe' }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(json.error ?? `HTTP ${res.status}`);
+          return;
+        }
+        if (json.checkoutUrl) window.location.href = json.checkoutUrl;
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -89,29 +111,18 @@ export function CreditsBundles() {
             managerEmail: tax.managerEmail,
           }
         : undefined;
-      const res = await fetch('/api/billing/checkout', {
+      const res = await fetch('/api/billing/quote', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ bundleId: selected.id, method, taxInvoice: taxPayload }),
+        body: JSON.stringify({ bundleId: selected.id, taxInvoice: taxPayload }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(json.error ?? `HTTP ${res.status}`);
         return;
       }
-      if (json.method === 'stripe' && json.checkoutUrl) {
-        window.location.href = json.checkoutUrl;
-        return;
-      }
-      if (json.method === 'bank_transfer') {
-        setBankResult({
-          bankReference: json.bankReference,
-          bankName: json.bankName,
-          accountNumber: json.accountNumber,
-          accountHolder: json.accountHolder,
-          amountKrw: selected.priceKrw,
-        });
-      }
+      close();
+      setToast(t('quoteSentToast'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -190,6 +201,18 @@ export function CreditsBundles() {
         })}
       </div>
 
+      {toast && (
+        <div
+          className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper [border-radius:4px]">
+            {toast}
+          </div>
+        </div>
+      )}
+
       {selected && selected.priceKrw != null && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4"
@@ -212,14 +235,6 @@ export function CreditsBundles() {
               </button>
             </header>
             <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-5 py-5">
-              {bankResult ? (
-                <BankTransferReceipt
-                  bankResult={bankResult}
-                  formatKrw={formatKrw}
-                  onClose={close}
-                />
-              ) : (
-                <>
                   <h3 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
                     {t(BUNDLE_LABEL_KEY[selected.id])} ·{' '}
                     {selected.credits.toLocaleString()} {t('creditsUnit')}
@@ -317,11 +332,9 @@ export function CreditsBundles() {
                         ? t('submitting')
                         : method === 'stripe'
                         ? t('payWithCard')
-                        : t('issueBankReference')}
+                        : t('requestQuote')}
                     </button>
                   </div>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -394,66 +407,3 @@ function Field({
   );
 }
 
-function BankTransferReceipt({
-  bankResult,
-  formatKrw,
-  onClose,
-}: {
-  bankResult: {
-    bankReference: string;
-    bankName?: string;
-    accountNumber?: string;
-    accountHolder?: string;
-    amountKrw: number;
-  };
-  formatKrw: (n: number) => string;
-  onClose: () => void;
-}) {
-  const t = useTranslations('Credits');
-  return (
-    <div>
-      <h3 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-        {t('bankTitle')}
-      </h3>
-      <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">{t('bankBody')}</p>
-      <dl className="mt-4 space-y-2 border border-line bg-paper p-4 text-[12.5px] [border-radius:4px]">
-        {bankResult.bankName && (
-          <Row label={t('bankBankName')} value={bankResult.bankName} />
-        )}
-        {bankResult.accountNumber && (
-          <Row label={t('bankAccountNumber')} value={bankResult.accountNumber} />
-        )}
-        {bankResult.accountHolder && (
-          <Row label={t('bankAccountHolder')} value={bankResult.accountHolder} />
-        )}
-        <Row label={t('bankAmount')} value={formatKrw(bankResult.amountKrw)} />
-        <Row
-          label={t('bankReference')}
-          value={bankResult.bankReference}
-          accent
-        />
-      </dl>
-      <p className="mt-3 text-[11px] text-mute-soft">{t('bankFootnote')}</p>
-      <div className="mt-5 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 [border-radius:4px]"
-        >
-          {t('done')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-mute-soft">{label}</dt>
-      <dd className={`tabular-nums ${accent ? 'font-bold text-amore' : 'text-ink-2'}`}>
-        {value}
-      </dd>
-    </div>
-  );
-}
