@@ -206,6 +206,9 @@ export function RecruitingBrief() {
     editUri: string;
   } | null>(null);
   const [publishVersion, setPublishVersion] = useState(0);
+  const [starting, setStarting] = useState(false);
+  const [started, setStarted] = useState<{ to: string } | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
@@ -344,6 +347,8 @@ export function RecruitingBrief() {
     if (!survey) return;
     setPublishing(true);
     setPublishError(null);
+    setStarted(null);
+    setStartError(null);
     try {
       const res = await fetch('/api/recruiting/google/forms/create', {
         method: 'POST',
@@ -361,6 +366,29 @@ export function RecruitingBrief() {
       setPublishError(e instanceof Error ? e.message : 'publish_failed');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function startRecruiting() {
+    if (!published) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await fetch('/api/recruiting/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ responderUri: published.responderUri }),
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        throw new Error(j.error ?? `start_failed: ${res.statusText}`);
+      }
+      setStarted({ to: j.to ?? 'lee880728@gmail.com' });
+      track('generate_success', { feature: 'recruiting_start' });
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : 'start_failed');
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -716,14 +744,25 @@ export function RecruitingBrief() {
                   </button>
                   {survey &&
                     (google?.connected ? (
-                      <button
-                        type="button"
-                        onClick={() => void publishToGoogle()}
-                        disabled={publishing}
-                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                      >
-                        {publishing ? '발행 중…' : 'Google Forms로 발행'}
-                      </button>
+                      published ? (
+                        <button
+                          type="button"
+                          onClick={() => void startRecruiting()}
+                          disabled={starting}
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                        >
+                          {starting ? '메일 발송 중…' : '리크루팅 시작'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void publishToGoogle()}
+                          disabled={publishing}
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                        >
+                          {publishing ? '발행 중…' : 'Google Forms로 발행'}
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -754,6 +793,16 @@ export function RecruitingBrief() {
               {publishError && (
                 <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
                   발행 오류: {publishError}
+                </div>
+              )}
+              {startError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  메일 발송 오류: {startError}
+                </div>
+              )}
+              {started && (
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink [border-radius:4px]">
+                  리크루팅 메일을 {started.to}로 발송했습니다.
                 </div>
               )}
               {published && (
