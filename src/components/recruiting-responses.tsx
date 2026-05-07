@@ -89,10 +89,52 @@ type ResponseState = {
   syncedAt: number | null;
 };
 
+// Persist the last successful sync per form in localStorage so navigating
+// away and back doesn't blow away the table. We only persist `data` and
+// `syncedAt` — `loading`/`error` are session-only signals.
+const STORAGE_KEY = 'recruiting_responses_v1';
+
+type PersistedEntry = { data: FormResponses; syncedAt: number };
+
+function loadPersisted(): Record<string, PersistedEntry> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, PersistedEntry>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePersisted(map: Record<string, PersistedEntry>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Quota / serialization errors are non-fatal for the UI.
+  }
+}
+
 export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props) {
   const [forms, setForms] = useState<PublishedForm[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
-  const [responses, setResponses] = useState<Record<string, ResponseState>>({});
+  const [responses, setResponses] = useState<Record<string, ResponseState>>(
+    () => {
+      const persisted = loadPersisted();
+      const out: Record<string, ResponseState> = {};
+      for (const [formId, entry] of Object.entries(persisted)) {
+        out[formId] = {
+          data: entry.data,
+          loading: false,
+          error: null,
+          syncedAt: entry.syncedAt,
+        };
+      }
+      return out;
+    },
+  );
 
   const fetchList = useCallback(async () => {
     try {
@@ -114,6 +156,38 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
     void fetchList();
   }, [fetchList, publishVersion]);
 
+  const removeForm = useCallback(async (formId: string) => {
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm(
+        '이 폼을 목록에서 제거할까요? Google Forms 자체는 그대로 남습니다.',
+      );
+      if (!ok) return;
+    }
+    try {
+      const res = await fetch(
+        `/api/recruiting/google/forms/${encodeURIComponent(formId)}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `delete_failed: ${res.statusText}`);
+      }
+    } catch (e) {
+      // Surface the failure but don't block local cleanup if the row is
+      // already gone server-side.
+      console.error('[recruiting] delete form failed', e);
+    }
+    setForms((prev) => (prev ? prev.filter((x) => x.formId !== formId) : prev));
+    setResponses((prev) => {
+      const next = { ...prev };
+      delete next[formId];
+      return next;
+    });
+    const persisted = loadPersisted();
+    delete persisted[formId];
+    writePersisted(persisted);
+  }, []);
+
   const fetchResponses = useCallback(
     async (formId: string) => {
       setResponses((prev) => ({
@@ -133,15 +207,16 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         if (!res.ok) {
           throw new Error(j.error ?? `responses_failed: ${res.statusText}`);
         }
+        const data = j as FormResponses;
+        const syncedAt = Date.now();
         setResponses((prev) => ({
           ...prev,
-          [formId]: {
-            data: j as FormResponses,
-            loading: false,
-            error: null,
-            syncedAt: Date.now(),
-          },
+          [formId]: { data, loading: false, error: null, syncedAt },
         }));
+        // Persist to localStorage so the table survives navigation.
+        const persisted = loadPersisted();
+        persisted[formId] = { data, syncedAt };
+        writePersisted(persisted);
       } catch (e) {
         setResponses((prev) => ({
           ...prev,
@@ -274,6 +349,14 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                   >
                     XLSX
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void removeForm(f.formId)}
+                    title="이 폼을 목록에서 제거 (Google Forms 원본은 유지)"
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-amore [border-radius:4px]"
+                  >
+                    제거
+                  </button>
                 </div>
               </header>
 
@@ -304,6 +387,10 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
   );
 }
 
+const DEFAULT_TIME_COL_WIDTH = 160;
+const DEFAULT_VALUE_COL_WIDTH = 200;
+const MIN_COL_WIDTH = 60;
+
 function ResponseTable({
   columns,
   rows,
@@ -311,20 +398,87 @@ function ResponseTable({
   columns: FormColumn[];
   rows: FormResponseRow[];
 }) {
+  // Per-column widths in px. The first slot is the "응답시각" column,
+  // the rest line up with `columns`. Disabling cell wrap means rows
+  // are always one line tall, so the user can drag any column header's
+  // right edge to widen/narrow that column.
+  const [widths, setWidths] = useState<number[]>(() => [
+    DEFAULT_TIME_COL_WIDTH,
+    ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
+  ]);
+  // If the column set changes (different form selected), reset widths.
+  // Seed during render via identity-tracking to satisfy React's
+  // set-state-in-effect rule.
+  const [seededColumns, setSeededColumns] = useState(columns);
+  if (columns !== seededColumns) {
+    setSeededColumns(columns);
+    setWidths([
+      DEFAULT_TIME_COL_WIDTH,
+      ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
+    ]);
+  }
+
+  const dragRef = useRef<{ idx: number; startX: number; startW: number } | null>(
+    null,
+  );
+
+  function startResize(idx: number, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = {
+      idx,
+      startX: e.clientX,
+      startW: widths[idx] ?? DEFAULT_VALUE_COL_WIDTH,
+    };
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const next = Math.max(MIN_COL_WIDTH, d.startW + (ev.clientX - d.startX));
+      setWidths((prev) => {
+        const out = [...prev];
+        out[d.idx] = next;
+        return out;
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-[12px]">
+      <table
+        className="border-collapse text-[12px]"
+        style={{ tableLayout: 'fixed' }}
+      >
+        <colgroup>
+          {widths.map((w, i) => (
+            <col key={i} style={{ width: `${w}px` }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="bg-paper text-left">
-            <th className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2">
-              응답시각
+            <th
+              className="sticky left-0 z-[2] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2"
+              style={{ position: 'relative' }}
+            >
+              <span className="block truncate">응답시각</span>
+              <ResizeHandle onMouseDown={(e) => startResize(0, e)} />
             </th>
-            {columns.map((c) => (
+            {columns.map((c, i) => (
               <th
                 key={c.questionId}
                 className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2"
+                style={{ position: 'relative' }}
               >
-                {c.title}
+                <span className="block truncate" title={c.title}>
+                  {c.title}
+                </span>
+                <ResizeHandle onMouseDown={(e) => startResize(i + 1, e)} />
               </th>
             ))}
           </tr>
@@ -332,13 +486,14 @@ function ResponseTable({
         <tbody>
           {rows.map((r) => (
             <tr key={r.responseId} className="align-top">
-              <td className="sticky left-0 z-[1] border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
+              <td className="sticky left-0 z-[1] overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
                 {formatTime(r.lastSubmittedTime)}
               </td>
               {columns.map((c) => (
                 <td
                   key={c.questionId}
-                  className="border-b border-line-soft px-3 py-2 text-ink-2"
+                  className="overflow-hidden whitespace-nowrap border-b border-line-soft px-3 py-2 text-ink-2"
+                  title={r.answers[c.questionId] ?? ''}
                 >
                   {r.answers[c.questionId] ?? ''}
                 </td>
@@ -348,5 +503,22 @@ function ResponseTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ResizeHandle({
+  onMouseDown,
+}: {
+  onMouseDown: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <span
+      onMouseDown={onMouseDown}
+      role="separator"
+      aria-orientation="vertical"
+      className="absolute right-0 top-0 z-[3] h-full w-[6px] -translate-x-[1px] cursor-col-resize select-none bg-transparent hover:bg-line"
+      // Prevent text selection during drag
+      style={{ userSelect: 'none' }}
+    />
   );
 }
