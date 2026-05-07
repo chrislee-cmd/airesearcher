@@ -46,7 +46,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   }
 
   async function doRun() {
-    track('generate_clicked', { feature });
+    track(`${feature}_generate_click`, { feature });
     const submitted = input;
     await jobs.start<GenerationResult>(feature, {
       input: { feature, input: submitted },
@@ -60,7 +60,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
         if (!res.ok) {
           throw new Error(json.error ?? res.statusText);
         }
-        track('generate_success', { feature });
+        track(`${feature}_generate_success`, { feature });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const title = `${feature}_${ts}.md`;
         const content =

@@ -3,12 +3,14 @@
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { useLocale } from 'next-intl';
+import { track } from '@/components/mixpanel-provider';
 
 export function GoogleSignInButton({ label }: { label: string }) {
   const [loading, setLoading] = useState(false);
   const locale = useLocale();
 
   async function signIn() {
+    track('auth_google_signin_click');
     setLoading(true);
     const supabase = createClient();
     const origin = window.location.origin;

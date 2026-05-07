@@ -306,7 +306,7 @@ export function RecruitingBrief() {
     setSurveyError(null);
     setPublished(null);
     setSurveyRunning(true);
-    track('generate_clicked', { feature: 'recruiting_survey' });
+    track('recruiting_survey_generate_click', { feature: 'recruiting_survey' });
     try {
       const res = await fetch('/api/recruiting/survey', {
         method: 'POST',
@@ -332,7 +332,7 @@ export function RecruitingBrief() {
       const finalSurvey = JSON.parse(buffer) as Survey;
       setSurvey(finalSurvey);
       setSurveyPartial(finalSurvey);
-      track('generate_success', { feature: 'recruiting_survey' });
+      track('recruiting_survey_generate_success', { feature: 'recruiting_survey' });
     } catch (e) {
       setSurveyError(e instanceof Error ? e.message : 'survey_failed');
     } finally {
@@ -356,7 +356,7 @@ export function RecruitingBrief() {
       }
       setPublished(j);
       setPublishVersion((v) => v + 1);
-      track('generate_success', { feature: 'recruiting_publish' });
+      track('recruiting_publish_success', { feature: 'recruiting_publish' });
     } catch (e) {
       setPublishError(e instanceof Error ? e.message : 'publish_failed');
     } finally {
@@ -407,7 +407,7 @@ export function RecruitingBrief() {
 
   async function doRun() {
     if (files.length === 0 && !pasted.trim()) return;
-    track('generate_clicked', {
+    track('recruiting_extract_click', {
       feature: 'recruiting',
       file_count: files.length,
       pasted_chars: pasted.length,
@@ -449,7 +449,7 @@ export function RecruitingBrief() {
 
         const finalParsed = JSON.parse(buffer) as RecruitingBriefType;
         setPartial(finalParsed);
-        track('generate_success', { feature: 'recruiting' });
+        track('recruiting_extract_success', { feature: 'recruiting' });
         return finalParsed;
       },
     });

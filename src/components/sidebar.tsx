@@ -17,6 +17,7 @@ import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
 import { SidebarAccount } from './sidebar-account';
+import { track } from './mixpanel-provider';
 
 type SidebarProject = { id: string; name: string };
 
@@ -135,8 +136,13 @@ export function Sidebar({
   function toggleGroup(g: FeatureGroupKey) {
     setCollapsed((prev) => {
       const next = new Set(prev);
-      if (next.has(g)) next.delete(g);
+      const wasCollapsed = next.has(g);
+      if (wasCollapsed) next.delete(g);
       else next.add(g);
+      track('sidebar_group_toggle_click', {
+        group: g,
+        next_state: wasCollapsed ? 'open' : 'collapsed',
+      });
       return next;
     });
   }
@@ -164,6 +170,7 @@ export function Sidebar({
         >
           <Link
             href="/projects"
+            onClick={() => track('sidebar_projects_click')}
             className={`flex-1 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] ${
               projectsActive
                 ? 'font-semibold text-ink-2'
@@ -244,6 +251,12 @@ export function Sidebar({
                       <li key={f.key}>
                         <Link
                           href={f.href}
+                          onClick={() =>
+                            track(`sidebar_nav_${f.key}_click`, {
+                              target: f.key,
+                              group: g.key,
+                            })
+                          }
                           onDragOver={(e) => {
                             if (!dragging) return;
                             e.preventDefault();

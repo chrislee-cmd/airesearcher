@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { useTransition } from 'react';
 import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider';
+import { track } from '@/components/mixpanel-provider';
 
 type Props = {
   email: string | null;
@@ -39,12 +40,14 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
 
   function changeLocale(next: 'ko' | 'en') {
     if (next === locale) return;
+    track('settings_locale_change_click', { from: locale, to: next });
     startTransition(() => {
       router.replace(pathname, { locale: next });
     });
   }
 
   async function signOut() {
+    track('auth_signout_click');
     const supabase = createClient();
     await supabase.auth.signOut();
     setOpen(false);
@@ -57,6 +60,7 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
       <div className="border-t border-line-soft px-5 py-4">
         <Link
           href="/login"
+          onClick={() => track('sidebar_signin_link_click')}
           className="block border border-ink bg-ink px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
         >
           {tAuth('signIn')}
@@ -94,7 +98,12 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
         </div>
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => {
+            setOpen((v) => {
+              if (!v) track('settings_menu_open_click');
+              return !v;
+            });
+          }}
           aria-label={t('settings')}
           aria-expanded={open}
           className={`flex h-7 w-7 shrink-0 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2 ${
@@ -130,10 +139,22 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
             </div>
           </div>
           <div className="my-1 h-px bg-line-soft" />
-          <PopoverLink href="/members" onClick={() => setOpen(false)}>
+          <PopoverLink
+            href="/members"
+            onClick={() => {
+              track('settings_members_click');
+              setOpen(false);
+            }}
+          >
             {t('members')}
           </PopoverLink>
-          <PopoverLink href="/credits" onClick={() => setOpen(false)}>
+          <PopoverLink
+            href="/credits"
+            onClick={() => {
+              track('settings_buy_credits_click');
+              setOpen(false);
+            }}
+          >
             {t('buyCredits')}
           </PopoverLink>
           <div className="my-1 h-px bg-line-soft" />
