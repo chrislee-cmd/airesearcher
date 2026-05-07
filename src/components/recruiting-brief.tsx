@@ -209,6 +209,8 @@ export function RecruitingBrief() {
   const [starting, setStarting] = useState(false);
   const [started, setStarted] = useState<{ to: string } | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [startModalOpen, setStartModalOpen] = useState(false);
+  const [startBody, setStartBody] = useState('');
   const [publishError, setPublishError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
@@ -369,7 +371,27 @@ export function RecruitingBrief() {
     }
   }
 
-  async function startRecruiting() {
+  function buildStartBody(uri: string) {
+    return [
+      '목적: 여행 숙박 시설 결정 과정 이해',
+      '대상 : 향후 3개월 이내에 제주도나 후쿠오카 여행 계획이 있는 사람',
+      '방식: 1:1 온라인 인터뷰, 60분',
+      '일정 : 4월 20~24일 사이, 세부 일정 추후 협의',
+      '장소 : 온라인 인터뷰',
+      '조사 사례 : 현금 7만원',
+      `인터뷰 신청서 링크 : ${uri}`,
+    ].join('\n');
+  }
+
+  function openStartModal() {
+    if (!published) return;
+    setStartError(null);
+    setStarted(null);
+    setStartBody(buildStartBody(published.responderUri));
+    setStartModalOpen(true);
+  }
+
+  async function confirmStartRecruiting() {
     if (!published) return;
     setStarting(true);
     setStartError(null);
@@ -377,13 +399,17 @@ export function RecruitingBrief() {
       const res = await fetch('/api/recruiting/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ responderUri: published.responderUri }),
+        body: JSON.stringify({
+          responderUri: published.responderUri,
+          body: startBody,
+        }),
       });
       const j = await res.json();
       if (!res.ok) {
         throw new Error(j.error ?? `start_failed: ${res.statusText}`);
       }
       setStarted({ to: j.to ?? 'lee880728@gmail.com' });
+      setStartModalOpen(false);
       track('generate_success', { feature: 'recruiting_start' });
     } catch (e) {
       setStartError(e instanceof Error ? e.message : 'start_failed');
@@ -747,7 +773,7 @@ export function RecruitingBrief() {
                       published ? (
                         <button
                           type="button"
-                          onClick={() => void startRecruiting()}
+                          onClick={() => openStartModal()}
                           disabled={starting}
                           className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
                         >
@@ -900,6 +926,56 @@ export function RecruitingBrief() {
           publishVersion={publishVersion}
           hasResponsesScope={google.hasResponses}
         />
+      )}
+
+      {startModalOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/50 p-4"
+          onClick={() => {
+            if (!starting) setStartModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:6px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 text-[14px] font-semibold text-ink">
+              리크루팅 메일 발송
+            </div>
+            <div className="mb-3 text-[11.5px] text-mute">
+              내용을 검토·수정한 뒤 최종 승인하면 lee880728@gmail.com으로 발송됩니다.
+            </div>
+            <textarea
+              value={startBody}
+              onChange={(e) => setStartBody(e.target.value)}
+              rows={12}
+              className="mb-3 w-full resize-y border border-line bg-paper p-3 text-[12.5px] leading-[1.6] text-ink focus:border-ink-2 focus:outline-none [border-radius:4px]"
+            />
+            {startError && (
+              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
+                메일 발송 오류: {startError}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStartModalOpen(false)}
+                disabled={starting}
+                className="border border-line bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmStartRecruiting()}
+                disabled={starting || !startBody.trim()}
+                className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              >
+                {starting ? '발송 중…' : '최종 승인'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
