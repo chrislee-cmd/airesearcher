@@ -76,7 +76,6 @@ export default async function DashboardPage({
 async function CardView({ card }: { card: ProjectCard }) {
   const t = await getTranslations('Dashboard');
   const isUnfiled = card.projectId === null;
-  const href = isUnfiled ? '/projects' : `/projects/${card.projectId}`;
   const total =
     card.counts.reports +
     card.counts.interviews +
@@ -86,11 +85,8 @@ async function CardView({ card }: { card: ProjectCard }) {
     card.counts.recruiting +
     card.counts.scheduler;
 
-  return (
-    <Link
-      href={href}
-      className="group flex h-full flex-col border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:4px]"
-    >
+  const inner = (
+    <>
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="truncate text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
           {isUnfiled ? t('unfiled') : card.name ?? '—'}
@@ -123,9 +119,27 @@ async function CardView({ card }: { card: ProjectCard }) {
       )}
 
       <div className="flex-1" />
-      <span className="mt-5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft transition-colors duration-[120ms] group-hover:text-amore">
-        {isUnfiled ? t('viewUnfiled') : t('openProject')} →
-      </span>
+      {!isUnfiled && (
+        <span className="mt-5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft transition-colors duration-[120ms] group-hover:text-amore">
+          {t('openProject')} →
+        </span>
+      )}
+    </>
+  );
+
+  if (isUnfiled) {
+    return (
+      <div className="flex h-full flex-col border border-line bg-paper-soft p-5 [border-radius:4px]">
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={`/projects/${card.projectId}`}
+      className="group flex h-full flex-col border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:4px]"
+    >
+      {inner}
     </Link>
   );
 }
