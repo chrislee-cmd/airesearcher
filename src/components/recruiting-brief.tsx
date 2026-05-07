@@ -212,12 +212,13 @@ export function RecruitingBrief() {
   const [startError, setStartError] = useState<string | null>(null);
   const [startModalOpen, setStartModalOpen] = useState(false);
   const [startBody, setStartBody] = useState('');
-  const [publishError, setPublishError] = useState<string | null>(() => {
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [googleAuthError, setGoogleAuthError] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     const g = params.get('google');
     if (!g || g === 'connected') return null;
-    return `Google 연결 실패: ${g}`;
+    return g;
   });
 
   const job = jobs.get('recruiting');
@@ -860,6 +861,11 @@ export function RecruitingBrief() {
               {publishError && (
                 <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
                   발행 오류: {publishError}
+                </div>
+              )}
+              {googleAuthError && (
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                  Google 연결 오류: {googleAuthError} — 연결 해제 후 다시 시도해주세요.
                 </div>
               )}
               {startError && (
