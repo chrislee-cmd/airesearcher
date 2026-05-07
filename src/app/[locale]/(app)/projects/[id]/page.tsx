@@ -2,8 +2,17 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { getProjectArtifacts, type ProjectArtifact } from '@/lib/projects';
+import { getProjectArtifacts, listProjects, type ProjectArtifact } from '@/lib/projects';
 import { ActiveProjectSync } from '@/components/active-project-sync';
+import { ArtifactAssignMenu } from '@/components/artifact-assign-menu';
+
+const REASSIGNABLE = new Set<ProjectArtifact['feature']>([
+  'report',
+  'interview',
+  'transcript',
+  'desk',
+  'scheduler',
+]);
 
 const FEATURE_TO_SIDEBAR_KEY: Record<ProjectArtifact['feature'], string | null> = {
   report: 'reports',
@@ -36,6 +45,9 @@ export default async function ProjectDetailPage({
 
   const org = await getActiveOrg();
   const artifacts = org ? await getProjectArtifacts(org.org_id, id) : [];
+  const allProjects = org ? await listProjects(org.org_id) : [];
+  const tDashboard = await getTranslations('Dashboard');
+  const unfiledLabel = tDashboard('unfiled');
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
@@ -84,8 +96,19 @@ export default async function ProjectDetailPage({
                       {a.title}
                     </div>
                   </div>
-                  <div className="shrink-0 text-[11px] text-mute-soft tabular-nums">
-                    {new Date(a.at).toISOString().replace('T', ' ').slice(0, 16)}
+                  <div className="flex shrink-0 items-center gap-3">
+                    {REASSIGNABLE.has(a.feature) && (
+                      <ArtifactAssignMenu
+                        feature={a.feature as 'report' | 'interview' | 'transcript' | 'desk' | 'scheduler'}
+                        id={a.id}
+                        currentProjectId={project.id}
+                        projects={allProjects.map((p) => ({ id: p.id, name: p.name }))}
+                        unfiledLabel={unfiledLabel}
+                      />
+                    )}
+                    <div className="text-[11px] text-mute-soft tabular-nums">
+                      {new Date(a.at).toISOString().replace('T', ' ').slice(0, 16)}
+                    </div>
                   </div>
                 </li>
               );
