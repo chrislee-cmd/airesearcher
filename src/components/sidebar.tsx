@@ -17,7 +17,6 @@ import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
 import { SidebarAccount } from './sidebar-account';
-import { SidebarActiveProject } from './sidebar-active-project';
 import { track } from './mixpanel-provider';
 
 type SidebarProject = { id: string; name: string };
@@ -160,10 +159,6 @@ export function Sidebar({
           </div>
           <div className="mt-1 h-px w-6 bg-amore" />
         </Link>
-      </div>
-
-      <div className="px-3 pb-2">
-        <SidebarActiveProject />
       </div>
 
       {/* Projects entry */}
