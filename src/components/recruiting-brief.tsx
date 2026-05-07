@@ -21,6 +21,7 @@ type GoogleStatus = {
   connected: boolean;
   email: string | null;
   hasResponses: boolean;
+  hasDrive: boolean;
 };
 
 type PartialSurvey = Partial<Survey> & {
@@ -250,6 +251,7 @@ export function RecruitingBrief() {
             connected: !!j.connected,
             email: j.email ?? null,
             hasResponses: !!j.hasResponses,
+            hasDrive: !!j.hasDrive,
           });
         }
       })
@@ -809,6 +811,20 @@ export function RecruitingBrief() {
                   {google.connected
                     ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
                     : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                </p>
+              )}
+              {google?.connected && !google.hasDrive && (
+                <p className="mt-1 text-[11px] text-amore">
+                  공개(anyone with link) 권한 부여를 위해 Google 계정을 다시 연결해주세요.{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = '/api/recruiting/google/start';
+                    }}
+                    className="underline underline-offset-2"
+                  >
+                    재연결
+                  </button>
                 </p>
               )}
               {surveyError && (

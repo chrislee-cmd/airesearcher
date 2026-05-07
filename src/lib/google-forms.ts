@@ -202,11 +202,42 @@ export async function createGoogleForm(
     }
   }
 
+  // Step 3: open the form's responder access to anyone with the link.
+  // Forms created inside a Workspace tenant (e.g. meteor-research) inherit
+  // domain-restricted Drive permissions by default, which means external
+  // recruits hit a "Sign in to your account" wall. Adding an `anyone`
+  // reader permission via the Drive API lifts that wall. Failures here
+  // are non-fatal — the form is still published, and we surface a clear
+  // error string so the caller can show a "재연결 필요" hint when the
+  // drive.file scope is missing.
+  await setFormAnyoneCanView(accessToken, created.formId);
+
   return {
     formId: created.formId,
     responderUri: created.responderUri ?? `https://docs.google.com/forms/d/${created.formId}/viewform`,
     editUri: `https://docs.google.com/forms/d/${created.formId}/edit`,
   };
+}
+
+async function setFormAnyoneCanView(
+  accessToken: string,
+  formId: string,
+): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${formId}/permissions?supportsAllDrives=true`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    },
+  );
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`forms_share_failed: ${res.status} ${txt}`);
+  }
 }
 
 async function fetchFormSchema(
