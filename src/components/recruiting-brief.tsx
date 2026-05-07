@@ -807,10 +807,25 @@ export function RecruitingBrief() {
               </div>
 
               {google && (
-                <p className="mt-2 text-[11px] text-mute-soft">
-                  {google.connected
-                    ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
-                    : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-mute-soft">
+                  <span>
+                    {google.connected
+                      ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
+                      : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
+                  </span>
+                  {google.connected && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm('Google 연결을 해제할까요? 다른 계정으로 다시 연결할 수 있습니다.')) return;
+                        await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
+                        window.location.reload();
+                      }}
+                      className="text-mute underline underline-offset-2 hover:text-amore"
+                    >
+                      연결 해제
+                    </button>
+                  )}
                 </p>
               )}
               {google?.connected && !google.hasDrive && (
