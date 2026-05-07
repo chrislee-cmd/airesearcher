@@ -46,6 +46,11 @@ const PERSONAL_QUESTIONS: SurveyQuestion[] = [
     title: '핸드폰 기기 모델명',
     description: '예: 아이폰 16, 갤럭시 S21',
   }),
+  makeQuestion({
+    kind: 'long_answer',
+    title:
+      '만약 본인에게 자유롭게 사용할 수 있는 돈 100만원이 생긴다면, 어떻게 그 돈을 사용하고 싶으신가요? 저축은 할 수 없고 반드시 소비를 하셔야 합니다.',
+  }),
 ];
 
 function normalizeTitle(s: string) {
