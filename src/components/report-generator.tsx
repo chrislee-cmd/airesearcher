@@ -93,15 +93,19 @@ async function persistReportSnapshot(snapshot: {
   inputs: { filename: string; size?: number; mime?: string }[];
   markdown: string;
   html: string;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
-    await fetch('/api/reports/jobs', {
+    const res = await fetch('/api/reports/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...snapshot, project_id: readActiveProjectId() }),
     });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => ({}));
+    return (json.id as string | undefined) ?? null;
   } catch (err) {
     console.warn('[reports] persist snapshot failed', err);
+    return null;
   }
 }
 
@@ -318,14 +322,11 @@ export function ReportGenerator() {
         track('reports_generate_success', { feature: 'reports' });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const title = `report_${ts}.html`;
-        workspace.addArtifact({
-          featureKey: 'reports',
-          title,
-          content: html,
-        });
-        // Persist the finished report so the dashboard can list past
-        // runs after a refresh. Non-fatal — UI keeps working on failure.
-        void persistReportSnapshot({
+        // Persist first so the workspace artifact can carry the DB id.
+        // Without that link, picking a project from the workspace modal
+        // updates only local state — the project page never sees it.
+        const projectIdAtStart = readActiveProjectId();
+        const dbId = await persistReportSnapshot({
           inputs: submitted.map((f) => ({
             filename: f.name,
             size: f.size,
@@ -333,6 +334,15 @@ export function ReportGenerator() {
           })),
           markdown,
           html,
+        });
+        workspace.addArtifact({
+          id: dbId ? `report_${dbId}` : undefined,
+          featureKey: 'reports',
+          title,
+          content: html,
+          dbFeature: dbId ? 'report' : undefined,
+          dbId: dbId ?? undefined,
+          projectId: projectIdAtStart,
         });
         return { html, markdown, sources: sourceNames };
       },

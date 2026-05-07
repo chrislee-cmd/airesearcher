@@ -136,6 +136,9 @@ export function WorkspaceBridge() {
   useEffect(() => {
     if (!interviewArtifact) return;
     if (seenRef.current.has(interviewArtifact.id)) return;
+    // Wait for the persist call to surface a DB id before registering.
+    // Without it the modal's project picker can only update local state.
+    if (!interview.lastSnapshotJobId) return;
     seenRef.current.add(interviewArtifact.id);
     const stamp = new Date().toISOString().slice(0, 10);
     workspace.addArtifact({
@@ -143,8 +146,10 @@ export function WorkspaceBridge() {
       featureKey: 'interviews',
       title: `interviews-${stamp}.md`,
       content: interviewArtifact.md,
+      dbFeature: 'interview',
+      dbId: interview.lastSnapshotJobId,
     });
-  }, [interviewArtifact, workspace]);
+  }, [interviewArtifact, interview.lastSnapshotJobId, workspace]);
 
   return null;
 }

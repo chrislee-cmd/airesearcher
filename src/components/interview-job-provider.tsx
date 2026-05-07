@@ -129,6 +129,10 @@ type Ctx = {
   verticallySynthesizing: boolean;
   verticalSynthError: string | null;
   verticalDone: boolean;
+  // The DB row id for the last persisted snapshot. WorkspaceBridge
+  // reads this so its workspace artifact can carry a dbId, which in
+  // turn lets the modal's project picker reach /api/artifacts/assign.
+  lastSnapshotJobId: string | null;
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -240,15 +244,19 @@ async function persistInterviewSnapshot(snapshot: {
   inputs: { filename: string }[];
   extractions: unknown;
   matrix: unknown;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
-    await fetch('/api/interviews/jobs', {
+    const res = await fetch('/api/interviews/jobs', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...snapshot, project_id: readActiveProjectId() }),
     });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => ({}));
+    return (json.id as string | undefined) ?? null;
   } catch (err) {
     console.warn('[interviews] persist snapshot failed', err);
+    return null;
   }
 }
 
@@ -304,6 +312,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   const clearThinking = useCallback(() => setThinkingLog([]), []);
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
@@ -554,6 +563,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         inputs: payload.extractions.map((e) => ({ filename: e.filename })),
         extractions: payload.extractions,
         matrix: result,
+      }).then((id) => {
+        if (id) setLastSnapshotJobId(id);
       });
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
@@ -954,6 +965,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     verticallySynthesizing,
     verticalSynthError,
     verticalDone,
+    lastSnapshotJobId,
     isWorking,
     thinkingLog,
     clearThinking,
