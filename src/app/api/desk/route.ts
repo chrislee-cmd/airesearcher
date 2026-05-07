@@ -49,6 +49,7 @@ const Body = z.object({
   region: z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']).optional(),
   dateFrom: z.string().regex(ISO_DATE).optional(),
   dateTo: z.string().regex(ISO_DATE).optional(),
+  project_id: z.string().uuid().nullable().optional(),
 });
 
 const EXPAND_SYSTEM = `당신은 데스크 리서치를 위해 사용자가 입력한 키워드의 검색 적합 유사 키워드를 만드는 보조자입니다.
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { keywords, sources, locale = 'ko', region: regionInput, dateFrom, dateTo } = parsed.data;
+  const { keywords, sources, locale = 'ko', region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
   // Default region from locale: Korean researchers default to KR sources,
   // English researchers default to GLOBAL (Google News will use US/en).
   const region = regionInput ?? (locale === 'ko' ? 'KR' : 'GLOBAL');
@@ -203,6 +204,7 @@ export async function POST(request: Request) {
     .from('desk_jobs')
     .insert({
       org_id: org.org_id,
+      project_id: project_id ?? null,
       user_id: user.id,
       keywords: cleanKeywords,
       sources: usable as unknown as string[],

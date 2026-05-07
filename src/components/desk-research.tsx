@@ -13,6 +13,17 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
+
+function readActiveProjectId(): string | null {
+  try {
+    const raw = window.localStorage.getItem('active_project:v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string } | null;
+    return parsed?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import {
@@ -284,6 +295,7 @@ export function DeskResearch() {
           region,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
+          project_id: readActiveProjectId(),
         }),
       });
       const json = await res.json().catch(() => ({}));

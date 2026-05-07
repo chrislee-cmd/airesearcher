@@ -8,6 +8,17 @@ import { AttendeesPanel } from './attendees-panel';
 import { DEFAULT_REQUIREMENT } from '@/lib/scheduler/types';
 import type { Attendee, ConfirmedSlot, Requirement } from '@/lib/scheduler/types';
 
+function readActiveProjectId(): string | null {
+  try {
+    const raw = window.localStorage.getItem('active_project:v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string } | null;
+    return parsed?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function SchedulerPage() {
   const t = useTranslations('Features.scheduler');
   const [requirement, setRequirement] = useState<Requirement>(DEFAULT_REQUIREMENT);
@@ -65,6 +76,7 @@ export function SchedulerPage() {
           attendees,
           selected_slots: confirmed,
           meta: { requirement, importHeaders },
+          project_id: readActiveProjectId(),
         }),
       }).catch((err) => console.warn('[scheduler] autosave failed', err));
     }, 1500);

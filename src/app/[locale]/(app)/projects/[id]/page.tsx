@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { ActiveProjectSync } from '@/components/active-project-sync';
 
 export default async function ProjectDetailPage({
   params,
@@ -28,6 +29,7 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <ActiveProjectSync id={project.id} name={project.name} />
       <div className="border-b border-line pb-3">
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
           {project.name}

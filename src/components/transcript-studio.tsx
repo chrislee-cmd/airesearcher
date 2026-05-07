@@ -13,6 +13,17 @@ import { useWorkspace } from './workspace-provider';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
+function readActiveProjectId(): string | null {
+  try {
+    const raw = window.localStorage.getItem('active_project:v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string } | null;
+    return parsed?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function safeFilename(title: string) {
   const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
   return cleaned.replace(/\.md$/i, '');
@@ -180,6 +191,7 @@ export function TranscriptStudio() {
               size_bytes: file.size,
               language: languageRef.current,
               model: modelRef.current,
+              project_id: readActiveProjectId(),
             }),
           });
           if (!startRes.ok) {
