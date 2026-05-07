@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useAuth, useRequireAuth } from './auth-provider';
 
@@ -12,6 +13,7 @@ type Service = {
   tagline: string;
   highlights: string[];
   accent?: boolean;
+  logo?: { src: string; width: number; height: number };
 };
 
 const SERVICES: Service[] = [
@@ -23,6 +25,7 @@ const SERVICES: Service[] = [
     tagline: '한국어 인터뷰에 최적화된 AI 모더레이터',
     highlights: ['한국어 음성 우선', '리서치 워크플로 통합', '국내 리크루팅 연동'],
     accent: true,
+    logo: { src: '/proby-logo-text.png', width: 1166, height: 320 },
   },
   {
     key: 'listenlabs',
@@ -137,9 +140,22 @@ export function ModeratorServicesCarousel() {
           <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-mute-soft">
             {s.region}
           </p>
-          <h3 className="mt-2 text-[28px] font-bold tracking-[-0.02em] text-ink-2">
-            {s.name}
-          </h3>
+          {s.logo ? (
+            <div className="mt-2 flex h-[40px] items-center">
+              <Image
+                src={s.logo.src}
+                alt={s.name}
+                width={s.logo.width}
+                height={s.logo.height}
+                priority
+                className="h-[32px] w-auto"
+              />
+            </div>
+          ) : (
+            <h3 className="mt-2 text-[28px] font-bold tracking-[-0.02em] text-ink-2">
+              {s.name}
+            </h3>
+          )}
           <a
             href={s.href}
             target="_blank"
