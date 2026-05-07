@@ -34,6 +34,7 @@ type Ctx = {
   ) => WorkspaceArtifact;
   removeArtifact: (id: string) => void;
   removeArtifacts: (ids: string[]) => void;
+  setProjectId: (artifactId: string, projectId: string | null) => void;
   clearAll: () => void;
   sendTo: (artifactId: string, target: FeatureKey) => string | null;
   sendMany: (artifactIds: string[], target: FeatureKey) => string | null;
@@ -42,6 +43,9 @@ type Ctx = {
   // read by Sidebar to highlight compatible drop targets.
   dragging: DragInfo | null;
   setDragging: (info: DragInfo | null) => void;
+  // Drives the trigger-button pulse + new-row flash.
+  lastAddedId: string | null;
+  lastAddedAt: number | null;
 };
 
 const WorkspaceCtx = createContext<Ctx | null>(null);
@@ -77,6 +81,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [dragging, setDragging] = useState<DragInfo | null>(null);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [lastAddedAt, setLastAddedAt] = useState<number | null>(null);
 
   useEffect(() => {
     setArtifacts(readStorage());
@@ -105,8 +111,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       title: input.title,
       content: input.content,
       createdAt: input.createdAt ?? Date.now(),
+      dbFeature: input.dbFeature,
+      dbId: input.dbId,
+      projectId: input.projectId ?? null,
     };
-    setArtifacts((prev) => [next, ...prev]);
+    setArtifacts((prev) => {
+      // De-dupe by id — bridges may try to add the same item across renders.
+      if (prev.some((a) => a.id === next.id)) return prev;
+      return [next, ...prev];
+    });
+    setLastAddedId(next.id);
+    setLastAddedAt(Date.now());
     return next;
   }, []);
 
@@ -118,6 +133,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (ids.length === 0) return;
     const set = new Set(ids);
     setArtifacts((prev) => prev.filter((a) => !set.has(a.id)));
+  }, []);
+
+  const setProjectId = useCallback<Ctx['setProjectId']>((artifactId, projectId) => {
+    setArtifacts((prev) =>
+      prev.map((a) => (a.id === artifactId ? { ...a, projectId } : a)),
+    );
   }, []);
 
   const clearAll = useCallback(() => setArtifacts([]), []);
@@ -169,12 +190,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       addArtifact,
       removeArtifact,
       removeArtifacts,
+      setProjectId,
       clearAll,
       sendTo,
       sendMany,
       targetsFor,
       dragging,
       setDragging,
+      lastAddedId,
+      lastAddedAt,
     }),
     [
       artifacts,
@@ -182,11 +206,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       addArtifact,
       removeArtifact,
       removeArtifacts,
+      setProjectId,
       clearAll,
       sendTo,
       sendMany,
       targetsFor,
       dragging,
+      lastAddedId,
+      lastAddedAt,
     ],
   );
 

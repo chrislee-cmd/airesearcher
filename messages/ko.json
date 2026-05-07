@@ -489,7 +489,8 @@
     "nSelected": "{count}개 선택됨",
     "bulkActions": "일괄 동작",
     "sendSelectedTo": "선택 항목 보내기",
-    "deleteSelected": "선택 삭제"
+    "deleteSelected": "선택 삭제",
+    "assignProject": "프로젝트 지정"
   },
   "Members": {
     "title": "멤버 관리",
