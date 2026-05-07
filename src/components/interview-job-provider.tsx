@@ -225,6 +225,22 @@ function makeXlsxBlob(sheets: { name: string; matrix: string[][] }[]) {
   });
 }
 
+async function persistInterviewSnapshot(snapshot: {
+  inputs: { filename: string }[];
+  extractions: unknown;
+  matrix: unknown;
+}): Promise<void> {
+  try {
+    await fetch('/api/interviews/jobs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    });
+  } catch (err) {
+    console.warn('[interviews] persist snapshot failed', err);
+  }
+}
+
 const InterviewJobContext = createContext<Ctx | null>(null);
 
 export function useInterviewJob() {
@@ -519,6 +535,15 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       // Fire row-level summary as a follow-up — table renders immediately,
       // 요약 column fills in when the second LLM call returns.
       void runSummarize(result);
+      // Persist the snapshot so the dashboard can list past runs and the
+      // user can return to a finished analysis after a refresh. Live
+      // pipeline state stays in-memory; only the completed result lands
+      // in the DB. Failure here is non-fatal for the UI.
+      void persistInterviewSnapshot({
+        inputs: payload.extractions.map((e) => ({ filename: e.filename })),
+        extractions: payload.extractions,
+        matrix: result,
+      });
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setAnalyzeError(e instanceof Error ? e.message : 'network_error');
