@@ -64,14 +64,13 @@ export function Sidebar({
     return generationJobs.isWorking(key);
   }
 
-  // Track per-feature busy → idle transitions so we can show a brief
-  // green "작업완료" badge after a job finishes. The window is 5s so
-  // the badge survives one navigation but doesn't linger forever.
-  const DONE_WINDOW_MS = 5000;
+  // Per-feature busy → idle transitions raise a green "작업완료" badge.
+  // It persists until the user either visits the feature page or
+  // refreshes — page refresh wipes this in-memory state, navigation
+  // clears it via the pathname effect below.
   const prevBusyRef = useRef<Map<FeatureKey, boolean>>(new Map());
-  const [recentlyDone, setRecentlyDone] = useState<Map<FeatureKey, number>>(new Map());
+  const [doneFlags, setDoneFlags] = useState<Set<FeatureKey>>(new Set());
   useEffect(() => {
-    const now = Date.now();
     const transitioned: FeatureKey[] = [];
     for (const f of FEATURES) {
       const cur = isBusy(f.key);
@@ -80,31 +79,31 @@ export function Sidebar({
       prevBusyRef.current.set(f.key, cur);
     }
     if (transitioned.length === 0) return;
-    setRecentlyDone((prev) => {
-      const next = new Map(prev);
-      for (const k of transitioned) next.set(k, now);
+    setDoneFlags((prev) => {
+      const next = new Set(prev);
+      for (const k of transitioned) next.add(k);
       return next;
     });
-    const id = window.setTimeout(() => {
-      setRecentlyDone((prev) => {
-        const next = new Map(prev);
-        const cutoff = Date.now() - DONE_WINDOW_MS;
-        for (const [k, t] of next) if (t <= cutoff) next.delete(k);
-        return next;
-      });
-    }, DONE_WINDOW_MS + 100);
-    return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     interviewJob.isWorking,
     transcriptJobs.isWorking,
     deskJobs.isWorking,
-    // generationJobs.isWorking is a function — re-evaluate on its identity
     generationJobs,
   ]);
+  // Clear the flag once the user actually visits the feature.
+  useEffect(() => {
+    const matched = FEATURES.find((f) => f.href === pathname);
+    if (!matched) return;
+    setDoneFlags((prev) => {
+      if (!prev.has(matched.key)) return prev;
+      const next = new Set(prev);
+      next.delete(matched.key);
+      return next;
+    });
+  }, [pathname]);
   function isRecentlyDone(key: FeatureKey): boolean {
-    const t = recentlyDone.get(key);
-    return !!t && Date.now() - t < DONE_WINDOW_MS;
+    return doneFlags.has(key);
   }
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
