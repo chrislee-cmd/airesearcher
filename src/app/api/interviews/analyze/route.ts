@@ -22,7 +22,7 @@ const Body = z.object({
       }),
     )
     .min(1)
-    .max(20),
+    .max(200),
 });
 
 // === Deterministic question clustering ===
