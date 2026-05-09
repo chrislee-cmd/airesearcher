@@ -1069,6 +1069,7 @@ export function RecruitingBrief() {
         <RecruitingResponses
           publishVersion={publishVersion}
           hasResponsesScope={google.hasResponses}
+          criteria={edited?.criteria ?? null}
         />
       )}
 

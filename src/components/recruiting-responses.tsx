@@ -6,6 +6,11 @@ import type {
   FormResponseRow,
   FormResponses,
 } from '@/lib/google-forms';
+import type { RecruitingBrief } from '@/lib/recruiting-schema';
+
+type Criterion = RecruitingBrief['criteria'][number];
+type RowScore = { percent: number; failedQuestionIds: string[] };
+type FormScores = Record<string, RowScore>;
 
 type PublishedForm = {
   formId: string;
@@ -21,6 +26,9 @@ type Props = {
   publishVersion: number;
   // null = unknown yet, false = connected but old scope.
   hasResponsesScope: boolean | null;
+  // Extracted recruiting criteria from the brief; used to score each
+  // respondent against required conditions and highlight failing cells.
+  criteria: Criterion[] | null;
 };
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes per spec
@@ -117,7 +125,11 @@ function writePersisted(map: Record<string, PersistedEntry>) {
   }
 }
 
-export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props) {
+export function RecruitingResponses({
+  publishVersion,
+  hasResponsesScope,
+  criteria,
+}: Props) {
   const [forms, setForms] = useState<PublishedForm[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, ResponseState>>(
@@ -134,6 +146,64 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
       }
       return out;
     },
+  );
+
+  // Fit-score state per form. Indexed by formId → (responseId → score).
+  // We keep this in component memory only; if the user reloads the page
+  // we re-score on the next refresh. Inexpensive given typical recruit
+  // volumes (tens of respondents, single batched LLM call).
+  const [scores, setScores] = useState<Record<string, FormScores>>({});
+  const [scoring, setScoring] = useState<Record<string, boolean>>({});
+  const criteriaRef = useRef<Criterion[] | null>(criteria);
+  criteriaRef.current = criteria;
+
+  const scoreForm = useCallback(
+    async (formId: string, data: FormResponses) => {
+      const list = (criteriaRef.current ?? []).filter((c) => c.required);
+      if (list.length === 0 || data.rows.length === 0) {
+        setScores((prev) => ({ ...prev, [formId]: {} }));
+        return;
+      }
+      setScoring((prev) => ({ ...prev, [formId]: true }));
+      try {
+        const res = await fetch('/api/recruiting/score', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            criteria: criteriaRef.current,
+            columns: data.columns.map((c) => ({
+              questionId: c.questionId,
+              title: c.title,
+            })),
+            rows: data.rows.map((r) => ({
+              responseId: r.responseId,
+              answers: r.answers,
+            })),
+          }),
+        });
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          scores?: Array<{
+            responseId: string;
+            percent: number;
+            failedQuestionIds: string[];
+          }>;
+        };
+        const map: FormScores = {};
+        for (const s of j.scores ?? []) {
+          map[s.responseId] = {
+            percent: s.percent,
+            failedQuestionIds: s.failedQuestionIds ?? [],
+          };
+        }
+        setScores((prev) => ({ ...prev, [formId]: map }));
+      } catch {
+        // Scoring is best-effort — silent failure leaves the column empty.
+      } finally {
+        setScoring((prev) => ({ ...prev, [formId]: false }));
+      }
+    },
+    [],
   );
 
   const fetchList = useCallback(async () => {
@@ -217,6 +287,8 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         const persisted = loadPersisted();
         persisted[formId] = { data, syncedAt };
         writePersisted(persisted);
+        // Kick off scoring against the recruiting criteria. Non-blocking.
+        void scoreForm(formId, data);
       } catch (e) {
         setResponses((prev) => ({
           ...prev,
@@ -229,8 +301,26 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         }));
       }
     },
-    [],
+    [scoreForm],
   );
+
+  // Re-score all already-loaded forms when the brief criteria change.
+  // The criteria identity changes each time `edited` is mutated upstream,
+  // so we key off a serialized snapshot to avoid spurious re-runs while
+  // letting actual edits trigger a refresh.
+  const criteriaKey = JSON.stringify(criteria ?? []);
+  useEffect(() => {
+    const list = (criteria ?? []).filter((c) => c.required);
+    if (list.length === 0) return;
+    for (const [formId, st] of Object.entries(responses)) {
+      if (st?.data && !scoring[formId]) {
+        void scoreForm(formId, st.data);
+      }
+    }
+    // Intentionally exclude `responses`/`scoring` to avoid scoring loops;
+    // we only re-score when criteria actually change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [criteriaKey, scoreForm]);
 
   // Auto-poll every 30 min while the tab is visible. We pull all forms
   // sequentially to stay well under the Forms API per-user quota.
@@ -372,7 +462,12 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     아직 수집된 응답이 없습니다.
                   </div>
                 ) : (
-                  <ResponseTable columns={state.data.columns} rows={state.data.rows} />
+                  <ResponseTable
+                    columns={state.data.columns}
+                    rows={state.data.rows}
+                    scores={scores[f.formId] ?? {}}
+                    scoring={!!scoring[f.formId]}
+                  />
                 )
               ) : (
                 <div className="px-4 py-6 text-center text-[12px] text-mute-soft">
@@ -394,16 +489,18 @@ const MIN_COL_WIDTH = 60;
 function ResponseTable({
   columns,
   rows,
+  scores,
+  scoring,
 }: {
   columns: FormColumn[];
   rows: FormResponseRow[];
+  scores: FormScores;
+  scoring: boolean;
 }) {
-  // Per-column widths in px. The first slot is the "응답시각" column,
-  // the rest line up with `columns`. Disabling cell wrap means rows
-  // are always one line tall, so the user can drag any column header's
-  // right edge to widen/narrow that column.
+  // Column slots: [응답시각, 적합도, ...question columns].
   const [widths, setWidths] = useState<number[]>(() => [
     DEFAULT_TIME_COL_WIDTH,
+    100, // 적합도
     ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
   ]);
   // If the column set changes (different form selected), reset widths.
@@ -414,6 +511,7 @@ function ResponseTable({
     setSeededColumns(columns);
     setWidths([
       DEFAULT_TIME_COL_WIDTH,
+      100,
       ...columns.map(() => DEFAULT_VALUE_COL_WIDTH),
     ]);
   }
@@ -469,6 +567,16 @@ function ResponseTable({
               <span className="block truncate">응답시각</span>
               <ResizeHandle onMouseDown={(e) => startResize(0, e)} />
             </th>
+            <th
+              className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2"
+              style={{ position: 'relative' }}
+              title="추출된 필수 조건 대비 응답자 적합도"
+            >
+              <span className="block truncate">
+                적합도{scoring ? ' …' : ''}
+              </span>
+              <ResizeHandle onMouseDown={(e) => startResize(1, e)} />
+            </th>
             {columns.map((c, i) => (
               <th
                 key={c.questionId}
@@ -478,28 +586,54 @@ function ResponseTable({
                 <span className="block truncate" title={c.title}>
                   {c.title}
                 </span>
-                <ResizeHandle onMouseDown={(e) => startResize(i + 1, e)} />
+                <ResizeHandle onMouseDown={(e) => startResize(i + 2, e)} />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.responseId} className="align-top">
-              <td className="sticky left-0 z-[1] overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
-                {formatTime(r.lastSubmittedTime)}
-              </td>
-              {columns.map((c) => (
-                <td
-                  key={c.questionId}
-                  className="overflow-hidden whitespace-nowrap border-b border-line-soft px-3 py-2 text-ink-2"
-                  title={r.answers[c.questionId] ?? ''}
-                >
-                  {r.answers[c.questionId] ?? ''}
+          {rows.map((r) => {
+            const score = scores[r.responseId];
+            const failedSet = new Set(score?.failedQuestionIds ?? []);
+            return (
+              <tr key={r.responseId} className="align-top">
+                <td className="sticky left-0 z-[1] overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
+                  {formatTime(r.lastSubmittedTime)}
                 </td>
-              ))}
-            </tr>
-          ))}
+                <td
+                  className={
+                    'overflow-hidden whitespace-nowrap border-b border-line-soft px-3 py-2 tabular-nums ' +
+                    (score === undefined
+                      ? 'text-mute-soft'
+                      : score.percent === 100
+                        ? 'text-ink-2'
+                        : score.percent >= 70
+                          ? 'text-ink-2'
+                          : 'text-amore')
+                  }
+                >
+                  {score ? `${score.percent}%` : scoring ? '…' : '—'}
+                </td>
+                {columns.map((c) => {
+                  const failed = failedSet.has(c.questionId);
+                  return (
+                    <td
+                      key={c.questionId}
+                      className={
+                        'overflow-hidden whitespace-nowrap border-b border-line-soft px-3 py-2 ' +
+                        (failed
+                          ? 'bg-amore-bg text-amore'
+                          : 'text-ink-2')
+                      }
+                      title={r.answers[c.questionId] ?? ''}
+                    >
+                      {r.answers[c.questionId] ?? ''}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
