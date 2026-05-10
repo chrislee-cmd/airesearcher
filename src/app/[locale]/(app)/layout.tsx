@@ -30,9 +30,17 @@ export default async function AppLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   const org = user ? await getActiveOrg() : null;
-  const credits = org ? await getOrgCredits(org.org_id) : null;
-  const projects = org ? await listProjects(org.org_id) : [];
-  const flags = org ? await getOrgFlags(org.org_id) : { isUnlimited: false };
+  // Once we have org, the three follow-up reads are independent — fan
+  // them out so the slowest one bounds total latency, not their sum.
+  // (Each is also cache()d so duplicate reads from page.tsx in the same
+  // request hit memory instead of Supabase.)
+  const [credits, projects, flags] = org
+    ? await Promise.all([
+        getOrgCredits(org.org_id),
+        listProjects(org.org_id),
+        getOrgFlags(org.org_id),
+      ])
+    : [null, [] as Awaited<ReturnType<typeof listProjects>>, { isUnlimited: false }];
 
   return (
     <PaywallProvider>

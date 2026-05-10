@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 export type Project = {
@@ -8,7 +9,9 @@ export type Project = {
   item_count?: number;
 };
 
-export async function listProjects(orgId: string): Promise<Project[]> {
+// cache()d so layout + /projects page + /projects/[id] page share a single
+// query within one SSR request.
+export const listProjects = cache(async (orgId: string): Promise<Project[]> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from('projects')
@@ -33,7 +36,7 @@ export async function listProjects(orgId: string): Promise<Project[]> {
   }
 
   return data.map((p) => ({ ...p, item_count: counts.get(p.id) ?? 0 }));
-}
+});
 
 export type ProjectArtifact = {
   feature: 'report' | 'interview' | 'transcript' | 'desk' | 'scheduler' | 'recruiting' | 'generation';
