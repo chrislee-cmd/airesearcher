@@ -6,6 +6,7 @@ import type {
   FormResponseRow,
   FormResponses,
 } from '@/lib/google-forms';
+import { EmptyState } from '@/components/ui/empty-state';
 
 type PublishedForm = {
   formId: string;
@@ -368,16 +369,12 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
 
               {state?.data ? (
                 state.data.rows.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[12px] text-mute-soft">
-                    아직 수집된 응답이 없습니다.
-                  </div>
+                  <EmptyState tone="subtle" title="아직 수집된 응답이 없습니다." />
                 ) : (
                   <ResponseTable columns={state.data.columns} rows={state.data.rows} />
                 )
               ) : (
-                <div className="px-4 py-6 text-center text-[12px] text-mute-soft">
-                  새로고침을 눌러 응답을 불러오세요.
-                </div>
+                <EmptyState tone="subtle" title="새로고침을 눌러 응답을 불러오세요." />
               )}
             </li>
           );
