@@ -11,6 +11,7 @@ import {
 } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { DownloadMenu } from './ui/download-menu';
+import { FileDropZone } from './ui/file-drop-zone';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
@@ -57,12 +58,10 @@ export function TranscriptStudio() {
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
 
-  const [dragOver, setDragOver] = useState(false);
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
   const [modelKey, setModelKey] = useState<string>(DEFAULT_MODEL_KEY);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `runUploads` is captured once. We mirror live state into refs so
@@ -217,13 +216,7 @@ export function TranscriptStudio() {
     }
   }
 
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files?.length) {
-      startUploads(Array.from(e.dataTransfer.files));
-      return;
-    }
+  function handleArtifactDrop(e: React.DragEvent): boolean {
     let ids: string[] = [];
     const manyRaw = e.dataTransfer.getData(
       'application/x-workspace-artifacts',
@@ -239,7 +232,7 @@ export function TranscriptStudio() {
       const id = e.dataTransfer.getData('application/x-workspace-artifact');
       if (id) ids = [id];
     }
-    if (ids.length === 0) return;
+    if (ids.length === 0) return false;
     const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
     const files: File[] = [];
     for (const id of ids) {
@@ -253,14 +246,7 @@ export function TranscriptStudio() {
     }
     if (files.length > 0) startUploads(files);
     workspace.setDragging(null);
-  }
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    if (!dragOver) setDragOver(true);
-  }
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-    if (e.currentTarget === e.target) setDragOver(false);
+    return true;
   }
 
   async function deleteJob(id: string) {
@@ -317,58 +303,21 @@ export function TranscriptStudio() {
             </select>
           </div>
         </div>
-        <div
+        <FileDropZone
           data-coach="quotes:upload"
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-          }}
-          className={`flex cursor-pointer flex-col items-center justify-center border bg-paper py-12 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-            dragOver
-              ? 'border-amore bg-amore-bg'
-              : 'border-dashed border-line hover:border-mute-soft'
-          }`}
-          style={{ borderStyle: dragOver ? 'solid' : 'dashed' }}
+          accept={ACCEPT}
+          multiple
+          disabled={busyUpload}
+          onFiles={(files) => startUploads(files)}
+          onDropRaw={handleArtifactDrop}
+          label={tUp('dropHere')}
+          helperText={tUp('supported')}
+          className="py-12"
         >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.length) {
-                startUploads(Array.from(e.target.files));
-              }
-              e.target.value = '';
-            }}
-          />
-          <div className="text-[13.5px] font-medium text-ink-2">
-            {dragOver ? tUp('dropActive') : tUp('dropHere')}
-          </div>
-          <div className="mt-2 text-[11.5px] text-mute-soft">
-            {tUp('supported')}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              inputRef.current?.click();
-            }}
-            disabled={busyUpload}
-            className="mt-5 border border-line bg-paper px-4 py-1.5 text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
-          >
-            {tUp('browse')}
-          </button>
           {uploadError && (
             <div className="mt-3 text-[11.5px] text-warning">{uploadError}</div>
           )}
-        </div>
+        </FileDropZone>
       </section>
 
       {/* Active uploads (client-side progress, before the job row exists) */}

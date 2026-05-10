@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
@@ -11,6 +10,7 @@ import {
 } from './interview-job-provider';
 import { ThinkingPanel } from './thinking-panel';
 import { useWorkspace } from './workspace-provider';
+import { FileDropZone } from './ui/file-drop-zone';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
 // many artifacts already carry .md in the title, so blindly appending
@@ -36,19 +36,7 @@ export function InterviewAnalyzer() {
 
   const job = useInterviewJob();
   const workspace = useWorkspace();
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    // Native file drop — the original path.
-    if (e.dataTransfer.files?.length) {
-      job.addFiles(e.dataTransfer.files);
-      return;
-    }
-    // Workspace artifact drop — synthesize markdown File(s) from the
-    // artifact content so they flow through Stage 1 like real uploads.
+  function handleArtifactDrop(e: React.DragEvent): boolean {
     let ids: string[] = [];
     const manyRaw = e.dataTransfer.getData(
       'application/x-workspace-artifacts',
@@ -64,7 +52,7 @@ export function InterviewAnalyzer() {
       const id = e.dataTransfer.getData('application/x-workspace-artifact');
       if (id) ids = [id];
     }
-    if (ids.length === 0) return;
+    if (ids.length === 0) return false;
     const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
     const files: File[] = [];
     for (const id of ids) {
@@ -78,14 +66,7 @@ export function InterviewAnalyzer() {
     }
     if (files.length > 0) job.addFiles(files);
     workspace.setDragging(null);
-  }
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    if (!dragOver) setDragOver(true);
-  }
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-    if (e.currentTarget === e.target) setDragOver(false);
+    return true;
   }
 
   // Export helpers live in the provider so the auto-download chain after
@@ -103,52 +84,16 @@ export function InterviewAnalyzer() {
         <p className="mt-1 text-[12px] text-mute">{t('stage1Help')}</p>
         <p className="mt-1 text-[11.5px] text-mute-soft">{t('pipelineHint')}</p>
 
-        <div
+        <FileDropZone
           data-coach="interviews:upload"
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-          }}
-          className={`mt-4 flex cursor-pointer flex-col items-center justify-center border bg-paper py-10 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-            dragOver
-              ? 'border-amore bg-amore-bg'
-              : 'border-dashed border-line hover:border-mute-soft'
-          }`}
-          style={{ borderStyle: dragOver ? 'solid' : 'dashed' }}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.length) job.addFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-          <div className="text-[13.5px] font-medium text-ink-2">
-            {dragOver ? tUp('dropActive') : tUp('dropHere')}
-          </div>
-          <div className="mt-2 text-[11.5px] text-mute-soft">
-            {tUp('supported')}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              inputRef.current?.click();
-            }}
-            className="mt-4 border border-line bg-paper px-4 py-1.5 text-[11.5px] text-mute hover:text-ink-2 [border-radius:4px]"
-          >
-            {tUp('browse')}
-          </button>
-        </div>
+          accept={ACCEPT}
+          multiple
+          onFiles={(files) => job.addFiles(files)}
+          onDropRaw={handleArtifactDrop}
+          label={tUp('dropHere')}
+          helperText={tUp('supported')}
+          className="mt-4 py-10"
+        />
 
         {job.items.length > 0 && (
           <div className="mt-5">

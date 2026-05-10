@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { parsePartialJson } from 'ai';
 import { track } from './mixpanel-provider';
@@ -18,6 +11,7 @@ import { RecruitingResponses } from './recruiting-responses';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
+import { FileDropZone } from './ui/file-drop-zone';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -188,11 +182,9 @@ export function RecruitingBrief() {
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
   const workspace = useWorkspace();
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
   const [pasted, setPasted] = useState('');
-  const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
   // Streaming partial brief (Anthropic streamObject) — gets replaced by
   // `edited` once the run completes so the user can tweak it inline.
@@ -543,17 +535,6 @@ export function RecruitingBrief() {
     setRejected(rejectedNames);
   }
 
-  function onPick(e: ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) addFiles(e.target.files);
-    e.target.value = '';
-  }
-
-  function onDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
-  }
-
   function removeFile(idx: number) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -654,40 +635,14 @@ export function RecruitingBrief() {
           <label className="mb-2 block text-[12px] font-semibold text-ink-2">
             파일 업로드
           </label>
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => inputRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-            }}
-            className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed bg-paper px-6 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-              dragOver
-                ? 'border-amore bg-amore-bg'
-                : 'border-line hover:border-ink-2'
-            }`}
-          >
-            <div className="text-[13px] font-semibold text-ink-2">
-              파일을 끌어다 놓거나 클릭해서 업로드
-            </div>
-            <div className="text-[11.5px] text-mute-soft">
-              .pdf · .docx · .xlsx · .csv · .txt — 최대 10개, 파일당 25MB
-            </div>
-            <input
-              ref={inputRef}
-              type="file"
-              accept={ACCEPT}
-              multiple
-              onChange={onPick}
-              className="hidden"
-            />
-          </div>
+          <FileDropZone
+            accept={ACCEPT}
+            multiple
+            onFiles={(files) => addFiles(files)}
+            label="파일을 끌어다 놓거나 클릭해서 업로드"
+            helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개, 파일당 25MB"
+            className="flex-1 gap-2 px-6"
+          />
         </div>
       </div>
 
