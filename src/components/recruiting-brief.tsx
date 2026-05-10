@@ -9,8 +9,6 @@ import { useGenerationJobs } from './generation-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { RecruitingResponses } from './recruiting-responses';
 import { EmptyState } from '@/components/ui/empty-state';
-import { CreditCostBadge } from './ui/credit-cost-badge';
-import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
 import { FeaturePage } from './ui/feature-page';
@@ -598,9 +596,7 @@ export function RecruitingBrief() {
   return (
     <FeaturePage
       title={t('recruiting.title')}
-      headerRight={
-        <CreditCostBadge cost={FEATURE_COSTS.recruiting} unitLabel={tCommon('credits')} />
-      }
+      headerRight={t('recruiting.cost')}
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex h-[220px] flex-col">

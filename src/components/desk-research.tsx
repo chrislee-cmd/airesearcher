@@ -28,8 +28,6 @@ import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import { DownloadMenu } from './ui/download-menu';
 import { EmptyState } from './ui/empty-state';
-import { CreditCostBadge } from './ui/credit-cost-badge';
-import { FEATURE_COSTS } from '@/lib/features';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
 import { triggerBlobDownload } from '@/lib/export/download';
@@ -404,9 +402,7 @@ export function DeskResearch() {
   return (
     <FeaturePage
       title={t('desk.title')}
-      headerRight={
-        <CreditCostBadge cost={FEATURE_COSTS.desk} unitLabel={tCommon('credits')} />
-      }
+      headerRight={t('desk.cost')}
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
