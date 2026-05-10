@@ -10,6 +10,7 @@ import {
   type TranscriptJobStatus,
 } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
+import { DownloadMenu } from './ui/download-menu';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
@@ -457,18 +458,25 @@ function JobRow({
         </div>
         {job.status === 'done' && (
           <div data-coach="quotes:download" className="flex items-center gap-2">
-            <a
-              href={`/api/transcripts/jobs/${job.id}/download/md`}
-              className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"
-            >
-              .md
-            </a>
-            <a
-              href={`/api/transcripts/jobs/${job.id}/download/docx`}
-              className="border border-ink bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 [border-radius:4px]"
-            >
-              .docx
-            </a>
+            <DownloadMenu
+              tone="primary"
+              align="end"
+              onExport={(format) =>
+                track('quotes_download_click', { format, jobId: job.id })
+              }
+              items={[
+                {
+                  format: 'md',
+                  kind: 'url',
+                  href: `/api/transcripts/jobs/${job.id}/download/md`,
+                },
+                {
+                  format: 'docx',
+                  kind: 'url',
+                  href: `/api/transcripts/jobs/${job.id}/download/docx`,
+                },
+              ]}
+            />
             <button
               onClick={() => setPreviewOpen((v) => !v)}
               className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
