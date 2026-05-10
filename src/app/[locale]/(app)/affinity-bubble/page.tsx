@@ -26,9 +26,6 @@ export default async function AffinityBubblePage({
             <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
               {t('title')}
             </h1>
-            <p className="mt-2 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-              {t('description')}
-            </p>
           </div>
           <a
             href={SITE_URL}

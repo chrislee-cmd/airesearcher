@@ -392,9 +392,6 @@ export function ReportGenerator() {
           {t('reports.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('reports.description')}
-      </p>
 
       <div
         data-coach="reports:upload"

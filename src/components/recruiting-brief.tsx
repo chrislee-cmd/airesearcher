@@ -633,9 +633,6 @@ export function RecruitingBrief() {
           {t('recruiting.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('recruiting.description')}
-      </p>
 
       {/* 2-column input row: paste textarea on the left, file dropzone
           on the right. Either alone or both together is accepted. */}

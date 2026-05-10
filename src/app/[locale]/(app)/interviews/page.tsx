@@ -21,9 +21,6 @@ export default async function Page({
           {t('interviews.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('interviews.description')}
-      </p>
 
       <div className="mt-8">
         <CoachmarkTour feature="interviews" />

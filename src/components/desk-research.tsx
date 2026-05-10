@@ -406,9 +406,6 @@ export function DeskResearch() {
           {t('desk.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('desk.description')}
-      </p>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">

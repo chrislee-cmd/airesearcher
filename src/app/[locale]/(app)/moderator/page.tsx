@@ -21,9 +21,6 @@ export default async function Page({
           {t('moderator.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('moderator.description')}
-      </p>
 
       <ModeratorServicesCarousel />
 
