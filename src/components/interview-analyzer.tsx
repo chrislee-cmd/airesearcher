@@ -194,53 +194,34 @@ export function InterviewAnalyzer() {
         )}
       </section>
 
-      {/* Stage 2 */}
+      {/* Stage 2 — runs automatically after Stage 1 conversion finishes. */}
       <section>
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-          {t('stage2Title')}
-        </h2>
-        <p className="mt-1 text-[12px] text-mute">{t('stage2Help')}</p>
-        <p className="mt-1 text-[11.5px] text-mute-soft">
-          파일별로 (질문 / VOC 인용구) 추출 → 표준 문항으로 묶어 표 정리. 셀 내용은 원문에 실제 존재하는 응답자 발화만 통과합니다.
-        </p>
-
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            data-coach="interviews:analyze"
-            onClick={job.startAnalyze}
-            disabled={job.filenameOrder.length === 0 || job.analyzing}
-            className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-          >
-            {job.analyzing ? t('analyzing') : t('analyze')}
-          </button>
-          {job.analyzing && (
-            <>
-              <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
-                streaming
-                {job.analysis && (
-                  <span className="ml-1 tabular-nums text-mute-soft">
-                    {job.analysis.rows.length} rows
-                  </span>
-                )}
-              </span>
-              <button
-                onClick={() => job.stopAnalyze()}
-                className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning [border-radius:4px]"
-              >
-                stop
-              </button>
-            </>
-          )}
-          {job.filenameOrder.length === 0 && (
-            <span className="text-[11.5px] text-mute-soft">
-              {t('noConverted')}
-            </span>
-          )}
-          {job.analyzeError && (
-            <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
-          )}
-        </div>
+        {(job.analyzing || job.analyzeError) && (
+          <div className="flex items-center gap-3">
+            {job.analyzing && (
+              <>
+                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  streaming
+                  {job.analysis && (
+                    <span className="ml-1 tabular-nums text-mute-soft">
+                      {job.analysis.rows.length} rows
+                    </span>
+                  )}
+                </span>
+                <button
+                  onClick={() => job.stopAnalyze()}
+                  className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning [border-radius:4px]"
+                >
+                  stop
+                </button>
+              </>
+            )}
+            {job.analyzeError && (
+              <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
+            )}
+          </div>
+        )}
 
         <ThinkingPanel />
 
