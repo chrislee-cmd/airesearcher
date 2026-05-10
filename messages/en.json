@@ -475,6 +475,7 @@
     "stopRequested": "Stopping…",
     "cancelledNotice": "Run was cancelled by the user.",
     "regionLabel": "Target region",
+    "regionPortalsLabel": "Portals",
     "regionKrOnlyHidden": "Korea-only sources (Naver/Kakao/Daum) are hidden — they return little for non-KR queries.",
     "region": {
       "KR": "Korea",

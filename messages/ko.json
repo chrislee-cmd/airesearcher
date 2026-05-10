@@ -475,6 +475,7 @@
     "stopRequested": "중지 중…",
     "cancelledNotice": "사용자 요청으로 작업이 중단되었습니다.",
     "regionLabel": "검색 지역",
+    "regionPortalsLabel": "수집 포털",
     "regionKrOnlyHidden": "한국 전용 소스(네이버·카카오·다음)는 다른 지역에서 결과가 거의 없어 숨겼습니다.",
     "region": {
       "KR": "한국",

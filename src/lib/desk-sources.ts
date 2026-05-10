@@ -35,6 +35,18 @@ export const DESK_REGIONS: DeskRegion[] = ['KR', 'US', 'SG', 'MY', 'TH', 'JP', '
 // because they will return zero results for non-KR keywords (and waste credits).
 export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao'];
 
+// Famous, crawler-friendly portals per region. Reached directly via API, or
+// indirectly via Google News RSS aggregation. Shown in the UI as a hint.
+export const DESK_REGION_PORTALS: Record<DeskRegion, string[]> = {
+  KR: ['Naver', 'Daum', 'YouTube', 'Google News'],
+  US: ['Google News', 'Reddit', 'Hacker News', 'YouTube'],
+  JP: ['Yahoo! Japan', 'Google News', 'YouTube'],
+  SG: ['Straits Times', 'CNA', 'Google News', 'YouTube'],
+  MY: ['The Star', 'Free Malaysia Today', 'Google News', 'YouTube'],
+  TH: ['Bangkok Post', 'Thairath', 'Google News', 'YouTube'],
+  GLOBAL: ['Google News', 'Reddit', 'Hacker News', 'YouTube'],
+};
+
 export type DeskSourceMeta = {
   id: DeskSourceId;
   group: DeskSourceGroup;

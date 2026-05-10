@@ -28,6 +28,7 @@ import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import {
   DESK_REGIONS,
+  DESK_REGION_PORTALS,
   DESK_SOURCES,
   DESK_SOURCE_GROUPS,
   KR_ONLY_GROUPS,
@@ -485,82 +486,91 @@ export function DeskResearch() {
           </section>
         </div>
 
-        <div data-coach="desk:region">
-          <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
-            {tDesk('regionLabel')}
-          </span>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {DESK_REGIONS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => changeRegion(r)}
-                className={
-                  'border px-2.5 py-1 text-[11.5px] [border-radius:4px] ' +
-                  (region === r
-                    ? 'border-ink bg-ink text-paper'
-                    : 'border-line bg-paper text-ink-2 hover:text-amore')
-                }
-              >
-                {tDesk(`region.${r}`)}
-              </button>
-            ))}
-          </div>
-          {region !== 'KR' && (
-            <p className="mt-1.5 text-[11px] text-mute-soft">
-              {tDesk('regionKrOnlyHidden')}
+        <div className="space-y-6">
+          <section data-coach="desk:region">
+            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+              {tDesk('regionLabel')}
+            </span>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {DESK_REGIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => changeRegion(r)}
+                  className={
+                    'border px-2.5 py-1 text-[11.5px] [border-radius:4px] ' +
+                    (region === r
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-line bg-paper text-ink-2 hover:text-amore')
+                  }
+                >
+                  {tDesk(`region.${r}`)}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-mute-soft">
+              <span className="mr-1.5 font-semibold uppercase tracking-[.16em] text-mute">
+                {tDesk('regionPortalsLabel')}
+              </span>
+              {DESK_REGION_PORTALS[region].join(' · ')}
             </p>
-          )}
-        </div>
+            {region !== 'KR' && (
+              <p className="mt-1 text-[11px] text-mute-soft">
+                {tDesk('regionKrOnlyHidden')}
+              </p>
+            )}
+          </section>
 
-        <div data-coach="desk:sources">
-          <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
-            {tDesk('sourcesLabel')}
-          </span>
-          <div className="mt-2 space-y-3">
-            {GROUP_ORDER.filter(
-              (g) => region === 'KR' || !KR_ONLY_GROUPS.includes(g),
-            ).map((g) => {
-              const meta = DESK_SOURCE_GROUPS[g];
-              const items = grouped.get(g) ?? [];
-              const allOn = items.every((s) => selected.has(s.id));
-              return (
-                <div key={g} className="border border-line bg-paper [border-radius:4px]">
-                  <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
-                    <span className="text-[12.5px] font-semibold text-ink-2">
+          <section data-coach="desk:sources">
+            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+              {tDesk('sourcesLabel')}
+            </span>
+            <div className="mt-2 space-y-1.5">
+              {GROUP_ORDER.filter(
+                (g) => region === 'KR' || !KR_ONLY_GROUPS.includes(g),
+              ).map((g) => {
+                const meta = DESK_SOURCE_GROUPS[g];
+                const items = grouped.get(g) ?? [];
+                const allOn = items.every((s) => selected.has(s.id));
+                return (
+                  <div
+                    key={g}
+                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 [border-radius:4px]"
+                  >
+                    <span className="w-[68px] shrink-0 text-[11.5px] font-semibold text-ink-2">
                       {isEn ? meta.labelEn : meta.label}
                     </span>
+                    <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                      {items.map((s) => {
+                        const checked = selected.has(s.id);
+                        return (
+                          <label
+                            key={s.id}
+                            className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-2 hover:text-amore"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggle(s.id)}
+                              className="accent-amore"
+                            />
+                            <span>{isEn ? s.labelEn : s.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                     <button
                       type="button"
                       onClick={() => toggleGroup(g)}
-                      className="text-[10px] uppercase tracking-[.18em] text-mute-soft hover:text-amore"
+                      className="shrink-0 text-[10px] uppercase tracking-[.18em] text-mute-soft hover:text-amore"
                     >
                       {allOn ? tDesk('groupNone') : tDesk('groupAll')}
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 px-3 py-2">
-                    {items.map((s) => {
-                      const checked = selected.has(s.id);
-                      return (
-                        <label
-                          key={s.id}
-                          className="flex cursor-pointer items-center gap-2 py-0.5 text-[12.5px] text-ink-2 hover:text-amore"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggle(s.id)}
-                            className="accent-amore"
-                          />
-                          <span>{isEn ? s.labelEn : s.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </div>
 
