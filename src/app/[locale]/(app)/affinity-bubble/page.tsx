@@ -13,32 +13,19 @@ export default async function AffinityBubblePage({
   const t = await getTranslations('AffinityBubble');
 
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
-      <div className="border-b border-line pb-4">
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-px w-5 bg-amore" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
-            {t('eyebrow')}
-          </span>
-        </div>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
-              {t('title')}
-            </h1>
-            <p className="mt-2 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-              {t('description')}
-            </p>
-          </div>
-          <a
-            href={SITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 border border-ink bg-ink px-5 py-2.5 text-[11.5px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
-          >
-            {t('inquiry')}
-          </a>
-        </div>
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+      <div className="flex items-center justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t('title')}
+        </h1>
+        <a
+          href={SITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+        >
+          {t('inquiry')}
+        </a>
       </div>
 
       <figure className="mt-8 overflow-hidden border border-line bg-paper [border-radius:4px]">

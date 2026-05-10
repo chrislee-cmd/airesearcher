@@ -21,9 +21,6 @@ export default async function QuantPage({
           {t('quant.cost')}
         </span>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
-        {t('quant.description')}
-      </p>
 
       <div className="mt-8">
         <CoachmarkTour feature="quant" />
