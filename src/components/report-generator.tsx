@@ -6,8 +6,6 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
-import { CreditCostBadge } from './ui/credit-cost-badge';
-import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
@@ -353,9 +351,7 @@ export function ReportGenerator() {
   return (
     <FeaturePage
       title={t('reports.title')}
-      headerRight={
-        <CreditCostBadge cost={FEATURE_COSTS.reports} unitLabel={tCommon('credits')} />
-      }
+      headerRight={t('reports.cost')}
     >
       <FileDropZone
         accept={ACCEPT}
