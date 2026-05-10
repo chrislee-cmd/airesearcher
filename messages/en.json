@@ -249,7 +249,17 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "create": "Create"
+    "create": "Create",
+    "export": {
+      "download": "Download",
+      "md": "Markdown",
+      "html": "HTML",
+      "docx": "Word",
+      "xlsx": "Excel",
+      "csv": "CSV",
+      "json": "JSON",
+      "txt": "Text"
+    }
   },
   "Features": {
     "quotes": {

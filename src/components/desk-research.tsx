@@ -26,6 +26,8 @@ function readActiveProjectId(): string | null {
 }
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
+import { DownloadMenu } from './ui/download-menu';
+import { triggerBlobDownload } from '@/lib/export/download';
 import {
   DESK_REGIONS,
   DESK_SOURCES,
@@ -329,21 +331,6 @@ export function DeskResearch() {
     const slug = job?.keywords[0]?.replace(/\s+/g, '-').slice(0, 60) || 'desk-research';
     return `desk-${slug}-${stamp}`;
   }
-  function triggerDownload(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-  function downloadMarkdown(markdown: string) {
-    track('desk_export_md_click', { feature: 'desk', format: 'md' });
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-    triggerDownload(blob, `${buildFilename()}.md`);
-  }
   async function downloadDocx(markdown: string) {
     setExporting(true);
     track('desk_export_docx_click', { feature: 'desk', format: 'docx' });
@@ -366,7 +353,7 @@ export function DeskResearch() {
         return;
       }
       const blob = await res.blob();
-      triggerDownload(blob, `${filename}.docx`);
+      triggerBlobDownload(blob, `${filename}.docx`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'export_failed');
     } finally {
@@ -677,23 +664,32 @@ export function DeskResearch() {
               <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
                 {tDesk('reportTitle')}
               </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => downloadMarkdown(job.output ?? '')}
-                  className="border border-line bg-paper px-3 py-1.5 text-[11.5px] font-semibold text-ink-2 hover:border-amore hover:text-amore [border-radius:4px]"
-                >
-                  {tDesk('downloadMd')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void downloadDocx(job.output ?? '')}
-                  disabled={exporting}
-                  className="border border-line bg-paper px-3 py-1.5 text-[11.5px] font-semibold text-ink-2 hover:border-amore hover:text-amore disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                >
-                  {exporting ? tCommon('loading') : tDesk('downloadDocx')}
-                </button>
-              </div>
+              <DownloadMenu
+                tone="ghost"
+                align="end"
+                disabled={exporting}
+                items={[
+                  {
+                    format: 'md',
+                    kind: 'blob',
+                    filename: `${buildFilename()}.md`,
+                    build: () => {
+                      track('desk_export_md_click', {
+                        feature: 'desk',
+                        format: 'md',
+                      });
+                      return new Blob([job.output ?? ''], {
+                        type: 'text/markdown;charset=utf-8',
+                      });
+                    },
+                  },
+                  {
+                    format: 'docx',
+                    kind: 'action',
+                    onSelect: () => downloadDocx(job.output ?? ''),
+                  },
+                ]}
+              />
             </div>
             <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 [border-radius:4px]">
               <DeskMarkdown source={job.output ?? ''} />

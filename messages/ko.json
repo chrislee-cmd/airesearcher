@@ -249,7 +249,17 @@
     "save": "저장",
     "cancel": "취소",
     "delete": "삭제",
-    "create": "만들기"
+    "create": "만들기",
+    "export": {
+      "download": "다운로드",
+      "md": "마크다운",
+      "html": "HTML",
+      "docx": "워드",
+      "xlsx": "엑셀",
+      "csv": "CSV",
+      "json": "JSON",
+      "txt": "텍스트"
+    }
   },
   "Features": {
     "quotes": {
