@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
+import { DownloadMenu } from './ui/download-menu';
 import {
   buildCrossTab,
   summarizeColumns,
@@ -97,20 +98,9 @@ export function QuantAnalyzer() {
     setError(null);
   }
 
-  function downloadCsv() {
-    if (!crossTab) return;
-    const blob = new Blob([toCsv(crossTab)], {
-      type: 'text/csv;charset=utf-8',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+  function crosstabFilename(): string {
     const stamp = new Date().toISOString().slice(0, 10);
-    a.download = `crosstab_${stamp}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return `crosstab_${stamp}.csv`;
   }
 
   return (
@@ -201,14 +191,23 @@ export function QuantAnalyzer() {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={downloadCsv}
+            <DownloadMenu
+              tone="ghost"
+              align="end"
               disabled={!crossTab}
-              className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
-            >
-              {t('exportCsv')}
-            </button>
+              label={t('exportCsv')}
+              items={[
+                {
+                  format: 'csv',
+                  kind: 'blob',
+                  filename: crosstabFilename(),
+                  build: () =>
+                    new Blob([toCsv(crossTab!)], {
+                      type: 'text/csv;charset=utf-8',
+                    }),
+                },
+              ]}
+            />
           </div>
 
           {/* Result table */}

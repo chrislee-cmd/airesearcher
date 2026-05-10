@@ -12,6 +12,7 @@ import { ThinkingPanel } from './thinking-panel';
 import { JobProgress } from './ui/job-progress';
 import { useWorkspace } from './workspace-provider';
 import { FileDropZone } from './ui/file-drop-zone';
+import { DownloadMenu } from './ui/download-menu';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
 // many artifacts already carry .md in the title, so blindly appending
@@ -184,18 +185,14 @@ export function InterviewAnalyzer() {
                   {job.summarizeError ?? job.verticalSynthError}
                 </span>
               )}
-              <button
-                onClick={exportCsv}
-                className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"
-              >
-                {t('exportCsv')}
-              </button>
-              <button
-                onClick={exportXlsx}
-                className="border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 [border-radius:4px]"
-              >
-                {t('exportXlsx')}
-              </button>
+              <DownloadMenu
+                tone="primary"
+                align="end"
+                items={[
+                  { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
+                  { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
+                ]}
+              />
             </div>
             {job.verticalDone && job.analysis.consolidated ? (
               <FinalSummaryTable

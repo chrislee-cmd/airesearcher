@@ -10,6 +10,8 @@ import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
+import { DownloadMenu } from './ui/download-menu';
+import { triggerBlobDownload } from '@/lib/export/download';
 
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
@@ -179,25 +181,11 @@ export function ReportGenerator() {
     );
   }
 
-  function downloadHtml() {
-    if (!result?.html) return;
-    const url = URL.createObjectURL(
-      new Blob([result.html], { type: 'text/html;charset=utf-8' }),
-    );
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `report_${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+  function reportStamp(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 
-  // Trigger the browser's print dialog on the iframe content. The user
-  // picks "Save as PDF" — this gives a high-fidelity PDF without dragging
-  // in a heavy client-side renderer or a server Chromium.
-  function downloadPdf() {
-    if (!result?.html) return;
+  function triggerPrint() {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
     try {
@@ -227,14 +215,7 @@ export function ReportGenerator() {
       }
       const { buildReportPptxBlob } = await import('@/lib/reports-pptx');
       const blob = await buildReportPptxBlob(json.outline);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${new Date().toISOString().slice(0, 10)}.pptx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      triggerBlobDownload(blob, `report_${reportStamp()}.pptx`);
     } catch (e) {
       console.error('[reports] pptx failed', e);
       alert(`PPTX 생성 실패: ${e instanceof Error ? e.message : 'unknown'}`);
@@ -470,31 +451,32 @@ export function ReportGenerator() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={downloadHtml}
-                disabled={!result}
-                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-              >
-                HTML
-              </button>
-              <button
-                type="button"
-                onClick={downloadPdf}
-                disabled={!result}
-                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                title="브라우저 인쇄 → PDF로 저장"
-              >
-                PDF
-              </button>
-              <button
-                type="button"
-                onClick={downloadPptx}
+              <DownloadMenu
+                tone="ghost"
+                align="end"
                 disabled={!result || pptxBuilding}
-                className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-              >
-                {pptxBuilding ? 'PPTX 생성 중…' : 'PPTX'}
-              </button>
+                items={[
+                  {
+                    format: 'html',
+                    kind: 'blob',
+                    filename: `report_${reportStamp()}.html`,
+                    build: () =>
+                      new Blob([result?.html ?? ''], {
+                        type: 'text/html;charset=utf-8',
+                      }),
+                  },
+                  {
+                    format: 'pdf',
+                    kind: 'action',
+                    onSelect: () => triggerPrint(),
+                  },
+                  {
+                    format: 'pptx',
+                    kind: 'action',
+                    onSelect: () => downloadPptx(),
+                  },
+                ]}
+              />
             </div>
           </div>
           {result && result.sources.length > 0 && (

@@ -259,7 +259,9 @@
       "xlsx": "엑셀",
       "csv": "CSV",
       "json": "JSON",
-      "txt": "텍스트"
+      "txt": "텍스트",
+      "pdf": "PDF",
+      "pptx": "파워포인트"
     }
   },
   "Features": {
