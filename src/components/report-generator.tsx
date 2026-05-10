@@ -78,6 +78,25 @@ function stripCodeFence(s: string): string {
   return t;
 }
 
+// Mid-stream variant of stripCodeFence + doctype wrap. The HTML stage
+// streams chunks like ```html\n<!doctype html>...; without preprocessing,
+// the iframe srcDoc receives the leading code fence and renders quirks-
+// mode plain text (visually a blank page) until the final response when
+// stripCodeFence runs. Apply the same cleanup on every chunk so the user
+// watches the report build in place.
+function wrapStreamingHtml(s: string): string {
+  // Strip the leading fence (```html / ```markdown / ```). Trailing ```
+  // is dropped at finalize time by stripCodeFence — partial chunks won't
+  // have it yet so we don't try here.
+  const stripped = s.replace(/^\s*```(?:html|markdown|md)?\s*/i, '');
+  if (!stripped.trim()) return '';
+  // If the model hasn't produced a doctype/<html> yet (it sometimes
+  // streams body content first), wrap so the iframe parses it as HTML
+  // rather than plain text. Mirrors the final fallback at line ~318.
+  if (/<!doctype html|<html/i.test(stripped)) return stripped;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${stripped}</body></html>`;
+}
+
 function readActiveProjectId(): string | null {
   try {
     const raw = window.localStorage.getItem('active_project:v1');
@@ -353,7 +372,7 @@ export function ReportGenerator() {
   const canRun = files.length > 0 && !running;
   const showResultPanel = running || result;
 
-  const previewHtml = result?.html ?? (streamingHtml || ' ');
+  const previewHtml = result?.html ?? (wrapStreamingHtml(streamingHtml) || ' ');
   const previewMd = result?.markdown ?? streamingMd;
 
   return (
