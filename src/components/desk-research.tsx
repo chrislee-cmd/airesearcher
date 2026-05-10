@@ -28,6 +28,8 @@ import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import { DownloadMenu } from './ui/download-menu';
 import { EmptyState } from './ui/empty-state';
+import { CreditCostBadge } from './ui/credit-cost-badge';
+import { FEATURE_COSTS } from '@/lib/features';
 import { triggerBlobDownload } from '@/lib/export/download';
 import {
   DESK_REGIONS,
@@ -403,9 +405,7 @@ export function DeskResearch() {
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
           {t('desk.title')}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
-          {t('desk.cost')}
-        </span>
+        <CreditCostBadge cost={FEATURE_COSTS.desk} unitLabel={tCommon('credits')} />
       </div>
       <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
         {t('desk.description')}
