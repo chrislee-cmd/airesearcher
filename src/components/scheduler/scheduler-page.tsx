@@ -150,7 +150,7 @@ export function SchedulerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1240px] px-2 pb-16 pt-8">
+    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
           {t('title')}
