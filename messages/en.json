@@ -48,7 +48,9 @@
       "converting": "Converting",
       "extracting": "Extracting",
       "analyzing": "Analyzing",
-      "synthesizing": "Synthesizing"
+      "synthesizing": "Synthesizing",
+      "normalizing": "Normalizing",
+      "generating": "Drafting"
     }
   },
   "SidebarGroups": {

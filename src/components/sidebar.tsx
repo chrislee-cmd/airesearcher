@@ -44,7 +44,28 @@ type ProgressPhase =
   | 'converting'
   | 'extracting'
   | 'analyzing'
-  | 'synthesizing';
+  | 'synthesizing'
+  | 'normalizing'
+  | 'generating';
+
+// Stage weighting for multi-phase jobs. The numeric percent shown next
+// to the spinner is `base + stageProgress * width` for the current
+// phase, so every transition between phases visibly bumps the bar
+// forward and the user never sees 100% before the job actually
+// finishes (last phase is capped well below 100 — `done` flips the
+// indicator to the green "작업완료" badge instead).
+const DESK_STAGE = {
+  expanding: { base: 0, width: 25 },
+  crawling: { base: 25, width: 41 }, // 25 → 66
+  summarizing: { base: 66, width: 29 }, // 66 → 95
+} as const;
+const INTERVIEW_STAGE = {
+  converting: { base: 0, width: 15 },
+  extracting: { base: 15, width: 15 }, // 15 → 30
+  analyzing: { base: 30, width: 25 }, // 30 → 55
+  summarizing: { base: 55, width: 20 }, // 55 → 75
+  synthesizing: { base: 75, width: 20 }, // 75 → 95
+} as const;
 
 const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
 
@@ -78,8 +99,9 @@ export function Sidebar({
   }
 
   // Numeric percent or phase label to render next to the spinner.
-  // Only desk + interviews + quotes expose progress; the rest fall
-  // back to the plain "working" label (returns null).
+  // Multi-phase jobs use stage weighting so transitions bump the bar
+  // forward instead of resetting; %s are capped at 99 so 100 is
+  // reserved for the actual `done` transition.
   function getProgressDetail(
     key: FeatureKey,
   ): { percent?: number; phase?: ProgressPhase } | null {
@@ -87,34 +109,70 @@ export function Sidebar({
       const job = deskJobs.latestJob;
       if (!job) return null;
       const p = job.progress;
-      if (
-        p.phase === 'crawling' &&
-        typeof p.crawl_total === 'number' &&
-        p.crawl_total > 0
-      ) {
-        const done = p.crawl_done ?? 0;
-        const pct = Math.min(100, Math.round((done / p.crawl_total) * 100));
-        return { percent: pct, phase: 'crawling' };
+      if (p.phase === 'expanding') {
+        return { percent: DESK_STAGE.expanding.base, phase: 'expanding' };
       }
-      if (p.phase) return { phase: p.phase };
-      return null;
+      if (p.phase === 'crawling') {
+        const s = DESK_STAGE.crawling;
+        let frac = 0;
+        if (typeof p.crawl_total === 'number' && p.crawl_total > 0) {
+          frac = Math.min(1, (p.crawl_done ?? 0) / p.crawl_total);
+        }
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'crawling',
+        };
+      }
+      if (p.phase === 'summarizing') {
+        return { percent: DESK_STAGE.summarizing.base, phase: 'summarizing' };
+      }
+      // queued — job exists but no phase yet
+      return { percent: 0 };
     }
     if (key === 'interviews') {
-      if (interviewJob.verticallySynthesizing) return { phase: 'synthesizing' };
-      if (interviewJob.summarizing) return { phase: 'summarizing' };
-      if (interviewJob.analyzing) return { phase: 'analyzing' };
-      if (interviewJob.items.some((i) => i.extractStatus === 'extracting'))
-        return { phase: 'extracting' };
+      // Order matters — later stages override earlier flags so a job
+      // mid-synthesis still reads as 75%+, not 0%.
+      if (interviewJob.verticallySynthesizing) {
+        return {
+          percent: INTERVIEW_STAGE.synthesizing.base,
+          phase: 'synthesizing',
+        };
+      }
+      if (interviewJob.summarizing) {
+        return {
+          percent: INTERVIEW_STAGE.summarizing.base,
+          phase: 'summarizing',
+        };
+      }
+      if (interviewJob.analyzing) {
+        return {
+          percent: INTERVIEW_STAGE.analyzing.base,
+          phase: 'analyzing',
+        };
+      }
+      const items = interviewJob.items;
+      const extractedDone = items.filter(
+        (i) => i.extractStatus === 'done',
+      ).length;
+      const extractingNow = items.some(
+        (i) => i.extractStatus === 'extracting',
+      );
+      if (extractingNow) {
+        const s = INTERVIEW_STAGE.extracting;
+        const frac = items.length > 0 ? extractedDone / items.length : 0;
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'extracting',
+        };
+      }
       if (interviewJob.convertingAll) {
+        const s = INTERVIEW_STAGE.converting;
         const total = interviewJob.queuedCount + interviewJob.doneCount;
-        if (total > 0) {
-          const pct = Math.min(
-            100,
-            Math.round((interviewJob.doneCount / total) * 100),
-          );
-          return { percent: pct, phase: 'converting' };
-        }
-        return { phase: 'converting' };
+        const frac = total > 0 ? interviewJob.doneCount / total : 0;
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'converting',
+        };
       }
       return null;
     }
@@ -124,7 +182,7 @@ export function Sidebar({
         const avg = Math.round(
           uploads.reduce((a, b) => a + b, 0) / uploads.length,
         );
-        return { percent: avg, phase: 'uploading' };
+        return { percent: Math.min(99, avg), phase: 'uploading' };
       }
       const active = transcriptJobs.jobs.find(
         (j) =>
@@ -135,6 +193,17 @@ export function Sidebar({
       if (!active) return null;
       if (active.status === 'transcribing') return { phase: 'transcribing' };
       return { phase: 'submitting' };
+    }
+    // GenerationJobProvider-backed features: read percent/phase that
+    // the feature's own component publishes via `setProgress` (e.g.
+    // reports). Features that never call setProgress fall through to
+    // the plain spinner.
+    const gen = generationJobs.get(key);
+    if (gen.status === 'running') {
+      const { percent, phase } = gen.progress;
+      if (typeof percent === 'number' || phase) {
+        return { percent, phase: phase as ProgressPhase | undefined };
+      }
     }
     return null;
   }

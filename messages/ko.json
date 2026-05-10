@@ -48,7 +48,9 @@
       "converting": "변환 중",
       "extracting": "추출 중",
       "analyzing": "분석 중",
-      "synthesizing": "통합 중"
+      "synthesizing": "통합 중",
+      "normalizing": "정규화 중",
+      "generating": "리포트 작성 중"
     }
   },
   "SidebarGroups": {
