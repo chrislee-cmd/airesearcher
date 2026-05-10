@@ -30,6 +30,7 @@ import { DownloadMenu } from './ui/download-menu';
 import { EmptyState } from './ui/empty-state';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
+import { JobProgress } from './ui/job-progress';
 import { triggerBlobDownload } from '@/lib/export/download';
 import {
   DESK_REGIONS,
@@ -604,35 +605,45 @@ export function DeskResearch() {
       </div>
 
       {showPanel && (
-        <section className="mt-6 border border-line bg-paper-soft [border-radius:4px]">
-          <header className="flex items-center justify-between border-b border-line-soft px-4 py-2">
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-block h-1.5 w-1.5 [border-radius:9999px] ${
-                  isWorking ? 'animate-pulse bg-amore' : 'bg-mute-soft'
-                }`}
-              />
+        <section className="mt-6">
+          {isWorking ? (
+            <JobProgress
+              value={
+                job?.progress?.crawl_total
+                  ? Math.round(
+                      ((job.progress.crawl_done ?? 0) /
+                        job.progress.crawl_total) *
+                        100,
+                    )
+                  : undefined
+              }
+              label={tDesk('thinkingActive')}
+              hint={
+                job?.progress?.crawl_total
+                  ? `${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
+                  : undefined
+              }
+              onCancel={
+                job
+                  ? job.cancel_requested
+                    ? undefined
+                    : () => void cancelJob(job.id)
+                  : undefined
+              }
+              cancelLabel={
+                job?.cancel_requested ? tDesk('stopRequested') : tDesk('stop')
+              }
+            />
+          ) : (
+            <div className="border border-line bg-paper-soft px-4 py-2 [border-radius:4px]">
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-                {tDesk(isWorking ? 'thinkingActive' : 'thinkingDone')}
-                {job?.progress?.crawl_total
-                  ? ` · ${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
-                  : ''}
+                {tDesk('thinkingDone')}
               </span>
             </div>
-            {isWorking && job && (
-              <button
-                type="button"
-                onClick={() => void cancelJob(job.id)}
-                disabled={job.cancel_requested}
-                className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-              >
-                {job.cancel_requested ? tDesk('stopRequested') : tDesk('stop')}
-              </button>
-            )}
-          </header>
+          )}
           <div
             ref={thoughtsScroller}
-            className="max-h-[280px] overflow-y-auto px-4 py-3 text-[12.5px] leading-[1.7]"
+            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] [border-radius:4px]"
           >
             {events.map((line, i) => (
               <div key={i} className="py-0.5 text-ink-2">

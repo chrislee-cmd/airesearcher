@@ -6,6 +6,7 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
+import { JobProgress } from './ui/job-progress';
 import type { FeatureKey } from '@/lib/features';
 import { prefillKey } from '@/lib/workspace';
 
@@ -110,6 +111,15 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           {running ? tCommon('loading') : tCommon('generate')}
         </button>
       </div>
+
+      {running && (
+        <div className="mt-6">
+          <JobProgress
+            value={job.progress.percent}
+            label={job.progress.phase ?? '생성 중'}
+          />
+        </div>
+      )}
 
       {result && (
         <div className="mt-10">

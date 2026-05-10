@@ -9,6 +9,7 @@ import { useGenerationJobs } from './generation-job-provider';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
+import { JobProgress } from './ui/job-progress';
 
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
@@ -441,11 +442,7 @@ export function ReportGenerator() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <div className="flex items-center gap-3">
               <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
-                {running
-                  ? stage === 'normalize'
-                    ? '1/2 표준 양식 변환 중…'
-                    : '2/2 리포트 작성 중…'
-                  : '결과'}
+                {running ? (stage === 'normalize' ? '1/2' : '2/2') : '결과'}
               </h2>
               <div className="flex items-center gap-1 text-[11.5px]">
                 <button
@@ -504,6 +501,19 @@ export function ReportGenerator() {
             <p className="mt-3 text-[11.5px] text-mute-soft">
               출처: {result.sources.join(', ')}
             </p>
+          )}
+
+          {running && (
+            <div className="mt-4">
+              <JobProgress
+                value={job.progress.percent}
+                label={
+                  stage === 'normalize'
+                    ? '표준 양식 변환 중'
+                    : '리포트 작성 중'
+                }
+              />
+            </div>
           )}
 
           {tab === 'html' ? (
