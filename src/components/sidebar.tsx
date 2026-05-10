@@ -361,7 +361,6 @@ export function Sidebar({
           <Link
             href="/projects"
             prefetch
-            onMouseEnter={() => router.prefetch('/projects')}
             onClick={() => track('sidebar_projects_click')}
             className={`flex-1 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] ${
               projectsActive
@@ -444,8 +443,6 @@ export function Sidebar({
                         <Link
                           href={f.href}
                           prefetch
-                          onMouseEnter={() => router.prefetch(f.href)}
-                          onFocus={() => router.prefetch(f.href)}
                           onClick={() =>
                             track(`sidebar_nav_${f.key}_click`, {
                               target: f.key,
