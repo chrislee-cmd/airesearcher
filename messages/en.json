@@ -531,6 +531,33 @@
     "create": "Create organization",
     "name": "Organization name"
   },
+  "PublicBooking": {
+    "fallbackTitle": "Schedule a meeting",
+    "timezone": "Timezone",
+    "pickSlot": "Pick a time",
+    "yourInfo": "Your details",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone (optional)",
+    "note": "Note (optional)",
+    "picked": "Selected",
+    "pickFirst": "Pick a time above first.",
+    "submit": "Confirm booking",
+    "submitting": "Confirming…",
+    "noSlots": "No bookable slots.",
+    "allBooked": "All slots are taken.",
+    "errors": {
+      "taken": "Someone just booked that slot. Please pick another.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "confirmed": {
+      "title": "Booking confirmed.",
+      "body": "Your slot is locked. A separate invite email may not be sent.",
+      "when": "When",
+      "name": "Name",
+      "email": "Email"
+    }
+  },
   "Scheduler": {
     "requirements": {
       "title": "Research Window",
@@ -561,6 +588,36 @@
         "newYork": "New York",
         "london": "London",
         "utc": "UTC"
+      }
+    },
+    "booking": {
+      "title": "Public booking links",
+      "description": "Mint a link from your current calendar availability and share it with attendees. Booked slots lock automatically.",
+      "newLink": "New link",
+      "cancel": "Cancel",
+      "create": "Create link",
+      "creating": "Creating…",
+      "linkTitle": "Link title",
+      "linkTitlePlaceholder": "e.g. May interview slots",
+      "linkDescription": "Description (optional)",
+      "expires": "Expires (optional)",
+      "slotsPreview": "{count} slots will be published from the current calendar.",
+      "loading": "Loading…",
+      "empty": "No links yet.",
+      "untitled": "(untitled)",
+      "statusActive": "Active",
+      "statusClosed": "Closed",
+      "progress": "{booked}/{total} booked",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyManual": "Copy this URL",
+      "close": "Close",
+      "reopen": "Reopen",
+      "delete": "Delete",
+      "confirmDelete": "Delete this link and all bookings?",
+      "errors": {
+        "noSlots": "No slots in the current calendar.",
+        "createFailed": "Failed to create the link."
       }
     },
     "calendar": {

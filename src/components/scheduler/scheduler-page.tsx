@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { RequirementsForm } from './requirements-form';
 import { CalendarView } from './calendar-view';
 import { AttendeesPanel } from './attendees-panel';
+import { BookingLinksPanel } from './booking-links-panel';
 import { DEFAULT_REQUIREMENT } from '@/lib/scheduler/types';
 import type { Attendee, ConfirmedSlot, Requirement } from '@/lib/scheduler/types';
 import { useWorkspace } from '../workspace-provider';
@@ -45,6 +46,10 @@ export function SchedulerPage() {
   const [confirmed, setConfirmed] = useState<ConfirmedSlot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  useEffect(() => {
+    setProjectId(readActiveProjectId());
+  }, []);
 
   function addAttendee(input: Omit<Attendee, 'id'>) {
     const a: Attendee = { ...input, id: crypto.randomUUID() };
@@ -167,6 +172,7 @@ export function SchedulerPage() {
           selectedAttendeeId={selectedId}
           onPickSlot={pickSlotFromCalendar}
         />
+        <BookingLinksPanel requirement={requirement} projectId={projectId} />
         <AttendeesPanel
           attendees={attendees}
           confirmed={confirmed}
