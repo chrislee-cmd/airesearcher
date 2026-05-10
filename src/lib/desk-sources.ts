@@ -12,6 +12,7 @@ export type DeskSourceId =
   | 'youtube'
   // Global
   | 'google_news'
+  | 'gdelt_news'
   | 'hacker_news'
   | 'reddit';
 
@@ -91,6 +92,7 @@ export const DESK_SOURCES: DeskSourceMeta[] = [
   { id: 'kakao_cafe', group: 'kakao', label: '다음 카페', labelEn: 'Daum Cafe', hint: '커뮤니티 카페 게시글' },
   { id: 'youtube', group: 'youtube', label: '유튜브', labelEn: 'YouTube', hint: '영상 제목·설명·채널' },
   { id: 'google_news', group: 'global', label: '구글 뉴스', labelEn: 'Google News', hint: '국내·해외 뉴스 RSS' },
+  { id: 'gdelt_news', group: 'global', label: 'GDELT 뉴스', labelEn: 'GDELT News', hint: '글로벌 뉴스 DB · 지역 직접 필터 (키 불필요)' },
   { id: 'hacker_news', group: 'global', label: '해커 뉴스', labelEn: 'Hacker News', hint: '테크/스타트업 영문' },
   { id: 'reddit', group: 'global', label: '레딧', labelEn: 'Reddit', hint: '글로벌 사용자 토론' },
 ];
