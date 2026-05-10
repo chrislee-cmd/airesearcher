@@ -12,12 +12,13 @@ type Props = {
   email: string | null;
   credits: number | null;
   isAuthed: boolean;
+  isSuperAdmin?: boolean;
 };
 
 // The footer block of the sidebar. Shows account name + credits, and a
 // gear button that opens a popover with language / members / credits /
 // sign-out — all the things that used to live in the topbar.
-export function SidebarAccount({ email, credits, isAuthed }: Props) {
+export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
   const tAuth = useTranslations('Auth');
@@ -157,6 +158,20 @@ export function SidebarAccount({ email, credits, isAuthed }: Props) {
           >
             {t('buyCredits')}
           </PopoverLink>
+          {isSuperAdmin && (
+            <>
+              <div className="my-1 h-px bg-line-soft" />
+              <PopoverLink
+                href="/admin/api-usage"
+                onClick={() => {
+                  track('admin_api_usage_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminApiUsage')}
+              </PopoverLink>
+            </>
+          )}
           <div className="my-1 h-px bg-line-soft" />
           <button
             type="button"

@@ -30,6 +30,9 @@ type Props = {
   // analyzer) are dev-in-progress and stay hidden from regular users.
   // Flipped on for super-admin orgs (organizations.is_unlimited).
   showPreviewFeatures?: boolean;
+  // Hardcoded-email super-admin gate. Drives the cross-provider API
+  // usage menu entry; nothing else.
+  isSuperAdmin?: boolean;
 };
 
 const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
@@ -75,6 +78,7 @@ export function Sidebar({
   credits,
   isAuthed,
   showPreviewFeatures = false,
+  isSuperAdmin = false,
 }: Props) {
   const pathname = usePathname();
   const t = useTranslations('Sidebar');
@@ -530,7 +534,12 @@ export function Sidebar({
         })}
       </nav>
 
-      <SidebarAccount email={email} credits={credits} isAuthed={isAuthed} />
+      <SidebarAccount
+        email={email}
+        credits={credits}
+        isAuthed={isAuthed}
+        isSuperAdmin={isSuperAdmin}
+      />
     </aside>
   );
 }
