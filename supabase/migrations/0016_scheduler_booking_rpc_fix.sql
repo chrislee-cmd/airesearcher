@@ -4,8 +4,13 @@
 -- INSERT ... RETURNING ... INTO and UPDATE ... SET booking_id = ...
 -- statements at runtime. Rename OUT params and also add an explicit
 -- variable_conflict directive for safety.
+--
+-- The return type changes (renamed OUT params), so we must DROP first;
+-- CREATE OR REPLACE cannot change the return row type.
 
-create or replace function public.book_slot(
+drop function if exists public.book_slot(text, uuid, text, text, text, text, jsonb);
+
+create function public.book_slot(
   p_slug text,
   p_slot_id uuid,
   p_name text,
