@@ -18,9 +18,19 @@ type BookingLink = {
   bookings: { id: string; slot_id: string; name: string; email: string; created_at: string }[];
 };
 
+export type LinkBooking = {
+  id: string;
+  name: string;
+  email: string;
+  date: string;
+  start: string;
+  end: string;
+};
+
 type Props = {
   requirement: Requirement;
   projectId: string | null;
+  onBookingsChange?: (bookings: LinkBooking[]) => void;
 };
 
 function publicUrl(slug: string): string {
@@ -32,7 +42,7 @@ function publicUrl(slug: string): string {
   return `${window.location.origin}/${locale}/book/${slug}`;
 }
 
-export function BookingLinksPanel({ requirement, projectId }: Props) {
+export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: Props) {
   const t = useTranslations('Scheduler.booking');
   const [links, setLinks] = useState<BookingLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,14 +65,39 @@ export function BookingLinksPanel({ requirement, projectId }: Props) {
       const res = await fetch('/api/scheduler/links', { cache: 'no-store' });
       if (!res.ok) return;
       const json = (await res.json()) as { links: BookingLink[] };
-      setLinks(json.links ?? []);
+      const next = json.links ?? [];
+      setLinks(next);
+      if (onBookingsChange) {
+        const flat: LinkBooking[] = [];
+        for (const l of next) {
+          for (const b of l.bookings) {
+            const slot = l.slots.find((s) => s.id === b.slot_id);
+            if (!slot) continue;
+            flat.push({
+              id: b.id,
+              name: b.name,
+              email: b.email,
+              date: slot.date,
+              start: String(slot.start_time).slice(0, 5),
+              end: String(slot.end_time).slice(0, 5),
+            });
+          }
+        }
+        onBookingsChange(flat);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onBookingsChange]);
 
   useEffect(() => {
     void refresh();
+    // Poll every 15s so a new public booking shows up in the in-app
+    // canvas within the same minute without a page reload.
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 15000);
+    return () => window.clearInterval(id);
   }, [refresh]);
 
   async function create() {

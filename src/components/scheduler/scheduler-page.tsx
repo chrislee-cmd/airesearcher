@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { RequirementsForm } from './requirements-form';
 import { CalendarView } from './calendar-view';
 import { AttendeesPanel } from './attendees-panel';
-import { BookingLinksPanel } from './booking-links-panel';
+import { BookingLinksPanel, type LinkBooking } from './booking-links-panel';
 import { DEFAULT_REQUIREMENT } from '@/lib/scheduler/types';
 import type { Attendee, ConfirmedSlot, Requirement } from '@/lib/scheduler/types';
 import { useWorkspace } from '../workspace-provider';
@@ -47,9 +47,43 @@ export function SchedulerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [linkBookings, setLinkBookings] = useState<LinkBooking[]>([]);
   useEffect(() => {
     setProjectId(readActiveProjectId());
   }, []);
+
+  // Public booking results show up in the canvas as synthetic
+  // attendees + confirmed slots so the calendar can render them as
+  // locked. We keep these separate from the user's manually managed
+  // attendees so the AttendeesPanel stays clean.
+  const linkAttendees = useMemo<Attendee[]>(
+    () =>
+      linkBookings.map((b) => ({
+        id: `linkbooking_${b.id}`,
+        name: b.name,
+        email: b.email,
+      })),
+    [linkBookings],
+  );
+  const linkConfirmed = useMemo<ConfirmedSlot[]>(
+    () =>
+      linkBookings.map((b) => ({
+        id: `linkconfirmed_${b.id}`,
+        attendeeId: `linkbooking_${b.id}`,
+        date: b.date,
+        start: b.start,
+        end: b.end,
+      })),
+    [linkBookings],
+  );
+  const calendarAttendees = useMemo(
+    () => [...attendees, ...linkAttendees],
+    [attendees, linkAttendees],
+  );
+  const calendarConfirmed = useMemo(
+    () => [...confirmed, ...linkConfirmed],
+    [confirmed, linkConfirmed],
+  );
 
   function addAttendee(input: Omit<Attendee, 'id'>) {
     const a: Attendee = { ...input, id: crypto.randomUUID() };
@@ -167,12 +201,16 @@ export function SchedulerPage() {
         <RequirementsForm value={requirement} onChange={setRequirement} />
         <CalendarView
           requirement={requirement}
-          confirmed={confirmed}
-          attendees={attendees}
+          confirmed={calendarConfirmed}
+          attendees={calendarAttendees}
           selectedAttendeeId={selectedId}
           onPickSlot={pickSlotFromCalendar}
         />
-        <BookingLinksPanel requirement={requirement} projectId={projectId} />
+        <BookingLinksPanel
+          requirement={requirement}
+          projectId={projectId}
+          onBookingsChange={setLinkBookings}
+        />
         <AttendeesPanel
           attendees={attendees}
           confirmed={confirmed}
