@@ -34,6 +34,7 @@
     "organizations": "Organizations",
     "settings": "Settings",
     "buyCredits": "Buy credits",
+    "adminApiUsage": "API usage (admin)",
     "credits": "Credits",
     "viewProjects": "View Projects",
     "working": "working",
@@ -617,6 +618,35 @@
       "customFields": "Custom fields",
       "exportCsv": "Export CSV",
       "exportXlsx": "Export XLSX"
+    }
+  },
+  "AdminApiUsage": {
+    "label": "Admin",
+    "title": "API usage · cost · balance",
+    "subtitle": "Connected external services with current usage, cost, and remaining balance in one view.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "openDashboard": "Open dashboard",
+    "totals": {
+      "connected": "Connected services",
+      "cost": "Month-to-date cost",
+      "costHint": "Live-fetched providers only",
+      "balance": "Remaining balance (USD)",
+      "balanceHint": "Only providers that expose USD balance"
+    },
+    "row": {
+      "cost": "Cost",
+      "balance": "Balance"
+    },
+    "env": {
+      "present": "Set",
+      "missing": "Not set"
+    },
+    "status": {
+      "ok": "Live",
+      "no-admin-api": "Configured",
+      "unconfigured": "Not set",
+      "error": "Error"
     }
   }
 }

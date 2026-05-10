@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
+import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
@@ -58,6 +59,7 @@ export default async function AppLayout({
              credits={credits}
              isAuthed={!!user}
              showPreviewFeatures={flags.isUnlimited}
+             isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
            <main className="flex-1 overflow-auto p-6">{children}</main>
          </div>

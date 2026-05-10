@@ -34,6 +34,7 @@
     "organizations": "조직",
     "settings": "설정",
     "buyCredits": "크레딧 구매",
+    "adminApiUsage": "API 사용량 (관리자)",
     "credits": "크레딧",
     "viewProjects": "프로젝트 보기",
     "working": "작업중",
@@ -617,6 +618,35 @@
       "customFields": "추가 정보",
       "exportCsv": "CSV 내보내기",
       "exportXlsx": "XLSX 내보내기"
+    }
+  },
+  "AdminApiUsage": {
+    "label": "관리자",
+    "title": "API 사용량 · 비용 · 잔액",
+    "subtitle": "현재 연결된 외부 서비스의 사용량·비용·남은 잔액을 한 곳에서 확인합니다.",
+    "refresh": "새로고침",
+    "refreshing": "새로고침 중…",
+    "openDashboard": "대시보드 열기",
+    "totals": {
+      "connected": "연결된 서비스",
+      "cost": "이번 달 비용 합계",
+      "costHint": "라이브 조회된 항목만 합산",
+      "balance": "남은 잔액 합계 (USD)",
+      "balanceHint": "프로바이더가 USD 잔액을 노출하는 경우만"
+    },
+    "row": {
+      "cost": "비용",
+      "balance": "잔액"
+    },
+    "env": {
+      "present": "설정됨",
+      "missing": "환경변수 미설정"
+    },
+    "status": {
+      "ok": "라이브",
+      "no-admin-api": "설정됨",
+      "unconfigured": "미설정",
+      "error": "오류"
     }
   }
 }
