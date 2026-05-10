@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
 import {
@@ -12,6 +12,7 @@ import {
   type Row,
 } from '@/lib/quant/crosstab';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FileDropZone } from './ui/file-drop-zone';
 
 const ACCEPT = '.csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -37,7 +38,6 @@ function looksUsable(c: ColumnSummary): boolean {
 
 export function QuantAnalyzer() {
   const t = useTranslations('Quant');
-  const tUp = useTranslations('Features.uploader');
 
   const [filename, setFilename] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -47,9 +47,6 @@ export function QuantAnalyzer() {
   const [rowCol, setRowCol] = useState<string | null>(null);
   const [colCol, setColCol] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('colpct');
-  const [dragOver, setDragOver] = useState(false);
-
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const summaries = useMemo<ColumnSummary[]>(
     () => (rows ? summarizeColumns(rows) : []),
@@ -87,8 +84,8 @@ export function QuantAnalyzer() {
     }
   }
 
-  function onSelectFile(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  function onSelectFiles(files: File[]) {
+    if (files.length === 0) return;
     void ingest(files[0]);
   }
 
@@ -120,47 +117,14 @@ export function QuantAnalyzer() {
     <div className="space-y-6">
       {/* ─── Stage 1 — File upload ─── */}
       {!rows && (
-        <div
+        <FileDropZone
           data-coach="quant:upload"
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!dragOver) setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            if (e.currentTarget === e.target) setDragOver(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            onSelectFile(e.dataTransfer.files);
-          }}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-          }}
-          className={`flex cursor-pointer flex-col items-center justify-center border bg-paper py-14 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-            dragOver
-              ? 'border-amore bg-amore-bg'
-              : 'border-dashed border-line hover:border-mute-soft'
-          }`}
-          style={{ borderStyle: dragOver ? 'solid' : 'dashed' }}
+          accept={ACCEPT}
+          onFiles={onSelectFiles}
+          label={t('dropHere')}
+          helperText={t('supported')}
+          className="py-14"
         >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPT}
-            className="hidden"
-            onChange={(e) => onSelectFile(e.target.files)}
-          />
-          <div className="text-[13.5px] font-medium text-ink-2">
-            {dragOver ? tUp('dropActive') : t('dropHere')}
-          </div>
-          <div className="mt-2 text-[11.5px] text-mute-soft">
-            {t('supported')}
-          </div>
           {parsing && (
             <div className="mt-3 text-[11.5px] uppercase tracking-[0.18em] text-amore">
               {t('parsing')}
@@ -171,7 +135,7 @@ export function QuantAnalyzer() {
               {t('parseError')}: <span className="font-mono">{error}</span>
             </div>
           )}
-        </div>
+        </FileDropZone>
       )}
 
       {/* ─── Stage 2 — Cross-tab UI ─── */}

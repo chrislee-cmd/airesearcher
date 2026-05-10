@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-} from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
@@ -13,6 +8,7 @@ import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
+import { FileDropZone } from './ui/file-drop-zone';
 
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
@@ -136,7 +132,6 @@ export function ReportGenerator() {
   const requireAuth = useRequireAuth();
   const workspace = useWorkspace();
   const jobs = useGenerationJobs();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Each srcDoc update fully reloads the iframe — scroll resets to 0.
   // We watch the iframe's scroll, remember the last position, and
@@ -147,7 +142,6 @@ export function ReportGenerator() {
   const followBottomRef = useRef(true);
 
   const [files, setFiles] = useState<File[]>([]);
-  const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
   // Live-streaming buffers — cleared at the start of each run, fed
   // chunk-by-chunk during normalize / generate so the user sees both
@@ -270,17 +264,6 @@ export function ReportGenerator() {
     setRejected(rejectedNames);
   }
 
-  function onPick(e: ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) addFiles(e.target.files);
-    e.target.value = '';
-  }
-
-  function onDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
-  }
-
   function removeFile(idx: number) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -393,41 +376,15 @@ export function ReportGenerator() {
         <CreditCostBadge cost={FEATURE_COSTS.reports} unitLabel={tCommon('credits')} />
       </div>
 
-      <div
+      <FileDropZone
         data-coach="reports:upload"
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-        }}
-        className={`mt-8 flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed bg-paper px-6 py-12 text-center transition-colors duration-[120ms] [border-radius:4px] ${
-          dragOver
-            ? 'border-amore bg-amore-bg'
-            : 'border-line hover:border-ink-2'
-        }`}
-      >
-        <div className="text-[13px] font-semibold text-ink-2">
-          파일을 끌어다 놓거나 클릭해서 업로드
-        </div>
-        <div className="text-[11.5px] text-mute-soft">
-          .docx · .md · .markdown · .txt — 최대 20개, 파일당 25MB
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          multiple
-          onChange={onPick}
-          className="hidden"
-        />
-      </div>
+        accept={ACCEPT}
+        multiple
+        onFiles={(files) => addFiles(files)}
+        label="파일을 끌어다 놓거나 클릭해서 업로드"
+        helperText=".docx · .md · .markdown · .txt — 최대 20개, 파일당 25MB"
+        className="mt-8 gap-2 px-6 py-12"
+      />
 
       {rejected.length > 0 && (
         <div className="mt-3 text-[11.5px] text-amore">
