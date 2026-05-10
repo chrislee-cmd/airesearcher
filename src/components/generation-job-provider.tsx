@@ -22,6 +22,15 @@ import type { FeatureKey } from '@/lib/features';
 
 export type JobStatus = 'idle' | 'running' | 'done' | 'error';
 
+export type GenerationJobProgress = {
+  /** 0–100, capped at 99 while still running so the sidebar never shows
+   *  100% before the job actually transitions to `done`. */
+  percent?: number;
+  /** Free-form phase identifier used as an i18n key
+   *  (e.g. `'normalizing'`, `'generating'`). */
+  phase?: string;
+};
+
 export type GenerationJob = {
   status: JobStatus;
   startedAt: number | null;
@@ -30,6 +39,7 @@ export type GenerationJob = {
   result: unknown;
   error: string | null;
   runId: string;
+  progress: GenerationJobProgress;
 };
 
 const IDLE: GenerationJob = {
@@ -40,6 +50,7 @@ const IDLE: GenerationJob = {
   result: null,
   error: null,
   runId: '',
+  progress: {},
 };
 
 type StartOptions<T> = {
@@ -52,6 +63,10 @@ type Ctx = {
   get: (key: FeatureKey) => GenerationJob;
   isWorking: (key: FeatureKey) => boolean;
   start: <T>(key: FeatureKey, opts: StartOptions<T>) => Promise<T | null>;
+  /** Update the in-flight job's progress. No-op if the feature has no
+   *  running job. Callers typically invoke this from inside their `run`
+   *  callback at phase boundaries. */
+  setProgress: (key: FeatureKey, progress: GenerationJobProgress) => void;
   reset: (key: FeatureKey) => void;
 };
 
@@ -95,6 +110,7 @@ export function GenerationJobProvider({
         result: null,
         error: null,
         runId,
+        progress: {},
       },
     }));
     try {
@@ -113,6 +129,7 @@ export function GenerationJobProvider({
             result,
             error: null,
             runId,
+            progress: {},
           },
         };
       });
@@ -131,11 +148,31 @@ export function GenerationJobProvider({
             result: null,
             error: e instanceof Error ? e.message : 'unknown_error',
             runId,
+            progress: {},
           },
         };
       });
       return null;
     }
+  }, []);
+
+  const setProgress = useCallback<Ctx['setProgress']>((key, progress) => {
+    setJobs((prev) => {
+      const cur = prev[key];
+      if (!cur || cur.status !== 'running') return prev;
+      // Clamp to 0–99 — 100 is reserved for status flip to `done`.
+      const clamped: GenerationJobProgress = {
+        ...progress,
+        percent:
+          typeof progress.percent === 'number'
+            ? Math.max(0, Math.min(99, Math.round(progress.percent)))
+            : progress.percent,
+      };
+      return {
+        ...prev,
+        [key]: { ...cur, progress: clamped },
+      };
+    });
   }, []);
 
   const reset = useCallback<Ctx['reset']>((key) => {
@@ -148,8 +185,8 @@ export function GenerationJobProvider({
   }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ jobs, get, isWorking, start, reset }),
-    [jobs, get, isWorking, start, reset],
+    () => ({ jobs, get, isWorking, start, setProgress, reset }),
+    [jobs, get, isWorking, start, setProgress, reset],
   );
 
   return (

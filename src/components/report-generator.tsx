@@ -285,6 +285,10 @@ export function ReportGenerator() {
     await jobs.start<ReportResult>('reports', {
       input: { count: submitted.length },
       run: async () => {
+        // Two-stage pipeline; sidebar reads the phase + percent we publish
+        // here to render its busy indicator. Bumping the percent slightly
+        // mid-stage keeps the bar from sitting still during long streams.
+        jobs.setProgress('reports', { percent: 5, phase: 'normalizing' });
         // ─ Stage 1: normalize uploads → canonical markdown ─
         const fd = new FormData();
         for (const f of submitted) fd.append('files', f);
@@ -296,6 +300,7 @@ export function ReportGenerator() {
           const j = await r1.json().catch(() => ({}));
           throw new Error(j.error ?? `normalize_failed: ${r1.statusText}`);
         }
+        jobs.setProgress('reports', { percent: 25, phase: 'normalizing' });
         const mdRaw = await consumeStream(r1, setStreamingMd);
         const markdown = stripCodeFence(mdRaw);
         if (!markdown) throw new Error('empty_markdown');
@@ -304,6 +309,7 @@ export function ReportGenerator() {
         // ─ Stage 2: canonical markdown → design-system HTML ─
         setStage('generate');
         setTab('html');
+        jobs.setProgress('reports', { percent: 50, phase: 'generating' });
         const r2 = await fetch('/api/reports/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -313,6 +319,7 @@ export function ReportGenerator() {
           const j = await r2.json().catch(() => ({}));
           throw new Error(j.error ?? `generate_failed: ${r2.statusText}`);
         }
+        jobs.setProgress('reports', { percent: 75, phase: 'generating' });
         const htmlRaw = await consumeStream(r2, setStreamingHtml);
         let html = stripCodeFence(htmlRaw);
         if (!/<!doctype html|<html/i.test(html)) {

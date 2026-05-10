@@ -37,7 +37,21 @@
     "credits": "크레딧",
     "viewProjects": "프로젝트 보기",
     "working": "작업중",
-    "done": "작업완료"
+    "done": "작업완료",
+    "progress": {
+      "expanding": "확장 중",
+      "crawling": "크롤링 중",
+      "summarizing": "요약 중",
+      "uploading": "업로드 중",
+      "submitting": "제출 중",
+      "transcribing": "전사 중",
+      "converting": "변환 중",
+      "extracting": "추출 중",
+      "analyzing": "분석 중",
+      "synthesizing": "통합 중",
+      "normalizing": "정규화 중",
+      "generating": "리포트 작성 중"
+    }
   },
   "SidebarGroups": {
     "design": "조사 설계",

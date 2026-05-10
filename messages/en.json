@@ -37,7 +37,21 @@
     "credits": "Credits",
     "viewProjects": "View Projects",
     "working": "working",
-    "done": "done"
+    "done": "done",
+    "progress": {
+      "expanding": "Expanding",
+      "crawling": "Crawling",
+      "summarizing": "Summarizing",
+      "uploading": "Uploading",
+      "submitting": "Submitting",
+      "transcribing": "Transcribing",
+      "converting": "Converting",
+      "extracting": "Extracting",
+      "analyzing": "Analyzing",
+      "synthesizing": "Synthesizing",
+      "normalizing": "Normalizing",
+      "generating": "Drafting"
+    }
   },
   "SidebarGroups": {
     "design": "Research Design",

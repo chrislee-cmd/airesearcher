@@ -34,6 +34,39 @@ type Props = {
 
 const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
 
+type ProgressPhase =
+  | 'expanding'
+  | 'crawling'
+  | 'summarizing'
+  | 'uploading'
+  | 'submitting'
+  | 'transcribing'
+  | 'converting'
+  | 'extracting'
+  | 'analyzing'
+  | 'synthesizing'
+  | 'normalizing'
+  | 'generating';
+
+// Stage weighting for multi-phase jobs. The numeric percent shown next
+// to the spinner is `base + stageProgress * width` for the current
+// phase, so every transition between phases visibly bumps the bar
+// forward and the user never sees 100% before the job actually
+// finishes (last phase is capped well below 100 — `done` flips the
+// indicator to the green "작업완료" badge instead).
+const DESK_STAGE = {
+  expanding: { base: 0, width: 25 },
+  crawling: { base: 25, width: 41 }, // 25 → 66
+  summarizing: { base: 66, width: 29 }, // 66 → 95
+} as const;
+const INTERVIEW_STAGE = {
+  converting: { base: 0, width: 15 },
+  extracting: { base: 15, width: 15 }, // 15 → 30
+  analyzing: { base: 30, width: 25 }, // 30 → 55
+  summarizing: { base: 55, width: 20 }, // 55 → 75
+  synthesizing: { base: 75, width: 20 }, // 75 → 95
+} as const;
+
 const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
 
 export function Sidebar({
@@ -53,6 +86,7 @@ export function Sidebar({
   const transcriptJobs = useTranscriptJobs();
   const deskJobs = useDeskJobs();
   const generationJobs = useGenerationJobs();
+  const tProg = useTranslations('Sidebar.progress');
   // A feature is "busy" if its dedicated job provider says so OR a
   // one-shot generation is running in the GenerationJobProvider.
   // The sidebar reads this on every render so the indicator follows
@@ -62,6 +96,116 @@ export function Sidebar({
     if (key === 'quotes') return transcriptJobs.isWorking;
     if (key === 'desk') return deskJobs.isWorking;
     return generationJobs.isWorking(key);
+  }
+
+  // Numeric percent or phase label to render next to the spinner.
+  // Multi-phase jobs use stage weighting so transitions bump the bar
+  // forward instead of resetting; %s are capped at 99 so 100 is
+  // reserved for the actual `done` transition.
+  function getProgressDetail(
+    key: FeatureKey,
+  ): { percent?: number; phase?: ProgressPhase } | null {
+    if (key === 'desk') {
+      const job = deskJobs.latestJob;
+      if (!job) return null;
+      const p = job.progress;
+      if (p.phase === 'expanding') {
+        return { percent: DESK_STAGE.expanding.base, phase: 'expanding' };
+      }
+      if (p.phase === 'crawling') {
+        const s = DESK_STAGE.crawling;
+        let frac = 0;
+        if (typeof p.crawl_total === 'number' && p.crawl_total > 0) {
+          frac = Math.min(1, (p.crawl_done ?? 0) / p.crawl_total);
+        }
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'crawling',
+        };
+      }
+      if (p.phase === 'summarizing') {
+        return { percent: DESK_STAGE.summarizing.base, phase: 'summarizing' };
+      }
+      // queued — job exists but no phase yet
+      return { percent: 0 };
+    }
+    if (key === 'interviews') {
+      // Order matters — later stages override earlier flags so a job
+      // mid-synthesis still reads as 75%+, not 0%.
+      if (interviewJob.verticallySynthesizing) {
+        return {
+          percent: INTERVIEW_STAGE.synthesizing.base,
+          phase: 'synthesizing',
+        };
+      }
+      if (interviewJob.summarizing) {
+        return {
+          percent: INTERVIEW_STAGE.summarizing.base,
+          phase: 'summarizing',
+        };
+      }
+      if (interviewJob.analyzing) {
+        return {
+          percent: INTERVIEW_STAGE.analyzing.base,
+          phase: 'analyzing',
+        };
+      }
+      const items = interviewJob.items;
+      const extractedDone = items.filter(
+        (i) => i.extractStatus === 'done',
+      ).length;
+      const extractingNow = items.some(
+        (i) => i.extractStatus === 'extracting',
+      );
+      if (extractingNow) {
+        const s = INTERVIEW_STAGE.extracting;
+        const frac = items.length > 0 ? extractedDone / items.length : 0;
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'extracting',
+        };
+      }
+      if (interviewJob.convertingAll) {
+        const s = INTERVIEW_STAGE.converting;
+        const total = interviewJob.queuedCount + interviewJob.doneCount;
+        const frac = total > 0 ? interviewJob.doneCount / total : 0;
+        return {
+          percent: Math.min(99, Math.round(s.base + frac * s.width)),
+          phase: 'converting',
+        };
+      }
+      return null;
+    }
+    if (key === 'quotes') {
+      const uploads = Object.values(transcriptJobs.localUploads);
+      if (uploads.length > 0) {
+        const avg = Math.round(
+          uploads.reduce((a, b) => a + b, 0) / uploads.length,
+        );
+        return { percent: Math.min(99, avg), phase: 'uploading' };
+      }
+      const active = transcriptJobs.jobs.find(
+        (j) =>
+          j.status === 'queued' ||
+          j.status === 'submitting' ||
+          j.status === 'transcribing',
+      );
+      if (!active) return null;
+      if (active.status === 'transcribing') return { phase: 'transcribing' };
+      return { phase: 'submitting' };
+    }
+    // GenerationJobProvider-backed features: read percent/phase that
+    // the feature's own component publishes via `setProgress` (e.g.
+    // reports). Features that never call setProgress fall through to
+    // the plain spinner.
+    const gen = generationJobs.get(key);
+    if (gen.status === 'running') {
+      const { percent, phase } = gen.progress;
+      if (typeof percent === 'number' || phase) {
+        return { percent, phase: phase as ProgressPhase | undefined };
+      }
+    }
+    return null;
   }
 
   // Per-feature busy → idle transitions raise a green "작업완료" badge.
@@ -346,15 +490,24 @@ export function Sidebar({
                           }`}
                         >
                           <span className="truncate">{t(f.key)}</span>
-                          {busy ? (
-                            <span
-                              title={t('working')}
-                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
-                            >
-                              <Spinner />
-                              {t('working')}
-                            </span>
-                          ) : isRecentlyDone(f.key) ? (
+                          {busy ? (() => {
+                            const detail = getProgressDetail(f.key);
+                            const text =
+                              detail?.percent != null
+                                ? `${detail.percent}%`
+                                : detail?.phase
+                                ? tProg(detail.phase)
+                                : t('working');
+                            return (
+                              <span
+                                title={t('working')}
+                                className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
+                              >
+                                <Spinner />
+                                {text}
+                              </span>
+                            );
+                          })() : isRecentlyDone(f.key) ? (
                             <span
                               className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em]"
                               style={{ color: 'var(--color-success, #16a34a)' }}
