@@ -11,6 +11,8 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
+import { CreditCostBadge } from './ui/credit-cost-badge';
+import { FEATURE_COSTS } from '@/lib/features';
 
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
@@ -388,9 +390,7 @@ export function ReportGenerator() {
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
           {t('reports.title')}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
-          {t('reports.cost')}
-        </span>
+        <CreditCostBadge cost={FEATURE_COSTS.reports} unitLabel={tCommon('credits')} />
       </div>
       <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
         {t('reports.description')}

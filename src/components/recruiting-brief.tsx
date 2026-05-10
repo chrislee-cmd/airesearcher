@@ -16,6 +16,8 @@ import { useGenerationJobs } from './generation-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { RecruitingResponses } from './recruiting-responses';
 import { EmptyState } from '@/components/ui/empty-state';
+import { CreditCostBadge } from './ui/credit-cost-badge';
+import { FEATURE_COSTS } from '@/lib/features';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -630,9 +632,7 @@ export function RecruitingBrief() {
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
           {t('recruiting.title')}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
-          {t('recruiting.cost')}
-        </span>
+        <CreditCostBadge cost={FEATURE_COSTS.recruiting} unitLabel={tCommon('credits')} />
       </div>
       <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
         {t('recruiting.description')}
