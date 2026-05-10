@@ -31,6 +31,7 @@ import { EmptyState } from './ui/empty-state';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
 import { JobProgress } from './ui/job-progress';
+import { FeaturePage } from './ui/feature-page';
 import { triggerBlobDownload } from '@/lib/export/download';
 import {
   DESK_REGIONS,
@@ -401,15 +402,13 @@ export function DeskResearch() {
   const showResult = job?.status === 'done' && job.output;
 
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
-      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
-          {t('desk.title')}
-        </h1>
+    <FeaturePage
+      title={t('desk.title')}
+      headerRight={
         <CreditCostBadge cost={FEATURE_COSTS.desk} unitLabel={tCommon('credits')} />
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <section data-coach="desk:keyword">
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
@@ -779,6 +778,6 @@ export function DeskResearch() {
           )}
         </>
       )}
-    </div>
+    </FeaturePage>
   );
 }
