@@ -131,6 +131,85 @@ async function fetchGoogleNews(
     .slice(0, limit);
 }
 
+// ─── GDELT 2.0 DOC API (free, no key) ──────────────────────────────────────
+// GDELT lets us filter by `sourcecountry:` using FIPS 10-4 country codes,
+// giving us real per-region keyword search instead of relying on Google News'
+// curation. GLOBAL omits the country filter to search worldwide.
+const GDELT_SOURCE_COUNTRY: Record<DeskRegion, string | null> = {
+  KR: 'KS',
+  US: 'US',
+  SG: 'SN',
+  MY: 'MY',
+  TH: 'TH',
+  JP: 'JA',
+  GLOBAL: null,
+};
+
+type GdeltArticle = {
+  url?: string;
+  title?: string;
+  seendate?: string; // YYYYMMDDTHHMMSSZ
+  domain?: string;
+  language?: string;
+  sourcecountry?: string;
+};
+
+function gdeltDateToIso(s: string): string | undefined {
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  if (!m) return undefined;
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+}
+
+async function fetchGdelt(
+  keyword: string,
+  region: DeskRegion,
+  range: DeskDateRange,
+  limit: number,
+): Promise<DeskArticle[]> {
+  const sc = GDELT_SOURCE_COUNTRY[region];
+  // GDELT requires multi-word queries to be quoted to be treated as a phrase.
+  const kw = /\s/.test(keyword) ? `"${keyword}"` : keyword;
+  const queryParts = [kw];
+  if (sc) queryParts.push(`sourcecountry:${sc}`);
+  const params = new URLSearchParams({
+    query: queryParts.join(' '),
+    mode: 'ArtList',
+    format: 'json',
+    maxrecords: String(Math.min(250, Math.max(1, limit))),
+    sort: 'DateDesc',
+  });
+  // GDELT date format is YYYYMMDDHHMMSS UTC.
+  const fmt = (iso: string, end: boolean) =>
+    iso.replace(/-/g, '') + (end ? '235959' : '000000');
+  if (range.from) params.set('startdatetime', fmt(range.from, false));
+  if (range.to) params.set('enddatetime', fmt(range.to, true));
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?${params}`;
+  const res = await safeFetch(url, { headers: { 'user-agent': UA } }, 15_000);
+  if (!res.ok) return [];
+  // GDELT can return 200 with an HTML error page when the query is malformed.
+  // Guard the JSON parse so a bad query doesn't poison the whole job.
+  const text = await res.text();
+  let json: { articles?: GdeltArticle[] };
+  try {
+    json = JSON.parse(text) as { articles?: GdeltArticle[] };
+  } catch {
+    return [];
+  }
+  const arts = json.articles ?? [];
+  return arts
+    .map((a) => ({
+      source: 'gdelt_news' as const,
+      title: a.title ?? '',
+      url: a.url ?? '',
+      snippet: undefined,
+      publishedAt: a.seendate ? gdeltDateToIso(a.seendate) : undefined,
+      origin: a.domain,
+      keyword,
+    }))
+    .filter((a) => a.title && a.url)
+    .slice(0, limit);
+}
+
 // ─── Hacker News (Algolia) ──────────────────────────────────────────────────
 type HNHit = {
   title?: string;
@@ -458,6 +537,8 @@ export async function crawlSource(
     switch (source) {
       case 'google_news':
         return await fetchGoogleNews(keyword, region, range, limit);
+      case 'gdelt_news':
+        return await fetchGdelt(keyword, region, range, limit);
       case 'hacker_news':
         return await fetchHackerNews(keyword, range, limit);
       case 'reddit':

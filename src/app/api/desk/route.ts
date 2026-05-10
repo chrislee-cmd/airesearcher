@@ -36,6 +36,7 @@ const SOURCE_IDS = [
   'kakao_cafe',
   'youtube',
   'google_news',
+  'gdelt_news',
   'hacker_news',
   'reddit',
 ] as const;
