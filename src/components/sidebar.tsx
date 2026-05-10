@@ -34,6 +34,18 @@ type Props = {
 
 const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
 
+type ProgressPhase =
+  | 'expanding'
+  | 'crawling'
+  | 'summarizing'
+  | 'uploading'
+  | 'submitting'
+  | 'transcribing'
+  | 'converting'
+  | 'extracting'
+  | 'analyzing'
+  | 'synthesizing';
+
 const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f] as const));
 
 export function Sidebar({
@@ -53,6 +65,7 @@ export function Sidebar({
   const transcriptJobs = useTranscriptJobs();
   const deskJobs = useDeskJobs();
   const generationJobs = useGenerationJobs();
+  const tProg = useTranslations('Sidebar.progress');
   // A feature is "busy" if its dedicated job provider says so OR a
   // one-shot generation is running in the GenerationJobProvider.
   // The sidebar reads this on every render so the indicator follows
@@ -62,6 +75,68 @@ export function Sidebar({
     if (key === 'quotes') return transcriptJobs.isWorking;
     if (key === 'desk') return deskJobs.isWorking;
     return generationJobs.isWorking(key);
+  }
+
+  // Numeric percent or phase label to render next to the spinner.
+  // Only desk + interviews + quotes expose progress; the rest fall
+  // back to the plain "working" label (returns null).
+  function getProgressDetail(
+    key: FeatureKey,
+  ): { percent?: number; phase?: ProgressPhase } | null {
+    if (key === 'desk') {
+      const job = deskJobs.latestJob;
+      if (!job) return null;
+      const p = job.progress;
+      if (
+        p.phase === 'crawling' &&
+        typeof p.crawl_total === 'number' &&
+        p.crawl_total > 0
+      ) {
+        const done = p.crawl_done ?? 0;
+        const pct = Math.min(100, Math.round((done / p.crawl_total) * 100));
+        return { percent: pct, phase: 'crawling' };
+      }
+      if (p.phase) return { phase: p.phase };
+      return null;
+    }
+    if (key === 'interviews') {
+      if (interviewJob.verticallySynthesizing) return { phase: 'synthesizing' };
+      if (interviewJob.summarizing) return { phase: 'summarizing' };
+      if (interviewJob.analyzing) return { phase: 'analyzing' };
+      if (interviewJob.items.some((i) => i.extractStatus === 'extracting'))
+        return { phase: 'extracting' };
+      if (interviewJob.convertingAll) {
+        const total = interviewJob.queuedCount + interviewJob.doneCount;
+        if (total > 0) {
+          const pct = Math.min(
+            100,
+            Math.round((interviewJob.doneCount / total) * 100),
+          );
+          return { percent: pct, phase: 'converting' };
+        }
+        return { phase: 'converting' };
+      }
+      return null;
+    }
+    if (key === 'quotes') {
+      const uploads = Object.values(transcriptJobs.localUploads);
+      if (uploads.length > 0) {
+        const avg = Math.round(
+          uploads.reduce((a, b) => a + b, 0) / uploads.length,
+        );
+        return { percent: avg, phase: 'uploading' };
+      }
+      const active = transcriptJobs.jobs.find(
+        (j) =>
+          j.status === 'queued' ||
+          j.status === 'submitting' ||
+          j.status === 'transcribing',
+      );
+      if (!active) return null;
+      if (active.status === 'transcribing') return { phase: 'transcribing' };
+      return { phase: 'submitting' };
+    }
+    return null;
   }
 
   // Per-feature busy → idle transitions raise a green "작업완료" badge.
@@ -346,15 +421,24 @@ export function Sidebar({
                           }`}
                         >
                           <span className="truncate">{t(f.key)}</span>
-                          {busy ? (
-                            <span
-                              title={t('working')}
-                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
-                            >
-                              <Spinner />
-                              {t('working')}
-                            </span>
-                          ) : isRecentlyDone(f.key) ? (
+                          {busy ? (() => {
+                            const detail = getProgressDetail(f.key);
+                            const text =
+                              detail?.percent != null
+                                ? `${detail.percent}%`
+                                : detail?.phase
+                                ? tProg(detail.phase)
+                                : t('working');
+                            return (
+                              <span
+                                title={t('working')}
+                                className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
+                              >
+                                <Spinner />
+                                {text}
+                              </span>
+                            );
+                          })() : isRecentlyDone(f.key) ? (
                             <span
                               className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em]"
                               style={{ color: 'var(--color-success, #16a34a)' }}
