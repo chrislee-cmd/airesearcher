@@ -46,18 +46,26 @@ export async function POST(
       return NextResponse.json({ error: 'link_not_found' }, { status: 404 });
     }
     console.error('[public/scheduler/:slug/book] rpc failed', error);
-    return NextResponse.json({ error: 'book_failed' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'book_failed',
+        detail: error.message,
+        code: error.code,
+        hint: error.hint,
+      },
+      { status: 500 },
+    );
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return NextResponse.json({ error: 'book_failed' }, { status: 500 });
   return NextResponse.json({
-    booking_id: row.booking_id,
-    cancel_token: row.cancel_token,
+    booking_id: row.out_booking_id,
+    cancel_token: row.out_cancel_token,
     slot: {
-      date: row.slot_date,
-      start: String(row.slot_start).slice(0, 5),
-      end: String(row.slot_end).slice(0, 5),
+      date: row.out_slot_date,
+      start: String(row.out_slot_start).slice(0, 5),
+      end: String(row.out_slot_end).slice(0, 5),
     },
-    title: row.link_title,
+    title: row.out_link_title,
   });
 }
