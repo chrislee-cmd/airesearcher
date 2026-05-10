@@ -168,6 +168,12 @@ export function DeskResearch() {
     }
   }
   const [submitting, setSubmitting] = useState(false);
+  // After a successful POST we keep the button disabled until the provider's
+  // realtime subscription delivers the new row. Without this hand-off, there's
+  // a ~100-500ms gap where `submitting` is already false but `isWorking` hasn't
+  // flipped yet — users read the live button as "my click didn't register" and
+  // double-click, which creates a duplicate paid job.
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -302,16 +308,39 @@ export function DeskResearch() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(json.error ?? res.statusText);
+        setSubmitting(false);
         return;
       }
-      // Provider's realtime subscription will pick up the new row.
       track('desk_generate_success', { feature: 'desk', job_id: json.job_id });
+      // Hand the disabled-state off to realtime; the effect below releases it
+      // once `latestJob` reflects the new row (or after the 8s safety timeout).
+      if (typeof json.job_id === 'string') {
+        setPendingJobId(json.job_id);
+      } else {
+        setSubmitting(false);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown_error');
-    } finally {
       setSubmitting(false);
     }
   }
+
+  // Bridge POST → realtime: drop the local guard once the provider has seen
+  // our job, or after a safety timeout so a missed realtime message can't
+  // wedge the button forever.
+  useEffect(() => {
+    if (!pendingJobId) return;
+    if (latestJob?.id === pendingJobId) {
+      setPendingJobId(null);
+      setSubmitting(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      setPendingJobId(null);
+      setSubmitting(false);
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [pendingJobId, latestJob?.id]);
 
   // ─── current job + thinking panel ──────────────────────────────────────────
   const job: DeskJob | null = latestJob;
@@ -376,7 +405,8 @@ export function DeskResearch() {
   }
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
-  const canRun = !submitting && !isWorking && hasKeywords && selected.size > 0;
+  const canRun =
+    !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
   const showResult = job?.status === 'done' && job.output;
 
   return (
@@ -584,7 +614,7 @@ export function DeskResearch() {
           data-coach="desk:search"
           className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
         >
-          {submitting || isWorking ? tCommon('loading') : tDesk('search')}
+          {submitting || pendingJobId || isWorking ? tCommon('loading') : tDesk('search')}
         </button>
       </div>
 
