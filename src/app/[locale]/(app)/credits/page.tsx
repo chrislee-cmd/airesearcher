@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { CreditsBundles } from '@/components/credits-bundles';
@@ -15,10 +15,7 @@ export default async function CreditsPage({
 
   const t = await getTranslations('Credits');
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
 

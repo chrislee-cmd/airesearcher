@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { listProjects } from '@/lib/projects';
 import { ProjectsView } from '@/components/projects-view';
@@ -13,8 +13,7 @@ export default async function ProjectsPage({
   setRequestLocale(locale);
   const t = await getTranslations('Projects');
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const projects = org ? await listProjects(org.org_id) : [];
 

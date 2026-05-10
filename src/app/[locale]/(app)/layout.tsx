@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
@@ -27,8 +27,7 @@ export default async function AppLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const org = user ? await getActiveOrg() : null;
   // Once we have org, the three follow-up reads are independent — fan
