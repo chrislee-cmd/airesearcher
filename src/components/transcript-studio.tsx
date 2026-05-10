@@ -12,6 +12,7 @@ import {
 import { useWorkspace } from './workspace-provider';
 import { DownloadMenu } from './ui/download-menu';
 import { FileDropZone } from './ui/file-drop-zone';
+import { JobProgress } from './ui/job-progress';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
@@ -328,20 +329,8 @@ export function TranscriptStudio() {
           </h3>
           <ul className="mt-2 space-y-2">
             {Object.entries(job.localUploads).map(([id, pct]) => (
-              <li
-                key={id}
-                className="border border-line bg-paper px-4 py-3 [border-radius:4px]"
-              >
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-mute">파일 업로드 중…</span>
-                  <span className="tabular-nums text-mute-soft">{pct}%</span>
-                </div>
-                <div className="mt-2 h-1 w-full overflow-hidden bg-line-soft [border-radius:9999px]">
-                  <div
-                    className="h-full bg-amore transition-[width] duration-[120ms]"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+              <li key={id}>
+                <JobProgress value={pct} label="파일 업로드 중" />
               </li>
             ))}
           </ul>
@@ -505,18 +494,11 @@ function ProgressEstimate({
 
   return (
     <div className="mt-2">
-      <div className="flex items-center justify-between text-[11px] text-mute-soft tabular-nums">
-        <span>
-          {formatClock(elapsedSec)} 경과 · 약 {formatClock(remainSec)} 남음 (추정)
-        </span>
-        <span>{pct}%</span>
-      </div>
-      <div className="mt-1 h-1 w-full overflow-hidden bg-line-soft [border-radius:9999px]">
-        <div
-          className="h-full bg-amore transition-[width] duration-[400ms]"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <JobProgress
+        value={pct}
+        label="전사 중"
+        hint={`${formatClock(elapsedSec)} 경과 · 약 ${formatClock(remainSec)} 남음 (추정)`}
+      />
     </div>
   );
 }

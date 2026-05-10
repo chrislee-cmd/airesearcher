@@ -9,6 +9,7 @@ import {
   type ConvStatus,
 } from './interview-job-provider';
 import { ThinkingPanel } from './thinking-panel';
+import { JobProgress } from './ui/job-progress';
 import { useWorkspace } from './workspace-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 
@@ -144,23 +145,16 @@ export function InterviewAnalyzer() {
         {(job.analyzing || job.analyzeError) && (
           <div className="flex items-center gap-3">
             {job.analyzing && (
-              <>
-                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
-                  streaming
-                  {job.analysis && (
-                    <span className="ml-1 tabular-nums text-mute-soft">
-                      {job.analysis.rows.length} rows
-                    </span>
-                  )}
-                </span>
-                <button
-                  onClick={() => job.stopAnalyze()}
-                  className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning [border-radius:4px]"
-                >
-                  stop
-                </button>
-              </>
+              <div className="flex-1">
+                <JobProgress
+                  label="STREAMING"
+                  hint={
+                    job.analysis ? `${job.analysis.rows.length} rows` : undefined
+                  }
+                  onCancel={() => job.stopAnalyze()}
+                  cancelLabel="STOP"
+                />
+              </div>
             )}
             {job.analyzeError && (
               <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
