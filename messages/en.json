@@ -314,7 +314,11 @@
     "scheduler": {
       "title": "Participant Scheduler",
       "description": "Take candidate availability and propose interview slots with attendee notices.",
-      "cost": "Free · 5 credits per CSV upload"
+      "cost": "Free · 5 credits per CSV upload",
+      "projectFilter": "Project filter",
+      "show": "Show",
+      "hide": "Hide",
+      "noProject": "No project"
     },
     "moderator": {
       "title": "AI Moderator",
@@ -597,6 +601,9 @@
       "cancel": "Cancel",
       "create": "Create link",
       "creating": "Creating…",
+      "linkProject": "Project",
+      "noProject": "No project",
+      "unknownProject": "Unknown project",
       "linkTitle": "Link title",
       "linkTitlePlaceholder": "e.g. May interview slots",
       "linkDescription": "Description (optional)",

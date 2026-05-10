@@ -14,9 +14,12 @@ type BookingLink = {
   status: 'active' | 'closed';
   expires_at: string | null;
   created_at: string;
+  project_id: string | null;
   slots: { id: string; date: string; start_time: string; end_time: string; status: string }[];
   bookings: { id: string; slot_id: string; name: string; email: string; created_at: string }[];
 };
+
+export type ProjectOption = { id: string; name: string };
 
 export type LinkBooking = {
   id: string;
@@ -25,11 +28,15 @@ export type LinkBooking = {
   date: string;
   start: string;
   end: string;
+  projectId: string | null;
 };
 
 type Props = {
   requirement: Requirement;
   projectId: string | null;
+  projects: ProjectOption[];
+  visibleProjectIds: Set<string | 'none'>;
+  colorFor: (projectId: string | null) => { bg: string; border: string; hex: string };
   onBookingsChange?: (bookings: LinkBooking[]) => void;
 };
 
@@ -42,7 +49,14 @@ function publicUrl(slug: string): string {
   return `${window.location.origin}/${locale}/book/${slug}`;
 }
 
-export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: Props) {
+export function BookingLinksPanel({
+  requirement,
+  projectId,
+  projects,
+  visibleProjectIds,
+  colorFor,
+  onBookingsChange,
+}: Props) {
   const t = useTranslations('Scheduler.booking');
   const [links, setLinks] = useState<BookingLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,8 +65,20 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [linkProjectId, setLinkProjectId] = useState<string | null>(projectId);
+  useEffect(() => {
+    setLinkProjectId(projectId);
+  }, [projectId]);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const projectName = useCallback(
+    (id: string | null) => {
+      if (!id) return t('noProject');
+      return projects.find((p) => p.id === id)?.name ?? t('unknownProject');
+    },
+    [projects, t],
+  );
 
   const slotPreviewCount = useMemo(
     () => expandRequirementSlots(requirement).length,
@@ -80,6 +106,7 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
               date: slot.date,
               start: String(slot.start_time).slice(0, 5),
               end: String(slot.end_time).slice(0, 5),
+              projectId: l.project_id,
             });
           }
         }
@@ -117,7 +144,7 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
           description: description.trim(),
           timezone: requirement.timezone || 'Asia/Seoul',
           expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-          project_id: projectId,
+          project_id: linkProjectId,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string; slug?: string };
@@ -185,6 +212,21 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
             {t('slotsPreview', { count: slotPreviewCount })}
           </p>
           <label className="block">
+            <span className="text-[12px] text-mute">{t('linkProject')}</span>
+            <select
+              value={linkProjectId ?? ''}
+              onChange={(e) => setLinkProjectId(e.target.value || null)}
+              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+            >
+              <option value="">{t('noProject')}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
             <span className="text-[12px] text-mute">{t('linkTitle')}</span>
             <input
               value={title}
@@ -238,7 +280,9 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
         ) : links.length === 0 ? (
           <li className="text-[12px] text-mute">{t('empty')}</li>
         ) : (
-          links.map((l) => {
+          links
+            .filter((l) => visibleProjectIds.has(l.project_id ?? 'none'))
+            .map((l) => {
             const total = l.slots.length;
             const booked = l.slots.filter((s) => s.status === 'booked').length;
             const url = publicUrl(l.slug);
@@ -246,9 +290,21 @@ export function BookingLinksPanel({ requirement, projectId, onBookingsChange }: 
               <li key={l.id} className="rounded border border-line-soft p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[13px] font-semibold text-ink">
                         {l.title || t('untitled')}
+                      </span>
+                      <span
+                        className={[
+                          'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] text-ink',
+                          colorFor(l.project_id).border,
+                        ].join(' ')}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: colorFor(l.project_id).hex }}
+                        />
+                        {projectName(l.project_id)}
                       </span>
                       <span
                         className={[

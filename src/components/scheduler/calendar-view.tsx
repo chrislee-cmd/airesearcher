@@ -27,6 +27,10 @@ type Props = {
   attendees: Attendee[];
   selectedAttendeeId: string | null;
   onPickSlot: (date: string, start: string, end: string) => void;
+  // Optional: paint a 3px left border on confirmed cells for project
+  // identification. Keyed by attendee id so synthetic link-booking
+  // attendees can carry a color without polluting the Attendee type.
+  colorByAttendeeId?: Map<string, string>;
 };
 
 export function CalendarView({
@@ -35,6 +39,7 @@ export function CalendarView({
   attendees,
   selectedAttendeeId,
   onPickSlot,
+  colorByAttendeeId,
 }: Props) {
   const t = useTranslations('Scheduler.calendar');
   const tReq = useTranslations('Scheduler.requirements');
@@ -150,6 +155,7 @@ export function CalendarView({
             attendeeById={attendeeById}
             canPick={!!selectedAttendeeId}
             onPick={tryPick}
+            colorByAttendeeId={colorByAttendeeId}
           />
         )}
         {mode === 'day' && (
@@ -161,6 +167,7 @@ export function CalendarView({
             attendeeById={attendeeById}
             canPick={!!selectedAttendeeId}
             onPick={tryPick}
+            colorByAttendeeId={colorByAttendeeId}
           />
         )}
       </div>
@@ -293,6 +300,7 @@ function WeekGrid({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   cursor: Date;
   requirement: Requirement;
@@ -302,6 +310,7 @@ function WeekGrid({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -332,6 +341,7 @@ function WeekGrid({
           attendeeById={attendeeById}
           canPick={canPick}
           onPick={onPick}
+          colorByAttendeeId={colorByAttendeeId}
         />
       ))}
     </div>
@@ -346,6 +356,7 @@ function RowGroup({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   mLabel: number;
   days: Date[];
@@ -354,6 +365,7 @@ function RowGroup({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const hh = String(Math.floor(mLabel / 60)).padStart(2, '0');
   const mm = String(mLabel % 60).padStart(2, '0');
@@ -391,6 +403,9 @@ function RowGroup({
                       .map((c) => attendeeById.get(c.attendeeId)?.name ?? '—')
                       .join(', ')
                   : `${s.start}`;
+                const projectColor = isConfirmed
+                  ? colorByAttendeeId?.get(confirmedHere[0]!.attendeeId)
+                  : undefined;
                 return (
                   <button
                     key={s.start}
@@ -403,6 +418,7 @@ function RowGroup({
                         ? 'border border-ink bg-ink text-paper'
                         : 'border border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                     }
+                    style={projectColor ? { borderLeft: `3px solid ${projectColor}` } : undefined}
                     title={isConfirmed ? label : `${s.start}–${s.end}`}
                   >
                     {label}
@@ -425,6 +441,7 @@ function DayList({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   cursor: Date;
   requirement: Requirement;
@@ -433,6 +450,7 @@ function DayList({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const iso = toIso(cursor);
   const slots = slotsByDate.get(iso) ?? [];
@@ -453,6 +471,9 @@ function DayList({
           {slots.map((s) => {
             const confirmedHere = confirmedByCell.get(`${iso}T${s.start}`) ?? [];
             const isConfirmed = confirmedHere.length > 0;
+            const projectColor = isConfirmed
+              ? colorByAttendeeId?.get(confirmedHere[0]!.attendeeId)
+              : undefined;
             return (
               <li key={s.start}>
                 <button
@@ -465,6 +486,7 @@ function DayList({
                       ? 'border-ink bg-ink text-paper'
                       : 'border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                   }
+                  style={projectColor ? { borderLeft: `4px solid ${projectColor}` } : undefined}
                 >
                   <span className="tabular-nums">{s.start} – {s.end}</span>
                   {isConfirmed && (
