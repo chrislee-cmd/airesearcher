@@ -151,9 +151,14 @@ export function SchedulerPage() {
 
   return (
     <div className="mx-auto max-w-[1240px] px-2 pb-16 pt-8">
-      <header className="border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">{t('title')}</h1>
-      </header>
+      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+          {t('title')}
+        </h1>
+        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+          {t('cost')}
+        </span>
+      </div>
 
       <div className="mt-6 space-y-5">
         <RequirementsForm value={requirement} onChange={setRequirement} />
