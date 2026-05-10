@@ -12,6 +12,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
+import { FeaturePage } from './ui/feature-page';
 
 const ACCEPT = '.docx,.md,.markdown,.txt';
 const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
@@ -350,16 +351,13 @@ export function ReportGenerator() {
   const previewMd = result?.markdown ?? streamingMd;
 
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
-      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
-          {t('reports.title')}
-        </h1>
+    <FeaturePage
+      title={t('reports.title')}
+      headerRight={
         <CreditCostBadge cost={FEATURE_COSTS.reports} unitLabel={tCommon('credits')} />
-      </div>
-
+      }
+    >
       <FileDropZone
-        data-coach="reports:upload"
         accept={ACCEPT}
         multiple
         onFiles={(files) => addFiles(files)}
@@ -514,6 +512,6 @@ export function ReportGenerator() {
           )}
         </div>
       )}
-    </div>
+    </FeaturePage>
   );
 }

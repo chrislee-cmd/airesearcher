@@ -13,6 +13,7 @@ import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
+import { FeaturePage } from './ui/feature-page';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -595,17 +596,13 @@ export function RecruitingBrief() {
   );
 
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
-      <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
-          {t('recruiting.title')}
-        </h1>
+    <FeaturePage
+      title={t('recruiting.title')}
+      headerRight={
         <CreditCostBadge cost={FEATURE_COSTS.recruiting} unitLabel={tCommon('credits')} />
-      </div>
-
-      {/* 2-column input row: paste textarea on the left, file dropzone
-          on the right. Either alone or both together is accepted. */}
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex h-[220px] flex-col">
           <label className="mb-2 block text-[12px] font-semibold text-ink-2">
             텍스트 붙여넣기
@@ -1112,7 +1109,7 @@ export function RecruitingBrief() {
           </div>
         </div>
       )}
-    </div>
+    </FeaturePage>
   );
 }
 
