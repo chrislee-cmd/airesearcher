@@ -7,6 +7,7 @@ import {
   Paragraph,
   Table,
   TableCell,
+  TableLayoutType,
   TableRow,
   TextRun,
   WidthType,
@@ -62,9 +63,13 @@ function blank(after = 120): Paragraph {
   });
 }
 
+// US Letter (12240) − 1" margins both sides (2 × 1440) = 9360 twips of body width.
+const PAGE_BODY_DXA = 9360;
+const META_COL_DXA = Math.floor(PAGE_BODY_DXA / 4); // 2340
+
 function metaCell(label: string, value: string): TableCell {
   return new TableCell({
-    width: { size: 25, type: WidthType.PERCENTAGE },
+    width: { size: META_COL_DXA, type: WidthType.DXA },
     margins: { top: 120, bottom: 120, left: 0, right: 120 },
     borders: {
       top: { style: BorderStyle.SINGLE, size: 4, color: AP.line },
@@ -94,7 +99,9 @@ function metaCell(label: string, value: string): TableCell {
 
 function metaTable(entries: Array<[string, string]>): Table {
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: PAGE_BODY_DXA, type: WidthType.DXA },
+    columnWidths: [META_COL_DXA, META_COL_DXA, META_COL_DXA, META_COL_DXA],
+    layout: TableLayoutType.FIXED,
     borders: {
       top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
       bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
