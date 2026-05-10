@@ -1,9 +1,11 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { FeatureKey } from '@/lib/features';
 import { FEATURE_COSTS } from '@/lib/features';
 
-export async function getOrgCredits(orgId: string): Promise<number> {
+// cache()d so layout + /credits page share a single Supabase round-trip.
+export const getOrgCredits = cache(async (orgId: string): Promise<number> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from('organizations')
@@ -11,7 +13,7 @@ export async function getOrgCredits(orgId: string): Promise<number> {
     .eq('id', orgId)
     .single();
   return data?.credit_balance ?? 0;
-}
+});
 
 export type CreditsStatus = {
   balance: number;
