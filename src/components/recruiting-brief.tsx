@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { CreditCostBadge } from './ui/credit-cost-badge';
 import { FEATURE_COSTS } from '@/lib/features';
 import { FileDropZone } from './ui/file-drop-zone';
+import { DownloadMenu } from './ui/download-menu';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -72,17 +73,6 @@ function isCompleteCriterion(
 function escapeCsvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // One row in the flat survey design table. A choice question with N
@@ -158,7 +148,7 @@ function buildSurveyCsv(rows: SurveyRow[]): string {
   return out.join('\n');
 }
 
-async function downloadSurveyXlsx(rows: SurveyRow[], baseName: string) {
+async function buildSurveyXlsxBlob(rows: SurveyRow[]): Promise<Blob> {
   const XLSX = await import('xlsx');
   const aoa: (string | number)[][] = [
     ['#', '섹션', '질문', '옵션', '로직'],
@@ -168,12 +158,9 @@ async function downloadSurveyXlsx(rows: SurveyRow[], baseName: string) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Survey');
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
-  downloadBlob(
-    new Blob([buf], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    }),
-    `${baseName}.xlsx`,
-  );
+  return new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 }
 
 export function RecruitingBrief() {
@@ -780,35 +767,27 @@ export function RecruitingBrief() {
                 </h2>
                 <div className="flex items-center gap-2">
                   {survey && surveyRows.length > 0 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const csv = buildSurveyCsv(surveyRows);
-                          downloadBlob(
-                            new Blob(['﻿' + csv], {
+                    <DownloadMenu
+                      tone="ghost"
+                      align="end"
+                      items={[
+                        {
+                          format: 'csv',
+                          kind: 'blob',
+                          filename: `${survey.title || 'survey'}.csv`,
+                          build: () =>
+                            new Blob(['﻿' + buildSurveyCsv(surveyRows)], {
                               type: 'text/csv;charset=utf-8',
                             }),
-                            `${survey.title || 'survey'}.csv`,
-                          );
-                        }}
-                        className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 [border-radius:4px]"
-                      >
-                        CSV
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void downloadSurveyXlsx(
-                            surveyRows,
-                            survey.title || 'survey',
-                          )
-                        }
-                        className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 [border-radius:4px]"
-                      >
-                        XLSX
-                      </button>
-                    </>
+                        },
+                        {
+                          format: 'xlsx',
+                          kind: 'blob',
+                          filename: `${survey.title || 'survey'}.xlsx`,
+                          build: () => buildSurveyXlsxBlob(surveyRows),
+                        },
+                      ]}
+                    />
                   )}
                   <button
                     type="button"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DownloadMenu } from './ui/download-menu';
 import type {
   FormColumn,
   FormResponseRow,
@@ -50,18 +51,7 @@ function buildCsv(data: FormResponses): string {
     .join('\n');
 }
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-async function downloadXlsx(data: FormResponses, baseName: string) {
+async function buildXlsxBlob(data: FormResponses): Promise<Blob> {
   const XLSX = await import('xlsx');
   const header = ['응답시각', ...data.columns.map((c) => c.title)];
   const aoa: (string | number)[][] = [
@@ -75,12 +65,9 @@ async function downloadXlsx(data: FormResponses, baseName: string) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Responses');
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
-  downloadBlob(
-    new Blob([buf], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    }),
-    `${baseName}.xlsx`,
-  );
+  return new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 }
 
 type ResponseState = {
@@ -324,32 +311,29 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                   >
                     {state?.loading ? '동기화 중…' : '새로고침'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!state?.data) return;
-                      const csv = buildCsv(state.data);
-                      downloadBlob(
-                        new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }),
-                        `${f.title || 'responses'}.csv`,
-                      );
-                    }}
+                  <DownloadMenu
+                    tone="ghost"
+                    align="end"
                     disabled={!state?.data || state.data.rows.length === 0}
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                  >
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!state?.data) return;
-                      void downloadXlsx(state.data, f.title || 'responses');
-                    }}
-                    disabled={!state?.data || state.data.rows.length === 0}
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
-                  >
-                    XLSX
-                  </button>
+                    items={[
+                      {
+                        format: 'csv',
+                        kind: 'blob',
+                        filename: `${f.title || 'responses'}.csv`,
+                        build: () =>
+                          new Blob(
+                            ['﻿' + buildCsv(state!.data!)],
+                            { type: 'text/csv;charset=utf-8' },
+                          ),
+                      },
+                      {
+                        format: 'xlsx',
+                        kind: 'blob',
+                        filename: `${f.title || 'responses'}.xlsx`,
+                        build: () => buildXlsxBlob(state!.data!),
+                      },
+                    ]}
+                  />
                   <button
                     type="button"
                     onClick={() => void removeForm(f.formId)}

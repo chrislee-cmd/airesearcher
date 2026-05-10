@@ -5,7 +5,9 @@ export type ExportFormat =
   | 'xlsx'
   | 'csv'
   | 'json'
-  | 'txt';
+  | 'txt'
+  | 'pdf'
+  | 'pptx';
 
 type FormatMeta = {
   ext: string;
@@ -32,4 +34,10 @@ export const FORMAT_META: Record<ExportFormat, FormatMeta> = {
   csv: { ext: 'csv', mime: 'text/csv;charset=utf-8', labelKey: 'csv' },
   json: { ext: 'json', mime: 'application/json;charset=utf-8', labelKey: 'json' },
   txt: { ext: 'txt', mime: 'text/plain;charset=utf-8', labelKey: 'txt' },
+  pdf: { ext: 'pdf', mime: 'application/pdf', labelKey: 'pdf' },
+  pptx: {
+    ext: 'pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    labelKey: 'pptx',
+  },
 };
