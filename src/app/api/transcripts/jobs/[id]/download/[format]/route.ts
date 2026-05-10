@@ -9,6 +9,23 @@ function asciiSafe(name: string) {
   return name.replace(/[/\\]/g, '_').replace(/[^A-Za-z0-9._-]+/g, '_');
 }
 
+// Names like `06482ba9-f750-494a-b643-419f075b64af` or 24+ char hex blobs are
+// upload tokens, not human identifiers. Drop them in favour of a generic name.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HEX_BLOB_RE = /^[0-9a-f]{24,}$/i;
+const RANDOM_BLOB_RE = /^[A-Za-z0-9_-]{20,}$/; // base64url-ish
+function looksAnonymous(base: string): boolean {
+  const trimmed = base.trim();
+  if (!trimmed) return true;
+  if (UUID_RE.test(trimmed)) return true;
+  if (HEX_BLOB_RE.test(trimmed)) return true;
+  // Pure random base64url-ish strings with no readable letters/words
+  if (RANDOM_BLOB_RE.test(trimmed) && !/[aeiouAEIOU][a-zA-Z]{2,}/.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string; format: string }> },
@@ -24,7 +41,7 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from('transcript_jobs')
-    .select('filename, markdown, status')
+    .select('filename, markdown, status, user_id, created_at')
     .eq('id', id)
     .single();
   if (error || !job) {
@@ -34,13 +51,36 @@ export async function GET(
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
 
-  // Strip extension off the original filename for the download name
-  const base = (job.filename ?? 'transcript').replace(/\.[^./]+$/, '');
+  // 1) Try the original filename. If it looks like a person/identifier, keep it.
+  // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",
+  //    where N counts this user's prior `done` jobs (≤ this row's created_at).
+  const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
+  let base: string;
+  if (rawBase && !looksAnonymous(rawBase)) {
+    base = rawBase;
+  } else {
+    const { count } = await supabase
+      .from('transcript_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', job.user_id)
+      .eq('status', 'done')
+      .lte('created_at', job.created_at);
+    const n = Math.max(1, count ?? 1);
+    base = `Interview Transcript #${n}`;
+  }
+
   const safeBase = asciiSafe(base) || 'transcript';
   const utf8Base = encodeURIComponent(base) || 'transcript';
 
+  // Mirror the resolved display name into the front-matter `file:` field so the
+  // cover H1 and the meta grid show the human-friendly name, not the UUID.
+  const displayMarkdown = (job.markdown as string).replace(
+    /^(file:\s*).*$/m,
+    `$1${base}`,
+  );
+
   if (format === 'md') {
-    return new Response(job.markdown, {
+    return new Response(displayMarkdown, {
       status: 200,
       headers: {
         'content-type': 'text/markdown; charset=utf-8',
@@ -50,7 +90,7 @@ export async function GET(
   }
 
   // docx
-  const buf = await markdownToDocx(job.markdown);
+  const buf = await markdownToDocx(displayMarkdown);
   return new Response(new Uint8Array(buf), {
     status: 200,
     headers: {
