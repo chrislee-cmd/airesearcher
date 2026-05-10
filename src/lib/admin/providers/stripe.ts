@@ -67,11 +67,13 @@ export async function getStripeUsage(): Promise<ProviderUsage> {
       name: 'Stripe (수익 — 참고)',
       status: 'ok',
       periodLabel: '실시간 잔액',
+      // Available is the displayable balance. Showing it again under
+      // balanceLabel created a redundant "0 USD" column in the row,
+      // so we keep it only as a metric and omit balanceLabel.
       metrics: [
         { label: '사용 가능', value: formatBucket(available) },
         { label: '대기 중', value: formatBucket(pending) },
       ],
-      balanceLabel: formatBucket(available),
       dashboardUrl,
       envKeys,
     };

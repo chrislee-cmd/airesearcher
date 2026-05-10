@@ -28,7 +28,18 @@ export async function getElevenLabsUsage(): Promise<ProviderUsage> {
       headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY! },
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // 401 here almost always means the key on Vercel is invalid,
+      // revoked, or scoped to a sub-account that doesn't expose
+      // /v1/user/subscription. Tell the operator what to do instead of
+      // surfacing a bare HTTP code.
+      if (res.status === 401) {
+        throw new Error(
+          'API 키가 유효하지 않거나 권한이 부족합니다. ElevenLabs → Settings → API Keys 에서 새 키를 발급해 ELEVENLABS_API_KEY 를 갱신하세요.',
+        );
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
     const json = (await res.json()) as {
       tier?: string;
       character_count?: number;

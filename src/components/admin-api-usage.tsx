@@ -138,12 +138,15 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
           </span>
           <StatusPill status={p.status} />
         </div>
-        {p.dashboardUrl && (
+        {/* Dashboard link only shown for providers that don't expose
+            a programmatic API (configured-only) — for live providers the
+            page IS the data, no need to redirect out. */}
+        {p.dashboardUrl && p.status !== 'ok' && (
           <a
             href={p.dashboardUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft hover:text-amore"
+            className="text-[10px] tracking-normal text-mute-soft hover:text-mute"
           >
             {t('openDashboard')} ↗
           </a>

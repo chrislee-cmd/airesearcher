@@ -57,30 +57,58 @@ export async function getDeepgramUsage(): Promise<ProviderUsage> {
       ),
     ]);
 
+    // Both endpoints can return 403 INSUFFICIENT_PERMISSIONS when the
+    // API key lacks `billing:read` / `usage:read`. Capture each error
+    // independently — a partial result is more useful than a hard fail.
     let balanceUsd: number | undefined;
+    let balanceErr: string | undefined;
     if (balRes.ok) {
       const balJson = (await balRes.json()) as { balances?: { amount?: number }[] };
       balanceUsd = (balJson.balances ?? []).reduce(
         (acc, b) => acc + (Number(b.amount) || 0),
         0,
       );
+    } else {
+      balanceErr = await balRes.text().catch(() => `HTTP ${balRes.status}`);
     }
 
+    // Deepgram's usage endpoint returns daily buckets in `results[]`,
+    // not a single object — sum across the array.
     let metrics: { label: string; value: string }[] = [];
+    let usageErr: string | undefined;
     if (usageRes.ok) {
       const usageJson = (await usageRes.json()) as {
-        results?: {
-          requests?: number;
-          hours?: number;
-        };
+        results?: { requests?: number; hours?: number }[];
       };
-      const r = usageJson.results;
-      if (r) {
-        metrics = [
-          { label: '요청', value: (r.requests ?? 0).toLocaleString('ko-KR') },
-          { label: '시간', value: `${(r.hours ?? 0).toFixed(2)}h` },
-        ];
-      }
+      const buckets = usageJson.results ?? [];
+      const totals = buckets.reduce<{ requests: number; hours: number }>(
+        (acc, b) => ({
+          requests: acc.requests + (Number(b.requests) || 0),
+          hours: acc.hours + (Number(b.hours) || 0),
+        }),
+        { requests: 0, hours: 0 },
+      );
+      metrics = [
+        { label: '요청', value: totals.requests.toLocaleString('ko-KR') },
+        { label: '시간', value: `${totals.hours.toFixed(2)}h` },
+      ];
+    } else {
+      usageErr = await usageRes.text().catch(() => `HTTP ${usageRes.status}`);
+    }
+
+    // If both partial fetches failed (typical when the key has neither
+    // scope), surface as error so the page tells the operator what to
+    // do instead of pretending to be live.
+    if (balanceErr && usageErr) {
+      return {
+        id: 'deepgram',
+        name: 'Deepgram',
+        status: 'error',
+        error:
+          'API 키에 usage:read 또는 billing:read 스코프가 없습니다. Deepgram Console → Settings → API Keys 에서 권한 추가가 필요합니다.',
+        dashboardUrl,
+        envKeys,
+      };
     }
 
     return {
@@ -90,6 +118,13 @@ export async function getDeepgramUsage(): Promise<ProviderUsage> {
       periodLabel: `${startOfMonthIsoDate()} – ${todayIso()}`,
       metrics,
       balanceUsd,
+      // Soft note when only one of the two reads succeeded.
+      error:
+        balanceErr && !usageErr
+          ? '잔액 조회 실패 — billing:read 스코프가 필요합니다.'
+          : !balanceErr && usageErr
+            ? '사용량 조회 실패 — usage:read 스코프가 필요합니다.'
+            : undefined,
       dashboardUrl,
       envKeys,
     };

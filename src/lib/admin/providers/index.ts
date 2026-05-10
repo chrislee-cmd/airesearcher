@@ -4,6 +4,7 @@ import { getOpenAiUsage } from './openai';
 import { getDeepgramUsage } from './deepgram';
 import { getElevenLabsUsage } from './elevenlabs';
 import { getStripeUsage } from './stripe';
+import { getSupabaseUsage } from './supabase';
 import { getConfiguredOnlyProviders } from './configured-only';
 
 // Aggregator. Live-fetch providers run in parallel; configured-only
@@ -16,8 +17,12 @@ export async function getAdminUsageReport(): Promise<AdminUsageReport> {
     safe(getDeepgramUsage),
     safe(getElevenLabsUsage),
     safe(getStripeUsage),
+    safe(getSupabaseUsage),
   ]);
-  const providers: ProviderUsage[] = [...live, ...getConfiguredOnlyProviders()];
+  // Supabase moved out of configured-only since we now fetch live, so
+  // we filter it out of the configured-only list to avoid duplication.
+  const configured = getConfiguredOnlyProviders().filter((p) => p.id !== 'supabase');
+  const providers: ProviderUsage[] = [...live, ...configured];
   return {
     generatedAt: new Date().toISOString(),
     providers,
