@@ -1,6 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getAdminUsageReport } from '@/lib/admin/providers';
 import { AdminApiUsage } from '@/components/admin-api-usage';
@@ -15,10 +15,7 @@ export default async function Page({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!isSuperAdminEmail(user?.email)) notFound();
 
   const report = await getAdminUsageReport();

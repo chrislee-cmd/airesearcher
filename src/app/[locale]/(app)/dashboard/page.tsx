@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { getDashboardCards, type ProjectCard } from '@/lib/dashboard';
 
@@ -13,10 +13,7 @@ export default async function DashboardPage({
   setRequestLocale(locale);
   const t = await getTranslations('Dashboard');
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const cards: ProjectCard[] = org?.org_id
     ? (await getDashboardCards(org.org_id)).cards

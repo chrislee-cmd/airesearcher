@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MemberRow } from '@/components/member-row';
@@ -14,8 +15,7 @@ export default async function MembersPage({
   setRequestLocale(locale);
   const t = await getTranslations('Members');
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
 
   return (
