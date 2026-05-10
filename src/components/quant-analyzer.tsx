@@ -11,6 +11,7 @@ import {
   type CrossTab,
   type Row,
 } from '@/lib/quant/crosstab';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const ACCEPT = '.csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -254,9 +255,7 @@ export function QuantAnalyzer() {
               {t('samePickError')}
             </div>
           ) : (
-            <div className="border border-dashed border-line bg-paper-soft p-6 text-center text-[12px] text-mute-soft [border-radius:4px]">
-              {t('pickPrompt')}
-            </div>
+            <EmptyState tone="subtle" title={t('pickPrompt')} />
           )}
         </>
       )}

@@ -27,6 +27,7 @@ function readActiveProjectId(): string | null {
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import { DownloadMenu } from './ui/download-menu';
+import { EmptyState } from './ui/empty-state';
 import { triggerBlobDownload } from '@/lib/export/download';
 import {
   DESK_REGIONS,
@@ -659,8 +660,8 @@ export function DeskResearch() {
       )}
 
       {job?.status === 'cancelled' && (
-        <div className="mt-6 border border-line bg-paper-soft p-4 text-[12.5px] text-mute [border-radius:4px]">
-          {tDesk('cancelledNotice')}
+        <div className="mt-6">
+          <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
         </div>
       )}
 

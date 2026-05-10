@@ -15,6 +15,7 @@ import { useRequireAuth } from './auth-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { RecruitingResponses } from './recruiting-responses';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -792,9 +793,10 @@ export function RecruitingBrief() {
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {previewCriteria.length === 0 ? (
-                  <p className="px-3 py-4 text-[12px] text-mute-soft">
-                    {running ? '분석 중…' : '추출된 조건이 없습니다.'}
-                  </p>
+                  <EmptyState
+                    tone="subtle"
+                    title={running ? '분석 중…' : '추출된 조건이 없습니다.'}
+                  />
                 ) : (
                   <ul className="divide-y divide-line-soft">
                     {previewCriteria.map((c, i) => (
