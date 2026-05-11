@@ -145,6 +145,7 @@ type Ctx = {
   stopAnalyze: () => void;
   exportCsv: () => void;
   exportXlsx: () => void;
+  exportDocx: () => Promise<void>;
 };
 
 // Sheet 1: consolidated insights (주제, 요약). 요약 cell carries the
@@ -950,6 +951,15 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       'interview-analysis.xlsx',
     );
   }
+  async function exportDocx() {
+    if (!analysis || !filenameOrder.length) return;
+    // Heavy `docx` library — lazy-imported so it stays out of the
+    // initial page bundle and only loads when the user actually
+    // requests the document.
+    const { buildInterviewDocxBlob } = await import('@/lib/interviews-docx');
+    const blob = await buildInterviewDocxBlob(analysis, filenameOrder);
+    triggerDownload(blob, 'interview-analysis.docx');
+  }
 
   const value: Ctx = {
     items,
@@ -978,6 +988,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     stopAnalyze,
     exportCsv,
     exportXlsx,
+    exportDocx,
   };
 
   return (
