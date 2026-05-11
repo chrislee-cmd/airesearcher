@@ -12,8 +12,8 @@ import { DownloadMenu } from './ui/download-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { FeaturePage } from './ui/feature-page';
 
-const ACCEPT = '.docx,.md,.markdown,.txt';
-const ACCEPT_RE = /\.(docx|md|markdown|txt)$/i;
+const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
+const ACCEPT_RE = /\.(docx|md|markdown|txt|csv|xlsx|xls)$/i;
 
 type Stage = 'normalize' | 'generate';
 
@@ -358,7 +358,7 @@ export function ReportGenerator() {
         multiple
         onFiles={(files) => addFiles(files)}
         label="파일을 끌어다 놓거나 클릭해서 업로드"
-        helperText=".docx · .md · .markdown · .txt — 최대 20개, 파일당 25MB"
+        helperText=".docx · .md · .markdown · .txt · .csv · .xlsx — 최대 20개, 파일당 25MB"
         className="mt-8 gap-2 px-6 py-12"
       />
 
