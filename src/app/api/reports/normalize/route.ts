@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       );
     }
     const kind = classifyFile(file);
-    if (kind !== 'text' && kind !== 'docx') {
+    if (kind !== 'text' && kind !== 'docx' && kind !== 'xlsx') {
       return NextResponse.json(
         { error: 'unsupported_file_type', name: file.name },
         { status: 415 },
