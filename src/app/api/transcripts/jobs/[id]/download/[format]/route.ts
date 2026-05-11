@@ -9,6 +9,27 @@ function asciiSafe(name: string) {
   return name.replace(/[/\\]/g, '_').replace(/[^A-Za-z0-9._-]+/g, '_');
 }
 
+function markdownToPlainText(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  let inFront = false;
+  let frontDone = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (i === 0 && line.trim() === '---') {
+      inFront = true;
+      continue;
+    }
+    if (inFront && !frontDone && line.trim() === '---') {
+      frontDone = true;
+      inFront = false;
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
 // Names like `06482ba9-f750-494a-b643-419f075b64af` or 24+ char hex blobs are
 // upload tokens, not human identifiers. Drop them in favour of a generic name.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +52,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; format: string }> },
 ) {
   const { id, format } = await params;
-  if (format !== 'md' && format !== 'docx') {
+  if (format !== 'md' && format !== 'docx' && format !== 'txt') {
     return NextResponse.json({ error: 'unsupported_format' }, { status: 400 });
   }
 
@@ -85,6 +106,19 @@ export async function GET(
       headers: {
         'content-type': 'text/markdown; charset=utf-8',
         'content-disposition': `attachment; filename="${safeBase}.md"; filename*=UTF-8''${utf8Base}.md`,
+      },
+    });
+  }
+
+  if (format === 'txt') {
+    // Drop YAML front-matter fences, render `key: value` rows + body as plain
+    // text so the download opens cleanly in any text editor.
+    const plain = markdownToPlainText(displayMarkdown);
+    return new Response(plain, {
+      status: 200,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'content-disposition': `attachment; filename="${safeBase}.txt"; filename*=UTF-8''${utf8Base}.txt`,
       },
     });
   }
