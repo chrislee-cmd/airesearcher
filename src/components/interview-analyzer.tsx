@@ -75,6 +75,7 @@ export function InterviewAnalyzer() {
   // streaming finishes can reuse them. The component just passes through.
   const exportCsv = job.exportCsv;
   const exportXlsx = job.exportXlsx;
+  const exportDocx = job.exportDocx;
 
   return (
     <div className="space-y-10">
@@ -191,6 +192,7 @@ export function InterviewAnalyzer() {
                 items={[
                   { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
                   { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
+                  { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
                 ]}
               />
             </div>
