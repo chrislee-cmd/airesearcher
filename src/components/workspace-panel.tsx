@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import type { FeatureKey } from '@/lib/features';
 import type { WorkspaceArtifact } from '@/lib/workspace';
+import { triggerBlobDownload } from '@/lib/export/download';
 import { useWorkspace } from './workspace-provider';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
@@ -17,6 +18,23 @@ const MIME_MANY = 'application/x-workspace-artifacts';
 
 // Window for the new-row flash + trigger pulse after addArtifact fires.
 const FLASH_MS = 2400;
+
+// Reports stream HTML; everything else is plain markdown/text. The kebab
+// download item picks the right extension/MIME accordingly.
+function downloadShapeFor(featureKey: FeatureKey): { ext: string; mime: string } {
+  if (featureKey === 'reports') return { ext: 'html', mime: 'text/html;charset=utf-8' };
+  return { ext: 'md', mime: 'text/markdown;charset=utf-8' };
+}
+
+function sanitizeFilename(s: string): string {
+  return s.replace(/[\\/:*?"<>|\r\n\t]+/g, '_').slice(0, 80).trim() || 'artifact';
+}
+
+function downloadArtifact(a: WorkspaceArtifact) {
+  const { ext, mime } = downloadShapeFor(a.featureKey);
+  const blob = new Blob([a.content], { type: mime });
+  triggerBlobDownload(blob, `${sanitizeFilename(a.title)}.${ext}`);
+}
 
 type Project = { id: string; name: string };
 
@@ -321,6 +339,17 @@ export function WorkspacePanel() {
                             </div>
                           )}
                         </div>
+                        <MenuItem
+                          onClick={() => {
+                            for (const id of selected) {
+                              const a = artifacts.find((x) => x.id === id);
+                              if (a) downloadArtifact(a);
+                            }
+                            setOpenMenu(null);
+                          }}
+                        >
+                          {t('downloadSelected')}
+                        </MenuItem>
                         <div className="my-1 h-px bg-line-soft" />
                         <MenuItem
                           danger
@@ -437,6 +466,14 @@ export function WorkspacePanel() {
                                 </MenuItem>
                                 <MenuItem onClick={() => onCopy(a.content)}>
                                   {t('copy')}
+                                </MenuItem>
+                                <MenuItem
+                                  onClick={() => {
+                                    downloadArtifact(a);
+                                    setOpenMenu(null);
+                                  }}
+                                >
+                                  {t('download')}
                                 </MenuItem>
                                 <div className="relative">
                                   <MenuItem
