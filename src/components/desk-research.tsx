@@ -31,6 +31,7 @@ import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
 import { triggerBlobDownload } from '@/lib/export/download';
+import { prefillKey } from '@/lib/workspace';
 import {
   DESK_REGIONS,
   DESK_REGION_PORTALS,
@@ -181,6 +182,20 @@ export function DeskResearch() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Receive workspace "send to" prefills — splits the artifact text the
+  // same way the paste/keydown handlers do so a list of keywords (or a
+  // comma/newline-separated blob) lands as ready-to-run keyword chips.
+  useEffect(() => {
+    try {
+      const k = prefillKey('desk');
+      const raw = sessionStorage.getItem(k);
+      if (!raw) return;
+      sessionStorage.removeItem(k);
+      pushKeywords(splitKeywords(raw));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grouped = useMemo(() => {
     const map = new Map<DeskSourceGroup, typeof DESK_SOURCES>();

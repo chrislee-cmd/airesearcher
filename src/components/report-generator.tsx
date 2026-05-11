@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
@@ -10,6 +10,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
+import { prefillKey } from '@/lib/workspace';
 import { FeaturePage } from './ui/feature-page';
 
 const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
@@ -244,6 +245,23 @@ export function ReportGenerator() {
     });
     setRejected(rejectedNames);
   }
+
+  // Workspace "send to" → reports drops the artifact text into the file
+  // list as a synthetic `.md` (the report pipeline already accepts `.md`).
+  useEffect(() => {
+    try {
+      const k = prefillKey('reports');
+      const raw = sessionStorage.getItem(k);
+      if (!raw) return;
+      sessionStorage.removeItem(k);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const f = new File([raw], `workspace_${stamp}.md`, {
+        type: 'text/markdown',
+      });
+      addFiles([f]);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function removeFile(idx: number) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
