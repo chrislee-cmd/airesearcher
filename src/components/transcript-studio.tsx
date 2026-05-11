@@ -404,14 +404,19 @@ function JobRow({
               }
               items={[
                 {
+                  format: 'docx',
+                  kind: 'url',
+                  href: `/api/transcripts/jobs/${job.id}/download/docx`,
+                },
+                {
                   format: 'md',
                   kind: 'url',
                   href: `/api/transcripts/jobs/${job.id}/download/md`,
                 },
                 {
-                  format: 'docx',
+                  format: 'txt',
                   kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/docx`,
+                  href: `/api/transcripts/jobs/${job.id}/download/txt`,
                 },
               ]}
             />
@@ -438,26 +443,42 @@ function JobRow({
 }
 
 function JobPreview({ id }: { id: string }) {
-  const [text, setText] = useState<string | null>(null);
+  const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (text === null && error === null) {
-    fetch(`/api/transcripts/jobs/${id}`)
-      .then((r) => r.json())
-      .then((j) => setText(j.markdown ?? ''))
-      .catch((e) => setError(e instanceof Error ? e.message : 'fetch_failed'));
-  }
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/transcripts/jobs/${id}/preview`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error ?? `preview ${r.status}`);
+        }
+        return r.json();
+      })
+      .then((j: { html: string }) => {
+        if (!cancelled) setHtml(j.html ?? '');
+      })
+      .catch((e) => {
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : 'fetch_failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   return (
     <div className="border-t border-line-soft px-5 pb-4 pt-3">
       {error ? (
         <div className="text-[11.5px] text-warning">{error}</div>
-      ) : text === null ? (
+      ) : html === null ? (
         <div className="text-[11.5px] text-mute-soft">불러오는 중…</div>
       ) : (
-        <pre className="max-h-[400px] overflow-y-auto whitespace-pre-wrap font-mono text-[12px] leading-[1.7] text-ink-2">
-          {text}
-        </pre>
+        <div
+          className="docx-preview max-h-[400px] overflow-y-auto text-[12.5px] leading-[1.7] text-ink-2"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
       )}
     </div>
   );

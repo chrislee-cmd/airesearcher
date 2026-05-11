@@ -86,3 +86,30 @@ html, body {
 .job-progress-indeterminate {
   animation: jobProgressIndeterminate 1.4s ease-in-out infinite;
 }
+
+/* Docx-derived preview (mammoth HTML output). Tailwind's preflight strips
+ * default heading/paragraph styling, so we restore a minimal hierarchy here
+ * for the transcript preview pane only. */
+.docx-preview h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--color-ink);
+}
+.docx-preview h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 8px;
+  color: var(--color-ink);
+}
+.docx-preview p {
+  margin: 0 0 8px;
+}
+.docx-preview strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.docx-preview em {
+  font-style: italic;
+  color: var(--color-mute);
+}
