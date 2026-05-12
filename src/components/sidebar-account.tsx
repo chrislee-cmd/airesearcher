@@ -42,6 +42,19 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
   function changeLocale(next: 'ko' | 'en') {
     if (next === locale) return;
     track('settings_locale_change_click', { from: locale, to: next });
+    // Persist preference for logged-in users so future logins from new
+    // devices skip Accept-Language detection. Fire-and-forget — the URL
+    // change below is what the user actually waits for.
+    if (isAuthed) {
+      const supabase = createClient();
+      void supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        void supabase
+          .from('profiles')
+          .update({ locale: next })
+          .eq('id', user.id);
+      });
+    }
     startTransition(() => {
       router.replace(pathname, { locale: next });
     });
