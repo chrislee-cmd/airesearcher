@@ -356,6 +356,8 @@
       "cost": "50크레딧",
       "typeChooserLabel": "보고서 방향성",
       "typeChooserHelp": "분석 관점에 따라 챕터 구성과 시각화가 달라집니다.",
+      "regenLabel": "다른 방향으로 다시 생성",
+      "regenHelp": "같은 파일을 재사용합니다 · 추가 50크레딧",
       "types": {
         "design": {
           "label": "디자인 평가 보고서",

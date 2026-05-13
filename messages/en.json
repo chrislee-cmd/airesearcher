@@ -356,6 +356,8 @@
       "cost": "50 credits",
       "typeChooserLabel": "Report direction",
       "typeChooserHelp": "Chapter structure and signature visuals adjust to the analytical lens.",
+      "regenLabel": "Regenerate as…",
+      "regenHelp": "Reuses your uploaded files · +50 credits",
       "types": {
         "design": {
           "label": "Design Evaluation",

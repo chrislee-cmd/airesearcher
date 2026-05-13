@@ -277,9 +277,27 @@ export function ReportGenerator() {
     requireAuth(() => void doRun());
   }
 
-  async function doRun() {
+  // Result-panel buttons let the user re-run the pipeline as a different
+  // direction without scrolling back up to the chooser. Reusing the
+  // already-uploaded files removes a friction point at the cost of
+  // another full pipeline pass (both stages re-run because each type
+  // has its own normalize schema). We pass the target type explicitly
+  // so we don't race the `reportType` state update.
+  function onClickRegen(target: ReportType) {
+    if (target === reportType || running) return;
+    setReportType(target);
+    requireAuth(() => void doRun(target));
+  }
+
+  async function doRun(typeOverride?: ReportType) {
     if (files.length === 0) return;
-    track('reports_generate_click', { feature: 'reports', file_count: files.length });
+    const runType = typeOverride ?? reportType;
+    track('reports_generate_click', {
+      feature: 'reports',
+      file_count: files.length,
+      reportType: runType,
+      regen: typeOverride ? true : false,
+    });
     const submitted = files;
     const sourceNames = submitted.map((f) => f.name);
 
@@ -301,7 +319,7 @@ export function ReportGenerator() {
         // ─ Stage 1: normalize uploads → canonical markdown ─
         const fd = new FormData();
         for (const f of submitted) fd.append('files', f);
-        fd.append('reportType', reportType);
+        fd.append('reportType', runType);
         const r1 = await fetch('/api/reports/normalize', {
           method: 'POST',
           body: fd,
@@ -323,7 +341,7 @@ export function ReportGenerator() {
         const r2 = await fetch('/api/reports/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ markdown, sources: sourceNames, reportType }),
+          body: JSON.stringify({ markdown, sources: sourceNames, reportType: runType }),
         });
         if (!r2.ok) {
           const j = await r2.json().catch(() => ({}));
@@ -336,9 +354,9 @@ export function ReportGenerator() {
           html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${html}</body></html>`;
         }
 
-        track('reports_generate_success', { feature: 'reports', reportType });
+        track('reports_generate_success', { feature: 'reports', reportType: runType });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        const title = `${reportType}_report_${ts}.html`;
+        const title = `${runType}_report_${ts}.html`;
         // Persist first so the workspace artifact can carry the DB id.
         // Without that link, picking a project from the workspace modal
         // updates only local state — the project page never sees it.
@@ -509,6 +527,13 @@ export function ReportGenerator() {
               출처: {result.sources.join(', ')}
             </p>
           )}
+          {result && !running && (
+            <RegenBar
+              currentType={reportType}
+              onRegen={onClickRegen}
+              disabled={files.length === 0}
+            />
+          )}
 
           {running && (
             <div className="mt-4">
@@ -540,6 +565,50 @@ export function ReportGenerator() {
         </div>
       )}
     </FeaturePage>
+  );
+}
+
+// Compact regenerate bar — shown under the result panel header once
+// a run finishes. Lists the 3 other directions as inline buttons so the
+// user can swap perspective without scrolling back to the chooser or
+// re-uploading files. Each click is a fresh paid run (both stages re-fire
+// because each type's normalize schema differs).
+function RegenBar({
+  currentType,
+  onRegen,
+  disabled,
+}: {
+  currentType: ReportType;
+  onRegen: (target: ReportType) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations('Features.reports');
+  const others = REPORT_TYPES.filter((k) => k !== currentType);
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line-soft pt-3">
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-px w-5 bg-amore" />
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+          {t('regenLabel')}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {others.map((k) => (
+          <button
+            key={k}
+            type="button"
+            disabled={disabled}
+            onClick={() => onRegen(k)}
+            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          >
+            {t(`types.${k}.label`)}
+          </button>
+        ))}
+      </div>
+      <span className="ml-1 text-[10.5px] text-mute-soft">
+        {t('regenHelp')}
+      </span>
+    </div>
   );
 }
 
