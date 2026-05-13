@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   });
 
   const lines: string[] = [
-    'AI Researcher 크레딧 견적서 요청이 접수되었습니다.',
+    'Intellicenter 크레딧 견적서 요청이 접수되었습니다.',
     '',
     `• 신청자 이메일: ${user.email}`,
     `• 신청자 ID: ${user.id}`,
@@ -80,11 +80,11 @@ export async function POST(req: Request) {
   }
   lines.push('', `• 접수 시각: ${new Date().toISOString()}`);
 
-  const subject = `[AI Researcher] 크레딧 견적 요청 — ${bundle.credits.toLocaleString()} 크레딧 (${user.email})`;
+  const subject = `[Intellicenter] 크레딧 견적 요청 — ${bundle.credits.toLocaleString()} 크레딧 (${user.email})`;
 
   try {
     await transporter.sendMail({
-      from: `AI Researcher <${gmailUser}>`,
+      from: `Intellicenter <${gmailUser}>`,
       to: TO_EMAIL,
       replyTo: user.email,
       subject,

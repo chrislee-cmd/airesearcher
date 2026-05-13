@@ -1,9 +1,9 @@
 {
-  "Brand": { "name": "AI Researcher" },
+  "Brand": { "name": "Intellicenter" },
   "Auth": {
-    "signInTitle": "Sign in to AI Researcher",
+    "signInTitle": "Sign in to Intellicenter",
     "signInSubtitle": "AI tools for marketing & UX research",
-    "signUpTitle": "Create your AI Researcher account",
+    "signUpTitle": "Create your Intellicenter account",
     "signUpSubtitle": "Try every tool free for 24 hours.",
     "google": "Continue with Google",
     "signOut": "Sign out",
@@ -120,7 +120,7 @@
     "firstProjectTitle": "Create your first project",
     "firstProjectBody": "Group research artifacts under projects to keep progress and next steps in one place.",
     "firstProjectCta": "Create project",
-    "signedOutTitle": "Welcome to AI Researcher",
+    "signedOutTitle": "Welcome to Intellicenter",
     "signedOutBody": "An editorial-toned research console that turns qualitative and quantitative interview data into quotes, scripts, interview results, and full reports.",
     "signIn": "Sign in"
   },

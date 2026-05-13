@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
 
 export const metadata: Metadata = {
-  title: 'AI Researcher',
+  title: 'Intellicenter',
   description: 'AI tools for marketing & UX research',
 };
 
