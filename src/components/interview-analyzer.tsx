@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
@@ -99,6 +99,11 @@ export function InterviewAnalyzer() {
 
   return (
     <div className="space-y-10">
+      {/* Template card (양식) — sits above Stage 1 because the question
+          骨格 changes how analyze runs. Renders even when no template
+          is loaded so the upload affordance is always one click away. */}
+      <TemplateCard />
+
       {/* Stage 1 */}
       <section>
         <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
@@ -233,6 +238,257 @@ export function InterviewAnalyzer() {
         )}
       </section>
     </div>
+  );
+}
+
+// Map of well-known error codes returned by /api/interviews/template
+// into something the user can act on. Anything else is shown verbatim
+// (e.g. a JSON-parse error from a malformed XLSX) since hiding it
+// would make debugging harder.
+const TEMPLATE_ERROR_HINTS: Record<string, string> = {
+  project_required:
+    '프로젝트를 먼저 선택해 주세요 (사이드바 상단의 프로젝트 메뉴).',
+  file_required: '파일을 선택해 주세요.',
+  file_too_large: '파일이 너무 큽니다 (최대 4MB).',
+  unsupported_extension: 'XLSX 또는 DOCX 파일만 업로드할 수 있습니다.',
+  no_questions_found:
+    '파일에서 질문을 찾지 못했습니다. 첫 컬럼·줄바꿈 형식을 확인해 주세요.',
+  empty_after_trim: '질문 목록이 비어 있습니다.',
+};
+
+const TEMPLATE_ACCEPT =
+  '.xlsx,.docx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+function TemplateCard() {
+  const job = useInterviewJob();
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const [editing, setEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onFilePicked = (file: File | null | undefined) => {
+    if (!file) return;
+    void job.uploadTemplate(file);
+  };
+
+  const startEdit = () => {
+    setDraft(job.template?.questions.slice() ?? []);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setDraft(null);
+  };
+
+  const saveEdit = async () => {
+    if (!draft) return;
+    const cleaned = draft.map((q) => q.trim()).filter(Boolean);
+    if (cleaned.length === 0) return;
+    await job.updateTemplateQuestions(cleaned);
+    setEditing(false);
+    setDraft(null);
+  };
+
+  const errorHint = job.templateError
+    ? TEMPLATE_ERROR_HINTS[job.templateError] ?? job.templateError
+    : null;
+
+  const hasTemplate = !!job.template;
+
+  return (
+    <section className="border border-line-soft bg-paper-soft [border-radius:4px]">
+      <div className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+            양식 (선택)
+          </div>
+          <h3 className="mt-1 text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
+            인터뷰 질문 골격 등록
+          </h3>
+          <p className="mt-1 text-[12px] text-mute">
+            XLSX·DOCX 파일을 올리면 그 질문 순서대로 매트릭스가 정렬됩니다.
+            등록하지 않으면 AI 가 자동으로 공통 질문을 추론합니다.
+          </p>
+        </div>
+        {hasTemplate && (
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em]">
+            <span className="text-mute-soft">모드</span>
+            <div className="inline-flex border border-line [border-radius:4px]">
+              <button
+                onClick={() => job.setTemplateMode('template')}
+                className={`px-3 py-1 ${
+                  job.templateMode === 'template'
+                    ? 'bg-ink text-paper'
+                    : 'text-mute hover:text-ink-2'
+                }`}
+              >
+                양식
+              </button>
+              <button
+                onClick={() => job.setTemplateMode('auto')}
+                className={`px-3 py-1 border-l border-line ${
+                  job.templateMode === 'auto'
+                    ? 'bg-ink text-paper'
+                    : 'text-mute hover:text-ink-2'
+                }`}
+              >
+                자동
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        {errorHint && (
+          <div className="text-[12px] text-warning">{errorHint}</div>
+        )}
+        {job.templateTruncated && (
+          <div className="text-[12px] text-warning">
+            질문이 너무 많아 앞쪽 200개만 보관했습니다.
+          </div>
+        )}
+
+        {!hasTemplate ? (
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={TEMPLATE_ACCEPT}
+              className="hidden"
+              onChange={(e) => onFilePicked(e.target.files?.[0])}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={job.templateLoading}
+              className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:4px]"
+            >
+              {job.templateLoading ? '업로드 중…' : '양식 업로드 (XLSX·DOCX)'}
+            </button>
+            <span className="text-[11.5px] text-mute-soft">
+              XLSX: 첫 컬럼에서 질문을 읽음 · DOCX: 줄·번호·불릿로 분리
+            </span>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11.5px] text-mute">
+                <span className="text-ink-2 font-medium">
+                  {job.template!.source_filename}
+                </span>
+                <span className="ml-2 text-mute-soft">
+                  · 질문 {job.template!.questions.length}개
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!editing && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={TEMPLATE_ACCEPT}
+                      className="hidden"
+                      onChange={(e) => onFilePicked(e.target.files?.[0])}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={job.templateLoading}
+                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40"
+                    >
+                      다른 파일
+                    </button>
+                    <button
+                      onClick={startEdit}
+                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+                    >
+                      편집
+                    </button>
+                    <button
+                      onClick={() => job.deleteTemplate()}
+                      disabled={job.templateLoading}
+                      className="text-[11px] uppercase tracking-[0.18em] text-mute-soft hover:text-warning disabled:opacity-40"
+                    >
+                      제거
+                    </button>
+                  </>
+                )}
+                {editing && (
+                  <>
+                    <button
+                      onClick={saveEdit}
+                      disabled={job.templateLoading}
+                      className="border border-ink bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:4px]"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+                    >
+                      취소
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <ol className="mt-3 space-y-1.5 text-[12.5px]">
+              {(editing ? draft ?? [] : job.template!.questions).map(
+                (q, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 leading-[1.6]"
+                  >
+                    <span className="mt-[1px] inline-block min-w-[20px] text-[10.5px] tabular-nums text-mute-soft">
+                      {i + 1}.
+                    </span>
+                    {editing ? (
+                      <>
+                        <input
+                          value={q}
+                          onChange={(e) => {
+                            if (!draft) return;
+                            const next = draft.slice();
+                            next[i] = e.target.value;
+                            setDraft(next);
+                          }}
+                          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12.5px] text-ink-2 [border-radius:4px] focus:border-ink focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            if (!draft) return;
+                            setDraft(draft.filter((_, idx) => idx !== i));
+                          }}
+                          aria-label="질문 삭제"
+                          className="text-[12px] text-mute-soft hover:text-warning"
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-ink-2">{q}</span>
+                    )}
+                  </li>
+                ),
+              )}
+            </ol>
+            {editing && (
+              <button
+                onClick={() => setDraft([...(draft ?? []), ''])}
+                className="mt-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+              >
+                + 질문 추가
+              </button>
+            )}
+            {!editing && job.templateMode === 'template' && (
+              <div className="mt-3 text-[11px] uppercase tracking-[0.22em] text-amore">
+                이 인터뷰는 양식 모드로 분석합니다 · 매칭되지 않은 응답은 「기타 응답」 행에 모입니다
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -371,9 +627,23 @@ function ResultTable({
         <tbody>
           {rows.map((row, idx) => {
             const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
+            // Trailing "기타 응답" row gets a softer background + MISC
+            // eyebrow so it reads as a catch-all bucket, not a peer of
+            // the user-defined template questions.
+            const rowClass = row.isResidual
+              ? 'border-t border-line-soft align-top bg-paper-soft'
+              : 'border-t border-line-soft align-top';
+            const qCellClass = row.isResidual
+              ? 'sticky left-0 z-10 bg-paper-soft px-4 py-3 font-medium text-ink-2'
+              : 'sticky left-0 z-10 bg-paper px-4 py-3 font-medium text-ink-2';
             return (
-              <tr key={idx} className="border-t border-line-soft align-top">
-                <td className="sticky left-0 z-10 bg-paper px-4 py-3 font-medium text-ink-2">
+              <tr key={idx} className={rowClass}>
+                <td className={qCellClass}>
+                  {row.isResidual && (
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                      MISC
+                    </div>
+                  )}
                   {row.question}
                 </td>
                 <td className="border-l border-line px-4 py-3 align-top text-ink-2">
