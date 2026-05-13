@@ -2,19 +2,29 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { track } from '@/components/mixpanel-provider';
+
+// Only allow same-origin app paths to prevent open-redirect via ?next=.
+function safeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  return raw;
+}
 
 export function GoogleSignInButton({ label }: { label: string }) {
   const [loading, setLoading] = useState(false);
   const locale = useLocale();
+  const searchParams = useSearchParams();
 
   async function signIn() {
     track('auth_google_signin_click');
     setLoading(true);
     const supabase = createClient();
     const origin = window.location.origin;
-    const next = `/${locale}/dashboard`;
+    const nextPath = safeNext(searchParams.get('next')) ?? '/dashboard';
+    const next = `/${locale}${nextPath}`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
