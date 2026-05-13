@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
@@ -13,6 +14,7 @@ import { JobProgress } from './ui/job-progress';
 import { useWorkspace } from './workspace-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
+import { prefillKey } from '@/lib/workspace';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
 // many artifacts already carry .md in the title, so blindly appending
@@ -70,6 +72,24 @@ export function InterviewAnalyzer() {
     workspace.setDragging(null);
     return true;
   }
+
+  // Workspace "send to" → interviews. The pipeline only accepts files,
+  // so the prefilled text is wrapped as a synthetic `.md` and queued
+  // through the same addFiles path as a drag-drop from the panel.
+  useEffect(() => {
+    try {
+      const k = prefillKey('interviews');
+      const raw = sessionStorage.getItem(k);
+      if (!raw) return;
+      sessionStorage.removeItem(k);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const f = new File([raw], `workspace_${stamp}.md`, {
+        type: 'text/markdown',
+      });
+      job.addFiles([f]);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Export helpers live in the provider so the auto-download chain after
   // streaming finishes can reuse them. The component just passes through.

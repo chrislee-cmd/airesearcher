@@ -23,18 +23,28 @@ export type WorkspaceArtifact = {
 };
 
 // Which target features can accept an artifact produced by source.
-// Conservative defaults — every target listed accepts free-text input today
-// via the FeaturePlaceholder textarea (or its specialized analog).
+//
+// Only destinations whose page actually reads the sessionStorage prefill
+// are listed — adding a key here without a matching receiver in the
+// destination component makes the kebab item a silent no-op (the user
+// clicks "send to X", we navigate, X never reads the payload).
+//
+// Active receivers today:
+//   - `keywords`  → FeaturePlaceholder textarea (generic)
+//   - `desk`      → keyword chip input (split on commas/newlines)
+//   - `reports`   → file list (text wrapped as synthetic .md)
+//   - `interviews`→ file queue (text wrapped as synthetic .md)
+//
+// Removed historic destinations whose pages have no compatible input:
+//   - `analyzer`  (ComingSoonCard — no input)
+//   - `moderator` (services carousel — no input)
+//   - `scheduler` (CSV / calendar — text doesn't map)
 export const SEND_TO_MAP: Partial<Record<FeatureKey, FeatureKey[]>> = {
-  quotes: ['interviews', 'reports', 'analyzer', 'moderator'],
-  transcripts: ['interviews', 'reports', 'analyzer'],
-  interviews: ['reports', 'analyzer'],
-  reports: ['analyzer'],
-  moderator: ['scheduler'],
-  analyzer: ['reports'],
-  desk: ['reports', 'analyzer'],
+  quotes: ['interviews', 'reports'],
+  transcripts: ['interviews', 'reports'],
+  interviews: ['reports'],
+  desk: ['reports'],
   keywords: ['desk', 'reports'],
-  recruiting: ['scheduler', 'moderator'],
 };
 
 export const PREFILL_PREFIX = 'workspace:prefill:';
