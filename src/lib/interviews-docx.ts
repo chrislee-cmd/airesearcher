@@ -11,6 +11,8 @@ import {
 import type {
   AnalysisResult,
   ConsolidatedInsight,
+  OutlierCase,
+  RowSummary,
 } from '@/components/interview-job-provider';
 
 // Design system tokens — mirrors transcripts/docx.ts so the two
@@ -73,6 +75,33 @@ function bodyParagraph(text: string, after = 120): Paragraph {
   return new Paragraph({
     spacing: { line: 360, lineRule: 'auto', after },
     children: [new TextRun({ text, size: SIZE.body, color: AP.ink2 })],
+  });
+}
+
+function outlierItem(outlier: OutlierCase): Paragraph {
+  const tag =
+    outlier.filenames.length > 0
+      ? `   — ${outlier.filenames.join(', ')}`
+      : '';
+  return new Paragraph({
+    spacing: { line: 320, lineRule: 'auto', after: 80 },
+    indent: { left: 200 },
+    children: [
+      new TextRun({
+        text: `• ${outlier.description}`,
+        size: SIZE.body,
+        color: AP.ink2,
+      }),
+      ...(tag
+        ? [
+            new TextRun({
+              text: tag,
+              size: SIZE.caption,
+              color: AP.muteSoft,
+            }),
+          ]
+        : []),
+    ],
   });
 }
 
@@ -171,22 +200,82 @@ function consolidatedSection(
         }),
       );
     }
-    for (const line of insight.summary.split(/\r?\n/)) {
-      if (line.trim()) out.push(bodyParagraph(line));
+    if (insight.mainstream && insight.mainstream.trim()) {
+      out.push(
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [eyebrow('대표 경향성', AP.amore)],
+        }),
+      );
+      for (const line of insight.mainstream.split(/\r?\n/)) {
+        if (line.trim()) out.push(bodyParagraph(line));
+      }
+      if (insight.mainstreamVocs.length > 0) {
+        out.push(blank(60));
+        out.push(
+          new Paragraph({
+            spacing: { after: 80 },
+            children: [eyebrow('대표 VOC', AP.muteSoft)],
+          }),
+        );
+        for (const v of insight.mainstreamVocs) {
+          out.push(vocItem(v.voc, v.filename));
+        }
+      }
     }
-    if (insight.representativeVocs.length > 0) {
+    if (insight.outliers.length > 0) {
       out.push(blank(80));
       out.push(
         new Paragraph({
           spacing: { after: 80 },
-          children: [eyebrow('대표 VOC', AP.muteSoft)],
+          children: [eyebrow('소수 케이스', AP.muteSoft)],
         }),
       );
-      for (const v of insight.representativeVocs) {
-        out.push(vocItem(v.voc, v.filename));
+      for (const o of insight.outliers) {
+        out.push(outlierItem(o));
+      }
+      if (insight.outlierVocs.length > 0) {
+        out.push(blank(60));
+        out.push(
+          new Paragraph({
+            spacing: { after: 80 },
+            children: [eyebrow('소수 케이스 VOC', AP.muteSoft)],
+          }),
+        );
+        for (const v of insight.outlierVocs) {
+          out.push(vocItem(v.voc, v.filename));
+        }
       }
     }
   });
+  return out;
+}
+
+function rowSummaryParagraphs(summary: RowSummary): Array<Paragraph> {
+  const out: Paragraph[] = [];
+  if (summary.mainstream && summary.mainstream.trim()) {
+    out.push(
+      new Paragraph({
+        spacing: { after: 80 },
+        children: [eyebrow('대표 경향성', AP.amore)],
+      }),
+    );
+    for (const line of summary.mainstream.split(/\r?\n/)) {
+      if (line.trim()) out.push(bodyParagraph(line));
+    }
+  }
+  if (summary.outliers.length > 0) {
+    out.push(blank(60));
+    out.push(
+      new Paragraph({
+        spacing: { after: 80 },
+        children: [eyebrow('소수 케이스', AP.muteSoft)],
+      }),
+    );
+    for (const o of summary.outliers) {
+      out.push(outlierItem(o));
+    }
+  }
   return out;
 }
 
@@ -236,16 +325,11 @@ function matrixSection(
         ],
       }),
     );
-    if (row.summary && row.summary.trim()) {
-      out.push(
-        new Paragraph({
-          spacing: { after: 80 },
-          children: [eyebrow('Summary', AP.muteSoft)],
-        }),
-      );
-      for (const line of row.summary.split(/\r?\n/)) {
-        if (line.trim()) out.push(bodyParagraph(line));
-      }
+    const hasMainstream =
+      !!row.summary?.mainstream && row.summary.mainstream.trim().length > 0;
+    const hasOutliers = (row.summary?.outliers.length ?? 0) > 0;
+    if (row.summary && (hasMainstream || hasOutliers)) {
+      out.push(...rowSummaryParagraphs(row.summary));
     }
     const hasAnyVoc = filenameOrder.some((f) => cellsByFile.get(f)?.voc);
     if (hasAnyVoc) {
