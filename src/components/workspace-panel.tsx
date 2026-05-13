@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import type { FeatureKey } from '@/lib/features';
 import type { WorkspaceArtifact } from '@/lib/workspace';
+import { triggerBlobDownload } from '@/lib/export/download';
 import { useWorkspace } from './workspace-provider';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
@@ -18,12 +19,77 @@ const MIME_MANY = 'application/x-workspace-artifacts';
 // Window for the new-row flash + trigger pulse after addArtifact fires.
 const FLASH_MS = 2400;
 
+type DownloadFormat = 'md' | 'txt' | 'html' | 'docx';
+
+// Reports stream HTML; every other artifact is plain markdown/text. `docx`
+// works for both kinds via the /api/workspace/export-docx server route
+// (keeps the docx lib out of the client bundle).
+function formatsFor(featureKey: FeatureKey): DownloadFormat[] {
+  if (featureKey === 'reports') return ['html', 'txt', 'docx'];
+  return ['md', 'txt', 'docx'];
+}
+
+const FORMAT_MIME: Record<DownloadFormat, string> = {
+  md: 'text/markdown;charset=utf-8',
+  txt: 'text/plain;charset=utf-8',
+  html: 'text/html;charset=utf-8',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<\/(p|div|section|article|li|h[1-6]|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>(\s*)/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sanitizeFilename(s: string): string {
+  return s.replace(/[\\/:*?"<>|\r\n\t]+/g, '_').slice(0, 80).trim() || 'artifact';
+}
+
+async function downloadArtifact(a: WorkspaceArtifact, format: DownloadFormat) {
+  const filename = `${sanitizeFilename(a.title)}.${format}`;
+
+  if (format === 'docx') {
+    const res = await fetch('/api/workspace/export-docx', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: a.title,
+        content: a.content,
+        kind: a.featureKey === 'reports' ? 'html' : 'md',
+      }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    triggerBlobDownload(blob, filename);
+    return;
+  }
+
+  const isHtmlSource = a.featureKey === 'reports';
+  const content =
+    format === 'txt' && isHtmlSource ? stripHtmlToText(a.content) : a.content;
+  const blob = new Blob([content], { type: FORMAT_MIME[format] });
+  triggerBlobDownload(blob, filename);
+}
+
 type Project = { id: string; name: string };
 
 export function WorkspacePanel() {
   const t = useTranslations('Workspace');
   const tSidebar = useTranslations('Sidebar');
   const tDashboard = useTranslations('Dashboard');
+  const tExport = useTranslations('Common.export');
   const {
     artifacts,
     isOpen,
@@ -42,6 +108,7 @@ export function WorkspacePanel() {
 
   const [openMenu, setOpenMenu] = useState<string | 'bulk' | null>(null);
   const [openSendSub, setOpenSendSub] = useState(false);
+  const [openDownloadSub, setOpenDownloadSub] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -66,6 +133,7 @@ export function WorkspacePanel() {
       if (!menuRef.current?.contains(e.target as Node)) {
         setOpenMenu(null);
         setOpenSendSub(false);
+        setOpenDownloadSub(false);
       }
     }
     document.addEventListener('mousedown', onClick);
@@ -190,6 +258,22 @@ export function WorkspacePanel() {
     }
   }
 
+  // Formats common to every selected artifact — mirrors bulkTargets so the
+  // submenu only offers conversions that work for the entire selection.
+  // For a mixed md+html selection the intersection collapses to {txt}.
+  const bulkFormats = useMemo<DownloadFormat[]>(() => {
+    if (selected.size === 0) return [];
+    const sources = artifacts.filter((a) => selected.has(a.id));
+    if (sources.length === 0) return [];
+    const sets = sources.map((a) => new Set(formatsFor(a.featureKey)));
+    const [first, ...rest] = sets;
+    const intersect: DownloadFormat[] = [];
+    for (const f of first) {
+      if (rest.every((s) => s.has(f))) intersect.push(f);
+    }
+    return intersect;
+  }, [artifacts, selected]);
+
   // Bulk send-to intersection (unchanged from previous version).
   const bulkTargets = useMemo<FeatureKey[]>(() => {
     if (selected.size === 0) return [];
@@ -293,6 +377,7 @@ export function WorkspacePanel() {
                       onClick={() => {
                         setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
                         setOpenSendSub(false);
+                        setOpenDownloadSub(false);
                       }}
                       className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
                     >
@@ -316,6 +401,37 @@ export function WorkspacePanel() {
                                   onClick={() => onSendBulk(tgt)}
                                 >
                                   {tSidebar(tgt)}
+                                </MenuItem>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <MenuItem
+                            disabled={bulkFormats.length === 0}
+                            onClick={() => setOpenDownloadSub((v) => !v)}
+                            trailing={bulkFormats.length > 0 ? '›' : undefined}
+                          >
+                            {t('downloadSelected')}
+                          </MenuItem>
+                          {openDownloadSub && bulkFormats.length > 0 && (
+                            <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                              {bulkFormats.map((fmt) => (
+                                <MenuItem
+                                  key={fmt}
+                                  trailing={`.${fmt}`}
+                                  onClick={() => {
+                                    setOpenMenu(null);
+                                    setOpenDownloadSub(false);
+                                    void (async () => {
+                                      for (const id of selected) {
+                                        const a = artifacts.find((x) => x.id === id);
+                                        if (a) await downloadArtifact(a, fmt);
+                                      }
+                                    })();
+                                  }}
+                                >
+                                  {tExport(fmt)}
                                 </MenuItem>
                               ))}
                             </div>
@@ -419,6 +535,7 @@ export function WorkspacePanel() {
                               onClick={() => {
                                 setOpenMenu(isMenuOpen ? null : a.id);
                                 setOpenSendSub(false);
+                                setOpenDownloadSub(false);
                               }}
                               aria-label={t('actions')}
                               className="flex h-7 w-7 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
@@ -438,6 +555,31 @@ export function WorkspacePanel() {
                                 <MenuItem onClick={() => onCopy(a.content)}>
                                   {t('copy')}
                                 </MenuItem>
+                                <div className="relative">
+                                  <MenuItem
+                                    onClick={() => setOpenDownloadSub((v) => !v)}
+                                    trailing="›"
+                                  >
+                                    {t('download')}
+                                  </MenuItem>
+                                  {openDownloadSub && (
+                                    <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                                      {formatsFor(a.featureKey).map((fmt) => (
+                                        <MenuItem
+                                          key={fmt}
+                                          trailing={`.${fmt}`}
+                                          onClick={() => {
+                                            setOpenMenu(null);
+                                            setOpenDownloadSub(false);
+                                            void downloadArtifact(a, fmt);
+                                          }}
+                                        >
+                                          {tExport(fmt)}
+                                        </MenuItem>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                                 <div className="relative">
                                   <MenuItem
                                     disabled={targets.length === 0}
