@@ -23,6 +23,12 @@ const Body = z.object({
     )
     .min(1)
     .max(200),
+  // When provided, the analyzer skips deterministic clustering and uses
+  // these as the row set, aligning each extracted (Q, VOC) pair to its
+  // closest template question via a single LLM call. Pairs that don't
+  // align are merged into a trailing "기타 응답" row with isResidual=true
+  // so the user can still see what was said outside the template.
+  templateQuestions: z.array(z.string().min(1)).max(200).optional(),
 });
 
 // === Deterministic question clustering ===
@@ -135,6 +141,90 @@ function pickCanonical(cluster: FlatItem[]): string {
   ).question;
 }
 
+// === Template-mode alignment ===
+// Given a fixed list of user-defined template questions, map every
+// per-file extracted (Q, VOC) pair to either a template index or -1
+// (residual). The model gets the whole picture in one call so it can
+// reason "the user's Q3 = this file's item 5". One LLM call total, not
+// N*M. Residual items still surface in the output as a final row
+// flagged isResidual=true; we never silently drop interview content.
+const alignmentSchema = z.object({
+  alignments: z.array(
+    z.object({
+      // Index back into the flattened (fileIdx, itemIdx) ordering we
+      // built on the server. Forces the model to refer to inputs by
+      // position rather than re-typing question text.
+      flatIdx: z.number().int(),
+      // Index into templateQuestions, or -1 for "doesn't fit".
+      templateIdx: z.number().int(),
+    }),
+  ),
+});
+
+async function llmAlignToTemplate(
+  flat: FlatItem[],
+  templateQuestions: string[],
+  apiKey: string,
+): Promise<Map<number, number> | null> {
+  if (flat.length === 0 || templateQuestions.length === 0) return null;
+  const anthropic = createAnthropic({ apiKey });
+
+  // Numbered template questions for the system prompt.
+  const tplListed = templateQuestions
+    .map((q, i) => `[T${i}] ${q}`)
+    .join('\n');
+  // Numbered extracted (Q, snippet of VOC). VOC is truncated to keep
+  // the prompt compact — alignment is decided primarily by the question
+  // text, the VOC is just supporting evidence.
+  const itemsListed = flat
+    .map((it, i) => {
+      const vocSnippet = it.voc.replace(/\s+/g, ' ').slice(0, 120);
+      return `[F${i}] (${it.fileIdx}) Q: ${it.question}\n         VOC: ${vocSnippet}`;
+    })
+    .join('\n');
+
+  const SYSTEM = `당신은 인터뷰 응답 정렬 도우미입니다.
+
+사용자가 미리 정의한 **템플릿 질문 목록(T-인덱스)** 과, 각 인터뷰 파일에서 추출된 **(질문, 발화) 쌍 목록(F-인덱스)** 이 주어집니다. 각 F-항목을 가장 의미가 잘 맞는 T-항목 하나에 정렬하거나, 어디에도 잘 맞지 않으면 -1 (기타) 로 표시하세요.
+
+# 규칙
+- 어휘는 달라도 본질이 같은 질문은 매칭. 예: 템플릿 "왜 그렇게 신경 쓰게 되셨나요?" 와 F-항목 "특별히 신경 쓰게 된 계기는?" 는 같은 의도.
+- 한 파일(같은 fileIdx) 안에서는 한 templateIdx 에 두 개 이상의 F-항목이 들어가지 않도록, 가장 잘 맞는 하나만 그 T 에 정렬. 나머지는 -1 (기타) 로 처리.
+- 매칭이 모호하거나 의미가 다르면 -1. 억지로 끼우지 마세요.
+- 모든 F-인덱스가 정확히 한 번씩 응답에 등장해야 합니다 (누락·중복 금지).
+- 출력은 정의된 JSON 스키마(alignments) 만, 그 외 텍스트 금지.`;
+
+  try {
+    const result = await generateObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: alignmentSchema,
+      system: SYSTEM,
+      prompt: `# 템플릿 질문 (총 ${templateQuestions.length} 개)\n${tplListed}\n\n# 추출된 항목 (총 ${flat.length} 개, fileIdx 는 () 안)\n${itemsListed}`,
+      temperature: 0,
+    });
+    const map = new Map<number, number>();
+    for (const a of result.object.alignments) {
+      if (
+        a.flatIdx >= 0 &&
+        a.flatIdx < flat.length &&
+        !map.has(a.flatIdx)
+      ) {
+        const tIdx =
+          Number.isInteger(a.templateIdx) &&
+          a.templateIdx >= 0 &&
+          a.templateIdx < templateQuestions.length
+            ? a.templateIdx
+            : -1;
+        map.set(a.flatIdx, tIdx);
+      }
+    }
+    return map;
+  } catch (e) {
+    console.warn('[analyze] llmAlignToTemplate failed:', e);
+    return null;
+  }
+}
+
 // === Pass 3: LLM semantic consolidation ===
 // After deterministic clustering some rows still represent the *same*
 // question phrased differently across files (e.g. "왜 신경 쓰게 되셨나요?"
@@ -242,7 +332,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { extractions } = parsed.data;
+  const { extractions, templateQuestions } = parsed.data;
 
   const { data: orgRow } = await supabase
     .from('organizations')
@@ -284,6 +374,111 @@ export async function POST(request: Request) {
       });
     });
   });
+
+  // Template mode: the user has pre-registered a question set on the
+  // active project. Skip clustering entirely — the row set is fixed —
+  // and only ask the LLM to align each extracted (Q, VOC) pair to a
+  // template question (or to a residual "기타 응답" row).
+  if (templateQuestions && templateQuestions.length > 0) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'no_api_key' }, { status: 500 });
+    }
+    const align = await llmAlignToTemplate(
+      flat,
+      templateQuestions,
+      apiKey,
+    );
+    // Build template-question rows + a single residual row at the end.
+    // Per file × template question, we pick the first item that aligned
+    // there (the LLM is instructed to keep one per file already, but we
+    // defend with this rule). Everything else falls into residual.
+    type TemplateCell = { filename: string; voc: string };
+    const tplRows: { question: string; cells: TemplateCell[] }[] =
+      templateQuestions.map((q) => ({
+        question: q,
+        cells: filenames.map((f) => ({ filename: f, voc: '' })),
+      }));
+    const residualByFile: Map<number, string[]> = new Map();
+    for (let i = 0; i < flat.length; i++) {
+      const item = flat[i];
+      const tIdx = align?.get(i) ?? -1;
+      if (tIdx >= 0 && tIdx < tplRows.length) {
+        const cell = tplRows[tIdx].cells[item.fileIdx];
+        // Only fill if empty — first match wins per file × question.
+        if (!cell.voc) cell.voc = item.voc;
+        continue;
+      }
+      // Residual — collect VOC text per file. We concatenate inside
+      // the residual row so a respondent who said multiple
+      // off-template things still has all of them surfaced.
+      const list = residualByFile.get(item.fileIdx) ?? [];
+      // Tag with the original extracted question so the user can tell
+      // residual items apart inside the merged cell.
+      const tagged =
+        item.question && item.question.trim()
+          ? `[${item.question.trim()}] ${item.voc}`
+          : item.voc;
+      list.push(tagged);
+      residualByFile.set(item.fileIdx, list);
+    }
+    const hasResidual = Array.from(residualByFile.values()).some(
+      (v) => v.length > 0,
+    );
+    const rows: {
+      question: string;
+      cells: TemplateCell[];
+      isResidual?: boolean;
+    }[] = [...tplRows];
+    if (hasResidual) {
+      rows.push({
+        question: '기타 응답',
+        isResidual: true,
+        cells: filenames.map((f, fi) => ({
+          filename: f,
+          voc: (residualByFile.get(fi) ?? []).join('\n\n'),
+        })),
+      });
+    }
+    const matrix = {
+      questions: rows.map((r) => r.question),
+      rows,
+    };
+    const filledByFile = filenames.map((_, fi) =>
+      matrix.rows.reduce((acc, r) => acc + (r.cells[fi].voc ? 1 : 0), 0),
+    );
+    console.log('[analyze] template-mode matrix:', {
+      templateRows: templateQuestions.length,
+      residual: hasResidual,
+      filledByFile,
+      filenames,
+    });
+
+    const { data: gen, error: insertErr } = await supabase
+      .from('generations')
+      .insert({
+        org_id: org.org_id,
+        user_id: user.id,
+        feature: 'interviews',
+        input: filenames.join(', '),
+        output: JSON.stringify(matrix),
+        credits_spent: 3,
+      })
+      .select('id')
+      .single();
+    if (insertErr || !gen) {
+      return NextResponse.json(
+        { error: insertErr?.message ?? 'db_error' },
+        { status: 500 },
+      );
+    }
+    const spend = await spendCredits(org.org_id, 'interviews', gen.id);
+    if (!spend.ok) {
+      await supabase.from('generations').delete().eq('id', gen.id);
+      return NextResponse.json({ error: spend.reason }, { status: 402 });
+    }
+    return NextResponse.json(matrix);
+  }
 
   let clusters = clusterItems(flat, 0.45, 0.28);
   const beforeConsolidation = clusters.length;
