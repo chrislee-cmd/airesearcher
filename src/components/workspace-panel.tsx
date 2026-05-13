@@ -19,20 +19,21 @@ const MIME_MANY = 'application/x-workspace-artifacts';
 // Window for the new-row flash + trigger pulse after addArtifact fires.
 const FLASH_MS = 2400;
 
-type DownloadFormat = 'md' | 'txt' | 'html';
+type DownloadFormat = 'md' | 'txt' | 'html' | 'docx';
 
-// Reports stream HTML; every other artifact is plain markdown/text. The
-// per-artifact format menu only exposes formats we can produce without a
-// lossy conversion: HTML → {.html, .txt}, Markdown → {.md, .txt}.
+// Reports stream HTML; every other artifact is plain markdown/text. `docx`
+// works for both kinds via the /api/workspace/export-docx server route
+// (keeps the docx lib out of the client bundle).
 function formatsFor(featureKey: FeatureKey): DownloadFormat[] {
-  if (featureKey === 'reports') return ['html', 'txt'];
-  return ['md', 'txt'];
+  if (featureKey === 'reports') return ['html', 'txt', 'docx'];
+  return ['md', 'txt', 'docx'];
 }
 
 const FORMAT_MIME: Record<DownloadFormat, string> = {
   md: 'text/markdown;charset=utf-8',
   txt: 'text/plain;charset=utf-8',
   html: 'text/html;charset=utf-8',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
 function stripHtmlToText(html: string): string {
@@ -56,12 +57,30 @@ function sanitizeFilename(s: string): string {
   return s.replace(/[\\/:*?"<>|\r\n\t]+/g, '_').slice(0, 80).trim() || 'artifact';
 }
 
-function downloadArtifact(a: WorkspaceArtifact, format: DownloadFormat) {
+async function downloadArtifact(a: WorkspaceArtifact, format: DownloadFormat) {
+  const filename = `${sanitizeFilename(a.title)}.${format}`;
+
+  if (format === 'docx') {
+    const res = await fetch('/api/workspace/export-docx', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: a.title,
+        content: a.content,
+        kind: a.featureKey === 'reports' ? 'html' : 'md',
+      }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    triggerBlobDownload(blob, filename);
+    return;
+  }
+
   const isHtmlSource = a.featureKey === 'reports';
   const content =
     format === 'txt' && isHtmlSource ? stripHtmlToText(a.content) : a.content;
   const blob = new Blob([content], { type: FORMAT_MIME[format] });
-  triggerBlobDownload(blob, `${sanitizeFilename(a.title)}.${format}`);
+  triggerBlobDownload(blob, filename);
 }
 
 type Project = { id: string; name: string };
@@ -402,12 +421,14 @@ export function WorkspacePanel() {
                                   key={fmt}
                                   trailing={`.${fmt}`}
                                   onClick={() => {
-                                    for (const id of selected) {
-                                      const a = artifacts.find((x) => x.id === id);
-                                      if (a) downloadArtifact(a, fmt);
-                                    }
                                     setOpenMenu(null);
                                     setOpenDownloadSub(false);
+                                    void (async () => {
+                                      for (const id of selected) {
+                                        const a = artifacts.find((x) => x.id === id);
+                                        if (a) await downloadArtifact(a, fmt);
+                                      }
+                                    })();
                                   }}
                                 >
                                   {tExport(fmt)}
@@ -548,9 +569,9 @@ export function WorkspacePanel() {
                                           key={fmt}
                                           trailing={`.${fmt}`}
                                           onClick={() => {
-                                            downloadArtifact(a, fmt);
                                             setOpenMenu(null);
                                             setOpenDownloadSub(false);
+                                            void downloadArtifact(a, fmt);
                                           }}
                                         >
                                           {tExport(fmt)}
