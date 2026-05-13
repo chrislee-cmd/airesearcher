@@ -10,12 +10,18 @@ import { updateSession } from '@/lib/supabase/middleware';
 const intl = createIntlMiddleware(routing);
 
 export async function proxy(request: NextRequest) {
-  const intlResponse = intl(request);
-
-  // intl returns a redirect when the URL is missing a locale prefix.
-  // Honor it immediately — Supabase will refresh on the next request.
-  if (intlResponse.status >= 300 && intlResponse.status < 400) {
-    return intlResponse;
+  // Routes under /auth (OAuth callback, sign-out, etc.) live outside the
+  // `[locale]` segment and must NOT be prefixed. Without this guard
+  // next-intl rewrites `/auth/callback?code=…` to `/ko/auth/callback`,
+  // which doesn't exist → every production sign-in hits 404.
+  const pathname = request.nextUrl.pathname;
+  if (!pathname.startsWith('/auth/')) {
+    const intlResponse = intl(request);
+    // intl returns a redirect when the URL is missing a locale prefix.
+    // Honor it immediately — Supabase will refresh on the next request.
+    if (intlResponse.status >= 300 && intlResponse.status < 400) {
+      return intlResponse;
+    }
   }
 
   return updateSession(request);
