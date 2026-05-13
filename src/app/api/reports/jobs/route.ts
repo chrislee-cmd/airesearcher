@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       markdown,
       html,
       status: 'done',
+      head_version: 0,
     })
     .select('id')
     .single();
