@@ -69,6 +69,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: msg }, { status: 200 });
   }
 
+  // Deepgram occasionally returns a result envelope with `alternatives[0]`
+  // whose `transcript` is an empty string and no utterances/paragraphs (silent
+  // audio, language detection miss, undecodable m4a, etc). The earlier
+  // `!alt && utteranceCount === 0` guard misses this because `alt` is truthy.
+  // `speakers === 0` is a reliable proxy for "formatter emitted zero blocks",
+  // so flip the job to error rather than saving a frontmatter-only markdown
+  // that renders as a blank `완료` preview.
+  if (formatted.speakers === 0) {
+    await admin
+      .from('transcript_jobs')
+      .update({
+        status: 'error',
+        error_message: 'empty_transcript',
+        duration_seconds: formatted.duration,
+        raw_result: body as unknown as object,
+      })
+      .eq('id', job.id);
+    return NextResponse.json(
+      { ok: false, error: 'empty_transcript' },
+      { status: 200 },
+    );
+  }
+
   await admin
     .from('transcript_jobs')
     .update({

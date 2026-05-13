@@ -151,6 +151,25 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+
+  // ElevenLabs sometimes reports completion but the words array contains only
+  // spacing/audio_event entries, leaving the formatter with zero blocks. The
+  // job would otherwise be marked done with `speakers_count: 0` and a
+  // frontmatter-only markdown — the same blank-preview symptom as Deepgram.
+  // Flip to error so the user sees a real failure instead of a `완료` row.
+  if (formatted.speakers === 0) {
+    await admin
+      .from('transcript_jobs')
+      .update({
+        status: 'error',
+        error_message: 'empty_transcript',
+        duration_seconds: formatted.duration,
+        raw_result: body as unknown as object,
+      })
+      .eq('id', job.id);
+    return NextResponse.json({ status: 'error' });
+  }
+
   await admin
     .from('transcript_jobs')
     .update({
