@@ -13,7 +13,22 @@ export function mapAuthError(message: string, mode: Mode): string {
   if (m.includes('user already registered') || m.includes('already exists')) {
     return 'errorUserAlreadyRegistered';
   }
-  if (m.includes('password should be at least') || m.includes('weak password')) {
+  // "Prevent use of leaked passwords" (Supabase → Auth → Providers → Email)
+  // matches against HaveIBeenPwned. The response uses code `weak_password`
+  // with `reasons: ["pwned"]` and a message that doesn't include the literal
+  // substring "weak password", so we match the distinctive parts instead.
+  if (
+    m.includes('known to be weak') ||
+    m.includes('pwned') ||
+    m.includes('leaked')
+  ) {
+    return 'errorPwnedPassword';
+  }
+  if (
+    m.includes('password should be at least') ||
+    m.includes('weak password') ||
+    m.includes('password is too short')
+  ) {
     return 'errorWeakPassword';
   }
   if (m.includes('rate limit') || m.includes('too many requests')) {

@@ -39,6 +39,7 @@
     "errorEmailNotConfirmed": "Please confirm your email first. Check your inbox.",
     "errorUserAlreadyRegistered": "This email is already registered. Try signing in instead.",
     "errorWeakPassword": "Password must be at least 8 characters.",
+    "errorPwnedPassword": "This password has appeared in a data breach. Please pick a different one.",
     "errorRateLimited": "Too many requests. Please try again in a moment.",
     "errorSamePassword": "Please pick a password different from your previous one.",
     "errorInvalidEmail": "Please enter a valid email address.",

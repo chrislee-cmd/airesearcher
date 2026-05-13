@@ -39,6 +39,7 @@
     "errorEmailNotConfirmed": "이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.",
     "errorUserAlreadyRegistered": "이미 가입된 이메일입니다. 로그인을 시도해보세요.",
     "errorWeakPassword": "비밀번호는 8자 이상이어야 합니다.",
+    "errorPwnedPassword": "이 비밀번호는 데이터 유출 사건에서 발견되었습니다. 다른 비밀번호를 사용해주세요.",
     "errorRateLimited": "요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.",
     "errorSamePassword": "이전 비밀번호와 다른 비밀번호를 입력해 주세요.",
     "errorInvalidEmail": "올바른 이메일 형식이 아닙니다.",
