@@ -77,7 +77,55 @@ export async function POST(request: Request) {
 
   // Load parent version's markdown as the base. Without RLS access we'd
   // 404 here naturally.
-  const parent = await getVersion(supabase, report_id, parent_version);
+  let parent = await getVersion(supabase, report_id, parent_version);
+  if (!parent && parent_version === 0) {
+    // v0 wasn't mirrored yet (e.g., this report was created before
+    // migration 0016 was applied, or the mirror insert failed). Fall
+    // back to the report_jobs row and lazily seed v0 so subsequent
+    // enhancements have a stable parent.
+    const { data: job } = await supabase
+      .from('report_jobs')
+      .select('markdown, html')
+      .eq('id', report_id)
+      .maybeSingle();
+    if (job?.markdown && job?.html) {
+      const { data: seeded, error: seedErr } = await supabase
+        .from('report_versions')
+        .insert({
+          report_id,
+          version: 0,
+          parent_version: null,
+          enhancement: null,
+          markdown: job.markdown,
+          html: job.html,
+          context_payload: null,
+          credits_spent: 0,
+          created_by: user.id,
+        })
+        .select('*')
+        .single();
+      if (!seedErr && seeded) {
+        parent = seeded as typeof parent;
+      } else {
+        // Couldn't seed — proceed with an in-memory parent so the
+        // enhance pass still produces output, even if the version row
+        // for the result will reference a missing parent.
+        parent = {
+          id: 'inline-v0',
+          report_id,
+          version: 0,
+          parent_version: null,
+          enhancement: null,
+          markdown: job.markdown,
+          html: job.html,
+          context_payload: null,
+          credits_spent: 0,
+          created_at: '',
+          created_by: null,
+        };
+      }
+    }
+  }
   if (!parent) {
     return NextResponse.json({ error: 'parent_not_found' }, { status: 404 });
   }

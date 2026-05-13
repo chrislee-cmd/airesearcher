@@ -2,16 +2,59 @@
 // that is identical between design / marketing / strategy / findings
 // lives here so a token rename or output-rule tweak hits all variants.
 
+// Voice rules. Injected into every system prompt (both normalize and
+// generate, plus enhance) so the report reads like an editorial story a
+// non-specialist can follow, not a bureaucratic memo. Three pillars:
+//   1) 존대말 (해요체) — friendly, respectful Korean.
+//   2) Plain Korean — avoid 한자식 표현/전문 용어 when a 표준 한글
+//      equivalent exists. Translate the term inline when unavoidable.
+//   3) Narrative — stitch findings into a story arc with connectives
+//      (그래서 / 흥미롭게도 / 반대로) instead of dry bullets only.
+export const WRITING_TONE_BLOCK = `## 글의 톤·표현 규칙 (절대 규칙)
+
+1. **존대말로 작성하세요.** 모든 본문·헤드라인·카드 설명·시사점·관찰을 **"~합니다 / ~했어요 / ~보였어요 / ~할 수 있어요"** 같은 해요체 또는 합쇼체로 씁니다.
+   - ✗ "사용자는 가격에 민감하다." → ✓ "사용자분들은 가격에 민감했어요."
+   - ✗ "도입이 필요하다." → ✓ "도입을 검토해 볼 수 있어요."
+   - 차트 라벨이나 표 헤더(\`AM\`, \`72%\`) 같은 짧은 라벨은 예외.
+
+2. **누구나 한 번에 이해하는 평이한 한국어**를 쓰세요. 한자어/전문 용어 대신 표준 한글 표현을 우선합니다.
+   - ✗ 도출 → ✓ 끌어냈어요 / 찾아냈어요
+   - ✗ 시사점 → ✓ 우리가 배운 점 / 눈여겨볼 부분
+   - ✗ 페인포인트 → ✓ 사용자가 답답해하는 지점
+   - ✗ 인사이트 → ✓ 발견한 점
+   - ✗ 정성/정량 → ✓ 인터뷰에서 나온 이야기 / 숫자로 본 흐름
+   - ✗ 코호트, 세그먼트 → ✓ 비슷한 사용자 그룹
+   - ✗ 우선순위화 → ✓ 어떤 것부터 할지 정하기
+   - ✗ 활용도 → ✓ 얼마나 자주 쓰는지
+   - 영어 약어는 풀어 쓰거나 한 번 설명 후 사용 (\`MoM(전월 대비)\`).
+   - 영어로만 의미가 통하는 디자인 토큰(eyebrow, verbatim, KPI)은 그대로 둬도 됩니다.
+
+3. **스토리텔링 내러티브로 풀어 쓰세요.**
+   - 챕터 헤더(\`lede\`) 한 단락은 **장면·인물·갈등이 보이는 도입**으로. 예: "처음에는 단순히 가격 때문에 망설인다고 생각했는데, 실제로 들어 보니 이유가 조금 달랐어요."
+   - Findings는 bullet만 나열하지 말고, bullet 위에 **연결되는 한두 문장의 흐름 글**을 둡니다.
+   - 연결어를 자연스럽게 사용: \`그래서\`, \`흥미롭게도\`, \`반대로\`, \`결국\`, \`다시 말해\`, \`눈에 띄는 건\`.
+   - Verbatim 인용 앞뒤로 **왜 이 말이 중요한지** 한두 문장으로 풀어 줍니다.
+   - Executive Summary는 "이 보고서를 처음 받아 본 사람도 흐름이 보이도록" 짧은 이야기처럼 이어 씁니다 (각 카드 자체는 그래도 한 문장 헤드라인 + 두세 문장 설명).
+   - Recommendations 또는 Observations은 "왜 이걸 해야 하는지(또는 왜 이렇게 보이는지)" 짧은 사연을 먼저, 그 뒤에 액션/관찰을 둡니다.
+
+4. **너무 단정 짓지 말기.** 자료가 약한 부분은 \`아직 자료가 부족해 보이지만\`, \`일부 응답에서만 확인됐어요\` 같은 식으로 강도를 조절하세요. 추정은 \`(추정)\`으로 표시합니다.
+
+5. **이모지·과한 수사 금지.** 친근하되 차분한 출판물 톤을 유지합니다. 느낌표 남발 금지.`;
+
 // Strict output rules that every normalize stage must obey. Each variant
 // appends its own schema after this.
 export const STRICT_MD_OUTPUT = `엄격한 출력 규칙:
 - 출력은 **순수 Markdown 한 개만**. 코드펜스, 머리말, 설명 금지.
 - 섹션 헤더는 **반드시 아래 스키마 순서·표기 그대로** 사용. 빠뜨리지 말 것.
 - 입력 자료에 명시적으로 없는 사실/숫자/인용을 만들지 말 것. 자료가 부족한 섹션은 \`(자료 미흡)\` 한 줄로 표기.
-- 모든 정성 인용은 \`> "원문 그대로"\` blockquote + 다음 줄에 \`— 화자/세그먼트 (출처파일명)\` 표기.`;
+- 모든 정성 인용은 \`> "원문 그대로"\` blockquote + 다음 줄에 \`— 화자/세그먼트 (출처파일명)\` 표기.
+
+${WRITING_TONE_BLOCK}`;
 
 // Strict output rules every generate (HTML) stage must obey.
-export const STRICT_HTML_OUTPUT = `**출력은 순수 HTML 한 개만.** 코드펜스(\`\`\`)·설명·머리말 없이 곧바로 \`<!doctype html>\`로 시작하세요. 외부 CSS/JS/이미지/폰트 참조 금지 — 모든 스타일은 \`<head>\` 안 \`<style>\`에 인라인. **\`<script>\` 태그·인라인 이벤트 핸들러(onclick 등)·SVG 안의 \`<script>\` 모두 금지** — 페이지는 정적이어야 합니다. 막대 차트는 \`<div>\` + CSS \`width:%%\`로만 표현하세요.`;
+export const STRICT_HTML_OUTPUT = `**출력은 순수 HTML 한 개만.** 코드펜스(\`\`\`)·설명·머리말 없이 곧바로 \`<!doctype html>\`로 시작하세요. 외부 CSS/JS/이미지/폰트 참조 금지 — 모든 스타일은 \`<head>\` 안 \`<style>\`에 인라인. **\`<script>\` 태그·인라인 이벤트 핸들러(onclick 등)·SVG 안의 \`<script>\` 모두 금지** — 페이지는 정적이어야 합니다. 막대 차트는 \`<div>\` + CSS \`width:%%\`로만 표현하세요.
+
+${WRITING_TONE_BLOCK}`;
 
 // Editorial design tokens + base typography. Every generate variant
 // concatenates this so the four report types share an instantly

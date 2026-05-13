@@ -1,4 +1,5 @@
 import type { EnhanceMode } from './context-payload';
+import { WRITING_TONE_BLOCK } from './prompts/_shared';
 
 // System prompt for the Enhance pass. The model receives:
 //   - the previous version's canonical markdown (preserve structure)
@@ -18,6 +19,8 @@ const COMMON = `당신은 시니어 UX·마케팅 리서처입니다. 기존에 
 4. 추정은 \`(추정)\` 표시.
 5. 디자인 토큰을 깨지 않게 — 새 마크다운 구조는 기존 패턴(헤더, 카드, 인라인 막대, 인용)을 따름.
 6. Appendix 마지막에 \`### 강화 이력\` 섹션이 없으면 만들고, 이번 강화에서 사용한 외부 입력의 종류와 핵심 한 줄을 bullet로 추가.
+
+${WRITING_TONE_BLOCK}
 `;
 
 const TRENDS = `${COMMON}
