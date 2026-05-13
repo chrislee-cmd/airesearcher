@@ -21,6 +21,10 @@ const Body = z.object({
   // chapters, different signature visualizations). Default keeps the
   // pre-chooser behavior for any caller that omits the field.
   reportType: z.enum(REPORT_TYPES).default(DEFAULT_REPORT_TYPE),
+  // When true, this is a re-render call from /api/reports/enhance — that
+  // route persists its own version row and credits separately, so we
+  // skip the generations insert + credit spend here.
+  skip_persist: z.boolean().optional().default(false),
 });
 
 export async function POST(request: Request) {
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { markdown, sources, reportType } = parsed.data;
+  const { markdown, sources, reportType, skip_persist } = parsed.data;
   const prompts = getReportPrompts(reportType);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -55,6 +59,7 @@ export async function POST(request: Request) {
     temperature: prompts.TEMPERATURE.generate,
     maxOutputTokens: 64000,
     onFinish: async ({ text }) => {
+      if (skip_persist) return;
       let html = text.trim();
       if (html.startsWith('```')) {
         html = html.replace(/^```(?:html)?\s*/i, '').replace(/```\s*$/i, '').trim();

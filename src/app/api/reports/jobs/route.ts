@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       markdown,
       html,
       status: 'done',
+      head_version: 0,
     })
     .select('id')
     .single();
@@ -58,6 +59,26 @@ export async function POST(req: Request) {
     console.error('[reports/jobs] insert error', error);
     return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
   }
+
+  // Mirror v0 into the version tree so subsequent enhance passes have a
+  // parent to read from. Best-effort: failure here doesn't break the user
+  // flow, but the report won't be enhance-able until v0 exists. We log it
+  // loudly so operators notice.
+  const { error: vErr } = await supabase.from('report_versions').insert({
+    report_id: data.id,
+    version: 0,
+    parent_version: null,
+    enhancement: null,
+    markdown,
+    html,
+    context_payload: null,
+    credits_spent: 0,
+    created_by: user.id,
+  });
+  if (vErr) {
+    console.error('[reports/jobs] v0 mirror failed', vErr);
+  }
+
   return NextResponse.json({ id: data.id });
 }
 
