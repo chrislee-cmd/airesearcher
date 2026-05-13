@@ -5,11 +5,16 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { slideOutlineSchema } from '@/lib/reports-slides-schema';
+import { REPORT_TYPES, DEFAULT_REPORT_TYPE } from '@/lib/reports/types';
+import { getReportPrompts } from '@/lib/reports/prompts';
 
 export const maxDuration = 800;
 
 const Body = z.object({
   markdown: z.string().min(1).max(200_000),
+  // Same as /generate — slides outline needs to mirror the report's
+  // emphasis (issue slides for design, hook slides for marketing, etc.).
+  reportType: z.enum(REPORT_TYPES).default(DEFAULT_REPORT_TYPE),
 });
 
 const SYSTEM = `당신은 시니어 리서치 발표자입니다. 1차 정리된 표준 양식 Markdown 보고서를 받아, **발표용 슬라이드 outline**을 JSON 스키마로 작성합니다.
@@ -53,18 +58,24 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { markdown } = parsed.data;
+  const { markdown, reportType } = parsed.data;
+  const typePrompts = getReportPrompts(reportType);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
+  // Append the report-type hint so a Strategy report doesn't get treated
+  // like a Findings report at the slide-outline level — quote_card vs
+  // theme_split balance differs significantly per type.
+  const systemWithHint = `${SYSTEM}\n\n## 보고서 유형별 슬라이드 강조\n\n${typePrompts.SLIDES_HINT}`;
+
   try {
     const result = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: slideOutlineSchema,
-      system: SYSTEM,
-      prompt: `다음은 1차 정리된 표준 양식 Markdown 보고서입니다. 위 가이드에 따라 slide outline JSON을 작성하세요.\n\n${markdown}`,
+      system: systemWithHint,
+      prompt: `다음은 1차 정리된 표준 양식 Markdown 보고서입니다(보고서 유형: ${reportType}). 위 가이드에 따라 slide outline JSON을 작성하세요.\n\n${markdown}`,
       temperature: 0.3,
       maxOutputTokens: 16000,
     });

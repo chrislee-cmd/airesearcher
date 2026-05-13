@@ -322,7 +322,27 @@
     "reports": {
       "title": "전체 리포트 생성기",
       "description": "모든 인터뷰를 종합한 마케팅·UX 리서치 리포트를 작성합니다.",
-      "cost": "50크레딧"
+      "cost": "50크레딧",
+      "typeChooserLabel": "보고서 방향성",
+      "typeChooserHelp": "분석 관점에 따라 챕터 구성과 시각화가 달라집니다.",
+      "types": {
+        "design": {
+          "label": "디자인 평가 보고서",
+          "description": "사용자 경험 마찰을 이슈 단위로 정리하고 심각도·우선순위를 제시합니다."
+        },
+        "marketing": {
+          "label": "마케팅 방향성 보고서",
+          "description": "타겟 세그먼트·JTBD·메시지 후크·채널 가설을 도출합니다."
+        },
+        "strategy": {
+          "label": "전략 방향성 보고서",
+          "description": "시장 시그널을 종합해 기회 매핑과 전략 옵션을 제시합니다."
+        },
+        "findings": {
+          "label": "Finding 충실 보고서",
+          "description": "해석을 최소화하고 발견과 발화를 풍부하게 드러냅니다."
+        }
+      }
     },
     "scheduler": {
       "title": "참석자 스케쥴러",

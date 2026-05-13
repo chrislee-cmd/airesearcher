@@ -12,6 +12,11 @@ import { DownloadMenu } from './ui/download-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { prefillKey } from '@/lib/workspace';
 import { FeaturePage } from './ui/feature-page';
+import {
+  REPORT_TYPES,
+  DEFAULT_REPORT_TYPE,
+  type ReportType,
+} from '@/lib/reports/types';
 
 const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
 const ACCEPT_RE = /\.(docx|md|markdown|txt|csv|xlsx|xls)$/i;
@@ -146,6 +151,7 @@ export function ReportGenerator() {
 
   const [files, setFiles] = useState<File[]>([]);
   const [rejected, setRejected] = useState<string[]>([]);
+  const [reportType, setReportType] = useState<ReportType>(DEFAULT_REPORT_TYPE);
   // Live-streaming buffers — cleared at the start of each run, fed
   // chunk-by-chunk during normalize / generate so the user sees both
   // stages build progressively.
@@ -207,7 +213,7 @@ export function ReportGenerator() {
       const r = await fetch('/api/reports/slides', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ markdown: result.markdown }),
+        body: JSON.stringify({ markdown: result.markdown, reportType }),
       });
       const json = await r.json();
       if (!r.ok || !json.outline) {
@@ -295,6 +301,7 @@ export function ReportGenerator() {
         // ─ Stage 1: normalize uploads → canonical markdown ─
         const fd = new FormData();
         for (const f of submitted) fd.append('files', f);
+        fd.append('reportType', reportType);
         const r1 = await fetch('/api/reports/normalize', {
           method: 'POST',
           body: fd,
@@ -316,7 +323,7 @@ export function ReportGenerator() {
         const r2 = await fetch('/api/reports/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ markdown, sources: sourceNames }),
+          body: JSON.stringify({ markdown, sources: sourceNames, reportType }),
         });
         if (!r2.ok) {
           const j = await r2.json().catch(() => ({}));
@@ -329,9 +336,9 @@ export function ReportGenerator() {
           html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>리포트</title></head><body>${html}</body></html>`;
         }
 
-        track('reports_generate_success', { feature: 'reports' });
+        track('reports_generate_success', { feature: 'reports', reportType });
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        const title = `report_${ts}.html`;
+        const title = `${reportType}_report_${ts}.html`;
         // Persist first so the workspace artifact can carry the DB id.
         // Without that link, picking a project from the workspace modal
         // updates only local state — the project page never sees it.
@@ -371,6 +378,12 @@ export function ReportGenerator() {
       title={t('reports.title')}
       headerRight={t('reports.cost')}
     >
+      <ReportTypeChooser
+        value={reportType}
+        onChange={setReportType}
+        disabled={running}
+      />
+
       <FileDropZone
         accept={ACCEPT}
         multiple
@@ -527,5 +540,73 @@ export function ReportGenerator() {
         </div>
       )}
     </FeaturePage>
+  );
+}
+
+// Editorial 4-card chooser: amore eyebrow + label + description.
+// Selected card flips to ink background (matches the primary button
+// style across the app) so the active choice reads at a glance without
+// breaking the single-accent rule.
+function ReportTypeChooser({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ReportType;
+  onChange: (next: ReportType) => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations('Features.reports');
+  return (
+    <section className="mt-8">
+      <div className="flex items-baseline justify-between gap-3 border-b border-line-soft pb-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-px w-5 bg-amore" />
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+            {t('typeChooserLabel')}
+          </span>
+        </div>
+        <span className="text-[11px] text-mute-soft">{t('typeChooserHelp')}</span>
+      </div>
+      <div
+        role="radiogroup"
+        aria-label={t('typeChooserLabel')}
+        className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        {REPORT_TYPES.map((key) => {
+          const selected = value === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={disabled}
+              onClick={() => onChange(key)}
+              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px] ${
+                selected
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line bg-paper text-ink-2 hover:border-amore'
+              }`}
+            >
+              <span
+                className={`text-[9.5px] font-semibold uppercase tracking-[0.22em] ${
+                  selected ? 'text-paper/70' : 'text-amore'
+                }`}
+              >
+                {t(`types.${key}.label`)}
+              </span>
+              <span
+                className={`text-[12px] leading-[1.5] ${
+                  selected ? 'text-paper/90' : 'text-mute'
+                }`}
+              >
+                {t(`types.${key}.description`)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }

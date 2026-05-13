@@ -322,7 +322,27 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
-      "cost": "50 credits"
+      "cost": "50 credits",
+      "typeChooserLabel": "Report direction",
+      "typeChooserHelp": "Chapter structure and signature visuals adjust to the analytical lens.",
+      "types": {
+        "design": {
+          "label": "Design Evaluation",
+          "description": "Catalog usability friction with severity and priority across issues."
+        },
+        "marketing": {
+          "label": "Marketing Direction",
+          "description": "Derive audience segments, JTBD, message hooks, and channel hypotheses."
+        },
+        "strategy": {
+          "label": "Strategy Direction",
+          "description": "Synthesize market signals into opportunity maps and strategic options."
+        },
+        "findings": {
+          "label": "Findings-Faithful",
+          "description": "Minimize interpretation; foreground observations and verbatim density."
+        }
+      }
     },
     "scheduler": {
       "title": "Participant Scheduler",
