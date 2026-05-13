@@ -1,7 +1,23 @@
 import type { NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
 
+// next-intl middleware: auto-detects locale from Accept-Language header
+// + NEXT_LOCALE cookie. If the URL has no locale prefix, it redirects to
+// `/{detectedLocale}/...`. If already prefixed, it passes through and we
+// continue to Supabase session refresh.
+const intl = createIntlMiddleware(routing);
+
 export async function proxy(request: NextRequest) {
+  const intlResponse = intl(request);
+
+  // intl returns a redirect when the URL is missing a locale prefix.
+  // Honor it immediately — Supabase will refresh on the next request.
+  if (intlResponse.status >= 300 && intlResponse.status < 400) {
+    return intlResponse;
+  }
+
   return updateSession(request);
 }
 
