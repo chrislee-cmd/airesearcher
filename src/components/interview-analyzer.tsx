@@ -8,6 +8,8 @@ import {
   type ConsolidatedInsight,
   type ConvItem,
   type ConvStatus,
+  type OutlierCase,
+  type RowSummary,
 } from './interview-job-provider';
 import { ThinkingPanel } from './thinking-panel';
 import { JobProgress } from './ui/job-progress';
@@ -336,6 +338,64 @@ function ConvRow({
   );
 }
 
+function hasSummaryContent(summary: RowSummary | undefined): boolean {
+  if (!summary) return false;
+  if (summary.mainstream && summary.mainstream.trim().length > 0) return true;
+  return summary.outliers.length > 0;
+}
+
+function OutlierItem({ outlier }: { outlier: OutlierCase }) {
+  return (
+    <li className="leading-[1.7]">
+      <span className="text-ink-2">{outlier.description}</span>
+      {outlier.filenames.length > 0 && (
+        <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
+          {outlier.filenames.map((fn) => (
+            <span
+              key={fn}
+              className="inline-block border border-line-soft px-1.5 py-[1px] text-[10px] tracking-[0.04em] text-mute [border-radius:4px]"
+            >
+              {fn}
+            </span>
+          ))}
+        </span>
+      )}
+    </li>
+  );
+}
+
+function RowSummaryCell({ summary }: { summary: RowSummary }) {
+  const hasMainstream =
+    !!summary.mainstream && summary.mainstream.trim().length > 0;
+  const hasOutliers = summary.outliers.length > 0;
+  return (
+    <div className="space-y-3">
+      {hasMainstream && (
+        <div>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+            대표 경향성
+          </div>
+          <div className="leading-[1.7] whitespace-pre-wrap text-ink-2">
+            {summary.mainstream}
+          </div>
+        </div>
+      )}
+      {hasOutliers && (
+        <div className={hasMainstream ? 'border-t border-line-soft pt-3' : ''}>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            소수 케이스
+          </div>
+          <ul className="space-y-1.5">
+            {summary.outliers.map((o, i) => (
+              <OutlierItem key={i} outlier={o} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultTable({
   filenames,
   rows,
@@ -377,10 +437,8 @@ function ResultTable({
                   {row.question}
                 </td>
                 <td className="border-l border-line px-4 py-3 align-top text-ink-2">
-                  {row.summary ? (
-                    <div className="leading-[1.7] whitespace-pre-wrap">
-                      {row.summary}
-                    </div>
+                  {hasSummaryContent(row.summary) ? (
+                    <RowSummaryCell summary={row.summary!} />
                   ) : summarizing ? (
                     <span className="text-[11px] uppercase tracking-[0.22em] text-mute-soft">
                       …
@@ -413,6 +471,28 @@ function ResultTable({
 // consolidated insights — multiple original questions may have been
 // fused into one row. Respondent columns are intentionally hidden;
 // they live on in the XLSX sheet 2 export.
+function VocList({
+  items,
+}: {
+  items: { filename: string; voc: string }[];
+}) {
+  return (
+    <ul className="space-y-1.5">
+      {items.map((v, i) => (
+        <li
+          key={i}
+          className="text-[12px] italic leading-[1.65] text-mute"
+        >
+          “{v.voc}”
+          <span className="ml-2 not-italic text-[10.5px] tracking-[0.05em] text-mute-soft">
+            — {v.filename}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function FinalSummaryTable({
   insights,
   t,
@@ -434,43 +514,71 @@ function FinalSummaryTable({
           </tr>
         </thead>
         <tbody>
-          {insights.map((insight, idx) => (
-            <tr key={idx} className="border-t border-line-soft align-top">
-              <td className="px-5 py-4 font-medium text-ink-2">
-                <div>{insight.topic}</div>
-                {insight.sourceIndices.length > 1 && (
-                  <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
-                    {insight.sourceIndices.length}개 문항 융합
-                  </div>
-                )}
-              </td>
-              <td className="border-l border-line px-5 py-4 align-top text-ink-2">
-                <div className="leading-[1.8] whitespace-pre-wrap">
-                  {insight.summary}
-                </div>
-                {insight.representativeVocs.length > 0 && (
-                  <div className="mt-4 border-t border-line-soft pt-3">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-                      대표 VOC
+          {insights.map((insight, idx) => {
+            const hasMainstream =
+              !!insight.mainstream && insight.mainstream.trim().length > 0;
+            const hasOutliers = insight.outliers.length > 0;
+            const hasMainstreamVocs = insight.mainstreamVocs.length > 0;
+            const hasOutlierVocs = insight.outlierVocs.length > 0;
+            return (
+              <tr key={idx} className="border-t border-line-soft align-top">
+                <td className="px-5 py-4 font-medium text-ink-2">
+                  <div>{insight.topic}</div>
+                  {insight.sourceIndices.length > 1 && (
+                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+                      {insight.sourceIndices.length}개 문항 융합
                     </div>
-                    <ul className="space-y-1.5">
-                      {insight.representativeVocs.map((v, i) => (
-                        <li
-                          key={i}
-                          className="text-[12px] italic leading-[1.65] text-mute"
-                        >
-                          “{v.voc}”
-                          <span className="ml-2 not-italic text-[10.5px] tracking-[0.05em] text-mute-soft">
-                            — {v.filename}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
+                  )}
+                </td>
+                <td className="border-l border-line px-5 py-4 align-top text-ink-2">
+                  {hasMainstream && (
+                    <div>
+                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+                        대표 경향성
+                      </div>
+                      <div className="leading-[1.8] whitespace-pre-wrap">
+                        {insight.mainstream}
+                      </div>
+                      {hasMainstreamVocs && (
+                        <div className="mt-3">
+                          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                            대표 VOC
+                          </div>
+                          <VocList items={insight.mainstreamVocs} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {hasOutliers && (
+                    <div
+                      className={
+                        hasMainstream
+                          ? 'mt-4 border-t border-line-soft pt-4'
+                          : ''
+                      }
+                    >
+                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                        소수 케이스
+                      </div>
+                      <ul className="space-y-1.5">
+                        {insight.outliers.map((o, i) => (
+                          <OutlierItem key={i} outlier={o} />
+                        ))}
+                      </ul>
+                      {hasOutlierVocs && (
+                        <div className="mt-3">
+                          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                            소수 케이스 VOC
+                          </div>
+                          <VocList items={insight.outlierVocs} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

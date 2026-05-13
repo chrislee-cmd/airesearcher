@@ -23,8 +23,24 @@ const Body = z.object({
     .max(800),
 });
 
+// Each per-row summary is now split into a mainstream tendency and any
+// minority/outlier cases. The split is required so the result page can
+// surface 대표 경향성 / 소수 케이스 distinctly — never collapsed back
+// into one blob.
 const responseSchema = z.object({
-  summaries: z.array(z.string()),
+  summaries: z.array(
+    z.object({
+      mainstream: z.string(),
+      outliers: z
+        .array(
+          z.object({
+            description: z.string(),
+            filenames: z.array(z.string()),
+          }),
+        )
+        .default([]),
+    }),
+  ),
 });
 
 export async function POST(request: Request) {
@@ -65,14 +81,28 @@ export async function POST(request: Request) {
 
   const SYSTEM = `당신은 인터뷰 응답 요약 도우미입니다.
 
-각 문항(row)에 대해, 모든 응답자들의 발화를 종합해서 MECE(Mutually Exclusive, Collectively Exhaustive)하게 요약합니다.
+각 문항(row)에 대해, 모든 응답자들의 발화를 종합해서 MECE(Mutually Exclusive, Collectively Exhaustive)하게 요약합니다. 단, **다수가 공유하는 대표 경향성**과 **소수만 가지는 소수 케이스**를 명확히 분리해서 정리합니다.
+
+# 출력 구조
+각 문항의 summary는 두 부분으로 구성됩니다.
+
+## mainstream (대표 경향성)
+- 다수 응답자가 공통적으로 보여주는 패턴·태도·니즈를 종합한 2~5문장 단락.
+- 응답자 절반 이상이 공유하거나, 응답자 수와 무관하게 인터뷰의 중심 신호라고 판단되는 흐름을 담습니다.
+- 누구의 발화를 그대로 인용하지 말고, 종합·재구성해서 서술합니다.
+
+## outliers (소수 케이스 배열)
+- 대표 경향성에서 벗어나는 모순·예외·극단·갈등 응답을 **별도 항목**으로 분리합니다.
+- 각 항목은:
+  - description: 어떤 결로 다른지 한두 문장으로 서술 (예: "타사 이탈 경험을 근거로 등급제 자체에 회의적인 의견")
+  - filenames: 그 결을 보인 응답자의 파일명 배열 (없으면 빈 배열, 가능한 한 채워주세요)
+- 모두가 거의 비슷하게 답한 문항이면 outliers는 빈 배열로 둡니다 — 억지로 만들지 마세요.
+- 소수 케이스가 여러 결로 나뉘면(예: 두 명은 A 방향, 한 명은 B 방향) 항목을 나눠서 적습니다.
 
 # 규칙
-- 각 문항당 한 단락(2~5문장 권장)으로, 응답자 전체에 걸친 핵심 패턴/공통점/차이점을 정리합니다.
-- 중복되는 의견은 묶고, 상충되는 의견은 명시적으로 구분합니다 (예: "...라고 한 응답자도 있고, 반대로 ...라고 한 응답자도 있다").
-- 특정 응답자의 발화를 그대로 인용하지 말고, 종합·재구성해서 서술합니다.
-- 응답이 없거나 불충분한 경우 "충분한 응답이 수집되지 않음" 등으로 간결히 표시합니다.
-- 출력 순서는 입력 순서와 정확히 일치해야 하며, 입력 row 개수와 정확히 같은 개수의 summary 문자열을 반환합니다.
+- 출력 순서는 입력 순서와 정확히 일치해야 하며, 입력 row 개수와 정확히 같은 개수의 summary 객체를 반환합니다.
+- filenames에 적는 이름은 반드시 입력에 등장한 (filename) 그대로 사용 — 변형 금지.
+- 응답이 없거나 불충분한 경우 mainstream에 "충분한 응답이 수집되지 않음" 등으로 간결히 표시하고 outliers는 빈 배열.
 - 출력은 정의된 JSON 스키마(summaries 배열)만, 그 외 텍스트 금지.`;
 
   try {
@@ -81,7 +111,7 @@ export async function POST(request: Request) {
       model: anthropic('claude-sonnet-4-6'),
       schema: responseSchema,
       system: SYSTEM,
-      prompt: `총 ${rows.length}개 문항입니다. 각각에 대해 모든 응답자 발화를 종합 요약해주세요.\n\n${blocks.join('\n\n')}`,
+      prompt: `총 ${rows.length}개 문항입니다. 각각에 대해 모든 응답자 발화를 종합해서, mainstream(대표 경향성)과 outliers(소수 케이스)로 분리해 요약해주세요.\n\n${blocks.join('\n\n')}`,
       temperature: 0.2,
     });
     let summaries = result.object.summaries;
@@ -90,7 +120,10 @@ export async function POST(request: Request) {
     if (summaries.length < rows.length) {
       summaries = [
         ...summaries,
-        ...Array(rows.length - summaries.length).fill(''),
+        ...Array(rows.length - summaries.length).fill({
+          mainstream: '',
+          outliers: [],
+        }),
       ];
     } else if (summaries.length > rows.length) {
       summaries = summaries.slice(0, rows.length);

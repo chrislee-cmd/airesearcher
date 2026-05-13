@@ -116,19 +116,40 @@ export function WorkspaceBridge() {
     const md = [
       `# 인터뷰 분석 — 핵심 인사이트`,
       '',
-      ...a.consolidated.flatMap((c) => [
-        `## ${c.topic}`,
-        '',
-        c.summary,
-        '',
-        ...(c.representativeVocs && c.representativeVocs.length > 0
-          ? [
-              '**대표 VOC**',
-              ...c.representativeVocs.map((v) => `- "${v.voc}" — ${v.filename}`),
-              '',
-            ]
-          : []),
-      ]),
+      ...a.consolidated.flatMap((c) => {
+        const lines: string[] = [`## ${c.topic}`, ''];
+        if (c.mainstream && c.mainstream.trim()) {
+          lines.push('**대표 경향성**', '', c.mainstream, '');
+        }
+        if (c.mainstreamVocs.length > 0) {
+          lines.push(
+            '**대표 VOC**',
+            ...c.mainstreamVocs.map((v) => `- "${v.voc}" — ${v.filename}`),
+            '',
+          );
+        }
+        if (c.outliers.length > 0) {
+          lines.push(
+            '**소수 케이스**',
+            ...c.outliers.map((o) => {
+              const tag =
+                o.filenames.length > 0
+                  ? ` (${o.filenames.join(', ')})`
+                  : '';
+              return `- ${o.description}${tag}`;
+            }),
+            '',
+          );
+        }
+        if (c.outlierVocs.length > 0) {
+          lines.push(
+            '**소수 케이스 VOC**',
+            ...c.outlierVocs.map((v) => `- "${v.voc}" — ${v.filename}`),
+            '',
+          );
+        }
+        return lines;
+      }),
     ].join('\n');
     return { id: `iv_${hash}`, md };
   }, [interview.verticalDone, interview.analysis, interview.filenameOrder]);

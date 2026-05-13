@@ -42,24 +42,46 @@ export type ConvItem = {
   extractError?: string;
 };
 
+// One minority/outlier case: the dissenting/atypical pattern itself plus
+// the filenames of respondents who exhibited it. Filenames let the UI
+// chip the source(s) next to each case so users can trace it back.
+export type OutlierCase = {
+  description: string;
+  filenames: string[];
+};
+
+// Horizontal (per-row) summary. Splits the synthesis into the majority
+// pattern (`mainstream`) and any minority/outlier cases that diverge
+// from it. The split is preserved end-to-end so the final consolidated
+// view can keep the two apart.
+export type RowSummary = {
+  mainstream: string;
+  outliers: OutlierCase[];
+};
+
 export type AnalysisRow = {
   question: string;
   // Horizontal (per-row) summary — synthesizes responses across all
   // respondents for one question. Kept on the row for sheet 2 of the
   // XLSX export.
-  summary?: string;
+  summary?: RowSummary;
   cells: { filename: string; voc: string }[];
 };
 
 // Consolidated insight produced by the vertical synthesis pass. One
 // insight may fuse multiple AnalysisRows together (sourceIndices points
 // back into AnalysisResult.rows). When present, the final view shows
-// these instead of the original per-question matrix.
+// these instead of the original per-question matrix. mainstream/outliers
+// mirror RowSummary so the 대표 경향성 / 소수 케이스 split survives the
+// vertical pass; mainstreamVocs/outlierVocs each pick quotes that
+// illustrate the corresponding side.
 export type ConsolidatedInsight = {
   topic: string;
-  summary: string;
+  mainstream: string;
+  outliers: OutlierCase[];
   sourceIndices: number[];
-  representativeVocs: { filename: string; voc: string }[];
+  mainstreamVocs: { filename: string; voc: string }[];
+  outlierVocs: { filename: string; voc: string }[];
 };
 
 export type AnalysisResult = {
@@ -148,30 +170,83 @@ type Ctx = {
   exportDocx: () => Promise<void>;
 };
 
+// Render a RowSummary (mainstream + outliers) into a single text block
+// suitable for a spreadsheet cell. Used by both CSV and XLSX builders so
+// the on-screen 대표 경향성 / 소수 케이스 split is preserved verbatim in
+// the exported file.
+function renderRowSummaryText(summary: RowSummary | undefined): string {
+  if (!summary) return '';
+  const parts: string[] = [];
+  if (summary.mainstream.trim()) {
+    parts.push(`[대표 경향성]\n${summary.mainstream.trim()}`);
+  }
+  if (summary.outliers.length > 0) {
+    const lines = summary.outliers
+      .map((o) => {
+        const tag =
+          o.filenames.length > 0 ? ` (${o.filenames.join(', ')})` : '';
+        return `• ${o.description}${tag}`;
+      })
+      .join('\n');
+    parts.push(`[소수 케이스]\n${lines}`);
+  }
+  return parts.join('\n\n');
+}
+
+function renderInsightText(insight: ConsolidatedInsight): string {
+  const parts: string[] = [];
+  if (insight.mainstream.trim()) {
+    parts.push(`[대표 경향성]\n${insight.mainstream.trim()}`);
+  }
+  if (insight.mainstreamVocs.length > 0) {
+    parts.push(
+      '[대표 VOC]\n' +
+        insight.mainstreamVocs
+          .map((v) => `• "${v.voc}" — ${v.filename}`)
+          .join('\n'),
+    );
+  }
+  if (insight.outliers.length > 0) {
+    parts.push(
+      '[소수 케이스]\n' +
+        insight.outliers
+          .map((o) => {
+            const tag =
+              o.filenames.length > 0 ? ` (${o.filenames.join(', ')})` : '';
+            return `• ${o.description}${tag}`;
+          })
+          .join('\n'),
+    );
+  }
+  if (insight.outlierVocs.length > 0) {
+    parts.push(
+      '[소수 케이스 VOC]\n' +
+        insight.outlierVocs
+          .map((v) => `• "${v.voc}" — ${v.filename}`)
+          .join('\n'),
+    );
+  }
+  return parts.join('\n\n');
+}
+
 // Sheet 1: consolidated insights (주제, 요약). 요약 cell carries the
-// summary plus a "대표 VOC" block underneath, so the spreadsheet view
-// matches what the user sees in the app. Falls back to per-question
-// rows if the vertical pass hasn't run yet.
+// 대표 경향성 + 대표 VOC + 소수 케이스 + 소수 케이스 VOC stack, so the
+// spreadsheet view matches what the user sees in the app. Falls back to
+// per-question rows if the vertical pass hasn't run yet.
 function buildFinalMatrix(result: AnalysisResult): string[][] {
   const header = ['주제', '요약'];
   if (result.consolidated && result.consolidated.length > 0) {
     return [
       header,
-      ...result.consolidated.map((c) => {
-        const vocBlock =
-          c.representativeVocs.length > 0
-            ? '\n\n[대표 VOC]\n' +
-              c.representativeVocs
-                .map((v) => `• "${v.voc}" — ${v.filename}`)
-                .join('\n')
-            : '';
-        return [c.topic, c.summary + vocBlock];
-      }),
+      ...result.consolidated.map((c) => [c.topic, renderInsightText(c)]),
     ];
   }
   return [
     header,
-    ...result.rows.map((row) => [row.question, row.summary ?? '']),
+    ...result.rows.map((row) => [
+      row.question,
+      renderRowSummaryText(row.summary),
+    ]),
   ];
 }
 
@@ -187,7 +262,7 @@ function buildRespondentMatrix(
     const cellsByFile = new Map(row.cells.map((c) => [c.filename, c]));
     return [
       row.question,
-      row.summary ?? '',
+      renderRowSummaryText(row.summary),
       ...filenameOrder.map((f) => cellsByFile.get(f)?.voc ?? ''),
     ];
   });
@@ -336,7 +411,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     const payload = rowsForSynth
       .map((r) => ({
         question: r.question,
-        summary: r.summary ?? '',
+        mainstream: r.summary?.mainstream ?? '',
+        outliers: r.summary?.outliers ?? [],
         vocs: r.cells
           .filter((c) => c.voc && c.voc.trim().length > 0)
           .map((c) => ({ filename: c.filename, voc: c.voc })),
@@ -404,10 +480,27 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           if (!entry || typeof entry !== 'object') continue;
           const e = entry as Record<string, unknown>;
           const topic = typeof e.topic === 'string' ? e.topic : '';
-          const summary = typeof e.summary === 'string' ? e.summary : '';
-          // Skip half-streamed entries with neither field yet — would
-          // flash empty rows during the partial-JSON parse window.
-          if (!topic && !summary) continue;
+          const mainstream =
+            typeof e.mainstream === 'string' ? e.mainstream : '';
+          const rawOutliers = Array.isArray(e.outliers) ? e.outliers : [];
+          const outliers: OutlierCase[] = [];
+          for (const o of rawOutliers) {
+            if (!o || typeof o !== 'object') continue;
+            const oo = o as Record<string, unknown>;
+            const description =
+              typeof oo.description === 'string' ? oo.description : '';
+            if (!description) continue;
+            const fnRaw = Array.isArray(oo.filenames) ? oo.filenames : [];
+            const filenames: string[] = [];
+            for (const fn of fnRaw) {
+              if (typeof fn === 'string' && fn) filenames.push(fn);
+            }
+            outliers.push({ description, filenames });
+          }
+          // Skip half-streamed entries that have no usable content yet —
+          // would otherwise flash empty cards during the partial-JSON
+          // parse window.
+          if (!topic && !mainstream && outliers.length === 0) continue;
           const rawIdx = Array.isArray(e.sourceIndices) ? e.sourceIndices : [];
           const sourceIndices: number[] = [];
           for (const v of rawIdx) {
@@ -429,34 +522,44 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
               if (!allowedByKey.has(k)) allowedByKey.set(k, v);
             }
           }
-          const rawVocs = Array.isArray(e.representativeVocs)
-            ? e.representativeVocs
-            : [];
-          const representativeVocs: { filename: string; voc: string }[] = [];
-          const seenKeys = new Set<string>();
-          for (const rv of rawVocs) {
-            if (!rv || typeof rv !== 'object') continue;
-            const r = rv as Record<string, unknown>;
-            const v = typeof r.voc === 'string' ? r.voc : '';
-            if (!v) continue;
-            const key = v.replace(/\s+/g, ' ').trim();
-            if (!key || seenKeys.has(key)) continue;
-            // Accept only if the normalised quote matches an allowed
-            // entry (exact key) or is a substring of one.
-            let matched = allowedByKey.get(key);
-            if (!matched) {
-              for (const ak of allowedKeys) {
-                if (ak.includes(key) || key.includes(ak)) {
-                  matched = allowedByKey.get(ak);
-                  break;
+          const validateVocList = (
+            raw: unknown,
+          ): { filename: string; voc: string }[] => {
+            const result: { filename: string; voc: string }[] = [];
+            const seen = new Set<string>();
+            const arr = Array.isArray(raw) ? raw : [];
+            for (const rv of arr) {
+              if (!rv || typeof rv !== 'object') continue;
+              const r = rv as Record<string, unknown>;
+              const v = typeof r.voc === 'string' ? r.voc : '';
+              if (!v) continue;
+              const key = v.replace(/\s+/g, ' ').trim();
+              if (!key || seen.has(key)) continue;
+              let matched = allowedByKey.get(key);
+              if (!matched) {
+                for (const ak of allowedKeys) {
+                  if (ak.includes(key) || key.includes(ak)) {
+                    matched = allowedByKey.get(ak);
+                    break;
+                  }
                 }
               }
+              if (!matched) continue;
+              seen.add(key);
+              result.push(matched);
             }
-            if (!matched) continue;
-            seenKeys.add(key);
-            representativeVocs.push(matched);
-          }
-          next.push({ topic, summary, sourceIndices, representativeVocs });
+            return result;
+          };
+          const mainstreamVocs = validateVocList(e.mainstreamVocs);
+          const outlierVocs = validateVocList(e.outlierVocs);
+          next.push({
+            topic,
+            mainstream,
+            outliers,
+            sourceIndices,
+            mainstreamVocs,
+            outlierVocs,
+          });
         }
         insights = next;
         setAnalysis((prev) => {
@@ -507,11 +610,34 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         setSummarizeError('invalid_response');
         return;
       }
-      const rowsWithSummary: AnalysisRow[] = result.rows.map((row, idx) => ({
-        ...row,
-        summary:
-          typeof summaries[idx] === 'string' ? (summaries[idx] as string) : '',
-      }));
+      // Coerce each entry into the structured {mainstream, outliers} shape.
+      // The API now returns structured summaries, but we still defensively
+      // accept missing fields so a single bad row can't blank the column.
+      const rowsWithSummary: AnalysisRow[] = result.rows.map((row, idx) => {
+        const raw = summaries[idx];
+        if (!raw || typeof raw !== 'object') {
+          return { ...row, summary: { mainstream: '', outliers: [] } };
+        }
+        const r = raw as Record<string, unknown>;
+        const mainstream =
+          typeof r.mainstream === 'string' ? r.mainstream : '';
+        const rawOutliers = Array.isArray(r.outliers) ? r.outliers : [];
+        const outliers: OutlierCase[] = [];
+        for (const o of rawOutliers) {
+          if (!o || typeof o !== 'object') continue;
+          const oo = o as Record<string, unknown>;
+          const description =
+            typeof oo.description === 'string' ? oo.description : '';
+          if (!description) continue;
+          const fnRaw = Array.isArray(oo.filenames) ? oo.filenames : [];
+          const filenames: string[] = [];
+          for (const fn of fnRaw) {
+            if (typeof fn === 'string' && fn) filenames.push(fn);
+          }
+          outliers.push({ description, filenames });
+        }
+        return { ...row, summary: { mainstream, outliers } };
+      });
       setAnalysis((prev) => {
         if (!prev) return prev;
         return { ...prev, rows: rowsWithSummary };
