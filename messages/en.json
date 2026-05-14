@@ -1,9 +1,9 @@
 {
-  "Brand": { "name": "Intellicenter" },
+  "Brand": { "name": "Research-mochi" },
   "Auth": {
-    "signInTitle": "Sign in to Intellicenter",
+    "signInTitle": "Sign in to Research-mochi",
     "signInSubtitle": "AI tools for marketing & UX research",
-    "signUpTitle": "Create your Intellicenter account",
+    "signUpTitle": "Create your Research-mochi account",
     "signUpSubtitle": "Try every tool free for 24 hours.",
     "google": "Continue with Google",
     "signOut": "Sign out",
@@ -120,7 +120,7 @@
     "firstProjectTitle": "Create your first project",
     "firstProjectBody": "Group research artifacts under projects to keep progress and next steps in one place.",
     "firstProjectCta": "Create project",
-    "signedOutTitle": "Welcome to Intellicenter",
+    "signedOutTitle": "Welcome to Research-mochi",
     "signedOutBody": "An editorial-toned research console that turns qualitative and quantitative interview data into quotes, scripts, interview results, and full reports.",
     "signIn": "Sign in"
   },
