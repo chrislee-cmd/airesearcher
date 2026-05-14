@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, '') },
   });
 
-  const subject = `[AI Researcher] ${service} 도입 문의 — ${user.email}`;
+  const subject = `[Intellicenter] ${service} 도입 문의 — ${user.email}`;
   const text = [
     'AI 모더레이터 페이지에서 도입 문의가 접수되었습니다.',
     '',
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   try {
     await transporter.sendMail({
-      from: `AI Researcher <${gmailUser}>`,
+      from: `Intellicenter <${gmailUser}>`,
       to: TO_EMAIL,
       replyTo: user.email,
       subject,

@@ -65,7 +65,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
     const supabase = createClient();
     await supabase.auth.signOut();
     setOpen(false);
-    router.replace('/dashboard');
+    router.replace('/');
     router.refresh();
   }
 

@@ -358,7 +358,7 @@ export async function buildInterviewDocxBlob(
   children.push(
     new Paragraph({
       spacing: { after: 80 },
-      children: [eyebrow('AI Researcher', AP.muteSoft)],
+      children: [eyebrow('Intellicenter', AP.muteSoft)],
     }),
   );
   children.push(thinRule(AP.amore, 140));

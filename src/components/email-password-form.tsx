@@ -2,10 +2,18 @@
 
 import { useState, useTransition } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
+
+// Only allow same-origin app paths to prevent open-redirect via ?next=.
+function safeNext(raw: string | null): string {
+  if (!raw) return '/dashboard';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+  return raw;
+}
 
 const inputCls =
   'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
@@ -17,6 +25,8 @@ const linkCls =
 export function EmailPasswordForm() {
   const t = useTranslations('Auth');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -54,7 +64,7 @@ export function EmailPasswordForm() {
           return;
         }
         track('auth_signin_success');
-        router.replace('/dashboard');
+        router.replace(next);
         router.refresh();
       } else {
         const trimmedName = fullName.trim();
@@ -75,7 +85,7 @@ export function EmailPasswordForm() {
         }
         if (data.session) {
           track('auth_signup_success');
-          router.replace('/dashboard');
+          router.replace(next);
           router.refresh();
         } else {
           track('auth_signup_email_pending');

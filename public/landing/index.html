@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Intellicenter — 리서처를 위한 단 하나의 리서치 콘솔</title>
+<meta name="description" content="인용문·전사록·인터뷰·데스크리서치·리포트까지. 마케팅과 UX 리서치의 모든 산출물을 한 곳에서, 한 흐름으로." />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root{
+    --amore:#1F5795;
+    --amore-soft:#3d72ad;
+    --amore-bg:#eaf0f8;
+    --pacific:#001C58;
+    --ink:#000;
+    --ink2:#1a1a1a;
+    --mute:#5a5a5a;
+    --mute-soft:#9b9b9b;
+    --line:#e1e3e8;
+    --line-soft:#f1f3f6;
+    --paper:#fff;
+    --paper-soft:#fafafb;
+    --warning:#fb923c;
+    --font:'Pretendard Variable',Pretendard,'Inter','Apple SD Gothic Neo',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink2);font-family:var(--font);font-feature-settings:'ss01','ss02','tnum';-webkit-font-smoothing:antialiased}
+  body{font-size:13px;line-height:1.65;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--amore);color:#fff}
+
+  /* meta caption */
+  .meta{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);font-weight:500}
+  .meta.amore{color:var(--amore)}
+
+  /* Layout */
+  .container{max-width:1120px;margin:0 auto;padding:0 32px}
+  section{border-top:1px solid var(--line);padding:96px 0;position:relative}
+  section:first-of-type{border-top:0}
+
+  /* NAV */
+  nav.top{
+    position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);
+    backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  nav.top .row{display:flex;align-items:center;justify-content:space-between;height:56px}
+  nav.top .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;font-size:14px}
+  nav.top .brand .dot{width:10px;height:10px;border-radius:2px;background:var(--amore)}
+  nav.top .links{display:flex;gap:28px;font-size:12.5px;color:var(--mute)}
+  nav.top .links a:hover{color:var(--ink)}
+  nav.top .cta{display:flex;gap:8px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:4px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .15s}
+  .btn:hover{border-color:var(--ink2)}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.primary:hover{background:var(--amore);border-color:var(--amore)}
+  .btn .arrow{transition:transform .2s}
+  .btn:hover .arrow{transform:translateX(2px)}
+
+  /* HERO */
+  .hero{padding:88px 0 72px;position:relative;overflow:hidden}
+  .hero .grid{display:grid;grid-template-columns:1fr;gap:32px}
+  .hero h1{
+    font-size:clamp(40px,7vw,84px);line-height:.98;letter-spacing:-.035em;font-weight:700;color:var(--ink);
+    max-width:1000px;
+  }
+  .hero h1 .accent{color:var(--amore);font-style:italic;font-weight:600}
+  .hero h1 .strike{position:relative;color:var(--mute);}
+  .hero h1 .strike::after{content:"";position:absolute;left:-2%;right:-2%;top:55%;height:3px;background:var(--ink);transform:rotate(-2deg)}
+  .hero .lede{margin-top:36px;max-width:640px;color:var(--mute);font-size:16px;line-height:1.7}
+  .hero .lede strong{color:var(--ink);font-weight:600}
+  .hero .cta-row{margin-top:36px;display:flex;gap:10px;flex-wrap:wrap}
+  .hero .btn-lg{height:46px;padding:0 22px;font-size:14px}
+  .hero .meta-row{margin-top:56px;display:flex;align-items:center;gap:16px;color:var(--mute);font-size:12px;flex-wrap:wrap}
+  .hero .meta-row .dot{width:4px;height:4px;border-radius:50%;background:var(--mute-soft)}
+  .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+  /* Hero ticker */
+  .ticker{margin-top:72px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;overflow:hidden;position:relative}
+  .ticker .track{display:flex;gap:48px;white-space:nowrap;animation:scroll 40s linear infinite}
+  .ticker span{font-size:13px;color:var(--mute);letter-spacing:.02em}
+  .ticker em{color:var(--amore);font-style:normal;font-weight:600;margin-right:6px}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* Section header */
+  .sec-head{margin-bottom:56px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  .sec-head h2{font-size:clamp(32px,4vw,48px);letter-spacing:-.025em;line-height:1.05;font-weight:700;color:var(--ink);max-width:780px}
+  .sec-head h2 em{font-style:italic;font-weight:600;color:var(--amore)}
+  .sec-head p{color:var(--mute);max-width:380px;font-size:13.5px}
+  .sec-head .meta{margin-bottom:14px;display:block}
+
+  /* Problem strip — large blockquote */
+  .quote{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:64px 0;
+  }
+  .quote .big{
+    font-size:clamp(28px,3.6vw,44px);letter-spacing:-.022em;line-height:1.25;font-weight:600;color:var(--ink);
+    max-width:980px;
+  }
+  .quote .big .crossed{text-decoration:line-through;text-decoration-thickness:2px;color:var(--mute)}
+  .quote .by{margin-top:24px;color:var(--mute);font-size:12.5px}
+
+  /* Workbench: 8 features grid */
+  .feat-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .feat{background:#fff;padding:28px 24px;display:flex;flex-direction:column;gap:14px;min-height:200px;position:relative;transition:background .2s}
+  .feat:hover{background:var(--paper-soft)}
+  .feat .num{font-size:11px;color:var(--mute-soft);letter-spacing:.18em}
+  .feat h3{font-size:18px;font-weight:700;letter-spacing:-.018em;color:var(--ink)}
+  .feat p{font-size:12.5px;color:var(--mute);line-height:1.6}
+  .feat .cost{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--amore);font-weight:600;letter-spacing:.04em}
+  .feat .cost .bar{display:inline-block;height:2px;background:var(--amore);width:24px}
+  .feat .icon{width:36px;height:36px;border:1px solid var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--amore);font-weight:700;font-size:13px}
+
+  .span-6{grid-column:span 6}
+  .span-4{grid-column:span 4}
+  .span-3{grid-column:span 3}
+  .span-12{grid-column:span 12}
+  @media (max-width:900px){
+    .span-6,.span-4,.span-3{grid-column:span 12}
+  }
+
+  /* Flow */
+  .flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .flow .step{padding:32px 28px;border-right:1px solid var(--line);position:relative;background:#fff}
+  .flow .step:last-child{border-right:0}
+  .flow .step .step-num{font-size:11px;letter-spacing:.22em;color:var(--amore);font-weight:600}
+  .flow .step h4{margin-top:18px;font-size:20px;letter-spacing:-.018em;font-weight:700;color:var(--ink)}
+  .flow .step p{margin-top:10px;color:var(--mute);font-size:12.5px;line-height:1.65}
+  .flow .step .arr{position:absolute;right:-9px;top:50%;width:18px;height:18px;background:#fff;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink);transform:translateY(-50%);z-index:2}
+  @media (max-width:900px){
+    .flow{grid-template-columns:1fr}
+    .flow .step{border-right:0;border-bottom:1px solid var(--line)}
+    .flow .step:last-child{border-bottom:0}
+    .flow .step .arr{right:50%;top:auto;bottom:-9px;transform:translateX(50%) rotate(90deg)}
+  }
+
+  /* Numbers */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .stats .stat{padding:40px 24px;border-right:1px solid var(--line)}
+  .stats .stat:last-child{border-right:0}
+  .stats .num{font-size:clamp(40px,5vw,64px);letter-spacing:-.03em;font-weight:700;color:var(--ink);line-height:1}
+  .stats .num em{color:var(--amore);font-style:normal}
+  .stats .lbl{margin-top:14px;color:var(--mute);font-size:12.5px;line-height:1.55}
+  @media (max-width:900px){.stats{grid-template-columns:repeat(2,1fr)} .stats .stat:nth-child(2){border-right:0}}
+
+  /* === Workbench v2 (3-column extensive) === */
+  .wb3{
+    display:grid;
+    grid-template-columns:260px 1fr 280px;
+    grid-template-rows:48px 1fr 56px;
+    grid-template-areas:
+      "top top top"
+      "side stage ws"
+      "side foot foot";
+    border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff;
+    min-height:640px;
+  }
+  .wb-top{
+    grid-area:top;border-bottom:1px solid var(--line);background:var(--paper-soft);
+    display:grid;grid-template-columns:260px 1fr auto;align-items:center;
+    font-size:11.5px;color:var(--mute);letter-spacing:.04em;
+  }
+  .wb-brand{display:flex;align-items:center;gap:8px;padding:0 16px;border-right:1px solid var(--line);height:100%;align-self:stretch;display:flex;align-items:center;font-weight:700;color:var(--ink);font-size:12px;letter-spacing:-.01em}
+  .wb-brand .dot{width:8px;height:8px;border-radius:2px;background:var(--amore)}
+  .wb-bread{padding:0 16px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:11px;color:var(--mute)}
+  .wb-credits{padding:0 16px;display:flex;align-items:center;gap:8px}
+  .wb-credits strong{color:var(--ink);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  .wb-side{
+    grid-area:side;border-right:1px solid var(--line);background:var(--paper-soft);
+    padding:18px 14px;display:flex;flex-direction:column;gap:2px;overflow:auto;
+  }
+  .wb-side .group{font-size:10px;letter-spacing:.22em;color:var(--mute);margin:14px 8px 6px;text-transform:uppercase}
+  .wb-side .group:first-child{margin-top:0}
+  .wb-side .item{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:4px;
+    font-size:12.5px;color:var(--ink2);background:transparent;border:0;text-align:left;font-family:inherit;cursor:pointer;transition:all .15s
+  }
+  .wb-side .item .pip{width:6px;height:6px;border-radius:50%;background:var(--mute-soft);transition:background .15s}
+  .wb-side .item .cr{margin-left:auto;font-size:10px;color:var(--mute-soft);font-variant-numeric:tabular-nums}
+  .wb-side .item:hover{background:#fff;color:var(--ink)}
+  .wb-side .item:hover .pip{background:var(--ink)}
+  .wb-side .item.active{background:var(--amore-bg);color:var(--amore);font-weight:600}
+  .wb-side .item.active .pip{background:var(--amore)}
+  .wb-side .item.active .cr{color:var(--amore)}
+  .wb-side .item.visited .pip{background:var(--amore);box-shadow:0 0 0 3px var(--amore-bg)}
+  .wb-side-foot{margin-top:auto;padding:12px 10px;font-size:11px;color:var(--mute);display:flex;align-items:center;gap:8px;border-top:1px solid var(--line-soft)}
+
+  .wb-stage{grid-area:stage;padding:24px 28px;overflow:auto;background:#fff;position:relative}
+
+  /* Workspace right rail */
+  .wb-ws{grid-area:ws;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column;padding:18px 16px;overflow:auto}
+  .ws-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .ws-count{font-size:11px;color:var(--mute);background:var(--line-soft);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums}
+  .ws-empty{font-size:11.5px;color:var(--mute);line-height:1.6;padding:12px;border:1px dashed var(--line);border-radius:4px;background:var(--paper-soft)}
+  .ws-list{list-style:none;display:flex;flex-direction:column;gap:6px;margin:0;padding:0}
+  .ws-list li{
+    border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-size:12px;background:#fff;
+    display:flex;flex-direction:column;gap:4px;animation:wsIn .35s ease;
+  }
+  .ws-list li .who{font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;text-transform:uppercase}
+  .ws-list li .ttl{color:var(--ink);font-weight:600;font-size:12.5px;letter-spacing:-.005em}
+  .ws-list li .sub{color:var(--mute);font-size:11px}
+  @keyframes wsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .ws-foot{margin-top:14px;display:flex;gap:6px}
+  .btn-ws{height:30px;padding:0 10px;font-size:11.5px;flex:1;justify-content:center}
+  .btn-ws.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn-ws.primary:hover{background:var(--amore);border-color:var(--amore)}
+
+  /* Footer */
+  .wb-foot{grid-area:foot;border-top:1px solid var(--line);background:var(--paper-soft);display:flex;justify-content:space-between;align-items:center;padding:0 20px}
+  .wb-prog{display:flex;align-items:center;gap:8px}
+  .wb-prog .dot{width:8px;height:8px;border-radius:50%;background:var(--line);transition:all .25s}
+  .wb-prog .dot.done{background:var(--amore)}
+  .wb-prog .dot.now{background:#fff;border:2px solid var(--amore);box-shadow:0 0 0 4px var(--amore-bg)}
+  .wb-prog .line{width:36px;height:1px;background:var(--line)}
+  .wb-prog .line.done{background:var(--amore)}
+  .wb-next{font-size:12px;color:var(--ink2)}
+  .wb-next .meta{margin-right:8px;color:var(--amore)}
+
+  /* Stage panel */
+  .stage-panel{display:none;animation:fadeUp .35s ease}
+  .stage-panel.show{display:block}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .panel-head h3{font-size:24px;letter-spacing:-.022em;color:var(--ink);font-weight:700}
+  .panel-head .crumb{font-size:10.5px;letter-spacing:.22em;color:var(--mute);margin-bottom:4px;text-transform:uppercase}
+  .panel-head .cost-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--amore-bg);color:var(--amore);font-size:11px;font-weight:600;letter-spacing:.04em}
+
+  /* Tabs */
+  .tabs{margin-top:16px;display:flex;gap:2px;border-bottom:1px solid var(--line)}
+  .tab{
+    padding:9px 14px;font-size:12px;color:var(--mute);background:transparent;border:0;cursor:pointer;
+    border-bottom:2px solid transparent;font-family:inherit;letter-spacing:-.005em;transition:all .15s;
+    display:flex;align-items:center;gap:6px;
+  }
+  .tab .num{font-size:10px;color:var(--mute-soft);letter-spacing:.18em}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--amore);border-bottom-color:var(--amore);font-weight:600}
+  .tab.on .num{color:var(--amore)}
+  .tab-pane{display:none;padding-top:16px;animation:fadeUp .25s ease}
+  .tab-pane.on{display:block}
+
+  .input{margin-top:14px;border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-size:12.5px;color:var(--mute);background:#fff;display:flex;align-items:center;gap:10px}
+  .input .lbl{font-size:9.5px;letter-spacing:.22em;color:var(--amore);font-weight:600;text-transform:uppercase;flex-shrink:0}
+  .input .v{color:var(--ink2);font-size:13px}
+  .typed{border-right:2px solid var(--ink);animation:caret 1s steps(2) infinite;margin-left:2px}
+  @keyframes caret{50%{border-color:transparent}}
+
+  .pillrow{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+
+  @media (max-width:1024px){
+    .wb3{grid-template-columns:240px 1fr;grid-template-areas:
+      "top top"
+      "side stage"
+      "side foot";min-height:580px}
+    .wb-ws{display:none}
+    .wb-top{grid-template-columns:240px 1fr auto}
+  }
+  @media (max-width:760px){
+    .wb3{grid-template-columns:1fr;grid-template-areas:"top" "side" "stage" "foot";min-height:auto}
+    .wb-side{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:10px;gap:6px}
+    .wb-side .group{display:none}
+    .wb-side .item{flex-shrink:0;white-space:nowrap}
+    .wb-side-foot{display:none}
+    .wb-top{grid-template-columns:1fr auto}
+    .wb-bread{display:none}
+  }
+
+  /* Showcase mock (legacy 2-col, kept for any unused selectors) */
+  .showcase{display:grid;grid-template-columns:340px 1fr;gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
+  .showcase .side{border-right:1px solid var(--line);padding:24px;background:var(--paper-soft)}
+  .showcase .side .group{font-size:10.5px;letter-spacing:.22em;color:var(--mute);margin:18px 0 8px}
+  .showcase .side .group:first-child{margin-top:0}
+  .showcase .side .item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:4px;font-size:12.5px;color:var(--ink2);cursor:default}
+  .showcase .side .item{width:100%;text-align:left;background:transparent;border:0;font-family:inherit;transition:all .15s}
+  .showcase .side .item:hover{background:#fff;color:var(--ink)}
+  .showcase .side .item.active{background:var(--amore-bg);color:var(--amore);font-weight:600}
+  .showcase .side .item .pip{width:6px;height:6px;border-radius:50%;background:var(--mute-soft);transition:background .15s}
+  .showcase .side .item:hover .pip{background:var(--ink)}
+  .showcase .side .item.active .pip{background:var(--amore)}
+  .wb-hint{margin-top:14px;display:flex;gap:10px;align-items:center;color:var(--mute);font-size:11.5px}
+  .wb-hint .meta{color:var(--amore)}
+
+  /* Stage panel transitions */
+  .stage-panel{display:none;animation:fadeUp .35s ease}
+  .stage-panel.show{display:block}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Reusable mini widgets in stages */
+  .qcard{margin-top:14px;border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:#fff}
+  .qcard + .qcard{margin-top:10px}
+  .qcard .who{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+  .qcard .who .tag{color:var(--amore);font-weight:600}
+  .qcard p{margin-top:8px;font-size:13.5px;color:var(--ink2);line-height:1.65}
+  .matrix{margin-top:18px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
+  .matrix table{width:100%;border-collapse:collapse;font-size:12px}
+  .matrix th,.matrix td{padding:10px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  .matrix th{background:var(--paper-soft);font-weight:600;color:var(--mute);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
+  .matrix tr:last-child td{border-bottom:0}
+  .matrix td.mark{color:var(--amore);font-weight:600}
+  .bubbles{margin-top:18px;height:220px;border:1px solid var(--line);border-radius:4px;background:var(--paper-soft);position:relative;overflow:hidden}
+  .bubble{position:absolute;border-radius:50%;border:1px solid var(--amore);background:var(--amore-bg);color:var(--amore);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;letter-spacing:-.01em;animation:floaty 6s ease-in-out infinite}
+  .bubble.muted{border-color:var(--line);background:#fff;color:var(--mute);animation-duration:8s}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .calendar{margin-top:18px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
+  .calendar .head,.calendar .row{display:grid;grid-template-columns:60px repeat(5,1fr);font-size:11px}
+  .calendar .head{background:var(--paper-soft);color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-size:10px}
+  .calendar .head div,.calendar .row div{padding:8px 10px;border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+  .calendar .head div:last-child,.calendar .row div:last-child{border-right:0}
+  .calendar .row:last-child div{border-bottom:0}
+  .calendar .slot{min-height:30px}
+  .calendar .booked{background:var(--amore-bg);color:var(--amore);font-weight:600;font-size:10.5px}
+  .desk-list{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+  .desk-row{display:flex;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12.5px}
+  .desk-row .src{color:var(--mute);font-size:11px;letter-spacing:.04em}
+  .desk-row .ttl{color:var(--ink);font-weight:600}
+  .desk-row .meta-tag{color:var(--amore);font-weight:600}
+  .crosstab{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .crosstab .cell{background:#fff;padding:14px}
+  .crosstab .cell .lbl{font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+  .crosstab .bar{margin-top:10px;height:6px;background:var(--line-soft);border-radius:99px;overflow:hidden}
+  .crosstab .bar > span{display:block;height:100%;background:var(--amore)}
+  .crosstab .pct{margin-top:8px;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+  .report{margin-top:18px;border:1px solid var(--line);border-radius:4px;background:#fff;padding:20px 22px}
+  .report h5{font-size:15px;letter-spacing:-.018em;color:var(--ink);margin-bottom:6px}
+  .report .toc{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mute)}
+  .report .toc span em{color:var(--amore);font-style:normal;font-weight:600;margin-right:8px}
+  .report .progress{margin-top:14px;height:4px;background:var(--line-soft);border-radius:99px;overflow:hidden}
+  .report .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--amore),var(--pacific));animation:fill 2.4s ease-in-out infinite}
+  @keyframes fill{0%{width:8%}55%{width:78%}100%{width:96%}}
+  .transcript-line{display:grid;grid-template-columns:64px 80px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+  .transcript-line:last-child{border-bottom:0}
+  .transcript-line .t{color:var(--mute-soft);font-variant-numeric:tabular-nums;font-size:11px}
+  .transcript-line .who{color:var(--amore);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .transcript-line .body{color:var(--ink2)}
+
+  /* Verbatim dropzone */
+  .dropzone{margin-top:14px;border:1.5px dashed var(--line);border-radius:6px;padding:36px 28px;text-align:center;background:var(--paper-soft);transition:all .2s;cursor:pointer}
+  .dropzone:hover,.dropzone.over{border-color:var(--amore);background:var(--amore-bg)}
+  .dropzone .dz-icon{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--amore);font-weight:700;margin-bottom:14px;animation:floaty 3s ease-in-out infinite}
+  .dropzone .dz-title{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.012em}
+  .dropzone .dz-sub{margin-top:6px;font-size:12px;color:var(--mute)}
+  .dropzone .dz-row{margin-top:14px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+  .dropzone .dz-btn{margin-top:16px;height:34px;padding:0 16px;font-size:12px;background:var(--ink);color:#fff;border-color:var(--ink)}
+  .dropzone .dz-btn:hover{background:var(--amore);border-color:var(--amore)}
+  .dz-status{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:10px}
+  .dz-status strong{color:var(--ink)}
+  .showcase .stage{padding:32px 36px;min-height:420px;position:relative}
+  .showcase .stage .crumb{font-size:10.5px;letter-spacing:.22em;color:var(--mute)}
+  .showcase .stage h3{font-size:24px;letter-spacing:-.02em;margin-top:8px;color:var(--ink)}
+  .showcase .stage .input{margin-top:20px;border:1px solid var(--line);border-radius:4px;padding:14px 16px;font-size:12.5px;color:var(--mute);background:#fff}
+  .showcase .stage .pillrow{margin-top:14px;display:flex;gap:6px;flex-wrap:wrap}
+  .pill{font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--mute)}
+  .pill.amore{border-color:var(--amore);color:var(--amore);background:var(--amore-bg)}
+  .showcase .stage .quoteCard{margin-top:22px;border-left:2px solid var(--amore);padding:6px 0 6px 16px;color:var(--ink2);font-size:13.5px;line-height:1.7}
+  .showcase .stage .quoteCard small{display:block;color:var(--mute);font-size:11px;margin-top:8px;letter-spacing:.04em}
+  .typed{border-right:2px solid var(--ink);animation:caret 1s steps(2) infinite}
+  @keyframes caret{50%{border-color:transparent}}
+  @media (max-width:900px){.showcase{grid-template-columns:1fr} .showcase .side{border-right:0;border-bottom:1px solid var(--line)}}
+
+  /* Pricing */
+  .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .price{padding:28px 24px;border-right:1px solid var(--line);background:#fff;display:flex;flex-direction:column;gap:10px;min-height:280px}
+  .price:last-child{border-right:0}
+  .price.featured{background:#0b0b0b;color:#fff;position:relative}
+  .price.featured .meta{color:#9ca3af}
+  .price.featured h4{color:#fff}
+  .price.featured p{color:#cbd5e1}
+  .price.featured .num{color:#fff}
+  .price.featured .num small{color:#9ca3af}
+  .price.featured .num em{color:#fff;background:var(--amore);padding:0 8px;font-style:normal;border-radius:2px;display:inline-block}
+  .price h4{font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink);margin-top:-2px}
+  /* Stack price on its own line; per-credit hint sits below — keeps "₩900,000 /500 cr" from wrapping mid-string */
+  .price .num{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;line-height:1}
+  .price .num > :first-child,
+  .price .num em{font-size:30px;font-weight:700;letter-spacing:-.025em;line-height:1}
+  /* Credit info is the load-bearing line — make it ink-strong, not a footnote */
+  .price .num small{display:flex;flex-direction:column;gap:3px;margin-left:0;line-height:1.2}
+  .price .num small b{font-size:14px;color:var(--ink);font-weight:700;letter-spacing:-.01em}
+  .price .num small .hint{font-size:11.5px;color:var(--mute);font-weight:500;letter-spacing:.01em}
+  .price.featured .num small b{color:#fff}
+  .price.featured .num small .hint{color:#9ca3af}
+  .price ul{list-style:none;margin-top:6px;display:flex;flex-direction:column;gap:6px}
+  .price li{font-size:12.5px;color:var(--mute);position:relative;padding-left:14px;line-height:1.45}
+  .price li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:1px;background:currentColor;opacity:.5}
+  .price.featured li{color:#cbd5e1}
+  .price .btn{margin-top:auto}
+  @media (max-width:900px){.price-grid{grid-template-columns:repeat(2,1fr)} .price:nth-child(2){border-right:0} .price:nth-child(1),.price:nth-child(2){border-bottom:1px solid var(--line)}}
+
+  /* FAQ */
+  .faq details{border-top:1px solid var(--line);padding:22px 0}
+  .faq details:last-child{border-bottom:1px solid var(--line)}
+  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:600;letter-spacing:-.012em;color:var(--ink)}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary .plus{font-weight:300;font-size:24px;color:var(--mute);transition:transform .2s}
+  .faq details[open] summary .plus{transform:rotate(45deg);color:var(--amore)}
+  .faq .a{padding-top:14px;color:var(--mute);max-width:760px;font-size:13.5px;line-height:1.7}
+
+  /* Final CTA */
+  .final{background:#0b0b0b;color:#fff;border-top:1px solid var(--line)}
+  .final .container{padding-top:120px;padding-bottom:120px}
+  .final h2{font-size:clamp(40px,6vw,80px);letter-spacing:-.03em;line-height:1;font-weight:700}
+  .final h2 em{color:var(--amore);font-style:italic;font-weight:600}
+  .final p{margin-top:24px;color:#9ca3af;max-width:560px;font-size:15px}
+  .final .row{margin-top:36px;display:flex;gap:10px;flex-wrap:wrap}
+  .final .btn{background:transparent;color:#fff;border-color:#3a3a3a}
+  .final .btn:hover{border-color:#fff}
+  .final .btn.primary{background:#fff;color:#0b0b0b;border-color:#fff}
+  .final .btn.primary:hover{background:var(--amore);color:#fff;border-color:var(--amore)}
+
+  /* Footer */
+  footer{padding:40px 0;color:var(--mute);font-size:11.5px;background:#0b0b0b;border-top:1px solid #1f1f1f}
+  footer .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+  footer a:hover{color:#fff}
+
+  /* Reveal */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* Hero canvas + pretext-flowed lede */
+  .hero{position:relative}
+  .hero-content{position:relative;z-index:2}
+  .hero-orbs{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;mix-blend-mode:multiply}
+  .lede-flow{
+    position:relative;margin-top:36px;max-width:680px;height:160px;
+    font-size:16px;line-height:28px;color:var(--mute);
+    font-family:var(--font);
+  }
+  .lede-flow .w{position:absolute;white-space:pre;transition:color .25s ease}
+  .lede-flow .w.bold{color:var(--ink);font-weight:600}
+  .lede-flow .w.amore{color:var(--amore);font-weight:600}
+  .lede-flow .w.near{color:var(--amore)}
+  @media (max-width:760px){.lede-flow{height:200px;font-size:15px;line-height:26px}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="container row">
+    <div class="brand"><span class="dot"></span> Intellicenter</div>
+    <div class="links">
+      <a href="#showcase">데모</a>
+      <a href="#flow">작동 방식</a>
+      <a href="#numbers">숫자</a>
+      <a href="#pricing">가격</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="cta">
+      <a class="btn" href="/ko/login">로그인</a>
+      <a class="btn primary" href="/ko/login?next=/dashboard">시작하기 <span class="arrow">→</span></a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="heroSec">
+  <canvas class="hero-orbs" id="heroCanvas" aria-hidden="true"></canvas>
+  <div class="container hero-content">
+    <div class="meta amore reveal">A SaaS · 마케팅 & UX 리서치를 위한 Intellicenter</div>
+    <h1 class="reveal" style="margin-top:24px">
+      리서처가<br/>
+      <span class="strike">밤새</span> 하던 일을,<br/>
+      이제 <span class="accent">한 흐름</span>으로.
+    </h1>
+
+    <!-- pretext-flowed lede: text reflows around drifting orbs (canvas-measured) -->
+    <div class="lede-flow reveal" id="ledeFlow"
+         data-text="데스크 리서치, 스케쥴러, AI 모더레이터, 전사록, 인터뷰 결과, 정량 분석, 어피니티 버블, 전체 리포트까지. 마케팅·UX 리서처가 매주 반복하는 8개의 산출물을, 같은 팀 워크스페이스 안에서 한 번에 끝냅니다. 한국어 기본 · 팀·역할·공유 내장 · 결과는 그대로 다음 도구의 입력이 됩니다."
+         data-accent="데스크,스케쥴러,모더레이터,전사록,인터뷰,정량,어피니티,리포트">
+      <noscript><p class="lede"><strong>데스크 리서치, 스케쥴러, AI 모더레이터, 전사록, 인터뷰 결과, 정량 분석, 어피니티 버블, 전체 리포트까지.</strong> 마케팅·UX 리서처가 매주 반복하는 8개의 산출물을, 같은 팀 워크스페이스 안에서 한 번에 끝냅니다.</p></noscript>
+    </div>
+
+    <div class="cta-row reveal">
+      <a class="btn primary btn-lg" href="/ko/login?next=/dashboard">가입 후 24시간 완전 무료 <span class="arrow">→</span></a>
+      <a class="btn btn-lg" href="#showcase">8개 도구 둘러보기</a>
+    </div>
+    <div class="meta-row reveal">
+      <span class="pulse"></span>
+      <span>지금 이 순간 47개 팀이 사용 중</span>
+      <span class="dot"></span>
+      <span>powered by pretext · 텍스트가 나비를 비켜서 흐릅니다</span>
+      <span class="dot"></span>
+      <span>한국어 / English</span>
+    </div>
+  </div>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="track">
+      <span><em>Desk</em>데스크 리서치</span>
+      <span><em>Scheduler</em>참석자 스케쥴러</span>
+      <span><em>Moderator</em>AI 모더레이터</span>
+      <span><em>Verbatim</em>전사록 생성</span>
+      <span><em>Interview</em>인터뷰 결과</span>
+      <span><em>Report</em>전체 리포트</span>
+      <span><em>Quant</em>정량조사 분석</span>
+      <span><em>Affinity</em>Affinity Bubble</span>
+      <span><em>Desk</em>데스크 리서치</span>
+      <span><em>Scheduler</em>참석자 스케쥴러</span>
+      <span><em>Moderator</em>AI 모더레이터</span>
+      <span><em>Verbatim</em>전사록 생성</span>
+      <span><em>Interview</em>인터뷰 결과</span>
+      <span><em>Report</em>전체 리포트</span>
+      <span><em>Quant</em>정량조사 분석</span>
+      <span><em>Affinity</em>Affinity Bubble</span>
+    </div>
+  </div>
+</header>
+
+<!-- Showcase (Interactive · Extensive) -->
+<section id="showcase">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <span class="meta amore">INTELLICENTER · LIVE DEMO</span>
+        <h2 style="margin-top:14px">진짜처럼 눌러보세요.<br/><em>사이드바 → 스테이지 → 워크스페이스.</em></h2>
+      </div>
+      <p>각 도구는 탭으로 단계가 나뉘고, 결과는 오른쪽 워크스페이스에 자동으로 쌓입니다.</p>
+    </div>
+
+    <div class="wb3 reveal" id="wb">
+      <!-- Topbar -->
+      <header class="wb-top">
+        <div class="wb-brand"><span class="dot"></span> intellicenter.app</div>
+        <div class="wb-bread" id="wbBread">/ko/dashboard</div>
+        <div class="wb-credits"><span class="meta amore">FREE TRIAL</span> <strong id="wbCredits">23h 48m</strong></div>
+      </header>
+
+      <!-- Sidebar -->
+      <aside class="wb-side">
+        <div class="group">설계</div>
+        <button class="item active" data-key="desk"><span class="pip"></span> 데스크 리서치 <span class="cr">25</span></button>
+        <button class="item" data-key="scheduler"><span class="pip"></span> 참석자 스케쥴러 <span class="cr">0</span></button>
+        <div class="group">진행</div>
+        <button class="item" data-key="moderator"><span class="pip"></span> AI 모더레이터 <span class="cr">1</span></button>
+        <div class="group">분석</div>
+        <button class="item" data-key="verbatim"><span class="pip"></span> 전사록 생성기 <span class="cr">25</span></button>
+        <button class="item" data-key="interview"><span class="pip"></span> 인터뷰 결과 생성기 <span class="cr">10</span></button>
+        <button class="item" data-key="report"><span class="pip"></span> 전체 리포트 생성기 <span class="cr">50</span></button>
+        <button class="item" data-key="quant"><span class="pip"></span> 정량조사 분석 <span class="cr">15</span></button>
+        <button class="item" data-key="affinity"><span class="pip"></span> Affinity Bubble <span class="cr">·</span></button>
+
+        <div class="wb-side-foot">
+          <span class="pulse"></span> Beauty UX 2026Q2
+        </div>
+      </aside>
+
+      <!-- Stage -->
+      <main class="wb-stage" id="wbStage"><!-- panels injected by JS --></main>
+
+      <!-- Workspace -->
+      <aside class="wb-ws">
+        <div class="ws-head">
+          <span class="meta amore">WORKSPACE</span>
+          <span id="wsCount" class="ws-count">0</span>
+        </div>
+        <div class="ws-empty" id="wsEmpty">방문한 도구의 산출물이 여기 자동으로 쌓입니다. 사이드바를 눌러보세요.</div>
+        <ul class="ws-list" id="wsList"></ul>
+        <div class="ws-foot">
+          <button class="btn btn-ws" id="wbReset">초기화</button>
+          <button class="btn btn-ws primary" id="wbToReport">리포트로 →</button>
+        </div>
+      </aside>
+
+      <!-- Footer / progress -->
+      <footer class="wb-foot">
+        <div class="wb-prog">
+          <span class="dot done"></span>
+          <span class="line"></span>
+          <span class="dot" id="prog2"></span>
+          <span class="line"></span>
+          <span class="dot" id="prog3"></span>
+          <span class="line"></span>
+          <span class="dot" id="prog4"></span>
+        </div>
+        <div class="wb-next">
+          <span class="meta">NEXT</span>
+          <span id="wbNext">참석자 스케쥴러로 모집 일정 잡기 →</span>
+        </div>
+      </footer>
+    </div>
+
+    <div class="wb-hint reveal">
+      <span class="meta">TIP</span>
+      <span>← / → 키로 이동 · 사이드바 클릭으로 도구 전환 · 탭으로 단계 보기</span>
+    </div>
+  </div>
+</section>
+
+<!-- Problem (moved after showcase) -->
+<section class="quote" id="problem">
+  <div class="container">
+    <div class="meta amore reveal">THE PROBLEM</div>
+    <h2 class="big reveal" style="margin-top:18px">
+      <span class="crossed">슬랙으로 인터뷰 녹취 던지고,</span>
+      <span class="crossed">스프레드시트로 발화 정리하고,</span>
+      <span class="crossed">키노트로 리포트 다시 짜는 일.</span><br/>
+      이젠 한 페이지에서 끝납니다.
+    </h2>
+    <div class="by reveal">— 리서처 8인의 워크플로우를 1년간 관찰하며 만든 도구</div>
+  </div>
+</section>
+
+<!-- Flow -->
+<section id="flow" style="background:var(--paper-soft)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <span class="meta amore">HOW IT WORKS</span>
+        <h2 style="margin-top:14px">3분이면 첫 산출물.<br/><em>그 다음부터는 흐름이 됩니다.</em></h2>
+      </div>
+      <p>각 단계의 결과는 워크스페이스에 자동 등록 → 다음 도구로 드래그.</p>
+    </div>
+
+    <div class="flow reveal">
+      <div class="step">
+        <div class="step-num">STEP 01</div>
+        <h4>업로드 / 붙여넣기</h4>
+        <p>녹취 파일, 인터뷰 노트, 설문 CSV, 또는 한 줄짜리 주제. 어떤 입력이든 시작점이 됩니다.</p>
+        <span class="arr">→</span>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 02</div>
+        <h4>도구를 잇는다</h4>
+        <p>전사록 → 인터뷰 결과 → 정량 분석. 사이드바의 8개 도구를 결과 → 입력으로 연결.</p>
+        <span class="arr">→</span>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 03</div>
+        <h4>리포트로 닫는다</h4>
+        <p>워크스페이스의 모든 산출물을 Full Report로 엮어 클라이언트에게 그대로 전달.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Numbers -->
+<section id="numbers">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <span class="meta amore">BY THE NUMBERS</span>
+        <h2 style="margin-top:14px"><em>몇 시간이 아니라,</em> 몇 분.</h2>
+      </div>
+      <p>실제 사용 팀 데이터 기준 (2026 Q1).</p>
+    </div>
+  </div>
+  <div class="container">
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="num"><em>−87%</em></div>
+        <div class="lbl">인터뷰 정리에 들이던 시간</div>
+      </div>
+      <div class="stat">
+        <div class="num">8</div>
+        <div class="lbl">하나의 워크스페이스 안에서 동작하는 리서치 도구</div>
+      </div>
+      <div class="stat">
+        <div class="num">24<small style="font-size:18px;color:var(--mute);font-weight:400"> 시간</small></div>
+        <div class="lbl">가입 직후 모든 도구가 완전 무료 · 카드 등록 없음</div>
+      </div>
+      <div class="stat">
+        <div class="num">2<small style="font-size:18px;color:var(--mute);font-weight:400"> 언어</small></div>
+        <div class="lbl">한국어 기본 · 영어 동시 지원</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" style="background:var(--paper-soft)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <span class="meta amore">PRICING</span>
+        <h2 style="margin-top:14px">크레딧으로 정확히, <em>쓴 만큼만.</em></h2>
+      </div>
+      <p>구독이 아니라 크레딧. 안 쓰면 안 차감, 팀에서 공유.</p>
+    </div>
+
+    <p style="font-size:12.5px;color:var(--mute);margin-top:-4px;margin-bottom:18px">
+      <span class="meta amore" style="font-size:10.5px;color:var(--amore);background:var(--amore-bg);padding:3px 8px;border-radius:4px;letter-spacing:.18em">FREE TRIAL</span>
+      &nbsp;가입 직후 <strong style="color:var(--ink)">24시간</strong> 모든 도구 크레딧 차감 없이 무제한. 카드 등록도 없어요.
+    </p>
+
+    <div class="price-grid reveal">
+      <div class="price">
+        <span class="meta">STARTER</span>
+        <h4>Starter</h4>
+        <div class="num"><span>₩200,000</span><small><b>100 크레딧</b><span class="hint">크레딧당 2,000원</span></small></div>
+        <ul>
+          <li>전체 리포트 2회 + 인터뷰 10회 분량</li>
+          <li>이메일 지원</li>
+          <li>크레딧 만료 없음</li>
+        </ul>
+        <a class="btn" href="/ko/login?next=/credits">크레딧 구매</a>
+      </div>
+      <div class="price featured">
+        <span class="meta">POPULAR · 10% OFF</span>
+        <h4>Team</h4>
+        <div class="num"><em>₩900,000</em><small><b>500 크레딧</b><span class="hint">크레딧당 1,800원 · 10% 할인</span></small></div>
+        <ul>
+          <li>팀 워크스페이스 · 역할 4단계</li>
+          <li>우선 지원 · 인보이스 결제</li>
+          <li>크레딧 만료 없음 · 팀 공유</li>
+        </ul>
+        <a class="btn primary" href="/ko/login?next=/credits" style="background:#fff;color:#0b0b0b;border-color:#fff">팀으로 시작 <span class="arrow">→</span></a>
+      </div>
+      <div class="price">
+        <span class="meta">15% OFF</span>
+        <h4>Studio</h4>
+        <div class="num"><span>₩2,550,000</span><small><b>1,500 크레딧</b><span class="hint">크레딧당 1,700원 · 15% 할인</span></small></div>
+        <ul>
+          <li>스튜디오 규모 운영 권장</li>
+          <li>SLA 응답 시간 보장</li>
+          <li>크레딧 만료 없음 · 팀 공유</li>
+        </ul>
+        <a class="btn" href="/ko/login?next=/credits">크레딧 구매</a>
+      </div>
+      <div class="price">
+        <span class="meta">25% OFF · CUSTOM</span>
+        <h4>Enterprise</h4>
+        <div class="num"><span>상담</span><small><b>5,000+ 크레딧</b><span class="hint">최대 25% 할인 · 맞춤 견적</span></small></div>
+        <ul>
+          <li>SSO · 감사 로그</li>
+          <li>전용 리전 · 데이터 보관 정책</li>
+          <li>BYO Key · 맞춤 리포트 템플릿</li>
+        </ul>
+        <a class="btn" href="mailto:hello@ai-researcher.kr">문의하기</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <span class="meta amore">FAQ</span>
+        <h2 style="margin-top:14px">자주 묻는 것들.</h2>
+      </div>
+      <p>그 외 궁금한 점은 hello@ai-researcher.kr</p>
+    </div>
+
+    <div class="faq reveal">
+      <details open>
+        <summary>리서치 데이터는 어디에 저장되나요?<span class="plus">+</span></summary>
+        <p class="a">Supabase Postgres + Row-Level Security. 데이터는 조직 단위로 격리되며, 같은 조직 안에서 역할(`owner / admin / member / viewer`)에 따라 접근이 결정됩니다. 각 산출물은 `private / org / shared` 가시성을 가집니다.</p>
+      </details>
+      <details>
+        <summary>한국어 인터뷰도 잘 처리되나요?<span class="plus">+</span></summary>
+        <p class="a">한국 리서처를 1순위로 만든 도구입니다. 화자 분리, 존대/반말 정제, 한국어 인용문 추출 모두 한국어 코퍼스로 검증됩니다. 영어는 같은 모델로 자동 처리됩니다.</p>
+      </details>
+      <details>
+        <summary>크레딧은 만료되나요?<span class="plus">+</span></summary>
+        <p class="a">아니요. 구매한 크레딧은 만료되지 않으며, 팀 단위로 공유됩니다. 가입 직후 24시간 동안은 모든 도구가 크레딧 차감 없이 무제한으로 열립니다.</p>
+      </details>
+      <details>
+        <summary>다른 도구(Slack, Notion)와 연결되나요?<span class="plus">+</span></summary>
+        <p class="a">현재는 워크스페이스 내부에서 산출물을 다음 도구의 입력으로 연결하는 데 집중하고 있습니다. Slack/Notion export는 2026 Q3 로드맵.</p>
+      </details>
+      <details>
+        <summary>오픈AI나 다른 모델을 직접 가져올 수 있나요?<span class="plus">+</span></summary>
+        <p class="a">Enterprise 플랜에서 BYO Key를 지원합니다. 기본 플랜은 자체 모델 라우팅으로 운영되어 사용자가 모델 선택을 신경쓰지 않아도 됩니다.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="final">
+  <div class="container">
+    <span class="meta amore" style="color:var(--amore)">START NOW · FREE FOR 24 HOURS</span>
+    <h2 style="margin-top:24px">리서처의 손은<br/>다른 일에 <em>써야 합니다.</em></h2>
+    <p>가입 직후 <strong style="color:#fff">24시간</strong>은 모든 도구가 크레딧 차감 없이 무제한으로 열립니다. 카드 등록 없이, 첫 산출물까지 평균 3분.</p>
+    <div class="row">
+      <a class="btn primary btn-lg" href="/ko/login?next=/dashboard" style="height:48px;padding:0 24px;font-size:14px">무료로 시작 <span class="arrow">→</span></a>
+      <a class="btn btn-lg" href="#contact" style="height:48px;padding:0 24px;font-size:14px">팀 데모 요청</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container row">
+    <div>© 2026 Intellicenter · Built on Next.js 16 · Supabase · Vercel</div>
+    <div style="display:flex;gap:18px">
+      <a href="#">개인정보</a>
+      <a href="#">약관</a>
+      <a href="#">상태</a>
+      <a href="#">변경 이력</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // ===== Hero pretext effect =====
+  // Apply pretext-style canvas-measured layout to the existing hero lede.
+  // Floating amore orbs drift across the hero; the lede paragraph reflows
+  // around them line by line, and individual words tint amore when overlapped.
+  (function(){
+    const hero = document.getElementById('heroSec');
+    const canvas = document.getElementById('heroCanvas');
+    const flow = document.getElementById('ledeFlow');
+    if(!hero || !canvas || !flow) return;
+
+    const text = flow.dataset.text || '';
+    const accent = (flow.dataset.accent || '').split(',').filter(Boolean);
+    const boldEnd = (text.match(/^.+?(까지\.)/) || [null,''])[0].length; // first sentence is the bold list
+
+    const FONT = getComputedStyle(flow).fontFamily;
+    const SIZE = parseFloat(getComputedStyle(flow).fontSize);
+    const LH = parseFloat(getComputedStyle(flow).lineHeight);
+    const FONT_STR = `${SIZE}px ${FONT}`;
+
+    const mctx = document.createElement('canvas').getContext('2d');
+    function refont(){ mctx.font = FONT_STR; }
+    function measure(s){ return mctx.measureText(s).width; }
+    refont();
+
+    // Tokenize text into words, preserve Korean punctuation as glue
+    function tokenize(s){
+      const out = []; const re = /\S+\s*/g; let m;
+      while((m = re.exec(s))){
+        const raw = m[0];
+        const trimmed = raw.replace(/\s+$/,'');
+        const trail = /\s+$/.test(raw) ? ' ' : '';
+        const start = m.index;
+        out.push({text:trimmed, trail, start, w: measure(trimmed+trail)});
+      }
+      return out;
+    }
+    const tokens = tokenize(text);
+
+    // Color palettes — keep amore family dominant, add subtle variation
+    const PALETTES = [
+      {deep:'rgba(31,87,149,0.34)',  soft:'rgba(61,114,173,0.24)', stroke:'rgba(0,28,88,0.50)'},   // amore blue
+      {deep:'rgba(196,163,90,0.34)', soft:'rgba(214,182,108,0.24)',stroke:'rgba(120,90,30,0.55)'}, // gold
+      {deep:'rgba(122,74,110,0.32)', soft:'rgba(160,108,140,0.22)',stroke:'rgba(70,30,55,0.55)'},  // plum
+      {deep:'rgba(46,108,98,0.32)',  soft:'rgba(80,140,128,0.22)', stroke:'rgba(20,60,52,0.55)'},  // teal
+    ];
+
+    // Butterflies (drift + wing flap; reuse `r` as wing-span / exclusion radius)
+    const orbs = [
+      {x:0.14,y:0.46,r:22,vx:0.16,vy:0.10, phase:0.0, flapHz:7.5, sway:0.0, palette: PALETTES[0]},
+      {x:0.55,y:0.40,r:26,vx:-0.12,vy:0.08,phase:1.3, flapHz:6.2, sway:0.6, palette: PALETTES[1]},
+      {x:0.78,y:0.65,r:19,vx:0.10,vy:-0.12,phase:2.6, flapHz:8.4, sway:1.1, palette: PALETTES[2]},
+      {x:0.36,y:0.78,r:17,vx:-0.08,vy:-0.06,phase:0.7,flapHz:9.0, sway:1.7, palette: PALETTES[3]}
+    ];
+    const startTime = performance.now();
+    // Mouse interaction intentionally disabled — text reflows around drifting
+    // butterflies only; the cursor neither displaces letters nor renders an orb.
+
+    // Sizing
+    let W=0,H=0,dpr=Math.max(1,window.devicePixelRatio||1);
+    let flowRect = null; // lede flow box relative to hero
+    function resize(){
+      const hr = hero.getBoundingClientRect();
+      W = hr.width; H = hr.height;
+      canvas.width = W*dpr; canvas.height = H*dpr;
+      canvas.style.width = W+'px'; canvas.style.height = H+'px';
+      canvas.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+
+      const fr = flow.getBoundingClientRect();
+      flowRect = { x: fr.left - hr.left, y: fr.top - hr.top, w: fr.width, h: fr.height };
+      refont();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+    // Re-measure after fonts settle
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ refont(); for(const t of tokens) t.w = measure(t.text+t.trail); resize(); });
+
+    // Pool of span elements
+    const pool = [];
+    function getEl(i){
+      let el = pool[i];
+      if(!el){ el = document.createElement('span'); el.className='w'; flow.appendChild(el); pool[i]=el; }
+      return el;
+    }
+    function hideFrom(i){ for(let k=i;k<pool.length;k++){ pool[k].style.display='none'; pool[k].className='w'; } }
+
+    // Convert global hero coords to flow-local coords
+    // Exclusions are computed in HERO space, then offset into flow
+    function exclusionsForY(yLocal){
+      const yGlobal = (flowRect?.y || 0) + yLocal + LH/2;
+      const out = [];
+      for(const o of orbs){
+        const ox = o.x*W, oy = o.y*H;
+        const dy = Math.abs(oy - yGlobal);
+        if(dy > o.r + 4) continue;
+        const hc = Math.sqrt(Math.max(0,(o.r+4)*(o.r+4) - dy*dy));
+        // map x into flow-local
+        const lx = ox - (flowRect?.x || 0);
+        out.push([lx-hc, lx+hc]);
+      }
+      out.sort((a,b)=>a[0]-b[0]);
+      const merged=[];
+      for(const iv of out){
+        if(merged.length && iv[0] <= merged[merged.length-1][1]+2) merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],iv[1]);
+        else merged.push(iv.slice());
+      }
+      return merged;
+    }
+
+    function segmentsForY(yLocal){
+      const W2 = flowRect?.w || flow.clientWidth;
+      const ex = exclusionsForY(yLocal);
+      let segs = [[0, W2]];
+      for(const [a,b] of ex){
+        const next = [];
+        for(const [l,r] of segs){
+          if(b < l || a > r){ next.push([l,r]); continue; }
+          if(a > l) next.push([l, Math.max(l, a-3)]);
+          if(b < r) next.push([Math.min(r, b+3), r]);
+        }
+        segs = next.filter(([l,r])=> r-l > 30);
+      }
+      return segs;
+    }
+
+    function isAccent(t){
+      const bare = t.text.replace(/[.,·…“”"'!?]/g,'');
+      return accent.some(a=>bare.indexOf(a) !== -1);
+    }
+    function isBold(t){ return t.start < boldEnd; }
+
+    function layout(){
+      const lines = Math.max(1, Math.floor((flowRect?.h || flow.clientHeight) / LH));
+      let i = 0;
+      for(let line=0; line<lines; line++){
+        const y = line*LH;
+        const segs = segmentsForY(y);
+        if(segs.length === 0) continue;
+        for(const [l,r] of segs){
+          let x = l;
+          while(i < tokens.length && x + tokens[i].w <= r){
+            const t = tokens[i];
+            const el = getEl(i);
+            el.style.display = 'block';
+            el.textContent = t.text + t.trail;
+            el.style.left = x+'px';
+            el.style.top = y+'px';
+            // styling
+            el.className = 'w' + (isBold(t)?' bold':'') + (isAccent(t)?' amore':'');
+            x += t.w;
+            i++;
+          }
+        }
+      }
+      hideFrom(i);
+    }
+
+    function drawButterfly(c, cx, cy, r, flap, tilt, palette){
+      // flap ∈ [0..1]; squashes wings on the y-axis as if seen at an angle
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(tilt);
+      const wingY = 0.25 + flap * 0.75; // collapsed → open
+      const fillSoft = palette.soft;
+      const fillDeep = palette.deep;
+      const stroke   = palette.stroke;
+      // Wings (split into upper/lower, mirrored L/R)
+      c.save();
+      c.scale(1, wingY);
+      // Upper wings — teardrop-ish ellipses, tip points outward & up
+      c.fillStyle = fillDeep;
+      c.beginPath(); c.ellipse(-r*0.46, -r*0.18, r*0.55, r*0.62, -0.35, 0, Math.PI*2); c.fill();
+      c.beginPath(); c.ellipse( r*0.46, -r*0.18, r*0.55, r*0.62,  0.35, 0, Math.PI*2); c.fill();
+      // Lower wings — smaller, tip down/out
+      c.fillStyle = fillSoft;
+      c.beginPath(); c.ellipse(-r*0.36,  r*0.28, r*0.42, r*0.48,  0.20, 0, Math.PI*2); c.fill();
+      c.beginPath(); c.ellipse( r*0.36,  r*0.28, r*0.42, r*0.48, -0.20, 0, Math.PI*2); c.fill();
+      // Wing outline (thin)
+      c.strokeStyle = stroke; c.lineWidth = 0.8;
+      c.beginPath(); c.ellipse(-r*0.46, -r*0.18, r*0.55, r*0.62, -0.35, 0, Math.PI*2); c.stroke();
+      c.beginPath(); c.ellipse( r*0.46, -r*0.18, r*0.55, r*0.62,  0.35, 0, Math.PI*2); c.stroke();
+      c.beginPath(); c.ellipse(-r*0.36,  r*0.28, r*0.42, r*0.48,  0.20, 0, Math.PI*2); c.stroke();
+      c.beginPath(); c.ellipse( r*0.36,  r*0.28, r*0.42, r*0.48, -0.20, 0, Math.PI*2); c.stroke();
+      c.restore();
+      // Body (drawn after wings, unsquashed) — slim spindle
+      c.fillStyle = 'rgba(0,28,88,0.85)';
+      c.beginPath();
+      c.ellipse(0, 0, r*0.06, r*0.55, 0, 0, Math.PI*2);
+      c.fill();
+      // Antennae
+      c.strokeStyle = 'rgba(0,28,88,0.7)'; c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(-1, -r*0.45); c.quadraticCurveTo(-r*0.18, -r*0.78, -r*0.22, -r*0.85);
+      c.moveTo( 1, -r*0.45); c.quadraticCurveTo( r*0.18, -r*0.78,  r*0.22, -r*0.85);
+      c.stroke();
+      c.restore();
+    }
+
+    function draw(){
+      const c = canvas.getContext('2d');
+      c.clearRect(0,0,W,H);
+      const t = (performance.now() - startTime) / 1000;
+      for(const o of orbs){
+        const ox=o.x*W, oy=o.y*H;
+        const flap = (Math.sin(t*o.flapHz + o.phase) + 1) / 2; // 0..1
+        const tilt = Math.sin(t*1.6 + o.sway) * 0.18;          // gentle sway
+        drawButterfly(c, ox, oy, o.r, flap, tilt, o.palette);
+      }
+    }
+
+    function tick(){
+      const t = (performance.now() - startTime) / 1000;
+      for(const o of orbs){
+        // base drift + flutter perturbation perpendicular-ish to motion
+        const flutter = Math.sin(t*2.2 + o.phase) * 0.04;
+        o.x += o.vx / Math.max(W,1);
+        o.y += (o.vy + flutter) / Math.max(H,1);
+        if(o.x < 0.06 || o.x > 0.94) o.vx *= -1;
+        if(o.y < 0.12 || o.y > 0.88) o.vy *= -1;
+      }
+      draw();
+      layout();
+      requestAnimationFrame(tick);
+    }
+
+    // Initial layout once positions are known
+    requestAnimationFrame(()=>{ resize(); layout(); draw(); });
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if(!mq.matches){
+      const obs = new IntersectionObserver(([e])=>{
+        if(e.isIntersecting){ requestAnimationFrame(tick); obs.disconnect(); }
+      }, {threshold:.02});
+      obs.observe(hero);
+    }
+  })();
+
+
+  // ===== Interactive workbench v2 (extensive) =====
+  const TRANSCRIPT_BODY = `
+    <div class="qcard" style="padding:6px 16px">
+      <div class="transcript-line"><span class="t">00:00:12</span><span class="who">MOD</span><span class="body">최근 일주일 동안 새로 산 스킨케어 제품 있어요?</span></div>
+      <div class="transcript-line"><span class="t">00:00:18</span><span class="who">P03</span><span class="body">앰플 하나 샀어요. 친구가 너무 좋다고 해서.</span></div>
+      <div class="transcript-line"><span class="t">00:00:24</span><span class="who">MOD</span><span class="body">친구 추천이 결정에 어느 정도 영향을 주나요?</span></div>
+      <div class="transcript-line"><span class="t">00:00:29</span><span class="who">P03</span><span class="body">사실 거의 다요. 광고는 잘 안 봐요. 후기도 친구가 쓴 게 아니면 잘 안 믿어요.</span></div>
+      <div class="transcript-line"><span class="t">00:00:41</span><span class="who">P03</span><span class="body">저는 거울 앞에서 결정하지 않아요. 출근 전 5분, 스마트폰으로 후기 보면서 그 순간에 결정해요.</span></div>
+      <div class="transcript-line"><span class="t">00:00:58</span><span class="who">MOD</span><span class="body">광고로 알게 된 제품 중에 ‘이건 진짜 사야겠다’ 싶었던 적은요?</span></div>
+      <div class="transcript-line"><span class="t">00:01:04</span><span class="who">P03</span><span class="body">최근에 한 번 있었어요. 그것도 결국 친구가 ‘너 그거 봤어?’라고 물어본 거였어요.</span></div>
+    </div>`;
+
+  const PANELS = {
+    desk: {
+      crumb:'/ko/desk · BEAUTY UX 2026Q2',
+      title:'데스크 리서치',
+      cost:'25 크레딧',
+      ws:{who:'DESK', ttl:'2025–2026 한국 스킨케어 트렌드', sub:'24 sources · 9 charts · DB-backed'},
+      next:{key:'scheduler', label:'참석자 스케쥴러로 모집 일정 잡기 →'},
+      tabs:[
+        {label:'프롬프트', num:'01',
+          html:`
+          <div class="input"><span class="lbl">TOPIC</span><span class="v">2025–2026 한국 20–40대 여성 스킨케어 트렌드, 후기 의존도 중심으로 <span class="typed"></span></span></div>
+          <div class="pillrow"><span class="pill amore">DB-backed job</span><span class="pill">realtime</span><span class="pill">sources: 24</span><span class="pill">ko</span></div>
+          <p style="margin-top:18px;font-size:13px;color:var(--mute);line-height:1.7">자동 큐레이션이 시작되면 새로고침해도 잡이 살아남습니다. 평균 소요 2–4분.</p>
+          <div style="margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:4px;background:var(--paper-soft);font-size:12px;color:var(--mute);display:flex;gap:14px;align-items:center">
+            <span class="pulse"></span><span>현재 단계: <strong style="color:var(--ink)">크롤링 중 · 14/24</strong> · 약 90초 남음</span>
+          </div>`},
+        {label:'출처 24', num:'02',
+          html:`
+          <div class="desk-list">
+            <div class="desk-row"><span class="ttl">‘피부 친구’ 마케팅 — 2026 Q1 리뷰 비중 분석</span><span class="src">openSurvey · 2026-03</span></div>
+            <div class="desk-row"><span class="ttl">앰플 카테고리 1년 매출 +47%, 객단가 −12%</span><span class="src">euromonitor · 2026-02</span></div>
+            <div class="desk-row"><span class="ttl">SNS 광고 회의감, “친구 한 명”이 광고 100건을 이긴다</span><span class="src">매일경제 · 2026-04</span></div>
+            <div class="desk-row"><span class="ttl">루틴 콘텐츠 평균 시청 길이 9분 22초</span><span class="src">YouTube Trends · 2026-04</span></div>
+            <div class="desk-row"><span class="ttl">한국 클린뷰티 라벨 신뢰도 — 2026 소비자 인식</span><span class="src meta-tag">consumer.kr · live</span></div>
+            <div class="desk-row"><span class="ttl">20대 여성 인앱 결제 — 첫 인지 → 구매까지 평균 36시간</span><span class="src">app annie · 2026-01</span></div>
+            <div class="desk-row"><span class="ttl">‘민감성 피부’ 검색량 YoY +28%</span><span class="src">naver datalab · 2026-03</span></div>
+          </div>`},
+        {label:'요약', num:'03',
+          html:`
+          <div class="report">
+            <h5>핵심 발견 5가지</h5>
+            <div class="toc">
+              <span><em>01.</em> 결정 순간은 ‘저녁 거울’이 아닌 ‘출근 전 5분’으로 이동했다</span>
+              <span><em>02.</em> ‘피부 친구’가 광고 100건을 이긴다 — 친구 추천이 광고 대비 3.7×</span>
+              <span><em>03.</em> 앰플 카테고리는 매출 ↑ 객단가 ↓ — 트라이얼 사이즈 수요</span>
+              <span><em>04.</em> 클린뷰티 라벨 신뢰도는 25–34세에서 가장 낮음</span>
+              <span><em>05.</em> 루틴 콘텐츠 평균 시청 9분 22초 — 광고로 노출시키기에는 너무 길다</span>
+            </div>
+          </div>`}
+      ]
+    },
+
+    scheduler: {
+      crumb:'/ko/scheduler · WEEK 19',
+      title:'참석자 스케쥴러',
+      cost:'무료 · CSV 5크레딧',
+      ws:{who:'SCHEDULER', ttl:'9명 인터뷰 슬롯', sub:'주중 30분 · Asia/Seoul · 4 confirmed'},
+      next:{key:'moderator', label:'AI 모더레이터로 인터뷰 스크립트 만들기 →'},
+      tabs:[
+        {label:'캘린더', num:'01',
+          html:`
+          <div class="pillrow"><span class="pill amore">CSV imported · 9 attendees</span><span class="pill">30min slots</span><span class="pill">Asia/Seoul</span></div>
+          <div class="calendar">
+            <div class="head"><div></div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div></div>
+            <div class="row"><div>10:00</div><div class="slot booked">P03</div><div class="slot"></div><div class="slot booked">P07</div><div class="slot"></div><div class="slot booked">P11</div></div>
+            <div class="row"><div>11:00</div><div class="slot"></div><div class="slot booked">P05</div><div class="slot"></div><div class="slot booked">P12</div><div class="slot"></div></div>
+            <div class="row"><div>14:00</div><div class="slot booked">P01</div><div class="slot"></div><div class="slot booked">P09</div><div class="slot"></div><div class="slot"></div></div>
+            <div class="row"><div>15:30</div><div class="slot"></div><div class="slot booked">P04</div><div class="slot"></div><div class="slot"></div><div class="slot booked">P15</div></div>
+            <div class="row"><div>16:30</div><div class="slot booked">P02</div><div class="slot"></div><div class="slot"></div><div class="slot booked">P14</div><div class="slot"></div></div>
+          </div>`},
+        {label:'참석자 9', num:'02',
+          html:`
+          <div class="matrix">
+            <table>
+              <thead><tr><th>참가자</th><th>가능 시간</th><th>슬롯</th><th>상태</th></tr></thead>
+              <tbody>
+                <tr><td>P01 · 27 · Designer</td><td>월 14–17</td><td class="mark">월 14:00</td><td>confirmed</td></tr>
+                <tr><td>P03 · 32 · Office</td><td>월/수 10–11</td><td class="mark">월 10:00</td><td>confirmed</td></tr>
+                <tr><td>P05 · 35 · PM</td><td>화 11–12</td><td class="mark">화 11:00</td><td>confirmed</td></tr>
+                <tr><td>P07 · 29 · Designer</td><td>수 10–11</td><td class="mark">수 10:00</td><td>confirmed</td></tr>
+                <tr><td>P11 · 41 · Marketer</td><td>금 10–13</td><td>금 10:00</td><td>pending</td></tr>
+              </tbody>
+            </table>
+          </div>`},
+        {label:'안내문', num:'03',
+          html:`
+          <div class="qcard">
+            <div class="who"><span>참석자 안내 (자동 작성)</span><span class="tag">EMAIL</span></div>
+            <p>안녕하세요, P03님. <strong>월요일 오전 10:00</strong>에 30분 인터뷰가 잡혔습니다. 줌 링크는 별도 드릴 예정이고, 사전 질문은 아래에서 확인해 주세요.</p>
+          </div>`}
+      ]
+    },
+
+    moderator: {
+      crumb:'/ko/moderator · BEAUTY UX',
+      title:'AI 모더레이터',
+      cost:'1 크레딧',
+      ws:{who:'MODERATOR', ttl:'인터뷰 스크립트 v1', sub:'30min · 3 sections · 11 probes'},
+      next:{key:'verbatim', label:'전사록 생성기로 인터뷰 옮기기 →'},
+      tabs:[
+        {label:'가설', num:'01',
+          html:`
+          <div class="input"><span class="lbl">HYPOTHESIS</span><span class="v">20–30대는 친구 추천이 광고보다 결정에 크게 작용한다 <span class="typed"></span></span></div>
+          <div class="pillrow"><span class="pill amore">probe questions</span><span class="pill">3 sections</span><span class="pill">30min</span></div>
+          <p style="margin-top:18px;font-size:13px;color:var(--mute)">가설을 입력하면 오프닝 → 본 질문 → 심화 probe 까지 자동 구성됩니다.</p>`},
+        {label:'스크립트', num:'02',
+          html:`
+          <div class="qcard">
+            <div class="who"><span>오프닝 — 워밍업 (5min)</span><span class="tag">SCRIPT</span></div>
+            <p>최근 일주일 동안 새로 산 스킨케어 제품이 있다면 어떤 거예요? 어떤 계기로 사게 됐는지부터 들려주세요.</p>
+          </div>
+          <div class="qcard">
+            <div class="who"><span>본 질문 — 결정의 순간 (15min)</span><span class="tag">PROBE</span></div>
+            <p>“친구 추천”이라고 하셨는데, 같은 친구가 추천했지만 사지 않은 제품도 있었나요? 그땐 무엇이 달랐나요?</p>
+          </div>
+          <div class="qcard">
+            <div class="who"><span>심화 — 신뢰 vs. 광고 (10min)</span><span class="tag">PROBE</span></div>
+            <p>광고로 알게 된 제품 중 “이건 진짜 사야겠다”고 느낀 적이 있다면, 그건 어떤 광고였나요?</p>
+          </div>`},
+        {label:'추가 probe', num:'03',
+          html:`
+          <ul style="list-style:none;margin-top:8px;display:flex;flex-direction:column;gap:8px">
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12.5px">친구 추천 ≠ 광고. 그 차이를 말로 표현해 본다면?</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12.5px">최근 “이건 안 사야겠다”고 결정한 순간은 어떤 거였나요?</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12.5px">스킨케어 결정과 화장품 결정은 어떻게 다른가요?</li>
+          </ul>`}
+      ]
+    },
+    verbatim: {
+      crumb:'/ko/quotes · 2026-05-04',
+      title:'전사록 생성기',
+      cost:'25 크레딧',
+      ws:{who:'VERBATIM', ttl:'P03 · interview-03.m4a', sub:'드래그 → 즉시 변환 · 7 lines'},
+      next:{key:'interview', label:'인터뷰 결과 생성기로 9개 인터뷰 매트릭스화 →'},
+      tabs:[
+        {label:'드래그하기', num:'01',
+          html:`
+          <div class="dropzone" id="vbDrop">
+            <div class="dz-icon">↓</div>
+            <div class="dz-title">음성 · 영상 파일을 끌어다 놓으세요</div>
+            <div class="dz-sub">mp3 · m4a · wav · mp4 · mov · webm — 그게 전부예요</div>
+            <div class="dz-row">
+              <span class="pill amore">drag → 즉시 변환</span>
+              <span class="pill">최대 25MB</span>
+              <span class="pill">한국어 / 영어 자동 감지</span>
+            </div>
+            <button class="btn dz-btn" id="vbDemo">데모로 변환해보기</button>
+          </div>
+          <div class="dz-status" id="vbStatus" hidden>
+            <span class="pulse"></span>
+            <span><strong id="vbFile">interview-03.m4a</strong> · <span id="vbPct">0%</span> 전사 중</span>
+          </div>`},
+        {label:'전사록', num:'02', html: TRANSCRIPT_BODY},
+        {label:'다음 도구', num:'03',
+          html:`
+          <p style="margin-top:8px;font-size:13px;color:var(--mute);line-height:1.7">전사록은 워크스페이스에 자동 등록됩니다. 같은 산출물을 다음 도구의 입력으로 끌어다 넣으세요.</p>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="pill amore">→ 인터뷰 결과 생성기</span>
+            <span class="pill">→ Affinity Bubble</span>
+            <span class="pill">→ 전체 리포트</span>
+          </div>`}
+      ]
+    },
+
+    interview: {
+      crumb:'/ko/interviews · MAY-INSIGHTS',
+      title:'인터뷰 결과 생성기',
+      cost:'10 크레딧',
+      ws:{who:'INTERVIEW', ttl:'문항별 답변 매트릭스', sub:'9 transcripts · 14 questions · CSV/XLSX'},
+      next:{key:'quant', label:'정량조사 분석으로 가설 검증 →'},
+      tabs:[
+        {label:'1단계 — 변환', num:'01',
+          html:`
+          <div class="input"><span class="lbl">SOURCES</span><span class="v">9 transcripts · workspace.linked</span></div>
+          <div class="pillrow"><span class="pill amore">.md 자동 변환</span><span class="pill">9/9 done</span></div>
+          <ul style="list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:6px">
+            <li style="padding:9px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px;display:flex;justify-content:space-between"><span>P01 · interview-01.md</span><span style="color:var(--amore);font-weight:600">변환 완료</span></li>
+            <li style="padding:9px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px;display:flex;justify-content:space-between"><span>P03 · interview-03.md</span><span style="color:var(--amore);font-weight:600">변환 완료</span></li>
+            <li style="padding:9px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px;display:flex;justify-content:space-between"><span>P05 · interview-05.md</span><span style="color:var(--amore);font-weight:600">변환 완료</span></li>
+            <li style="padding:9px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px;display:flex;justify-content:space-between"><span>P07 · interview-07.md</span><span style="color:var(--amore);font-weight:600">변환 완료</span></li>
+          </ul>`},
+        {label:'2단계 — 매트릭스', num:'02',
+          html:`
+          <div class="matrix">
+            <table>
+              <thead><tr><th>참가자</th><th>결정 순간</th><th>주된 신뢰원</th><th>리추얼?</th><th>VOC 인용</th></tr></thead>
+              <tbody>
+                <tr><td>P01 · 27</td><td>저녁 클렌징 직후</td><td class="mark">유튜브 후기</td><td>O</td><td>“루틴이 무너지면 하루가 무너져요”</td></tr>
+                <tr><td>P03 · 32</td><td>출근 전 5분</td><td class="mark">친구 추천</td><td>O</td><td>“거울 앞에서 결정 안 해요”</td></tr>
+                <tr><td>P05 · 35</td><td>주말 마트 매대</td><td>매장 리뷰 카드</td><td>—</td><td>“가성비가 우선이에요”</td></tr>
+                <tr><td>P07 · 29</td><td>SNS 광고 직후</td><td class="mark">친구 추천</td><td>O</td><td>“브랜드보다 피부 친구”</td></tr>
+                <tr><td>P11 · 41</td><td>아침 거울 앞</td><td>브랜드 신뢰</td><td>O</td><td>“의식 같은 거예요”</td></tr>
+              </tbody>
+            </table>
+          </div>`},
+        {label:'내보내기', num:'03',
+          html:`
+          <div class="pillrow"><span class="pill amore">CSV · 14 rows</span><span class="pill amore">XLSX · sheet × 3</span><span class="pill">workspace.shared (org)</span></div>
+          <p style="margin-top:14px;font-size:13px;color:var(--mute);line-height:1.7">팀의 다른 멤버는 같은 워크스페이스에서 즉시 열 수 있습니다. 권한은 organization · shared 두 단계로 관리됩니다.</p>`}
+      ]
+    },
+
+    report: {
+      crumb:'/ko/reports · BEAUTY UX 2026Q2',
+      title:'전체 리포트 생성기',
+      cost:'50 크레딧 · 가장 인기',
+      ws:{who:'REPORT', ttl:'Beauty UX 2026 Q2', sub:'editorial · 12 artifacts · 28 pages'},
+      next:{key:'affinity', label:'Affinity Bubble로 발화 군집 시각화 →'},
+      tabs:[
+        {label:'구성', num:'01',
+          html:`
+          <div class="report">
+            <h5>Beauty UX 2026 Q2 — Decisions, Rituals, Trust</h5>
+            <div class="toc">
+              <span><em>00.</em> Executive Summary</span>
+              <span><em>01.</em> 결정 순간의 지형도 — 출근 전 5분</span>
+              <span><em>02.</em> ‘피부 친구’ 모델 — 친구가 광고를 이긴다</span>
+              <span><em>03.</em> 리추얼로서의 스킨케어</span>
+              <span><em>04.</em> 정량 검증: n=312, 신뢰원 × 연령대</span>
+              <span><em>05.</em> 권고안 4가지</span>
+            </div>
+            <div class="progress"><span></span></div>
+            <div class="meta" style="margin-top:10px;color:var(--mute)">composing · 78% · 14s remaining</div>
+          </div>`},
+        {label:'연결된 산출물', num:'02',
+          html:`
+          <ul style="list-style:none;margin-top:8px;display:flex;flex-direction:column;gap:6px">
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>Desk</strong> · 2025–2026 한국 스킨케어 트렌드</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>Verbatim ×9</strong> · P01 ~ P15 인터뷰 전사록</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>Interview</strong> · 14문항 매트릭스</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>Quant</strong> · n=312 cross-tab</li>
+          </ul>`},
+        {label:'미리보기', num:'03',
+          html:`
+          <div class="qcard">
+            <div class="who"><span>01. 결정 순간의 지형도</span><span class="tag">PAGE 04</span></div>
+            <p>2026년 한국 20–30대 여성 9인을 대상으로 한 인터뷰에서, 스킨케어 결정의 80%는 <strong>출근 전 5분 안에</strong> 일어난다. 거울 앞 의례가 아니라, 스마트폰 위 후기 스크롤이 결정 채널이 되었다.</p>
+          </div>`}
+      ]
+    },
+
+    quant: {
+      crumb:'/ko/quant · SURVEY-2026Q2',
+      title:'정량조사 분석',
+      cost:'15 크레딧',
+      ws:{who:'QUANT', ttl:'survey.csv · n=312', sub:'결정의 단서 × 연령대 cross-tab'},
+      next:{key:'report', label:'전체 리포트 생성기로 마무리 →'},
+      tabs:[
+        {label:'CSV', num:'01',
+          html:`
+          <div class="input"><span class="lbl">FILE</span><span class="v">survey-2026q2.csv · 312 rows · 26 cols</span></div>
+          <div class="pillrow"><span class="pill amore">client-side</span><span class="pill">no upload</span><span class="pill">interactive</span></div>`},
+        {label:'cross-tab', num:'02',
+          html:`
+          <div class="crosstab">
+            <div class="cell"><div class="lbl">친구 추천 — 20대</div><div class="bar"><span style="width:78%"></span></div><div class="pct">78%</div></div>
+            <div class="cell"><div class="lbl">친구 추천 — 30대</div><div class="bar"><span style="width:64%"></span></div><div class="pct">64%</div></div>
+            <div class="cell"><div class="lbl">유튜브 후기 — 20대</div><div class="bar"><span style="width:52%"></span></div><div class="pct">52%</div></div>
+            <div class="cell"><div class="lbl">유튜브 후기 — 30대</div><div class="bar"><span style="width:39%"></span></div><div class="pct">39%</div></div>
+            <div class="cell"><div class="lbl">브랜드 신뢰 — 20대</div><div class="bar"><span style="width:21%"></span></div><div class="pct">21%</div></div>
+            <div class="cell"><div class="lbl">브랜드 신뢰 — 30대</div><div class="bar"><span style="width:34%"></span></div><div class="pct">34%</div></div>
+          </div>`},
+        {label:'해석', num:'03',
+          html:`
+          <div class="qcard">
+            <p>친구 추천은 모든 연령대에서 가장 강한 결정 단서이지만, 20대(78%)에서 30대(64%)보다 14p 높게 작용한다. 광고 회의감이 가장 강한 연령대도 20대.</p>
+          </div>`}
+      ]
+    },
+
+    affinity: {
+      crumb:'/ko/affinity-bubble · BUBBLE MAP',
+      title:'Affinity Bubble',
+      cost:'외부 솔루션',
+      ws:{who:'AFFINITY', ttl:'5 clusters · 312 utterances', sub:'auto-labeled · partner offering'},
+      next:{key:'report', label:'전체 리포트로 통합 →'},
+      tabs:[
+        {label:'버블 맵', num:'01',
+          html:`
+          <div class="bubbles">
+            <div class="bubble" style="width:120px;height:120px;left:6%;top:18%">친구 추천 · 41</div>
+            <div class="bubble muted" style="width:88px;height:88px;left:30%;top:55%;animation-delay:.3s">유튜브 후기 · 27</div>
+            <div class="bubble" style="width:96px;height:96px;left:50%;top:14%;animation-delay:.6s">아침 리추얼 · 31</div>
+            <div class="bubble muted" style="width:74px;height:74px;left:70%;top:48%;animation-delay:.9s">광고 회의 · 18</div>
+            <div class="bubble muted" style="width:60px;height:60px;left:84%;top:8%;animation-delay:1.1s">매장 충동 · 12</div>
+          </div>`},
+        {label:'클러스터 라벨', num:'02',
+          html:`
+          <ul style="list-style:none;margin-top:8px;display:flex;flex-direction:column;gap:6px">
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong style="color:var(--amore)">친구 추천 (41)</strong> — “피부 친구”, “언니가 추천”, “직장 동료가 잘 쓴다고”</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>유튜브 후기 (27)</strong> — “솔직 후기”, “민낯 비교”, “2주 사용기”</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong style="color:var(--amore)">아침 리추얼 (31)</strong> — “출근 전 5분”, “손이 기억하는 순서”, “안 하면 어색”</li>
+            <li style="padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-size:12px"><strong>광고 회의 (18)</strong> — “자극적”, “과장”, “결국 친구 한 명을 못 이긴다”</li>
+          </ul>`}
+      ]
+    }
+  };
+
+  // ===== Builder & state =====
+  const stage = document.getElementById('wbStage');
+  const wb = document.getElementById('wb');
+  if(stage && wb){
+    // Build panels with tabs
+    Object.entries(PANELS).forEach(([k,p])=>{
+      const div = document.createElement('div');
+      div.className = 'stage-panel';
+      div.dataset.key = k;
+      const tabsHTML = p.tabs.map((t,i)=>`<button class="tab${i===0?' on':''}" data-tab="${i}"><span class="num">${t.num}</span> ${t.label}</button>`).join('');
+      const panesHTML = p.tabs.map((t,i)=>`<div class="tab-pane${i===0?' on':''}" data-pane="${i}">${t.html}</div>`).join('');
+      div.innerHTML = `
+        <div class="panel-head">
+          <div>
+            <div class="crumb">${p.crumb}</div>
+            <h3>${p.title}</h3>
+          </div>
+          <span class="cost-badge">● ${p.cost}</span>
+        </div>
+        <div class="tabs">${tabsHTML}</div>
+        ${panesHTML}`;
+      stage.appendChild(div);
+
+      // Tab interactions per panel
+      const tabs = div.querySelectorAll('.tab');
+      const panes = div.querySelectorAll('.tab-pane');
+      tabs.forEach(tb=>{
+        tb.addEventListener('click',()=>{
+          tabs.forEach(x=>x.classList.remove('on'));
+          panes.forEach(x=>x.classList.remove('on'));
+          tb.classList.add('on');
+          div.querySelector(`.tab-pane[data-pane="${tb.dataset.tab}"]`).classList.add('on');
+        });
+      });
+    });
+
+    const items = wb.querySelectorAll('.wb-side .item');
+    const order = Array.from(items).map(b=>b.dataset.key);
+    const wsList = document.getElementById('wsList');
+    const wsEmpty = document.getElementById('wsEmpty');
+    const wsCount = document.getElementById('wsCount');
+    const wbCredits = document.getElementById('wbCredits');
+    const wbBread = document.getElementById('wbBread');
+    const wbNext = document.getElementById('wbNext');
+    const visited = new Set();
+    let credits = 10;
+
+    function refreshProgress(){
+      const dots = wb.querySelectorAll('.wb-prog .dot');
+      const lines = wb.querySelectorAll('.wb-prog .line');
+      const n = Math.min(visited.size, dots.length);
+      dots.forEach((d,i)=>{
+        d.classList.remove('done','now');
+        if(i < n-1) d.classList.add('done');
+        else if(i === n-1) d.classList.add('now');
+      });
+      lines.forEach((l,i)=>l.classList.toggle('done', i < n-1));
+    }
+
+    function addToWorkspace(key){
+      if(visited.has(key)) return;
+      visited.add(key);
+      const p = PANELS[key];
+      if(!p?.ws) return;
+      wsEmpty.style.display = 'none';
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="who">${p.ws.who}</span><span class="ttl">${p.ws.ttl}</span><span class="sub">${p.ws.sub}</span>`;
+      wsList.appendChild(li);
+      wsCount.textContent = visited.size;
+      // mark visited dot in sidebar
+      wb.querySelector(`.item[data-key="${key}"]`).classList.add('visited');
+      refreshProgress();
+    }
+
+    function show(key){
+      items.forEach(b=>b.classList.toggle('active', b.dataset.key===key));
+      stage.querySelectorAll('.stage-panel').forEach(p=>p.classList.toggle('show', p.dataset.key===key));
+      const p = PANELS[key];
+      if(p){
+        wbBread.textContent = p.crumb;
+        wbNext.textContent = p.next ? p.next.label : '리포트로 마무리 →';
+      }
+      addToWorkspace(key);
+      // Scroll stage to top on switch
+      stage.scrollTop = 0;
+    }
+    items.forEach(b=>b.addEventListener('click',()=>show(b.dataset.key)));
+
+    // Reset & to-report
+    document.getElementById('wbReset').addEventListener('click',()=>{
+      visited.clear();
+      wsList.innerHTML = '';
+      wsEmpty.style.display = '';
+      wsCount.textContent = '0';
+      wb.querySelectorAll('.item.visited').forEach(b=>b.classList.remove('visited'));
+      refreshProgress();
+      show('desk');
+    });
+    document.getElementById('wbToReport').addEventListener('click',()=>show('report'));
+
+    // Verbatim dropzone: drag/drop OR demo button → simulate transcription, jump to 전사록 tab
+    function runVerbatim(filename){
+      const panel = stage.querySelector('.stage-panel[data-key="verbatim"]');
+      if(!panel) return;
+      const status = panel.querySelector('#vbStatus');
+      const pct = panel.querySelector('#vbPct');
+      const file = panel.querySelector('#vbFile');
+      file.textContent = filename || 'interview-03.m4a';
+      status.hidden = false;
+      let p = 0;
+      const id = setInterval(()=>{
+        p += 12 + Math.random()*8;
+        if(p >= 100){
+          p = 100; clearInterval(id);
+          // jump to 전사록 tab
+          const tabs = panel.querySelectorAll('.tab');
+          const panes = panel.querySelectorAll('.tab-pane');
+          tabs.forEach(x=>x.classList.remove('on'));
+          panes.forEach(x=>x.classList.remove('on'));
+          tabs[1].classList.add('on');
+          panes[1].classList.add('on');
+        }
+        pct.textContent = Math.round(p)+'%';
+      }, 220);
+    }
+    const dz = stage.querySelector('#vbDrop');
+    if(dz){
+      ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over')}));
+      ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over')}));
+      dz.addEventListener('drop',e=>{
+        const f = e.dataTransfer?.files?.[0];
+        runVerbatim(f?.name);
+      });
+      dz.addEventListener('click',e=>{
+        if(e.target.id !== 'vbDemo') return;
+      });
+      const demoBtn = stage.querySelector('#vbDemo');
+      if(demoBtn) demoBtn.addEventListener('click',()=>runVerbatim());
+    }
+
+    // initial
+    show('desk');
+
+    // keyboard navigation when section is in viewport
+    document.addEventListener('keydown',(e)=>{
+      const r = wb.getBoundingClientRect();
+      if(r.bottom < 0 || r.top > window.innerHeight) return;
+      if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const cur = order.findIndex(k=>wb.querySelector(`.item[data-key="${k}"]`).classList.contains('active'));
+      if(e.key==='ArrowRight'){ e.preventDefault(); show(order[(cur+1)%order.length]); }
+      if(e.key==='ArrowLeft'){ e.preventDefault(); show(order[(cur-1+order.length)%order.length]); }
+    });
+  }
+
+  // Smooth anchor
+  document.querySelectorAll('a[href^="#"]').forEach(a=>{
+    a.addEventListener('click',(e)=>{
+      const id=a.getAttribute('href');
+      if(id.length>1 && document.querySelector(id)){
+        e.preventDefault();
+        document.querySelector(id).scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    });
+  });
+</script>
+</body>
+</html>

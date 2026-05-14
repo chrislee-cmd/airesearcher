@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, '') },
   });
 
-  const finalSubject = subject || '[AI Researcher] 리크루팅 안내';
+  const finalSubject = subject || '[Intellicenter] 리크루팅 안내';
   const text = body;
 
   try {

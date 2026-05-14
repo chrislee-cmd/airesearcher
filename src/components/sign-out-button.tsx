@@ -11,7 +11,7 @@ export function SignOutButton() {
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.replace('/dashboard');
+    router.replace('/');
     router.refresh();
   }
 
