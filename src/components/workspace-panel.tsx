@@ -11,19 +11,16 @@ import { useRouter } from '@/i18n/navigation';
 import type { FeatureKey } from '@/lib/features';
 import type { WorkspaceArtifact } from '@/lib/workspace';
 import { triggerBlobDownload } from '@/lib/export/download';
-import { useWorkspace } from './workspace-provider';
+import { useActiveProject } from './active-project-provider';
+import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
 
-// Window for the new-row flash + trigger pulse after addArtifact fires.
-const FLASH_MS = 2400;
-
 type DownloadFormat = 'md' | 'txt' | 'html' | 'docx';
 
 // Reports stream HTML; every other artifact is plain markdown/text. `docx`
-// works for both kinds via the /api/workspace/export-docx server route
-// (keeps the docx lib out of the client bundle).
+// works for both kinds via the /api/workspace/export-docx server route.
 function formatsFor(featureKey: FeatureKey): DownloadFormat[] {
   if (featureKey === 'reports') return ['html', 'txt', 'docx'];
   return ['md', 'txt', 'docx'];
@@ -57,34 +54,6 @@ function sanitizeFilename(s: string): string {
   return s.replace(/[\\/:*?"<>|\r\n\t]+/g, '_').slice(0, 80).trim() || 'artifact';
 }
 
-async function downloadArtifact(a: WorkspaceArtifact, format: DownloadFormat) {
-  const filename = `${sanitizeFilename(a.title)}.${format}`;
-
-  if (format === 'docx') {
-    const res = await fetch('/api/workspace/export-docx', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        title: a.title,
-        content: a.content,
-        kind: a.featureKey === 'reports' ? 'html' : 'md',
-      }),
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    triggerBlobDownload(blob, filename);
-    return;
-  }
-
-  const isHtmlSource = a.featureKey === 'reports';
-  const content =
-    format === 'txt' && isHtmlSource ? stripHtmlToText(a.content) : a.content;
-  const blob = new Blob([content], { type: FORMAT_MIME[format] });
-  triggerBlobDownload(blob, filename);
-}
-
-type Project = { id: string; name: string };
-
 export function WorkspacePanel() {
   const t = useTranslations('Workspace');
   const tSidebar = useTranslations('Sidebar');
@@ -92,31 +61,39 @@ export function WorkspacePanel() {
   const tExport = useTranslations('Common.export');
   const {
     artifacts,
+    loading,
     isOpen,
     setOpen,
+    scope,
+    setScope,
+    resolvedKind,
+    refresh,
     removeArtifact,
     removeArtifacts,
     setProjectId,
+    fetchContent,
     sendTo,
     sendMany,
     targetsFor,
     setDragging,
-    lastAddedId,
-    lastAddedAt,
   } = useWorkspace();
+  const { projects, active, setActive } = useActiveProject();
   const router = useRouter();
 
   const [openMenu, setOpenMenu] = useState<string | 'bulk' | null>(null);
   const [openSendSub, setOpenSendSub] = useState(false);
   const [openDownloadSub, setOpenDownloadSub] = useState(false);
-  const [viewing, setViewing] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<WorkspaceArtifact | null>(null);
+  const [viewingContent, setViewingContent] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [pulse, setPulse] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [busy, setBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Drop selections that no longer exist (artifact deleted elsewhere).
+  // Drop stale selections (artifact left current scope or was deleted).
   useEffect(() => {
     setSelected((prev) => {
       const ids = new Set(artifacts.map((a) => a.id));
@@ -147,14 +124,6 @@ export function WorkspacePanel() {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  // Trigger-button pulse on new artifact.
-  useEffect(() => {
-    if (!lastAddedAt) return;
-    setPulse(true);
-    const id = window.setTimeout(() => setPulse(false), FLASH_MS);
-    return () => window.clearTimeout(id);
-  }, [lastAddedAt]);
-
   // Escape closes the modal.
   useEffect(() => {
     if (!isOpen) return;
@@ -165,54 +134,88 @@ export function WorkspacePanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, setOpen]);
 
-  // Lazy-fetch projects when modal opens.
+  // Focus the inline project-name input when create mode opens.
   useEffect(() => {
-    if (!isOpen) return;
+    if (creatingProject) inputRef.current?.focus();
+  }, [creatingProject]);
+
+  // Lazy-load the view modal content when an artifact opens.
+  useEffect(() => {
+    if (!viewing) {
+      setViewingContent(null);
+      return;
+    }
     let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/projects', { cache: 'no-store' });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!cancelled) setProjects((json.projects ?? []) as Project[]);
-      } catch {
-        // ignore
-      }
-    })();
+    setViewingContent(null);
+    void fetchContent(viewing).then((res) => {
+      if (cancelled) return;
+      setViewingContent(res?.content ?? '');
+    });
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [viewing, fetchContent]);
 
   function flash(msg: string) {
     setToast(msg);
   }
 
-  async function onCopy(content: string) {
+  async function onCopy(a: WorkspaceArtifact) {
+    setOpenMenu(null);
+    const c = await fetchContent(a);
+    if (!c) {
+      flash(t('copyFailed'));
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(c.content);
       flash(t('copied'));
     } catch {
       flash(t('copyFailed'));
     }
-    setOpenMenu(null);
   }
 
-  function onSend(artifactId: string, target: FeatureKey) {
-    const path = sendTo(artifactId, target);
+  async function downloadArtifact(a: WorkspaceArtifact, format: DownloadFormat) {
+    const c = await fetchContent(a);
+    if (!c) return;
+    const filename = `${sanitizeFilename(a.title)}.${format}`;
+
+    if (format === 'docx') {
+      const res = await fetch('/api/workspace/export-docx', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: a.title,
+          content: c.content,
+          kind: c.kind === 'html' ? 'html' : 'md',
+        }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      triggerBlobDownload(blob, filename);
+      return;
+    }
+
+    const content =
+      format === 'txt' && c.kind === 'html' ? stripHtmlToText(c.content) : c.content;
+    const blob = new Blob([content], { type: FORMAT_MIME[format] });
+    triggerBlobDownload(blob, filename);
+  }
+
+  async function onSend(a: WorkspaceArtifact, target: FeatureKey) {
     setOpenMenu(null);
     setOpenSendSub(false);
+    const path = await sendTo(a.id, target);
     if (path) {
       setOpen(false);
       router.push(path);
     }
   }
 
-  function onSendBulk(target: FeatureKey) {
-    const ids = Array.from(selected);
-    const path = sendMany(ids, target);
+  async function onSendBulk(target: FeatureKey) {
     setOpenMenu(null);
     setOpenSendSub(false);
+    const path = await sendMany(Array.from(selected), target);
     if (path) {
       setOpen(false);
       router.push(path);
@@ -236,31 +239,36 @@ export function WorkspacePanel() {
     );
   }
 
-  async function onAssignProject(
-    artifact: WorkspaceArtifact,
-    nextProjectId: string | null,
-  ) {
-    setProjectId(artifact.id, nextProjectId);
-    if (artifact.dbFeature && artifact.dbId) {
-      try {
-        await fetch('/api/artifacts/assign', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            feature: artifact.dbFeature,
-            id: artifact.dbId,
-            project_id: nextProjectId,
-          }),
-        });
-      } catch {
-        // local state already updated; treat as best-effort
+  async function createProject() {
+    const name = newProjectName.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        flash(t('createFailed'));
+        return;
       }
+      const json = await res.json();
+      const created = { id: json.id as string, name: json.name as string };
+      // Switch the workspace + the global active project to the new one so
+      // the panel opens straight into it.
+      setActive(created);
+      setScope('active');
+      setCreatingProject(false);
+      setNewProjectName('');
+      flash(t('created'));
+    } catch {
+      flash(t('createFailed'));
+    } finally {
+      setBusy(false);
     }
   }
 
-  // Formats common to every selected artifact — mirrors bulkTargets so the
-  // submenu only offers conversions that work for the entire selection.
-  // For a mixed md+html selection the intersection collapses to {txt}.
   const bulkFormats = useMemo<DownloadFormat[]>(() => {
     if (selected.size === 0) return [];
     const sources = artifacts.filter((a) => selected.has(a.id));
@@ -274,7 +282,6 @@ export function WorkspacePanel() {
     return intersect;
   }, [artifacts, selected]);
 
-  // Bulk send-to intersection (unchanged from previous version).
   const bulkTargets = useMemo<FeatureKey[]>(() => {
     if (selected.size === 0) return [];
     const sources = artifacts
@@ -290,12 +297,8 @@ export function WorkspacePanel() {
     return Array.from(intersect);
   }, [artifacts, selected, targetsFor]);
 
-  const viewedArtifact = viewing ? artifacts.find((a) => a.id === viewing) : null;
   const allSelected = selected.size > 0 && selected.size === artifacts.length;
-  const flashActive = !!lastAddedAt && Date.now() - lastAddedAt < FLASH_MS;
-  // The trigger badge surfaces "stuff that needs your attention" — i.e.
-  // unfiled artifacts. Items already in a project are out of frame.
-  const unfiledCount = artifacts.filter((a) => !a.projectId).length;
+  const showAssignSelect = resolvedKind !== 'all'; // 'all' view shows the project name in-row instead
 
   return (
     <>
@@ -303,13 +306,12 @@ export function WorkspacePanel() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px] ${
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px] ${
           pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
         }`}
       >
         <span className="inline-block h-1 w-5 bg-amore" />
         {t('eyebrow')}
-        <span className="tabular-nums text-mute-soft">· {unfiledCount}</span>
       </button>
 
       {isOpen && (
@@ -351,6 +353,94 @@ export function WorkspacePanel() {
                 ×
               </button>
             </header>
+
+            {/* Scope row — project switcher + create button. The
+                workspace IS the project view: switching scope here is
+                the same operation as switching the active project. */}
+            <div className="flex items-center gap-2 border-b border-line-soft px-5 py-2">
+              {creatingProject ? (
+                <>
+                  <input
+                    ref={inputRef}
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void createProject();
+                      if (e.key === 'Escape') {
+                        setCreatingProject(false);
+                        setNewProjectName('');
+                      }
+                    }}
+                    placeholder={t('newProjectName')}
+                    className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy || !newProjectName.trim()}
+                    onClick={() => void createProject()}
+                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                  >
+                    {t('create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatingProject(false);
+                      setNewProjectName('');
+                    }}
+                    className="text-[11px] text-mute-soft hover:text-ink-2"
+                  >
+                    {t('cancel')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <select
+                    value={scope}
+                    onChange={(e) => {
+                      const v = e.target.value as WorkspaceScope;
+                      if (v === '__new__') {
+                        setCreatingProject(true);
+                        return;
+                      }
+                      setScope(v);
+                      // Keep useActiveProject in sync when the user
+                      // picks a real project from the dropdown.
+                      if (v !== 'all' && v !== 'unfiled' && v !== 'active') {
+                        const p = projects.find((x) => x.id === v);
+                        if (p) setActive(p);
+                      }
+                    }}
+                    className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  >
+                    <option value="active">
+                      {active
+                        ? `${t('scopeProject')}: ${active.name}`
+                        : t('scopeUnfiled')}
+                    </option>
+                    <option value="unfiled">{t('scopeUnfiled')}</option>
+                    <option value="all">{t('scopeAll')}</option>
+                    {projects.length > 0 && (
+                      <optgroup label={t('projects')}>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <option value="__new__">{t('newProject')}</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void refresh()}
+                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+                  >
+                    {t('refresh')}
+                  </button>
+                </>
+              )}
+            </div>
 
             {artifacts.length > 0 && (
               <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
@@ -398,7 +488,7 @@ export function WorkspacePanel() {
                               {bulkTargets.map((tgt) => (
                                 <MenuItem
                                   key={tgt}
-                                  onClick={() => onSendBulk(tgt)}
+                                  onClick={() => void onSendBulk(tgt)}
                                 >
                                   {tSidebar(tgt)}
                                 </MenuItem>
@@ -437,17 +527,22 @@ export function WorkspacePanel() {
                             </div>
                           )}
                         </div>
-                        <div className="my-1 h-px bg-line-soft" />
-                        <MenuItem
-                          danger
-                          onClick={() => {
-                            removeArtifacts(Array.from(selected));
-                            setSelected(new Set());
-                            setOpenMenu(null);
-                          }}
-                        >
-                          {t('deleteSelected')}
-                        </MenuItem>
+                        {resolvedKind === 'project' && (
+                          <>
+                            <div className="my-1 h-px bg-line-soft" />
+                            <MenuItem
+                              danger
+                              onClick={() => {
+                                const list = artifacts.filter((a) => selected.has(a.id));
+                                void removeArtifacts(list);
+                                setSelected(new Set());
+                                setOpenMenu(null);
+                              }}
+                            >
+                              {t('removeFromProject')}
+                            </MenuItem>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -456,7 +551,11 @@ export function WorkspacePanel() {
             )}
 
             <div className="min-h-[180px] flex-1 overflow-y-auto">
-              {artifacts.length === 0 ? (
+              {loading && artifacts.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-[12px] text-mute-soft">{t('loading')}</p>
+                </div>
+              ) : artifacts.length === 0 ? (
                 <div className="px-5 py-12 text-center">
                   <p className="text-[12px] text-mute-soft">{t('empty')}</p>
                   <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
@@ -467,7 +566,6 @@ export function WorkspacePanel() {
                     const targets = targetsFor(a.featureKey);
                     const isMenuOpen = openMenu === a.id;
                     const isSelected = selected.has(a.id);
-                    const isFresh = flashActive && lastAddedId === a.id;
                     return (
                       <li
                         key={a.id}
@@ -490,7 +588,7 @@ export function WorkspacePanel() {
                         onDragEnd={() => setDragging(null)}
                         className={`cursor-grab border-b border-line-soft px-5 py-2.5 last:border-b-0 active:cursor-grabbing ${
                           isSelected ? 'bg-paper-soft' : ''
-                        } ${isFresh ? 'workspace-row-flash' : ''}`}
+                        }`}
                       >
                         <div className="flex items-center gap-3">
                           <input
@@ -509,23 +607,27 @@ export function WorkspacePanel() {
                               {a.title}
                             </div>
                           </div>
-                          <select
-                            value={a.projectId ?? '__unfiled__'}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              void onAssignProject(a, v === '__unfiled__' ? null : v);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:14px]"
-                            aria-label={t('assignProject')}
-                          >
-                            <option value="__unfiled__">{tDashboard('unfiled')}</option>
-                            {projects.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
+                          {showAssignSelect && (
+                            <select
+                              value={a.projectId ?? '__unfiled__'}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                void setProjectId(a, v === '__unfiled__' ? null : v).then(() => {
+                                  void refresh();
+                                });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:4px]"
+                              aria-label={t('assignProject')}
+                            >
+                              <option value="__unfiled__">{tDashboard('unfiled')}</option>
+                              {projects.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                           <div
                             className="relative shrink-0"
                             ref={isMenuOpen ? menuRef : undefined}
@@ -546,13 +648,13 @@ export function WorkspacePanel() {
                               <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
                                 <MenuItem
                                   onClick={() => {
-                                    setViewing(a.id);
+                                    setViewing(a);
                                     setOpenMenu(null);
                                   }}
                                 >
                                   {t('view')}
                                 </MenuItem>
-                                <MenuItem onClick={() => onCopy(a.content)}>
+                                <MenuItem onClick={() => void onCopy(a)}>
                                   {t('copy')}
                                 </MenuItem>
                                 <div className="relative">
@@ -593,7 +695,7 @@ export function WorkspacePanel() {
                                       {targets.map((tgt) => (
                                         <MenuItem
                                           key={tgt}
-                                          onClick={() => onSend(a.id, tgt)}
+                                          onClick={() => void onSend(a, tgt)}
                                         >
                                           {tSidebar(tgt)}
                                         </MenuItem>
@@ -601,16 +703,20 @@ export function WorkspacePanel() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="my-1 h-px bg-line-soft" />
-                                <MenuItem
-                                  danger
-                                  onClick={() => {
-                                    removeArtifact(a.id);
-                                    setOpenMenu(null);
-                                  }}
-                                >
-                                  {t('delete')}
-                                </MenuItem>
+                                {resolvedKind === 'project' && (
+                                  <>
+                                    <div className="my-1 h-px bg-line-soft" />
+                                    <MenuItem
+                                      danger
+                                      onClick={() => {
+                                        void removeArtifact(a).then(() => void refresh());
+                                        setOpenMenu(null);
+                                      }}
+                                    >
+                                      {t('removeFromProject')}
+                                    </MenuItem>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -629,10 +735,10 @@ export function WorkspacePanel() {
             )}
           </div>
 
-          {viewedArtifact && (
+          {viewing && (
             <ViewerOverlay
-              title={viewedArtifact.title}
-              content={viewedArtifact.content}
+              title={viewing.title}
+              content={viewingContent}
               onClose={() => setViewing(null)}
             />
           )}
@@ -678,7 +784,7 @@ function ViewerOverlay({
   onClose,
 }: {
   title: string;
-  content: string;
+  content: string | null;
   onClose: () => void;
 }) {
   return (
@@ -703,7 +809,7 @@ function ViewerOverlay({
           </button>
         </header>
         <pre className="flex-1 overflow-auto whitespace-pre-wrap p-5 text-[12.5px] leading-[1.7] text-ink-2">
-          {content}
+          {content === null ? '…' : content}
         </pre>
       </div>
     </div>

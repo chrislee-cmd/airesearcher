@@ -19,6 +19,10 @@ const Body = z.object({
   inputs: z.array(InputItem),
   extractions: z.unknown(),
   matrix: z.unknown(),
+  // Optional at initial persist: vertical-synthesis insights arrive
+  // a few seconds after the raw matrix. If absent, the client follows
+  // up with PATCH /api/interviews/jobs/[id] once consolidated lands.
+  consolidated: z.unknown().optional(),
 });
 
 export async function POST(req: Request) {
@@ -38,7 +42,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { project_id, inputs, extractions, matrix } = parsed.data;
+  const { project_id, inputs, extractions, matrix, consolidated } = parsed.data;
 
   const { data, error } = await supabase
     .from('interview_jobs')
@@ -49,6 +53,7 @@ export async function POST(req: Request) {
       inputs,
       extractions,
       matrix,
+      consolidated: consolidated ?? null,
       status: 'done',
     })
     .select('id')

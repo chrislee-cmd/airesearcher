@@ -574,7 +574,20 @@
     "sendSelectedTo": "Send selected to…",
     "downloadSelected": "Download selected…",
     "deleteSelected": "Delete selected",
-    "assignProject": "Assign project"
+    "assignProject": "Assign project",
+    "loading": "Loading…",
+    "refresh": "Refresh",
+    "scopeProject": "Project",
+    "scopeUnfiled": "Unfiled",
+    "scopeAll": "All",
+    "projects": "Projects",
+    "newProject": "+ New project",
+    "newProjectName": "Project name",
+    "create": "Create",
+    "cancel": "Cancel",
+    "created": "Project created",
+    "createFailed": "Create failed",
+    "removeFromProject": "Remove from project"
   },
   "Members": {
     "title": "Member management",

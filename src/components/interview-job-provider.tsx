@@ -575,6 +575,13 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
+  // Mirror for async access inside the vertical-synth callback — the
+  // PATCH for consolidated insights fires after the initial POST resolves,
+  // and we need the latest jobId without rerunning the effect.
+  const lastSnapshotJobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    lastSnapshotJobIdRef.current = lastSnapshotJobId;
+  }, [lastSnapshotJobId]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
@@ -756,6 +763,20 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       if (insights.length === 0) {
         setVerticalSynthError('empty_response');
         return;
+      }
+      // Backfill the persisted row with consolidated insights so the
+      // workspace content endpoint can regenerate the markdown digest
+      // server-side. Non-fatal: workspace just won't have content if this
+      // fails until the next analysis run.
+      const jobId = lastSnapshotJobIdRef.current;
+      if (jobId) {
+        void fetch(`/api/interviews/jobs/${jobId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ consolidated: insights }),
+        }).catch(() => {
+          /* ignore */
+        });
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {

@@ -6,197 +6,242 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { FeatureKey } from '@/lib/features';
 import {
+  type DbBackedFeature,
   type WorkspaceArtifact,
   prefillKey,
   SEND_TO_MAP,
 } from '@/lib/workspace';
-
-const STORAGE_KEY = 'workspace:artifacts:v1';
+import { useActiveProject } from './active-project-provider';
 
 export type DragInfo = {
   artifactId: string;
   sourceFeature: FeatureKey;
 };
 
+// Filter applied to the artifact list. Mirrors ProjectFilter on the server.
+//   - 'active': artifacts in the currently-selected project (from
+//                ActiveProjectProvider). Falls back to 'unfiled' if no
+//                project is active.
+//   - 'all':    every artifact in the org.
+//   - 'unfiled': artifacts with project_id = null.
+//   - <uuid>:   artifacts in a specific project (overrides active).
+export type WorkspaceScope = 'active' | 'all' | 'unfiled' | string;
+
 type Ctx = {
   artifacts: WorkspaceArtifact[];
+  loading: boolean;
+  error: string | null;
   isOpen: boolean;
   setOpen: (v: boolean) => void;
-  addArtifact: (
-    a: Omit<WorkspaceArtifact, 'id' | 'createdAt'> & {
-      id?: string;
-      createdAt?: number;
-    },
-  ) => WorkspaceArtifact;
-  removeArtifact: (id: string) => void;
-  removeArtifacts: (ids: string[]) => void;
-  setProjectId: (artifactId: string, projectId: string | null) => void;
-  clearAll: () => void;
-  sendTo: (artifactId: string, target: FeatureKey) => string | null;
-  sendMany: (artifactIds: string[], target: FeatureKey) => string | null;
+  scope: WorkspaceScope;
+  setScope: (s: WorkspaceScope) => void;
+  // The project_id actually being displayed (resolved from scope +
+  // active project). null means "unfiled" or "all".
+  resolvedProjectId: string | null;
+  resolvedKind: 'project' | 'unfiled' | 'all';
+  // Refetch the artifact list. Call after a mutation (assign, delete).
+  refresh: () => Promise<void>;
+  // Legacy no-op kept so generators that used to push completed jobs into
+  // the panel (transcripts/desk/interview/reports/recruiting/scheduler)
+  // continue to compile. The DB is now the source of truth — those jobs
+  // already persist there, and the next `/api/workspace/artifacts` fetch
+  // surfaces them automatically. Safe to delete callers in a follow-up PR.
+  addArtifact: (...args: unknown[]) => void;
+  removeArtifact: (artifact: WorkspaceArtifact) => Promise<void>;
+  removeArtifacts: (artifacts: WorkspaceArtifact[]) => Promise<void>;
+  setProjectId: (
+    artifact: WorkspaceArtifact,
+    projectId: string | null,
+  ) => Promise<void>;
+  // Lazy content fetch — used by view/copy/download/send-to handlers.
+  // Cached in-memory for the panel session so repeated clicks don't re-hit.
+  fetchContent: (
+    artifact: WorkspaceArtifact,
+  ) => Promise<{ content: string; kind: 'html' | 'markdown' | 'text' } | null>;
+  // Id-based for backwards-compat with the sidebar's drag-and-drop flow,
+  // which only carries artifact ids over dataTransfer. Returns null if the
+  // id isn't in the current artifact list (cross-scope drag from stale
+  // state — caller should bail out and reopen panel for fresh data).
+  sendTo: (artifactId: string, target: FeatureKey) => Promise<string | null>;
+  sendMany: (
+    artifactIds: string[],
+    target: FeatureKey,
+  ) => Promise<string | null>;
   targetsFor: (source: FeatureKey) => FeatureKey[];
-  // Drag state — set by WorkspacePanel when an artifact starts dragging,
-  // read by Sidebar to highlight compatible drop targets.
   dragging: DragInfo | null;
   setDragging: (info: DragInfo | null) => void;
-  // Drives the trigger-button pulse + new-row flash.
-  lastAddedId: string | null;
-  lastAddedAt: number | null;
 };
 
 const WorkspaceCtx = createContext<Ctx | null>(null);
 
-function readStorage(): WorkspaceArtifact[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as WorkspaceArtifact[];
-  } catch {
-    return [];
-  }
-}
-
-function writeStorage(items: WorkspaceArtifact[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // quota or serialization failure — ignore
-  }
-}
-
-function makeId() {
-  return `wa_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const { active } = useActiveProject();
   const [artifacts, setArtifacts] = useState<WorkspaceArtifact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isOpen, setOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const [scope, setScope] = useState<WorkspaceScope>('active');
   const [dragging, setDragging] = useState<DragInfo | null>(null);
-  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
-  const [lastAddedAt, setLastAddedAt] = useState<number | null>(null);
 
-  useEffect(() => {
-    setArtifacts(readStorage());
-    setHydrated(true);
-  }, []);
+  // (feature,id) → content cache. Drops on page nav (in-memory only).
+  const contentCacheRef = useRef<Map<string, { content: string; kind: 'html' | 'markdown' | 'text' }>>(
+    new Map(),
+  );
 
-  useEffect(() => {
-    if (!hydrated) return;
-    writeStorage(artifacts);
-  }, [artifacts, hydrated]);
-
-  // Cross-tab sync.
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key !== STORAGE_KEY) return;
-      setArtifacts(readStorage());
+  // Resolve scope → server query param.
+  const { resolvedProjectId, resolvedKind, queryParam } = useMemo(() => {
+    if (scope === 'all') {
+      return { resolvedProjectId: null, resolvedKind: 'all' as const, queryParam: 'all' };
     }
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const addArtifact: Ctx['addArtifact'] = useCallback((input) => {
-    const next: WorkspaceArtifact = {
-      id: input.id ?? makeId(),
-      featureKey: input.featureKey,
-      title: input.title,
-      content: input.content,
-      createdAt: input.createdAt ?? Date.now(),
-      dbFeature: input.dbFeature,
-      dbId: input.dbId,
-      projectId: input.projectId ?? null,
-    };
-    let isNew = true;
-    setArtifacts((prev) => {
-      // Upsert by id — repeat calls (e.g. scheduler autosave) update
-      // title/content/projectId in place rather than spamming new rows.
-      const idx = prev.findIndex((a) => a.id === next.id);
-      if (idx >= 0) {
-        isNew = false;
-        const merged: WorkspaceArtifact = {
-          ...prev[idx],
-          title: next.title,
-          content: next.content,
-          dbFeature: next.dbFeature ?? prev[idx].dbFeature,
-          dbId: next.dbId ?? prev[idx].dbId,
-          // Preserve projectId set locally by the modal picker. Fall back
-          // to whatever the caller passed in.
-          projectId: prev[idx].projectId ?? next.projectId ?? null,
+    if (scope === 'unfiled') {
+      return { resolvedProjectId: null, resolvedKind: 'unfiled' as const, queryParam: 'unfiled' };
+    }
+    if (scope === 'active') {
+      if (active?.id) {
+        return {
+          resolvedProjectId: active.id,
+          resolvedKind: 'project' as const,
+          queryParam: active.id,
         };
-        const copy = prev.slice();
-        copy[idx] = merged;
-        return copy;
       }
-      return [next, ...prev];
-    });
-    if (isNew) {
-      setLastAddedId(next.id);
-      setLastAddedAt(Date.now());
+      return { resolvedProjectId: null, resolvedKind: 'unfiled' as const, queryParam: 'unfiled' };
     }
-    return next;
+    // Explicit project id
+    return { resolvedProjectId: scope, resolvedKind: 'project' as const, queryParam: scope };
+  }, [scope, active]);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}`,
+        { cache: 'no-store' },
+      );
+      if (!res.ok) {
+        setError('list_failed');
+        return;
+      }
+      const json = await res.json();
+      const list = (json.artifacts ?? []) as WorkspaceArtifact[];
+      setArtifacts(list);
+    } catch {
+      setError('network_error');
+    } finally {
+      setLoading(false);
+    }
+  }, [queryParam]);
+
+  // Auto-fetch on open + scope change. Closed panel doesn't poll — the
+  // user's next open will re-fetch fresh data.
+  useEffect(() => {
+    if (!isOpen) return;
+    void refresh();
+  }, [isOpen, refresh]);
+
+  const fetchContent = useCallback<Ctx['fetchContent']>(async (a) => {
+    const key = `${a.dbFeature}:${a.dbId}`;
+    const cached = contentCacheRef.current.get(key);
+    if (cached) return cached;
+    try {
+      const res = await fetch('/api/workspace/content', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ feature: a.dbFeature, id: a.dbId }),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { content: string; kind: 'html' | 'markdown' | 'text' };
+      contentCacheRef.current.set(key, json);
+      return json;
+    } catch {
+      return null;
+    }
   }, []);
 
-  const removeArtifact = useCallback((id: string) => {
-    setArtifacts((prev) => prev.filter((a) => a.id !== id));
+  const addArtifact = useCallback<Ctx['addArtifact']>(() => {
+    // no-op — see Ctx['addArtifact'] comment
   }, []);
 
-  const removeArtifacts = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    const set = new Set(ids);
-    setArtifacts((prev) => prev.filter((a) => !set.has(a.id)));
-  }, []);
-
-  const setProjectId = useCallback<Ctx['setProjectId']>((artifactId, projectId) => {
+  const setProjectId = useCallback<Ctx['setProjectId']>(async (artifact, projectId) => {
+    // Optimistic update + server write. Failure rolls back via refresh().
     setArtifacts((prev) =>
-      prev.map((a) => (a.id === artifactId ? { ...a, projectId } : a)),
+      prev.map((a) =>
+        a.id === artifact.id ? { ...a, projectId: projectId } : a,
+      ),
     );
-  }, []);
+    try {
+      await fetch('/api/artifacts/assign', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          feature: artifact.dbFeature,
+          id: artifact.dbId,
+          project_id: projectId,
+        }),
+      });
+    } catch {
+      // Re-fetch to get authoritative state on network failure
+      void refresh();
+    }
+  }, [refresh]);
 
-  const clearAll = useCallback(() => setArtifacts([]), []);
+  // "Remove" from the workspace means unassigning from the current scope
+  // (project → unfiled, or unfiled → still unfiled). We never delete the
+  // underlying DB row from here — that lives in the source feature.
+  const removeArtifact = useCallback<Ctx['removeArtifact']>(async (artifact) => {
+    if (resolvedKind === 'all' || resolvedKind === 'unfiled') {
+      // No-op in 'all'/'unfiled' scope — there's nothing to remove from.
+      // The panel hides the delete action in these scopes; this guard is
+      // belt-and-suspenders.
+      return;
+    }
+    await setProjectId(artifact, null);
+  }, [resolvedKind, setProjectId]);
 
-  const sendTo = useCallback<Ctx['sendTo']>(
-    (artifactId, target) => {
-      const a = artifacts.find((x) => x.id === artifactId);
-      if (!a) return null;
-      try {
-        sessionStorage.setItem(prefillKey(target), a.content);
-      } catch {
-        // ignore
-      }
-      return `/${target}`;
-    },
-    [artifacts],
-  );
+  const removeArtifacts = useCallback<Ctx['removeArtifacts']>(async (list) => {
+    if (resolvedKind === 'all' || resolvedKind === 'unfiled') return;
+    await Promise.all(list.map((a) => setProjectId(a, null)));
+  }, [resolvedKind, setProjectId]);
 
-  const sendMany = useCallback<Ctx['sendMany']>(
-    (artifactIds, target) => {
-      // Preserve panel order (newest-first) so concatenation is predictable.
-      const lookup = new Map(artifacts.map((a) => [a.id, a] as const));
-      const picked = artifactIds
-        .map((id) => lookup.get(id))
-        .filter((a): a is WorkspaceArtifact => !!a);
-      if (picked.length === 0) return null;
-      const concatenated = picked
-        .map((a) => `# ${a.title}\n\n${a.content}`)
-        .join('\n\n---\n\n');
-      try {
-        sessionStorage.setItem(prefillKey(target), concatenated);
-      } catch {
-        // ignore
-      }
-      return `/${target}`;
-    },
-    [artifacts],
-  );
+  const sendTo = useCallback<Ctx['sendTo']>(async (artifactId, target) => {
+    const a = artifacts.find((x) => x.id === artifactId);
+    if (!a) return null;
+    const c = await fetchContent(a);
+    if (!c) return null;
+    try {
+      sessionStorage.setItem(prefillKey(target), c.content);
+    } catch {
+      /* ignore quota */
+    }
+    return `/${target}`;
+  }, [artifacts, fetchContent]);
+
+  const sendMany = useCallback<Ctx['sendMany']>(async (ids, target) => {
+    if (ids.length === 0) return null;
+    const lookup = new Map(artifacts.map((a) => [a.id, a] as const));
+    const list = ids.map((id) => lookup.get(id)).filter((a): a is WorkspaceArtifact => !!a);
+    if (list.length === 0) return null;
+    const contents = await Promise.all(
+      list.map(async (a) => {
+        const c = await fetchContent(a);
+        return c ? { title: a.title, content: c.content } : null;
+      }),
+    );
+    const ok = contents.filter((x): x is { title: string; content: string } => !!x);
+    if (ok.length === 0) return null;
+    const concatenated = ok.map((x) => `# ${x.title}\n\n${x.content}`).join('\n\n---\n\n');
+    try {
+      sessionStorage.setItem(prefillKey(target), concatenated);
+    } catch {
+      /* ignore */
+    }
+    return `/${target}`;
+  }, [artifacts, fetchContent]);
 
   const targetsFor = useCallback<Ctx['targetsFor']>((source) => {
     return SEND_TO_MAP[source] ?? [];
@@ -205,35 +250,44 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       artifacts,
+      loading,
+      error,
       isOpen,
       setOpen,
+      scope,
+      setScope,
+      resolvedProjectId,
+      resolvedKind,
+      refresh,
       addArtifact,
       removeArtifact,
       removeArtifacts,
       setProjectId,
-      clearAll,
+      fetchContent,
       sendTo,
       sendMany,
       targetsFor,
       dragging,
       setDragging,
-      lastAddedId,
-      lastAddedAt,
     }),
     [
       artifacts,
+      loading,
+      error,
       isOpen,
+      scope,
+      resolvedProjectId,
+      resolvedKind,
+      refresh,
       addArtifact,
       removeArtifact,
       removeArtifacts,
       setProjectId,
-      clearAll,
+      fetchContent,
       sendTo,
       sendMany,
       targetsFor,
       dragging,
-      lastAddedId,
-      lastAddedAt,
     ],
   );
 
@@ -245,3 +299,6 @@ export function useWorkspace() {
   if (!ctx) throw new Error('useWorkspace must be used inside <WorkspaceProvider>');
   return ctx;
 }
+
+// Re-export for components that need to type-narrow on the artifact shape.
+export type { WorkspaceArtifact, DbBackedFeature };
