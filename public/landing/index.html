@@ -437,6 +437,170 @@
   .lede-flow .w.amore{color:var(--amore);font-weight:600}
   .lede-flow .w.near{color:var(--amore)}
   @media (max-width:760px){.lede-flow{height:200px;font-size:15px;line-height:26px}}
+
+  /* ============================================================
+     === Bento overlay (style only — layout/structure unchanged) ===
+     Editorial 톤은 유지하되, 섹션·그리드 셀을 bento 타일로 재포장.
+     - radius 20px / soft tile bg / hairline border / very soft shadow
+     - 섹션 사이 구분선 제거, 카드 사이 gap 으로 호흡
+     - 액센트(amore) 비율은 그대로
+     ============================================================ */
+  :root{
+    --bento-radius:20px;
+    --bento-radius-sm:14px;
+    --bento-tile:#fff;
+    --bento-tile-soft:#f6f7f9;
+    --bento-tile-tint:#eef2f8;
+    --bento-page:#f1f2f5;
+    --bento-border:#e6e8ec;
+    --bento-shadow:0 1px 0 rgba(15,23,42,.02), 0 20px 40px -28px rgba(15,23,42,.18);
+    --bento-shadow-hover:0 1px 0 rgba(15,23,42,.03), 0 28px 56px -28px rgba(15,23,42,.28);
+  }
+  html,body{background:var(--bento-page)}
+
+  /* 섹션 = 호흡 공간. 구분선 대신 여백으로 분리 */
+  section{border-top:0 !important;padding:56px 0}
+  section:first-of-type{padding-top:56px}
+  .container{max-width:1160px}
+
+  /* NAV — 떠 있는 캡슐 느낌 */
+  nav.top{
+    border-bottom:0;background:rgba(246,247,249,.78);
+  }
+  nav.top .row{
+    margin:12px auto;height:60px;padding:0 18px;
+    background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:999px;box-shadow:var(--bento-shadow);
+  }
+  nav.top .brand .dot{border-radius:6px}
+  .btn{border-radius:999px}
+  .btn.primary:hover{background:var(--amore);border-color:var(--amore)}
+
+  /* HERO — pretext orb canvas 가 살아야 하므로 카드로 감싸지 않고 열린 상태 유지.
+     대신 좌우 padding 만 살짝 늘려 bento 페이지 톤과 조화. */
+  .hero{padding:64px 0 56px}
+  .hero h1{font-size:clamp(40px,6.5vw,76px)}
+  .hero .meta-row{margin-top:40px}
+  /* hero 하단 ticker 를 캡슐 bento 타일로 */
+  .ticker{
+    margin:36px auto 0;max-width:1160px;
+    border:1px solid var(--bento-border);border-radius:999px;
+    background:var(--bento-tile);box-shadow:var(--bento-shadow);
+    padding:14px 0;width:calc(100% - 64px);
+  }
+  @media (max-width:760px){.ticker{width:calc(100% - 32px)}}
+
+  /* Section header — 살짝 위로 */
+  .sec-head{margin-bottom:32px}
+
+  /* Showcase / Workbench v2 — 큰 bento */
+  .wb3{
+    border:1px solid var(--bento-border);border-radius:var(--bento-radius);
+    box-shadow:var(--bento-shadow);
+  }
+  .wb-top,.wb-side,.wb-ws{background:var(--bento-tile-soft)}
+  .wb-stage{background:var(--bento-tile)}
+  .wb-side .item{border-radius:10px}
+  .ws-count{border-radius:999px}
+
+  /* Quote / Problem — 단일 bento 타일 */
+  .quote{
+    border:0;padding:48px 0;
+  }
+  .quote .container{
+    background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius);padding:56px 48px;box-shadow:var(--bento-shadow);
+  }
+
+  /* Workbench: 8 features grid → bento 타일 그리드 */
+  .feat-grid{
+    background:transparent;border:0;gap:14px;border-radius:0;overflow:visible;
+  }
+  .feat{
+    background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius);padding:28px;min-height:220px;
+    box-shadow:var(--bento-shadow);transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .feat:hover{
+    background:var(--bento-tile);transform:translateY(-2px);
+    box-shadow:var(--bento-shadow-hover);
+  }
+  .feat .icon{border-radius:10px;background:var(--bento-tile-tint);border-color:transparent}
+  /* 큰 span 타일은 살짝 다른 톤으로 bento 리듬을 만듦 */
+  .feat.span-6{background:linear-gradient(180deg, var(--bento-tile) 0%, var(--bento-tile-soft) 100%)}
+  .feat.span-12{background:linear-gradient(135deg, #0b0b0b 0%, #1a1a1a 100%);color:#fff;border-color:transparent}
+  .feat.span-12 h3,.feat.span-12 .cost{color:#fff}
+  .feat.span-12 p{color:#cbd5e1}
+  .feat.span-12 .icon{background:rgba(255,255,255,.08);color:#fff}
+
+  /* Flow — 3 타일 가로 배치 */
+  .flow{
+    background:transparent;border:0;border-radius:0;gap:14px;
+    grid-template-columns:1fr 1fr 1fr;
+  }
+  .flow .step{
+    border-right:0;background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius);padding:32px 28px;box-shadow:var(--bento-shadow);
+  }
+  .flow .step:nth-child(2){background:var(--bento-tile-soft)}
+  .flow .step .arr{display:none}
+
+  /* Numbers — stat 타일 */
+  .stats{
+    border-top:0;border-bottom:0;display:grid;gap:14px;grid-template-columns:repeat(4,1fr);
+  }
+  .stats .stat{
+    border-right:0;background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius);padding:36px 28px;box-shadow:var(--bento-shadow);
+  }
+  .stats .stat:nth-child(2){background:linear-gradient(180deg,#0b0b0b,#1a1a1a);color:#fff;border-color:transparent}
+  .stats .stat:nth-child(2) .num{color:#fff}
+  .stats .stat:nth-child(2) .num em{color:#9ec3ff}
+  .stats .stat:nth-child(2) .lbl{color:#cbd5e1}
+
+  /* Pricing — 카드형 bento */
+  .price-grid{
+    background:transparent;border:0;gap:14px;border-radius:0;overflow:visible;
+  }
+  .price{
+    border-right:0;background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius);padding:32px 28px;box-shadow:var(--bento-shadow);
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .price:hover{transform:translateY(-2px);box-shadow:var(--bento-shadow-hover)}
+  .price.featured{
+    background:linear-gradient(160deg,#0b0b0b 0%, #14223d 100%);
+    border-color:transparent;
+  }
+  @media (max-width:900px){.price-grid{grid-template-columns:repeat(2,1fr)} .price{border-right:0;border-bottom:0}}
+
+  /* FAQ — 각 항목을 bento 타일로 */
+  .faq details{
+    border-top:0;background:var(--bento-tile);border:1px solid var(--bento-border);
+    border-radius:var(--bento-radius-sm);padding:20px 24px;margin-bottom:10px;
+    box-shadow:var(--bento-shadow);
+  }
+  .faq details:last-child{border-bottom:1px solid var(--bento-border)}
+  .faq details[open]{background:var(--bento-tile)}
+
+  /* Final CTA — 어두운 bento 타일 (full-bleed 대신 카드형) */
+  .final{background:transparent;border-top:0;padding:24px 0 48px}
+  .final .container{
+    padding:96px 56px;background:linear-gradient(135deg,#0b0b0b 0%, #1a2540 100%);
+    border-radius:32px;box-shadow:var(--bento-shadow);
+  }
+  @media (max-width:760px){.final .container{padding:56px 28px;border-radius:24px}}
+
+  /* Footer — 부드러운 검정 타일 */
+  footer{
+    background:transparent;border-top:0;color:var(--mute);padding:24px 0 36px;
+  }
+  footer .row{
+    background:#0b0b0b;color:#cbd5e1;
+    padding:18px 24px;border-radius:var(--bento-radius);
+  }
+
+  /* selection 컬러 유지 */
 </style>
 </head>
 <body>
