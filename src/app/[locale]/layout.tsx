@@ -45,7 +45,7 @@ export default async function LocaleLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-paper text-ink">
+      <body className="h-full flex flex-col bg-paper text-ink">
         <NextIntlClientProvider>
           <MixpanelProvider>
             <AuthProvider initialUser={user}>{children}</AuthProvider>
