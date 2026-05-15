@@ -89,14 +89,15 @@
 
   .why-mochi{position:relative;overflow:hidden;padding:104px 0}
   .why-mochi .wm-bg{
-    position:absolute;right:-100px;top:50%;transform:translateY(-50%);
-    width:min(640px,58vw);opacity:.10;pointer-events:none;user-select:none;
-    filter:saturate(1.4) blur(.5px);
+    position:absolute;right:-40px;top:50%;transform:translateY(-50%);
+    width:min(480px,44vw);height:auto;
+    opacity:.22;pointer-events:none;user-select:none;
+    border-radius:24px;
+    object-fit:cover;
   }
-  .why-mochi .wm-bg svg{width:100%;height:auto;display:block}
   .why-mochi::before{
     content:'';position:absolute;inset:0;
-    background:linear-gradient(to right, var(--bg) 40%, rgba(251,247,242,.55) 68%, transparent);
+    background:linear-gradient(to right, var(--bg) 38%, rgba(251,247,242,.6) 62%, rgba(251,247,242,.1) 82%, transparent);
     z-index:1;pointer-events:none;
   }
   .why-mochi .container{position:relative;z-index:2}
@@ -124,8 +125,8 @@
     transform:rotate(-1deg);
   }
   @media(max-width:760px){
-    .why-mochi .wm-bg{width:240px;right:-30px;opacity:.06}
-    .why-mochi::before{background:linear-gradient(to right,var(--bg) 58%,rgba(251,247,242,.7) 82%,transparent)}
+    .why-mochi .wm-bg{width:200px;right:-20px;opacity:.12}
+    .why-mochi::before{background:linear-gradient(to right,var(--bg) 55%,rgba(251,247,242,.75) 80%,transparent)}
     .why-mochi{padding:72px 0}
   }
 
@@ -494,29 +495,8 @@
 </section>
 
 <section class="why-mochi" id="why-mochi">
-  <!-- Mochi logo as ghostly background art -->
-  <div class="wm-bg" aria-hidden="true">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 185">
-      <defs>
-        <clipPath id="dome-clip">
-          <path d="M18,150 Q18,28 102,28 Q186,28 186,150 Z"/>
-        </clipPath>
-        <filter id="mochi-shadow" x="-25%" y="-25%" width="150%" height="150%">
-          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#B05868" flood-opacity="0.18"/>
-        </filter>
-      </defs>
-      <g filter="url(#mochi-shadow)">
-        <path d="M18,150 Q18,28 102,28 Q186,28 186,150 Z" fill="#EFA6B5"/>
-        <ellipse cx="102" cy="142" rx="74" ry="96" fill="#FAF0E2" clip-path="url(#dome-clip)"/>
-        <ellipse cx="102" cy="153" rx="36" ry="30" fill="#C03248" clip-path="url(#dome-clip)"/>
-        <ellipse cx="102" cy="150" rx="84" ry="13" fill="#E094A6"/>
-      </g>
-      <ellipse cx="68" cy="68" rx="26" ry="16" fill="white" opacity="0.22" transform="rotate(-22 68 68)" clip-path="url(#dome-clip)"/>
-      <text x="214" y="100" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="50" font-weight="800" fill="#1C1016" letter-spacing="-1">Research</text>
-      <line x1="214" y1="111" x2="504" y2="111" stroke="#E094A6" stroke-width="1.2" opacity="0.55"/>
-      <text x="218" y="153" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="42" font-weight="300" fill="#E094A6" letter-spacing="7">mochi</text>
-    </svg>
-  </div>
+  <!-- Mochi photo as ghostly background art -->
+  <img class="wm-bg" src="./mochi-bg.jpg" alt="" aria-hidden="true">
 
   <div class="container">
     <span class="wm-tag reveal">WHY MOCHI?</span>
