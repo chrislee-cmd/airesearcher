@@ -309,6 +309,27 @@ export function Sidebar({
     });
   }, [activeGroup]);
 
+  // Auto-expand any collapsed group that contains a compatible drop target
+  // when the user starts dragging a workspace artifact. Groups stay open
+  // after the drag ends (the user is likely about to interact with them).
+  const dragSourceFeature = dragging?.sourceFeature ?? null;
+  useEffect(() => {
+    if (!dragSourceFeature) return;
+    const targets = new Set(SEND_TO_MAP[dragSourceFeature] ?? []);
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const g of FEATURE_GROUPS) {
+        if (!prev.has(g.key)) continue;
+        if (g.features.some((k) => targets.has(k))) {
+          next.delete(g.key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [dragSourceFeature]);
+
   useEffect(() => {
     if (!dropdownOpen) return;
     function onClick(e: MouseEvent) {
@@ -450,7 +471,15 @@ export function Sidebar({
                             })
                           }
                           onDragOver={(e) => {
-                            if (!dragging) return;
+                            // Check MIME types directly — avoids race where
+                            // workspace.dragging state hasn't re-rendered yet
+                            // after dragstart, which would silently block drop.
+                            const isArtifact = e.dataTransfer.types.some(
+                              (t) =>
+                                t === 'application/x-workspace-artifact' ||
+                                t === 'application/x-workspace-artifacts',
+                            );
+                            if (!isArtifact) return;
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'copy';
                             if (dragOverFeature !== f.key)

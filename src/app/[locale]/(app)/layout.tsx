@@ -50,7 +50,7 @@ export default async function AppLayout({
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
-         <div className="flex flex-1">
+         <div className="flex flex-1 overflow-hidden">
            <Sidebar
              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
              email={user?.email ?? null}
@@ -60,8 +60,9 @@ export default async function AppLayout({
              isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
            <main className="flex-1 overflow-auto p-6">{children}</main>
+           <WorkspacePanel />
          </div>
-         <WorkspacePanel />
+
          <TrialInitializer enabled={!!user} />
          </WorkspaceProvider>
          </ActiveProjectProvider>
