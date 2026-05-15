@@ -35,7 +35,12 @@
   --color-sky: #cfe6ff;
   --color-rose: #ffd0e2;
 
+  /* AM / PM chart accents (data visualisation only) */
+  --color-am-accent: #fb923c;
+  --color-pm-accent: #6c7aff;
+
   /* Signal */
+  --color-success: #16a34a;
   --color-warning: #fb923c;
   --color-warning-bg: #fff1e6;
   --color-warning-line: #ffd9bf;

@@ -3,14 +3,14 @@
 import type { DeskAnalytics, DeskChart } from './desk-job-provider';
 
 const PALETTE = [
-  '#1F5795', // amore (primary)
-  '#3d72ad',
+  '#1F5795', // amore
+  '#3d72ad', // amore-soft
   '#001C58', // pacific
-  '#6c7aff',
-  '#fb923c',
-  '#7D7D7D',
-  '#9b9b9b',
-  '#c1c8d3',
+  '#6c7aff', // pm-accent
+  '#fb923c', // am-accent / warning
+  '#5a5a5a', // mute
+  '#9b9b9b', // mute-soft
+  '#e6e9f1', // pacific-bg
 ];
 
 function pct(n: number, total: number): string {
