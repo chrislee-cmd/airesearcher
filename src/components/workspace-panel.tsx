@@ -303,7 +303,7 @@ export function WorkspacePanel() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px] ${
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px] ${
           pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
         }`}
       >
@@ -326,7 +326,7 @@ export function WorkspacePanel() {
           <div
             role="dialog"
             aria-modal="true"
-            className="flex max-h-[80vh] w-full max-w-[640px] flex-col border border-line bg-paper [border-radius:4px]"
+            className="flex max-h-[80vh] w-full max-w-[640px] flex-col border border-line bg-paper [border-radius:14px]"
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-3">
               <div className="flex items-center gap-2">
@@ -379,12 +379,12 @@ export function WorkspacePanel() {
                         setOpenSendSub(false);
                         setOpenDownloadSub(false);
                       }}
-                      className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+                      className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px]"
                     >
                       {t('bulkActions')}
                     </button>
                     {openMenu === 'bulk' && (
-                      <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                      <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
                         <div className="relative">
                           <MenuItem
                             disabled={bulkTargets.length === 0}
@@ -394,7 +394,7 @@ export function WorkspacePanel() {
                             {t('sendSelectedTo')}
                           </MenuItem>
                           {openSendSub && bulkTargets.length > 0 && (
-                            <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                            <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
                               {bulkTargets.map((tgt) => (
                                 <MenuItem
                                   key={tgt}
@@ -415,7 +415,7 @@ export function WorkspacePanel() {
                             {t('downloadSelected')}
                           </MenuItem>
                           {openDownloadSub && bulkFormats.length > 0 && (
-                            <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                            <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
                               {bulkFormats.map((fmt) => (
                                 <MenuItem
                                   key={fmt}
@@ -516,7 +516,7 @@ export function WorkspacePanel() {
                               void onAssignProject(a, v === '__unfiled__' ? null : v);
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:4px]"
+                            className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:14px]"
                             aria-label={t('assignProject')}
                           >
                             <option value="__unfiled__">{tDashboard('unfiled')}</option>
@@ -543,7 +543,7 @@ export function WorkspacePanel() {
                               <span className="text-[16px] leading-none">⋯</span>
                             </button>
                             {isMenuOpen && (
-                              <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                              <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
                                 <MenuItem
                                   onClick={() => {
                                     setViewing(a.id);
@@ -563,7 +563,7 @@ export function WorkspacePanel() {
                                     {t('download')}
                                   </MenuItem>
                                   {openDownloadSub && (
-                                    <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:4px]">
+                                    <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
                                       {formatsFor(a.featureKey).map((fmt) => (
                                         <MenuItem
                                           key={fmt}
@@ -589,7 +589,7 @@ export function WorkspacePanel() {
                                     {t('sendTo')}
                                   </MenuItem>
                                   {openSendSub && targets.length > 0 && (
-                                    <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:4px]">
+                                    <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
                                       {targets.map((tgt) => (
                                         <MenuItem
                                           key={tgt}
@@ -688,7 +688,7 @@ function ViewerOverlay({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-line bg-paper [border-radius:4px]"
+        className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-line bg-paper [border-radius:14px]"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
           <div className="truncate text-[13px] font-semibold text-ink-2">

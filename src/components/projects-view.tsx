@@ -71,7 +71,7 @@ export function ProjectsView({
         {canManage && (
           <button
             onClick={openCreate}
-            className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+            className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
           >
             {t('newProject')}
           </button>
@@ -81,7 +81,7 @@ export function ProjectsView({
       {creating && (
         <form
           onSubmit={submitCreate}
-          className="mt-5 border border-line bg-paper p-5 [border-radius:4px]"
+          className="mt-5 border border-line bg-paper p-5 [border-radius:14px]"
         >
           <div className="grid gap-4 md:grid-cols-2">
             <Field label={t('name')} required>
@@ -90,7 +90,7 @@ export function ProjectsView({
                 onChange={(e) => setName(e.target.value)}
                 required
                 maxLength={120}
-                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:4px]"
+                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:14px]"
               />
             </Field>
             <Field label={t('descriptionField')}>
@@ -98,7 +98,7 @@ export function ProjectsView({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={500}
-                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:4px]"
+                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:14px]"
               />
             </Field>
           </div>
@@ -106,14 +106,14 @@ export function ProjectsView({
             <button
               type="button"
               onClick={() => setCreating(false)}
-              className="border border-line px-3 py-1.5 text-[11.5px] text-mute hover:text-ink-2 [border-radius:4px]"
+              className="border border-line px-3 py-1.5 text-[11.5px] text-mute hover:text-ink-2 [border-radius:14px]"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-60 [border-radius:4px]"
+              className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-60 [border-radius:14px]"
             >
               {t('create')}
             </button>
@@ -122,7 +122,7 @@ export function ProjectsView({
       )}
 
       {projects.length === 0 ? (
-        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:4px]">
+        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:14px]">
           {t('noProjects')}
         </div>
       ) : view === 'folder' ? (
@@ -132,7 +132,7 @@ export function ProjectsView({
           ))}
         </div>
       ) : (
-        <div className="mt-6 border border-line bg-paper [border-radius:4px]">
+        <div className="mt-6 border border-line bg-paper [border-radius:14px]">
           <table className="w-full text-[12.5px]">
             <thead className="border-b border-line">
               <tr>
@@ -195,7 +195,7 @@ function ViewToggle({
     { v: 'list', label: t('listView') },
   ];
   return (
-    <div className="inline-flex items-center gap-1 border border-line p-0.5 [border-radius:4px]">
+    <div className="inline-flex items-center gap-1 border border-line p-0.5 [border-radius:14px]">
       {items.map((it) => (
         <button
           key={it.v}
@@ -224,7 +224,7 @@ function FolderCard({
 }) {
   const t = useTranslations('Projects');
   return (
-    <div className="group relative border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:4px]">
+    <div className="group relative border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:14px]">
       <Link href={`/projects/${project.id}`} className="block">
         <FolderIcon />
         <h3 className="mt-3 truncate text-[14px] font-semibold tracking-[-0.005em] text-ink-2">

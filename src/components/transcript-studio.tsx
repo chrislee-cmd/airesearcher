@@ -273,7 +273,7 @@ export function TranscriptStudio() {
               value={modelKey}
               onChange={(e) => setModelKey(e.target.value)}
               disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px] disabled:opacity-40"
             >
               {TRANSCRIPT_MODELS.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -294,7 +294,7 @@ export function TranscriptStudio() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px] disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px] disabled:opacity-40"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -366,7 +366,7 @@ function JobRow({
   const inFlight = job.status === 'submitting' || job.status === 'transcribing';
 
   return (
-    <li className="border border-line bg-paper [border-radius:4px]">
+    <li className="border border-line bg-paper [border-radius:14px]">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] text-ink-2">{job.filename}</div>

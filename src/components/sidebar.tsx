@@ -383,7 +383,7 @@ export function Sidebar({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 [border-radius:4px]">
+            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 [border-radius:14px]">
               {projects.length === 0 ? (
                 <div className="px-3 py-2 text-[11.5px] text-mute-soft">
                   {tProjects('noProjects')}

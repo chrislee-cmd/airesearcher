@@ -47,7 +47,7 @@ export function ArtifactAssignMenu({
         value={currentProjectId || '__unfiled__'}
         onChange={onChange}
         disabled={pending}
-        className="border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:4px] disabled:opacity-50"
+        className="border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:14px] disabled:opacity-50"
       >
         <option value="__unfiled__">{unfiledLabel}</option>
         {projects.map((p) => (

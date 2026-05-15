@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             className={
-              'pointer-events-auto min-w-[260px] max-w-[360px] border bg-paper px-4 py-2.5 text-[12px] leading-[1.6] [border-radius:4px] ' +
+              'pointer-events-auto min-w-[260px] max-w-[360px] border bg-paper px-4 py-2.5 text-[12px] leading-[1.6] [border-radius:14px] ' +
               (t.tone === 'amore'
                 ? 'border-amore text-ink-2'
                 : t.tone === 'warn'

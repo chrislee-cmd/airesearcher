@@ -608,7 +608,7 @@ export function RecruitingBrief() {
             onChange={(e) => setPasted(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 [border-radius:4px]"
+            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 [border-radius:14px]"
           />
         </div>
         <div className="flex h-[220px] flex-col">
@@ -633,7 +633,7 @@ export function RecruitingBrief() {
       )}
 
       {files.length > 0 && (
-        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:4px]">
+        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:14px]">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
@@ -663,14 +663,14 @@ export function RecruitingBrief() {
         <button
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {running ? tCommon('loading') : '추출 실행'}
         </button>
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
           오류: {errorMessage}
         </div>
       )}
@@ -699,7 +699,7 @@ export function RecruitingBrief() {
               }
               disabled={!edited}
               rows={2}
-              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 [border-radius:4px]"
+              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 [border-radius:14px]"
             />
           </div>
 
@@ -708,7 +708,7 @@ export function RecruitingBrief() {
               prompt for context, but it is no longer surfaced in the UI
               per product feedback (only criteria need to be editable). */}
           <div className="mt-4 h-[480px]">
-            <section className="flex h-full min-h-0 flex-col border border-line bg-paper [border-radius:4px]">
+            <section className="flex h-full min-h-0 flex-col border border-line bg-paper [border-radius:14px]">
               <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
                 <h3 className="text-[12px] font-semibold text-ink-2">
                   대상자 조건 ({previewCriteria.length})
@@ -786,7 +786,7 @@ export function RecruitingBrief() {
                     type="button"
                     onClick={() => requireAuth(() => void generateSurvey())}
                     disabled={surveyRunning}
-                    className="border border-ink bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                    className="border border-ink bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
                   >
                     {surveyRunning
                       ? '생성 중…'
@@ -801,7 +801,7 @@ export function RecruitingBrief() {
                           type="button"
                           onClick={() => void openStartModal()}
                           disabled={starting}
-                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
                         >
                           {starting ? '메일 발송 중…' : '리크루팅 시작'}
                         </button>
@@ -810,7 +810,7 @@ export function RecruitingBrief() {
                           type="button"
                           onClick={() => void publishToGoogle()}
                           disabled={publishing}
-                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
                         >
                           {publishing ? '발행 중…' : 'Google Forms로 발행'}
                         </button>
@@ -822,7 +822,7 @@ export function RecruitingBrief() {
                           window.location.href =
                             '/api/recruiting/google/start';
                         }}
-                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
                       >
                         Google 계정 연결
                       </button>
@@ -877,32 +877,32 @@ export function RecruitingBrief() {
                 </p>
               )}
               {surveyError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
                   설문 생성 오류: {surveyError}
                 </div>
               )}
               {publishError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
                   발행 오류: {publishError}
                 </div>
               )}
               {googleAuthError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
                   Google 연결 오류: {googleAuthError} — 연결 해제 후 다시 시도해주세요.
                 </div>
               )}
               {startError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
                   메일 발송 오류: {startError}
                 </div>
               )}
               {started && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink [border-radius:4px]">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink [border-radius:14px]">
                   리크루팅 메일을 {started.to}로 발송했습니다.
                 </div>
               )}
               {published && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] [border-radius:4px]">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] [border-radius:14px]">
                   <div className="font-semibold text-ink">발행 완료</div>
                   <div className="mt-1 flex flex-wrap gap-3 text-[12px]">
                     <a
@@ -932,7 +932,7 @@ export function RecruitingBrief() {
                       {survey?.title ?? surveyPartial?.title}
                     </div>
                   )}
-                  <div className="h-[480px] overflow-auto border border-line bg-paper [border-radius:4px]">
+                  <div className="h-[480px] overflow-auto border border-line bg-paper [border-radius:14px]">
                     <table className="w-full min-w-[760px] border-collapse text-[12px]">
                       <thead className="sticky top-0 z-[1] bg-paper">
                         <tr className="text-left">
@@ -1006,7 +1006,7 @@ export function RecruitingBrief() {
           }}
         >
           <div
-            className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:6px]"
+            className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:14px]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold text-ink">
@@ -1044,7 +1044,7 @@ export function RecruitingBrief() {
                       }
                       rows={2}
                       disabled={draftLoading}
-                      className="w-full resize-y border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.5] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:4px]"
+                      className="w-full resize-y border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.5] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:14px]"
                     />
                   ) : (
                     <input
@@ -1054,7 +1054,7 @@ export function RecruitingBrief() {
                         setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
                       }
                       disabled={draftLoading}
-                      className="w-full border border-line bg-paper px-3 py-2 text-[12.5px] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:4px]"
+                      className="w-full border border-line bg-paper px-3 py-2 text-[12.5px] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:14px]"
                     />
                   )}
                 </label>
@@ -1063,19 +1063,19 @@ export function RecruitingBrief() {
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
                   인터뷰 신청서 링크 (자동)
                 </div>
-                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute [border-radius:4px]">
+                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute [border-radius:14px]">
                   {published?.responderUri ?? ''}
                 </div>
               </div>
             </div>
 
             {draftError && (
-              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute [border-radius:4px]">
+              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute [border-radius:14px]">
                 초안 자동 생성 실패 — 직접 입력해주세요. ({draftError})
               </div>
             )}
             {startError && (
-              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
+              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:14px]">
                 메일 발송 오류: {startError}
               </div>
             )}
@@ -1084,7 +1084,7 @@ export function RecruitingBrief() {
                 type="button"
                 onClick={() => setStartModalOpen(false)}
                 disabled={starting}
-                className="border border-line bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                className="border border-line bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
               >
                 취소
               </button>
@@ -1097,7 +1097,7 @@ export function RecruitingBrief() {
                   !mailFields.purpose.trim() ||
                   !mailFields.target.trim()
                 }
-                className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
               >
                 {starting ? '발송 중…' : '최종 승인'}
               </button>

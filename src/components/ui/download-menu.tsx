@@ -138,7 +138,7 @@ export function DownloadMenu({
 
 function triggerClass(tone: 'ghost' | 'primary', open: boolean): string {
   const base =
-    'inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:4px] disabled:cursor-not-allowed disabled:opacity-50';
+    'inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:14px] disabled:cursor-not-allowed disabled:opacity-50';
   if (tone === 'primary') {
     return `${base} border border-ink bg-ink text-paper hover:bg-ink-2 ${
       open ? 'bg-ink-2' : ''

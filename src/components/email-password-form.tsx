@@ -16,7 +16,7 @@ function safeNext(raw: string | null): string {
 }
 
 const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
 const labelCls =
   'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
 const linkCls =
@@ -209,7 +209,7 @@ export function EmailPasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:4px]"
+        className="w-full rounded-full border border-ink bg-ink px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-all duration-[120ms] hover:-translate-y-px hover:bg-ink-2 hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)] disabled:opacity-60"
       >
         {pending ? '…' : t(mode)}
       </button>

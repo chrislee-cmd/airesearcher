@@ -64,7 +64,7 @@ export function AdminApiUsage({ report: initial }: Props) {
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2 transition-colors duration-[120ms] hover:border-ink disabled:cursor-not-allowed disabled:text-mute-soft [border-radius:4px]"
+            className="border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2 transition-colors duration-[120ms] hover:border-ink disabled:cursor-not-allowed disabled:text-mute-soft [border-radius:14px]"
           >
             {refreshing ? t('refreshing') : t('refresh')}
           </button>
@@ -89,7 +89,7 @@ export function AdminApiUsage({ report: initial }: Props) {
       </section>
 
       {refreshError && (
-        <div className="border border-warning/40 bg-warning/5 px-3 py-2 text-[12px] text-warning [border-radius:4px]">
+        <div className="border border-warning/40 bg-warning/5 px-3 py-2 text-[12px] text-warning [border-radius:14px]">
           {refreshError}
         </div>
       )}
@@ -113,7 +113,7 @@ function SummaryCard({
   hint?: string;
 }) {
   return (
-    <div className="border border-line bg-paper px-4 py-3 [border-radius:4px]">
+    <div className="border border-line bg-paper px-4 py-3 [border-radius:14px]">
       <div className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
         {label}
       </div>
@@ -130,7 +130,7 @@ function SummaryCard({
 function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
   const t = useTranslations('AdminApiUsage');
   return (
-    <article className="border border-line bg-paper px-4 py-3 [border-radius:4px]">
+    <article className="border border-line bg-paper px-4 py-3 [border-radius:14px]">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-semibold tracking-[-0.005em] text-ink">

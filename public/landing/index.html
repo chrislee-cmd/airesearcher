@@ -3,151 +3,168 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Research-mochi — 리서처를 위한 단 하나의 리서치 콘솔</title>
-<meta name="description" content="인용문·전사록·인터뷰·데스크리서치·리포트까지. 마케팅과 UX 리서치의 모든 산출물을 한 곳에서, 한 흐름으로." />
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-<link rel="stylesheet" as="style" crossorigin
-  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<title>Research-mochi — Research, but kinder.</title>
+<meta name="description" content="여덟 개의 작은 도구가 같은 책상 위에 모여, 서두르지 않고 친절하게 리서치를 돕습니다." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --amore:#1F5795;
-    --amore-soft:#3d72ad;
-    --amore-bg:#eaf0f8;
-    --pacific:#001C58;
-    --ink:#000;
-    --ink2:#1a1a1a;
-    --mute:#5a5a5a;
-    --mute-soft:#9b9b9b;
-    --line:#e1e3e8;
-    --line-soft:#f1f3f6;
-    --paper:#fff;
-    --paper-soft:#fafafb;
-    --warning:#fb923c;
-    --font:'Pretendard Variable',Pretendard,'Inter','Apple SD Gothic Neo',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --bg:#fbf7f2;
+    --ink:#1d1b20;
+    --mute:#5b5965;
+    --accent:#a06fda;
+    --lav:#e7defe;
+    --peach:#ffd9c9;
+    --mint:#cdebd9;
+    --sun:#fff1b6;
+    --sky:#cfe6ff;
+    --rose:#ffd0e2;
+    --line:rgba(29,27,32,.10);
+    --shadow:0 1px 2px rgba(29,27,32,.04), 0 8px 24px rgba(29,27,32,.06);
+    --sans:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo',-apple-system,system-ui,sans-serif;
+    --hand:'Caveat',cursive;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--paper);color:var(--ink2);font-family:var(--font);font-feature-settings:'ss01','ss02','tnum';-webkit-font-smoothing:antialiased}
-  body{font-size:13px;line-height:1.65;overflow-x:hidden}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--ink);color:var(--bg)}
   a{color:inherit;text-decoration:none}
-  ::selection{background:var(--amore);color:#fff}
+  .container{max-width:1180px;margin:0 auto;padding:0 28px}
 
-  /* meta caption */
-  .meta{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);font-weight:500}
-  .meta.amore{color:var(--amore)}
-
-  /* Layout */
-  .container{max-width:1120px;margin:0 auto;padding:0 32px}
-  section{border-top:1px solid var(--line);padding:96px 0;position:relative}
-  section:first-of-type{border-top:0}
-
-  /* NAV */
-  nav.top{
-    position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);
-    backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);
-    border-bottom:1px solid var(--line);
-  }
-  nav.top .row{display:flex;align-items:center;justify-content:space-between;height:56px}
-  nav.top .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;font-size:14px}
-  nav.top .brand .dot{width:10px;height:10px;border-radius:2px;background:var(--amore)}
-  nav.top .links{display:flex;gap:28px;font-size:12.5px;color:var(--mute)}
+  nav.top{padding:18px 0;position:sticky;top:0;z-index:50;background:rgba(251,247,242,.85);backdrop-filter:blur(10px)}
+  nav.top .row{display:flex;justify-content:space-between;align-items:center}
+  nav.top .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.012em}
+  nav.top .brand .emoji{width:32px;height:32px;border-radius:10px;background:var(--lav);display:flex;align-items:center;justify-content:center;font-size:18px}
+  nav.top .links{display:flex;gap:24px;font-size:13px;color:var(--mute);font-weight:500}
   nav.top .links a:hover{color:var(--ink)}
   nav.top .cta{display:flex;gap:8px}
-  .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:4px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .15s}
-  .btn:hover{border-color:var(--ink2)}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);font-family:var(--sans);font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
   .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
-  .btn.primary:hover{background:var(--amore);border-color:var(--amore)}
-  .btn .arrow{transition:transform .2s}
-  .btn:hover .arrow{transform:translateX(2px)}
+  .btn.primary:hover{background:#000}
 
-  /* HERO */
-  .hero{padding:88px 0 72px;position:relative;overflow:hidden}
-  .hero .grid{display:grid;grid-template-columns:1fr;gap:32px}
-  .hero h1{
-    font-size:clamp(40px,7vw,84px);line-height:.98;letter-spacing:-.035em;font-weight:700;color:var(--ink);
-    max-width:1000px;
+  .hero{padding:56px 0 24px;text-align:center}
+  .hero .squiggle{font-family:var(--hand);color:var(--accent);font-size:32px;display:block;margin-bottom:14px;transform:rotate(-3deg)}
+  .hero h1{font-size:clamp(40px,6.5vw,80px);font-weight:800;letter-spacing:-.035em;line-height:1.02;max-width:920px;margin:0 auto}
+  .hero h1 .hl{background:linear-gradient(180deg,transparent 60%,var(--sun) 60%);padding:0 6px;border-radius:6px}
+  .hero h1 .hl.peach{background:linear-gradient(180deg,transparent 60%,var(--peach) 60%)}
+  .hero h1 .hl.mint{background:linear-gradient(180deg,transparent 60%,var(--mint) 60%)}
+  .hero p{margin:24px auto 0;color:var(--mute);max-width:560px;font-size:16px;line-height:1.6}
+  .hero p strong{color:var(--ink);font-weight:600}
+  .hero .ctarow{margin-top:32px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+  .hero .btn-lg{height:48px;padding:0 22px;font-size:14.5px}
+  .hero .below{margin-top:18px;font-size:12.5px;color:var(--mute)}
+  .hero .below b{color:var(--accent);font-weight:600}
+
+  .bento{padding:48px 0 40px}
+  .bento-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:172px;gap:14px}
+  .card{border-radius:24px;padding:22px 24px;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .2s ease}
+  .card:hover{transform:translateY(-2px)}
+  .card .icon{width:42px;height:42px;border-radius:14px;background:var(--lav);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .card h3{font-size:17px;font-weight:700;letter-spacing:-.012em;color:var(--ink);margin-top:4px}
+  .card h2{font-size:32px;font-weight:800;letter-spacing:-.025em;line-height:1.1;color:var(--ink);margin-top:4px}
+  .card p{font-size:13px;color:var(--mute);line-height:1.55;flex:1}
+  .card .meta{font-size:11.5px;color:var(--mute);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .card .tag{font-size:11px;color:var(--ink);font-weight:600;letter-spacing:.04em;background:#f3f0eb;border-radius:99px;padding:3px 10px;align-self:flex-start}
+  .card .doodle{position:absolute;font-family:var(--hand);font-size:18px;color:var(--accent);transform:rotate(-6deg);right:18px;top:14px}
+  .card.lav{background:var(--lav)} .card.lav .icon{background:#fff}
+  .card.peach{background:var(--peach)} .card.peach .icon{background:#fff}
+  .card.mint{background:var(--mint)} .card.mint .icon{background:#fff}
+  .card.sun{background:var(--sun)} .card.sun .icon{background:#fff}
+  .card.sky{background:var(--sky)} .card.sky .icon{background:#fff}
+  .card.rose{background:var(--rose)} .card.rose .icon{background:#fff}
+  .card.dark{background:#1d1b20;color:#fff} .card.dark h3,.card.dark h2{color:#fff} .card.dark p{color:#bcb8c5} .card.dark .icon{background:rgba(255,255,255,.1);color:#fff}
+  .c-3x2{grid-column:span 3;grid-row:span 2}
+  .c-3x1{grid-column:span 3;grid-row:span 1}
+  .c-2x1{grid-column:span 2;grid-row:span 1}
+  .c-2x2{grid-column:span 2;grid-row:span 2}
+  .c-4x1{grid-column:span 4;grid-row:span 1}
+  .c-6x1{grid-column:span 6;grid-row:span 1}
+  @media (max-width:980px){.bento-grid{grid-template-columns:repeat(2,1fr)} .c-3x2,.c-3x1,.c-2x1,.c-2x2,.c-4x1,.c-6x1{grid-column:span 2;grid-row:auto;min-height:170px}}
+
+  .sec-head{margin-bottom:28px;text-align:center}
+  .sec-head .meta{font-size:11.5px;color:var(--accent);font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:10px}
+  .sec-head h2{font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-.025em;line-height:1.08}
+  .sec-head p{margin:14px auto 0;color:var(--mute);max-width:520px;font-size:14.5px}
+
+  .nums{padding:32px 0 8px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .nums .num{padding:24px;border-radius:24px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+  .nums .num .v{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1}
+  .nums .num .v em{color:var(--accent);font-style:normal}
+  .nums .num .l{margin-top:10px;color:var(--mute);font-size:13px}
+  @media (max-width:780px){.nums{grid-template-columns:repeat(2,1fr)}}
+
+  .pricing{padding:64px 0}
+  .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:36px}
+  .price{padding:28px 26px;border-radius:24px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-height:340px;position:relative}
+  .price.featured{background:linear-gradient(160deg,#1d1b20,#2d2535);color:#fff;border-color:transparent}
+  .price.featured .meta{color:#bcb8c5}
+  .price.featured p,.price.featured li{color:#cbd5e1}
+  .price .meta{font-size:11.5px;font-weight:600;color:var(--mute);letter-spacing:.06em;text-transform:uppercase}
+  .price h4{font-size:17px;font-weight:700;letter-spacing:-.012em}
+  .price .num{font-size:32px;font-weight:800;letter-spacing:-.025em;line-height:1}
+  .price .num small{display:block;font-size:13px;font-weight:500;color:var(--mute);margin-top:6px}
+  .price.featured .num small{color:#bcb8c5}
+  .price ul{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .price li{font-size:12.5px;color:var(--mute);padding-left:18px;position:relative;line-height:1.5}
+  .price li::before{content:"✓";position:absolute;left:0;top:0;color:var(--accent);font-weight:700}
+  .price.featured li::before{color:var(--sun)}
+  .price .badge{position:absolute;top:18px;right:18px;font-family:var(--hand);color:var(--accent);font-size:18px;transform:rotate(-6deg)}
+  .price .btn{margin-top:auto}
+  @media (max-width:980px){.price-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:560px){.price-grid{grid-template-columns:1fr}}
+
+  .voice{padding:64px 0}
+  .voice-card{border-radius:32px;padding:48px;background:linear-gradient(135deg,var(--lav),var(--peach));box-shadow:var(--shadow);text-align:center}
+  .voice-card .quote{font-size:clamp(22px,3vw,32px);font-weight:600;letter-spacing:-.018em;line-height:1.35;color:var(--ink);max-width:780px;margin:0 auto}
+  .voice-card .by{margin-top:24px;font-size:13px;color:var(--mute);font-weight:500}
+  .voice-card .av{display:flex;justify-content:center;margin-bottom:18px}
+  .voice-card .av span{width:38px;height:38px;border-radius:50%;border:3px solid #fff;background:var(--mint);display:inline-flex;align-items:center;justify-content:center;font-size:18px;margin-left:-8px}
+
+  .faq{padding:48px 0}
+  .faq-list{max-width:780px;margin:32px auto 0;display:flex;flex-direction:column;gap:10px}
+  .faq details{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 24px;box-shadow:var(--shadow)}
+  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary .plus{font-size:22px;font-weight:300;color:var(--mute);transition:transform .2s}
+  .faq details[open] summary .plus{transform:rotate(45deg);color:var(--accent)}
+  .faq .a{margin-top:12px;color:var(--mute);font-size:13.5px;line-height:1.6}
+
+  .cta-final{padding:80px 0;text-align:center}
+  .cta-final .cta-card{padding:64px 32px;border-radius:32px;background:linear-gradient(135deg,#fff,var(--sun));max-width:880px;margin:0 auto;border:1px solid var(--line);box-shadow:var(--shadow)}
+  .cta-final h2{font-size:clamp(36px,5vw,64px);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+  .cta-final h2 .hl{background:linear-gradient(180deg,transparent 60%,var(--mint) 60%);padding:0 6px;border-radius:6px}
+  .cta-final p{margin:18px auto 0;max-width:480px;color:var(--mute);font-size:15px}
+  .cta-final .row{margin-top:28px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+  .cta-final .squiggle{font-family:var(--hand);color:var(--accent);font-size:24px;margin-bottom:8px;display:block;transform:rotate(2deg)}
+
+  footer{padding:40px 0;font-size:13px;color:var(--mute)}
+  footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1180px;margin:0 auto;padding:0 28px}
+  footer span{color:var(--accent);font-weight:600}
+
+  /* ============================================================
+     Showcase (interactive workbench v2) — 원본 랜딩에서 가져와 bento 토큰에 alias 매핑
+     ============================================================ */
+  :root{
+    --paper-soft:#f5f1eb;
+    --ink2:var(--ink);
+    --mute-soft:#8a8693;
+    --line-soft:rgba(29,27,32,.06);
+    --amore:var(--accent);
+    --amore-bg:var(--lav);
+    --pacific:#1d1b20;
+    --font:var(--sans);
   }
-  .hero h1 .accent{color:var(--amore);font-style:italic;font-weight:600}
-  .hero h1 .strike{position:relative;color:var(--mute);}
-  .hero h1 .strike::after{content:"";position:absolute;left:-2%;right:-2%;top:55%;height:3px;background:var(--ink);transform:rotate(-2deg)}
-  .hero .lede{margin-top:36px;max-width:640px;color:var(--mute);font-size:16px;line-height:1.7}
-  .hero .lede strong{color:var(--ink);font-weight:600}
-  .hero .cta-row{margin-top:36px;display:flex;gap:10px;flex-wrap:wrap}
-  .hero .btn-lg{height:46px;padding:0 22px;font-size:14px}
-  .hero .meta-row{margin-top:56px;display:flex;align-items:center;gap:16px;color:var(--mute);font-size:12px;flex-wrap:wrap}
-  .hero .meta-row .dot{width:4px;height:4px;border-radius:50%;background:var(--mute-soft)}
-  .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
 
-  /* Hero ticker */
-  .ticker{margin-top:72px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;overflow:hidden;position:relative}
-  .ticker .track{display:flex;gap:48px;white-space:nowrap;animation:scroll 40s linear infinite}
-  .ticker span{font-size:13px;color:var(--mute);letter-spacing:.02em}
-  .ticker em{color:var(--amore);font-style:normal;font-weight:600;margin-right:6px}
-  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  #showcase{padding:24px 0 64px}
+  #showcase .sec-head{margin-bottom:28px;text-align:center;display:block}
+  #showcase .sec-head h2{font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-.025em;line-height:1.08}
+  #showcase .sec-head h2 em{font-style:normal;color:var(--accent)}
+  #showcase .sec-head p{margin:14px auto 0;color:var(--mute);max-width:520px;font-size:14.5px}
+  #showcase .sec-head .meta{font-size:11.5px;color:var(--accent);font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:10px}
 
-  /* Section header */
-  .sec-head{margin-bottom:56px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
-  .sec-head h2{font-size:clamp(32px,4vw,48px);letter-spacing:-.025em;line-height:1.05;font-weight:700;color:var(--ink);max-width:780px}
-  .sec-head h2 em{font-style:italic;font-weight:600;color:var(--amore)}
-  .sec-head p{color:var(--mute);max-width:380px;font-size:13.5px}
-  .sec-head .meta{margin-bottom:14px;display:block}
-
-  /* Problem strip — large blockquote */
-  .quote{
-    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    padding:64px 0;
-  }
-  .quote .big{
-    font-size:clamp(28px,3.6vw,44px);letter-spacing:-.022em;line-height:1.25;font-weight:600;color:var(--ink);
-    max-width:980px;
-  }
-  .quote .big .crossed{text-decoration:line-through;text-decoration-thickness:2px;color:var(--mute)}
-  .quote .by{margin-top:24px;color:var(--mute);font-size:12.5px}
-
-  /* Workbench: 8 features grid */
-  .feat-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-  .feat{background:#fff;padding:28px 24px;display:flex;flex-direction:column;gap:14px;min-height:200px;position:relative;transition:background .2s}
-  .feat:hover{background:var(--paper-soft)}
-  .feat .num{font-size:11px;color:var(--mute-soft);letter-spacing:.18em}
-  .feat h3{font-size:18px;font-weight:700;letter-spacing:-.018em;color:var(--ink)}
-  .feat p{font-size:12.5px;color:var(--mute);line-height:1.6}
-  .feat .cost{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--amore);font-weight:600;letter-spacing:.04em}
-  .feat .cost .bar{display:inline-block;height:2px;background:var(--amore);width:24px}
-  .feat .icon{width:36px;height:36px;border:1px solid var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--amore);font-weight:700;font-size:13px}
-
-  .span-6{grid-column:span 6}
-  .span-4{grid-column:span 4}
-  .span-3{grid-column:span 3}
-  .span-12{grid-column:span 12}
-  @media (max-width:900px){
-    .span-6,.span-4,.span-3{grid-column:span 12}
-  }
-
-  /* Flow */
-  .flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
-  .flow .step{padding:32px 28px;border-right:1px solid var(--line);position:relative;background:#fff}
-  .flow .step:last-child{border-right:0}
-  .flow .step .step-num{font-size:11px;letter-spacing:.22em;color:var(--amore);font-weight:600}
-  .flow .step h4{margin-top:18px;font-size:20px;letter-spacing:-.018em;font-weight:700;color:var(--ink)}
-  .flow .step p{margin-top:10px;color:var(--mute);font-size:12.5px;line-height:1.65}
-  .flow .step .arr{position:absolute;right:-9px;top:50%;width:18px;height:18px;background:#fff;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink);transform:translateY(-50%);z-index:2}
-  @media (max-width:900px){
-    .flow{grid-template-columns:1fr}
-    .flow .step{border-right:0;border-bottom:1px solid var(--line)}
-    .flow .step:last-child{border-bottom:0}
-    .flow .step .arr{right:50%;top:auto;bottom:-9px;transform:translateX(50%) rotate(90deg)}
-  }
-
-  /* Numbers */
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .stats .stat{padding:40px 24px;border-right:1px solid var(--line)}
-  .stats .stat:last-child{border-right:0}
-  .stats .num{font-size:clamp(40px,5vw,64px);letter-spacing:-.03em;font-weight:700;color:var(--ink);line-height:1}
-  .stats .num em{color:var(--amore);font-style:normal}
-  .stats .lbl{margin-top:14px;color:var(--mute);font-size:12.5px;line-height:1.55}
-  @media (max-width:900px){.stats{grid-template-columns:repeat(2,1fr)} .stats .stat:nth-child(2){border-right:0}}
-
-  /* === Workbench v2 (3-column extensive) === */
   .wb3{
     display:grid;
     grid-template-columns:260px 1fr 280px;
@@ -156,8 +173,8 @@
       "top top top"
       "side stage ws"
       "side foot foot";
-    border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff;
-    min-height:640px;
+    border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#fff;
+    min-height:640px;box-shadow:var(--shadow);
   }
   .wb-top{
     grid-area:top;border-bottom:1px solid var(--line);background:var(--paper-soft);
@@ -169,6 +186,7 @@
   .wb-bread{padding:0 16px;font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:11px;color:var(--mute)}
   .wb-credits{padding:0 16px;display:flex;align-items:center;gap:8px}
   .wb-credits strong{color:var(--ink);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .wb-credits .meta{font-size:10.5px;color:var(--accent);font-weight:600;letter-spacing:.18em;text-transform:uppercase}
 
   .wb-side{
     grid-area:side;border-right:1px solid var(--line);background:var(--paper-soft);
@@ -177,7 +195,7 @@
   .wb-side .group{font-size:10px;letter-spacing:.22em;color:var(--mute);margin:14px 8px 6px;text-transform:uppercase}
   .wb-side .group:first-child{margin-top:0}
   .wb-side .item{
-    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:4px;
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;
     font-size:12.5px;color:var(--ink2);background:transparent;border:0;text-align:left;font-family:inherit;cursor:pointer;transition:all .15s
   }
   .wb-side .item .pip{width:6px;height:6px;border-radius:50%;background:var(--mute-soft);transition:background .15s}
@@ -189,17 +207,19 @@
   .wb-side .item.active .cr{color:var(--amore)}
   .wb-side .item.visited .pip{background:var(--amore);box-shadow:0 0 0 3px var(--amore-bg)}
   .wb-side-foot{margin-top:auto;padding:12px 10px;font-size:11px;color:var(--mute);display:flex;align-items:center;gap:8px;border-top:1px solid var(--line-soft)}
+  .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 
   .wb-stage{grid-area:stage;padding:24px 28px;overflow:auto;background:#fff;position:relative}
 
-  /* Workspace right rail */
   .wb-ws{grid-area:ws;border-left:1px solid var(--line);background:#fff;display:flex;flex-direction:column;padding:18px 16px;overflow:auto}
   .ws-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .ws-head .meta{font-size:10.5px;color:var(--amore);font-weight:600;letter-spacing:.18em;text-transform:uppercase}
   .ws-count{font-size:11px;color:var(--mute);background:var(--line-soft);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums}
-  .ws-empty{font-size:11.5px;color:var(--mute);line-height:1.6;padding:12px;border:1px dashed var(--line);border-radius:4px;background:var(--paper-soft)}
+  .ws-empty{font-size:11.5px;color:var(--mute);line-height:1.6;padding:12px;border:1px dashed var(--line);border-radius:10px;background:var(--paper-soft)}
   .ws-list{list-style:none;display:flex;flex-direction:column;gap:6px;margin:0;padding:0}
   .ws-list li{
-    border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-size:12px;background:#fff;
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;background:#fff;
     display:flex;flex-direction:column;gap:4px;animation:wsIn .35s ease;
   }
   .ws-list li .who{font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;text-transform:uppercase}
@@ -207,11 +227,11 @@
   .ws-list li .sub{color:var(--mute);font-size:11px}
   @keyframes wsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
   .ws-foot{margin-top:14px;display:flex;gap:6px}
-  .btn-ws{height:30px;padding:0 10px;font-size:11.5px;flex:1;justify-content:center}
+  .btn-ws{height:30px;padding:0 10px;font-size:11.5px;flex:1;justify-content:center;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;display:inline-flex;align-items:center;font-family:inherit;cursor:pointer;transition:all .15s}
+  .btn-ws:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
   .btn-ws.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
-  .btn-ws.primary:hover{background:var(--amore);border-color:var(--amore)}
+  .btn-ws.primary:hover{background:#000;border-color:#000}
 
-  /* Footer */
   .wb-foot{grid-area:foot;border-top:1px solid var(--line);background:var(--paper-soft);display:flex;justify-content:space-between;align-items:center;padding:0 20px}
   .wb-prog{display:flex;align-items:center;gap:8px}
   .wb-prog .dot{width:8px;height:8px;border-radius:50%;background:var(--line);transition:all .25s}
@@ -220,9 +240,8 @@
   .wb-prog .line{width:36px;height:1px;background:var(--line)}
   .wb-prog .line.done{background:var(--amore)}
   .wb-next{font-size:12px;color:var(--ink2)}
-  .wb-next .meta{margin-right:8px;color:var(--amore)}
+  .wb-next .meta{margin-right:8px;color:var(--amore);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
 
-  /* Stage panel */
   .stage-panel{display:none;animation:fadeUp .35s ease}
   .stage-panel.show{display:block}
   @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -232,7 +251,6 @@
   .panel-head .crumb{font-size:10.5px;letter-spacing:.22em;color:var(--mute);margin-bottom:4px;text-transform:uppercase}
   .panel-head .cost-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--amore-bg);color:var(--amore);font-size:11px;font-weight:600;letter-spacing:.04em}
 
-  /* Tabs */
   .tabs{margin-top:16px;display:flex;gap:2px;border-bottom:1px solid var(--line)}
   .tab{
     padding:9px 14px;font-size:12px;color:var(--mute);background:transparent;border:0;cursor:pointer;
@@ -246,13 +264,75 @@
   .tab-pane{display:none;padding-top:16px;animation:fadeUp .25s ease}
   .tab-pane.on{display:block}
 
-  .input{margin-top:14px;border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-size:12.5px;color:var(--mute);background:#fff;display:flex;align-items:center;gap:10px}
+  .input{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--mute);background:#fff;display:flex;align-items:center;gap:10px}
   .input .lbl{font-size:9.5px;letter-spacing:.22em;color:var(--amore);font-weight:600;text-transform:uppercase;flex-shrink:0}
   .input .v{color:var(--ink2);font-size:13px}
   .typed{border-right:2px solid var(--ink);animation:caret 1s steps(2) infinite;margin-left:2px}
   @keyframes caret{50%{border-color:transparent}}
-
   .pillrow{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+  .pill{font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--mute)}
+  .pill.amore{border-color:var(--amore);color:var(--amore);background:var(--amore-bg)}
+
+  .qcard{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:#fff}
+  .qcard + .qcard{margin-top:10px}
+  .qcard .who{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+  .qcard .who .tag{color:var(--amore);font-weight:600}
+  .qcard p{margin-top:8px;font-size:13.5px;color:var(--ink2);line-height:1.65}
+  .matrix{margin-top:18px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+  .matrix table{width:100%;border-collapse:collapse;font-size:12px}
+  .matrix th,.matrix td{padding:10px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  .matrix th{background:var(--paper-soft);font-weight:600;color:var(--mute);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
+  .matrix tr:last-child td{border-bottom:0}
+  .matrix td.mark{color:var(--amore);font-weight:600}
+  .bubbles{margin-top:18px;height:220px;border:1px solid var(--line);border-radius:14px;background:var(--paper-soft);position:relative;overflow:hidden}
+  .bubble{position:absolute;border-radius:50%;border:1px solid var(--amore);background:var(--amore-bg);color:var(--amore);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;letter-spacing:-.01em;animation:floaty 6s ease-in-out infinite}
+  .bubble.muted{border-color:var(--line);background:#fff;color:var(--mute);animation-duration:8s}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .calendar{margin-top:18px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+  .calendar .head,.calendar .row{display:grid;grid-template-columns:60px repeat(5,1fr);font-size:11px}
+  .calendar .head{background:var(--paper-soft);color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-size:10px}
+  .calendar .head div,.calendar .row div{padding:8px 10px;border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+  .calendar .head div:last-child,.calendar .row div:last-child{border-right:0}
+  .calendar .row:last-child div{border-bottom:0}
+  .calendar .slot{min-height:30px}
+  .calendar .booked{background:var(--amore-bg);color:var(--amore);font-weight:600;font-size:10.5px}
+  .desk-list{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+  .desk-row{display:flex;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:12.5px}
+  .desk-row .src{color:var(--mute);font-size:11px;letter-spacing:.04em}
+  .desk-row .ttl{color:var(--ink);font-weight:600}
+  .desk-row .meta-tag{color:var(--amore);font-weight:600}
+  .crosstab{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .crosstab .cell{background:#fff;padding:14px}
+  .crosstab .cell .lbl{font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+  .crosstab .bar{margin-top:10px;height:6px;background:var(--line-soft);border-radius:99px;overflow:hidden}
+  .crosstab .bar > span{display:block;height:100%;background:var(--amore)}
+  .crosstab .pct{margin-top:8px;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
+  .report{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:20px 22px}
+  .report h5{font-size:15px;letter-spacing:-.018em;color:var(--ink);margin-bottom:6px}
+  .report .toc{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mute)}
+  .report .toc span em{color:var(--amore);font-style:normal;font-weight:600;margin-right:8px}
+  .report .progress{margin-top:14px;height:4px;background:var(--line-soft);border-radius:99px;overflow:hidden}
+  .report .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--amore),var(--pacific));animation:fill 2.4s ease-in-out infinite}
+  @keyframes fill{0%{width:8%}55%{width:78%}100%{width:96%}}
+  .transcript-line{display:grid;grid-template-columns:64px 80px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+  .transcript-line:last-child{border-bottom:0}
+  .transcript-line .t{color:var(--mute-soft);font-variant-numeric:tabular-nums;font-size:11px}
+  .transcript-line .who{color:var(--amore);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .transcript-line .body{color:var(--ink2)}
+
+  .dropzone{margin-top:14px;border:1.5px dashed var(--line);border-radius:14px;padding:36px 28px;text-align:center;background:var(--paper-soft);transition:all .2s;cursor:pointer}
+  .dropzone:hover,.dropzone.over{border-color:var(--amore);background:var(--amore-bg)}
+  .dropzone .dz-icon{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--amore);font-weight:700;margin-bottom:14px;animation:floaty 3s ease-in-out infinite}
+  .dropzone .dz-title{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.012em}
+  .dropzone .dz-sub{margin-top:6px;font-size:12px;color:var(--mute)}
+  .dropzone .dz-row{margin-top:14px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+  .dropzone .dz-btn{margin-top:16px;height:34px;padding:0 16px;font-size:12px;background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:999px;cursor:pointer;font-family:inherit;font-weight:600}
+  .dropzone .dz-btn:hover{background:#000;border-color:#000}
+  .dz-status{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:10px}
+  .dz-status strong{color:var(--ink)}
+
+  .wb-hint{margin-top:14px;display:flex;gap:10px;align-items:center;color:var(--mute);font-size:11.5px;justify-content:center}
+  .wb-hint .meta{color:var(--amore);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
 
   @media (max-width:1024px){
     .wb3{grid-template-columns:240px 1fr;grid-template-areas:
@@ -271,266 +351,56 @@
     .wb-top{grid-template-columns:1fr auto}
     .wb-bread{display:none}
   }
-
-  /* Showcase mock (legacy 2-col, kept for any unused selectors) */
-  .showcase{display:grid;grid-template-columns:340px 1fr;gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
-  .showcase .side{border-right:1px solid var(--line);padding:24px;background:var(--paper-soft)}
-  .showcase .side .group{font-size:10.5px;letter-spacing:.22em;color:var(--mute);margin:18px 0 8px}
-  .showcase .side .group:first-child{margin-top:0}
-  .showcase .side .item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:4px;font-size:12.5px;color:var(--ink2);cursor:default}
-  .showcase .side .item{width:100%;text-align:left;background:transparent;border:0;font-family:inherit;transition:all .15s}
-  .showcase .side .item:hover{background:#fff;color:var(--ink)}
-  .showcase .side .item.active{background:var(--amore-bg);color:var(--amore);font-weight:600}
-  .showcase .side .item .pip{width:6px;height:6px;border-radius:50%;background:var(--mute-soft);transition:background .15s}
-  .showcase .side .item:hover .pip{background:var(--ink)}
-  .showcase .side .item.active .pip{background:var(--amore)}
-  .wb-hint{margin-top:14px;display:flex;gap:10px;align-items:center;color:var(--mute);font-size:11.5px}
-  .wb-hint .meta{color:var(--amore)}
-
-  /* Stage panel transitions */
-  .stage-panel{display:none;animation:fadeUp .35s ease}
-  .stage-panel.show{display:block}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-
-  /* Reusable mini widgets in stages */
-  .qcard{margin-top:14px;border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:#fff}
-  .qcard + .qcard{margin-top:10px}
-  .qcard .who{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
-  .qcard .who .tag{color:var(--amore);font-weight:600}
-  .qcard p{margin-top:8px;font-size:13.5px;color:var(--ink2);line-height:1.65}
-  .matrix{margin-top:18px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
-  .matrix table{width:100%;border-collapse:collapse;font-size:12px}
-  .matrix th,.matrix td{padding:10px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
-  .matrix th{background:var(--paper-soft);font-weight:600;color:var(--mute);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
-  .matrix tr:last-child td{border-bottom:0}
-  .matrix td.mark{color:var(--amore);font-weight:600}
-  .bubbles{margin-top:18px;height:220px;border:1px solid var(--line);border-radius:4px;background:var(--paper-soft);position:relative;overflow:hidden}
-  .bubble{position:absolute;border-radius:50%;border:1px solid var(--amore);background:var(--amore-bg);color:var(--amore);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;letter-spacing:-.01em;animation:floaty 6s ease-in-out infinite}
-  .bubble.muted{border-color:var(--line);background:#fff;color:var(--mute);animation-duration:8s}
-  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-  .calendar{margin-top:18px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
-  .calendar .head,.calendar .row{display:grid;grid-template-columns:60px repeat(5,1fr);font-size:11px}
-  .calendar .head{background:var(--paper-soft);color:var(--mute);letter-spacing:.18em;text-transform:uppercase;font-size:10px}
-  .calendar .head div,.calendar .row div{padding:8px 10px;border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
-  .calendar .head div:last-child,.calendar .row div:last-child{border-right:0}
-  .calendar .row:last-child div{border-bottom:0}
-  .calendar .slot{min-height:30px}
-  .calendar .booked{background:var(--amore-bg);color:var(--amore);font-weight:600;font-size:10.5px}
-  .desk-list{margin-top:18px;display:flex;flex-direction:column;gap:8px}
-  .desk-row{display:flex;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12.5px}
-  .desk-row .src{color:var(--mute);font-size:11px;letter-spacing:.04em}
-  .desk-row .ttl{color:var(--ink);font-weight:600}
-  .desk-row .meta-tag{color:var(--amore);font-weight:600}
-  .crosstab{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-  .crosstab .cell{background:#fff;padding:14px}
-  .crosstab .cell .lbl{font-size:10.5px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
-  .crosstab .bar{margin-top:10px;height:6px;background:var(--line-soft);border-radius:99px;overflow:hidden}
-  .crosstab .bar > span{display:block;height:100%;background:var(--amore)}
-  .crosstab .pct{margin-top:8px;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
-  .report{margin-top:18px;border:1px solid var(--line);border-radius:4px;background:#fff;padding:20px 22px}
-  .report h5{font-size:15px;letter-spacing:-.018em;color:var(--ink);margin-bottom:6px}
-  .report .toc{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mute)}
-  .report .toc span em{color:var(--amore);font-style:normal;font-weight:600;margin-right:8px}
-  .report .progress{margin-top:14px;height:4px;background:var(--line-soft);border-radius:99px;overflow:hidden}
-  .report .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--amore),var(--pacific));animation:fill 2.4s ease-in-out infinite}
-  @keyframes fill{0%{width:8%}55%{width:78%}100%{width:96%}}
-  .transcript-line{display:grid;grid-template-columns:64px 80px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
-  .transcript-line:last-child{border-bottom:0}
-  .transcript-line .t{color:var(--mute-soft);font-variant-numeric:tabular-nums;font-size:11px}
-  .transcript-line .who{color:var(--amore);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-  .transcript-line .body{color:var(--ink2)}
-
-  /* Verbatim dropzone */
-  .dropzone{margin-top:14px;border:1.5px dashed var(--line);border-radius:6px;padding:36px 28px;text-align:center;background:var(--paper-soft);transition:all .2s;cursor:pointer}
-  .dropzone:hover,.dropzone.over{border-color:var(--amore);background:var(--amore-bg)}
-  .dropzone .dz-icon{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--amore);font-weight:700;margin-bottom:14px;animation:floaty 3s ease-in-out infinite}
-  .dropzone .dz-title{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.012em}
-  .dropzone .dz-sub{margin-top:6px;font-size:12px;color:var(--mute)}
-  .dropzone .dz-row{margin-top:14px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
-  .dropzone .dz-btn{margin-top:16px;height:34px;padding:0 16px;font-size:12px;background:var(--ink);color:#fff;border-color:var(--ink)}
-  .dropzone .dz-btn:hover{background:var(--amore);border-color:var(--amore)}
-  .dz-status{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:10px}
-  .dz-status strong{color:var(--ink)}
-  .showcase .stage{padding:32px 36px;min-height:420px;position:relative}
-  .showcase .stage .crumb{font-size:10.5px;letter-spacing:.22em;color:var(--mute)}
-  .showcase .stage h3{font-size:24px;letter-spacing:-.02em;margin-top:8px;color:var(--ink)}
-  .showcase .stage .input{margin-top:20px;border:1px solid var(--line);border-radius:4px;padding:14px 16px;font-size:12.5px;color:var(--mute);background:#fff}
-  .showcase .stage .pillrow{margin-top:14px;display:flex;gap:6px;flex-wrap:wrap}
-  .pill{font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--mute)}
-  .pill.amore{border-color:var(--amore);color:var(--amore);background:var(--amore-bg)}
-  .showcase .stage .quoteCard{margin-top:22px;border-left:2px solid var(--amore);padding:6px 0 6px 16px;color:var(--ink2);font-size:13.5px;line-height:1.7}
-  .showcase .stage .quoteCard small{display:block;color:var(--mute);font-size:11px;margin-top:8px;letter-spacing:.04em}
-  .typed{border-right:2px solid var(--ink);animation:caret 1s steps(2) infinite}
-  @keyframes caret{50%{border-color:transparent}}
-  @media (max-width:900px){.showcase{grid-template-columns:1fr} .showcase .side{border-right:0;border-bottom:1px solid var(--line)}}
-
-  /* Pricing */
-  .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
-  .price{padding:28px 24px;border-right:1px solid var(--line);background:#fff;display:flex;flex-direction:column;gap:10px;min-height:280px}
-  .price:last-child{border-right:0}
-  .price.featured{background:#0b0b0b;color:#fff;position:relative}
-  .price.featured .meta{color:#9ca3af}
-  .price.featured h4{color:#fff}
-  .price.featured p{color:#cbd5e1}
-  .price.featured .num{color:#fff}
-  .price.featured .num small{color:#9ca3af}
-  .price.featured .num em{color:#fff;background:var(--amore);padding:0 8px;font-style:normal;border-radius:2px;display:inline-block}
-  .price h4{font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink);margin-top:-2px}
-  /* Stack price on its own line; per-credit hint sits below — keeps "₩900,000 /500 cr" from wrapping mid-string */
-  .price .num{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;line-height:1}
-  .price .num > :first-child,
-  .price .num em{font-size:30px;font-weight:700;letter-spacing:-.025em;line-height:1}
-  /* Credit info is the load-bearing line — make it ink-strong, not a footnote */
-  .price .num small{display:flex;flex-direction:column;gap:3px;margin-left:0;line-height:1.2}
-  .price .num small b{font-size:14px;color:var(--ink);font-weight:700;letter-spacing:-.01em}
-  .price .num small .hint{font-size:11.5px;color:var(--mute);font-weight:500;letter-spacing:.01em}
-  .price.featured .num small b{color:#fff}
-  .price.featured .num small .hint{color:#9ca3af}
-  .price ul{list-style:none;margin-top:6px;display:flex;flex-direction:column;gap:6px}
-  .price li{font-size:12.5px;color:var(--mute);position:relative;padding-left:14px;line-height:1.45}
-  .price li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:1px;background:currentColor;opacity:.5}
-  .price.featured li{color:#cbd5e1}
-  .price .btn{margin-top:auto}
-  @media (max-width:900px){.price-grid{grid-template-columns:repeat(2,1fr)} .price:nth-child(2){border-right:0} .price:nth-child(1),.price:nth-child(2){border-bottom:1px solid var(--line)}}
-
-  /* FAQ */
-  .faq details{border-top:1px solid var(--line);padding:22px 0}
-  .faq details:last-child{border-bottom:1px solid var(--line)}
-  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:600;letter-spacing:-.012em;color:var(--ink)}
-  .faq summary::-webkit-details-marker{display:none}
-  .faq summary .plus{font-weight:300;font-size:24px;color:var(--mute);transition:transform .2s}
-  .faq details[open] summary .plus{transform:rotate(45deg);color:var(--amore)}
-  .faq .a{padding-top:14px;color:var(--mute);max-width:760px;font-size:13.5px;line-height:1.7}
-
-  /* Final CTA */
-  .final{background:#0b0b0b;color:#fff;border-top:1px solid var(--line)}
-  .final .container{padding-top:120px;padding-bottom:120px}
-  .final h2{font-size:clamp(40px,6vw,80px);letter-spacing:-.03em;line-height:1;font-weight:700}
-  .final h2 em{color:var(--amore);font-style:italic;font-weight:600}
-  .final p{margin-top:24px;color:#9ca3af;max-width:560px;font-size:15px}
-  .final .row{margin-top:36px;display:flex;gap:10px;flex-wrap:wrap}
-  .final .btn{background:transparent;color:#fff;border-color:#3a3a3a}
-  .final .btn:hover{border-color:#fff}
-  .final .btn.primary{background:#fff;color:#0b0b0b;border-color:#fff}
-  .final .btn.primary:hover{background:var(--amore);color:#fff;border-color:var(--amore)}
-
-  /* Footer */
-  footer{padding:40px 0;color:var(--mute);font-size:11.5px;background:#0b0b0b;border-top:1px solid #1f1f1f}
-  footer .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-  footer a:hover{color:#fff}
-
-  /* Reveal */
-  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
-  .reveal.in{opacity:1;transform:none}
-
-  /* Hero canvas + pretext-flowed lede */
-  .hero{position:relative}
-  .hero-content{position:relative;z-index:2}
-  .hero-orbs{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;mix-blend-mode:multiply}
-  .lede-flow{
-    position:relative;margin-top:36px;max-width:680px;height:160px;
-    font-size:16px;line-height:28px;color:var(--mute);
-    font-family:var(--font);
-  }
-  .lede-flow .w{position:absolute;white-space:pre;transition:color .25s ease}
-  .lede-flow .w.bold{color:var(--ink);font-weight:600}
-  .lede-flow .w.amore{color:var(--amore);font-weight:600}
-  .lede-flow .w.near{color:var(--amore)}
-  @media (max-width:760px){.lede-flow{height:200px;font-size:15px;line-height:26px}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="container row">
-    <div class="brand"><span class="dot"></span> Research-mochi</div>
+    <div class="brand"><span class="emoji">🦋</span> Research-mochi</div>
     <div class="links">
       <a href="#showcase">데모</a>
-      <a href="#flow">작동 방식</a>
-      <a href="#numbers">숫자</a>
+      <a href="#nums">숫자</a>
       <a href="#pricing">가격</a>
+      <a href="#voice">이야기</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="cta">
       <a class="btn" href="/ko/login">로그인</a>
-      <a class="btn primary" href="/ko/login?next=/dashboard">시작하기 <span class="arrow">→</span></a>
+      <a class="btn primary" href="/ko/login?next=/dashboard">무료 시작 →</a>
     </div>
   </div>
 </nav>
 
-<header class="hero" id="heroSec">
-  <canvas class="hero-orbs" id="heroCanvas" aria-hidden="true"></canvas>
-  <div class="container hero-content">
-    <div class="meta amore reveal">A SaaS · 마케팅 & UX 리서치를 위한 Research-mochi</div>
-    <h1 class="reveal" style="margin-top:24px">
-      리서처가<br/>
-      <span class="strike">밤새</span> 하던 일을,<br/>
-      이제 <span class="accent">한 흐름</span>으로.
-    </h1>
-
-    <!-- pretext-flowed lede: text reflows around drifting orbs (canvas-measured) -->
-    <div class="lede-flow reveal" id="ledeFlow"
-         data-text="데스크 리서치, 스케쥴러, AI 모더레이터, 전사록, 인터뷰 결과, 정량 분석, 어피니티 버블, 전체 리포트까지. 마케팅·UX 리서처가 매주 반복하는 8개의 산출물을, 같은 팀 워크스페이스 안에서 한 번에 끝냅니다. 한국어 기본 · 팀·역할·공유 내장 · 결과는 그대로 다음 도구의 입력이 됩니다."
-         data-accent="데스크,스케쥴러,모더레이터,전사록,인터뷰,정량,어피니티,리포트">
-      <noscript><p class="lede"><strong>데스크 리서치, 스케쥴러, AI 모더레이터, 전사록, 인터뷰 결과, 정량 분석, 어피니티 버블, 전체 리포트까지.</strong> 마케팅·UX 리서처가 매주 반복하는 8개의 산출물을, 같은 팀 워크스페이스 안에서 한 번에 끝냅니다.</p></noscript>
+<header class="hero">
+  <div class="container">
+    <span class="squiggle">∼ for kind researchers ∼</span>
+    <h1>Research,<br/>but <span class="hl">kinder</span>, <span class="hl peach">slower</span>,<br/>and <span class="hl mint">a little playful</span>.</h1>
+    <p>가설을 짓고, 인터뷰를 듣고, 노트를 정리하고, 리포트를 묶는 일. <strong>여덟 개의 작은 도구</strong> 가 같은 책상 위에 모여 당신을 도와요. 서두르지 않고, 친절하게.</p>
+    <div class="ctarow">
+      <a class="btn primary btn-lg" href="/ko/login?next=/dashboard">하루 무료로 만나보기 →</a>
+      <a class="btn btn-lg" href="#showcase">데모 보기</a>
     </div>
-
-    <div class="cta-row reveal">
-      <a class="btn primary btn-lg" href="/ko/login?next=/dashboard">가입 후 24시간 완전 무료 <span class="arrow">→</span></a>
-      <a class="btn btn-lg" href="#showcase">8개 도구 둘러보기</a>
-    </div>
-    <div class="meta-row reveal">
-      <span class="pulse"></span>
-      <span>지금 이 순간 47개 팀이 사용 중</span>
-      <span class="dot"></span>
-      <span>powered by pretext · 텍스트가 나비를 비켜서 흐릅니다</span>
-      <span class="dot"></span>
-      <span>한국어 / English</span>
-    </div>
-  </div>
-
-  <div class="ticker" aria-hidden="true">
-    <div class="track">
-      <span><em>Desk</em>데스크 리서치</span>
-      <span><em>Scheduler</em>참석자 스케쥴러</span>
-      <span><em>Moderator</em>AI 모더레이터</span>
-      <span><em>Verbatim</em>전사록 생성</span>
-      <span><em>Interview</em>인터뷰 결과</span>
-      <span><em>Report</em>전체 리포트</span>
-      <span><em>Quant</em>정량조사 분석</span>
-      <span><em>Affinity</em>Affinity Bubble</span>
-      <span><em>Desk</em>데스크 리서치</span>
-      <span><em>Scheduler</em>참석자 스케쥴러</span>
-      <span><em>Moderator</em>AI 모더레이터</span>
-      <span><em>Verbatim</em>전사록 생성</span>
-      <span><em>Interview</em>인터뷰 결과</span>
-      <span><em>Report</em>전체 리포트</span>
-      <span><em>Quant</em>정량조사 분석</span>
-      <span><em>Affinity</em>Affinity Bubble</span>
-    </div>
+    <div class="below"><b>P.S.</b> 가입 직후 24시간은 모든 도구가 무제한이에요. 카드도 필요 없어요.</div>
   </div>
 </header>
 
-<!-- Showcase (Interactive · Extensive) -->
+<!-- Showcase (Interactive · Live workbench) — 원본 랜딩에서 가져옴 -->
 <section id="showcase">
   <div class="container">
     <div class="sec-head reveal">
-      <div>
-        <span class="meta amore">RESEARCH-MOCHI · LIVE DEMO</span>
-        <h2 style="margin-top:14px">진짜처럼 눌러보세요.<br/><em>사이드바 → 스테이지 → 워크스페이스.</em></h2>
-      </div>
-      <p>각 도구는 탭으로 단계가 나뉘고, 결과는 오른쪽 워크스페이스에 자동으로 쌓입니다.</p>
+      <span class="meta">LIVE DEMO</span>
+      <h2>진짜처럼 눌러보세요.<br/><em>사이드바 → 스테이지 → 워크스페이스.</em></h2>
+      <p>각 도구는 탭으로 단계가 나뉘고, 결과는 오른쪽 워크스페이스에 자동으로 쌓여요.</p>
     </div>
 
     <div class="wb3 reveal" id="wb">
-      <!-- Topbar -->
       <header class="wb-top">
-        <div class="wb-brand"><span class="dot"></span> research-mochi.app</div>
+        <div class="wb-brand"><span class="dot"></span> intellicenter.app</div>
         <div class="wb-bread" id="wbBread">/ko/dashboard</div>
-        <div class="wb-credits"><span class="meta amore">FREE TRIAL</span> <strong id="wbCredits">23h 48m</strong></div>
+        <div class="wb-credits"><span class="meta">FREE TRIAL</span> <strong id="wbCredits">23h 48m</strong></div>
       </header>
 
-      <!-- Sidebar -->
       <aside class="wb-side">
         <div class="group">설계</div>
         <button class="item active" data-key="desk"><span class="pip"></span> 데스크 리서치 <span class="cr">25</span></button>
@@ -549,24 +419,21 @@
         </div>
       </aside>
 
-      <!-- Stage -->
       <main class="wb-stage" id="wbStage"><!-- panels injected by JS --></main>
 
-      <!-- Workspace -->
       <aside class="wb-ws">
         <div class="ws-head">
-          <span class="meta amore">WORKSPACE</span>
+          <span class="meta">WORKSPACE</span>
           <span id="wsCount" class="ws-count">0</span>
         </div>
         <div class="ws-empty" id="wsEmpty">방문한 도구의 산출물이 여기 자동으로 쌓입니다. 사이드바를 눌러보세요.</div>
         <ul class="ws-list" id="wsList"></ul>
         <div class="ws-foot">
-          <button class="btn btn-ws" id="wbReset">초기화</button>
-          <button class="btn btn-ws primary" id="wbToReport">리포트로 →</button>
+          <button class="btn-ws" id="wbReset">초기화</button>
+          <button class="btn-ws primary" id="wbToReport">리포트로 →</button>
         </div>
       </aside>
 
-      <!-- Footer / progress -->
       <footer class="wb-foot">
         <div class="wb-prog">
           <span class="dot done"></span>
@@ -591,208 +458,115 @@
   </div>
 </section>
 
-<!-- Problem (moved after showcase) -->
-<section class="quote" id="problem">
-  <div class="container">
-    <div class="meta amore reveal">THE PROBLEM</div>
-    <h2 class="big reveal" style="margin-top:18px">
-      <span class="crossed">슬랙으로 인터뷰 녹취 던지고,</span>
-      <span class="crossed">스프레드시트로 발화 정리하고,</span>
-      <span class="crossed">키노트로 리포트 다시 짜는 일.</span><br/>
-      이젠 한 페이지에서 끝납니다.
-    </h2>
-    <div class="by reveal">— 리서처 8인의 워크플로우를 1년간 관찰하며 만든 도구</div>
-  </div>
+<section class="container nums" id="nums">
+  <div class="num"><div class="v"><em>24</em>h</div><div class="l">가입 직후 모든 도구 무제한</div></div>
+  <div class="num"><div class="v">8</div><div class="l">한 책상 위에 놓인 작은 도구들</div></div>
+  <div class="num"><div class="v">−<em>87</em>%</div><div class="l">정리에 들이던 시간이 줄어요</div></div>
+  <div class="num"><div class="v">2 <span style="font-size:18px;font-weight:500;color:var(--mute)">langs</span></div><div class="l">한국어 기본 · 영어 자동</div></div>
 </section>
 
-<!-- Flow -->
-<section id="flow" style="background:var(--paper-soft)">
+<section class="pricing" id="pricing">
   <div class="container">
-    <div class="sec-head reveal">
-      <div>
-        <span class="meta amore">HOW IT WORKS</span>
-        <h2 style="margin-top:14px">3분이면 첫 산출물.<br/><em>그 다음부터는 흐름이 됩니다.</em></h2>
-      </div>
-      <p>각 단계의 결과는 워크스페이스에 자동 등록 → 다음 도구로 드래그.</p>
+    <div class="sec-head">
+      <span class="meta">CREDITS · PAY AS YOU LEARN</span>
+      <h2>딱 쓴 만큼,<br/><span style="background:linear-gradient(180deg,transparent 60%,var(--peach) 60%);padding:0 6px;border-radius:6px">한국어 인보이스</span> 까지.</h2>
+      <p>크레딧 만료 없음 · 팀 단위 공유.</p>
     </div>
-
-    <div class="flow reveal">
-      <div class="step">
-        <div class="step-num">STEP 01</div>
-        <h4>업로드 / 붙여넣기</h4>
-        <p>녹취 파일, 인터뷰 노트, 설문 CSV, 또는 한 줄짜리 주제. 어떤 입력이든 시작점이 됩니다.</p>
-        <span class="arr">→</span>
-      </div>
-      <div class="step">
-        <div class="step-num">STEP 02</div>
-        <h4>도구를 잇는다</h4>
-        <p>전사록 → 인터뷰 결과 → 정량 분석. 사이드바의 8개 도구를 결과 → 입력으로 연결.</p>
-        <span class="arr">→</span>
-      </div>
-      <div class="step">
-        <div class="step-num">STEP 03</div>
-        <h4>리포트로 닫는다</h4>
-        <p>워크스페이스의 모든 산출물을 Full Report로 엮어 클라이언트에게 그대로 전달.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Numbers -->
-<section id="numbers">
-  <div class="container">
-    <div class="sec-head reveal">
-      <div>
-        <span class="meta amore">BY THE NUMBERS</span>
-        <h2 style="margin-top:14px"><em>몇 시간이 아니라,</em> 몇 분.</h2>
-      </div>
-      <p>실제 사용 팀 데이터 기준 (2026 Q1).</p>
-    </div>
-  </div>
-  <div class="container">
-    <div class="stats reveal">
-      <div class="stat">
-        <div class="num"><em>−87%</em></div>
-        <div class="lbl">인터뷰 정리에 들이던 시간</div>
-      </div>
-      <div class="stat">
-        <div class="num">8</div>
-        <div class="lbl">하나의 워크스페이스 안에서 동작하는 리서치 도구</div>
-      </div>
-      <div class="stat">
-        <div class="num">24<small style="font-size:18px;color:var(--mute);font-weight:400"> 시간</small></div>
-        <div class="lbl">가입 직후 모든 도구가 완전 무료 · 카드 등록 없음</div>
-      </div>
-      <div class="stat">
-        <div class="num">2<small style="font-size:18px;color:var(--mute);font-weight:400"> 언어</small></div>
-        <div class="lbl">한국어 기본 · 영어 동시 지원</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Pricing -->
-<section id="pricing" style="background:var(--paper-soft)">
-  <div class="container">
-    <div class="sec-head reveal">
-      <div>
-        <span class="meta amore">PRICING</span>
-        <h2 style="margin-top:14px">크레딧으로 정확히, <em>쓴 만큼만.</em></h2>
-      </div>
-      <p>구독이 아니라 크레딧. 안 쓰면 안 차감, 팀에서 공유.</p>
-    </div>
-
-    <p style="font-size:12.5px;color:var(--mute);margin-top:-4px;margin-bottom:18px">
-      <span class="meta amore" style="font-size:10.5px;color:var(--amore);background:var(--amore-bg);padding:3px 8px;border-radius:4px;letter-spacing:.18em">FREE TRIAL</span>
-      &nbsp;가입 직후 <strong style="color:var(--ink)">24시간</strong> 모든 도구 크레딧 차감 없이 무제한. 카드 등록도 없어요.
-    </p>
-
-    <div class="price-grid reveal">
+    <div class="price-grid">
       <div class="price">
-        <span class="meta">STARTER</span>
-        <h4>Starter</h4>
-        <div class="num"><span>₩200,000</span><small><b>100 크레딧</b><span class="hint">크레딧당 2,000원</span></small></div>
-        <ul>
-          <li>전체 리포트 2회 + 인터뷰 10회 분량</li>
-          <li>이메일 지원</li>
-          <li>크레딧 만료 없음</li>
-        </ul>
-        <a class="btn" href="/ko/login?next=/credits">크레딧 구매</a>
+        <span class="meta">Starter</span>
+        <h4>혼자 시작</h4>
+        <div class="num">₩29,000<small>100 크레딧 · ₩290 / cr</small></div>
+        <ul><li>전 도구 사용</li><li>한국어/영어</li><li>이메일 지원</li></ul>
+        <a class="btn" href="/ko/login?next=/credits">시작하기</a>
       </div>
+
       <div class="price featured">
-        <span class="meta">POPULAR · 10% OFF</span>
-        <h4>Team</h4>
-        <div class="num"><em>₩900,000</em><small><b>500 크레딧</b><span class="hint">크레딧당 1,800원 · 10% 할인</span></small></div>
-        <ul>
-          <li>팀 워크스페이스 · 역할 4단계</li>
-          <li>우선 지원 · 인보이스 결제</li>
-          <li>크레딧 만료 없음 · 팀 공유</li>
-        </ul>
-        <a class="btn primary" href="/ko/login?next=/credits" style="background:#fff;color:#0b0b0b;border-color:#fff">팀으로 시작 <span class="arrow">→</span></a>
+        <span class="badge">popular</span>
+        <span class="meta">Team · 10% off</span>
+        <h4 style="color:#fff">팀으로 시작</h4>
+        <div class="num" style="color:#fff">₩261,000<small>1,000 크레딧 · ₩261 / cr</small></div>
+        <ul><li>팀 워크스페이스 공유</li><li>역할/권한 관리</li><li>우선 채널 지원</li></ul>
+        <a class="btn primary" style="background:#fff;color:var(--ink);border-color:#fff" href="/ko/login?next=/credits">팀으로 시작 →</a>
       </div>
+
       <div class="price">
-        <span class="meta">15% OFF</span>
-        <h4>Studio</h4>
-        <div class="num"><span>₩2,550,000</span><small><b>1,500 크레딧</b><span class="hint">크레딧당 1,700원 · 15% 할인</span></small></div>
-        <ul>
-          <li>스튜디오 규모 운영 권장</li>
-          <li>SLA 응답 시간 보장</li>
-          <li>크레딧 만료 없음 · 팀 공유</li>
-        </ul>
-        <a class="btn" href="/ko/login?next=/credits">크레딧 구매</a>
+        <span class="meta">Studio · 15% off</span>
+        <h4>리서치 스튜디오</h4>
+        <div class="num">₩615,000<small>2,500 크레딧 · ₩246 / cr</small></div>
+        <ul><li>다중 워크스페이스</li><li>리포트 화이트라벨</li><li>온보딩 1회</li></ul>
+        <a class="btn" href="/ko/login?next=/credits">스튜디오 시작</a>
       </div>
+
       <div class="price">
-        <span class="meta">25% OFF · CUSTOM</span>
-        <h4>Enterprise</h4>
-        <div class="num"><span>상담</span><small><b>5,000+ 크레딧</b><span class="hint">최대 25% 할인 · 맞춤 견적</span></small></div>
-        <ul>
-          <li>SSO · 감사 로그</li>
-          <li>전용 리전 · 데이터 보관 정책</li>
-          <li>BYO Key · 맞춤 리포트 템플릿</li>
-        </ul>
-        <a class="btn" href="mailto:hello@ai-researcher.kr">문의하기</a>
+        <span class="meta">Enterprise · 25% off</span>
+        <h4>엔터프라이즈</h4>
+        <div class="num">견적<small>월 500 크레딧 · 맞춤 SLA</small></div>
+        <ul><li>SSO · 감사 로그</li><li>전용 도메인</li><li>한국어 전담</li></ul>
+        <a class="btn" href="mailto:hello@research-mochi.app">견적 요청</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FAQ -->
-<section id="faq">
+<section class="voice" id="voice">
   <div class="container">
-    <div class="sec-head reveal">
-      <div>
-        <span class="meta amore">FAQ</span>
-        <h2 style="margin-top:14px">자주 묻는 것들.</h2>
-      </div>
-      <p>그 외 궁금한 점은 hello@ai-researcher.kr</p>
+    <div class="voice-card">
+      <div class="av"><span>🌷</span><span>🍵</span><span>🌿</span><span>🍑</span></div>
+      <div class="quote">"리서치를 '잡일' 처럼 느끼던 시간이 줄었어요.<br/>하루 종일 인터뷰 정리하던 게 한 시간이면 끝나니까,<br/>드디어 '생각하는 일' 에 시간을 쓸 수 있게 됐어요."</div>
+      <div class="by">— Beauty UX Lead · 2026 Q1 Beta</div>
     </div>
+  </div>
+</section>
 
-    <div class="faq reveal">
-      <details open>
-        <summary>리서치 데이터는 어디에 저장되나요?<span class="plus">+</span></summary>
-        <p class="a">Supabase Postgres + Row-Level Security. 데이터는 조직 단위로 격리되며, 같은 조직 안에서 역할(`owner / admin / member / viewer`)에 따라 접근이 결정됩니다. 각 산출물은 `private / org / shared` 가시성을 가집니다.</p>
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="sec-head">
+      <span class="meta">FAQ</span>
+      <h2>궁금해 하실 것 같아서요.</h2>
+    </div>
+    <div class="faq-list">
+      <details>
+        <summary>크레딧은 만료가 있나요? <span class="plus">+</span></summary>
+        <div class="a">아니요. 한 번 구매하신 크레딧은 만료되지 않아요. 팀 워크스페이스 안에서 자유롭게 공유돼요.</div>
       </details>
       <details>
-        <summary>한국어 인터뷰도 잘 처리되나요?<span class="plus">+</span></summary>
-        <p class="a">한국 리서처를 1순위로 만든 도구입니다. 화자 분리, 존대/반말 정제, 한국어 인용문 추출 모두 한국어 코퍼스로 검증됩니다. 영어는 같은 모델로 자동 처리됩니다.</p>
+        <summary>한국어가 모자란 부분은 없나요? <span class="plus">+</span></summary>
+        <div class="a">기본 언어는 한국어예요. 인터페이스·문서·이메일·인보이스까지 모두 한국어 우선. 필요할 때 영어로 토글할 수 있어요.</div>
       </details>
       <details>
-        <summary>크레딧은 만료되나요?<span class="plus">+</span></summary>
-        <p class="a">아니요. 구매한 크레딧은 만료되지 않으며, 팀 단위로 공유됩니다. 가입 직후 24시간 동안은 모든 도구가 크레딧 차감 없이 무제한으로 열립니다.</p>
+        <summary>한 도구의 결과가 다른 도구로 자동으로 흘러가나요? <span class="plus">+</span></summary>
+        <div class="a">네. 같은 워크스페이스 안에서 한 도구의 산출물이 다음 도구의 입력으로 바로 이어져요. 사이드바에 쌓이고 drag-drop 으로 보낼 수도 있어요.</div>
       </details>
       <details>
-        <summary>다른 도구(Slack, Notion)와 연결되나요?<span class="plus">+</span></summary>
-        <p class="a">현재는 워크스페이스 내부에서 산출물을 다음 도구의 입력으로 연결하는 데 집중하고 있습니다. Slack/Notion export는 2026 Q3 로드맵.</p>
-      </details>
-      <details>
-        <summary>오픈AI나 다른 모델을 직접 가져올 수 있나요?<span class="plus">+</span></summary>
-        <p class="a">Enterprise 플랜에서 BYO Key를 지원합니다. 기본 플랜은 자체 모델 라우팅으로 운영되어 사용자가 모델 선택을 신경쓰지 않아도 됩니다.</p>
+        <summary>가입하면 바로 결제해야 하나요? <span class="plus">+</span></summary>
+        <div class="a">아니요. 가입 후 24시간은 카드 없이 모든 도구를 무제한으로 써 보실 수 있어요. 마음에 드시면 그 후에 크레딧을 구매하세요.</div>
       </details>
     </div>
   </div>
 </section>
 
-<!-- Final CTA -->
-<section class="final">
+<section class="cta-final" id="start">
   <div class="container">
-    <span class="meta amore" style="color:var(--amore)">START NOW · FREE FOR 24 HOURS</span>
-    <h2 style="margin-top:24px">리서처의 손은<br/>다른 일에 <em>써야 합니다.</em></h2>
-    <p>가입 직후 <strong style="color:#fff">24시간</strong>은 모든 도구가 크레딧 차감 없이 무제한으로 열립니다. 카드 등록 없이, 첫 산출물까지 평균 3분.</p>
-    <div class="row">
-      <a class="btn primary btn-lg" href="/ko/login?next=/dashboard" style="height:48px;padding:0 24px;font-size:14px">무료로 시작 <span class="arrow">→</span></a>
-      <a class="btn btn-lg" href="#contact" style="height:48px;padding:0 24px;font-size:14px">팀 데모 요청</a>
+    <div class="cta-card">
+      <span class="squiggle">come say hi ✿</span>
+      <h2>리서처의 손은,<br/><span class="hl">생각하는 일</span> 에 써야 하니까요.</h2>
+      <p>가입 직후 24시간 동안 모든 도구가 무제한으로 열려요. 카드 등록도 없고, 첫 산출물까지 평균 3분이에요.</p>
+      <div class="row">
+        <a class="btn primary" href="/ko/login?next=/dashboard" style="height:46px;padding:0 22px;font-size:14px">하루 무료로 만나보기 →</a>
+        <a class="btn" href="#showcase" style="height:46px;padding:0 22px;font-size:14px">한 바퀴 둘러보기</a>
+      </div>
     </div>
   </div>
 </section>
 
 <footer>
-  <div class="container row">
-    <div>© 2026 Research-mochi · Built on Next.js 16 · Supabase · Vercel</div>
+  <div class="row">
+    <div>Made <span>kindly</span> in Seoul · © 2026 Research-mochi</div>
     <div style="display:flex;gap:18px">
-      <a href="#">개인정보</a>
-      <a href="#">약관</a>
-      <a href="#">상태</a>
-      <a href="#">변경 이력</a>
+      <a href="/ko/terms">이용약관</a>
+      <a href="/ko/privacy">개인정보</a>
+      <a href="mailto:hello@research-mochi.app">hello@</a>
     </div>
   </div>
 </footer>
@@ -803,244 +577,6 @@
     entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
-
-  // ===== Hero pretext effect =====
-  // Apply pretext-style canvas-measured layout to the existing hero lede.
-  // Floating amore orbs drift across the hero; the lede paragraph reflows
-  // around them line by line, and individual words tint amore when overlapped.
-  (function(){
-    const hero = document.getElementById('heroSec');
-    const canvas = document.getElementById('heroCanvas');
-    const flow = document.getElementById('ledeFlow');
-    if(!hero || !canvas || !flow) return;
-
-    const text = flow.dataset.text || '';
-    const accent = (flow.dataset.accent || '').split(',').filter(Boolean);
-    const boldEnd = (text.match(/^.+?(까지\.)/) || [null,''])[0].length; // first sentence is the bold list
-
-    const FONT = getComputedStyle(flow).fontFamily;
-    const SIZE = parseFloat(getComputedStyle(flow).fontSize);
-    const LH = parseFloat(getComputedStyle(flow).lineHeight);
-    const FONT_STR = `${SIZE}px ${FONT}`;
-
-    const mctx = document.createElement('canvas').getContext('2d');
-    function refont(){ mctx.font = FONT_STR; }
-    function measure(s){ return mctx.measureText(s).width; }
-    refont();
-
-    // Tokenize text into words, preserve Korean punctuation as glue
-    function tokenize(s){
-      const out = []; const re = /\S+\s*/g; let m;
-      while((m = re.exec(s))){
-        const raw = m[0];
-        const trimmed = raw.replace(/\s+$/,'');
-        const trail = /\s+$/.test(raw) ? ' ' : '';
-        const start = m.index;
-        out.push({text:trimmed, trail, start, w: measure(trimmed+trail)});
-      }
-      return out;
-    }
-    const tokens = tokenize(text);
-
-    // Color palettes — keep amore family dominant, add subtle variation
-    const PALETTES = [
-      {deep:'rgba(31,87,149,0.34)',  soft:'rgba(61,114,173,0.24)', stroke:'rgba(0,28,88,0.50)'},   // amore blue
-      {deep:'rgba(196,163,90,0.34)', soft:'rgba(214,182,108,0.24)',stroke:'rgba(120,90,30,0.55)'}, // gold
-      {deep:'rgba(122,74,110,0.32)', soft:'rgba(160,108,140,0.22)',stroke:'rgba(70,30,55,0.55)'},  // plum
-      {deep:'rgba(46,108,98,0.32)',  soft:'rgba(80,140,128,0.22)', stroke:'rgba(20,60,52,0.55)'},  // teal
-    ];
-
-    // Butterflies (drift + wing flap; reuse `r` as wing-span / exclusion radius)
-    const orbs = [
-      {x:0.14,y:0.46,r:22,vx:0.16,vy:0.10, phase:0.0, flapHz:7.5, sway:0.0, palette: PALETTES[0]},
-      {x:0.55,y:0.40,r:26,vx:-0.12,vy:0.08,phase:1.3, flapHz:6.2, sway:0.6, palette: PALETTES[1]},
-      {x:0.78,y:0.65,r:19,vx:0.10,vy:-0.12,phase:2.6, flapHz:8.4, sway:1.1, palette: PALETTES[2]},
-      {x:0.36,y:0.78,r:17,vx:-0.08,vy:-0.06,phase:0.7,flapHz:9.0, sway:1.7, palette: PALETTES[3]}
-    ];
-    const startTime = performance.now();
-    // Mouse interaction intentionally disabled — text reflows around drifting
-    // butterflies only; the cursor neither displaces letters nor renders an orb.
-
-    // Sizing
-    let W=0,H=0,dpr=Math.max(1,window.devicePixelRatio||1);
-    let flowRect = null; // lede flow box relative to hero
-    function resize(){
-      const hr = hero.getBoundingClientRect();
-      W = hr.width; H = hr.height;
-      canvas.width = W*dpr; canvas.height = H*dpr;
-      canvas.style.width = W+'px'; canvas.style.height = H+'px';
-      canvas.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
-
-      const fr = flow.getBoundingClientRect();
-      flowRect = { x: fr.left - hr.left, y: fr.top - hr.top, w: fr.width, h: fr.height };
-      refont();
-    }
-    window.addEventListener('resize', resize);
-    resize();
-    // Re-measure after fonts settle
-    if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ refont(); for(const t of tokens) t.w = measure(t.text+t.trail); resize(); });
-
-    // Pool of span elements
-    const pool = [];
-    function getEl(i){
-      let el = pool[i];
-      if(!el){ el = document.createElement('span'); el.className='w'; flow.appendChild(el); pool[i]=el; }
-      return el;
-    }
-    function hideFrom(i){ for(let k=i;k<pool.length;k++){ pool[k].style.display='none'; pool[k].className='w'; } }
-
-    // Convert global hero coords to flow-local coords
-    // Exclusions are computed in HERO space, then offset into flow
-    function exclusionsForY(yLocal){
-      const yGlobal = (flowRect?.y || 0) + yLocal + LH/2;
-      const out = [];
-      for(const o of orbs){
-        const ox = o.x*W, oy = o.y*H;
-        const dy = Math.abs(oy - yGlobal);
-        if(dy > o.r + 4) continue;
-        const hc = Math.sqrt(Math.max(0,(o.r+4)*(o.r+4) - dy*dy));
-        // map x into flow-local
-        const lx = ox - (flowRect?.x || 0);
-        out.push([lx-hc, lx+hc]);
-      }
-      out.sort((a,b)=>a[0]-b[0]);
-      const merged=[];
-      for(const iv of out){
-        if(merged.length && iv[0] <= merged[merged.length-1][1]+2) merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],iv[1]);
-        else merged.push(iv.slice());
-      }
-      return merged;
-    }
-
-    function segmentsForY(yLocal){
-      const W2 = flowRect?.w || flow.clientWidth;
-      const ex = exclusionsForY(yLocal);
-      let segs = [[0, W2]];
-      for(const [a,b] of ex){
-        const next = [];
-        for(const [l,r] of segs){
-          if(b < l || a > r){ next.push([l,r]); continue; }
-          if(a > l) next.push([l, Math.max(l, a-3)]);
-          if(b < r) next.push([Math.min(r, b+3), r]);
-        }
-        segs = next.filter(([l,r])=> r-l > 30);
-      }
-      return segs;
-    }
-
-    function isAccent(t){
-      const bare = t.text.replace(/[.,·…“”"'!?]/g,'');
-      return accent.some(a=>bare.indexOf(a) !== -1);
-    }
-    function isBold(t){ return t.start < boldEnd; }
-
-    function layout(){
-      const lines = Math.max(1, Math.floor((flowRect?.h || flow.clientHeight) / LH));
-      let i = 0;
-      for(let line=0; line<lines; line++){
-        const y = line*LH;
-        const segs = segmentsForY(y);
-        if(segs.length === 0) continue;
-        for(const [l,r] of segs){
-          let x = l;
-          while(i < tokens.length && x + tokens[i].w <= r){
-            const t = tokens[i];
-            const el = getEl(i);
-            el.style.display = 'block';
-            el.textContent = t.text + t.trail;
-            el.style.left = x+'px';
-            el.style.top = y+'px';
-            // styling
-            el.className = 'w' + (isBold(t)?' bold':'') + (isAccent(t)?' amore':'');
-            x += t.w;
-            i++;
-          }
-        }
-      }
-      hideFrom(i);
-    }
-
-    function drawButterfly(c, cx, cy, r, flap, tilt, palette){
-      // flap ∈ [0..1]; squashes wings on the y-axis as if seen at an angle
-      c.save();
-      c.translate(cx, cy);
-      c.rotate(tilt);
-      const wingY = 0.25 + flap * 0.75; // collapsed → open
-      const fillSoft = palette.soft;
-      const fillDeep = palette.deep;
-      const stroke   = palette.stroke;
-      // Wings (split into upper/lower, mirrored L/R)
-      c.save();
-      c.scale(1, wingY);
-      // Upper wings — teardrop-ish ellipses, tip points outward & up
-      c.fillStyle = fillDeep;
-      c.beginPath(); c.ellipse(-r*0.46, -r*0.18, r*0.55, r*0.62, -0.35, 0, Math.PI*2); c.fill();
-      c.beginPath(); c.ellipse( r*0.46, -r*0.18, r*0.55, r*0.62,  0.35, 0, Math.PI*2); c.fill();
-      // Lower wings — smaller, tip down/out
-      c.fillStyle = fillSoft;
-      c.beginPath(); c.ellipse(-r*0.36,  r*0.28, r*0.42, r*0.48,  0.20, 0, Math.PI*2); c.fill();
-      c.beginPath(); c.ellipse( r*0.36,  r*0.28, r*0.42, r*0.48, -0.20, 0, Math.PI*2); c.fill();
-      // Wing outline (thin)
-      c.strokeStyle = stroke; c.lineWidth = 0.8;
-      c.beginPath(); c.ellipse(-r*0.46, -r*0.18, r*0.55, r*0.62, -0.35, 0, Math.PI*2); c.stroke();
-      c.beginPath(); c.ellipse( r*0.46, -r*0.18, r*0.55, r*0.62,  0.35, 0, Math.PI*2); c.stroke();
-      c.beginPath(); c.ellipse(-r*0.36,  r*0.28, r*0.42, r*0.48,  0.20, 0, Math.PI*2); c.stroke();
-      c.beginPath(); c.ellipse( r*0.36,  r*0.28, r*0.42, r*0.48, -0.20, 0, Math.PI*2); c.stroke();
-      c.restore();
-      // Body (drawn after wings, unsquashed) — slim spindle
-      c.fillStyle = 'rgba(0,28,88,0.85)';
-      c.beginPath();
-      c.ellipse(0, 0, r*0.06, r*0.55, 0, 0, Math.PI*2);
-      c.fill();
-      // Antennae
-      c.strokeStyle = 'rgba(0,28,88,0.7)'; c.lineWidth = 0.8;
-      c.beginPath();
-      c.moveTo(-1, -r*0.45); c.quadraticCurveTo(-r*0.18, -r*0.78, -r*0.22, -r*0.85);
-      c.moveTo( 1, -r*0.45); c.quadraticCurveTo( r*0.18, -r*0.78,  r*0.22, -r*0.85);
-      c.stroke();
-      c.restore();
-    }
-
-    function draw(){
-      const c = canvas.getContext('2d');
-      c.clearRect(0,0,W,H);
-      const t = (performance.now() - startTime) / 1000;
-      for(const o of orbs){
-        const ox=o.x*W, oy=o.y*H;
-        const flap = (Math.sin(t*o.flapHz + o.phase) + 1) / 2; // 0..1
-        const tilt = Math.sin(t*1.6 + o.sway) * 0.18;          // gentle sway
-        drawButterfly(c, ox, oy, o.r, flap, tilt, o.palette);
-      }
-    }
-
-    function tick(){
-      const t = (performance.now() - startTime) / 1000;
-      for(const o of orbs){
-        // base drift + flutter perturbation perpendicular-ish to motion
-        const flutter = Math.sin(t*2.2 + o.phase) * 0.04;
-        o.x += o.vx / Math.max(W,1);
-        o.y += (o.vy + flutter) / Math.max(H,1);
-        if(o.x < 0.06 || o.x > 0.94) o.vx *= -1;
-        if(o.y < 0.12 || o.y > 0.88) o.vy *= -1;
-      }
-      draw();
-      layout();
-      requestAnimationFrame(tick);
-    }
-
-    // Initial layout once positions are known
-    requestAnimationFrame(()=>{ resize(); layout(); draw(); });
-
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if(!mq.matches){
-      const obs = new IntersectionObserver(([e])=>{
-        if(e.isIntersecting){ requestAnimationFrame(tick); obs.disconnect(); }
-      }, {threshold:.02});
-      obs.observe(hero);
-    }
-  })();
-
-
   // ===== Interactive workbench v2 (extensive) =====
   const TRANSCRIPT_BODY = `
     <div class="qcard" style="padding:6px 16px">
@@ -1505,6 +1041,7 @@
       }
     });
   });
+
 </script>
 </body>
 </html>

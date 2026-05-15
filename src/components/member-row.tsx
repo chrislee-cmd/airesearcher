@@ -48,7 +48,7 @@ export function MemberRow({
           <select
             defaultValue={role}
             onChange={(e) => changeRole(e.target.value)}
-            className="border border-line bg-paper px-2 py-1 text-[11.5px] text-ink-2 [border-radius:4px]"
+            className="border border-line bg-paper px-2 py-1 text-[11.5px] text-ink-2 [border-radius:14px]"
           >
             <option value="admin">{t('admin')}</option>
             <option value="member">{t('member')}</option>

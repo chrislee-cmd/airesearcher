@@ -418,7 +418,7 @@ export function ReportGenerator() {
       )}
 
       {files.length > 0 && (
-        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:4px]">
+        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:14px]">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
@@ -449,14 +449,14 @@ export function ReportGenerator() {
           data-coach="reports:generate"
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {running ? tCommon('loading') : '리포트 생성'}
         </button>
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
           오류: {errorMessage}
         </div>
       )}
@@ -472,7 +472,7 @@ export function ReportGenerator() {
                 <button
                   type="button"
                   onClick={() => setTab('html')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
                     tab === 'html'
                       ? 'border border-ink bg-ink text-paper'
                       : 'border border-line bg-paper text-mute hover:border-ink-2'
@@ -483,7 +483,7 @@ export function ReportGenerator() {
                 <button
                   type="button"
                   onClick={() => setTab('md')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
                     tab === 'md'
                       ? 'border border-ink bg-ink text-paper'
                       : 'border border-line bg-paper text-mute hover:border-ink-2'
@@ -555,10 +555,10 @@ export function ReportGenerator() {
               srcDoc={previewHtml}
               sandbox="allow-same-origin allow-modals"
               onLoad={onIframeLoad}
-              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
+              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:14px]"
             />
           ) : (
-            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:4px]">
+            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:14px]">
               {previewMd || '(아직 생성되지 않았습니다)'}
             </pre>
           )}
@@ -599,7 +599,7 @@ function RegenBar({
             type="button"
             disabled={disabled}
             onClick={() => onRegen(k)}
-            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
           >
             {t(`types.${k}.label`)}
           </button>
@@ -652,7 +652,7 @@ function ReportTypeChooser({
               aria-checked={selected}
               disabled={disabled}
               onClick={() => onChange(key)}
-              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px] ${
+              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px] ${
                 selected
                   ? 'border-ink bg-ink text-paper'
                   : 'border-line bg-paper text-ink-2 hover:border-amore'

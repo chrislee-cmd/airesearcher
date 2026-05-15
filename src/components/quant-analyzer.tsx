@@ -147,7 +147,7 @@ export function QuantAnalyzer() {
             <button
               type="button"
               onClick={clearAll}
-              className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:4px]"
+              className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:14px]"
             >
               {t('reset')}
             </button>
@@ -181,7 +181,7 @@ export function QuantAnalyzer() {
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`border px-3 py-1.5 transition-colors duration-[120ms] [border-radius:4px] ${
+                  className={`border px-3 py-1.5 transition-colors duration-[120ms] [border-radius:14px] ${
                     mode === m
                       ? 'border-ink bg-ink text-paper'
                       : 'border-line text-mute hover:text-ink-2'
@@ -214,7 +214,7 @@ export function QuantAnalyzer() {
           {crossTab ? (
             <CrosstabTable t={crossTab} mode={mode} />
           ) : rowCol === colCol && rowCol ? (
-            <div className="border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:4px]">
+            <div className="border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:14px]">
               {t('samePickError')}
             </div>
           ) : (
@@ -243,14 +243,14 @@ function ColumnPicker({
 }) {
   const summary = summaries.find((s) => s.name === value);
   return (
-    <div className="border border-line bg-paper p-4 [border-radius:4px]">
+    <div className="border border-line bg-paper p-4 [border-radius:14px]">
       <div className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-amore">
         {label}
       </div>
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]"
+        className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]"
       >
         <option value="">—</option>
         {summaries.map((s) => (
@@ -305,7 +305,7 @@ function CrosstabTable({ t: ct, mode }: { t: CrossTab; mode: Mode }) {
   }
 
   return (
-    <div className="overflow-x-auto border border-line bg-paper [border-radius:4px]">
+    <div className="overflow-x-auto border border-line bg-paper [border-radius:14px]">
       <table className="w-full border-collapse text-[12px] tabular-nums">
         <thead>
           <tr className="bg-paper-soft text-ink-2">
