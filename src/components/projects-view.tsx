@@ -224,7 +224,7 @@ function FolderCard({
 }) {
   const t = useTranslations('Projects');
   return (
-    <div className="group relative border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:14px]">
+    <div className="group relative border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 [border-radius:14px] [box-shadow:var(--shadow-bento)]">
       <Link href={`/projects/${project.id}`} className="block">
         <FolderIcon />
         <h3 className="mt-3 truncate text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
