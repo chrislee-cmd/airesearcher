@@ -315,6 +315,7 @@
       "transcribeAll": "전사 시작",
       "noFiles": "파일이 없습니다",
       "fileTooLarge": "파일이 너무 큽니다 (최대 25MB)",
+      "tooManyFiles": "파일 한도에 도달했습니다 (최대 {max}개). 파일을 제거한 후 추가하세요.",
       "viewTranscript": "전사록 보기",
       "hideTranscript": "접기",
       "filesQueued": "{count}개 파일 대기 중",

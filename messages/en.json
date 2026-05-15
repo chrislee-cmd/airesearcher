@@ -315,6 +315,7 @@
       "transcribeAll": "Start transcription",
       "noFiles": "No files",
       "fileTooLarge": "File too large (max 25MB)",
+      "tooManyFiles": "File limit reached (max {max}). Remove a file to add more.",
       "viewTranscript": "View transcript",
       "hideTranscript": "Hide",
       "filesQueued": "{count} files queued",
