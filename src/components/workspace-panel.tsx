@@ -431,12 +431,12 @@ export function WorkspacePanel() {
 
       {/* Right sidebar — width animates 0 → 288px so main content smoothly shifts */}
       <aside
-        className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-[200ms] ease-out md:flex ${
-          isOpen ? 'w-[288px]' : 'w-0'
+        className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width,box-shadow] duration-[200ms] ease-out md:flex ${
+          isOpen ? 'w-[288px] [box-shadow:-8px_0_32px_0_rgba(0,0,0,0.14)]' : 'w-0'
         }`}
       >
         {/* Inner panel fixed at 288px — clipped by aside's overflow-hidden during transition */}
-        <div className="flex h-full w-[288px] flex-col border-l border-line-soft bg-paper [box-shadow:-8px_0_32px_0_rgba(0,0,0,0.14)]">
+        <div className="flex h-full w-[288px] flex-col border-l border-line-soft bg-paper">
           <header className="flex items-center justify-between border-b border-line px-5 py-3">
             <div className="flex items-center gap-2">
               <span className="inline-block h-px w-5 bg-amore" />
