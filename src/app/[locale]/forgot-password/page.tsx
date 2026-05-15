@@ -17,7 +17,7 @@ export default async function ForgotPasswordPage({
       <div className="absolute right-6 top-6">
         <LanguageSwitcher />
       </div>
-      <div className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:4px]">
+      <div className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:14px]">
         <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
           {t('forgotPasswordTitle')}
         </h1>

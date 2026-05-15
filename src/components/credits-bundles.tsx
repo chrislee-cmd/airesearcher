@@ -157,7 +157,7 @@ export function CreditsBundles() {
           return (
             <div
               key={b.id}
-              className={`relative flex flex-col border bg-paper p-5 [border-radius:4px] ${
+              className={`relative flex flex-col border bg-paper p-5 [border-radius:14px] ${
                 b.popular ? 'border-amore' : 'border-line'
               }`}
             >
@@ -206,7 +206,7 @@ export function CreditsBundles() {
                     open(b.id);
                   }
                 }}
-                className={`mt-5 px-4 py-2 text-[11.5px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:4px] ${
+                className={`mt-5 px-4 py-2 text-[11.5px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:14px] ${
                   b.popular
                     ? 'border border-ink bg-ink text-paper hover:bg-ink-2'
                     : 'border border-line text-mute hover:border-ink hover:text-ink-2'
@@ -225,7 +225,7 @@ export function CreditsBundles() {
           role="status"
           aria-live="polite"
         >
-          <div className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper [border-radius:4px]">
+          <div className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper [border-radius:14px]">
             {toast}
           </div>
         </div>
@@ -238,7 +238,7 @@ export function CreditsBundles() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[560px] border border-line bg-paper [border-radius:4px]"
+            className="w-full max-w-[560px] border border-line bg-paper [border-radius:14px]"
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-3">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
@@ -336,7 +336,7 @@ export function CreditsBundles() {
                     <button
                       type="button"
                       onClick={close}
-                      className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore [border-radius:4px]"
+                      className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore [border-radius:14px]"
                     >
                       {t('cancel')}
                     </button>
@@ -344,7 +344,7 @@ export function CreditsBundles() {
                       type="button"
                       disabled={submitting || !taxValid}
                       onClick={submit}
-                      className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:4px]"
+                      className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:14px]"
                     >
                       {submitting
                         ? t('submitting')
@@ -380,7 +380,7 @@ function MethodOption({
       onClick={onClick}
       disabled={disabled}
       className={
-        'flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left [border-radius:4px] ' +
+        'flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left [border-radius:14px] ' +
         (disabled
           ? 'cursor-not-allowed border-line-soft bg-paper text-mute-soft'
           : active
@@ -419,7 +419,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 [border-radius:4px]"
+        className="border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px]"
       />
     </label>
   );

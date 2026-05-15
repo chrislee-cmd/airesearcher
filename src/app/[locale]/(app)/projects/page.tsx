@@ -29,7 +29,7 @@ export default async function ProjectsPage({
       </p>
 
       {!org ? (
-        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:4px]">
+        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:14px]">
           {t('noActiveOrg')}
         </div>
       ) : (

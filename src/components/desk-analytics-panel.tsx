@@ -172,7 +172,7 @@ export function DeskAnalyticsPanel({ analytics }: { analytics: DeskAnalytics }) 
         {analytics.charts.map((c, i) => (
           <article
             key={i}
-            className="border border-line bg-paper p-5 [border-radius:4px]"
+            className="border border-line bg-paper p-5 [border-radius:14px]"
           >
             <header className="mb-3">
               <div className="text-[10.5px] font-semibold uppercase tracking-[.22em] text-amore">

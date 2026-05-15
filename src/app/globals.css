@@ -1,57 +1,134 @@
 @import "tailwindcss";
 
+/* =========================================================================
+   Bento Design System tokens (전역 SSOT).
+   /Users/churryboy/AI-researcher/design-system-bento.md 참고.
+   기존 토큰 이름(amore / ink / mute / paper / line …) 은 보존하고
+   값만 bento 로 교체 → 앱 전체 (58 곳에서 참조) 가 자동으로 새 톤을 입음.
+   ========================================================================= */
 @theme {
-  /* Brand accents */
-  --color-amore: #1F5795;
-  --color-amore-soft: #3d72ad;
-  --color-amore-bg: #eaf0f8;
-  --color-pacific: #001C58;
-  --color-pacific-bg: #e6e9f1;
+  /* Brand accent — bento purple (formerly amore navy) */
+  --color-amore: #a06fda;
+  --color-amore-soft: #b690e2;
+  --color-amore-bg: #e7defe;
+  --color-pacific: #1d1b20;
+  --color-pacific-bg: #f3f0eb;
 
   /* Text */
-  --color-ink: #000000;
-  --color-ink-2: #1a1a1a;
-  --color-mute: #5a5a5a;
-  --color-mute-soft: #9b9b9b;
-  --color-gray-warm: #7d7d7d;
+  --color-ink: #1d1b20;
+  --color-ink-2: #2a262f;
+  --color-mute: #5b5965;
+  --color-mute-soft: #8a8693;
+  --color-gray-warm: #6f6c78;
 
-  /* Lines / surfaces */
-  --color-line: #e1e3e8;
-  --color-line-soft: #f1f3f6;
-  --color-paper: #ffffff;
-  --color-paper-soft: #fafafb;
+  /* Surfaces / lines */
+  --color-line: rgba(29, 27, 32, 0.10);
+  --color-line-soft: rgba(29, 27, 32, 0.06);
+  --color-paper: #fbf7f2;          /* warm cream (page bg) */
+  --color-paper-soft: #ffffff;     /* card bg */
 
-  /* Signal (limited) */
+  /* Bento pastel palette */
+  --color-lav: #e7defe;
+  --color-peach: #ffd9c9;
+  --color-mint: #cdebd9;
+  --color-sun: #fff1b6;
+  --color-sky: #cfe6ff;
+  --color-rose: #ffd0e2;
+
+  /* Signal */
   --color-warning: #fb923c;
-  --color-warning-bg: #fff8f0;
-  --color-warning-line: #fed7aa;
+  --color-warning-bg: #fff1e6;
+  --color-warning-line: #ffd9bf;
 
+  /* Typography */
   --font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-hand: "Caveat", cursive;
 
-  --radius-sm: 4px;
+  /* Radius scale */
+  --radius-sm: 14px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+  --radius-pill: 999px;
+
+  /* Single shadow token */
+  --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 }
 
 html, body {
   background: var(--color-paper);
-  color: var(--color-ink-2);
+  color: var(--color-ink);
   font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'ss02';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Editorial primitives shared across pages */
-.eyebrow {
+/* =========================================================================
+   Bento primitives — Tailwind 클래스로 표현하기 어려운 통합 패턴.
+   ========================================================================= */
+.bento-card {
+  background: var(--color-paper-soft);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-bento);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+.bento-card:hover { transform: translateY(-2px); }
+.bento-surface {
+  background: var(--color-paper-soft);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-bento);
+}
+.bento-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-line);
+  background: var(--color-paper-soft);
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.bento-pill:hover { transform: translateY(-1px); box-shadow: var(--shadow-bento); }
+.bento-pill.primary { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
+.bento-pill.primary:hover { background: #000; }
+.bento-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-pacific-bg);
+  color: var(--color-ink);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.hand { font-family: var(--font-hand); }
+
+/* Editorial eyebrow primitives — bento 톤으로 살짝 완화 */
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--color-amore);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .eyebrow-mute {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--color-mute-soft);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .accent-line {
@@ -62,54 +139,43 @@ html, body {
   vertical-align: middle;
 }
 
-/* Workspace micro-interactions: trigger pulse + new-row flash. */
+/* Highlight (형광펜 60%) */
+.hl {
+  background: linear-gradient(180deg, transparent 60%, var(--color-sun) 60%);
+  padding: 0 6px;
+  border-radius: 6px;
+}
+.hl.peach { background: linear-gradient(180deg, transparent 60%, var(--color-peach) 60%); }
+.hl.mint  { background: linear-gradient(180deg, transparent 60%, var(--color-mint) 60%); }
+.hl.lav   { background: linear-gradient(180deg, transparent 60%, var(--color-lav) 60%); }
+
+/* =========================================================================
+   기존 micro-interaction keyframes
+   ========================================================================= */
 @keyframes workspaceTriggerPulse {
   0%   { box-shadow: 0 0 0 0 var(--color-amore); }
   60%  { box-shadow: 0 0 0 8px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
-.workspace-trigger-pulse {
-  animation: workspaceTriggerPulse 1.2s ease-out 2;
-}
+.workspace-trigger-pulse { animation: workspaceTriggerPulse 1.2s ease-out 2; }
+
 @keyframes workspaceRowFlash {
   0%   { background-color: color-mix(in srgb, var(--color-amore) 16%, transparent); }
   100% { background-color: transparent; }
 }
-.workspace-row-flash {
-  animation: workspaceRowFlash 2s ease-out 1;
-}
+.workspace-row-flash { animation: workspaceRowFlash 2s ease-out 1; }
 
 @keyframes jobProgressIndeterminate {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
-.job-progress-indeterminate {
-  animation: jobProgressIndeterminate 1.4s ease-in-out infinite;
-}
+.job-progress-indeterminate { animation: jobProgressIndeterminate 1.4s ease-in-out infinite; }
 
-/* Docx-derived preview (mammoth HTML output). Tailwind's preflight strips
- * default heading/paragraph styling, so we restore a minimal hierarchy here
- * for the transcript preview pane only. */
-.docx-preview h1 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 12px;
-  color: var(--color-ink);
-}
-.docx-preview h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 14px 0 8px;
-  color: var(--color-ink);
-}
-.docx-preview p {
-  margin: 0 0 8px;
-}
-.docx-preview strong {
-  font-weight: 600;
-  color: var(--color-ink);
-}
-.docx-preview em {
-  font-style: italic;
-  color: var(--color-mute);
-}
+/* Docx-derived preview */
+.docx-preview h1 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--color-ink); }
+.docx-preview h2 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--color-ink); }
+.docx-preview p { margin: 0 0 8px; }
+.docx-preview strong { font-weight: 600; color: var(--color-ink); }
+.docx-preview em { font-style: italic; color: var(--color-mute); }
+
+::selection { background: var(--color-ink); color: var(--color-paper); }

@@ -7,7 +7,7 @@ import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
 
 const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
 const labelCls =
   'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
 
@@ -63,7 +63,7 @@ export function ForgotPasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:4px]"
+        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:14px]"
       >
         {pending ? '…' : t('sendResetLink')}
       </button>

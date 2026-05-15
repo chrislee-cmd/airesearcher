@@ -30,7 +30,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
   const labelCls =
     'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
   const inputCls =
-    'mt-1 border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+    'mt-1 border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
@@ -59,7 +59,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
       <button
         type="submit"
         disabled={busy}
-        className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:4px]"
+        className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 [border-radius:14px]"
       >
         {busy ? tCommon('loading') : t('invite')}
       </button>

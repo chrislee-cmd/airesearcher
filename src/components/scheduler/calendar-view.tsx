@@ -95,7 +95,7 @@ export function CalendarView({
   }
 
   return (
-    <section data-coach="scheduler:calendar" className="border border-line bg-paper p-5 [border-radius:4px]">
+    <section data-coach="scheduler:calendar" className="border border-line bg-paper p-5 [border-radius:14px]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
@@ -180,7 +180,7 @@ export function CalendarView({
 }
 
 const navBtn =
-  'border border-line bg-paper px-2.5 py-1 text-[12px] text-ink-2 hover:border-ink [border-radius:4px]';
+  'border border-line bg-paper px-2.5 py-1 text-[12px] text-ink-2 hover:border-ink [border-radius:14px]';
 
 function ModeToggle({
   mode,
@@ -193,7 +193,7 @@ function ModeToggle({
 }) {
   const opts: CalendarMode[] = ['month', 'week', 'day'];
   return (
-    <div className="flex items-center border border-line [border-radius:4px]">
+    <div className="flex items-center border border-line [border-radius:14px]">
       {opts.map((m) => (
         <button
           key={m}
@@ -398,7 +398,7 @@ function RowGroup({
                     disabled={!canPick && !isConfirmed}
                     onClick={() => onPick(iso, s.start, s.end)}
                     className={
-                      'w-full truncate px-1.5 py-1 text-left text-[11px] tabular-nums [border-radius:4px] ' +
+                      'w-full truncate px-1.5 py-1 text-left text-[11px] tabular-nums [border-radius:14px] ' +
                       (isConfirmed
                         ? 'border border-ink bg-ink text-paper'
                         : 'border border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
@@ -445,7 +445,7 @@ function DayList({
         {String(cursor.getDate()).padStart(2, '0')}
       </div>
       {slots.length === 0 ? (
-        <div className="border border-dashed border-line-soft p-6 text-center text-[12px] text-mute-soft [border-radius:4px]">
+        <div className="border border-dashed border-line-soft p-6 text-center text-[12px] text-mute-soft [border-radius:14px]">
           —
         </div>
       ) : (
@@ -460,7 +460,7 @@ function DayList({
                   disabled={!canPick && !isConfirmed}
                   onClick={() => onPick(iso, s.start, s.end)}
                   className={
-                    'flex w-full items-center justify-between border px-3 py-2 text-[12.5px] [border-radius:4px] ' +
+                    'flex w-full items-center justify-between border px-3 py-2 text-[12.5px] [border-radius:14px] ' +
                     (isConfirmed
                       ? 'border-ink bg-ink text-paper'
                       : 'border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')

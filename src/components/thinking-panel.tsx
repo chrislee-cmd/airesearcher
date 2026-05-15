@@ -18,7 +18,7 @@ export function ThinkingPanel() {
   if (thinkingLog.length === 0 && !isWorking) return null;
 
   return (
-    <section className="mt-6 border border-line bg-paper-soft [border-radius:4px]">
+    <section className="mt-6 border border-line bg-paper-soft [border-radius:14px]">
       <header className="flex items-center justify-between border-b border-line-soft px-4 py-2">
         <div className="flex items-center gap-2">
           <span

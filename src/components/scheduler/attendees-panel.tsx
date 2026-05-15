@@ -43,7 +43,7 @@ export function AttendeesPanel({
   const selectedSlot = selected ? confirmed.find((c) => c.attendeeId === selected.id) ?? null : null;
 
   return (
-    <section data-coach="scheduler:attendees" className="border border-line bg-paper p-5 [border-radius:4px]">
+    <section data-coach="scheduler:attendees" className="border border-line bg-paper p-5 [border-radius:14px]">
       <header className="flex items-start justify-between gap-3 border-b border-line pb-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
@@ -121,7 +121,7 @@ function ImportButton({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="border border-line bg-paper px-3 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-50 [border-radius:4px]"
+        className="border border-line bg-paper px-3 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-50 [border-radius:14px]"
       >
         {busy ? '…' : `↑ ${t('import')}`}
       </button>
@@ -155,7 +155,7 @@ function ExportButtons({
         type="button"
         disabled={disabled}
         onClick={() => downloadAttendees('csv', attendees, confirmed, importHeaders)}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:4px]"
+        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:14px]"
       >
         ↓ {t('exportCsv')}
       </button>
@@ -163,7 +163,7 @@ function ExportButtons({
         type="button"
         disabled={disabled}
         onClick={() => downloadAttendees('xlsx', attendees, confirmed, importHeaders)}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:4px]"
+        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 [border-radius:14px]"
       >
         ↓ {t('exportXlsx')}
       </button>
@@ -220,7 +220,7 @@ function AttendeeList({
   }, [attendees, slotByAttendee]);
 
   return (
-    <div className="border border-line-soft [border-radius:4px]">
+    <div className="border border-line-soft [border-radius:14px]">
       <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
         <span className="text-[11px] uppercase tracking-[0.06em] text-mute-soft">
           {attendees.length}
@@ -264,7 +264,7 @@ function AttendeeList({
               type="button"
               onClick={submit}
               disabled={!name.trim()}
-              className="border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 [border-radius:4px]"
+              className="border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 [border-radius:14px]"
             >
               {t('save')}
             </button>
@@ -300,7 +300,7 @@ function AttendeeList({
                     )}
                   </div>
                   {slot ? (
-                    <span className="shrink-0 border border-ink bg-ink px-1.5 py-0.5 text-[10px] tabular-nums text-paper [border-radius:4px]">
+                    <span className="shrink-0 border border-ink bg-ink px-1.5 py-0.5 text-[10px] tabular-nums text-paper [border-radius:14px]">
                       {slot.date.slice(5)} {slot.start}
                     </span>
                   ) : (
@@ -333,14 +333,14 @@ function AttendeeDetail({
 
   if (!attendee) {
     return (
-      <div className="flex items-center justify-center border border-dashed border-line-soft p-8 text-center text-[12px] text-mute-soft [border-radius:4px]">
+      <div className="flex items-center justify-center border border-dashed border-line-soft p-8 text-center text-[12px] text-mute-soft [border-radius:14px]">
         {t('selectedNone')}
       </div>
     );
   }
 
   return (
-    <div className="border border-line-soft p-4 [border-radius:4px]">
+    <div className="border border-line-soft p-4 [border-radius:14px]">
       <div className="flex items-start justify-between gap-3">
         <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
           <Field label={t('name')}>
@@ -385,7 +385,7 @@ function AttendeeDetail({
         <h3 className="text-[13px] font-semibold text-ink-2">{t('confirmedSlot')}</h3>
         {slot ? (
           <div className="mt-2 flex items-center gap-3">
-            <span className="border border-ink bg-ink px-2 py-1 text-[11.5px] tabular-nums text-paper [border-radius:4px]">
+            <span className="border border-ink bg-ink px-2 py-1 text-[11.5px] tabular-nums text-paper [border-radius:14px]">
               {slot.date} · {slot.start}–{slot.end}
             </span>
             <button
@@ -450,7 +450,7 @@ function ManualSlotEntry({
           type="button"
           onClick={submit}
           disabled={!date}
-          className="ml-auto border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 [border-radius:4px]"
+          className="ml-auto border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 [border-radius:14px]"
         >
           {t('save')}
         </button>
@@ -460,7 +460,7 @@ function ManualSlotEntry({
 }
 
 const inputCls =
-  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
 
 function Field({
   label,

@@ -425,11 +425,11 @@ export function DeskResearch() {
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('keywordLabel')}
             </span>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore [border-radius:4px]">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore [border-radius:14px]">
               {keywords.map((k, idx) => (
                 <span
                   key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 [border-radius:14px]"
                 >
                   {k}
                   <button
@@ -473,7 +473,7 @@ export function DeskResearch() {
                   key={p.id}
                   type="button"
                   onClick={() => applyPreset(p.id)}
-                  className={`px-2.5 py-1 text-[11.5px] [border-radius:4px] ${
+                  className={`px-2.5 py-1 text-[11.5px] [border-radius:14px] ${
                     preset === p.id
                       ? 'border border-amore bg-amore-bg text-ink-2'
                       : 'border border-line bg-paper text-mute hover:border-amore hover:text-amore'
@@ -493,7 +493,7 @@ export function DeskResearch() {
                     setDateFrom(e.target.value);
                     setPreset('custom');
                   }}
-                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:14px]"
                 />
                 <span className="text-mute-soft">→</span>
                 <input
@@ -505,7 +505,7 @@ export function DeskResearch() {
                     setDateTo(e.target.value);
                     setPreset('custom');
                   }}
-                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:14px]"
                 />
               </div>
             )}
@@ -524,7 +524,7 @@ export function DeskResearch() {
                   type="button"
                   onClick={() => changeRegion(r)}
                   className={
-                    'border px-2.5 py-1 text-[11.5px] [border-radius:4px] ' +
+                    'border px-2.5 py-1 text-[11.5px] [border-radius:14px] ' +
                     (region === r
                       ? 'border-ink bg-ink text-paper'
                       : 'border-line bg-paper text-ink-2 hover:text-amore')
@@ -561,7 +561,7 @@ export function DeskResearch() {
                 return (
                   <div
                     key={g}
-                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 [border-radius:4px]"
+                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 [border-radius:14px]"
                   >
                     <span className="w-[68px] shrink-0 text-[11.5px] font-semibold text-ink-2">
                       {isEn ? meta.labelEn : meta.label}
@@ -608,7 +608,7 @@ export function DeskResearch() {
           onClick={onClickRun}
           disabled={!canRun}
           data-coach="desk:search"
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {submitting || pendingJobId || isWorking ? tCommon('loading') : tDesk('search')}
         </button>
@@ -645,7 +645,7 @@ export function DeskResearch() {
               }
             />
           ) : (
-            <div className="border border-line bg-paper-soft px-4 py-2 [border-radius:4px]">
+            <div className="border border-line bg-paper-soft px-4 py-2 [border-radius:14px]">
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
                 {tDesk('thinkingDone')}
               </span>
@@ -653,7 +653,7 @@ export function DeskResearch() {
           )}
           <div
             ref={thoughtsScroller}
-            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] [border-radius:4px]"
+            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] [border-radius:14px]"
           >
             {events.map((line, i) => (
               <div key={i} className="py-0.5 text-ink-2">
@@ -666,13 +666,13 @@ export function DeskResearch() {
       )}
 
       {error && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:4px]">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:14px]">
           {tDesk('error')}: <span className="font-mono">{error}</span>
         </div>
       )}
 
       {job?.status === 'error' && job.error_message && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:4px]">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:14px]">
           {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
         </div>
       )}
@@ -686,7 +686,7 @@ export function DeskResearch() {
       {showResult && (
         <>
           {job.skipped && job.skipped.length > 0 && (
-            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 [border-radius:4px]">
+            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 [border-radius:14px]">
               <div className="font-semibold">{tDesk('skippedTitle')}</div>
               <ul className="mt-1.5 space-y-0.5 font-mono text-[11.5px] text-mute">
                 {job.skipped.map((s) => (
@@ -707,7 +707,7 @@ export function DeskResearch() {
                 {job.similar_keywords.map((k) => (
                   <span
                     key={k}
-                    className="border border-line bg-paper-soft px-2.5 py-1 text-[11.5px] text-mute [border-radius:4px]"
+                    className="border border-line bg-paper-soft px-2.5 py-1 text-[11.5px] text-mute [border-radius:14px]"
                   >
                     {k}
                   </span>
@@ -750,7 +750,7 @@ export function DeskResearch() {
                 ]}
               />
             </div>
-            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 [border-radius:4px]">
+            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 [border-radius:14px]">
               <DeskMarkdown source={job.output ?? ''} />
             </article>
           </section>
@@ -760,7 +760,7 @@ export function DeskResearch() {
               <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
                 {tDesk('collected')} ({job.articles.length})
               </h2>
-              <ul className="mt-3 divide-y divide-line border border-line bg-paper [border-radius:4px]">
+              <ul className="mt-3 divide-y divide-line border border-line bg-paper [border-radius:14px]">
                 {job.articles.map((a) => (
                   <li key={`${a.source}-${a.url}`} className="px-4 py-3">
                     <a

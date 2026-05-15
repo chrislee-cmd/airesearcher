@@ -56,7 +56,7 @@ export function RequirementsForm({ value, onChange }: Props) {
   const summary = buildSummary(value, weekdayShort, t('summaryEmpty'));
 
   return (
-    <section data-coach="scheduler:requirements" className="border border-line bg-paper [border-radius:4px]">
+    <section data-coach="scheduler:requirements" className="border border-line bg-paper [border-radius:14px]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -143,7 +143,7 @@ export function RequirementsForm({ value, onChange }: Props) {
                           type="button"
                           onClick={() => toggleDay(d)}
                           className={
-                            'h-7 w-7 border text-[11px] [border-radius:4px] transition-colors duration-[120ms] ' +
+                            'h-7 w-7 border text-[11px] [border-radius:14px] transition-colors duration-[120ms] ' +
                             (active
                               ? 'border-ink bg-ink text-paper'
                               : 'border-line bg-paper text-mute hover:border-line-soft hover:text-ink-2')
@@ -166,7 +166,7 @@ export function RequirementsForm({ value, onChange }: Props) {
                   <button
                     type="button"
                     onClick={addSlot}
-                    className="border border-line px-2.5 py-1 text-[11.5px] text-ink-2 hover:border-ink [border-radius:4px]"
+                    className="border border-line px-2.5 py-1 text-[11.5px] text-ink-2 hover:border-ink [border-radius:14px]"
                   >
                     + {t('addSlot')}
                   </button>
@@ -226,7 +226,7 @@ function buildSummary(req: Requirement, weekdayShort: string[], emptyText: strin
 }
 
 const inputCls =
-  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:4px]';
+  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
 
 function Field({
   label,

@@ -96,7 +96,7 @@ export function FileDropZone({
           openPicker();
         }
       }}
-      className={`flex flex-col items-center justify-center border bg-paper text-center transition-colors duration-[120ms] [border-radius:4px] ${
+      className={`flex flex-col items-center justify-center border bg-paper text-center transition-colors duration-[120ms] [border-radius:14px] ${
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
       } ${
         dragOver

@@ -38,7 +38,7 @@ export function LoginDialog({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:4px]"
+        className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:14px]"
       >
         <div className="flex items-start justify-between">
           <div>

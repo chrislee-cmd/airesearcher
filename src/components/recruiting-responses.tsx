@@ -248,12 +248,12 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         30분마다 자동 동기화되며, 새로고침 버튼으로 즉시 갱신할 수 있습니다.
       </p>
       {listError && (
-        <div className="mt-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:4px]">
+        <div className="mt-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:14px]">
           폼 목록 로드 오류: {listError}
         </div>
       )}
       {hasResponsesScope === false && (
-        <div className="mt-3 border border-line-soft bg-paper p-3 text-[12px] text-ink-2 [border-radius:4px]">
+        <div className="mt-3 border border-line-soft bg-paper p-3 text-[12px] text-ink-2 [border-radius:14px]">
           응답 동기화는 새 권한이 필요합니다.{' '}
           <button
             type="button"
@@ -271,7 +271,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
         {forms.map((f) => {
           const state = responses[f.formId];
           return (
-            <li key={f.formId} className="border border-line bg-paper [border-radius:4px]">
+            <li key={f.formId} className="border border-line bg-paper [border-radius:14px]">
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
                 <div className="min-w-0">
                   <div className="truncate text-[13px] font-semibold text-ink">
@@ -307,7 +307,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     type="button"
                     onClick={() => void fetchResponses(f.formId)}
                     disabled={state?.loading || hasResponsesScope === false}
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
                   >
                     {state?.loading ? '동기화 중…' : '새로고침'}
                   </button>
@@ -338,7 +338,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     type="button"
                     onClick={() => void removeForm(f.formId)}
                     title="이 폼을 목록에서 제거 (Google Forms 원본은 유지)"
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-amore [border-radius:4px]"
+                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-amore [border-radius:14px]"
                   >
                     제거
                   </button>
