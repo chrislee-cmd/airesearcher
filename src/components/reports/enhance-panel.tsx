@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EnhanceMode, ContextInput } from '@/lib/reports/context-payload';
 import { useWorkspace } from '@/components/workspace-provider';
 
@@ -59,6 +59,7 @@ export function EnhancePanel({
   } | null>(null);
   const [fileBusy, setFileBusy] = useState(false);
   const [artifactId, setArtifactId] = useState<string>('');
+  const [artifactContent, setArtifactContent] = useState<string | null>(null);
   const [userNote, setUserNote] = useState('');
   const [formFields, setFormFields] = useState<Record<string, string>>({});
 
@@ -74,6 +75,18 @@ export function EnhancePanel({
     setFormFields({});
     setTab('text');
   }
+
+  // Pre-fetch artifact content when selection changes so buildInput() stays sync.
+  useEffect(() => {
+    if (!artifactId) { setArtifactContent(null); return; }
+    const a = workspace.artifacts.find((x) => x.id === artifactId);
+    if (!a) { setArtifactContent(null); return; }
+    let cancelled = false;
+    void workspace.fetchContent(a).then((res) => {
+      if (!cancelled) setArtifactContent(res?.content ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [artifactId, workspace]);
 
   const compatibleArtifacts = useMemo(
     () => workspace.artifacts.filter((a) => a.featureKey !== 'reports'),
@@ -127,14 +140,16 @@ export function EnhancePanel({
     }
     if (tab === 'workspace') {
       const a = workspace.artifacts.find((x) => x.id === artifactId);
-      if (!a) return null;
+      if (!a || !artifactContent) return null;
       return {
         kind: 'artifact',
         artifact_id: a.id,
         feature: a.featureKey,
         title: a.title,
         content_excerpt:
-          a.content.length > 80_000 ? a.content.slice(0, 80_000) : a.content,
+          artifactContent.length > 80_000
+            ? artifactContent.slice(0, 80_000)
+            : artifactContent,
       };
     }
     if (tab === 'form' && mode) {
