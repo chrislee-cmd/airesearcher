@@ -114,6 +114,26 @@ export function WorkspacePanel() {
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // When a workspace artifact is in-flight, prevent the browser from
+  // showing a "forbidden" cursor over parts of the page that don't have
+  // their own dragover handlers (e.g. the main content area between the
+  // two sidebars). Drop is still gated by per-element onDrop handlers.
+  useEffect(() => {
+    function onGlobalDragOver(e: DragEvent) {
+      if (
+        e.dataTransfer?.types.some(
+          (t) =>
+            t === 'application/x-workspace-artifact' ||
+            t === 'application/x-workspace-artifacts',
+        )
+      ) {
+        e.preventDefault();
+      }
+    }
+    document.addEventListener('dragover', onGlobalDragOver);
+    return () => document.removeEventListener('dragover', onGlobalDragOver);
+  }, []);
+
   // Drop stale selections (artifact left current scope or was deleted).
   useEffect(() => {
     setSelected((prev) => {
