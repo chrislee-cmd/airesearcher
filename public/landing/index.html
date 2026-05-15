@@ -347,6 +347,34 @@
   .dropzone .dz-title{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.012em}
   .dropzone .dz-sub{margin-top:6px;font-size:12px;color:var(--mute)}
   .dropzone .dz-row{margin-top:14px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+
+  /* Generate button */
+  .gen-btn{margin-top:20px;width:100%;height:40px;background:var(--ink);color:#fff;border:0;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;letter-spacing:-.01em;transition:background .15s}
+  .gen-btn:hover{background:var(--amore)}
+  .gen-btn:disabled{background:var(--mute-soft);cursor:not-allowed}
+  .gen-btn .spinner{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .7s linear infinite;display:none}
+  .gen-btn.loading .spinner{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Workspace add microinteraction */
+  @keyframes wsFlash{
+    0%{box-shadow:none}
+    15%{box-shadow:inset 0 0 0 2px var(--amore),inset 0 0 24px var(--amore-bg)}
+    65%{box-shadow:inset 0 0 0 2px var(--amore),inset 0 0 24px var(--amore-bg)}
+    100%{box-shadow:none}
+  }
+  .wb-ws.flash{animation:wsFlash .75s ease}
+  @keyframes wsBadgePop{
+    0%,100%{transform:scale(1);background:var(--line-soft);color:var(--mute)}
+    40%{transform:scale(1.35);background:var(--amore);color:#fff}
+  }
+  .ws-count.pop{animation:wsBadgePop .45s ease}
+  @keyframes wsItemIn{
+    from{opacity:0;transform:translateY(-4px);background:var(--amore-bg);border-color:var(--amore)}
+    80%{background:var(--amore-bg);border-color:var(--amore)}
+    to{opacity:1;transform:translateY(0);background:#fff;border-color:var(--line)}
+  }
+  .ws-list li.ws-new{animation:wsItemIn .8s ease forwards}
   .dropzone .dz-btn{margin-top:16px;height:34px;padding:0 16px;font-size:12px;background:var(--ink);color:#fff;border-color:var(--ink)}
   .dropzone .dz-btn:hover{background:var(--amore);border-color:var(--amore)}
   .dz-status{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:10px}
@@ -698,7 +726,8 @@
       <aside class="wb-side">
         <div class="group">설계</div>
         <button class="item active" data-key="desk"><span class="pip"></span> 데스크 리서치 <span class="cr">25</span></button>
-        <button class="item" data-key="scheduler"><span class="pip"></span> 참석자 스케쥴러 <span class="cr">0</span></button>
+        <button class="item" data-key="screener"><span class="pip"></span> 심사설문 생성기 <span class="cr">5</span></button>
+        <button class="item" data-key="guideline"><span class="pip"></span> 가이드라인 생성기 <span class="cr">5</span></button>
         <div class="group">진행</div>
         <button class="item" data-key="moderator"><span class="pip"></span> AI 모더레이터 <span class="cr">1</span></button>
         <div class="group">분석</div>
@@ -743,7 +772,7 @@
         </div>
         <div class="wb-next">
           <span class="meta">NEXT</span>
-          <span id="wbNext">참석자 스케쥴러로 모집 일정 잡기 →</span>
+          <span id="wbNext">심사설문 생성기로 참여 조건 설정 →</span>
         </div>
       </footer>
     </div>
@@ -1223,7 +1252,7 @@
       title:'데스크 리서치',
       cost:'25 크레딧',
       ws:{who:'DESK', ttl:'2025–2026 한국 스킨케어 트렌드', sub:'24 sources · 9 charts · DB-backed'},
-      next:{key:'scheduler', label:'참석자 스케쥴러로 모집 일정 잡기 →'},
+      next:{key:'screener', label:'심사설문 생성기로 참여 조건 설정 →'},
       tabs:[
         {label:'프롬프트', num:'01',
           html:`
@@ -1259,43 +1288,97 @@
       ]
     },
 
-    scheduler: {
-      crumb:'/ko/scheduler · WEEK 19',
-      title:'참석자 스케쥴러',
-      cost:'무료 · CSV 5크레딧',
-      ws:{who:'SCHEDULER', ttl:'9명 인터뷰 슬롯', sub:'주중 30분 · Asia/Seoul · 4 confirmed'},
-      next:{key:'moderator', label:'AI 모더레이터로 인터뷰 스크립트 만들기 →'},
+    screener: {
+      crumb:'/ko/screener · BEAUTY UX 2026Q2',
+      title:'심사설문 생성기',
+      cost:'5 크레딧',
+      manualAdd: true,
+      ws:{who:'SCREENER', ttl:'Beauty UX — 참여자 심사설문 v1', sub:'5 질문 · 3 탈락 기준 · auto-gen'},
+      next:{key:'guideline', label:'가이드라인 생성기로 질문 구성 →'},
       tabs:[
-        {label:'캘린더', num:'01',
+        {label:'인풋', num:'01',
           html:`
-          <div class="pillrow"><span class="pill amore">CSV imported · 9 attendees</span><span class="pill">30min slots</span><span class="pill">Asia/Seoul</span></div>
-          <div class="calendar">
-            <div class="head"><div></div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div></div>
-            <div class="row"><div>10:00</div><div class="slot booked">P03</div><div class="slot"></div><div class="slot booked">P07</div><div class="slot"></div><div class="slot booked">P11</div></div>
-            <div class="row"><div>11:00</div><div class="slot"></div><div class="slot booked">P05</div><div class="slot"></div><div class="slot booked">P12</div><div class="slot"></div></div>
-            <div class="row"><div>14:00</div><div class="slot booked">P01</div><div class="slot"></div><div class="slot booked">P09</div><div class="slot"></div><div class="slot"></div></div>
-            <div class="row"><div>15:30</div><div class="slot"></div><div class="slot booked">P04</div><div class="slot"></div><div class="slot"></div><div class="slot booked">P15</div></div>
-            <div class="row"><div>16:30</div><div class="slot booked">P02</div><div class="slot"></div><div class="slot"></div><div class="slot booked">P14</div><div class="slot"></div></div>
-          </div>`},
-        {label:'참석자 9', num:'02',
+          <div class="input"><span class="lbl">TOPIC</span><span class="v">한국 20–40대 여성 스킨케어 구매 결정 연구 <span class="typed"></span></span></div>
+          <div style="margin-top:14px">
+            <div style="font-size:10px;letter-spacing:.22em;color:var(--amore);font-weight:600;margin-bottom:6px">참여 조건</div>
+            <div style="border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-size:12.5px;color:var(--ink2);background:#fff;line-height:1.7">
+              스킨케어 제품을 월 1회 이상 구매 · 20–42세 여성 · 최근 6개월 내 새 제품 구매 경험
+            </div>
+          </div>
+          <div class="pillrow"><span class="pill amore">탈락 기준 자동 설정</span><span class="pill">답변 분기 포함</span><span class="pill">ko</span></div>
+          <button class="gen-btn" data-key="screener">
+            <span class="spinner"></span>
+            <span class="btn-txt">설문 생성하기</span>
+          </button>`},
+        {label:'설문 항목', num:'02',
           html:`
-          <div class="matrix">
-            <table>
-              <thead><tr><th>참가자</th><th>가능 시간</th><th>슬롯</th><th>상태</th></tr></thead>
-              <tbody>
-                <tr><td>P01 · 27 · Designer</td><td>월 14–17</td><td class="mark">월 14:00</td><td>confirmed</td></tr>
-                <tr><td>P03 · 32 · Office</td><td>월/수 10–11</td><td class="mark">월 10:00</td><td>confirmed</td></tr>
-                <tr><td>P05 · 35 · PM</td><td>화 11–12</td><td class="mark">화 11:00</td><td>confirmed</td></tr>
-                <tr><td>P07 · 29 · Designer</td><td>수 10–11</td><td class="mark">수 10:00</td><td>confirmed</td></tr>
-                <tr><td>P11 · 41 · Marketer</td><td>금 10–13</td><td>금 10:00</td><td>pending</td></tr>
-              </tbody>
-            </table>
-          </div>`},
-        {label:'안내문', num:'03',
+          <div class="pillrow" style="margin-top:0"><span class="pill amore">5 질문 생성됨</span><span class="pill">3 탈락 조건</span></div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12.5px">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;margin-bottom:6px">Q1 · 스크리너</div>
+              <p style="color:var(--ink2);line-height:1.6">최근 6개월 안에 스킨케어 제품(세럼·로션·선크림 포함)을 새로 구매하신 적이 있나요?</p>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                <span style="padding:4px 10px;border:1px solid var(--amore);border-radius:4px;font-size:11px;color:var(--amore)">예, 있어요 → 계속</span>
+                <span style="padding:4px 10px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--mute)">아니요 → 탈락</span>
+              </div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:12.5px">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;margin-bottom:6px">Q2 · 연령 확인</div>
+              <p style="color:var(--ink2);line-height:1.6">현재 연령대를 알려주세요.</p>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                <span style="padding:4px 10px;border:1px solid var(--amore);border-radius:4px;font-size:11px;color:var(--amore)">20대 / 30대 / 40대 초반 → 계속</span>
+                <span style="padding:4px 10px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--mute)">그 외 → 탈락</span>
+              </div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:var(--paper-soft);font-size:12px">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--mute);font-weight:600;margin-bottom:4px">Q3–5 · 구매 패턴 / 신뢰 채널 / 리추얼 여부</div>
+              <p style="color:var(--mute)">3개 항목 자동 생성됨 — 탈락 기준 없음, 세그멘테이션 전용</p>
+            </div>
+          </div>`}
+      ]
+    },
+
+    guideline: {
+      crumb:'/ko/guideline · BEAUTY UX 2026Q2',
+      title:'가이드라인 생성기',
+      cost:'5 크레딧',
+      manualAdd: true,
+      ws:{who:'GUIDELINE', ttl:'인터뷰 가이드라인 v1', sub:'4 섹션 · 18 질문 · 45min'},
+      next:{key:'moderator', label:'AI 모더레이터로 인터뷰 스크립트 다듬기 →'},
+      tabs:[
+        {label:'인풋', num:'01',
           html:`
-          <div class="qcard">
-            <div class="who"><span>참석자 안내 (자동 작성)</span><span class="tag">EMAIL</span></div>
-            <p>안녕하세요, P03님. <strong>월요일 오전 10:00</strong>에 30분 인터뷰가 잡혔습니다. 줌 링크는 별도 드릴 예정이고, 사전 질문은 아래에서 확인해 주세요.</p>
+          <div class="input"><span class="lbl">GOAL</span><span class="v">20–30대 여성의 스킨케어 구매 결정 메커니즘 파악 <span class="typed"></span></span></div>
+          <div style="margin-top:14px">
+            <div style="font-size:10px;letter-spacing:.22em;color:var(--amore);font-weight:600;margin-bottom:6px">핵심 가설</div>
+            <div style="border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-size:12.5px;color:var(--ink2);background:#fff;line-height:1.7">
+              친구 추천이 광고보다 구매 결정에 3배 이상 영향을 미친다
+            </div>
+          </div>
+          <div class="pillrow"><span class="pill amore">섹션 자동 분류</span><span class="pill">45min 최적화</span><span class="pill">probe 자동 추가</span></div>
+          <button class="gen-btn" data-key="guideline">
+            <span class="spinner"></span>
+            <span class="btn-txt">가이드라인 생성하기</span>
+          </button>`},
+        {label:'가이드라인', num:'02',
+          html:`
+          <div class="pillrow" style="margin-top:0"><span class="pill amore">4 섹션 · 18 질문</span><span class="pill">45min</span></div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px">
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;margin-bottom:8px">SECTION 01 · 워밍업 (5min)</div>
+              <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+                <p style="color:var(--ink2)">1. 최근에 산 스킨케어 제품 중 가장 기억에 남는 게 있다면요?</p>
+                <p style="color:var(--mute);padding-left:12px;border-left:2px solid var(--amore-bg);font-size:12px">Probe: 어떤 계기로 알게 됐는지도 들려주세요.</p>
+              </div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:#fff">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--amore);font-weight:600;margin-bottom:6px">SECTION 02 · 결정의 순간 (15min)</div>
+              <div style="font-size:12px;color:var(--mute)">5 질문 + 6 probe 자동 생성됨</div>
+            </div>
+            <div style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:var(--paper-soft)">
+              <div style="font-size:10px;letter-spacing:.18em;color:var(--mute);font-weight:600;margin-bottom:4px">SECTION 03–04 · 신뢰 채널 / 리추얼 (25min)</div>
+              <div style="font-size:12px;color:var(--mute)">11 질문 자동 생성됨</div>
+            </div>
           </div>`}
       ]
     },
@@ -1564,7 +1647,7 @@
       lines.forEach((l,i)=>l.classList.toggle('done', i < n-1));
     }
 
-    function addToWorkspace(key){
+    function addToWorkspace(key, animate){
       if(visited.has(key)) return;
       visited.add(key);
       const p = PANELS[key];
@@ -1572,11 +1655,20 @@
       wsEmpty.style.display = 'none';
       const li = document.createElement('li');
       li.innerHTML = `<span class="who">${p.ws.who}</span><span class="ttl">${p.ws.ttl}</span><span class="sub">${p.ws.sub}</span>`;
+      if(animate) li.classList.add('ws-new');
       wsList.appendChild(li);
       wsCount.textContent = visited.size;
-      // mark visited dot in sidebar
       wb.querySelector(`.item[data-key="${key}"]`).classList.add('visited');
       refreshProgress();
+      if(animate){
+        const wsPanel = wb.querySelector('.wb-ws');
+        wsPanel.classList.remove('flash');
+        void wsPanel.offsetWidth;
+        wsPanel.classList.add('flash');
+        wsCount.classList.remove('pop');
+        void wsCount.offsetWidth;
+        wsCount.classList.add('pop');
+      }
     }
 
     function show(key){
@@ -1587,8 +1679,7 @@
         wbBread.textContent = p.crumb;
         wbNext.textContent = p.next ? p.next.label : '리포트로 마무리 →';
       }
-      addToWorkspace(key);
-      // Scroll stage to top on switch
+      if(!p?.manualAdd) addToWorkspace(key);
       stage.scrollTop = 0;
     }
     items.forEach(b=>b.addEventListener('click',()=>show(b.dataset.key)));
@@ -1644,6 +1735,34 @@
       const demoBtn = stage.querySelector('#vbDemo');
       if(demoBtn) demoBtn.addEventListener('click',()=>runVerbatim());
     }
+
+    // Generate buttons for manualAdd panels
+    stage.querySelectorAll('.gen-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const key = btn.dataset.key;
+        const panel = stage.querySelector(`.stage-panel[data-key="${key}"]`);
+        if(!panel) return;
+        btn.disabled = true;
+        btn.classList.add('loading');
+        const spinner = btn.querySelector('.spinner');
+        const txt = btn.querySelector('.btn-txt');
+        if(spinner) spinner.style.display = 'block';
+        if(txt) txt.textContent = '생성 중...';
+        setTimeout(()=>{
+          const tabs = panel.querySelectorAll('.tab');
+          const panes = panel.querySelectorAll('.tab-pane');
+          tabs.forEach(x=>x.classList.remove('on'));
+          panes.forEach(x=>x.classList.remove('on'));
+          tabs[1]?.classList.add('on');
+          panes[1]?.classList.add('on');
+          btn.disabled = false;
+          btn.classList.remove('loading');
+          if(spinner) spinner.style.display = 'none';
+          if(txt) txt.textContent = btn.dataset.key === 'screener' ? '설문 생성하기' : '가이드라인 생성하기';
+          addToWorkspace(key, true);
+        }, 1600);
+      });
+    });
 
     // initial
     show('desk');
