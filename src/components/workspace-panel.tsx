@@ -434,7 +434,7 @@ export function WorkspacePanel() {
         }`}
       >
         {/* Inner panel fixed at 288px — clipped by aside's overflow-hidden during transition */}
-        <div className="flex h-full w-[288px] flex-col border-l border-line-soft bg-paper [box-shadow:-6px_0_20px_0_rgba(0,0,0,0.06)]">
+        <div className="flex h-full w-[288px] flex-col border-l border-line-soft bg-paper [box-shadow:-8px_0_32px_0_rgba(0,0,0,0.14)]">
           <header className="flex items-center justify-between border-b border-line px-5 py-3">
             <div className="flex items-center gap-2">
               <span className="inline-block h-px w-5 bg-amore" />
