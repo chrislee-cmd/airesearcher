@@ -172,7 +172,7 @@ export async function markdownToDocx(markdown: string): Promise<Buffer> {
   children.push(
     new Paragraph({
       spacing: { after: 80 },
-      children: [eyebrow('Intellicenter', AP.muteSoft)],
+      children: [eyebrow('Research-mochi', AP.muteSoft)],
     }),
   );
   children.push(thinRule(AP.amore, 140));
