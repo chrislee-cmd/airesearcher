@@ -17,6 +17,8 @@ import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
 
+const FLASH_MS = 2400;
+
 type DownloadFormat = 'md' | 'txt' | 'html' | 'docx';
 
 // Reports stream HTML; every other artifact is plain markdown/text. `docx`
@@ -76,6 +78,8 @@ export function WorkspacePanel() {
     sendMany,
     targetsFor,
     setDragging,
+    lastAddedId,
+    lastAddedAt,
     selectedFolderId,
     setSelectedFolderId,
     folders,
@@ -106,6 +110,7 @@ export function WorkspacePanel() {
   const [renameValue, setRenameValue] = useState('');
   const [dropTargetFolder, setDropTargetFolder] = useState<string | 'root' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -140,11 +145,22 @@ export function WorkspacePanel() {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  // Escape closes the modal.
+  // Trigger-button pulse on new artifact.
+  useEffect(() => {
+    if (!lastAddedAt) return;
+    setPulse(true);
+    const id = window.setTimeout(() => setPulse(false), FLASH_MS);
+    return () => window.clearTimeout(id);
+  }, [lastAddedAt]);
+
+  // Escape closes the sidebar.
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setViewing(null);
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -372,506 +388,502 @@ export function WorkspacePanel() {
 
   const allSelected = selected.size > 0 && selected.size === artifacts.length;
   const showAssignSelect = resolvedKind !== 'all'; // 'all' view shows the project name in-row instead
+  const flashActive = !!lastAddedAt && Date.now() - lastAddedAt < FLASH_MS;
+  const unfiledCount = artifacts.filter((a) => !a.projectId).length;
 
   return (
     <>
+      {/* Floating trigger — fades out as sidebar opens */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px] ${
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 [border-radius:14px] ${
           pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
-        }`}
+        } ${isOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'opacity-100 translate-y-0'}`}
       >
         <span className="inline-block h-1 w-5 bg-amore" />
         {t('eyebrow')}
+        <span className="tabular-nums text-mute-soft">· {unfiledCount}</span>
       </button>
 
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setOpen(false);
-              setOpenMenu(null);
-              setViewing(null);
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="flex max-h-[80vh] w-full max-w-[640px] flex-col border border-line bg-paper [border-radius:14px]"
-          >
-            <header className="flex items-center justify-between border-b border-line px-5 py-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-block h-px w-5 bg-amore" />
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
-                  {t('eyebrow')}
-                </span>
-                <span className="text-[11px] tabular-nums text-mute-soft">
-                  · {artifacts.length}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setOpenMenu(null);
-                  setViewing(null);
-                }}
-                aria-label={t('collapse')}
-                className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
-              >
-                ×
-              </button>
-            </header>
+      {/* Right sidebar — width animates 0 → 288px so main content smoothly shifts */}
+      <aside
+        className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-[200ms] ease-out md:flex ${
+          isOpen ? 'w-[288px]' : 'w-0'
+        }`}
+      >
+        {/* Inner panel fixed at 288px — clipped by aside's overflow-hidden during transition */}
+        <div className="flex h-full w-[288px] flex-col border-l border-line-soft bg-paper [box-shadow:-8px_0_32px_0_rgba(0,0,0,0.14)]">
+          <header className="flex items-center justify-between border-b border-line px-5 py-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-px w-5 bg-amore" />
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+                {t('eyebrow')}
+              </span>
+              <span className="text-[11px] tabular-nums text-mute-soft">
+                · {artifacts.length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setOpenMenu(null);
+                setViewing(null);
+              }}
+              aria-label={t('collapse')}
+              className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+            >
+              ×
+            </button>
+          </header>
 
-            {/* Scope row — project switcher + create button. The
-                workspace IS the project view: switching scope here is
-                the same operation as switching the active project. */}
-            <div className="flex items-center gap-2 border-b border-line-soft px-5 py-2">
-              {creatingProject ? (
-                <>
-                  <input
-                    ref={inputRef}
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void createProject();
-                      if (e.key === 'Escape') {
-                        setCreatingProject(false);
-                        setNewProjectName('');
-                      }
-                    }}
-                    placeholder={t('newProjectName')}
-                    className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
-                  />
-                  <button
-                    type="button"
-                    disabled={busy || !newProjectName.trim()}
-                    onClick={() => void createProject()}
-                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
-                  >
-                    {t('create')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
+          {/* Scope row — project switcher + create button. The
+              workspace IS the project view: switching scope here is
+              the same operation as switching the active project. */}
+          <div className="flex items-center gap-2 border-b border-line-soft px-5 py-2">
+            {creatingProject ? (
+              <>
+                <input
+                  ref={inputRef}
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void createProject();
+                    if (e.key === 'Escape') {
                       setCreatingProject(false);
                       setNewProjectName('');
-                    }}
-                    className="text-[11px] text-mute-soft hover:text-ink-2"
-                  >
-                    {t('cancel')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <select
-                    value={scope}
-                    onChange={(e) => {
-                      const v = e.target.value as WorkspaceScope;
-                      if (v === '__new__') {
-                        setCreatingProject(true);
-                        return;
-                      }
-                      setScope(v);
-                      // Keep useActiveProject in sync when the user
-                      // picks a real project from the dropdown.
-                      if (v !== 'all' && v !== 'unfiled' && v !== 'active') {
-                        const p = projects.find((x) => x.id === v);
-                        if (p) setActive(p);
-                      }
-                    }}
-                    className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
-                  >
-                    <option value="active">
-                      {active
-                        ? `${t('scopeProject')}: ${active.name}`
-                        : t('scopeUnfiled')}
-                    </option>
-                    <option value="unfiled">{t('scopeUnfiled')}</option>
-                    <option value="all">{t('scopeAll')}</option>
-                    {projects.length > 0 && (
-                      <optgroup label={t('projects')}>
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <option value="__new__">{t('newProject')}</option>
-                  </select>
+                    }
+                  }}
+                  placeholder={t('newProjectName')}
+                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                />
+                <button
+                  type="button"
+                  disabled={busy || !newProjectName.trim()}
+                  onClick={() => void createProject()}
+                  className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                >
+                  {t('create')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingProject(false);
+                    setNewProjectName('');
+                  }}
+                  className="text-[11px] text-mute-soft hover:text-ink-2"
+                >
+                  {t('cancel')}
+                </button>
+              </>
+            ) : (
+              <>
+                <select
+                  value={scope}
+                  onChange={(e) => {
+                    const v = e.target.value as WorkspaceScope;
+                    if (v === '__new__') {
+                      setCreatingProject(true);
+                      return;
+                    }
+                    setScope(v);
+                    // Keep useActiveProject in sync when the user
+                    // picks a real project from the dropdown.
+                    if (v !== 'all' && v !== 'unfiled' && v !== 'active') {
+                      const p = projects.find((x) => x.id === v);
+                      if (p) setActive(p);
+                    }
+                  }}
+                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                >
+                  <option value="active">
+                    {active
+                      ? `${t('scopeProject')}: ${active.name}`
+                      : t('scopeUnfiled')}
+                  </option>
+                  <option value="unfiled">{t('scopeUnfiled')}</option>
+                  <option value="all">{t('scopeAll')}</option>
+                  {projects.length > 0 && (
+                    <optgroup label={t('projects')}>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <option value="__new__">{t('newProject')}</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+                >
+                  {t('refresh')}
+                </button>
+              </>
+            )}
+          </div>
+
+          {resolvedKind === 'project' && (
+            <div className="border-b border-line-soft px-5 py-2">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                  {t('folders')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingFolderParent(null);
+                    setNewFolderName('');
+                  }}
+                  className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-amore"
+                >
+                  + {t('newFolder')}
+                </button>
+              </div>
+              <ul>
+                <li>
                   <button
                     type="button"
-                    onClick={() => void refresh()}
-                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
+                    onClick={() => setSelectedFolderId(null)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDropTargetFolder('root');
+                    }}
+                    onDragLeave={() => setDropTargetFolder((v) => (v === 'root' ? null : v))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDropTargetFolder(null);
+                      const id = e.dataTransfer.getData(MIME_SINGLE);
+                      const many = e.dataTransfer.getData(MIME_MANY);
+                      const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
+                      for (const aid of ids) {
+                        const a = artifacts.find((x) => x.id === aid);
+                        if (a) void setFolderId(a, null);
+                      }
+                    }}
+                    className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] [border-radius:4px] ${
+                      selectedFolderId === null
+                        ? 'bg-paper-soft text-ink-2'
+                        : 'text-mute hover:text-ink-2'
+                    } ${dropTargetFolder === 'root' ? 'outline outline-1 outline-amore' : ''}`}
                   >
-                    {t('refresh')}
+                    <span>📁</span>
+                    <span>{t('folderRoot')}</span>
                   </button>
-                </>
-              )}
+                </li>
+                {folderTree.map(({ folder, depth }) => {
+                  const isSelected = selectedFolderId === folder.id;
+                  const isDropTarget = dropTargetFolder === folder.id;
+                  const isRenaming = renamingFolder === folder.id;
+                  return (
+                    <li key={folder.id}>
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDropTargetFolder(folder.id);
+                        }}
+                        onDragLeave={() => setDropTargetFolder((v) => (v === folder.id ? null : v))}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDropTargetFolder(null);
+                          const id = e.dataTransfer.getData(MIME_SINGLE);
+                          const many = e.dataTransfer.getData(MIME_MANY);
+                          const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
+                          for (const aid of ids) {
+                            const a = artifacts.find((x) => x.id === aid);
+                            if (a) void setFolderId(a, folder.id);
+                          }
+                        }}
+                        className={`flex items-center gap-1 [border-radius:4px] ${
+                          isSelected ? 'bg-paper-soft' : ''
+                        } ${isDropTarget ? 'outline outline-1 outline-amore' : ''}`}
+                        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+                      >
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => void submitFolderRename(folder.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void submitFolderRename(folder.id);
+                              if (e.key === 'Escape') {
+                                setRenamingFolder(null);
+                                setRenameValue('');
+                              }
+                            }}
+                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFolderId(folder.id)}
+                            onDoubleClick={() => {
+                              setRenamingFolder(folder.id);
+                              setRenameValue(folder.name);
+                            }}
+                            className={`flex flex-1 items-center gap-2 py-1 text-left text-[12px] ${
+                              isSelected ? 'text-ink-2' : 'text-mute hover:text-ink-2'
+                            }`}
+                          >
+                            <span>📁</span>
+                            <span className="truncate">{folder.name}</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreatingFolderParent(folder.id);
+                            setNewFolderName('');
+                          }}
+                          aria-label={t('newFolder')}
+                          className="px-1.5 py-0.5 text-[12px] text-mute-soft hover:text-ink-2"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(t('confirmDeleteFolder', { name: folder.name }))) {
+                              void deleteFolder(folder.id);
+                            }
+                          }}
+                          aria-label={t('deleteFolder')}
+                          className="pr-2 text-[12px] text-mute-soft hover:text-warning"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {creatingFolderParent === folder.id && (
+                        <div
+                          className="flex items-center gap-2 py-1"
+                          style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
+                        >
+                          <input
+                            autoFocus
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void submitFolderCreate();
+                              if (e.key === 'Escape') {
+                                setCreatingFolderParent(undefined);
+                                setNewFolderName('');
+                              }
+                            }}
+                            placeholder={t('folderName')}
+                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                          />
+                          <button
+                            type="button"
+                            disabled={busy || !newFolderName.trim()}
+                            onClick={() => void submitFolderCreate()}
+                            className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                          >
+                            {t('create')}
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+                {creatingFolderParent === null && (
+                  <li className="flex items-center gap-2 py-1 pl-2">
+                    <input
+                      autoFocus
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void submitFolderCreate();
+                        if (e.key === 'Escape') {
+                          setCreatingFolderParent(undefined);
+                          setNewFolderName('');
+                        }
+                      }}
+                      placeholder={t('folderName')}
+                      className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy || !newFolderName.trim()}
+                      onClick={() => void submitFolderCreate()}
+                      className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                    >
+                      {t('create')}
+                    </button>
+                  </li>
+                )}
+              </ul>
             </div>
+          )}
 
-            {resolvedKind === 'project' && (
-              <div className="border-b border-line-soft px-5 py-2">
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
-                    {t('folders')}
-                  </span>
+          {artifacts.length > 0 && (
+            <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
+              <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="h-3 w-3 accent-amore"
+                />
+                <span>
+                  {selected.size > 0
+                    ? t('nSelected', { count: selected.size })
+                    : t('selectAll')}
+                </span>
+              </label>
+              {selected.size > 0 && (
+                <div
+                  className="relative"
+                  ref={openMenu === 'bulk' ? menuRef : undefined}
+                >
                   <button
                     type="button"
                     onClick={() => {
-                      setCreatingFolderParent(null);
-                      setNewFolderName('');
+                      setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
+                      setOpenSendSub(false);
+                      setOpenDownloadSub(false);
                     }}
-                    className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-amore"
+                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px]"
                   >
-                    + {t('newFolder')}
+                    {t('bulkActions')}
                   </button>
-                </div>
-                <ul>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFolderId(null)}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setDropTargetFolder('root');
-                      }}
-                      onDragLeave={() => setDropTargetFolder((v) => (v === 'root' ? null : v))}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDropTargetFolder(null);
-                        const id = e.dataTransfer.getData(MIME_SINGLE);
-                        const many = e.dataTransfer.getData(MIME_MANY);
-                        const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
-                        for (const aid of ids) {
-                          const a = artifacts.find((x) => x.id === aid);
-                          if (a) void setFolderId(a, null);
-                        }
-                      }}
-                      className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] [border-radius:4px] ${
-                        selectedFolderId === null
-                          ? 'bg-paper-soft text-ink-2'
-                          : 'text-mute hover:text-ink-2'
-                      } ${dropTargetFolder === 'root' ? 'outline outline-1 outline-amore' : ''}`}
-                    >
-                      <span>📁</span>
-                      <span>{t('folderRoot')}</span>
-                    </button>
-                  </li>
-                  {folderTree.map(({ folder, depth }) => {
-                    const isSelected = selectedFolderId === folder.id;
-                    const isDropTarget = dropTargetFolder === folder.id;
-                    const isRenaming = renamingFolder === folder.id;
-                    return (
-                      <li key={folder.id}>
-                        <div
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setDropTargetFolder(folder.id);
-                          }}
-                          onDragLeave={() => setDropTargetFolder((v) => (v === folder.id ? null : v))}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setDropTargetFolder(null);
-                            const id = e.dataTransfer.getData(MIME_SINGLE);
-                            const many = e.dataTransfer.getData(MIME_MANY);
-                            const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
-                            for (const aid of ids) {
-                              const a = artifacts.find((x) => x.id === aid);
-                              if (a) void setFolderId(a, folder.id);
-                            }
-                          }}
-                          className={`flex items-center gap-1 [border-radius:4px] ${
-                            isSelected ? 'bg-paper-soft' : ''
-                          } ${isDropTarget ? 'outline outline-1 outline-amore' : ''}`}
-                          style={{ paddingLeft: `${depth * 14 + 8}px` }}
+                  {openMenu === 'bulk' && (
+                    <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                      <div className="relative">
+                        <MenuItem
+                          disabled={bulkTargets.length === 0}
+                          onClick={() => setOpenSendSub((v) => !v)}
+                          trailing={bulkTargets.length > 0 ? '›' : undefined}
                         >
-                          {isRenaming ? (
-                            <input
-                              autoFocus
-                              value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
-                              onBlur={() => void submitFolderRename(folder.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') void submitFolderRename(folder.id);
-                                if (e.key === 'Escape') {
-                                  setRenamingFolder(null);
-                                  setRenameValue('');
-                                }
-                              }}
-                              className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedFolderId(folder.id)}
-                              onDoubleClick={() => {
-                                setRenamingFolder(folder.id);
-                                setRenameValue(folder.name);
-                              }}
-                              className={`flex flex-1 items-center gap-2 py-1 text-left text-[12px] ${
-                                isSelected ? 'text-ink-2' : 'text-mute hover:text-ink-2'
-                              }`}
-                            >
-                              <span>📁</span>
-                              <span className="truncate">{folder.name}</span>
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCreatingFolderParent(folder.id);
-                              setNewFolderName('');
-                            }}
-                            aria-label={t('newFolder')}
-                            className="px-1.5 py-0.5 text-[12px] text-mute-soft hover:text-ink-2"
-                          >
-                            +
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm(t('confirmDeleteFolder', { name: folder.name }))) {
-                                void deleteFolder(folder.id);
-                              }
-                            }}
-                            aria-label={t('deleteFolder')}
-                            className="pr-2 text-[12px] text-mute-soft hover:text-warning"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        {creatingFolderParent === folder.id && (
-                          <div
-                            className="flex items-center gap-2 py-1"
-                            style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
-                          >
-                            <input
-                              autoFocus
-                              value={newFolderName}
-                              onChange={(e) => setNewFolderName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') void submitFolderCreate();
-                                if (e.key === 'Escape') {
-                                  setCreatingFolderParent(undefined);
-                                  setNewFolderName('');
-                                }
-                              }}
-                              placeholder={t('folderName')}
-                              className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
-                            />
-                            <button
-                              type="button"
-                              disabled={busy || !newFolderName.trim()}
-                              onClick={() => void submitFolderCreate()}
-                              className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
-                            >
-                              {t('create')}
-                            </button>
+                          {t('sendSelectedTo')}
+                        </MenuItem>
+                        {openSendSub && bulkTargets.length > 0 && (
+                          <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                            {bulkTargets.map((tgt) => (
+                              <MenuItem
+                                key={tgt}
+                                onClick={() => void onSendBulk(tgt)}
+                              >
+                                {tSidebar(tgt)}
+                              </MenuItem>
+                            ))}
                           </div>
                         )}
-                      </li>
-                    );
-                  })}
-                  {creatingFolderParent === null && (
-                    <li className="flex items-center gap-2 py-1 pl-2">
-                      <input
-                        autoFocus
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') void submitFolderCreate();
-                          if (e.key === 'Escape') {
-                            setCreatingFolderParent(undefined);
-                            setNewFolderName('');
-                          }
-                        }}
-                        placeholder={t('folderName')}
-                        className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
-                      />
-                      <button
-                        type="button"
-                        disabled={busy || !newFolderName.trim()}
-                        onClick={() => void submitFolderCreate()}
-                        className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
-                      >
-                        {t('create')}
-                      </button>
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
-
-            {artifacts.length > 0 && (
-              <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
-                <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleSelectAll}
-                    className="h-3 w-3 accent-amore"
-                  />
-                  <span>
-                    {selected.size > 0
-                      ? t('nSelected', { count: selected.size })
-                      : t('selectAll')}
-                  </span>
-                </label>
-                {selected.size > 0 && (
-                  <div
-                    className="relative"
-                    ref={openMenu === 'bulk' ? menuRef : undefined}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
-                        setOpenSendSub(false);
-                        setOpenDownloadSub(false);
-                      }}
-                      className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px]"
-                    >
-                      {t('bulkActions')}
-                    </button>
-                    {openMenu === 'bulk' && (
-                      <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
-                        <div className="relative">
-                          <MenuItem
-                            disabled={bulkTargets.length === 0}
-                            onClick={() => setOpenSendSub((v) => !v)}
-                            trailing={bulkTargets.length > 0 ? '›' : undefined}
-                          >
-                            {t('sendSelectedTo')}
-                          </MenuItem>
-                          {openSendSub && bulkTargets.length > 0 && (
-                            <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
-                              {bulkTargets.map((tgt) => (
-                                <MenuItem
-                                  key={tgt}
-                                  onClick={() => void onSendBulk(tgt)}
-                                >
-                                  {tSidebar(tgt)}
-                                </MenuItem>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="relative">
-                          <MenuItem
-                            disabled={bulkFormats.length === 0}
-                            onClick={() => setOpenDownloadSub((v) => !v)}
-                            trailing={bulkFormats.length > 0 ? '›' : undefined}
-                          >
-                            {t('downloadSelected')}
-                          </MenuItem>
-                          {openDownloadSub && bulkFormats.length > 0 && (
-                            <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
-                              {bulkFormats.map((fmt) => (
-                                <MenuItem
-                                  key={fmt}
-                                  trailing={`.${fmt}`}
-                                  onClick={() => {
-                                    setOpenMenu(null);
-                                    setOpenDownloadSub(false);
-                                    void (async () => {
-                                      for (const id of selected) {
-                                        const a = artifacts.find((x) => x.id === id);
-                                        if (a) await downloadArtifact(a, fmt);
-                                      }
-                                    })();
-                                  }}
-                                >
-                                  {tExport(fmt)}
-                                </MenuItem>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {resolvedKind === 'project' && (
-                          <>
-                            <div className="my-1 h-px bg-line-soft" />
-                            <MenuItem
-                              danger
-                              onClick={() => {
-                                const list = artifacts.filter((a) => selected.has(a.id));
-                                void removeArtifacts(list);
-                                setSelected(new Set());
-                                setOpenMenu(null);
-                              }}
-                            >
-                              {t('removeFromProject')}
-                            </MenuItem>
-                          </>
+                      </div>
+                      <div className="relative">
+                        <MenuItem
+                          disabled={bulkFormats.length === 0}
+                          onClick={() => setOpenDownloadSub((v) => !v)}
+                          trailing={bulkFormats.length > 0 ? '›' : undefined}
+                        >
+                          {t('downloadSelected')}
+                        </MenuItem>
+                        {openDownloadSub && bulkFormats.length > 0 && (
+                          <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                            {bulkFormats.map((fmt) => (
+                              <MenuItem
+                                key={fmt}
+                                trailing={`.${fmt}`}
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  setOpenDownloadSub(false);
+                                  void (async () => {
+                                    for (const id of selected) {
+                                      const a = artifacts.find((x) => x.id === id);
+                                      if (a) await downloadArtifact(a, fmt);
+                                    }
+                                  })();
+                                }}
+                              >
+                                {tExport(fmt)}
+                              </MenuItem>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                      {resolvedKind === 'project' && (
+                        <>
+                          <div className="my-1 h-px bg-line-soft" />
+                          <MenuItem
+                            danger
+                            onClick={() => {
+                              const list = artifacts.filter((a) => selected.has(a.id));
+                              void removeArtifacts(list);
+                              setSelected(new Set());
+                              setOpenMenu(null);
+                            }}
+                          >
+                            {t('removeFromProject')}
+                          </MenuItem>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-            <div className="min-h-[180px] flex-1 overflow-y-auto">
-              {loading && artifacts.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <p className="text-[12px] text-mute-soft">{t('loading')}</p>
-                </div>
-              ) : artifacts.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <p className="text-[12px] text-mute-soft">{t('empty')}</p>
-                  <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
-                </div>
-              ) : (
-                <ul>
-                  {artifacts.map((a) => {
-                    const targets = targetsFor(a.featureKey);
-                    const isMenuOpen = openMenu === a.id;
-                    const isSelected = selected.has(a.id);
-                    return (
-                      <li
-                        key={a.id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = 'copy';
-                          const ids =
-                            isSelected && selected.size > 1
-                              ? Array.from(selected)
-                              : [a.id];
-                          if (ids.length > 1) {
-                            e.dataTransfer.setData(MIME_MANY, JSON.stringify(ids));
-                          }
-                          e.dataTransfer.setData(MIME_SINGLE, a.id);
-                          setDragging({
-                            artifactId: a.id,
-                            sourceFeature: a.featureKey,
-                          });
-                        }}
-                        onDragEnd={() => setDragging(null)}
-                        className={`cursor-grab border-b border-line-soft px-5 py-2.5 last:border-b-0 active:cursor-grabbing ${
-                          isSelected ? 'bg-paper-soft' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelect(a.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-3 w-3 shrink-0 accent-amore"
-                            aria-label={t('select')}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
-                              {tSidebar(a.featureKey)}
-                            </div>
-                            <div className="mt-0.5 truncate text-[12.5px] text-ink-2">
-                              {a.title}
-                            </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {loading && artifacts.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <p className="text-[12px] text-mute-soft">{t('loading')}</p>
+              </div>
+            ) : artifacts.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <p className="text-[12px] text-mute-soft">{t('empty')}</p>
+                <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
+              </div>
+            ) : (
+              <ul>
+                {artifacts.map((a) => {
+                  const targets = targetsFor(a.featureKey);
+                  const isMenuOpen = openMenu === a.id;
+                  const isSelected = selected.has(a.id);
+                  const isFresh = flashActive && lastAddedId === a.id;
+                  return (
+                    <li
+                      key={a.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        const ids =
+                          isSelected && selected.size > 1
+                            ? Array.from(selected)
+                            : [a.id];
+                        if (ids.length > 1) {
+                          e.dataTransfer.setData(MIME_MANY, JSON.stringify(ids));
+                        }
+                        e.dataTransfer.setData(MIME_SINGLE, a.id);
+                        setDragging({
+                          artifactId: a.id,
+                          sourceFeature: a.featureKey,
+                        });
+                      }}
+                      onDragEnd={() => setDragging(null)}
+                      className={`cursor-grab border-b border-line-soft px-4 py-3 last:border-b-0 active:cursor-grabbing ${
+                        isSelected ? 'bg-paper-soft' : ''
+                      } ${isFresh ? 'workspace-row-flash' : ''}`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(a.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 h-3 w-3 shrink-0 accent-amore"
+                          aria-label={t('select')}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
+                            {tSidebar(a.featureKey)}
+                          </div>
+                          <div className="mt-0.5 truncate text-[12px] text-ink-2">
+                            {a.title}
                           </div>
                           {showAssignSelect && (
                             <select
@@ -883,7 +895,7 @@ export function WorkspacePanel() {
                                 });
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="max-w-[140px] shrink-0 truncate border border-line bg-paper px-2 py-1 text-[11px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:4px]"
+                              className="mt-1.5 w-full truncate border border-line bg-paper px-2 py-1 text-[10.5px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:14px]"
                               aria-label={t('assignProject')}
                             >
                               <option value="__unfiled__">{tDashboard('unfiled')}</option>
@@ -894,121 +906,122 @@ export function WorkspacePanel() {
                               ))}
                             </select>
                           )}
-                          <div
-                            className="relative shrink-0"
-                            ref={isMenuOpen ? menuRef : undefined}
+                        </div>
+                        <div
+                          className="relative shrink-0"
+                          ref={isMenuOpen ? menuRef : undefined}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenu(isMenuOpen ? null : a.id);
+                              setOpenSendSub(false);
+                              setOpenDownloadSub(false);
+                            }}
+                            aria-label={t('actions')}
+                            className="flex h-6 w-6 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
                           >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenMenu(isMenuOpen ? null : a.id);
-                                setOpenSendSub(false);
-                                setOpenDownloadSub(false);
-                              }}
-                              aria-label={t('actions')}
-                              className="flex h-7 w-7 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
-                            >
-                              <span className="text-[16px] leading-none">⋯</span>
-                            </button>
-                            {isMenuOpen && (
-                              <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                            <span className="text-[16px] leading-none">⋯</span>
+                          </button>
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                              <MenuItem
+                                onClick={() => {
+                                  setViewing(a);
+                                  setOpenMenu(null);
+                                }}
+                              >
+                                {t('view')}
+                              </MenuItem>
+                              <MenuItem onClick={() => void onCopy(a)}>
+                                {t('copy')}
+                              </MenuItem>
+                              <div className="relative">
                                 <MenuItem
-                                  onClick={() => {
-                                    setViewing(a);
-                                    setOpenMenu(null);
-                                  }}
+                                  onClick={() => setOpenDownloadSub((v) => !v)}
+                                  trailing="›"
                                 >
-                                  {t('view')}
+                                  {t('download')}
                                 </MenuItem>
-                                <MenuItem onClick={() => void onCopy(a)}>
-                                  {t('copy')}
-                                </MenuItem>
-                                <div className="relative">
-                                  <MenuItem
-                                    onClick={() => setOpenDownloadSub((v) => !v)}
-                                    trailing="›"
-                                  >
-                                    {t('download')}
-                                  </MenuItem>
-                                  {openDownloadSub && (
-                                    <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
-                                      {formatsFor(a.featureKey).map((fmt) => (
-                                        <MenuItem
-                                          key={fmt}
-                                          trailing={`.${fmt}`}
-                                          onClick={() => {
-                                            setOpenMenu(null);
-                                            setOpenDownloadSub(false);
-                                            void downloadArtifact(a, fmt);
-                                          }}
-                                        >
-                                          {tExport(fmt)}
-                                        </MenuItem>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="relative">
-                                  <MenuItem
-                                    disabled={targets.length === 0}
-                                    onClick={() => setOpenSendSub((v) => !v)}
-                                    trailing={targets.length > 0 ? '›' : undefined}
-                                  >
-                                    {t('sendTo')}
-                                  </MenuItem>
-                                  {openSendSub && targets.length > 0 && (
-                                    <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
-                                      {targets.map((tgt) => (
-                                        <MenuItem
-                                          key={tgt}
-                                          onClick={() => void onSend(a, tgt)}
-                                        >
-                                          {tSidebar(tgt)}
-                                        </MenuItem>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                                {resolvedKind === 'project' && (
-                                  <>
-                                    <div className="my-1 h-px bg-line-soft" />
-                                    <MenuItem
-                                      danger
-                                      onClick={() => {
-                                        void removeArtifact(a).then(() => void refresh());
-                                        setOpenMenu(null);
-                                      }}
-                                    >
-                                      {t('removeFromProject')}
-                                    </MenuItem>
-                                  </>
+                                {openDownloadSub && (
+                                  <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                                    {formatsFor(a.featureKey).map((fmt) => (
+                                      <MenuItem
+                                        key={fmt}
+                                        trailing={`.${fmt}`}
+                                        onClick={() => {
+                                          setOpenMenu(null);
+                                          setOpenDownloadSub(false);
+                                          void downloadArtifact(a, fmt);
+                                        }}
+                                      >
+                                        {tExport(fmt)}
+                                      </MenuItem>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
+                              <div className="relative">
+                                <MenuItem
+                                  disabled={targets.length === 0}
+                                  onClick={() => setOpenSendSub((v) => !v)}
+                                  trailing={targets.length > 0 ? '›' : undefined}
+                                >
+                                  {t('sendTo')}
+                                </MenuItem>
+                                {openSendSub && targets.length > 0 && (
+                                  <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                                    {targets.map((tgt) => (
+                                      <MenuItem
+                                        key={tgt}
+                                        onClick={() => void onSend(a, tgt)}
+                                      >
+                                        {tSidebar(tgt)}
+                                      </MenuItem>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              {resolvedKind === 'project' && (
+                                <>
+                                  <div className="my-1 h-px bg-line-soft" />
+                                  <MenuItem
+                                    danger
+                                    onClick={() => {
+                                      void removeArtifact(a).then(() => void refresh());
+                                      setOpenMenu(null);
+                                    }}
+                                  >
+                                    {t('removeFromProject')}
+                                  </MenuItem>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            {toast && (
-              <div className="border-t border-line-soft px-5 py-2 text-[11px] text-mute">
-                {toast}
-              </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
 
-          {viewing && (
-            <ViewerOverlay
-              title={viewing.title}
-              content={viewingContent}
-              onClose={() => setViewing(null)}
-            />
+          {toast && (
+            <div className="border-t border-line-soft px-5 py-2 text-[11px] text-mute">
+              {toast}
+            </div>
           )}
         </div>
+      </aside>
+
+      {/* Artifact viewer — modal overlay, independent of sidebar state */}
+      {viewing && (
+        <ViewerOverlay
+          title={viewing.title}
+          content={viewingContent}
+          onClose={() => setViewing(null)}
+        />
       )}
     </>
   );
