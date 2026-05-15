@@ -574,7 +574,20 @@
     "sendSelectedTo": "선택 항목 보내기",
     "downloadSelected": "선택 항목 다운로드…",
     "deleteSelected": "선택 삭제",
-    "assignProject": "프로젝트 지정"
+    "assignProject": "프로젝트 지정",
+    "loading": "불러오는 중…",
+    "refresh": "새로고침",
+    "scopeProject": "프로젝트",
+    "scopeUnfiled": "미지정",
+    "scopeAll": "전체",
+    "projects": "프로젝트",
+    "newProject": "+ 새 프로젝트",
+    "newProjectName": "프로젝트 이름",
+    "create": "생성",
+    "cancel": "취소",
+    "created": "프로젝트가 생성되었습니다",
+    "createFailed": "생성에 실패했습니다",
+    "removeFromProject": "프로젝트에서 빼기"
   },
   "Members": {
     "title": "멤버 관리",

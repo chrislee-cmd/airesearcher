@@ -469,9 +469,10 @@ export function Sidebar({
                             if (manyRaw) {
                               try {
                                 const ids = JSON.parse(manyRaw) as string[];
-                                const path = workspace.sendMany(ids, f.key);
                                 workspace.setDragging(null);
-                                if (path) router.push(path);
+                                void workspace.sendMany(ids, f.key).then((path) => {
+                                  if (path) router.push(path);
+                                });
                                 return;
                               } catch {}
                             }
@@ -479,9 +480,10 @@ export function Sidebar({
                               'application/x-workspace-artifact',
                             );
                             if (!id) return;
-                            const path = workspace.sendTo(id, f.key);
                             workspace.setDragging(null);
-                            if (path) router.push(path);
+                            void workspace.sendTo(id, f.key).then((path) => {
+                              if (path) router.push(path);
+                            });
                           }}
                           className={`flex items-center justify-between gap-2 px-4 py-1.5 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
                             active

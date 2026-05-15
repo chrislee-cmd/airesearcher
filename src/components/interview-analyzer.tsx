@@ -60,17 +60,23 @@ export function InterviewAnalyzer() {
     }
     if (ids.length === 0) return false;
     const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
-    const files: File[] = [];
-    for (const id of ids) {
-      const a = lookup.get(id);
-      if (!a) continue;
-      files.push(
-        new File([a.content], `${safeFilename(a.title)}.md`, {
-          type: 'text/markdown',
-        }),
-      );
-    }
-    if (files.length > 0) job.addFiles(files);
+    // Content lives in the DB now — fetch each artifact lazily and add the
+    // resulting markdown files to the job queue once all are resolved.
+    void (async () => {
+      const files: File[] = [];
+      for (const id of ids) {
+        const a = lookup.get(id);
+        if (!a) continue;
+        const c = await workspace.fetchContent(a);
+        if (!c) continue;
+        files.push(
+          new File([c.content], `${safeFilename(a.title)}.md`, {
+            type: 'text/markdown',
+          }),
+        );
+      }
+      if (files.length > 0) job.addFiles(files);
+    })();
     workspace.setDragging(null);
     return true;
   }

@@ -235,17 +235,23 @@ export function TranscriptStudio() {
     }
     if (ids.length === 0) return false;
     const lookup = new Map(workspace.artifacts.map((a) => [a.id, a] as const));
-    const files: File[] = [];
-    for (const id of ids) {
-      const a = lookup.get(id);
-      if (!a) continue;
-      files.push(
-        new File([a.content], `${safeFilename(a.title)}.md`, {
-          type: 'text/markdown',
-        }),
-      );
-    }
-    if (files.length > 0) startUploads(files);
+    // Content lives in the DB now — fetch each artifact lazily and start
+    // uploads once all are resolved.
+    void (async () => {
+      const files: File[] = [];
+      for (const id of ids) {
+        const a = lookup.get(id);
+        if (!a) continue;
+        const c = await workspace.fetchContent(a);
+        if (!c) continue;
+        files.push(
+          new File([c.content], `${safeFilename(a.title)}.md`, {
+            type: 'text/markdown',
+          }),
+        );
+      }
+      if (files.length > 0) startUploads(files);
+    })();
     workspace.setDragging(null);
     return true;
   }

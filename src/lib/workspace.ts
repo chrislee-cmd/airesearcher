@@ -1,25 +1,27 @@
 import type { FeatureKey } from '@/lib/features';
 
+// DB-backed source of each workspace artifact. With localStorage removed
+// in the workspace unification (see PROJECT.md changelog), every artifact
+// has a dbFeature + dbId — they're the only way to fetch content.
 export type DbBackedFeature =
   | 'report'
   | 'interview'
   | 'transcript'
   | 'desk'
   | 'scheduler'
-  | 'recruiting';
+  | 'recruiting'
+  | 'generation';
 
+// Server-shape list item (no content). Mirrors WorkspaceArtifactListItem
+// in src/lib/workspace-server.ts; re-exported for client consumers.
 export type WorkspaceArtifact = {
   id: string;
   featureKey: FeatureKey;
   title: string;
-  content: string;
-  createdAt: number;
-  // DB linkage so each row in the workspace panel can be reassigned to
-  // a project via /api/artifacts/assign. When absent the row shows the
-  // dropdown disabled (local-only artifact).
-  dbFeature?: DbBackedFeature;
-  dbId?: string;
-  projectId?: string | null;
+  createdAt: string;
+  dbFeature: DbBackedFeature;
+  dbId: string;
+  projectId: string | null;
 };
 
 // Which target features can accept an artifact produced by source.
@@ -34,11 +36,6 @@ export type WorkspaceArtifact = {
 //   - `desk`      → keyword chip input (split on commas/newlines)
 //   - `reports`   → file list (text wrapped as synthetic .md)
 //   - `interviews`→ file queue (text wrapped as synthetic .md)
-//
-// Removed historic destinations whose pages have no compatible input:
-//   - `analyzer`  (ComingSoonCard — no input)
-//   - `moderator` (services carousel — no input)
-//   - `scheduler` (CSV / calendar — text doesn't map)
 export const SEND_TO_MAP: Partial<Record<FeatureKey, FeatureKey[]>> = {
   quotes: ['interviews', 'reports'],
   transcripts: ['interviews', 'reports'],
