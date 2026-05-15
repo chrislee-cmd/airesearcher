@@ -87,19 +87,47 @@
   .sec-head h2{font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-.025em;line-height:1.08}
   .sec-head p{margin:14px auto 0;color:var(--mute);max-width:520px;font-size:14.5px}
 
-  .why-mochi{padding:80px 0 72px}
-  .why-mochi .inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
-  .why-mochi .wm-lead{font-size:clamp(26px,3vw,38px);line-height:1.2;letter-spacing:-.03em;font-weight:800;color:var(--ink)}
-  .why-mochi .wm-lead em{color:var(--accent);font-style:italic}
-  .why-mochi .wm-body{margin-top:20px;color:var(--mute);font-size:14.5px;line-height:1.85}
-  .why-mochi .wm-body+.wm-body{margin-top:14px}
-  .why-mochi .wm-pill{display:inline-block;margin-top:28px;padding:14px 20px;border-radius:16px;background:var(--peach);color:var(--ink);font-size:13.5px;line-height:1.7;font-weight:500}
-  .why-mochi .wm-cards{display:flex;flex-direction:column;gap:16px}
-  .why-mochi .wm-card{padding:24px 28px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
-  .why-mochi .wm-card .wm-icon{font-size:20px;margin-bottom:10px}
-  .why-mochi .wm-card h4{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-bottom:6px}
-  .why-mochi .wm-card p{font-size:13px;color:var(--mute);line-height:1.65}
-  @media (max-width:780px){.why-mochi .inner{grid-template-columns:1fr;gap:40px}}
+  .why-mochi{position:relative;overflow:hidden;padding:104px 0}
+  .why-mochi .wm-bg{
+    position:absolute;right:-100px;top:50%;transform:translateY(-50%);
+    width:min(640px,58vw);opacity:.10;pointer-events:none;user-select:none;
+    filter:saturate(1.4) blur(.5px);
+  }
+  .why-mochi .wm-bg svg{width:100%;height:auto;display:block}
+  .why-mochi::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(to right, var(--bg) 40%, rgba(251,247,242,.55) 68%, transparent);
+    z-index:1;pointer-events:none;
+  }
+  .why-mochi .container{position:relative;z-index:2}
+  .why-mochi .wm-tag{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:22px}
+  .why-mochi .wm-hand{
+    font-family:var(--hand);font-size:clamp(38px,5.5vw,66px);font-weight:700;
+    color:var(--ink);line-height:1.06;display:block;
+    transform:rotate(-1.5deg);transform-origin:left center;
+    margin-bottom:36px;max-width:600px;
+  }
+  .why-mochi .wm-body{max-width:530px;color:var(--mute);font-size:15px;line-height:1.88}
+  .why-mochi .wm-body+.wm-body{margin-top:16px}
+  .why-mochi .wm-rule{width:36px;height:2.5px;background:#EFA6B5;border-radius:2px;margin:40px 0}
+  .why-mochi .wm-perks{display:flex;flex-direction:column;gap:18px;max-width:540px}
+  .why-mochi .wm-perk{display:flex;align-items:flex-start;gap:14px}
+  .why-mochi .wm-perk::before{
+    content:'';display:block;width:6px;height:6px;border-radius:50%;
+    background:#EFA6B5;flex-shrink:0;margin-top:9px;
+  }
+  .why-mochi .wm-perk p{font-size:14.5px;color:var(--mute);line-height:1.7}
+  .why-mochi .wm-perk strong{color:var(--ink);font-weight:600}
+  .why-mochi .wm-coda{
+    display:inline-block;margin-top:40px;
+    font-family:var(--hand);font-size:22px;color:var(--mute);
+    transform:rotate(-1deg);
+  }
+  @media(max-width:760px){
+    .why-mochi .wm-bg{width:240px;right:-30px;opacity:.06}
+    .why-mochi::before{background:linear-gradient(to right,var(--bg) 58%,rgba(251,247,242,.7) 82%,transparent)}
+    .why-mochi{padding:72px 0}
+  }
 
   .pricing{padding:64px 0}
   .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:36px}
@@ -466,48 +494,51 @@
 </section>
 
 <section class="why-mochi" id="why-mochi">
+  <!-- Mochi logo as ghostly background art -->
+  <div class="wm-bg" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 185">
+      <defs>
+        <clipPath id="dome-clip">
+          <path d="M18,150 Q18,28 102,28 Q186,28 186,150 Z"/>
+        </clipPath>
+        <filter id="mochi-shadow" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#B05868" flood-opacity="0.18"/>
+        </filter>
+      </defs>
+      <g filter="url(#mochi-shadow)">
+        <path d="M18,150 Q18,28 102,28 Q186,28 186,150 Z" fill="#EFA6B5"/>
+        <ellipse cx="102" cy="142" rx="74" ry="96" fill="#FAF0E2" clip-path="url(#dome-clip)"/>
+        <ellipse cx="102" cy="153" rx="36" ry="30" fill="#C03248" clip-path="url(#dome-clip)"/>
+        <ellipse cx="102" cy="150" rx="84" ry="13" fill="#E094A6"/>
+      </g>
+      <ellipse cx="68" cy="68" rx="26" ry="16" fill="white" opacity="0.22" transform="rotate(-22 68 68)" clip-path="url(#dome-clip)"/>
+      <text x="214" y="100" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="50" font-weight="800" fill="#1C1016" letter-spacing="-1">Research</text>
+      <line x1="214" y1="111" x2="504" y2="111" stroke="#E094A6" stroke-width="1.2" opacity="0.55"/>
+      <text x="218" y="153" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="42" font-weight="300" fill="#E094A6" letter-spacing="7">mochi</text>
+    </svg>
+  </div>
+
   <div class="container">
-    <div class="sec-head reveal" style="text-align:center">
-      <span class="meta">WHY MOCHI?</span>
-      <h2 style="margin-top:14px">달콤한 모찌 한 입처럼,<br/><span style="background:linear-gradient(180deg,transparent 60%,var(--peach) 60%);padding:0 6px;border-radius:6px">리서치도 그렇게.</span></h2>
+    <span class="wm-tag reveal">WHY MOCHI?</span>
+    <span class="wm-hand reveal">고달픈 리서처에게,<br/>달콤한 한 입을.</span>
+
+    <p class="wm-body reveal">잦은 야근과 끝없는 수정, 사소한 디테일 하나도 놓칠 수 없는 고집—
+    그 모든 고통을 감내한 끝에야 비로소 발굴되는 작고 소중한 인사이트.
+    오늘도 수많은 리서처들이 그 인사이트 하나를 위해 묵묵히 버티고 있습니다.</p>
+
+    <p class="wm-body reveal">Research-Mochi는 그런 리서처분들 곁에 있고 싶습니다.
+    반복되는 업무를 자동화하고, 분석에만 온전히 집중할 수 있도록—
+    마치 고된 하루 끝에 먹는 한 입의 모찌처럼, 작지만 확실한 행복을 드리고 싶습니다.</p>
+
+    <div class="wm-rule reveal"></div>
+
+    <div class="wm-perks reveal">
+      <div class="wm-perk"><p><strong>야근 대신, 자동화.</strong> 전사록 정리, 인터뷰 요약, 데스크 리서치까지—밤새 붙잡고 있던 그 작업들을 Mochi가 대신합니다.</p></div>
+      <div class="wm-perk"><p><strong>디테일은 Mochi가, 인사이트는 당신이.</strong> 수백 장의 응답 속 패턴을 찾는 건 Mochi의 몫. 그 너머의 의미를 읽는 건 리서처의 몫입니다.</p></div>
+      <div class="wm-perk"><p><strong>수정을 줄이는 첫 번째 초안.</strong> 처음부터 정돈된 구조와 언어로. 수차례 반복되는 피드백 루프를 줄여드립니다.</p></div>
     </div>
-    <div class="inner reveal">
-      <div class="wm-left">
-        <p class="wm-lead">리서처의 일은<br/>늘 <em>고달프고, 고됩니다.</em></p>
-        <p class="wm-body">
-          잦은 야근과 끝없는 수정, 사소한 디테일 하나도 놓칠 수 없는 고집—
-          그 모든 고통을 감내한 끝에야 비로소 발굴되는 작고 소중한 인사이트.
-          오늘도 수많은 리서처들이 그 인사이트 하나를 위해 묵묵히 버티고 있습니다.
-        </p>
-        <p class="wm-body">
-          Research-Mochi는 그런 리서처분들 곁에 있고 싶습니다.
-          반복되는 업무를 자동화하고, 분석에만 온전히 집중할 수 있도록—
-          마치 고된 하루 끝에 먹는 한 입의 모찌처럼,
-          작지만 확실한 행복을 드리고 싶습니다.
-        </p>
-        <div class="wm-pill">
-          오늘 Research-Mochi로 업무를 자동화해 두고,<br/>
-          맛있는 모찌에 커피 한 잔 드시고 오시는 건 어떨까요? ☕
-        </div>
-      </div>
-      <div class="wm-cards">
-        <div class="wm-card">
-          <div class="wm-icon">🌙</div>
-          <h4>야근 대신, 자동화</h4>
-          <p>전사록 정리, 인터뷰 요약, 데스크 리서치까지—밤새 붙잡고 있던 그 작업들을 Mochi가 대신합니다.</p>
-        </div>
-        <div class="wm-card">
-          <div class="wm-icon">🔍</div>
-          <h4>디테일은 Mochi가, 인사이트는 당신이</h4>
-          <p>수백 장의 응답 속 패턴을 찾는 건 Mochi의 몫. 그 너머의 의미를 읽는 건 리서처의 몫입니다.</p>
-        </div>
-        <div class="wm-card">
-          <div class="wm-icon">✨</div>
-          <h4>수정을 줄이는 첫 번째 초안</h4>
-          <p>처음부터 정돈된 구조와 언어로. 수차례 반복되는 피드백 루프를 줄여드립니다.</p>
-        </div>
-      </div>
-    </div>
+
+    <span class="wm-coda reveal">오늘은 Mochi에게 맡기고, 커피 한 잔 어떠세요? ☕</span>
   </div>
 </section>
 
@@ -522,7 +553,7 @@
       <div class="price">
         <span class="meta">Starter</span>
         <h4>혼자 시작</h4>
-        <div class="num">₩29,000<small>100 크레딧 · ₩290 / cr</small></div>
+        <div class="num">₩200,000<small>100 크레딧 · ₩2,000 / cr</small></div>
         <ul><li>전 도구 사용</li><li>한국어/영어</li><li>이메일 지원</li></ul>
         <a class="btn" href="/ko/login?next=/credits">시작하기</a>
       </div>
@@ -531,7 +562,7 @@
         <span class="badge">popular</span>
         <span class="meta">Team · 10% off</span>
         <h4 style="color:#fff">팀으로 시작</h4>
-        <div class="num" style="color:#fff">₩261,000<small>1,000 크레딧 · ₩261 / cr</small></div>
+        <div class="num" style="color:#fff">₩900,000<small>500 크레딧 · ₩1,800 / cr</small></div>
         <ul><li>팀 워크스페이스 공유</li><li>역할/권한 관리</li><li>우선 채널 지원</li></ul>
         <a class="btn primary" style="background:#fff;color:var(--ink);border-color:#fff" href="/ko/login?next=/credits">팀으로 시작 →</a>
       </div>
@@ -539,7 +570,7 @@
       <div class="price">
         <span class="meta">Studio · 15% off</span>
         <h4>리서치 스튜디오</h4>
-        <div class="num">₩615,000<small>2,500 크레딧 · ₩246 / cr</small></div>
+        <div class="num">₩2,550,000<small>1,500 크레딧 · ₩1,700 / cr</small></div>
         <ul><li>다중 워크스페이스</li><li>리포트 화이트라벨</li><li>온보딩 1회</li></ul>
         <a class="btn" href="/ko/login?next=/credits">스튜디오 시작</a>
       </div>
@@ -547,7 +578,7 @@
       <div class="price">
         <span class="meta">Enterprise · 25% off</span>
         <h4>엔터프라이즈</h4>
-        <div class="num">견적<small>월 500 크레딧 · 맞춤 SLA</small></div>
+        <div class="num">견적<small>5,000 크레딧 · 맞춤 SLA</small></div>
         <ul><li>SSO · 감사 로그</li><li>전용 도메인</li><li>한국어 전담</li></ul>
         <a class="btn" href="mailto:hello@research-mochi.app">견적 요청</a>
       </div>
