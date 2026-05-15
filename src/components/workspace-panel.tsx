@@ -9,7 +9,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import type { FeatureKey } from '@/lib/features';
-import type { WorkspaceArtifact } from '@/lib/workspace';
+import type { WorkspaceArtifact, WorkspaceFolder } from '@/lib/workspace';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { useActiveProject } from './active-project-provider';
 import { useWorkspace, type WorkspaceScope } from './workspace-provider';
@@ -76,6 +76,13 @@ export function WorkspacePanel() {
     sendMany,
     targetsFor,
     setDragging,
+    selectedFolderId,
+    setSelectedFolderId,
+    folders,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    setFolderId,
   } = useWorkspace();
   const { projects, active, setActive } = useActiveProject();
   const router = useRouter();
@@ -89,6 +96,15 @@ export function WorkspacePanel() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [creatingProject, setCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  // Folder creation/rename state lives in the panel — provider just owns
+  // the list + persistence.
+  const [creatingFolderParent, setCreatingFolderParent] = useState<
+    string | null | undefined
+  >(undefined);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [dropTargetFolder, setDropTargetFolder] = useState<string | 'root' | null>(null);
   const [busy, setBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -269,6 +285,63 @@ export function WorkspacePanel() {
     }
   }
 
+  // Build a flat depth-ordered list from the folder rows so the panel can
+  // render the tree with simple left-padding by depth. Cycles are
+  // server-prevented; the depth cap (8) is a defensive backstop.
+  type FolderNode = { folder: WorkspaceFolder; depth: number };
+  const folderTree = useMemo<FolderNode[]>(() => {
+    const byParent = new Map<string | null, WorkspaceFolder[]>();
+    for (const f of folders) {
+      const key = f.parentFolderId;
+      const list = byParent.get(key) ?? [];
+      list.push(f);
+      byParent.set(key, list);
+    }
+    const out: FolderNode[] = [];
+    function walk(parent: string | null, depth: number) {
+      if (depth > 8) return;
+      const children = (byParent.get(parent) ?? []).slice().sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+      for (const f of children) {
+        out.push({ folder: f, depth });
+        walk(f.id, depth + 1);
+      }
+    }
+    walk(null, 0);
+    return out;
+  }, [folders]);
+
+  async function submitFolderCreate() {
+    const name = newFolderName.trim();
+    if (!name || creatingFolderParent === undefined) return;
+    setBusy(true);
+    try {
+      const created = await createFolder(name, creatingFolderParent);
+      if (created) {
+        setSelectedFolderId(created.id);
+        flash(t('folderCreated'));
+      } else {
+        flash(t('folderCreateFailed'));
+      }
+    } finally {
+      setBusy(false);
+      setCreatingFolderParent(undefined);
+      setNewFolderName('');
+    }
+  }
+
+  async function submitFolderRename(id: string) {
+    const name = renameValue.trim();
+    if (!name) {
+      setRenamingFolder(null);
+      return;
+    }
+    await renameFolder(id, name);
+    setRenamingFolder(null);
+    setRenameValue('');
+  }
+
   const bulkFormats = useMemo<DownloadFormat[]>(() => {
     if (selected.size === 0) return [];
     const sources = artifacts.filter((a) => selected.has(a.id));
@@ -441,6 +514,199 @@ export function WorkspacePanel() {
                 </>
               )}
             </div>
+
+            {resolvedKind === 'project' && (
+              <div className="border-b border-line-soft px-5 py-2">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                    {t('folders')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatingFolderParent(null);
+                      setNewFolderName('');
+                    }}
+                    className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-amore"
+                  >
+                    + {t('newFolder')}
+                  </button>
+                </div>
+                <ul>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFolderId(null)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDropTargetFolder('root');
+                      }}
+                      onDragLeave={() => setDropTargetFolder((v) => (v === 'root' ? null : v))}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDropTargetFolder(null);
+                        const id = e.dataTransfer.getData(MIME_SINGLE);
+                        const many = e.dataTransfer.getData(MIME_MANY);
+                        const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
+                        for (const aid of ids) {
+                          const a = artifacts.find((x) => x.id === aid);
+                          if (a) void setFolderId(a, null);
+                        }
+                      }}
+                      className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] [border-radius:4px] ${
+                        selectedFolderId === null
+                          ? 'bg-paper-soft text-ink-2'
+                          : 'text-mute hover:text-ink-2'
+                      } ${dropTargetFolder === 'root' ? 'outline outline-1 outline-amore' : ''}`}
+                    >
+                      <span>📁</span>
+                      <span>{t('folderRoot')}</span>
+                    </button>
+                  </li>
+                  {folderTree.map(({ folder, depth }) => {
+                    const isSelected = selectedFolderId === folder.id;
+                    const isDropTarget = dropTargetFolder === folder.id;
+                    const isRenaming = renamingFolder === folder.id;
+                    return (
+                      <li key={folder.id}>
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDropTargetFolder(folder.id);
+                          }}
+                          onDragLeave={() => setDropTargetFolder((v) => (v === folder.id ? null : v))}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDropTargetFolder(null);
+                            const id = e.dataTransfer.getData(MIME_SINGLE);
+                            const many = e.dataTransfer.getData(MIME_MANY);
+                            const ids = many ? (JSON.parse(many) as string[]) : id ? [id] : [];
+                            for (const aid of ids) {
+                              const a = artifacts.find((x) => x.id === aid);
+                              if (a) void setFolderId(a, folder.id);
+                            }
+                          }}
+                          className={`flex items-center gap-1 [border-radius:4px] ${
+                            isSelected ? 'bg-paper-soft' : ''
+                          } ${isDropTarget ? 'outline outline-1 outline-amore' : ''}`}
+                          style={{ paddingLeft: `${depth * 14 + 8}px` }}
+                        >
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={() => void submitFolderRename(folder.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void submitFolderRename(folder.id);
+                                if (e.key === 'Escape') {
+                                  setRenamingFolder(null);
+                                  setRenameValue('');
+                                }
+                              }}
+                              className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFolderId(folder.id)}
+                              onDoubleClick={() => {
+                                setRenamingFolder(folder.id);
+                                setRenameValue(folder.name);
+                              }}
+                              className={`flex flex-1 items-center gap-2 py-1 text-left text-[12px] ${
+                                isSelected ? 'text-ink-2' : 'text-mute hover:text-ink-2'
+                              }`}
+                            >
+                              <span>📁</span>
+                              <span className="truncate">{folder.name}</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCreatingFolderParent(folder.id);
+                              setNewFolderName('');
+                            }}
+                            aria-label={t('newFolder')}
+                            className="px-1.5 py-0.5 text-[12px] text-mute-soft hover:text-ink-2"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(t('confirmDeleteFolder', { name: folder.name }))) {
+                                void deleteFolder(folder.id);
+                              }
+                            }}
+                            aria-label={t('deleteFolder')}
+                            className="pr-2 text-[12px] text-mute-soft hover:text-warning"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {creatingFolderParent === folder.id && (
+                          <div
+                            className="flex items-center gap-2 py-1"
+                            style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
+                          >
+                            <input
+                              autoFocus
+                              value={newFolderName}
+                              onChange={(e) => setNewFolderName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void submitFolderCreate();
+                                if (e.key === 'Escape') {
+                                  setCreatingFolderParent(undefined);
+                                  setNewFolderName('');
+                                }
+                              }}
+                              placeholder={t('folderName')}
+                              className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                            />
+                            <button
+                              type="button"
+                              disabled={busy || !newFolderName.trim()}
+                              onClick={() => void submitFolderCreate()}
+                              className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                            >
+                              {t('create')}
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {creatingFolderParent === null && (
+                    <li className="flex items-center gap-2 py-1 pl-2">
+                      <input
+                        autoFocus
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void submitFolderCreate();
+                          if (e.key === 'Escape') {
+                            setCreatingFolderParent(undefined);
+                            setNewFolderName('');
+                          }
+                        }}
+                        placeholder={t('folderName')}
+                        className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                      />
+                      <button
+                        type="button"
+                        disabled={busy || !newFolderName.trim()}
+                        onClick={() => void submitFolderCreate()}
+                        className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
+                      >
+                        {t('create')}
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {artifacts.length > 0 && (
               <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">

@@ -587,7 +587,15 @@
     "cancel": "취소",
     "created": "프로젝트가 생성되었습니다",
     "createFailed": "생성에 실패했습니다",
-    "removeFromProject": "프로젝트에서 빼기"
+    "removeFromProject": "프로젝트에서 빼기",
+    "folders": "폴더",
+    "folderRoot": "프로젝트 루트",
+    "newFolder": "새 폴더",
+    "folderName": "폴더 이름",
+    "deleteFolder": "폴더 삭제",
+    "folderCreated": "폴더가 생성되었습니다",
+    "folderCreateFailed": "폴더 생성에 실패했습니다",
+    "confirmDeleteFolder": "‘{name}’ 폴더와 하위 폴더를 삭제할까요? 산출물은 프로젝트 루트로 이동합니다."
   },
   "Members": {
     "title": "멤버 관리",

@@ -6,14 +6,15 @@ import {
   type ProjectFilter,
 } from '@/lib/workspace-server';
 
-// GET /api/workspace/artifacts?project=<id|unfiled|all>
+// GET /api/workspace/artifacts?project=<id|unfiled|all>[&folder=<id|root>]
 // Default: 'all' — every artifact in the org.
 //   - <uuid>: artifacts assigned to that project
 //   - 'unfiled': artifacts with project_id = null
 //   - 'all': every artifact regardless of project_id
-//
-// Returns metadata only (no content). Use /api/workspace/content for the
-// actual text/markdown/html of a single artifact.
+// Optional `folder` narrows within a project:
+//   - <uuid>: artifacts in that folder
+//   - 'root': artifacts in the project with folder_id IS NULL
+// folder is ignored unless project is a uuid.
 
 export async function GET(req: Request) {
   const supabase = await createClient();
@@ -24,11 +25,18 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const raw = url.searchParams.get('project');
+  const folderRaw = url.searchParams.get('folder');
   let filter: ProjectFilter;
   if (!raw || raw === 'all') {
     filter = { kind: 'all' };
   } else if (raw === 'unfiled') {
     filter = { kind: 'unfiled' };
+  } else if (folderRaw) {
+    filter = {
+      kind: 'folder',
+      projectId: raw,
+      folderId: folderRaw === 'root' ? null : folderRaw,
+    };
   } else {
     filter = { kind: 'project', projectId: raw };
   }

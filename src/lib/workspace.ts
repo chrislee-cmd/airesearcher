@@ -22,6 +22,19 @@ export type WorkspaceArtifact = {
   dbFeature: DbBackedFeature;
   dbId: string;
   projectId: string | null;
+  folderId: string | null;
+};
+
+// Folder list item, mirrors FolderRow on the server (see
+// src/lib/workspace-server.ts). Flat — the tree is reconstructed in the
+// panel by walking parent_folder_id.
+export type WorkspaceFolder = {
+  id: string;
+  projectId: string;
+  parentFolderId: string | null;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 // Which target features can accept an artifact produced by source.

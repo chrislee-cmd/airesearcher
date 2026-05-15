@@ -587,7 +587,15 @@
     "cancel": "Cancel",
     "created": "Project created",
     "createFailed": "Create failed",
-    "removeFromProject": "Remove from project"
+    "removeFromProject": "Remove from project",
+    "folders": "Folders",
+    "folderRoot": "Project root",
+    "newFolder": "New folder",
+    "folderName": "Folder name",
+    "deleteFolder": "Delete folder",
+    "folderCreated": "Folder created",
+    "folderCreateFailed": "Folder create failed",
+    "confirmDeleteFolder": "Delete folder ‘{name}’ and its subfolders? Artifacts move to project root."
   },
   "Members": {
     "title": "Member management",

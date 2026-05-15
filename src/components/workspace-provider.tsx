@@ -13,6 +13,7 @@ import type { FeatureKey } from '@/lib/features';
 import {
   type DbBackedFeature,
   type WorkspaceArtifact,
+  type WorkspaceFolder,
   prefillKey,
   SEND_TO_MAP,
 } from '@/lib/workspace';
@@ -44,6 +45,23 @@ type Ctx = {
   // active project). null means "unfiled" or "all".
   resolvedProjectId: string | null;
   resolvedKind: 'project' | 'unfiled' | 'all';
+  // Selected folder *within* the resolved project. null = project root
+  // (artifacts whose folder_id IS NULL). Has no effect when
+  // resolvedKind ≠ 'project'.
+  selectedFolderId: string | null;
+  setSelectedFolderId: (id: string | null) => void;
+  // Folders under the resolved project, flat. Empty when not in a project.
+  folders: WorkspaceFolder[];
+  // Create / rename / move / delete a folder. Each refreshes the folder
+  // list on success; artifact list is unaffected except for delete which
+  // also refetches artifacts (their folder_id may have been cleared by
+  // the FK ON DELETE SET NULL).
+  createFolder: (name: string, parentFolderId: string | null) => Promise<WorkspaceFolder | null>;
+  renameFolder: (id: string, name: string) => Promise<void>;
+  moveFolder: (id: string, parentFolderId: string | null) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  // Move a single artifact into a folder (or to project root with null).
+  setFolderId: (artifact: WorkspaceArtifact, folderId: string | null) => Promise<void>;
   // Refetch the artifact list. Call after a mutation (assign, delete).
   refresh: () => Promise<void>;
   // Legacy no-op kept so generators that used to push completed jobs into
@@ -82,10 +100,12 @@ const WorkspaceCtx = createContext<Ctx | null>(null);
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const { active } = useActiveProject();
   const [artifacts, setArtifacts] = useState<WorkspaceArtifact[]>([]);
+  const [folders, setFolders] = useState<WorkspaceFolder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setOpen] = useState(false);
   const [scope, setScope] = useState<WorkspaceScope>('active');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<DragInfo | null>(null);
 
   // (feature,id) → content cache. Drops on page nav (in-memory only).
@@ -115,14 +135,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return { resolvedProjectId: scope, resolvedKind: 'project' as const, queryParam: scope };
   }, [scope, active]);
 
+  // Folder filter is meaningful only when scope resolves to a project. In
+  // 'all' / 'unfiled' modes we deliberately ignore selectedFolderId so the
+  // user's folder selection survives a scope flip but doesn't leak into a
+  // query that wouldn't match anything.
+  const folderQueryParam =
+    resolvedKind === 'project'
+      ? selectedFolderId === null
+        ? null
+        : selectedFolderId
+      : null;
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}`,
-        { cache: 'no-store' },
-      );
+      const url =
+        resolvedKind === 'project' && folderQueryParam !== null
+          ? `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}&folder=${encodeURIComponent(folderQueryParam)}`
+          : `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) {
         setError('list_failed');
         return;
@@ -135,14 +167,61 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [queryParam]);
+  }, [queryParam, resolvedKind, folderQueryParam]);
+
+  // Folder list is only meaningful for project scope. We refetch on
+  // resolvedProjectId change; for other scopes we clear it.
+  const refreshFolders = useCallback(async () => {
+    if (resolvedKind !== 'project' || !resolvedProjectId) {
+      setFolders([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/workspace/folders?project=${encodeURIComponent(resolvedProjectId)}`,
+        { cache: 'no-store' },
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      // Server returns snake_case; remap.
+      type Row = {
+        id: string;
+        project_id: string;
+        parent_folder_id: string | null;
+        name: string;
+        created_at: string;
+        updated_at: string;
+      };
+      const rows = (json.folders ?? []) as Row[];
+      setFolders(
+        rows.map((r) => ({
+          id: r.id,
+          projectId: r.project_id,
+          parentFolderId: r.parent_folder_id,
+          name: r.name,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        })),
+      );
+    } catch {
+      /* swallow — folder pane will show empty */
+    }
+  }, [resolvedKind, resolvedProjectId]);
 
   // Auto-fetch on open + scope change. Closed panel doesn't poll — the
   // user's next open will re-fetch fresh data.
   useEffect(() => {
     if (!isOpen) return;
     void refresh();
-  }, [isOpen, refresh]);
+    void refreshFolders();
+  }, [isOpen, refresh, refreshFolders]);
+
+  // Switching project (or leaving project scope) invalidates the folder
+  // selection — keep it consistent so the panel never queries a folder
+  // that lives in a different project.
+  useEffect(() => {
+    setSelectedFolderId(null);
+  }, [resolvedProjectId, resolvedKind]);
 
   const fetchContent = useCallback<Ctx['fetchContent']>(async (a) => {
     const key = `${a.dbFeature}:${a.dbId}`;
@@ -166,6 +245,104 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const addArtifact = useCallback<Ctx['addArtifact']>(() => {
     // no-op — see Ctx['addArtifact'] comment
   }, []);
+
+  const createFolder = useCallback<Ctx['createFolder']>(async (name, parentFolderId) => {
+    if (resolvedKind !== 'project' || !resolvedProjectId) return null;
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          project_id: resolvedProjectId,
+          name,
+          parent_folder_id: parentFolderId,
+        }),
+      });
+      if (!res.ok) return null;
+      const row = (await res.json()) as {
+        id: string;
+        project_id: string;
+        parent_folder_id: string | null;
+        name: string;
+        created_at: string;
+        updated_at: string;
+      };
+      const folder: WorkspaceFolder = {
+        id: row.id,
+        projectId: row.project_id,
+        parentFolderId: row.parent_folder_id,
+        name: row.name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+      setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)));
+      return folder;
+    } catch {
+      return null;
+    }
+  }, [resolvedKind, resolvedProjectId]);
+
+  const renameFolder = useCallback<Ctx['renameFolder']>(async (id, name) => {
+    setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+    try {
+      await fetch(`/api/folders/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+    } catch {
+      void refreshFolders();
+    }
+  }, [refreshFolders]);
+
+  const moveFolder = useCallback<Ctx['moveFolder']>(async (id, parentFolderId) => {
+    setFolders((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, parentFolderId } : f)),
+    );
+    try {
+      const res = await fetch(`/api/folders/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ parent_folder_id: parentFolderId }),
+      });
+      if (!res.ok) void refreshFolders();
+    } catch {
+      void refreshFolders();
+    }
+  }, [refreshFolders]);
+
+  const deleteFolder = useCallback<Ctx['deleteFolder']>(async (id) => {
+    setFolders((prev) => prev.filter((f) => f.id !== id && f.parentFolderId !== id));
+    if (selectedFolderId === id) setSelectedFolderId(null);
+    try {
+      await fetch(`/api/folders/${id}`, { method: 'DELETE' });
+    } catch {
+      /* ignore */
+    }
+    // Artifacts may have lost their folder_id via FK ON DELETE SET NULL,
+    // and subfolders may have been cascade-deleted. Refetch both.
+    void refresh();
+    void refreshFolders();
+  }, [selectedFolderId, refresh, refreshFolders]);
+
+  const setFolderId = useCallback<Ctx['setFolderId']>(async (artifact, folderId) => {
+    setArtifacts((prev) =>
+      prev.map((a) => (a.id === artifact.id ? { ...a, folderId } : a)),
+    );
+    try {
+      await fetch('/api/artifacts/assign', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          feature: artifact.dbFeature,
+          id: artifact.dbId,
+          folder_id: folderId,
+        }),
+      });
+    } catch {
+      void refresh();
+    }
+  }, [refresh]);
 
   const setProjectId = useCallback<Ctx['setProjectId']>(async (artifact, projectId) => {
     // Optimistic update + server write. Failure rolls back via refresh().
@@ -258,6 +435,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setScope,
       resolvedProjectId,
       resolvedKind,
+      selectedFolderId,
+      setSelectedFolderId,
+      folders,
+      createFolder,
+      renameFolder,
+      moveFolder,
+      deleteFolder,
+      setFolderId,
       refresh,
       addArtifact,
       removeArtifact,
@@ -278,6 +463,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       scope,
       resolvedProjectId,
       resolvedKind,
+      selectedFolderId,
+      folders,
+      createFolder,
+      renameFolder,
+      moveFolder,
+      deleteFolder,
+      setFolderId,
       refresh,
       addArtifact,
       removeArtifact,

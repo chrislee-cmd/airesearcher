@@ -26,12 +26,25 @@ export type WorkspaceArtifactListItem = {
   dbFeature: DbFeature;
   dbId: string;
   projectId: string | null;
+  folderId: string | null;
 };
 
 export type ProjectFilter =
   | { kind: 'project'; projectId: string }
   | { kind: 'unfiled' }
-  | { kind: 'all' };
+  | { kind: 'all' }
+  // Folder filter narrows to a specific folder under a project. `null`
+  // means "project root" (artifacts in the project but no folder).
+  | { kind: 'folder'; projectId: string; folderId: string | null };
+
+export type FolderRow = {
+  id: string;
+  project_id: string;
+  parent_folder_id: string | null;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
 
 // Supabase's PostgrestFilterBuilder generic depth blows up TS instantiation
 // when threaded through a typed helper, so we type the param loosely. The
@@ -40,6 +53,12 @@ export type ProjectFilter =
 function applyProjectFilter(q: any, filter: ProjectFilter): any {
   if (filter.kind === 'project') return q.eq('project_id', filter.projectId);
   if (filter.kind === 'unfiled') return q.is('project_id', null);
+  if (filter.kind === 'folder') {
+    const scoped = q.eq('project_id', filter.projectId);
+    return filter.folderId === null
+      ? scoped.is('folder_id', null)
+      : scoped.eq('folder_id', filter.folderId);
+  }
   return q;
 }
 
@@ -50,6 +69,7 @@ function transcriptToItem(r: {
   id: string;
   filename: string | null;
   project_id: string | null;
+  folder_id: string | null;
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
@@ -62,6 +82,7 @@ function transcriptToItem(r: {
     dbFeature: 'transcript',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -69,6 +90,7 @@ function deskToItem(r: {
   id: string;
   keywords: string[] | null;
   project_id: string | null;
+  folder_id: string | null;
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
@@ -82,6 +104,7 @@ function deskToItem(r: {
     dbFeature: 'desk',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -89,6 +112,7 @@ function interviewToItem(r: {
   id: string;
   inputs: { filename?: string }[] | null;
   project_id: string | null;
+  folder_id: string | null;
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
@@ -101,6 +125,7 @@ function interviewToItem(r: {
     dbFeature: 'interview',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -108,6 +133,7 @@ function reportToItem(r: {
   id: string;
   inputs: { filename?: string }[] | null;
   project_id: string | null;
+  folder_id: string | null;
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
@@ -121,6 +147,7 @@ function reportToItem(r: {
     dbFeature: 'report',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -129,6 +156,7 @@ function schedulerToItem(r: {
   name: string | null;
   attendees: unknown[] | null;
   project_id: string | null;
+  folder_id: string | null;
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
@@ -141,6 +169,7 @@ function schedulerToItem(r: {
     dbFeature: 'scheduler',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -148,6 +177,7 @@ function recruitingToItem(r: {
   id: string;
   title: string | null;
   project_id: string | null;
+  folder_id: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
   return {
@@ -158,6 +188,7 @@ function recruitingToItem(r: {
     dbFeature: 'recruiting',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -165,6 +196,7 @@ function generationToItem(r: {
   id: string;
   feature: string;
   project_id: string | null;
+  folder_id: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
   // generations.feature can be any FeatureKey; we trust the row.
@@ -176,6 +208,7 @@ function generationToItem(r: {
     dbFeature: 'generation',
     dbId: r.id,
     projectId: r.project_id,
+    folderId: r.folder_id,
   };
 }
 
@@ -188,7 +221,7 @@ export async function listWorkspaceArtifacts(
   const transcriptQ = applyProjectFilter(
     supabase
       .from('transcript_jobs')
-      .select('id, project_id, filename, status, updated_at, created_at')
+      .select('id, project_id, folder_id, filename, status, updated_at, created_at')
       .eq('org_id', orgId)
       .eq('status', 'done'),
     filter,
@@ -196,7 +229,7 @@ export async function listWorkspaceArtifacts(
   const deskQ = applyProjectFilter(
     supabase
       .from('desk_jobs')
-      .select('id, project_id, keywords, status, updated_at, created_at')
+      .select('id, project_id, folder_id, keywords, status, updated_at, created_at')
       .eq('org_id', orgId)
       .eq('status', 'done'),
     filter,
@@ -204,7 +237,7 @@ export async function listWorkspaceArtifacts(
   const interviewQ = applyProjectFilter(
     supabase
       .from('interview_jobs')
-      .select('id, project_id, inputs, status, updated_at, created_at')
+      .select('id, project_id, folder_id, inputs, status, updated_at, created_at')
       .eq('org_id', orgId)
       .eq('status', 'done'),
     filter,
@@ -212,7 +245,7 @@ export async function listWorkspaceArtifacts(
   const reportQ = applyProjectFilter(
     supabase
       .from('report_jobs')
-      .select('id, project_id, inputs, status, updated_at, created_at')
+      .select('id, project_id, folder_id, inputs, status, updated_at, created_at')
       .eq('org_id', orgId)
       .eq('status', 'done'),
     filter,
@@ -220,14 +253,14 @@ export async function listWorkspaceArtifacts(
   const schedulerQ = applyProjectFilter(
     supabase
       .from('scheduler_sessions')
-      .select('id, project_id, name, attendees, updated_at, created_at')
+      .select('id, project_id, folder_id, name, attendees, updated_at, created_at')
       .eq('org_id', orgId),
     filter,
   );
   const recruitingQ = applyProjectFilter(
     supabase
       .from('recruiting_forms')
-      .select('id, project_id, title, created_at')
+      .select('id, project_id, folder_id, title, created_at')
       .eq('org_id', orgId),
     filter,
   );
@@ -239,7 +272,7 @@ export async function listWorkspaceArtifacts(
       : applyProjectFilter(
           supabase
             .from('generations')
-            .select('id, project_id, feature, created_at'),
+            .select('id, project_id, folder_id, feature, created_at'),
           filter,
         );
 
@@ -250,7 +283,7 @@ export async function listWorkspaceArtifacts(
     reportQ,
     schedulerQ,
     recruitingQ,
-    generationsQ ?? Promise.resolve({ data: [] as Array<{ id: string; project_id: string | null; feature: string; created_at: string }> }),
+    generationsQ ?? Promise.resolve({ data: [] as Array<{ id: string; project_id: string | null; folder_id: string | null; feature: string; created_at: string }> }),
   ]);
 
   const out: WorkspaceArtifactListItem[] = [];
@@ -421,3 +454,17 @@ export async function getArtifactContent(
 
   return null;
 }
+
+// Returns every folder under a project, flat. Caller builds the tree from
+// parent_folder_id (workspace panel keeps the rendered tree state).
+export async function listFolders(orgId: string, projectId: string): Promise<FolderRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('folders')
+    .select('id, project_id, parent_folder_id, name, created_at, updated_at')
+    .eq('org_id', orgId)
+    .eq('project_id', projectId)
+    .order('name', { ascending: true });
+  return (data ?? []) as FolderRow[];
+}
+
