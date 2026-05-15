@@ -34,7 +34,7 @@
   nav.top{padding:18px 0;position:sticky;top:0;z-index:50;background:rgba(251,247,242,.85);backdrop-filter:blur(10px)}
   nav.top .row{display:flex;justify-content:space-between;align-items:center}
   nav.top .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.012em}
-  nav.top .brand .emoji{width:32px;height:32px;border-radius:10px;background:var(--lav);display:flex;align-items:center;justify-content:center;font-size:18px}
+  nav.top .brand .logo{width:32px;height:32px;border-radius:10px;object-fit:contain;display:block}
   nav.top .links{display:flex;gap:24px;font-size:13px;color:var(--mute);font-weight:500}
   nav.top .links a:hover{color:var(--ink)}
   nav.top .cta{display:flex;gap:8px}
@@ -181,6 +181,8 @@
   .cta-final .squiggle{font-family:var(--hand);color:var(--accent);font-size:24px;margin-bottom:8px;display:block;transform:rotate(2deg)}
 
   footer{padding:40px 0;font-size:13px;color:var(--mute)}
+  footer .foot-brand{display:flex;align-items:center;gap:8px}
+  footer .foot-brand img{width:22px;height:22px;border-radius:6px;object-fit:contain;opacity:.7}
   footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1180px;margin:0 auto;padding:0 28px}
   footer span{color:var(--accent);font-weight:600}
 
@@ -399,7 +401,7 @@
 
 <nav class="top">
   <div class="container row">
-    <div class="brand"><span class="emoji">🦋</span> Research-mochi</div>
+    <div class="brand"><img class="logo" src="/landing/logo.png" alt="Research-mochi" /> Research-mochi</div>
     <div class="links">
       <a href="#showcase">데모</a>
       <a href="#why-mochi">왜 Mochi?</a>
@@ -625,7 +627,7 @@
 
 <footer>
   <div class="row">
-    <div>Made <span>kindly</span> in Seoul · © 2026 Research-mochi</div>
+    <div class="foot-brand"><img src="/landing/logo.png" alt="" /><span>Made <span>kindly</span> in Seoul · © 2026 Research-mochi</span></div>
     <div style="display:flex;gap:18px">
       <a href="/ko/terms">이용약관</a>
       <a href="/ko/privacy">개인정보</a>
