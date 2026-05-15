@@ -78,8 +78,6 @@ export function WorkspacePanel() {
     sendMany,
     targetsFor,
     setDragging,
-    lastAddedId,
-    lastAddedAt,
     selectedFolderId,
     setSelectedFolderId,
     folders,
@@ -111,6 +109,7 @@ export function WorkspacePanel() {
   const [dropTargetFolder, setDropTargetFolder] = useState<string | 'root' | null>(null);
   const [busy, setBusy] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const prevArtifactCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -165,13 +164,16 @@ export function WorkspacePanel() {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  // Trigger-button pulse on new artifact.
+  // Trigger-button pulse when artifact count grows.
   useEffect(() => {
-    if (!lastAddedAt) return;
-    setPulse(true);
-    const id = window.setTimeout(() => setPulse(false), FLASH_MS);
-    return () => window.clearTimeout(id);
-  }, [lastAddedAt]);
+    if (artifacts.length > prevArtifactCountRef.current) {
+      setPulse(true);
+      const id = window.setTimeout(() => setPulse(false), FLASH_MS);
+      prevArtifactCountRef.current = artifacts.length;
+      return () => window.clearTimeout(id);
+    }
+    prevArtifactCountRef.current = artifacts.length;
+  }, [artifacts.length]);
 
   // Escape closes the sidebar.
   useEffect(() => {
@@ -408,7 +410,7 @@ export function WorkspacePanel() {
 
   const allSelected = selected.size > 0 && selected.size === artifacts.length;
   const showAssignSelect = resolvedKind !== 'all'; // 'all' view shows the project name in-row instead
-  const flashActive = !!lastAddedAt && Date.now() - lastAddedAt < FLASH_MS;
+  const flashActive = pulse;
   const unfiledCount = artifacts.filter((a) => !a.projectId).length;
 
   return (
@@ -864,7 +866,7 @@ export function WorkspacePanel() {
                   const targets = targetsFor(a.featureKey);
                   const isMenuOpen = openMenu === a.id;
                   const isSelected = selected.has(a.id);
-                  const isFresh = flashActive && lastAddedId === a.id;
+                  const isFresh = flashActive;
                   return (
                     <li
                       key={a.id}
