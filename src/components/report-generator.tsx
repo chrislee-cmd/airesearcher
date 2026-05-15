@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
@@ -17,6 +17,10 @@ import {
   DEFAULT_REPORT_TYPE,
   type ReportType,
 } from '@/lib/reports/types';
+import { EnhancePanel } from './reports/enhance-panel';
+import { VersionSelector } from './reports/version-selector';
+import type { ReportVersionRow } from '@/lib/reports/versions';
+import type { EnhanceMode } from '@/lib/reports/context-payload';
 
 const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
 const ACCEPT_RE = /\.(docx|md|markdown|txt|csv|xlsx|xls)$/i;
@@ -159,6 +163,46 @@ export function ReportGenerator() {
   const [streamingHtml, setStreamingHtml] = useState<string>('');
   const [stage, setStage] = useState<Stage | null>(null);
   const [tab, setTab] = useState<'html' | 'md'>('html');
+
+  // Enhance pipeline state. reportId is the DB id of the persisted report,
+  // captured after the first run completes. versions is the full tree
+  // (v0 + every enhancement); selectedVersion picks which one to display.
+  // While enhancing we show streaming markdown in place of the version's
+  // canonical content.
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [versions, setVersions] = useState<ReportVersionRow[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<number>(0);
+  const [enhancing, setEnhancing] = useState<EnhanceMode | null>(null);
+  const [enhanceStream, setEnhanceStream] = useState<string>('');
+
+  const reloadVersions = useCallback(async (rid: string) => {
+    try {
+      const res = await fetch(`/api/reports/jobs/${rid}/versions`);
+      if (!res.ok) return;
+      const json = (await res.json()) as { versions: ReportVersionRow[] };
+      setVersions(json.versions ?? []);
+      const latest = (json.versions ?? []).reduce(
+        (mx, v) => Math.max(mx, v.version),
+        0,
+      );
+      setSelectedVersion(latest);
+    } catch (e) {
+      console.warn('[reports] load versions failed', e);
+    }
+  }, []);
+
+  async function onSetHead(version: number) {
+    if (!reportId) return;
+    try {
+      await fetch(`/api/reports/jobs/${reportId}/head`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ version }),
+      });
+    } catch (e) {
+      console.warn('[reports] set head failed', e);
+    }
+  }
 
   const job = jobs.get('reports');
   const running = job.status === 'running';
@@ -370,6 +414,12 @@ export function ReportGenerator() {
           markdown,
           html,
         });
+        if (dbId) {
+          setReportId(dbId);
+          // Best-effort initial load — the v0 row is mirrored by the
+          // /api/reports/jobs POST handler.
+          void reloadVersions(dbId);
+        }
         workspace.addArtifact({
           id: dbId ? `report_${dbId}` : undefined,
           featureKey: 'reports',
@@ -388,8 +438,28 @@ export function ReportGenerator() {
   const canRun = files.length > 0 && !running;
   const showResultPanel = running || result;
 
-  const previewHtml = result?.html ?? (wrapStreamingHtml(streamingHtml) || ' ');
-  const previewMd = result?.markdown ?? streamingMd;
+  const activeVersion = versions.find((v) => v.version === selectedVersion);
+
+  // Preview priority:
+  //   1. While the user is mid-enhance, show the streaming enhanced
+  //      markdown — HTML tab gets a "rendering..." placeholder because
+  //      the HTML is only produced server-side after the markdown stream
+  //      finishes.
+  //   2. Otherwise show the selected version (v1+) if loaded.
+  //   3. Fall back to the live `result` from the first generation run.
+  //   4. Otherwise the in-flight initial-generation stream.
+  let previewHtml: string;
+  let previewMd: string;
+  if (enhancing) {
+    previewHtml = wrapStreamingHtml('<p style="padding:24px;color:#9b9b9b">강화 결과 HTML 렌더링 대기 중...</p>');
+    previewMd = enhanceStream || '(강화 시작 중)';
+  } else if (activeVersion && activeVersion.version > 0) {
+    previewHtml = activeVersion.html;
+    previewMd = activeVersion.markdown;
+  } else {
+    previewHtml = result?.html ?? (wrapStreamingHtml(streamingHtml) || ' ');
+    previewMd = result?.markdown ?? streamingMd;
+  }
 
   return (
     <FeaturePage
@@ -527,6 +597,17 @@ export function ReportGenerator() {
               출처: {result.sources.join(', ')}
             </p>
           )}
+          {versions.length > 1 && (
+            <div className="mt-3">
+              <VersionSelector
+                versions={versions}
+                selectedVersion={selectedVersion}
+                onSelect={setSelectedVersion}
+                onSetHead={onSetHead}
+                disabled={!!enhancing}
+              />
+            </div>
+          )}
           {result && !running && (
             <RegenBar
               currentType={reportType}
@@ -561,6 +642,35 @@ export function ReportGenerator() {
             <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:14px]">
               {previewMd || '(아직 생성되지 않았습니다)'}
             </pre>
+          )}
+
+          {result && !running && reportId && (
+            <EnhancePanel
+              reportId={reportId}
+              parentVersion={selectedVersion}
+              busy={!!enhancing}
+              onStart={(mode) => {
+                setEnhancing(mode);
+                setEnhanceStream('');
+                setTab('md');
+              }}
+              onChunk={(acc) => setEnhanceStream(acc)}
+              onComplete={async () => {
+                setEnhancing(null);
+                setEnhanceStream('');
+                // The server writes the new version row in onFinish of
+                // the stream, which runs after the client closes the
+                // reader. Brief delay lets that settle before we refetch.
+                await new Promise((r) => setTimeout(r, 600));
+                if (reportId) await reloadVersions(reportId);
+                setTab('html');
+              }}
+              onError={(msg) => {
+                setEnhancing(null);
+                setEnhanceStream('');
+                alert(`강화 실패: ${msg}`);
+              }}
+            />
           )}
         </div>
       )}
