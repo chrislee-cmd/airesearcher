@@ -342,12 +342,22 @@ export function Sidebar({
       <div className="px-7 pb-6 pt-7">
         <Link
           href="/dashboard"
-          className="block transition-opacity duration-[120ms] hover:opacity-80"
+          className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
         >
-          <div className="text-[15px] font-bold tracking-[-0.01em] text-ink">
-            {tBrand('name')}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/landing/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 7 }}
+          />
+          <div>
+            <div className="text-[14px] font-bold tracking-[-0.01em] text-ink">
+              {tBrand('name')}
+            </div>
+            <div className="mt-0.5 h-px w-5 bg-amore" />
           </div>
-          <div className="mt-1 h-px w-6 bg-amore" />
         </Link>
       </div>
 
