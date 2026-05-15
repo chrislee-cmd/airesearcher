@@ -87,12 +87,19 @@
   .sec-head h2{font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-.025em;line-height:1.08}
   .sec-head p{margin:14px auto 0;color:var(--mute);max-width:520px;font-size:14.5px}
 
-  .nums{padding:32px 0 8px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .nums .num{padding:24px;border-radius:24px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
-  .nums .num .v{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1}
-  .nums .num .v em{color:var(--accent);font-style:normal}
-  .nums .num .l{margin-top:10px;color:var(--mute);font-size:13px}
-  @media (max-width:780px){.nums{grid-template-columns:repeat(2,1fr)}}
+  .why-mochi{padding:80px 0 72px}
+  .why-mochi .inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+  .why-mochi .wm-lead{font-size:clamp(26px,3vw,38px);line-height:1.2;letter-spacing:-.03em;font-weight:800;color:var(--ink)}
+  .why-mochi .wm-lead em{color:var(--accent);font-style:italic}
+  .why-mochi .wm-body{margin-top:20px;color:var(--mute);font-size:14.5px;line-height:1.85}
+  .why-mochi .wm-body+.wm-body{margin-top:14px}
+  .why-mochi .wm-pill{display:inline-block;margin-top:28px;padding:14px 20px;border-radius:16px;background:var(--peach);color:var(--ink);font-size:13.5px;line-height:1.7;font-weight:500}
+  .why-mochi .wm-cards{display:flex;flex-direction:column;gap:16px}
+  .why-mochi .wm-card{padding:24px 28px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+  .why-mochi .wm-card .wm-icon{font-size:20px;margin-bottom:10px}
+  .why-mochi .wm-card h4{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-bottom:6px}
+  .why-mochi .wm-card p{font-size:13px;color:var(--mute);line-height:1.65}
+  @media (max-width:780px){.why-mochi .inner{grid-template-columns:1fr;gap:40px}}
 
   .pricing{padding:64px 0}
   .price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:36px}
@@ -458,11 +465,50 @@
   </div>
 </section>
 
-<section class="container nums" id="nums">
-  <div class="num"><div class="v"><em>24</em>h</div><div class="l">가입 직후 모든 도구 무제한</div></div>
-  <div class="num"><div class="v">8</div><div class="l">한 책상 위에 놓인 작은 도구들</div></div>
-  <div class="num"><div class="v">−<em>87</em>%</div><div class="l">정리에 들이던 시간이 줄어요</div></div>
-  <div class="num"><div class="v">2 <span style="font-size:18px;font-weight:500;color:var(--mute)">langs</span></div><div class="l">한국어 기본 · 영어 자동</div></div>
+<section class="why-mochi" id="why-mochi">
+  <div class="container">
+    <div class="sec-head reveal" style="text-align:center">
+      <span class="meta">WHY MOCHI?</span>
+      <h2 style="margin-top:14px">달콤한 모찌 한 입처럼,<br/><span style="background:linear-gradient(180deg,transparent 60%,var(--peach) 60%);padding:0 6px;border-radius:6px">리서치도 그렇게.</span></h2>
+    </div>
+    <div class="inner reveal">
+      <div class="wm-left">
+        <p class="wm-lead">리서처의 일은<br/>늘 <em>고달프고, 고됩니다.</em></p>
+        <p class="wm-body">
+          잦은 야근과 끝없는 수정, 사소한 디테일 하나도 놓칠 수 없는 고집—
+          그 모든 고통을 감내한 끝에야 비로소 발굴되는 작고 소중한 인사이트.
+          오늘도 수많은 리서처들이 그 인사이트 하나를 위해 묵묵히 버티고 있습니다.
+        </p>
+        <p class="wm-body">
+          Research-Mochi는 그런 리서처분들 곁에 있고 싶습니다.
+          반복되는 업무를 자동화하고, 분석에만 온전히 집중할 수 있도록—
+          마치 고된 하루 끝에 먹는 한 입의 모찌처럼,
+          작지만 확실한 행복을 드리고 싶습니다.
+        </p>
+        <div class="wm-pill">
+          오늘 Research-Mochi로 업무를 자동화해 두고,<br/>
+          맛있는 모찌에 커피 한 잔 드시고 오시는 건 어떨까요? ☕
+        </div>
+      </div>
+      <div class="wm-cards">
+        <div class="wm-card">
+          <div class="wm-icon">🌙</div>
+          <h4>야근 대신, 자동화</h4>
+          <p>전사록 정리, 인터뷰 요약, 데스크 리서치까지—밤새 붙잡고 있던 그 작업들을 Mochi가 대신합니다.</p>
+        </div>
+        <div class="wm-card">
+          <div class="wm-icon">🔍</div>
+          <h4>디테일은 Mochi가, 인사이트는 당신이</h4>
+          <p>수백 장의 응답 속 패턴을 찾는 건 Mochi의 몫. 그 너머의 의미를 읽는 건 리서처의 몫입니다.</p>
+        </div>
+        <div class="wm-card">
+          <div class="wm-icon">✨</div>
+          <h4>수정을 줄이는 첫 번째 초안</h4>
+          <p>처음부터 정돈된 구조와 언어로. 수차례 반복되는 피드백 루프를 줄여드립니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="pricing" id="pricing">
