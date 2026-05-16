@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { RequirementsForm } from './requirements-form';
 import { CalendarView } from './calendar-view';
 import { AttendeesPanel } from './attendees-panel';
+import { BookingLinksPanel, type LinkBooking, type ProjectOption } from './booking-links-panel';
+import { colorForProject } from '@/lib/scheduler/project-colors';
 import { DEFAULT_REQUIREMENT } from '@/lib/scheduler/types';
 import type { Attendee, ConfirmedSlot, Requirement } from '@/lib/scheduler/types';
 import { useWorkspace } from '../workspace-provider';
@@ -45,6 +47,90 @@ export function SchedulerPage() {
   const [confirmed, setConfirmed] = useState<ConfirmedSlot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [linkBookings, setLinkBookings] = useState<LinkBooking[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string | 'none'>>(new Set());
+  useEffect(() => {
+    setProjectId(readActiveProjectId());
+    void (async () => {
+      try {
+        const res = await fetch('/api/projects', { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = (await res.json()) as { projects: ProjectOption[] };
+        setProjects(json.projects ?? []);
+      } catch {
+        /* network blip */
+      }
+    })();
+  }, []);
+
+  const colorFor = useMemo(
+    () => (pid: string | null) => colorForProject(pid, projects),
+    [projects],
+  );
+
+  // 'none' is a sentinel for bookings without a project.
+  const visibleProjectIds = useMemo(() => {
+    const set = new Set<string | 'none'>(['none', ...projects.map((p) => p.id)]);
+    for (const id of hiddenProjectIds) set.delete(id);
+    return set;
+  }, [projects, hiddenProjectIds]);
+
+  function toggleProjectVisibility(id: string | 'none') {
+    setHiddenProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Public booking results show up in the canvas as synthetic
+  // attendees + confirmed slots so the calendar can render them as
+  // locked. We keep these separate from the user's manually managed
+  // attendees so the AttendeesPanel stays clean.
+  const visibleLinkBookings = useMemo(
+    () => linkBookings.filter((b) => visibleProjectIds.has(b.projectId ?? 'none')),
+    [linkBookings, visibleProjectIds],
+  );
+  const linkAttendees = useMemo<Attendee[]>(
+    () =>
+      visibleLinkBookings.map((b) => ({
+        id: `linkbooking_${b.id}`,
+        name: b.name,
+        email: b.email,
+      })),
+    [visibleLinkBookings],
+  );
+  const linkConfirmed = useMemo<ConfirmedSlot[]>(
+    () =>
+      visibleLinkBookings.map((b) => ({
+        id: `linkconfirmed_${b.id}`,
+        attendeeId: `linkbooking_${b.id}`,
+        date: b.date,
+        start: b.start,
+        end: b.end,
+      })),
+    [visibleLinkBookings],
+  );
+  const calendarAttendees = useMemo(
+    () => [...attendees, ...linkAttendees],
+    [attendees, linkAttendees],
+  );
+  const calendarConfirmed = useMemo(
+    () => [...confirmed, ...linkConfirmed],
+    [confirmed, linkConfirmed],
+  );
+  // Map synthetic attendee ids → hex color so CalendarView can paint the
+  // confirmed cells with a project-specific border.
+  const colorByAttendeeId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of visibleLinkBookings) {
+      m.set(`linkbooking_${b.id}`, colorFor(b.projectId).hex);
+    }
+    return m;
+  }, [visibleLinkBookings, colorFor]);
 
   function addAttendee(input: Omit<Attendee, 'id'>) {
     const a: Attendee = { ...input, id: crypto.randomUUID() };
@@ -162,12 +248,68 @@ export function SchedulerPage() {
 
       <div className="mt-6 space-y-5">
         <RequirementsForm value={requirement} onChange={setRequirement} />
+        {(projects.length > 0 || linkBookings.some((b) => !b.projectId)) && (
+          <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+            <span className="text-mute">{t('projectFilter')}</span>
+            {projects.map((p) => {
+              const hidden = hiddenProjectIds.has(p.id);
+              const c = colorFor(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleProjectVisibility(p.id)}
+                  className={[
+                    'inline-flex items-center gap-1 rounded border px-2 py-0.5 transition',
+                    hidden ? 'border-line-soft text-mute-soft' : `${c.border} text-ink`,
+                  ].join(' ')}
+                  title={hidden ? t('show') : t('hide')}
+                >
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: hidden ? 'transparent' : c.hex, border: `1px solid ${c.hex}` }}
+                  />
+                  {p.name}
+                </button>
+              );
+            })}
+            {linkBookings.some((b) => !b.projectId) && (() => {
+              const hidden = hiddenProjectIds.has('none');
+              const c = colorFor(null);
+              return (
+                <button
+                  type="button"
+                  onClick={() => toggleProjectVisibility('none')}
+                  className={[
+                    'inline-flex items-center gap-1 rounded border px-2 py-0.5 transition',
+                    hidden ? 'border-line-soft text-mute-soft' : `${c.border} text-ink`,
+                  ].join(' ')}
+                >
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: hidden ? 'transparent' : c.hex, border: `1px solid ${c.hex}` }}
+                  />
+                  {t('noProject')}
+                </button>
+              );
+            })()}
+          </div>
+        )}
         <CalendarView
           requirement={requirement}
-          confirmed={confirmed}
-          attendees={attendees}
+          confirmed={calendarConfirmed}
+          attendees={calendarAttendees}
           selectedAttendeeId={selectedId}
           onPickSlot={pickSlotFromCalendar}
+          colorByAttendeeId={colorByAttendeeId}
+        />
+        <BookingLinksPanel
+          requirement={requirement}
+          projectId={projectId}
+          projects={projects}
+          visibleProjectIds={visibleProjectIds}
+          colorFor={colorFor}
+          onBookingsChange={setLinkBookings}
         />
         <AttendeesPanel
           attendees={attendees}
