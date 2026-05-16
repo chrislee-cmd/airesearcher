@@ -1,5 +1,7 @@
 {
-  "Brand": { "name": "Research-mochi" },
+  "Brand": {
+    "name": "Research-mochi"
+  },
   "Auth": {
     "signInTitle": "Research-mochi 로그인",
     "signInSubtitle": "마케팅·UX 리서치를 위한 AI 도구",
@@ -508,7 +510,9 @@
     "bankAmount": "송금 금액",
     "bankReference": "입금자명",
     "bankFootnote": "세금계산서를 신청하셨다면 입금 확인 후 영업일 기준 3일 내 발행됩니다.",
-    "done": "확인"
+    "done": "확인",
+    "paymentSuccess": "크레딧이 성공적으로 적립되었습니다.",
+    "paymentCancelled": "결제가 취소되었습니다."
   },
   "Desk": {
     "keywordLabel": "키워드",
@@ -636,7 +640,15 @@
       "explicitSlotsHint": "위 규칙 외에 따로 가능한 시간을 추가합니다.",
       "addSlot": "시간 추가",
       "remove": "삭제",
-      "weekdayShort": ["일", "월", "화", "수", "목", "금", "토"],
+      "weekdayShort": [
+        "일",
+        "월",
+        "화",
+        "수",
+        "목",
+        "금",
+        "토"
+      ],
       "rangeHint": "캘린더에서 시작일과 종료일을 차례로 클릭하세요.",
       "summaryEmpty": "아직 일정이 입력되지 않았습니다.",
       "expand": "펼치기",

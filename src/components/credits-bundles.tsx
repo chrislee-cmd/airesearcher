@@ -44,6 +44,16 @@ const EMPTY_TAX: TaxInvoiceState = {
   managerEmail: '',
 };
 
+type BankDetails = {
+  paymentId: string;
+  bankReference: string;
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolder: string | null;
+  credits: number;
+  amountKrw: number;
+};
+
 export function CreditsBundles() {
   const t = useTranslations('Credits');
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
@@ -54,6 +64,7 @@ export function CreditsBundles() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -69,15 +80,16 @@ export function CreditsBundles() {
   }
   function close() {
     setSelectedBundle(null);
+    setBankDetails(null);
     setTax(EMPTY_TAX);
-    setMethod('stripe');
+    setMethod(STRIPE_DISABLED ? 'bank_transfer' : 'stripe');
     setError(null);
   }
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
     track(
-      method === 'stripe' ? 'credits_pay_card_click' : 'credits_quote_request_click',
+      method === 'stripe' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
       {
         bundle: selected.id,
         credits: selected.credits,
@@ -85,54 +97,45 @@ export function CreditsBundles() {
         tax_invoice: tax.enabled,
       },
     );
-    if (method === 'stripe') {
-      // Stripe path stays for when the gateway is enabled in the future.
-      setSubmitting(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/billing/checkout', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ bundleId: selected.id, method: 'stripe' }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(json.error ?? `HTTP ${res.status}`);
-          return;
+
+    const taxPayload = tax.enabled
+      ? {
+          bizNo: tax.bizNo,
+          company: tax.company,
+          ceo: tax.ceo,
+          managerName: tax.managerName,
+          managerEmail: tax.managerEmail,
         }
-        if (json.checkoutUrl) window.location.href = json.checkoutUrl;
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setSubmitting(false);
-      }
-      return;
-    }
+      : undefined;
 
     setSubmitting(true);
     setError(null);
     try {
-      const taxPayload = tax.enabled
-        ? {
-            bizNo: tax.bizNo,
-            company: tax.company,
-            ceo: tax.ceo,
-            managerName: tax.managerName,
-            managerEmail: tax.managerEmail,
-          }
-        : undefined;
-      const res = await fetch('/api/billing/quote', {
+      const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ bundleId: selected.id, taxInvoice: taxPayload }),
+        body: JSON.stringify({ bundleId: selected.id, method, taxInvoice: taxPayload }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(json.error ?? `HTTP ${res.status}`);
         return;
       }
-      close();
-      setToast(t('quoteSentToast'));
+      if (method === 'stripe' && json.checkoutUrl) {
+        window.location.href = json.checkoutUrl;
+        return;
+      }
+      if (method === 'bank_transfer') {
+        setBankDetails({
+          paymentId: json.paymentId,
+          bankReference: json.bankReference,
+          bankName: json.bankName ?? null,
+          accountNumber: json.accountNumber ?? null,
+          accountHolder: json.accountHolder ?? null,
+          credits: selected.credits,
+          amountKrw: selected.priceKrw!,
+        });
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -231,7 +234,8 @@ export function CreditsBundles() {
         </div>
       )}
 
-      {selected && selected.priceKrw != null && (
+      {/* Checkout modal */}
+      {selected && selected.priceKrw != null && !bankDetails && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4"
           onClick={close}
@@ -350,9 +354,76 @@ export function CreditsBundles() {
                         ? t('submitting')
                         : method === 'stripe'
                         ? t('payWithCard')
-                        : t('requestQuote')}
+                        : t('issueBankReference')}
                     </button>
                   </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank transfer instruction panel */}
+      {bankDetails && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4"
+          onClick={close}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[480px] border border-line bg-paper [border-radius:14px]"
+          >
+            <header className="flex items-center justify-between border-b border-line px-5 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+                {t('checkoutEyebrow')}
+              </div>
+              <button
+                type="button"
+                onClick={close}
+                className="text-[18px] leading-none text-mute-soft hover:text-ink-2"
+              >
+                ×
+              </button>
+            </header>
+            <div className="px-5 py-5">
+              <h3 className="text-[14px] font-semibold text-ink-2">{t('bankTitle')}</h3>
+              <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('bankBody')}</p>
+
+              <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
+                {bankDetails.bankName && (
+                  <>
+                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankBankName')}</dt>
+                    <dd className="text-[13px] font-medium text-ink-2">{bankDetails.bankName}</dd>
+                  </>
+                )}
+                {bankDetails.accountNumber && (
+                  <>
+                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountNumber')}</dt>
+                    <dd className="text-[13px] font-medium text-ink-2 tabular-nums">{bankDetails.accountNumber}</dd>
+                  </>
+                )}
+                {bankDetails.accountHolder && (
+                  <>
+                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountHolder')}</dt>
+                    <dd className="text-[13px] font-medium text-ink-2">{bankDetails.accountHolder}</dd>
+                  </>
+                )}
+                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAmount')}</dt>
+                <dd className="text-[13px] font-medium text-ink-2 tabular-nums">{formatKrw(bankDetails.amountKrw)}</dd>
+                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankReference')}</dt>
+                <dd className="font-mono text-[15px] font-bold tracking-[0.08em] text-amore">{bankDetails.bankReference}</dd>
+              </dl>
+
+              <p className="mt-4 text-[11px] leading-[1.6] text-mute-soft">{t('bankFootnote')}</p>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={close}
+                  className="border border-ink bg-ink px-5 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 [border-radius:14px]"
+                >
+                  {t('done')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -424,4 +495,3 @@ function Field({
     </label>
   );
 }
-
