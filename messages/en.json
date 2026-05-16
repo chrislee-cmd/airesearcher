@@ -83,7 +83,8 @@
       "synthesizing": "Synthesizing",
       "normalizing": "Normalizing",
       "generating": "Drafting"
-    }
+    },
+    "adminPayments": "Payments (admin)"
   },
   "SidebarGroups": {
     "design": "Research Design",
