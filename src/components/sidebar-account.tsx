@@ -183,6 +183,15 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
               >
                 {t('adminApiUsage')}
               </PopoverLink>
+              <PopoverLink
+                href="/admin/payments"
+                onClick={() => {
+                  track('admin_payments_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminPayments')}
+              </PopoverLink>
             </>
           )}
           <div className="my-1 h-px bg-line-soft" />
