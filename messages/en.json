@@ -1,5 +1,7 @@
 {
-  "Brand": { "name": "Research-mochi" },
+  "Brand": {
+    "name": "Research-mochi"
+  },
   "Auth": {
     "signInTitle": "Sign in to Research-mochi",
     "signInSubtitle": "AI tools for marketing & UX research",
@@ -83,7 +85,8 @@
       "synthesizing": "Synthesizing",
       "normalizing": "Normalizing",
       "generating": "Drafting"
-    }
+    },
+    "adminPayments": "Payments (admin)"
   },
   "SidebarGroups": {
     "design": "Research Design",
@@ -315,6 +318,7 @@
       "transcribeAll": "Start transcription",
       "noFiles": "No files",
       "fileTooLarge": "File too large (max 25MB)",
+      "tooManyFiles": "File limit reached (max {max}). Remove a file to add more.",
       "viewTranscript": "View transcript",
       "hideTranscript": "Hide",
       "filesQueued": "{count} files queued",
@@ -507,7 +511,9 @@
     "bankAmount": "Amount",
     "bankReference": "Reference",
     "bankFootnote": "If you requested a tax invoice (세금계산서), we'll issue it within three business days of confirming the deposit.",
-    "done": "Done"
+    "done": "Done",
+    "paymentSuccess": "Credits have been added to your account.",
+    "paymentCancelled": "Payment was cancelled."
   },
   "Desk": {
     "keywordLabel": "Keywords",
@@ -635,7 +641,15 @@
       "explicitSlotsHint": "Add ad-hoc slots outside the rule above.",
       "addSlot": "Add slot",
       "remove": "Remove",
-      "weekdayShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "weekdayShort": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
       "rangeHint": "Click a start day, then an end day on the calendar.",
       "summaryEmpty": "No window set yet.",
       "expand": "Expand",

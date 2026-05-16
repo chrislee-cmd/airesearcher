@@ -126,7 +126,7 @@ async function CardView({ card }: { card: ProjectCard }) {
 
   if (isUnfiled) {
     return (
-      <div className="flex h-full flex-col border border-line bg-paper-soft p-5 [border-radius:14px]">
+      <div className="flex h-full flex-col border border-line bg-paper-soft p-5 [border-radius:14px] [box-shadow:var(--shadow-bento)]">
         {inner}
       </div>
     );
@@ -134,7 +134,7 @@ async function CardView({ card }: { card: ProjectCard }) {
   return (
     <Link
       href={`/projects/${card.projectId}`}
-      className="group flex h-full flex-col border border-line bg-paper p-5 transition-colors duration-[120ms] hover:bg-paper-soft [border-radius:14px]"
+      className="group flex h-full flex-col border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 [border-radius:14px] [box-shadow:var(--shadow-bento)]"
     >
       {inner}
     </Link>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   useInterviewJob,
+  MAX_FILES,
   type AnalysisRow,
   type ConsolidatedInsight,
   type ConvItem,
@@ -124,10 +125,15 @@ export function InterviewAnalyzer() {
           data-coach="interviews:upload"
           accept={ACCEPT}
           multiple
+          disabled={job.items.length >= MAX_FILES}
           onFiles={(files) => job.addFiles(files)}
           onDropRaw={handleArtifactDrop}
           label={tUp('dropHere')}
-          helperText={tUp('supported')}
+          helperText={
+            job.items.length >= MAX_FILES
+              ? tUp('tooManyFiles', { max: MAX_FILES })
+              : tUp('supported')
+          }
           className="mt-4 py-10"
         />
 

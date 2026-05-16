@@ -4,13 +4,16 @@ import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { CreditsBundles } from '@/components/credits-bundles';
 import { CreditsUsagePredictor } from '@/components/credits-usage-predictor';
+import { CreditsStatusBanner } from '@/components/credits-status-banner';
 
 export default async function CreditsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ status?: string; payment_id?: string }>;
 }) {
-  const { locale } = await params;
+  const [{ locale }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
 
   const t = await getTranslations('Credits');
@@ -18,6 +21,10 @@ export default async function CreditsPage({
   const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
+
+  const rawStatus = sp.status;
+  const status: 'success' | 'cancelled' | null =
+    rawStatus === 'success' ? 'success' : rawStatus === 'cancelled' ? 'cancelled' : null;
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
@@ -48,6 +55,8 @@ export default async function CreditsPage({
           {t('pageSubtitle')}
         </p>
       </div>
+
+      {status && <div className="mt-4"><CreditsStatusBanner status={status} /></div>}
 
       <CreditsBundles />
 

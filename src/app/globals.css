@@ -25,7 +25,7 @@
   --color-line: rgba(29, 27, 32, 0.10);
   --color-line-soft: rgba(29, 27, 32, 0.06);
   --color-paper: #fbf7f2;          /* warm cream (page bg) */
-  --color-paper-soft: #ffffff;     /* card bg */
+  --color-paper-soft: #fefaf5;     /* card surface — warm white, reads elevated above cream */
 
   /* Bento pastel palette */
   --color-lav: #e7defe;
@@ -35,7 +35,12 @@
   --color-sky: #cfe6ff;
   --color-rose: #ffd0e2;
 
+  /* AM / PM chart accents (data visualisation only) */
+  --color-am-accent: #fb923c;
+  --color-pm-accent: #6c7aff;
+
   /* Signal */
+  --color-success: #16a34a;
   --color-warning: #fb923c;
   --color-warning-bg: #fff1e6;
   --color-warning-line: #ffd9bf;

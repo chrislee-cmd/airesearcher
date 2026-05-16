@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 
 export const maxDuration = 30;
 
-// Admin endpoint: marks a bank-transfer payment as paid and grants credits.
-// Authorization: caller must be a member with role >= 'admin' on the org
-// that owns the payment. Service-role admin client is used only after the
-// authorization check, never before.
+// Marks a bank-transfer payment as paid and grants credits.
+// Authorized for: (a) super-admins, or (b) org members with role >= 'admin'.
 export async function POST(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -28,14 +27,16 @@ export async function POST(
     return NextResponse.json({ error: 'wrong_method' }, { status: 400 });
   }
 
-  // RLS-aware admin check: rely on has_org_role rather than re-implementing
-  // org membership logic here.
-  const { data: roleCheck } = await supabase.rpc('has_org_role', {
-    p_org: payment.org_id,
-    p_min: 'admin',
-  });
-  if (!roleCheck) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  const superAdmin = isSuperAdminEmail(user.email);
+  if (!superAdmin) {
+    // Fall back to org-level admin check.
+    const { data: roleCheck } = await supabase.rpc('has_org_role', {
+      p_org: payment.org_id,
+      p_min: 'admin',
+    });
+    if (!roleCheck) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
   }
 
   const { error } = await admin.rpc('grant_credits_from_payment', {
