@@ -586,7 +586,10 @@
     "sendSelectedTo": "Send selected to…",
     "downloadSelected": "Download selected…",
     "deleteSelected": "Delete selected",
-    "assignProject": "Assign project"
+    "assignProject": "Assign project",
+    "newProject": "New project",
+    "newProjectName": "Project name",
+    "refresh": "Refresh"
   },
   "Members": {
     "title": "Member management",

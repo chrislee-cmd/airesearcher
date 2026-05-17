@@ -58,11 +58,12 @@ export async function createAsset(
     headers: { 'x-api-key': key },
     body: form,
   });
-  const data = (await res.json()) as { id?: string; code?: string; message?: string };
-  if (!res.ok || !data.id) {
+  const data = (await res.json()) as { id?: string; _id?: string; code?: string; message?: string };
+  const assetId = data.id ?? data._id;
+  if (!res.ok || !assetId) {
     throw new Error(data.message ?? `tl_asset_create_${res.status}`);
   }
-  return data.id;
+  return assetId;
 }
 
 // ─── Step 2: Index asset into the Pegasus+Marengo index ──────────────────────

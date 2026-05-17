@@ -586,7 +586,10 @@
     "sendSelectedTo": "선택 항목 보내기",
     "downloadSelected": "선택 항목 다운로드…",
     "deleteSelected": "선택 삭제",
-    "assignProject": "프로젝트 지정"
+    "assignProject": "프로젝트 지정",
+    "newProject": "새 프로젝트",
+    "newProjectName": "프로젝트 이름",
+    "refresh": "새로고침"
   },
   "Members": {
     "title": "멤버 관리",
