@@ -19,12 +19,22 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   let prompt: string = DEFAULT_ANALYSIS_PROMPT;
+  let locale: string = 'ko';
   try {
-    const body = (await request.json()) as { prompt?: unknown };
+    const body = (await request.json()) as { prompt?: unknown; locale?: unknown };
     if (typeof body.prompt === 'string' && body.prompt.trim().length > 0) {
       prompt = body.prompt.trim();
     }
+    if (typeof body.locale === 'string' && (body.locale === 'ko' || body.locale === 'en')) {
+      locale = body.locale;
+    }
   } catch {}
+
+  const langDirective =
+    locale === 'en'
+      ? 'Respond in English. Use Markdown formatting.\n\n'
+      : '반드시 한국어로 응답해주세요. Markdown 형식을 사용합니다.\n\n';
+  prompt = langDirective + prompt;
 
   const { data: job, error } = await supabase
     .from('video_jobs')

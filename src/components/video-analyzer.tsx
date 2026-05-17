@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useRequireAuth } from './auth-provider';
@@ -250,6 +251,7 @@ export function VideoAnalyzer() {
 }
 
 function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => void; onRefresh: () => Promise<void> }) {
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
   const [submitting, setSubmitting] = useState(false);
@@ -269,7 +271,7 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
       const res = await fetch(`/api/video/jobs/${job.id}/analyze`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, locale }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
