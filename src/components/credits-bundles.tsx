@@ -19,12 +19,7 @@ const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   enterprise: 'bundleEnterprise',
 };
 
-type Method = 'stripe' | 'bank_transfer';
-
-// Card payments are wired but the Stripe webhook isn't registered yet, so we
-// disable the option until the gateway is fully live. Flip to false to make
-// it selectable.
-const STRIPE_DISABLED = true;
+type Method = 'creem' | 'bank_transfer';
 
 type TaxInvoiceState = {
   enabled: boolean;
@@ -57,9 +52,7 @@ type BankDetails = {
 export function CreditsBundles() {
   const t = useTranslations('Credits');
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
-  const [method, setMethod] = useState<Method>(
-    STRIPE_DISABLED ? 'bank_transfer' : 'stripe',
-  );
+  const [method, setMethod] = useState<Method>('creem');
   const [tax, setTax] = useState<TaxInvoiceState>(EMPTY_TAX);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,14 +75,14 @@ export function CreditsBundles() {
     setSelectedBundle(null);
     setBankDetails(null);
     setTax(EMPTY_TAX);
-    setMethod(STRIPE_DISABLED ? 'bank_transfer' : 'stripe');
+    setMethod('creem');
     setError(null);
   }
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
     track(
-      method === 'stripe' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
+      method === 'creem' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
       {
         bundle: selected.id,
         credits: selected.credits,
@@ -118,10 +111,14 @@ export function CreditsBundles() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error ?? `HTTP ${res.status}`);
+        setError(
+          json.error === 'service_unavailable'
+            ? t('errorServiceUnavailable')
+            : json.error ?? `HTTP ${res.status}`,
+        );
         return;
       }
-      if (method === 'stripe' && json.checkoutUrl) {
+      if (method === 'creem' && json.checkoutUrl) {
         window.location.href = json.checkoutUrl;
         return;
       }
@@ -272,11 +269,10 @@ export function CreditsBundles() {
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <MethodOption
-                        active={method === 'stripe'}
-                        onClick={() => !STRIPE_DISABLED && setMethod('stripe')}
+                        active={method === 'creem'}
+                        onClick={() => setMethod('creem')}
                         label={t('methodCard')}
-                        hint={STRIPE_DISABLED ? t('methodCardSoon') : t('methodCardHint')}
-                        disabled={STRIPE_DISABLED}
+                        hint={t('methodCardHint')}
                       />
                       <MethodOption
                         active={method === 'bank_transfer'}
@@ -352,7 +348,7 @@ export function CreditsBundles() {
                     >
                       {submitting
                         ? t('submitting')
-                        : method === 'stripe'
+                        : method === 'creem'
                         ? t('payWithCard')
                         : t('issueBankReference')}
                     </button>
