@@ -63,6 +63,7 @@
     "survey": "AI Survey",
     "quant": "Quantitative Analysis",
     "affinity_bubble": "Affinity Bubble",
+    "video": "Video Analyzer",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -424,6 +425,11 @@
       "title": "Affinity Bubble",
       "description": "Partner solution that visualizes tens of thousands of reviews as semantic clusters.",
       "cost": "External"
+    },
+    "video": {
+      "title": "Video Analyzer",
+      "description": "Upload user test or interview recordings and let AI analyze behavior patterns, pain points, and key moments.",
+      "cost": "25 credits"
     }
   },
   "Quant": {

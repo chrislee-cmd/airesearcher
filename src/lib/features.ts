@@ -11,7 +11,8 @@ export type FeatureKey =
   | 'recruiting'
   | 'survey'
   | 'quant'
-  | 'affinity_bubble';
+  | 'affinity_bubble'
+  | 'video';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -37,6 +38,7 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // Affinity Bubble is a partner showcase, not an in-app generator;
   // cost stays 0, the page just previews the offering and links out.
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
+  { key: 'video', href: '/video', cost: 25 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
@@ -48,6 +50,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'transcripts',  // 스크립트 생성기 (audio→script). The 전사록 path is `quotes`.
   'survey',
   'analyzer',
+  'video',
 ]);
 
 // Single source of truth for credit pricing — read by both the
@@ -113,5 +116,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey'] },
-  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'quant', 'affinity_bubble'] },
+  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'affinity_bubble'] },
 ];
