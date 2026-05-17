@@ -433,9 +433,14 @@ function JobRow({
                 {
                   destination: 'google-docs',
                   title: job.filename || '전사록',
-                  getText: async () => {
-                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/md`);
-                    return r.text();
+                  // Reuse the server-built DOCX so Google Doc preserves
+                  // the same rich layout users see in the .docx download.
+                  getBlob: async () => {
+                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/docx`);
+                    return {
+                      blob: await r.blob(),
+                      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    };
                   },
                 },
               ]}

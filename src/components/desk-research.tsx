@@ -757,7 +757,26 @@ export function DeskResearch() {
                   {
                     destination: 'google-docs',
                     title: buildFilename(),
-                    getText: () => job.output ?? '',
+                    // Reuse the server-built DOCX (same as the docx download
+                    // option) so the Google Doc preserves the rich layout.
+                    getBlob: async () => {
+                      const res = await fetch('/api/desk/export', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({
+                          markdown: job.output ?? '',
+                          filename: buildFilename(),
+                          title: job.keywords?.length
+                            ? `데스크 리서치 — ${job.keywords.join(', ')}`
+                            : '데스크 리서치',
+                        }),
+                      });
+                      return {
+                        blob: await res.blob(),
+                        mimeType:
+                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      };
+                    },
                   },
                 ]}
               />

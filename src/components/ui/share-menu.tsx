@@ -7,9 +7,17 @@ import { DropdownMenu, type DropdownItem } from './dropdown-menu';
 
 export type ShareDestination = 'google-docs' | 'google-sheets' | 'notion';
 
-type ShareItemDocs = {
+type ShareItemDocsText = {
   destination: 'google-docs';
   getText: () => string | Promise<string>;
+  title: string;
+};
+// Use this when the feature already produces a rich-formatted DOCX/HTML
+// blob (e.g. transcripts, desk-research). Drive converts the bytes to a
+// Google Doc and preserves formatting near-losslessly.
+type ShareItemDocsBlob = {
+  destination: 'google-docs';
+  getBlob: () => Promise<{ blob: Blob; mimeType: string }>;
   title: string;
 };
 type ShareItemSheets = {
@@ -23,7 +31,11 @@ type ShareItemNotion = {
   title: string;
 };
 
-export type ShareItem = ShareItemDocs | ShareItemSheets | ShareItemNotion;
+export type ShareItem =
+  | ShareItemDocsText
+  | ShareItemDocsBlob
+  | ShareItemSheets
+  | ShareItemNotion;
 
 type Props = {
   items: ShareItem[];
@@ -85,6 +97,20 @@ async function callShareApi(
   item: ShareItem,
 ): Promise<{ url: string } | { error: string }> {
   if (item.destination === 'google-docs') {
+    // Blob path (DOCX/HTML) preserves rich formatting via Drive conversion.
+    // Text path falls back to server-side markdown→HTML.
+    if ('getBlob' in item) {
+      const { blob, mimeType } = await item.getBlob();
+      const form = new FormData();
+      form.append('title', item.title);
+      form.append('mimeType', mimeType);
+      form.append('file', blob, 'doc');
+      const res = await fetch('/api/share/google/docs', {
+        method: 'POST',
+        body: form,
+      });
+      return res.json() as Promise<{ url: string } | { error: string }>;
+    }
     const text = await item.getText();
     const res = await fetch('/api/share/google/docs', {
       method: 'POST',

@@ -110,27 +110,39 @@ function markdownToHtml(md: string): string {
   return `<html><body>${out.join('\n')}</body></html>`;
 }
 
-export async function createGoogleDoc(
+// Upload bytes (DOCX, HTML, etc.) to Drive with on-the-fly conversion to a
+// Google Doc. Drive's converter preserves rich formatting of the source —
+// DOCX→Doc is near-lossless, HTML→Doc handles headings/lists/links well.
+export async function createGoogleDocFromBytes(
   accessToken: string,
   title: string,
-  markdown: string,
+  bytes: ArrayBuffer | string,
+  sourceMimeType: string,
 ): Promise<{ url: string; documentId: string }> {
-  const html = markdownToHtml(markdown || '');
-
   const boundary = `boundary_${Math.random().toString(36).slice(2)}`;
   const metadata = {
     name: title,
     mimeType: 'application/vnd.google-apps.document',
   };
 
-  const body =
+  // Build multipart body as a Uint8Array so binary (DOCX) bodies survive
+  // intact — string concatenation would corrupt non-text bytes.
+  const enc = new TextEncoder();
+  const head = enc.encode(
     `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\n` +
-    `Content-Type: text/html; charset=UTF-8\r\n\r\n` +
-    `${html}\r\n` +
-    `--${boundary}--`;
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+      `${JSON.stringify(metadata)}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Type: ${sourceMimeType}\r\n\r\n`,
+  );
+  const tail = enc.encode(`\r\n--${boundary}--`);
+  const middle =
+    typeof bytes === 'string' ? enc.encode(bytes) : new Uint8Array(bytes);
+
+  const body = new Uint8Array(head.length + middle.length + tail.length);
+  body.set(head, 0);
+  body.set(middle, head.length);
+  body.set(tail, head.length + middle.length);
 
   const url = `${DRIVE_UPLOAD}?uploadType=multipart&supportsAllDrives=true&fields=id`;
   const res = await fetch(url, {
@@ -151,4 +163,14 @@ export async function createGoogleDoc(
     documentId: data.id,
     url: `https://docs.google.com/document/d/${data.id}/edit`,
   };
+}
+
+// Convenience for markdown sources: convert to HTML first, then upload.
+export async function createGoogleDoc(
+  accessToken: string,
+  title: string,
+  markdown: string,
+): Promise<{ url: string; documentId: string }> {
+  const html = markdownToHtml(markdown || '');
+  return createGoogleDocFromBytes(accessToken, title, html, 'text/html; charset=UTF-8');
 }

@@ -598,7 +598,12 @@ export function ReportGenerator() {
                   {
                     destination: 'google-docs',
                     title: `리서치 리포트 ${reportStamp()}`,
-                    getText: () => result?.markdown ?? '',
+                    // Use the pre-rendered HTML (same source as the .html
+                    // download) so Drive preserves the report's styling.
+                    getBlob: async () => ({
+                      blob: new Blob([result?.html ?? ''], { type: 'text/html;charset=utf-8' }),
+                      mimeType: 'text/html; charset=UTF-8',
+                    }),
                   },
                 ]}
               />
