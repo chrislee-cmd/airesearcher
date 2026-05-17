@@ -110,13 +110,12 @@ export function VideoAnalyzer() {
   const requireAuth = useRequireAuth();
   const { jobs, localUploads, setUploadProgress, clearUploadProgress, refreshJobs, removeJob } =
     useVideoJobs();
-  const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const startUpload = useCallback(
     (files: File[]) => {
       requireAuth(() => {
-        void runUpload(files[0]);
+        for (const file of files) void runUpload(file);
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +123,6 @@ export function VideoAnalyzer() {
   );
 
   async function runUpload(file: File) {
-    if (busyUpload) return;
-    setBusyUpload(true);
     setUploadError(null);
     const tempId = crypto.randomUUID();
     try {
@@ -185,7 +182,6 @@ export function VideoAnalyzer() {
       setUploadError(e instanceof Error ? e.message : 'upload_failed');
     } finally {
       clearUploadProgress(tempId);
-      setBusyUpload(false);
     }
   }
 
@@ -205,10 +201,10 @@ export function VideoAnalyzer() {
         <FileDropZone
           accept={ACCEPT}
           maxSizeBytes={MAX_SIZE_BYTES}
-          disabled={busyUpload}
+          multiple
           onFiles={(files) => startUpload(files)}
-          label="영상 파일을 끌어다 놓거나 클릭해서 선택하세요"
-          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (최대 4 GB)"
+          label="영상 파일을 끌어다 놓거나 클릭해서 선택하세요 (여러 개 동시 선택 가능)"
+          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (개당 최대 4 GB)"
           className="py-12"
         >
           {uploadError && (
