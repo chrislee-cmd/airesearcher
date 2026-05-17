@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits } from '@/lib/credits';
-import { FEATURE_COSTS } from '@/lib/features';
 import { createAsset, createIndexedAsset, getAnalyzeIndexId } from '@/lib/twelvelabs';
 
 export const maxDuration = 60;
@@ -69,7 +67,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Insert DB job — status=indexing, client will poll to know when ready
+  // Insert DB job — status=indexing, client will poll to know when ready.
+  // Credits are charged at analyze time (length-based), not on upload.
   const { data: job, error: insertErr } = await supabase
     .from('video_jobs')
     .insert({
@@ -82,7 +81,6 @@ export async function POST(request: Request) {
       tl_indexed_asset_id: indexedAssetId,
       tl_index_id: indexId,
       status: 'indexing',
-      credits_spent: FEATURE_COSTS.video,
     })
     .select('id')
     .single();
@@ -92,12 +90,6 @@ export async function POST(request: Request) {
       { error: insertErr?.message ?? 'db_error' },
       { status: 500 },
     );
-  }
-
-  const spend = await spendCredits(org.org_id, 'video');
-  if (!spend.ok) {
-    await supabase.from('video_jobs').delete().eq('id', job.id);
-    return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
   return NextResponse.json({ job_id: job.id });

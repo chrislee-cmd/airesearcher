@@ -9,6 +9,7 @@ import { useVideoJobs, type VideoJob, type VideoJobStatus } from './video-job-pr
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
+import { computeVideoCredits } from '@/lib/video-credits';
 
 const ACCEPT = 'video/*,.mp4,.mov,.webm,.avi,.mkv,.m4v';
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
@@ -258,6 +259,8 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
   const hint = statusLabel(job.status);
 
   const showPromptEditor = job.status === 'indexed' || job.status === 'error' || job.status === 'done';
+  const estimatedCredits = computeVideoCredits(job.duration_seconds);
+  const durationMin = job.duration_seconds ? Math.ceil(job.duration_seconds / 60) : null;
 
   async function submitAnalysis() {
     if (submitting) return;
@@ -323,8 +326,13 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
       {/* Prompt editor — shown for indexed (first run) and done/error (re-analyze) */}
       {showPromptEditor && (
         <div className="border-t border-line-soft px-5 pb-4 pt-3">
-          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
-            분석 프롬프트
+          <div className="mb-1.5 flex items-baseline justify-between gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+              분석 프롬프트
+            </div>
+            <div className="text-[11px] text-mute-soft tabular-nums">
+              {durationMin ? `${durationMin}분 · ` : ''}이 분석 {estimatedCredits}크레딧
+            </div>
           </div>
           <textarea
             value={prompt}
@@ -342,7 +350,11 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
               disabled={submitting || !prompt.trim() || job.status === 'analyzing'}
               className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
             >
-              {submitting ? '요청 중…' : job.status === 'done' || job.status === 'error' ? '다시 분석' : '분석 시작'}
+              {submitting
+                ? '요청 중…'
+                : job.status === 'done' || job.status === 'error'
+                ? `다시 분석 (${estimatedCredits}크레딧)`
+                : `분석 시작 (${estimatedCredits}크레딧)`}
             </button>
           </div>
         </div>

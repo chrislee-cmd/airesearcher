@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeVideo } from '@/lib/twelvelabs';
 import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
-import { FEATURE_COSTS } from '@/lib/features';
+import { computeVideoCredits } from '@/lib/video-credits';
+import { spendCreditsAdminAmount } from '@/lib/credits';
 
 export const maxDuration = 60;
 
@@ -46,7 +47,6 @@ export async function POST(
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  // Must be indexed or error/done (for re-analyze)
   if (
     job.status !== 'indexed' &&
     job.status !== 'error' &&
@@ -57,6 +57,15 @@ export async function POST(
 
   if (!job.tl_asset_id) {
     return NextResponse.json({ error: 'no_asset' }, { status: 409 });
+  }
+
+  const credits = computeVideoCredits(job.duration_seconds);
+
+  // Charge before kicking off async analysis — refunds on failure are messy,
+  // so we accept the standard "pay-per-call" trade-off.
+  const spend = await spendCreditsAdminAmount(job.org_id, job.user_id, 'video', credits);
+  if (!spend.ok) {
+    return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
   const admin = createAdminClient();
@@ -73,10 +82,11 @@ export async function POST(
       orgId: job.org_id,
       userId: job.user_id,
       prompt,
+      credits,
     }),
   );
 
-  return NextResponse.json({ status: 'analyzing' });
+  return NextResponse.json({ status: 'analyzing', credits });
 }
 
 async function runAnalysis(args: {
@@ -86,8 +96,9 @@ async function runAnalysis(args: {
   orgId: string;
   userId: string;
   prompt: string;
+  credits: number;
 }) {
-  const { jobId, assetId, filename, orgId, userId, prompt } = args;
+  const { jobId, assetId, filename, orgId, userId, prompt, credits } = args;
   const admin = createAdminClient();
 
   async function patch(update: Record<string, unknown>) {
@@ -109,7 +120,7 @@ async function runAnalysis(args: {
         feature: 'video',
         input: JSON.stringify({ filename, asset_id: assetId }),
         output: finalText,
-        credits_spent: FEATURE_COSTS.video,
+        credits_spent: credits,
       })
       .select('id')
       .single();
@@ -118,6 +129,7 @@ async function runAnalysis(args: {
       status: 'done',
       analysis: finalText,
       generation_id: gen?.id,
+      credits_spent: credits,
     });
   } catch (err) {
     console.error('[video] runAnalysis fatal', err);

@@ -27,6 +27,7 @@ export type VideoJob = {
   error_message: string | null;
   generation_id: string | null;
   credits_spent: number;
+  duration_seconds: number | null;
   created_at: string;
   updated_at: string;
 };

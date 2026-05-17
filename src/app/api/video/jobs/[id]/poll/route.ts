@@ -65,11 +65,16 @@ export async function POST(
     return NextResponse.json({ status: 'indexing' });
   }
 
-  // Indexing done — flip to 'indexed' and wait for user to submit a prompt
+  // Indexing done — flip to 'indexed' and wait for user to submit a prompt.
+  // Capture duration so the analyze route can charge length-based credits.
+  const durationSec = indexed.system_metadata?.duration;
   const admin = createAdminClient();
   await admin
     .from('video_jobs')
-    .update({ status: 'indexed' })
+    .update({
+      status: 'indexed',
+      duration_seconds: typeof durationSec === 'number' ? Math.round(durationSec) : null,
+    })
     .eq('id', id);
 
   return NextResponse.json({ status: 'indexed' });
