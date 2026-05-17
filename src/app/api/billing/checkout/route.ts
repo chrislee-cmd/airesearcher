@@ -102,12 +102,14 @@ export async function POST(request: Request) {
   // ── Creem card rail ─────────────────────────────────────────────────────
   const creem = getCreem();
   if (!creem) {
-    return NextResponse.json({ error: 'creem_not_configured' }, { status: 503 });
+    console.error('[billing/checkout] CREEM_API_KEY missing');
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
   const productId = getCreemProductId(bundleId as CreditBundleId);
   if (!productId) {
-    return NextResponse.json({ error: `creem_product_not_configured:${bundleId}` }, { status: 503 });
+    console.error(`[billing/checkout] CREEM_PRODUCT_${bundleId.toUpperCase()} missing`);
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
   const origin = originFromRequest(request);
