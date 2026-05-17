@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import {
   buildCrossTab,
   summarizeColumns,
@@ -12,6 +13,17 @@ import {
   type CrossTab,
   type Row,
 } from '@/lib/quant/crosstab';
+
+function crossTabToRows(t: CrossTab): string[][] {
+  const header = ['', ...t.colValues, '합계'];
+  const body = t.rowValues.map((rv, i) => [
+    rv,
+    ...t.counts[i].map((n) => String(n)),
+    String(t.rowTotals[i]),
+  ]);
+  const footer = ['합계', ...t.colTotals.map((n) => String(n)), String(t.total)];
+  return [header, ...body, footer];
+}
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileDropZone } from './ui/file-drop-zone';
 
@@ -205,6 +217,17 @@ export function QuantAnalyzer() {
                     new Blob([toCsv(crossTab!)], {
                       type: 'text/csv;charset=utf-8',
                     }),
+                },
+              ]}
+            />
+            <ShareMenu
+              align="end"
+              disabled={!crossTab}
+              items={[
+                {
+                  destination: 'google-sheets',
+                  title: '정량 분석',
+                  getRows: () => crossTabToRows(crossTab!),
                 },
               ]}
             />

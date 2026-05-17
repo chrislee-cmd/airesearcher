@@ -182,6 +182,8 @@ type Ctx = {
   exportCsv: () => void;
   exportXlsx: () => void;
   exportDocx: () => Promise<void>;
+  // For share-to-Sheets: returns the final summary matrix as rows.
+  getMatrixRows: () => string[][];
   // Template (사용자 정의 질문 골격). When `template` is non-null and
   // `templateMode === 'template'`, analyze runs in alignment mode and
   // its row set is fixed to template.questions plus a 기타 응답 row.
@@ -1300,6 +1302,10 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       'interview-analysis.xlsx',
     );
   }
+  function getMatrixRows(): string[][] {
+    if (!analysis || !filenameOrder.length) return [];
+    return buildFinalMatrix(analysis);
+  }
   async function exportDocx() {
     if (!analysis || !filenameOrder.length) return;
     // Heavy `docx` library — lazy-imported so it stays out of the
@@ -1338,6 +1344,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     exportCsv,
     exportXlsx,
     exportDocx,
+    getMatrixRows,
     template,
     templateMode,
     templateLoading,

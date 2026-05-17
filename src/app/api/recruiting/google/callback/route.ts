@@ -41,7 +41,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(back('missing_code'));
   }
 
-  const [stateUserId, nonce] = state.split('.');
+  // state format: `${userId}.${nonce}` (recruiting) or
+  // `${userId}.${nonce}.${base64url(nextPath)}` (share feature)
+  const stateParts = state.split('.');
+  const [stateUserId, nonce, encodedNext] = stateParts;
   const cookieNonce = request.headers
     .get('cookie')
     ?.split(';')
@@ -81,7 +84,20 @@ export async function GET(request: Request) {
     return NextResponse.redirect(back('store_failed'));
   }
 
-  const res = NextResponse.redirect(back('connected'));
+  // If the share feature encoded a return path in state, redirect there.
+  let destination: URL;
+  if (encodedNext) {
+    try {
+      const nextPath = Buffer.from(encodedNext, 'base64url').toString('utf8');
+      destination = new URL(`${nextPath}?google=connected`, url.origin);
+    } catch {
+      destination = back('connected');
+    }
+  } else {
+    destination = back('connected');
+  }
+
+  const res = NextResponse.redirect(destination);
   // Clear the nonce cookie now that we've consumed it.
   res.cookies.set('g_oauth_nonce', '', { path: '/', maxAge: 0 });
   return res;

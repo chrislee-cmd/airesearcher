@@ -27,6 +27,7 @@ function readActiveProjectId(): string | null {
 import { useDeskJobs, type DeskJob } from './desk-job-provider';
 import { DeskAnalyticsPanel } from './desk-analytics-panel';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
@@ -746,6 +747,22 @@ export function DeskResearch() {
                     format: 'docx',
                     kind: 'action',
                     onSelect: () => downloadDocx(job.output ?? ''),
+                  },
+                ]}
+              />
+              <ShareMenu
+                align="end"
+                disabled={!job.output}
+                items={[
+                  {
+                    destination: 'google-docs',
+                    title: buildFilename(),
+                    getText: () => job.output ?? '',
+                  },
+                  {
+                    destination: 'notion',
+                    title: buildFilename(),
+                    getMarkdown: () => job.output ?? '',
                   },
                 ]}
               />

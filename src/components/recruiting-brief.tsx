@@ -11,6 +11,7 @@ import { RecruitingResponses } from './recruiting-responses';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import { FeaturePage } from './ui/feature-page';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
@@ -778,6 +779,27 @@ export function RecruitingBrief() {
                           kind: 'blob',
                           filename: `${survey.title || 'survey'}.xlsx`,
                           build: () => buildSurveyXlsxBlob(surveyRows),
+                        },
+                      ]}
+                    />
+                  )}
+                  {survey && surveyRows.length > 0 && (
+                    <ShareMenu
+                      align="end"
+                      items={[
+                        {
+                          destination: 'google-sheets',
+                          title: survey.title || '리서치 설문',
+                          getRows: () => [
+                            ['#', '섹션', '질문', '옵션', '로직'],
+                            ...surveyRows.map((r) => [
+                              String(r.index),
+                              r.section,
+                              r.question,
+                              r.option,
+                              r.logic,
+                            ]),
+                          ],
                         },
                       ]}
                     />

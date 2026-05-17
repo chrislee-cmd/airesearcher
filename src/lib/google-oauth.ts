@@ -25,6 +25,16 @@ export const GOOGLE_SCOPES = [
 export const RESPONSES_SCOPE =
   'https://www.googleapis.com/auth/forms.responses.readonly';
 export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+export const DOCS_SCOPE = 'https://www.googleapis.com/auth/documents';
+export const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+
+// Superset of GOOGLE_SCOPES — requested when user connects for sharing.
+// Includes docs + sheets so we can create Docs/Sheets without re-consent.
+export const SHARE_SCOPES = [
+  ...GOOGLE_SCOPES,
+  DOCS_SCOPE,
+  SHEETS_SCOPE,
+];
 
 export function hasResponsesScope(stored: string | null | undefined): boolean {
   if (!stored) return false;
@@ -34,6 +44,31 @@ export function hasResponsesScope(stored: string | null | undefined): boolean {
 export function hasDriveFileScope(stored: string | null | undefined): boolean {
   if (!stored) return false;
   return stored.split(/\s+/).includes(DRIVE_FILE_SCOPE);
+}
+
+export function hasDocsScope(stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  return stored.split(/\s+/).includes(DOCS_SCOPE);
+}
+
+export function hasSheetsScope(stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  return stored.split(/\s+/).includes(SHEETS_SCOPE);
+}
+
+export function buildShareAuthorizeUrl(state: string): string {
+  const { clientId, redirectUri } = getGoogleEnv();
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: SHARE_SCOPES.join(' '),
+    access_type: 'offline',
+    prompt: 'consent',
+    include_granted_scopes: 'true',
+    state,
+  });
+  return `${AUTH_URL}?${params.toString()}`;
 }
 
 export function getGoogleEnv() {
