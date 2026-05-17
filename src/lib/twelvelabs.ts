@@ -83,8 +83,10 @@ export async function createIndexedAsset(
   });
 
   if (res.status !== 202 && !res.ok) {
-    const data = await res.json().catch(() => ({})) as { code?: string; message?: string };
-    throw new Error(data.message ?? `tl_indexed_asset_create_${res.status}`);
+    const text = await res.text().catch(() => '');
+    let msg: string | undefined;
+    try { msg = (JSON.parse(text) as { message?: string }).message; } catch {}
+    throw new Error(msg ?? `tl_indexed_asset_create_${res.status}: ${text.slice(0, 120)}`);
   }
 
   // Location header: /indexes/{index-id}/indexed-assets/{indexed-asset-id}
@@ -111,9 +113,15 @@ export async function getIndexedAsset(
     `${BASE}/indexes/${indexId}/indexed-assets/${indexedAssetId}`,
     { headers: { 'x-api-key': key } },
   );
-  const data = (await res.json()) as TLIndexedAsset & { code?: string; message?: string };
+  const text = await res.text();
+  let data: TLIndexedAsset & { code?: string; message?: string };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    throw new Error(`tl_indexed_asset_get_${res.status}: ${text.slice(0, 120)}`);
+  }
   if (!res.ok) {
-    throw new Error((data as { message?: string }).message ?? `tl_indexed_asset_get_${res.status}`);
+    throw new Error(data.message ?? `tl_indexed_asset_get_${res.status}`);
   }
   return data;
 }

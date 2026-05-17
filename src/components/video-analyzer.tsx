@@ -9,7 +9,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 
 const ACCEPT = 'video/*,.mp4,.mov,.webm,.avi,.mkv,.m4v';
-const MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_SIZE_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
 
 function formatBytes(n: number | null) {
   if (!n) return '';
@@ -204,7 +204,7 @@ export function VideoAnalyzer() {
           disabled={busyUpload}
           onFiles={(files) => startUpload(files)}
           label="영상 파일을 끌어다 놓거나 클릭해서 선택하세요"
-          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (최대 500 MB)"
+          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (최대 4 GB)"
           className="py-12"
         >
           {uploadError && (
