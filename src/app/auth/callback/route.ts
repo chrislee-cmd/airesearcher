@@ -15,6 +15,10 @@ export async function GET(request: Request) {
 
     // Logged-in user: their saved profile.locale wins over Accept-Language.
     if (session?.user) {
+      // Single-session enforcement: revoke all other active sessions so the
+      // same account can't be used concurrently on multiple devices/browsers.
+      await supabase.auth.signOut({ scope: 'others' });
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('locale')

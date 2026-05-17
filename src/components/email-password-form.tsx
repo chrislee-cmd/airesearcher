@@ -63,6 +63,8 @@ export function EmailPasswordForm() {
           setError(t(mapAuthError(error.message, 'signIn')));
           return;
         }
+        // Single-session enforcement: revoke all other active sessions.
+        await supabase.auth.signOut({ scope: 'others' });
         track('auth_signin_success');
         router.replace(next);
         router.refresh();
