@@ -589,7 +589,11 @@
     "assignProject": "프로젝트 지정",
     "newProject": "새 프로젝트",
     "newProjectName": "프로젝트 이름",
-    "refresh": "새로고침"
+    "refresh": "새로고침",
+    "scopeUnfiled": "미분류",
+    "scopeAll": "전체",
+    "scopeProject": "프로젝트",
+    "projects": "프로젝트"
   },
   "Members": {
     "title": "멤버 관리",

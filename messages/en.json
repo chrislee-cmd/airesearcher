@@ -589,7 +589,11 @@
     "assignProject": "Assign project",
     "newProject": "New project",
     "newProjectName": "Project name",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "scopeUnfiled": "Unfiled",
+    "scopeAll": "All",
+    "scopeProject": "Project",
+    "projects": "Projects"
   },
   "Members": {
     "title": "Member management",
