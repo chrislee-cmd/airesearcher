@@ -66,6 +66,13 @@ export async function createAsset(
   return assetId;
 }
 
+// True if the error from POST /indexed-assets means "asset isn't ready yet" —
+// TL is still downloading/transcoding the asset behind the scenes. Callers
+// should defer indexing and retry later instead of failing the upload.
+export function isAssetStillProcessing(err: unknown): boolean {
+  return err instanceof Error && /being processed/i.test(err.message);
+}
+
 // ─── Step 2: Index asset into the Pegasus+Marengo index ──────────────────────
 // Returns the indexed-asset-id parsed from the Location response header.
 export async function createIndexedAsset(

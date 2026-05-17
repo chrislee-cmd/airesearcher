@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getIndexedAsset } from '@/lib/twelvelabs';
+import {
+  createIndexedAsset,
+  getIndexedAsset,
+  isAssetStillProcessing,
+} from '@/lib/twelvelabs';
 
 export const maxDuration = 60;
 
@@ -36,9 +40,34 @@ export async function POST(
     return NextResponse.json({ status: job.status });
   }
 
-  // Still uploading or no indexed-asset-id yet
-  if (job.status === 'uploading' || !job.tl_indexed_asset_id) {
+  if (job.status === 'uploading') {
     return NextResponse.json({ status: job.status });
+  }
+
+  // Retry indexing if /start couldn't get past the "asset still processing"
+  // gate. Once createIndexedAsset succeeds, normal getIndexedAsset polling
+  // kicks in on the next tick.
+  if (!job.tl_indexed_asset_id) {
+    if (!job.tl_asset_id) {
+      return NextResponse.json({ status: job.status });
+    }
+    try {
+      const newId = await createIndexedAsset(job.tl_index_id, job.tl_asset_id);
+      const admin = createAdminClient();
+      await admin
+        .from('video_jobs')
+        .update({ tl_indexed_asset_id: newId })
+        .eq('id', id);
+      return NextResponse.json({ status: 'indexing' });
+    } catch (e) {
+      if (isAssetStillProcessing(e)) {
+        return NextResponse.json({ status: 'indexing' });
+      }
+      const msg = e instanceof Error ? e.message : 'tl_index_failed';
+      const admin = createAdminClient();
+      await admin.from('video_jobs').update({ status: 'error', error_message: msg }).eq('id', id);
+      return NextResponse.json({ status: 'error', error: msg });
+    }
   }
 
   // Status is 'indexing' — check Twelvelabs indexed-asset status

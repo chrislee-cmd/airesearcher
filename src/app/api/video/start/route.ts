@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { createAsset, createIndexedAsset, getAnalyzeIndexId } from '@/lib/twelvelabs';
+import {
+  createAsset,
+  createIndexedAsset,
+  getAnalyzeIndexId,
+  isAssetStillProcessing,
+} from '@/lib/twelvelabs';
 
 export const maxDuration = 60;
 
@@ -56,15 +61,23 @@ export async function POST(request: Request) {
     );
   }
 
-  // Step 2: Index the asset in the Pegasus+Marengo index (async — returns immediately)
-  let indexedAssetId: string;
+  // Step 2: Index the asset in the Pegasus+Marengo index.
+  // TL needs to finish downloading/transcoding the asset before it accepts an
+  // indexing request, which can take longer than this route's maxDuration
+  // for large files. If the immediate attempt is rejected with
+  // "asset is being processed", we store the job with no indexed-asset-id
+  // and the poll route retries createIndexedAsset until it succeeds.
+  let indexedAssetId: string | null = null;
   try {
     indexedAssetId = await createIndexedAsset(indexId, assetId);
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'tl_index_failed' },
-      { status: 500 },
-    );
+    if (!isAssetStillProcessing(e)) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'tl_index_failed' },
+        { status: 500 },
+      );
+    }
+    // Fall through with indexedAssetId=null — poll will retry.
   }
 
   // Insert DB job — status=indexing, client will poll to know when ready.
