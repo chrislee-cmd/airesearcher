@@ -222,54 +222,12 @@ function renderRowSummaryText(summary: RowSummary | undefined): string {
   return parts.join('\n\n');
 }
 
-function renderInsightText(insight: ConsolidatedInsight): string {
-  const parts: string[] = [];
-  if (insight.mainstream.trim()) {
-    parts.push(`[대표 경향성]\n${insight.mainstream.trim()}`);
-  }
-  if (insight.mainstreamVocs.length > 0) {
-    parts.push(
-      '[대표 VOC]\n' +
-        insight.mainstreamVocs
-          .map((v) => `• "${v.voc}" — ${v.filename}`)
-          .join('\n'),
-    );
-  }
-  if (insight.outliers.length > 0) {
-    parts.push(
-      '[소수 케이스]\n' +
-        insight.outliers
-          .map((o) => {
-            const tag =
-              o.filenames.length > 0 ? ` (${o.filenames.join(', ')})` : '';
-            return `• ${o.description}${tag}`;
-          })
-          .join('\n'),
-    );
-  }
-  if (insight.outlierVocs.length > 0) {
-    parts.push(
-      '[소수 케이스 VOC]\n' +
-        insight.outlierVocs
-          .map((v) => `• "${v.voc}" — ${v.filename}`)
-          .join('\n'),
-    );
-  }
-  return parts.join('\n\n');
-}
-
-// Sheet 1: consolidated insights (주제, 요약). 요약 cell carries the
-// 대표 경향성 + 대표 VOC + 소수 케이스 + 소수 케이스 VOC stack, so the
-// spreadsheet view matches what the user sees in the app. Falls back to
-// per-question rows if the vertical pass hasn't run yet.
+// Sheet 1: horizontal (per-question) summary — 문항 + 대표 경향성/소수 케이스.
+// Downloads and workspace shares deliberately use the horizontal view rather
+// than the vertical-synthesized consolidated insights, because the
+// per-question grouping is what users want to import into other tools.
 function buildFinalMatrix(result: AnalysisResult): string[][] {
-  const header = ['주제', '요약'];
-  if (result.consolidated && result.consolidated.length > 0) {
-    return [
-      header,
-      ...result.consolidated.map((c) => [c.topic, renderInsightText(c)]),
-    ];
-  }
+  const header = ['문항', '요약'];
   return [
     header,
     ...result.rows.map((row) => [
@@ -1306,7 +1264,10 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     // initial page bundle and only loads when the user actually
     // requests the document.
     const { buildInterviewDocxBlob } = await import('@/lib/interviews-docx');
-    const blob = await buildInterviewDocxBlob(analysis, filenameOrder);
+    // Strip consolidated insights — downloads use the horizontal
+    // (per-question) matrix view, not the vertical-synthesis digest.
+    const matrixOnly: AnalysisResult = { ...analysis, consolidated: undefined };
+    const blob = await buildInterviewDocxBlob(matrixOnly, filenameOrder);
     triggerDownload(blob, 'interview-analysis.docx');
   }
 
