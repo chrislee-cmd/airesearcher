@@ -45,8 +45,8 @@ export async function POST(
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
 
-  if (!job.tl_indexed_asset_id) {
-    return NextResponse.json({ error: 'no_indexed_asset' }, { status: 409 });
+  if (!job.tl_asset_id) {
+    return NextResponse.json({ error: 'no_asset' }, { status: 409 });
   }
 
   const admin = createAdminClient();
@@ -58,7 +58,7 @@ export async function POST(
   after(() =>
     runAnalysis({
       jobId: id,
-      indexedAssetId: job.tl_indexed_asset_id!,
+      assetId: job.tl_asset_id!,
       filename: job.filename,
       orgId: job.org_id,
       userId: job.user_id,
@@ -71,13 +71,13 @@ export async function POST(
 
 async function runAnalysis(args: {
   jobId: string;
-  indexedAssetId: string;
+  assetId: string;
   filename: string;
   orgId: string;
   userId: string;
   prompt: string;
 }) {
-  const { jobId, indexedAssetId, filename, orgId, userId, prompt } = args;
+  const { jobId, assetId, filename, orgId, userId, prompt } = args;
   const admin = createAdminClient();
 
   async function patch(update: Record<string, unknown>) {
@@ -85,7 +85,7 @@ async function runAnalysis(args: {
   }
 
   try {
-    const analysis = await analyzeVideo(indexedAssetId, prompt, 4000);
+    const analysis = await analyzeVideo(assetId, prompt, 4000);
 
     const finalText =
       analysis.trim() ||
@@ -97,7 +97,7 @@ async function runAnalysis(args: {
         org_id: orgId,
         user_id: userId,
         feature: 'video',
-        input: JSON.stringify({ filename, indexed_asset_id: indexedAssetId }),
+        input: JSON.stringify({ filename, asset_id: assetId }),
         output: finalText,
         credits_spent: FEATURE_COSTS.video,
       })

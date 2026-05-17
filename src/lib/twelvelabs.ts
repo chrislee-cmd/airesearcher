@@ -126,14 +126,18 @@ export async function getIndexedAsset(
   return data;
 }
 
-// ─── Step 4: Analyze with Pegasus (open-ended prompt) ────────────────────────
+// ─── Step 4: Analyze with Pegasus 1.5 (open-ended prompt) ────────────────────
+// Uses the new `video: { type: "asset_id", asset_id }` form. The legacy
+// `video_id` parameter is deprecated and worked only with pegasus1.2 — and the
+// id it expected is NOT the indexed-asset _id. The asset_id below is the ID
+// returned by POST /assets (saved as `tl_asset_id`), not `tl_indexed_asset_id`.
+//
 // /analyze returns NDJSON (one JSON object per line):
 //   {"event_type":"stream_start","metadata":{...}}
 //   {"event_type":"text_generation","text":"..."}
 //   {"event_type":"stream_end",...}
-// We collect all text_generation chunks and concatenate.
 export async function analyzeVideo(
-  videoId: string,
+  assetId: string,
   prompt: string,
   maxTokens = 4000,
 ): Promise<string> {
@@ -145,10 +149,12 @@ export async function analyzeVideo(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      video_id: videoId,
+      model_name: 'pegasus1.5',
+      video: { type: 'asset_id', asset_id: assetId },
       prompt,
       temperature: 0.2,
       max_tokens: maxTokens,
+      stream: true,
     }),
   });
 
