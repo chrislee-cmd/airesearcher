@@ -1,7 +1,5 @@
 {
-  "Brand": {
-    "name": "Research-mochi"
-  },
+  "Brand": { "name": "Research-mochi" },
   "Auth": {
     "signInTitle": "Sign in to Research-mochi",
     "signInSubtitle": "AI tools for marketing & UX research",
@@ -85,8 +83,7 @@
       "synthesizing": "Synthesizing",
       "normalizing": "Normalizing",
       "generating": "Drafting"
-    },
-    "adminPayments": "Payments (admin)"
+    }
   },
   "SidebarGroups": {
     "design": "Research Design",
@@ -318,7 +315,6 @@
       "transcribeAll": "Start transcription",
       "noFiles": "No files",
       "fileTooLarge": "File too large (max 25MB)",
-      "tooManyFiles": "File limit reached (max {max}). Remove a file to add more.",
       "viewTranscript": "View transcript",
       "hideTranscript": "Hide",
       "filesQueued": "{count} files queued",
@@ -384,11 +380,7 @@
     "scheduler": {
       "title": "Participant Scheduler",
       "description": "Take candidate availability and propose interview slots with attendee notices.",
-      "cost": "Free · 5 credits per CSV upload",
-      "projectFilter": "Project filter",
-      "show": "Show",
-      "hide": "Hide",
-      "noProject": "No project"
+      "cost": "Free · 5 credits per CSV upload"
     },
     "moderator": {
       "title": "AI Moderator",
@@ -515,9 +507,7 @@
     "bankAmount": "Amount",
     "bankReference": "Reference",
     "bankFootnote": "If you requested a tax invoice (세금계산서), we'll issue it within three business days of confirming the deposit.",
-    "done": "Done",
-    "paymentSuccess": "Credits have been added to your account.",
-    "paymentCancelled": "Payment was cancelled."
+    "done": "Done"
   },
   "Desk": {
     "keywordLabel": "Keywords",
@@ -584,28 +574,7 @@
     "sendSelectedTo": "Send selected to…",
     "downloadSelected": "Download selected…",
     "deleteSelected": "Delete selected",
-    "assignProject": "Assign project",
-    "loading": "Loading…",
-    "refresh": "Refresh",
-    "scopeProject": "Project",
-    "scopeUnfiled": "Unfiled",
-    "scopeAll": "All",
-    "projects": "Projects",
-    "newProject": "+ New project",
-    "newProjectName": "Project name",
-    "create": "Create",
-    "cancel": "Cancel",
-    "created": "Project created",
-    "createFailed": "Create failed",
-    "removeFromProject": "Remove from project",
-    "folders": "Folders",
-    "folderRoot": "Project root",
-    "newFolder": "New folder",
-    "folderName": "Folder name",
-    "deleteFolder": "Delete folder",
-    "folderCreated": "Folder created",
-    "folderCreateFailed": "Folder create failed",
-    "confirmDeleteFolder": "Delete folder ‘{name}’ and its subfolders? Artifacts move to project root."
+    "assignProject": "Assign project"
   },
   "Members": {
     "title": "Member management",
@@ -631,33 +600,6 @@
     "create": "Create organization",
     "name": "Organization name"
   },
-  "PublicBooking": {
-    "fallbackTitle": "Schedule a meeting",
-    "timezone": "Timezone",
-    "pickSlot": "Pick a time",
-    "yourInfo": "Your details",
-    "name": "Name",
-    "email": "Email",
-    "phone": "Phone (optional)",
-    "note": "Note (optional)",
-    "picked": "Selected",
-    "pickFirst": "Pick a time above first.",
-    "submit": "Confirm booking",
-    "submitting": "Confirming…",
-    "noSlots": "No bookable slots.",
-    "allBooked": "All slots are taken.",
-    "errors": {
-      "taken": "Someone just booked that slot. Please pick another.",
-      "generic": "Something went wrong. Please try again."
-    },
-    "confirmed": {
-      "title": "Booking confirmed.",
-      "body": "Your slot is locked. A separate invite email may not be sent.",
-      "when": "When",
-      "name": "Name",
-      "email": "Email"
-    }
-  },
   "Scheduler": {
     "requirements": {
       "title": "Research Window",
@@ -672,15 +614,7 @@
       "explicitSlotsHint": "Add ad-hoc slots outside the rule above.",
       "addSlot": "Add slot",
       "remove": "Remove",
-      "weekdayShort": [
-        "Sun",
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-        "Sat"
-      ],
+      "weekdayShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
       "rangeHint": "Click a start day, then an end day on the calendar.",
       "summaryEmpty": "No window set yet.",
       "expand": "Expand",
@@ -696,39 +630,6 @@
         "newYork": "New York",
         "london": "London",
         "utc": "UTC"
-      }
-    },
-    "booking": {
-      "title": "Public booking links",
-      "description": "Mint a link from your current calendar availability and share it with attendees. Booked slots lock automatically.",
-      "newLink": "New link",
-      "cancel": "Cancel",
-      "create": "Create link",
-      "creating": "Creating…",
-      "linkProject": "Project",
-      "noProject": "No project",
-      "unknownProject": "Unknown project",
-      "linkTitle": "Link title",
-      "linkTitlePlaceholder": "e.g. May interview slots",
-      "linkDescription": "Description (optional)",
-      "expires": "Expires (optional)",
-      "slotsPreview": "{count} slots will be published from the current calendar.",
-      "loading": "Loading…",
-      "empty": "No links yet.",
-      "untitled": "(untitled)",
-      "statusActive": "Active",
-      "statusClosed": "Closed",
-      "progress": "{booked}/{total} booked",
-      "copy": "Copy",
-      "copied": "Copied",
-      "copyManual": "Copy this URL",
-      "close": "Close",
-      "reopen": "Reopen",
-      "delete": "Delete",
-      "confirmDelete": "Delete this link and all bookings?",
-      "errors": {
-        "noSlots": "No slots in the current calendar.",
-        "createFailed": "Failed to create the link."
       }
     },
     "calendar": {
