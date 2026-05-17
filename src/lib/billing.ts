@@ -1,15 +1,29 @@
-import Stripe from 'stripe';
+import { Creem } from 'creem';
+import type { CreditBundleId } from '@/lib/features';
 
-// Lazily resolved Stripe client. We don't instantiate at module load because
-// preview / dev environments may not have keys configured yet — the
-// /api/billing/checkout route surfaces a clean 503 in that case.
-let _stripe: Stripe | null = null;
-export function getStripe(): Stripe | null {
-  if (_stripe) return _stripe;
-  const key = process.env.STRIPE_SECRET_KEY;
+// Lazily resolved Creem client. Returns null when the API key is missing so
+// the checkout route surfaces a clean 503 instead of crashing at import time.
+let _creem: Creem | null = null;
+export function getCreem(): Creem | null {
+  if (_creem) return _creem;
+  const key = process.env.CREEM_API_KEY;
   if (!key) return null;
-  _stripe = new Stripe(key);
-  return _stripe;
+  _creem = new Creem({ serverURL: 'https://api.creem.io', apiKey: key });
+  return _creem;
+}
+
+// Each bundle maps to a pre-created Creem product. Set the env vars to the
+// product IDs from the Creem dashboard (Products → copy ID).
+const CREEM_PRODUCT_ENV: Record<CreditBundleId, string> = {
+  starter:    'CREEM_PRODUCT_STARTER',
+  team:       'CREEM_PRODUCT_TEAM',
+  studio:     'CREEM_PRODUCT_STUDIO',
+  enterprise: 'CREEM_PRODUCT_ENTERPRISE',
+};
+
+export function getCreemProductId(bundleId: CreditBundleId): string | null {
+  const envKey = CREEM_PRODUCT_ENV[bundleId];
+  return process.env[envKey] ?? null;
 }
 
 // Bank-transfer reference shown to the user as 입금자명. Short, unambiguous
@@ -47,9 +61,6 @@ export type TaxInvoiceRequest = {
   ceo: string;          // 대표자명
   managerName: string;  // 담당자명
   managerEmail: string; // 담당자 이메일
-  // Business registration certificate (사업자등록증) is collected as a
-  // Supabase Storage path that the admin can fetch later. Optional because
-  // admins can request it after the fact.
   bizCertPath?: string;
 };
 

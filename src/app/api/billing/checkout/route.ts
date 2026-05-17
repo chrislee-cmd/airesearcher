@@ -7,7 +7,8 @@ import { CREDIT_BUNDLES, type CreditBundleId } from '@/lib/features';
 import {
   generateBankReference,
   getBankAccount,
-  getStripe,
+  getCreem,
+  getCreemProductId,
   normalizeBizNo,
   type TaxInvoiceRequest,
 } from '@/lib/billing';
@@ -15,7 +16,7 @@ import {
 export const maxDuration = 60;
 
 const TaxInvoiceSchema = z.object({
-  bizNo: z.string().min(10).max(14), // accept hyphenated form
+  bizNo: z.string().min(10).max(14),
   company: z.string().min(1).max(120),
   ceo: z.string().min(1).max(60),
   managerName: z.string().min(1).max(60),
@@ -25,7 +26,7 @@ const TaxInvoiceSchema = z.object({
 
 const Body = z.object({
   bundleId: z.enum(['starter', 'team', 'studio']),
-  method: z.enum(['stripe', 'bank_transfer']),
+  method: z.enum(['creem', 'bank_transfer']),
   taxInvoice: TaxInvoiceSchema.optional(),
 });
 
@@ -62,7 +63,6 @@ export async function POST(request: Request) {
   // ── Bank transfer rail ──────────────────────────────────────────────────
   if (method === 'bank_transfer') {
     let bankReference = generateBankReference();
-    // Retry once on the rare collision; the unique index protects us.
     for (let attempt = 0; attempt < 3; attempt++) {
       const { data, error } = await admin
         .from('payments')
@@ -99,10 +99,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'reference_collision' }, { status: 500 });
   }
 
-  // ── Stripe rail ─────────────────────────────────────────────────────────
-  const stripe = getStripe();
-  if (!stripe) {
-    return NextResponse.json({ error: 'stripe_not_configured' }, { status: 503 });
+  // ── Creem card rail ─────────────────────────────────────────────────────
+  const creem = getCreem();
+  if (!creem) {
+    return NextResponse.json({ error: 'creem_not_configured' }, { status: 503 });
+  }
+
+  const productId = getCreemProductId(bundleId as CreditBundleId);
+  if (!productId) {
+    return NextResponse.json({ error: `creem_product_not_configured:${bundleId}` }, { status: 503 });
   }
 
   const origin = originFromRequest(request);
@@ -116,7 +121,7 @@ export async function POST(request: Request) {
       bundle_id: bundle.id,
       credits: bundle.credits,
       amount_krw: bundle.priceKrw,
-      method: 'stripe',
+      method: 'creem',
       status: 'pending',
       tax_invoice: taxInvoicePayload as unknown as object,
     })
@@ -127,44 +132,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'krw',
-            unit_amount: bundle.priceKrw,
-            product_data: { name: `${bundle.credits.toLocaleString()} credits` },
-          },
-          quantity: 1,
-        },
-      ],
-      customer_email: user.email ?? undefined,
-      success_url: `${origin}/credits?status=success&payment_id=${payment.id}`,
-      cancel_url: `${origin}/credits?status=cancelled&payment_id=${payment.id}`,
-      // Both metadata keys are echoed by every Stripe webhook event under
-      // `data.object.metadata` — we use payment_id to look up our row.
+    const checkout = await creem.checkouts.create({
+      productId,
+      customer: { email: user.email ?? undefined },
+      successUrl: `${origin}/credits?status=success&payment_id=${payment.id}`,
       metadata: { payment_id: payment.id, org_id: org.org_id },
-      payment_intent_data: {
-        metadata: { payment_id: payment.id, org_id: org.org_id },
-      },
     });
 
+    // Store Creem checkout ID for traceability.
     await admin
       .from('payments')
-      .update({ stripe_session_id: session.id })
+      .update({ creem_checkout_id: checkout.id })
       .eq('id', payment.id);
 
     return NextResponse.json({
       paymentId: payment.id,
-      method: 'stripe',
-      checkoutUrl: session.url,
+      method: 'creem',
+      checkoutUrl: checkout.checkoutUrl,
     });
   } catch (err) {
     await admin.from('payments').update({ status: 'failed' }).eq('id', payment.id);
     return NextResponse.json(
-      { error: (err as Error).message ?? 'stripe_error' },
+      { error: (err as Error).message ?? 'creem_error' },
       { status: 500 },
     );
   }
