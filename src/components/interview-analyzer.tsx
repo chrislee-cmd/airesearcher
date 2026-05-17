@@ -238,6 +238,7 @@ export function InterviewAnalyzer() {
             {job.verticalDone && job.analysis.consolidated ? (
               <FinalSummaryTable
                 insights={job.analysis.consolidated}
+                rows={job.analysis.rows}
                 t={t}
               />
             ) : (
@@ -777,9 +778,11 @@ function VocList({
 
 function FinalSummaryTable({
   insights,
+  rows,
   t,
 }: {
   insights: ConsolidatedInsight[];
+  rows: AnalysisRow[];
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
@@ -807,8 +810,22 @@ function FinalSummaryTable({
                 <td className="px-5 py-4 font-medium text-ink-2">
                   <div>{insight.topic}</div>
                   {insight.sourceIndices.length > 1 && (
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
-                      {insight.sourceIndices.length}개 문항 융합
+                    <div className="mt-2">
+                      <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+                        융합된 문항
+                      </div>
+                      <ul className="space-y-0.5">
+                        {insight.sourceIndices.map((si) =>
+                          rows[si] ? (
+                            <li
+                              key={si}
+                              className="text-[11px] leading-[1.6] text-mute"
+                            >
+                              {rows[si].question}
+                            </li>
+                          ) : null,
+                        )}
+                      </ul>
                     </div>
                   )}
                 </td>
