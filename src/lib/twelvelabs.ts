@@ -127,7 +127,11 @@ export async function getIndexedAsset(
 }
 
 // ─── Step 4: Analyze with Pegasus (open-ended prompt) ────────────────────────
-// video_id = indexed-asset-id from step 2/3.
+// /analyze returns NDJSON (one JSON object per line):
+//   {"event_type":"stream_start","metadata":{...}}
+//   {"event_type":"text_generation","text":"..."}
+//   {"event_type":"stream_end",...}
+// We collect all text_generation chunks and concatenate.
 export async function analyzeVideo(
   videoId: string,
   prompt: string,
@@ -147,16 +151,31 @@ export async function analyzeVideo(
       max_tokens: maxTokens,
     }),
   });
-  const text = await res.text();
-  let data: { data?: string; code?: string; message?: string };
-  try {
-    data = JSON.parse(text) as typeof data;
-  } catch {
-    // Surface raw Twelvelabs response so we can see exactly what it returned
-    throw new Error(`tl_analyze_${res.status}: ${text.slice(0, 300)}`);
-  }
+
+  const rawText = await res.text();
+
   if (!res.ok) {
-    throw new Error(data.message ?? `tl_analyze_${res.status}`);
+    // Try to get an error message from the first parseable line
+    const firstLine = rawText.split('\n').find((l) => l.trim());
+    let msg: string | undefined;
+    try { msg = (JSON.parse(firstLine ?? '') as { message?: string }).message; } catch {}
+    throw new Error(msg ?? `tl_analyze_${res.status}: ${rawText.slice(0, 200)}`);
   }
-  return data.data ?? '';
+
+  // Parse NDJSON — each non-empty line is a separate JSON event
+  const chunks: string[] = [];
+  for (const line of rawText.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const event = JSON.parse(trimmed) as { event_type?: string; text?: string };
+      if (event.event_type === 'text_generation' && event.text) {
+        chunks.push(event.text);
+      }
+    } catch {
+      // Skip malformed lines
+    }
+  }
+
+  return chunks.join('');
 }
