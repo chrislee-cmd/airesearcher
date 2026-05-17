@@ -11,6 +11,7 @@ import {
 } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
@@ -423,6 +424,27 @@ function JobRow({
                   format: 'txt',
                   kind: 'url',
                   href: `/api/transcripts/jobs/${job.id}/download/txt`,
+                },
+              ]}
+            />
+            <ShareMenu
+              align="end"
+              items={[
+                {
+                  destination: 'google-docs',
+                  title: job.filename || '전사록',
+                  getText: async () => {
+                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/md`);
+                    return r.text();
+                  },
+                },
+                {
+                  destination: 'notion',
+                  title: job.filename || '전사록',
+                  getMarkdown: async () => {
+                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/md`);
+                    return r.text();
+                  },
                 },
               ]}
             />

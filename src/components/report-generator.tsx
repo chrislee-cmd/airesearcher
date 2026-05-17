@@ -9,6 +9,7 @@ import { useGenerationJobs } from './generation-job-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { prefillKey } from '@/lib/workspace';
 import { FeaturePage } from './ui/feature-page';
@@ -587,6 +588,22 @@ export function ReportGenerator() {
                     format: 'pptx',
                     kind: 'action',
                     onSelect: () => downloadPptx(),
+                  },
+                ]}
+              />
+              <ShareMenu
+                align="end"
+                disabled={!result}
+                items={[
+                  {
+                    destination: 'google-docs',
+                    title: `리서치 리포트 ${reportStamp()}`,
+                    getText: () => result?.markdown ?? '',
+                  },
+                  {
+                    destination: 'notion',
+                    title: `리서치 리포트 ${reportStamp()}`,
+                    getMarkdown: () => result?.markdown ?? '',
                   },
                 ]}
               />

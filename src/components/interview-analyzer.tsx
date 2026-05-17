@@ -17,6 +17,7 @@ import { JobProgress } from './ui/job-progress';
 import { useWorkspace } from './workspace-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
+import { ShareMenu } from './ui/share-menu';
 import { prefillKey } from '@/lib/workspace';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
@@ -232,6 +233,16 @@ export function InterviewAnalyzer() {
                   { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
                   { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
                   { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
+                ]}
+              />
+              <ShareMenu
+                align="end"
+                items={[
+                  {
+                    destination: 'google-sheets',
+                    title: '인터뷰 분석',
+                    getRows: () => job.getMatrixRows(),
+                  },
                 ]}
               />
             </div>
