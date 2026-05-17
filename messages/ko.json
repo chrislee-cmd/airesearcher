@@ -61,6 +61,7 @@
     "survey": "AI 설문지",
     "quant": "정량조사 분석",
     "affinity_bubble": "Affinity Bubble",
+    "video": "영상분석기",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -421,6 +422,11 @@
       "title": "Affinity Bubble",
       "description": "수만 건의 리뷰를 의미 클러스터로 시각화하는 파트너 솔루션입니다.",
       "cost": "외부 솔루션"
+    },
+    "video": {
+      "title": "영상분석기",
+      "description": "사용자 테스트·인터뷰 영상을 업로드하면 AI가 행동 패턴, 페인포인트, 주요 순간을 분석합니다.",
+      "cost": "25크레딧"
     }
   },
   "Quant": {
