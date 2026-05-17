@@ -487,7 +487,7 @@
     "checkoutEyebrow": "Checkout",
     "methodLabel": "Payment method",
     "methodCard": "Card",
-    "methodCardHint": "Instant credits via Stripe",
+    "methodCardHint": "Instant credits after payment",
     "methodCardSoon": "Coming soon",
     "methodBank": "Bank transfer",
     "methodBankHint": "Credits applied within 1 business day",
@@ -513,7 +513,8 @@
     "bankFootnote": "If you requested a tax invoice (세금계산서), we'll issue it within three business days of confirming the deposit.",
     "done": "Done",
     "paymentSuccess": "Credits have been added to your account.",
-    "paymentCancelled": "Payment was cancelled."
+    "paymentCancelled": "Payment was cancelled.",
+    "errorServiceUnavailable": "Payment service is temporarily unavailable. Please try again later."
   },
   "Desk": {
     "keywordLabel": "Keywords",

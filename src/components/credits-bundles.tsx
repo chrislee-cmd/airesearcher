@@ -111,7 +111,11 @@ export function CreditsBundles() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error ?? `HTTP ${res.status}`);
+        setError(
+          json.error === 'service_unavailable'
+            ? t('errorServiceUnavailable')
+            : json.error ?? `HTTP ${res.status}`,
+        );
         return;
       }
       if (method === 'creem' && json.checkoutUrl) {
