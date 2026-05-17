@@ -147,7 +147,14 @@ export async function analyzeVideo(
       max_tokens: maxTokens,
     }),
   });
-  const data = (await res.json()) as { data?: string; code?: string; message?: string };
+  const text = await res.text();
+  let data: { data?: string; code?: string; message?: string };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    // Surface raw Twelvelabs response so we can see exactly what it returned
+    throw new Error(`tl_analyze_${res.status}: ${text.slice(0, 300)}`);
+  }
   if (!res.ok) {
     throw new Error(data.message ?? `tl_analyze_${res.status}`);
   }
