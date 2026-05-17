@@ -25,7 +25,7 @@ export function ComingSoonCard({ feature }: Props) {
   }, [toast, t]);
 
   return (
-    <div className="mx-auto max-w-[520px] border border-line bg-paper p-7 [border-radius:4px]">
+    <div className="mx-auto max-w-[520px] border border-line bg-paper p-7 [border-radius:14px]">
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
         {t('eyebrow')}
       </p>

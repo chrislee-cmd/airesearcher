@@ -108,14 +108,14 @@ export function CreditsUsagePredictor() {
           <button
             type="button"
             onClick={() => reset('even')}
-            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 [border-radius:4px]"
+            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 [border-radius:14px]"
           >
             {t('predictorResetEven')}
           </button>
           <button
             type="button"
             onClick={() => reset('zero')}
-            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 [border-radius:4px]"
+            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 [border-radius:14px]"
           >
             {t('predictorResetZero')}
           </button>
@@ -132,7 +132,7 @@ export function CreditsUsagePredictor() {
               type="button"
               onClick={() => changeBundle(b.id)}
               className={
-                'flex flex-col items-start gap-0.5 border px-3 py-2 text-left [border-radius:4px] ' +
+                'flex flex-col items-start gap-0.5 border px-3 py-2 text-left [border-radius:14px] ' +
                 (active
                   ? 'border-ink bg-paper text-ink-2'
                   : 'border-line bg-paper text-mute hover:border-ink-2 hover:text-ink-2')
@@ -153,7 +153,7 @@ export function CreditsUsagePredictor() {
       </div>
 
       {/* Budget bar */}
-      <div className="mt-5 border border-line bg-paper p-4 [border-radius:4px]">
+      <div className="mt-5 border border-line bg-paper p-4 [border-radius:14px]">
         <div className="flex items-baseline justify-between gap-3">
           <div className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('predictorBudgetLabel')}

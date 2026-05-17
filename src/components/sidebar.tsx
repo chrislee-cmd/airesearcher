@@ -309,6 +309,27 @@ export function Sidebar({
     });
   }, [activeGroup]);
 
+  // Auto-expand any collapsed group that contains a compatible drop target
+  // when the user starts dragging a workspace artifact. Groups stay open
+  // after the drag ends (the user is likely about to interact with them).
+  const dragSourceFeature = dragging?.sourceFeature ?? null;
+  useEffect(() => {
+    if (!dragSourceFeature) return;
+    const targets = new Set(SEND_TO_MAP[dragSourceFeature] ?? []);
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const g of FEATURE_GROUPS) {
+        if (!prev.has(g.key)) continue;
+        if (g.features.some((k) => targets.has(k))) {
+          next.delete(g.key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [dragSourceFeature]);
+
   useEffect(() => {
     if (!dropdownOpen) return;
     function onClick(e: MouseEvent) {
@@ -342,12 +363,22 @@ export function Sidebar({
       <div className="px-7 pb-6 pt-7">
         <Link
           href="/dashboard"
-          className="block transition-opacity duration-[120ms] hover:opacity-80"
+          className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
         >
-          <div className="text-[15px] font-bold tracking-[-0.01em] text-ink">
-            {tBrand('name')}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/landing/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 7 }}
+          />
+          <div>
+            <div className="text-[14px] font-bold tracking-[-0.01em] text-ink">
+              {tBrand('name')}
+            </div>
+            <div className="mt-0.5 h-px w-5 bg-amore" />
           </div>
-          <div className="mt-1 h-px w-6 bg-amore" />
         </Link>
       </div>
 
@@ -383,7 +414,7 @@ export function Sidebar({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 [border-radius:4px]">
+            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 [border-radius:14px]">
               {projects.length === 0 ? (
                 <div className="px-3 py-2 text-[11.5px] text-mute-soft">
                   {tProjects('noProjects')}
@@ -450,7 +481,15 @@ export function Sidebar({
                             })
                           }
                           onDragOver={(e) => {
-                            if (!dragging) return;
+                            // Check MIME types directly — avoids race where
+                            // workspace.dragging state hasn't re-rendered yet
+                            // after dragstart, which would silently block drop.
+                            const isArtifact = e.dataTransfer.types.some(
+                              (t) =>
+                                t === 'application/x-workspace-artifact' ||
+                                t === 'application/x-workspace-artifacts',
+                            );
+                            if (!isArtifact) return;
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'copy';
                             if (dragOverFeature !== f.key)
@@ -469,9 +508,10 @@ export function Sidebar({
                             if (manyRaw) {
                               try {
                                 const ids = JSON.parse(manyRaw) as string[];
-                                const path = workspace.sendMany(ids, f.key);
                                 workspace.setDragging(null);
-                                if (path) router.push(path);
+                                void workspace.sendMany(ids, f.key).then((path) => {
+                                  if (path) router.push(path);
+                                });
                                 return;
                               } catch {}
                             }
@@ -479,9 +519,10 @@ export function Sidebar({
                               'application/x-workspace-artifact',
                             );
                             if (!id) return;
-                            const path = workspace.sendTo(id, f.key);
                             workspace.setDragging(null);
-                            if (path) router.push(path);
+                            void workspace.sendTo(id, f.key).then((path) => {
+                              if (path) router.push(path);
+                            });
                           }}
                           className={`flex items-center justify-between gap-2 px-4 py-1.5 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
                             active

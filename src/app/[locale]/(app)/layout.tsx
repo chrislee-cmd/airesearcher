@@ -10,7 +10,6 @@ import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
-import { WorkspaceBridge } from '@/components/workspace-bridge';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
 import { ActiveProjectProvider } from '@/components/active-project-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
@@ -51,7 +50,7 @@ export default async function AppLayout({
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
-         <div className="flex flex-1">
+         <div className="flex flex-1 overflow-hidden">
            <Sidebar
              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
              email={user?.email ?? null}
@@ -61,9 +60,9 @@ export default async function AppLayout({
              isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
            <main className="flex-1 overflow-auto p-6">{children}</main>
+           <WorkspacePanel />
          </div>
-         <WorkspaceBridge />
-         <WorkspacePanel />
+
          <TrialInitializer enabled={!!user} />
          </WorkspaceProvider>
          </ActiveProjectProvider>

@@ -27,7 +27,7 @@ export function JobProgress({
   const labelTone = tone === 'error' ? 'text-warning' : 'text-amore';
 
   return (
-    <div className="border border-line bg-paper-soft px-4 py-3 [border-radius:4px]">
+    <div className="border border-line bg-paper-soft px-4 py-3 [border-radius:14px]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -56,7 +56,7 @@ export function JobProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning [border-radius:4px]"
+              className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning [border-radius:14px]"
             >
               {cancelLabel}
             </button>

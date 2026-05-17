@@ -7,6 +7,7 @@ import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { JobProgress } from './ui/job-progress';
+import { MochiLoader } from './ui/mochi-loader';
 import type { FeatureKey } from '@/lib/features';
 import { prefillKey } from '@/lib/workspace';
 
@@ -95,7 +96,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           onChange={(e) => setInput(e.target.value)}
           rows={12}
           placeholder="원시 인터뷰 텍스트를 붙여넣으세요…"
-          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none [border-radius:4px]"
+          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none [border-radius:14px]"
         />
       </div>
 
@@ -106,18 +107,21 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
         <button
           onClick={onClickRun}
           disabled={running || !input.trim()}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="rounded-full border border-ink bg-ink px-5 py-2.5 text-[12px] font-semibold text-paper transition-all duration-[120ms] hover:-translate-y-px hover:bg-ink-2 hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {running ? tCommon('loading') : tCommon('generate')}
         </button>
       </div>
 
       {running && (
-        <div className="mt-6">
-          <JobProgress
-            value={job.progress.percent}
-            label={job.progress.phase ?? '생성 중'}
-          />
+        <div className="mt-8 flex flex-col items-center gap-6">
+          <MochiLoader size={52} label={job.progress.phase ?? '생성 중'} />
+          <div className="w-full">
+            <JobProgress
+              value={job.progress.percent}
+              label={job.progress.phase ?? '생성 중'}
+            />
+          </div>
         </div>
       )}
 
@@ -126,7 +130,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
             결과
           </h2>
-          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:4px]">
+          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:14px]">
             {result}
           </pre>
         </div>

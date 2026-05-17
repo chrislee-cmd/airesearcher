@@ -34,12 +34,18 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className="h-full">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap"
+        />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-paper text-ink-2">
+      <body className="h-full flex flex-col bg-paper text-ink">
         <NextIntlClientProvider>
           <MixpanelProvider>
             <AuthProvider initialUser={user}>{children}</AuthProvider>

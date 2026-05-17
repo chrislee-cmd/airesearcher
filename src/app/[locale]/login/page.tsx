@@ -17,7 +17,7 @@ export default async function LoginPage({
       <div className="absolute right-6 top-6">
         <LanguageSwitcher />
       </div>
-      <div className="w-full max-w-[420px] border border-line bg-paper p-9 [border-radius:4px]">
+      <div className="w-full max-w-[420px] border border-line bg-paper-soft p-9 [border-radius:24px] [box-shadow:0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]">
         <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
           {t('signInTitle')}
         </h1>

@@ -49,7 +49,7 @@ export function StatCard({
   caption?: string;
 }) {
   return (
-    <div className="border border-line bg-paper p-[18px] [border-radius:4px] border-t-2 border-t-amore">
+    <div className="border border-line bg-paper-soft p-5 [border-radius:24px] [box-shadow:0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]">
       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-mute-soft">
         {label}
       </div>

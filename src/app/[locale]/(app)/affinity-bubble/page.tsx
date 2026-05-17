@@ -22,13 +22,13 @@ export default async function AffinityBubblePage({
           href={SITE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+          className="shrink-0 border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
         >
           {t('inquiry')}
         </a>
       </div>
 
-      <figure className="mt-8 overflow-hidden border border-line bg-paper [border-radius:4px]">
+      <figure className="mt-8 overflow-hidden border border-line bg-paper [border-radius:14px]">
         {/* The image is a static preview of the affinitybubble.com output —
             link target is the live site. Sized via aspect-ratio so it scales
             without layout shift on slow networks. */}
@@ -50,7 +50,7 @@ export default async function AffinityBubblePage({
           href={SITE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="border border-ink bg-ink px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.2em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+          className="border border-ink bg-ink px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.2em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
         >
           {t('inquiry')} →
         </a>

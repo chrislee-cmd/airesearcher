@@ -143,7 +143,7 @@ export function DropdownMenu({
           role="menu"
           aria-labelledby={triggerId}
           onKeyDown={onMenuKeyDown}
-          className={`absolute ${horizontal} ${vertical} z-30 border border-line bg-paper py-1 [border-radius:4px]`}
+          className={`absolute ${horizontal} ${vertical} z-30 border border-line bg-paper py-1 [border-radius:14px]`}
           style={{ minWidth }}
         >
           {label ? (

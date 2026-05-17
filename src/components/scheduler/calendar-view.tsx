@@ -27,6 +27,10 @@ type Props = {
   attendees: Attendee[];
   selectedAttendeeId: string | null;
   onPickSlot: (date: string, start: string, end: string) => void;
+  // Optional: paint a 3px left border on confirmed cells for project
+  // identification. Keyed by attendee id so synthetic link-booking
+  // attendees can carry a color without polluting the Attendee type.
+  colorByAttendeeId?: Map<string, string>;
 };
 
 export function CalendarView({
@@ -35,6 +39,7 @@ export function CalendarView({
   attendees,
   selectedAttendeeId,
   onPickSlot,
+  colorByAttendeeId,
 }: Props) {
   const t = useTranslations('Scheduler.calendar');
   const tReq = useTranslations('Scheduler.requirements');
@@ -95,7 +100,7 @@ export function CalendarView({
   }
 
   return (
-    <section data-coach="scheduler:calendar" className="border border-line bg-paper p-5 [border-radius:4px]">
+    <section data-coach="scheduler:calendar" className="border border-line bg-paper p-5 [border-radius:14px]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
@@ -150,6 +155,7 @@ export function CalendarView({
             attendeeById={attendeeById}
             canPick={!!selectedAttendeeId}
             onPick={tryPick}
+            colorByAttendeeId={colorByAttendeeId}
           />
         )}
         {mode === 'day' && (
@@ -161,6 +167,7 @@ export function CalendarView({
             attendeeById={attendeeById}
             canPick={!!selectedAttendeeId}
             onPick={tryPick}
+            colorByAttendeeId={colorByAttendeeId}
           />
         )}
       </div>
@@ -180,7 +187,7 @@ export function CalendarView({
 }
 
 const navBtn =
-  'border border-line bg-paper px-2.5 py-1 text-[12px] text-ink-2 hover:border-ink [border-radius:4px]';
+  'border border-line bg-paper px-2.5 py-1 text-[12px] text-ink-2 hover:border-ink [border-radius:14px]';
 
 function ModeToggle({
   mode,
@@ -193,7 +200,7 @@ function ModeToggle({
 }) {
   const opts: CalendarMode[] = ['month', 'week', 'day'];
   return (
-    <div className="flex items-center border border-line [border-radius:4px]">
+    <div className="flex items-center border border-line [border-radius:14px]">
       {opts.map((m) => (
         <button
           key={m}
@@ -293,6 +300,7 @@ function WeekGrid({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   cursor: Date;
   requirement: Requirement;
@@ -302,6 +310,7 @@ function WeekGrid({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -332,6 +341,7 @@ function WeekGrid({
           attendeeById={attendeeById}
           canPick={canPick}
           onPick={onPick}
+          colorByAttendeeId={colorByAttendeeId}
         />
       ))}
     </div>
@@ -346,6 +356,7 @@ function RowGroup({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   mLabel: number;
   days: Date[];
@@ -354,6 +365,7 @@ function RowGroup({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const hh = String(Math.floor(mLabel / 60)).padStart(2, '0');
   const mm = String(mLabel % 60).padStart(2, '0');
@@ -391,6 +403,9 @@ function RowGroup({
                       .map((c) => attendeeById.get(c.attendeeId)?.name ?? '—')
                       .join(', ')
                   : `${s.start}`;
+                const projectColor = isConfirmed
+                  ? colorByAttendeeId?.get(confirmedHere[0]!.attendeeId)
+                  : undefined;
                 return (
                   <button
                     key={s.start}
@@ -398,11 +413,12 @@ function RowGroup({
                     disabled={!canPick && !isConfirmed}
                     onClick={() => onPick(iso, s.start, s.end)}
                     className={
-                      'w-full truncate px-1.5 py-1 text-left text-[11px] tabular-nums [border-radius:4px] ' +
+                      'w-full truncate px-1.5 py-1 text-left text-[11px] tabular-nums [border-radius:14px] ' +
                       (isConfirmed
                         ? 'border border-ink bg-ink text-paper'
                         : 'border border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                     }
+                    style={projectColor ? { borderLeft: `3px solid ${projectColor}` } : undefined}
                     title={isConfirmed ? label : `${s.start}–${s.end}`}
                   >
                     {label}
@@ -425,6 +441,7 @@ function DayList({
   attendeeById,
   canPick,
   onPick,
+  colorByAttendeeId,
 }: {
   cursor: Date;
   requirement: Requirement;
@@ -433,6 +450,7 @@ function DayList({
   attendeeById: Map<string, Attendee>;
   canPick: boolean;
   onPick: (date: string, start: string, end: string) => void;
+  colorByAttendeeId?: Map<string, string>;
 }) {
   const iso = toIso(cursor);
   const slots = slotsByDate.get(iso) ?? [];
@@ -445,7 +463,7 @@ function DayList({
         {String(cursor.getDate()).padStart(2, '0')}
       </div>
       {slots.length === 0 ? (
-        <div className="border border-dashed border-line-soft p-6 text-center text-[12px] text-mute-soft [border-radius:4px]">
+        <div className="border border-dashed border-line-soft p-6 text-center text-[12px] text-mute-soft [border-radius:14px]">
           —
         </div>
       ) : (
@@ -453,6 +471,9 @@ function DayList({
           {slots.map((s) => {
             const confirmedHere = confirmedByCell.get(`${iso}T${s.start}`) ?? [];
             const isConfirmed = confirmedHere.length > 0;
+            const projectColor = isConfirmed
+              ? colorByAttendeeId?.get(confirmedHere[0]!.attendeeId)
+              : undefined;
             return (
               <li key={s.start}>
                 <button
@@ -460,11 +481,12 @@ function DayList({
                   disabled={!canPick && !isConfirmed}
                   onClick={() => onPick(iso, s.start, s.end)}
                   className={
-                    'flex w-full items-center justify-between border px-3 py-2 text-[12.5px] [border-radius:4px] ' +
+                    'flex w-full items-center justify-between border px-3 py-2 text-[12.5px] [border-radius:14px] ' +
                     (isConfirmed
                       ? 'border-ink bg-ink text-paper'
                       : 'border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                   }
+                  style={projectColor ? { borderLeft: `4px solid ${projectColor}` } : undefined}
                 >
                   <span className="tabular-nums">{s.start} – {s.end}</span>
                   {isConfirmed && (

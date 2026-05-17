@@ -16,6 +16,7 @@ import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
 
 const MAX_BYTES = 25 * 1024 * 1024;
+export const MAX_FILES = 25;
 
 export type ConvStatus = 'queued' | 'converting' | 'done' | 'error';
 export type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
@@ -575,6 +576,13 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
+  // Mirror for async access inside the vertical-synth callback — the
+  // PATCH for consolidated insights fires after the initial POST resolves,
+  // and we need the latest jobId without rerunning the effect.
+  const lastSnapshotJobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    lastSnapshotJobIdRef.current = lastSnapshotJobId;
+  }, [lastSnapshotJobId]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeAbortRef = useRef<AbortController | null>(null);
@@ -757,6 +765,20 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         setVerticalSynthError('empty_response');
         return;
       }
+      // Backfill the persisted row with consolidated insights so the
+      // workspace content endpoint can regenerate the markdown digest
+      // server-side. Non-fatal: workspace just won't have content if this
+      // fails until the next analysis run.
+      const jobId = lastSnapshotJobIdRef.current;
+      if (jobId) {
+        void fetch(`/api/interviews/jobs/${jobId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ consolidated: insights }),
+        }).catch(() => {
+          /* ignore */
+        });
+      }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setVerticalSynthError(
@@ -927,19 +949,23 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const arr = Array.from(files);
-    const next: ConvItem[] = arr.map((file) => {
-      const oversize = file.size > MAX_BYTES;
-      return {
-        id:
-          (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random()}`) as string,
-        file,
-        status: oversize ? 'error' : 'queued',
-        error: oversize ? 'fileTooLarge' : undefined,
-      };
+    setItems((prev) => {
+      const slots = Math.max(0, MAX_FILES - prev.length);
+      const accepted = arr.slice(0, slots);
+      const next: ConvItem[] = accepted.map((file) => {
+        const oversize = file.size > MAX_BYTES;
+        return {
+          id:
+            (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`) as string,
+          file,
+          status: oversize ? 'error' : 'queued',
+          error: oversize ? 'fileTooLarge' : undefined,
+        };
+      });
+      return [...prev, ...next];
     });
-    setItems((prev) => [...prev, ...next]);
   }, []);
 
   const remove = useCallback((id: string) => {

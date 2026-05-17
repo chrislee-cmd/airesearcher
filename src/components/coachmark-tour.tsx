@@ -174,7 +174,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
       {/* Spotlight: a transparent rectangle whose enormous outset shadow
           dims everything else. Pure CSS — no SVG mask, no extra repaints. */}
       <div
-        className="absolute transition-[top,left,width,height] duration-200 ease-out [border-radius:6px]"
+        className="absolute transition-[top,left,width,height] duration-200 ease-out [border-radius:14px]"
         style={{
           top: rect.top,
           left: rect.left,
@@ -186,7 +186,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
 
       {/* Tooltip card */}
       <div
-        className="pointer-events-auto absolute border border-line bg-paper p-5 [border-radius:4px] shadow-[0_8px_24px_rgba(15,17,21,0.18)]"
+        className="pointer-events-auto absolute border border-line bg-paper p-5 [border-radius:14px] shadow-[0_8px_24px_rgba(15,17,21,0.18)]"
         style={{
           top: tooltipTop,
           left: tooltipLeft,
@@ -225,7 +225,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
               type="button"
               onClick={prev}
               disabled={active === 0}
-              className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 hover:text-amore disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+              className="border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink-2 hover:text-amore disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
             >
               {tCommon('prev')}
             </button>
@@ -233,7 +233,7 @@ export function CoachmarkTour({ feature }: { feature: FeatureKey }) {
               type="button"
               onClick={next}
               autoFocus
-              className="border border-ink bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-paper hover:bg-ink-2 [border-radius:4px]"
+              className="border border-ink bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-paper hover:bg-ink-2 [border-radius:14px]"
             >
               {active === stepIds.length - 1 ? tCommon('finish') : tCommon('next')}
             </button>

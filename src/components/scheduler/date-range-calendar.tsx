@@ -43,7 +43,7 @@ export function DateRangeCalendar({ start, end, weekdayShort, onChange }: Props)
   const monthLabel = `${cursor.getFullYear()}.${String(cursor.getMonth() + 1).padStart(2, '0')}`;
 
   return (
-    <div className="border border-line [border-radius:4px]">
+    <div className="border border-line [border-radius:14px]">
       <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
         <button type="button" onClick={() => shiftMonth(-1)} className={navBtn}>‹</button>
         <span className="text-[12.5px] tabular-nums text-ink-2">{monthLabel}</span>
@@ -89,4 +89,4 @@ export function DateRangeCalendar({ start, end, weekdayShort, onChange }: Props)
 }
 
 const navBtn =
-  'border border-line bg-paper px-2 py-0.5 text-[12px] text-ink-2 hover:border-ink [border-radius:4px]';
+  'border border-line bg-paper px-2 py-0.5 text-[12px] text-ink-2 hover:border-ink [border-radius:14px]';

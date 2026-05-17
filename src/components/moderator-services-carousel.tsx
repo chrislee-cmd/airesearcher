@@ -125,7 +125,7 @@ export function ModeratorServicesCarousel() {
       onBlur={() => setPaused(false)}
     >
       <div
-        className={`relative grid grid-cols-1 gap-0 border bg-paper md:grid-cols-[280px_1fr] [border-radius:4px] ${
+        className={`relative grid grid-cols-1 gap-0 border bg-paper md:grid-cols-[280px_1fr] [border-radius:14px] ${
           s.accent ? 'border-amore' : 'border-line'
         }`}
         aria-live="polite"
@@ -185,14 +185,14 @@ export function ModeratorServicesCarousel() {
               type="button"
               onClick={() => submitInquiry(s)}
               disabled={sending}
-              className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50 [border-radius:4px]"
+              className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50 [border-radius:14px]"
             >
               {sending ? t('inquirySending') : t('inquiry')}
             </button>
             {showTip && (
               <div
                 role="status"
-                className={`absolute -top-2 left-0 z-10 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-[11.5px] font-medium [border-radius:4px] ${
+                className={`absolute -top-2 left-0 z-10 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-[11.5px] font-medium [border-radius:14px] ${
                   status === 'error'
                     ? 'border-warning-line bg-warning-bg text-warning'
                     : 'border-amore bg-amore-bg text-amore'

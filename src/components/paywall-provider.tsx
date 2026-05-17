@@ -132,7 +132,7 @@ function PaywallModal({
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[440px] border border-line bg-paper p-7 [border-radius:4px]"
+        className="w-full max-w-[440px] border border-line bg-paper p-7 [border-radius:14px]"
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
           {t('eyebrow')}
@@ -147,7 +147,7 @@ function PaywallModal({
           <button
             type="button"
             onClick={onClose}
-            className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore [border-radius:4px]"
+            className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore [border-radius:14px]"
           >
             {t('later')}
           </button>
@@ -155,7 +155,7 @@ function PaywallModal({
             href="/credits"
             autoFocus
             onClick={onClose}
-            className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 [border-radius:4px]"
+            className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 [border-radius:14px]"
           >
             {t('cta')}
           </Link>

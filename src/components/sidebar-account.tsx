@@ -75,7 +75,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
         <Link
           href="/login"
           onClick={() => track('sidebar_signin_link_click')}
-          className="block border border-ink bg-ink px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:4px]"
+          className="block border border-ink bg-ink px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
         >
           {tAuth('signIn')}
         </Link>
@@ -129,7 +129,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
       </div>
 
       {open && (
-        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-[11.5px] [border-radius:4px]">
+        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-[11.5px] [border-radius:14px]">
           {/* Language toggle */}
           <div className="px-3 py-2">
             <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
@@ -182,6 +182,15 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
                 }}
               >
                 {t('adminApiUsage')}
+              </PopoverLink>
+              <PopoverLink
+                href="/admin/payments"
+                onClick={() => {
+                  track('admin_payments_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminPayments')}
               </PopoverLink>
             </>
           )}

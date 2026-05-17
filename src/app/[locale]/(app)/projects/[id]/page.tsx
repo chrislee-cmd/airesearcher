@@ -68,11 +68,11 @@ export default async function ProjectDetailPage({
           {t('items')}
         </h2>
         {artifacts.length === 0 ? (
-          <div className="mt-3 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:4px]">
+          <div className="mt-3 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:14px]">
             아직 이 프로젝트에 등록된 산출물이 없습니다.
           </div>
         ) : (
-          <ul className="mt-3 border border-line bg-paper [border-radius:4px]">
+          <ul className="mt-3 border border-line bg-paper [border-radius:14px]">
             {artifacts.map((a) => {
               const sidebarKey = FEATURE_TO_SIDEBAR_KEY[a.feature];
               const featureLabel = sidebarKey ? tSidebar(sidebarKey) : a.feature;

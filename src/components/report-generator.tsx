@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
@@ -17,6 +17,10 @@ import {
   DEFAULT_REPORT_TYPE,
   type ReportType,
 } from '@/lib/reports/types';
+import { EnhancePanel } from './reports/enhance-panel';
+import { VersionSelector } from './reports/version-selector';
+import type { ReportVersionRow } from '@/lib/reports/versions';
+import type { EnhanceMode } from '@/lib/reports/context-payload';
 
 const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
 const ACCEPT_RE = /\.(docx|md|markdown|txt|csv|xlsx|xls)$/i;
@@ -159,6 +163,46 @@ export function ReportGenerator() {
   const [streamingHtml, setStreamingHtml] = useState<string>('');
   const [stage, setStage] = useState<Stage | null>(null);
   const [tab, setTab] = useState<'html' | 'md'>('html');
+
+  // Enhance pipeline state. reportId is the DB id of the persisted report,
+  // captured after the first run completes. versions is the full tree
+  // (v0 + every enhancement); selectedVersion picks which one to display.
+  // While enhancing we show streaming markdown in place of the version's
+  // canonical content.
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [versions, setVersions] = useState<ReportVersionRow[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<number>(0);
+  const [enhancing, setEnhancing] = useState<EnhanceMode | null>(null);
+  const [enhanceStream, setEnhanceStream] = useState<string>('');
+
+  const reloadVersions = useCallback(async (rid: string) => {
+    try {
+      const res = await fetch(`/api/reports/jobs/${rid}/versions`);
+      if (!res.ok) return;
+      const json = (await res.json()) as { versions: ReportVersionRow[] };
+      setVersions(json.versions ?? []);
+      const latest = (json.versions ?? []).reduce(
+        (mx, v) => Math.max(mx, v.version),
+        0,
+      );
+      setSelectedVersion(latest);
+    } catch (e) {
+      console.warn('[reports] load versions failed', e);
+    }
+  }, []);
+
+  async function onSetHead(version: number) {
+    if (!reportId) return;
+    try {
+      await fetch(`/api/reports/jobs/${reportId}/head`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ version }),
+      });
+    } catch (e) {
+      console.warn('[reports] set head failed', e);
+    }
+  }
 
   const job = jobs.get('reports');
   const running = job.status === 'running';
@@ -370,6 +414,12 @@ export function ReportGenerator() {
           markdown,
           html,
         });
+        if (dbId) {
+          setReportId(dbId);
+          // Best-effort initial load — the v0 row is mirrored by the
+          // /api/reports/jobs POST handler.
+          void reloadVersions(dbId);
+        }
         workspace.addArtifact({
           id: dbId ? `report_${dbId}` : undefined,
           featureKey: 'reports',
@@ -388,8 +438,28 @@ export function ReportGenerator() {
   const canRun = files.length > 0 && !running;
   const showResultPanel = running || result;
 
-  const previewHtml = result?.html ?? (wrapStreamingHtml(streamingHtml) || ' ');
-  const previewMd = result?.markdown ?? streamingMd;
+  const activeVersion = versions.find((v) => v.version === selectedVersion);
+
+  // Preview priority:
+  //   1. While the user is mid-enhance, show the streaming enhanced
+  //      markdown — HTML tab gets a "rendering..." placeholder because
+  //      the HTML is only produced server-side after the markdown stream
+  //      finishes.
+  //   2. Otherwise show the selected version (v1+) if loaded.
+  //   3. Fall back to the live `result` from the first generation run.
+  //   4. Otherwise the in-flight initial-generation stream.
+  let previewHtml: string;
+  let previewMd: string;
+  if (enhancing) {
+    previewHtml = wrapStreamingHtml('<p style="padding:24px;color:#9b9b9b">강화 결과 HTML 렌더링 대기 중...</p>');
+    previewMd = enhanceStream || '(강화 시작 중)';
+  } else if (activeVersion && activeVersion.version > 0) {
+    previewHtml = activeVersion.html;
+    previewMd = activeVersion.markdown;
+  } else {
+    previewHtml = result?.html ?? (wrapStreamingHtml(streamingHtml) || ' ');
+    previewMd = result?.markdown ?? streamingMd;
+  }
 
   return (
     <FeaturePage
@@ -418,7 +488,7 @@ export function ReportGenerator() {
       )}
 
       {files.length > 0 && (
-        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:4px]">
+        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:14px]">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
@@ -449,14 +519,14 @@ export function ReportGenerator() {
           data-coach="reports:generate"
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {running ? tCommon('loading') : '리포트 생성'}
         </button>
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:4px]">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
           오류: {errorMessage}
         </div>
       )}
@@ -472,7 +542,7 @@ export function ReportGenerator() {
                 <button
                   type="button"
                   onClick={() => setTab('html')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
                     tab === 'html'
                       ? 'border border-ink bg-ink text-paper'
                       : 'border border-line bg-paper text-mute hover:border-ink-2'
@@ -483,7 +553,7 @@ export function ReportGenerator() {
                 <button
                   type="button"
                   onClick={() => setTab('md')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:4px] ${
+                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
                     tab === 'md'
                       ? 'border border-ink bg-ink text-paper'
                       : 'border border-line bg-paper text-mute hover:border-ink-2'
@@ -527,6 +597,17 @@ export function ReportGenerator() {
               출처: {result.sources.join(', ')}
             </p>
           )}
+          {versions.length > 1 && (
+            <div className="mt-3">
+              <VersionSelector
+                versions={versions}
+                selectedVersion={selectedVersion}
+                onSelect={setSelectedVersion}
+                onSetHead={onSetHead}
+                disabled={!!enhancing}
+              />
+            </div>
+          )}
           {result && !running && (
             <RegenBar
               currentType={reportType}
@@ -555,12 +636,41 @@ export function ReportGenerator() {
               srcDoc={previewHtml}
               sandbox="allow-same-origin allow-modals"
               onLoad={onIframeLoad}
-              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:4px]"
+              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:14px]"
             />
           ) : (
-            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:4px]">
+            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:14px]">
               {previewMd || '(아직 생성되지 않았습니다)'}
             </pre>
+          )}
+
+          {result && !running && reportId && (
+            <EnhancePanel
+              reportId={reportId}
+              parentVersion={selectedVersion}
+              busy={!!enhancing}
+              onStart={(mode) => {
+                setEnhancing(mode);
+                setEnhanceStream('');
+                setTab('md');
+              }}
+              onChunk={(acc) => setEnhanceStream(acc)}
+              onComplete={async () => {
+                setEnhancing(null);
+                setEnhanceStream('');
+                // The server writes the new version row in onFinish of
+                // the stream, which runs after the client closes the
+                // reader. Brief delay lets that settle before we refetch.
+                await new Promise((r) => setTimeout(r, 600));
+                if (reportId) await reloadVersions(reportId);
+                setTab('html');
+              }}
+              onError={(msg) => {
+                setEnhancing(null);
+                setEnhanceStream('');
+                alert(`강화 실패: ${msg}`);
+              }}
+            />
           )}
         </div>
       )}
@@ -599,7 +709,7 @@ function RegenBar({
             type="button"
             disabled={disabled}
             onClick={() => onRegen(k)}
-            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
           >
             {t(`types.${k}.label`)}
           </button>
@@ -652,7 +762,7 @@ function ReportTypeChooser({
               aria-checked={selected}
               disabled={disabled}
               onClick={() => onChange(key)}
-              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px] ${
+              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px] ${
                 selected
                   ? 'border-ink bg-ink text-paper'
                   : 'border-line bg-paper text-ink-2 hover:border-amore'
