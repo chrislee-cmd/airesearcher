@@ -303,7 +303,7 @@
     "quotes": {
       "title": "Transcript Generator",
       "description": "Convert audio/video interviews into verbatim transcripts.",
-      "cost": "25 credits"
+      "cost": "75 credits"
     },
     "uploader": {
       "dropHere": "Drop audio, video, or document files here, or click to browse",
@@ -327,12 +327,12 @@
     "transcripts": {
       "title": "Script Generator",
       "description": "Generate interview scripts and discussion guides.",
-      "cost": "1 credit"
+      "cost": "3 credits"
     },
     "interviews": {
       "title": "Interview Result Generator",
       "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
-      "cost": "10 credits"
+      "cost": "30 credits"
     },
     "interviewsView": {
       "stage1Title": "Step 1 — Convert files to .md",
@@ -357,11 +357,11 @@
     "reports": {
       "title": "Full Report Generator",
       "description": "Synthesize all interviews into a marketing/UX research report.",
-      "cost": "50 credits",
+      "cost": "150 credits",
       "typeChooserLabel": "Report direction",
       "typeChooserHelp": "Chapter structure and signature visuals adjust to the analytical lens.",
       "regenLabel": "Regenerate as…",
-      "regenHelp": "Reuses your uploaded files · +50 credits",
+      "regenHelp": "Reuses your uploaded files · +150 credits",
       "types": {
         "design": {
           "label": "Design Evaluation",
@@ -384,42 +384,42 @@
     "scheduler": {
       "title": "Participant Scheduler",
       "description": "Take candidate availability and propose interview slots with attendee notices.",
-      "cost": "Free · 5 credits per CSV upload"
+      "cost": "Free · 15 credits per CSV upload"
     },
     "moderator": {
       "title": "AI Moderator",
       "description": "Generate moderator scripts and follow-up questions from your research hypotheses.",
-      "cost": "1 credit"
+      "cost": "3 credits"
     },
     "analyzer": {
       "title": "Mixed-Methods Analyzer",
       "description": "Combine qualitative and quantitative inputs to surface integrated insights.",
-      "cost": "1 credit"
+      "cost": "3 credits"
     },
     "desk": {
       "title": "Desk Research",
       "description": "Generate a desk-research summary from a topic, industry, or keyword set using public sources.",
-      "cost": "25 credits"
+      "cost": "75 credits"
     },
     "keywords": {
       "title": "Keyword Crawling",
       "description": "Crawl top results for a keyword and capture their headlines and summaries.",
-      "cost": "1 credit"
+      "cost": "3 credits"
     },
     "recruiting": {
       "title": "Recruiting",
       "description": "Upload an RFP, brief, or email and extract participant criteria and study schedule, broken down item by item.",
-      "cost": "10 credits / sample"
+      "cost": "30 credits / sample"
     },
     "survey": {
       "title": "AI Survey",
       "description": "Generate quantitative survey questions and branching logic from your research goals and hypotheses.",
-      "cost": "1 credit"
+      "cost": "3 credits"
     },
     "quant": {
       "title": "Quantitative Analysis",
       "description": "Upload a CSV/XLSX of survey responses and explore question × banner cross-tabs interactively.",
-      "cost": "15 credits"
+      "cost": "45 credits"
     },
     "affinity_bubble": {
       "title": "Affinity Bubble",
@@ -429,7 +429,7 @@
     "video": {
       "title": "Video Analyzer",
       "description": "Upload user test or interview recordings and let AI analyze behavior patterns, pain points, and key moments.",
-      "cost": "1 credit per 10 minutes, per analysis"
+      "cost": "3 credits per 10 minutes, per analysis"
     }
   },
   "Quant": {

@@ -23,24 +23,24 @@ export type FeatureKey =
 // surcharge is described in the locale `Features.<key>.cost` string and
 // enforced on the server when applicable.
 export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
-  { key: 'quotes', href: '/quotes', cost: 25 },
-  { key: 'transcripts', href: '/transcripts', cost: 1 },
-  { key: 'interviews', href: '/interviews', cost: 10 },
-  { key: 'reports', href: '/reports', cost: 50 },
+  { key: 'quotes', href: '/quotes', cost: 75 },
+  { key: 'transcripts', href: '/transcripts', cost: 3 },
+  { key: 'interviews', href: '/interviews', cost: 30 },
+  { key: 'reports', href: '/reports', cost: 150 },
   { key: 'scheduler', href: '/scheduler', cost: 0 },
-  { key: 'moderator', href: '/moderator', cost: 1 },
-  { key: 'analyzer', href: '/analyzer', cost: 1 },
-  { key: 'desk', href: '/desk', cost: 25 },
-  { key: 'keywords', href: '/keywords', cost: 1 },
-  { key: 'recruiting', href: '/recruiting', cost: 10 },
-  { key: 'survey', href: '/survey', cost: 1 },
-  { key: 'quant', href: '/quant', cost: 15 },
+  { key: 'moderator', href: '/moderator', cost: 3 },
+  { key: 'analyzer', href: '/analyzer', cost: 3 },
+  { key: 'desk', href: '/desk', cost: 75 },
+  { key: 'keywords', href: '/keywords', cost: 3 },
+  { key: 'recruiting', href: '/recruiting', cost: 30 },
+  { key: 'survey', href: '/survey', cost: 3 },
+  { key: 'quant', href: '/quant', cost: 45 },
   // Affinity Bubble is a partner showcase, not an in-app generator;
   // cost stays 0, the page just previews the offering and links out.
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
-  // video is priced dynamically by duration (1 credit per started 10min);
+  // video is priced dynamically by duration (3 credits per started 10min);
   // the value here is the minimum charge surfaced in sidebar / cost pills.
-  { key: 'video', href: '/video', cost: 1 },
+  { key: 'video', href: '/video', cost: 3 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at

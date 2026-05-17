@@ -303,7 +303,7 @@
     "quotes": {
       "title": "전사록 생성기",
       "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
-      "cost": "25크레딧"
+      "cost": "75크레딧"
     },
     "uploader": {
       "dropHere": "음성 · 영상 · 문서 파일을 끌어다 놓거나 클릭해서 선택하세요",
@@ -327,12 +327,12 @@
     "transcripts": {
       "title": "스크립트 생성기",
       "description": "오디오/영상 인터뷰를 정확한 스크립트로 변환합니다.",
-      "cost": "1크레딧"
+      "cost": "3크레딧"
     },
     "interviews": {
       "title": "인터뷰 결과 생성기",
       "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
-      "cost": "10크레딧"
+      "cost": "30크레딧"
     },
     "interviewsView": {
       "stage1Title": "1단계 — 파일을 .md로 변환",
@@ -357,11 +357,11 @@
     "reports": {
       "title": "전체 리포트 생성기",
       "description": "모든 인터뷰를 종합한 마케팅·UX 리서치 리포트를 작성합니다.",
-      "cost": "50크레딧",
+      "cost": "150크레딧",
       "typeChooserLabel": "보고서 방향성",
       "typeChooserHelp": "분석 관점에 따라 챕터 구성과 시각화가 달라집니다.",
       "regenLabel": "다른 방향으로 다시 생성",
-      "regenHelp": "같은 파일을 재사용합니다 · 추가 50크레딧",
+      "regenHelp": "같은 파일을 재사용합니다 · 추가 150크레딧",
       "types": {
         "design": {
           "label": "디자인 평가 보고서",
@@ -384,42 +384,42 @@
     "scheduler": {
       "title": "참석자 스케쥴러",
       "description": "후보자 가용 시간을 받아 인터뷰 일정 후보를 정리하고, 참석자 안내문을 생성합니다.",
-      "cost": "무료 · CSV 업로드 5크레딧"
+      "cost": "무료 · CSV 업로드 15크레딧"
     },
     "moderator": {
       "title": "AI 모더레이터",
       "description": "리서치 가설을 입력하면 인터뷰 진행을 위한 모더레이터 스크립트와 추가 질문을 제안합니다.",
-      "cost": "1크레딧"
+      "cost": "3크레딧"
     },
     "analyzer": {
       "title": "정성·정량 통합 분석기",
       "description": "정성 응답과 정량 데이터를 함께 입력하면, 패턴을 매칭해 통합 인사이트를 도출합니다.",
-      "cost": "1크레딧"
+      "cost": "3크레딧"
     },
     "desk": {
       "title": "데스크 리서치",
       "description": "주제·산업·키워드를 입력하면 공개 출처 위주의 데스크 리서치 요약을 생성합니다.",
-      "cost": "25크레딧"
+      "cost": "75크레딧"
     },
     "keywords": {
       "title": "키워드 크롤링",
       "description": "검색 키워드를 입력하면 관련 페이지 상위 결과를 수집하고 헤드라인·요약을 정리합니다.",
-      "cost": "1크레딧"
+      "cost": "3크레딧"
     },
     "recruiting": {
       "title": "리크루팅",
       "description": "RFP·브리프·이메일을 업로드하면 모집 대상자 조건과 조사 일정을 항목별로 추출합니다.",
-      "cost": "1샘플당 10크레딧"
+      "cost": "1샘플당 30크레딧"
     },
     "survey": {
       "title": "AI 설문지",
       "description": "리서치 목적과 가설을 입력하면 정량 설문 문항과 분기 로직을 생성합니다.",
-      "cost": "1크레딧"
+      "cost": "3크레딧"
     },
     "quant": {
       "title": "정량조사 분석",
       "description": "CSV·XLSX 응답 데이터를 업로드하면 질문 × 배너 교차분석을 즉시 인터랙티브하게 살펴볼 수 있습니다.",
-      "cost": "15크레딧"
+      "cost": "45크레딧"
     },
     "affinity_bubble": {
       "title": "Affinity Bubble",
@@ -429,7 +429,7 @@
     "video": {
       "title": "영상분석기",
       "description": "사용자 테스트·인터뷰 영상을 업로드하면 AI가 행동 패턴, 페인포인트, 주요 순간을 분석합니다.",
-      "cost": "분석 1회당 영상 10분마다 1크레딧"
+      "cost": "분석 1회당 영상 10분마다 3크레딧"
     }
   },
   "Quant": {
