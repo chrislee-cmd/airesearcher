@@ -6,7 +6,10 @@ import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
 import { computeVideoCredits } from '@/lib/video-credits';
 import { spendCreditsAdminAmount } from '@/lib/credits';
 
-export const maxDuration = 60;
+// Pegasus 1.5 analysis with verbose UX prompt + 4000 max tokens typically
+// streams for 60-180 seconds. The route returns immediately and `after()`
+// runs runAnalysis in the background — but it shares this duration budget.
+export const maxDuration = 300;
 
 export async function POST(
   request: Request,
