@@ -301,48 +301,50 @@ export async function listWorkspaceArtifacts(
 
 // ── Content extraction ────────────────────────────────────────────────────
 
-// Mirrors the consolidated-insight markdown that WorkspaceBridge used to
-// build client-side. Source: src/components/workspace-bridge.tsx (before
-// removal). Keeping the format identical preserves muscle memory for
-// users who copy/send the digest into other features.
-type ConsolidatedVoc = { voc: string; filename: string };
-type ConsolidatedOutlier = { description: string; filenames: string[] };
-type Consolidated = {
-  topic: string;
-  mainstream?: string;
-  mainstreamVocs: ConsolidatedVoc[];
-  outliers: ConsolidatedOutlier[];
-  outlierVocs: ConsolidatedVoc[];
+// Horizontal (per-question) matrix shape persisted into interview_jobs.matrix.
+// Workspace shares deliberately use this view rather than the vertical-
+// synthesized consolidated digest — users want the per-question grouping
+// when copying or sending into other features.
+type MatrixOutlier = { description: string; filenames: string[] };
+type MatrixRowSummary = { mainstream: string; outliers: MatrixOutlier[] };
+type MatrixCell = { filename: string; voc: string };
+type MatrixRow = {
+  question: string;
+  summary?: MatrixRowSummary;
+  cells: MatrixCell[];
+  isResidual?: boolean;
+};
+type InterviewMatrix = {
+  questions?: string[];
+  rows: MatrixRow[];
 };
 
-function assembleInterviewMarkdown(consolidated: Consolidated[]): string {
-  const lines: string[] = [`# 인터뷰 분석 — 핵심 인사이트`, ''];
-  for (const c of consolidated) {
-    lines.push(`## ${c.topic}`, '');
-    if (c.mainstream && c.mainstream.trim()) {
-      lines.push('**대표 경향성**', '', c.mainstream, '');
+function assembleInterviewMarkdown(matrix: InterviewMatrix): string {
+  const lines: string[] = [`# 인터뷰 분석 — 문항별 요약`, ''];
+  for (const row of matrix.rows ?? []) {
+    if (!row?.question) continue;
+    lines.push(`## ${row.question}`, '');
+    const mainstream = row.summary?.mainstream?.trim() ?? '';
+    if (mainstream) {
+      lines.push('**대표 경향성**', '', mainstream, '');
     }
-    if ((c.mainstreamVocs ?? []).length > 0) {
-      lines.push(
-        '**대표 VOC**',
-        ...c.mainstreamVocs.map((v) => `- "${v.voc}" — ${v.filename}`),
-        '',
-      );
-    }
-    if ((c.outliers ?? []).length > 0) {
+    const outliers = row.summary?.outliers ?? [];
+    if (outliers.length > 0) {
       lines.push(
         '**소수 케이스**',
-        ...c.outliers.map((o) => {
-          const tag = o.filenames.length > 0 ? ` (${o.filenames.join(', ')})` : '';
+        ...outliers.map((o) => {
+          const tag =
+            o.filenames.length > 0 ? ` (${o.filenames.join(', ')})` : '';
           return `- ${o.description}${tag}`;
         }),
         '',
       );
     }
-    if ((c.outlierVocs ?? []).length > 0) {
+    const cells = (row.cells ?? []).filter((c) => c?.voc?.trim());
+    if (cells.length > 0) {
       lines.push(
-        '**소수 케이스 VOC**',
-        ...c.outlierVocs.map((v) => `- "${v.voc}" — ${v.filename}`),
+        '**응답자별 VOC**',
+        ...cells.map((c) => `- "${c.voc}" — ${c.filename}`),
         '',
       );
     }
@@ -390,13 +392,15 @@ export async function getArtifactContent(
   if (dbFeature === 'interview') {
     const { data } = await supabase
       .from('interview_jobs')
-      .select('consolidated')
+      .select('matrix')
       .eq('org_id', orgId)
       .eq('id', dbId)
       .maybeSingle();
-    const consolidated = (data?.consolidated as Consolidated[] | null) ?? null;
-    if (!consolidated || consolidated.length === 0) return null;
-    return { content: assembleInterviewMarkdown(consolidated), kind: 'markdown' };
+    const matrix = (data?.matrix as InterviewMatrix | null) ?? null;
+    if (!matrix || !Array.isArray(matrix.rows) || matrix.rows.length === 0) {
+      return null;
+    }
+    return { content: assembleInterviewMarkdown(matrix), kind: 'markdown' };
   }
 
   if (dbFeature === 'report') {
