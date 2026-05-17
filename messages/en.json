@@ -429,7 +429,7 @@
     "video": {
       "title": "Video Analyzer",
       "description": "Upload user test or interview recordings and let AI analyze behavior patterns, pain points, and key moments.",
-      "cost": "3 credits per 10 minutes, per analysis"
+      "cost": "2 credits per 10 minutes, per analysis"
     }
   },
   "Quant": {

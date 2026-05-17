@@ -38,9 +38,9 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // Affinity Bubble is a partner showcase, not an in-app generator;
   // cost stays 0, the page just previews the offering and links out.
   { key: 'affinity_bubble', href: '/affinity-bubble', cost: 0 },
-  // video is priced dynamically by duration (3 credits per started 10min);
+  // video is priced dynamically by duration (2 credits per started 10min);
   // the value here is the minimum charge surfaced in sidebar / cost pills.
-  { key: 'video', href: '/video', cost: 3 },
+  { key: 'video', href: '/video', cost: 2 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at

@@ -1,7 +1,7 @@
-// Length-based pricing: 3 credits per started 10 minutes (minimum 3).
-// Examples: 5min=3, 10min=3, 11min=6, 60min=18, 120min=36.
+// Length-based pricing: 2 credits per started 10 minutes (minimum 2).
+// Examples: 5min=2, 10min=2, 11min=4, 60min=12, 120min=24.
 const SECONDS_PER_UNIT = 600;
-const CREDITS_PER_UNIT = 3;
+const CREDITS_PER_UNIT = 2;
 
 export function computeVideoCredits(durationSeconds: number | null | undefined): number {
   if (!durationSeconds || durationSeconds <= 0) return CREDITS_PER_UNIT;
