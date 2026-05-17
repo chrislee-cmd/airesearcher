@@ -86,3 +86,28 @@ export async function spendCreditsAdmin(
   if (!data) return { ok: false, reason: 'insufficient' };
   return { ok: true };
 }
+
+/**
+ * Admin variant that takes an explicit amount instead of the feature's flat
+ * cost. Used for features priced dynamically (e.g. video analyzer charges
+ * by video duration).
+ */
+export async function spendCreditsAdminAmount(
+  orgId: string,
+  userId: string,
+  feature: FeatureKey,
+  amount: number,
+  generationId?: string,
+): Promise<{ ok: true } | { ok: false; reason: 'insufficient' | 'forbidden' }> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc('spend_credits_admin', {
+    p_org_id: orgId,
+    p_user_id: userId,
+    p_amount: amount,
+    p_feature: feature,
+    p_generation_id: generationId ?? null,
+  });
+  if (error) return { ok: false, reason: 'forbidden' };
+  if (!data) return { ok: false, reason: 'insufficient' };
+  return { ok: true };
+}
