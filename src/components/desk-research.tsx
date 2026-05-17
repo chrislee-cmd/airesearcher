@@ -759,11 +759,6 @@ export function DeskResearch() {
                     title: buildFilename(),
                     getText: () => job.output ?? '',
                   },
-                  {
-                    destination: 'notion',
-                    title: buildFilename(),
-                    getMarkdown: () => job.output ?? '',
-                  },
                 ]}
               />
             </div>

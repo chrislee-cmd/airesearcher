@@ -600,11 +600,6 @@ export function ReportGenerator() {
                     title: `리서치 리포트 ${reportStamp()}`,
                     getText: () => result?.markdown ?? '',
                   },
-                  {
-                    destination: 'notion',
-                    title: `리서치 리포트 ${reportStamp()}`,
-                    getMarkdown: () => result?.markdown ?? '',
-                  },
                 ]}
               />
             </div>

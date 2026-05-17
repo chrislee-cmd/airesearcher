@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { refreshAccessToken, hasDocsScope } from '@/lib/google-oauth';
+import { refreshAccessToken, hasDriveFileScope } from '@/lib/google-oauth';
 import { createGoogleDoc } from '@/lib/share/google-docs';
 
 export async function POST(request: Request) {
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   if (!oauth) {
     return NextResponse.json({ error: 'not_connected' }, { status: 401 });
   }
-  if (!hasDocsScope(oauth.scope)) {
+  // We now create the Doc by uploading HTML to Drive (preserves rich
+  // formatting). drive.file scope is sufficient — gives access only to
+  // files the app creates, not the user's whole Drive.
+  if (!hasDriveFileScope(oauth.scope)) {
     return NextResponse.json({ error: 'missing_docs_scope' }, { status: 401 });
   }
 

@@ -438,14 +438,6 @@ function JobRow({
                     return r.text();
                   },
                 },
-                {
-                  destination: 'notion',
-                  title: job.filename || '전사록',
-                  getMarkdown: async () => {
-                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/md`);
-                    return r.text();
-                  },
-                },
               ]}
             />
             <button
