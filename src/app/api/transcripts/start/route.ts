@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { getLanguage } from '@/lib/transcripts/languages';
 import { getModel } from '@/lib/transcripts/models';
+import {
+  classifyTextFile,
+  extractTextFromBuffer,
+  formatAsMarkdown,
+} from '@/lib/transcripts/text-extract';
+import { spendCreditsAdmin } from '@/lib/credits';
 
 export const maxDuration = 60;
 
@@ -78,6 +85,21 @@ export async function POST(request: Request) {
       { error: signedErr?.message ?? 'sign_failed' },
       { status: 500 },
     );
+  }
+
+  // Text files (.txt/.md/.docx) skip transcription entirely — extract directly
+  // and mark done. The dropzone advertises these formats but Deepgram would
+  // reject them with a 415 "Unsupported Media Type".
+  const textKind = classifyTextFile(filename);
+  if (textKind) {
+    return await dispatchTextExtraction({
+      supabase,
+      jobId: job.id,
+      orgId: org.org_id,
+      userId: user.id,
+      storageKey: storage_key,
+      filename,
+    });
   }
 
   if (modelEntry.provider === 'deepgram') {
@@ -282,5 +304,65 @@ async function dispatchElevenLabs(args: {
     job_id: jobId,
     provider: 'elevenlabs',
     request_id: transcriptionId,
+  });
+}
+
+async function dispatchTextExtraction(args: {
+  supabase: SupabaseServer;
+  jobId: string;
+  orgId: string;
+  userId: string;
+  storageKey: string;
+  filename: string;
+}) {
+  const { supabase, jobId, orgId, userId, storageKey, filename } = args;
+  const admin = createAdminClient();
+
+  const { data: blob, error: dlErr } = await admin.storage
+    .from('audio-uploads')
+    .download(storageKey);
+  if (dlErr || !blob) {
+    const msg = dlErr?.message ?? 'storage_download_failed';
+    await supabase
+      .from('transcript_jobs')
+      .update({ status: 'error', error_message: msg })
+      .eq('id', jobId);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+
+  let markdown: string;
+  try {
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const raw = await extractTextFromBuffer(filename, buffer);
+    markdown = formatAsMarkdown(filename, raw);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'text_extract_failed';
+    await supabase
+      .from('transcript_jobs')
+      .update({ status: 'error', error_message: msg })
+      .eq('id', jobId);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+
+  // Skip updating provider/model — the `provider` column has a check
+  // constraint that only allows 'deepgram'/'elevenlabs'. The initial insert
+  // already set those from the user's selection; for text files they're
+  // meaningless metadata, but flipping them would violate the constraint.
+  await supabase
+    .from('transcript_jobs')
+    .update({
+      status: 'done',
+      markdown,
+    })
+    .eq('id', jobId);
+
+  // Match the audio-transcription path: webhook charges credits on completion,
+  // so we charge here too. spendCreditsAdmin is no-op for is_unlimited orgs.
+  await spendCreditsAdmin(orgId, userId, 'transcripts', jobId);
+
+  return NextResponse.json({
+    job_id: jobId,
+    provider: 'text',
+    request_id: null,
   });
 }
