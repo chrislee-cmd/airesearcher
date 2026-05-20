@@ -50,7 +50,6 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'transcripts',  // 스크립트 생성기 (audio→script). The 전사록 path is `quotes`.
   'survey',
   'analyzer',
-  'video',
 ]);
 
 // Single source of truth for credit pricing — read by both the
