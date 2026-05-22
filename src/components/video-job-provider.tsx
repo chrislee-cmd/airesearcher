@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useAuth } from './auth-provider';
 
-export type VideoJobStatus = 'uploading' | 'indexing' | 'analyzing' | 'done' | 'error';
+export type VideoJobStatus = 'uploading' | 'indexing' | 'indexed' | 'analyzing' | 'done' | 'error';
 
 export type VideoJob = {
   id: string;
@@ -27,6 +27,7 @@ export type VideoJob = {
   error_message: string | null;
   generation_id: string | null;
   credits_spent: number;
+  duration_seconds: number | null;
   created_at: string;
   updated_at: string;
 };

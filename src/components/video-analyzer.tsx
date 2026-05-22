@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useRequireAuth } from './auth-provider';
 import { useVideoJobs, type VideoJob, type VideoJobStatus } from './video-job-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
+import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
+import { computeVideoCredits } from '@/lib/video-credits';
 
 const ACCEPT = 'video/*,.mp4,.mov,.webm,.avi,.mkv,.m4v';
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
@@ -23,6 +26,8 @@ function pillFor(status: VideoJobStatus): { text: string; cls: string } {
       return { text: '업로드 중', cls: 'text-amore' };
     case 'indexing':
       return { text: '인덱싱 중', cls: 'text-amore' };
+    case 'indexed':
+      return { text: '인덱싱 완료', cls: 'text-ink-2' };
     case 'analyzing':
       return { text: '분석 중', cls: 'text-amore' };
     case 'done':
@@ -40,8 +45,8 @@ function statusLabel(status: VideoJobStatus): string {
       return 'Twelvelabs가 영상을 인덱싱하고 있어요. 영상 길이에 따라 1~5분 정도 걸릴 수 있습니다.';
     case 'analyzing':
       return 'AI가 행동 패턴과 페인포인트를 분석하고 있어요…';
+    case 'indexed':
     case 'done':
-      return '';
     case 'error':
       return '';
   }
@@ -106,13 +111,12 @@ export function VideoAnalyzer() {
   const requireAuth = useRequireAuth();
   const { jobs, localUploads, setUploadProgress, clearUploadProgress, refreshJobs, removeJob } =
     useVideoJobs();
-  const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const startUpload = useCallback(
     (files: File[]) => {
       requireAuth(() => {
-        void runUpload(files[0]);
+        for (const file of files) void runUpload(file);
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,8 +124,6 @@ export function VideoAnalyzer() {
   );
 
   async function runUpload(file: File) {
-    if (busyUpload) return;
-    setBusyUpload(true);
     setUploadError(null);
     const tempId = crypto.randomUUID();
     try {
@@ -181,7 +183,6 @@ export function VideoAnalyzer() {
       setUploadError(e instanceof Error ? e.message : 'upload_failed');
     } finally {
       clearUploadProgress(tempId);
-      setBusyUpload(false);
     }
   }
 
@@ -201,10 +202,10 @@ export function VideoAnalyzer() {
         <FileDropZone
           accept={ACCEPT}
           maxSizeBytes={MAX_SIZE_BYTES}
-          disabled={busyUpload}
+          multiple
           onFiles={(files) => startUpload(files)}
-          label="영상 파일을 끌어다 놓거나 클릭해서 선택하세요"
-          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (최대 4 GB)"
+          label="영상 파일을 끌어다 놓거나 클릭해서 선택하세요 (여러 개 동시 선택 가능)"
+          helperText="지원: mp4 · mov · webm · avi · mkv · m4v (개당 최대 4 GB)"
           className="py-12"
         >
           {uploadError && (
@@ -237,7 +238,7 @@ export function VideoAnalyzer() {
           </h3>
           <ul className="mt-2 space-y-3">
             {jobs.map((j) => (
-              <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+              <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} onRefresh={refreshJobs} />
             ))}
           </ul>
         </section>
@@ -246,11 +247,43 @@ export function VideoAnalyzer() {
   );
 }
 
-function JobRow({ job, onDelete }: { job: VideoJob; onDelete: () => void }) {
+function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => void; onRefresh: () => Promise<void> }) {
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
+  const [submitting, setSubmitting] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   const pill = pillFor(job.status);
   const inFlight = job.status === 'uploading' || job.status === 'indexing' || job.status === 'analyzing';
   const hint = statusLabel(job.status);
+
+  const showPromptEditor = job.status === 'indexed' || job.status === 'error' || job.status === 'done';
+  const estimatedCredits = computeVideoCredits(job.duration_seconds);
+  const durationMin = job.duration_seconds ? Math.ceil(job.duration_seconds / 60) : null;
+
+  async function submitAnalysis() {
+    if (submitting) return;
+    setSubmitting(true);
+    setAnalyzeError(null);
+    try {
+      const res = await fetch(`/api/video/jobs/${job.id}/analyze`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt, locale }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? `analyze ${res.status}`);
+      }
+      setOpen(false);
+      await onRefresh();
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : 'analyze_failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <li className="border border-line bg-paper [border-radius:14px]">
@@ -289,6 +322,45 @@ function JobRow({ job, onDelete }: { job: VideoJob; onDelete: () => void }) {
           </button>
         </div>
       </div>
+
+      {/* Prompt editor — shown for indexed (first run) and done/error (re-analyze) */}
+      {showPromptEditor && (
+        <div className="border-t border-line-soft px-5 pb-4 pt-3">
+          <div className="mb-1.5 flex items-baseline justify-between gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+              분석 프롬프트
+            </div>
+            <div className="text-[11px] text-mute-soft tabular-nums">
+              {durationMin ? `${durationMin}분 · ` : ''}이 분석 {estimatedCredits}크레딧
+            </div>
+          </div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={6}
+            className="w-full resize-y border border-line bg-paper-soft px-3 py-2 font-mono text-[11.5px] leading-[1.7] text-ink-2 outline-none focus:border-ink-2 [border-radius:8px]"
+            disabled={submitting || job.status === 'analyzing'}
+          />
+          {analyzeError && (
+            <div className="mt-1.5 text-[11px] text-warning">{analyzeError}</div>
+          )}
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={submitAnalysis}
+              disabled={submitting || !prompt.trim() || job.status === 'analyzing'}
+              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+            >
+              {submitting
+                ? '요청 중…'
+                : job.status === 'done' || job.status === 'error'
+                ? `다시 분석 (${estimatedCredits}크레딧)`
+                : `분석 시작 (${estimatedCredits}크레딧)`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Analysis result */}
       {open && job.status === 'done' && job.analysis && (
         <div className="border-t border-line-soft px-5 pb-5 pt-4">
           <div className="max-h-[600px] overflow-y-auto">
