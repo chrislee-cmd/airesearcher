@@ -2,6 +2,146 @@
   "Brand": {
     "name": "Research-mochi"
   },
+  "Landing": {
+    "metaTitle": "Research-mochi — Research, but kinder.",
+    "metaDescription": "Eight small tools sitting on the same desk, helping you research without the rush.",
+    "nav": {
+      "demo": "Demo",
+      "why": "Why Mochi?",
+      "pricing": "Pricing",
+      "story": "Story",
+      "faq": "FAQ",
+      "signIn": "Sign in",
+      "freeStart": "Start free →"
+    },
+    "hero": {
+      "tagline": "Sweet automation for researchers",
+      "headline": "Leave the busywork to <hl>Mochi</hl>.<br></br>You focus on <hlPeach>insight</hlPeach>.",
+      "lead": "From transcripts to interview analysis, desk research to full reports—<strong>eight tools</strong> in one workspace handle the heavy lifting. Great research, without the late nights.",
+      "ctaPrimary": "Start for free →",
+      "ctaSecondary": "See the demo",
+      "postscript": "<b>P.S.</b> Every tool is unlimited for the first 24 hours. No card required."
+    },
+    "showcase": {
+      "meta": "LIVE DEMO",
+      "title": "Try it yourself.<br></br><em>It works just like the real thing.</em>",
+      "subtitle": "Click through the tools and watch results pile up in your workspace. No sign-up needed.",
+      "freeTrial": "FREE TRIAL",
+      "freeTrialTime": "23h 48m",
+      "groups": {
+        "design": "Design",
+        "conduct": "Conduct",
+        "analysis": "Analyze"
+      },
+      "tools": {
+        "desk": "Desk Research",
+        "screener": "Screener Builder",
+        "guideline": "Guideline Builder",
+        "moderator": "AI Moderator",
+        "verbatim": "Transcript Generator",
+        "interview": "Interview Analyzer",
+        "report": "Full Report Generator",
+        "quant": "Quant Analyzer",
+        "affinity": "Affinity Bubble"
+      },
+      "sideFoot": "Beauty UX 2026Q2",
+      "wsMeta": "WORKSPACE",
+      "wsEmpty": "Outputs from the tools you visit show up here. Click the sidebar to start.",
+      "wsReset": "Reset",
+      "wsToReport": "To report →",
+      "footMeta": "NEXT",
+      "tip": "← / → to navigate · Click the sidebar to switch tools · Use tabs for stages",
+      "tipMeta": "TIP",
+      "fallbackNext": "Wrap up in the report →"
+    },
+    "whyMochi": {
+      "tag": "WHY MOCHI?",
+      "hand": "A sweet bite,<br></br>for the weary researcher.",
+      "body1": "Late nights, endless edits, an obsession with the smallest details—the tiny, hard-won insight that only surfaces after all of it. Countless researchers carry that weight quietly, every day, for that one insight.",
+      "body2": "Research-Mochi wants to sit beside those researchers. To automate the repetition so you can focus on what matters—a small, certain joy at the end of a long day, like one bite of mochi.",
+      "perk1": "<strong>Automation instead of overtime.</strong> Transcripts, interview summaries, desk research—the work that used to keep you up, Mochi handles it.",
+      "perk2": "<strong>Mochi does the detail, you do the insight.</strong> Finding patterns in hundreds of responses is Mochi's job. Reading what they mean is yours.",
+      "perk3": "<strong>A first draft that needs less revising.</strong> Clean structure and language from the start. Fewer feedback loops, faster turn-around.",
+      "coda": "Why not let Mochi handle today, and pour yourself a coffee? ☕"
+    },
+    "pricing": {
+      "meta": "CREDITS · PAY AS YOU LEARN",
+      "title": "Pay only for what you use,<br></br><hlPeach>invoiced cleanly</hlPeach>.",
+      "subtitle": "Credits never expire · Share across your team.",
+      "tiers": {
+        "starter": {
+          "meta": "Starter",
+          "name": "Just me",
+          "price": "₩200,000",
+          "priceNote": "100 credits · ₩2,000 / cr",
+          "f1": "All tools",
+          "f2": "Korean / English",
+          "f3": "Email support",
+          "cta": "Get started"
+        },
+        "team": {
+          "badge": "popular",
+          "meta": "Team · 10% off",
+          "name": "For my team",
+          "price": "₩900,000",
+          "priceNote": "500 credits · ₩1,800 / cr",
+          "f1": "Shared team workspace",
+          "f2": "Roles & permissions",
+          "f3": "Priority channel support",
+          "cta": "Start as a team →"
+        },
+        "studio": {
+          "meta": "Studio · 15% off",
+          "name": "Research studio",
+          "price": "₩2,550,000",
+          "priceNote": "1,500 credits · ₩1,700 / cr",
+          "f1": "Multiple workspaces",
+          "f2": "White-label reports",
+          "f3": "One onboarding session",
+          "cta": "Start studio"
+        },
+        "enterprise": {
+          "meta": "Enterprise · 25% off",
+          "name": "Enterprise",
+          "price": "Custom",
+          "priceNote": "5,000 credits · Custom SLA",
+          "f1": "SSO · audit logs",
+          "f2": "Dedicated domain",
+          "f3": "Korean account lead",
+          "cta": "Request a quote"
+        }
+      }
+    },
+    "voice": {
+      "quote": "\"Research used to feel like chores.<br></br>Now what took a whole day of writing up interviews takes an hour,<br></br>and I finally have time for the actual thinking.\"",
+      "by": "— Beauty UX Lead · 2026 Q1 Beta"
+    },
+    "faq": {
+      "meta": "FAQ",
+      "title": "Things you might be wondering.",
+      "q1": "Do credits expire?",
+      "a1": "No. Once you buy credits they don't expire, and they're freely shared inside your team workspace.",
+      "q2": "Is Korean fully supported?",
+      "a2": "Korean is the default. Interface, docs, emails, even invoices—Korean first. Toggle to English whenever you need it.",
+      "q3": "Do outputs flow automatically between tools?",
+      "a3": "Yes. Inside one workspace, the output of one tool becomes the input of the next. Drag-drop from the sidebar or use the send-to menu.",
+      "q4": "Do I have to pay right after sign-up?",
+      "a4": "No. The first 24 hours give you unlimited access to every tool, no card needed. Buy credits later if you like what you see."
+    },
+    "ctaFinal": {
+      "squiggle": "come say hi ✿",
+      "title": "A researcher's hands belong<br></br>on the <hlMint>thinking</hlMint> work.",
+      "subtitle": "Every tool is unlimited for the first 24 hours after sign-up. No card required, and your first output averages three minutes.",
+      "ctaPrimary": "Try free for a day →",
+      "ctaSecondary": "Take a quick tour"
+    },
+    "footer": {
+      "madeIn": "Made <span>kindly</span> in Seoul · © 2026 Research-mochi",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "contact": "contact"
+    }
+  },
   "Auth": {
     "signInTitle": "Sign in to Research-mochi",
     "signInSubtitle": "AI tools for marketing & UX research",
