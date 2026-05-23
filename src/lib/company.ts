@@ -10,7 +10,7 @@ export const COMPANY = {
   addressKo: '서울특별시 강동구 고덕비즈밸리로 26, 6층 에이 614호 (강동U1센터)',
   addressEn:
     'Room 614-A, 6F, Gangdong-U1 Center, 26 Godeokbizvalley-ro, Gangdong-gu, Seoul, Republic of Korea',
-  email: 'hello@research-mochi.app',
+  email: 'chris.lee@meteor-research.com',
   privacyOfficer: '이철희 (대표)',
   serviceName: 'Research-mochi',
 } as const;
