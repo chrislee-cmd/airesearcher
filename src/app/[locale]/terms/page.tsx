@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { LegalShell } from '@/components/legal-shell';
+import { COMPANY, companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 
 export const metadata: Metadata = {
   title: 'Terms of Service · Research-mochi',
@@ -8,12 +9,6 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = '2026-05-23';
-const COMPANY = {
-  name: 'Research-mochi',
-  legalName: 'Research-mochi (사업자등록 정보 추후 기재)',
-  address: 'Seoul, Republic of Korea',
-  email: 'hello@research-mochi.app',
-};
 
 export default async function TermsPage({
   params,
@@ -54,7 +49,7 @@ function KoTerms() {
 
       <H2>제1조 (목적)</H2>
       <P>
-        본 약관은 {COMPANY.name}(이하 “회사”)이 제공하는 Research-mochi 서비스(이하 “서비스”)의 이용과 관련하여
+        본 약관은 {COMPANY.nameKo}(이하 “회사”)이 제공하는 {COMPANY.serviceName} 서비스(이하 “서비스”)의 이용과 관련하여
         회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
       </P>
 
@@ -110,12 +105,12 @@ function KoTerms() {
       <H2>제11조 (준거법 및 관할)</H2>
       <P>본 약관은 대한민국 법령에 따라 해석되며, 본 서비스와 관련한 분쟁이 발생할 경우 민사소송법상의 관할법원에 제소합니다.</P>
 
-      <H2>제12조 (문의처)</H2>
-      <P>
-        {COMPANY.legalName}<br />
-        {COMPANY.address}<br />
-        문의: <a href={`mailto:${COMPANY.email}`} className="text-amore underline-offset-2 hover:underline">{COMPANY.email}</a>
-      </P>
+      <H2>제12조 (사업자 정보 및 문의처)</H2>
+      <ul className="mb-3 list-none space-y-1 text-mute">
+        {companyInfoLinesKo().map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
     </>
   );
 }
@@ -128,8 +123,8 @@ function EnTerms() {
 
       <H2>1. Acceptance of Terms</H2>
       <P>
-        These Terms govern your access to and use of the Research-mochi service (the &ldquo;Service&rdquo;) operated by
-        {' '}{COMPANY.name} (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;). By creating an account or using
+        These Terms govern your access to and use of the {COMPANY.serviceName} service (the &ldquo;Service&rdquo;) operated by
+        {' '}{COMPANY.nameEn} (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;). By creating an account or using
         the Service, you agree to be bound by these Terms.
       </P>
 
@@ -185,12 +180,12 @@ function EnTerms() {
       <H2>11. Governing Law</H2>
       <P>These Terms are governed by the laws of the Republic of Korea. Disputes shall be brought before the courts having jurisdiction under the Korean Civil Procedure Act.</P>
 
-      <H2>12. Contact</H2>
-      <P>
-        {COMPANY.legalName}<br />
-        {COMPANY.address}<br />
-        Contact: <a href={`mailto:${COMPANY.email}`} className="text-amore underline-offset-2 hover:underline">{COMPANY.email}</a>
-      </P>
+      <H2>12. Business Information &amp; Contact</H2>
+      <ul className="mb-3 list-none space-y-1 text-mute">
+        {companyInfoLinesEn().map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
     </>
   );
 }

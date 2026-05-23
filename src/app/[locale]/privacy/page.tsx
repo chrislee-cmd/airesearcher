@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { LegalShell } from '@/components/legal-shell';
+import { COMPANY, companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy · Research-mochi',
@@ -8,12 +9,6 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = '2026-05-23';
-const COMPANY = {
-  name: 'Research-mochi',
-  legalName: 'Research-mochi (사업자등록 정보 추후 기재)',
-  address: 'Seoul, Republic of Korea',
-  email: 'hello@research-mochi.app',
-};
 
 export default async function PrivacyPage({
   params,
@@ -53,7 +48,7 @@ function KoPrivacy() {
       <Meta>시행일자 · {EFFECTIVE_DATE}</Meta>
 
       <P>
-        {COMPANY.name}(이하 “회사”)은 이용자의 개인정보를 중요시하며, 「개인정보 보호법」, 「정보통신망 이용촉진
+        {COMPANY.nameKo}(이하 “회사”)은 이용자의 개인정보를 중요시하며, 「개인정보 보호법」, 「정보통신망 이용촉진
         및 정보보호 등에 관한 법률」 등 관련 법령을 준수합니다. 회사는 본 방침을 통해 이용자의 개인정보가 어떠한
         용도와 방식으로 이용되고 있으며, 개인정보 보호를 위해 어떠한 조치가 취해지고 있는지 안내합니다.
       </P>
@@ -112,11 +107,18 @@ function KoPrivacy() {
 
       <H2>8. 개인정보보호 책임자</H2>
       <P>
-        책임자: Research-mochi 운영팀<br />
+        책임자: {COMPANY.privacyOfficer}<br />
         이메일: <a href={`mailto:${COMPANY.email}`} className="text-amore underline-offset-2 hover:underline">{COMPANY.email}</a>
       </P>
 
-      <H2>9. 방침의 변경</H2>
+      <H2>9. 사업자 정보</H2>
+      <ul className="mb-3 list-none space-y-1 text-mute">
+        {companyInfoLinesKo().map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+
+      <H2>10. 방침의 변경</H2>
       <P>본 방침은 법령·정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 수 있으며, 변경 시 시행일 7일 전부터 서비스 내 공지를 통해 안내합니다.</P>
     </>
   );
@@ -129,7 +131,7 @@ function EnPrivacy() {
       <Meta>Effective · {EFFECTIVE_DATE}</Meta>
 
       <P>
-        {COMPANY.name} (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) respects your privacy. This policy
+        {COMPANY.nameEn} (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) respects your privacy. This policy
         explains what information we collect, how we use it, who we share it with, and the rights you have over your
         data.
       </P>
@@ -184,13 +186,20 @@ function EnPrivacy() {
         <li>Principle of least privilege for internal access; access logging and review.</li>
       </UL>
 
-      <H2>8. Contact</H2>
+      <H2>8. Data Protection Contact</H2>
       <P>
-        Data Protection Contact: Research-mochi Operations<br />
+        Officer: {COMPANY.privacyOfficer}<br />
         Email: <a href={`mailto:${COMPANY.email}`} className="text-amore underline-offset-2 hover:underline">{COMPANY.email}</a>
       </P>
 
-      <H2>9. Changes to This Policy</H2>
+      <H2>9. Business Information</H2>
+      <ul className="mb-3 list-none space-y-1 text-mute">
+        {companyInfoLinesEn().map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+
+      <H2>10. Changes to This Policy</H2>
       <P>We may update this Policy from time to time. Material changes will be announced at least 7 days in advance through in-product notices.</P>
     </>
   );
