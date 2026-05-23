@@ -2,6 +2,146 @@
   "Brand": {
     "name": "Research-mochi"
   },
+  "Landing": {
+    "metaTitle": "Research-mochi — Research, but kinder.",
+    "metaDescription": "여덟 개의 작은 도구가 같은 책상 위에 모여, 서두르지 않고 친절하게 리서치를 돕습니다.",
+    "nav": {
+      "demo": "데모",
+      "why": "왜 Mochi?",
+      "pricing": "가격",
+      "story": "이야기",
+      "faq": "FAQ",
+      "signIn": "로그인",
+      "freeStart": "무료 시작 →"
+    },
+    "hero": {
+      "tagline": "리서처를 위한, 달콤한 자동화",
+      "headline": "반복 작업은 <hl>Mochi</hl>에게.<br></br>당신은 <hlPeach>인사이트</hlPeach>에만.",
+      "lead": "전사록 생성부터 인터뷰 분석, 데스크 리서치, 리포트 작성까지—<strong>8가지 도구</strong>가 하나의 워크스페이스에서 고달픈 작업을 대신해요. 야근 없이도, 좋은 리서치를 할 수 있어요.",
+      "ctaPrimary": "무료로 시작하기 →",
+      "ctaSecondary": "데모 보기",
+      "postscript": "<b>P.S.</b> 가입 직후 24시간은 모든 도구가 무제한이에요. 카드 등록도 필요 없어요."
+    },
+    "showcase": {
+      "meta": "LIVE DEMO",
+      "title": "직접 눌러보세요.<br></br><em>실제와 똑같이 작동해요.</em>",
+      "subtitle": "도구를 클릭하고, 결과가 워크스페이스에 쌓이는 걸 확인해보세요. 가입 없이 바로 체험할 수 있어요.",
+      "freeTrial": "FREE TRIAL",
+      "freeTrialTime": "23h 48m",
+      "groups": {
+        "design": "설계",
+        "conduct": "진행",
+        "analysis": "분석"
+      },
+      "tools": {
+        "desk": "데스크 리서치",
+        "screener": "심사설문 생성기",
+        "guideline": "가이드라인 생성기",
+        "moderator": "AI 모더레이터",
+        "verbatim": "전사록 생성기",
+        "interview": "인터뷰 결과 생성기",
+        "report": "전체 리포트 생성기",
+        "quant": "정량조사 분석",
+        "affinity": "Affinity Bubble"
+      },
+      "sideFoot": "Beauty UX 2026Q2",
+      "wsMeta": "WORKSPACE",
+      "wsEmpty": "방문한 도구의 산출물이 여기 자동으로 쌓입니다. 사이드바를 눌러보세요.",
+      "wsReset": "초기화",
+      "wsToReport": "리포트로 →",
+      "footMeta": "NEXT",
+      "tip": "← / → 키로 이동 · 사이드바 클릭으로 도구 전환 · 탭으로 단계 보기",
+      "tipMeta": "TIP",
+      "fallbackNext": "리포트로 마무리 →"
+    },
+    "whyMochi": {
+      "tag": "WHY MOCHI?",
+      "hand": "고달픈 리서처에게,<br></br>달콤한 한 입을.",
+      "body1": "잦은 야근과 끝없는 수정, 사소한 디테일 하나도 놓칠 수 없는 고집—그 모든 고통을 감내한 끝에야 비로소 발굴되는 작고 소중한 인사이트. 오늘도 수많은 리서처들이 그 인사이트 하나를 위해 묵묵히 버티고 있습니다.",
+      "body2": "Research-Mochi는 그런 리서처분들 곁에 있고 싶습니다. 반복되는 업무를 자동화하고, 분석에만 온전히 집중할 수 있도록—마치 고된 하루 끝에 먹는 한 입의 모찌처럼, 작지만 확실한 행복을 드리고 싶습니다.",
+      "perk1": "<strong>야근 대신, 자동화.</strong> 전사록 정리, 인터뷰 요약, 데스크 리서치까지—밤새 붙잡고 있던 그 작업들을 Mochi가 대신합니다.",
+      "perk2": "<strong>디테일은 Mochi가, 인사이트는 당신이.</strong> 수백 장의 응답 속 패턴을 찾는 건 Mochi의 몫. 그 너머의 의미를 읽는 건 리서처의 몫입니다.",
+      "perk3": "<strong>수정을 줄이는 첫 번째 초안.</strong> 처음부터 정돈된 구조와 언어로. 수차례 반복되는 피드백 루프를 줄여드립니다.",
+      "coda": "오늘은 Mochi에게 맡기고, 커피 한 잔 어떠세요? ☕"
+    },
+    "pricing": {
+      "meta": "CREDITS · PAY AS YOU LEARN",
+      "title": "딱 쓴 만큼,<br></br><hlPeach>한국어 인보이스</hlPeach> 까지.",
+      "subtitle": "크레딧 만료 없음 · 팀 단위 공유.",
+      "tiers": {
+        "starter": {
+          "meta": "Starter",
+          "name": "혼자 시작",
+          "price": "₩200,000",
+          "priceNote": "100 크레딧 · ₩2,000 / cr",
+          "f1": "전 도구 사용",
+          "f2": "한국어/영어",
+          "f3": "이메일 지원",
+          "cta": "시작하기"
+        },
+        "team": {
+          "badge": "popular",
+          "meta": "Team · 10% off",
+          "name": "팀으로 시작",
+          "price": "₩900,000",
+          "priceNote": "500 크레딧 · ₩1,800 / cr",
+          "f1": "팀 워크스페이스 공유",
+          "f2": "역할/권한 관리",
+          "f3": "우선 채널 지원",
+          "cta": "팀으로 시작 →"
+        },
+        "studio": {
+          "meta": "Studio · 15% off",
+          "name": "리서치 스튜디오",
+          "price": "₩2,550,000",
+          "priceNote": "1,500 크레딧 · ₩1,700 / cr",
+          "f1": "다중 워크스페이스",
+          "f2": "리포트 화이트라벨",
+          "f3": "온보딩 1회",
+          "cta": "스튜디오 시작"
+        },
+        "enterprise": {
+          "meta": "Enterprise · 25% off",
+          "name": "엔터프라이즈",
+          "price": "견적",
+          "priceNote": "5,000 크레딧 · 맞춤 SLA",
+          "f1": "SSO · 감사 로그",
+          "f2": "전용 도메인",
+          "f3": "한국어 전담",
+          "cta": "견적 요청"
+        }
+      }
+    },
+    "voice": {
+      "quote": "\"리서치를 '잡일' 처럼 느끼던 시간이 줄었어요.<br></br>하루 종일 인터뷰 정리하던 게 한 시간이면 끝나니까,<br></br>드디어 '생각하는 일' 에 시간을 쓸 수 있게 됐어요.\"",
+      "by": "— Beauty UX Lead · 2026 Q1 Beta"
+    },
+    "faq": {
+      "meta": "FAQ",
+      "title": "궁금해 하실 것 같아서요.",
+      "q1": "크레딧은 만료가 있나요?",
+      "a1": "아니요. 한 번 구매하신 크레딧은 만료되지 않아요. 팀 워크스페이스 안에서 자유롭게 공유돼요.",
+      "q2": "한국어가 모자란 부분은 없나요?",
+      "a2": "기본 언어는 한국어예요. 인터페이스·문서·이메일·인보이스까지 모두 한국어 우선. 필요할 때 영어로 토글할 수 있어요.",
+      "q3": "한 도구의 결과가 다른 도구로 자동으로 흘러가나요?",
+      "a3": "네. 같은 워크스페이스 안에서 한 도구의 산출물이 다음 도구의 입력으로 바로 이어져요. 사이드바에 쌓이고 drag-drop 으로 보낼 수도 있어요.",
+      "q4": "가입하면 바로 결제해야 하나요?",
+      "a4": "아니요. 가입 후 24시간은 카드 없이 모든 도구를 무제한으로 써 보실 수 있어요. 마음에 드시면 그 후에 크레딧을 구매하세요."
+    },
+    "ctaFinal": {
+      "squiggle": "come say hi ✿",
+      "title": "리서처의 손은,<br></br><hlMint>생각하는 일</hlMint> 에 써야 하니까요.",
+      "subtitle": "가입 직후 24시간 동안 모든 도구가 무제한으로 열려요. 카드 등록도 없고, 첫 산출물까지 평균 3분이에요.",
+      "ctaPrimary": "하루 무료로 만나보기 →",
+      "ctaSecondary": "한 바퀴 둘러보기"
+    },
+    "footer": {
+      "madeIn": "Made <span>kindly</span> in Seoul · © 2026 Research-mochi",
+      "terms": "이용약관",
+      "privacy": "개인정보",
+      "contact": "contact"
+    }
+  },
   "Auth": {
     "signInTitle": "Research-mochi 로그인",
     "signInSubtitle": "마케팅·UX 리서치를 위한 AI 도구",
