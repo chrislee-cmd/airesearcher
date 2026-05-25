@@ -74,11 +74,19 @@ function transcriptToItem(r: {
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
-  const base = (r.filename ?? 'transcript').replace(/\.[^./\\]+$/, '');
+  // For anonymous UUID uploads the download endpoint computes a per-user
+  // "session-N" slug; we don't have that join here, so the helper falls back
+  // to the raw filename (or `transcript-{date}.md` when the row is empty).
+  const base = (r.filename ?? '').replace(/\.[^./\\]+$/, '');
   return {
     id: `tx_${r.id}`,
     featureKey: 'quotes',
-    title: `${base}.md`,
+    title: buildArtifactFilename({
+      prefix: 'transcript',
+      slug: base,
+      createdAt: r.created_at,
+      ext: 'md',
+    }),
     createdAt: r.updated_at ?? r.created_at,
     dbFeature: 'transcript',
     dbId: r.id,
