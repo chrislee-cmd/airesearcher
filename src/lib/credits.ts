@@ -111,3 +111,31 @@ export async function spendCreditsAdminAmount(
   if (!data) return { ok: false, reason: 'insufficient' };
   return { ok: true };
 }
+
+/**
+ * Reverses a prior charge for `generationId`. The refund amount is read
+ * server-side from the original `feature_use` ledger row, so caller intent
+ * and ledger truth cannot diverge. Idempotent — a retried refund returns
+ * `ok: true` without re-crediting.
+ *
+ * Returns `not_found` when no matching charge exists for the (orgId,
+ * generationId) pair — usually means the caller passed the wrong id, or
+ * the original spend never completed.
+ */
+export async function refundCredits(
+  orgId: string,
+  userId: string,
+  feature: FeatureKey,
+  generationId: string,
+): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'forbidden' }> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc('credit_refund', {
+    p_org_id: orgId,
+    p_user_id: userId,
+    p_feature: feature,
+    p_generation_id: generationId,
+  });
+  if (error) return { ok: false, reason: 'forbidden' };
+  if (!data) return { ok: false, reason: 'not_found' };
+  return { ok: true };
+}
