@@ -25,6 +25,10 @@ const Body = z.object({
   // route persists its own version row and credits separately, so we
   // skip the generations insert + credit spend here.
   skip_persist: z.boolean().optional().default(false),
+  // Active project from the client's ActiveProjectProvider. Carried into
+  // the generations row so the workspace panel's default 'active' scope
+  // can surface this artifact without a manual move.
+  project_id: z.string().uuid().nullable().optional(),
 });
 
 export async function POST(request: Request) {
@@ -39,7 +43,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { markdown, sources, reportType, skip_persist } = parsed.data;
+  const { markdown, sources, reportType, skip_persist, project_id } = parsed.data;
   const prompts = getReportPrompts(reportType);
 
   // Pre-flight balance check (skipped for the enhance re-render path,
@@ -92,6 +96,7 @@ export async function POST(request: Request) {
             input: inputSummary,
             output: html,
             credits_spent: FEATURE_COSTS.reports,
+            project_id: project_id ?? null,
           })
           .select('id')
           .single();

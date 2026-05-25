@@ -30,6 +30,10 @@ const Body = z.object({
   // align are merged into a trailing "기타 응답" row with isResidual=true
   // so the user can still see what was said outside the template.
   templateQuestions: z.array(z.string().min(1)).max(200).optional(),
+  // Active project from the client. Carried into the generations row so
+  // the workspace panel's default 'active' scope can surface this
+  // artifact without a manual move.
+  project_id: z.string().uuid().nullable().optional(),
 });
 
 // === Deterministic question clustering ===
@@ -333,7 +337,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { extractions, templateQuestions } = parsed.data;
+  const { extractions, templateQuestions, project_id } = parsed.data;
 
   // Pre-flight balance check. The threshold was previously hardcoded at 3,
   // but the actual charge is FEATURE_COSTS.interviews (= 10) — letting
@@ -469,6 +473,7 @@ export async function POST(request: Request) {
         input: filenames.join(', '),
         output: JSON.stringify(matrix),
         credits_spent: FEATURE_COSTS.interviews,
+        project_id: project_id ?? null,
       })
       .select('id')
       .single();
@@ -554,6 +559,7 @@ export async function POST(request: Request) {
       input: filenames.join(', '),
       output: JSON.stringify(matrix),
       credits_spent: FEATURE_COSTS.interviews,
+      project_id: project_id ?? null,
     })
     .select('id')
     .single();
