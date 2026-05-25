@@ -11,6 +11,10 @@ import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { triggerBlobDownload } from '@/lib/export/download';
+import {
+  buildArtifactBaseName,
+  buildArtifactFilename,
+} from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
 import { FeaturePage } from './ui/feature-page';
 import {
@@ -175,6 +179,14 @@ export function ReportGenerator() {
   const [selectedVersion, setSelectedVersion] = useState<number>(0);
   const [enhancing, setEnhancing] = useState<EnhanceMode | null>(null);
   const [enhanceStream, setEnhanceStream] = useState<string>('');
+  // Captured once per generation so download/share filenames stay stable
+  // across re-renders and don't drift when the menu is reopened later. We
+  // approximate `report_jobs.created_at` with the client clock at submit —
+  // the POST handler defaults `created_at` to `now()` so drift is sub-second.
+  const [lastRun, setLastRun] = useState<{
+    createdAt: Date;
+    runType: ReportType;
+  } | null>(null);
 
   const reloadVersions = useCallback(async (rid: string) => {
     try {
@@ -232,10 +244,6 @@ export function ReportGenerator() {
     );
   }
 
-  function reportStamp(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
-
   function triggerPrint() {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
@@ -266,7 +274,13 @@ export function ReportGenerator() {
       }
       const { buildReportPptxBlob } = await import('@/lib/reports-pptx');
       const blob = await buildReportPptxBlob(json.outline);
-      triggerBlobDownload(blob, `report_${reportStamp()}.pptx`);
+      const pptxName = buildArtifactFilename({
+        prefix: 'report',
+        slug: lastRun?.runType ?? reportType,
+        createdAt: lastRun?.createdAt ?? new Date(),
+        ext: 'pptx',
+      });
+      triggerBlobDownload(blob, pptxName);
     } catch (e) {
       console.error('[reports] pptx failed', e);
       alert(`PPTX 생성 실패: ${e instanceof Error ? e.message : 'unknown'}`);
@@ -400,8 +414,14 @@ export function ReportGenerator() {
         }
 
         track('reports_generate_success', { feature: 'reports', reportType: runType });
-        const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        const title = `${runType}_report_${ts}.html`;
+        const runCreatedAt = new Date();
+        const title = buildArtifactFilename({
+          prefix: 'report',
+          slug: runType,
+          createdAt: runCreatedAt,
+          ext: 'html',
+        });
+        setLastRun({ createdAt: runCreatedAt, runType });
         // Persist first so the workspace artifact can carry the DB id.
         // Without that link, picking a project from the workspace modal
         // updates only local state — the project page never sees it.
@@ -573,7 +593,12 @@ export function ReportGenerator() {
                   {
                     format: 'html',
                     kind: 'blob',
-                    filename: `report_${reportStamp()}.html`,
+                    filename: buildArtifactFilename({
+                      prefix: 'report',
+                      slug: lastRun?.runType ?? reportType,
+                      createdAt: lastRun?.createdAt ?? new Date(),
+                      ext: 'html',
+                    }),
                     build: () =>
                       new Blob([result?.html ?? ''], {
                         type: 'text/html;charset=utf-8',
@@ -597,7 +622,11 @@ export function ReportGenerator() {
                 items={[
                   {
                     destination: 'google-docs',
-                    title: `리서치 리포트 ${reportStamp()}`,
+                    title: buildArtifactBaseName({
+                      prefix: 'report',
+                      slug: lastRun?.runType ?? reportType,
+                      createdAt: lastRun?.createdAt ?? new Date(),
+                    }),
                     // Use the pre-rendered HTML (same source as the .html
                     // download) so Drive preserves the report's styling.
                     getBlob: async () => ({

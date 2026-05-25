@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { FeatureKey } from '@/lib/features';
+import { buildArtifactFilename } from '@/lib/filename';
 
 // Server-side workspace data model. The list endpoint returns this shape;
 // content() is a separate lazy fetch keyed by (dbFeature, dbId).
@@ -137,12 +138,21 @@ function reportToItem(r: {
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
-  const inputs = r.inputs ?? [];
-  const first = inputs[0]?.filename ?? 'report';
+  // Slug is the first input filename (sans extension) — `report_jobs` doesn't
+  // persist the runType today, so the user-facing run direction (market/
+  // findings/…) can't reach this read path. Once the schema gains a
+  // `report_type` column, swap the slug source.
+  const firstRaw = (r.inputs ?? [])[0]?.filename ?? '';
+  const firstSlug = firstRaw.replace(/\.[^./\\]+$/, '');
   return {
     id: `rp_${r.id}`,
     featureKey: 'reports',
-    title: `${first}-report.html`,
+    title: buildArtifactFilename({
+      prefix: 'report',
+      slug: firstSlug,
+      createdAt: r.created_at,
+      ext: 'html',
+    }),
     createdAt: r.updated_at ?? r.created_at,
     dbFeature: 'report',
     dbId: r.id,
