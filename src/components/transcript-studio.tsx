@@ -56,6 +56,7 @@ function formatDuration(seconds: number | null) {
 
 export function TranscriptStudio() {
   const tUp = useTranslations('Features.uploader');
+  const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
@@ -354,12 +355,12 @@ export function TranscriptStudio() {
       {Object.keys(job.localUploads).length > 0 && (
         <section>
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-            업로드 중
+            {tCommon('uploading')}
           </h3>
           <ul className="mt-2 space-y-2">
             {Object.entries(job.localUploads).map(([id, pct]) => (
               <li key={id}>
-                <JobProgress value={pct} label="파일 업로드 중" />
+                <JobProgress value={pct} label={tCommon('uploadingFiles')} />
               </li>
             ))}
           </ul>
@@ -649,6 +650,8 @@ function ProgressEstimate({
   startedAt: string;
   sizeBytes: number | null;
 }) {
+  const tCommon = useTranslations('Common');
+  const tView = useTranslations('Features.transcriptsView');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -670,8 +673,11 @@ function ProgressEstimate({
     <div className="mt-2">
       <JobProgress
         value={pct}
-        label="전사 중"
-        hint={`${formatClock(elapsedSec)} 경과 · 약 ${formatClock(remainSec)} 남음 (추정)`}
+        label={tCommon('transcribing')}
+        hint={tView('transcribingEta', {
+          elapsed: formatClock(elapsedSec),
+          remain: formatClock(remainSec),
+        })}
       />
     </div>
   );

@@ -420,6 +420,9 @@
     "unlimitedAccess": "Unlimited access",
     "generate": "Generate",
     "loading": "Loading...",
+    "uploading": "Uploading",
+    "uploadingFiles": "Uploading files",
+    "transcribing": "Transcribing",
     "comingSoon": "Coming soon",
     "share": "Share",
     "save": "Save",
@@ -470,6 +473,7 @@
       "cost": "1 credit"
     },
     "transcriptsView": {
+      "transcribingEta": "{elapsed} elapsed · ~{remain} remaining (est.)",
       "languageConfirm": {
         "title": "Use this language to transcribe?",
         "body": "Transcription will run with the selected language. Choosing the wrong setting noticeably hurts accuracy — worth a quick check.",
@@ -486,6 +490,7 @@
       "cost": "10 credits"
     },
     "interviewsView": {
+      "deleteQuestion": "Delete question",
       "stage1Title": "Step 1 — Convert files to .md",
       "stage1Help": "Each file is converted to markdown. Audio/video is transcribed first; text files are wrapped as-is.",
       "convertAll": "Start",
