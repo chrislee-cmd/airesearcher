@@ -4,7 +4,8 @@ import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits } from '@/lib/credits';
+import { spendCredits, getCreditsStatus } from '@/lib/credits';
+import { FEATURE_COSTS } from '@/lib/features';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import {
   tryRegexMarkdown,
@@ -41,6 +42,19 @@ export async function POST(request: Request) {
   }
   if (file.size === 0) {
     return NextResponse.json({ error: 'empty_file' }, { status: 400 });
+  }
+
+  // Pre-flight balance check — otherwise the user can burn an OpenAI
+  // transcription / Anthropic format call and only then learn they're
+  // short on credits. Trial / unlimited orgs skip the check (the RPC
+  // gives them delta=0 charges).
+  const status = await getCreditsStatus(org.org_id);
+  if (
+    !status.isUnlimited &&
+    !status.isTrialActive &&
+    status.balance < FEATURE_COSTS.quotes
+  ) {
+    return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
   // Content-addressed cache check. Same bytes = same markdown, regardless
@@ -179,7 +193,7 @@ export async function POST(request: Request) {
       feature: 'quotes',
       input: file.name,
       output: markdown,
-      credits_spent: 1,
+      credits_spent: FEATURE_COSTS.quotes,
     })
     .select('id')
     .single();
