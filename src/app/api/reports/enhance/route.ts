@@ -4,6 +4,7 @@ import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { getCreditsStatus } from '@/lib/credits';
 import {
   ContextPayload,
   renderContextForPrompt,
@@ -74,6 +75,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input', issues: parsed.error.flatten() }, { status: 400 });
   }
   const { report_id, parent_version, payload } = parsed.data;
+
+  // Pre-flight balance check. Without this, the old flow would write a
+  // new version + move head_version *before* calling spend_credits, and
+  // log-only on spend failure — so a user out of credits could get a free
+  // enhance with persistent state changes. We reject upfront and only
+  // commit writes when we know the charge can succeed.
+  const status = await getCreditsStatus(org.org_id);
+  if (
+    !status.isUnlimited &&
+    !status.isTrialActive &&
+    status.balance < REPORT_ENHANCE_COST
+  ) {
+    return NextResponse.json({ error: 'insufficient' }, { status: 402 });
+  }
 
   // Load parent version's markdown as the base. Without RLS access we'd
   // 404 here naturally.
@@ -198,25 +213,34 @@ export async function POST(request: Request) {
           return;
         }
 
-        // Move the head pointer + materialize latest on report_jobs so
-        // legacy readers keep seeing the latest content.
-        await supabase
-          .from('report_jobs')
-          .update({ markdown, html, head_version: version })
-          .eq('id', report_id);
-
+        // Charge BEFORE moving the head pointer. Pass the version row's
+        // id as the idempotency key so a retry can't double-charge for the
+        // same version. If the charge fails (which the pre-flight check
+        // should already have prevented, but races / concurrent spends
+        // exist), undo the version insert and bail out — the user's saved
+        // head stays on the parent version.
         const { data: spent, error: spendErr } = await supabase.rpc(
           'spend_credits',
           {
             p_org_id: org.org_id,
             p_amount: REPORT_ENHANCE_COST,
             p_feature: 'reports_enhance',
-            p_generation_id: null,
+            p_generation_id: inserted.id,
           },
         );
         if (spendErr || !spent) {
-          console.error('[reports/enhance] credit spend failed', spendErr ?? 'insufficient');
+          console.error('[reports/enhance] credit spend failed; rolling back version', spendErr ?? 'insufficient');
+          await supabase.from('report_versions').delete().eq('id', inserted.id);
+          return;
         }
+
+        // Charge committed — now safe to advance the head pointer and
+        // materialize latest content on report_jobs so legacy readers
+        // keep seeing the latest content.
+        await supabase
+          .from('report_jobs')
+          .update({ markdown, html, head_version: version })
+          .eq('id', report_id);
       } catch (e) {
         console.error('[reports/enhance] onFinish error', e);
       }
