@@ -4,7 +4,7 @@ import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits } from '@/lib/credits';
+import { spendCredits, getCreditsStatus } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { REPORT_TYPES, DEFAULT_REPORT_TYPE } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
@@ -41,6 +41,21 @@ export async function POST(request: Request) {
   }
   const { markdown, sources, reportType, skip_persist } = parsed.data;
   const prompts = getReportPrompts(reportType);
+
+  // Pre-flight balance check (skipped for the enhance re-render path,
+  // which has already validated and charged its own version cost). Without
+  // this, low-balance users could stream a full Sonnet generation and only
+  // at onFinish learn they can't save it. Trial / unlimited orgs skip.
+  if (!skip_persist) {
+    const status = await getCreditsStatus(org.org_id);
+    if (
+      !status.isUnlimited &&
+      !status.isTrialActive &&
+      status.balance < FEATURE_COSTS.reports
+    ) {
+      return NextResponse.json({ error: 'insufficient' }, { status: 402 });
+    }
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
