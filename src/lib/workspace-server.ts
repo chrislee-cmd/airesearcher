@@ -296,17 +296,20 @@ export async function listWorkspaceArtifacts(
       .eq('org_id', orgId),
     filter,
   );
-  // generations has no org_id; if filter is 'all' we skip (no way to scope).
-  // Otherwise filter by project_id (project itself is org-scoped, so transitively safe).
-  const generationsQ =
-    filter.kind === 'all'
-      ? null
-      : applyProjectFilter(
-          supabase
-            .from('generations')
-            .select('id, project_id, folder_id, feature, created_at'),
-          filter,
-        );
+  // generations IS org-scoped — see supabase/migrations/0001_init.sql:50,
+  // `org_id uuid NOT NULL references organizations(id)`. The earlier
+  // comment claiming no org_id was wrong and made 'all' scope hide every
+  // generation-backed artifact (quotes / interviews / reports finalized
+  // through /api/<feature>/<…> insert into generations). Same pattern as
+  // the other tables now: filter by org_id always, then layer the
+  // project filter on top.
+  const generationsQ = applyProjectFilter(
+    supabase
+      .from('generations')
+      .select('id, project_id, folder_id, feature, created_at')
+      .eq('org_id', orgId),
+    filter,
+  );
 
   const [tx, desk, iv, rp, sc, rc, gn] = await Promise.all([
     transcriptQ,
@@ -315,7 +318,7 @@ export async function listWorkspaceArtifacts(
     reportQ,
     schedulerQ,
     recruitingQ,
-    generationsQ ?? Promise.resolve({ data: [] as Array<{ id: string; project_id: string | null; folder_id: string | null; feature: string; created_at: string }> }),
+    generationsQ,
   ]);
 
   const out: WorkspaceArtifactListItem[] = [];
