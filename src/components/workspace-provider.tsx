@@ -216,6 +216,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     void refreshFolders();
   }, [isOpen, refresh, refreshFolders]);
 
+  // Light polling while the panel is open so newly-finished artifacts
+  // (transcripts, interviews, reports, …) appear without the user
+  // having to close and reopen. Closed panels stay quiet — the open
+  // effect above already refreshes on next open. Tab visibility
+  // matters too: a backgrounded tab burning requests for an unwatched
+  // panel is waste, so the tick is a no-op when `document.hidden`.
+  // Folder list intentionally not polled — folders only change via
+  // explicit user actions which already call refreshFolders().
+  useEffect(() => {
+    if (!isOpen) return;
+    const POLL_MS = 5000;
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void refresh();
+    }, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [isOpen, refresh]);
+
   // Switching project (or leaving project scope) invalidates the folder
   // selection — keep it consistent so the panel never queries a folder
   // that lives in a different project.
