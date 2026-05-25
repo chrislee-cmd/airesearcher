@@ -15,6 +15,7 @@ import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
 import { buildArtifactFilename } from '@/lib/filename';
+import { peekActiveProjectId } from './active-project-provider';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 export const MAX_FILES = 25;
@@ -887,9 +888,14 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         templateMode === 'template' &&
         !!template &&
         template.questions.length > 0;
+      // Stamp the current active project so the resulting generations row
+      // joins the workspace panel's default 'active' scope. peekActive…
+      // reads localStorage directly because this provider lives outside
+      // ActiveProjectProvider in the layout tree.
+      const activeProjectId = peekActiveProjectId();
       const body = useTemplate
-        ? { ...payload, templateQuestions: template!.questions }
-        : payload;
+        ? { ...payload, templateQuestions: template!.questions, project_id: activeProjectId }
+        : { ...payload, project_id: activeProjectId };
       const res = await fetch('/api/interviews/analyze', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1012,6 +1018,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
     const fd = new FormData();
     fd.append('file', target.file);
+    const activeProjectId = peekActiveProjectId();
+    if (activeProjectId) fd.append('project_id', activeProjectId);
 
     try {
       const res = await fetch('/api/interviews/convert', {

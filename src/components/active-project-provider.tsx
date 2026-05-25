@@ -66,3 +66,22 @@ export function useActiveProject() {
 export function useActiveProjectId(): string | null {
   return useActiveProject().active?.id ?? null;
 }
+
+/**
+ * Read the active project id straight from localStorage. Use this from
+ * code paths that can't access the React context — most commonly providers
+ * that live *outside* ActiveProjectProvider in the layout tree (e.g.
+ * InterviewJobProvider). The key stays the same as the provider's source
+ * of truth above.
+ */
+export function peekActiveProjectId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string } | null;
+    return typeof parsed?.id === 'string' ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}

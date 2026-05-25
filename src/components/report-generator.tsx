@@ -6,6 +6,7 @@ import { track } from './mixpanel-provider';
 import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
+import { useActiveProjectId } from './active-project-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { DownloadMenu } from './ui/download-menu';
@@ -149,6 +150,7 @@ export function ReportGenerator() {
   const requireAuth = useRequireAuth();
   const workspace = useWorkspace();
   const jobs = useGenerationJobs();
+  const activeProjectId = useActiveProjectId();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Each srcDoc update fully reloads the iframe — scroll resets to 0.
   // We watch the iframe's scroll, remember the last position, and
@@ -400,7 +402,12 @@ export function ReportGenerator() {
         const r2 = await fetch('/api/reports/generate', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ markdown, sources: sourceNames, reportType: runType }),
+          body: JSON.stringify({
+            markdown,
+            sources: sourceNames,
+            reportType: runType,
+            project_id: activeProjectId,
+          }),
         });
         if (!r2.ok) {
           const j = await r2.json().catch(() => ({}));

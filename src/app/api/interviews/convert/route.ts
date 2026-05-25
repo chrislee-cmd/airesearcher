@@ -37,6 +37,14 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'no_file' }, { status: 400 });
   }
+  // Optional active project id from the client. Used so the resulting
+  // generations row joins the workspace panel's default 'active' scope.
+  // Ignored if not a valid uuid.
+  const projectIdRaw = formData.get('project_id');
+  const projectId =
+    typeof projectIdRaw === 'string' && /^[0-9a-f-]{36}$/i.test(projectIdRaw)
+      ? projectIdRaw
+      : null;
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: 'file_too_large' }, { status: 413 });
   }
@@ -194,6 +202,7 @@ export async function POST(request: Request) {
       input: file.name,
       output: markdown,
       credits_spent: FEATURE_COSTS.quotes,
+      project_id: projectId,
     })
     .select('id')
     .single();
