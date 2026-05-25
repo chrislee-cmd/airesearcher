@@ -1,12 +1,35 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
 
 const intl = createIntlMiddleware(routing);
 
+// Common country-code typos for locale prefixes. Without this, someone
+// typing `/jp/dashboard` (country code) ends up at `/ko/jp/dashboard`
+// (404) because next-intl doesn't recognize `jp`, falls back to the
+// negotiated locale, and treats `jp` as part of the path. We catch the
+// common ones up front and 308-redirect to the language-code variant
+// so /ja, /ko, /en are reachable from intuitive URLs.
+const LOCALE_ALIASES: Record<string, string> = {
+  jp: 'ja', // Japan country code → Japanese language code
+  kr: 'ko', // Korea country code → Korean language code
+  us: 'en', // common US English shorthand
+  gb: 'en', // UK → English (no separate en-GB locale)
+};
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // First segment of the path. `/jp/dashboard` → "jp", `/` → "".
+  const firstSeg = pathname.split('/', 2)[1]?.toLowerCase() ?? '';
+  const aliased = LOCALE_ALIASES[firstSeg];
+  if (aliased) {
+    const rest = pathname.slice(firstSeg.length + 1); // includes leading "/" or ""
+    const url = request.nextUrl.clone();
+    url.pathname = `/${aliased}${rest}`;
+    return NextResponse.redirect(url, 308);
+  }
 
   // Routes under /auth (OAuth callback, sign-out, etc.) live outside the
   // `[locale]` segment and must NOT be prefixed. Without this guard
