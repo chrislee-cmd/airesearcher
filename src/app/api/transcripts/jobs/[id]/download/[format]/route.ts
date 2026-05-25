@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { markdownToDocx } from '@/lib/transcripts/docx';
+import {
+  buildArtifactFilename,
+  contentDispositionHeader,
+} from '@/lib/filename';
 
 export const maxDuration = 60;
-
-function asciiSafe(name: string) {
-  // Strip directory chars; keep dots and basic ascii
-  return name.replace(/[/\\]/g, '_').replace(/[^A-Za-z0-9._-]+/g, '_');
-}
 
 function markdownToPlainText(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
@@ -75,10 +74,15 @@ export async function GET(
   // 1) Try the original filename. If it looks like a person/identifier, keep it.
   // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",
   //    where N counts this user's prior `done` jobs (≤ this row's created_at).
+  // `displayBase` is the human-friendly label that lands in the doc cover and
+  // front-matter; `slug` is the kebab-safe token used in the filename so we
+  // don't end up with "transcript-Interview-Transcript-#3-…".
   const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
-  let base: string;
+  let displayBase: string;
+  let slug: string;
   if (rawBase && !looksAnonymous(rawBase)) {
-    base = rawBase;
+    displayBase = rawBase;
+    slug = rawBase;
   } else {
     const { count } = await supabase
       .from('transcript_jobs')
@@ -87,25 +91,35 @@ export async function GET(
       .eq('status', 'done')
       .lte('created_at', job.created_at);
     const n = Math.max(1, count ?? 1);
-    base = `Interview Transcript #${n}`;
+    displayBase = `Interview Transcript #${n}`;
+    slug = `session-${n}`;
   }
-
-  const safeBase = asciiSafe(base) || 'transcript';
-  const utf8Base = encodeURIComponent(base) || 'transcript';
 
   // Mirror the resolved display name into the front-matter `file:` field so the
   // cover H1 and the meta grid show the human-friendly name, not the UUID.
   const displayMarkdown = (job.markdown as string).replace(
     /^(file:\s*).*$/m,
-    `$1${base}`,
+    `$1${displayBase}`,
   );
+
+  // Hoist `job.created_at` into a local — the inner closure loses TS's
+  // null-narrowing on `job` otherwise.
+  const jobCreatedAt = job.created_at as string;
+  function fileFor(ext: 'md' | 'txt' | 'docx'): string {
+    return buildArtifactFilename({
+      prefix: 'transcript',
+      slug,
+      createdAt: jobCreatedAt,
+      ext,
+    });
+  }
 
   if (format === 'md') {
     return new Response(displayMarkdown, {
       status: 200,
       headers: {
         'content-type': 'text/markdown; charset=utf-8',
-        'content-disposition': `attachment; filename="${safeBase}.md"; filename*=UTF-8''${utf8Base}.md`,
+        'content-disposition': contentDispositionHeader(fileFor('md')),
       },
     });
   }
@@ -118,7 +132,7 @@ export async function GET(
       status: 200,
       headers: {
         'content-type': 'text/plain; charset=utf-8',
-        'content-disposition': `attachment; filename="${safeBase}.txt"; filename*=UTF-8''${utf8Base}.txt`,
+        'content-disposition': contentDispositionHeader(fileFor('txt')),
       },
     });
   }
@@ -130,7 +144,7 @@ export async function GET(
     headers: {
       'content-type':
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'content-disposition': `attachment; filename="${safeBase}.docx"; filename*=UTF-8''${utf8Base}.docx`,
+      'content-disposition': contentDispositionHeader(fileFor('docx')),
       'content-length': String(buf.length),
     },
   });
