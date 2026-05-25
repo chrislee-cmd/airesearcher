@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { QuantAnalyzer } from '@/components/quant-analyzer';
 import { CoachmarkTour } from '@/components/coachmark-tour';
 import { FeaturePage } from '@/components/ui/feature-page';
+import { requirePreviewAccess } from '@/lib/preview-gate';
 
 export default async function QuantPage({
   params,
@@ -10,6 +11,7 @@ export default async function QuantPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requirePreviewAccess('quant', locale);
   const t = await getTranslations('Features');
 
   return (
