@@ -1,13 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
   type CreditBundleId,
 } from '@/lib/features';
 import { track } from '@/components/mixpanel-provider';
+import { currencyForLocale, formatCurrency } from '@/lib/currency';
 
+// Plain KRW formatter — used only for the bank-transfer "deposit this
+// exact amount" detail row, since that's the literal sum the customer
+// has to wire. All other prices on the page render through
+// `formatCurrency` keyed off the user's locale so foreign-locale users
+// see USD / JPY / THB display values.
 function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
 }
@@ -51,6 +57,13 @@ type BankDetails = {
 
 export function CreditsBundles() {
   const t = useTranslations('Credits');
+  const locale = useLocale();
+  const displayCurrency = currencyForLocale(locale);
+  // Prices on the page are shown in the user's local currency for
+  // intuition; the actual transaction (Creem or bank transfer) still
+  // settles in KRW, so non-KRW users get a small note explaining the
+  // billing currency.
+  const formatPrice = (krw: number) => formatCurrency(krw, displayCurrency);
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
   const [method, setMethod] = useState<Method>('creem');
   const [tax, setTax] = useState<TaxInvoiceState>(EMPTY_TAX);
@@ -186,12 +199,12 @@ export function CreditsBundles() {
                 <span className="text-[11px] text-mute-soft">{t('creditsUnit')}</span>
               </div>
               <div className="mt-4 text-[15px] font-semibold text-ink-2 tabular-nums">
-                {isContact ? '—' : formatKrw(b.priceKrw!)}
+                {isContact ? '—' : formatPrice(b.priceKrw!)}
               </div>
               <div className="mt-1 flex items-center gap-2 text-[10.5px] text-mute-soft tabular-nums">
                 {b.perCreditKrw !== null && (
                   <span>
-                    {formatKrw(b.perCreditKrw)} {t('perCredit')}
+                    {formatPrice(b.perCreditKrw)} {t('perCredit')}
                   </span>
                 )}
                 {b.discountPct > 0 && (
@@ -269,7 +282,14 @@ export function CreditsBundles() {
                     {selected.credits.toLocaleString()} {t('creditsUnit')}
                   </h3>
                   <p className="mt-1 text-[12.5px] text-mute tabular-nums">
-                    {formatKrw(selected.priceKrw!)}
+                    {formatPrice(selected.priceKrw!)}
+                    {displayCurrency !== 'KRW' && (
+                      <span className="ml-2 text-mute-soft">
+                        ({t('billedInKrwNote', {
+                          krw: formatKrw(selected.priceKrw!),
+                        })})
+                      </span>
+                    )}
                   </p>
 
                   {/* Method selection */}
