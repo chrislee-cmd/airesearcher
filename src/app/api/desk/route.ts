@@ -6,7 +6,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits } from '@/lib/credits';
+import { spendCredits, refundCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import {
   crawlSource,
@@ -226,7 +226,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const spend = await spendCredits(org.org_id, 'desk');
+  // Pass job.id as the idempotency key so a downstream refund (on
+  // crawl/summarize failure) can reverse this exact charge.
+  const spend = await spendCredits(org.org_id, 'desk', job.id);
   if (!spend.ok) {
     await supabase.from('desk_jobs').delete().eq('id', job.id);
     return NextResponse.json({ error: spend.reason }, { status: 402 });
@@ -317,11 +319,22 @@ async function runJob(args: {
     });
   }
 
+  // Reverse the upfront charge whenever the job ends without producing a
+  // result. Idempotent — safe to call from any failure path; a second call
+  // returns ok without re-crediting (see credit_refund RPC).
+  async function refundOnFailure(reason: string) {
+    const result = await refundCredits(orgId, userId, 'desk', jobId);
+    if (!result.ok && result.reason !== 'not_found') {
+      console.error('[desk] refund failed', { jobId, reason, refundReason: result.reason });
+    }
+  }
+
   try {
     let model: LanguageModel;
     try {
       model = getModel();
     } catch {
+      await refundOnFailure('missing_anthropic_key');
       await patch({ status: 'error', error_message: 'missing_anthropic_key' });
       return;
     }
@@ -573,6 +586,7 @@ async function runJob(args: {
       output = text.trim();
     } catch (err) {
       console.error('[desk] summarize failed', err);
+      await refundOnFailure('summarize_failed');
       await patch({
         status: 'error',
         error_message: err instanceof Error ? err.message : 'summarize_failed',
@@ -650,7 +664,8 @@ async function runJob(args: {
     });
   } catch (err) {
     if (err instanceof CancelledError) {
-      pushEvent('사용자 요청으로 작업을 중단했어요.');
+      await refundOnFailure('cancelled');
+      pushEvent('사용자 요청으로 작업을 중단했어요. 차감된 크레딧은 돌려드렸어요.');
       await admin
         .from('desk_jobs')
         .update({
@@ -666,6 +681,7 @@ async function runJob(args: {
       return;
     }
     console.error('[desk] runJob fatal', err);
+    await refundOnFailure('runtime_error');
     await admin
       .from('desk_jobs')
       .update({
