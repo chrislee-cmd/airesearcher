@@ -95,12 +95,17 @@ function deskToItem(r: {
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
-  const kw = (r.keywords ?? [])[0] ?? 'desk';
-  const stamp = (r.updated_at ?? r.created_at).slice(0, 10);
+  // Same helper as the client-side downloader so the workspace title and the
+  // file the user lands on disk are identical strings.
   return {
     id: `desk_${r.id}`,
     featureKey: 'desk',
-    title: `desk-${kw}-${stamp}.md`,
+    title: buildArtifactFilename({
+      prefix: 'desk',
+      slug: (r.keywords ?? [])[0],
+      createdAt: r.created_at,
+      ext: 'md',
+    }),
     createdAt: r.updated_at ?? r.created_at,
     dbFeature: 'desk',
     dbId: r.id,

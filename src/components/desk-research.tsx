@@ -32,6 +32,7 @@ import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
 import { triggerBlobDownload } from '@/lib/export/download';
+import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
 import {
   DESK_REGIONS,
@@ -375,10 +376,16 @@ export function DeskResearch() {
   }, [events.length]);
 
   // ─── download ──────────────────────────────────────────────────────────────
+  // Stamps the filename with `job.created_at` (not the current clock) so
+  // re-downloading the same desk run later doesn't drift the name. Routes
+  // through the shared helper so the workspace-server list view, the MD/
+  // DOCX downloads, and the Google Docs title all produce the same string.
   function buildFilename(): string {
-    const stamp = new Date().toISOString().slice(0, 10);
-    const slug = job?.keywords[0]?.replace(/\s+/g, '-').slice(0, 60) || 'desk-research';
-    return `desk-${slug}-${stamp}`;
+    return buildArtifactBaseName({
+      prefix: 'desk',
+      slug: job?.keywords[0],
+      createdAt: job?.created_at ?? new Date(),
+    });
   }
   async function downloadDocx(markdown: string) {
     setExporting(true);
