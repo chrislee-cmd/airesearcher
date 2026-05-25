@@ -33,6 +33,14 @@ export type DragInfo = {
 //   - <uuid>:   artifacts in a specific project (overrides active).
 export type WorkspaceScope = 'active' | 'all' | 'unfiled' | string;
 
+// How often to refetch the artifact list while the document is visible.
+// Tuned for two goals: (1) the panel reflects new artifacts that land during
+// an active generation without forcing the user to close/reopen, and (2) the
+// trigger pulse (workspace-panel.tsx: `artifacts.length` grew) fires shortly
+// after a generator finishes, even when the panel is closed. Hidden tabs
+// don't poll — see the visibilitychange handler below.
+const POLL_INTERVAL_MS = 6_000;
+
 type Ctx = {
   artifacts: WorkspaceArtifact[];
   loading: boolean;
@@ -208,13 +216,58 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [resolvedKind, resolvedProjectId]);
 
-  // Auto-fetch on open + scope change. Closed panel doesn't poll — the
-  // user's next open will re-fetch fresh data.
+  // Auto-fetch on open + scope change. The background poll below also
+  // covers updates that arrive while a panel-open user is mid-generation.
   useEffect(() => {
     if (!isOpen) return;
     void refresh();
     void refreshFolders();
   }, [isOpen, refresh, refreshFolders]);
+
+  // Keep `refresh` reachable from listeners without re-binding them every
+  // time the callback identity changes (would tear down/re-create the
+  // interval on every scope flip).
+  const refreshRef = useRef(refresh);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
+
+  // Background refetch while the document is visible. Two goals:
+  //   1. Panel-open users see new artifacts (e.g. a transcript or report
+  //      that just finished) without having to close and reopen the panel.
+  //   2. The trigger pulse (workspace-panel.tsx watches `artifacts.length`)
+  //      fires once a generator completes even if the panel was never
+  //      opened — that's how users notice their result is ready.
+  // Hidden tabs skip polling so backgrounded windows don't hammer the API;
+  // the visibilitychange handler catches up immediately on return.
+  useEffect(() => {
+    let id: number | undefined;
+    const start = () => {
+      if (id !== undefined) return;
+      id = window.setInterval(() => {
+        void refreshRef.current();
+      }, POLL_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (id === undefined) return;
+      window.clearInterval(id);
+      id = undefined;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshRef.current();
+        start();
+      } else {
+        stop();
+      }
+    };
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      stop();
+    };
+  }, []);
 
   // Switching project (or leaving project scope) invalidates the folder
   // selection — keep it consistent so the panel never queries a folder
