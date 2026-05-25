@@ -17,7 +17,10 @@ export default async function TermsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const Body = locale === 'en' ? EnTerms : KoTerms;
+  // Terms text only exists in `ko` and `en`. Non-Korean locales — ja
+  // and any future addition — see the English version until a localized
+  // legal copy is added and reviewed.
+  const Body = locale === 'ko' ? KoTerms : EnTerms;
   return (
     <LegalShell locale={locale}>
       <Body />

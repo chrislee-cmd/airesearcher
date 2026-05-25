@@ -8,8 +8,11 @@ import './landing.css';
 
 export async function LandingPage({ locale }: { locale: string }) {
   const t = await getTranslations('Landing');
-  const panels = locale === 'en' ? panelsEn : panelsKo;
-  const generatingText = locale === 'en' ? 'Generating…' : '생성 중...';
+  // Landing copy only exists in `ko` and `en`. Korean users see the
+  // Korean panels; every other locale (ja, plus any future addition that
+  // doesn't ship a panels.<lang>.tsx) falls through to the English ones.
+  const panels = locale === 'ko' ? panelsKo : panelsEn;
+  const generatingText = locale === 'ko' ? '생성 중...' : 'Generating…';
 
   const tools: Record<PanelKey, string> = {
     desk: t('showcase.tools.desk'),

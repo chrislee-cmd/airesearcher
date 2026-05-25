@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { exchangeNotionCode } from '@/lib/share/notion';
+import { routing } from '@/i18n/routing';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -15,7 +16,13 @@ export async function GET(request: Request) {
     .map((c) => c.trim())
     .find((c) => c.startsWith('NEXT_LOCALE='))
     ?.slice('NEXT_LOCALE='.length);
-  const locale = localeFromCookie === 'en' ? 'en' : 'ko';
+  // Preserve the user's locale if supported; otherwise fall back to the
+  // routing default so a non-ko/non-en cookie doesn't redirect to /ko.
+  const locale =
+    localeFromCookie &&
+    (routing.locales as readonly string[]).includes(localeFromCookie)
+      ? localeFromCookie
+      : routing.defaultLocale;
   const fallback = (status: string) =>
     new URL(`/${locale}/dashboard?notion=${status}`, url);
 
