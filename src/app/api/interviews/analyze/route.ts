@@ -4,7 +4,8 @@ import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits } from '@/lib/credits';
+import { spendCredits, getCreditsStatus } from '@/lib/credits';
+import { FEATURE_COSTS } from '@/lib/features';
 
 export const maxDuration = 300;
 
@@ -334,12 +335,17 @@ export async function POST(request: Request) {
   }
   const { extractions, templateQuestions } = parsed.data;
 
-  const { data: orgRow } = await supabase
-    .from('organizations')
-    .select('credit_balance')
-    .eq('id', org.org_id)
-    .single();
-  if (!orgRow || (orgRow.credit_balance ?? 0) < 3) {
+  // Pre-flight balance check. The threshold was previously hardcoded at 3,
+  // but the actual charge is FEATURE_COSTS.interviews (= 10) — letting
+  // users with balance ∈ [3,10) start an LLM-heavy analyze pass that they
+  // could never finish paying for. Match the real cost and respect trial /
+  // unlimited orgs.
+  const status = await getCreditsStatus(org.org_id);
+  if (
+    !status.isUnlimited &&
+    !status.isTrialActive &&
+    status.balance < FEATURE_COSTS.interviews
+  ) {
     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
@@ -462,7 +468,7 @@ export async function POST(request: Request) {
         feature: 'interviews',
         input: filenames.join(', '),
         output: JSON.stringify(matrix),
-        credits_spent: 3,
+        credits_spent: FEATURE_COSTS.interviews,
       })
       .select('id')
       .single();
@@ -547,7 +553,7 @@ export async function POST(request: Request) {
       feature: 'interviews',
       input: filenames.join(', '),
       output: JSON.stringify(matrix),
-      credits_spent: 3,
+      credits_spent: FEATURE_COSTS.interviews,
     })
     .select('id')
     .single();
