@@ -54,6 +54,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'analyzer',
   'scheduler',
   'quant',
+  'video',
 ]);
 
 // Single source of truth for credit pricing — read by both the
