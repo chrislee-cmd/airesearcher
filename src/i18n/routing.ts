@@ -1,11 +1,11 @@
 import { defineRouting } from 'next-intl/routing';
 
 export const routing = defineRouting({
-  locales: ['ko', 'en'],
+  locales: ['ko', 'en', 'ja'],
   // English as the catch-all default: any user whose Accept-Language doesn't
-  // match `ko` or `en` (e.g. ja/zh/fr with no English fallback, or empty
-  // header from bots) lands on /en instead of /ko. Korean speakers still
-  // match `ko-*` explicitly, so /ko traffic is unaffected.
+  // match an explicitly-supported locale lands on /en instead of /ko.
+  // Japanese (`ja-*`) and Korean (`ko-*`) speakers match their own locale;
+  // every other language falls through to English.
   defaultLocale: 'en',
   localePrefix: 'always',
 });

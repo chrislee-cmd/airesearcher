@@ -144,7 +144,10 @@ export function DeskResearch() {
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { latestJob, isWorking, cancelJob } = useDeskJobs();
-  const isEn = locale === 'en';
+  // The desk pipeline only emits sources in `ko` or `en`. Any other
+  // locale (ja, future additions) is treated as English for source-side
+  // formatting and API region defaults.
+  const isEn = locale !== 'ko';
 
   // ─── inputs ────────────────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -320,7 +323,7 @@ export function DeskResearch() {
         body: JSON.stringify({
           keywords: finalKeywords,
           sources: Array.from(selected),
-          locale: locale === 'en' ? 'en' : 'ko',
+          locale: locale === 'ko' ? 'ko' : 'en',
           region,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,

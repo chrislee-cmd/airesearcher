@@ -8,10 +8,13 @@ export function LegalShell({
   locale: string;
   children: React.ReactNode;
 }) {
+  // Legal-shell nav labels: Korean only on /ko; every other locale uses
+  // the English labels because the legal page body itself also falls
+  // back to English for non-Korean.
   const labels =
-    locale === 'en'
-      ? { terms: 'Terms', privacy: 'Privacy' }
-      : { terms: '이용약관', privacy: '개인정보처리방침' };
+    locale === 'ko'
+      ? { terms: '이용약관', privacy: '개인정보처리방침' }
+      : { terms: 'Terms', privacy: 'Privacy' };
 
   return (
     <main className="flex flex-1 flex-col bg-paper">

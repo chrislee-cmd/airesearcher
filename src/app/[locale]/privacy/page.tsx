@@ -17,7 +17,10 @@ export default async function PrivacyPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const Body = locale === 'en' ? EnPrivacy : KoPrivacy;
+  // Privacy text only exists in `ko` and `en`. Non-Korean locales — ja
+  // and any future addition — see the English version until a localized
+  // legal copy is added and reviewed.
+  const Body = locale === 'ko' ? KoPrivacy : EnPrivacy;
   return (
     <LegalShell locale={locale}>
       <Body />

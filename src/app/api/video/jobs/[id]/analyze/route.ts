@@ -23,14 +23,18 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   let prompt: string = DEFAULT_ANALYSIS_PROMPT;
+  // The video analysis prompt is only authored in `ko` and `en`. Korean
+  // users get the Korean directive; every other locale (ja and future
+  // additions) is collapsed to English so non-Korean output is at least
+  // in English rather than silently defaulting to Korean.
   let locale: string = 'ko';
   try {
     const body = (await request.json()) as { prompt?: unknown; locale?: unknown };
     if (typeof body.prompt === 'string' && body.prompt.trim().length > 0) {
       prompt = body.prompt.trim();
     }
-    if (typeof body.locale === 'string' && (body.locale === 'ko' || body.locale === 'en')) {
-      locale = body.locale;
+    if (typeof body.locale === 'string') {
+      locale = body.locale === 'ko' ? 'ko' : 'en';
     }
   } catch {}
 

@@ -5,6 +5,7 @@ import {
   exchangeCodeForTokens,
   decodeIdTokenEmail,
 } from '@/lib/google-oauth';
+import { routing } from '@/i18n/routing';
 
 // Receives the OAuth code, swaps it for tokens, and stores the
 // long-lived refresh_token under the current user's row. Then redirects
@@ -25,7 +26,14 @@ export async function GET(request: Request) {
     .map((c) => c.trim())
     .find((c) => c.startsWith('NEXT_LOCALE='))
     ?.slice('NEXT_LOCALE='.length);
-  const locale = localeFromCookie === 'en' ? 'en' : 'ko';
+  // Preserve the user's locale if it's one we ship; otherwise fall back
+  // to the routing default. Reading from routing.locales avoids drift
+  // when a new locale is added.
+  const locale =
+    localeFromCookie &&
+    (routing.locales as readonly string[]).includes(localeFromCookie)
+      ? localeFromCookie
+      : routing.defaultLocale;
   const back = (status: string) =>
     new URL(`/${locale}/recruiting?google=${status}`, url);
 

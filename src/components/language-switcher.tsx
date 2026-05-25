@@ -3,6 +3,17 @@
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { useTransition } from 'react';
+import { routing } from '@/i18n/routing';
+
+// Short uppercase label shown in the switcher. Falls back to the locale
+// code uppercased so adding a new locale to `routing.locales` Just Works
+// without touching this file — labels here are only for prettifying the
+// common ones.
+const LOCALE_LABEL: Record<string, string> = {
+  ko: 'KO',
+  en: 'EN',
+  ja: 'JA',
+};
 
 export function LanguageSwitcher() {
   const locale = useLocale();
@@ -19,7 +30,7 @@ export function LanguageSwitcher() {
 
   return (
     <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
-      {(['ko', 'en'] as const).map((lng, i) => (
+      {routing.locales.map((lng, i) => (
         <span key={lng} className="flex items-center gap-2">
           <button
             onClick={() => change(lng)}
@@ -30,9 +41,11 @@ export function LanguageSwitcher() {
                 : 'text-mute-soft hover:text-ink-2'
             }`}
           >
-            {lng === 'ko' ? 'KO' : 'EN'}
+            {LOCALE_LABEL[lng] ?? lng.toUpperCase()}
           </button>
-          {i === 0 && <span className="h-3 w-px bg-line" />}
+          {i < routing.locales.length - 1 && (
+            <span className="h-3 w-px bg-line" />
+          )}
         </span>
       ))}
     </div>

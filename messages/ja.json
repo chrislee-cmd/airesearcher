@@ -1,0 +1,877 @@
+{
+  "Brand": {
+    "name": "Research-mochi"
+  },
+  "Landing": {
+    "metaTitle": "Research-mochi — リサーチを、もっとやさしく。",
+    "metaDescription": "同じデスクに並ぶ8つの小さなツールが、急がないリサーチを支えます。",
+    "nav": {
+      "demo": "デモ",
+      "why": "Mochiの理由",
+      "pricing": "料金",
+      "story": "ストーリー",
+      "faq": "よくある質問",
+      "signIn": "サインイン",
+      "freeStart": "無料で始める →"
+    },
+    "hero": {
+      "tagline": "リサーチャーのための、やさしい自動化",
+      "headline": "面倒な作業は<hl>Mochi</hl>にお任せください。<br></br>あなたは<hlPeach>インサイト</hlPeach>に集中を。",
+      "lead": "文字起こしからインタビュー分析、デスクリサーチ、本格的なレポートまで——<strong>8つのツール</strong>が一つのワークスペースで重労働を引き受けます。優れたリサーチを、徹夜なしで。",
+      "ctaPrimary": "無料で始める →",
+      "ctaSecondary": "デモを見る",
+      "postscript": "<b>P.S.</b> すべてのツールが最初の24時間は使い放題。カード登録は不要です。"
+    },
+    "showcase": {
+      "meta": "ライブデモ",
+      "title": "実際にお試しください。<br></br><em>本物と同じように動きます。</em>",
+      "subtitle": "ツールを切り替えながら、ワークスペースに成果物が積み上がる様子をご覧ください。サインアップは不要です。",
+      "freeTrial": "無料トライアル",
+      "freeTrialTime": "23時間48分",
+      "groups": {
+        "design": "設計",
+        "conduct": "実施",
+        "analysis": "分析"
+      },
+      "tools": {
+        "desk": "デスクリサーチ",
+        "screener": "スクリーナー作成",
+        "guideline": "ガイドライン作成",
+        "moderator": "AIモデレーター",
+        "verbatim": "文字起こし生成",
+        "interview": "インタビュー分析",
+        "report": "リサーチレポート生成",
+        "quant": "定量分析",
+        "affinity": "アフィニティバブル"
+      },
+      "sideFoot": "Beauty UX 2026Q2",
+      "wsMeta": "ワークスペース",
+      "wsEmpty": "立ち寄ったツールから生まれた成果物がここに表示されます。サイドバーをクリックして始めましょう。",
+      "wsReset": "リセット",
+      "wsToReport": "レポートへ →",
+      "footMeta": "次へ",
+      "tip": "← / → で移動 · サイドバーをクリックでツール切替 · タブでステージ移動",
+      "tipMeta": "ヒント",
+      "fallbackNext": "レポートで仕上げる →"
+    },
+    "whyMochi": {
+      "tag": "MOCHIの理由",
+      "hand": "疲れたリサーチャーへ、<br></br>ひとくちの甘さを。",
+      "body1": "深夜まで続く作業、終わらない修正、細部へのこだわり——そのすべての先にようやく見えてくる、小さくも確かなインサイト。多くのリサーチャーが、たった一つの気づきのために、その重みを毎日静かに背負っています。",
+      "body2": "Research-Mochiは、そんなリサーチャーのそばに寄り添いたい。繰り返しの作業を自動化することで、本当に大切なことに集中できるように。長い一日の終わりに、ひとくちのお餅のような、小さく確かな喜びを。",
+      "perk1": "<strong>残業の代わりに自動化を。</strong> 文字起こし、インタビューのまとめ、デスクリサーチ——これまで深夜まで残っていた作業は、Mochiが引き受けます。",
+      "perk2": "<strong>細部はMochiに、インサイトはあなたに。</strong> 数百件の回答からパターンを見つけるのはMochiの仕事。その意味を読み解くのはあなたの仕事です。",
+      "perk3": "<strong>修正の少ないドラフトを最初から。</strong> 構造も言葉も整った状態でお届けします。フィードバックの往復は減り、納品はより早く。",
+      "coda": "今日はMochiに任せて、コーヒーでも淹れませんか？☕"
+    },
+    "pricing": {
+      "meta": "クレジット · 使った分だけお支払い",
+      "title": "使った分だけお支払い、<br></br><hlPeach>請求はすっきりと</hlPeach>。",
+      "subtitle": "クレジットは有効期限なし · チーム内で共有可能。",
+      "tiers": {
+        "starter": {
+          "meta": "スターター",
+          "name": "個人向け",
+          "price": "₩200,000",
+          "priceNote": "100クレジット · ₩2,000 / cr",
+          "f1": "すべてのツール",
+          "f2": "韓国語 / 英語対応",
+          "f3": "メールサポート",
+          "cta": "始める"
+        },
+        "team": {
+          "badge": "人気",
+          "meta": "チーム · 10%オフ",
+          "name": "チーム向け",
+          "price": "₩900,000",
+          "priceNote": "500クレジット · ₩1,800 / cr",
+          "f1": "チーム共有ワークスペース",
+          "f2": "役割と権限管理",
+          "f3": "優先チャネルサポート",
+          "cta": "チームで始める →"
+        },
+        "studio": {
+          "meta": "スタジオ · 15%オフ",
+          "name": "リサーチスタジオ",
+          "price": "₩2,550,000",
+          "priceNote": "1,500クレジット · ₩1,700 / cr",
+          "f1": "複数ワークスペース",
+          "f2": "ホワイトラベルレポート",
+          "f3": "オンボーディングセッション1回",
+          "cta": "スタジオを始める"
+        },
+        "enterprise": {
+          "meta": "エンタープライズ · 25%オフ",
+          "name": "エンタープライズ",
+          "price": "個別見積",
+          "priceNote": "5,000クレジット · カスタムSLA",
+          "f1": "SSO · 監査ログ",
+          "f2": "専用ドメイン",
+          "f3": "韓国語対応担当者",
+          "cta": "見積を依頼"
+        }
+      }
+    },
+    "voice": {
+      "quote": "「リサーチが雑用のように感じていました。<br></br>一日かかっていたインタビューのまとめが今では1時間で終わり、<br></br>ようやく本当に考える時間が持てるようになりました。」",
+      "by": "— Beauty UXリード · 2026 Q1 ベータ"
+    },
+    "faq": {
+      "meta": "よくある質問",
+      "title": "気になりそうなこと、まとめました。",
+      "q1": "クレジットに有効期限はありますか？",
+      "a1": "いいえ。一度購入したクレジットに有効期限はなく、チームのワークスペース内で自由に共有できます。",
+      "q2": "韓国語に完全対応していますか？",
+      "a2": "韓国語が標準です。インターフェース、ドキュメント、メール、請求書まで、すべて韓国語を優先しています。必要に応じて英語に切り替えることも可能です。",
+      "q3": "ツール間で成果物は自動で受け渡しされますか？",
+      "a3": "はい。同じワークスペース内では、あるツールの出力が次のツールの入力になります。サイドバーからドラッグ＆ドロップするか、送信メニューをご利用ください。",
+      "q4": "サインアップ後すぐに支払いが必要ですか？",
+      "a4": "いいえ。最初の24時間はすべてのツールが使い放題で、カード登録も不要です。気に入った場合は、その後でクレジットを購入してください。"
+    },
+    "ctaFinal": {
+      "squiggle": "お気軽にどうぞ ✿",
+      "title": "リサーチャーの手は<br></br><hlMint>考える</hlMint>仕事のためにあります。",
+      "subtitle": "サインアップ後の最初の24時間は、すべてのツールが使い放題。カード登録は不要で、最初の成果物は平均3分で完成します。",
+      "ctaPrimary": "1日無料で試す →",
+      "ctaSecondary": "簡単なツアーを見る"
+    },
+    "footer": {
+      "madeIn": "ソウルで<span>ていねいに</span>作りました · © 2026 Research-mochi",
+      "terms": "利用規約",
+      "privacy": "プライバシー",
+      "contact": "お問い合わせ"
+    }
+  },
+  "Auth": {
+    "signInTitle": "Research-mochiにサインイン",
+    "signInSubtitle": "マーケティング・UXリサーチのためのAIツール",
+    "signUpTitle": "Research-mochiのアカウントを作成",
+    "signUpSubtitle": "すべてのツールを24時間無料でお試しください。",
+    "google": "Googleで続ける",
+    "signOut": "サインアウト",
+    "fullName": "お名前",
+    "fullNamePlaceholder": "山田 太郎",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "passwordConfirm": "パスワード（確認）",
+    "passwordHint": "8文字以上",
+    "signIn": "サインイン",
+    "signUp": "サインアップ",
+    "switchToSignUp": "アカウントをお持ちでない方はこちら",
+    "switchToSignIn": "すでにアカウントをお持ちの方はこちら",
+    "or": "または",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "forgotPasswordTitle": "パスワードを再設定",
+    "forgotPasswordSubtitle": "ご登録のメールアドレスを入力してください。再設定用リンクをお送りします。",
+    "sendResetLink": "再設定リンクを送信",
+    "resetLinkSent": "再設定リンクを送信しました。受信トレイをご確認ください。",
+    "backToSignIn": "サインインに戻る",
+    "resetPasswordTitle": "新しいパスワードを設定",
+    "resetPasswordSubtitle": "新しく設定したいパスワードを入力してください。",
+    "newPassword": "新しいパスワード",
+    "updatePassword": "パスワードを更新",
+    "passwordUpdated": "パスワードを更新しました。ダッシュボードへ移動します…",
+    "checkEmail": "確認メールを送信しました。受信トレイをご確認ください。",
+    "didntGetEmail": "メールが届かない場合",
+    "resendEmail": "確認メールを再送",
+    "resendEmailSent": "確認メールを再送しました。",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません。",
+    "passwordMismatch": "パスワードが一致しません。",
+    "errorInvalidCredentials": "メールアドレスまたはパスワードが正しくありません。",
+    "errorEmailNotConfirmed": "先にメールアドレスの確認をお願いします。受信トレイをご確認ください。",
+    "errorUserAlreadyRegistered": "このメールアドレスはすでに登録されています。サインインをお試しください。",
+    "errorWeakPassword": "パスワードは8文字以上で設定してください。",
+    "errorPwnedPassword": "このパスワードは情報漏洩で公開されています。別のパスワードをお選びください。",
+    "errorRateLimited": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+    "errorSamePassword": "以前と異なるパスワードをお選びください。",
+    "errorInvalidEmail": "有効なメールアドレスを入力してください。",
+    "errorLinkExpired": "このリンクは有効期限が切れているか、すでに使用されています。新しいリンクをリクエストしてください。",
+    "errorGeneric": "問題が発生しました。もう一度お試しください。"
+  },
+  "Sidebar": {
+    "dashboard": "ダッシュボード",
+    "quotes": "文字起こし生成",
+    "transcripts": "スクリプト生成",
+    "interviews": "インタビュー結果生成",
+    "reports": "リサーチレポート生成",
+    "scheduler": "参加者スケジューラー",
+    "moderator": "AIモデレーター",
+    "analyzer": "混合手法アナライザー",
+    "desk": "デスクリサーチ",
+    "keywords": "キーワードクローリング",
+    "recruiting": "リクルーティング",
+    "survey": "AIサーベイ",
+    "quant": "定量分析",
+    "affinity_bubble": "アフィニティバブル",
+    "video": "ビデオアナライザー",
+    "members": "メンバー",
+    "organizations": "組織",
+    "settings": "設定",
+    "buyCredits": "クレジット購入",
+    "adminApiUsage": "API利用状況（管理者）",
+    "credits": "クレジット",
+    "viewProjects": "プロジェクトを見る",
+    "working": "実行中",
+    "done": "完了",
+    "progress": {
+      "expanding": "拡張中",
+      "crawling": "収集中",
+      "summarizing": "要約中",
+      "uploading": "アップロード中",
+      "submitting": "送信中",
+      "transcribing": "文字起こし中",
+      "converting": "変換中",
+      "extracting": "抽出中",
+      "analyzing": "分析中",
+      "synthesizing": "統合中",
+      "normalizing": "正規化中",
+      "generating": "作成中"
+    },
+    "adminPayments": "決済管理（管理者）"
+  },
+  "SidebarGroups": {
+    "design": "リサーチ設計",
+    "conduct": "リサーチ実施",
+    "analysis": "リサーチ分析"
+  },
+  "Paywall": {
+    "eyebrow": "クレジットが不足しています",
+    "title": "このアクションにはクレジットが必要です",
+    "body": "無料トライアル期間が終了し、このアクションにはクレジットが必要です。現在の残高：{balance}。クレジットページでチャージしてから、もう一度お試しください。",
+    "later": "あとで",
+    "cta": "クレジットを購入"
+  },
+  "Dashboard": {
+    "eyebrow": "ホーム",
+    "title": "ダッシュボード",
+    "subtitle": "実行中のジョブと最近の成果物をプロジェクトごとにまとめています。",
+    "newProject": "新規プロジェクト",
+    "noOrg": "組織情報を読み込み中、またはサインインが必要です。",
+    "unfiled": "未分類",
+    "viewUnfiled": "未分類の成果物を見る",
+    "openProject": "プロジェクトを開く",
+    "lastActivity": "更新：{when}",
+    "noActivity": "まだアクティビティがありません",
+    "runningCount": "{count}件実行中",
+    "emptyProject": "このプロジェクトにはまだ成果物がありません。",
+    "countReports": "レポート",
+    "countInterviews": "インタビュー",
+    "countTranscripts": "文字起こし",
+    "countDesk": "デスク",
+    "countQuotes": "引用",
+    "countRecruiting": "リクルーティング",
+    "countScheduler": "スケジュール",
+    "firstProjectTitle": "最初のプロジェクトを作成",
+    "firstProjectBody": "リサーチの成果物をプロジェクトごとにまとめて、進捗と次のステップを一か所で管理しましょう。",
+    "firstProjectCta": "プロジェクトを作成",
+    "signedOutTitle": "Research-mochiへようこそ",
+    "signedOutBody": "定性・定量のインタビューデータを、引用、スクリプト、インタビュー結果、本格的なレポートへと整える、エディトリアルなトーンのリサーチコンソールです。",
+    "signIn": "サインイン"
+  },
+  "Projects": {
+    "title": "プロジェクト",
+    "description": "リサーチの成果物をプロジェクトごとにまとめて、整理しやすくします。",
+    "newProject": "新規プロジェクト",
+    "name": "名前",
+    "descriptionField": "説明",
+    "create": "作成",
+    "noProjects": "まだプロジェクトがありません。",
+    "openProject": "開く",
+    "folderView": "フォルダ",
+    "listView": "リスト",
+    "createdAt": "作成日",
+    "items": "件",
+    "navigate": "プロジェクトへ移動",
+    "noActiveOrg": "ワークスペースを読み込み中、またはサインインが必要です。",
+    "delete": "削除"
+  },
+  "ComingSoon": {
+    "eyebrow": "近日公開",
+    "toast": "この機能は準備中です",
+    "body": "現在仕上げの段階です。準備ができ次第すぐにお知らせします。"
+  },
+  "Coachmark": {
+    "eyebrow": "はじめての方ですか？",
+    "dismiss": "わかりました",
+    "prev": "戻る",
+    "next": "次へ",
+    "finish": "完了",
+    "skip": "スキップ",
+    "skipAll": "ツアーをスキップ",
+    "stepLabel": "{current}/{total}",
+    "desk": {
+      "title": "デスクリサーチ — クイックスタート",
+      "steps": {
+        "region": {
+          "title": "地域を選択",
+          "body": "韓国以外を選ぶと、NaverやDaumなど韓国限定のソースは自動で非表示になります。"
+        },
+        "keyword": {
+          "title": "キーワードを追加",
+          "body": "Enterまたはカンマでキーワードを追加できます。一つだけ入力した場合は、AIが類似する4つのキーワードに展開します。"
+        },
+        "sources": {
+          "title": "ソースを選択",
+          "body": "Naver、Daum、YouTube、Google Newsを切り替えられます。1回あたり一律25クレジットです。"
+        },
+        "search": {
+          "title": "検索を開始",
+          "body": "バックグラウンドで実行されるため、画面を離れても問題ありません。完了後、結果がワークスペースに届きます。"
+        }
+      }
+    },
+    "interviews": {
+      "title": "インタビュー結果生成 — フロー",
+      "steps": {
+        "upload": {
+          "title": "ファイルをアップロード",
+          "body": "音声、動画、テキストすべて対応しています。音声と動画は自動で文字起こしされます。"
+        },
+        "convert": {
+          "title": "ステップ1 — 変換",
+          "body": "すべてのファイルを一括でMarkdownに変換します。完了後、すぐに分析ステップが始まります。"
+        },
+        "analyze": {
+          "title": "ステップ2 — 分析",
+          "body": "共通の質問を抽出し、ファイルごとの要約とVOC引用のマトリクスを作成します。10クレジット。"
+        },
+        "export": {
+          "title": "エクスポート",
+          "body": "CSV/XLSXでダウンロードするか、ワークスペースから別のツールへ結果を送信できます。"
+        }
+      }
+    },
+    "reports": {
+      "title": "リサーチレポート生成 — ガイド",
+      "steps": {
+        "upload": {
+          "title": "ソースをアップロード",
+          "body": ".docx、.md、テキストに対応。インタビュー、デスクリサーチ、メモを一つのレポートにまとめます。"
+        },
+        "generate": {
+          "title": "レポートを生成",
+          "body": "50クレジットで、HTMLプレビューに加えて.docxと.pptxのダウンロードが手に入ります。"
+        },
+        "preview": {
+          "title": "結果を確認",
+          "body": "HTMLプレビューがこちらに表示されます。ワークスペースに保存されるので、後から見直すことも可能です。"
+        }
+      }
+    },
+    "quotes": {
+      "title": "文字起こし生成 — はじめに",
+      "steps": {
+        "upload": {
+          "title": "音声または動画をアップロード",
+          "body": "mp3、m4a、wav、mp4などに対応。Deepgramが言語を自動で検出します。"
+        },
+        "language": {
+          "title": "言語を選択",
+          "body": "自動検出でも動作しますが、正確な言語を選ぶことで精度がさらに向上します。"
+        },
+        "download": {
+          "title": "結果をダウンロード",
+          "body": ".docx、.md、.csvで取得するか、インタビュー結果生成へそのまま送信できます。"
+        }
+      }
+    },
+    "scheduler": {
+      "title": "参加者スケジューラー — 使い方",
+      "steps": {
+        "requirements": {
+          "title": "リサーチ実施期間",
+          "body": "日付の範囲、時間帯、曜日を設定すると、候補スロットが自動的にカレンダーに反映されます。"
+        },
+        "attendees": {
+          "title": "参加者を追加",
+          "body": "手入力するか、CSV/XLSXをインポートしてください。CSVの自動マッチング処理のみ5クレジットかかります。"
+        },
+        "calendar": {
+          "title": "スロットを確定",
+          "body": "左で参加者を選び、カレンダーのスロットをクリックして確定します。"
+        }
+      }
+    },
+    "quant": {
+      "title": "定量分析 — クイックスタート",
+      "steps": {
+        "upload": {
+          "title": "データをアップロード",
+          "body": "1行1回答者、列を質問とするCSV/XLSXに対応。多言語のヘッダーも自動で検出します。"
+        },
+        "pickers": {
+          "title": "行と列を選択",
+          "body": "行＝質問、列＝バナー（性別、年代など）。クロス集計表が即座に表示されます。"
+        },
+        "modes": {
+          "title": "表示モード",
+          "body": "件数、列％、行％を切り替えて比較できます。クロス集計表はいつでもCSVでエクスポート可能です。"
+        }
+      }
+    }
+  },
+  "Common": {
+    "language": "言語",
+    "korean": "한국어",
+    "english": "English",
+    "credits": "クレジット",
+    "creditsRemaining": "残り{count}クレジット",
+    "trialRemaining": "無料トライアル · 残り{remaining}",
+    "unlimitedAccess": "使い放題",
+    "generate": "生成",
+    "loading": "読み込み中...",
+    "comingSoon": "近日公開",
+    "share": "共有",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "create": "作成",
+    "export": {
+      "download": "ダウンロード",
+      "md": "Markdown",
+      "html": "HTML",
+      "docx": "Word",
+      "xlsx": "Excel",
+      "csv": "CSV",
+      "json": "JSON",
+      "txt": "テキスト",
+      "pdf": "PDF",
+      "pptx": "PowerPoint"
+    }
+  },
+  "Features": {
+    "quotes": {
+      "title": "文字起こし生成",
+      "description": "音声・動画インタビューを忠実な文字起こしに変換します。",
+      "cost": "25クレジット"
+    },
+    "uploader": {
+      "dropHere": "音声、動画、ドキュメントファイルをここにドロップするか、クリックして選択してください",
+      "dropActive": "ドロップして追加",
+      "supported": "対応形式：mp3 · m4a · wav · mp4 · mov · webm · txt · md · docx",
+      "browse": "ファイルを選択",
+      "queued": "待機中",
+      "transcribing": "文字起こし中",
+      "done": "完了",
+      "error": "エラー",
+      "remove": "削除",
+      "clear": "クリア",
+      "transcribeAll": "文字起こしを開始",
+      "noFiles": "ファイルがありません",
+      "fileTooLarge": "ファイルサイズが大きすぎます（最大25MB）",
+      "viewTranscript": "文字起こしを表示",
+      "hideTranscript": "閉じる",
+      "filesQueued": "{count}件のファイルが待機中",
+      "filesDone": "{done}/{total}件完了"
+    },
+    "transcripts": {
+      "title": "スクリプト生成",
+      "description": "インタビュースクリプトとディスカッションガイドを生成します。",
+      "cost": "1クレジット"
+    },
+    "interviews": {
+      "title": "インタビュー結果生成",
+      "description": "複数のインタビューファイルを.mdに変換し、共通の質問セットに沿って要約とVOC引用の表を作成します。",
+      "cost": "10クレジット"
+    },
+    "interviewsView": {
+      "stage1Title": "ステップ1 — ファイルを.mdに変換",
+      "stage1Help": "各ファイルをMarkdownに変換します。音声・動画は先に文字起こしされ、テキストファイルはそのまま整形されます。",
+      "convertAll": "開始",
+      "pipelineHint": "変換 → 分析 → CSV+XLSXの自動ダウンロードまでワンクリックで完了。",
+      "convertingPhase": "変換中",
+      "viewMd": "Markdownを表示",
+      "hideMd": "閉じる",
+      "stage2Title": "ステップ2 — ファイル横断の質問分析",
+      "stage2Help": "変換済みのすべてのファイルから共通の質問を抽出し、回答者ごとの要約とVOC引用を取り出します。",
+      "analyze": "分析を実行",
+      "analyzing": "分析中…",
+      "exportCsv": "CSVエクスポート",
+      "exportXlsx": "XLSXエクスポート",
+      "question": "質問",
+      "summary": "要約",
+      "voc": "VOC引用",
+      "noConverted": "先にステップ1を実行してください。",
+      "needTwoFiles": "変換済みのファイルが少なくとも1つ必要です。"
+    },
+    "reports": {
+      "title": "リサーチレポート生成",
+      "description": "すべてのインタビューを統合し、マーケティング・UXリサーチレポートを作成します。",
+      "cost": "50クレジット",
+      "typeChooserLabel": "レポートの方向性",
+      "typeChooserHelp": "分析の視点に応じて、章構成とシグネチャービジュアルが変わります。",
+      "regenLabel": "再生成の形式",
+      "regenHelp": "アップロード済みのファイルを再利用 · +50クレジット",
+      "types": {
+        "design": {
+          "label": "デザイン評価",
+          "description": "ユーザビリティの課題を、深刻度と優先度とともに整理します。"
+        },
+        "marketing": {
+          "label": "マーケティングの方向性",
+          "description": "オーディエンスセグメント、JTBD、メッセージのフック、チャネル仮説を導き出します。"
+        },
+        "strategy": {
+          "label": "戦略の方向性",
+          "description": "市場シグナルを統合し、機会マップと戦略オプションへとまとめます。"
+        },
+        "findings": {
+          "label": "ファインディングス重視",
+          "description": "解釈を最小限に抑え、観察と発言の密度を前面に出します。"
+        }
+      }
+    },
+    "scheduler": {
+      "title": "参加者スケジューラー",
+      "description": "候補者の都合を取りまとめ、インタビュースロットと参加案内をご提案します。",
+      "cost": "無料 · CSVアップロード1回ごとに5クレジット"
+    },
+    "moderator": {
+      "title": "AIモデレーター",
+      "description": "リサーチの仮説からモデレーター用スクリプトと追加質問を生成します。",
+      "cost": "1クレジット"
+    },
+    "analyzer": {
+      "title": "混合手法アナライザー",
+      "description": "定性・定量のインプットを組み合わせ、統合的なインサイトを引き出します。",
+      "cost": "1クレジット"
+    },
+    "desk": {
+      "title": "デスクリサーチ",
+      "description": "トピック、業界、キーワードセットから、公開ソースを用いたデスクリサーチの要約を作成します。",
+      "cost": "25クレジット"
+    },
+    "keywords": {
+      "title": "キーワードクローリング",
+      "description": "キーワードの上位検索結果をクロールし、見出しと要約を取得します。",
+      "cost": "1クレジット"
+    },
+    "recruiting": {
+      "title": "リクルーティング",
+      "description": "RFP、ブリーフ、メールをアップロードすると、参加者条件とリサーチスケジュールを項目ごとに整理します。",
+      "cost": "サンプル1件あたり10クレジット"
+    },
+    "survey": {
+      "title": "AIサーベイ",
+      "description": "リサーチ目標と仮説から、定量調査の設問と分岐ロジックを生成します。",
+      "cost": "1クレジット"
+    },
+    "quant": {
+      "title": "定量分析",
+      "description": "アンケート回答のCSV/XLSXをアップロードし、質問×バナーのクロス集計をインタラクティブに分析します。",
+      "cost": "15クレジット"
+    },
+    "affinity_bubble": {
+      "title": "アフィニティバブル",
+      "description": "数万件のレビューを意味のクラスタとして可視化するパートナーソリューションです。",
+      "cost": "外部サービス"
+    },
+    "video": {
+      "title": "ビデオアナライザー",
+      "description": "ユーザーテストやインタビューの録画をアップロードすると、AIが行動パターン、課題、重要な瞬間を分析します。",
+      "cost": "10分・1回の分析につき2クレジット"
+    }
+  },
+  "Quant": {
+    "dropHere": "CSV/XLSXファイルをここにドロップするか、クリックしてアップロードしてください",
+    "supported": "対応形式：.csv · .xlsx · .xls（1行1回答者、列＝質問・属性）",
+    "parsing": "解析中…",
+    "parseError": "ファイルを読み込めませんでした",
+    "loaded": "データ",
+    "respondents": "{count}名の回答者",
+    "columns": "{count}列",
+    "reset": "再アップロード",
+    "questionLabel": "質問（行）",
+    "questionHint": "値を行にする列を選びます。通常は回答列（満足度、好みなど）です。",
+    "bannerLabel": "バナー（列）",
+    "bannerHint": "クロスするセグメントを選びます。性別、年代、顧客層などです。",
+    "samePickError": "行とバナーには異なる列を選択してください。",
+    "pickPrompt": "上で行とバナーの列を選ぶと、クロス集計表が表示されます。",
+    "mode_count": "件数",
+    "mode_colpct": "列％",
+    "mode_rowpct": "行％",
+    "exportCsv": "CSVエクスポート"
+  },
+  "AffinityBubble": {
+    "eyebrow": "パートナー",
+    "title": "アフィニティバブル",
+    "description": "アフィニティバブルは、数万件のユーザーレビュー／VOCを意味のボロノイマップに集約します。自社製品や競合製品を一目で診断したい場面に最適です。",
+    "alt": "アフィニティバブルのサンプル — Duolingoレビューのクラスタリング",
+    "caption": "サンプル：約10,000件のDuolingoレビューを5つのユーザーペルソナにクラスタリング",
+    "inquiry": "デモを依頼"
+  },
+  "Credits": {
+    "pageTitle": "クレジットを購入",
+    "pageEyebrow": "請求",
+    "pageSubtitle": "リサーチの生成に使うクレジットをチャージできます。",
+    "currentBalance": "現在の残高",
+    "creditsUnit": "クレジット",
+    "bundleStarter": "スターター",
+    "bundleTeam": "チーム",
+    "bundleStudio": "スタジオ",
+    "bundleEnterprise": "エンタープライズ",
+    "popular": "人気",
+    "perCredit": "1クレジットあたり",
+    "discountOff": "{percent}%オフ",
+    "purchase": "購入",
+    "contactSales": "営業に問い合わせる",
+    "schemeTitle": "機能別クレジット消費",
+    "schemeNote": "主要4機能（文字起こし、インタビュー結果、デスクリサーチ、リサーチレポート）には変動コスト型の料金が適用されます。インタビューは90分以内を推奨。参加者スケジューラーは通常利用は無料で、CSVアップロード時のみ5クレジットの自動マッチング料金がかかります。",
+    "predictorTitle": "利用シミュレーター",
+    "predictorSubtitle": "バンドルを選び、スライダーを動かして利用イメージを試算してください。ある機能に多く使えば、他の機能に回せる分は自然と少なくなります。",
+    "predictorBudgetLabel": "使用 / 予算",
+    "predictorRemaining": "残り{count}クレジット",
+    "predictorPerUse": "1回あたり{cost}クレジット",
+    "predictorUses": "{count}回",
+    "predictorAtCap": "予算が不足しているため、これ以上増やせません。他の機能を減らしてください。",
+    "predictorResetEven": "均等配分",
+    "predictorResetZero": "ゼロにリセット"
+,
+    "comingSoonTitle": "決済機能は準備中です",
+    "comingSoonBody": "ゲートウェイの統合までは、チャージは請求チーム経由で対応しております。必要なクレジット数をメールでお送りいただければ、1営業日以内に処理いたします。",
+    "contactEmail": "billing@meteor-research.com",
+    "checkoutEyebrow": "お支払い",
+    "methodLabel": "お支払い方法",
+    "methodCard": "カード",
+    "methodCardHint": "決済完了後すぐにクレジットが付与されます",
+    "methodCardSoon": "近日公開",
+    "methodBank": "銀行振込",
+    "methodBankHint": "1営業日以内にクレジットが付与されます",
+    "taxInvoiceLabel": "税金計算書（세금계산서）を発行する",
+    "taxBizNo": "事業者登録番号",
+    "taxCompany": "会社名",
+    "taxCeo": "代表者名",
+    "taxManagerName": "ご担当者名",
+    "taxManagerEmail": "ご担当者メールアドレス",
+    "cancel": "キャンセル",
+    "submitting": "処理中…",
+    "payWithCard": "カードで支払う",
+    "issueBankReference": "振込情報を取得",
+    "requestQuote": "見積を依頼",
+    "quoteSentToast": "見積依頼を送信しました。",
+    "bankTitle": "銀行振込のご案内",
+    "bankBody": "下記の口座へお振り込みください。入金確認後、1営業日以内にクレジットが付与されます。お振り込みの際は、依頼人名にリファレンスコードをご入力ください。",
+    "bankBankName": "銀行",
+    "bankAccountNumber": "口座番号",
+    "bankAccountHolder": "口座名義",
+    "bankAmount": "金額",
+    "bankReference": "リファレンス",
+    "bankFootnote": "税金計算書（세금계산서）をご希望の場合は、入金確認から3営業日以内に発行いたします。",
+    "done": "完了",
+    "paymentSuccess": "クレジットがアカウントに追加されました。",
+    "paymentCancelled": "決済はキャンセルされました。",
+    "errorServiceUnavailable": "決済サービスが一時的にご利用いただけません。しばらくしてからもう一度お試しください。"
+  },
+  "Desk": {
+    "keywordLabel": "キーワード",
+    "keywordPlaceholder": "キーワードを入力してEnterを押してください",
+    "keywordAddMore": "さらに追加…",
+    "keywordHint": "Enter / カンマ / Tabで追加、Backspaceで削除（最大10件）",
+    "keywordUnit": "キーワード",
+    "rangeLabel": "期間",
+    "range_all": "すべての期間",
+    "range_week": "過去1週間",
+    "range_month": "過去1ヶ月",
+    "range_quarter": "過去3ヶ月",
+    "range_year": "過去1年",
+    "range_custom": "カスタム",
+    "sourcesLabel": "ソース",
+    "sourcesUnit": "ソース",
+    "search": "検索",
+    "error": "エラー",
+    "errorNoKeyword": "キーワードを1つ以上追加してください",
+    "similarKeywords": "拡張キーワード",
+    "reportTitle": "要約レポート",
+    "collected": "収集した記事",
+    "groupAll": "すべて選択",
+    "groupNone": "クリア",
+    "skippedTitle": "APIキー未設定のためスキップされたソース",
+    "downloadMd": ".mdをダウンロード",
+    "downloadDocx": ".docxをダウンロード",
+    "thinkingActive": "処理中",
+    "thinkingDone": "アクティビティ",
+    "stop": "停止",
+    "stopRequested": "停止中…",
+    "cancelledNotice": "ユーザーによって実行がキャンセルされました。",
+    "regionLabel": "対象地域",
+    "regionPortalsLabel": "主要メディア（Google News経由）",
+    "regionKrOnlyHidden": "韓国限定のソース（Naver/Kakao/Daum）は非表示です。韓国以外のクエリではほぼ結果が得られません。",
+    "region": {
+      "KR": "韓国",
+      "US": "アメリカ",
+      "SG": "シンガポール",
+      "MY": "マレーシア",
+      "TH": "タイ",
+      "JP": "日本",
+      "GLOBAL": "グローバル"
+    }
+  },
+  "Workspace": {
+    "eyebrow": "ワークスペース",
+    "expand": "ワークスペースを開く",
+    "collapse": "閉じる",
+    "empty": "まだ成果物がありません",
+    "emptyHint": "各ツールで生成された成果物がここに表示されます。",
+    "actions": "操作",
+    "view": "表示",
+    "copy": "コピー",
+    "sendTo": "他のツールへ送信…",
+    "download": "ダウンロード…",
+    "delete": "削除",
+    "copied": "コピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "select": "選択",
+    "selectAll": "すべて選択",
+    "nSelected": "{count}件選択中",
+    "bulkActions": "一括操作",
+    "sendSelectedTo": "選択した項目を送信…",
+    "downloadSelected": "選択した項目をダウンロード…",
+    "deleteSelected": "選択した項目を削除",
+    "assignProject": "プロジェクトに割り当て",
+    "newProject": "新規プロジェクト",
+    "newProjectName": "プロジェクト名",
+    "refresh": "更新",
+    "scopeUnfiled": "未分類",
+    "scopeAll": "すべて",
+    "scopeProject": "プロジェクト",
+    "projects": "プロジェクト"
+  },
+  "Members": {
+    "title": "メンバー管理",
+    "invite": "メンバーを招待",
+    "role": "役割",
+    "owner": "オーナー",
+    "admin": "管理者",
+    "member": "メンバー",
+    "viewer": "閲覧者",
+    "email": "メールアドレス",
+    "removeMember": "削除"
+  },
+  "Moderator": {
+    "thisService": "弊社プロダクト",
+    "inquiry": "デモを依頼",
+    "inquirySending": "送信中…",
+    "inquirySent": "お問い合わせを送信しました",
+    "inquiryError": "送信に失敗しました。しばらくしてからもう一度お試しください。",
+    "inquiryFromHint": "{email}として送信"
+  },
+  "Org": {
+    "switcher": "組織を選択",
+    "create": "組織を作成",
+    "name": "組織名"
+  },
+  "Scheduler": {
+    "requirements": {
+      "title": "リサーチ実施期間",
+      "description": "クライアントと事前に取り決めたリサーチ日程を入力してください。利用可能なスロットがカレンダーに反映されます。",
+      "startDate": "開始日",
+      "endDate": "終了日",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "duration": "スロットの長さ（分）",
+      "daysOfWeek": "曜日",
+      "explicitSlots": "個別スロット",
+      "explicitSlotsHint": "上記のルール外でスロットを個別に追加できます。",
+      "addSlot": "スロットを追加",
+      "remove": "削除",
+      "weekdayShort": [
+        "日",
+        "月",
+        "火",
+        "水",
+        "木",
+        "金",
+        "土"
+      ],
+      "rangeHint": "カレンダーで開始日と終了日をクリックしてください。",
+      "summaryEmpty": "まだ期間が設定されていません。",
+      "expand": "展開",
+      "collapse": "折りたたむ",
+      "timezoneLabel": "タイムゾーン",
+      "tz": {
+        "seoul": "ソウル",
+        "tokyo": "東京",
+        "singapore": "シンガポール",
+        "kualaLumpur": "クアラルンプール",
+        "bangkok": "バンコク",
+        "losAngeles": "ロサンゼルス",
+        "newYork": "ニューヨーク",
+        "london": "ロンドン",
+        "utc": "UTC"
+      }
+    },
+    "calendar": {
+      "title": "カレンダー",
+      "month": "月",
+      "week": "週",
+      "day": "日",
+      "today": "今日",
+      "prev": "前へ",
+      "next": "次へ",
+      "legendAvailable": "予約可能",
+      "legendConfirmed": "確定",
+      "noRequirement": "利用可能なスロットを表示するには、上のリサーチ期間を入力してください。",
+      "pickHint": "参加者を選び、スロットをクリックして確定してください。",
+      "timezoneSource": "{tz}（{offset}）の時刻で表示中",
+      "timezoneViewer": "現在地：{tz}（{offset}）",
+      "timezoneMismatchHint": "表示はソースのタイムゾーンに従います。他地域の参加者に共有する際は変換してください。"
+    },
+    "attendees": {
+      "title": "参加者",
+      "description": "参加者を追加し、都合を収集して、カレンダー上でスロットを確定します。",
+      "addAttendee": "参加者を追加",
+      "name": "氏名",
+      "email": "メールアドレス",
+      "phone": "電話番号",
+      "note": "備考",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "remove": "削除",
+      "empty": "まだ参加者がいません。",
+      "selectedNone": "左から参加者を選択してください。",
+      "confirmedSlot": "確定スロット",
+      "noConfirmed": "まだ確定スロットがありません。",
+      "clearSlot": "スロットをクリア",
+      "manualSlot": "手動入力",
+      "date": "日付",
+      "start": "開始",
+      "end": "終了",
+      "import": "ファイルをアップロード",
+      "importHint": "CSV/XLSX — 氏名、電話、日付、開始、終了を自動検出します。その他の列はカスタムフィールドとして保持されます。",
+      "importSuccess": "{count}名の参加者をインポートしました。",
+      "importError": "ファイルの読み込みに失敗しました。",
+      "customFields": "カスタムフィールド",
+      "exportCsv": "CSVエクスポート",
+      "exportXlsx": "XLSXエクスポート"
+    }
+  },
+  "AdminApiUsage": {
+    "label": "管理者",
+    "title": "API利用状況 · コスト · 残高",
+    "subtitle": "接続中の外部サービスの利用状況、コスト、残高を一画面で確認できます。",
+    "refresh": "更新",
+    "refreshing": "更新中…",
+    "openDashboard": "ダッシュボードを開く",
+    "totals": {
+      "connected": "接続済みサービス",
+      "cost": "今月の累計コスト",
+      "costHint": "ライブ取得可能なプロバイダのみ",
+      "balance": "残高（USD）",
+      "balanceHint": "USD残高を提供するプロバイダのみ"
+    },
+    "row": {
+      "cost": "コスト",
+      "balance": "残高"
+    },
+    "env": {
+      "present": "設定済み",
+      "missing": "未設定"
+    },
+    "status": {
+      "ok": "ライブ",
+      "no-admin-api": "設定済み",
+      "unconfigured": "未設定",
+      "error": "エラー"
+    }
+  }
+}
