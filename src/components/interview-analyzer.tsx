@@ -286,6 +286,7 @@ const TEMPLATE_ACCEPT =
   '.xlsx,.docx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 function TemplateCard() {
+  const t = useTranslations('Features.interviewsView');
   const job = useInterviewJob();
   const [draft, setDraft] = useState<string[] | null>(null);
   const [editing, setEditing] = useState(false);
@@ -485,7 +486,7 @@ function TemplateCard() {
                             if (!draft) return;
                             setDraft(draft.filter((_, idx) => idx !== i));
                           }}
-                          aria-label="질문 삭제"
+                          aria-label={t('deleteQuestion')}
                           className="text-[12px] text-mute-soft hover:text-warning"
                         >
                           ✕

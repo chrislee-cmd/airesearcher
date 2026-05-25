@@ -420,6 +420,9 @@
     "unlimitedAccess": "무제한 액세스",
     "generate": "생성하기",
     "loading": "불러오는 중...",
+    "uploading": "업로드 중",
+    "uploadingFiles": "파일 업로드 중",
+    "transcribing": "전사 중",
     "comingSoon": "곧 출시됩니다",
     "share": "공유",
     "save": "저장",
@@ -470,6 +473,7 @@
       "cost": "1크레딧"
     },
     "transcriptsView": {
+      "transcribingEta": "{elapsed} 경과 · 약 {remain} 남음 (추정)",
       "languageConfirm": {
         "title": "이 언어로 전사할까요?",
         "body": "선택된 언어로 전사가 진행됩니다. 잘못 설정된 채로 시작하면 결과 정확도가 크게 떨어지니 한 번만 확인해 주세요.",
@@ -486,6 +490,7 @@
       "cost": "10크레딧"
     },
     "interviewsView": {
+      "deleteQuestion": "질문 삭제",
       "stage1Title": "1단계 — 파일을 .md로 변환",
       "stage1Help": "각 파일을 마크다운으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
       "convertAll": "분석 시작",

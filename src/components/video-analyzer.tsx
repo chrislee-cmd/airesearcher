@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useRequireAuth } from './auth-provider';
@@ -108,6 +108,7 @@ function VideoMarkdown({ source }: { source: string }) {
 }
 
 export function VideoAnalyzer() {
+  const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
   const { jobs, localUploads, setUploadProgress, clearUploadProgress, refreshJobs, removeJob } =
     useVideoJobs();
@@ -218,12 +219,12 @@ export function VideoAnalyzer() {
       {Object.keys(localUploads).length > 0 && (
         <section>
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-            업로드 중
+            {tCommon('uploading')}
           </h3>
           <ul className="mt-2 space-y-2">
             {Object.entries(localUploads).map(([id, { progress }]) => (
               <li key={id}>
-                <JobProgress value={progress} label="업로드 중" />
+                <JobProgress value={progress} label={tCommon('uploading')} />
               </li>
             ))}
           </ul>
