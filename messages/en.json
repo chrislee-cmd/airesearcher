@@ -623,6 +623,7 @@
     "bundleEnterprise": "Enterprise",
     "popular": "Popular",
     "perCredit": "per credit",
+    "billedInKrwNote": "billed in {krw}",
     "discountOff": "{percent}% off",
     "purchase": "Buy",
     "contactSales": "Contact sales",

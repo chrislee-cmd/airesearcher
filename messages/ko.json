@@ -623,6 +623,7 @@
     "bundleEnterprise": "Enterprise",
     "popular": "인기",
     "perCredit": "크레딧당",
+    "billedInKrwNote": "{krw} 결제",
     "discountOff": "{percent}% 할인",
     "purchase": "구매하기",
     "contactSales": "영업 문의",
