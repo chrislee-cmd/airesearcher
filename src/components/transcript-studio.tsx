@@ -64,6 +64,13 @@ export function TranscriptStudio() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
   const [modelKey, setModelKey] = useState<string>(DEFAULT_MODEL_KEY);
+  // Files held between FileDropZone receiving them and the user confirming
+  // the language in the modal. Picking the wrong language is the single
+  // biggest accuracy regression for transcripts (Korean audio sent to an
+  // English model comes back almost unusable), so we gate every upload
+  // on an explicit confirm rather than silently using whatever the
+  // dropdown last had.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `runUploads` is captured once. We mirror live state into refs so
@@ -114,13 +121,28 @@ export function TranscriptStudio() {
 
   const startUploads = useCallback(
     (files: File[]) => {
+      if (files.length === 0) return;
       requireAuth(() => {
-        void runUploads(files);
+        // Don't start runUploads yet — open the language-confirm modal
+        // and let the user verify. runUploads fires only after confirm.
+        setPendingFiles(Array.from(files));
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
+
+  function confirmPendingUpload() {
+    const files = pendingFiles;
+    setPendingFiles(null);
+    if (files && files.length > 0) {
+      void runUploads(files);
+    }
+  }
+
+  function cancelPendingUpload() {
+    setPendingFiles(null);
+  }
 
   async function runUploads(files: File[]) {
     if (busyUpload) return;
@@ -357,6 +379,112 @@ export function TranscriptStudio() {
           </ul>
         </section>
       )}
+
+      {pendingFiles && (
+        <LanguageConfirmDialog
+          files={pendingFiles}
+          language={language}
+          onLanguageChange={setLanguage}
+          onConfirm={confirmPendingUpload}
+          onCancel={cancelPendingUpload}
+        />
+      )}
+    </div>
+  );
+}
+
+// Gates every transcript upload on an explicit language confirmation.
+// The selector inside the modal writes back to the same state as the
+// top-of-page dropdown so a change here also persists for subsequent
+// uploads in the same session.
+function LanguageConfirmDialog({
+  files,
+  language,
+  onLanguageChange,
+  onConfirm,
+  onCancel,
+}: {
+  files: File[];
+  language: string;
+  onLanguageChange: (lang: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const t = useTranslations('Features.transcriptsView.languageConfirm');
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[460px] border border-line bg-paper p-8 [border-radius:14px]"
+      >
+        <h2 className="text-[17px] font-semibold tracking-[-0.012em] text-ink-2">
+          {t('title')}
+        </h2>
+        <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+          {t('body')}
+        </p>
+
+        <div className="mt-6 space-y-2">
+          <label
+            htmlFor="transcript-language-confirm"
+            className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft"
+          >
+            {t('languageLabel')}
+          </label>
+          <select
+            id="transcript-language-confirm"
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            autoFocus
+            className="w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 [border-radius:14px] focus:border-ink focus:outline-none"
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.label} ({l.code})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <p className="mt-4 text-[11.5px] text-mute-soft">
+          {files.length === 1
+            ? t('fileCountSingular')
+            : t('fileCountPlural', { count: files.length })}
+        </p>
+
+        <div className="mt-7 flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="border border-line bg-paper px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:14px]"
+          >
+            {t('cancelCta')}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 [border-radius:14px]"
+          >
+            {t('proceedCta')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

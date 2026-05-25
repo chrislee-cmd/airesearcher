@@ -469,6 +469,17 @@
       "description": "오디오/영상 인터뷰를 정확한 스크립트로 변환합니다.",
       "cost": "1크레딧"
     },
+    "transcriptsView": {
+      "languageConfirm": {
+        "title": "이 언어로 전사할까요?",
+        "body": "선택된 언어로 전사가 진행됩니다. 잘못 설정된 채로 시작하면 결과 정확도가 크게 떨어지니 한 번만 확인해 주세요.",
+        "languageLabel": "선택된 언어",
+        "fileCountSingular": "파일 1개",
+        "fileCountPlural": "파일 {count}개",
+        "proceedCta": "이 언어로 시작",
+        "cancelCta": "취소"
+      }
+    },
     "interviews": {
       "title": "인터뷰 결과 생성기",
       "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
