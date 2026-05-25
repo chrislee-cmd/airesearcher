@@ -469,6 +469,17 @@
       "description": "インタビュースクリプトとディスカッションガイドを生成します。",
       "cost": "1クレジット"
     },
+    "transcriptsView": {
+      "languageConfirm": {
+        "title": "この言語で文字起こししますか？",
+        "body": "選択した言語で文字起こしを実行します。誤った設定のまま開始すると精度が大きく低下するため、一度ご確認ください。",
+        "languageLabel": "選択された言語",
+        "fileCountSingular": "ファイル1個",
+        "fileCountPlural": "ファイル{count}個",
+        "proceedCta": "この言語で開始",
+        "cancelCta": "キャンセル"
+      }
+    },
     "interviews": {
       "title": "インタビュー結果生成",
       "description": "複数のインタビューファイルを.mdに変換し、共通の質問セットに沿って要約とVOC引用の表を作成します。",
