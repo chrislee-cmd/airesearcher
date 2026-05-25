@@ -123,15 +123,25 @@ export function CreditsBundles() {
         return;
       }
       if (method === 'bank_transfer') {
-        setBankDetails({
-          paymentId: json.paymentId,
-          bankReference: json.bankReference,
-          bankName: json.bankName ?? null,
-          accountNumber: json.accountNumber ?? null,
-          accountHolder: json.accountHolder ?? null,
-          credits: selected.credits,
-          amountKrw: selected.priceKrw!,
-        });
+        // Primary path: server emailed bank details to admin + requester CC.
+        // Show confirmation toast and close the modal.
+        // Fallback (json.emailed === false): SMTP failed, server returned
+        // bank info inline — keep the instruction panel so the user can
+        // still complete the wire.
+        if (json.emailed) {
+          setToast(t('bankEmailSent'));
+          close();
+        } else {
+          setBankDetails({
+            paymentId: json.paymentId,
+            bankReference: json.bankReference,
+            bankName: json.bankName ?? null,
+            accountNumber: json.accountNumber ?? null,
+            accountHolder: json.accountHolder ?? null,
+            credits: selected.credits,
+            amountKrw: selected.priceKrw!,
+          });
+        }
       }
     } catch (e) {
       setError((e as Error).message);
