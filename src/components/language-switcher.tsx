@@ -13,6 +13,7 @@ const LOCALE_LABEL: Record<string, string> = {
   ko: 'KO',
   en: 'EN',
   ja: 'JA',
+  th: 'TH',
 };
 
 export function LanguageSwitcher() {
