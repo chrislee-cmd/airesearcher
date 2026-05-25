@@ -388,7 +388,7 @@ export function EnhancePanel({
             </label>
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-mute-soft">
-                강화 1회 · 20크레딧
+                강화 1회 · 10크레딧
               </span>
               <button
                 type="button"

@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Credit cost for one enhancement pass. Less than full reports (50) since
-// we're reusing the base markdown; charge enough to cover the LLM call
-// for enhance + re-render.
-export const REPORT_ENHANCE_COST = 20;
+// we're reusing the base markdown — the enhance call rewrites markdown
+// against the base and re-renders HTML, but skips the full design-system
+// generation pass.
+export const REPORT_ENHANCE_COST = 10;
 
 export type ReportEnhancementKind = 'trends' | 'logs' | 'perspective';
 
