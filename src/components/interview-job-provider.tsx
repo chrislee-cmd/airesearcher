@@ -14,6 +14,7 @@ import * as XLSX from 'xlsx';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
+import { buildArtifactFilename } from '@/lib/filename';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 export const MAX_FILES = 25;
@@ -578,6 +579,10 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
+  // Captured when analysis completes so subsequent CSV/XLSX/DOCX exports use
+  // a stable timestamp. Sub-second drift vs. `interview_jobs.created_at` is
+  // fine — both default to "now()" within the same request flow.
+  const [lastRunAt, setLastRunAt] = useState<Date | null>(null);
   // Mirror for async access inside the vertical-synth callback — the
   // PATCH for consolidated insights fires after the initial POST resolves,
   // and we need the latest jobId without rerunning the effect.
@@ -898,6 +903,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       }
       const result = normalizePartial(json) ?? { questions: [], rows: [] };
       setAnalysis(result);
+      setLastRunAt(new Date());
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
       router.refresh();
       // Fire row-level summary as a follow-up — table renders immediately,
@@ -1278,12 +1284,27 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     submit({ extractions });
   }
 
+  // Derive a meaningful slug from the first respondent filename so concurrent
+  // exports across different runs don't all land as `interview-analysis.xxx`
+  // and clobber each other in the download folder. Project name would be a
+  // better slug but it lives behind another fetch — wire that in once
+  // `interview_jobs` carries it server-side.
+  function makeExportFilename(ext: 'csv' | 'xlsx' | 'docx'): string {
+    const firstRaw = filenameOrder[0] ?? '';
+    const firstSlug = firstRaw.replace(/\.[^./\\]+$/, '');
+    return buildArtifactFilename({
+      prefix: 'interview',
+      slug: firstSlug,
+      createdAt: lastRunAt ?? new Date(),
+      ext,
+    });
+  }
   function exportCsv() {
     if (!analysis || !filenameOrder.length) return;
     // CSV is single-sheet by format — emit the final summary view.
     triggerDownload(
       makeCsvBlob(buildFinalMatrix(analysis)),
-      'interview-analysis.csv',
+      makeExportFilename('csv'),
     );
   }
   function exportXlsx() {
@@ -1299,7 +1320,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
           matrix: buildRespondentMatrix(analysis, filenameOrder),
         },
       ]),
-      'interview-analysis.xlsx',
+      makeExportFilename('xlsx'),
     );
   }
   function getMatrixRows(): string[][] {
@@ -1313,7 +1334,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     // requests the document.
     const { buildInterviewDocxBlob } = await import('@/lib/interviews-docx');
     const blob = await buildInterviewDocxBlob(analysis, filenameOrder);
-    triggerDownload(blob, 'interview-analysis.docx');
+    triggerDownload(blob, makeExportFilename('docx'));
   }
 
   const value: Ctx = {

@@ -117,11 +117,20 @@ function interviewToItem(r: {
   updated_at: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
-  const stamp = (r.updated_at ?? r.created_at).slice(0, 10);
+  // Slug from first respondent filename when present; otherwise the helper
+  // falls back to `interview-{date}.md`. Project name would be a richer slug
+  // but isn't on the row today.
+  const firstRaw = (r.inputs ?? [])[0]?.filename ?? '';
+  const firstSlug = firstRaw.replace(/\.[^./\\]+$/, '');
   return {
     id: `iv_${r.id}`,
     featureKey: 'interviews',
-    title: `interviews-${stamp}.md`,
+    title: buildArtifactFilename({
+      prefix: 'interview',
+      slug: firstSlug,
+      createdAt: r.created_at,
+      ext: 'md',
+    }),
     createdAt: r.updated_at ?? r.created_at,
     dbFeature: 'interview',
     dbId: r.id,
