@@ -469,6 +469,17 @@
       "description": "Generate interview scripts and discussion guides.",
       "cost": "1 credit"
     },
+    "transcriptsView": {
+      "languageConfirm": {
+        "title": "Use this language to transcribe?",
+        "body": "Transcription will run with the selected language. Choosing the wrong setting noticeably hurts accuracy — worth a quick check.",
+        "languageLabel": "Selected language",
+        "fileCountSingular": "1 file ready",
+        "fileCountPlural": "{count} files ready",
+        "proceedCta": "Start with this language",
+        "cancelCta": "Cancel"
+      }
+    },
     "interviews": {
       "title": "Interview Result Generator",
       "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
