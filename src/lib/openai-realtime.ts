@@ -1,31 +1,28 @@
 // OpenAI Realtime ephemeral session issuer.
 //
-// We use the conversational `gpt-realtime` model with a terse
-// interpreter system prompt rather than the dedicated
-// `gpt-realtime-translate` model. The translation-only model has no
-// voice control and emits a coarser source-language transcript, both
-// of which made the captions feel scrappy.
+// We use the **dedicated translation model** `gpt-realtime-translate`
+// at the `/v1/realtime/translations/*` endpoint family. This model has
+// no conversation lifecycle and no turn detection — it streams source
+// transcription, translated transcription, and translated audio
+// continuously as input audio arrives. That's the actual simultaneous
+// interpretation behaviour a UN-style interpreter has.
 //
-// Crucially, turn detection is `semantic_vad` with `eagerness=high`,
-// NOT `server_vad`. server_vad waits for a silence gap before the
-// model commits a turn, which produces a "wait for the speaker to
-// pause, then translate" cadence — that's consecutive interpretation,
-// not simultaneous, and the product cannot ship that way. semantic_vad
-// at high eagerness chunks audio the moment the model has enough
-// meaning to commit a phrase, with `interrupt_response=true` so new
-// input can re-steer an in-flight response. Same conversational event
-// shape as server_vad, so input/output captions still flow cleanly via
-// the standard conversation.item.input_audio_transcription.* and
-// response.text.* events.
+// The conversational `gpt-realtime` model — with any VAD setting,
+// server or semantic — always pauses on a turn boundary before
+// emitting. That cadence cannot ship as live interpretation, so it is
+// not an option here.
 //
-// The API hands the browser an ephemeral client_secret (default 600s)
-// which it uses as a Bearer token when POSTing its WebRTC SDP offer to
-// /v1/realtime/calls. Model + session config are bound to the token
-// server-side.
+// Source-language transcript: the WebRTC variant of the translations
+// API does not auto-emit `session.input_transcript.delta` events.
+// They only appear when input transcription is explicitly enabled via
+// `audio.input.transcription`, with `gpt-4o-mini-transcribe` as the
+// model (chosen over `gpt-4o-transcribe` because it produced cleaner
+// captions in side-by-side testing).
+//
+// Reference: https://developers.openai.com/api/docs/guides/realtime-translation
 
-import { buildTranslateInstructions } from './translate-instructions';
-
-const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
+const TRANSLATIONS_CLIENT_SECRETS_URL =
+  'https://api.openai.com/v1/realtime/translations/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
 
 export type OpenAIRealtimeClientSecret = {
@@ -39,13 +36,15 @@ export type OpenAIRealtimeSession = {
 };
 
 export function realtimeModel(): string {
-  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime';
+  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
 export async function issueRealtimeSession(opts: {
+  // `sourceLang` is purely UI metadata — the translation model autodetects
+  // the input language and does not accept a source-language hint.
   sourceLang: string;
+  // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
-  voice?: string;
 }): Promise<OpenAIRealtimeSession> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
@@ -54,26 +53,17 @@ export async function issueRealtimeSession(opts: {
   const body = {
     expires_after: { anchor: 'created_at', seconds: DEFAULT_TTL_SECONDS },
     session: {
-      type: 'realtime',
       model,
-      instructions: buildTranslateInstructions(opts.sourceLang, opts.targetLang),
-      output_modalities: ['audio'],
       audio: {
         input: {
           transcription: { model: 'gpt-4o-mini-transcribe' },
-          turn_detection: {
-            type: 'semantic_vad',
-            eagerness: 'high',
-            create_response: true,
-            interrupt_response: true,
-          },
         },
-        output: { voice: opts.voice ?? 'verse' },
+        output: { language: opts.targetLang },
       },
     },
   };
 
-  const res = await fetch(CLIENT_SECRETS_URL, {
+  const res = await fetch(TRANSLATIONS_CLIENT_SECRETS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
