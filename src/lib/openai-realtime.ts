@@ -1,19 +1,18 @@
 // OpenAI Realtime ephemeral session issuer.
 //
-// We hold the API key on the server and hand the browser a short-lived
-// client_secret (default 600s). The browser uses it as a Bearer token
-// when posting its WebRTC SDP offer to /v1/realtime/calls — model and
-// session config are already bound to the token server-side.
+// We now use the **dedicated translation model** `gpt-realtime-translate`
+// at the `/v1/realtime/translations/*` endpoint family. This model has
+// no conversation lifecycle and no turn detection — it streams source
+// transcription, translated transcription, and translated audio
+// continuously as input audio arrives. That's the actual simultaneous
+// interpretation behaviour a UN-style interpreter has, instead of the
+// conversational `gpt-realtime` model which always waits for a turn
+// boundary before responding.
 //
-// API surface (verified 2026-05): the older `/v1/realtime/sessions`
-// endpoint that returned `{ client_secret: { value, expires_at } }` is
-// gone (404). The current shape is `/v1/realtime/client_secrets` with a
-// nested `{ session: {...} }` body and a flat `client_secret` string
-// (`ek_...`) in the response.
+// Reference: https://developers.openai.com/api/docs/guides/realtime-translation
 
-import { buildTranslateInstructions } from './translate-instructions';
-
-const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
+const TRANSLATIONS_CLIENT_SECRETS_URL =
+  'https://api.openai.com/v1/realtime/translations/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
 
 export type OpenAIRealtimeClientSecret = {
@@ -27,13 +26,15 @@ export type OpenAIRealtimeSession = {
 };
 
 export function realtimeModel(): string {
-  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-2';
+  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
 export async function issueRealtimeSession(opts: {
+  // `sourceLang` is purely UI metadata — the translation model autodetects
+  // the input language and does not accept a source-language hint.
   sourceLang: string;
+  // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
-  voice?: string;
 }): Promise<OpenAIRealtimeSession> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
@@ -42,35 +43,14 @@ export async function issueRealtimeSession(opts: {
   const body = {
     expires_after: { anchor: 'created_at', seconds: DEFAULT_TTL_SECONDS },
     session: {
-      type: 'realtime',
       model,
-      instructions: buildTranslateInstructions(opts.sourceLang, opts.targetLang),
-      output_modalities: ['audio'],
       audio: {
-        input: {
-          transcription: { model: 'gpt-4o-mini-transcribe' },
-          // server_vad with a very short silence_duration_ms (200ms vs
-          // 500ms default) makes turn boundaries fire on every micro-pause
-          // — both the input transcript and the model response stream in
-          // small chunks instead of waiting for a full sentence. This
-          // performs better than semantic_vad for Korean SOV, where the
-          // semantic chunker tends to wait for subject+verb before
-          // committing.
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 200,
-            silence_duration_ms: 200,
-            create_response: true,
-            interrupt_response: true,
-          },
-        },
-        output: { voice: opts.voice ?? 'verse' },
+        output: { language: opts.targetLang },
       },
     },
   };
 
-  const res = await fetch(CLIENT_SECRETS_URL, {
+  const res = await fetch(TRANSLATIONS_CLIENT_SECRETS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -84,9 +64,6 @@ export async function issueRealtimeSession(opts: {
     throw new Error(`openai_realtime_session_failed: ${res.status} ${detail.slice(0, 200)}`);
   }
 
-  // New response shape: { value: "ek_...", expires_at: 1234567890, session: {...} }
-  // The field name is `value` (not nested under `client_secret`) in the
-  // current `/client_secrets` API.
   const json = (await res.json()) as {
     value?: string;
     client_secret?: string;
