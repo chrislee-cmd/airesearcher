@@ -432,7 +432,7 @@ export function DeskResearch() {
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          <section data-coach="desk:keyword">
+          <section>
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('keywordLabel')}
             </span>
@@ -524,7 +524,7 @@ export function DeskResearch() {
         </div>
 
         <div className="space-y-6">
-          <section data-coach="desk:region">
+          <section>
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('regionLabel')}
             </span>
@@ -558,7 +558,7 @@ export function DeskResearch() {
             )}
           </section>
 
-          <section data-coach="desk:sources">
+          <section>
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('sourcesLabel')}
             </span>
@@ -618,7 +618,6 @@ export function DeskResearch() {
         <button
           onClick={onClickRun}
           disabled={!canRun}
-          data-coach="desk:search"
           className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {submitting || pendingJobId || isWorking ? tCommon('loading') : tDesk('search')}

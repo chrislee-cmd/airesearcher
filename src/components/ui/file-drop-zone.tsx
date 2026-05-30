@@ -22,7 +22,6 @@ export type FileDropZoneProps = {
   // Return true to indicate the drop was consumed and the default
   // file-handling path should be skipped.
   onDropRaw?: (e: DragEvent<HTMLDivElement>) => boolean;
-  'data-coach'?: string;
 };
 
 export function FileDropZone({

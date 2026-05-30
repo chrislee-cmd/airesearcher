@@ -312,7 +312,7 @@ export function TranscriptStudio() {
               ))}
             </select>
           </div>
-          <div data-coach="quotes:language" className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <label
               htmlFor="transcript-language"
               className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
@@ -335,7 +335,6 @@ export function TranscriptStudio() {
           </div>
         </div>
         <FileDropZone
-          data-coach="quotes:upload"
           accept={ACCEPT}
           multiple
           disabled={busyUpload}
@@ -531,7 +530,7 @@ function JobRow({
           )}
         </div>
         {job.status === 'done' && (
-          <div data-coach="quotes:download" className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <DownloadMenu
               tone="primary"
               align="end"

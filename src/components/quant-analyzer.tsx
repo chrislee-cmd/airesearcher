@@ -120,7 +120,6 @@ export function QuantAnalyzer() {
       {/* ─── Stage 1 — File upload ─── */}
       {!rows && (
         <FileDropZone
-          data-coach="quant:upload"
           accept={ACCEPT}
           onFiles={onSelectFiles}
           label={t('dropHere')}
@@ -166,7 +165,7 @@ export function QuantAnalyzer() {
           </div>
 
           {/* Pickers */}
-          <div data-coach="quant:pickers" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ColumnPicker
               label={t('questionLabel')}
               hint={t('questionHint')}
@@ -187,7 +186,7 @@ export function QuantAnalyzer() {
 
           {/* Display-mode toggle + export */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div data-coach="quant:modes" className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
+            <div className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
               {(['count', 'colpct', 'rowpct'] as const).map((m) => (
                 <button
                   key={m}
