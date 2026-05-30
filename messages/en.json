@@ -732,6 +732,12 @@
   "TranslateConsole": {
     "sourceLang": "Source",
     "targetLang": "Target",
+    "inputSource": {
+      "label": "Input source",
+      "mic": "Microphone",
+      "tab": "Online meeting (tab audio)",
+      "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
+    },
     "recordEnabled": "Record transcript",
     "monitor": "Monitor translation",
     "start": "Start interpreting",

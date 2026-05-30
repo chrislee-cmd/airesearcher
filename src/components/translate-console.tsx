@@ -80,6 +80,12 @@ export function TranslateConsole() {
   const [targetLang, setTargetLang] = useState('en');
   const [recordEnabled, setRecordEnabled] = useState(true);
   const [monitorTranslation, setMonitorTranslation] = useState(true);
+  // 'mic' = host's microphone; 'tab' = a browser tab's audio
+  // (e.g. a Zoom/Meet/Teams call running in another tab). Tab capture
+  // goes through getDisplayMedia, which on every supported browser
+  // requires a user gesture and a tab-picker UI, so we lock this to
+  // the host's choice and only acquire when the host clicks Start.
+  const [inputSource, setInputSource] = useState<'mic' | 'tab'>('mic');
 
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
@@ -322,12 +328,45 @@ export function TranslateConsole() {
 
     sessionIdRef.current = bundle.session.id;
 
-    // Mic
+    // Source stream — either the host's microphone or a captured
+    // browser tab's audio (Zoom/Meet/Teams running in another tab).
+    // `mic` keeps the variable name because the rest of the pipeline
+    // (LiveKit "input" publish, OpenAI WebRTC addTrack, cleanup via
+    // micStreamRef) doesn't care which kind of capture it is.
     let mic: MediaStream;
     try {
-      mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (inputSource === 'tab') {
+        // getDisplayMedia requires a video constraint on every browser
+        // that supports tab-audio capture; we ask for the cheapest
+        // surface (browser tab) and immediately stop the video track
+        // since we never render or upload it.
+        const display = await navigator.mediaDevices.getDisplayMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          video: { displaySurface: 'browser' },
+        });
+        display.getVideoTracks().forEach((tr) => tr.stop());
+        const audioTracks = display.getAudioTracks();
+        if (audioTracks.length === 0) {
+          // The host picked a surface but didn't enable "Share tab
+          // audio" in the picker — or the platform doesn't support
+          // it (Safari, most mobile browsers). Without an audio
+          // track there's nothing to translate, so surface a
+          // dedicated error instead of silently going live.
+          display.getTracks().forEach((tr) => tr.stop());
+          setError('tab_audio_unavailable');
+          setStatus('error');
+          return;
+        }
+        mic = new MediaStream(audioTracks);
+      } else {
+        mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
     } catch {
-      setError('microphone_denied');
+      setError(inputSource === 'tab' ? 'tab_audio_denied' : 'microphone_denied');
       setStatus('error');
       return;
     }
@@ -478,6 +517,7 @@ export function TranslateConsole() {
   }, [
     cleanup,
     handleOaiEvent,
+    inputSource,
     monitorTranslation,
     recordEnabled,
     sourceLang,
@@ -624,6 +664,23 @@ export function TranslateConsole() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+          <span>{t('inputSource.label')}</span>
+          <select
+            value={inputSource}
+            onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
+            disabled={live || busy}
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+          >
+            <option value="mic">{t('inputSource.mic')}</option>
+            <option value="tab">{t('inputSource.tab')}</option>
+          </select>
+          {inputSource === 'tab' && !live ? (
+            <span className="max-w-[260px] text-[10.5px] leading-tight text-mute-soft">
+              {t('inputSource.tabHint')}
+            </span>
+          ) : null}
         </label>
         <label className="flex items-center gap-2 text-[12.5px] text-mute">
           <input
