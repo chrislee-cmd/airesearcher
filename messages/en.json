@@ -204,6 +204,7 @@
     "quant": "Quantitative Analysis",
     "affinity_bubble": "Affinity Bubble",
     "video": "Video Analyzer",
+    "translate": "Live Interpreter",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -586,6 +587,11 @@
       "title": "Video Analyzer",
       "description": "Upload user test or interview recordings and let AI analyze behavior patterns, pain points, and key moments.",
       "cost": "2 credits per 10 minutes, per analysis"
+    },
+    "translate": {
+      "title": "Live Interpreter",
+      "description": "OpenAI Realtime translates your microphone audio on the fly. Generate a share link so remote viewers see the live captions and pick the language they listen to.",
+      "cost": "50 credits to start, then 10 credits per 10 minutes"
     }
   },
   "Quant": {
@@ -722,6 +728,9 @@
       "JP": "Japan",
       "GLOBAL": "Global"
     }
+  },
+  "TranslateConsole": {
+    "foundationPlaceholder": "The Live Interpreter console is on its way. The next release wires up microphone capture, streaming captions, and shareable viewer links."
   },
   "Workspace": {
     "eyebrow": "Workspace",
