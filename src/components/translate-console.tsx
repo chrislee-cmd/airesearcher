@@ -91,6 +91,14 @@ export function TranslateConsole() {
   const micStreamRef = useRef<MediaStream | null>(null);
   const ttsStreamRef = useRef<MediaStream | null>(null);
   const outputPublishedRef = useRef(false);
+  // Web Audio graph used to re-emit the OpenAI translation track as a
+  // local MediaStream that LiveKit can publish. A remote track received
+  // via pc.ontrack from one peer connection cannot be republished into
+  // another peer connection directly — Web Audio "lifts" the audio data
+  // through an AudioContext so the track LiveKit sees is local.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -145,6 +153,15 @@ export function TranslateConsole() {
     micStreamRef.current = null;
     ttsStreamRef.current = null;
     outputPublishedRef.current = false;
+    try {
+      audioSourceRef.current?.disconnect();
+    } catch {}
+    audioSourceRef.current = null;
+    audioDestRef.current = null;
+    try {
+      void audioCtxRef.current?.close();
+    } catch {}
+    audioCtxRef.current = null;
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -343,22 +360,45 @@ export function TranslateConsole() {
         monitorAudioRef.current.muted = !monitorTranslation;
         monitorAudioRef.current.play().catch(() => {});
       }
-      // Publish the translated TTS track into LiveKit as soon as it
-      // shows up. ontrack can fire multiple times across renegotiations;
-      // guard with outputPublishedRef so we only publish once per session.
+      // Publish the translated TTS track into LiveKit. ontrack can fire
+      // multiple times across renegotiations; guard with
+      // outputPublishedRef so we only publish once per session.
       if (outputPublishedRef.current) return;
-      const ttsTrack = stream?.getAudioTracks()[0];
       const room = roomRef.current;
-      if (!ttsTrack || !room) return;
-      outputPublishedRef.current = true;
-      const outputTrack = new LocalAudioTrack(ttsTrack);
-      room.localParticipant
-        .publishTrack(outputTrack, { name: 'output' })
-        .catch(() => {
-          // Allow a retry on the next ontrack if this one races with
-          // disconnect.
-          outputPublishedRef.current = false;
-        });
+      if (!stream || !room) return;
+      try {
+        // Browsers refuse to publish a track from one RTCPeerConnection
+        // (OpenAI) into another (LiveKit) directly. Web Audio routing
+        // re-emits the audio as a fresh local MediaStreamTrack we can
+        // attach to LocalAudioTrack.
+        type WebkitWindow = Window &
+          typeof globalThis & {
+            webkitAudioContext?: typeof AudioContext;
+          };
+        const w = window as WebkitWindow;
+        const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        const src = ctx.createMediaStreamSource(stream);
+        audioSourceRef.current = src;
+        const dst = ctx.createMediaStreamDestination();
+        audioDestRef.current = dst;
+        src.connect(dst);
+        const localTtsTrack = dst.stream.getAudioTracks()[0];
+        if (!localTtsTrack) return;
+        outputPublishedRef.current = true;
+        const outputTrack = new LocalAudioTrack(localTtsTrack);
+        room.localParticipant
+          .publishTrack(outputTrack, { name: 'output' })
+          .catch(() => {
+            // Allow a retry on the next ontrack if this one races with
+            // disconnect.
+            outputPublishedRef.current = false;
+          });
+      } catch {
+        outputPublishedRef.current = false;
+      }
     };
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
