@@ -85,7 +85,7 @@ export function buildVoiceTools(deps: BuildVoiceToolsDeps) {
   const navigateTool = tool({
     name: 'navigate',
     description:
-      '사용자를 사이트 내 특정 경로로 이동시킬 때 호출합니다. 예: 사용자가 "리포트 보고 싶다"고 하면 href="/reports"로 호출하세요.',
+      '사용자를 사이트 내 특정 경로로 이동시킬 때 호출합니다. 예: 사용자가 "리포트 보고 싶다"고 하면 href="/reports"로 호출하세요. 결제·충전·구매·payment 관련 요청은 이 도구가 아니라 openPurchase를 사용하세요.',
     parameters: z.object({
       href: z.enum(NAVIGABLE_HREFS as [string, ...string[]]),
     }),
@@ -221,7 +221,7 @@ export function buildVoiceTools(deps: BuildVoiceToolsDeps) {
   const openPurchaseTool = tool({
     name: 'openPurchase',
     description:
-      '크레딧 충전 페이지를 엽니다. 크레딧이 부족하거나 사용자가 충전하고 싶다고 할 때 호출하세요. bundleId를 함께 보내면 미리 선택된 상태로 유도합니다.',
+      '크레딧 충전·결제·구매 페이지를 엽니다. 사용자가 "결제", "충전", "구매", "결제 페이지", "사고 싶어", "payment", "buy credits" 등 어떤 표현을 쓰든 이 도구를 호출하세요. 크레딧이 부족할 때도 자동으로 이 도구를 호출하세요. bundleId를 함께 보내면 미리 선택된 상태로 유도합니다. (절대 navigate("/billing") 호출 X — 그 경로는 존재하지 않습니다.)',
     parameters: z.object({
       bundleId: z.enum(['starter', 'team', 'studio', 'enterprise']).optional(),
     }),
