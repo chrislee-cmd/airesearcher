@@ -471,7 +471,41 @@ export function TranslateConsole() {
     };
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
-    dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+    dc.onopen = () => {
+      console.info('[translate] DC opened — readyState=', dc.readyState);
+    };
+    dc.onclose = () => {
+      console.info('[translate] DC closed — readyState=', dc.readyState);
+    };
+    dc.onerror = (e) => {
+      console.warn('[translate] DC error', e);
+    };
+    dc.onmessage = (ev) => {
+      const raw = String(ev.data);
+      // Log the bare event type so we can confirm the server is sending
+      // what we expect (input/output transcript deltas) vs something
+      // unexpected. The full payload stays out of the log unless the
+      // parse fails, to avoid flooding the console.
+      try {
+        const t = (JSON.parse(raw) as { type?: string }).type;
+        console.info('[translate] DC msg type=', t);
+      } catch {
+        console.warn('[translate] DC msg unparseable', raw.slice(0, 200));
+      }
+      handleOaiEvent(raw);
+    };
+    // Source-track sanity log — confirms the audio stream we're handing
+    // to OpenAI is actually live, not muted/ended.
+    for (const tr of mic.getAudioTracks()) {
+      console.info(
+        '[translate] source track —',
+        `kind=${tr.kind}`,
+        `enabled=${tr.enabled}`,
+        `muted=${tr.muted}`,
+        `readyState=${tr.readyState}`,
+        `label="${tr.label}"`,
+      );
+    }
 
     try {
       const offer = await pc.createOffer();
