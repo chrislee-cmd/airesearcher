@@ -60,10 +60,6 @@ const LANGS: { value: string; label: string }[] = [
   { value: 'es', label: 'Español' },
 ];
 
-// Heuristic sentence boundary used by the translation client to split
-// the continuous delta stream into committable caption lines.
-const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
-
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -227,46 +223,6 @@ export function TranslateConsole() {
     [],
   );
 
-  const appendStreaming = useCallback(
-    (kind: 'input' | 'output', delta: string, lang: string) => {
-      if (!delta) return;
-      const partial = kind === 'input' ? partialInputRef : partialOutputRef;
-      // Reuse a single rolling line id per kind, replaced when a sentence
-      // boundary commits.
-      const current = partial.current.get('current') ?? { id: `${kind}-${Date.now()}`, text: '' };
-      const next = current.text + delta;
-      const match = next.match(SENTENCE_END);
-      if (match && match.index !== undefined) {
-        // Split the buffer at the sentence boundary. The completed part
-        // becomes a final line; whatever comes after starts a new line.
-        const cut = match.index + match[1].length;
-        const finalText = next.slice(0, cut).trim();
-        const remainder = next.slice(cut).trim();
-        if (finalText) {
-          const finalLine: CaptionLine = { id: current.id, text: finalText, final: true };
-          pushLine(kind, finalLine);
-          broadcastCaption(kind, finalLine, lang);
-          void persistMessage(kind, finalText, lang);
-        }
-        if (remainder) {
-          const nextId = `${kind}-${Date.now()}`;
-          partial.current.set('current', { id: nextId, text: remainder });
-          const partialLine: CaptionLine = { id: nextId, text: remainder, final: false };
-          pushLine(kind, partialLine);
-          broadcastCaption(kind, partialLine, lang);
-        } else {
-          partial.current.delete('current');
-        }
-      } else {
-        partial.current.set('current', { id: current.id, text: next });
-        const partialLine: CaptionLine = { id: current.id, text: next, final: false };
-        pushLine(kind, partialLine);
-        broadcastCaption(kind, partialLine, lang);
-      }
-    },
-    [broadcastCaption, persistMessage, pushLine],
-  );
-
   const handleOaiEvent = useCallback(
     (raw: string) => {
       let msg: { type?: string; [k: string]: unknown };
@@ -277,21 +233,62 @@ export function TranslateConsole() {
       }
       const type = msg.type ?? '';
 
-      // Source language transcript — streams live as the speaker talks.
-      if (type === 'session.input_transcript.delta') {
-        appendStreaming('input', String(msg.delta ?? ''), sourceLang);
+      // Source-language transcription. The model emits a stream of
+      // deltas keyed by conversation-item id and a single `.completed`
+      // when the item closes; we buffer per-item so deltas merge
+      // cleanly into the final transcript.
+      if (type === 'conversation.item.input_audio_transcription.delta') {
+        const itemId = String(msg.item_id ?? msg.id ?? 'in');
+        const delta = String(msg.delta ?? '');
+        const prev = partialInputRef.current.get(itemId)?.text ?? '';
+        const next = prev + delta;
+        partialInputRef.current.set(itemId, { id: itemId, text: next });
+        const line: CaptionLine = { id: itemId, text: next, final: false };
+        pushLine('input', line);
+        broadcastCaption('input', line, sourceLang);
         return;
       }
-      // Translated text — streams continuously.
-      if (type === 'session.output_transcript.delta') {
-        appendStreaming('output', String(msg.delta ?? ''), targetLang);
+      if (type === 'conversation.item.input_audio_transcription.completed') {
+        const itemId = String(msg.item_id ?? msg.id ?? 'in');
+        const text = String(
+          msg.transcript ?? partialInputRef.current.get(itemId)?.text ?? '',
+        );
+        partialInputRef.current.delete(itemId);
+        const line: CaptionLine = { id: itemId, text, final: true };
+        pushLine('input', line);
+        broadcastCaption('input', line, sourceLang);
+        if (text.trim()) void persistMessage('input', text, sourceLang);
         return;
       }
-      // Note: `session.output_audio.delta` is delivered via the WebRTC
-      // media track, not the data channel — we don't need to handle it
-      // here.
+
+      // Translated text. OpenAI has shipped both `response.text.*` and
+      // `response.output_text.*` over time — handle either so we don't
+      // regress on a server-side rename.
+      if (type === 'response.text.delta' || type === 'response.output_text.delta') {
+        const itemId = String(msg.response_id ?? msg.item_id ?? 'out');
+        const delta = String(msg.delta ?? '');
+        const prev = partialOutputRef.current.get(itemId)?.text ?? '';
+        const next = prev + delta;
+        partialOutputRef.current.set(itemId, { id: itemId, text: next });
+        const line: CaptionLine = { id: itemId, text: next, final: false };
+        pushLine('output', line);
+        broadcastCaption('output', line, targetLang);
+        return;
+      }
+      if (type === 'response.text.done' || type === 'response.output_text.done') {
+        const itemId = String(msg.response_id ?? msg.item_id ?? 'out');
+        const text = String(
+          msg.text ?? partialOutputRef.current.get(itemId)?.text ?? '',
+        );
+        partialOutputRef.current.delete(itemId);
+        const line: CaptionLine = { id: itemId, text, final: true };
+        pushLine('output', line);
+        broadcastCaption('output', line, targetLang);
+        if (text.trim()) void persistMessage('output', text, targetLang);
+        return;
+      }
     },
-    [appendStreaming, sourceLang, targetLang],
+    [broadcastCaption, persistMessage, pushLine, sourceLang, targetLang],
   );
 
   const start = useCallback(async () => {
@@ -471,52 +468,13 @@ export function TranslateConsole() {
     };
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
-    dc.onopen = () => {
-      console.info('[translate] DC opened — readyState=', dc.readyState);
-    };
-    dc.onclose = () => {
-      console.info('[translate] DC closed — readyState=', dc.readyState);
-    };
-    dc.onerror = (e) => {
-      console.warn('[translate] DC error', e);
-    };
-    // Track the first time we see each event type so we can dump its
-    // full payload once, then mute it. This reveals the real
-    // schema OpenAI is sending without flooding the console.
-    const seenTypes = new Set<string>();
-    dc.onmessage = (ev) => {
-      const raw = String(ev.data);
-      try {
-        const obj = JSON.parse(raw) as { type?: string };
-        const t = obj.type ?? '<no-type>';
-        if (!seenTypes.has(t)) {
-          seenTypes.add(t);
-          console.info('[translate] DC NEW type=%s — full payload:', t, obj);
-        }
-      } catch {
-        console.warn('[translate] DC msg unparseable', raw.slice(0, 200));
-      }
-      handleOaiEvent(raw);
-    };
-    // Source-track sanity log — confirms the audio stream we're handing
-    // to OpenAI is actually live, not muted/ended.
-    for (const tr of mic.getAudioTracks()) {
-      console.info(
-        '[translate] source track —',
-        `kind=${tr.kind}`,
-        `enabled=${tr.enabled}`,
-        `muted=${tr.muted}`,
-        `readyState=${tr.readyState}`,
-        `label="${tr.label}"`,
-      );
-    }
+    dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
 
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      // The translation-model SDP exchange has its own endpoint family.
       const sdpRes = await fetch(
-        'https://api.openai.com/v1/realtime/translations/calls',
+        'https://api.openai.com/v1/realtime/calls',
         {
           method: 'POST',
           headers: {

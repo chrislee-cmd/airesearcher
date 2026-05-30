@@ -1,18 +1,21 @@
 // OpenAI Realtime ephemeral session issuer.
 //
-// We now use the **dedicated translation model** `gpt-realtime-translate`
-// at the `/v1/realtime/translations/*` endpoint family. This model has
-// no conversation lifecycle and no turn detection — it streams source
-// transcription, translated transcription, and translated audio
-// continuously as input audio arrives. That's the actual simultaneous
-// interpretation behaviour a UN-style interpreter has, instead of the
-// conversational `gpt-realtime` model which always waits for a turn
-// boundary before responding.
+// We use the conversational `gpt-realtime` model with a terse
+// interpreter system prompt rather than the dedicated
+// `gpt-realtime-translate` model. The translation-only model has no
+// voice control and emits a coarser source-language transcript, both
+// of which made the captions feel scrappy. The conversational model
+// driven by server VAD gives clean, item-bucketed transcript events on
+// both sides and lets the host pick the TTS voice.
 //
-// Reference: https://developers.openai.com/api/docs/guides/realtime-translation
+// The API hands the browser an ephemeral client_secret (default 600s)
+// which it uses as a Bearer token when POSTing its WebRTC SDP offer to
+// /v1/realtime/calls. Model + session config are bound to the token
+// server-side.
 
-const TRANSLATIONS_CLIENT_SECRETS_URL =
-  'https://api.openai.com/v1/realtime/translations/client_secrets';
+import { buildTranslateInstructions } from './translate-instructions';
+
+const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
 
 export type OpenAIRealtimeClientSecret = {
@@ -26,40 +29,36 @@ export type OpenAIRealtimeSession = {
 };
 
 export function realtimeModel(): string {
-  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
+  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime';
 }
 
 export async function issueRealtimeSession(opts: {
-  // `sourceLang` is purely UI metadata — the translation model autodetects
-  // the input language and does not accept a source-language hint.
   sourceLang: string;
-  // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
+  voice?: string;
 }): Promise<OpenAIRealtimeSession> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
 
   const model = realtimeModel();
-  // The translation guide claims `session.input_transcript.delta`
-  // events fire automatically, but in practice the API only emits
-  // them when source-language transcription is explicitly enabled
-  // via the standard Realtime config shape — the translations
-  // endpoint inherits this from the base realtime contract even
-  // though the translation guide doesn't document it.
   const body = {
     expires_after: { anchor: 'created_at', seconds: DEFAULT_TTL_SECONDS },
     session: {
+      type: 'realtime',
       model,
+      instructions: buildTranslateInstructions(opts.sourceLang, opts.targetLang),
+      output_modalities: ['audio'],
       audio: {
         input: {
-          transcription: { model: 'gpt-4o-transcribe' },
+          transcription: { model: 'gpt-4o-mini-transcribe' },
+          turn_detection: { type: 'server_vad' },
         },
-        output: { language: opts.targetLang },
+        output: { voice: opts.voice ?? 'verse' },
       },
     },
   };
 
-  const res = await fetch(TRANSLATIONS_CLIENT_SECRETS_URL, {
+  const res = await fetch(CLIENT_SECRETS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
