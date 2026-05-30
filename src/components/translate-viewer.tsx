@@ -237,6 +237,11 @@ export function TranslateViewer({
     roomRef.current = room;
 
     const onTrackSubscribed = (track: RemoteTrack, pub: RemoteTrackPublication) => {
+      console.info('[viewer] TrackSubscribed', {
+        kind: track.kind,
+        name: pub.trackName,
+        sid: pub.trackSid,
+      });
       if (track.kind !== 'audio') return;
       const name = pub.trackName as 'input' | 'output' | undefined;
       if (name !== 'input' && name !== 'output') return;
@@ -246,9 +251,11 @@ export function TranslateViewer({
       if (el) {
         track.attach(el);
         el.muted = mode !== name;
-        el.play().catch(() => {
+        el.play().catch((err) => {
+          console.warn('[viewer] play blocked, awaiting tap', { name, err });
           // autoplay may be blocked until the viewer interacts — the
-          // status banner asks for a click in that case
+          // tap-to-enable banner will surface from
+          // RoomEvent.AudioPlaybackStatusChanged
         });
       }
     };
@@ -272,6 +279,9 @@ export function TranslateViewer({
     };
 
     const onAudioPlaybackChanged = () => {
+      console.info('[viewer] AudioPlaybackStatusChanged', {
+        canPlaybackAudio: room.canPlaybackAudio,
+      });
       setNeedsTap(!room.canPlaybackAudio);
     };
 
@@ -425,8 +435,21 @@ export function TranslateViewer({
         <CaptionColumn label={`${langName(targetLang)} (Translation)`} lines={visibleOutput} />
       </div>
 
-      <audio ref={inputAudioRef} autoPlay playsInline className="hidden" />
-      <audio ref={outputAudioRef} autoPlay playsInline className="hidden" />
+      {/* iOS Safari treats `display:none` audio as inert and won't
+          dispatch playback events on it. Position them off-screen with
+          visibility instead so the engine still wires them up. */}
+      <audio
+        ref={inputAudioRef}
+        autoPlay
+        playsInline
+        style={{ position: 'fixed', left: '-9999px', width: 1, height: 1 }}
+      />
+      <audio
+        ref={outputAudioRef}
+        autoPlay
+        playsInline
+        style={{ position: 'fixed', left: '-9999px', width: 1, height: 1 }}
+      />
     </div>
   );
 }
