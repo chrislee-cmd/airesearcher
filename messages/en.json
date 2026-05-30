@@ -738,6 +738,21 @@
       "tab": "Online meeting (tab audio)",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
+    "voice": {
+      "label": "Voice",
+      "options": {
+        "alloy": "Alloy",
+        "ash": "Ash",
+        "ballad": "Ballad",
+        "coral": "Coral",
+        "echo": "Echo",
+        "sage": "Sage",
+        "shimmer": "Shimmer",
+        "verse": "Verse",
+        "marin": "Marin (default)",
+        "cedar": "Cedar"
+      }
+    },
     "recordEnabled": "Record transcript",
     "monitor": "Monitor translation",
     "start": "Start interpreting",

@@ -731,6 +731,21 @@
       "tab": "การประชุมออนไลน์ (เสียงจากแท็บ)",
       "tabHint": "เลือกแท็บในกล่องแชร์ แล้วติ๊ก \"แชร์เสียงของแท็บ\" รองรับเฉพาะ Chrome เดสก์ท็อป"
     },
+    "voice": {
+      "label": "เสียงพากย์",
+      "options": {
+        "alloy": "Alloy",
+        "ash": "Ash",
+        "ballad": "Ballad",
+        "coral": "Coral",
+        "echo": "Echo",
+        "sage": "Sage",
+        "shimmer": "Shimmer",
+        "verse": "Verse",
+        "marin": "Marin (ค่าเริ่มต้น)",
+        "cedar": "Cedar"
+      }
+    },
     "recordEnabled": "บันทึกคำบรรยาย",
     "monitor": "ฟังเสียงแปล",
     "start": "เริ่มแปล",

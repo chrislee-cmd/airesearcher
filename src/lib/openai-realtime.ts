@@ -29,12 +29,21 @@ export function realtimeModel(): string {
   return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
+// Voice list lives in `./translate-voices` so the client console can
+// import it without pulling this server-only module into the browser
+// bundle. We re-export here only as a convenience for server callers.
+export { TRANSLATE_VOICES, type TranslateVoice } from './translate-voices';
+import type { TranslateVoice } from './translate-voices';
+
 export async function issueRealtimeSession(opts: {
   // `sourceLang` is purely UI metadata — the translation model autodetects
   // the input language and does not accept a source-language hint.
   sourceLang: string;
   // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
+  // Optional TTS voice for the translated output stream. When omitted
+  // the model uses its built-in default.
+  voice?: TranslateVoice;
 }): Promise<OpenAIRealtimeSession> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
@@ -45,7 +54,10 @@ export async function issueRealtimeSession(opts: {
     session: {
       model,
       audio: {
-        output: { language: opts.targetLang },
+        output: {
+          language: opts.targetLang,
+          ...(opts.voice ? { voice: opts.voice } : {}),
+        },
       },
     },
   };

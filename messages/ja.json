@@ -732,6 +732,21 @@
       "tab": "オンライン会議（タブ音声）",
       "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
     },
+    "voice": {
+      "label": "翻訳音声",
+      "options": {
+        "alloy": "Alloy",
+        "ash": "Ash",
+        "ballad": "Ballad",
+        "coral": "Coral",
+        "echo": "Echo",
+        "sage": "Sage",
+        "shimmer": "Shimmer",
+        "verse": "Verse",
+        "marin": "Marin (デフォルト)",
+        "cedar": "Cedar"
+      }
+    },
     "recordEnabled": "字幕を保存",
     "monitor": "翻訳音声モニター",
     "start": "通訳を開始",

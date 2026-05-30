@@ -27,6 +27,7 @@ import { useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { TRANSLATE_VOICES, type TranslateVoice } from '@/lib/translate-voices';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -86,6 +87,11 @@ export function TranslateConsole() {
   // requires a user gesture and a tab-picker UI, so we lock this to
   // the host's choice and only acquire when the host clicks Start.
   const [inputSource, setInputSource] = useState<'mic' | 'tab'>('mic');
+  // TTS voice for the translated output stream. The OpenAI Realtime
+  // translation model bakes the voice into `audio.output.voice` on
+  // session creation, so this must be picked before clicking Start —
+  // changing it mid-session would need a new ephemeral client_secret.
+  const [voice, setVoice] = useState<TranslateVoice>('marin');
 
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
@@ -313,6 +319,7 @@ export function TranslateConsole() {
           source_lang: sourceLang,
           target_lang: targetLang,
           record_enabled: recordEnabled,
+          voice,
         }),
       });
       const json = (await res.json()) as SessionBundle | { error: string };
@@ -523,6 +530,7 @@ export function TranslateConsole() {
     sourceLang,
     targetLang,
     status,
+    voice,
   ]);
 
   const stop = useCallback(async () => {
@@ -686,6 +694,21 @@ export function TranslateConsole() {
           >
             <option value="mic">{t('inputSource.mic')}</option>
             <option value="tab">{t('inputSource.tab')}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+          <span>{t('voice.label')}</span>
+          <select
+            value={voice}
+            onChange={(e) => setVoice(e.target.value as TranslateVoice)}
+            disabled={live || busy}
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+          >
+            {TRANSLATE_VOICES.map((v) => (
+              <option key={v} value={v}>
+                {t(`voice.options.${v}`)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="flex items-center gap-2 text-[12.5px] text-mute">

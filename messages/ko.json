@@ -738,6 +738,21 @@
       "tab": "온라인 미팅 (탭 오디오)",
       "tabHint": "공유 창에서 탭을 고른 뒤 \"탭 오디오 공유\"를 체크하세요. Chrome 데스크톱만 지원합니다."
     },
+    "voice": {
+      "label": "번역 음성",
+      "options": {
+        "alloy": "Alloy",
+        "ash": "Ash",
+        "ballad": "Ballad",
+        "coral": "Coral",
+        "echo": "Echo",
+        "sage": "Sage",
+        "shimmer": "Shimmer",
+        "verse": "Verse",
+        "marin": "Marin (기본)",
+        "cedar": "Cedar"
+      }
+    },
     "recordEnabled": "전사록 저장",
     "monitor": "번역 음성 모니터",
     "start": "통역 시작",

@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { buildHostToken, livekitUrl } from '@/lib/livekit-tokens';
 import { issueRealtimeSession, realtimeModel } from '@/lib/openai-realtime';
+import { TRANSLATE_VOICES } from '@/lib/translate-voices';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -23,6 +24,7 @@ const Body = z.object({
   source_lang: z.string().min(2).max(8).default('ko'),
   target_lang: z.string().min(2).max(8).default('en'),
   record_enabled: z.boolean().default(true),
+  voice: z.enum(TRANSLATE_VOICES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { source_lang, target_lang, record_enabled } = parsed.data;
+  const { source_lang, target_lang, record_enabled, voice } = parsed.data;
 
   // 1) insert session row
   const insert = await supabase
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
     openaiSession = await issueRealtimeSession({
       sourceLang: source_lang,
       targetLang: target_lang,
+      voice,
     });
   } catch (e) {
     return NextResponse.json(
