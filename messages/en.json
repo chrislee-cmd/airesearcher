@@ -768,7 +768,7 @@
       "tab": "Online meeting (tab audio)",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
-    "recordEnabled": "Record transcript",
+    "recordEnabled": "Save audio + transcript (+10 credits to download)",
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
       "unmuteAria": "Unmute translated audio"
@@ -778,6 +778,35 @@
     "starting": "Connecting…",
     "prompter": {
       "empty": "Translated text will stream here once interpreting starts."
+    },
+    "recording": {
+      "indicator": "Recording",
+      "indicatorAria": "Session is being recorded"
+    },
+    "download": {
+      "eyebrow": "Session deliverables",
+      "notAvailable": "No recording for this session. The \"Save audio + transcript\" checkbox must be on before you start.",
+      "preparing": "Finalizing the recording…",
+      "lockedTitle": "Audio + transcript download (.webm · .txt · .docx)",
+      "lockedHint": "One charge unlocks all three formats. Costs {credits} credits.",
+      "unlock": "Unlock ({credits} credits)",
+      "unlocking": "Charging…",
+      "unlockedPill": "Unlocked",
+      "audio": "Audio (.webm)",
+      "txt": "Transcript (.txt)",
+      "docx": "Transcript (.docx)",
+      "preparingFile": "Preparing file…",
+      "errors": {
+        "recorder_failed": "Couldn't start the recorder. Check microphone or tab-audio permissions.",
+        "reserve_failed": "Couldn't reserve storage for the recording. Please try again.",
+        "upload_failed": "Upload failed. Please try again.",
+        "finalize_failed": "Couldn't finalize the recording. Please try again.",
+        "unlock_failed": "Unlock failed. Check your credit balance.",
+        "download_failed": "Couldn't fetch the file. Please try again.",
+        "insufficient": "Not enough credits. Top up and try again.",
+        "object_missing": "The source file is gone. Your credits have been refunded.",
+        "locked": "Not unlocked yet."
+      }
     },
     "errorPrefix": "Error:",
     "errors": {

@@ -23,12 +23,28 @@
 // On "Stop": tear down in reverse + POST /sessions/:id/end.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
+
+// Recording lifecycle, mirrored from supabase/migrations/0023.
+// `null` = no row yet (host opted out, or session hasn't reached the
+// finalize step yet).
+type RecordingRow = {
+  id: string;
+  status: 'recording' | 'uploaded' | 'unlocked' | 'failed';
+  size_bytes: number | null;
+  duration_sec: number | null;
+  credits_spent: number;
+  unlocked_at: string | null;
+  created_at: string;
+};
+
+const RECORDING_UNLOCK_CREDITS = 10;
+const RECORDING_CHUNK_MS = 5000; // 5s timeslice — modest memory use, good resilience
 
 type CaptionLine = {
   id: string;
@@ -88,6 +104,7 @@ function formatElapsed(ms: number) {
 
 export function TranslateConsole() {
   const t = useTranslations('TranslateConsole');
+  const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +136,20 @@ export function TranslateConsole() {
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Recording state — null until POST /recording succeeds. After
+  // stop(), `recording.status` flips to `uploaded` (CTA appears) and
+  // then `unlocked` after the credit charge (download buttons appear).
+  const [recording, setRecording] = useState<RecordingRow | null>(null);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<
+    'webm' | 'txt' | 'docx' | null
+  >(null);
+  // Whether the MediaRecorder is actively capturing. Driven from the
+  // recorder's onstart/onstop events so the indicator pill renders
+  // without needing to read the ref during render.
+  const [recorderActive, setRecorderActive] = useState(false);
+
   // Mutable refs held only for the duration of a live session.
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -146,6 +177,22 @@ export function TranslateConsole() {
   // punctuation arrives in the delta stream.
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
+
+  // Recording graph — a SECOND MediaStreamDestinationNode dedicated to
+  // MediaRecorder. We do NOT reuse `audioDestRef` (which feeds LiveKit
+  // publish): MediaRecorder reading the same destination as a
+  // simultaneous LiveKit publish has produced silent/glitchy webm files
+  // in testing.
+  //
+  // Wiring: host-source GainNode + tts-source GainNode → recordDestRef.
+  const recordDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const recordHostSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recordTtsSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingIdRef = useRef<string | null>(null);
+  const recordingUploadUrlRef = useRef<string | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
 
   // Heartbeat ticker for elapsed display.
   useEffect(() => {
@@ -200,9 +247,28 @@ export function TranslateConsole() {
     audioSourceRef.current = null;
     audioDestRef.current = null;
     try {
+      recordHostSourceRef.current?.disconnect();
+    } catch {}
+    recordHostSourceRef.current = null;
+    try {
+      recordTtsSourceRef.current?.disconnect();
+    } catch {}
+    recordTtsSourceRef.current = null;
+    recordDestRef.current = null;
+    try {
       void audioCtxRef.current?.close();
     } catch {}
     audioCtxRef.current = null;
+    try {
+      const rec = mediaRecorderRef.current;
+      if (rec && rec.state !== 'inactive') rec.stop();
+    } catch {}
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    recordingIdRef.current = null;
+    recordingUploadUrlRef.current = null;
+    recordingStartedAtRef.current = null;
+    setRecorderActive(false);
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -338,6 +404,12 @@ export function TranslateConsole() {
     setElapsed(0);
     setShareToken(null);
     setShareCopied(false);
+    // Reset recording UI for the new session — last session's locked CTA
+    // (if any) should disappear the moment the host hits Start.
+    setRecording(null);
+    setRecordingError(null);
+    setUnlocking(false);
+    setDownloadingFormat(null);
     setStatus('starting');
 
     let bundle: SessionBundle;
@@ -477,6 +549,86 @@ export function TranslateConsole() {
         const dst = ctx.createMediaStreamDestination();
         audioDestRef.current = dst;
         src.connect(dst);
+
+        // ── Recording graph (PR-B) ──
+        // Wire a SECOND destination node dedicated to MediaRecorder.
+        // It receives the SAME `src` (translated TTS) PLUS the host
+        // mic/tab source. We do NOT share `dst` — MediaRecorder reading
+        // the same destination as a live LiveKit publish has produced
+        // silent/glitchy webm output in testing.
+        const mic = micStreamRef.current;
+        if (recordEnabled && mic) {
+          try {
+            const recDest = ctx.createMediaStreamDestination();
+            recordDestRef.current = recDest;
+            // Translated TTS into the recording mix.
+            const ttsRecSrc = ctx.createMediaStreamSource(stream);
+            recordTtsSourceRef.current = ttsRecSrc;
+            ttsRecSrc.connect(recDest);
+            // Host source (mic or tab) into the recording mix.
+            const hostRecSrc = ctx.createMediaStreamSource(mic);
+            recordHostSourceRef.current = hostRecSrc;
+            hostRecSrc.connect(recDest);
+
+            // Pick a MIME the browser actually supports. Chrome desktop
+            // (our only supported recording surface) ships
+            // `audio/webm;codecs=opus`. We fall back to plain webm if
+            // the codec-tagged form is rejected; if both fail, the
+            // recording silently skips and the UI stays in the "no
+            // recording available" state (CTA hidden).
+            let mimeType = 'audio/webm;codecs=opus';
+            if (typeof MediaRecorder !== 'undefined') {
+              if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/webm';
+              }
+              if (MediaRecorder.isTypeSupported(mimeType)) {
+                const rec = new MediaRecorder(recDest.stream, { mimeType });
+                mediaRecorderRef.current = rec;
+                recordedChunksRef.current = [];
+                rec.ondataavailable = (ev) => {
+                  if (ev.data && ev.data.size > 0) {
+                    recordedChunksRef.current.push(ev.data);
+                  }
+                };
+                rec.onerror = () => {
+                  // Best-effort: ditch the recording. UI stays in the
+                  // post-stop "no download available" branch.
+                  setRecordingError('recorder_failed');
+                  setRecorderActive(false);
+                };
+                rec.onstart = () => setRecorderActive(true);
+                rec.onstop = () => setRecorderActive(false);
+                rec.start(RECORDING_CHUNK_MS);
+                recordingStartedAtRef.current = Date.now();
+                // Create the metadata row + reserve a signed upload URL
+                // now so the upload on stop() is a single PUT.
+                const sid = sessionIdRef.current;
+                if (sid) {
+                  fetch(`/api/translate/sessions/${sid}/recording`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}',
+                  })
+                    .then((r) =>
+                      r.ok ? r.json() : Promise.reject(new Error('reserve_failed')),
+                    )
+                    .then(
+                      (json: { recording_id: string; upload_url: string }) => {
+                        recordingIdRef.current = json.recording_id;
+                        recordingUploadUrlRef.current = json.upload_url;
+                      },
+                    )
+                    .catch(() => {
+                      setRecordingError('reserve_failed');
+                    });
+                }
+              }
+            }
+          } catch {
+            setRecordingError('recorder_failed');
+          }
+        }
+
         const localTtsTrack = dst.stream.getAudioTracks()[0];
         if (!localTtsTrack) return;
         outputPublishedRef.current = true;
@@ -561,6 +713,96 @@ export function TranslateConsole() {
     status,
   ]);
 
+  // Stop MediaRecorder cleanly and wait for the final dataavailable
+  // tick. Returns the assembled Blob, or null if there's no recording.
+  const finalizeRecorderBlob = useCallback(async (): Promise<{
+    blob: Blob;
+    durationSec: number;
+  } | null> => {
+    const rec = mediaRecorderRef.current;
+    if (!rec) return null;
+    if (rec.state === 'inactive') {
+      if (recordedChunksRef.current.length === 0) return null;
+    } else {
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          rec.removeEventListener('stop', done);
+          resolve();
+        };
+        rec.addEventListener('stop', done);
+        try {
+          rec.stop();
+        } catch {
+          resolve();
+        }
+      });
+    }
+    const chunks = recordedChunksRef.current;
+    if (chunks.length === 0) return null;
+    const mimeType = chunks[0]?.type || 'audio/webm';
+    const blob = new Blob(chunks, { type: mimeType });
+    const start = recordingStartedAtRef.current ?? Date.now();
+    const durationSec = Math.max(0, Math.round((Date.now() - start) / 1000));
+    return { blob, durationSec };
+  }, []);
+
+  const uploadAndFinalizeRecording = useCallback(
+    async (sessionId: string) => {
+      const finalized = await finalizeRecorderBlob();
+      if (!finalized) return;
+      const uploadUrl = recordingUploadUrlRef.current;
+      const recordingId = recordingIdRef.current;
+      if (!uploadUrl || !recordingId) {
+        setRecordingError('reserve_failed');
+        return;
+      }
+      try {
+        const put = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': finalized.blob.type || 'audio/webm' },
+          body: finalized.blob,
+        });
+        if (!put.ok) {
+          setRecordingError('upload_failed');
+          return;
+        }
+      } catch {
+        setRecordingError('upload_failed');
+        return;
+      }
+      try {
+        const patch = await fetch(
+          `/api/translate/sessions/${sessionId}/recording`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recording_id: recordingId,
+              size_bytes: finalized.blob.size,
+              duration_sec: finalized.durationSec,
+            }),
+          },
+        );
+        if (!patch.ok) {
+          setRecordingError('finalize_failed');
+          return;
+        }
+        // Re-read the row so the post-session CTA renders with the
+        // canonical server state (status='uploaded').
+        const get = await fetch(
+          `/api/translate/sessions/${sessionId}/recording`,
+        );
+        if (get.ok) {
+          const json = (await get.json()) as { recording: RecordingRow | null };
+          setRecording(json.recording ?? null);
+        }
+      } catch {
+        setRecordingError('finalize_failed');
+      }
+    },
+    [finalizeRecorderBlob],
+  );
+
   const stop = useCallback(async () => {
     if (status === 'idle' || status === 'ended') return;
     setStatus('ending');
@@ -591,6 +833,17 @@ export function TranslateConsole() {
     } catch {}
 
     const id = sessionIdRef.current;
+
+    // Finalize the recorder BEFORE cleanup — cleanup nukes the chunk
+    // buffer and the MediaRecorder ref.
+    if (id) {
+      try {
+        await uploadAndFinalizeRecording(id);
+      } catch {
+        // The function already surfaces errors via setRecordingError.
+      }
+    }
+
     cleanup();
     sessionIdRef.current = null;
     startedAtRef.current = null;
@@ -602,7 +855,16 @@ export function TranslateConsole() {
     setShareToken(null);
     setShareCopied(false);
     setStatus('ended');
-  }, [broadcastCaption, cleanup, persistMessage, pushLine, sourceLang, status, targetLang]);
+  }, [
+    broadcastCaption,
+    cleanup,
+    persistMessage,
+    pushLine,
+    sourceLang,
+    status,
+    targetLang,
+    uploadAndFinalizeRecording,
+  ]);
 
   // Stop on unmount.
   useEffect(() => {
@@ -644,6 +906,98 @@ export function TranslateConsole() {
       setSharing(false);
     }
   }, []);
+
+  // Charge 10 credits and flip the recording row to `unlocked`. The
+  // server enforces idempotency via the (org_id, generation_id) UNIQUE
+  // on credit_transactions so a double click just no-ops the second
+  // call.
+  const unlockRecording = useCallback(async () => {
+    if (!recording || unlocking) return;
+    if (recording.status === 'unlocked') return;
+    setUnlocking(true);
+    setRecordingError(null);
+    try {
+      const res = await fetch(
+        `/api/translate/recordings/${recording.id}/unlock`,
+        { method: 'POST' },
+      );
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setRecordingError(json.error ?? 'unlock_failed');
+        return;
+      }
+      // Optimistic UI: server side flipped status, mirror it locally.
+      setRecording({
+        ...recording,
+        status: 'unlocked',
+        unlocked_at: new Date().toISOString(),
+        credits_spent: RECORDING_UNLOCK_CREDITS,
+      });
+    } catch {
+      setRecordingError('unlock_failed');
+    } finally {
+      setUnlocking(false);
+    }
+  }, [recording, unlocking]);
+
+  // Trigger a download for one of the three formats. webm returns a
+  // short-lived signed URL we navigate to; txt/docx stream directly
+  // from the API route so we save the response Blob.
+  const downloadFormat = useCallback(
+    async (format: 'webm' | 'txt' | 'docx') => {
+      if (!recording || downloadingFormat) return;
+      if (recording.status !== 'unlocked') return;
+      setDownloadingFormat(format);
+      try {
+        const res = await fetch(
+          `/api/translate/recordings/${recording.id}/download?format=${format}`,
+          {
+            headers: {
+              // Locale hint for the txt/docx renderers — the route
+              // handler reads `x-app-locale` and falls back to ko.
+              'x-app-locale': locale,
+            },
+          },
+        );
+        if (format === 'webm') {
+          const json = (await res.json().catch(() => ({}))) as {
+            download_url?: string;
+            error?: string;
+          };
+          if (!res.ok || !json.download_url) {
+            setRecordingError(json.error ?? 'download_failed');
+            return;
+          }
+          window.location.href = json.download_url;
+          return;
+        }
+        if (!res.ok) {
+          setRecordingError('download_failed');
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download =
+          format === 'txt'
+            ? `translate-${recording.id}.txt`
+            : `translate-${recording.id}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch {
+        setRecordingError('download_failed');
+      } finally {
+        setDownloadingFormat(null);
+      }
+    },
+    [downloadingFormat, locale, recording],
+  );
 
   // Build the viewer URL the host shows / copies. When a viewer subdomain
   // is configured (e.g. `live.researchmochi.com`) we use it; otherwise we
@@ -771,6 +1125,15 @@ export function TranslateConsole() {
           >
             {t(`status.${status}`)}
           </span>
+          {live && recordEnabled && recorderActive ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-[4px] border border-amore px-2 py-0.5 text-[11px] text-amore"
+              aria-label={t('recording.indicatorAria')}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
+              {t('recording.indicator')}
+            </span>
+          ) : null}
           {live ? (
             <>
               {!shareToken ? (
@@ -835,8 +1198,114 @@ export function TranslateConsole() {
 
       <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
 
+      {status === 'ended' || (recording && status !== 'live') ? (
+        <RecordingDownloadPanel
+          recording={recording}
+          recordingError={recordingError}
+          unlocking={unlocking}
+          downloadingFormat={downloadingFormat}
+          onUnlock={() => void unlockRecording()}
+          onDownload={(f) => void downloadFormat(f)}
+        />
+      ) : null}
+
       <audio ref={monitorAudioRef} autoPlay playsInline className="hidden" />
     </div>
+  );
+}
+
+function RecordingDownloadPanel({
+  recording,
+  recordingError,
+  unlocking,
+  downloadingFormat,
+  onUnlock,
+  onDownload,
+}: {
+  recording: RecordingRow | null;
+  recordingError: string | null;
+  unlocking: boolean;
+  downloadingFormat: 'webm' | 'txt' | 'docx' | null;
+  onUnlock: () => void;
+  onDownload: (f: 'webm' | 'txt' | 'docx') => void;
+}) {
+  const t = useTranslations('TranslateConsole');
+  // While the recording is still finalizing (upload in-flight) the row
+  // status is 'recording'. Treat as "preparing" rather than rendering a
+  // half-broken CTA.
+  const ready =
+    recording && (recording.status === 'uploaded' || recording.status === 'unlocked');
+  const unlocked = recording?.status === 'unlocked';
+
+  return (
+    <section className="rounded-[4px] border border-line bg-paper p-4 text-[12.5px] text-ink">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
+        {t('download.eyebrow')}
+      </div>
+      {recordingError ? (
+        <div className="mb-3 rounded-[4px] border border-line-soft px-3 py-2 text-[12px] text-mute">
+          {t.has(`download.errors.${recordingError}`)
+            ? t(`download.errors.${recordingError}`)
+            : recordingError}
+        </div>
+      ) : null}
+      {!recording ? (
+        <p className="text-[12.5px] text-mute">{t('download.notAvailable')}</p>
+      ) : !ready ? (
+        <p className="text-[12.5px] text-mute">{t('download.preparing')}</p>
+      ) : !unlocked ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <div className="text-[13px] text-ink">{t('download.lockedTitle')}</div>
+            <div className="mt-1 text-[12px] text-mute">
+              {t('download.lockedHint', { credits: RECORDING_UNLOCK_CREDITS })}
+            </div>
+          </div>
+          <button
+            onClick={onUnlock}
+            disabled={unlocking}
+            className="h-8 rounded-[4px] border border-amore bg-amore px-3 text-[12.5px] text-paper disabled:opacity-50"
+          >
+            {unlocking
+              ? t('download.unlocking')
+              : t('download.unlock', { credits: RECORDING_UNLOCK_CREDITS })}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-[4px] border border-amore px-2 py-0.5 text-[11px] text-amore">
+            {t('download.unlockedPill')}
+          </span>
+          <button
+            onClick={() => onDownload('webm')}
+            disabled={downloadingFormat !== null}
+            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
+          >
+            {downloadingFormat === 'webm'
+              ? t('download.preparingFile')
+              : t('download.audio')}
+          </button>
+          <button
+            onClick={() => onDownload('txt')}
+            disabled={downloadingFormat !== null}
+            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
+          >
+            {downloadingFormat === 'txt'
+              ? t('download.preparingFile')
+              : t('download.txt')}
+          </button>
+          <button
+            onClick={() => onDownload('docx')}
+            disabled={downloadingFormat !== null}
+            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
+          >
+            {downloadingFormat === 'docx'
+              ? t('download.preparingFile')
+              : t('download.docx')}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
