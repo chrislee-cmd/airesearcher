@@ -142,8 +142,11 @@ export function TranslateConsole() {
   const [recording, setRecording] = useState<RecordingRow | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
+  // Four downloadable formats now: two audio tracks (source-only,
+  // translated-only) + text/docx transcripts. One unlock covers all
+  // four — pricing didn't change.
   const [downloadingFormat, setDownloadingFormat] = useState<
-    'm4a' | 'txt' | 'docx' | null
+    'm4a-input' | 'm4a-output' | 'txt' | 'docx' | null
   >(null);
   // Whether the MediaRecorder is actively capturing. Driven from the
   // recorder's onstart/onstop events so the indicator pill renders
@@ -178,20 +181,34 @@ export function TranslateConsole() {
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
 
-  // Recording graph — a SECOND MediaStreamDestinationNode dedicated to
-  // MediaRecorder. We do NOT reuse `audioDestRef` (which feeds LiveKit
-  // publish): MediaRecorder reading the same destination as a
-  // simultaneous LiveKit publish has produced silent/glitchy webm files
-  // in testing.
+  // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
+  // the host's source stream (mic/tab) and one for the translated TTS.
+  // We do NOT reuse `audioDestRef` (which feeds LiveKit publish):
+  // MediaRecorder reading the same destination as a simultaneous
+  // LiveKit publish has produced silent/glitchy webm files in testing.
   //
-  // Wiring: host-source GainNode + tts-source GainNode → recordDestRef.
-  const recordDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const recordHostSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const recordTtsSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+  // Wiring:
+  //   hostSrc (mic OR tab) → recordInputDestRef → MediaRecorder(input)
+  //   ttsSrc (translated)  → recordOutputDestRef → MediaRecorder(output)
+  //
+  // Both destinations live on the SAME AudioContext as the
+  // LiveKit-publish graph so the source MediaStreamSourceNodes are
+  // single-context and don't need cross-context re-emission. Two
+  // recorders are started in the same microtask after the graph is
+  // wired so their timelines stay aligned within ~1 audio frame.
+  const recordInputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const recordOutputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const recordInputSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recordOutputSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const mediaRecorderInputRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderOutputRef = useRef<MediaRecorder | null>(null);
+  const recordedInputChunksRef = useRef<Blob[]>([]);
+  const recordedOutputChunksRef = useRef<Blob[]>([]);
+  // One DB row owns BOTH tracks. The first POST creates it, the second
+  // POST attaches the other kind to the same row.
   const recordingIdRef = useRef<string | null>(null);
-  const recordingUploadUrlRef = useRef<string | null>(null);
+  const recordingInputUploadUrlRef = useRef<string | null>(null);
+  const recordingOutputUploadUrlRef = useRef<string | null>(null);
   const recordingStartedAtRef = useRef<number | null>(null);
 
   // Heartbeat ticker for elapsed display.
@@ -247,26 +264,34 @@ export function TranslateConsole() {
     audioSourceRef.current = null;
     audioDestRef.current = null;
     try {
-      recordHostSourceRef.current?.disconnect();
+      recordInputSrcRef.current?.disconnect();
     } catch {}
-    recordHostSourceRef.current = null;
+    recordInputSrcRef.current = null;
     try {
-      recordTtsSourceRef.current?.disconnect();
+      recordOutputSrcRef.current?.disconnect();
     } catch {}
-    recordTtsSourceRef.current = null;
-    recordDestRef.current = null;
+    recordOutputSrcRef.current = null;
+    recordInputDestRef.current = null;
+    recordOutputDestRef.current = null;
     try {
       void audioCtxRef.current?.close();
     } catch {}
     audioCtxRef.current = null;
     try {
-      const rec = mediaRecorderRef.current;
-      if (rec && rec.state !== 'inactive') rec.stop();
+      const recIn = mediaRecorderInputRef.current;
+      if (recIn && recIn.state !== 'inactive') recIn.stop();
     } catch {}
-    mediaRecorderRef.current = null;
-    recordedChunksRef.current = [];
+    try {
+      const recOut = mediaRecorderOutputRef.current;
+      if (recOut && recOut.state !== 'inactive') recOut.stop();
+    } catch {}
+    mediaRecorderInputRef.current = null;
+    mediaRecorderOutputRef.current = null;
+    recordedInputChunksRef.current = [];
+    recordedOutputChunksRef.current = [];
     recordingIdRef.current = null;
-    recordingUploadUrlRef.current = null;
+    recordingInputUploadUrlRef.current = null;
+    recordingOutputUploadUrlRef.current = null;
     recordingStartedAtRef.current = null;
     setRecorderActive(false);
     if (roomRef.current) {
@@ -550,77 +575,132 @@ export function TranslateConsole() {
         audioDestRef.current = dst;
         src.connect(dst);
 
-        // ── Recording graph (PR-B) ──
-        // Wire a SECOND destination node dedicated to MediaRecorder.
-        // It receives the SAME `src` (translated TTS) PLUS the host
-        // mic/tab source. We do NOT share `dst` — MediaRecorder reading
-        // the same destination as a live LiveKit publish has produced
-        // silent/glitchy webm output in testing.
+        // ── Recording graph (PR #183: split source vs. translated) ──
+        // Two dedicated destination nodes on the same AudioContext:
+        //   recordInputDest  ← host source (mic or tab)
+        //   recordOutputDest ← translated TTS
+        // Each feeds its own MediaRecorder so the unlocked UI can offer
+        // 원문 오디오 + 통역 오디오 as separate downloads. We do NOT mix
+        // them and we do NOT share `dst` (the LiveKit publish dest) —
+        // MediaRecorder reading the same dest as a live publish has
+        // produced silent/glitchy webm output in testing.
         const mic = micStreamRef.current;
         if (recordEnabled && mic) {
           try {
-            const recDest = ctx.createMediaStreamDestination();
-            recordDestRef.current = recDest;
-            // Translated TTS into the recording mix.
-            const ttsRecSrc = ctx.createMediaStreamSource(stream);
-            recordTtsSourceRef.current = ttsRecSrc;
-            ttsRecSrc.connect(recDest);
-            // Host source (mic or tab) into the recording mix.
-            const hostRecSrc = ctx.createMediaStreamSource(mic);
-            recordHostSourceRef.current = hostRecSrc;
-            hostRecSrc.connect(recDest);
-
             // Pick a MIME the browser actually supports. Chrome desktop
             // (our only supported recording surface) ships
-            // `audio/webm;codecs=opus`. We fall back to plain webm if
-            // the codec-tagged form is rejected; if both fail, the
-            // recording silently skips and the UI stays in the "no
-            // recording available" state (CTA hidden).
+            // `audio/webm;codecs=opus`. Fall back to plain webm if the
+            // codec-tagged form is rejected; if both fail, recording
+            // silently skips and the UI stays in the "no recording
+            // available" branch.
             let mimeType = 'audio/webm;codecs=opus';
             if (typeof MediaRecorder !== 'undefined') {
               if (!MediaRecorder.isTypeSupported(mimeType)) {
                 mimeType = 'audio/webm';
               }
               if (MediaRecorder.isTypeSupported(mimeType)) {
-                const rec = new MediaRecorder(recDest.stream, { mimeType });
-                mediaRecorderRef.current = rec;
-                recordedChunksRef.current = [];
-                rec.ondataavailable = (ev) => {
+                // Build the input (source) track graph + recorder.
+                const inputDest = ctx.createMediaStreamDestination();
+                recordInputDestRef.current = inputDest;
+                const hostRecSrc = ctx.createMediaStreamSource(mic);
+                recordInputSrcRef.current = hostRecSrc;
+                hostRecSrc.connect(inputDest);
+
+                // Build the output (translated TTS) track graph + recorder.
+                const outputDest = ctx.createMediaStreamDestination();
+                recordOutputDestRef.current = outputDest;
+                const ttsRecSrc = ctx.createMediaStreamSource(stream);
+                recordOutputSrcRef.current = ttsRecSrc;
+                ttsRecSrc.connect(outputDest);
+
+                const recIn = new MediaRecorder(inputDest.stream, { mimeType });
+                const recOut = new MediaRecorder(outputDest.stream, { mimeType });
+                mediaRecorderInputRef.current = recIn;
+                mediaRecorderOutputRef.current = recOut;
+                recordedInputChunksRef.current = [];
+                recordedOutputChunksRef.current = [];
+
+                recIn.ondataavailable = (ev) => {
                   if (ev.data && ev.data.size > 0) {
-                    recordedChunksRef.current.push(ev.data);
+                    recordedInputChunksRef.current.push(ev.data);
                   }
                 };
-                rec.onerror = () => {
+                recOut.ondataavailable = (ev) => {
+                  if (ev.data && ev.data.size > 0) {
+                    recordedOutputChunksRef.current.push(ev.data);
+                  }
+                };
+                const fail = () => {
                   // Best-effort: ditch the recording. UI stays in the
                   // post-stop "no download available" branch.
                   setRecordingError('recorder_failed');
                   setRecorderActive(false);
                 };
-                rec.onstart = () => setRecorderActive(true);
-                rec.onstop = () => setRecorderActive(false);
-                rec.start(RECORDING_CHUNK_MS);
+                recIn.onerror = fail;
+                recOut.onerror = fail;
+                // The indicator pill flips on once EITHER recorder is
+                // active, and only flips off once BOTH have stopped.
+                recIn.onstart = () => setRecorderActive(true);
+                recOut.onstart = () => setRecorderActive(true);
+                const maybeIdle = () => {
+                  const a = mediaRecorderInputRef.current;
+                  const b = mediaRecorderOutputRef.current;
+                  if ((!a || a.state === 'inactive') && (!b || b.state === 'inactive')) {
+                    setRecorderActive(false);
+                  }
+                };
+                recIn.onstop = maybeIdle;
+                recOut.onstop = maybeIdle;
+                // Start both in the same tick so the two webm timelines
+                // align within an audio frame.
+                recIn.start(RECORDING_CHUNK_MS);
+                recOut.start(RECORDING_CHUNK_MS);
                 recordingStartedAtRef.current = Date.now();
-                // Create the metadata row + reserve a signed upload URL
-                // now so the upload on stop() is a single PUT.
+
+                // Reserve metadata + signed upload URLs for BOTH tracks
+                // now so each stop() turns into a single PUT. We POST
+                // output first (default kind) to create the row, then
+                // POST input — the server attaches it to the same row.
                 const sid = sessionIdRef.current;
                 if (sid) {
-                  fetch(`/api/translate/sessions/${sid}/recording`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: '{}',
-                  })
-                    .then((r) =>
-                      r.ok ? r.json() : Promise.reject(new Error('reserve_failed')),
-                    )
-                    .then(
-                      (json: { recording_id: string; upload_url: string }) => {
-                        recordingIdRef.current = json.recording_id;
-                        recordingUploadUrlRef.current = json.upload_url;
-                      },
-                    )
-                    .catch(() => {
+                  (async () => {
+                    try {
+                      const r1 = await fetch(
+                        `/api/translate/sessions/${sid}/recording`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ kind: 'output' }),
+                        },
+                      );
+                      if (!r1.ok) throw new Error('reserve_failed');
+                      const j1 = (await r1.json()) as {
+                        recording_id: string;
+                        upload_url: string;
+                      };
+                      recordingIdRef.current = j1.recording_id;
+                      recordingOutputUploadUrlRef.current = j1.upload_url;
+
+                      const r2 = await fetch(
+                        `/api/translate/sessions/${sid}/recording`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ kind: 'input' }),
+                        },
+                      );
+                      if (!r2.ok) throw new Error('reserve_failed');
+                      const j2 = (await r2.json()) as {
+                        recording_id: string;
+                        upload_url: string;
+                      };
+                      // r2 should attach to the same row r1 created.
+                      recordingIdRef.current = j2.recording_id;
+                      recordingInputUploadUrlRef.current = j2.upload_url;
+                    } catch {
                       setRecordingError('reserve_failed');
-                    });
+                    }
+                  })();
                 }
               }
             }
@@ -713,80 +793,129 @@ export function TranslateConsole() {
     status,
   ]);
 
-  // Stop MediaRecorder cleanly and wait for the final dataavailable
-  // tick. Returns the assembled Blob, or null if there's no recording.
-  const finalizeRecorderBlob = useCallback(async (): Promise<{
-    blob: Blob;
-    durationSec: number;
-  } | null> => {
-    const rec = mediaRecorderRef.current;
-    if (!rec) return null;
-    if (rec.state === 'inactive') {
-      if (recordedChunksRef.current.length === 0) return null;
-    } else {
-      await new Promise<void>((resolve) => {
-        const done = () => {
-          rec.removeEventListener('stop', done);
-          resolve();
-        };
-        rec.addEventListener('stop', done);
-        try {
-          rec.stop();
-        } catch {
-          resolve();
-        }
-      });
-    }
-    const chunks = recordedChunksRef.current;
-    if (chunks.length === 0) return null;
-    const mimeType = chunks[0]?.type || 'audio/webm';
-    const blob = new Blob(chunks, { type: mimeType });
-    const start = recordingStartedAtRef.current ?? Date.now();
-    const durationSec = Math.max(0, Math.round((Date.now() - start) / 1000));
-    return { blob, durationSec };
-  }, []);
+  // Stop one MediaRecorder cleanly and wait for the final dataavailable
+  // tick. Returns the assembled Blob, or null if no chunks were recorded.
+  const finalizeOneRecorder = useCallback(
+    async (
+      rec: MediaRecorder | null,
+      chunks: Blob[],
+    ): Promise<{ blob: Blob; durationSec: number } | null> => {
+      if (!rec) return null;
+      if (rec.state === 'inactive') {
+        if (chunks.length === 0) return null;
+      } else {
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            rec.removeEventListener('stop', done);
+            resolve();
+          };
+          rec.addEventListener('stop', done);
+          try {
+            rec.stop();
+          } catch {
+            resolve();
+          }
+        });
+      }
+      if (chunks.length === 0) return null;
+      const mimeType = chunks[0]?.type || 'audio/webm';
+      const blob = new Blob(chunks, { type: mimeType });
+      const start = recordingStartedAtRef.current ?? Date.now();
+      const durationSec = Math.max(0, Math.round((Date.now() - start) / 1000));
+      return { blob, durationSec };
+    },
+    [],
+  );
 
   const uploadAndFinalizeRecording = useCallback(
     async (sessionId: string) => {
-      const finalized = await finalizeRecorderBlob();
-      if (!finalized) return;
-      const uploadUrl = recordingUploadUrlRef.current;
+      // Stop and finalize both recorders in parallel — they share a
+      // common start timestamp and the AudioContext is about to be
+      // closed in cleanup(), so any delay here would clip the tail.
+      const [inputFinal, outputFinal] = await Promise.all([
+        finalizeOneRecorder(
+          mediaRecorderInputRef.current,
+          recordedInputChunksRef.current,
+        ),
+        finalizeOneRecorder(
+          mediaRecorderOutputRef.current,
+          recordedOutputChunksRef.current,
+        ),
+      ]);
+      if (!inputFinal && !outputFinal) return;
+
       const recordingId = recordingIdRef.current;
-      if (!uploadUrl || !recordingId) {
+      if (!recordingId) {
         setRecordingError('reserve_failed');
         return;
       }
-      try {
-        const put = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': finalized.blob.type || 'audio/webm' },
-          body: finalized.blob,
-        });
-        if (!put.ok) {
+
+      // Upload each track to its own signed URL, then PATCH (one PATCH
+      // per track — server-side merges sizes and keeps the longer of
+      // the two durations). Either side missing → recorder for that
+      // side never ran; just skip it. The row still ends up
+      // status='uploaded' so the unlock CTA appears.
+      const tracks: Array<{
+        label: 'input' | 'output';
+        uploadUrl: string | null;
+        finalized: { blob: Blob; durationSec: number } | null;
+      }> = [
+        {
+          label: 'input',
+          uploadUrl: recordingInputUploadUrlRef.current,
+          finalized: inputFinal,
+        },
+        {
+          label: 'output',
+          uploadUrl: recordingOutputUploadUrlRef.current,
+          finalized: outputFinal,
+        },
+      ];
+
+      for (const t of tracks) {
+        if (!t.finalized) continue;
+        if (!t.uploadUrl) {
+          setRecordingError('reserve_failed');
+          continue;
+        }
+        try {
+          const put = await fetch(t.uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': t.finalized.blob.type || 'audio/webm',
+            },
+            body: t.finalized.blob,
+          });
+          if (!put.ok) {
+            setRecordingError('upload_failed');
+            continue;
+          }
+        } catch {
           setRecordingError('upload_failed');
-          return;
+          continue;
         }
-      } catch {
-        setRecordingError('upload_failed');
-        return;
-      }
-      try {
-        const patch = await fetch(
-          `/api/translate/sessions/${sessionId}/recording`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recording_id: recordingId,
-              size_bytes: finalized.blob.size,
-              duration_sec: finalized.durationSec,
-            }),
-          },
-        );
-        if (!patch.ok) {
+        try {
+          const patch = await fetch(
+            `/api/translate/sessions/${sessionId}/recording`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                recording_id: recordingId,
+                size_bytes: t.finalized.blob.size,
+                duration_sec: t.finalized.durationSec,
+              }),
+            },
+          );
+          if (!patch.ok) {
+            setRecordingError('finalize_failed');
+          }
+        } catch {
           setRecordingError('finalize_failed');
-          return;
         }
+      }
+
+      try {
         // Re-read the row so the post-session CTA renders with the
         // canonical server state (status='uploaded').
         const get = await fetch(
@@ -797,10 +926,11 @@ export function TranslateConsole() {
           setRecording(json.recording ?? null);
         }
       } catch {
-        setRecordingError('finalize_failed');
+        // The recording row exists; the CTA reload-from-mount path will
+        // pick it up next time. No need to surface a separate error.
       }
     },
-    [finalizeRecorderBlob],
+    [finalizeOneRecorder],
   );
 
   const stop = useCallback(async () => {
@@ -943,11 +1073,12 @@ export function TranslateConsole() {
     }
   }, [recording, unlocking]);
 
-  // Trigger a download for one of the three formats. All three stream
-  // directly from the API route — m4a is transcoded on demand from the
-  // persisted webm, txt/docx are rendered from translate_messages.
+  // Trigger a download for one of the four formats. All stream directly
+  // from the API route — m4a-input/m4a-output are transcoded on demand
+  // from the per-track persisted webms, txt/docx are rendered from
+  // translate_messages.
   const downloadFormat = useCallback(
-    async (format: 'm4a' | 'txt' | 'docx') => {
+    async (format: 'm4a-input' | 'm4a-output' | 'txt' | 'docx') => {
       if (!recording || downloadingFormat) return;
       if (recording.status !== 'unlocked') return;
       setDownloadingFormat(format);
@@ -963,7 +1094,15 @@ export function TranslateConsole() {
           },
         );
         if (!res.ok) {
-          setRecordingError('download_failed');
+          // Surface the specific server-side error code so the panel
+          // can render `input_audio_unavailable` distinctly from a
+          // generic network failure (legacy rows have no input track).
+          let code = 'download_failed';
+          try {
+            const j = (await res.json()) as { error?: string };
+            if (j.error) code = j.error;
+          } catch {}
+          setRecordingError(code);
           return;
         }
         const blob = await res.blob();
@@ -971,11 +1110,13 @@ export function TranslateConsole() {
         const a = document.createElement('a');
         a.href = url;
         a.download =
-          format === 'm4a'
-            ? `translate-${recording.id}.m4a`
-            : format === 'txt'
-              ? `translate-${recording.id}.txt`
-              : `translate-${recording.id}.docx`;
+          format === 'm4a-input'
+            ? `translate-${recording.id}-input.m4a`
+            : format === 'm4a-output'
+              ? `translate-${recording.id}-output.m4a`
+              : format === 'txt'
+                ? `translate-${recording.id}.txt`
+                : `translate-${recording.id}.docx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1215,9 +1356,9 @@ function RecordingDownloadPanel({
   recording: RecordingRow | null;
   recordingError: string | null;
   unlocking: boolean;
-  downloadingFormat: 'm4a' | 'txt' | 'docx' | null;
+  downloadingFormat: 'm4a-input' | 'm4a-output' | 'txt' | 'docx' | null;
   onUnlock: () => void;
-  onDownload: (f: 'm4a' | 'txt' | 'docx') => void;
+  onDownload: (f: 'm4a-input' | 'm4a-output' | 'txt' | 'docx') => void;
 }) {
   const t = useTranslations('TranslateConsole');
   // While the recording is still finalizing (upload in-flight) the row
@@ -1267,13 +1408,22 @@ function RecordingDownloadPanel({
             {t('download.unlockedPill')}
           </span>
           <button
-            onClick={() => onDownload('m4a')}
+            onClick={() => onDownload('m4a-input')}
             disabled={downloadingFormat !== null}
             className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
-            {downloadingFormat === 'm4a'
+            {downloadingFormat === 'm4a-input'
               ? t('download.preparingFile')
-              : t('download.audio')}
+              : t('download.audioInput')}
+          </button>
+          <button
+            onClick={() => onDownload('m4a-output')}
+            disabled={downloadingFormat !== null}
+            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
+          >
+            {downloadingFormat === 'm4a-output'
+              ? t('download.preparingFile')
+              : t('download.audioOutput')}
           </button>
           <button
             onClick={() => onDownload('txt')}

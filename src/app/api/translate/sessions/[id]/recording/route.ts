@@ -2,12 +2,20 @@
 //
 // GET    — read the most recent recording for a session (so the host UI
 //          can render the locked/unlocked CTA on page reload).
-// POST   — create a `translate_recordings` row + return a Supabase Storage
-//          signed upload URL. Called by the host the moment recording
-//          starts (right after MediaRecorder enters the recording state).
-// PATCH  — finalize: the host PATCHes once MediaRecorder.stop has run and
-//          the upload has flushed. We stamp size_bytes / duration_sec and
-//          flip status to 'uploaded' so the UI can show the locked CTA.
+// POST   — create / extend a `translate_recordings` row + return a
+//          Supabase Storage signed upload URL. Two tracks are recorded:
+//            kind=output  (default, legacy) → host's translated TTS,
+//                          stored in `storage_key`
+//            kind=input                     → host's source mic/tab audio,
+//                          stored in `input_storage_key`
+//          The first POST for a session inserts a fresh row; a follow-up
+//          POST for the OTHER kind on the same session UPDATEs that row
+//          rather than creating a new one. Net: one row per session with
+//          both keys populated.
+// PATCH  — finalize: the host PATCHes once both MediaRecorders have
+//          stopped and both uploads have flushed. We stamp size_bytes
+//          (sum of both) / duration_sec (longer of the two) and flip
+//          status to 'uploaded' so the UI can show the locked CTA.
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -17,7 +25,13 @@ import { getActiveOrg } from '@/lib/org';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-const CreateBody = z.object({}).optional();
+// `kind` defaults to 'output' so legacy clients (and the PR-B unit-test
+// surface that still POSTs without a body) keep landing on `storage_key`.
+const CreateBody = z
+  .object({
+    kind: z.enum(['input', 'output']).optional(),
+  })
+  .optional();
 
 const FinalizeBody = z.object({
   recording_id: z.string().uuid(),
@@ -52,15 +66,27 @@ async function loadHostSession(sessionId: string) {
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id: sessionId } = await ctx.params;
 
-  // Reads `body` defensively so the route still works when the host posts
-  // an empty body (current console behaviour). Reserved for future
-  // recorder hints (e.g. mime preference).
-  await CreateBody.safeParse(undefined);
+  // Parse body (or query string) for `kind`. Tolerates empty bodies and
+  // legacy `?kind=` callers. Default = 'output' to preserve back-compat
+  // with the pre-split single-file recorder code path.
+  let kind: 'input' | 'output' = 'output';
+  try {
+    const url = new URL(req.url);
+    const fromQuery = url.searchParams.get('kind');
+    if (fromQuery === 'input' || fromQuery === 'output') {
+      kind = fromQuery;
+    }
+  } catch {}
+  try {
+    const body = await req.json().catch(() => undefined);
+    const parsed = CreateBody.safeParse(body);
+    if (parsed.success && parsed.data?.kind) kind = parsed.data.kind;
+  } catch {}
 
   const gate = await loadHostSession(sessionId);
   if ('error' in gate) {
@@ -74,30 +100,77 @@ export async function POST(
   }
 
   // Storage path under the host's prefix so the existing per-user RLS on
-  // storage.objects (audio-uploads bucket) covers the upload + read.
+  // storage.objects (audio-uploads bucket) covers the upload + read. We
+  // tag the kind into the filename so the two webm files for one session
+  // are visually distinguishable in the bucket.
   const ts = Date.now();
-  const storageKey = `${user.id}/translate-recordings/${sessionId}-${ts}.webm`;
+  const storageKey = `${user.id}/translate-recordings/${sessionId}-${ts}-${kind}.webm`;
 
-  // Insert metadata first so we can return the recording_id alongside the
-  // upload URL. Storage write failures will leave a 'recording' row that
-  // gets swept in a follow-up cron.
-  const insert = await supabase
+  // Look for an existing in-flight or finalized row for this session.
+  // If one exists, we attach this second track to it rather than
+  // creating a parallel row.
+  const existing = await supabase
     .from('translate_recordings')
-    .insert({
+    .select('id, status, storage_key, input_storage_key')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing.error) {
+    return NextResponse.json({ error: existing.error.message }, { status: 500 });
+  }
+
+  // Only attach to a row that's still mid-flight (status='recording').
+  // An already-uploaded or unlocked row belongs to a previous recording
+  // attempt — start fresh.
+  let recordingId: string;
+  if (existing.data && existing.data.status === 'recording') {
+    const patch: Record<string, string> = {};
+    if (kind === 'output') patch.storage_key = storageKey;
+    else patch.input_storage_key = storageKey;
+    const upd = await supabase
+      .from('translate_recordings')
+      .update(patch)
+      .eq('id', existing.data.id)
+      .select('id')
+      .single();
+    if (upd.error || !upd.data) {
+      return NextResponse.json(
+        { error: upd.error?.message ?? 'recording_update_failed' },
+        { status: 500 },
+      );
+    }
+    recordingId = upd.data.id;
+  } else {
+    const insertPayload: Record<string, string> = {
       session_id: sessionId,
       org_id: session.org_id,
       host_user_id: user.id,
-      storage_key: storageKey,
       mime_type: 'audio/webm',
       status: 'recording',
-    })
-    .select('id, storage_key')
-    .single();
-  if (insert.error || !insert.data) {
-    return NextResponse.json(
-      { error: insert.error?.message ?? 'recording_create_failed' },
-      { status: 500 },
-    );
+      // storage_key is NOT NULL in the schema. For an input-first POST
+      // (rare — current console POSTs output first), seed the column
+      // with a placeholder under the host's prefix; the follow-up
+      // output POST will overwrite it.
+      storage_key:
+        kind === 'output'
+          ? storageKey
+          : `${user.id}/translate-recordings/${sessionId}-${ts}-output-pending.webm`,
+    };
+    if (kind === 'input') insertPayload.input_storage_key = storageKey;
+
+    const insert = await supabase
+      .from('translate_recordings')
+      .insert(insertPayload)
+      .select('id')
+      .single();
+    if (insert.error || !insert.data) {
+      return NextResponse.json(
+        { error: insert.error?.message ?? 'recording_create_failed' },
+        { status: 500 },
+      );
+    }
+    recordingId = insert.data.id;
   }
 
   const { data: signed, error: signedErr } = await supabase.storage
@@ -111,7 +184,8 @@ export async function POST(
   }
 
   return NextResponse.json({
-    recording_id: insert.data.id,
+    recording_id: recordingId,
+    kind,
     storage_key: storageKey,
     upload_url: signed.signedUrl,
     token: signed.token,
@@ -152,11 +226,26 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
+  // Aggregate finalize: PATCH is called once per track with that track's
+  // own size + duration. We keep the row's stored fields equal to the
+  // SUM of sizes and the MAX (longest) of durations so the row is
+  // self-describing without joining a per-track table.
+  // Fetch current values to merge.
+  const current = await supabase
+    .from('translate_recordings')
+    .select('size_bytes, duration_sec')
+    .eq('id', recording_id)
+    .maybeSingle<{ size_bytes: number | null; duration_sec: number | null }>();
+  const prevSize = current.data?.size_bytes ?? 0;
+  const prevDur = current.data?.duration_sec ?? 0;
+  const nextSize = prevSize + size_bytes;
+  const nextDur = Math.max(prevDur, duration_sec);
+
   const { error } = await supabase
     .from('translate_recordings')
     .update({
-      size_bytes,
-      duration_sec,
+      size_bytes: nextSize,
+      duration_sec: nextDur,
       status: 'uploaded',
     })
     .eq('id', recording_id);
