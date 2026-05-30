@@ -380,6 +380,17 @@ export function TranslateConsole() {
         if (!AudioCtx) return;
         const ctx = new AudioCtx();
         audioCtxRef.current = ctx;
+        // pc.ontrack fires from a WebRTC event, not the original click
+        // gesture, so the AudioContext can start suspended on stricter
+        // engines. A suspended ctx means the destination MediaStream
+        // carries silence — viewers would join, see the "output" track,
+        // and hear nothing. resume() is best-effort: if it rejects we
+        // still publish, just log it.
+        if (ctx.state === 'suspended') {
+          void ctx.resume().catch((err) => {
+            console.warn('[translate] audioCtx.resume failed', err);
+          });
+        }
         const src = ctx.createMediaStreamSource(stream);
         audioSourceRef.current = src;
         const dst = ctx.createMediaStreamDestination();
@@ -391,7 +402,14 @@ export function TranslateConsole() {
         const outputTrack = new LocalAudioTrack(localTtsTrack);
         room.localParticipant
           .publishTrack(outputTrack, { name: 'output' })
-          .catch(() => {
+          .then(() => {
+            console.info(
+              '[translate] output track published',
+              { name: 'output', ctxState: ctx.state },
+            );
+          })
+          .catch((err) => {
+            console.warn('[translate] output publish failed', err);
             // Allow a retry on the next ontrack if this one races with
             // disconnect.
             outputPublishedRef.current = false;
