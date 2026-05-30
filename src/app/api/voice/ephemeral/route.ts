@@ -118,20 +118,27 @@ export async function POST(request: Request) {
 
   const openai = new OpenAI({ apiKey });
 
+  // Build the system prompt once and return it to the client alongside the
+  // ephemeral. The Agents SDK overrides whatever instructions live in the
+  // ephemeral session config with the RealtimeAgent ctor's instructions on
+  // `session.connect()` — so the authoritative path is the response field,
+  // not the clientSecrets.create payload. We still set it on the ephemeral
+  // as a safety-net default in case the SDK ever stops auto-overriding.
+  const instructions = buildInstructions({
+    route,
+    locale,
+    // The PREVIEW gate above already guarantees isUnlimited when we
+    // reach this point. When voice_concierge GA's out of PREVIEW_FEATURES,
+    // re-resolve flags.isUnlimited from the org row explicitly.
+    hasUnlimited: true,
+  });
+
   try {
     const ek = await openai.realtime.clientSecrets.create({
       session: {
         type: 'realtime',
         model: VOICE_MODEL,
-        instructions: buildInstructions({
-          route,
-          locale,
-          // The PREVIEW gate above already guarantees isUnlimited when
-          // we reach this point, so hasUnlimited:true is structurally
-          // correct here. When PR-X moves voice_concierge out of
-          // PREVIEW_FEATURES, re-resolve flags.isUnlimited explicitly.
-          hasUnlimited: true,
-        }),
+        instructions,
         audio: {
           output: { voice: VOICE_OPENAI_VOICE },
         },
@@ -143,6 +150,7 @@ export async function POST(request: Request) {
       apiKey: ek.value,
       sessionId: session.id,
       expiresAt: ek.expires_at,
+      instructions,
     });
   } catch (err) {
     // Clean up the orphaned session row on OpenAI failure so the user

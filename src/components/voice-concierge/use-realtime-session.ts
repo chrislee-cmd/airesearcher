@@ -193,20 +193,24 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
           startingRef.current = false;
           return;
         }
-        const { apiKey, sessionId } = (await res.json()) as {
+        const { apiKey, sessionId, instructions } = (await res.json()) as {
           apiKey: string;
           sessionId: string;
+          instructions: string;
         };
         sessionIdRef.current = sessionId;
 
         // ── 3. Build agent + session ──────────────────────────────────
-        // Instructions are baked into the ephemeral on the server side;
-        // we set a token-trivial fallback here so the SDK doesn't 400
-        // on a fully empty agent. The server-side instructions win at
-        // session.create time.
+        // The Agents SDK overrides whatever instructions live in the
+        // ephemeral session config with the RealtimeAgent ctor's
+        // instructions on `session.connect()` (via session.update). So
+        // we MUST pass the server-built prompt here — otherwise the
+        // model only sees a one-line stub and forgets the whole feature
+        // catalog / persona / safety prompt. The server also still bakes
+        // the same prompt into the ephemeral as a safety-net default.
         const agent = new RealtimeAgent({
           name: VOICE_PERSONA_NAME,
-          instructions: `You are ${VOICE_PERSONA_NAME}.`,
+          instructions,
         });
         const session = new RealtimeSession(agent, {
           model: VOICE_MODEL,
