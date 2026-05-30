@@ -456,6 +456,10 @@
     "state_idle": "말씀해 주세요",
     "state_listening": "듣고 있어요",
     "state_speaking": "말하고 있어요",
+    "tool_escalating": "담당팀에게 메일 보내드릴게요",
+    "tool_highlight_fallback": "여기를 봐주세요",
+    "tool_navigating": "이동 중이에요",
+    "tool_opening_purchase": "충전 페이지 열게요",
     "you_label": "당신"
   },
   "Features": {

@@ -40,15 +40,49 @@ const PRODUCT_OVERVIEW: Record<'ko' | 'en', string> = {
 
 const SAFETY_PROMPT: Record<'ko' | 'en', string> = {
   ko: `중요 안전 원칙:
-- 환불, 결제, 계정 삭제, 비밀번호 같은 민감한 요청은 절대 직접 처리하지 마세요. "support@meteor-research.com으로 메일 보내주시면 빠르게 도와드려요"라고 안내하세요.
+- 환불, 결제, 계정 삭제, 비밀번호 같은 민감한 요청은 절대 직접 처리하지 마세요. escalateToHuman을 호출하고 "support@meteor-research.com으로 메일 보내드릴게요"라고 안내하세요.
 - 모호한 요청은 추측하지 말고 짧게 한 가지만 되묻으세요. ("어떤 리포트 말씀이세요?")
 - 모르는 것은 모른다고 답하고, 지어내지 마세요.
 - 가격이나 크레딧 정책은 위 카탈로그의 cost 표기를 그대로 인용하세요.`,
   en: `Safety:
-- Never handle billing, refunds, account deletion, or password resets directly. Tell the user to email support@meteor-research.com.
+- Never handle billing, refunds, account deletion, or password resets directly. Call escalateToHuman and tell the user to email support@meteor-research.com.
 - If the request is ambiguous, ask ONE short clarifying question — do not guess.
 - If you don't know, say so. Never invent prices, features, or capabilities.
 - Quote pricing exactly as listed in the feature catalog above.`,
+};
+
+// ── Tool usage guidelines (PR3) ────────────────────────────────────────
+//
+// The model picks tools primarily on description quality (per the
+// Realtime docs), but a dedicated "when to reach for each tool" block in
+// the system prompt nudges it to *actually use* them instead of just
+// describing what they'd do. Without this block, gpt-realtime-2 tends
+// to narrate ("I could navigate you there...") rather than just calling
+// navigate(). Keep this section in sync with src/components/voice-concierge/tools.ts.
+
+const TOOL_USAGE_GUIDELINES: Record<'ko' | 'en', string> = {
+  ko: `당신은 아래 도구들을 손에 쥐고 있어요. 단순히 설명만 하지 말고 적절한 도구를 적극적으로 호출해서 사용자를 도와주세요.
+
+- navigate: 특정 경로로 이동시킬 때. "리포트 화면 보여줄게요" 하면서 호출.
+- startFeature: 사용자가 어떤 작업을 시작하려고 할 때. 가능하면 prefill 도 같이.
+- highlightUI: 현재 화면에서 특정 요소를 가리킬 때 ("여기 입력란이에요").
+- getCredits: 크레딧 얘기가 나오면 추측하지 말고 항상 호출.
+- getMyProjects: "지난주 그거" 같은 모호한 참조는 이걸로 목록 받고 되묻기.
+- openPurchase: 크레딧 부족 또는 사용자가 충전하고 싶다고 할 때.
+- escalateToHuman: 환불/결제/계정/비밀번호/장애 신고 모든 경우. 절대 직접 처리 X.
+
+도구 결과는 자연어로 풀어서 답하세요. "navigate 했어요" 보다 "리포트 화면 띄웠어요" 가 자연스럽습니다.`,
+  en: `You have the tools below at hand. Don't just describe what you could do — actually call the right tool to help the user.
+
+- navigate: Move the user to a specific path. Call while saying "I'll show you the reports screen".
+- startFeature: When the user is starting a task. Pass prefill when you can extract it.
+- highlightUI: To point at something on the current screen ("this is the input box").
+- getCredits: Whenever credits come up. Never guess — always call.
+- getMyProjects: Resolve vague references like "the one from last week" by listing recent projects.
+- openPurchase: When credits run low or the user wants to top up.
+- escalateToHuman: For refunds, billing, account, password, bug reports. Never handle directly.
+
+Phrase tool results naturally. "I opened the reports screen" reads better than "I called navigate".`,
 };
 
 // Short, KO-leaning route hints. Routes not listed fall through to the
@@ -139,6 +173,7 @@ export function buildInstructions(ctx: VoiceContext): string {
     PRODUCT_OVERVIEW[ctx.locale],
     renderFeatureCatalog(ctx.locale, ctx.hasUnlimited),
     renderUserContext(ctx),
+    TOOL_USAGE_GUIDELINES[ctx.locale],
     SAFETY_PROMPT[ctx.locale],
   ].join('\n\n');
 }
