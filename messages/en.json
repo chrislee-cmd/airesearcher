@@ -749,6 +749,15 @@
       "ending": "Ending",
       "ended": "Ended",
       "error": "Error"
+    },
+    "share": {
+      "create": "Create share link",
+      "creating": "Creating…",
+      "label": "Share URL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "revoke": "Revoke",
+      "expiresIn4h": "Auto-expires in 4 hours"
     }
   },
   "Workspace": {

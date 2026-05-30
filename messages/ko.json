@@ -749,6 +749,15 @@
       "ending": "종료 중",
       "ended": "종료됨",
       "error": "오류"
+    },
+    "share": {
+      "create": "공유 링크 생성",
+      "creating": "생성 중…",
+      "label": "공유 URL",
+      "copy": "복사",
+      "copied": "복사됨",
+      "revoke": "취소",
+      "expiresIn4h": "4시간 후 자동 만료"
     }
   },
   "Workspace": {

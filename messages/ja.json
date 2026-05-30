@@ -743,6 +743,15 @@
       "ending": "終了中",
       "ended": "終了",
       "error": "エラー"
+    },
+    "share": {
+      "create": "共有リンクを作成",
+      "creating": "作成中…",
+      "label": "共有URL",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "revoke": "取り消し",
+      "expiresIn4h": "4時間後に自動で失効"
     }
   },
   "Workspace": {

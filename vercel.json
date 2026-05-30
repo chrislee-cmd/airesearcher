@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/translate/cleanup",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
