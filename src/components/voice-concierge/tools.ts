@@ -98,34 +98,23 @@ export function buildVoiceTools(deps: BuildVoiceToolsDeps) {
   });
 
   // ── 2. startFeature ────────────────────────────────────────────────
+  // PR3.1: previously had `prefill: z.record(z.string(), z.unknown())` —
+  // but the Realtime API rejects tool schemas whose parameters use
+  // `additionalProperties` (strict mode requires every property to be
+  // enumerated). The whole session.connect() was failing silently as a
+  // result. Until we have a feature page that actually reads the
+  // prefill payload, the parameter is dropped to a flat `key` enum.
   const startFeatureTool = tool({
     name: 'startFeature',
     description:
-      '특정 피처 생성기 화면을 열고, prefill로 사전 입력값을 sessionStorage에 미리 채워둘 때 호출합니다. 예: 사용자가 "인터뷰 분석 시작해줘"라고 하면 key="interviews"로 호출하세요.',
+      '특정 피처 생성기 화면을 엽니다. 예: 사용자가 "인터뷰 분석 시작해줘"라고 하면 key="interviews"로 호출하세요.',
     parameters: z.object({
       key: z.enum(FEATURE_KEY_LIST),
-      // z.record requires (keySchema, valueSchema) in zod v4 — we want
-      // arbitrary string→unknown maps so the model can stuff anything.
-      prefill: z.record(z.string(), z.unknown()).optional(),
     }),
-    execute: async ({ key, prefill }) => {
+    execute: async ({ key }) => {
       const feat = FEATURES.find((f) => f.key === (key as FeatureKey));
       if (!feat) {
         return { ok: false, error: 'unknown_feature' };
-      }
-      // Plant the prefill payload for any future feature page to pick
-      // up on mount. PR3 intentionally does NOT wire any page to read
-      // this — that's a per-feature integration left for follow-ups.
-      try {
-        if (prefill && typeof window !== 'undefined') {
-          window.sessionStorage.setItem(
-            `voice:prefill:${key}`,
-            JSON.stringify(prefill),
-          );
-        }
-      } catch {
-        // sessionStorage can throw in privacy modes — ignore, the
-        // navigation still happens.
       }
       router.push(feat.href);
       toast(copy.navigating, { tone: 'info' });

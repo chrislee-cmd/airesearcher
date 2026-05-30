@@ -315,7 +315,11 @@ export function useRealtimeSession(
         session.on('audio_start', () => setIsAssistantSpeaking(true));
         session.on('audio_stopped', () => setIsAssistantSpeaking(false));
         session.on('audio_interrupted', () => setIsAssistantSpeaking(false));
-        session.on('error', () => {
+        session.on('error', (e) => {
+          // Surface the SDK error so we can actually diagnose 'generic'
+          // failures in the panel — the catch below swallowed everything
+          // in PR2/PR3 and we hit a tool-schema rejection blind.
+          console.error('[voice-concierge] session error', e);
           setState('error');
           setErrorKey('generic');
         });
@@ -324,7 +328,8 @@ export function useRealtimeSession(
         await session.connect({ apiKey });
         setMuted(session.muted);
         setState('live');
-      } catch {
+      } catch (e) {
+        console.error('[voice-concierge] start() failed', e);
         setState('error');
         setErrorKey('generic');
         releaseMic();
