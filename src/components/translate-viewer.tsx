@@ -29,9 +29,16 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 
 type AudioMode = 'input' | 'output' | 'mute';
 type SessionStatus = 'idle' | 'live' | 'ended';
-type CaptionLine = { id: string; text: string; final: boolean };
+// `ts` is wall-clock ms when the line was last updated. Used by the
+// prompter pane to keep only the last 30 seconds on screen — older
+// lines fade off the top edge but stay in state so PR-B can offer a
+// full transcript download.
+type CaptionLine = { id: string; text: string; final: boolean; ts: number };
 
 type BackfillRow = { kind: 'input' | 'output'; text: string; lang: string | null; ts: string };
+
+// Display window — mirrors the host. 30 seconds of translated lines.
+const PROMPTER_WINDOW_MS = 30_000;
 
 type Props = {
   token: string;
@@ -84,8 +91,10 @@ export function TranslateViewer({
 }: Props) {
   const [status, setStatus] = useState<SessionStatus>(initialStatus);
   const [mode, setMode] = useState<AudioMode>('input');
-  const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
+  // Ticks once a second so the 30s prompter window slides forward even
+  // when the host pauses speaking.
+  const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
   // Mobile browsers (especially iOS Safari) block <audio>.play() that
   // wasn't called from inside a user gesture. LiveKit signals this via
@@ -108,19 +117,23 @@ export function TranslateViewer({
     output: null,
   });
 
-  const pushLine = useCallback(
-    (kind: 'input' | 'output', line: CaptionLine) => {
-      const setter = kind === 'input' ? setInputLines : setOutputLines;
-      setter((prev) => {
-        const idx = prev.findIndex((l) => l.id === line.id);
-        if (idx === -1) return [...prev, line];
-        const next = prev.slice();
-        next[idx] = line;
-        return next;
-      });
-    },
-    [],
-  );
+  const pushLine = useCallback((line: CaptionLine) => {
+    setOutputLines((prev) => {
+      const idx = prev.findIndex((l) => l.id === line.id);
+      if (idx === -1) return [...prev, line];
+      const next = prev.slice();
+      next[idx] = line;
+      return next;
+    });
+  }, []);
+
+  // Heartbeat — slides the prompter window forward when the host is
+  // quiet.
+  useEffect(() => {
+    if (status === 'ended') return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [status]);
 
   // Resolve the audible track / muted state every time the mode flips.
   // We do this in BOTH places so the host can be confident a viewer
@@ -161,17 +174,24 @@ export function TranslateViewer({
         if (!res.ok) return;
         const json = (await res.json()) as { messages?: BackfillRow[] };
         if (cancelled) return;
-        const inputs: CaptionLine[] = [];
+        // The viewer prompter only renders translated output. Input
+        // captions are persisted server-side (for PR-B's bilingual
+        // download) but never shown here, so we filter them out.
         const outputs: CaptionLine[] = [];
         for (const m of json.messages ?? []) {
-          const line: CaptionLine = {
+          if (m.kind !== 'output') continue;
+          outputs.push({
             id: `bf-${m.ts}-${m.kind}`,
             text: m.text,
             final: true,
-          };
-          (m.kind === 'input' ? inputs : outputs).push(line);
+            // Backfilled lines are all considered "now" so a late
+            // joiner sees the most recent N seconds of context. The
+            // wall-clock the host wrote at isn't useful for the
+            // sliding window — we want the prompter to feel fresh
+            // when the page mounts.
+            ts: Date.now(),
+          });
         }
-        if (inputs.length) setInputLines(inputs);
         if (outputs.length) setOutputLines(outputs);
       } catch {
         // best-effort — live deltas will fill the panel anyway
@@ -191,7 +211,11 @@ export function TranslateViewer({
     type Payload = { kind: 'input' | 'output'; id: string; text: string; final: boolean };
     ch.on('broadcast', { event: 'caption' }, ({ payload }) => {
       const p = payload as Payload;
-      pushLine(p.kind, { id: p.id, text: p.text, final: p.final });
+      // Host stopped broadcasting input captions in PR-A, but we
+      // defensively gate here too so an older host build never leaks
+      // source-language text into the prompter pane.
+      if (p.kind !== 'output') return;
+      pushLine({ id: p.id, text: p.text, final: p.final, ts: Date.now() });
     });
     ch.subscribe();
     channelRef.current = ch;
@@ -340,8 +364,12 @@ export function TranslateViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, initialStatus]);
 
-  const visibleInput = useMemo(() => inputLines.slice(-40), [inputLines]);
-  const visibleOutput = useMemo(() => outputLines.slice(-40), [outputLines]);
+  // Display-only 30-second rolling window. Full transcript stays in
+  // `outputLines` for PR-B's download path.
+  const promptedLines = useMemo(
+    () => outputLines.filter((l) => now - l.ts <= PROMPTER_WINDOW_MS),
+    [outputLines, now],
+  );
 
   // Synchronous user-gesture handler. On mobile we MUST call
   // room.startAudio() and the corresponding <audio>.play() from inside
@@ -438,10 +466,7 @@ export function TranslateViewer({
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <CaptionColumn label={`${langName(sourceLang)} (Original)`} lines={visibleInput} />
-        <CaptionColumn label={`${langName(targetLang)} (Translation)`} lines={visibleOutput} />
-      </div>
+      <PrompterPane lines={promptedLines} />
 
       {/* No pre-created <audio> elements: LiveKit's track.attach() now
           creates them inside onTrackSubscribed (it sets iOS-correct
@@ -450,18 +475,39 @@ export function TranslateViewer({
   );
 }
 
-function CaptionColumn({ label, lines }: { label: string; lines: CaptionLine[] }) {
+// Prompter pane — a single centred column, larger typography for
+// at-a-glance readability on the public viewer. The chrome is the
+// surrounding page; this component renders no border. Older lines
+// fade out at the top edge as the 30s window slides forward.
+function PrompterPane({ lines }: { lines: CaptionLine[] }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [lines]);
   return (
-    <div className="rounded-[4px] border border-line bg-paper">
-      <div className="border-b border-line-soft px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
-        {label}
-      </div>
-      <div className="max-h-[480px] min-h-[300px] overflow-y-auto px-3 py-3 text-[13.5px] leading-[1.75] text-ink">
+    <div
+      className="relative min-h-[420px]"
+      style={{
+        WebkitMaskImage:
+          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+        maskImage:
+          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+      }}
+    >
+      <div
+        ref={scrollRef}
+        className="mx-auto flex max-h-[68vh] min-h-[420px] w-full max-w-[820px] flex-col gap-4 overflow-y-auto px-4 py-10 text-[20px] leading-[1.65] tracking-[-0.005em] text-ink"
+      >
         {lines.length === 0 ? (
-          <div className="text-mute-soft">…</div>
+          <div className="m-auto text-center text-[14px] text-mute-soft">…</div>
         ) : (
           lines.map((l) => (
-            <p key={l.id} className={l.final ? '' : 'text-mute'}>
+            <p
+              key={l.id}
+              className={l.final ? 'text-center' : 'text-center text-mute'}
+            >
               {l.text}
               {l.final ? '' : '…'}
             </p>
