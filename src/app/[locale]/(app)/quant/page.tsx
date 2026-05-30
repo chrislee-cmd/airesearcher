@@ -1,6 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { QuantAnalyzer } from '@/components/quant-analyzer';
-import { CoachmarkTour } from '@/components/coachmark-tour';
 import { FeaturePage } from '@/components/ui/feature-page';
 import { requirePreviewAccess } from '@/lib/preview-gate';
 
@@ -19,7 +18,6 @@ export default async function QuantPage({
       title={t('quant.title')}
       headerRight={t('quant.cost')}
     >
-      <CoachmarkTour feature="quant" />
       <QuantAnalyzer />
     </FeaturePage>
   );

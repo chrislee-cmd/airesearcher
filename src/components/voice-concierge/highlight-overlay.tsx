@@ -7,9 +7,8 @@
 // spotlight + tooltip. Auto-clears after 5s OR on any user click/scroll.
 //
 // Design notes:
-//   - Mirrors coachmark-tour.tsx's spotlight technique: a transparent
-//     rect with a huge outset box-shadow dims the rest of the viewport
-//     without an SVG mask.
+//   - Spotlight technique: a transparent rect with a huge outset
+//     box-shadow dims the rest of the viewport without an SVG mask.
 //   - Targets are looked up by `getElementById(targetId)` first, then
 //     `[data-coachmark-id="<id>"]` as a fallback (some components use
 //     unstable ids but tag their root with the data attribute).
