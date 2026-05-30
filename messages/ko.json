@@ -730,7 +730,26 @@
     }
   },
   "TranslateConsole": {
-    "foundationPlaceholder": "AI 동시통역 콘솔은 준비 중입니다. 다음 업데이트에서 마이크 활성화·실시간 자막·공유 링크 발급이 켜집니다."
+    "sourceLang": "원어",
+    "targetLang": "번역 언어",
+    "recordEnabled": "전사록 저장",
+    "monitor": "번역 음성 모니터",
+    "start": "통역 시작",
+    "stop": "종료",
+    "starting": "연결 중…",
+    "sourceColumn": "원문",
+    "targetColumn": "번역",
+    "emptySource": "마이크에서 들리는 말이 여기에 표시됩니다.",
+    "emptyTarget": "번역 결과가 여기에 스트림됩니다.",
+    "errorPrefix": "오류:",
+    "status": {
+      "idle": "대기",
+      "starting": "연결 중",
+      "live": "라이브",
+      "ending": "종료 중",
+      "ended": "종료됨",
+      "error": "오류"
+    }
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
