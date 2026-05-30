@@ -49,13 +49,18 @@ export async function issueRealtimeSession(opts: {
       audio: {
         input: {
           transcription: { model: 'gpt-4o-mini-transcribe' },
-          // semantic_vad with eagerness=high chunks audio as soon as the
-          // model has enough semantic context to translate — emulates
-          // simultaneous (overlapping) interpretation instead of waiting
-          // for a silence gap like server_vad does.
+          // server_vad with a very short silence_duration_ms (200ms vs
+          // 500ms default) makes turn boundaries fire on every micro-pause
+          // — both the input transcript and the model response stream in
+          // small chunks instead of waiting for a full sentence. This
+          // performs better than semantic_vad for Korean SOV, where the
+          // semantic chunker tends to wait for subject+verb before
+          // committing.
           turn_detection: {
-            type: 'semantic_vad',
-            eagerness: 'high',
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 200,
+            silence_duration_ms: 200,
             create_response: true,
             interrupt_response: true,
           },
