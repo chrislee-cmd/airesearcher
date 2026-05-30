@@ -4,6 +4,11 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  // @ffmpeg-installer/ffmpeg does a runtime require() of a platform-specific
+  // binary package (e.g. @ffmpeg-installer/linux-x64), which Turbopack's
+  // static module resolver cannot trace. Mark it external so it gets
+  // loaded from node_modules at runtime instead of bundled.
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
   // Re-use client-cached page segments for short windows so back/forward
   // and quick return visits don't trigger full SSR. Defaults are 0s for
   // dynamic (off) and 5min for static prefetched. We keep static low-ish
