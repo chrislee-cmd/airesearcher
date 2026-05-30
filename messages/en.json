@@ -748,6 +748,11 @@
     "emptySource": "What you say into the mic will appear here.",
     "emptyTarget": "Translated text streams here.",
     "errorPrefix": "Error:",
+    "errors": {
+      "microphone_denied": "Microphone access was denied. Click the lock icon next to the URL to allow it.",
+      "tab_audio_denied": "Tab audio sharing was cancelled. Click Start again and approve the share dialog.",
+      "tab_audio_unavailable": "The surface you picked has no shareable audio. In the share dialog choose \"Chrome Tab\" and tick \"Share tab audio\" at the bottom. (Chrome desktop only.)"
+    },
     "status": {
       "idle": "Idle",
       "starting": "Connecting",

@@ -748,6 +748,11 @@
     "emptySource": "마이크에서 들리는 말이 여기에 표시됩니다.",
     "emptyTarget": "번역 결과가 여기에 스트림됩니다.",
     "errorPrefix": "오류:",
+    "errors": {
+      "microphone_denied": "마이크 권한이 거부되었습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을 허용해주세요.",
+      "tab_audio_denied": "탭 오디오 공유가 거부되었습니다. 다시 시도하면서 \"공유\" 버튼을 눌러주세요.",
+      "tab_audio_unavailable": "선택한 화면에 공유 가능한 오디오가 없습니다. 공유 창에서 \"Chrome 탭\"을 고른 뒤 하단의 \"탭 오디오 공유\" 체크박스를 켜주세요. (Chrome 데스크톱만 지원)"
+    },
     "status": {
       "idle": "대기",
       "starting": "연결 중",

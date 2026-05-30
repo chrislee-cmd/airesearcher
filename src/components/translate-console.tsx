@@ -778,7 +778,7 @@ export function TranslateConsole() {
 
       {error ? (
         <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
-          {t('errorPrefix')} {error}
+          {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
         </div>
       ) : null}
 
