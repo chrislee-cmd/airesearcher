@@ -666,7 +666,18 @@ export function TranslateConsole() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[11.5px] text-mute">
-          <span>{t('inputSource.label')}</span>
+          <span className="flex items-center gap-1">
+            {t('inputSource.label')}
+            {inputSource === 'tab' ? (
+              <span
+                aria-label={t('inputSource.tabHint')}
+                title={t('inputSource.tabHint')}
+                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-[9px] leading-none text-mute-soft"
+              >
+                ?
+              </span>
+            ) : null}
+          </span>
           <select
             value={inputSource}
             onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
@@ -676,11 +687,6 @@ export function TranslateConsole() {
             <option value="mic">{t('inputSource.mic')}</option>
             <option value="tab">{t('inputSource.tab')}</option>
           </select>
-          {inputSource === 'tab' && !live ? (
-            <span className="max-w-[260px] text-[10.5px] leading-tight text-mute-soft">
-              {t('inputSource.tabHint')}
-            </span>
-          ) : null}
         </label>
         <label className="flex items-center gap-2 text-[12.5px] text-mute">
           <input
