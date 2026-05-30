@@ -443,6 +443,10 @@
       "pptx": "PowerPoint"
     }
   },
+  "Concierge": {
+    "fab_tooltip": "Talk to Mochi",
+    "coming_soon": "Coming soon — currently in beta."
+  },
   "Features": {
     "quotes": {
       "title": "Transcript Generator",
@@ -592,6 +596,11 @@
       "title": "Live Interpreter",
       "description": "OpenAI Realtime translates your microphone audio on the fly. Generate a share link so remote viewers see the live captions and pick the language they listen to.",
       "cost": "50 credits to start, then 10 credits per 10 minutes"
+    },
+    "voice_concierge": {
+      "title": "Voice Concierge",
+      "description": "Call Mochi by voice. Help on any screen.",
+      "cost": "Free beta"
     }
   },
   "Quant": {

@@ -13,7 +13,11 @@ export type FeatureKey =
   | 'quant'
   | 'affinity_bubble'
   | 'video'
-  | 'translate';
+  | 'translate'
+  // Global voice concierge — not a sidebar item, mounted as a FAB in
+  // (app)/layout.tsx. Cost is stubbed at 0 for PR1; the credit policy
+  // is still open (design §12.5) so the foundation ships as free beta.
+  | 'voice_concierge';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -47,6 +51,11 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // lump as the headline number; the per-10-minute surcharge lives in the
   // locale `Features.translate.cost` string.
   { key: 'translate', href: '/live', cost: 50 },
+  // Global voice concierge — bottom-right FAB on every (app) route. No
+  // dedicated page in PR1 (the FAB only pops a coming-soon toast); the
+  // href is reserved for future expand/settings routes. Free during the
+  // beta — credit policy lands with PR2/PR3 (design §12.5).
+  { key: 'voice_concierge', href: '/voice', cost: 0 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
@@ -62,6 +71,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'quant',
   'video',
   'translate',
+  'voice_concierge',
 ]);
 
 // Single source of truth for credit pricing — read by both the
