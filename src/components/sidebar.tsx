@@ -359,7 +359,10 @@ export function Sidebar({
   }
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r border-line bg-paper md:flex">
+    <aside
+      data-coachmark-id="sidebar"
+      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r border-line bg-paper md:flex"
+    >
       <div className="px-7 pb-6 pt-7">
         <Link
           href="/dashboard"
@@ -470,7 +473,10 @@ export function Sidebar({
                       !isCompatible &&
                       f.key !== dragging.sourceFeature;
                     return (
-                      <li key={f.key}>
+                      // data-coachmark-id wires the voice concierge's
+                      // highlightUI tool to point at sidebar entries by
+                      // feature key (e.g. "sidebar-interviews").
+                      <li key={f.key} data-coachmark-id={`sidebar-${f.key}`}>
                         <Link
                           href={f.href}
                           prefetch

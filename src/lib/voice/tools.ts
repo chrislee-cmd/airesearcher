@@ -25,13 +25,18 @@ export const FEATURE_KEY_LIST = FEATURES.map((f) => f.key) as [
 /**
  * Routes the model can navigate to that are NOT in FEATURES (system
  * pages). Kept short and explicit so the model can't be talked into
- * pushing arbitrary internal URLs.
+ * pushing arbitrary internal URLs. ONLY list routes that actually
+ * resolve — if the model navigates to a 404, the user sees a broken
+ * experience even though the tool "worked".
+ *
+ * NB: `/billing` was here as "future-compat" originally and caused 404s
+ * when the model picked navigate over openPurchase for payment requests.
+ * Use openPurchase for any purchase/billing flow.
  */
 export const SYSTEM_NAVIGABLE_ROUTES = [
   '/dashboard',
   '/credits',
   '/projects',
-  '/billing', // future-compat; resolves to /credits in openPurchase today
 ] as const;
 
 export type SystemNavigableRoute = (typeof SYSTEM_NAVIGABLE_ROUTES)[number];
@@ -39,9 +44,13 @@ export type SystemNavigableRoute = (typeof SYSTEM_NAVIGABLE_ROUTES)[number];
 /**
  * The union of all hrefs the `navigate` tool will accept. Built once at
  * module init from the FEATURES SSOT plus the system routes above.
+ *
+ * `voice_concierge` is filtered out because its href (`/voice`) has no
+ * dedicated page — the concierge is the global FAB and nothing else.
+ * Letting the model navigate there 404s the user.
  */
 export const NAVIGABLE_HREFS: readonly string[] = [
-  ...FEATURES.map((f) => f.href),
+  ...FEATURES.filter((f) => f.key !== 'voice_concierge').map((f) => f.href),
   ...SYSTEM_NAVIGABLE_ROUTES,
 ];
 

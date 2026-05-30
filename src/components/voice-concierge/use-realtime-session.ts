@@ -62,9 +62,27 @@ export type UseRealtimeSessionResult = {
   isAssistantSpeaking: boolean;
   /** Microphone mute state (null until session connects). */
   muted: boolean | null;
-  start: (route: string, locale: 'ko' | 'en') => Promise<void>;
+  /** PR4 Bundle 3: true when the panel should render the text-input
+   *  fallback instead of (or in addition to) voice. Auto-flips on
+   *  mic_denied during start(), and on user request via toggleTextMode(). */
+  textMode: boolean;
+  start: (
+    route: string,
+    locale: 'ko' | 'en',
+    opts?: { greet?: boolean },
+  ) => Promise<void>;
   stop: () => Promise<void>;
   toggleMute: () => void;
+  /** PR4 Bundle 3: send a typed user message to the live session. The
+   *  SDK's sendMessage(string) auto-triggers a model response. No-op if
+   *  no session is connected or the input is whitespace-only. */
+  sendText: (text: string) => void;
+  /** PR4 Bundle 3: flip between voice-active (mic track) and text-only
+   *  mode. When entering text mode we release the mic; switching back
+   *  to voice requires stop() + start() because the WebRTC peer's
+   *  initial offer already locked the track set. The panel handles that
+   *  by closing + reopening; this just owns the toggle flag. */
+  setTextMode: (next: boolean) => void;
   /** Push a refreshed system prompt to the live session. PR3: called by
    *  the provider on pathname change. No-op if no session is connected. */
   resyncInstructions: (route: string, locale: 'ko' | 'en') => Promise<void>;
@@ -120,6 +138,39 @@ function fetchErrorToKey(status: number, body: { error?: string } | null): Voice
   return 'generic';
 }
 
+/**
+ * PR4 Bundle 3: Build a silent audio MediaStream for text-only sessions.
+ *
+ * The WebRTC transport in @openai/agents-realtime always attaches an
+ * outgoing audio track to its peer connection (the SDK adds it in
+ * openaiRealtimeWebRtc when the browser exposes mediaDevices). When the
+ * user denies mic access we still need *some* audio track to satisfy the
+ * SDP negotiation, otherwise connect() rejects mid-handshake. A 0-volume
+ * OscillatorNode → MediaStreamDestination gives us a valid track that
+ * the server transcribes as nothing — the user just types instead.
+ */
+function buildSilentMicStream(): MediaStream | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AC) return null;
+    const ctx = new AC();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0; // truly silent
+    osc.connect(gain);
+    const dest = ctx.createMediaStreamDestination();
+    gain.connect(dest);
+    osc.start();
+    return dest.stream;
+  } catch {
+    return null;
+  }
+}
+
 // ── Hook ────────────────────────────────────────────────────────────────
 
 export function useRealtimeSession(
@@ -130,6 +181,10 @@ export function useRealtimeSession(
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
   const [muted, setMuted] = useState<boolean | null>(null);
+  // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
+  // because start() needs to flip it on mic_denied before the panel ever
+  // sees an error state.
+  const [textMode, setTextModeState] = useState(false);
 
   // Refs — anything the React lifecycle should NOT trigger re-renders on.
   // Critical for the SDK objects: a strict-mode double-mount would
@@ -202,25 +257,39 @@ export function useRealtimeSession(
   }, [releaseMic]);
 
   const start = useCallback(
-    async (route: string, locale: 'ko' | 'en') => {
+    async (
+      route: string,
+      locale: 'ko' | 'en',
+      opts?: { greet?: boolean },
+    ) => {
       if (startingRef.current || sessionRef.current) return;
       startingRef.current = true;
       setErrorKey(undefined);
       setTranscripts([]);
       persistedTextRef.current.clear();
+      // Reset text-mode on each fresh start — the panel reopens cleanly
+      // and a previously-denied mic gets a second chance.
+      setTextModeState(false);
 
       try {
         // ── 1. Mic permission ──────────────────────────────────────────
+        // PR4 Bundle 3: mic_denied is no longer a fatal error. We flip
+        // textMode on, skip the mic-track step, and keep going. The
+        // WebRTC peer still wants SOMETHING to negotiate, so we hand it
+        // a silent track from a 0-volume AudioContext stream. The model
+        // still produces audio OUT (so the user gets voice replies),
+        // they just type their input.
         setState('requesting-mic');
         try {
           micStreamRef.current = await navigator.mediaDevices.getUserMedia({
             audio: true,
           });
         } catch {
-          setState('error');
+          micStreamRef.current = buildSilentMicStream();
+          setTextModeState(true);
+          // Surface a soft error key the panel uses to render an inline
+          // hint above the text input. We still proceed with connect.
           setErrorKey('mic_denied');
-          startingRef.current = false;
-          return;
         }
 
         // ── 2. /api/voice/ephemeral ────────────────────────────────────
@@ -328,6 +397,33 @@ export function useRealtimeSession(
         await session.connect({ apiKey });
         setMuted(session.muted);
         setState('live');
+
+        // ── 6. Proactive greeting (PR4 Bundle 1) ───────────────────────
+        // First-time users get an assistant-initiated turn so they don't
+        // have to figure out "do I start talking now?". We use the raw
+        // transport.sendEvent escape hatch with `response.create` —
+        // session.sendMessage(string) would inject a synthetic USER turn
+        // (the SDK types RealtimeUserInput as user-role only), which is
+        // semantically wrong. response.create is the documented way to
+        // request an assistant turn out of order.
+        //
+        // No browser autoplay-policy concern: this only fires after the
+        // user explicitly clicked the FAB, so the audio context is
+        // already in a user-gesture-unlocked state.
+        if (opts?.greet) {
+          try {
+            const greetingHint = locale === 'ko'
+              ? '사용자와 처음 만난 듯 짧게 자기소개하고 무엇을 하고 있는지 한 가지만 부드럽게 물어보세요.'
+              : 'Greet briefly as if meeting for the first time, then ask one gentle question about what they are working on.';
+            session.transport.sendEvent({
+              type: 'response.create',
+              response: { instructions: greetingHint },
+            });
+          } catch {
+            // Transport not ready / SDK shape changed — fall back to
+            // user-initiated turn, no fatal.
+          }
+        }
       } catch (e) {
         console.error('[voice-concierge] start() failed', e);
         setState('error');
@@ -395,6 +491,39 @@ export function useRealtimeSession(
     }
   }, [muted]);
 
+  // ── PR4 Bundle 3: text input ─────────────────────────────────────────
+  //
+  // session.sendMessage(string) injects a USER-role message into the
+  // history and (per the SDK source) automatically issues a
+  // response.create after the conversation.item.create. So a single call
+  // covers both halves of a typed turn.
+  const sendText = useCallback((text: string) => {
+    const s = sessionRef.current;
+    if (!s) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    try {
+      s.sendMessage(trimmed);
+    } catch {
+      /* transport not ready — silently drop, panel can retry */
+    }
+  }, []);
+
+  // Voice users can flip into text-only mode mid-session. We also mute
+  // the mic when entering text mode so the model isn't reacting to room
+  // noise while the user types. Flipping back unmutes.
+  const setTextMode = useCallback((next: boolean) => {
+    setTextModeState(next);
+    const s = sessionRef.current;
+    if (!s) return;
+    try {
+      s.mute(next);
+      setMuted(next);
+    } catch {
+      /* transport doesn't support muting — text input still works */
+    }
+  }, []);
+
   // Ensure we never leak a mic stream / WebRTC peer on unmount. The hook
   // outlives the panel (it lives in the provider) so this only fires on
   // app unload, but the cleanup is cheap and defensive.
@@ -415,9 +544,12 @@ export function useRealtimeSession(
     transcripts,
     isAssistantSpeaking,
     muted,
+    textMode,
     start,
     stop,
     toggleMute,
+    sendText,
+    setTextMode,
     resyncInstructions,
   };
 }
