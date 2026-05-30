@@ -739,14 +739,16 @@
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
     "recordEnabled": "Record transcript",
-    "monitor": "Monitor translation",
+    "monitorMute": {
+      "muteAria": "Mute translated audio locally (viewers still hear it)",
+      "unmuteAria": "Unmute translated audio"
+    },
     "start": "Start interpreting",
     "stop": "Stop",
     "starting": "Connecting…",
-    "sourceColumn": "Original",
-    "targetColumn": "Translation",
-    "emptySource": "What you say into the mic will appear here.",
-    "emptyTarget": "Translated text streams here.",
+    "prompter": {
+      "empty": "Translated text will stream here once interpreting starts."
+    },
     "errorPrefix": "Error:",
     "errors": {
       "microphone_denied": "Microphone access was denied. Click the lock icon next to the URL to allow it.",

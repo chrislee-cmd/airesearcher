@@ -34,7 +34,19 @@ type CaptionLine = {
   id: string;
   text: string;
   final: boolean;
+  // Wall-clock ms when this line was last touched. Used by the prompter
+  // view to keep only the last 30 seconds of content on screen — older
+  // lines fade out at the top edge but remain in state so PR-B can
+  // download the full transcript.
+  ts: number;
 };
+
+// Display-only rolling window. Older lines are still in state (and on
+// the DB via /messages) but the prompter pane only shows the most
+// recent N seconds. 30s reads naturally for a teleprompter — long
+// enough that a slow speaker still has context, short enough that the
+// active line stays in the visual center.
+const PROMPTER_WINDOW_MS = 30_000;
 
 type SessionBundle = {
   session: {
@@ -82,7 +94,6 @@ export function TranslateConsole() {
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
   const [recordEnabled, setRecordEnabled] = useState(true);
-  const [monitorTranslation, setMonitorTranslation] = useState(true);
   // 'mic' = host's microphone; 'tab' = a browser tab's audio
   // (e.g. a Zoom/Meet/Teams call running in another tab). Tab capture
   // goes through getDisplayMedia, which on every supported browser
@@ -93,6 +104,16 @@ export function TranslateConsole() {
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
   const [elapsed, setElapsed] = useState(0);
+  // Host can mute the local translation playback without dropping the
+  // LiveKit publish — viewers still hear the translated TTS, the host
+  // just doesn't get the echo into their own room. Default ON because
+  // the host typically wants to verify the translation in real time.
+  const [outputAudible, setOutputAudible] = useState(true);
+  // `now` ticks once per second while live so the 30-second prompter
+  // window slides forward continuously even when the OpenAI deltas
+  // pause (e.g. the speaker takes a breath). Without this the screen
+  // would freeze on stale text.
+  const [now, setNow] = useState(() => Date.now());
 
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
@@ -134,20 +155,27 @@ export function TranslateConsole() {
       return;
     }
     tickRef.current = setInterval(() => {
+      const wall = Date.now();
       if (startedAtRef.current) {
-        setElapsed(Date.now() - startedAtRef.current);
+        setElapsed(wall - startedAtRef.current);
       }
+      // Keep the prompter window honest even when deltas pause.
+      setNow(wall);
     }, 1000);
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [status]);
 
-  // Monitor audio routing.
+  // Monitor audio routing. `outputAudible` is the host's local mute
+  // toggle: when OFF, the host's own <audio> element is muted but the
+  // translated TTS keeps flowing through LiveKit so viewers still hear
+  // it. We do NOT stop the publish — the gain node / track on the
+  // outbound side stays untouched.
   useEffect(() => {
     if (!monitorAudioRef.current) return;
-    monitorAudioRef.current.muted = !monitorTranslation;
-  }, [monitorTranslation]);
+    monitorAudioRef.current.muted = !outputAudible;
+  }, [outputAudible]);
 
   const cleanup = useCallback(() => {
     try {
@@ -202,6 +230,11 @@ export function TranslateConsole() {
 
   const broadcastCaption = useCallback(
     (kind: 'input' | 'output', line: CaptionLine, lang: string) => {
+      // The viewer prompter only renders translated output, so input
+      // captions don't need to traverse the broadcast channel — saves
+      // bandwidth on long sessions. They're still persisted via
+      // /messages below so PR-B can offer a bilingual download.
+      if (kind === 'input') return;
       channelRef.current
         ?.send({
           type: 'broadcast',
@@ -234,9 +267,10 @@ export function TranslateConsole() {
     (kind: 'input' | 'output', delta: string, lang: string) => {
       if (!delta) return;
       const partial = kind === 'input' ? partialInputRef : partialOutputRef;
+      const wall = Date.now();
       // Reuse a single rolling line id per kind, replaced when a sentence
       // boundary commits.
-      const current = partial.current.get('current') ?? { id: `${kind}-${Date.now()}`, text: '' };
+      const current = partial.current.get('current') ?? { id: `${kind}-${wall}`, text: '' };
       const next = current.text + delta;
       const match = next.match(SENTENCE_END);
       if (match && match.index !== undefined) {
@@ -244,15 +278,15 @@ export function TranslateConsole() {
         const finalText = next.slice(0, cut).trim();
         const remainder = next.slice(cut).trim();
         if (finalText) {
-          const finalLine: CaptionLine = { id: current.id, text: finalText, final: true };
+          const finalLine: CaptionLine = { id: current.id, text: finalText, final: true, ts: wall };
           pushLine(kind, finalLine);
           broadcastCaption(kind, finalLine, lang);
           void persistMessage(kind, finalText, lang);
         }
         if (remainder) {
-          const nextId = `${kind}-${Date.now()}`;
+          const nextId = `${kind}-${wall}`;
           partial.current.set('current', { id: nextId, text: remainder });
-          const partialLine: CaptionLine = { id: nextId, text: remainder, final: false };
+          const partialLine: CaptionLine = { id: nextId, text: remainder, final: false, ts: wall };
           pushLine(kind, partialLine);
           broadcastCaption(kind, partialLine, lang);
         } else {
@@ -260,7 +294,7 @@ export function TranslateConsole() {
         }
       } else {
         partial.current.set('current', { id: current.id, text: next });
-        const partialLine: CaptionLine = { id: current.id, text: next, final: false };
+        const partialLine: CaptionLine = { id: current.id, text: next, final: false, ts: wall };
         pushLine(kind, partialLine);
         broadcastCaption(kind, partialLine, lang);
       }
@@ -404,7 +438,7 @@ export function TranslateConsole() {
       ttsStreamRef.current = stream;
       if (monitorAudioRef.current) {
         monitorAudioRef.current.srcObject = stream;
-        monitorAudioRef.current.muted = !monitorTranslation;
+        monitorAudioRef.current.muted = !outputAudible;
         monitorAudioRef.current.play().catch(() => {});
       }
       // Publish the translated TTS track into LiveKit. ontrack can fire
@@ -520,7 +554,7 @@ export function TranslateConsole() {
     cleanup,
     handleOaiEvent,
     inputSource,
-    monitorTranslation,
+    outputAudible,
     recordEnabled,
     sourceLang,
     targetLang,
@@ -539,7 +573,12 @@ export function TranslateConsole() {
     ]) {
       const current = ref.current.get('current');
       if (current && current.text.trim()) {
-        const finalLine: CaptionLine = { id: current.id, text: current.text.trim(), final: true };
+        const finalLine: CaptionLine = {
+          id: current.id,
+          text: current.text.trim(),
+          final: true,
+          ts: Date.now(),
+        };
         pushLine(kind, finalLine);
         broadcastCaption(kind, finalLine, lang);
         void persistMessage(kind, current.text.trim(), lang);
@@ -633,6 +672,14 @@ export function TranslateConsole() {
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
   const langOptions = useMemo(() => LANGS, []);
+  // Display-only rolling window. We keep every line in `outputLines`
+  // state for the eventual "download full transcript" feature (PR-B),
+  // but only render the last 30 seconds on the prompter so the screen
+  // stays light and the active line stays in the visual center.
+  const promptedLines = useMemo(
+    () => outputLines.filter((l) => now - l.ts <= PROMPTER_WINDOW_MS),
+    [outputLines, now],
+  );
 
   return (
     <div className="space-y-4">
@@ -699,18 +746,20 @@ export function TranslateConsole() {
           />
           {t('recordEnabled')}
         </label>
-        <label className="flex items-center gap-2 text-[12.5px] text-mute">
-          <input
-            type="checkbox"
-            checked={monitorTranslation}
-            onChange={(e) => setMonitorTranslation(e.target.checked)}
-          />
-          {t('monitor')}
-        </label>
         <div className="ml-auto flex items-center gap-3">
           <span className="text-[12px] tabular-nums text-mute">
             {live ? formatElapsed(elapsed) : '00:00'}
           </span>
+          <button
+            type="button"
+            onClick={() => setOutputAudible((v) => !v)}
+            aria-pressed={outputAudible}
+            aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+            title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-[4px] border border-line bg-paper text-ink hover:border-amore"
+          >
+            {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+          </button>
           <span
             className={`rounded-[4px] border px-2 py-0.5 text-[11px] ${
               live
@@ -784,37 +833,88 @@ export function TranslateConsole() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <CaptionColumn label={t('sourceColumn')} lines={inputLines} empty={t('emptySource')} />
-        <CaptionColumn label={t('targetColumn')} lines={outputLines} empty={t('emptyTarget')} />
-      </div>
+      <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
 
       <audio ref={monitorAudioRef} autoPlay playsInline className="hidden" />
     </div>
   );
 }
 
-function CaptionColumn({
-  label,
-  lines,
-  empty,
-}: {
-  label: string;
-  lines: CaptionLine[];
-  empty: string;
-}) {
-  const visible = lines.slice(-40);
+function SpeakerOnIcon() {
   return (
-    <div className="rounded-[4px] border border-line bg-paper">
-      <div className="border-b border-line-soft px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
-        {label}
-      </div>
-      <div className="max-h-[420px] min-h-[260px] overflow-y-auto px-3 py-3 text-[13.5px] leading-[1.75] text-ink">
-        {visible.length === 0 ? (
-          <div className="text-mute-soft">{empty}</div>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
+  );
+}
+
+function SpeakerOffIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  );
+}
+
+// Prompter pane — a single centred column that auto-scrolls as new
+// translated lines arrive. Visually the chrome is the surrounding
+// page; this component renders no border or box. A soft mask at the
+// top edge fades older lines as they age out of the 30-second window.
+function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Pin to bottom on every new line so the latest text stays in the
+  // active reading position.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [lines]);
+  return (
+    <div
+      className="relative min-h-[360px]"
+      style={{
+        WebkitMaskImage:
+          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+        maskImage:
+          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+      }}
+    >
+      <div
+        ref={scrollRef}
+        className="mx-auto flex max-h-[60vh] min-h-[360px] w-full max-w-[760px] flex-col gap-3 overflow-y-auto px-4 py-8 text-[18px] leading-[1.7] tracking-[-0.005em] text-ink"
+      >
+        {lines.length === 0 ? (
+          <div className="m-auto text-center text-[14px] text-mute-soft">{empty}</div>
         ) : (
-          visible.map((l) => (
-            <p key={l.id} className={l.final ? '' : 'text-mute'}>
+          lines.map((l) => (
+            <p
+              key={l.id}
+              className={l.final ? 'text-center' : 'text-center text-mute'}
+            >
               {l.text}
               {l.final ? '' : '…'}
             </p>

@@ -733,14 +733,16 @@
       "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
     },
     "recordEnabled": "字幕を保存",
-    "monitor": "翻訳音声モニター",
+    "monitorMute": {
+      "muteAria": "翻訳音声をローカルでミュート（視聴者には引き続き聞こえます）",
+      "unmuteAria": "翻訳音声をオン"
+    },
     "start": "通訳を開始",
     "stop": "停止",
     "starting": "接続中…",
-    "sourceColumn": "原文",
-    "targetColumn": "翻訳",
-    "emptySource": "マイクの音声がここに表示されます。",
-    "emptyTarget": "翻訳結果がここにストリームされます。",
+    "prompter": {
+      "empty": "通訳を開始すると、翻訳結果がここにストリームされます。"
+    },
     "errorPrefix": "エラー:",
     "errors": {
       "microphone_denied": "マイクの権限が拒否されました。アドレスバーの鍵アイコンから許可してください。",
