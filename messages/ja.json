@@ -724,7 +724,26 @@
     }
   },
   "TranslateConsole": {
-    "foundationPlaceholder": "AI同時通訳のコンソールは現在準備中です。次回のアップデートでマイク収音・字幕ストリーミング・共有リンク発行が有効になります。"
+    "sourceLang": "原語",
+    "targetLang": "翻訳先",
+    "recordEnabled": "字幕を保存",
+    "monitor": "翻訳音声モニター",
+    "start": "通訳を開始",
+    "stop": "停止",
+    "starting": "接続中…",
+    "sourceColumn": "原文",
+    "targetColumn": "翻訳",
+    "emptySource": "マイクの音声がここに表示されます。",
+    "emptyTarget": "翻訳結果がここにストリームされます。",
+    "errorPrefix": "エラー:",
+    "status": {
+      "idle": "待機",
+      "starting": "接続中",
+      "live": "ライブ",
+      "ending": "終了中",
+      "ended": "終了",
+      "error": "エラー"
+    }
   },
   "Workspace": {
     "eyebrow": "ワークスペース",

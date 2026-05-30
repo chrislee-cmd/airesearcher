@@ -1,14 +1,23 @@
-// AI 동시통역 — create a new realtime translate session.
+// AI 동시통역 — create a realtime translate session.
 //
-// Foundation PR: persistence only. OpenAI Realtime ephemeral and LiveKit
-// token issuance land in PR #2 (host pipeline).
+// On a single request we:
+//   1. insert the translate_sessions row (org-scoped, host_user_id)
+//   2. issue an OpenAI Realtime ephemeral client_secret (~60s)
+//   3. issue a LiveKit host token (publish + subscribe) for the room
+//
+// The client uses (2) to WebRTC-connect to OpenAI and (3) to publish the
+// original + translated tracks into the LiveKit room that viewers will
+// later subscribe to.
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { buildHostToken, livekitUrl } from '@/lib/livekit-tokens';
+import { issueRealtimeSession, realtimeModel } from '@/lib/openai-realtime';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 const Body = z.object({
   source_lang: z.string().min(2).max(8).default('ko'),
@@ -32,7 +41,8 @@ export async function POST(request: Request) {
   }
   const { source_lang, target_lang, record_enabled } = parsed.data;
 
-  const { data, error } = await supabase
+  // 1) insert session row
+  const insert = await supabase
     .from('translate_sessions')
     .insert({
       org_id: org.org_id,
@@ -44,16 +54,62 @@ export async function POST(request: Request) {
     })
     .select('id, source_lang, target_lang, status, record_enabled')
     .single();
-
-  if (error || !data) {
+  if (insert.error || !insert.data) {
     return NextResponse.json(
-      { error: error?.message ?? 'create_failed' },
+      { error: insert.error?.message ?? 'create_failed' },
       { status: 500 },
     );
   }
+  const session = insert.data;
+  const roomName = `translate:${session.id}`;
 
-  // PR #2: also issue OpenAI ephemeral client_secret + LiveKit host token here.
+  // Persist the canonical room name so the viewer RPC can return it
+  // without recomputing.
+  await supabase
+    .from('translate_sessions')
+    .update({ livekit_room: roomName })
+    .eq('id', session.id);
+
+  // 2) OpenAI Realtime ephemeral
+  let openaiSession;
+  try {
+    openaiSession = await issueRealtimeSession({
+      sourceLang: source_lang,
+      targetLang: target_lang,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'openai_failed' },
+      { status: 502 },
+    );
+  }
+
+  // 3) LiveKit host token
+  let livekitToken: string;
+  let livekitWsUrl: string;
+  try {
+    livekitToken = await buildHostToken({
+      roomName,
+      identity: user.id,
+    });
+    livekitWsUrl = livekitUrl();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'livekit_failed' },
+      { status: 502 },
+    );
+  }
+
   return NextResponse.json({
-    session: { ...data, livekit_room: `translate:${data.id}` },
+    session: { ...session, livekit_room: roomName },
+    openai: {
+      model: realtimeModel(),
+      client_secret: openaiSession.client_secret,
+    },
+    livekit: {
+      url: livekitWsUrl,
+      token: livekitToken,
+      room: roomName,
+    },
   });
 }

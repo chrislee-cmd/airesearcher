@@ -730,7 +730,26 @@
     }
   },
   "TranslateConsole": {
-    "foundationPlaceholder": "The Live Interpreter console is on its way. The next release wires up microphone capture, streaming captions, and shareable viewer links."
+    "sourceLang": "Source",
+    "targetLang": "Target",
+    "recordEnabled": "Record transcript",
+    "monitor": "Monitor translation",
+    "start": "Start interpreting",
+    "stop": "Stop",
+    "starting": "Connecting…",
+    "sourceColumn": "Original",
+    "targetColumn": "Translation",
+    "emptySource": "What you say into the mic will appear here.",
+    "emptyTarget": "Translated text streams here.",
+    "errorPrefix": "Error:",
+    "status": {
+      "idle": "Idle",
+      "starting": "Connecting",
+      "live": "Live",
+      "ending": "Ending",
+      "ended": "Ended",
+      "error": "Error"
+    }
   },
   "Workspace": {
     "eyebrow": "Workspace",
