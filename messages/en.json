@@ -444,8 +444,19 @@
     }
   },
   "Concierge": {
+    "close": "Close",
+    "coming_soon": "Coming soon — currently in beta.",
     "fab_tooltip": "Talk to Mochi",
-    "coming_soon": "Coming soon — currently in beta."
+    "mic_denied": "Mic permission required. Please allow in browser settings.",
+    "mochi_label": "Mochi",
+    "panel_title": "Mochi Concierge",
+    "quota_exceeded": "Daily limit (10 min) reached. See you tomorrow!",
+    "state_connecting": "Connecting",
+    "state_error": "Connection error. Please try again.",
+    "state_idle": "Speak to me",
+    "state_listening": "Listening",
+    "state_speaking": "Speaking",
+    "you_label": "You"
   },
   "Features": {
     "quotes": {

@@ -444,8 +444,19 @@
     }
   },
   "Concierge": {
+    "close": "닫기",
+    "coming_soon": "곧 출시! 베타 등록 중이에요.",
     "fab_tooltip": "모치 부르기",
-    "coming_soon": "곧 출시! 베타 등록 중이에요."
+    "mic_denied": "마이크 권한이 필요해요. 브라우저 설정에서 허용해주세요.",
+    "mochi_label": "모치",
+    "panel_title": "모치 컨시어지",
+    "quota_exceeded": "오늘 사용 한도(10분)에 도달했어요. 내일 다시 만나요!",
+    "state_connecting": "연결 중",
+    "state_error": "연결에 문제가 있어요. 다시 시도해주세요.",
+    "state_idle": "말씀해 주세요",
+    "state_listening": "듣고 있어요",
+    "state_speaking": "말하고 있어요",
+    "you_label": "당신"
   },
   "Features": {
     "quotes": {
