@@ -90,6 +90,7 @@ export function TranslateConsole() {
   const dcRef = useRef<RTCDataChannel | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const ttsStreamRef = useRef<MediaStream | null>(null);
+  const outputPublishedRef = useRef(false);
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -143,6 +144,7 @@ export function TranslateConsole() {
     micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     micStreamRef.current = null;
     ttsStreamRef.current = null;
+    outputPublishedRef.current = false;
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -308,17 +310,55 @@ export function TranslateConsole() {
     }
     micStreamRef.current = mic;
 
+    // LiveKit FIRST — connect and publish the mic so viewers have something
+    // to subscribe to right away. The translated output track gets
+    // published from inside `pc.ontrack` below, the moment OpenAI starts
+    // sending us translated audio (which only happens once the host
+    // actually speaks). Publishing the output here too early — before
+    // the audio track exists — would silently no-op and viewers who
+    // toggle "Translation" later would hear nothing.
+    outputPublishedRef.current = false;
+    try {
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      await room.connect(bundle.livekit.url, bundle.livekit.token);
+      roomRef.current = room;
+      const inputTrack = new LocalAudioTrack(mic.getAudioTracks()[0]);
+      await room.localParticipant.publishTrack(inputTrack, { name: 'input' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'livekit_failed');
+      setStatus('error');
+      cleanup();
+      return;
+    }
+
     // OpenAI WebRTC
     const pc = new RTCPeerConnection();
     pcRef.current = pc;
     mic.getAudioTracks().forEach((tr) => pc.addTrack(tr, mic));
     pc.ontrack = (e) => {
-      ttsStreamRef.current = e.streams[0];
+      const stream = e.streams[0];
+      ttsStreamRef.current = stream;
       if (monitorAudioRef.current) {
-        monitorAudioRef.current.srcObject = e.streams[0];
+        monitorAudioRef.current.srcObject = stream;
         monitorAudioRef.current.muted = !monitorTranslation;
         monitorAudioRef.current.play().catch(() => {});
       }
+      // Publish the translated TTS track into LiveKit as soon as it
+      // shows up. ontrack can fire multiple times across renegotiations;
+      // guard with outputPublishedRef so we only publish once per session.
+      if (outputPublishedRef.current) return;
+      const ttsTrack = stream?.getAudioTracks()[0];
+      const room = roomRef.current;
+      if (!ttsTrack || !room) return;
+      outputPublishedRef.current = true;
+      const outputTrack = new LocalAudioTrack(ttsTrack);
+      room.localParticipant
+        .publishTrack(outputTrack, { name: 'output' })
+        .catch(() => {
+          // Allow a retry on the next ontrack if this one races with
+          // disconnect.
+          outputPublishedRef.current = false;
+        });
     };
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
@@ -344,32 +384,6 @@ export function TranslateConsole() {
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'webrtc_failed');
-      setStatus('error');
-      cleanup();
-      return;
-    }
-
-    // Wait briefly for ontrack to land so we can publish both tracks.
-    if (!ttsStreamRef.current) {
-      await new Promise((r) => setTimeout(r, 600));
-    }
-
-    // LiveKit publish
-    try {
-      const room = new Room({ adaptiveStream: true, dynacast: true });
-      await room.connect(bundle.livekit.url, bundle.livekit.token);
-      roomRef.current = room;
-      const inputTrack = new LocalAudioTrack(mic.getAudioTracks()[0]);
-      await room.localParticipant.publishTrack(inputTrack, { name: 'input' });
-      if (ttsStreamRef.current) {
-        const ttsTrack = ttsStreamRef.current.getAudioTracks()[0];
-        if (ttsTrack) {
-          const outputTrack = new LocalAudioTrack(ttsTrack);
-          await room.localParticipant.publishTrack(outputTrack, { name: 'output' });
-        }
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'livekit_failed');
       setStatus('error');
       cleanup();
       return;
