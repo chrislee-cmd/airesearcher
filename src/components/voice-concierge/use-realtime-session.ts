@@ -4,8 +4,8 @@
 //
 // Verified against @openai/agents@0.11.6 (re-exports from
 // @openai/agents-realtime):
-//   - `RealtimeAgent({ name, instructions, voice? })` — text-only ctor;
-//     tools optional, omitted in PR2 (PR3 wires them).
+//   - `RealtimeAgent({ name, instructions, tools? })` — text-only ctor;
+//     tools optional, wired in PR3 via the buildVoiceTools() factory.
 //   - `new RealtimeSession(agent, { transport: 'webrtc', model })` —
 //     transport defaults to WebRTC when run in a browser.
 //   - `session.connect({ apiKey })` — `apiKey` must be a string or a
@@ -18,6 +18,13 @@
 //     with role='user' (status='completed') or role='assistant'
 //     (status='completed' once the audio finishes).
 //   - `session.mute(muted)`, `session.close()`.
+//   - PR3: The public RealtimeSession surface does NOT have
+//     `session.update({ instructions })`. The closest options are
+//     `session.updateAgent(newAgent)` (rebuilds the whole agent — heavy)
+//     and `session.transport.updateSessionConfig({ instructions })` (the
+//     lighter, declared-API path). PR3 uses transport.updateSessionConfig
+//     for route-driven re-syncs since we only ever change the instructions
+//     string, never the tool set.
 //
 // The hook returns a stable state machine + transcript list; the
 // provider/panel are pure renderers.
@@ -29,6 +36,7 @@ import {
   type RealtimeItem,
 } from '@openai/agents/realtime';
 import { VOICE_MODEL, VOICE_PERSONA_NAME } from '@/lib/voice/config';
+import { buildVoiceTools, type VoiceRouter, type VoiceToastPush } from './tools';
 
 export type VoiceState =
   | 'idle'
@@ -57,6 +65,25 @@ export type UseRealtimeSessionResult = {
   start: (route: string, locale: 'ko' | 'en') => Promise<void>;
   stop: () => Promise<void>;
   toggleMute: () => void;
+  /** Push a refreshed system prompt to the live session. PR3: called by
+   *  the provider on pathname change. No-op if no session is connected. */
+  resyncInstructions: (route: string, locale: 'ko' | 'en') => Promise<void>;
+};
+
+export type UseRealtimeSessionDeps = {
+  /** next/navigation router instance — bound into the navigate /
+   *  startFeature / openPurchase tool execute() bodies. */
+  router: VoiceRouter;
+  /** Toast pusher — bound into the tool factory so the user sees
+   *  feedback for actions like "Navigating" / "Opening purchase". */
+  toast: VoiceToastPush;
+  /** Localized tool-status copy. */
+  toolCopy: {
+    navigating: string;
+    openingPurchase: string;
+    escalating: string;
+    highlightFallback: string;
+  };
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -95,7 +122,9 @@ function fetchErrorToKey(status: number, body: { error?: string } | null): Voice
 
 // ── Hook ────────────────────────────────────────────────────────────────
 
-export function useRealtimeSession(): UseRealtimeSessionResult {
+export function useRealtimeSession(
+  deps: UseRealtimeSessionDeps,
+): UseRealtimeSessionResult {
   const [state, setState] = useState<VoiceState>('idle');
   const [errorKey, setErrorKey] = useState<UseRealtimeSessionResult['errorKey']>();
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
@@ -114,6 +143,23 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
   // Latest transcript text we've already POSTed, keyed by item id.
   // Lets us flush only NEW final text on history_updated.
   const persistedTextRef = useRef<Map<string, string>>(new Map());
+  // Latest deps captured for tool factory rebuild. We stash them in a ref
+  // so the tool execute() bodies always close over the freshest router
+  // instance even if the provider re-renders. (next/navigation's router
+  // is stable across renders, but tool copy / toast push can change.)
+  // Updated in an effect rather than at render time so we don't violate
+  // the no-refs-during-render rule. The tools are built once per session
+  // inside start() and only read depsRef.current at that point — first
+  // render → first start() always sees the initial deps; subsequent
+  // re-renders flow through this effect before the user can click again.
+  const depsRef = useRef(deps);
+  useEffect(() => {
+    depsRef.current = deps;
+  }, [deps]);
+  // Resync-in-flight guard: if two route changes fire back-to-back we
+  // skip the second until the first completes — design §2.3 ("never two
+  // updates in flight at once").
+  const resyncingRef = useRef(false);
 
   // Last-20 cap on the in-memory transcript list. We don't paginate; the
   // panel is ephemeral and the server has the durable copy.
@@ -208,9 +254,21 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
         // model only sees a one-line stub and forgets the whole feature
         // catalog / persona / safety prompt. The server also still bakes
         // the same prompt into the ephemeral as a safety-net default.
+        //
+        // PR3: tools are now wired in via buildVoiceTools(). The SDK
+        // auto-feeds each tool.execute() return value back to the model
+        // as a function_call_output — no manual conversation.item.create.
+        const d = depsRef.current;
+        const tools = buildVoiceTools({
+          router: d.router,
+          toast: d.toast,
+          copy: d.toolCopy,
+          getSessionId: () => sessionIdRef.current,
+        });
         const agent = new RealtimeAgent({
           name: VOICE_PERSONA_NAME,
           instructions,
+          tools,
         });
         const session = new RealtimeSession(agent, {
           model: VOICE_MODEL,
@@ -257,7 +315,11 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
         session.on('audio_start', () => setIsAssistantSpeaking(true));
         session.on('audio_stopped', () => setIsAssistantSpeaking(false));
         session.on('audio_interrupted', () => setIsAssistantSpeaking(false));
-        session.on('error', () => {
+        session.on('error', (e) => {
+          // Surface the SDK error so we can actually diagnose 'generic'
+          // failures in the panel — the catch below swallowed everything
+          // in PR2/PR3 and we hit a tool-schema rejection blind.
+          console.error('[voice-concierge] session error', e);
           setState('error');
           setErrorKey('generic');
         });
@@ -266,7 +328,8 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
         await session.connect({ apiKey });
         setMuted(session.muted);
         setState('live');
-      } catch {
+      } catch (e) {
+        console.error('[voice-concierge] start() failed', e);
         setState('error');
         setErrorKey('generic');
         releaseMic();
@@ -275,6 +338,49 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
       }
     },
     [releaseMic],
+  );
+
+  // ── Resync instructions on route change (PR3) ─────────────────────────
+  //
+  // The provider drives this on usePathname() changes (debounce + diff
+  // already applied on its side). Here we just need to: (a) noop if
+  // there's no live session, (b) prevent overlapping requests, (c) push
+  // the new instructions via the transport layer (the only public
+  // surface the SDK exposes for live instruction swaps).
+  const resyncInstructions = useCallback(
+    async (route: string, locale: 'ko' | 'en') => {
+      const session = sessionRef.current;
+      if (!session) return;
+      if (resyncingRef.current) return;
+      resyncingRef.current = true;
+      try {
+        const res = await fetch('/api/voice/instructions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ route, locale }),
+        });
+        if (!res.ok) return;
+        const body = (await res.json().catch(() => null)) as {
+          instructions?: string;
+        } | null;
+        if (!body?.instructions) return;
+        try {
+          // updateSessionConfig is the declared transport-layer API for
+          // live config swaps (handoffs use the same path internally —
+          // see node_modules/.../transportLayer.d.ts comment).
+          session.transport.updateSessionConfig({
+            instructions: body.instructions,
+          });
+        } catch {
+          /* transport not ready / closed mid-resync — drop silently */
+        }
+      } catch {
+        /* network error during resync — drop, will retry on next nav */
+      } finally {
+        resyncingRef.current = false;
+      }
+    },
+    [],
   );
 
   const toggleMute = useCallback(() => {
@@ -312,5 +418,6 @@ export function useRealtimeSession(): UseRealtimeSessionResult {
     start,
     stop,
     toggleMute,
+    resyncInstructions,
   };
 }

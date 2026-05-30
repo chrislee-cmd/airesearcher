@@ -456,6 +456,10 @@
     "state_idle": "Speak to me",
     "state_listening": "Listening",
     "state_speaking": "Speaking",
+    "tool_escalating": "Forwarding to support",
+    "tool_highlight_fallback": "Look here",
+    "tool_navigating": "Navigating",
+    "tool_opening_purchase": "Opening purchase",
     "you_label": "You"
   },
   "Features": {

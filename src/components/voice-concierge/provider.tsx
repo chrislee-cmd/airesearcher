@@ -4,21 +4,29 @@
 //
 // PR2 rewrites the PR1 stub into a real state machine backed by
 // useRealtimeSession (which owns the mic + RealtimeAgent + RealtimeSession
-// lifecycle). The provider still gates the FAB on the PREVIEW flag, but
-// now also renders the expand panel and re-opens / closes the actual
-// realtime connection based on `open`.
+// lifecycle).
+//
+// PR3 wires two new things on top of PR2:
+//   1. Tools — we now hand the hook a router + toast + localized copy so
+//      it can bind those into the buildVoiceTools() factory.
+//   2. Context sync — usePathname() is captured and on every change the
+//      provider debounces 500ms then asks the hook to resync the
+//      session's instructions with the new route. Skipped if the route
+//      didn't actually change.
 
-import { usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { usePathname, useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { PREVIEW_FEATURES } from '@/lib/features';
+import { useToast } from '@/components/toast-provider';
 import { VoiceConciergeFab } from './fab';
 import { VoiceConciergePanel } from './panel';
 import { useRealtimeSession, type VoiceState } from './use-realtime-session';
@@ -39,16 +47,41 @@ type Props = {
   showPreviewFeatures: boolean;
 };
 
+/** ms to wait after a route change before pushing fresh instructions.
+ *  Per design §2.3 — debounce to avoid spamming the model on rapid SPA
+ *  navigations (sidebar tab-flipping etc.). */
+const ROUTE_RESYNC_DEBOUNCE_MS = 500;
+
 export function VoiceConciergeProvider({
   children,
   showPreviewFeatures,
 }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? '/dashboard';
+  const router = useRouter();
   const localeRaw = useLocale();
   const locale: 'ko' | 'en' = localeRaw === 'en' ? 'en' : 'ko';
 
-  const session = useRealtimeSession();
+  // Toast + tool-status copy threaded into the tool factory. We resolve
+  // these here (provider lives under ToastProvider in (app)/layout.tsx)
+  // so the hook stays framework-agnostic.
+  const toast = useToast();
+  const t = useTranslations('Concierge');
+  const toolCopy = useMemo(
+    () => ({
+      navigating: t('tool_navigating'),
+      openingPurchase: t('tool_opening_purchase'),
+      escalating: t('tool_escalating'),
+      highlightFallback: t('tool_highlight_fallback'),
+    }),
+    [t],
+  );
+
+  const session = useRealtimeSession({
+    router,
+    toast: toast.push,
+    toolCopy,
+  });
 
   // Whenever the panel opens, start a fresh realtime session. Closing
   // the panel tears it down. We intentionally don't keep the session
@@ -68,9 +101,9 @@ export function VoiceConciergeProvider({
 
   // Kick off the connection right after the panel becomes visible so the
   // user sees the "connecting" indicator immediately. usePathname /
-  // useLocale are captured at click time, which is what we want — even
-  // if the user SPA-navigates mid-session the agent's instructions stay
-  // pinned to the entry route (PR3 will add session.update on nav).
+  // useLocale are captured at click time — the entry route is what the
+  // initial instructions render around. Subsequent route changes are
+  // handled by the resync effect below.
   useEffect(() => {
     if (!open) return;
     if (session.state !== 'idle' && session.state !== 'error') return;
@@ -79,6 +112,49 @@ export function VoiceConciergeProvider({
     // the entry context is captured once per panel open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // ── PR3: route → resync ─────────────────────────────────────────────
+  //
+  // Track the last route we synced so we can skip no-op renders. We also
+  // hold a single timer ref so rapid navigations collapse to one resync.
+  const lastSyncedRouteRef = useRef<string | null>(null);
+  const resyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Only resync once we actually have a live session.
+    if (session.state !== 'live') return;
+    // First time the session is live we record the entry route so we
+    // don't immediately POST a no-op resync for the same path.
+    if (lastSyncedRouteRef.current === null) {
+      lastSyncedRouteRef.current = pathname;
+      return;
+    }
+    if (lastSyncedRouteRef.current === pathname) return;
+
+    if (resyncTimerRef.current) {
+      clearTimeout(resyncTimerRef.current);
+    }
+    const route = pathname;
+    resyncTimerRef.current = setTimeout(() => {
+      lastSyncedRouteRef.current = route;
+      void session.resyncInstructions(route, locale);
+    }, ROUTE_RESYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (resyncTimerRef.current) {
+        clearTimeout(resyncTimerRef.current);
+        resyncTimerRef.current = null;
+      }
+    };
+  }, [pathname, locale, session]);
+
+  // Reset the synced-route tracker when the session is torn down so the
+  // next open re-anchors to whatever route we're on then.
+  useEffect(() => {
+    if (session.state === 'idle') {
+      lastSyncedRouteRef.current = null;
+    }
+  }, [session.state]);
 
   const value = useMemo<Ctx>(
     () => ({
