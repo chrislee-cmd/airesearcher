@@ -87,6 +87,13 @@ export function TranslateViewer({
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Mobile browsers (especially iOS Safari) block <audio>.play() that
+  // wasn't called from inside a user gesture. LiveKit signals this via
+  // RoomEvent.AudioPlaybackStatusChanged. When blocked we show a
+  // tap-to-enable banner and call room.startAudio() from the click —
+  // that single user-gesture unlocks playback for every track in the
+  // room.
+  const [needsTap, setNeedsTap] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -136,8 +143,19 @@ export function TranslateViewer({
         }
       }
     }
-    if (inputAudioRef.current) inputAudioRef.current.muted = mode !== 'input';
-    if (outputAudioRef.current) outputAudioRef.current.muted = mode !== 'output';
+    if (inputAudioRef.current) {
+      inputAudioRef.current.muted = mode !== 'input';
+      // Re-trigger play() so a mode change inside a user gesture (the
+      // radio click) carries the playback permission through to the
+      // <audio> element on mobile browsers. The catch is fine: if it's
+      // already playing, play() rejects with NotAllowedError on some
+      // engines and we don't care.
+      if (mode === 'input') void inputAudioRef.current.play().catch(() => {});
+    }
+    if (outputAudioRef.current) {
+      outputAudioRef.current.muted = mode !== 'output';
+      if (mode === 'output') void outputAudioRef.current.play().catch(() => {});
+    }
   }, [mode]);
 
   useEffect(() => {
@@ -253,10 +271,15 @@ export function TranslateViewer({
       setStatus('ended');
     };
 
+    const onAudioPlaybackChanged = () => {
+      setNeedsTap(!room.canPlaybackAudio);
+    };
+
     room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
     room.on(RoomEvent.Disconnected, onDisconnected);
+    room.on(RoomEvent.AudioPlaybackStatusChanged, onAudioPlaybackChanged);
 
     (async () => {
       try {
@@ -272,6 +295,10 @@ export function TranslateViewer({
         // Default to "input" audio on subscribe so the visitor hears
         // exactly one track when they land.
         applyMode();
+        // canPlaybackAudio is initialized before connect resolves; if
+        // the engine pre-blocked playback we surface the tap-to-enable
+        // banner immediately rather than waiting for the first track.
+        if (!room.canPlaybackAudio) setNeedsTap(true);
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : 'connect_failed');
@@ -284,6 +311,7 @@ export function TranslateViewer({
       room.off(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
+      room.off(RoomEvent.AudioPlaybackStatusChanged, onAudioPlaybackChanged);
       void room.disconnect();
       roomRef.current = null;
     };
@@ -296,6 +324,35 @@ export function TranslateViewer({
 
   const visibleInput = useMemo(() => inputLines.slice(-40), [inputLines]);
   const visibleOutput = useMemo(() => outputLines.slice(-40), [outputLines]);
+
+  // Synchronous user-gesture handler. On mobile we MUST call
+  // room.startAudio() and the corresponding <audio>.play() from inside
+  // this click — promises chained off it lose the gesture permission.
+  const enableAudio = useCallback(() => {
+    const room = roomRef.current;
+    if (room) {
+      void room.startAudio().catch(() => {});
+    }
+    if (mode === 'input') void inputAudioRef.current?.play().catch(() => {});
+    if (mode === 'output') void outputAudioRef.current?.play().catch(() => {});
+    setNeedsTap(false);
+  }, [mode]);
+
+  // When the visitor taps a different radio, that click is itself a user
+  // gesture so we can opportunistically also unlock audio in case the
+  // initial state wasn't tappable.
+  const selectMode = useCallback(
+    (m: AudioMode) => {
+      const room = roomRef.current;
+      if (room && !room.canPlaybackAudio) {
+        void room.startAudio().catch(() => {});
+      }
+      setMode(m);
+      if (m === 'input') void inputAudioRef.current?.play().catch(() => {});
+      if (m === 'output') void outputAudioRef.current?.play().catch(() => {});
+    },
+    [],
+  );
 
   return (
     <div className="space-y-5">
@@ -323,6 +380,18 @@ export function TranslateViewer({
         </span>
       </header>
 
+      {needsTap ? (
+        <button
+          onClick={enableAudio}
+          className="flex w-full items-center justify-between rounded-[4px] border border-amore bg-amore px-4 py-3 text-[13px] text-paper hover:opacity-90"
+        >
+          <span>Tap to enable audio</span>
+          <span className="text-[11px] opacity-80">
+            Mobile browsers require a tap to start playback
+          </span>
+        </button>
+      ) : null}
+
       <fieldset className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12.5px] text-ink">
         <legend className="px-1 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
           Audio
@@ -333,7 +402,7 @@ export function TranslateViewer({
               type="radio"
               name="audio-mode"
               checked={mode === m}
-              onChange={() => setMode(m)}
+              onChange={() => selectMode(m)}
             />
             {m === 'input' && `${COPY.audioInput} (${langName(sourceLang)})`}
             {m === 'output' && `${COPY.audioOutput} (${langName(targetLang)})`}
