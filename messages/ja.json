@@ -726,6 +726,12 @@
   "TranslateConsole": {
     "sourceLang": "原語",
     "targetLang": "翻訳先",
+    "inputSource": {
+      "label": "入力ソース",
+      "mic": "マイク",
+      "tab": "オンライン会議（タブ音声）",
+      "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
+    },
     "recordEnabled": "字幕を保存",
     "monitor": "翻訳音声モニター",
     "start": "通訳を開始",
@@ -736,6 +742,11 @@
     "emptySource": "マイクの音声がここに表示されます。",
     "emptyTarget": "翻訳結果がここにストリームされます。",
     "errorPrefix": "エラー:",
+    "errors": {
+      "microphone_denied": "マイクの権限が拒否されました。アドレスバーの鍵アイコンから許可してください。",
+      "tab_audio_denied": "タブ音声の共有がキャンセルされました。もう一度開始して共有を承認してください。",
+      "tab_audio_unavailable": "選択した画面には共有可能な音声がありません。共有ダイアログで「Chrome タブ」を選び、下部の「タブの音声を共有」をオンにしてください。（Chrome デスクトップのみ対応）"
+    },
     "status": {
       "idle": "待機",
       "starting": "接続中",

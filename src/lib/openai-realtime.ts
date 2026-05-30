@@ -1,13 +1,23 @@
 // OpenAI Realtime ephemeral session issuer.
 //
-// We now use the **dedicated translation model** `gpt-realtime-translate`
+// We use the **dedicated translation model** `gpt-realtime-translate`
 // at the `/v1/realtime/translations/*` endpoint family. This model has
 // no conversation lifecycle and no turn detection — it streams source
 // transcription, translated transcription, and translated audio
 // continuously as input audio arrives. That's the actual simultaneous
-// interpretation behaviour a UN-style interpreter has, instead of the
-// conversational `gpt-realtime` model which always waits for a turn
-// boundary before responding.
+// interpretation behaviour a UN-style interpreter has.
+//
+// The conversational `gpt-realtime` model — with any VAD setting,
+// server or semantic — always pauses on a turn boundary before
+// emitting. That cadence cannot ship as live interpretation, so it is
+// not an option here.
+//
+// Source-language transcript: the WebRTC variant of the translations
+// API does not auto-emit `session.input_transcript.delta` events.
+// They only appear when input transcription is explicitly enabled via
+// `audio.input.transcription`, with `gpt-4o-mini-transcribe` as the
+// model (chosen over `gpt-4o-transcribe` because it produced cleaner
+// captions in side-by-side testing).
 //
 // Reference: https://developers.openai.com/api/docs/guides/realtime-translation
 
@@ -45,6 +55,9 @@ export async function issueRealtimeSession(opts: {
     session: {
       model,
       audio: {
+        input: {
+          transcription: { model: 'gpt-4o-mini-transcribe' },
+        },
         output: { language: opts.targetLang },
       },
     },

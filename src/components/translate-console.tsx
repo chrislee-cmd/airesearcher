@@ -60,8 +60,11 @@ const LANGS: { value: string; label: string }[] = [
   { value: 'es', label: 'Español' },
 ];
 
-// Heuristic sentence boundary used by the translation client to split
-// the continuous delta stream into committable caption lines.
+// Heuristic sentence boundary used to split the translations-API
+// continuous delta stream into committable caption lines. The
+// translations endpoint emits no `.completed` event, so we commit on
+// punctuation and treat everything between boundaries as the rolling
+// in-flight line.
 const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 
 function formatElapsed(ms: number) {
@@ -80,6 +83,12 @@ export function TranslateConsole() {
   const [targetLang, setTargetLang] = useState('en');
   const [recordEnabled, setRecordEnabled] = useState(true);
   const [monitorTranslation, setMonitorTranslation] = useState(true);
+  // 'mic' = host's microphone; 'tab' = a browser tab's audio
+  // (e.g. a Zoom/Meet/Teams call running in another tab). Tab capture
+  // goes through getDisplayMedia, which on every supported browser
+  // requires a user gesture and a tab-picker UI, so we lock this to
+  // the host's choice and only acquire when the host clicks Start.
+  const [inputSource, setInputSource] = useState<'mic' | 'tab'>('mic');
 
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
@@ -231,8 +240,6 @@ export function TranslateConsole() {
       const next = current.text + delta;
       const match = next.match(SENTENCE_END);
       if (match && match.index !== undefined) {
-        // Split the buffer at the sentence boundary. The completed part
-        // becomes a final line; whatever comes after starts a new line.
         const cut = match.index + match[1].length;
         const finalText = next.slice(0, cut).trim();
         const remainder = next.slice(cut).trim();
@@ -271,7 +278,8 @@ export function TranslateConsole() {
       }
       const type = msg.type ?? '';
 
-      // Source language transcript — streams live as the speaker talks.
+      // Source-language transcript — emitted by gpt-realtime-translate
+      // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
         appendStreaming('input', String(msg.delta ?? ''), sourceLang);
         return;
@@ -322,12 +330,45 @@ export function TranslateConsole() {
 
     sessionIdRef.current = bundle.session.id;
 
-    // Mic
+    // Source stream — either the host's microphone or a captured
+    // browser tab's audio (Zoom/Meet/Teams running in another tab).
+    // `mic` keeps the variable name because the rest of the pipeline
+    // (LiveKit "input" publish, OpenAI WebRTC addTrack, cleanup via
+    // micStreamRef) doesn't care which kind of capture it is.
     let mic: MediaStream;
     try {
-      mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (inputSource === 'tab') {
+        // getDisplayMedia requires a video constraint on every browser
+        // that supports tab-audio capture; we ask for the cheapest
+        // surface (browser tab) and immediately stop the video track
+        // since we never render or upload it.
+        const display = await navigator.mediaDevices.getDisplayMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          video: { displaySurface: 'browser' },
+        });
+        display.getVideoTracks().forEach((tr) => tr.stop());
+        const audioTracks = display.getAudioTracks();
+        if (audioTracks.length === 0) {
+          // The host picked a surface but didn't enable "Share tab
+          // audio" in the picker — or the platform doesn't support
+          // it (Safari, most mobile browsers). Without an audio
+          // track there's nothing to translate, so surface a
+          // dedicated error instead of silently going live.
+          display.getTracks().forEach((tr) => tr.stop());
+          setError('tab_audio_unavailable');
+          setStatus('error');
+          return;
+        }
+        mic = new MediaStream(audioTracks);
+      } else {
+        mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
     } catch {
-      setError('microphone_denied');
+      setError(inputSource === 'tab' ? 'tab_audio_denied' : 'microphone_denied');
       setStatus('error');
       return;
     }
@@ -478,6 +519,7 @@ export function TranslateConsole() {
   }, [
     cleanup,
     handleOaiEvent,
+    inputSource,
     monitorTranslation,
     recordEnabled,
     sourceLang,
@@ -625,6 +667,29 @@ export function TranslateConsole() {
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+          <span className="flex items-center gap-1">
+            {t('inputSource.label')}
+            {inputSource === 'tab' ? (
+              <span
+                aria-label={t('inputSource.tabHint')}
+                title={t('inputSource.tabHint')}
+                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-[9px] leading-none text-mute-soft"
+              >
+                ?
+              </span>
+            ) : null}
+          </span>
+          <select
+            value={inputSource}
+            onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
+            disabled={live || busy}
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+          >
+            <option value="mic">{t('inputSource.mic')}</option>
+            <option value="tab">{t('inputSource.tab')}</option>
+          </select>
+        </label>
         <label className="flex items-center gap-2 text-[12.5px] text-mute">
           <input
             type="checkbox"
@@ -715,7 +780,7 @@ export function TranslateConsole() {
 
       {error ? (
         <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
-          {t('errorPrefix')} {error}
+          {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
         </div>
       ) : null}
 
