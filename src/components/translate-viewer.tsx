@@ -204,8 +204,16 @@ export function TranslateViewer({
   // Connect to the LiveKit room as a subscribe-only viewer. We grab a
   // short-lived token from our public API rather than handing the
   // viewer the host token.
+  //
+  // IMPORTANT: this effect must only re-run when `token` changes. Earlier
+  // versions had `status` in the dep array — once `onParticipantConnected`
+  // flipped status to 'live', the effect tore the room down and
+  // immediately rebuilt it. That cycle (connect → setStatus('live') →
+  // disconnect → reconnect) is what produced the symptom where the host
+  // tracks "unpublished" right after the viewer joined and no audio
+  // ever started flowing for the Translation track.
   useEffect(() => {
-    if (status === 'ended') return;
+    if (initialStatus === 'ended') return;
     let cancelled = false;
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
@@ -279,11 +287,12 @@ export function TranslateViewer({
       void room.disconnect();
       roomRef.current = null;
     };
-    // Re-running on `mode` would tear down the room every toggle — we
-    // intentionally exclude it and rely on `applyMode()` running via
-    // its own effect.
+    // We intentionally do NOT include `status`, `mode`, or `applyMode`
+    // in the deps: those change as a result of the room running, and
+    // adding them would tear the room down on every event. The room
+    // lives for as long as the token does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, status]);
+  }, [token, initialStatus]);
 
   const visibleInput = useMemo(() => inputLines.slice(-40), [inputLines]);
   const visibleOutput = useMemo(() => outputLines.slice(-40), [outputLines]);
