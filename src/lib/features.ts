@@ -12,7 +12,8 @@ export type FeatureKey =
   | 'survey'
   | 'quant'
   | 'affinity_bubble'
-  | 'video';
+  | 'video'
+  | 'translate';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -41,6 +42,11 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // video is priced dynamically by duration (2 credits per started 10min);
   // the value here is the minimum charge surfaced in sidebar / cost pills.
   { key: 'video', href: '/video', cost: 2 },
+  // AI 동시통역. Lump 50 credits (₩100k) covers the first 10 minutes; each
+  // additional 10-minute window adds 10 credits (₩20k). Sidebar shows the
+  // lump as the headline number; the per-10-minute surcharge lives in the
+  // locale `Features.translate.cost` string.
+  { key: 'translate', href: '/live', cost: 50 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
@@ -55,6 +61,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'scheduler',
   'quant',
   'video',
+  'translate',
 ]);
 
 // Single source of truth for credit pricing — read by both the
@@ -119,6 +126,6 @@ export const FEATURE_GROUPS: {
   features: FeatureKey[];
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
-  { key: 'conduct', features: ['moderator', 'survey'] },
+  { key: 'conduct', features: ['moderator', 'survey', 'translate'] },
   { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'affinity_bubble'] },
 ];

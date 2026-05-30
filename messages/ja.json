@@ -204,6 +204,7 @@
     "quant": "定量分析",
     "affinity_bubble": "アフィニティバブル",
     "video": "ビデオアナライザー",
+    "translate": "AI同時通訳",
     "members": "メンバー",
     "organizations": "組織",
     "settings": "設定",
@@ -581,6 +582,11 @@
       "title": "ビデオアナライザー",
       "description": "ユーザーテストやインタビューの録画をアップロードすると、AIが行動パターン、課題、重要な瞬間を分析します。",
       "cost": "10分・1回の分析につき2クレジット"
+    },
+    "translate": {
+      "title": "AI同時通訳",
+      "description": "マイクの音声をOpenAI Realtimeがリアルタイムに通訳します。共有リンクを発行すれば、外部の視聴者も字幕と音声を選んで利用できます。",
+      "cost": "開始時に50クレジット、以降10分ごとに10クレジット"
     }
   },
   "Quant": {
@@ -716,6 +722,9 @@
       "JP": "日本",
       "GLOBAL": "グローバル"
     }
+  },
+  "TranslateConsole": {
+    "foundationPlaceholder": "AI同時通訳のコンソールは現在準備中です。次回のアップデートでマイク収音・字幕ストリーミング・共有リンク発行が有効になります。"
   },
   "Workspace": {
     "eyebrow": "ワークスペース",

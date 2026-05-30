@@ -204,6 +204,7 @@
     "quant": "정량조사 분석",
     "affinity_bubble": "Affinity Bubble",
     "video": "영상분석기",
+    "translate": "AI 동시통역",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -586,6 +587,11 @@
       "title": "영상분석기",
       "description": "사용자 테스트·인터뷰 영상을 업로드하면 AI가 행동 패턴, 페인포인트, 주요 순간을 분석합니다.",
       "cost": "분석 1회당 영상 10분마다 2크레딧"
+    },
+    "translate": {
+      "title": "AI 동시통역",
+      "description": "마이크로 말한 내용을 OpenAI Realtime이 실시간으로 통역합니다. 공유 링크를 만들어 외부 청취자에게도 자막과 오디오를 그대로 전달합니다.",
+      "cost": "시작 시 50크레딧, 이후 10분당 10크레딧"
     }
   },
   "Quant": {
@@ -722,6 +728,9 @@
       "JP": "일본",
       "GLOBAL": "글로벌"
     }
+  },
+  "TranslateConsole": {
+    "foundationPlaceholder": "AI 동시통역 콘솔은 준비 중입니다. 다음 업데이트에서 마이크 활성화·실시간 자막·공유 링크 발급이 켜집니다."
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
