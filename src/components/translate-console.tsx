@@ -480,15 +480,19 @@ export function TranslateConsole() {
     dc.onerror = (e) => {
       console.warn('[translate] DC error', e);
     };
+    // Track the first time we see each event type so we can dump its
+    // full payload once, then mute it. This reveals the real
+    // schema OpenAI is sending without flooding the console.
+    const seenTypes = new Set<string>();
     dc.onmessage = (ev) => {
       const raw = String(ev.data);
-      // Log the bare event type so we can confirm the server is sending
-      // what we expect (input/output transcript deltas) vs something
-      // unexpected. The full payload stays out of the log unless the
-      // parse fails, to avoid flooding the console.
       try {
-        const t = (JSON.parse(raw) as { type?: string }).type;
-        console.info('[translate] DC msg type=', t);
+        const obj = JSON.parse(raw) as { type?: string };
+        const t = obj.type ?? '<no-type>';
+        if (!seenTypes.has(t)) {
+          seenTypes.add(t);
+          console.info('[translate] DC NEW type=%s — full payload:', t, obj);
+        }
       } catch {
         console.warn('[translate] DC msg unparseable', raw.slice(0, 200));
       }
