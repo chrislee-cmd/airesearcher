@@ -40,11 +40,20 @@ export async function issueRealtimeSession(opts: {
   if (!apiKey) throw new Error('missing_openai_key');
 
   const model = realtimeModel();
+  // The translation guide claims `session.input_transcript.delta`
+  // events fire automatically, but in practice the API only emits
+  // them when source-language transcription is explicitly enabled
+  // via the standard Realtime config shape — the translations
+  // endpoint inherits this from the base realtime contract even
+  // though the translation guide doesn't document it.
   const body = {
     expires_after: { anchor: 'created_at', seconds: DEFAULT_TTL_SECONDS },
     session: {
       model,
       audio: {
+        input: {
+          transcription: { model: 'gpt-4o-transcribe' },
+        },
         output: { language: opts.targetLang },
       },
     },
