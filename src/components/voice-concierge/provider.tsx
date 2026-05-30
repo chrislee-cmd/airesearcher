@@ -30,6 +30,7 @@ import { useToast } from '@/components/toast-provider';
 import { VoiceConciergeFab } from './fab';
 import { VoiceConciergePanel } from './panel';
 import { useRealtimeSession, type VoiceState } from './use-realtime-session';
+import { HighlightOverlay } from './highlight-overlay';
 
 type Ctx = {
   /** Whether the expand panel is mounted/visible. */
@@ -83,11 +84,33 @@ export function VoiceConciergeProvider({
     toolCopy,
   });
 
+  // PR4 Bundle 1: decide whether to ask the model for a proactive
+  // greeting on connect. We can't share useState with the FAB (separate
+  // hook instances), so we ref-capture the value at click time from
+  // localStorage directly. The FAB also writes the same key so the cue
+  // disappears after the first open even if the user closes the panel
+  // without connecting.
+  const greetOnNextStartRef = useRef(false);
+
   // Whenever the panel opens, start a fresh realtime session. Closing
   // the panel tears it down. We intentionally don't keep the session
   // alive across closes — quota counts down by duration, and a dormant
   // session is wasteful.
   const openConcierge = useCallback(() => {
+    // PR4 Bundle 1: capture whether this is a first-time open BEFORE
+    // anything else mutates localStorage. The FAB also writes the seen
+    // flag during the same click, but the FAB and provider both call
+    // this captures from the same event-loop turn so reading here is
+    // deterministic.
+    try {
+      const seen = window.localStorage.getItem('voice_concierge_intro_seen');
+      greetOnNextStartRef.current = seen !== 'seen';
+      // Write the seen flag here too — defense in depth against the FAB
+      // path being bypassed (e.g. external open from a future deep link).
+      window.localStorage.setItem('voice_concierge_intro_seen', 'seen');
+    } catch {
+      greetOnNextStartRef.current = false;
+    }
     setOpen(true);
   }, []);
   const closeConcierge = useCallback(() => {
@@ -107,7 +130,12 @@ export function VoiceConciergeProvider({
   useEffect(() => {
     if (!open) return;
     if (session.state !== 'idle' && session.state !== 'error') return;
-    void session.start(pathname, locale);
+    void session.start(pathname, locale, {
+      greet: greetOnNextStartRef.current,
+    });
+    // Consume the one-shot flag so a manual close/reopen in the same
+    // tab doesn't re-trigger the greeting.
+    greetOnNextStartRef.current = false;
     // We intentionally do not re-trigger on pathname/locale changes —
     // the entry context is captured once per panel open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,10 +211,15 @@ export function VoiceConciergeProvider({
               transcripts={session.transcripts}
               isAssistantSpeaking={session.isAssistantSpeaking}
               muted={session.muted}
+              textMode={session.textMode}
               onClose={closeConcierge}
               onToggleMute={session.toggleMute}
+              onSendText={session.sendText}
+              onSetTextMode={session.setTextMode}
             />
           )}
+          {/* PR4 Bundle 4: global listener for highlightUI tool calls. */}
+          <HighlightOverlay />
         </>
       )}
     </VoiceConciergeCtx.Provider>
