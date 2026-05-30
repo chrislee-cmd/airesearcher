@@ -128,28 +128,14 @@ export function TranslateViewer({
   //   1. setSubscribed on the unwanted track so the SFU stops shipping it
   //   2. <audio>.muted on the corresponding element so any in-flight
   //      buffer doesn't slip through during the unsubscribe round-trip
+  // iOS-friendly mode application: BOTH tracks stay subscribed, we only
+  // toggle the <audio>.muted attribute. iOS Safari can wedge if a track
+  // is unsubscribed and re-subscribed mid-session (the first audio
+  // chunk after re-subscription silently fails to decode), so the
+  // subscribe lifecycle is now bound to the room, not the mode.
   const applyMode = useCallback(() => {
-    const room = roomRef.current;
-    if (room) {
-      for (const k of ['input', 'output'] as const) {
-        const want = mode === k;
-        const pub = trackPubByNameRef.current[k];
-        if (pub) {
-          try {
-            pub.setSubscribed(want);
-          } catch {
-            // ignore — race with disconnect
-          }
-        }
-      }
-    }
     if (inputAudioRef.current) {
       inputAudioRef.current.muted = mode !== 'input';
-      // Re-trigger play() so a mode change inside a user gesture (the
-      // radio click) carries the playback permission through to the
-      // <audio> element on mobile browsers. The catch is fine: if it's
-      // already playing, play() rejects with NotAllowedError on some
-      // engines and we don't care.
       if (mode === 'input') void inputAudioRef.current.play().catch(() => {});
     }
     if (outputAudioRef.current) {
@@ -247,17 +233,25 @@ export function TranslateViewer({
       if (name !== 'input' && name !== 'output') return;
       trackByNameRef.current[name] = track as RemoteAudioTrack;
       trackPubByNameRef.current[name] = pub;
-      const el = name === 'input' ? inputAudioRef.current : outputAudioRef.current;
-      if (el) {
-        track.attach(el);
-        el.muted = mode !== name;
-        el.play().catch((err) => {
-          console.warn('[viewer] play blocked, awaiting tap', { name, err });
-          // autoplay may be blocked until the viewer interacts — the
-          // tap-to-enable banner will surface from
-          // RoomEvent.AudioPlaybackStatusChanged
-        });
-      }
+      // Let LiveKit own the <audio> element. It returns one already
+      // wired up with the right attributes for iOS Safari/Chrome
+      // (playsinline, autoplay, etc.). We bind that managed element to
+      // our ref so mute/play decisions go to the same node LiveKit is
+      // feeding.
+      const audioEl = track.attach() as HTMLAudioElement;
+      audioEl.style.position = 'fixed';
+      audioEl.style.left = '-9999px';
+      audioEl.style.width = '1px';
+      audioEl.style.height = '1px';
+      audioEl.muted = mode !== name;
+      document.body.appendChild(audioEl);
+      if (name === 'input') inputAudioRef.current = audioEl;
+      else outputAudioRef.current = audioEl;
+      // Always call play(); iOS lets a muted element start streaming so
+      // that when the user later unmutes, the buffer is already flowing.
+      audioEl.play().catch((err) => {
+        console.warn('[viewer] play blocked, awaiting tap', { name, err });
+      });
     };
 
     const onTrackUnsubscribed = (
@@ -322,6 +316,20 @@ export function TranslateViewer({
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.off(RoomEvent.AudioPlaybackStatusChanged, onAudioPlaybackChanged);
+      // Detach + remove the LiveKit-managed <audio> elements from the
+      // DOM. Skipping this leaves them appended to body across
+      // remounts.
+      for (const k of ['input', 'output'] as const) {
+        const t = trackByNameRef.current[k];
+        try {
+          t?.detach().forEach((el) => el.remove());
+        } catch {
+          // ignore
+        }
+        trackByNameRef.current[k] = null;
+        if (k === 'input') inputAudioRef.current = null;
+        else outputAudioRef.current = null;
+      }
       void room.disconnect();
       roomRef.current = null;
     };
@@ -435,21 +443,9 @@ export function TranslateViewer({
         <CaptionColumn label={`${langName(targetLang)} (Translation)`} lines={visibleOutput} />
       </div>
 
-      {/* iOS Safari treats `display:none` audio as inert and won't
-          dispatch playback events on it. Position them off-screen with
-          visibility instead so the engine still wires them up. */}
-      <audio
-        ref={inputAudioRef}
-        autoPlay
-        playsInline
-        style={{ position: 'fixed', left: '-9999px', width: 1, height: 1 }}
-      />
-      <audio
-        ref={outputAudioRef}
-        autoPlay
-        playsInline
-        style={{ position: 'fixed', left: '-9999px', width: 1, height: 1 }}
-      />
+      {/* No pre-created <audio> elements: LiveKit's track.attach() now
+          creates them inside onTrackSubscribed (it sets iOS-correct
+          attributes and appends them to the body). */}
     </div>
   );
 }
