@@ -16,6 +16,7 @@ import { VideoJobProvider } from '@/components/video-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
+import { VoiceConciergeProvider } from '@/components/voice-concierge';
 
 export default async function AppLayout({
   children,
@@ -45,6 +46,7 @@ export default async function AppLayout({
   return (
     <PaywallProvider>
      <ToastProvider>
+     <VoiceConciergeProvider showPreviewFeatures={flags.isUnlimited}>
      <VideoJobProvider>
      <InterviewJobProvider>
       <TranscriptJobProvider>
@@ -73,6 +75,7 @@ export default async function AppLayout({
       </TranscriptJobProvider>
      </InterviewJobProvider>
      </VideoJobProvider>
+     </VoiceConciergeProvider>
      </ToastProvider>
     </PaywallProvider>
   );

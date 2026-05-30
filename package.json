@@ -13,6 +13,7 @@
     "@ai-sdk/openai": "^3.0.58",
     "@ai-sdk/react": "^3.0.176",
     "@deepgram/sdk": "^5.1.0",
+    "@openai/agents": "^0.11.6",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "ai": "^6.0.174",

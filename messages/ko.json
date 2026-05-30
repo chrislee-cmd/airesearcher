@@ -443,6 +443,10 @@
       "pptx": "파워포인트"
     }
   },
+  "Concierge": {
+    "fab_tooltip": "모치 부르기",
+    "coming_soon": "곧 출시! 베타 등록 중이에요."
+  },
   "Features": {
     "quotes": {
       "title": "전사록 생성기",
@@ -592,6 +596,11 @@
       "title": "AI 동시통역",
       "description": "마이크로 말한 내용을 OpenAI Realtime이 실시간으로 통역합니다. 공유 링크를 만들어 외부 청취자에게도 자막과 오디오를 그대로 전달합니다.",
       "cost": "시작 시 50크레딧, 이후 10분당 10크레딧"
+    },
+    "voice_concierge": {
+      "title": "보이스 컨시어지",
+      "description": "말로 모치를 부르세요. 어떤 화면에서든 도와드려요.",
+      "cost": "무료 베타"
     }
   },
   "Quant": {
