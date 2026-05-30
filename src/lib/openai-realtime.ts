@@ -1,12 +1,20 @@
 // OpenAI Realtime ephemeral session issuer.
 //
 // We hold the API key on the server and hand the browser a short-lived
-// client_secret (~60s). The browser uses it to set up a WebRTC peer
-// connection directly with OpenAI — audio in, audio + text out.
+// client_secret (default 600s). The browser uses it as a Bearer token
+// when posting its WebRTC SDP offer to /v1/realtime/calls — model and
+// session config are already bound to the token server-side.
+//
+// API surface (verified 2026-05): the older `/v1/realtime/sessions`
+// endpoint that returned `{ client_secret: { value, expires_at } }` is
+// gone (404). The current shape is `/v1/realtime/client_secrets` with a
+// nested `{ session: {...} }` body and a flat `client_secret` string
+// (`ek_...`) in the response.
 
 import { buildTranslateInstructions } from './translate-instructions';
 
-const REALTIME_SESSIONS_URL = 'https://api.openai.com/v1/realtime/sessions';
+const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
+const DEFAULT_TTL_SECONDS = 600;
 
 export type OpenAIRealtimeClientSecret = {
   value: string;
@@ -14,13 +22,12 @@ export type OpenAIRealtimeClientSecret = {
 };
 
 export type OpenAIRealtimeSession = {
-  id: string;
-  model: string;
   client_secret: OpenAIRealtimeClientSecret;
+  model: string;
 };
 
 export function realtimeModel(): string {
-  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime';
+  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-2';
 }
 
 export async function issueRealtimeSession(opts: {
@@ -31,16 +38,25 @@ export async function issueRealtimeSession(opts: {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
 
+  const model = realtimeModel();
   const body = {
-    model: realtimeModel(),
-    voice: opts.voice ?? 'verse',
-    modalities: ['audio', 'text'],
-    input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
-    turn_detection: { type: 'server_vad' },
-    instructions: buildTranslateInstructions(opts.sourceLang, opts.targetLang),
+    expires_after: { anchor: 'created_at', seconds: DEFAULT_TTL_SECONDS },
+    session: {
+      type: 'realtime',
+      model,
+      instructions: buildTranslateInstructions(opts.sourceLang, opts.targetLang),
+      output_modalities: ['audio'],
+      audio: {
+        input: {
+          transcription: { model: 'gpt-4o-mini-transcribe' },
+          turn_detection: { type: 'server_vad' },
+        },
+        output: { voice: opts.voice ?? 'verse' },
+      },
+    },
   };
 
-  const res = await fetch(REALTIME_SESSIONS_URL, {
+  const res = await fetch(CLIENT_SECRETS_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -54,9 +70,23 @@ export async function issueRealtimeSession(opts: {
     throw new Error(`openai_realtime_session_failed: ${res.status} ${detail.slice(0, 200)}`);
   }
 
-  const json = (await res.json()) as OpenAIRealtimeSession;
-  if (!json?.client_secret?.value) {
+  // New response shape: { value: "ek_...", expires_at: 1234567890, session: {...} }
+  // The field name is `value` (not nested under `client_secret`) in the
+  // current `/client_secrets` API.
+  const json = (await res.json()) as {
+    value?: string;
+    client_secret?: string;
+    expires_at?: number;
+  };
+  const value = json.value ?? json.client_secret;
+  if (!value || typeof value !== 'string') {
     throw new Error('openai_realtime_session_invalid_response');
   }
-  return json;
+  return {
+    model,
+    client_secret: {
+      value,
+      expires_at: json.expires_at ?? Math.floor(Date.now() / 1000) + DEFAULT_TTL_SECONDS,
+    },
+  };
 }

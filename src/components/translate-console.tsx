@@ -314,17 +314,16 @@ export function TranslateConsole() {
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      const sdpRes = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(bundle.openai.model)}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${bundle.openai.client_secret.value}`,
-            'Content-Type': 'application/sdp',
-          },
-          body: offer.sdp ?? '',
+      // SDP exchange URL changed: model is bound to the ephemeral token
+      // server-side, so we no longer send it on the URL.
+      const sdpRes = await fetch('https://api.openai.com/v1/realtime/calls', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${bundle.openai.client_secret.value}`,
+          'Content-Type': 'application/sdp',
         },
-      );
+        body: offer.sdp ?? '',
+      });
       if (!sdpRes.ok) throw new Error(`openai_sdp_${sdpRes.status}`);
       const answerSdp = await sdpRes.text();
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
