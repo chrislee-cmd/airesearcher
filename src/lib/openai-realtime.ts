@@ -49,7 +49,16 @@ export async function issueRealtimeSession(opts: {
       audio: {
         input: {
           transcription: { model: 'gpt-4o-mini-transcribe' },
-          turn_detection: { type: 'server_vad' },
+          // semantic_vad with eagerness=high chunks audio as soon as the
+          // model has enough semantic context to translate — emulates
+          // simultaneous (overlapping) interpretation instead of waiting
+          // for a silence gap like server_vad does.
+          turn_detection: {
+            type: 'semantic_vad',
+            eagerness: 'high',
+            create_response: true,
+            interrupt_response: true,
+          },
         },
         output: { voice: opts.voice ?? 'verse' },
       },
