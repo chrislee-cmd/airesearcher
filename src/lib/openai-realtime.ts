@@ -4,9 +4,19 @@
 // interpreter system prompt rather than the dedicated
 // `gpt-realtime-translate` model. The translation-only model has no
 // voice control and emits a coarser source-language transcript, both
-// of which made the captions feel scrappy. The conversational model
-// driven by server VAD gives clean, item-bucketed transcript events on
-// both sides and lets the host pick the TTS voice.
+// of which made the captions feel scrappy.
+//
+// Crucially, turn detection is `semantic_vad` with `eagerness=high`,
+// NOT `server_vad`. server_vad waits for a silence gap before the
+// model commits a turn, which produces a "wait for the speaker to
+// pause, then translate" cadence — that's consecutive interpretation,
+// not simultaneous, and the product cannot ship that way. semantic_vad
+// at high eagerness chunks audio the moment the model has enough
+// meaning to commit a phrase, with `interrupt_response=true` so new
+// input can re-steer an in-flight response. Same conversational event
+// shape as server_vad, so input/output captions still flow cleanly via
+// the standard conversation.item.input_audio_transcription.* and
+// response.text.* events.
 //
 // The API hands the browser an ephemeral client_secret (default 600s)
 // which it uses as a Bearer token when POSTing its WebRTC SDP offer to
@@ -51,7 +61,12 @@ export async function issueRealtimeSession(opts: {
       audio: {
         input: {
           transcription: { model: 'gpt-4o-mini-transcribe' },
-          turn_detection: { type: 'server_vad' },
+          turn_detection: {
+            type: 'semantic_vad',
+            eagerness: 'high',
+            create_response: true,
+            interrupt_response: true,
+          },
         },
         output: { voice: opts.voice ?? 'verse' },
       },
