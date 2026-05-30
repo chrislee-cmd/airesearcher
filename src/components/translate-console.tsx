@@ -85,6 +85,10 @@ export function TranslateConsole() {
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
   const [elapsed, setElapsed] = useState(0);
 
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
   // Mutable refs held only for the duration of a live session.
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -290,6 +294,8 @@ export function TranslateConsole() {
     setInputLines([]);
     setOutputLines([]);
     setElapsed(0);
+    setShareToken(null);
+    setShareCopied(false);
     setStatus('starting');
 
     let bundle: SessionBundle;
@@ -400,16 +406,22 @@ export function TranslateConsole() {
         if (!localTtsTrack) return;
         outputPublishedRef.current = true;
         const outputTrack = new LocalAudioTrack(localTtsTrack);
+        console.info(
+          `[translate] publishing output — ctxState=${ctx.state}, ` +
+          `localTrackEnabled=${localTtsTrack.enabled}, ` +
+          `localTrackReadyState=${localTtsTrack.readyState}, ` +
+          `localTrackMuted=${localTtsTrack.muted}`,
+        );
         room.localParticipant
           .publishTrack(outputTrack, { name: 'output' })
           .then(() => {
             console.info(
-              '[translate] output track published',
-              { name: 'output', ctxState: ctx.state },
+              `[translate] output PUBLISHED — ctxState=${ctx.state}, ` +
+              `localTrackMuted=${localTtsTrack.muted}`,
             );
           })
           .catch((err) => {
-            console.warn('[translate] output publish failed', err);
+            console.warn('[translate] output publish FAILED', err);
             // Allow a retry on the next ontrack if this one races with
             // disconnect.
             outputPublishedRef.current = false;
@@ -506,6 +518,8 @@ export function TranslateConsole() {
         await fetch(`/api/translate/sessions/${id}/end`, { method: 'POST' });
       } catch {}
     }
+    setShareToken(null);
+    setShareCopied(false);
     setStatus('ended');
   }, [broadcastCaption, cleanup, persistMessage, pushLine, sourceLang, status, targetLang]);
 
@@ -515,6 +529,64 @@ export function TranslateConsole() {
       cleanup();
     };
   }, [cleanup]);
+
+  const generateShare = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id || sharing) return;
+    setSharing(true);
+    try {
+      const res = await fetch(`/api/translate/sessions/${id}/share`, {
+        method: 'POST',
+      });
+      const json = (await res.json()) as { share_token?: string; error?: string };
+      if (res.ok && json.share_token) {
+        setShareToken(json.share_token);
+        setShareCopied(false);
+      }
+    } catch {
+      // surface via existing error state? keep silent for now — host can
+      // retry by clicking again.
+    } finally {
+      setSharing(false);
+    }
+  }, [sharing]);
+
+  const revokeShare = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id) return;
+    setSharing(true);
+    try {
+      await fetch(`/api/translate/sessions/${id}/share`, { method: 'DELETE' });
+      setShareToken(null);
+      setShareCopied(false);
+    } finally {
+      setSharing(false);
+    }
+  }, []);
+
+  // Build the viewer URL the host shows / copies. When a viewer subdomain
+  // is configured (e.g. `live.researchmochi.com`) we use it; otherwise we
+  // fall back to the same origin with a `/live/<token>` path.
+  const shareUrl = useMemo(() => {
+    if (!shareToken) return null;
+    if (typeof window === 'undefined') return null;
+    const subdomain = process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST;
+    const host = subdomain || window.location.host;
+    return `${window.location.protocol}//${host}/live/${shareToken}`;
+  }, [shareToken]);
+
+  const copyShareUrl = useCallback(async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // clipboard may be blocked — fall back to selecting the input
+      // (handled in the UI by `readOnly` + visible value).
+    }
+  }, [shareUrl]);
+
 
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
@@ -586,12 +658,23 @@ export function TranslateConsole() {
             {t(`status.${status}`)}
           </span>
           {live ? (
-            <button
-              onClick={() => void stop()}
-              className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore"
-            >
-              {t('stop')}
-            </button>
+            <>
+              {!shareToken ? (
+                <button
+                  onClick={() => void generateShare()}
+                  disabled={sharing}
+                  className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
+                >
+                  {sharing ? t('share.creating') : t('share.create')}
+                </button>
+              ) : null}
+              <button
+                onClick={() => void stop()}
+                className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore"
+              >
+                {t('stop')}
+              </button>
+            </>
           ) : (
             <button
               onClick={() => void start()}
@@ -603,6 +686,32 @@ export function TranslateConsole() {
           )}
         </div>
       </div>
+
+      {shareToken && shareUrl ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-ink">
+          <span className="text-mute-soft">{t('share.label')}</span>
+          <input
+            readOnly
+            value={shareUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-[260px] flex-1 rounded-[4px] border border-line-soft bg-paper px-2 py-1 font-mono text-[12px] text-ink"
+          />
+          <button
+            onClick={() => void copyShareUrl()}
+            className="h-7 rounded-[4px] border border-line px-2 text-[11.5px] text-ink hover:border-amore"
+          >
+            {shareCopied ? t('share.copied') : t('share.copy')}
+          </button>
+          <button
+            onClick={() => void revokeShare()}
+            disabled={sharing}
+            className="h-7 rounded-[4px] border border-line px-2 text-[11.5px] text-mute hover:border-amore disabled:opacity-50"
+          >
+            {t('share.revoke')}
+          </button>
+          <span className="text-[11px] text-mute-soft">{t('share.expiresIn4h')}</span>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">

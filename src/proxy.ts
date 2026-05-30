@@ -18,8 +18,35 @@ const LOCALE_ALIASES: Record<string, string> = {
   gb: 'en', // UK → English (no separate en-GB locale)
 };
 
+// Optional dedicated subdomain (e.g. `live.researchmochi.com`) that
+// serves the public viewer. When a request lands on this host, we
+// rewrite `/` and `/<token>` to `/live/<token>` and reject everything
+// else as 404 — the marketing app, dashboard, sign-in flow, etc. all
+// stay on the main domain. Unset = single-domain mode (path-only).
+const VIEWER_HOST = process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST?.toLowerCase();
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get('host')?.toLowerCase() ?? '';
+
+  // Dedicated viewer subdomain → only the public viewer is reachable.
+  if (VIEWER_HOST && host === VIEWER_HOST) {
+    if (pathname === '/' || pathname === '') {
+      // Bare subdomain visit has no token to load — keep them on /
+      // (the viewer layout renders the not-found state).
+      return NextResponse.rewrite(new URL('/live/__missing__', request.url));
+    }
+    // Strip any leading slash and treat the rest as the share token.
+    if (!pathname.startsWith('/live/') && !pathname.startsWith('/api/') && !pathname.startsWith('/_next/')) {
+      const token = pathname.slice(1).split('/', 1)[0];
+      const url = request.nextUrl.clone();
+      url.pathname = `/live/${token}`;
+      return NextResponse.rewrite(url);
+    }
+    // /live/<token>, /api/translate/public/*, and Next.js asset paths
+    // pass through unchanged.
+    return NextResponse.next();
+  }
 
   // First segment of the path. `/jp/dashboard` → "jp", `/` → "".
   const firstSeg = pathname.split('/', 2)[1]?.toLowerCase() ?? '';
@@ -31,10 +58,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  // Routes under /auth (OAuth callback, sign-out, etc.) live outside the
-  // `[locale]` segment and must NOT be prefixed. Without this guard
-  // next-intl rewrites `/auth/callback?code=…` to `/ko/auth/callback`,
-  // which doesn't exist → every production sign-in hits 404.
+  // Routes under /auth (OAuth callback, sign-out, etc.) and /live (the
+  // anonymous live-interpretation viewer) live outside the `[locale]`
+  // segment and must NOT be prefixed. Without this guard next-intl
+  // rewrites `/live/abc` to `/ko/live/abc`, which 404s.
   //
   // `/`, `/ko`, `/en` all flow through this same intl middleware:
   // anonymous root → redirected to the user's preferred locale via
@@ -42,7 +69,7 @@ export async function proxy(request: NextRequest) {
   // index page (`[locale]/page.tsx`) then renders the marketing
   // landing for anonymous users and forwards authenticated users to
   // /dashboard.
-  if (!pathname.startsWith('/auth/')) {
+  if (!pathname.startsWith('/auth/') && !pathname.startsWith('/live/')) {
     const intlResponse = intl(request);
     if (intlResponse.status >= 300 && intlResponse.status < 400) {
       return intlResponse;
