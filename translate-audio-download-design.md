@@ -5,11 +5,16 @@ top of the GA AI 동시통역 feature (PR #181 prompter view).
 
 ## Goal
 
-After a finished `translate` session, the host can pay **10 credits flat**
+After a finished `translate` session, the host can pay **25 credits flat**
 to unlock three downloadables for that session:
 
-1. **`.webm`** — mixed audio (host mic/tab source + translated TTS), captured
-   client-side via `MediaRecorder`.
+1. **`.m4a`** — mixed audio (host mic/tab source + translated TTS), captured
+   client-side via `MediaRecorder` as `audio/webm;codecs=opus` (the only
+   format Chrome's MediaRecorder reliably produces) and transcoded
+   on-demand to AAC/MP4 by the download endpoint via the static
+   `@ffmpeg-installer/ffmpeg` binary. The raw webm is what we persist in
+   storage; the m4a is regenerated each request so we don't pay double
+   storage cost for the small fraction of sessions that get downloaded.
 2. **`.txt`** — bilingual transcript (input + output kinds interleaved by
    timestamp, `[hh:mm:ss] [원문]/[통역] …`).
 3. **`.docx`** — the same transcript rendered through the existing
@@ -34,7 +39,7 @@ The download CTA is rendered as a **standalone panel that appears after
 ```
 ┌─────────────────────────────────────────────────┐
 │  세션 산출물                                       │
-│  오디오 + 전사록 다운로드 (잠김 · 10크레딧)            │
+│  오디오 + 전사록 다운로드 (잠김 · 25크레딧)            │
 │  [잠금 해제하기]                                   │
 └─────────────────────────────────────────────────┘
 ```
@@ -44,7 +49,7 @@ After unlock:
 ```
 ┌─────────────────────────────────────────────────┐
 │  세션 산출물 · 잠금 해제됨                          │
-│  [오디오 (.webm)]  [전사록 (.txt)]  [전사록 (.docx)] │
+│  [오디오 (.m4a)]  [전사록 (.txt)]  [전사록 (.docx)] │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -111,19 +116,18 @@ stream directly from the API route body.
 
 ## Pricing
 
-**10 credits flat per session unlock.** Same charge unlocks all three
+**25 credits flat per session unlock.** Same charge unlocks all three
 formats — the recording row is the unit of payment, not the format.
 
 Rationale:
-- Lump translate session is 50 credits (₩100k); +10 is a ~20% upsell.
-- Variable pricing by duration tempts gaming. Flat is honest.
-- One charge for the deliverable bundle aligns with the user mental model
-  ("I bought the meeting export").
+- The deliverable is conceptually a transcript (audio + bilingual text).
+  Per PROJECT.md §11 the 전사록 (transcript) generator is 25 credits, so
+  unlocking a translate transcript is priced the same. Consistent mental
+  model across deliverable features.
+- Flat pricing avoids gaming via stop+restart and matches how other
+  "purchased deliverable" features in this product price.
 
-The `Features.translate.cost` locale string is updated to mention the
-+10 add-on.
-
-Charged via `spendCreditsAdminAmount(orgId, userId, 'translate', 10,
+Charged via `spendCreditsAdminAmount(orgId, userId, 'translate', 25,
 generationId=recordingId)`. The existing partial-UNIQUE on
 `credit_transactions` (migration 0021) makes the same recordingId
 idempotent — duplicate unlock clicks won't double-charge.
@@ -169,8 +173,8 @@ RLS:
 | `/api/translate/sessions/[id]/recording` | `GET`   | Read latest recording row for the session (re-renders CTA on reload). |
 | `/api/translate/sessions/[id]/recording` | `POST`  | Create row + return signed upload URL. Called from host console as MediaRecorder enters recording state. |
 | `/api/translate/sessions/[id]/recording` | `PATCH` | Finalize: write size_bytes + duration_sec, flip status → `uploaded`. |
-| `/api/translate/recordings/[id]/unlock`  | `POST`  | Charge 10 credits, flip status → `unlocked`. Idempotent. |
-| `/api/translate/recordings/[id]/download?format=webm` | `GET` | 10-minute signed URL for the `.webm`. 402 if not unlocked. 410 + refund if storage object missing. |
+| `/api/translate/recordings/[id]/unlock`  | `POST`  | Charge 25 credits, flip status → `unlocked`. Idempotent. |
+| `/api/translate/recordings/[id]/download?format=m4a` | `GET` | Downloads the persisted `.webm` from storage, transcodes it to AAC/MP4 via ffmpeg, streams the body. 402 if not unlocked. 410 + refund if storage object missing. |
 | `/api/translate/recordings/[id]/download?format=txt`  | `GET` | Streams the bilingual transcript as `text/plain; charset=utf-8`. 402 if not unlocked. |
 | `/api/translate/recordings/[id]/download?format=docx` | `GET` | Streams the rendered `.docx`. 402 if not unlocked. |
 
@@ -178,11 +182,11 @@ All `runtime='nodejs'`, host-only (host_user_id match), maxDuration=30.
 
 ## UI states (host)
 
-1. **Pre-session** — checkbox `오디오 + 전사록 저장 (다운로드 시 +10 크레딧)` (default on).
+1. **Pre-session** — checkbox `오디오 + 전사록 저장 (다운로드 시 +25 크레딧)` (default on).
 2. **Live** — small `● 녹음 중` pill next to the elapsed timer.
 3. **After stop + upload finalize** — locked CTA panel below the prompter:
-   `오디오 + 전사록 다운로드 (잠김 · 10크레딧) [잠금 해제]`.
-4. **After unlock** — `[오디오 (.webm)] [전사록 (.txt)] [전사록 (.docx)]` buttons + `잠금 해제됨` pill.
+   `오디오 + 전사록 다운로드 (잠김 · 25크레딧) [잠금 해제]`.
+4. **After unlock** — `[오디오 (.m4a)] [전사록 (.txt)] [전사록 (.docx)]` buttons + `잠금 해제됨` pill.
 
 The recording state is restored from the `GET .../recording` endpoint on
 mount, so a reload after stop still shows the CTA.

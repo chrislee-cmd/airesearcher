@@ -2,14 +2,17 @@
 //
 // One unlock charge unlocks all three formats keyed off the recording
 // row:
-//   - format=webm  → 10-min signed URL into the `audio-uploads` bucket
+//   - format=m4a   → AAC/MP4 audio, transcoded on-demand from the
+//                    original webm/Opus blob via ffmpeg
 //   - format=txt   → bilingual transcript streamed as text/plain
 //   - format=docx  → bilingual transcript streamed as docx
 //
 // txt + docx are generated on-the-fly from `translate_messages` (no
-// storage). 402 if the recording row isn't `unlocked`. 410 + auto-refund
-// on the webm path when the storage object has been swept (past
-// retention).
+// storage). The original webm is what we persist in
+// `audio-uploads`; the m4a is regenerated on demand so we don't pay
+// for storage twice. 402 if the recording row isn't `unlocked`.
+// 410 + auto-refund on the m4a path when the storage object has been
+// swept (past retention).
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -21,15 +24,17 @@ import {
   type TranscriptMessage,
   type TranscriptMeta,
 } from '@/lib/translate-transcript';
+import { transcodeWebmToM4a } from '@/lib/translate-audio';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+// Transcode for a ~30 min session runs ~10–20 s on Vercel's Fluid
+// Compute; bump the budget to keep headroom for the txt/docx fast
+// paths too.
+export const maxDuration = 120;
 
-const DOWNLOAD_TTL_SECONDS = 600; // 10 minutes
+const FORMATS = new Set(['m4a', 'txt', 'docx']);
 
-const FORMATS = new Set(['webm', 'txt', 'docx']);
-
-type Format = 'webm' | 'txt' | 'docx';
+type Format = 'm4a' | 'txt' | 'docx';
 
 // Locale comes from the `Accept-Language` short prefix the console sends
 // in a custom header — we don't have access to the request URL's locale
@@ -102,7 +107,7 @@ export async function GET(
 ) {
   const { id: recordingId } = await ctx.params;
   const url = new URL(req.url);
-  const formatRaw = (url.searchParams.get('format') ?? 'webm').toLowerCase();
+  const formatRaw = (url.searchParams.get('format') ?? 'm4a').toLowerCase();
   if (!FORMATS.has(formatRaw)) {
     return NextResponse.json({ error: 'invalid_format' }, { status: 400 });
   }
@@ -135,15 +140,16 @@ export async function GET(
     return NextResponse.json({ error: 'locked' }, { status: 402 });
   }
 
-  // ── webm: signed URL into audio-uploads ──
-  if (format === 'webm') {
-    const { data: signed, error: signedErr } = await admin.storage
+  // ── m4a: download the persisted webm, transcode with ffmpeg, stream the
+  // resulting MP4-AAC bytes. We can't use a signed URL because the file
+  // on storage is webm/Opus and players will choke on a renamed
+  // container — we have to actually re-mux + re-encode.
+  if (format === 'm4a') {
+    const { data: blob, error: dlErr } = await admin.storage
       .from('audio-uploads')
-      .createSignedUrl(row.storage_key, DOWNLOAD_TTL_SECONDS, {
-        download: `translate-${row.session_id}.webm`,
-      });
+      .download(row.storage_key);
 
-    if (signedErr || !signed?.signedUrl) {
+    if (dlErr || !blob) {
       // 410 path: storage object is gone (swept or never finalized).
       // Refund so the host isn't out the credits.
       const refund = await refundCredits(
@@ -158,10 +164,29 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
-      download_url: signed.signedUrl,
-      expires_in: DOWNLOAD_TTL_SECONDS,
-    });
+    try {
+      const webmBytes = new Uint8Array(await blob.arrayBuffer());
+      const m4aBytes = await transcodeWebmToM4a(webmBytes);
+      // Copy into a freshly-allocated ArrayBuffer so the Body type is a
+      // plain ArrayBuffer the Web `BodyInit` union accepts under strict
+      // TS (same pattern the docx branch uses below).
+      const ab = new ArrayBuffer(m4aBytes.byteLength);
+      new Uint8Array(ab).set(m4aBytes);
+      return new NextResponse(ab, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mp4',
+          'Content-Disposition': `attachment; filename="translate-${row.session_id}.m4a"`,
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    } catch (err) {
+      console.error('[translate-download] transcode failed', err);
+      return NextResponse.json(
+        { error: 'transcode_failed' },
+        { status: 500 },
+      );
+    }
   }
 
   // ── txt / docx: generated from translate_messages on the fly ──

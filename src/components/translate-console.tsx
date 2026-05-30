@@ -43,7 +43,7 @@ type RecordingRow = {
   created_at: string;
 };
 
-const RECORDING_UNLOCK_CREDITS = 10;
+const RECORDING_UNLOCK_CREDITS = 25;
 const RECORDING_CHUNK_MS = 5000; // 5s timeslice — modest memory use, good resilience
 
 type CaptionLine = {
@@ -143,7 +143,7 @@ export function TranslateConsole() {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [downloadingFormat, setDownloadingFormat] = useState<
-    'webm' | 'txt' | 'docx' | null
+    'm4a' | 'txt' | 'docx' | null
   >(null);
   // Whether the MediaRecorder is actively capturing. Driven from the
   // recorder's onstart/onstop events so the indicator pill renders
@@ -907,7 +907,7 @@ export function TranslateConsole() {
     }
   }, []);
 
-  // Charge 10 credits and flip the recording row to `unlocked`. The
+  // Charge RECORDING_UNLOCK_CREDITS credits and flip the recording row to `unlocked`. The
   // server enforces idempotency via the (org_id, generation_id) UNIQUE
   // on credit_transactions so a double click just no-ops the second
   // call.
@@ -943,11 +943,11 @@ export function TranslateConsole() {
     }
   }, [recording, unlocking]);
 
-  // Trigger a download for one of the three formats. webm returns a
-  // short-lived signed URL we navigate to; txt/docx stream directly
-  // from the API route so we save the response Blob.
+  // Trigger a download for one of the three formats. All three stream
+  // directly from the API route — m4a is transcoded on demand from the
+  // persisted webm, txt/docx are rendered from translate_messages.
   const downloadFormat = useCallback(
-    async (format: 'webm' | 'txt' | 'docx') => {
+    async (format: 'm4a' | 'txt' | 'docx') => {
       if (!recording || downloadingFormat) return;
       if (recording.status !== 'unlocked') return;
       setDownloadingFormat(format);
@@ -962,18 +962,6 @@ export function TranslateConsole() {
             },
           },
         );
-        if (format === 'webm') {
-          const json = (await res.json().catch(() => ({}))) as {
-            download_url?: string;
-            error?: string;
-          };
-          if (!res.ok || !json.download_url) {
-            setRecordingError(json.error ?? 'download_failed');
-            return;
-          }
-          window.location.href = json.download_url;
-          return;
-        }
         if (!res.ok) {
           setRecordingError('download_failed');
           return;
@@ -983,9 +971,11 @@ export function TranslateConsole() {
         const a = document.createElement('a');
         a.href = url;
         a.download =
-          format === 'txt'
-            ? `translate-${recording.id}.txt`
-            : `translate-${recording.id}.docx`;
+          format === 'm4a'
+            ? `translate-${recording.id}.m4a`
+            : format === 'txt'
+              ? `translate-${recording.id}.txt`
+              : `translate-${recording.id}.docx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1225,9 +1215,9 @@ function RecordingDownloadPanel({
   recording: RecordingRow | null;
   recordingError: string | null;
   unlocking: boolean;
-  downloadingFormat: 'webm' | 'txt' | 'docx' | null;
+  downloadingFormat: 'm4a' | 'txt' | 'docx' | null;
   onUnlock: () => void;
-  onDownload: (f: 'webm' | 'txt' | 'docx') => void;
+  onDownload: (f: 'm4a' | 'txt' | 'docx') => void;
 }) {
   const t = useTranslations('TranslateConsole');
   // While the recording is still finalizing (upload in-flight) the row
@@ -1277,11 +1267,11 @@ function RecordingDownloadPanel({
             {t('download.unlockedPill')}
           </span>
           <button
-            onClick={() => onDownload('webm')}
+            onClick={() => onDownload('m4a')}
             disabled={downloadingFormat !== null}
             className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
-            {downloadingFormat === 'webm'
+            {downloadingFormat === 'm4a'
               ? t('download.preparingFile')
               : t('download.audio')}
           </button>

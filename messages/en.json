@@ -768,7 +768,7 @@
       "tab": "Online meeting (tab audio)",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
-    "recordEnabled": "Save audio + transcript (+10 credits to download)",
+    "recordEnabled": "Save audio + transcript (+25 credits to download)",
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
       "unmuteAria": "Unmute translated audio"
@@ -787,12 +787,12 @@
       "eyebrow": "Session deliverables",
       "notAvailable": "No recording for this session. The \"Save audio + transcript\" checkbox must be on before you start.",
       "preparing": "Finalizing the recording…",
-      "lockedTitle": "Audio + transcript download (.webm · .txt · .docx)",
+      "lockedTitle": "Audio + transcript download (.m4a · .txt · .docx)",
       "lockedHint": "One charge unlocks all three formats. Costs {credits} credits.",
       "unlock": "Unlock ({credits} credits)",
       "unlocking": "Charging…",
       "unlockedPill": "Unlocked",
-      "audio": "Audio (.webm)",
+      "audio": "Audio (.m4a)",
       "txt": "Transcript (.txt)",
       "docx": "Transcript (.docx)",
       "preparingFile": "Preparing file…",

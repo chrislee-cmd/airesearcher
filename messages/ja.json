@@ -732,7 +732,7 @@
       "tab": "オンライン会議（タブ音声）",
       "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
     },
-    "recordEnabled": "音声＋字幕を保存（ダウンロードに +10クレジット）",
+    "recordEnabled": "音声＋字幕を保存（ダウンロードに +25クレジット）",
     "monitorMute": {
       "muteAria": "翻訳音声をローカルでミュート（視聴者には引き続き聞こえます）",
       "unmuteAria": "翻訳音声をオン"
@@ -751,12 +751,12 @@
       "eyebrow": "セッション成果物",
       "notAvailable": "このセッションの録音はありません。開始前に「音声＋字幕を保存」をオンにしてください。",
       "preparing": "録音を仕上げています…",
-      "lockedTitle": "音声＋字幕ダウンロード (.webm · .txt · .docx)",
+      "lockedTitle": "音声＋字幕ダウンロード (.m4a · .txt · .docx)",
       "lockedHint": "1回の決済で3つの形式すべてを入手できます。{credits}クレジットがかかります。",
       "unlock": "ロック解除（{credits}クレジット）",
       "unlocking": "決済中…",
       "unlockedPill": "解除済み",
-      "audio": "音声 (.webm)",
+      "audio": "音声 (.m4a)",
       "txt": "字幕 (.txt)",
       "docx": "字幕 (.docx)",
       "preparingFile": "ファイルを準備中…",

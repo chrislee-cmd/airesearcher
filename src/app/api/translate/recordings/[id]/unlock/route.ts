@@ -1,11 +1,14 @@
 // AI 동시통역 — unlock a finished recording for download.
 //
-// Charges 10 credits (flat) via `spendCreditsAdminAmount`, then flips the
-// recording row to `unlocked`. Idempotent: a second call after a successful
-// unlock returns ok=true without re-charging because the credit ledger uses
-// the recording id as `generation_id` and the partial UNIQUE on
-// `credit_transactions` (migration 0021) refuses a duplicate
-// `feature_use`.
+// Charges 25 credits (flat) via `spendCreditsAdminAmount`, then flips the
+// recording row to `unlocked`. The deliverable (audio + bilingual
+// transcript) is conceptually a transcript export, so the cost matches
+// the 전사록 (transcript) generator per PROJECT.md §11 credit scheme.
+//
+// Idempotent: a second call after a successful unlock returns ok=true
+// without re-charging because the credit ledger uses the recording id
+// as `generation_id` and the partial UNIQUE on `credit_transactions`
+// (migration 0021) refuses a duplicate `feature_use`.
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -15,7 +18,7 @@ import { spendCreditsAdminAmount } from '@/lib/credits';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-export const TRANSLATE_RECORDING_UNLOCK_CREDITS = 10;
+export const TRANSLATE_RECORDING_UNLOCK_CREDITS = 25;
 
 export async function POST(
   _req: Request,
