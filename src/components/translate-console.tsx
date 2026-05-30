@@ -406,16 +406,22 @@ export function TranslateConsole() {
         if (!localTtsTrack) return;
         outputPublishedRef.current = true;
         const outputTrack = new LocalAudioTrack(localTtsTrack);
+        console.info(
+          `[translate] publishing output — ctxState=${ctx.state}, ` +
+          `localTrackEnabled=${localTtsTrack.enabled}, ` +
+          `localTrackReadyState=${localTtsTrack.readyState}, ` +
+          `localTrackMuted=${localTtsTrack.muted}`,
+        );
         room.localParticipant
           .publishTrack(outputTrack, { name: 'output' })
           .then(() => {
             console.info(
-              '[translate] output track published',
-              { name: 'output', ctxState: ctx.state },
+              `[translate] output PUBLISHED — ctxState=${ctx.state}, ` +
+              `localTrackMuted=${localTtsTrack.muted}`,
             );
           })
           .catch((err) => {
-            console.warn('[translate] output publish failed', err);
+            console.warn('[translate] output publish FAILED', err);
             // Allow a retry on the next ontrack if this one races with
             // disconnect.
             outputPublishedRef.current = false;
