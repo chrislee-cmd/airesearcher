@@ -732,7 +732,7 @@
       "tab": "オンライン会議（タブ音声）",
       "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
     },
-    "recordEnabled": "字幕を保存",
+    "recordEnabled": "音声＋字幕を保存（ダウンロードに +25クレジット）",
     "monitorMute": {
       "muteAria": "翻訳音声をローカルでミュート（視聴者には引き続き聞こえます）",
       "unmuteAria": "翻訳音声をオン"
@@ -742,6 +742,37 @@
     "starting": "接続中…",
     "prompter": {
       "empty": "通訳を開始すると、翻訳結果がここにストリームされます。"
+    },
+    "recording": {
+      "indicator": "録音中",
+      "indicatorAria": "セッションを録音しています"
+    },
+    "download": {
+      "eyebrow": "セッション成果物",
+      "notAvailable": "このセッションの録音はありません。開始前に「音声＋字幕を保存」をオンにしてください。",
+      "preparing": "録音を仕上げています…",
+      "lockedTitle": "元音声＋通訳音声＋字幕ダウンロード (.m4a · .m4a · .txt · .docx)",
+      "lockedHint": "1回の決済で元音声・通訳音声・字幕(.txt/.docx)をまとめて取得できます。{credits}クレジットがかかります。",
+      "unlock": "ロック解除（{credits}クレジット）",
+      "unlocking": "決済中…",
+      "unlockedPill": "解除済み",
+      "audioInput": "元音声 (.m4a)",
+      "audioOutput": "通訳音声 (.m4a)",
+      "txt": "字幕 (.txt)",
+      "docx": "字幕 (.docx)",
+      "preparingFile": "ファイルを準備中…",
+      "errors": {
+        "recorder_failed": "録音を開始できませんでした。マイクまたはタブ音声の権限を確認してください。",
+        "reserve_failed": "録音用の保存先を確保できませんでした。後ほど再試行してください。",
+        "upload_failed": "アップロードに失敗しました。再試行してください。",
+        "finalize_failed": "録音の仕上げに失敗しました。再試行してください。",
+        "unlock_failed": "ロック解除に失敗しました。クレジット残高を確認してください。",
+        "download_failed": "ファイルを取得できませんでした。再試行してください。",
+        "insufficient": "クレジットが不足しています。チャージしてから再試行してください。",
+        "object_missing": "元のファイルが見つかりません。クレジットを返金しました。",
+        "input_audio_unavailable": "このセッションは元音声が個別に保存されていません。通訳音声と字幕は引き続きダウンロードできます。",
+        "locked": "まだロック解除されていません。"
+      }
     },
     "errorPrefix": "エラー:",
     "errors": {

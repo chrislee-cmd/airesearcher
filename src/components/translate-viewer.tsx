@@ -79,6 +79,10 @@ const COPY = {
   ephemeralHint: 'Live captions only — this session is not being recorded.',
   hostLabel: 'Host language',
   viewerLabel: 'Translated to',
+  // PR-B: downloads (audio + transcript) are gated to the host. The
+  // anon viewer never sees a purchase path — just a notice once the
+  // session ends.
+  hostOnlyDownload: 'Audio and transcript download is host-only.',
 } as const;
 
 export function TranslateViewer({
@@ -463,6 +467,12 @@ export function TranslateViewer({
       {error ? (
         <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
           {error}
+        </div>
+      ) : null}
+
+      {status === 'ended' ? (
+        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
+          {COPY.hostOnlyDownload}
         </div>
       ) : null}
 
