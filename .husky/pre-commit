@@ -21,4 +21,14 @@ if [ -n "$staged_json" ]; then
   done
 fi
 
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --no-banner --redact 2>/tmp/husky-gitleaks-err; then
+    echo "✗ gitleaks: secret-looking pattern in staged diff (PROJECT.md §6 / §3.5)"
+    cat /tmp/husky-gitleaks-err
+    echo "  Remove the value, unstage, and re-stage."
+    echo "  (Add an allowlist entry to .gitleaks.toml if this is a false positive.)"
+    exit 1
+  fi
+fi
+
 pnpm exec lint-staged

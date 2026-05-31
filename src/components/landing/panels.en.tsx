@@ -1,3 +1,6 @@
+/* eslint-disable react/no-unescaped-entities -- English prose-only landing
+   copy. Apostrophes and quotation marks are intentional editorial text, not
+   risky JSX ambiguity. Rule stays enforced everywhere else. */
 import type { Panels } from './panels';
 
 const TRANSCRIPT_BODY = (
