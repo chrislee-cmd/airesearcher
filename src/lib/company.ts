@@ -11,6 +11,7 @@ export const COMPANY = {
   addressEn:
     'Room 614-A, 6F, Gangdong-U1 Center, 26 Godeokbizvalley-ro, Gangdong-gu, Seoul, Republic of Korea',
   email: 'chris.lee@meteor-research.com',
+  phone: '010-4057-0872',
   privacyOfficer: '이철희 (대표)',
   serviceName: 'Research-mochi',
 } as const;
@@ -22,7 +23,8 @@ export function companyInfoLinesKo(): string[] {
     `사업자등록번호: ${COMPANY.bizRegNo}`,
     `통신판매업 신고번호: ${COMPANY.ecommerceRegNo ?? '신고 진행 중'}`,
     `사업장 소재지: ${COMPANY.addressKo}`,
-    `문의: ${COMPANY.email} (전화 응대 없음 · 이메일로만 응대)`,
+    `유선번호: ${COMPANY.phone}`,
+    `문의: ${COMPANY.email}`,
   ];
 }
 
@@ -33,6 +35,7 @@ export function companyInfoLinesEn(): string[] {
     `Business registration number: ${COMPANY.bizRegNo}`,
     `E-commerce registration: ${COMPANY.ecommerceRegNo ?? 'pending'}`,
     `Address: ${COMPANY.addressEn}`,
-    `Contact: ${COMPANY.email} (email only — no phone support)`,
+    `Phone: ${COMPANY.phone}`,
+    `Contact: ${COMPANY.email}`,
   ];
 }

@@ -4,6 +4,7 @@ import { Showcase } from './showcase';
 import { panelsKo } from './panels.ko';
 import { panelsEn } from './panels.en';
 import type { PanelKey } from './panels';
+import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 import './landing.css';
 
 export async function LandingPage({ locale }: { locale: string }) {
@@ -239,6 +240,11 @@ export async function LandingPage({ locale }: { locale: string }) {
             <Link href="/use-policy">{t('footer.usePolicy')}</Link>
             <a href="mailto:chris.lee@meteor-research.com">{t('footer.contact')}</a>
           </div>
+        </div>
+        <div className="biz-info">
+          {(locale === 'ko' ? companyInfoLinesKo() : companyInfoLinesEn()).map((line) => (
+            <span key={line}>{line}</span>
+          ))}
         </div>
       </footer>
     </div>
