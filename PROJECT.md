@@ -96,6 +96,39 @@ PR을 1개라도 머지하면 **다음 사용자 입력을 받기 전에 `/compa
 이 규칙은 마스터 에이전트(머지 담당)에만 적용됩니다. 워커 에이전트는
 자기 브랜치에서 push/PR만 끝내면 됩니다.
 
+### 3.8 자동 게이트 (하네스)
+
+위의 머지 규칙(§3.3, §3.5, §6)은 husky pre-commit/commit-msg hook,
+GitHub Actions CI, GitHub branch protection으로 **자동 강제**됩니다.
+문서가 아니라 실제 거부 메커니즘입니다.
+
+| 가드 | 어디서 | 상태 | 동작 |
+|---|---|---|---|
+| `.env*` 차단 | pre-commit | hard | `.env` 류 staged 파일 발견 시 commit 거부 |
+| `messages/*.json` 파싱 | pre-commit | hard | 무효 JSON commit 거부 |
+| gitleaks staged 스캔 | pre-commit | hard (gitleaks 설치 시) | 시크릿 패턴 발견 시 commit 거부 |
+| commit prefix (`feat\|fix\|chore\|hotfix:`) | commit-msg | hard | 위반 commit 거부 |
+| lint-staged `eslint --fix` | pre-commit | **soft** (`\|\| true`) | 자동 수정 시도, 실패해도 commit 진행 |
+| `pnpm lint` | CI | **soft** (`continue-on-error: true`) | 30 baseline error 정리 후 hard 전환 예정 |
+| `pnpm typecheck` | CI | hard | 실패 시 PR 머지 차단 |
+| gitleaks 풀스캔 | CI (`secrets-scan` job) | hard | 시크릿 머지 차단 |
+| Vercel preview 빌드 | CI status check | hard | 빌드 실패 시 머지 차단 |
+| PR 강제 (직접 push 금지) | branch protection (main) | hard | 모든 변경은 PR 통해서만 |
+| status check 통과 (`Lint + Typecheck`, `Secrets scan`, `Vercel`) | branch protection (main) | hard | 3개 모두 SUCCESS 필수 |
+| `required_linear_history` | branch protection (main) | hard | squash merge로 자동 부합 |
+| force-push / branch delete 금지 | branch protection (main) | hard | main 보호 |
+
+**로컬에서 hook이 안 켜진다면**: `pnpm install`을 빠뜨린 worktree입니다.
+husky `prepare` 스크립트가 install 중에 `core.hooksPath`를 `.husky/_`로 설정합니다.
+새 워커는 §4 합류 절차의 `pnpm install`로 자동 셋업됩니다.
+
+**비상시 우회**:
+- pre-commit hook 실패: 위반 원인을 고치고 재commit. `--no-verify`는
+  §6에서 금지 — hook 자체가 망가졌다면 hook을 고치는 PR을 따로 머지.
+- branch protection: admin(`chris.lee@meteor-research.com`)만 `gh api -X PUT
+  /repos/.../branches/main/protection`으로 일시 해제 가능. 작업 끝나면 즉시
+  재활성화. 정상 경로는 §5.3 hotfix.
+
 ---
 
 ## 4. 새 워커 에이전트 합류 절차
