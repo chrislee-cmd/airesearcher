@@ -9,9 +9,17 @@
 // two lines. The user's own utterances are NOT echoed back — keeping the
 // surface unobtrusive while live.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { VoiceState, VoiceTranscript } from './use-realtime-session';
+
+// Typewriter speed for the streaming caption (ms between characters).
+// The Agents SDK delivers `history_updated` with the *complete* transcript
+// once the assistant finishes speaking — there's no per-token delta. So we
+// synthesise a streaming feel by revealing one char every ~22ms (≈45 chars/s,
+// a touch faster than natural Korean speech so the text doesn't lag the
+// audio). Reset whenever a new assistant item id appears.
+const TYPEWRITER_MS_PER_CHAR = 22;
 
 type Props = {
   state: VoiceState;
@@ -69,21 +77,47 @@ export function VoiceConciergePanel({
   const dotScale = isUserSpeaking ? 1 + Math.min(0.9, inputLevel * 1.4) : 1;
 
   // Only show the most recent assistant utterance — the box is a
-  // speech bubble, not a transcript log. Updates live via the SDK's
-  // history_updated event so the streaming deltas land here in real time.
+  // speech bubble, not a transcript log.
   const latestAssistant = [...transcripts]
     .reverse()
     .find((tr) => tr.role === 'assistant');
 
+  const targetText = latestAssistant?.text ?? '';
+  const targetId = latestAssistant?.id ?? null;
+
+  // Typewriter-style reveal so the user can actually read from the start
+  // even though the SDK hands us the full transcript at once. We track
+  // (a) which assistant item we're currently revealing — id change wipes
+  // the buffer; (b) how many chars are revealed so far. The advance
+  // effect re-arms with setTimeout after every paint, so React's batching
+  // keeps DOM updates cheap.
+  const [revealed, setRevealed] = useState('');
+  const revealedIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (targetId !== revealedIdRef.current) {
+      revealedIdRef.current = targetId;
+      setRevealed('');
+    }
+  }, [targetId]);
+
+  useEffect(() => {
+    if (!targetText) return;
+    if (revealed.length >= targetText.length) return;
+    const id = setTimeout(() => {
+      setRevealed(targetText.slice(0, revealed.length + 1));
+    }, TYPEWRITER_MS_PER_CHAR);
+    return () => clearTimeout(id);
+  }, [revealed, targetText]);
+
   // When there's no assistant line yet, show a short status hint instead
   // so the box never collapses to empty.
-  const bodyText = latestAssistant?.text ?? stateText;
+  const bodyText = revealed || stateText;
 
-  // Auto-scroll the caption container to the bottom on every text tick
-  // so streaming deltas always reveal the LATEST words. We use scrollTop
-  // (not scrollIntoView) because the parent box must stay anchored to
-  // the viewport — we just shift the inner text up. Cheap: runs only
-  // when bodyText actually changes, which is what we want for streaming.
+  // Auto-scroll the caption container so the latest revealed character
+  // stays visible. With the typewriter reveal, the box fills naturally:
+  // 1 line at first, then 2 lines, then text rolls up past the top edge
+  // exactly like a streaming prompt.
   const captionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = captionRef.current;
