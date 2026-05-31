@@ -62,6 +62,10 @@ export type UseRealtimeSessionResult = {
   isAssistantSpeaking: boolean;
   /** Microphone mute state (null until session connects). */
   muted: boolean | null;
+  /** Smoothed mic input level (0..1). Used by the FAB/panel to render
+   *  "you are being heard" feedback while the user speaks. Stays at 0
+   *  when mic was denied (silent stream) or session not live. */
+  inputLevel: number;
   /** PR4 Bundle 3: true when the panel should render the text-input
    *  fallback instead of (or in addition to) voice. Auto-flips on
    *  mic_denied during start(), and on user request via toggleTextMode(). */
@@ -181,6 +185,9 @@ export function useRealtimeSession(
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
   const [muted, setMuted] = useState<boolean | null>(null);
+  // Smoothed mic level (0..1). Driven by an AnalyserNode rAF loop; gated
+  // behind real-mic acquisition so denied/silent sessions stay at 0.
+  const [inputLevel, setInputLevel] = useState(0);
   // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
   // because start() needs to flip it on mic_denied before the panel ever
   // sees an error state.
@@ -220,12 +227,67 @@ export function useRealtimeSession(
   // panel is ephemeral and the server has the durable copy.
   const TRANSCRIPT_LIMIT = 20;
 
+  // Audio level monitor — owned alongside the mic stream so its lifetime
+  // matches the WebRTC peer. Refs (no re-render) for the AudioContext +
+  // rAF handle so we can tear them down cleanly in stop()/unmount.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const levelRafRef = useRef<number | null>(null);
+
+  const stopLevelMonitor = useCallback(() => {
+    if (levelRafRef.current !== null) {
+      cancelAnimationFrame(levelRafRef.current);
+      levelRafRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try {
+        void audioCtxRef.current.close();
+      } catch {
+        /* ctx already closed */
+      }
+      audioCtxRef.current = null;
+    }
+    setInputLevel(0);
+  }, []);
+
+  const startLevelMonitor = useCallback((stream: MediaStream) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      src.connect(analyser);
+      audioCtxRef.current = ctx;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length / 255;
+        // Gamma-correct so quiet speech still moves the bar; clamp to 1.
+        const level = Math.min(1, Math.pow(avg, 0.6) * 1.8);
+        setInputLevel(level);
+        levelRafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      /* AudioContext unavailable — leave inputLevel at 0 */
+    }
+  }, []);
+
   const releaseMic = useCallback(() => {
+    stopLevelMonitor();
     if (micStreamRef.current) {
       for (const t of micStreamRef.current.getTracks()) t.stop();
       micStreamRef.current = null;
     }
-  }, []);
+  }, [stopLevelMonitor]);
 
   const stop = useCallback(async () => {
     if (!sessionRef.current && !sessionIdRef.current) {
@@ -280,16 +342,24 @@ export function useRealtimeSession(
         // still produces audio OUT (so the user gets voice replies),
         // they just type their input.
         setState('requesting-mic');
+        let micIsReal = false;
         try {
           micStreamRef.current = await navigator.mediaDevices.getUserMedia({
             audio: true,
           });
+          micIsReal = true;
         } catch {
           micStreamRef.current = buildSilentMicStream();
           setTextModeState(true);
           // Surface a soft error key the panel uses to render an inline
           // hint above the text input. We still proceed with connect.
           setErrorKey('mic_denied');
+        }
+        // Wire the level meter only when the user actually granted mic
+        // access — a silent fallback stream would always report 0 and the
+        // animation would never wake up, which is correct.
+        if (micIsReal && micStreamRef.current) {
+          startLevelMonitor(micStreamRef.current);
         }
 
         // ── 2. /api/voice/ephemeral ────────────────────────────────────
@@ -433,7 +503,7 @@ export function useRealtimeSession(
         startingRef.current = false;
       }
     },
-    [releaseMic],
+    [releaseMic, startLevelMonitor],
   );
 
   // ── Resync instructions on route change (PR3) ─────────────────────────
@@ -545,6 +615,7 @@ export function useRealtimeSession(
     isAssistantSpeaking,
     muted,
     textMode,
+    inputLevel,
     start,
     stop,
     toggleMute,

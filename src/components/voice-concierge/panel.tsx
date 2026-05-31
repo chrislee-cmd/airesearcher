@@ -17,6 +17,9 @@ type Props = {
   errorKey?: 'mic_denied' | 'quota_exceeded' | 'preview_only' | 'generic';
   transcripts: VoiceTranscript[];
   isAssistantSpeaking: boolean;
+  /** Smoothed mic level (0..1) — drives the input feedback dot so the
+   *  user can see their own voice landing while the assistant pauses. */
+  inputLevel: number;
   onClose: () => void;
 };
 
@@ -25,6 +28,7 @@ export function VoiceConciergePanel({
   errorKey,
   transcripts,
   isAssistantSpeaking,
+  inputLevel,
   onClose,
 }: Props) {
   const t = useTranslations('Concierge');
@@ -43,7 +47,13 @@ export function VoiceConciergePanel({
     stateText = t('state_idle');
   }
 
-  const dotClass =
+  // Detect "user is currently speaking" from the smoothed mic level —
+  // any sustained signal above the noise floor counts. We don't try to
+  // do real VAD; the threshold is generous enough that breath/typing
+  // doesn't trigger and quiet speech does.
+  const isUserSpeaking = state === 'live' && inputLevel > 0.06;
+
+  const baseDotClass =
     state === 'live'
       ? isAssistantSpeaking
         ? 'animate-pulse bg-amore'
@@ -52,8 +62,14 @@ export function VoiceConciergePanel({
         ? 'bg-warn'
         : 'bg-mute-soft';
 
+  // Scale the dot with the live mic level — gives a real-time "I hear
+  // you" pulse while the user speaks, without adding a separate widget.
+  // Capped low so the dot stays inside its 8×8 slot.
+  const dotScale = isUserSpeaking ? 1 + Math.min(0.9, inputLevel * 1.4) : 1;
+
   // Only show the most recent assistant utterance — the box is a
-  // speech bubble, not a transcript log.
+  // speech bubble, not a transcript log. Updates live via the SDK's
+  // history_updated event so the streaming deltas land here in real time.
   const latestAssistant = [...transcripts]
     .reverse()
     .find((tr) => tr.role === 'assistant');
@@ -68,19 +84,26 @@ export function VoiceConciergePanel({
       aria-live="polite"
       aria-label={t('panel_title')}
       className={
-        // Sit to the left of the FAB at top-right. FAB is fixed
-        // top-5 right-5, 56px wide → leave 12px gutter, anchor the box
-        // to right-[84px]. Width is fluid but capped so long lines wrap
-        // into a second row before reaching the screen edge on small
-        // viewports.
-        'fixed top-5 right-[84px] z-[80] flex max-w-[360px] items-start gap-3 ' +
+        // Sit to the left of the FAB at top-right. FAB is now 40px wide
+        // (top-5 right-5) → leave a 12px gutter and anchor the box to
+        // right-[64px]. Width is fluid but capped so long lines wrap
+        // into a second row before reaching the screen edge.
+        'fixed top-5 right-[64px] z-[80] flex max-w-[360px] items-start gap-3 ' +
         'border border-line bg-paper px-3.5 py-2.5 ' +
         'shadow-[0_2px_8px_rgba(0,0,0,0.04)] [border-radius:10px]'
       }
     >
+      {/* Dot reflects state colour AND pulses with the mic level when
+          the user is speaking. transform-scale keeps it cheap (no
+          reflow) and the parent slot is fixed at 8×8 so it never
+          pushes the text. */}
       <span
         aria-hidden="true"
-        className={`mt-1.5 inline-block h-2 w-2 shrink-0 [border-radius:9999px] ${dotClass}`}
+        style={{
+          transform: `scale(${dotScale.toFixed(2)})`,
+          transition: 'transform 80ms ease-out',
+        }}
+        className={`mt-1.5 inline-block h-2 w-2 shrink-0 [border-radius:9999px] ${baseDotClass}`}
       />
       <p
         className={

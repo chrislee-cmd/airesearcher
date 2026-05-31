@@ -36,6 +36,12 @@ type Ctx = {
   /** Whether the expand panel is mounted/visible. */
   open: boolean;
   status: VoiceState;
+  /** True while OpenAI is producing audio out. FAB uses this for an
+   *  outward glow so the user knows the model is still talking. */
+  isAssistantSpeaking: boolean;
+  /** Smoothed mic input level (0..1). FAB scales its ring with this so
+   *  the user can see their own voice landing. */
+  inputLevel: number;
   openConcierge: () => void;
   closeConcierge: () => void;
   toggleConcierge: () => void;
@@ -188,11 +194,21 @@ export function VoiceConciergeProvider({
     () => ({
       open,
       status: session.state,
+      isAssistantSpeaking: session.isAssistantSpeaking,
+      inputLevel: session.inputLevel,
       openConcierge,
       closeConcierge,
       toggleConcierge,
     }),
-    [open, session.state, openConcierge, closeConcierge, toggleConcierge],
+    [
+      open,
+      session.state,
+      session.isAssistantSpeaking,
+      session.inputLevel,
+      openConcierge,
+      closeConcierge,
+      toggleConcierge,
+    ],
   );
 
   const fabVisible =
@@ -210,6 +226,7 @@ export function VoiceConciergeProvider({
               errorKey={session.errorKey}
               transcripts={session.transcripts}
               isAssistantSpeaking={session.isAssistantSpeaking}
+              inputLevel={session.inputLevel}
               onClose={closeConcierge}
             />
           )}
