@@ -57,15 +57,12 @@ export function VoiceConciergeFab() {
 
   return (
     <>
-      {/* First-time tooltip — positioned above the FAB, dismisses on
-          FAB click (via markSeen in handleClick) OR opt-out button. */}
+      {/* First-time tooltip — positioned below the FAB (FAB now lives at
+          top-right, so the tooltip drops down from it). */}
       {showFirstTimeCue && (
         <div
-          // Above the FAB (fixed bottom-5 right-5, FAB h-14) plus an 8px gap.
-          // We render as a sibling of the FAB so click-through behavior is
-          // explicit per element. Same z-layer as the FAB itself.
           className={
-            'fixed bottom-[88px] right-5 z-[80] flex items-center gap-2 ' +
+            'fixed top-[88px] right-5 z-[80] flex items-center gap-2 ' +
             'border border-line bg-paper px-3 py-2 text-[12px] text-ink-2 ' +
             'shadow-[0_2px_8px_rgba(0,0,0,0.06)] [border-radius:10px]'
           }
@@ -90,7 +87,7 @@ export function VoiceConciergeFab() {
         aria-label={t('fab_tooltip')}
         aria-pressed={isActive}
         className={
-          'fixed bottom-5 right-5 z-[80] flex h-14 w-14 items-center ' +
+          'fixed top-5 right-5 z-[80] flex h-14 w-14 items-center ' +
           'justify-center border bg-paper transition-colors duration-[120ms] ' +
           '[border-radius:9999px] ' +
           (showFirstTimeCue

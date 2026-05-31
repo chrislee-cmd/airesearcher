@@ -210,12 +210,7 @@ export function VoiceConciergeProvider({
               errorKey={session.errorKey}
               transcripts={session.transcripts}
               isAssistantSpeaking={session.isAssistantSpeaking}
-              muted={session.muted}
-              textMode={session.textMode}
               onClose={closeConcierge}
-              onToggleMute={session.toggleMute}
-              onSendText={session.sendText}
-              onSetTextMode={session.setTextMode}
             />
           )}
           {/* PR4 Bundle 4: global listener for highlightUI tool calls. */}
