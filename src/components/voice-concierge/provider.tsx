@@ -26,7 +26,6 @@ import {
   useState,
 } from 'react';
 import { PREVIEW_FEATURES } from '@/lib/features';
-import { useToast } from '@/components/toast-provider';
 import { VoiceConciergeFab } from './fab';
 import { VoiceConciergePanel } from './panel';
 import { useRealtimeSession, type VoiceState } from './use-realtime-session';
@@ -69,10 +68,12 @@ export function VoiceConciergeProvider({
   const localeRaw = useLocale();
   const locale: 'ko' | 'en' = localeRaw === 'en' ? 'en' : 'ko';
 
-  // Toast + tool-status copy threaded into the tool factory. We resolve
-  // these here (provider lives under ToastProvider in (app)/layout.tsx)
-  // so the hook stays framework-agnostic.
-  const toast = useToast();
+  // Tool-status copy is still threaded through (some tools still pass
+  // it for fallback messages baked into the response) but the toast
+  // pusher is intentionally a no-op: the inline speech box at the top
+  // right already shows what the agent is doing, and a second pop-up
+  // would overlap that surface. If we ever want non-overlapping toasts
+  // back, swap in useToast().push here.
   const t = useTranslations('Concierge');
   const toolCopy = useMemo(
     () => ({
@@ -83,10 +84,11 @@ export function VoiceConciergeProvider({
     }),
     [t],
   );
+  const suppressedToast = useMemo(() => () => {}, []);
 
   const session = useRealtimeSession({
     router,
-    toast: toast.push,
+    toast: suppressedToast,
     toolCopy,
   });
 

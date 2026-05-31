@@ -196,10 +196,21 @@ export function useRealtimeSession(
   const [inputLevel, setInputLevel] = useState(0);
   // Live streaming assistant caption — populated from raw
   // `audio_transcript_delta` events on the transport. The buffer is keyed
-  // by itemId so back-to-back assistant turns reset cleanly.
+  // by itemId so back-to-back assistant turns reset cleanly. We pace the
+  // reveal at REVEAL_CHARS_PER_SEC so bursty deltas don't smash the
+  // caption box; the interval keeps draining the buffer toward the target
+  // length and idles when caught up.
   const [streamingAssistant, setStreamingAssistant] =
     useState<VoiceTranscript | null>(null);
   const streamingBufferRef = useRef<Map<string, string>>(new Map());
+  const revealedLenRef = useRef<Map<string, number>>(new Map());
+  const currentStreamItemRef = useRef<string | null>(null);
+  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tuned for a relaxed reading pace — slower than raw OpenAI generation
+  // so the user can actually follow along. ~16 chars/s ≈ natural Korean
+  // speech tempo. Adjust if it falls noticeably behind audio.
+  const REVEAL_TICK_MS = 60;
+  const REVEAL_CHARS_PER_TICK = 1;
   // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
   // because start() needs to flip it on mic_denied before the panel ever
   // sees an error state.
@@ -326,6 +337,12 @@ export function useRealtimeSession(
     sessionIdRef.current = null;
     persistedTextRef.current.clear();
     streamingBufferRef.current.clear();
+    revealedLenRef.current.clear();
+    currentStreamItemRef.current = null;
+    if (revealIntervalRef.current) {
+      clearInterval(revealIntervalRef.current);
+      revealIntervalRef.current = null;
+    }
     setStreamingAssistant(null);
     setIsAssistantSpeaking(false);
     setMuted(null);
@@ -344,6 +361,8 @@ export function useRealtimeSession(
       setTranscripts([]);
       setStreamingAssistant(null);
       streamingBufferRef.current.clear();
+      revealedLenRef.current.clear();
+      currentStreamItemRef.current = null;
       persistedTextRef.current.clear();
       // Reset text-mode on each fresh start — the panel reopens cleanly
       // and a previously-denied mic gets a second chance.
@@ -473,26 +492,45 @@ export function useRealtimeSession(
 
         // Raw transport event — fires as the model generates each
         // transcript fragment for the *current* TTS turn. Lands ~tens of
-        // ms ahead of the matching audio chunk, which lets the panel
-        // render captions in lock-step with speech rather than after the
-        // turn completes. Keyed by itemId so a fresh assistant turn
-        // naturally replaces the previous one without a manual reset.
+        // ms ahead of the matching audio chunk. We append to the buffer
+        // here but don't immediately set state — the reveal interval
+        // below drains the buffer at a paced rate so bursty deltas don't
+        // overwhelm the caption.
         try {
           session.transport.on('audio_transcript_delta', (e) => {
             const cur = streamingBufferRef.current.get(e.itemId) ?? '';
-            const next = cur + e.delta;
-            streamingBufferRef.current.set(e.itemId, next);
-            setStreamingAssistant({
-              id: e.itemId,
-              role: 'assistant',
-              text: next,
-            });
+            streamingBufferRef.current.set(e.itemId, cur + e.delta);
+            currentStreamItemRef.current = e.itemId;
+            if (!revealedLenRef.current.has(e.itemId)) {
+              revealedLenRef.current.set(e.itemId, 0);
+            }
           });
         } catch {
           /* transport not exposing the typed event — fall back to the
              history_updated completion path (panel still renders text,
              just without the streaming feel). */
         }
+
+        // Paced reveal — single interval shared across all assistant
+        // turns. Cheap (a Map lookup + slice per tick) and idles when
+        // the displayed length matches the buffer.
+        if (revealIntervalRef.current) {
+          clearInterval(revealIntervalRef.current);
+        }
+        revealIntervalRef.current = setInterval(() => {
+          const itemId = currentStreamItemRef.current;
+          if (!itemId) return;
+          const target = streamingBufferRef.current.get(itemId) ?? '';
+          const revealed = revealedLenRef.current.get(itemId) ?? 0;
+          if (revealed >= target.length) return;
+          const next = Math.min(target.length, revealed + REVEAL_CHARS_PER_TICK);
+          revealedLenRef.current.set(itemId, next);
+          setStreamingAssistant({
+            id: itemId,
+            role: 'assistant',
+            text: target.slice(0, next),
+          });
+        }, REVEAL_TICK_MS);
         session.on('error', (e) => {
           // Surface the SDK error so we can actually diagnose 'generic'
           // failures in the panel — the catch below swallowed everything
