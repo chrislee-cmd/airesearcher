@@ -3,18 +3,23 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 // Shared <Button> primitive — codifies the inline patterns scattered across
-// the app (181 native <button> JSX sites observed in 2026-05-31 audit).
+// the app (177 native <button> JSX sites observed in 2026-05-31 audit).
 //
-// Source of truth for variant/size: docs/design-system-v2-draft.md §7.1.
-// Visuals match recruiting-brief.tsx / projects-view.tsx / etc. so a
-// migration is purely a search-and-replace — no design change.
-//
-// Status: NOT YET CONSUMED. File is exported but no caller imports it,
-// so production bundles tree-shake it out. Migrations happen in
-// separate PRs (page-by-page) so each visual regression risk is local.
+// Variants:
+//   primary / secondary / ghost / destructive  — capsule-shape actions
+//   link / destructive-link                    — text-only inline actions
+// Sizes:
+//   xs / sm / md / lg                          — capsule sizes ([border-radius:14px])
+//   cta                                        — pill ([border-radius:9999px]) hero CTA
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
-export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'destructive'
+  | 'link'
+  | 'destructive-link';
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'cta';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -28,7 +33,6 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const BASE =
   'inline-flex items-center justify-center gap-1.5 border font-semibold ' +
-  'transition-colors duration-[120ms] [border-radius:14px] ' +
   'disabled:cursor-not-allowed disabled:opacity-40 ' +
   // Border-driven focus matches existing app pattern; loud ring left to
   // app-wide a11y pass (P0 in audit) so this primitive stays drop-in.
@@ -43,16 +47,26 @@ const VARIANT: Record<ButtonVariant, string> = {
     'border-line bg-paper text-mute hover:border-mute-soft hover:text-ink-2',
   destructive:
     'border-line bg-paper text-mute hover:border-warning hover:text-warning',
+  // Text-only neutral action (e.g. "switch to sign up", inline cancels).
+  link:
+    'border-transparent bg-transparent text-mute hover:text-ink-2',
+  // Text-only delete action (8 sites: row deletes, panel removes).
+  'destructive-link':
+    'border-transparent bg-transparent text-mute hover:text-warning',
 };
 
+// Each size carries its own radius + transition so `cta` (pill, transition-all)
+// fully overrides the default capsule (14px, transition-colors) regardless of
+// CSS source order.
 const SIZE: Record<ButtonSize, string> = {
-  // Sizes match the dominant inline patterns. uppercase-action style is
-  // the caller's choice (apply uppercase + tracking on the label) — not
-  // baked into size so existing labels migrate cleanly.
-  xs: 'px-2.5 py-1 text-[10.5px]',
-  sm: 'px-4 py-1.5 text-[11.5px]',
-  md: 'px-5 py-2 text-[12px]',
-  lg: 'px-5 py-2.5 text-[13px]',
+  xs: 'px-2.5 py-1 text-[10.5px] [border-radius:14px] transition-colors duration-[120ms]',
+  sm: 'px-4 py-1.5 text-[11.5px] [border-radius:14px] transition-colors duration-[120ms]',
+  md: 'px-5 py-2 text-[12px] [border-radius:14px] transition-colors duration-[120ms]',
+  lg: 'px-5 py-2.5 text-[13px] [border-radius:14px] transition-colors duration-[120ms]',
+  cta:
+    'px-4 py-3 text-[11px] uppercase tracking-[0.22em] [border-radius:9999px] ' +
+    'transition-all duration-[120ms] hover:-translate-y-px ' +
+    'hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
