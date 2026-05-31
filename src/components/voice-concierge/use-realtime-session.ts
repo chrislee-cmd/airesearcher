@@ -62,6 +62,16 @@ export type UseRealtimeSessionResult = {
   isAssistantSpeaking: boolean;
   /** Microphone mute state (null until session connects). */
   muted: boolean | null;
+  /** Smoothed mic input level (0..1). Used by the FAB/panel to render
+   *  "you are being heard" feedback while the user speaks. Stays at 0
+   *  when mic was denied (silent stream) or session not live. */
+  inputLevel: number;
+  /** Live-streamed assistant transcript, accumulating from raw
+   *  `audio_transcript_delta` events on the transport layer. Updates in
+   *  near real time with TTS generation so the panel can render captions
+   *  in lock-step with speech (instead of a synthesised typewriter). Null
+   *  before the first delta arrives in a session. */
+  streamingAssistant: VoiceTranscript | null;
   /** PR4 Bundle 3: true when the panel should render the text-input
    *  fallback instead of (or in addition to) voice. Auto-flips on
    *  mic_denied during start(), and on user request via toggleTextMode(). */
@@ -181,6 +191,27 @@ export function useRealtimeSession(
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
   const [muted, setMuted] = useState<boolean | null>(null);
+  // Smoothed mic level (0..1). Driven by an AnalyserNode rAF loop; gated
+  // behind real-mic acquisition so denied/silent sessions stay at 0.
+  const [inputLevel, setInputLevel] = useState(0);
+  // Live streaming assistant caption — populated from raw
+  // `audio_transcript_delta` events on the transport. The buffer is keyed
+  // by itemId so back-to-back assistant turns reset cleanly. We pace the
+  // reveal at REVEAL_CHARS_PER_SEC so bursty deltas don't smash the
+  // caption box; the interval keeps draining the buffer toward the target
+  // length and idles when caught up.
+  const [streamingAssistant, setStreamingAssistant] =
+    useState<VoiceTranscript | null>(null);
+  const streamingBufferRef = useRef<Map<string, string>>(new Map());
+  const revealedLenRef = useRef<Map<string, number>>(new Map());
+  const currentStreamItemRef = useRef<string | null>(null);
+  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tuned for a relaxed reading pace — slower than raw OpenAI generation
+  // so the user can actually follow along. ~11 chars/s, a touch under
+  // natural Korean speech tempo so captions feel read-along rather than
+  // racing. Adjust if it falls noticeably behind audio.
+  const REVEAL_TICK_MS = 90;
+  const REVEAL_CHARS_PER_TICK = 1;
   // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
   // because start() needs to flip it on mic_denied before the panel ever
   // sees an error state.
@@ -220,12 +251,67 @@ export function useRealtimeSession(
   // panel is ephemeral and the server has the durable copy.
   const TRANSCRIPT_LIMIT = 20;
 
+  // Audio level monitor — owned alongside the mic stream so its lifetime
+  // matches the WebRTC peer. Refs (no re-render) for the AudioContext +
+  // rAF handle so we can tear them down cleanly in stop()/unmount.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const levelRafRef = useRef<number | null>(null);
+
+  const stopLevelMonitor = useCallback(() => {
+    if (levelRafRef.current !== null) {
+      cancelAnimationFrame(levelRafRef.current);
+      levelRafRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try {
+        void audioCtxRef.current.close();
+      } catch {
+        /* ctx already closed */
+      }
+      audioCtxRef.current = null;
+    }
+    setInputLevel(0);
+  }, []);
+
+  const startLevelMonitor = useCallback((stream: MediaStream) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      src.connect(analyser);
+      audioCtxRef.current = ctx;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length / 255;
+        // Gamma-correct so quiet speech still moves the bar; clamp to 1.
+        const level = Math.min(1, Math.pow(avg, 0.6) * 1.8);
+        setInputLevel(level);
+        levelRafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      /* AudioContext unavailable — leave inputLevel at 0 */
+    }
+  }, []);
+
   const releaseMic = useCallback(() => {
+    stopLevelMonitor();
     if (micStreamRef.current) {
       for (const t of micStreamRef.current.getTracks()) t.stop();
       micStreamRef.current = null;
     }
-  }, []);
+  }, [stopLevelMonitor]);
 
   const stop = useCallback(async () => {
     if (!sessionRef.current && !sessionIdRef.current) {
@@ -251,6 +337,14 @@ export function useRealtimeSession(
     }
     sessionIdRef.current = null;
     persistedTextRef.current.clear();
+    streamingBufferRef.current.clear();
+    revealedLenRef.current.clear();
+    currentStreamItemRef.current = null;
+    if (revealIntervalRef.current) {
+      clearInterval(revealIntervalRef.current);
+      revealIntervalRef.current = null;
+    }
+    setStreamingAssistant(null);
     setIsAssistantSpeaking(false);
     setMuted(null);
     setState('idle');
@@ -266,6 +360,10 @@ export function useRealtimeSession(
       startingRef.current = true;
       setErrorKey(undefined);
       setTranscripts([]);
+      setStreamingAssistant(null);
+      streamingBufferRef.current.clear();
+      revealedLenRef.current.clear();
+      currentStreamItemRef.current = null;
       persistedTextRef.current.clear();
       // Reset text-mode on each fresh start — the panel reopens cleanly
       // and a previously-denied mic gets a second chance.
@@ -280,16 +378,24 @@ export function useRealtimeSession(
         // still produces audio OUT (so the user gets voice replies),
         // they just type their input.
         setState('requesting-mic');
+        let micIsReal = false;
         try {
           micStreamRef.current = await navigator.mediaDevices.getUserMedia({
             audio: true,
           });
+          micIsReal = true;
         } catch {
           micStreamRef.current = buildSilentMicStream();
           setTextModeState(true);
           // Surface a soft error key the panel uses to render an inline
           // hint above the text input. We still proceed with connect.
           setErrorKey('mic_denied');
+        }
+        // Wire the level meter only when the user actually granted mic
+        // access — a silent fallback stream would always report 0 and the
+        // animation would never wake up, which is correct.
+        if (micIsReal && micStreamRef.current) {
+          startLevelMonitor(micStreamRef.current);
         }
 
         // ── 2. /api/voice/ephemeral ────────────────────────────────────
@@ -384,6 +490,48 @@ export function useRealtimeSession(
         session.on('audio_start', () => setIsAssistantSpeaking(true));
         session.on('audio_stopped', () => setIsAssistantSpeaking(false));
         session.on('audio_interrupted', () => setIsAssistantSpeaking(false));
+
+        // Raw transport event — fires as the model generates each
+        // transcript fragment for the *current* TTS turn. Lands ~tens of
+        // ms ahead of the matching audio chunk. We append to the buffer
+        // here but don't immediately set state — the reveal interval
+        // below drains the buffer at a paced rate so bursty deltas don't
+        // overwhelm the caption.
+        try {
+          session.transport.on('audio_transcript_delta', (e) => {
+            const cur = streamingBufferRef.current.get(e.itemId) ?? '';
+            streamingBufferRef.current.set(e.itemId, cur + e.delta);
+            currentStreamItemRef.current = e.itemId;
+            if (!revealedLenRef.current.has(e.itemId)) {
+              revealedLenRef.current.set(e.itemId, 0);
+            }
+          });
+        } catch {
+          /* transport not exposing the typed event — fall back to the
+             history_updated completion path (panel still renders text,
+             just without the streaming feel). */
+        }
+
+        // Paced reveal — single interval shared across all assistant
+        // turns. Cheap (a Map lookup + slice per tick) and idles when
+        // the displayed length matches the buffer.
+        if (revealIntervalRef.current) {
+          clearInterval(revealIntervalRef.current);
+        }
+        revealIntervalRef.current = setInterval(() => {
+          const itemId = currentStreamItemRef.current;
+          if (!itemId) return;
+          const target = streamingBufferRef.current.get(itemId) ?? '';
+          const revealed = revealedLenRef.current.get(itemId) ?? 0;
+          if (revealed >= target.length) return;
+          const next = Math.min(target.length, revealed + REVEAL_CHARS_PER_TICK);
+          revealedLenRef.current.set(itemId, next);
+          setStreamingAssistant({
+            id: itemId,
+            role: 'assistant',
+            text: target.slice(0, next),
+          });
+        }, REVEAL_TICK_MS);
         session.on('error', (e) => {
           // Surface the SDK error so we can actually diagnose 'generic'
           // failures in the panel — the catch below swallowed everything
@@ -433,7 +581,7 @@ export function useRealtimeSession(
         startingRef.current = false;
       }
     },
-    [releaseMic],
+    [releaseMic, startLevelMonitor],
   );
 
   // ── Resync instructions on route change (PR3) ─────────────────────────
@@ -545,6 +693,8 @@ export function useRealtimeSession(
     isAssistantSpeaking,
     muted,
     textMode,
+    inputLevel,
+    streamingAssistant,
     start,
     stop,
     toggleMute,

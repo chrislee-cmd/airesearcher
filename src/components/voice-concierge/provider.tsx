@@ -26,7 +26,6 @@ import {
   useState,
 } from 'react';
 import { PREVIEW_FEATURES } from '@/lib/features';
-import { useToast } from '@/components/toast-provider';
 import { VoiceConciergeFab } from './fab';
 import { VoiceConciergePanel } from './panel';
 import { useRealtimeSession, type VoiceState } from './use-realtime-session';
@@ -36,6 +35,12 @@ type Ctx = {
   /** Whether the expand panel is mounted/visible. */
   open: boolean;
   status: VoiceState;
+  /** True while OpenAI is producing audio out. FAB uses this for an
+   *  outward glow so the user knows the model is still talking. */
+  isAssistantSpeaking: boolean;
+  /** Smoothed mic input level (0..1). FAB scales its ring with this so
+   *  the user can see their own voice landing. */
+  inputLevel: number;
   openConcierge: () => void;
   closeConcierge: () => void;
   toggleConcierge: () => void;
@@ -63,10 +68,12 @@ export function VoiceConciergeProvider({
   const localeRaw = useLocale();
   const locale: 'ko' | 'en' = localeRaw === 'en' ? 'en' : 'ko';
 
-  // Toast + tool-status copy threaded into the tool factory. We resolve
-  // these here (provider lives under ToastProvider in (app)/layout.tsx)
-  // so the hook stays framework-agnostic.
-  const toast = useToast();
+  // Tool-status copy is still threaded through (some tools still pass
+  // it for fallback messages baked into the response) but the toast
+  // pusher is intentionally a no-op: the inline speech box at the top
+  // right already shows what the agent is doing, and a second pop-up
+  // would overlap that surface. If we ever want non-overlapping toasts
+  // back, swap in useToast().push here.
   const t = useTranslations('Concierge');
   const toolCopy = useMemo(
     () => ({
@@ -77,10 +84,11 @@ export function VoiceConciergeProvider({
     }),
     [t],
   );
+  const suppressedToast = useMemo(() => () => {}, []);
 
   const session = useRealtimeSession({
     router,
-    toast: toast.push,
+    toast: suppressedToast,
     toolCopy,
   });
 
@@ -188,11 +196,21 @@ export function VoiceConciergeProvider({
     () => ({
       open,
       status: session.state,
+      isAssistantSpeaking: session.isAssistantSpeaking,
+      inputLevel: session.inputLevel,
       openConcierge,
       closeConcierge,
       toggleConcierge,
     }),
-    [open, session.state, openConcierge, closeConcierge, toggleConcierge],
+    [
+      open,
+      session.state,
+      session.isAssistantSpeaking,
+      session.inputLevel,
+      openConcierge,
+      closeConcierge,
+      toggleConcierge,
+    ],
   );
 
   const fabVisible =
@@ -209,13 +227,10 @@ export function VoiceConciergeProvider({
               state={session.state}
               errorKey={session.errorKey}
               transcripts={session.transcripts}
+              streamingAssistant={session.streamingAssistant}
               isAssistantSpeaking={session.isAssistantSpeaking}
-              muted={session.muted}
-              textMode={session.textMode}
+              inputLevel={session.inputLevel}
               onClose={closeConcierge}
-              onToggleMute={session.toggleMute}
-              onSendText={session.sendText}
-              onSetTextMode={session.setTextMode}
             />
           )}
           {/* PR4 Bundle 4: global listener for highlightUI tool calls. */}
