@@ -233,7 +233,6 @@ export async function LandingPage({ locale }: { locale: string }) {
 
       <footer>
         <div className="row">
-          <div>{t.rich('footer.madeIn', richTags)}</div>
           <div style={{ display: 'flex', gap: '18px' }}>
             <Link href="/terms">{t('footer.terms')}</Link>
             <Link href="/privacy">{t('footer.privacy')}</Link>
