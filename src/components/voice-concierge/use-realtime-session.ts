@@ -207,9 +207,10 @@ export function useRealtimeSession(
   const currentStreamItemRef = useRef<string | null>(null);
   const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Tuned for a relaxed reading pace — slower than raw OpenAI generation
-  // so the user can actually follow along. ~16 chars/s ≈ natural Korean
-  // speech tempo. Adjust if it falls noticeably behind audio.
-  const REVEAL_TICK_MS = 60;
+  // so the user can actually follow along. ~11 chars/s, a touch under
+  // natural Korean speech tempo so captions feel read-along rather than
+  // racing. Adjust if it falls noticeably behind audio.
+  const REVEAL_TICK_MS = 90;
   const REVEAL_CHARS_PER_TICK = 1;
   // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
   // because start() needs to flip it on mic_denied before the panel ever
