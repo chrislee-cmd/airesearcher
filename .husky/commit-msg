@@ -1,0 +1,15 @@
+# PROJECT.md §3.3 — enforce commit message prefix (feat|fix|chore|hotfix).
+
+msg_file=$1
+first_line=$(head -1 "$msg_file")
+
+case "$first_line" in
+  Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
+esac
+
+if ! printf '%s' "$first_line" | grep -qE '^(feat|fix|chore|hotfix)(\([^)]+\))?:[[:space:]]+.+'; then
+  echo "✗ Commit message must start with feat:|fix:|chore:|hotfix: (PROJECT.md §3.3)"
+  echo "  Got:     $first_line"
+  echo "  Example: feat: add voice agent inline caption"
+  exit 1
+fi

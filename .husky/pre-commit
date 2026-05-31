@@ -1,0 +1,24 @@
+# PROJECT.md §3.5 — block secrets, sanity-check locale JSON, run lint-staged.
+
+set -e
+
+staged_env=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env[^/]*\.example$' || true)
+if [ -n "$staged_env" ]; then
+  echo "✗ Refusing to commit .env files (PROJECT.md §3.5 / §6):"
+  echo "$staged_env" | sed 's/^/    /'
+  echo "  Unstage: git restore --staged <path>  (and add to .gitignore if missing)"
+  exit 1
+fi
+
+staged_json=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^messages/.*\.json$' || true)
+if [ -n "$staged_json" ]; then
+  for f in $staged_json; do
+    if ! node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$f" 2>/tmp/husky-json-err; then
+      echo "✗ Invalid JSON: $f"
+      cat /tmp/husky-json-err
+      exit 1
+    fi
+  done
+fi
+
+pnpm exec lint-staged

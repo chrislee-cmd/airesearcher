@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    name: Lint + Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Lint is soft-launched: existing main has 108 pre-existing errors
+      # (mostly react/no-unescaped-entities). We surface failures in PR logs
+      # but do not block merges yet. Tighten to required after cleanup PRs.
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck

@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": "sh -c 'pnpm exec eslint --fix \"$@\" || true' --"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.74",
@@ -48,6 +53,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "supabase": "^2.98.0",
     "tailwindcss": "^4",
     "typescript": "^5"
