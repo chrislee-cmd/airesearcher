@@ -13,6 +13,9 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { FeaturePage } from './ui/feature-page';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
 
@@ -644,14 +647,15 @@ export function RecruitingBrief() {
               <span className="shrink-0 tabular-nums text-mute-soft">
                 {formatBytes(f.size)}
               </span>
-              <button
-                type="button"
+              <Button
+                variant="destructive-link"
+                size="xs"
                 onClick={() => removeFile(i)}
                 disabled={running}
-                className="shrink-0 text-[11.5px] text-mute hover:text-amore disabled:opacity-40"
+                className="shrink-0 text-[11.5px]"
               >
                 제거
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -661,13 +665,14 @@ export function RecruitingBrief() {
         <span className="text-[11px] tabular-nums text-mute-soft">
           {files.length}개 파일 · {pasted.length}자
         </span>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {running ? tCommon('loading') : '추출 실행'}
-        </button>
+        </Button>
       </div>
 
       {errorMessage && (
@@ -715,13 +720,14 @@ export function RecruitingBrief() {
                   대상자 조건 ({previewCriteria.length})
                 </h3>
                 {edited && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="link"
+                    size="xs"
                     onClick={addCriterion}
-                    className="text-[11px] text-mute hover:text-ink-2"
+                    className="text-[11px]"
                   >
                     + 항목 추가
-                  </button>
+                  </Button>
                 )}
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto">
@@ -804,50 +810,54 @@ export function RecruitingBrief() {
                       ]}
                     />
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => requireAuth(() => void generateSurvey())}
                     disabled={surveyRunning}
-                    className="border border-ink bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+                    className="text-[12px]"
                   >
                     {surveyRunning
                       ? '생성 중…'
                       : survey
                         ? '재생성'
                         : '설문 생성'}
-                  </button>
+                  </Button>
                   {survey &&
                     (google?.connected ? (
                       published ? (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => void openStartModal()}
                           disabled={starting}
-                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+                          className="text-[12px]"
                         >
                           {starting ? '메일 발송 중…' : '리크루팅 시작'}
-                        </button>
+                        </Button>
                       ) : (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => void publishToGoogle()}
                           disabled={publishing}
-                          className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+                          className="text-[12px]"
                         >
                           {publishing ? '발행 중…' : 'Google Forms로 발행'}
-                        </button>
+                        </Button>
                       )
                     ) : (
-                      <button
-                        type="button"
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={() => {
                           window.location.href =
                             '/api/recruiting/google/start';
                         }}
-                        className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
+                        className="text-[12px]"
                       >
                         Google 계정 연결
-                      </button>
+                      </Button>
                     ))}
                 </div>
               </div>
@@ -1059,24 +1069,24 @@ export function RecruitingBrief() {
                     {label}
                   </div>
                   {multiline ? (
-                    <textarea
+                    <Textarea
                       value={mailFields[key]}
                       onChange={(e) =>
                         setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
                       }
                       rows={2}
                       disabled={draftLoading}
-                      className="w-full resize-y border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.5] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:14px]"
+                      className="text-[12.5px] leading-[1.5]"
                     />
                   ) : (
-                    <input
+                    <Input
                       type="text"
                       value={mailFields[key]}
                       onChange={(e) =>
                         setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
                       }
                       disabled={draftLoading}
-                      className="w-full border border-line bg-paper px-3 py-2 text-[12.5px] text-ink focus:border-ink-2 focus:outline-none disabled:opacity-40 [border-radius:14px]"
+                      className="text-[12.5px]"
                     />
                   )}
                 </label>
@@ -1102,16 +1112,18 @@ export function RecruitingBrief() {
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setStartModalOpen(false)}
                 disabled={starting}
-                className="border border-line bg-paper px-4 py-1.5 text-[12px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+                className="border-line text-[12px]"
               >
                 취소
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => void confirmStartRecruiting()}
                 disabled={
                   starting ||
@@ -1119,10 +1131,10 @@ export function RecruitingBrief() {
                   !mailFields.purpose.trim() ||
                   !mailFields.target.trim()
                 }
-                className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+                className="text-[12px]"
               >
                 {starting ? '발송 중…' : '최종 승인'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1182,13 +1194,14 @@ function CriterionEditor({
           />
           필수
         </label>
-        <button
-          type="button"
+        <Button
+          variant="destructive-link"
+          size="xs"
           onClick={onRemove}
-          className="ml-auto text-[10.5px] text-mute hover:text-amore"
+          className="ml-auto"
         >
           삭제
-        </button>
+        </Button>
       </div>
       <input
         type="text"
