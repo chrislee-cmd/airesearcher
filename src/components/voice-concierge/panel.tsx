@@ -9,6 +9,7 @@
 // two lines. The user's own utterances are NOT echoed back — keeping the
 // surface unobtrusive while live.
 
+import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { VoiceState, VoiceTranscript } from './use-realtime-session';
 
@@ -78,6 +79,18 @@ export function VoiceConciergePanel({
   // so the box never collapses to empty.
   const bodyText = latestAssistant?.text ?? stateText;
 
+  // Auto-scroll the caption container to the bottom on every text tick
+  // so streaming deltas always reveal the LATEST words. We use scrollTop
+  // (not scrollIntoView) because the parent box must stay anchored to
+  // the viewport — we just shift the inner text up. Cheap: runs only
+  // when bodyText actually changes, which is what we want for streaming.
+  const captionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = captionRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [bodyText]);
+
   return (
     <div
       role="status"
@@ -105,17 +118,21 @@ export function VoiceConciergePanel({
         }}
         className={`mt-1.5 inline-block h-2 w-2 shrink-0 [border-radius:9999px] ${baseDotClass}`}
       />
-      <p
+      {/* Fixed-height streaming window — at most two lines (13px × 1.45
+          line-height ≈ 19px → ~38px). As the assistant deltas pour in,
+          the inner paragraph grows and the auto-scroll effect pins the
+          tail to the bottom, so the user always sees the freshest text
+          like a streaming prompt. Scrollbar is hidden on both engines
+          so nothing visually leaks into the speech-bubble feel. */}
+      <div
+        ref={captionRef}
         className={
-          // line-clamp-2 keeps the box to at most two lines; anything
-          // longer truncates with an ellipsis, which is fine because
-          // the model speaks the full line aloud anyway.
-          'flex-1 text-[13px] leading-[1.45] text-ink-2 ' +
-          '[display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden'
+          'flex-1 overflow-y-auto text-[13px] leading-[1.45] text-ink-2 ' +
+          'max-h-[38px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
         }
       >
-        {bodyText}
-      </p>
+        <p className="whitespace-pre-wrap break-words">{bodyText}</p>
+      </div>
       <button
         type="button"
         onClick={onClose}
