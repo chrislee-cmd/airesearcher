@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, Link } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type ProjectItem = {
   id: string;
@@ -69,12 +71,9 @@ export function ProjectsView({
       <div className="flex items-center justify-between border-b border-line-soft pb-3">
         <ViewToggle value={view} onChange={setView} />
         {canManage && (
-          <button
-            onClick={openCreate}
-            className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
-          >
+          <Button variant="primary" size="sm" onClick={openCreate}>
             {t('newProject')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -84,39 +83,37 @@ export function ProjectsView({
           className="mt-5 border border-line bg-paper p-5 [border-radius:14px]"
         >
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label={t('name')} required>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                maxLength={120}
-                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:14px]"
-              />
-            </Field>
-            <Field label={t('descriptionField')}>
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={500}
-                className="w-full border border-line bg-paper px-3 py-2 text-[13px] focus:border-amore focus:outline-none [border-radius:14px]"
-              />
-            </Field>
+            <Input
+              label={t('name')}
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+            />
+            <Input
+              label={t('descriptionField')}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={500}
+            />
           </div>
           <div className="mt-4 flex items-center justify-end gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               onClick={() => setCreating(false)}
-              className="border border-line px-3 py-1.5 text-[11.5px] text-mute hover:text-ink-2 [border-radius:14px]"
             >
               취소
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               type="submit"
-              disabled={busy}
-              className="border border-ink bg-ink px-4 py-1.5 text-[11.5px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-60 [border-radius:14px]"
+              loading={busy}
             >
               {t('create')}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -265,26 +262,6 @@ function FolderIcon() {
         fill="var(--color-amore-bg)"
       />
     </svg>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-        {label}
-        {required ? '' : ''}
-      </label>
-      <div className="mt-1.5">{children}</div>
-    </div>
   );
 }
 
