@@ -9,22 +9,18 @@
 // two lines. The user's own utterances are NOT echoed back — keeping the
 // surface unobtrusive while live.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { VoiceState, VoiceTranscript } from './use-realtime-session';
-
-// Typewriter speed for the streaming caption (ms between characters).
-// The Agents SDK delivers `history_updated` with the *complete* transcript
-// once the assistant finishes speaking — there's no per-token delta. So we
-// synthesise a streaming feel by revealing one char every ~22ms (≈45 chars/s,
-// a touch faster than natural Korean speech so the text doesn't lag the
-// audio). Reset whenever a new assistant item id appears.
-const TYPEWRITER_MS_PER_CHAR = 22;
 
 type Props = {
   state: VoiceState;
   errorKey?: 'mic_denied' | 'quota_exceeded' | 'preview_only' | 'generic';
   transcripts: VoiceTranscript[];
+  /** Live assistant caption accumulated from raw transport deltas. When
+   *  non-null this takes precedence over the completed transcript list
+   *  because it updates in real time with TTS generation. */
+  streamingAssistant: VoiceTranscript | null;
   isAssistantSpeaking: boolean;
   /** Smoothed mic level (0..1) — drives the input feedback dot so the
    *  user can see their own voice landing while the assistant pauses. */
@@ -36,6 +32,7 @@ export function VoiceConciergePanel({
   state,
   errorKey,
   transcripts,
+  streamingAssistant,
   isAssistantSpeaking,
   inputLevel,
   onClose,
@@ -76,48 +73,24 @@ export function VoiceConciergePanel({
   // Capped low so the dot stays inside its 8×8 slot.
   const dotScale = isUserSpeaking ? 1 + Math.min(0.9, inputLevel * 1.4) : 1;
 
-  // Only show the most recent assistant utterance — the box is a
-  // speech bubble, not a transcript log.
-  const latestAssistant = [...transcripts]
+  // Prefer the live streaming caption (raw transport deltas) when we
+  // have one — it lands in lock-step with TTS generation. Fall back to
+  // the last completed assistant message from the SDK history if for
+  // some reason deltas weren't emitted (e.g. text-only response). This
+  // keeps the box populated across all code paths.
+  const completedAssistant = [...transcripts]
     .reverse()
     .find((tr) => tr.role === 'assistant');
-
-  const targetText = latestAssistant?.text ?? '';
-  const targetId = latestAssistant?.id ?? null;
-
-  // Typewriter-style reveal so the user can actually read from the start
-  // even though the SDK hands us the full transcript at once. We track
-  // (a) which assistant item we're currently revealing — id change wipes
-  // the buffer; (b) how many chars are revealed so far. The advance
-  // effect re-arms with setTimeout after every paint, so React's batching
-  // keeps DOM updates cheap.
-  const [revealed, setRevealed] = useState('');
-  const revealedIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (targetId !== revealedIdRef.current) {
-      revealedIdRef.current = targetId;
-      setRevealed('');
-    }
-  }, [targetId]);
-
-  useEffect(() => {
-    if (!targetText) return;
-    if (revealed.length >= targetText.length) return;
-    const id = setTimeout(() => {
-      setRevealed(targetText.slice(0, revealed.length + 1));
-    }, TYPEWRITER_MS_PER_CHAR);
-    return () => clearTimeout(id);
-  }, [revealed, targetText]);
+  const display = streamingAssistant ?? completedAssistant ?? null;
 
   // When there's no assistant line yet, show a short status hint instead
   // so the box never collapses to empty.
-  const bodyText = revealed || stateText;
+  const bodyText = display?.text || stateText;
 
-  // Auto-scroll the caption container so the latest revealed character
-  // stays visible. With the typewriter reveal, the box fills naturally:
-  // 1 line at first, then 2 lines, then text rolls up past the top edge
-  // exactly like a streaming prompt.
+  // Auto-scroll the caption container so the latest fragment stays
+  // visible. Each transport delta widens display.text by ~a token, so
+  // the box fills naturally: 1 line at first, then 2 lines, then text
+  // rolls up past the top edge exactly like a streaming prompt.
   const captionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = captionRef.current;

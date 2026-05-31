@@ -225,6 +225,7 @@ export function VoiceConciergeProvider({
               state={session.state}
               errorKey={session.errorKey}
               transcripts={session.transcripts}
+              streamingAssistant={session.streamingAssistant}
               isAssistantSpeaking={session.isAssistantSpeaking}
               inputLevel={session.inputLevel}
               onClose={closeConcierge}

@@ -66,6 +66,12 @@ export type UseRealtimeSessionResult = {
    *  "you are being heard" feedback while the user speaks. Stays at 0
    *  when mic was denied (silent stream) or session not live. */
   inputLevel: number;
+  /** Live-streamed assistant transcript, accumulating from raw
+   *  `audio_transcript_delta` events on the transport layer. Updates in
+   *  near real time with TTS generation so the panel can render captions
+   *  in lock-step with speech (instead of a synthesised typewriter). Null
+   *  before the first delta arrives in a session. */
+  streamingAssistant: VoiceTranscript | null;
   /** PR4 Bundle 3: true when the panel should render the text-input
    *  fallback instead of (or in addition to) voice. Auto-flips on
    *  mic_denied during start(), and on user request via toggleTextMode(). */
@@ -188,6 +194,12 @@ export function useRealtimeSession(
   // Smoothed mic level (0..1). Driven by an AnalyserNode rAF loop; gated
   // behind real-mic acquisition so denied/silent sessions stay at 0.
   const [inputLevel, setInputLevel] = useState(0);
+  // Live streaming assistant caption — populated from raw
+  // `audio_transcript_delta` events on the transport. The buffer is keyed
+  // by itemId so back-to-back assistant turns reset cleanly.
+  const [streamingAssistant, setStreamingAssistant] =
+    useState<VoiceTranscript | null>(null);
+  const streamingBufferRef = useRef<Map<string, string>>(new Map());
   // PR4 Bundle 3: text-input fallback flag. Owned here (not in the panel)
   // because start() needs to flip it on mic_denied before the panel ever
   // sees an error state.
@@ -313,6 +325,8 @@ export function useRealtimeSession(
     }
     sessionIdRef.current = null;
     persistedTextRef.current.clear();
+    streamingBufferRef.current.clear();
+    setStreamingAssistant(null);
     setIsAssistantSpeaking(false);
     setMuted(null);
     setState('idle');
@@ -328,6 +342,8 @@ export function useRealtimeSession(
       startingRef.current = true;
       setErrorKey(undefined);
       setTranscripts([]);
+      setStreamingAssistant(null);
+      streamingBufferRef.current.clear();
       persistedTextRef.current.clear();
       // Reset text-mode on each fresh start — the panel reopens cleanly
       // and a previously-denied mic gets a second chance.
@@ -454,6 +470,29 @@ export function useRealtimeSession(
         session.on('audio_start', () => setIsAssistantSpeaking(true));
         session.on('audio_stopped', () => setIsAssistantSpeaking(false));
         session.on('audio_interrupted', () => setIsAssistantSpeaking(false));
+
+        // Raw transport event — fires as the model generates each
+        // transcript fragment for the *current* TTS turn. Lands ~tens of
+        // ms ahead of the matching audio chunk, which lets the panel
+        // render captions in lock-step with speech rather than after the
+        // turn completes. Keyed by itemId so a fresh assistant turn
+        // naturally replaces the previous one without a manual reset.
+        try {
+          session.transport.on('audio_transcript_delta', (e) => {
+            const cur = streamingBufferRef.current.get(e.itemId) ?? '';
+            const next = cur + e.delta;
+            streamingBufferRef.current.set(e.itemId, next);
+            setStreamingAssistant({
+              id: e.itemId,
+              role: 'assistant',
+              text: next,
+            });
+          });
+        } catch {
+          /* transport not exposing the typed event — fall back to the
+             history_updated completion path (panel still renders text,
+             just without the streaming feel). */
+        }
         session.on('error', (e) => {
           // Surface the SDK error so we can actually diagnose 'generic'
           // failures in the panel — the catch below swallowed everything
@@ -616,6 +655,7 @@ export function useRealtimeSession(
     muted,
     textMode,
     inputLevel,
+    streamingAssistant,
     start,
     stop,
     toggleMute,
