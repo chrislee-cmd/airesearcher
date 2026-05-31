@@ -93,6 +93,7 @@ function KoTerms() {
       <UL>
         <li>이용자는 타인의 정보를 도용하거나 허위 정보를 제공해서는 안 됩니다.</li>
         <li>이용자는 서비스를 이용하여 법령 또는 본 약관이 금지하거나 공서양속에 반하는 행위를 해서는 안 됩니다.</li>
+        <li>이용자는 서비스를 통해 <strong>음란물·성적으로 노골적이거나 암시적인 콘텐츠</strong>, 아동 성착취물, 혐오·차별·폭력 조장 콘텐츠, 딥페이크·얼굴 합성·음성 도용물, 기타 위법하거나 해로운 콘텐츠를 생성·요청·업로드해서는 안 됩니다. 상세한 금지 행위는 <a href="/ko/use-policy" className="underline">이용정책(Acceptable Use Policy)</a>에 따릅니다.</li>
         <li>이용자가 서비스에 업로드한 콘텐츠(인터뷰 녹음, 전사, 문서 등)의 저작권 및 적법성에 대한 책임은 이용자에게 있습니다.</li>
       </UL>
 
@@ -108,7 +109,16 @@ function KoTerms() {
       <H2>제11조 (준거법 및 관할)</H2>
       <P>본 약관은 대한민국 법령에 따라 해석되며, 본 서비스와 관련한 분쟁이 발생할 경우 민사소송법상의 관할법원에 제소합니다.</P>
 
-      <H2>제12조 (사업자 정보 및 문의처)</H2>
+      <H2>제12조 (제3자 AI 서비스 및 비제휴)</H2>
+      <P>
+        {COMPANY.serviceName}은 OpenAI, Anthropic, Deepgram 등 제3자가 제공하는 AI 모델 및 API를
+        기반으로 자체 인터페이스를 제공하는 독립 제품(independent wrapper)입니다. 회사는 위
+        제3자와 어떠한 제휴·후원·승인 관계도 갖지 않으며, 해당 제공자들의 상표·로고는 각 권리자에게
+        귀속됩니다. 제3자 AI의 가용성·정책 변경·서비스 중단으로 인한 서비스 영향에 대해 회사는
+        합리적인 범위 내에서만 책임을 부담합니다.
+      </P>
+
+      <H2>제13조 (사업자 정보 및 문의처)</H2>
       <ul className="mb-3 list-none space-y-1 text-mute">
         {companyInfoLinesKo().map((line) => (
           <li key={line}>{line}</li>
@@ -168,6 +178,7 @@ function EnTerms() {
       <UL>
         <li>You will not impersonate others, submit false information, or attempt to gain unauthorized access to the Service.</li>
         <li>You will not use the Service for any unlawful purpose or in violation of these Terms.</li>
+        <li>You will not generate, request, or upload <strong>NSFW, sexually explicit or suggestive content</strong>, child sexual abuse material, hate / discriminatory / violence-glorifying content, deepfakes or face-swap / voice-cloning of real people, or other unlawful or harmful material. Detailed prohibitions are set out in the <a href="/en/use-policy" className="underline">Acceptable Use Policy</a>.</li>
         <li>You are solely responsible for the lawfulness and ownership of any content (audio, transcripts, documents, etc.) that you upload to the Service.</li>
       </UL>
 
@@ -183,7 +194,17 @@ function EnTerms() {
       <H2>11. Governing Law</H2>
       <P>These Terms are governed by the laws of the Republic of Korea. Disputes shall be brought before the courts having jurisdiction under the Korean Civil Procedure Act.</P>
 
-      <H2>12. Business Information &amp; Contact</H2>
+      <H2>12. Third-Party AI Providers and Non-Affiliation</H2>
+      <P>
+        {COMPANY.serviceName} is an independent product (an &ldquo;independent wrapper&rdquo;) that
+        provides a custom interface to third-party AI models and APIs, including those operated
+        by OpenAI, Anthropic, and Deepgram. We are not affiliated with, endorsed by, or
+        sponsored by these providers; their trademarks and logos remain the property of their
+        respective owners. Our responsibility for Service availability or changes caused by
+        upstream provider outages or policy changes is limited to what is commercially reasonable.
+      </P>
+
+      <H2>13. Business Information &amp; Contact</H2>
       <ul className="mb-3 list-none space-y-1 text-mute">
         {companyInfoLinesEn().map((line) => (
           <li key={line}>{line}</li>

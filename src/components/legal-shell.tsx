@@ -13,8 +13,8 @@ export function LegalShell({
   // back to English for non-Korean.
   const labels =
     locale === 'ko'
-      ? { terms: '이용약관', privacy: '개인정보처리방침' }
-      : { terms: 'Terms', privacy: 'Privacy' };
+      ? { terms: '이용약관', privacy: '개인정보처리방침', usePolicy: '이용정책' }
+      : { terms: 'Terms', privacy: 'Privacy', usePolicy: 'Acceptable Use' };
 
   return (
     <main className="flex flex-1 flex-col bg-paper">
@@ -31,6 +31,9 @@ export function LegalShell({
           </Link>
           <Link href={`/${locale}/privacy`} className="hover:text-ink">
             {labels.privacy}
+          </Link>
+          <Link href={`/${locale}/use-policy`} className="hover:text-ink">
+            {labels.usePolicy}
           </Link>
           <LanguageSwitcher />
         </div>

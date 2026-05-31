@@ -236,6 +236,7 @@ export async function LandingPage({ locale }: { locale: string }) {
           <div style={{ display: 'flex', gap: '18px' }}>
             <Link href="/terms">{t('footer.terms')}</Link>
             <Link href="/privacy">{t('footer.privacy')}</Link>
+            <Link href="/use-policy">{t('footer.usePolicy')}</Link>
             <a href="mailto:chris.lee@meteor-research.com">{t('footer.contact')}</a>
           </div>
         </div>
