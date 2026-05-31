@@ -8,6 +8,8 @@ import {
 } from '@/lib/features';
 import { track } from '@/components/mixpanel-provider';
 import { currencyForLocale, formatCurrency } from '@/lib/currency';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 // Plain KRW formatter — used only for the bank-transfer "deposit this
 // exact amount" detail row, since that's the literal sum the customer
@@ -214,8 +216,9 @@ export function CreditsBundles() {
                 )}
               </div>
               <div className="flex-1" />
-              <button
-                type="button"
+              <Button
+                variant={b.popular ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => {
                   if (isContact) {
                     track('credits_contact_sales_click', { bundle: b.id });
@@ -229,14 +232,10 @@ export function CreditsBundles() {
                     open(b.id);
                   }
                 }}
-                className={`mt-5 px-4 py-2 text-[11.5px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:14px] ${
-                  b.popular
-                    ? 'border border-ink bg-ink text-paper hover:bg-ink-2'
-                    : 'border border-line text-mute hover:border-ink hover:text-ink-2'
-                }`}
+                className="mt-5 px-4 py-2 uppercase tracking-[0.18em]"
               >
                 {isContact ? t('contactSales') : t('purchase')}
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -363,25 +362,27 @@ export function CreditsBundles() {
                   )}
 
                   <div className="mt-6 flex items-center justify-end gap-3">
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={close}
-                      className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore [border-radius:14px]"
+                      className="text-[12px] text-ink-2 hover:text-amore"
                     >
                       {t('cancel')}
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       disabled={submitting || !taxValid}
                       onClick={submit}
-                      className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:14px]"
+                      className="text-[12px]"
                     >
                       {submitting
                         ? t('submitting')
                         : method === 'creem'
                         ? t('payWithCard')
                         : t('issueBankReference')}
-                    </button>
+                    </Button>
                   </div>
             </div>
           </div>
@@ -442,13 +443,14 @@ export function CreditsBundles() {
               <p className="mt-4 text-[11px] leading-[1.6] text-mute-soft">{t('bankFootnote')}</p>
 
               <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={close}
-                  className="border border-ink bg-ink px-5 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 [border-radius:14px]"
+                  className="px-5 text-[12px]"
                 >
                   {t('done')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -511,12 +513,12 @@ function Field({
       <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
         {label}
       </span>
-      <input
+      <Input
         type={type ?? 'text'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px]"
+        className="px-2.5 py-1.5 text-[12.5px] text-ink-2"
       />
     </label>
   );
