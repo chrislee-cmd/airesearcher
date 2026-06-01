@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { setRequestLocale } from 'next-intl/server';
 import { LegalShell } from '@/components/legal-shell';
 import { COMPANY, companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
@@ -93,7 +94,7 @@ function KoTerms() {
       <UL>
         <li>이용자는 타인의 정보를 도용하거나 허위 정보를 제공해서는 안 됩니다.</li>
         <li>이용자는 서비스를 이용하여 법령 또는 본 약관이 금지하거나 공서양속에 반하는 행위를 해서는 안 됩니다.</li>
-        <li>이용자는 서비스를 통해 <strong>음란물·성적으로 노골적이거나 암시적인 콘텐츠</strong>, 아동 성착취물, 혐오·차별·폭력 조장 콘텐츠, 딥페이크·얼굴 합성·음성 도용물, 기타 위법하거나 해로운 콘텐츠를 생성·요청·업로드해서는 안 됩니다. 상세한 금지 행위는 <a href="/ko/use-policy" className="underline">이용정책(Acceptable Use Policy)</a>에 따릅니다.</li>
+        <li>이용자는 서비스를 통해 <strong>음란물·성적으로 노골적이거나 암시적인 콘텐츠</strong>, 아동 성착취물, 혐오·차별·폭력 조장 콘텐츠, 딥페이크·얼굴 합성·음성 도용물, 기타 위법하거나 해로운 콘텐츠를 생성·요청·업로드해서는 안 됩니다. 상세한 금지 행위는 <Link href="/ko/use-policy" className="underline">이용정책(Acceptable Use Policy)</Link>에 따릅니다.</li>
         <li>이용자가 서비스에 업로드한 콘텐츠(인터뷰 녹음, 전사, 문서 등)의 저작권 및 적법성에 대한 책임은 이용자에게 있습니다.</li>
       </UL>
 
@@ -178,7 +179,7 @@ function EnTerms() {
       <UL>
         <li>You will not impersonate others, submit false information, or attempt to gain unauthorized access to the Service.</li>
         <li>You will not use the Service for any unlawful purpose or in violation of these Terms.</li>
-        <li>You will not generate, request, or upload <strong>NSFW, sexually explicit or suggestive content</strong>, child sexual abuse material, hate / discriminatory / violence-glorifying content, deepfakes or face-swap / voice-cloning of real people, or other unlawful or harmful material. Detailed prohibitions are set out in the <a href="/en/use-policy" className="underline">Acceptable Use Policy</a>.</li>
+        <li>You will not generate, request, or upload <strong>NSFW, sexually explicit or suggestive content</strong>, child sexual abuse material, hate / discriminatory / violence-glorifying content, deepfakes or face-swap / voice-cloning of real people, or other unlawful or harmful material. Detailed prohibitions are set out in the <Link href="/en/use-policy" className="underline">Acceptable Use Policy</Link>.</li>
         <li>You are solely responsible for the lawfulness and ownership of any content (audio, transcripts, documents, etc.) that you upload to the Service.</li>
       </UL>
 
