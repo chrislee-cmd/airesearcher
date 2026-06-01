@@ -31,6 +31,8 @@ import { ShareMenu } from './ui/share-menu';
 import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
@@ -199,7 +201,7 @@ export function DeskResearch() {
       sessionStorage.removeItem(k);
       pushKeywords(splitKeywords(raw));
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const grouped = useMemo(() => {
@@ -480,35 +482,40 @@ export function DeskResearch() {
             </span>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {RANGE_PRESETS.map((p) => (
-                <button
+                <Button
                   key={p.id}
-                  type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={() => applyPreset(p.id)}
-                  className={`px-2.5 py-1 text-[11.5px] [border-radius:14px] ${
+                  className={
                     preset === p.id
-                      ? 'border border-amore bg-amore-bg text-ink-2'
-                      : 'border border-line bg-paper text-mute hover:border-amore hover:text-amore'
-                  }`}
+                      ? 'border-amore bg-amore-bg text-ink-2 hover:border-amore hover:text-ink-2'
+                      : 'hover:border-amore hover:text-amore'
+                  }
                 >
                   {tDesk(`range_${p.id}` as const)}
-                </button>
+                </Button>
               ))}
             </div>
             {(preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo))) && (
               <div className="mt-3 flex items-center gap-2 text-[12px] text-mute">
-                <input
+                <Input
                   type="date"
+                  size="sm"
+                  fullWidth={false}
                   value={dateFrom}
                   max={dateTo || todayIso()}
                   onChange={(e) => {
                     setDateFrom(e.target.value);
                     setPreset('custom');
                   }}
-                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:14px]"
+                  className="px-2 py-1 text-ink-2"
                 />
                 <span className="text-mute-soft">→</span>
-                <input
+                <Input
                   type="date"
+                  size="sm"
+                  fullWidth={false}
                   value={dateTo}
                   min={dateFrom || undefined}
                   max={todayIso()}
@@ -516,7 +523,7 @@ export function DeskResearch() {
                     setDateTo(e.target.value);
                     setPreset('custom');
                   }}
-                  className="border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:14px]"
+                  className="px-2 py-1 text-ink-2"
                 />
               </div>
             )}
@@ -530,19 +537,17 @@ export function DeskResearch() {
             </span>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {DESK_REGIONS.map((r) => (
-                <button
+                <Button
                   key={r}
-                  type="button"
+                  variant={region === r ? 'primary' : 'ghost'}
+                  size="xs"
                   onClick={() => changeRegion(r)}
                   className={
-                    'border px-2.5 py-1 text-[11.5px] [border-radius:14px] ' +
-                    (region === r
-                      ? 'border-ink bg-ink text-paper'
-                      : 'border-line bg-paper text-ink-2 hover:text-amore')
+                    region === r ? '' : 'text-ink-2 hover:text-amore'
                   }
                 >
                   {tDesk(`region.${r}`)}
-                </button>
+                </Button>
               ))}
             </div>
             <p className="mt-2 text-[11px] text-mute-soft">
@@ -596,13 +601,14 @@ export function DeskResearch() {
                         );
                       })}
                     </div>
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={() => toggleGroup(g)}
-                      className="shrink-0 text-[10px] uppercase tracking-[.18em] text-mute-soft hover:text-amore"
+                      className="shrink-0 px-0 py-0 text-[10px] font-normal uppercase tracking-[.18em] text-mute-soft hover:text-amore"
                     >
                       {allOn ? tDesk('groupNone') : tDesk('groupAll')}
-                    </button>
+                    </Button>
                   </div>
                 );
               })}
@@ -615,13 +621,14 @@ export function DeskResearch() {
         <span className="text-[11px] tabular-nums text-mute-soft">
           {keywords.length} {tDesk('keywordUnit')} · {selected.size} {tDesk('sourcesUnit')}
         </span>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {submitting || pendingJobId || isWorking ? tCommon('loading') : tDesk('search')}
-        </button>
+        </Button>
       </div>
 
       {showPanel && (
