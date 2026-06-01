@@ -134,7 +134,7 @@ export function CreditsBundles() {
         return;
       }
       if (method === 'creem' && json.checkoutUrl) {
-        window.location.href = json.checkoutUrl;
+        window.location.assign(json.checkoutUrl);
         return;
       }
       if (method === 'bank_transfer') {
