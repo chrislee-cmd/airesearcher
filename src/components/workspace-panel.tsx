@@ -13,6 +13,7 @@ import type { WorkspaceArtifact, WorkspaceFolder } from '@/lib/workspace';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { useActiveProject } from './active-project-provider';
 import { useWorkspace, type WorkspaceScope } from './workspace-provider';
+import { Button } from './ui/button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
@@ -489,16 +490,17 @@ export function WorkspacePanel() {
                 >
                   {t('create')}
                 </button>
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  size="xs"
                   onClick={() => {
                     setCreatingProject(false);
                     setNewProjectName('');
                   }}
-                  className="text-[11px] text-mute-soft hover:text-ink-2"
+                  className="px-0 py-0 text-[11px] font-normal text-mute-soft"
                 >
                   {t('cancel')}
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -555,16 +557,17 @@ export function WorkspacePanel() {
                 <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
                   {t('folders')}
                 </span>
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  size="xs"
                   onClick={() => {
                     setCreatingFolderParent(null);
                     setNewFolderName('');
                   }}
-                  className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-amore"
+                  className="px-0 py-0 text-[10.5px] uppercase tracking-[0.18em] text-mute hover:text-amore"
                 >
                   + {t('newFolder')}
-                </button>
+                </Button>
               </div>
               <ul>
                 <li>
@@ -762,17 +765,18 @@ export function WorkspacePanel() {
                   className="relative"
                   ref={openMenu === 'bulk' ? menuRef : undefined}
                 >
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     onClick={() => {
                       setOpenMenu(openMenu === 'bulk' ? null : 'bulk');
                       setOpenSendSub(false);
                       setOpenDownloadSub(false);
                     }}
-                    className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:14px]"
+                    className="px-2 uppercase tracking-[0.18em] hover:border-amore hover:text-ink-2"
                   >
                     {t('bulkActions')}
-                  </button>
+                  </Button>
                   {openMenu === 'bulk' && (
                     <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
                       <div className="relative">
