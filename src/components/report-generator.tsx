@@ -27,6 +27,7 @@ import { EnhancePanel } from './reports/enhance-panel';
 import { VersionSelector } from './reports/version-selector';
 import type { ReportVersionRow } from '@/lib/reports/versions';
 import type { EnhanceMode } from '@/lib/reports/context-payload';
+import { Button } from '@/components/ui/button';
 
 const ACCEPT = '.docx,.md,.markdown,.txt,.csv,.xlsx,.xls';
 const ACCEPT_RE = /\.(docx|md|markdown|txt|csv|xlsx|xls)$/i;
@@ -327,7 +328,7 @@ export function ReportGenerator() {
       });
       addFiles([f]);
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   function removeFile(idx: number) {
@@ -526,14 +527,15 @@ export function ReportGenerator() {
               <span className="shrink-0 tabular-nums text-mute-soft">
                 {formatBytes(f.size)}
               </span>
-              <button
-                type="button"
+              <Button
+                variant="destructive-link"
+                size="xs"
                 onClick={() => removeFile(i)}
                 disabled={running}
-                className="shrink-0 text-[11.5px] text-mute hover:text-amore disabled:opacity-40"
+                className="shrink-0 text-[11.5px]"
               >
                 제거
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -543,13 +545,14 @@ export function ReportGenerator() {
         <span className="text-[11px] tabular-nums text-mute-soft">
           {files.length}개 파일
         </span>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={onClickRun}
           disabled={!canRun}
-          className="border border-ink bg-ink px-5 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
         >
           {running ? tCommon('loading') : '리포트 생성'}
-        </button>
+        </Button>
       </div>
 
       {errorMessage && (
@@ -566,28 +569,22 @@ export function ReportGenerator() {
                 {running ? (stage === 'normalize' ? '1/2' : '2/2') : '결과'}
               </h2>
               <div className="flex items-center gap-1 text-[11.5px]">
-                <button
-                  type="button"
+                <Button
+                  variant={tab === 'html' ? 'primary' : 'ghost'}
+                  size="xs"
                   onClick={() => setTab('html')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
-                    tab === 'html'
-                      ? 'border border-ink bg-ink text-paper'
-                      : 'border border-line bg-paper text-mute hover:border-ink-2'
-                  }`}
+                  className="px-2.5"
                 >
                   HTML 리포트
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant={tab === 'md' ? 'primary' : 'ghost'}
+                  size="xs"
                   onClick={() => setTab('md')}
-                  className={`px-2.5 py-1 transition-colors duration-[120ms] [border-radius:14px] ${
-                    tab === 'md'
-                      ? 'border border-ink bg-ink text-paper'
-                      : 'border border-line bg-paper text-mute hover:border-ink-2'
-                  }`}
+                  className="px-2.5"
                 >
                   표준 양식 (.md)
-                </button>
+                </Button>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -756,15 +753,16 @@ function RegenBar({
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {others.map((k) => (
-          <button
+          <Button
             key={k}
-            type="button"
+            variant="ghost"
+            size="xs"
             disabled={disabled}
             onClick={() => onRegen(k)}
-            className="border border-line bg-paper px-2.5 py-1 text-[11px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+            className="px-2.5 text-[11px] hover:border-amore"
           >
             {t(`types.${k}.label`)}
-          </button>
+          </Button>
         ))}
       </div>
       <span className="ml-1 text-[10.5px] text-mute-soft">
