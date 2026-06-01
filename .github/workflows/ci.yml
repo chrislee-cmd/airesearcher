@@ -59,3 +59,29 @@ jobs:
 
       - name: Scan
         run: gitleaks detect --redact --verbose --no-banner
+
+  dep-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Soft-launched: main currently has 9 high CVEs (mostly next@16.2.4 → patched
+      # 16.2.5). Dependabot will auto-PR the patches; once cleaned, drop
+      # continue-on-error and add 'Dependency audit' to branch protection contexts.
+      - name: Audit (non-blocking)
+        continue-on-error: true
+        run: pnpm audit --audit-level=high --prod
