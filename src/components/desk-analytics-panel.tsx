@@ -64,20 +64,24 @@ function ChartPie({ chart }: { chart: DeskChart }) {
   const r = 64;
   const innerR = 38; // donut hole
 
-  let startAngle = -Math.PI / 2; // 12 o'clock
+  const START_ANGLE = -Math.PI / 2; // 12 o'clock
+  // Precompute cumulative end-angles (reduce keeps things immutable: each entry
+  // is the end angle for slice i, derived from acc[i-1]).
+  const endAngles = chart.data.reduce<number[]>((acc, d) => {
+    const prev = acc[acc.length - 1] ?? START_ANGLE;
+    acc.push(prev + (d.value / total) * Math.PI * 2);
+    return acc;
+  }, []);
   const slices = chart.data.map((d, i) => {
-    const angle = (d.value / total) * Math.PI * 2;
-    const endAngle = startAngle + angle;
-    const path = describeDonutSlice(cx, cy, r, innerR, startAngle, endAngle);
-    const segment = {
-      path,
+    const sliceStart = i === 0 ? START_ANGLE : endAngles[i - 1];
+    const sliceEnd = endAngles[i];
+    return {
+      path: describeDonutSlice(cx, cy, r, innerR, sliceStart, sliceEnd),
       color: PALETTE[i % PALETTE.length],
       label: d.label,
       value: d.value,
       share: d.value / total,
     };
-    startAngle = endAngle;
-    return segment;
   });
 
   return (

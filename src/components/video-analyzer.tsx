@@ -114,16 +114,6 @@ export function VideoAnalyzer() {
     useVideoJobs();
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const startUpload = useCallback(
-    (files: File[]) => {
-      requireAuth(() => {
-        for (const file of files) void runUpload(file);
-      });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
   async function runUpload(file: File) {
     setUploadError(null);
     const tempId = crypto.randomUUID();
@@ -186,6 +176,16 @@ export function VideoAnalyzer() {
       clearUploadProgress(tempId);
     }
   }
+
+  const startUpload = useCallback(
+    (files: File[]) => {
+      requireAuth(() => {
+        for (const file of files) void runUpload(file);
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   async function deleteJob(id: string) {
     if (!confirm('이 분석 작업을 삭제할까요?')) return;
