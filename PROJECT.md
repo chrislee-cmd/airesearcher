@@ -114,7 +114,8 @@ PR을 1개라도 머지하면 **다음 사용자 입력을 받기 전에 `/compa
   다음 PR의 결정에 잡음이 됩니다.
 
 이 규칙은 마스터 에이전트(머지 담당)에만 적용됩니다. 워커 에이전트는
-자기 브랜치에서 push/PR만 끝내면 됩니다.
+자기 브랜치에서 push/PR만 끝내면 됩니다. 또한 `/compact` 직전에 §5.4
+SSOT 자가점검을 한 번 수행합니다.
 
 ### 3.8 자동 게이트 (하네스)
 
@@ -233,6 +234,38 @@ gh pr create --base main --title "hotfix: ..."
 ```
 hotfix는 별도 staging 거치지 않습니다. 단, **반드시 PR**을 통합니다 (직접 push 금지).
 
+### 5.4 SSOT 자가점검 (PR 머지 후 `/compact` 직전)
+
+PR 머지 후 `/compact` 실행 직전에, 방금 머지한 변경이 PROJECT.md(SSOT) 갱신 후보인지
+한 번 자문합니다. 후보가 있으면 즉시 PR을 만들지 않고 `docs/PROJECT_PENDING.md` inbox 에
+한 줄 append. 누적된 후보를 묶어서 정기적으로 갱신 PR을 만듭니다.
+
+**self-check 질문 — 방금 머지한 변경이 다음 카테고리 중 하나에 영향?**
+
+| 카테고리 | PROJECT.md 위치 | 트리거 예시 |
+|---|---|---|
+| 사실 | §1, §8, §10, §11 | stack 버전 변경, 새 환경, 새 외부 문서 |
+| 규칙 | §3.1~3.7, §6 | 커밋·PR·금지 룰 변경 |
+| 하네스 | §3.8 | 새 hook / CI job / branch protection rule |
+| 절차 | §4, §5, §13 | 새 워커 합류 단계, 마스터 동작 변경, 새 피처 레시피 |
+| 함정 | §7 | 새로 부딪힌 마찰, 알려진 부비트랩 |
+| 아키텍처 | §9, §12 | 새 primitive 패턴, provider/SSOT 구조 변경 |
+
+**기록 포맷** (`docs/PROJECT_PENDING.md` append):
+```
+- YYYY-MM-DD · PR #XXX · §X.Y · 한 줄 요약
+```
+
+**승격 트리거**:
+- inbox 5건 누적 시 마스터가 사용자에게 "PROJECT.md 갱신 PR 만들까요?" 제안
+- OK 시 묶음 PR로 PROJECT.md 갱신 + 해당 inbox line 삭제
+- 폐기되는 후보는 line 삭제 + 이유 한 줄 메모 (commit 메시지에)
+
+**왜 inbox 두는가**:
+- 매 머지마다 갱신 PR 만들면 overhead. 묶음이 효율적 (PR #200/#202/#204 사례).
+- 메모리에만 두면 다른 세션에서 손실. 파일이면 GitHub에서도 보이고 워커도 추가 가능.
+- 폐기 결정도 inbox 에서 함 (모든 후보가 SSOT 갈 필요는 없음).
+
 ---
 
 ## 6. 절대 하지 말 것
@@ -316,6 +349,7 @@ main 보호 설정의 `required_status_checks.strict: true` 때문에, PR 머지
 | `design-system.md` | UI 토큰 (저장소 외부, parent dir) |
 | `docs/archive/` | stash 복구·이전 사고 기록 등 보존용 patch 모음 |
 | `docs/DEBT.md` | 알려진 미해결 부채 트래커 (서버사이드 차감 gate, 결제 연동 등) |
+| `docs/PROJECT_PENDING.md` | PROJECT.md 갱신 후보 inbox (§5.4) |
 | `node_modules/next/dist/docs/` | Next.js 16 정식 문서 (학습 데이터 outdated 시 우선) |
 
 ---
