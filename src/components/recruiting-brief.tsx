@@ -14,6 +14,7 @@ import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { FeaturePage } from './ui/feature-page';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
@@ -1186,11 +1187,9 @@ function CriterionEditor({
           className="w-[140px] border border-line-soft bg-paper px-2 py-1 text-[10.5px] uppercase tracking-[0.04em] text-mute-soft focus:border-ink-2 focus:outline-none [border-radius:3px]"
         />
         <label className="flex items-center gap-1 text-[10.5px] text-mute">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={value.required}
             onChange={(e) => onChange('required', e.target.checked)}
-            className="h-3 w-3"
           />
           필수
         </label>
