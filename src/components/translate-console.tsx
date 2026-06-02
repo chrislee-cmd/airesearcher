@@ -228,6 +228,17 @@ export function TranslateConsole() {
     ]),
   );
 
+  // PR #223 caught the prompter duplication symptom but the prod logs
+  // showed `kind: 'input'` getting deduped 5+ times per utterance —
+  // meaning the OpenAI translations API itself is re-emitting the same
+  // content. We don't yet know whether the deltas are incremental,
+  // cumulative, or interim refinements. This ref samples the first N
+  // events of each `type` per session and logs the full payload so the
+  // next live run on production tells us the actual protocol shape
+  // without flooding the console for long sessions.
+  const sampleCountRef = useRef<Map<string, number>>(new Map());
+  const EVENT_SAMPLE_CAP = 8;
+
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
   // the host's source stream (mic/tab) and one for the translated TTS.
   // We do NOT reuse `audioDestRef` (which feeds LiveKit publish):
@@ -479,6 +490,23 @@ export function TranslateConsole() {
       }
       const type = msg.type ?? '';
 
+      // Diagnostic sampler — see sampleCountRef comment. Bounded so a
+      // 30-min session emits at most ~8 × (# distinct event types) log
+      // lines. We log the whole payload because the field we need
+      // (whether `delta` is incremental or cumulative, whether a
+      // `completed` carries the canonical final text, etc.) may not
+      // be `delta` itself.
+      const sampleKey = type || '<no-type>';
+      const seen = sampleCountRef.current.get(sampleKey) ?? 0;
+      if (seen < EVENT_SAMPLE_CAP) {
+        sampleCountRef.current.set(sampleKey, seen + 1);
+        console.info('[translate] oai-event', {
+          n: seen + 1,
+          type: sampleKey,
+          payload: msg,
+        });
+      }
+
       // Source-language transcript — emitted by gpt-realtime-translate
       // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
@@ -514,6 +542,9 @@ export function TranslateConsole() {
     // still slides naturally per-line.
     recentFinalsRef.current.set('input', []);
     recentFinalsRef.current.set('output', []);
+    // Reset event sampler too — each session gets a fresh budget so we
+    // see the protocol shape from t=0 of every recording.
+    sampleCountRef.current.clear();
     setError(null);
     setInputLines([]);
     setOutputLines([]);
