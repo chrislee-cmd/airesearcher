@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { IconButton } from '../ui/icon-button';
 import type { VoiceState, VoiceTranscript } from './use-realtime-session';
 
 type Props = {
@@ -140,13 +141,10 @@ export function VoiceConciergePanel({
       >
         <p className="whitespace-pre-wrap break-words">{bodyText}</p>
       </div>
-      <button
-        type="button"
+      <IconButton
         onClick={onClose}
         aria-label={t('close')}
-        className={
-          'shrink-0 self-start text-mute-soft transition-colors duration-[120ms] hover:text-ink-2'
-        }
+        className="shrink-0 self-start"
       >
         <svg
           viewBox="0 0 24 24"
@@ -162,7 +160,7 @@ export function VoiceConciergePanel({
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
-      </button>
+      </IconButton>
     </div>
   );
 }
