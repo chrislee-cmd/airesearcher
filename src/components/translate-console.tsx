@@ -27,6 +27,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { ChromeButton } from './ui/chrome-button';
 import { IconButton } from './ui/icon-button';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
@@ -1269,20 +1270,20 @@ export function TranslateConsole() {
           {live ? (
             <>
               {!shareToken ? (
-                <button
+                <ChromeButton
+                  size="lg"
                   onClick={() => void generateShare()}
                   disabled={sharing}
-                  className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
                 >
                   {sharing ? t('share.creating') : t('share.create')}
-                </button>
+                </ChromeButton>
               ) : null}
-              <button
+              <ChromeButton
+                size="lg"
                 onClick={() => void stop()}
-                className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore"
               >
                 {t('stop')}
-              </button>
+              </ChromeButton>
             </>
           ) : (
             <button
@@ -1305,19 +1306,20 @@ export function TranslateConsole() {
             onFocus={(e) => e.currentTarget.select()}
             className="min-w-[260px] flex-1 rounded-[4px] border border-line-soft bg-paper px-2 py-1 font-mono text-[12px] text-ink"
           />
-          <button
+          <ChromeButton
+            size="md"
             onClick={() => void copyShareUrl()}
-            className="h-7 rounded-[4px] border border-line px-2 text-[11.5px] text-ink hover:border-amore"
           >
             {shareCopied ? t('share.copied') : t('share.copy')}
-          </button>
-          <button
+          </ChromeButton>
+          <ChromeButton
+            variant="mute"
+            size="md"
             onClick={() => void revokeShare()}
             disabled={sharing}
-            className="h-7 rounded-[4px] border border-line px-2 text-[11.5px] text-mute hover:border-amore disabled:opacity-50"
           >
             {t('share.revoke')}
-          </button>
+          </ChromeButton>
           <span className="text-[11px] text-mute-soft">{t('share.expiresIn4h')}</span>
         </div>
       ) : null}
@@ -1408,42 +1410,42 @@ function RecordingDownloadPanel({
           <span className="rounded-[4px] border border-amore px-2 py-0.5 text-[11px] text-amore">
             {t('download.unlockedPill')}
           </span>
-          <button
+          <ChromeButton
+            size="lg"
             onClick={() => onDownload('m4a-input')}
             disabled={downloadingFormat !== null}
-            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
             {downloadingFormat === 'm4a-input'
               ? t('download.preparingFile')
               : t('download.audioInput')}
-          </button>
-          <button
+          </ChromeButton>
+          <ChromeButton
+            size="lg"
             onClick={() => onDownload('m4a-output')}
             disabled={downloadingFormat !== null}
-            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
             {downloadingFormat === 'm4a-output'
               ? t('download.preparingFile')
               : t('download.audioOutput')}
-          </button>
-          <button
+          </ChromeButton>
+          <ChromeButton
+            size="lg"
             onClick={() => onDownload('txt')}
             disabled={downloadingFormat !== null}
-            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
             {downloadingFormat === 'txt'
               ? t('download.preparingFile')
               : t('download.txt')}
-          </button>
-          <button
+          </ChromeButton>
+          <ChromeButton
+            size="lg"
             onClick={() => onDownload('docx')}
             disabled={downloadingFormat !== null}
-            className="h-8 rounded-[4px] border border-line bg-paper px-3 text-[12.5px] text-ink hover:border-amore disabled:opacity-50"
           >
             {downloadingFormat === 'docx'
               ? t('download.preparingFile')
               : t('download.docx')}
-          </button>
+          </ChromeButton>
         </div>
       )}
     </section>
