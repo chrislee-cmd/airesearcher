@@ -31,7 +31,7 @@ const eslintConfig = defineConfig([
         {
           selector: 'JSXOpeningElement[name.name="button"]',
           message:
-            "Use <Button> from @/components/ui/button instead of native <button>. (variant=link/destructive-link cover text-only patterns; size=cta covers pill CTAs. For icon-only triggers use <IconButton> from @/components/ui/icon-button.)",
+            "Use <Button> from @/components/ui/button instead of native <button>. (variant=link/destructive-link cover text-only patterns; size=cta covers pill CTAs. For icon-only triggers use <IconButton>. For 4px-radius chrome use <ChromeButton>.)",
         },
         {
           selector: 'JSXOpeningElement[name.name="input"]',
