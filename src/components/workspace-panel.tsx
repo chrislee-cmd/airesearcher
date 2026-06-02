@@ -14,6 +14,7 @@ import { triggerBlobDownload } from '@/lib/export/download';
 import { useActiveProject } from './active-project-provider';
 import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 import { Button } from './ui/button';
+import { ChromeButton } from './ui/chrome-button';
 import { IconButton } from './ui/icon-button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
@@ -482,14 +483,15 @@ export function WorkspacePanel() {
                   placeholder={t('newProjectName')}
                   className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
                 />
-                <button
-                  type="button"
+                <ChromeButton
+                  variant="mute"
+                  size="sm"
+                  uppercase
                   disabled={busy || !newProjectName.trim()}
                   onClick={() => void createProject()}
-                  className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
                 >
                   {t('create')}
-                </button>
+                </ChromeButton>
                 <Button
                   variant="link"
                   size="xs"
@@ -540,13 +542,14 @@ export function WorkspacePanel() {
                   )}
                   <option value="__new__">{t('newProject')}</option>
                 </select>
-                <button
-                  type="button"
+                <ChromeButton
+                  variant="mute"
+                  size="sm"
+                  uppercase
                   onClick={() => void refresh()}
-                  className="border border-line bg-paper px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 [border-radius:4px]"
                 >
                   {t('refresh')}
-                </button>
+                </ChromeButton>
               </>
             )}
           </div>
@@ -701,14 +704,15 @@ export function WorkspacePanel() {
                             placeholder={t('folderName')}
                             className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
                           />
-                          <button
-                            type="button"
+                          <ChromeButton
+                            variant="mute"
+                            size="xs"
+                            uppercase
                             disabled={busy || !newFolderName.trim()}
                             onClick={() => void submitFolderCreate()}
-                            className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
                           >
                             {t('create')}
-                          </button>
+                          </ChromeButton>
                         </div>
                       )}
                     </li>
@@ -730,14 +734,15 @@ export function WorkspacePanel() {
                       placeholder={t('folderName')}
                       className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
                     />
-                    <button
-                      type="button"
+                    <ChromeButton
+                      variant="mute"
+                      size="xs"
+                      uppercase
                       disabled={busy || !newFolderName.trim()}
                       onClick={() => void submitFolderCreate()}
-                      className="border border-line bg-paper px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-ink-2 disabled:opacity-40 [border-radius:4px]"
                     >
                       {t('create')}
-                    </button>
+                    </ChromeButton>
                   </li>
                 )}
               </ul>
