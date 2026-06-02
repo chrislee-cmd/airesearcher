@@ -156,13 +156,34 @@ function isFuzzyDup(candidate: string, prior: string): boolean {
 // the other. Minimum length guard so short common phrases like "네." or
 // "그래서" don't false-match against any longer line that happens to
 // contain them.
-// 5 is tuned for Korean: each Hangul syllable carries roughly the same
-// semantic weight as 2-3 Latin letters, so 5-char Korean fragments
-// like "잠깐 시간이" or "바로 효과" are already meaningful phrases
-// that should collapse against a longer concatenated commit. Anything
-// shorter is backchannel-ish ("아 그건", "응 응", "그래") and is left
-// alone so natural conversational repetition stays visible.
-const CONTAINMENT_MIN_LEN = 5;
+// Script-aware containment minimum. CJK (Hangul / Hiragana / Katakana
+// / CJK Unified) packs 2-3x the semantic weight per character vs
+// Latin, so a 5-char CJK fragment ("잠깐 시간이", "바로 효과") is a
+// phrase while a 5-char Latin substring ("after", "basic") shows up
+// in unrelated sentences. Production trace showed Latin output
+// dedup'ing legitimately distinct utterances ("So after building the
+// basic system", "The decision I agonized over") because they share
+// short Latin runs — text would briefly appear in the prompter and
+// then vanish as the dedup orphan-filter pulled the partial. Use 5
+// for CJK content, 15 for Latin so common phrases like "the basic"
+// don't trigger false positives.
+const CONTAINMENT_MIN_LEN_CJK = 5;
+const CONTAINMENT_MIN_LEN_LATIN = 15;
+
+function hasCJK(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (
+      (code >= 0xAC00 && code <= 0xD7A3) || // Hangul syllables
+      (code >= 0x4E00 && code <= 0x9FFF) || // CJK Unified Ideographs
+      (code >= 0x3040 && code <= 0x309F) || // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF)    // Katakana
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function isContainmentDup(candidate: string, prior: string): boolean {
   const cl = candidate.length;
@@ -170,9 +191,12 @@ function isContainmentDup(candidate: string, prior: string): boolean {
   if (cl === 0 || pl === 0) return false;
   const shorter = cl < pl ? candidate : prior;
   const longer = cl < pl ? prior : candidate;
-  // Require the SHORTER side to be substantial — otherwise we'd dedup
-  // every "네." against any longer line containing it.
-  if (shorter.length < CONTAINMENT_MIN_LEN) return false;
+  // Pick the script-appropriate threshold based on the SHORTER side
+  // since it's the one constrained against false matches. Mixed scripts
+  // (e.g. Korean caption with a Latin brand name) default to the CJK
+  // threshold since they're more likely meaningful phrases.
+  const minLen = hasCJK(shorter) ? CONTAINMENT_MIN_LEN_CJK : CONTAINMENT_MIN_LEN_LATIN;
+  if (shorter.length < minLen) return false;
   return longer.includes(shorter);
 }
 
@@ -185,13 +209,16 @@ function isContainmentDup(candidate: string, prior: string): boolean {
 // inspecting the longest contiguous run of matching characters between
 // the two normalized keys.
 //
-// 10 normalized chars is the threshold below which Korean shared
-// substrings turn into noise — "정말 친절", "일본 여행" type fragments
-// — that two different utterances can plausibly share without being
-// duplicates. Above that, shared content is substantial enough that
-// the two lines are almost certainly the same utterance differently
-// phrased.
-const LCS_MIN_LEN = 10;
+// Script-aware LCS minimum. 10 chars in Korean is roughly a 5-syllable
+// phrase ("출산 이후의 고민") that two genuinely different utterances
+// rarely share verbatim. The same 10 chars in English is "the basic"
+// or "I want to" — common across countless unrelated sentences. The
+// production failure mode was clearest here: distinct English commits
+// kept matching each other on LCS, the orphan filter wiped them, and
+// users watched their translated lines vanish mid-typing. Latin needs
+// a much higher bar.
+const LCS_MIN_LEN_CJK = 10;
+const LCS_MIN_LEN_LATIN = 28;
 
 function longestCommonSubstring(a: string, b: string): number {
   const al = a.length;
@@ -217,8 +244,13 @@ function longestCommonSubstring(a: string, b: string): number {
 }
 
 function isLcsChunkDup(candidate: string, prior: string): boolean {
-  if (candidate.length < LCS_MIN_LEN || prior.length < LCS_MIN_LEN) return false;
-  return longestCommonSubstring(candidate, prior) >= LCS_MIN_LEN;
+  // Use the looser CJK threshold if either side is CJK; require both
+  // sides clear it. For pure Latin pairs, use the stricter Latin
+  // threshold so common phrasing doesn't generate false dedups.
+  const minLen =
+    hasCJK(candidate) || hasCJK(prior) ? LCS_MIN_LEN_CJK : LCS_MIN_LEN_LATIN;
+  if (candidate.length < minLen || prior.length < minLen) return false;
+  return longestCommonSubstring(candidate, prior) >= minLen;
 }
 
 type SessionBundle = {
