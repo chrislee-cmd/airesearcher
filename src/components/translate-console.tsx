@@ -27,6 +27,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { IconButton } from './ui/icon-button';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -1235,16 +1236,16 @@ export function TranslateConsole() {
           <span className="text-[12px] tabular-nums text-mute">
             {live ? formatElapsed(elapsed) : '00:00'}
           </span>
-          <button
-            type="button"
+          <IconButton
+            variant="bordered"
+            size="md"
             onClick={() => setOutputAudible((v) => !v)}
             aria-pressed={outputAudible}
             aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
             title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-[4px] border border-line bg-paper text-ink hover:border-amore"
           >
             {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-          </button>
+          </IconButton>
           <span
             className={`rounded-[4px] border px-2 py-0.5 text-[11px] ${
               live

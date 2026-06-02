@@ -32,6 +32,7 @@ import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
 import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 import { Input } from './ui/input';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
@@ -445,14 +446,13 @@ export function DeskResearch() {
                   className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 [border-radius:14px]"
                 >
                   {k}
-                  <button
-                    type="button"
+                  <IconButton
+                    variant="ghost-brand"
                     onClick={() => removeKeyword(idx)}
                     aria-label={`remove ${k}`}
-                    className="text-mute hover:text-amore"
                   >
                     ×
-                  </button>
+                  </IconButton>
                 </span>
               ))}
               <input
