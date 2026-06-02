@@ -94,6 +94,165 @@ function normalizeForDedup(text: string): string {
   return text.replace(/[\s\p{P}\p{S}]+/gu, '').toLowerCase();
 }
 
+// Approximate same-utterance match. Catches OpenAI refinement passes
+// that PR #223's exact-match dedup misses — e.g. "이걸" → "그걸",
+// "5천 엔" → "오천 엔", or Korean numeral/synonym substitutions where
+// only 1-2 characters differ across passes. Tunables:
+//
+// - FUZZY_LENGTH_TOLERANCE: skip the (expensive) edit distance step
+//   if lengths differ by more than 30% — guards against false positives
+//   on legitimately different short utterances ("네." vs "아니요.").
+// - FUZZY_RATIO_THRESHOLD: 0.2 means "≤ 20% of characters different".
+//   Tested against captured prod variants where 1-2 char substitution
+//   should match but full word changes (different utterance) should not.
+// - LEVENSHTEIN_CAP: defensive bail on pathological lengths. Real
+//   normalized keys land well under this.
+const FUZZY_LENGTH_TOLERANCE = 0.3;
+const FUZZY_RATIO_THRESHOLD = 0.2;
+const LEVENSHTEIN_CAP = 400;
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const al = a.length;
+  const bl = b.length;
+  if (al === 0) return bl;
+  if (bl === 0) return al;
+  if (al > LEVENSHTEIN_CAP || bl > LEVENSHTEIN_CAP) {
+    // Unlikely; bail with max distance so the caller treats as not-a-dup.
+    return Math.max(al, bl);
+  }
+  const prev = new Array<number>(bl + 1);
+  const curr = new Array<number>(bl + 1);
+  for (let j = 0; j <= bl; j++) prev[j] = j;
+  for (let i = 1; i <= al; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= bl; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      const del = prev[j] + 1;
+      const ins = curr[j - 1] + 1;
+      const sub = prev[j - 1] + cost;
+      curr[j] = del < ins ? (del < sub ? del : sub) : ins < sub ? ins : sub;
+    }
+    for (let j = 0; j <= bl; j++) prev[j] = curr[j];
+  }
+  return prev[bl];
+}
+
+function isFuzzyDup(candidate: string, prior: string): boolean {
+  if (candidate === prior) return true;
+  const cl = candidate.length;
+  const pl = prior.length;
+  if (cl === 0 || pl === 0) return false;
+  const lengthDiff = Math.abs(cl - pl) / Math.max(cl, pl);
+  if (lengthDiff > FUZZY_LENGTH_TOLERANCE) return false;
+  const dist = levenshtein(candidate, prior);
+  return dist / Math.max(cl, pl) <= FUZZY_RATIO_THRESHOLD;
+}
+
+// Containment dedup. OpenAI re-emits the same utterance with different
+// chunking — once as a flurry of comma-separated short segments, once
+// as a single concatenated long line. Length diff is too large for the
+// fuzzy check (it short-circuits at 30%), but one is a substring of
+// the other. Minimum length guard so short common phrases like "네." or
+// "그래서" don't false-match against any longer line that happens to
+// contain them.
+// Script-aware containment minimum. CJK (Hangul / Hiragana / Katakana
+// / CJK Unified) packs 2-3x the semantic weight per character vs
+// Latin, so a 5-char CJK fragment ("잠깐 시간이", "바로 효과") is a
+// phrase while a 5-char Latin substring ("after", "basic") shows up
+// in unrelated sentences. Production trace showed Latin output
+// dedup'ing legitimately distinct utterances ("So after building the
+// basic system", "The decision I agonized over") because they share
+// short Latin runs — text would briefly appear in the prompter and
+// then vanish as the dedup orphan-filter pulled the partial. Use 5
+// for CJK content, 15 for Latin so common phrases like "the basic"
+// don't trigger false positives.
+const CONTAINMENT_MIN_LEN_CJK = 5;
+const CONTAINMENT_MIN_LEN_LATIN = 15;
+
+function hasCJK(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (
+      (code >= 0xAC00 && code <= 0xD7A3) || // Hangul syllables
+      (code >= 0x4E00 && code <= 0x9FFF) || // CJK Unified Ideographs
+      (code >= 0x3040 && code <= 0x309F) || // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF)    // Katakana
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isContainmentDup(candidate: string, prior: string): boolean {
+  const cl = candidate.length;
+  const pl = prior.length;
+  if (cl === 0 || pl === 0) return false;
+  const shorter = cl < pl ? candidate : prior;
+  const longer = cl < pl ? prior : candidate;
+  // Pick the script-appropriate threshold based on the SHORTER side
+  // since it's the one constrained against false matches. Mixed scripts
+  // (e.g. Korean caption with a Latin brand name) default to the CJK
+  // threshold since they're more likely meaningful phrases.
+  const minLen = hasCJK(shorter) ? CONTAINMENT_MIN_LEN_CJK : CONTAINMENT_MIN_LEN_LATIN;
+  if (shorter.length < minLen) return false;
+  return longer.includes(shorter);
+}
+
+// Longest-common-substring dedup. Containment requires one full string
+// to be inside the other, but the OpenAI model also emits paraphrased
+// refinements where the prefix changes ("구체적인 계기는 역시 피부
+// 트러블이었고, 출산 이후의 고민, 피부 고민이었죠." vs "예를 들면,
+// 출산 이후의 고민, 피부 고민이었죠.") — neither contains the other,
+// but they share a long contiguous tail. Catching this requires
+// inspecting the longest contiguous run of matching characters between
+// the two normalized keys.
+//
+// Script-aware LCS minimum. 10 chars in Korean is roughly a 5-syllable
+// phrase ("출산 이후의 고민") that two genuinely different utterances
+// rarely share verbatim. The same 10 chars in English is "the basic"
+// or "I want to" — common across countless unrelated sentences. The
+// production failure mode was clearest here: distinct English commits
+// kept matching each other on LCS, the orphan filter wiped them, and
+// users watched their translated lines vanish mid-typing. Latin needs
+// a much higher bar.
+const LCS_MIN_LEN_CJK = 10;
+const LCS_MIN_LEN_LATIN = 28;
+
+function longestCommonSubstring(a: string, b: string): number {
+  const al = a.length;
+  const bl = b.length;
+  if (al === 0 || bl === 0) return 0;
+  if (al > LEVENSHTEIN_CAP || bl > LEVENSHTEIN_CAP) return 0;
+  let max = 0;
+  let prev = new Array<number>(bl + 1).fill(0);
+  let curr = new Array<number>(bl + 1).fill(0);
+  for (let i = 1; i <= al; i++) {
+    for (let j = 1; j <= bl; j++) {
+      if (a.charCodeAt(i - 1) === b.charCodeAt(j - 1)) {
+        curr[j] = prev[j - 1] + 1;
+        if (curr[j] > max) max = curr[j];
+      } else {
+        curr[j] = 0;
+      }
+    }
+    [prev, curr] = [curr, prev];
+    curr.fill(0);
+  }
+  return max;
+}
+
+function isLcsChunkDup(candidate: string, prior: string): boolean {
+  // Use the looser CJK threshold if either side is CJK; require both
+  // sides clear it. For pure Latin pairs, use the stricter Latin
+  // threshold so common phrasing doesn't generate false dedups.
+  const minLen =
+    hasCJK(candidate) || hasCJK(prior) ? LCS_MIN_LEN_CJK : LCS_MIN_LEN_LATIN;
+  if (candidate.length < minLen || prior.length < minLen) return false;
+  return longestCommonSubstring(candidate, prior) >= minLen;
+}
+
 type SessionBundle = {
   session: {
     id: string;
@@ -227,6 +386,17 @@ export function TranslateConsole() {
       ['output', []],
     ]),
   );
+
+  // PR #223 caught the prompter duplication symptom but the prod logs
+  // showed `kind: 'input'` getting deduped 5+ times per utterance —
+  // meaning the OpenAI translations API itself is re-emitting the same
+  // content. We don't yet know whether the deltas are incremental,
+  // cumulative, or interim refinements. This ref samples the first N
+  // events of each `type` per session and logs the full payload so the
+  // next live run on production tells us the actual protocol shape
+  // without flooding the console for long sessions.
+  const sampleCountRef = useRef<Map<string, number>>(new Map());
+  const EVENT_SAMPLE_CAP = 8;
 
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
   // the host's source stream (mic/tab) and one for the translated TTS.
@@ -435,12 +605,39 @@ export function TranslateConsole() {
           const dedupKey = normalizeForDedup(finalText);
           const bucket = recentFinalsRef.current.get(kind) ?? [];
           const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
-          const isDup = dedupKey.length > 0 && fresh.some((e) => e.key === dedupKey);
+          // PR #224 dedup stack — applied in order:
+          //   1. Fuzzy (Levenshtein ratio ≤ 20%) — catches single-char
+          //      substitutions like "이걸" → "그걸".
+          //   2. Containment — catches the case where OpenAI emits the
+          //      same utterance once as N short comma-separated commits
+          //      and again as one long concatenated commit. The shorter
+          //      side must clear CONTAINMENT_MIN_LEN to avoid common
+          //      short phrases ("네.") wrongly matching against any
+          //      longer line that contains them.
+          const isDup =
+            dedupKey.length > 0 &&
+            fresh.some(
+              (e) =>
+                isFuzzyDup(dedupKey, e.key) ||
+                isContainmentDup(dedupKey, e.key) ||
+                isLcsChunkDup(dedupKey, e.key),
+            );
           if (isDup) {
             console.info('[translate] dedup', {
               kind,
               preview: finalText.slice(0, 40),
             });
+            // The partial that was about to be finalized lives in
+            // {input,output}Lines as a non-final preview row (rendered
+            // with the trailing "…"). Skipping the commit also means
+            // skipping the pushLine that would have replaced it with
+            // final=true — without this cleanup it stays as an
+            // orphaned partial row forever, and the prompter slowly
+            // fills with greyed "…" copies of every deduped utterance.
+            // Drop it now so the prompter only shows what we actually
+            // commit.
+            const setter = kind === 'input' ? setInputLines : setOutputLines;
+            setter((prev) => prev.filter((l) => l.id !== current.id));
           } else {
             fresh.push({ key: dedupKey, ts: wall });
             recentFinalsRef.current.set(kind, fresh);
@@ -479,6 +676,23 @@ export function TranslateConsole() {
       }
       const type = msg.type ?? '';
 
+      // Diagnostic sampler — see sampleCountRef comment. Bounded so a
+      // 30-min session emits at most ~8 × (# distinct event types) log
+      // lines. We log the whole payload because the field we need
+      // (whether `delta` is incremental or cumulative, whether a
+      // `completed` carries the canonical final text, etc.) may not
+      // be `delta` itself.
+      const sampleKey = type || '<no-type>';
+      const seen = sampleCountRef.current.get(sampleKey) ?? 0;
+      if (seen < EVENT_SAMPLE_CAP) {
+        sampleCountRef.current.set(sampleKey, seen + 1);
+        console.info('[translate] oai-event', {
+          n: seen + 1,
+          type: sampleKey,
+          payload: msg,
+        });
+      }
+
       // Source-language transcript — emitted by gpt-realtime-translate
       // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
@@ -509,11 +723,21 @@ export function TranslateConsole() {
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
-    // Reset dedup memory so a fresh session never matches against the
-    // previous one's keys. Within a single session the dedup window
-    // still slides naturally per-line.
+    // RESET dedup memory on every Start. We tried persisting across
+    // Stop+Start (commit bc07d6b) to suppress duplicate commits when
+    // the user re-transcribed the tail of the previous session, but
+    // that backfired in practice: a heavy testing loop pollutes the
+    // memory with phrases from prior sessions, and the next session's
+    // legitimate first commit gets caught against those stale entries.
+    // Net effect was a black-hole prompter — every utterance matched
+    // something old, nothing landed. The cross-session dedup case is
+    // rare in production (users don't stop+start within seconds), so
+    // we revert to the simpler "fresh memory per session" semantics.
     recentFinalsRef.current.set('input', []);
     recentFinalsRef.current.set('output', []);
+    // Reset event sampler too — each session gets a fresh budget so we
+    // see the protocol shape from t=0 of every recording.
+    sampleCountRef.current.clear();
     setError(null);
     setInputLines([]);
     setOutputLines([]);
