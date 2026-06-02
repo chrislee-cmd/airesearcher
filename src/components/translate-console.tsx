@@ -176,6 +176,51 @@ function isContainmentDup(candidate: string, prior: string): boolean {
   return longer.includes(shorter);
 }
 
+// Longest-common-substring dedup. Containment requires one full string
+// to be inside the other, but the OpenAI model also emits paraphrased
+// refinements where the prefix changes ("구체적인 계기는 역시 피부
+// 트러블이었고, 출산 이후의 고민, 피부 고민이었죠." vs "예를 들면,
+// 출산 이후의 고민, 피부 고민이었죠.") — neither contains the other,
+// but they share a long contiguous tail. Catching this requires
+// inspecting the longest contiguous run of matching characters between
+// the two normalized keys.
+//
+// 10 normalized chars is the threshold below which Korean shared
+// substrings turn into noise — "정말 친절", "일본 여행" type fragments
+// — that two different utterances can plausibly share without being
+// duplicates. Above that, shared content is substantial enough that
+// the two lines are almost certainly the same utterance differently
+// phrased.
+const LCS_MIN_LEN = 10;
+
+function longestCommonSubstring(a: string, b: string): number {
+  const al = a.length;
+  const bl = b.length;
+  if (al === 0 || bl === 0) return 0;
+  if (al > LEVENSHTEIN_CAP || bl > LEVENSHTEIN_CAP) return 0;
+  let max = 0;
+  let prev = new Array<number>(bl + 1).fill(0);
+  let curr = new Array<number>(bl + 1).fill(0);
+  for (let i = 1; i <= al; i++) {
+    for (let j = 1; j <= bl; j++) {
+      if (a.charCodeAt(i - 1) === b.charCodeAt(j - 1)) {
+        curr[j] = prev[j - 1] + 1;
+        if (curr[j] > max) max = curr[j];
+      } else {
+        curr[j] = 0;
+      }
+    }
+    [prev, curr] = [curr, prev];
+    curr.fill(0);
+  }
+  return max;
+}
+
+function isLcsChunkDup(candidate: string, prior: string): boolean {
+  if (candidate.length < LCS_MIN_LEN || prior.length < LCS_MIN_LEN) return false;
+  return longestCommonSubstring(candidate, prior) >= LCS_MIN_LEN;
+}
+
 type SessionBundle = {
   session: {
     id: string;
@@ -541,7 +586,9 @@ export function TranslateConsole() {
             dedupKey.length > 0 &&
             fresh.some(
               (e) =>
-                isFuzzyDup(dedupKey, e.key) || isContainmentDup(dedupKey, e.key),
+                isFuzzyDup(dedupKey, e.key) ||
+                isContainmentDup(dedupKey, e.key) ||
+                isLcsChunkDup(dedupKey, e.key),
             );
           if (isDup) {
             console.info('[translate] dedup', {
