@@ -14,6 +14,7 @@ import { triggerBlobDownload } from '@/lib/export/download';
 import { useActiveProject } from './active-project-provider';
 import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { IconButton } from './ui/icon-button';
 
@@ -752,11 +753,9 @@ export function WorkspacePanel() {
           {artifacts.length > 0 && (
             <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
               <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={allSelected}
                   onChange={toggleSelectAll}
-                  className="h-3 w-3 accent-amore"
                 />
                 <span>
                   {selected.size > 0
@@ -900,12 +899,11 @@ export function WorkspacePanel() {
                       } ${isFresh ? 'workspace-row-flash' : ''}`}
                     >
                       <div className="flex items-start gap-2.5">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelected}
                           onChange={() => toggleSelect(a.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="mt-0.5 h-3 w-3 shrink-0 accent-amore"
+                          className="mt-0.5 shrink-0"
                           aria-label={t('select')}
                         />
                         <div className="min-w-0 flex-1">

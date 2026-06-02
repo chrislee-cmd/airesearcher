@@ -32,6 +32,7 @@ import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { FeaturePage } from './ui/feature-page';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import { IconButton } from './ui/icon-button';
 import { Input } from './ui/input';
 import { triggerBlobDownload } from '@/lib/export/download';
@@ -590,11 +591,9 @@ export function DeskResearch() {
                             key={s.id}
                             className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-2 hover:text-amore"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={checked}
                               onChange={() => toggle(s.id)}
-                              className="accent-amore"
                             />
                             <span>{isEn ? s.labelEn : s.label}</span>
                           </label>

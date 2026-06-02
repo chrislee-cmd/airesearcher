@@ -9,6 +9,7 @@ import {
 import { track } from '@/components/mixpanel-provider';
 import { currencyForLocale, formatCurrency } from '@/lib/currency';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 
 // Plain KRW formatter — used only for the bank-transfer "deposit this
@@ -315,11 +316,9 @@ export function CreditsBundles() {
                   {/* Tax invoice */}
                   <div className="mt-5">
                     <label className="flex items-center gap-2 text-[12.5px] text-ink-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={tax.enabled}
                         onChange={(e) => setTax((s) => ({ ...s, enabled: e.target.checked }))}
-                        className="accent-amore"
                       />
                       {t('taxInvoiceLabel')}
                     </label>

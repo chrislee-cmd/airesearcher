@@ -27,6 +27,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { IconButton } from './ui/icon-button';
 
@@ -1225,8 +1226,7 @@ export function TranslateConsole() {
           </select>
         </label>
         <label className="flex items-center gap-2 text-[12.5px] text-mute">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={recordEnabled}
             onChange={(e) => setRecordEnabled(e.target.checked)}
             disabled={live || busy}
