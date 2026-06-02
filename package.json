@@ -25,6 +25,7 @@
     "ai": "^6.0.174",
     "creem": "^1.4.5",
     "docx": "^9.6.1",
+    "fflate": "^0.8.3",
     "livekit-client": "^2.19.1",
     "livekit-server-sdk": "^2.15.4",
     "mammoth": "^1.12.0",

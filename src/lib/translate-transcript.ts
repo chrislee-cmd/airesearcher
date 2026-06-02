@@ -1,12 +1,17 @@
-// AI 동시통역 — bilingual transcript renderers.
+// AI 동시통역 — transcript renderers.
 //
 // Reads `translate_messages` rows for a session and produces:
-//   - `.txt` (plain text, bilingual interleaved by timestamp)
+//   - `.txt` (plain text, interleaved by timestamp)
 //   - `.docx` (editorial design-system layout, mirrors transcripts/docx.ts)
 //
 // Both formats are generated on-demand by the download API route — we do
 // NOT store them in Supabase Storage. The source rows are the SSOT;
 // caching the rendered artefacts would just create drift.
+//
+// `kindFilter` selects which rows land in the output:
+//   - `'input'`  — source-language lines only ("원문")
+//   - `'output'` — translated lines only ("통역본")
+//   - `null`     — both, interleaved (legacy bilingual)
 //
 // Localization: tag labels follow the host's UI locale. Korean uses
 // `[원문]` / `[통역]`; every other locale falls back to `[source]` /

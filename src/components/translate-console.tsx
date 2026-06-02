@@ -333,10 +333,11 @@ export function TranslateConsole() {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   // Four downloadable formats now: two audio tracks (source-only,
-  // translated-only) + text/docx transcripts. One unlock covers all
-  // four — pricing didn't change.
+  // translated-only) + two transcript zips (source-only "원문" and
+  // translation-only "통역본", each bundling .txt + .docx). One unlock
+  // covers all four — pricing didn't change.
   const [downloadingFormat, setDownloadingFormat] = useState<
-    'm4a-input' | 'm4a-output' | 'txt' | 'docx' | null
+    'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output' | null
   >(null);
   // Whether the MediaRecorder is actively capturing. Driven from the
   // recorder's onstart/onstop events so the indicator pill renders
@@ -1397,10 +1398,11 @@ export function TranslateConsole() {
 
   // Trigger a download for one of the four formats. All stream directly
   // from the API route — m4a-input/m4a-output are transcoded on demand
-  // from the per-track persisted webms, txt/docx are rendered from
+  // from the per-track persisted webms; zip-input/zip-output bundle a
+  // kind-filtered transcript (.txt + .docx) rendered from
   // translate_messages.
   const downloadFormat = useCallback(
-    async (format: 'm4a-input' | 'm4a-output' | 'txt' | 'docx') => {
+    async (format: 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output') => {
       if (!recording || downloadingFormat) return;
       if (recording.status !== 'unlocked') return;
       setDownloadingFormat(format);
@@ -1409,7 +1411,7 @@ export function TranslateConsole() {
           `/api/translate/recordings/${recording.id}/download?format=${format}`,
           {
             headers: {
-              // Locale hint for the txt/docx renderers — the route
+              // Locale hint for the transcript renderers — the route
               // handler reads `x-app-locale` and falls back to ko.
               'x-app-locale': locale,
             },
@@ -1436,9 +1438,9 @@ export function TranslateConsole() {
             ? `translate-${recording.id}-input.m4a`
             : format === 'm4a-output'
               ? `translate-${recording.id}-output.m4a`
-              : format === 'txt'
-                ? `translate-${recording.id}.txt`
-                : `translate-${recording.id}.docx`;
+              : format === 'zip-input'
+                ? `translate-${recording.id}-input.zip`
+                : `translate-${recording.id}-output.zip`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1679,9 +1681,16 @@ function RecordingDownloadPanel({
   recording: RecordingRow | null;
   recordingError: string | null;
   unlocking: boolean;
-  downloadingFormat: 'm4a-input' | 'm4a-output' | 'txt' | 'docx' | null;
+  downloadingFormat:
+    | 'm4a-input'
+    | 'm4a-output'
+    | 'zip-input'
+    | 'zip-output'
+    | null;
   onUnlock: () => void;
-  onDownload: (f: 'm4a-input' | 'm4a-output' | 'txt' | 'docx') => void;
+  onDownload: (
+    f: 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output',
+  ) => void;
 }) {
   const t = useTranslations('TranslateConsole');
   // While the recording is still finalizing (upload in-flight) the row
@@ -1751,21 +1760,21 @@ function RecordingDownloadPanel({
           </ChromeButton>
           <ChromeButton
             size="lg"
-            onClick={() => onDownload('txt')}
+            onClick={() => onDownload('zip-input')}
             disabled={downloadingFormat !== null}
           >
-            {downloadingFormat === 'txt'
+            {downloadingFormat === 'zip-input'
               ? t('download.preparingFile')
-              : t('download.txt')}
+              : t('download.zipInput')}
           </ChromeButton>
           <ChromeButton
             size="lg"
-            onClick={() => onDownload('docx')}
+            onClick={() => onDownload('zip-output')}
             disabled={downloadingFormat !== null}
           >
-            {downloadingFormat === 'docx'
+            {downloadingFormat === 'zip-output'
               ? t('download.preparingFile')
-              : t('download.docx')}
+              : t('download.zipOutput')}
           </ChromeButton>
         </div>
       )}

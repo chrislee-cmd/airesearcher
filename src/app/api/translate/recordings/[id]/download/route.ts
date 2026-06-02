@@ -8,14 +8,17 @@
 //   - format=m4a-output  → AAC/MP4 audio of the TRANSLATED TTS stream
 //                          (no source mix), transcoded on-demand from
 //                          `storage_key`
-//   - format=txt         → bilingual transcript streamed as text/plain
-//   - format=docx        → bilingual transcript streamed as docx
+//   - format=zip-input   → ZIP containing source-language transcript
+//                          (.txt + .docx, "원문" only — input rows)
+//   - format=zip-output  → ZIP containing translated transcript
+//                          (.txt + .docx, "통역본" only — output rows)
 //
-// txt + docx are generated on-the-fly from `translate_messages` (no
-// storage). The original webms are what we persist in `audio-uploads`;
-// the m4a is regenerated on demand so we don't pay for storage twice.
-// 402 if the recording row isn't `unlocked`. 410 + auto-refund on the
-// m4a path when the storage object has been swept (past retention).
+// The transcript zips are generated on-the-fly from `translate_messages`
+// (no storage). The original webms are what we persist in
+// `audio-uploads`; the m4a is regenerated on demand so we don't pay for
+// storage twice. 402 if the recording row isn't `unlocked`. 410 +
+// auto-refund on the m4a path when the storage object has been swept
+// (past retention).
 //
 // Legacy back-compat: rows created BEFORE migration 0024 have
 // `input_storage_key=NULL` and a single mixed webm at `storage_key`.
@@ -23,10 +26,12 @@
 //   - `m4a-output` (and the legacy alias `m4a`) returns the mixed file
 //     and works end-to-end.
 //   - `m4a-input` returns 404 with `error=input_audio_unavailable`.
-//     The UI surfaces a localized message; no refund because the txt /
-//     docx / output-m4a deliverables all still work for that unlock.
+//     The UI surfaces a localized message; no refund because the
+//     transcript zips and output-m4a deliverables all still work for
+//     that unlock.
 
 import { NextResponse } from 'next/server';
+import { zipSync, strToU8 } from 'fflate';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { refundCredits } from '@/lib/credits';
@@ -44,9 +49,27 @@ export const runtime = 'nodejs';
 // paths too.
 export const maxDuration = 120;
 
-const FORMATS = new Set(['m4a-input', 'm4a-output', 'txt', 'docx']);
+const FORMATS = new Set([
+  'm4a-input',
+  'm4a-output',
+  'zip-input',
+  'zip-output',
+]);
 
-type Format = 'm4a-input' | 'm4a-output' | 'txt' | 'docx';
+type Format = 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output';
+
+// Filename stems for the kind-filtered transcript zips. Localized per
+// host UI locale so the file the user sees on disk matches the button
+// they clicked.
+const ZIP_STEMS: Record<
+  'ko' | 'en' | 'ja' | 'th',
+  { input: string; output: string }
+> = {
+  ko: { input: '원문', output: '통역본' },
+  en: { input: 'source', output: 'translation' },
+  ja: { input: '原文', output: '通訳' },
+  th: { input: 'source', output: 'translation' },
+};
 
 // Legacy alias: pre-split clients (and any direct-link old URLs) request
 // `format=m4a`. Treat as `m4a-output` so the persisted single mixed file
@@ -241,46 +264,50 @@ export async function GET(
     }
   }
 
-  // ── txt / docx: generated from translate_messages on the fly ──
+  // ── zip-input / zip-output: kind-filtered transcript zips generated
+  // from translate_messages on the fly. Each zip bundles the txt + docx
+  // render of just that kind ("원문" or "통역본") so the host can pick a
+  // side instead of always getting the interleaved bilingual file.
   const transcript = await loadTranscript(admin, row.session_id);
   if (!transcript) {
     return NextResponse.json({ error: 'session_not_found' }, { status: 404 });
   }
 
+  const locale = pickLocale(req);
   const meta: TranscriptMeta = {
     sessionId: row.session_id,
     sourceLang: transcript.meta.sourceLang,
     targetLang: transcript.meta.targetLang,
     startedAt: transcript.meta.startedAt,
-    locale: pickLocale(req),
+    locale,
   };
 
-  if (format === 'txt') {
-    const text = renderTranslateTranscriptText(meta, transcript.messages);
-    return new NextResponse(text, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Content-Disposition': `attachment; filename="translate-${row.session_id}.txt"`,
-        'Cache-Control': 'private, no-store',
-      },
-    });
-  }
+  const kind: 'input' | 'output' = format === 'zip-input' ? 'input' : 'output';
+  const filtered = transcript.messages.filter((m) => m.kind === kind);
+  const stem = ZIP_STEMS[locale][kind];
 
-  // format === 'docx'
-  const buf = await renderTranslateTranscriptDocx(meta, transcript.messages);
-  // Copy into a freshly-allocated ArrayBuffer so the Body type is a
-  // plain ArrayBuffer (not a Node Buffer pool slice or
-  // SharedArrayBuffer-tinted view that the Web `BodyInit` union
-  // rejects under strict TS).
-  const ab = new ArrayBuffer(buf.byteLength);
-  new Uint8Array(ab).set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
-  return new NextResponse(ab, {
+  const txt = renderTranslateTranscriptText(meta, filtered);
+  const docx = await renderTranslateTranscriptDocx(meta, filtered);
+
+  const docxBytes = new Uint8Array(docx.buffer, docx.byteOffset, docx.byteLength);
+  // fflate works with Uint8Arrays. Copy the docx slice to detach it from
+  // the Node Buffer pool so the zip output is a clean owned buffer.
+  const docxCopy = new Uint8Array(docxBytes.byteLength);
+  docxCopy.set(docxBytes);
+
+  const zipped = zipSync({
+    [`${stem}.txt`]: strToU8(txt),
+    [`${stem}.docx`]: docxCopy,
+  });
+
+  const zipBuf = new ArrayBuffer(zipped.byteLength);
+  new Uint8Array(zipBuf).set(zipped);
+
+  return new NextResponse(zipBuf, {
     status: 200,
     headers: {
-      'Content-Type':
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="translate-${row.session_id}.docx"`,
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="translate-${row.session_id}-${kind}.zip"`,
       'Cache-Control': 'private, no-store',
     },
   });
