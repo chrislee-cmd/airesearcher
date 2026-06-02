@@ -36,7 +36,7 @@ const eslintConfig = defineConfig([
         {
           selector: 'JSXOpeningElement[name.name="input"]',
           message:
-            "Use <Input> from @/components/ui/input instead of native <input>.",
+            "Use <Input> from @/components/ui/input instead of native <input>. (For type=checkbox use <Checkbox> from @/components/ui/checkbox.)",
         },
         {
           selector: 'JSXOpeningElement[name.name="textarea"]',
