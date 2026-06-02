@@ -14,6 +14,9 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 // Variants (text color):
 //   default   text-ink                    most chrome (translate)
 //   mute      text-mute → ink-2           workspace chrome with hover lift
+//   primary   amore-bg fill, text-paper   "go" CTAs in chrome contexts
+//                                         (translate Start / Unlock, viewer
+//                                         "Tap to enable audio")
 //
 // Sizes:
 //   xs   px-2 py-0.5 text-[10.5px]       in-row chrome (workspace subfolder)
@@ -25,7 +28,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 // (font-semibold + uppercase + tracking-[0.18em]). Translate chrome
 // stays sentence-case.
 
-export type ChromeButtonVariant = 'default' | 'mute';
+export type ChromeButtonVariant = 'default' | 'mute' | 'primary';
 export type ChromeButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -46,6 +49,11 @@ const BASE =
 const VARIANT: Record<ChromeButtonVariant, string> = {
   default: 'text-ink',
   mute: 'text-mute hover:text-ink-2',
+  // `primary` overrides BASE's border-line/bg-paper with the amore brand
+  // fill. hover:opacity-90 gives a subtle press-feel (existing in
+  // translate-viewer "Tap to enable"; net-new for translate-console
+  // Start/Unlock — improves affordance).
+  primary: 'border-amore bg-amore text-paper hover:opacity-90',
 };
 
 const SIZE: Record<ChromeButtonSize, string> = {
