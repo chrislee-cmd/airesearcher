@@ -691,15 +691,20 @@ export function TranslateConsole() {
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
-    // DO NOT reset `recentFinalsRef` here. Production trace showed users
-    // who Stop+Start within seconds (testing, accidental tap, brief
-    // pause) saw the same utterance commit twice — once per session —
-    // because each Start cleared the dedup memory. The DEDUP_WINDOW_MS
-    // sliding filter already ages out anything older than 60s on every
-    // new insert, so genuine repeats spoken minutes apart still land
-    // normally while quick stop/start cycles stop double-committing.
-    // Reset event sampler though — each session gets a fresh budget so
-    // we see the protocol shape from t=0 of every recording.
+    // RESET dedup memory on every Start. We tried persisting across
+    // Stop+Start (commit bc07d6b) to suppress duplicate commits when
+    // the user re-transcribed the tail of the previous session, but
+    // that backfired in practice: a heavy testing loop pollutes the
+    // memory with phrases from prior sessions, and the next session's
+    // legitimate first commit gets caught against those stale entries.
+    // Net effect was a black-hole prompter — every utterance matched
+    // something old, nothing landed. The cross-session dedup case is
+    // rare in production (users don't stop+start within seconds), so
+    // we revert to the simpler "fresh memory per session" semantics.
+    recentFinalsRef.current.set('input', []);
+    recentFinalsRef.current.set('output', []);
+    // Reset event sampler too — each session gets a fresh budget so we
+    // see the protocol shape from t=0 of every recording.
     sampleCountRef.current.clear();
     setError(null);
     setInputLines([]);
