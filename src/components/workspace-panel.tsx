@@ -14,6 +14,7 @@ import { triggerBlobDownload } from '@/lib/export/download';
 import { useActiveProject } from './active-project-provider';
 import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
@@ -448,18 +449,17 @@ export function WorkspacePanel() {
                 · {artifacts.length}
               </span>
             </div>
-            <button
-              type="button"
+            <IconButton
               onClick={() => {
                 setOpen(false);
                 setOpenMenu(null);
                 setViewing(null);
               }}
               aria-label={t('collapse')}
-              className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+              className="text-[18px] leading-none"
             >
               ×
-            </button>
+            </IconButton>
           </header>
 
           {/* Scope row — project switcher + create button. The
@@ -659,29 +659,28 @@ export function WorkspacePanel() {
                             <span className="truncate">{folder.name}</span>
                           </button>
                         )}
-                        <button
-                          type="button"
+                        <IconButton
                           onClick={() => {
                             setCreatingFolderParent(folder.id);
                             setNewFolderName('');
                           }}
                           aria-label={t('newFolder')}
-                          className="px-1.5 py-0.5 text-[12px] text-mute-soft hover:text-ink-2"
+                          className="px-1.5 py-0.5 text-[12px]"
                         >
                           +
-                        </button>
-                        <button
-                          type="button"
+                        </IconButton>
+                        <IconButton
+                          variant="ghost-danger"
                           onClick={() => {
                             if (window.confirm(t('confirmDeleteFolder', { name: folder.name }))) {
                               void deleteFolder(folder.id);
                             }
                           }}
                           aria-label={t('deleteFolder')}
-                          className="pr-2 text-[12px] text-mute-soft hover:text-warning"
+                          className="pr-2 text-[12px]"
                         >
                           ×
-                        </button>
+                        </IconButton>
                       </div>
                       {creatingFolderParent === folder.id && (
                         <div
@@ -937,18 +936,17 @@ export function WorkspacePanel() {
                           className="relative shrink-0"
                           ref={isMenuOpen ? menuRef : undefined}
                         >
-                          <button
-                            type="button"
+                          <IconButton
+                            size="sm"
                             onClick={() => {
                               setOpenMenu(isMenuOpen ? null : a.id);
                               setOpenSendSub(false);
                               setOpenDownloadSub(false);
                             }}
                             aria-label={t('actions')}
-                            className="flex h-6 w-6 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
                           >
                             <span className="text-[16px] leading-none">⋯</span>
-                          </button>
+                          </IconButton>
                           {isMenuOpen && (
                             <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
                               <MenuItem
@@ -1092,6 +1090,7 @@ function ViewerOverlay({
   content: string | null;
   onClose: () => void;
 }) {
+  const t = useTranslations('Workspace');
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
@@ -1105,13 +1104,13 @@ function ViewerOverlay({
           <div className="truncate text-[13px] font-semibold text-ink-2">
             {title}
           </div>
-          <button
-            type="button"
+          <IconButton
             onClick={onClose}
-            className="text-[18px] leading-none text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+            aria-label={t('closeViewer')}
+            className="text-[18px] leading-none"
           >
             ×
-          </button>
+          </IconButton>
         </header>
         <pre className="flex-1 overflow-auto whitespace-pre-wrap p-5 text-[12.5px] leading-[1.7] text-ink-2">
           {content === null ? '…' : content}

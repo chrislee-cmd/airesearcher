@@ -718,6 +718,7 @@
     "eyebrow": "워크스페이스",
     "expand": "워크스페이스 열기",
     "collapse": "접기",
+    "closeViewer": "닫기",
     "empty": "아직 산출물이 없습니다",
     "emptyHint": "각 도구에서 결과를 만들면 여기에 모입니다.",
     "loading": "불러오는 중…",
