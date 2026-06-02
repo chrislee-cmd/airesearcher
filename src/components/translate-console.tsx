@@ -548,6 +548,17 @@ export function TranslateConsole() {
               kind,
               preview: finalText.slice(0, 40),
             });
+            // The partial that was about to be finalized lives in
+            // {input,output}Lines as a non-final preview row (rendered
+            // with the trailing "…"). Skipping the commit also means
+            // skipping the pushLine that would have replaced it with
+            // final=true — without this cleanup it stays as an
+            // orphaned partial row forever, and the prompter slowly
+            // fills with greyed "…" copies of every deduped utterance.
+            // Drop it now so the prompter only shows what we actually
+            // commit.
+            const setter = kind === 'input' ? setInputLines : setOutputLines;
+            setter((prev) => prev.filter((l) => l.id !== current.id));
           } else {
             fresh.push({ key: dedupKey, ts: wall });
             recentFinalsRef.current.set(kind, fresh);
