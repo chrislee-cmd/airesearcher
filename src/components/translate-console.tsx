@@ -149,6 +149,27 @@ function isFuzzyDup(candidate: string, prior: string): boolean {
   return dist / Math.max(cl, pl) <= FUZZY_RATIO_THRESHOLD;
 }
 
+// Containment dedup. OpenAI re-emits the same utterance with different
+// chunking — once as a flurry of comma-separated short segments, once
+// as a single concatenated long line. Length diff is too large for the
+// fuzzy check (it short-circuits at 30%), but one is a substring of
+// the other. Minimum length guard so short common phrases like "네." or
+// "그래서" don't false-match against any longer line that happens to
+// contain them.
+const CONTAINMENT_MIN_LEN = 10;
+
+function isContainmentDup(candidate: string, prior: string): boolean {
+  const cl = candidate.length;
+  const pl = prior.length;
+  if (cl === 0 || pl === 0) return false;
+  const shorter = cl < pl ? candidate : prior;
+  const longer = cl < pl ? prior : candidate;
+  // Require the SHORTER side to be substantial — otherwise we'd dedup
+  // every "네." against any longer line containing it.
+  if (shorter.length < CONTAINMENT_MIN_LEN) return false;
+  return longer.includes(shorter);
+}
+
 type SessionBundle = {
   session: {
     id: string;
@@ -501,13 +522,21 @@ export function TranslateConsole() {
           const dedupKey = normalizeForDedup(finalText);
           const bucket = recentFinalsRef.current.get(kind) ?? [];
           const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
-          // PR #224: fuzzy match (Levenshtein ratio ≤ 20% on the
-          // normalized key) so refinement passes that only differ by
-          // a character or two — the "이걸" → "그걸" pattern we saw
-          // slipping past PR #223 — collapse onto the first version
-          // we committed.
+          // PR #224 dedup stack — applied in order:
+          //   1. Fuzzy (Levenshtein ratio ≤ 20%) — catches single-char
+          //      substitutions like "이걸" → "그걸".
+          //   2. Containment — catches the case where OpenAI emits the
+          //      same utterance once as N short comma-separated commits
+          //      and again as one long concatenated commit. The shorter
+          //      side must clear CONTAINMENT_MIN_LEN to avoid common
+          //      short phrases ("네.") wrongly matching against any
+          //      longer line that contains them.
           const isDup =
-            dedupKey.length > 0 && fresh.some((e) => isFuzzyDup(dedupKey, e.key));
+            dedupKey.length > 0 &&
+            fresh.some(
+              (e) =>
+                isFuzzyDup(dedupKey, e.key) || isContainmentDup(dedupKey, e.key),
+            );
           if (isDup) {
             console.info('[translate] dedup', {
               kind,
