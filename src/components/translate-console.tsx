@@ -32,6 +32,18 @@ import { IconButton } from './ui/icon-button';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
+// All paths that tear the session down. Logged via `console.info` so
+// stray reconnect cycles in production can be traced back to a
+// specific caller without re-deploying with extra instrumentation.
+type CleanupCaller =
+  | 'start_error_session'
+  | 'start_error_mic'
+  | 'start_error_livekit'
+  | 'start_error_webrtc'
+  | 'start_reentry_guard'
+  | 'stop'
+  | 'unmount';
+
 // Recording lifecycle, mirrored from supabase/migrations/0023.
 // `null` = no row yet (host opted out, or session hasn't reached the
 // finalize step yet).
@@ -65,6 +77,22 @@ type CaptionLine = {
 // enough that a slow speaker still has context, short enough that the
 // active line stays in the visual center.
 const PROMPTER_WINDOW_MS = 30_000;
+
+// Drop a freshly-finalized caption line if its punctuation/whitespace-
+// normalized form matches a final line committed within this window.
+// In production we've seen the pipeline restart mid-session (root cause
+// still under investigation — see [translate] cleanup logs), which spins
+// up a second OpenAI session that retranscribes the same audio with
+// slightly different tokenization (e.g. comma added/removed). The
+// dedup window keeps those copies off the prompter without blocking
+// genuine repeats spoken minutes apart.
+const DEDUP_WINDOW_MS = 60_000;
+
+// Strip whitespace + Unicode punctuation/symbols so different
+// tokenizations of the same utterance collide on the dedup key.
+function normalizeForDedup(text: string): string {
+  return text.replace(/[\s\p{P}\p{S}]+/gu, '').toLowerCase();
+}
 
 type SessionBundle = {
   session: {
@@ -183,6 +211,23 @@ export function TranslateConsole() {
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
 
+  // Synchronous re-entry guard for start(). The status closure in start()
+  // can be stale across rapid invocations (the captured `status` was
+  // 'idle' even after setStatus('starting') was queued but not yet
+  // applied). This ref is read+written in the same microtask so a second
+  // start() entering before the first awaits cannot get past it.
+  const startInFlightRef = useRef(false);
+
+  // Dedup keys for finalized lines per kind. Sliding window — entries
+  // older than DEDUP_WINDOW_MS are dropped on each insert so the map
+  // never grows unbounded across a long session.
+  const recentFinalsRef = useRef<Map<'input' | 'output', Array<{ key: string; ts: number }>>>(
+    new Map([
+      ['input', []],
+      ['output', []],
+    ]),
+  );
+
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
   // the host's source stream (mic/tab) and one for the translated TTS.
   // We do NOT reuse `audioDestRef` (which feeds LiveKit publish):
@@ -243,7 +288,17 @@ export function TranslateConsole() {
     monitorAudioRef.current.muted = !outputAudible;
   }, [outputAudible]);
 
-  const cleanup = useCallback(() => {
+  // `caller` is purely diagnostic — surfaces in the production log so we
+  // can match a stray `disconnect from room` cycle back to whichever
+  // path tore the session down (start error vs stop vs unmount vs
+  // re-entry guard). No behaviour difference between values.
+  const cleanup = useCallback((caller: CleanupCaller) => {
+    console.info('[translate] cleanup', {
+      caller,
+      sessionId: sessionIdRef.current,
+      hasRoom: !!roomRef.current,
+      hasPc: !!pcRef.current,
+    });
     try {
       channelRef.current?.unsubscribe();
     } catch {}
@@ -371,10 +426,29 @@ export function TranslateConsole() {
         const finalText = next.slice(0, cut).trim();
         const remainder = next.slice(cut).trim();
         if (finalText) {
-          const finalLine: CaptionLine = { id: current.id, text: finalText, final: true, ts: wall };
-          pushLine(kind, finalLine);
-          broadcastCaption(kind, finalLine, lang);
-          void persistMessage(kind, finalText, lang);
+          // Dedup against recent finals (see DEDUP_WINDOW_MS comment).
+          // We normalize punctuation+whitespace because successive OpenAI
+          // sessions tokenize the same utterance slightly differently
+          // (a comma appearing or vanishing between runs is the typical
+          // diff). The DISPLAY text stays original — only the lookup key
+          // is normalized.
+          const dedupKey = normalizeForDedup(finalText);
+          const bucket = recentFinalsRef.current.get(kind) ?? [];
+          const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
+          const isDup = dedupKey.length > 0 && fresh.some((e) => e.key === dedupKey);
+          if (isDup) {
+            console.info('[translate] dedup', {
+              kind,
+              preview: finalText.slice(0, 40),
+            });
+          } else {
+            fresh.push({ key: dedupKey, ts: wall });
+            recentFinalsRef.current.set(kind, fresh);
+            const finalLine: CaptionLine = { id: current.id, text: finalText, final: true, ts: wall };
+            pushLine(kind, finalLine);
+            broadcastCaption(kind, finalLine, lang);
+            void persistMessage(kind, finalText, lang);
+          }
         }
         if (remainder) {
           const nextId = `${kind}-${wall}`;
@@ -424,7 +498,22 @@ export function TranslateConsole() {
   );
 
   const start = useCallback(async () => {
+    // Two-layer guard: (1) the status closure may be stale across rapid
+    // invocations (React batches the setStatus('starting') below so a
+    // second click within the same microtask still sees 'idle'); (2) the
+    // ref check is synchronous and survives any closure staleness, so it
+    // is the actual stopgap against concurrent start() calls.
+    if (startInFlightRef.current) {
+      console.info('[translate] start re-entry blocked (in-flight)');
+      return;
+    }
     if (status === 'live' || status === 'starting') return;
+    startInFlightRef.current = true;
+    // Reset dedup memory so a fresh session never matches against the
+    // previous one's keys. Within a single session the dedup window
+    // still slides naturally per-line.
+    recentFinalsRef.current.set('input', []);
+    recentFinalsRef.current.set('output', []);
     setError(null);
     setInputLines([]);
     setOutputLines([]);
@@ -458,6 +547,7 @@ export function TranslateConsole() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'session_failed');
       setStatus('error');
+      startInFlightRef.current = false;
       return;
     }
 
@@ -494,6 +584,7 @@ export function TranslateConsole() {
           display.getTracks().forEach((tr) => tr.stop());
           setError('tab_audio_unavailable');
           setStatus('error');
+          startInFlightRef.current = false;
           return;
         }
         mic = new MediaStream(audioTracks);
@@ -503,6 +594,7 @@ export function TranslateConsole() {
     } catch {
       setError(inputSource === 'tab' ? 'tab_audio_denied' : 'microphone_denied');
       setStatus('error');
+      startInFlightRef.current = false;
       return;
     }
     micStreamRef.current = mic;
@@ -524,7 +616,8 @@ export function TranslateConsole() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'livekit_failed');
       setStatus('error');
-      cleanup();
+      cleanup('start_error_livekit');
+      startInFlightRef.current = false;
       return;
     }
 
@@ -764,7 +857,8 @@ export function TranslateConsole() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'webrtc_failed');
       setStatus('error');
-      cleanup();
+      cleanup('start_error_webrtc');
+      startInFlightRef.current = false;
       return;
     }
 
@@ -784,6 +878,7 @@ export function TranslateConsole() {
 
     startedAtRef.current = Date.now();
     setStatus('live');
+    startInFlightRef.current = false;
   }, [
     cleanup,
     handleOaiEvent,
@@ -976,7 +1071,7 @@ export function TranslateConsole() {
       }
     }
 
-    cleanup();
+    cleanup('stop');
     sessionIdRef.current = null;
     startedAtRef.current = null;
     if (id) {
@@ -1001,7 +1096,7 @@ export function TranslateConsole() {
   // Stop on unmount.
   useEffect(() => {
     return () => {
-      cleanup();
+      cleanup('unmount');
     };
   }, [cleanup]);
 
