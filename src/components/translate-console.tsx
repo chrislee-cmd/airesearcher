@@ -156,7 +156,13 @@ function isFuzzyDup(candidate: string, prior: string): boolean {
 // the other. Minimum length guard so short common phrases like "네." or
 // "그래서" don't false-match against any longer line that happens to
 // contain them.
-const CONTAINMENT_MIN_LEN = 10;
+// 5 is tuned for Korean: each Hangul syllable carries roughly the same
+// semantic weight as 2-3 Latin letters, so 5-char Korean fragments
+// like "잠깐 시간이" or "바로 효과" are already meaningful phrases
+// that should collapse against a longer concatenated commit. Anything
+// shorter is backchannel-ish ("아 그건", "응 응", "그래") and is left
+// alone so natural conversational repetition stays visible.
+const CONTAINMENT_MIN_LEN = 5;
 
 function isContainmentDup(candidate: string, prior: string): boolean {
   const cl = candidate.length;
