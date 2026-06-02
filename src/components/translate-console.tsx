@@ -94,6 +94,61 @@ function normalizeForDedup(text: string): string {
   return text.replace(/[\s\p{P}\p{S}]+/gu, '').toLowerCase();
 }
 
+// Approximate same-utterance match. Catches OpenAI refinement passes
+// that PR #223's exact-match dedup misses — e.g. "이걸" → "그걸",
+// "5천 엔" → "오천 엔", or Korean numeral/synonym substitutions where
+// only 1-2 characters differ across passes. Tunables:
+//
+// - FUZZY_LENGTH_TOLERANCE: skip the (expensive) edit distance step
+//   if lengths differ by more than 30% — guards against false positives
+//   on legitimately different short utterances ("네." vs "아니요.").
+// - FUZZY_RATIO_THRESHOLD: 0.2 means "≤ 20% of characters different".
+//   Tested against captured prod variants where 1-2 char substitution
+//   should match but full word changes (different utterance) should not.
+// - LEVENSHTEIN_CAP: defensive bail on pathological lengths. Real
+//   normalized keys land well under this.
+const FUZZY_LENGTH_TOLERANCE = 0.3;
+const FUZZY_RATIO_THRESHOLD = 0.2;
+const LEVENSHTEIN_CAP = 400;
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const al = a.length;
+  const bl = b.length;
+  if (al === 0) return bl;
+  if (bl === 0) return al;
+  if (al > LEVENSHTEIN_CAP || bl > LEVENSHTEIN_CAP) {
+    // Unlikely; bail with max distance so the caller treats as not-a-dup.
+    return Math.max(al, bl);
+  }
+  const prev = new Array<number>(bl + 1);
+  const curr = new Array<number>(bl + 1);
+  for (let j = 0; j <= bl; j++) prev[j] = j;
+  for (let i = 1; i <= al; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= bl; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      const del = prev[j] + 1;
+      const ins = curr[j - 1] + 1;
+      const sub = prev[j - 1] + cost;
+      curr[j] = del < ins ? (del < sub ? del : sub) : ins < sub ? ins : sub;
+    }
+    for (let j = 0; j <= bl; j++) prev[j] = curr[j];
+  }
+  return prev[bl];
+}
+
+function isFuzzyDup(candidate: string, prior: string): boolean {
+  if (candidate === prior) return true;
+  const cl = candidate.length;
+  const pl = prior.length;
+  if (cl === 0 || pl === 0) return false;
+  const lengthDiff = Math.abs(cl - pl) / Math.max(cl, pl);
+  if (lengthDiff > FUZZY_LENGTH_TOLERANCE) return false;
+  const dist = levenshtein(candidate, prior);
+  return dist / Math.max(cl, pl) <= FUZZY_RATIO_THRESHOLD;
+}
+
 type SessionBundle = {
   session: {
     id: string;
@@ -446,7 +501,13 @@ export function TranslateConsole() {
           const dedupKey = normalizeForDedup(finalText);
           const bucket = recentFinalsRef.current.get(kind) ?? [];
           const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
-          const isDup = dedupKey.length > 0 && fresh.some((e) => e.key === dedupKey);
+          // PR #224: fuzzy match (Levenshtein ratio ≤ 20% on the
+          // normalized key) so refinement passes that only differ by
+          // a character or two — the "이걸" → "그걸" pattern we saw
+          // slipping past PR #223 — collapse onto the first version
+          // we committed.
+          const isDup =
+            dedupKey.length > 0 && fresh.some((e) => isFuzzyDup(dedupKey, e.key));
           if (isDup) {
             console.info('[translate] dedup', {
               kind,
