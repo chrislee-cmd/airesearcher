@@ -1286,13 +1286,14 @@ export function TranslateConsole() {
               </ChromeButton>
             </>
           ) : (
-            <button
+            <ChromeButton
+              variant="primary"
+              size="lg"
               onClick={() => void start()}
               disabled={busy}
-              className="h-8 rounded-[4px] border border-amore bg-amore px-3 text-[12.5px] text-paper disabled:opacity-50"
             >
               {busy ? t('starting') : t('start')}
-            </button>
+            </ChromeButton>
           )}
         </div>
       </div>
@@ -1395,15 +1396,16 @@ function RecordingDownloadPanel({
               {t('download.lockedHint', { credits: RECORDING_UNLOCK_CREDITS })}
             </div>
           </div>
-          <button
+          <ChromeButton
+            variant="primary"
+            size="lg"
             onClick={onUnlock}
             disabled={unlocking}
-            className="h-8 rounded-[4px] border border-amore bg-amore px-3 text-[12.5px] text-paper disabled:opacity-50"
           >
             {unlocking
               ? t('download.unlocking')
               : t('download.unlock', { credits: RECORDING_UNLOCK_CREDITS })}
-          </button>
+          </ChromeButton>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
