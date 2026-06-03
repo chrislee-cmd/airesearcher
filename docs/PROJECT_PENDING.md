@@ -11,3 +11,5 @@ PROJECT.md(SSOT)에 반영될 수도 있는 후보들의 inbox.
 ## Inbox
 
 <!-- 형식: - YYYY-MM-DD · PR #XXX · §X.Y · 한 줄 요약 -->
+- 2026-06-03 · PR #236 · §7 (함정) · primitive 의 BASE 에 색 클래스(border-color/background) 넣지 말 것. Tailwind v4 는 JSX 클래스 문자열 순서가 아니라 컴파일 CSS 소스 순서로 충돌을 해결하므로 variant 가 "덮어쓰려" 해도 BASE 색이 이길 수 있음 (#230 translate Start 가 paper-on-paper 로 렌더링된 회귀의 root cause). 색은 variant 가 단독 소유.
+

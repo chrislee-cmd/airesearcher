@@ -40,19 +40,23 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   rightIcon?: ReactNode;
 };
 
+// BASE intentionally does NOT set border-color/background — each variant
+// owns those so `primary`'s amore fill isn't fighting with (and
+// unpredictably losing to) `border-line bg-paper` under Tailwind's
+// class-order resolution. This was the root cause of the translate
+// Start/Unlock buttons rendering as paper-bg + paper-text (invisible
+// label) after #230 migrated them off the native <button>.
 const BASE =
-  'border border-line bg-paper [border-radius:4px] ' +
-  'transition-colors duration-[120ms] hover:border-amore ' +
+  'border [border-radius:4px] ' +
+  'transition-colors duration-[120ms] ' +
   'disabled:opacity-40 disabled:cursor-not-allowed ' +
   'focus:outline-none focus-visible:border-amore';
 
 const VARIANT: Record<ChromeButtonVariant, string> = {
-  default: 'text-ink',
-  mute: 'text-mute hover:text-ink-2',
-  // `primary` overrides BASE's border-line/bg-paper with the amore brand
-  // fill. hover:opacity-90 gives a subtle press-feel (existing in
-  // translate-viewer "Tap to enable"; net-new for translate-console
-  // Start/Unlock — improves affordance).
+  default: 'border-line bg-paper text-ink hover:border-amore',
+  mute: 'border-line bg-paper text-mute hover:border-amore hover:text-ink-2',
+  // amore brand fill. hover:opacity-90 mirrors translate-viewer "Tap to
+  // enable audio" (which had a native <button>).
   primary: 'border-amore bg-amore text-paper hover:opacity-90',
 };
 
