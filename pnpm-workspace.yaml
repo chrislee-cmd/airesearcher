@@ -1,0 +1,16 @@
+# pnpm 10+ refuses to silently skip postinstall scripts and exits 1 from
+# every `pnpm exec` call (including the husky pre-commit chain) when an
+# unapproved build script is detected. CI uses pnpm 9 (.github/workflows/ci.yml)
+# which doesn't hit this, but local worker worktrees on pnpm 10/11 are
+# blocked at commit time until each package is explicitly approved.
+#
+# This file pre-approves the build scripts we actually rely on, restoring
+# the pnpm 9 behavior for new workers without manual `pnpm approve-builds`.
+# Keep the list narrow — new entries should be a deliberate review decision.
+allowBuilds:
+  '@ffmpeg-installer/darwin-arm64': true
+  '@parcel/watcher': true
+  '@swc/core': true
+  sharp: true
+  supabase: true
+  unrs-resolver: true
