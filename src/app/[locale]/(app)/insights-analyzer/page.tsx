@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import { FeaturePlaceholder } from '@/components/feature-placeholder';
+import { InsightsAnalyzer } from '@/components/insights/insights-analyzer';
 
 export default async function InsightsAnalyzerPage({
   params,
@@ -8,5 +8,5 @@ export default async function InsightsAnalyzerPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <FeaturePlaceholder feature="insights_analyzer" />;
+  return <InsightsAnalyzer />;
 }
