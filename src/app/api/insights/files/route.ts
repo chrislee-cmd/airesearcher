@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { convertFileToMarkdown } from '@/lib/insights/convert';
 import {
-  insightsExtractionSchema,
+  insightsQuoteSchema,
   INSIGHTS_EXTRACTION_SYSTEM,
+  type InsightsQuote,
 } from '@/lib/insights-schema';
+
+// Batch size for incremental INSERTs into insights_quotes while the LLM
+// streams. Small enough that the client's 2s poll picks up movement, large
+// enough that we don't hammer Postgres with 100 single-row inserts.
+const STREAM_BATCH = 5;
 
 // Whisper + Sonnet on a 25MB file can spike well past the default. 300s is
 // the Vercel Fluid Compute ceiling (PROJECT.md uplift), matched to the
@@ -107,71 +113,75 @@ export async function POST(request: Request) {
     );
   }
 
-  let quotes: z.infer<typeof insightsExtractionSchema>['quotes'];
+  // Stream quotes element-by-element and flush in small batches so the
+  // 2s poll on /insights-analyzer ticks the live counter as extraction
+  // progresses, instead of jumping 0 → 50 at the very end (the symptom
+  // we hit with `generateObject`: ~4 min of "0개" then everything at once).
+  let inserted = 0;
+  const buffer: InsightsQuote[] = [];
+
+  const flush = async () => {
+    if (buffer.length === 0) return;
+    const rows = buffer.map((q) => ({
+      job_id: jobId,
+      participant_name: q.participant_name,
+      theme: q.theme,
+      sentiment: q.sentiment,
+      text: q.text,
+      source_file: file.name,
+      source_offset: q.source_offset,
+    }));
+    const { error: insertErr } = await admin
+      .from('insights_quotes')
+      .insert(rows);
+    if (insertErr) throw new Error(`insert_failed: ${insertErr.message}`);
+    inserted += rows.length;
+    buffer.length = 0;
+  };
+
   try {
     const anthropic = createAnthropic({ apiKey: anthropicKey });
-    const { object } = await generateObject({
+    const { elementStream } = streamObject({
       model: anthropic('claude-sonnet-4-6'),
-      schema: insightsExtractionSchema,
+      output: 'array',
+      schema: insightsQuoteSchema,
       system: INSIGHTS_EXTRACTION_SYSTEM,
       // 200k char cap matches the legacy extract route — within Sonnet's
       // input window and avoids paying for prompt tokens on outlier inputs.
       prompt: `파일명: ${file.name}\n\n마크다운:\n\n${markdown.slice(0, 200_000)}`,
       temperature: 0.1,
     });
-    quotes = object.quotes;
+
+    for await (const quote of elementStream) {
+      buffer.push(quote);
+      if (buffer.length >= STREAM_BATCH) await flush();
+    }
+    await flush();
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'extract_failed';
     return NextResponse.json(
       {
+        // A mid-stream insert failure surfaces here too. We do not roll back
+        // the rows already persisted before the error — /finalize's
+        // distinct(source_file) count still picks them up so the file
+        // contributes to the success ratio. The client treats the response
+        // as a per-file failure for its own counter, which is fine: the
+        // user sees "completed N of expected 50" semantics in the worst case.
         error: 'extract_failed',
         filename: file.name,
         stage: 'extract',
         detail: msg,
+        partial_quote_count: inserted,
       },
       { status: 502 },
     );
   }
 
-  if (quotes.length === 0) {
-    // The extractor returned zero rows — usually means the file had no
-    // identifiable respondent voice (a list of facts, a table, a slide
-    // deck without quotes). We return success with count=0 so the file is
-    // counted toward the threshold, but no insights_quotes rows are
-    // written. /finalize aggregates these as zero-yield, not as failure.
-    return NextResponse.json({
-      filename: file.name,
-      format_path: formatPath,
-      quote_count: 0,
-    });
-  }
-
-  const rows = quotes.map((q) => ({
-    job_id: jobId,
-    participant_name: q.participant_name,
-    theme: q.theme,
-    sentiment: q.sentiment,
-    text: q.text,
-    source_file: file.name,
-    source_offset: q.source_offset,
-  }));
-
-  const { error: insertErr } = await admin.from('insights_quotes').insert(rows);
-  if (insertErr) {
-    return NextResponse.json(
-      {
-        error: 'insert_failed',
-        filename: file.name,
-        stage: 'persist',
-        detail: insertErr.message,
-      },
-      { status: 500 },
-    );
-  }
-
+  // Zero-yield is a successful response with quote_count: 0. /finalize
+  // aggregates these as zero-yield (not failure) — see threshold logic.
   return NextResponse.json({
     filename: file.name,
     format_path: formatPath,
-    quote_count: rows.length,
+    quote_count: inserted,
   });
 }
