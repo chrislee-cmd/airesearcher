@@ -7,6 +7,14 @@
 # This file pre-approves the build scripts we actually rely on, restoring
 # the pnpm 9 behavior for new workers without manual `pnpm approve-builds`.
 # Keep the list narrow — new entries should be a deliberate review decision.
+#
+# `packages: ['.']` is required so pnpm 9 (used by CI) accepts the file at
+# all — pnpm 9 treats pnpm-workspace.yaml strictly as a workspace config
+# and errors with "packages field missing or empty" otherwise. The root
+# acts as a single-package workspace, which is a no-op for the existing
+# layout. pnpm 10/11 reads `allowBuilds:` regardless.
+packages:
+  - '.'
 allowBuilds:
   '@ffmpeg-installer/darwin-arm64': true
   '@parcel/watcher': true
