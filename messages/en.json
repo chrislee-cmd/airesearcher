@@ -192,6 +192,7 @@
     "dashboard": "Dashboard",
     "quotes": "Transcript Generator",
     "transcripts": "Script Generator",
+    "insights_analyzer": "Insights Analyzer",
     "interviews": "Interview Result Generator",
     "reports": "Full Report Generator",
     "scheduler": "Participant Scheduler",
@@ -389,6 +390,11 @@
         "proceedCta": "Start with this language",
         "cancelCta": "Cancel"
       }
+    },
+    "insights_analyzer": {
+      "title": "Insights Analyzer",
+      "description": "Upload interviews and materials to generate a cross-respondent matrix, consolidated insights, visualizations, and a full report — then search the entire output with chat.",
+      "cost": "30 credits"
     },
     "interviews": {
       "title": "Interview Result Generator",
