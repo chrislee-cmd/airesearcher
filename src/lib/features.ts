@@ -17,7 +17,12 @@ export type FeatureKey =
   // Global voice concierge — not a sidebar item, mounted as a FAB in
   // (app)/layout.tsx. Cost is stubbed at 0 for PR1; the credit policy
   // is still open (design §12.5) so the foundation ships as free beta.
-  | 'voice_concierge';
+  | 'voice_concierge'
+  // Unified Insights Analyzer — merges the existing interview-result and
+  // full-report generators into one upload → dashboard → chat surface.
+  // Stays in PREVIEW_FEATURES until the dashboard/viz/chat PRs land; the
+  // GA flip + legacy route redirect is the last PR in the series.
+  | 'insights_analyzer';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -56,6 +61,11 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // href is reserved for future expand/settings routes. Free during the
   // beta — credit policy lands with PR2/PR3 (design §12.5).
   { key: 'voice_concierge', href: '/voice', cost: 0 },
+  // Insights Analyzer — one upload produces the interview matrix +
+  // consolidated insights + auto-generated visualizations + full report,
+  // all searchable via chat. Cost reflects the bundle discount vs. running
+  // interviews (10) + reports (50) separately; viz extraction is included.
+  { key: 'insights_analyzer', href: '/insights-analyzer', cost: 30 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
@@ -72,6 +82,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'video',
   'translate',
   'voice_concierge',
+  'insights_analyzer',
 ]);
 
 // Single source of truth for credit pricing — read by both the
@@ -137,5 +148,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey', 'translate'] },
-  { key: 'analysis', features: ['quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'affinity_bubble'] },
+  { key: 'analysis', features: ['insights_analyzer', 'quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'affinity_bubble'] },
 ];
