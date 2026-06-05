@@ -54,10 +54,31 @@ async function MembersTable({
 }) {
   const supabase = await createClient();
   const t = await getTranslations('Members');
+
+  // Two-step query (was one query with `profile:profiles(...)` embed).
+  // organization_members.user_id and profiles.id both reference
+  // auth.users(id), but there is no direct FK between the two tables —
+  // PostgREST's transitive resolution silently dropped every row, so the
+  // members page rendered an empty list even though the DB held 6 rows
+  // (owner + 5 invited_email). Splitting the join is the smallest change
+  // that side-steps the ambiguity and is robust against future schema
+  // additions that don't add a direct FK.
   const { data: members } = await supabase
     .from('organization_members')
-    .select('user_id, role, invited_email, profile:profiles(email, full_name, avatar_url)')
+    .select('user_id, role, invited_email')
     .eq('org_id', orgId);
+
+  const memberRows = members ?? [];
+  const userIds = memberRows
+    .map((m) => m.user_id)
+    .filter((id): id is string => !!id);
+  const { data: profiles } = userIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds)
+    : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   return (
     <div className="border border-line bg-paper [border-radius:14px]">
@@ -74,10 +95,8 @@ async function MembersTable({
           </tr>
         </thead>
         <tbody>
-          {(members ?? []).map((m) => {
-            const profile = m.profile as unknown as
-              | { email?: string; full_name?: string }
-              | null;
+          {memberRows.map((m) => {
+            const profile = m.user_id ? profileById.get(m.user_id) : null;
             return (
               <MemberRow
                 key={`${m.user_id ?? m.invited_email}`}
