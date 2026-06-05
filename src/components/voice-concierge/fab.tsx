@@ -17,6 +17,7 @@
 //     greet the user proactively after connect.
 
 import { useTranslations } from 'next-intl';
+import { Button } from '../ui/button';
 import { useFirstTimeFlag } from './first-time';
 import { useVoiceConcierge } from './provider';
 
@@ -80,14 +81,15 @@ export function VoiceConciergeFab() {
           role="status"
         >
           <span>{t('first_time_tooltip')}</span>
-          <button
-            type="button"
+          <Button
+            variant="link"
+            size="xs"
             onClick={handleDismissTooltip}
             aria-label={t('first_time_dismiss')}
-            className="text-[11px] text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+            className="px-0 py-0 text-[11px] font-normal text-mute-soft"
           >
             {t('first_time_dismiss')}
-          </button>
+          </Button>
         </div>
       )}
 
