@@ -46,6 +46,49 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Insights Analyzer — strict design-system enforcement (errored,
+  // greenfield). The merged insights surface is preview-gated and has
+  // no JSX written yet, so we error here from day 1 rather than letting
+  // the legacy `warn`-level debt the rest of the codebase carries seep
+  // in. If a missing primitive is needed (e.g. <Select>), add it to
+  // src/components/ui/ in its own PR before authoring the consumer.
+  {
+    name: "design-system/insights-analyzer-strict",
+    files: [
+      "src/app/[locale]/(app)/insights-analyzer/**/*.{ts,tsx}",
+      "src/components/insights/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: 'JSXOpeningElement[name.name="button"]',
+          message:
+            "Use <Button> / <ChromeButton> / <IconButton> from @/components/ui — native <button> is errored inside insights-analyzer.",
+        },
+        {
+          selector: 'JSXOpeningElement[name.name="input"]',
+          message:
+            "Use <Input> / <Checkbox> from @/components/ui — native <input> is errored inside insights-analyzer.",
+        },
+        {
+          selector: 'JSXOpeningElement[name.name="textarea"]',
+          message:
+            "Use <Textarea> from @/components/ui — native <textarea> is errored inside insights-analyzer.",
+        },
+        {
+          selector: 'JSXOpeningElement[name.name="dialog"]',
+          message:
+            "Use <Modal> from @/components/ui/modal — native <dialog> is errored inside insights-analyzer.",
+        },
+        {
+          selector: 'JSXOpeningElement[name.name="select"]',
+          message:
+            "No <Select> primitive exists yet — add one to @/components/ui in its own PR before using native <select> inside insights-analyzer.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
