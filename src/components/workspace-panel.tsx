@@ -424,7 +424,7 @@ export function WorkspacePanel() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 [border-radius:14px] ${
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 rounded-sm ${
           pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
         } ${isOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'opacity-100 translate-y-0'}`}
       >
@@ -482,7 +482,7 @@ export function WorkspacePanel() {
                     }
                   }}
                   placeholder={t('newProjectName')}
-                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 rounded-xs"
                 />
                 <ChromeButton
                   variant="mute"
@@ -523,7 +523,7 @@ export function WorkspacePanel() {
                       if (p) setActive(p);
                     }
                   }}
-                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 [border-radius:4px]"
+                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 rounded-xs"
                 >
                   <option value="active">
                     {active
@@ -594,7 +594,7 @@ export function WorkspacePanel() {
                         if (a) void setFolderId(a, null);
                       }
                     }}
-                    className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] [border-radius:4px] ${
+                    className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] rounded-xs ${
                       selectedFolderId === null
                         ? 'bg-paper-soft text-ink-2'
                         : 'text-mute hover:text-ink-2'
@@ -627,7 +627,7 @@ export function WorkspacePanel() {
                             if (a) void setFolderId(a, folder.id);
                           }
                         }}
-                        className={`flex items-center gap-1 [border-radius:4px] ${
+                        className={`flex items-center gap-1 rounded-xs ${
                           isSelected ? 'bg-paper-soft' : ''
                         } ${isDropTarget ? 'outline outline-1 outline-amore' : ''}`}
                         style={{ paddingLeft: `${depth * 14 + 8}px` }}
@@ -645,7 +645,7 @@ export function WorkspacePanel() {
                                 setRenameValue('');
                               }
                             }}
-                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
                           />
                         ) : (
                           <button
@@ -703,7 +703,7 @@ export function WorkspacePanel() {
                               }
                             }}
                             placeholder={t('folderName')}
-                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
                           />
                           <ChromeButton
                             variant="mute"
@@ -733,7 +733,7 @@ export function WorkspacePanel() {
                         }
                       }}
                       placeholder={t('folderName')}
-                      className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 [border-radius:4px]"
+                      className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
                     />
                     <ChromeButton
                       variant="mute"
@@ -781,7 +781,7 @@ export function WorkspacePanel() {
                     {t('bulkActions')}
                   </Button>
                   {openMenu === 'bulk' && (
-                    <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                    <div className="absolute right-0 top-full z-10 mt-1 min-w-[180px] border border-line bg-paper py-1 rounded-sm">
                       <div className="relative">
                         <MenuItem
                           disabled={bulkTargets.length === 0}
@@ -791,7 +791,7 @@ export function WorkspacePanel() {
                           {t('sendSelectedTo')}
                         </MenuItem>
                         {openSendSub && bulkTargets.length > 0 && (
-                          <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                          <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 rounded-sm">
                             {bulkTargets.map((tgt) => (
                               <MenuItem
                                 key={tgt}
@@ -812,7 +812,7 @@ export function WorkspacePanel() {
                           {t('downloadSelected')}
                         </MenuItem>
                         {openDownloadSub && bulkFormats.length > 0 && (
-                          <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                          <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 rounded-sm">
                             {bulkFormats.map((fmt) => (
                               <MenuItem
                                 key={fmt}
@@ -923,7 +923,7 @@ export function WorkspacePanel() {
                                 });
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1.5 w-full truncate border border-line bg-paper px-2 py-1 text-[10.5px] text-mute-soft transition-colors hover:text-ink-2 [border-radius:14px]"
+                              className="mt-1.5 w-full truncate border border-line bg-paper px-2 py-1 text-[10.5px] text-mute-soft transition-colors hover:text-ink-2 rounded-sm"
                               aria-label={t('assignProject')}
                             >
                               <option value="__unfiled__">{tDashboard('unfiled')}</option>
@@ -951,7 +951,7 @@ export function WorkspacePanel() {
                             <span className="text-[16px] leading-none">⋯</span>
                           </IconButton>
                           {isMenuOpen && (
-                            <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                            <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 rounded-sm">
                               <MenuItem
                                 onClick={() => {
                                   setViewing(a);
@@ -971,7 +971,7 @@ export function WorkspacePanel() {
                                   {t('download')}
                                 </MenuItem>
                                 {openDownloadSub && (
-                                  <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 [border-radius:14px]">
+                                  <div className="absolute right-full top-0 mr-1 min-w-[160px] border border-line bg-paper py-1 rounded-sm">
                                     {formatsFor(a.featureKey).map((fmt) => (
                                       <MenuItem
                                         key={fmt}
@@ -997,7 +997,7 @@ export function WorkspacePanel() {
                                   {t('sendTo')}
                                 </MenuItem>
                                 {openSendSub && targets.length > 0 && (
-                                  <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 [border-radius:14px]">
+                                  <div className="absolute right-full top-0 mr-1 min-w-[180px] border border-line bg-paper py-1 rounded-sm">
                                     {targets.map((tgt) => (
                                       <MenuItem
                                         key={tgt}
@@ -1101,7 +1101,7 @@ function ViewerOverlay({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-line bg-paper [border-radius:14px]"
+        className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-line bg-paper rounded-sm"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
           <div className="truncate text-[13px] font-semibold text-ink-2">

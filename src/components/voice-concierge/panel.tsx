@@ -124,7 +124,7 @@ export function VoiceConciergePanel({
           transform: `scale(${dotScale.toFixed(2)})`,
           transition: 'transform 80ms ease-out',
         }}
-        className={`mt-1.5 inline-block h-2 w-2 shrink-0 [border-radius:9999px] ${baseDotClass}`}
+        className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${baseDotClass}`}
       />
       {/* Fixed-height streaming window — at most two lines (13px × 1.45
           line-height ≈ 19px → ~38px). As the assistant deltas pour in,

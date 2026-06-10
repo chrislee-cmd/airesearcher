@@ -34,7 +34,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
     'border bg-paper px-3 py-2 text-[13px] leading-[1.6] text-ink placeholder:text-mute-soft',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
-    '[border-radius:14px]',
+    'rounded-sm',
     'resize-y',
     fullWidth ? 'w-full' : '',
     error ? 'border-warning focus:border-warning' : 'border-line focus:border-ink',

@@ -417,7 +417,7 @@ export function Sidebar({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 [border-radius:14px]">
+            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 rounded-sm">
               {projects.length === 0 ? (
                 <div className="px-3 py-2 text-[11.5px] text-mute-soft">
                   {tProjects('noProjects')}
@@ -566,7 +566,7 @@ export function Sidebar({
                               style={{ color: 'var(--color-success, #16a34a)' }}
                             >
                               <span
-                                className="inline-block h-1.5 w-1.5 [border-radius:9999px]"
+                                className="inline-block h-1.5 w-1.5 rounded-full"
                                 style={{ background: 'var(--color-success, #16a34a)' }}
                               />
                               {t('done')}

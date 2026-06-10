@@ -226,7 +226,7 @@ export function EnhancePanel({
               type="button"
               disabled={busy}
               onClick={() => pickMode(active ? null : m)}
-              className={`border px-4 py-3 text-left transition-colors duration-[120ms] [border-radius:4px] ${
+              className={`border px-4 py-3 text-left transition-colors duration-[120ms] rounded-xs ${
                 active
                   ? 'border-ink bg-ink text-paper'
                   : 'border-line bg-paper text-ink-2 hover:border-ink-2'
@@ -247,7 +247,7 @@ export function EnhancePanel({
 
       {/* Input area (only when a mode is selected) */}
       {mode && (
-        <div className="mt-5 border border-line bg-paper p-4 [border-radius:4px]">
+        <div className="mt-5 border border-line bg-paper p-4 rounded-xs">
           {/* Tabs */}
           <div className="flex flex-wrap items-center gap-1 border-b border-line-soft pb-2">
             {(['text', 'url', 'file', 'workspace', 'form'] as Tab[]).map((t) => (
@@ -255,7 +255,7 @@ export function EnhancePanel({
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
-                className={`px-2.5 py-1 text-[11.5px] transition-colors duration-[120ms] [border-radius:4px] ${
+                className={`px-2.5 py-1 text-[11.5px] transition-colors duration-[120ms] rounded-xs ${
                   tab === t
                     ? 'border border-ink-2 bg-paper text-ink-2'
                     : 'border border-transparent text-mute hover:text-ink-2'
@@ -273,7 +273,7 @@ export function EnhancePanel({
                 onChange={(e) => setTextBody(e.target.value)}
                 rows={6}
                 placeholder="트렌드 기사/메모/요약을 붙여 넣으세요."
-                className="w-full resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] leading-[1.65] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                className="w-full resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] leading-[1.65] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
               />
             )}
             {tab === 'url' && (
@@ -282,7 +282,7 @@ export function EnhancePanel({
                 onChange={(e) => setUrlValue(e.target.value)}
                 type="url"
                 placeholder="https://..."
-                className="w-full border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                className="w-full border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
               />
             )}
             {tab === 'file' && (
@@ -315,7 +315,7 @@ export function EnhancePanel({
                 ref={dropRef}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={onArtifactDrop}
-                className="border border-dashed border-line bg-paper-soft px-3 py-3 text-[12px] [border-radius:4px]"
+                className="border border-dashed border-line bg-paper-soft px-3 py-3 text-[12px] rounded-xs"
               >
                 <div className="text-mute-soft">
                   Workspace에서 artifact를 드래그하거나 아래에서 선택하세요.
@@ -323,7 +323,7 @@ export function EnhancePanel({
                 <select
                   value={artifactId}
                   onChange={(e) => setArtifactId(e.target.value)}
-                  className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12px] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                  className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
                 >
                   <option value="">— 선택 —</option>
                   {compatibleArtifacts.map((a) => (
@@ -352,7 +352,7 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                        className="resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
                       />
                     ) : (
                       <input
@@ -364,7 +364,7 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                        className="border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
                       />
                     )}
                   </label>
@@ -383,7 +383,7 @@ export function EnhancePanel({
                 value={userNote}
                 onChange={(e) => setUserNote(e.target.value)}
                 placeholder="예: 결론을 이 트렌드와 직접 연결해줘"
-                className="border border-line bg-paper-soft px-3 py-2 text-[12px] text-ink-2 outline-none focus:border-ink-2 [border-radius:4px]"
+                className="border border-line bg-paper-soft px-3 py-2 text-[12px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
               />
             </label>
             <div className="flex items-center justify-between gap-3">
@@ -394,7 +394,7 @@ export function EnhancePanel({
                 type="button"
                 onClick={run}
                 disabled={!canRun}
-                className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:4px]"
+                className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 rounded-xs"
               >
                 {busy ? '강화 중...' : `v${parentVersion + 1} 생성`}
               </button>

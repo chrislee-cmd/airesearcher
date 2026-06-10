@@ -27,7 +27,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
 };
 
 const BASE =
-  'border border-line bg-paper text-ink-2 [border-radius:4px] ' +
+  'border border-line bg-paper text-ink-2 rounded-xs ' +
   'focus:outline-none focus-visible:border-amore ' +
   'disabled:opacity-40 disabled:cursor-not-allowed';
 

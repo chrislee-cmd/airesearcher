@@ -109,7 +109,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
             key={f}
             type="button"
             onClick={() => changeFilter(f)}
-            className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] [border-radius:4px] ${
+            className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] rounded-xs ${
               statusFilter === f
                 ? 'bg-ink text-paper'
                 : 'border border-line text-mute hover:text-ink-2'
@@ -166,7 +166,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
                         type="button"
                         disabled={confirming === p.id}
                         onClick={() => confirm(p.id)}
-                        className="border border-amore px-3 py-1 text-[11px] font-semibold text-amore hover:bg-amore hover:text-paper disabled:opacity-40 [border-radius:4px]"
+                        className="border border-amore px-3 py-1 text-[11px] font-semibold text-amore hover:bg-amore hover:text-paper disabled:opacity-40 rounded-xs"
                       >
                         {confirming === p.id ? '처리 중…' : '입금 확인'}
                       </button>
@@ -186,7 +186,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
           role="status"
           aria-live="polite"
         >
-          <div className={`border px-4 py-2 text-[12px] font-semibold [border-radius:4px] ${
+          <div className={`border px-4 py-2 text-[12px] font-semibold rounded-xs ${
             toast.ok ? 'border-ink bg-ink text-paper' : 'border-warning bg-paper text-warning'
           }`}>
             {toast.msg}

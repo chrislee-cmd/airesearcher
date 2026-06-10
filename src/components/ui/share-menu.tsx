@@ -214,7 +214,7 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
 }
 
 function triggerClass(open: boolean): string {
-  return `inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:14px] border border-line text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-50 ${open ? 'border-ink-2' : ''}`;
+  return `inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] rounded-sm border border-line text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-50 ${open ? 'border-ink-2' : ''}`;
 }
 
 function Caret({ open }: { open: boolean }) {

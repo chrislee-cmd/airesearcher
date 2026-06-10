@@ -49,7 +49,7 @@ const VARIANT: Record<IconButtonVariant, string> = {
   'ghost-danger': 'text-mute-soft hover:text-warning',
   'ghost-brand': 'text-mute hover:text-amore',
   bordered:
-    'border border-line bg-paper text-ink hover:border-amore [border-radius:4px]',
+    'border border-line bg-paper text-ink hover:border-amore rounded-xs',
 };
 
 const SIZE: Record<IconButtonSize, string> = {

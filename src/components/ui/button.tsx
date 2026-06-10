@@ -9,8 +9,8 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 //   primary / secondary / ghost / destructive  — capsule-shape actions
 //   link / destructive-link                    — text-only inline actions
 // Sizes:
-//   xs / sm / md / lg                          — capsule sizes ([border-radius:14px])
-//   cta                                        — pill ([border-radius:9999px]) hero CTA
+//   xs / sm / md / lg                          — capsule sizes (rounded-sm)
+//   cta                                        — pill (rounded-full) hero CTA
 
 export type ButtonVariant =
   | 'primary'
@@ -59,12 +59,12 @@ const VARIANT: Record<ButtonVariant, string> = {
 // fully overrides the default capsule (14px, transition-colors) regardless of
 // CSS source order.
 const SIZE: Record<ButtonSize, string> = {
-  xs: 'px-2.5 py-1 text-[10.5px] [border-radius:14px] transition-colors duration-[120ms]',
-  sm: 'px-4 py-1.5 text-[11.5px] [border-radius:14px] transition-colors duration-[120ms]',
-  md: 'px-5 py-2 text-[12px] [border-radius:14px] transition-colors duration-[120ms]',
-  lg: 'px-5 py-2.5 text-[13px] [border-radius:14px] transition-colors duration-[120ms]',
+  xs: 'px-2.5 py-1 text-[10.5px] rounded-sm transition-colors duration-[120ms]',
+  sm: 'px-4 py-1.5 text-[11.5px] rounded-sm transition-colors duration-[120ms]',
+  md: 'px-5 py-2 text-[12px] rounded-sm transition-colors duration-[120ms]',
+  lg: 'px-5 py-2.5 text-[13px] rounded-sm transition-colors duration-[120ms]',
   cta:
-    'px-4 py-3 text-[11px] uppercase tracking-[0.22em] [border-radius:9999px] ' +
+    'px-4 py-3 text-[11px] uppercase tracking-[0.22em] rounded-full ' +
     'transition-all duration-[120ms] hover:-translate-y-px ' +
     'hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]',
 };

@@ -46,7 +46,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
     'border bg-paper text-ink placeholder:text-mute-soft',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
-    '[border-radius:14px]',
+    'rounded-sm',
     fullWidth ? 'w-full' : '',
     error ? 'border-warning focus:border-warning' : 'border-line focus:border-ink',
     SIZE[size],

@@ -287,7 +287,7 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
   }
 
   return (
-    <li className="border border-line bg-paper [border-radius:14px]">
+    <li className="border border-line bg-paper rounded-sm">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] text-ink-2">{job.filename}</div>
@@ -349,7 +349,7 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
             <button
               onClick={submitAnalysis}
               disabled={submitting || !prompt.trim() || job.status === 'analyzing'}
-              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px]"
+              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 rounded-sm"
             >
               {submitting
                 ? '요청 중…'
@@ -377,7 +377,7 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
                 a.click();
                 URL.revokeObjectURL(a.href);
               }}
-              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 [border-radius:14px]"
+              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 rounded-sm"
             >
               MD 다운로드
             </button>

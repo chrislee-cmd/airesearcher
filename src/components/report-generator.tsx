@@ -517,7 +517,7 @@ export function ReportGenerator() {
       )}
 
       {files.length > 0 && (
-        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:14px]">
+        <ul className="mt-5 divide-y divide-line border border-line bg-paper rounded-sm">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
@@ -556,7 +556,7 @@ export function ReportGenerator() {
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
           오류: {errorMessage}
         </div>
       )}
@@ -685,10 +685,10 @@ export function ReportGenerator() {
               srcDoc={previewHtml}
               sandbox="allow-same-origin allow-modals"
               onLoad={onIframeLoad}
-              className="mt-4 h-[78vh] w-full border border-line bg-paper [border-radius:14px]"
+              className="mt-4 h-[78vh] w-full border border-line bg-paper rounded-sm"
             />
           ) : (
-            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 [border-radius:14px]">
+            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 rounded-sm">
               {previewMd || '(아직 생성되지 않았습니다)'}
             </pre>
           )}
@@ -812,7 +812,7 @@ function ReportTypeChooser({
               aria-checked={selected}
               disabled={disabled}
               onClick={() => onChange(key)}
-              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 [border-radius:14px] ${
+              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 rounded-sm ${
                 selected
                   ? 'border-ink bg-ink text-paper'
                   : 'border-line bg-paper text-ink-2 hover:border-amore'

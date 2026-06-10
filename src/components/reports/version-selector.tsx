@@ -45,7 +45,7 @@ export function VersionSelector({
                 ? `v${v.parent_version}에서 분기 · 더블클릭=head로 설정`
                 : '원본'
             }
-            className={`px-2.5 py-1 text-[11.5px] transition-colors duration-[120ms] [border-radius:4px] ${
+            className={`px-2.5 py-1 text-[11.5px] transition-colors duration-[120ms] rounded-xs ${
               active
                 ? 'border border-ink bg-ink text-paper'
                 : 'border border-line bg-paper text-mute hover:border-ink-2'

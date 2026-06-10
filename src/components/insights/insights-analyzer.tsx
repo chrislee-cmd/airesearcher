@@ -348,7 +348,7 @@ export function InsightsAnalyzer() {
           />
 
           {files.length > 0 && (
-            <div className="mt-6 border border-line bg-paper p-4 [border-radius:14px]">
+            <div className="mt-6 border border-line bg-paper p-4 rounded-sm">
               <div className="mb-2 flex items-center justify-between text-[11.5px] text-mute-soft">
                 <span>
                   업로드 대기 {files.length} / {MAX_FILES}
@@ -408,7 +408,7 @@ export function InsightsAnalyzer() {
 
       {isRunning && (
         <div className="mt-8 space-y-6">
-          <div className="border border-line bg-paper p-5 [border-radius:14px]">
+          <div className="border border-line bg-paper p-5 rounded-sm">
             <div className="flex items-center justify-between gap-3 text-[12.5px] text-ink-2">
               <span className="font-medium">
                 {phase === 'pending' && '대기 중'}
@@ -427,7 +427,7 @@ export function InsightsAnalyzer() {
           </div>
 
           {files.length > 0 && (
-            <ul className="divide-y divide-line-soft border border-line bg-paper [border-radius:14px]">
+            <ul className="divide-y divide-line-soft border border-line bg-paper rounded-sm">
               {files.map((r) => (
                 <li
                   key={r.id}
@@ -449,7 +449,7 @@ export function InsightsAnalyzer() {
 
       {phase === 'ready' && job && (
         <div className="mt-8 space-y-6">
-          <div className="border border-line bg-paper p-5 [border-radius:14px]">
+          <div className="border border-line bg-paper p-5 rounded-sm">
             <div className="text-[12.5px] font-medium text-ink-2">
               분석 완료
             </div>
@@ -484,7 +484,7 @@ export function InsightsAnalyzer() {
 
       {phase === 'failed' && job && (
         <div className="mt-8 space-y-6">
-          <div className="border border-line bg-paper p-5 [border-radius:14px]">
+          <div className="border border-line bg-paper p-5 rounded-sm">
             <div className="text-[12.5px] font-medium text-warning">
               분석 실패 — 크레딧이 환불되었습니다
             </div>

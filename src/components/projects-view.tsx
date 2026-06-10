@@ -80,7 +80,7 @@ export function ProjectsView({
       {creating && (
         <form
           onSubmit={submitCreate}
-          className="mt-5 border border-line bg-paper p-5 [border-radius:14px]"
+          className="mt-5 border border-line bg-paper p-5 rounded-sm"
         >
           <div className="grid gap-4 md:grid-cols-2">
             <Input
@@ -119,7 +119,7 @@ export function ProjectsView({
       )}
 
       {projects.length === 0 ? (
-        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:14px]">
+        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
           {t('noProjects')}
         </div>
       ) : view === 'folder' ? (
@@ -129,7 +129,7 @@ export function ProjectsView({
           ))}
         </div>
       ) : (
-        <div className="mt-6 border border-line bg-paper [border-radius:14px]">
+        <div className="mt-6 border border-line bg-paper rounded-sm">
           <table className="w-full text-[12.5px]">
             <thead className="border-b border-line">
               <tr>
@@ -192,7 +192,7 @@ function ViewToggle({
     { v: 'list', label: t('listView') },
   ];
   return (
-    <div className="inline-flex items-center gap-1 border border-line p-0.5 [border-radius:14px]">
+    <div className="inline-flex items-center gap-1 border border-line p-0.5 rounded-sm">
       {items.map((it) => (
         <button
           key={it.v}
@@ -221,7 +221,7 @@ function FolderCard({
 }) {
   const t = useTranslations('Projects');
   return (
-    <div className="group relative border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 [border-radius:14px] [box-shadow:var(--shadow-bento)]">
+    <div className="group relative border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 rounded-sm [box-shadow:var(--shadow-bento)]">
       <Link href={`/projects/${project.id}`} className="block">
         <FolderIcon />
         <h3 className="mt-3 truncate text-[14px] font-semibold tracking-[-0.005em] text-ink-2">

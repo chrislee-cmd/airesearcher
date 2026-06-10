@@ -12,4 +12,5 @@ PROJECT.md(SSOT)에 반영될 수도 있는 후보들의 inbox.
 
 <!-- 형식: - YYYY-MM-DD · PR #XXX · §X.Y · 한 줄 요약 -->
 - 2026-06-10 · 본 PR (z-index 토큰) · §9 (아키텍처) · z-index 스케일을 globals.css `@utility` 로 토큰화 (`z-table-sticky/cell-sticky/resize/fab/modal/toast/overlay`). 새 fixed/overlay 레이어 추가 시 `z-[NN]` 하드코드 금지하고 이 토큰 중 하나 사용 — 향후 §9 디자인 시스템 섹션 또는 `docs/design-system.md` 에 layer table 명시 필요.
+- 2026-06-10 · 본 PR (radius 토큰) · §9 (아키텍처) · radius 스케일을 `@theme --radius-{xs(4),sm(14),md(24),lg(32),pill(999)}` 토큰으로 통일 (230 사이트 마이그). 새 fixed-radius 사용 시 `[border-radius:NNpx]` 하드코드 금지하고 `rounded-{xs,sm,md,lg,full}` 사용. 잔여 22개 outlier(2/3/8/10px) 는 후속 PR 에서 디자인 합의 후 정리 (정규화 vs 스케일 확장).
 

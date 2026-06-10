@@ -27,11 +27,11 @@ export function JobProgress({
   const labelTone = tone === 'error' ? 'text-warning' : 'text-amore';
 
   return (
-    <div className="border border-line bg-paper-soft px-4 py-3 [border-radius:14px]">
+    <div className="border border-line bg-paper-soft px-4 py-3 rounded-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] ${
+            className={`inline-block h-1.5 w-1.5 animate-pulse rounded-full ${
               tone === 'error' ? 'bg-warning' : 'bg-amore'
             }`}
           />
@@ -56,7 +56,7 @@ export function JobProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning [border-radius:14px]"
+              className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning rounded-sm"
             >
               {cancelLabel}
             </button>
@@ -68,7 +68,7 @@ export function JobProgress({
         aria-valuemin={determinate ? 0 : undefined}
         aria-valuemax={determinate ? 100 : undefined}
         aria-valuenow={determinate ? Math.round(pct) : undefined}
-        className="mt-2 h-1 w-full overflow-hidden bg-line-soft [border-radius:9999px]"
+        className="mt-2 h-1 w-full overflow-hidden bg-line-soft rounded-full"
       >
         {determinate ? (
           <div
