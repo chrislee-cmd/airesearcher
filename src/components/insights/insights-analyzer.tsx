@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { QuoteSearchPanel } from '@/components/insights/quote-search-panel';
 import { createClient } from '@/lib/supabase/client';
 
 // Union of the two legacy tabs' accept lists. Browsers vary on whether
@@ -467,10 +468,12 @@ export function InsightsAnalyzer() {
               </div>
             </dl>
             <p className="mt-4 text-[11.5px] text-mute-soft">
-              인사이트 대시보드(클러스터·텐션·모순·인용구 검색)는 후속 PR
-              에서 추가됩니다.
+              인사이트 대시보드(클러스터·텐션·모순)는 후속 PR에서 추가됩니다.
             </p>
           </div>
+
+          <QuoteSearchPanel jobId={job.id} />
+
           <div className="flex justify-end">
             <Button variant="secondary" size="lg" onClick={onReset}>
               새 분석 시작
