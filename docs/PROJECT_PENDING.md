@@ -11,4 +11,5 @@ PROJECT.md(SSOT)에 반영될 수도 있는 후보들의 inbox.
 ## Inbox
 
 <!-- 형식: - YYYY-MM-DD · PR #XXX · §X.Y · 한 줄 요약 -->
+- 2026-06-10 · 본 PR (z-index 토큰) · §9 (아키텍처) · z-index 스케일을 globals.css `@utility` 로 토큰화 (`z-table-sticky/cell-sticky/resize/fab/modal/toast/overlay`). 새 fixed/overlay 레이어 추가 시 `z-[NN]` 하드코드 금지하고 이 토큰 중 하나 사용 — 향후 §9 디자인 시스템 섹션 또는 `docs/design-system.md` 에 layer table 명시 필요.
 

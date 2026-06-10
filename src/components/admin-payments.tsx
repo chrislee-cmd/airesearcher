@@ -182,7 +182,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
       {/* Toast */}
       {toast && (
         <div
-          className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2"
+          className="pointer-events-none fixed bottom-6 left-1/2 z-toast -translate-x-1/2"
           role="status"
           aria-live="polite"
         >

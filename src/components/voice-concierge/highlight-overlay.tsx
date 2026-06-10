@@ -137,7 +137,7 @@ export function HighlightOverlay() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[95]"
+      className="pointer-events-none fixed inset-0 z-overlay"
       aria-hidden="true"
     >
       {/* Spotlight cutout */}

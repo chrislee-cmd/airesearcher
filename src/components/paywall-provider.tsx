@@ -125,7 +125,7 @@ function PaywallModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/40 px-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-ink/40 px-4"
       onClick={onClose}
     >
       <div
