@@ -63,8 +63,15 @@ export function EmailPasswordForm() {
           setError(t(mapAuthError(error.message, 'signIn')));
           return;
         }
-        // Single-session enforcement: revoke all other active sessions.
-        await supabase.auth.signOut({ scope: 'others' });
+        // Single-session enforcement: revoke other active sessions in
+        // the background. Awaiting this (the previous behavior) was
+        // clearing the just-set sb-* cookies in browser states that had
+        // prior sessions on the same Supabase user — the user landed on
+        // /dashboard authenticated to the auth state machine but with
+        // no auth cookies, so every API call returned 401. This is a UX
+        // feature, not a security gate (the auth server still enforces
+        // the revocation when it lands), so silent best-effort is fine.
+        void supabase.auth.signOut({ scope: 'others' }).catch(() => {});
         track('auth_signin_success');
         router.replace(next);
         router.refresh();

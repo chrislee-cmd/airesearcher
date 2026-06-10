@@ -15,9 +15,12 @@ export async function GET(request: Request) {
 
     // Logged-in user: their saved profile.locale wins over Accept-Language.
     if (session?.user) {
-      // Single-session enforcement: revoke all other active sessions so the
-      // same account can't be used concurrently on multiple devices/browsers.
-      await supabase.auth.signOut({ scope: 'others' });
+      // Single-session enforcement: revoke other active sessions, fire-
+      // and-forget. Awaiting this was racing with the just-exchanged
+      // session's cookies and stripping them from the redirect response,
+      // leaving the user 401'd on every API call (see the matching
+      // change in email-password-form.tsx for the same root cause).
+      void supabase.auth.signOut({ scope: 'others' }).catch(() => {});
 
       const { data: profile } = await supabase
         .from('profiles')
