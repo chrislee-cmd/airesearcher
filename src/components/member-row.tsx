@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
+import { Select } from './ui/select';
 
 export function MemberRow({
   orgId,
@@ -45,15 +46,17 @@ export function MemberRow({
       <td className="px-5 py-3 text-ink-2">{email}</td>
       <td className="px-5 py-3">
         {editable ? (
-          <select
+          <Select
+            size="sm"
+            fullWidth={false}
             defaultValue={role}
             onChange={(e) => changeRole(e.target.value)}
-            className="border border-line bg-paper px-2 py-1 text-[11.5px] text-ink-2 [border-radius:14px]"
-          >
-            <option value="admin">{t('admin')}</option>
-            <option value="member">{t('member')}</option>
-            <option value="viewer">{t('viewer')}</option>
-          </select>
+            options={[
+              { value: 'admin', label: t('admin') },
+              { value: 'member', label: t('member') },
+              { value: 'viewer', label: t('viewer') },
+            ]}
+          />
         ) : (
           <span className="text-[11px] uppercase tracking-[0.18em] text-mute-soft">
             {t(role)}
