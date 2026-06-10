@@ -74,7 +74,7 @@ export function VoiceConciergeFab() {
           className={
             // FAB is now top-5 right-5, h-10 → tooltip drops just below
             // it with an 8px gap (20 + 40 + 8 = 68px from the top).
-            'fixed top-[68px] right-5 z-[80] flex items-center gap-2 ' +
+            'fixed top-[68px] right-5 z-fab flex items-center gap-2 ' +
             'border border-line bg-paper px-3 py-2 text-[12px] text-ink-2 ' +
             'shadow-[0_2px_8px_rgba(0,0,0,0.06)] [border-radius:10px]'
           }
@@ -95,7 +95,7 @@ export function VoiceConciergeFab() {
 
       {/* Container at top-right anchors the input ring + button together
           so we can transform-scale the ring independently of layout. */}
-      <div className="fixed top-5 right-5 z-[80] flex h-10 w-10 items-center justify-center">
+      <div className="fixed top-5 right-5 z-fab flex h-10 w-10 items-center justify-center">
         {/* Input-driven outer ring — only renders while live and the
             user is actually speaking. Pure transform/opacity so it never
             triggers reflow. */}

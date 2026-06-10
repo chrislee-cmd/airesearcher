@@ -59,6 +59,18 @@
   --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 }
 
+/* =========================================================================
+   z-index 스케일 — 산발한 z-[NN] 하드코드 정리.
+   레이어 순서는 의도된 stacking: table 로컬 < FAB < modal < toast < overlay.
+   ========================================================================= */
+@utility z-table-sticky { z-index: 1; }
+@utility z-table-cell-sticky { z-index: 2; }
+@utility z-table-resize { z-index: 3; }
+@utility z-fab { z-index: 40; }
+@utility z-modal { z-index: 50; }
+@utility z-toast { z-index: 60; }
+@utility z-overlay { z-index: 70; }
+
 html, body {
   background: var(--color-paper);
   color: var(--color-ink);

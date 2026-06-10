@@ -967,7 +967,7 @@ export function RecruitingBrief() {
                   )}
                   <div className="h-[480px] overflow-auto border border-line bg-paper [border-radius:14px]">
                     <table className="w-full min-w-[760px] border-collapse text-[12px]">
-                      <thead className="sticky top-0 z-[1] bg-paper">
+                      <thead className="sticky top-0 z-table-sticky bg-paper">
                         <tr className="text-left">
                           <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2 w-[42px]">
                             #
@@ -1033,7 +1033,7 @@ export function RecruitingBrief() {
 
       {startModalOpen && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/50 p-4"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-ink/50 p-4"
           onClick={() => {
             if (!starting) setStartModalOpen(false);
           }}

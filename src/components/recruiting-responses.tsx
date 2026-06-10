@@ -444,7 +444,7 @@ function ResponseTable({
         <thead>
           <tr className="bg-paper text-left">
             <th
-              className="sticky left-0 z-[2] border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2"
+              className="sticky left-0 z-table-cell-sticky border-b border-line-soft bg-paper px-3 py-2 font-semibold text-ink-2"
               style={{ position: 'relative' }}
             >
               <span className="block truncate">응답시각</span>
@@ -467,7 +467,7 @@ function ResponseTable({
         <tbody>
           {rows.map((r) => (
             <tr key={r.responseId} className="align-top">
-              <td className="sticky left-0 z-[1] overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
+              <td className="sticky left-0 z-table-sticky overflow-hidden whitespace-nowrap border-b border-line-soft bg-paper px-3 py-2 tabular-nums text-mute">
                 {formatTime(r.lastSubmittedTime)}
               </td>
               {columns.map((c) => (
@@ -497,7 +497,7 @@ function ResizeHandle({
       onMouseDown={onMouseDown}
       role="separator"
       aria-orientation="vertical"
-      className="absolute right-0 top-0 z-[3] h-full w-[6px] -translate-x-[1px] cursor-col-resize select-none bg-transparent hover:bg-line"
+      className="absolute right-0 top-0 z-table-resize h-full w-[6px] -translate-x-[1px] cursor-col-resize select-none bg-transparent hover:bg-line"
       // Prevent text selection during drag
       style={{ userSelect: 'none' }}
     />

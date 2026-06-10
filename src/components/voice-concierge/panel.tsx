@@ -109,7 +109,7 @@ export function VoiceConciergePanel({
         // (top-5 right-5) → leave a 12px gutter and anchor the box to
         // right-[64px]. Width is fluid but capped so long lines wrap
         // into a second row before reaching the screen edge.
-        'fixed top-5 right-[64px] z-[80] flex max-w-[360px] items-start gap-3 ' +
+        'fixed top-5 right-[64px] z-fab flex max-w-[360px] items-start gap-3 ' +
         'border border-line bg-paper px-3.5 py-2.5 ' +
         'shadow-[0_2px_8px_rgba(0,0,0,0.04)] [border-radius:10px]'
       }
