@@ -5,13 +5,16 @@
 // Lifecycle: idle → starting → live → ending → ended
 //
 // On "Start" we:
-//   1. POST /api/translate/sessions (server returns OpenAI client_secret +
-//      LiveKit host token + room name)
+//   1. POST /api/translate/sessions (server returns a Gemini Live ephemeral
+//      auth token + LiveKit host token + room name)
 //   2. getUserMedia({ audio })
-//   3. RTCPeerConnection ↔ OpenAI Realtime
-//      - publish mic track
-//      - receive translated TTS track via ontrack
-//      - datachannel "oai-events" carries transcript + response text events
+//   3. Open the Gemini Live Bidi WebSocket directly from the browser,
+//      authenticated with the ephemeral token.
+//      - mic → AudioWorklet downsamples to PCM 16 kHz int16 → send via
+//        sendRealtimeInput({ audio })
+//      - server emits translated audio (PCM 24 kHz) on serverContent.modelTurn,
+//        and source + target transcripts on serverContent.inputTranscription /
+//        outputTranscription
 //   4. Connect to LiveKit room, publish original ("input") and translated
 //      ("output") audio tracks so viewers can subscribe to whichever they
 //      want (mutually exclusive on the viewer side).
@@ -26,10 +29,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import {
+  ActivityHandling,
+  GoogleGenAI,
+  Modality,
+  type LiveServerMessage,
+  type Session as GeminiSession,
+} from '@google/genai';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { IconButton } from './ui/icon-button';
+
+// Gemini Live audio constants — input + output sample rates are fixed by
+// the protocol. Output is 24 kHz mono PCM int16; input must be 16 kHz mono
+// PCM int16. AudioWorklet (PCM_ENCODER_SOURCE) handles the downsample.
+const GEMINI_INPUT_SAMPLE_RATE = 16000;
+const GEMINI_OUTPUT_SAMPLE_RATE = 24000;
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -40,7 +56,7 @@ type CleanupCaller =
   | 'start_error_session'
   | 'start_error_mic'
   | 'start_error_livekit'
-  | 'start_error_webrtc'
+  | 'start_error_websocket'
   | 'start_reentry_guard'
   | 'stop'
   | 'unmount';
@@ -81,12 +97,11 @@ const PROMPTER_WINDOW_MS = 30_000;
 
 // Drop a freshly-finalized caption line if its punctuation/whitespace-
 // normalized form matches a final line committed within this window.
-// In production we've seen the pipeline restart mid-session (root cause
-// still under investigation — see [translate] cleanup logs), which spins
-// up a second OpenAI session that retranscribes the same audio with
-// slightly different tokenization (e.g. comma added/removed). The
-// dedup window keeps those copies off the prompter without blocking
-// genuine repeats spoken minutes apart.
+// We have seen translation pipelines restart mid-session and spin up a
+// second session that retranscribes the same audio with slightly
+// different tokenization (e.g. comma added/removed). The dedup window
+// keeps those copies off the prompter without blocking genuine repeats
+// spoken minutes apart.
 const DEDUP_WINDOW_MS = 60_000;
 
 // Strip whitespace + Unicode punctuation/symbols so different
@@ -95,8 +110,8 @@ function normalizeForDedup(text: string): string {
   return text.replace(/[\s\p{P}\p{S}]+/gu, '').toLowerCase();
 }
 
-// Approximate same-utterance match. Catches OpenAI refinement passes
-// that PR #223's exact-match dedup misses — e.g. "이걸" → "그걸",
+// Approximate same-utterance match. Catches translation refinement
+// passes that exact-match dedup misses — e.g. "이걸" → "그걸",
 // "5천 엔" → "오천 엔", or Korean numeral/synonym substitutions where
 // only 1-2 characters differ across passes. Tunables:
 //
@@ -150,9 +165,9 @@ function isFuzzyDup(candidate: string, prior: string): boolean {
   return dist / Math.max(cl, pl) <= FUZZY_RATIO_THRESHOLD;
 }
 
-// Containment dedup. OpenAI re-emits the same utterance with different
-// chunking — once as a flurry of comma-separated short segments, once
-// as a single concatenated long line. Length diff is too large for the
+// Containment dedup. Real-time STT can re-emit the same utterance with
+// different chunking — once as a flurry of comma-separated short
+// segments, once as a single concatenated long line. Length diff is too large for the
 // fuzzy check (it short-circuits at 30%), but one is a substring of
 // the other. Minimum length guard so short common phrases like "네." or
 // "그래서" don't false-match against any longer line that happens to
@@ -202,11 +217,11 @@ function isContainmentDup(candidate: string, prior: string): boolean {
 }
 
 // Longest-common-substring dedup. Containment requires one full string
-// to be inside the other, but the OpenAI model also emits paraphrased
-// refinements where the prefix changes ("구체적인 계기는 역시 피부
-// 트러블이었고, 출산 이후의 고민, 피부 고민이었죠." vs "예를 들면,
-// 출산 이후의 고민, 피부 고민이었죠.") — neither contains the other,
-// but they share a long contiguous tail. Catching this requires
+// to be inside the other, but live translation models also emit
+// paraphrased refinements where the prefix changes ("구체적인 계기는
+// 역시 피부 트러블이었고, 출산 이후의 고민, 피부 고민이었죠." vs
+// "예를 들면, 출산 이후의 고민, 피부 고민이었죠.") — neither contains
+// the other, but they share a long contiguous tail. Catching this requires
 // inspecting the longest contiguous run of matching characters between
 // the two normalized keys.
 //
@@ -262,8 +277,11 @@ type SessionBundle = {
     livekit_room: string;
     record_enabled: boolean;
   };
-  openai: {
+  gemini: {
     model: string;
+    // `client_secret.value` is the ephemeral auth-token resource name
+    // (e.g. "auth_tokens/abc...") returned by the server. The browser
+    // passes it as the SDK's apiKey to open a v1alpha Live WebSocket.
     client_secret: { value: string; expires_at: number };
   };
   livekit: { url: string; token: string; room: string };
@@ -278,11 +296,10 @@ const LANGS: { value: string; label: string }[] = [
   { value: 'es', label: 'Español' },
 ];
 
-// Heuristic sentence boundary used to split the translations-API
-// continuous delta stream into committable caption lines. The
-// translations endpoint emits no `.completed` event, so we commit on
-// punctuation and treat everything between boundaries as the rolling
-// in-flight line.
+// Heuristic sentence boundary used to split the Gemini Live transcript
+// delta stream into committable caption lines. Transcript events arrive
+// independently of model-turn boundaries, so we commit on punctuation
+// and treat everything between boundaries as the rolling in-flight line.
 const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 
 function formatElapsed(ms: number) {
@@ -290,6 +307,59 @@ function formatElapsed(ms: number) {
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
   const ss = String(s % 60).padStart(2, '0');
   return `${mm}:${ss}`;
+}
+
+// AudioWorklet that decimates mic samples (whatever the host AudioContext
+// rate, typically 48 kHz) down to 16 kHz int16 and posts 100 ms frames
+// back to the main thread for sendRealtimeInput. Loaded via Blob URL so
+// the worklet stays co-located with the consumer.
+const PCM_ENCODER_SOURCE = `
+class PcmEncoderProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.targetRate = 16000;
+    this.ratio = sampleRate / this.targetRate;
+    this.acc = 0;
+    this.buf = [];
+    this.flushAt = 1600; // ~100ms @ 16kHz
+  }
+  process(inputs) {
+    const input = inputs[0];
+    if (!input || input.length === 0) return true;
+    const ch0 = input[0];
+    if (!ch0) return true;
+    for (let i = 0; i < ch0.length; i++) {
+      this.acc += 1;
+      if (this.acc >= this.ratio) {
+        this.acc -= this.ratio;
+        let s = ch0[i];
+        if (s > 1) s = 1; else if (s < -1) s = -1;
+        this.buf.push(s < 0 ? s * 0x8000 : s * 0x7fff);
+      }
+    }
+    if (this.buf.length >= this.flushAt) {
+      const out = new Int16Array(this.buf);
+      this.port.postMessage(out.buffer, [out.buffer]);
+      this.buf = [];
+    }
+    return true;
+  }
+}
+registerProcessor('pcm-encoder', PcmEncoderProcessor);
+`;
+
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  // String.fromCharCode chokes on very large arrays; chunk it.
+  const chunk = 0x8000;
+  let s = '';
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(
+      null,
+      Array.from(bytes.subarray(i, i + chunk)),
+    );
+  }
+  return btoa(s);
 }
 
 export function TranslateConsole() {
@@ -317,7 +387,7 @@ export function TranslateConsole() {
   // the host typically wants to verify the translation in real time.
   const [outputAudible, setOutputAudible] = useState(true);
   // `now` ticks once per second while live so the 30-second prompter
-  // window slides forward continuously even when the OpenAI deltas
+  // window slides forward continuously even when the transcript deltas
   // pause (e.g. the speaker takes a breath). Without this the screen
   // would freeze on stale text.
   const [now, setNow] = useState(() => Date.now());
@@ -345,18 +415,35 @@ export function TranslateConsole() {
   const [recorderActive, setRecorderActive] = useState(false);
 
   // Mutable refs held only for the duration of a live session.
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
+  //
+  // Gemini Live uses a WebSocket (Bidi protocol) instead of a WebRTC peer
+  // connection. The SDK's Session object encapsulates that WS — we send
+  // PCM audio via session.sendRealtimeInput and receive serverContent
+  // messages via the onmessage callback we register at connect time.
+  const geminiSessionRef = useRef<GeminiSession | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
-  const ttsStreamRef = useRef<MediaStream | null>(null);
   const outputPublishedRef = useRef(false);
-  // Web Audio graph used to re-emit the OpenAI translation track as a
-  // local MediaStream that LiveKit can publish. A remote track received
-  // via pc.ontrack from one peer connection cannot be republished into
-  // another peer connection directly — Web Audio "lifts" the audio data
-  // through an AudioContext so the track LiveKit sees is local.
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  // Two AudioContexts so each side runs at its native sample rate
+  // (no resampling through the Web Audio graph):
+  //   inputCtx  — host system rate; AudioWorklet (pcm-encoder) decimates
+  //               mic samples to 16 kHz int16 and posts them to the main
+  //               thread for sendRealtimeInput.
+  //   outputCtx — fixed at GEMINI_OUTPUT_SAMPLE_RATE so incoming PCM
+  //               chunks copy straight into AudioBuffers without resample.
+  const inputCtxRef = useRef<AudioContext | null>(null);
+  const inputWorkletRef = useRef<AudioWorkletNode | null>(null);
+  const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const outputCtxRef = useRef<AudioContext | null>(null);
+  // Playback scheduler for the translated PCM stream. Each incoming
+  // chunk is decoded to a Float32 AudioBuffer and scheduled to start
+  // immediately after the previous chunk ends, producing gap-less audio.
+  // The shared GainNode feeds the monitor, LiveKit publish, and recording
+  // destinations.
+  const playbackGainRef = useRef<GainNode | null>(null);
+  const playbackNextStartRef = useRef<number>(0);
+  // LiveKit publish destination — translated PCM chain feeds this, and
+  // its MediaStream is what the monitor <audio> element and LiveKit
+  // LocalAudioTrack both read from.
   const audioDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -389,14 +476,11 @@ export function TranslateConsole() {
     ]),
   );
 
-  // PR #223 caught the prompter duplication symptom but the prod logs
-  // showed `kind: 'input'` getting deduped 5+ times per utterance —
-  // meaning the OpenAI translations API itself is re-emitting the same
-  // content. We don't yet know whether the deltas are incremental,
-  // cumulative, or interim refinements. This ref samples the first N
-  // events of each `type` per session and logs the full payload so the
-  // next live run on production tells us the actual protocol shape
-  // without flooding the console for long sessions.
+  // Diagnostic sampler — bounded log of the first N Gemini Live messages
+  // of each shape per session. The Bidi protocol emits incremental
+  // transcripts independently of model turns, so we sample early events
+  // to confirm whether deltas are incremental vs cumulative without
+  // flooding the console on long sessions.
   const sampleCountRef = useRef<Map<string, number>>(new Map());
   const EVENT_SAMPLE_CAP = 8;
 
@@ -408,13 +492,12 @@ export function TranslateConsole() {
   //
   // Wiring:
   //   hostSrc (mic OR tab) → recordInputDestRef → MediaRecorder(input)
-  //   ttsSrc (translated)  → recordOutputDestRef → MediaRecorder(output)
+  //   ttsSrc (PCM playback) → recordOutputDestRef → MediaRecorder(output)
   //
-  // Both destinations live on the SAME AudioContext as the
-  // LiveKit-publish graph so the source MediaStreamSourceNodes are
-  // single-context and don't need cross-context re-emission. Two
-  // recorders are started in the same microtask after the graph is
-  // wired so their timelines stay aligned within ~1 audio frame.
+  // recordInputDest lives on inputCtxRef; recordOutputDest lives on
+  // outputCtxRef. The two recorders are started in the same microtask
+  // after both graphs are wired so their wall-clock timelines align
+  // within a few ms.
   const recordInputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordOutputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordInputSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -469,28 +552,32 @@ export function TranslateConsole() {
       caller,
       sessionId: sessionIdRef.current,
       hasRoom: !!roomRef.current,
-      hasPc: !!pcRef.current,
+      hasGemini: !!geminiSessionRef.current,
     });
     try {
       channelRef.current?.unsubscribe();
     } catch {}
     channelRef.current = null;
     try {
-      dcRef.current?.close();
+      geminiSessionRef.current?.close();
     } catch {}
-    dcRef.current = null;
-    try {
-      pcRef.current?.close();
-    } catch {}
-    pcRef.current = null;
+    geminiSessionRef.current = null;
     micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     micStreamRef.current = null;
-    ttsStreamRef.current = null;
     outputPublishedRef.current = false;
     try {
-      audioSourceRef.current?.disconnect();
+      inputWorkletRef.current?.disconnect();
     } catch {}
-    audioSourceRef.current = null;
+    inputWorkletRef.current = null;
+    try {
+      inputSourceRef.current?.disconnect();
+    } catch {}
+    inputSourceRef.current = null;
+    try {
+      playbackGainRef.current?.disconnect();
+    } catch {}
+    playbackGainRef.current = null;
+    playbackNextStartRef.current = 0;
     audioDestRef.current = null;
     try {
       recordInputSrcRef.current?.disconnect();
@@ -503,9 +590,13 @@ export function TranslateConsole() {
     recordInputDestRef.current = null;
     recordOutputDestRef.current = null;
     try {
-      void audioCtxRef.current?.close();
+      void inputCtxRef.current?.close();
     } catch {}
-    audioCtxRef.current = null;
+    inputCtxRef.current = null;
+    try {
+      void outputCtxRef.current?.close();
+    } catch {}
+    outputCtxRef.current = null;
     try {
       const recIn = mediaRecorderInputRef.current;
       if (recIn && recIn.state !== 'inactive') recIn.stop();
@@ -668,49 +759,115 @@ export function TranslateConsole() {
     [broadcastCaption, persistMessage, pushLine],
   );
 
-  const handleOaiEvent = useCallback(
-    (raw: string) => {
-      let msg: { type?: string; [k: string]: unknown };
-      try {
-        msg = JSON.parse(raw) as { type?: string };
-      } catch {
-        return;
-      }
-      const type = msg.type ?? '';
+  // Decode a base64 PCM (int16, little-endian) chunk into a Float32Array
+  // for AudioBuffer.copyToChannel.
+  const decodeBase64Pcm = useCallback((b64: string): Float32Array<ArrayBuffer> => {
+    const bin = atob(b64);
+    const len = bin.length;
+    const i16 = new Int16Array(len >> 1);
+    // Walk bytes pairwise; little-endian int16.
+    for (let i = 0, j = 0; i + 1 < len; i += 2, j++) {
+      const lo = bin.charCodeAt(i);
+      const hi = bin.charCodeAt(i + 1);
+      const v = (hi << 8) | lo;
+      i16[j] = v >= 0x8000 ? v - 0x10000 : v;
+    }
+    // Concretely back the Float32Array with an ArrayBuffer (not
+    // SharedArrayBuffer) so `AudioBuffer.copyToChannel` accepts it
+    // under TS lib.dom strict mode.
+    const f32 = new Float32Array(new ArrayBuffer(i16.length * 4));
+    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 0x8000;
+    return f32;
+  }, []);
 
-      // Diagnostic sampler — see sampleCountRef comment. Bounded so a
-      // 30-min session emits at most ~8 × (# distinct event types) log
-      // lines. We log the whole payload because the field we need
-      // (whether `delta` is incremental or cumulative, whether a
-      // `completed` carries the canonical final text, etc.) may not
-      // be `delta` itself.
-      const sampleKey = type || '<no-type>';
+  // Schedule a translated-audio chunk on the playback graph. Each chunk
+  // starts immediately after the prior one ended so playback is gapless
+  // even when the transport delivers bursts. Anything that should hear
+  // the translated audio (monitor <audio>, LiveKit publish, recording)
+  // taps `playbackGainRef`.
+  const playPcmChunk = useCallback(
+    (b64: string) => {
+      const ctx = outputCtxRef.current;
+      const gain = playbackGainRef.current;
+      if (!ctx || !gain) return;
+      const f32 = decodeBase64Pcm(b64);
+      if (f32.length === 0) return;
+      const buf = ctx.createBuffer(1, f32.length, GEMINI_OUTPUT_SAMPLE_RATE);
+      buf.copyToChannel(f32, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(gain);
+      const startAt = Math.max(ctx.currentTime + 0.02, playbackNextStartRef.current);
+      src.start(startAt);
+      playbackNextStartRef.current = startAt + buf.duration;
+    },
+    [decodeBase64Pcm],
+  );
+
+  const handleGeminiMessage = useCallback(
+    (msg: LiveServerMessage) => {
+      // Diagnostic sampler — see sampleCountRef comment. We classify
+      // each message by the first content field present so the sampler
+      // shows the shape of typical traffic (modelTurn / inputTranscription
+      // / outputTranscription / setupComplete / interrupted / goAway).
+      const sc = msg.serverContent;
+      const sampleKey = msg.setupComplete
+        ? 'setupComplete'
+        : sc?.inputTranscription
+          ? 'inputTranscription'
+          : sc?.outputTranscription
+            ? 'outputTranscription'
+            : sc?.modelTurn
+              ? 'modelTurn'
+              : sc?.turnComplete
+                ? 'turnComplete'
+                : sc?.interrupted
+                  ? 'interrupted'
+                  : msg.goAway
+                    ? 'goAway'
+                    : '<other>';
       const seen = sampleCountRef.current.get(sampleKey) ?? 0;
       if (seen < EVENT_SAMPLE_CAP) {
         sampleCountRef.current.set(sampleKey, seen + 1);
-        console.info('[translate] oai-event', {
+        console.info('[translate] gemini-event', {
           n: seen + 1,
-          type: sampleKey,
+          kind: sampleKey,
           payload: msg,
         });
       }
 
-      // Source-language transcript — emitted by gpt-realtime-translate
-      // when `audio.input.transcription` is enabled at session-create.
-      if (type === 'session.input_transcript.delta') {
-        appendStreaming('input', String(msg.delta ?? ''), sourceLang);
-        return;
+      if (!sc) return;
+
+      // Source-language transcript — auto-detected by the model from the
+      // mic audio when inputAudioTranscription is set at session create.
+      if (sc.inputTranscription?.text) {
+        appendStreaming('input', sc.inputTranscription.text, sourceLang);
       }
-      // Translated text — streams continuously.
-      if (type === 'session.output_transcript.delta') {
-        appendStreaming('output', String(msg.delta ?? ''), targetLang);
-        return;
+      // Translated text — aligned with the synthesised output audio
+      // when outputAudioTranscription is set at session create.
+      if (sc.outputTranscription?.text) {
+        appendStreaming('output', sc.outputTranscription.text, targetLang);
       }
-      // Note: `session.output_audio.delta` is delivered via the WebRTC
-      // media track, not the data channel — we don't need to handle it
-      // here.
+      // Translated audio — base64 PCM int16 chunks at
+      // GEMINI_OUTPUT_SAMPLE_RATE, delivered as inlineData parts on the
+      // model turn. We schedule them on the playback graph which feeds
+      // monitor, LiveKit, and recording in one shot.
+      const parts = sc.modelTurn?.parts;
+      if (parts && parts.length > 0) {
+        for (const part of parts) {
+          const data = part.inlineData?.data;
+          if (data) playPcmChunk(data);
+        }
+      }
+      // `sc.interrupted` from the server means the model abandoned the
+      // current turn — clear the scheduled playback time so the next
+      // chunk plays immediately instead of waiting for the cancelled
+      // tail to finish.
+      if (sc.interrupted) {
+        playbackNextStartRef.current = 0;
+      }
     },
-    [appendStreaming, sourceLang, targetLang],
+    [appendStreaming, playPcmChunk, sourceLang, targetLang],
   );
 
   const start = useCallback(async () => {
@@ -825,13 +982,11 @@ export function TranslateConsole() {
     }
     micStreamRef.current = mic;
 
-    // LiveKit FIRST — connect and publish the mic so viewers have something
-    // to subscribe to right away. The translated output track gets
-    // published from inside `pc.ontrack` below, the moment OpenAI starts
-    // sending us translated audio (which only happens once the host
-    // actually speaks). Publishing the output here too early — before
-    // the audio track exists — would silently no-op and viewers who
-    // toggle "Translation" later would hear nothing.
+    // LiveKit FIRST — connect and publish the mic so viewers have
+    // something to subscribe to right away. The translated output track
+    // is published below, immediately after we wire the playback graph,
+    // because Gemini Live emits PCM continuously and the graph (not the
+    // network) is the source of truth for "an output track exists."
     outputPublishedRef.current = false;
     try {
       const room = new Room({ adaptiveStream: true, dynacast: true });
@@ -847,243 +1002,298 @@ export function TranslateConsole() {
       return;
     }
 
-    // OpenAI WebRTC
-    const pc = new RTCPeerConnection();
-    pcRef.current = pc;
-    mic.getAudioTracks().forEach((tr) => pc.addTrack(tr, mic));
-    pc.ontrack = (e) => {
-      const stream = e.streams[0];
-      ttsStreamRef.current = stream;
+    // ── Output audio plumbing (translated TTS → monitor + LiveKit + recording) ──
+    //
+    // outputCtx runs at GEMINI_OUTPUT_SAMPLE_RATE so AudioBuffers built from
+    // incoming PCM chunks copy in without resampling. A single GainNode is
+    // the fan-out point: monitor <audio>, LiveKit publish, and the output
+    // recorder all tap from it.
+    type WebkitWindow = Window & typeof globalThis & {
+      webkitAudioContext?: typeof AudioContext;
+    };
+    const w = window as WebkitWindow;
+    const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
+    if (!AudioCtx) {
+      setError('audio_unsupported');
+      setStatus('error');
+      cleanup('start_error_websocket');
+      startInFlightRef.current = false;
+      return;
+    }
+    let outputCtx: AudioContext;
+    let playbackGain: GainNode;
+    let outputDest: MediaStreamAudioDestinationNode;
+    try {
+      outputCtx = new AudioCtx({ sampleRate: GEMINI_OUTPUT_SAMPLE_RATE });
+      outputCtxRef.current = outputCtx;
+      // start() is in the click handler's microtask, but the context can
+      // still come up suspended in stricter engines. resume() is
+      // best-effort: if it rejects we still publish.
+      if (outputCtx.state === 'suspended') {
+        void outputCtx.resume().catch((err) => {
+          console.warn('[translate] outputCtx.resume failed', err);
+        });
+      }
+      playbackGain = outputCtx.createGain();
+      playbackGainRef.current = playbackGain;
+      outputDest = outputCtx.createMediaStreamDestination();
+      audioDestRef.current = outputDest;
+      playbackGain.connect(outputDest);
+      playbackNextStartRef.current = 0;
+
       if (monitorAudioRef.current) {
-        monitorAudioRef.current.srcObject = stream;
+        monitorAudioRef.current.srcObject = outputDest.stream;
         monitorAudioRef.current.muted = !outputAudible;
         monitorAudioRef.current.play().catch(() => {});
       }
-      // Publish the translated TTS track into LiveKit. ontrack can fire
-      // multiple times across renegotiations; guard with
-      // outputPublishedRef so we only publish once per session.
-      if (outputPublishedRef.current) return;
-      const room = roomRef.current;
-      if (!stream || !room) return;
-      try {
-        // Browsers refuse to publish a track from one RTCPeerConnection
-        // (OpenAI) into another (LiveKit) directly. Web Audio routing
-        // re-emits the audio as a fresh local MediaStreamTrack we can
-        // attach to LocalAudioTrack.
-        type WebkitWindow = Window &
-          typeof globalThis & {
-            webkitAudioContext?: typeof AudioContext;
-          };
-        const w = window as WebkitWindow;
-        const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        audioCtxRef.current = ctx;
-        // pc.ontrack fires from a WebRTC event, not the original click
-        // gesture, so the AudioContext can start suspended on stricter
-        // engines. A suspended ctx means the destination MediaStream
-        // carries silence — viewers would join, see the "output" track,
-        // and hear nothing. resume() is best-effort: if it rejects we
-        // still publish, just log it.
-        if (ctx.state === 'suspended') {
-          void ctx.resume().catch((err) => {
-            console.warn('[translate] audioCtx.resume failed', err);
-          });
-        }
-        const src = ctx.createMediaStreamSource(stream);
-        audioSourceRef.current = src;
-        const dst = ctx.createMediaStreamDestination();
-        audioDestRef.current = dst;
-        src.connect(dst);
 
-        // ── Recording graph (PR #183: split source vs. translated) ──
-        // Two dedicated destination nodes on the same AudioContext:
-        //   recordInputDest  ← host source (mic or tab)
-        //   recordOutputDest ← translated TTS
-        // Each feeds its own MediaRecorder so the unlocked UI can offer
-        // 원문 오디오 + 통역 오디오 as separate downloads. We do NOT mix
-        // them and we do NOT share `dst` (the LiveKit publish dest) —
-        // MediaRecorder reading the same dest as a live publish has
-        // produced silent/glitchy webm output in testing.
-        const mic = micStreamRef.current;
-        if (recordEnabled && mic) {
-          try {
-            // Pick a MIME the browser actually supports. Chrome desktop
-            // (our only supported recording surface) ships
-            // `audio/webm;codecs=opus`. Fall back to plain webm if the
-            // codec-tagged form is rejected; if both fail, recording
-            // silently skips and the UI stays in the "no recording
-            // available" branch.
-            let mimeType = 'audio/webm;codecs=opus';
-            if (typeof MediaRecorder !== 'undefined') {
-              if (!MediaRecorder.isTypeSupported(mimeType)) {
-                mimeType = 'audio/webm';
-              }
-              if (MediaRecorder.isTypeSupported(mimeType)) {
-                // Build the input (source) track graph + recorder.
-                const inputDest = ctx.createMediaStreamDestination();
-                recordInputDestRef.current = inputDest;
-                const hostRecSrc = ctx.createMediaStreamSource(mic);
-                recordInputSrcRef.current = hostRecSrc;
-                hostRecSrc.connect(inputDest);
-
-                // Build the output (translated TTS) track graph + recorder.
-                const outputDest = ctx.createMediaStreamDestination();
-                recordOutputDestRef.current = outputDest;
-                const ttsRecSrc = ctx.createMediaStreamSource(stream);
-                recordOutputSrcRef.current = ttsRecSrc;
-                ttsRecSrc.connect(outputDest);
-
-                const recIn = new MediaRecorder(inputDest.stream, { mimeType });
-                const recOut = new MediaRecorder(outputDest.stream, { mimeType });
-                mediaRecorderInputRef.current = recIn;
-                mediaRecorderOutputRef.current = recOut;
-                recordedInputChunksRef.current = [];
-                recordedOutputChunksRef.current = [];
-
-                recIn.ondataavailable = (ev) => {
-                  if (ev.data && ev.data.size > 0) {
-                    recordedInputChunksRef.current.push(ev.data);
-                  }
-                };
-                recOut.ondataavailable = (ev) => {
-                  if (ev.data && ev.data.size > 0) {
-                    recordedOutputChunksRef.current.push(ev.data);
-                  }
-                };
-                const fail = () => {
-                  // Best-effort: ditch the recording. UI stays in the
-                  // post-stop "no download available" branch.
-                  setRecordingError('recorder_failed');
-                  setRecorderActive(false);
-                };
-                recIn.onerror = fail;
-                recOut.onerror = fail;
-                // The indicator pill flips on once EITHER recorder is
-                // active, and only flips off once BOTH have stopped.
-                recIn.onstart = () => setRecorderActive(true);
-                recOut.onstart = () => setRecorderActive(true);
-                const maybeIdle = () => {
-                  const a = mediaRecorderInputRef.current;
-                  const b = mediaRecorderOutputRef.current;
-                  if ((!a || a.state === 'inactive') && (!b || b.state === 'inactive')) {
-                    setRecorderActive(false);
-                  }
-                };
-                recIn.onstop = maybeIdle;
-                recOut.onstop = maybeIdle;
-                // Start both in the same tick so the two webm timelines
-                // align within an audio frame.
-                recIn.start(RECORDING_CHUNK_MS);
-                recOut.start(RECORDING_CHUNK_MS);
-                recordingStartedAtRef.current = Date.now();
-
-                // Reserve metadata + signed upload URLs for BOTH tracks
-                // now so each stop() turns into a single PUT. We POST
-                // output first (default kind) to create the row, then
-                // POST input — the server attaches it to the same row.
-                const sid = sessionIdRef.current;
-                if (sid) {
-                  (async () => {
-                    try {
-                      const r1 = await fetch(
-                        `/api/translate/sessions/${sid}/recording`,
-                        {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kind: 'output' }),
-                        },
-                      );
-                      if (!r1.ok) throw new Error('reserve_failed');
-                      const j1 = (await r1.json()) as {
-                        recording_id: string;
-                        upload_url: string;
-                      };
-                      recordingIdRef.current = j1.recording_id;
-                      recordingOutputUploadUrlRef.current = j1.upload_url;
-
-                      const r2 = await fetch(
-                        `/api/translate/sessions/${sid}/recording`,
-                        {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kind: 'input' }),
-                        },
-                      );
-                      if (!r2.ok) throw new Error('reserve_failed');
-                      const j2 = (await r2.json()) as {
-                        recording_id: string;
-                        upload_url: string;
-                      };
-                      // r2 should attach to the same row r1 created.
-                      recordingIdRef.current = j2.recording_id;
-                      recordingInputUploadUrlRef.current = j2.upload_url;
-                    } catch {
-                      setRecordingError('reserve_failed');
-                    }
-                  })();
-                }
-              }
-            }
-          } catch {
-            setRecordingError('recorder_failed');
-          }
-        }
-
-        const localTtsTrack = dst.stream.getAudioTracks()[0];
-        if (!localTtsTrack) return;
+      const localTtsTrack = outputDest.stream.getAudioTracks()[0];
+      if (localTtsTrack && roomRef.current) {
         outputPublishedRef.current = true;
         const outputTrack = new LocalAudioTrack(localTtsTrack);
-        console.info(
-          `[translate] publishing output — ctxState=${ctx.state}, ` +
-          `localTrackEnabled=${localTtsTrack.enabled}, ` +
-          `localTrackReadyState=${localTtsTrack.readyState}, ` +
-          `localTrackMuted=${localTtsTrack.muted}`,
-        );
-        room.localParticipant
+        roomRef.current.localParticipant
           .publishTrack(outputTrack, { name: 'output' })
           .then(() => {
             console.info(
-              `[translate] output PUBLISHED — ctxState=${ctx.state}, ` +
-              `localTrackMuted=${localTtsTrack.muted}`,
+              `[translate] output PUBLISHED — ctxState=${outputCtx.state}, ` +
+                `localTrackMuted=${localTtsTrack.muted}`,
             );
           })
           .catch((err) => {
             console.warn('[translate] output publish FAILED', err);
-            // Allow a retry on the next ontrack if this one races with
-            // disconnect.
             outputPublishedRef.current = false;
           });
-      } catch {
-        outputPublishedRef.current = false;
       }
-    };
-    const dc = pc.createDataChannel('oai-events');
-    dcRef.current = dc;
-    dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
-
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      // The translation-model SDP exchange has its own endpoint family.
-      const sdpRes = await fetch(
-        'https://api.openai.com/v1/realtime/translations/calls',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${bundle.openai.client_secret.value}`,
-            'Content-Type': 'application/sdp',
-          },
-          body: offer.sdp ?? '',
-        },
-      );
-      if (!sdpRes.ok) throw new Error(`openai_sdp_${sdpRes.status}`);
-      const answerSdp = await sdpRes.text();
-      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'webrtc_failed');
+      setError(e instanceof Error ? e.message : 'audio_failed');
       setStatus('error');
-      cleanup('start_error_webrtc');
+      cleanup('start_error_websocket');
+      startInFlightRef.current = false;
+      return;
+    }
+
+    // ── Recording graph (split source vs. translated) ──
+    // Each recorder reads its own MediaStreamDestinationNode so neither
+    // contends with the live LiveKit publish. The output recorder lives
+    // on outputCtx; the input recorder lives on inputCtx (constructed
+    // immediately below).
+    let inputCtx: AudioContext;
+    try {
+      inputCtx = new AudioCtx();
+      inputCtxRef.current = inputCtx;
+      if (inputCtx.state === 'suspended') {
+        void inputCtx.resume().catch((err) => {
+          console.warn('[translate] inputCtx.resume failed', err);
+        });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'audio_failed');
+      setStatus('error');
+      cleanup('start_error_websocket');
+      startInFlightRef.current = false;
+      return;
+    }
+
+    if (recordEnabled) {
+      try {
+        let mimeType = 'audio/webm;codecs=opus';
+        if (typeof MediaRecorder !== 'undefined') {
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/webm';
+          }
+          if (MediaRecorder.isTypeSupported(mimeType)) {
+            const inputRecDest = inputCtx.createMediaStreamDestination();
+            recordInputDestRef.current = inputRecDest;
+            const hostRecSrc = inputCtx.createMediaStreamSource(mic);
+            recordInputSrcRef.current = hostRecSrc;
+            hostRecSrc.connect(inputRecDest);
+
+            const outputRecDest = outputCtx.createMediaStreamDestination();
+            recordOutputDestRef.current = outputRecDest;
+            playbackGain.connect(outputRecDest);
+
+            const recIn = new MediaRecorder(inputRecDest.stream, { mimeType });
+            const recOut = new MediaRecorder(outputRecDest.stream, { mimeType });
+            mediaRecorderInputRef.current = recIn;
+            mediaRecorderOutputRef.current = recOut;
+            recordedInputChunksRef.current = [];
+            recordedOutputChunksRef.current = [];
+
+            recIn.ondataavailable = (ev) => {
+              if (ev.data && ev.data.size > 0) {
+                recordedInputChunksRef.current.push(ev.data);
+              }
+            };
+            recOut.ondataavailable = (ev) => {
+              if (ev.data && ev.data.size > 0) {
+                recordedOutputChunksRef.current.push(ev.data);
+              }
+            };
+            const fail = () => {
+              setRecordingError('recorder_failed');
+              setRecorderActive(false);
+            };
+            recIn.onerror = fail;
+            recOut.onerror = fail;
+            recIn.onstart = () => setRecorderActive(true);
+            recOut.onstart = () => setRecorderActive(true);
+            const maybeIdle = () => {
+              const a = mediaRecorderInputRef.current;
+              const b = mediaRecorderOutputRef.current;
+              if ((!a || a.state === 'inactive') && (!b || b.state === 'inactive')) {
+                setRecorderActive(false);
+              }
+            };
+            recIn.onstop = maybeIdle;
+            recOut.onstop = maybeIdle;
+            recIn.start(RECORDING_CHUNK_MS);
+            recOut.start(RECORDING_CHUNK_MS);
+            recordingStartedAtRef.current = Date.now();
+
+            const sid = sessionIdRef.current;
+            if (sid) {
+              (async () => {
+                try {
+                  const r1 = await fetch(
+                    `/api/translate/sessions/${sid}/recording`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ kind: 'output' }),
+                    },
+                  );
+                  if (!r1.ok) throw new Error('reserve_failed');
+                  const j1 = (await r1.json()) as {
+                    recording_id: string;
+                    upload_url: string;
+                  };
+                  recordingIdRef.current = j1.recording_id;
+                  recordingOutputUploadUrlRef.current = j1.upload_url;
+
+                  const r2 = await fetch(
+                    `/api/translate/sessions/${sid}/recording`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ kind: 'input' }),
+                    },
+                  );
+                  if (!r2.ok) throw new Error('reserve_failed');
+                  const j2 = (await r2.json()) as {
+                    recording_id: string;
+                    upload_url: string;
+                  };
+                  recordingIdRef.current = j2.recording_id;
+                  recordingInputUploadUrlRef.current = j2.upload_url;
+                } catch {
+                  setRecordingError('reserve_failed');
+                }
+              })();
+            }
+          }
+        }
+      } catch {
+        setRecordingError('recorder_failed');
+      }
+    }
+
+    // ── Mic capture → AudioWorklet PCM encoder → Gemini WebSocket ──
+    let workletNode: AudioWorkletNode;
+    try {
+      const workletBlob = new Blob([PCM_ENCODER_SOURCE], {
+        type: 'application/javascript',
+      });
+      const workletUrl = URL.createObjectURL(workletBlob);
+      try {
+        await inputCtx.audioWorklet.addModule(workletUrl);
+      } finally {
+        URL.revokeObjectURL(workletUrl);
+      }
+      const micSrc = inputCtx.createMediaStreamSource(mic);
+      inputSourceRef.current = micSrc;
+      workletNode = new AudioWorkletNode(inputCtx, 'pcm-encoder');
+      inputWorkletRef.current = workletNode;
+      micSrc.connect(workletNode);
+      // Worklets need a downstream node for `process()` to be scheduled
+      // in some engines; route through a zero-gain to keep the graph
+      // active without producing audible output on the speakers.
+      const silentSink = inputCtx.createGain();
+      silentSink.gain.value = 0;
+      workletNode.connect(silentSink);
+      silentSink.connect(inputCtx.destination);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'audio_failed');
+      setStatus('error');
+      cleanup('start_error_websocket');
+      startInFlightRef.current = false;
+      return;
+    }
+
+    // ── Open the Gemini Live WebSocket ──
+    // The browser passes the ephemeral auth-token resource name as
+    // apiKey; the SDK auto-routes to v1alpha + access_token= for it.
+    // The session config is locked server-side via liveConnectConstraints
+    // (see src/lib/gemini-live.ts), so we re-state it here only because
+    // the SDK still requires `model` + `config` at connect time.
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: bundle.gemini.client_secret.value,
+        apiVersion: 'v1alpha',
+      });
+      const session = await ai.live.connect({
+        model: bundle.gemini.model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          translationConfig: {
+            targetLanguageCode: targetLang,
+            echoTargetLanguage: false,
+          },
+          realtimeInputConfig: {
+            activityHandling: ActivityHandling.NO_INTERRUPTION,
+          },
+        },
+        callbacks: {
+          onopen: () => {
+            console.info('[translate] gemini ws open');
+          },
+          onmessage: (msg: LiveServerMessage) => handleGeminiMessage(msg),
+          onerror: (err) => {
+            console.warn('[translate] gemini ws error', err);
+          },
+          onclose: (ev) => {
+            console.info('[translate] gemini ws closed', {
+              code: ev?.code,
+              reason: ev?.reason,
+            });
+          },
+        },
+      });
+      geminiSessionRef.current = session;
+
+      // The worklet has been emitting PCM frames since the moment it was
+      // wired; route them to the open session now. Earlier frames were
+      // simply dropped (port had no listener), which is fine — Gemini's
+      // VAD doesn't care about the pre-connect tail.
+      workletNode.port.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
+        const session = geminiSessionRef.current;
+        if (!session) return;
+        try {
+          session.sendRealtimeInput({
+            audio: {
+              data: arrayBufferToBase64(ev.data),
+              mimeType: `audio/pcm;rate=${GEMINI_INPUT_SAMPLE_RATE}`,
+            },
+          });
+        } catch (err) {
+          console.warn('[translate] sendRealtimeInput failed', err);
+        }
+      };
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'websocket_failed');
+      setStatus('error');
+      cleanup('start_error_websocket');
       startInFlightRef.current = false;
       return;
     }
@@ -1107,7 +1317,7 @@ export function TranslateConsole() {
     startInFlightRef.current = false;
   }, [
     cleanup,
-    handleOaiEvent,
+    handleGeminiMessage,
     inputSource,
     outputAudible,
     recordEnabled,
@@ -1280,9 +1490,12 @@ export function TranslateConsole() {
       }
     }
 
-    // Ask OpenAI to close the translation session gracefully.
+    // Close the Gemini Live WebSocket gracefully so the server frees
+    // session state immediately. cleanup() will close it again as a
+    // safety net, but doing it here also stops the worklet from queuing
+    // more PCM that would never get acked.
     try {
-      dcRef.current?.send(JSON.stringify({ type: 'session.close' }));
+      geminiSessionRef.current?.close();
     } catch {}
 
     const id = sessionIdRef.current;

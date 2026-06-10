@@ -1,12 +1,12 @@
-// AI 동시통역 — re-issue an OpenAI Realtime client_secret.
+// AI 동시통역 — re-issue a Gemini Live Translate auth token.
 //
-// Ephemeral keys are ~60s. The host client calls this 10–30 seconds
-// before the existing key expires to renegotiate the WebRTC peer
-// connection without dropping audio.
+// Each token is single-use; the host client calls this whenever it needs
+// a fresh session token (e.g. to reopen a dropped WebSocket without
+// re-creating the translate_sessions row).
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { issueRealtimeSession, realtimeModel } from '@/lib/openai-realtime';
+import { issueLiveTranslateSession, liveTranslateModel } from '@/lib/gemini-live';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -38,17 +38,17 @@ export async function POST(
 
   let s;
   try {
-    s = await issueRealtimeSession({
+    s = await issueLiveTranslateSession({
       sourceLang: row.source_lang,
       targetLang: row.target_lang,
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'openai_failed' },
+      { error: e instanceof Error ? e.message : 'gemini_failed' },
       { status: 502 },
     );
   }
   return NextResponse.json({
-    openai: { model: realtimeModel(), client_secret: s.client_secret },
+    gemini: { model: liveTranslateModel(), client_secret: s.client_secret },
   });
 }
