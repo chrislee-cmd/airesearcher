@@ -26,13 +26,13 @@ export default async function MembersPage({
       />
 
       {!org ? (
-        <div className="border border-line bg-paper-soft p-6 text-[12.5px] text-mute [border-radius:14px]">
+        <div className="border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
           로그인 후 조직 정보가 표시됩니다.
         </div>
       ) : (
         <>
           {(org.role === 'owner' || org.role === 'admin') && (
-            <div className="mb-8 border border-line bg-paper p-5 [border-radius:14px]">
+            <div className="mb-8 border border-line bg-paper p-5 rounded-sm">
               <div className="eyebrow-mute mb-3">Invite</div>
               <InviteMemberForm orgId={org.org_id} />
             </div>
@@ -81,7 +81,7 @@ async function MembersTable({
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   return (
-    <div className="border border-line bg-paper [border-radius:14px]">
+    <div className="border border-line bg-paper rounded-sm">
       <table className="w-full text-[12.5px]">
         <thead className="border-b border-line">
           <tr>

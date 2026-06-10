@@ -16,7 +16,7 @@ function safeNext(raw: string | null): string {
 }
 
 const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none [border-radius:14px]';
+  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
 const labelCls =
   'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
 const linkCls =

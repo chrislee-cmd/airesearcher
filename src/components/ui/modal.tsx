@@ -114,7 +114,7 @@ export function Modal({
         ref={panelRef}
         className={[
           'relative w-full overflow-hidden border border-line bg-paper-soft',
-          '[border-radius:14px] [box-shadow:var(--shadow-bento)]',
+          'rounded-sm [box-shadow:var(--shadow-bento)]',
           SIZE[size],
         ].join(' ')}
       >

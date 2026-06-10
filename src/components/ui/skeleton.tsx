@@ -28,10 +28,10 @@ export function Skeleton({
 }: Props) {
   const radius =
     variant === 'circle'
-      ? '[border-radius:9999px]'
+      ? 'rounded-full'
       : variant === 'text'
-        ? '[border-radius:4px]'
-        : '[border-radius:14px]';
+        ? 'rounded-xs'
+        : 'rounded-sm';
 
   const defaults =
     variant === 'text'

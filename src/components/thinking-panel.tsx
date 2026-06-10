@@ -18,11 +18,11 @@ export function ThinkingPanel() {
   if (thinkingLog.length === 0 && !isWorking) return null;
 
   return (
-    <section className="mt-6 border border-line bg-paper-soft [border-radius:14px]">
+    <section className="mt-6 border border-line bg-paper-soft rounded-sm">
       <header className="flex items-center justify-between border-b border-line-soft px-4 py-2">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-block h-1.5 w-1.5 [border-radius:9999px] ${
+            className={`inline-block h-1.5 w-1.5 rounded-full ${
               isWorking ? 'animate-pulse bg-amore' : 'bg-mute-soft'
             }`}
           />

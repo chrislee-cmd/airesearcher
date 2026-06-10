@@ -303,7 +303,7 @@ export function TranscriptStudio() {
               value={modelKey}
               onChange={(e) => setModelKey(e.target.value)}
               disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px] disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 rounded-sm disabled:opacity-40"
             >
               {TRANSCRIPT_MODELS.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -324,7 +324,7 @@ export function TranscriptStudio() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 [border-radius:14px] disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 rounded-sm disabled:opacity-40"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -433,7 +433,7 @@ function LanguageConfirmDialog({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[460px] border border-line bg-paper p-8 [border-radius:14px]"
+        className="w-full max-w-[460px] border border-line bg-paper p-8 rounded-sm"
       >
         <h2 className="text-[17px] font-semibold tracking-[-0.012em] text-ink-2">
           {t('title')}
@@ -454,7 +454,7 @@ function LanguageConfirmDialog({
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
             autoFocus
-            className="w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 [border-radius:14px] focus:border-ink focus:outline-none"
+            className="w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 rounded-sm focus:border-ink focus:outline-none"
           >
             {LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>
@@ -473,13 +473,13 @@ function LanguageConfirmDialog({
         <div className="mt-7 flex items-center justify-end gap-2">
           <button
             onClick={onCancel}
-            className="border border-line bg-paper px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 [border-radius:14px]"
+            className="border border-line bg-paper px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 rounded-sm"
           >
             {t('cancelCta')}
           </button>
           <button
             onClick={onConfirm}
-            className="border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 [border-radius:14px]"
+            className="border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 rounded-sm"
           >
             {t('proceedCta')}
           </button>
@@ -501,7 +501,7 @@ function JobRow({
   const inFlight = job.status === 'submitting' || job.status === 'transcribing';
 
   return (
-    <li className="border border-line bg-paper [border-radius:14px]">
+    <li className="border border-line bg-paper rounded-sm">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] text-ink-2">{job.filename}</div>

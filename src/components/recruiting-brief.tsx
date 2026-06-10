@@ -613,7 +613,7 @@ export function RecruitingBrief() {
             onChange={(e) => setPasted(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 [border-radius:14px]"
+            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 rounded-sm"
           />
         </div>
         <div className="flex h-[220px] flex-col">
@@ -638,7 +638,7 @@ export function RecruitingBrief() {
       )}
 
       {files.length > 0 && (
-        <ul className="mt-5 divide-y divide-line border border-line bg-paper [border-radius:14px]">
+        <ul className="mt-5 divide-y divide-line border border-line bg-paper rounded-sm">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
@@ -677,7 +677,7 @@ export function RecruitingBrief() {
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
           오류: {errorMessage}
         </div>
       )}
@@ -706,7 +706,7 @@ export function RecruitingBrief() {
               }
               disabled={!edited}
               rows={2}
-              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 [border-radius:14px]"
+              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 rounded-sm"
             />
           </div>
 
@@ -715,7 +715,7 @@ export function RecruitingBrief() {
               prompt for context, but it is no longer surfaced in the UI
               per product feedback (only criteria need to be editable). */}
           <div className="mt-4 h-[480px]">
-            <section className="flex h-full min-h-0 flex-col border border-line bg-paper [border-radius:14px]">
+            <section className="flex h-full min-h-0 flex-col border border-line bg-paper rounded-sm">
               <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
                 <h3 className="text-[12px] font-semibold text-ink-2">
                   대상자 조건 ({previewCriteria.length})
@@ -910,32 +910,32 @@ export function RecruitingBrief() {
                 </p>
               )}
               {surveyError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
                   설문 생성 오류: {surveyError}
                 </div>
               )}
               {publishError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
                   발행 오류: {publishError}
                 </div>
               )}
               {googleAuthError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
                   Google 연결 오류: {googleAuthError} — 연결 해제 후 다시 시도해주세요.
                 </div>
               )}
               {startError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore [border-radius:14px]">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
                   메일 발송 오류: {startError}
                 </div>
               )}
               {started && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink [border-radius:14px]">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink rounded-sm">
                   리크루팅 메일을 {started.to}로 발송했습니다.
                 </div>
               )}
               {published && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] [border-radius:14px]">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] rounded-sm">
                   <div className="font-semibold text-ink">발행 완료</div>
                   <div className="mt-1 flex flex-wrap gap-3 text-[12px]">
                     <a
@@ -965,7 +965,7 @@ export function RecruitingBrief() {
                       {survey?.title ?? surveyPartial?.title}
                     </div>
                   )}
-                  <div className="h-[480px] overflow-auto border border-line bg-paper [border-radius:14px]">
+                  <div className="h-[480px] overflow-auto border border-line bg-paper rounded-sm">
                     <table className="w-full min-w-[760px] border-collapse text-[12px]">
                       <thead className="sticky top-0 z-table-sticky bg-paper">
                         <tr className="text-left">
@@ -1039,7 +1039,7 @@ export function RecruitingBrief() {
           }}
         >
           <div
-            className="w-full max-w-[640px] border border-line bg-paper p-5 [border-radius:14px]"
+            className="w-full max-w-[640px] border border-line bg-paper p-5 rounded-sm"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold text-ink">
@@ -1096,19 +1096,19 @@ export function RecruitingBrief() {
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
                   인터뷰 신청서 링크 (자동)
                 </div>
-                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute [border-radius:14px]">
+                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute rounded-sm">
                   {published?.responderUri ?? ''}
                 </div>
               </div>
             </div>
 
             {draftError && (
-              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute [border-radius:14px]">
+              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute rounded-sm">
                 초안 자동 생성 실패 — 직접 입력해주세요. ({draftError})
               </div>
             )}
             {startError && (
-              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore [border-radius:14px]">
+              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore rounded-sm">
                 메일 발송 오류: {startError}
               </div>
             )}

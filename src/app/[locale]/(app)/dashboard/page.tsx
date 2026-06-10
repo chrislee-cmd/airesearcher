@@ -39,7 +39,7 @@ export default async function DashboardPage({
           {user && org && (
             <Link
               href="/projects"
-              className="border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
+              className="border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
             >
               {t('newProject')}
             </Link>
@@ -90,7 +90,7 @@ async function CardView({ card }: { card: ProjectCard }) {
         </h3>
         {card.runningCount > 0 && (
           <span className="flex shrink-0 items-center gap-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
             {t('runningCount', { count: card.runningCount })}
           </span>
         )}
@@ -126,7 +126,7 @@ async function CardView({ card }: { card: ProjectCard }) {
 
   if (isUnfiled) {
     return (
-      <div className="flex h-full flex-col border border-line bg-paper-soft p-5 [border-radius:14px] [box-shadow:var(--shadow-bento)]">
+      <div className="flex h-full flex-col border border-line bg-paper-soft p-5 rounded-sm [box-shadow:var(--shadow-bento)]">
         {inner}
       </div>
     );
@@ -134,7 +134,7 @@ async function CardView({ card }: { card: ProjectCard }) {
   return (
     <Link
       href={`/projects/${card.projectId}`}
-      className="group flex h-full flex-col border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 [border-radius:14px] [box-shadow:var(--shadow-bento)]"
+      className="group flex h-full flex-col border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 rounded-sm [box-shadow:var(--shadow-bento)]"
     >
       {inner}
     </Link>
@@ -170,7 +170,7 @@ function formatRelative(ts: number): string {
 async function FirstProjectHero() {
   const t = await getTranslations('Dashboard');
   return (
-    <section className="mt-10 border border-line bg-paper p-8 [border-radius:14px]">
+    <section className="mt-10 border border-line bg-paper p-8 rounded-sm">
       <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
         {t('firstProjectTitle')}
       </h2>
@@ -179,7 +179,7 @@ async function FirstProjectHero() {
       </p>
       <Link
         href="/projects"
-        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
+        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
       >
         {t('firstProjectCta')}
       </Link>
@@ -190,7 +190,7 @@ async function FirstProjectHero() {
 async function SignedOutHero() {
   const t = await getTranslations('Dashboard');
   return (
-    <section className="mt-10 border border-line bg-paper p-8 [border-radius:14px]">
+    <section className="mt-10 border border-line bg-paper p-8 rounded-sm">
       <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
         {t('signedOutTitle')}
       </h2>
@@ -199,7 +199,7 @@ async function SignedOutHero() {
       </p>
       <Link
         href="/login"
-        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 [border-radius:14px]"
+        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
       >
         {t('signIn')}
       </Link>

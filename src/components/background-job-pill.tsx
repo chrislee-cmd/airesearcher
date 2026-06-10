@@ -22,7 +22,7 @@ export function BackgroundJobPill() {
 
   const content = (
     <span className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.22em] text-amore">
-      <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
       {label}
       {detail && (
         <span className="tabular-nums text-mute-soft normal-case tracking-normal">

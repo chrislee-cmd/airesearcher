@@ -143,7 +143,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
   );
 
   return (
-    <div className="border border-line bg-paper p-5 [border-radius:14px]">
+    <div className="border border-line bg-paper p-5 rounded-sm">
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="text-[12.5px] font-medium text-ink-2">인용구 검색</div>
         <div className="text-[11px] text-mute-soft">

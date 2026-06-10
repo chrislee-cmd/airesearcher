@@ -47,7 +47,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 // Start/Unlock buttons rendering as paper-bg + paper-text (invisible
 // label) after #230 migrated them off the native <button>.
 const BASE =
-  'border [border-radius:4px] ' +
+  'border rounded-xs ' +
   'transition-colors duration-[120ms] ' +
   'disabled:opacity-40 disabled:cursor-not-allowed ' +
   'focus:outline-none focus-visible:border-amore';

@@ -440,11 +440,11 @@ export function DeskResearch() {
             <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('keywordLabel')}
             </span>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore [border-radius:14px]">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore rounded-sm">
               {keywords.map((k, idx) => (
                 <span
                   key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 [border-radius:14px]"
+                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 rounded-sm"
                 >
                   {k}
                   <IconButton
@@ -578,7 +578,7 @@ export function DeskResearch() {
                 return (
                   <div
                     key={g}
-                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 [border-radius:14px]"
+                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 rounded-sm"
                   >
                     <span className="w-[68px] shrink-0 text-[11.5px] font-semibold text-ink-2">
                       {isEn ? meta.labelEn : meta.label}
@@ -661,7 +661,7 @@ export function DeskResearch() {
               }
             />
           ) : (
-            <div className="border border-line bg-paper-soft px-4 py-2 [border-radius:14px]">
+            <div className="border border-line bg-paper-soft px-4 py-2 rounded-sm">
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
                 {tDesk('thinkingDone')}
               </span>
@@ -669,7 +669,7 @@ export function DeskResearch() {
           )}
           <div
             ref={thoughtsScroller}
-            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] [border-radius:14px]"
+            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] rounded-sm"
           >
             {events.map((line, i) => (
               <div key={i} className="py-0.5 text-ink-2">
@@ -682,13 +682,13 @@ export function DeskResearch() {
       )}
 
       {error && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:14px]">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 rounded-sm">
           {tDesk('error')}: <span className="font-mono">{error}</span>
         </div>
       )}
 
       {job?.status === 'error' && job.error_message && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 [border-radius:14px]">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 rounded-sm">
           {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
         </div>
       )}
@@ -702,7 +702,7 @@ export function DeskResearch() {
       {showResult && (
         <>
           {job.skipped && job.skipped.length > 0 && (
-            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 [border-radius:14px]">
+            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 rounded-sm">
               <div className="font-semibold">{tDesk('skippedTitle')}</div>
               <ul className="mt-1.5 space-y-0.5 font-mono text-[11.5px] text-mute">
                 {job.skipped.map((s) => (
@@ -723,7 +723,7 @@ export function DeskResearch() {
                 {job.similar_keywords.map((k) => (
                   <span
                     key={k}
-                    className="border border-line bg-paper-soft px-2.5 py-1 text-[11.5px] text-mute [border-radius:14px]"
+                    className="border border-line bg-paper-soft px-2.5 py-1 text-[11.5px] text-mute rounded-sm"
                   >
                     {k}
                   </span>
@@ -796,7 +796,7 @@ export function DeskResearch() {
                 ]}
               />
             </div>
-            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 [border-radius:14px]">
+            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 rounded-sm">
               <DeskMarkdown source={job.output ?? ''} />
             </article>
           </section>
@@ -806,7 +806,7 @@ export function DeskResearch() {
               <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
                 {tDesk('collected')} ({job.articles.length})
               </h2>
-              <ul className="mt-3 divide-y divide-line border border-line bg-paper [border-radius:14px]">
+              <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
                 {job.articles.map((a) => (
                   <li key={`${a.source}-${a.url}`} className="px-4 py-3">
                     <a

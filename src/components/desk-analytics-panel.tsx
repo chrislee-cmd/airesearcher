@@ -38,9 +38,9 @@ function ChartBar({ chart }: { chart: DeskChart }) {
                 {valueLabel(chart, d.value, total)}
               </span>
             </div>
-            <div className="mt-1 h-2 w-full bg-paper-soft [border-radius:9999px]">
+            <div className="mt-1 h-2 w-full bg-paper-soft rounded-full">
               <div
-                className="h-full [border-radius:9999px]"
+                className="h-full rounded-full"
                 style={{
                   width: `${w}%`,
                   backgroundColor: PALETTE[i % PALETTE.length],
@@ -176,7 +176,7 @@ export function DeskAnalyticsPanel({ analytics }: { analytics: DeskAnalytics }) 
         {analytics.charts.map((c, i) => (
           <article
             key={i}
-            className="border border-line bg-paper p-5 [border-radius:14px]"
+            className="border border-line bg-paper p-5 rounded-sm"
           >
             <header className="mb-3">
               <div className="text-[10.5px] font-semibold uppercase tracking-[.22em] text-amore">

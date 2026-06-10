@@ -150,21 +150,21 @@ export function InterviewAnalyzer() {
                 <button
                   onClick={job.clear}
                   disabled={job.convertingAll || job.analyzing}
-                  className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40 [border-radius:14px]"
+                  className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40 rounded-sm"
                 >
                   {tUp('clear')}
                 </button>
                 <button
                   onClick={job.startConvertAll}
                   disabled={job.queuedCount === 0 || job.convertingAll}
-                  className="border border-ink bg-ink px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:14px]"
+                  className="border border-ink bg-ink px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
                 >
                   {job.convertingAll ? tCommon('loading') : t('convertAll')}
                 </button>
               </div>
             </div>
 
-            <ul className="mt-3 border border-line bg-paper [border-radius:14px]">
+            <ul className="mt-3 border border-line bg-paper rounded-sm">
               {job.items.map((item) => (
                 <ConvRow
                   key={item.id}
@@ -209,13 +209,13 @@ export function InterviewAnalyzer() {
             <div className="mb-3 flex items-center justify-end gap-2">
               {job.summarizing && (
                 <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
                   요약 생성 중
                 </span>
               )}
               {job.verticallySynthesizing && (
                 <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse [border-radius:9999px] bg-amore" />
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
                   전체 흐름 분석 중
                 </span>
               )}
@@ -321,7 +321,7 @@ function TemplateCard() {
   const hasTemplate = !!job.template;
 
   return (
-    <section className="border border-line-soft bg-paper-soft [border-radius:14px]">
+    <section className="border border-line-soft bg-paper-soft rounded-sm">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-3">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
@@ -338,7 +338,7 @@ function TemplateCard() {
         {hasTemplate && (
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em]">
             <span className="text-mute-soft">모드</span>
-            <div className="inline-flex border border-line [border-radius:14px]">
+            <div className="inline-flex border border-line rounded-sm">
               <button
                 onClick={() => job.setTemplateMode('template')}
                 className={`px-3 py-1 ${
@@ -386,7 +386,7 @@ function TemplateCard() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={job.templateLoading}
-              className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:14px]"
+              className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
             >
               {job.templateLoading ? '업로드 중…' : '양식 업로드 (XLSX·DOCX)'}
             </button>
@@ -442,7 +442,7 @@ function TemplateCard() {
                     <button
                       onClick={saveEdit}
                       disabled={job.templateLoading}
-                      className="border border-ink bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 [border-radius:14px]"
+                      className="border border-ink bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
                     >
                       저장
                     </button>
@@ -477,7 +477,7 @@ function TemplateCard() {
                             next[i] = e.target.value;
                             setDraft(next);
                           }}
-                          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12.5px] text-ink-2 [border-radius:14px] focus:border-ink focus:outline-none"
+                          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12.5px] text-ink-2 rounded-sm focus:border-ink focus:outline-none"
                         />
                         <button
                           onClick={() => {
@@ -632,7 +632,7 @@ function OutlierItem({ outlier }: { outlier: OutlierCase }) {
           {outlier.filenames.map((fn) => (
             <span
               key={fn}
-              className="inline-block border border-line-soft px-1.5 py-[1px] text-[10px] tracking-[0.04em] text-mute [border-radius:14px]"
+              className="inline-block border border-line-soft px-1.5 py-[1px] text-[10px] tracking-[0.04em] text-mute rounded-sm"
             >
               {fn}
             </span>
@@ -687,7 +687,7 @@ function ResultTable({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="overflow-x-auto border border-line bg-paper [border-radius:14px]">
+    <div className="overflow-x-auto border border-line bg-paper rounded-sm">
       <table className="w-full min-w-[800px] text-[12.5px]">
         <thead className="border-b border-line bg-paper-soft">
           <tr>
@@ -796,7 +796,7 @@ function FinalSummaryTable({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="overflow-hidden border border-line bg-paper [border-radius:14px]">
+    <div className="overflow-hidden border border-line bg-paper rounded-sm">
       <table className="w-full text-[12.5px]">
         <thead className="border-b border-line bg-paper-soft">
           <tr>

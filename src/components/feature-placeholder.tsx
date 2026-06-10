@@ -96,7 +96,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           onChange={(e) => setInput(e.target.value)}
           rows={12}
           placeholder="원시 인터뷰 텍스트를 붙여넣으세요…"
-          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none [border-radius:14px]"
+          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none rounded-sm"
         />
       </div>
 
@@ -130,7 +130,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
             결과
           </h2>
-          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 [border-radius:14px]">
+          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 rounded-sm">
             {result}
           </pre>
         </div>

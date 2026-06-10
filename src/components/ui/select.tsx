@@ -60,7 +60,7 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
     'appearance-none border bg-paper text-ink',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
-    '[border-radius:14px]',
+    'rounded-sm',
     fullWidth ? 'w-full' : '',
     error
       ? 'border-warning focus:border-warning'

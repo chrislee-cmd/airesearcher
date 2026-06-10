@@ -107,7 +107,7 @@ export function VoiceConciergeFab() {
               opacity: ringOpacity.toFixed(3),
             }}
             className={
-              'pointer-events-none absolute inset-0 [border-radius:9999px] ' +
+              'pointer-events-none absolute inset-0 rounded-full ' +
               'border border-amore transition-[transform,opacity] duration-[80ms] ease-out'
             }
           />
@@ -118,7 +118,7 @@ export function VoiceConciergeFab() {
           <span
             aria-hidden="true"
             className={
-              'pointer-events-none absolute inset-[-3px] [border-radius:9999px] ' +
+              'pointer-events-none absolute inset-[-3px] rounded-full ' +
               'bg-amore/15 animate-pulse'
             }
           />
@@ -131,7 +131,7 @@ export function VoiceConciergeFab() {
           aria-pressed={isActive}
           className={
             'relative flex h-10 w-10 items-center justify-center border bg-paper ' +
-            'transition-colors duration-[120ms] [border-radius:9999px] ' +
+            'transition-colors duration-[120ms] rounded-full ' +
             (showFirstTimeCue
               ? 'ring-1 ring-amore/30 border-amore text-amore '
               : '') +
