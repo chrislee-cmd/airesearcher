@@ -313,6 +313,44 @@ main 보호 설정의 `required_status_checks.strict: true` 때문에, PR 머지
 
 전형 시나리오: PR 생성 → CI 녹색 → 사이에 다른 PR 머지 → 본인 PR 머지 시도 → 거부. 거의 매 PR에 한 번씩 일어납니다. 대응 명령어는 §4 "작업 도중 — 또는 PR 머지 직전 — main이 갱신됐을 때" 절 참고 (rebase → `--force-with-lease` → CI 재실행 → 머지).
 
+### 7.8 새 테이블이 `supabase_realtime` publication 에 자동으로 안 붙는다
+`create table` 만으로는 client 의 `postgres_changes` 채널이 어떤 이벤트도 못 받습니다. Realtime 을 쓰려는 테이블은 같은 migration 안에 명시적으로:
+
+```sql
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = '<table>'
+  ) then
+    alter publication supabase_realtime add table public.<table>;
+  end if;
+end $$;
+```
+
+체크 없이 그냥 `alter publication` 만 적으면 이미 등록된 테이블 위에서 재실행 시 에러. **증상**: client UI 가 "처리 중…" 에 멈춰 있고 row 가 변해도 채널이 침묵 — PR #243 에서 4분 stuck 회귀의 root cause. 새 DB-backed 작업 테이블 만들 때마다 점검.
+
+### 7.9 prod `schema_migrations` ledger 가 비어 있을 때 — `supabase db push` 가 거부함
+production 의 `supabase_migrations.schema_migrations` 레저가 일부 마이그 파일을 인식 못 하면 (`Remote migration versions not found`) `db push` 가 멈춥니다. `migration repair --status applied <ver>` 가 정공법이지만 **같은 4자리 prefix 를 공유하는 파일이 여러 개일 때 CLI 가 `invalid version number` 로 거부**합니다 (예: `0011_transcripts_provider.sql` + `0011_trial_fingerprints.sql`).
+
+**우회 — "parking trick"**:
+1. 미등록 마이그 파일들을 `supabase/migrations/` 밖으로 `mv` 로 잠시 이동 (worktree 밖 임시 디렉토리로)
+2. `supabase db push --linked --yes` — 새 마이그만 적용
+3. parked 파일들을 원위치로 `mv`
+4. (필요 시) `migration repair --linked --status reverted <orphan>` 로 잘못 만든 ledger 엔트리 정리
+
+마스터 worktree 의 working state 를 그대로 두면서 CLI 의 prefix-conflict 한계를 우회하는 유일한 방법.
+
+### 7.10 PostgREST embed `foo:bar(...)` 가 조용히 0 rows 를 돌려준다
+`select('user_id, role, profile:profiles(email, full_name)')` 같은 임베드는 **두 테이블 간에 직접 FK 가 있을 때만** 동작합니다. `organization_members.user_id` 와 `profiles.id` 가 둘 다 `auth.users(id)` 를 가리키지만 서로는 FK 가 없으면, PostgREST 가 transitive 경로를 추적하려다 실패하고 **에러 대신 빈 결과**를 반환합니다 (`error: null, data: []`). 멤버 페이지가 prod 데이터 6 rows 있는 상태에서 빈 표를 그렸던 PR #245 회귀의 root cause.
+
+**진단법**: 같은 쿼리에서 `.eq()` 필터를 제거했을 때 결과가 돌아오면 embed 가 의심됨. 임베드를 빼고 `(M+1) → 2-단계 query`(id 모으기 + `.in()` 배치)로 분할하는 게 robust. 새 schema 디자인 시 자주 조회하는 cross-table 관계엔 직접 FK 를 두거나 처음부터 join view 를 만드는 게 안전.
+
+### 7.11 Primitive 의 BASE 클래스에 색을 넣지 마세요
+Tailwind v4 는 JSX className 문자열 순서가 아니라 **컴파일된 CSS 소스 순서**로 충돌을 해결합니다. 즉 primitive 의 BASE 에 `border-line` 같은 색을 두고 variant 가 `border-amore` 로 덮으려 해도, 빌드 결과에서 BASE 가 뒤에 있으면 BASE 가 이깁니다 (PR #230 translate Start 가 paper-on-paper 로 렌더링된 회귀의 root cause).
+
+**규칙**: primitive 의 BASE 에는 layout/spacing/typography 만. **색(border-color/background/text)은 variant 가 단독 소유**. variant 가 아예 없는 primitive 라면 base 에 색을 한 번만 두고 끝 — variant 추가하는 PR 에서 base 의 색을 제거하고 variant 들로 이전합니다.
+
 ---
 
 ## 8. 환경 / 배포
@@ -335,7 +373,8 @@ main 보호 설정의 `required_status_checks.strict: true` 때문에, PR 머지
 - 토큰/패턴: **`/Users/churryboy/AI-researcher/design-system.md`** (저장소 외부)
 - 핵심 원칙: Editorial 톤 · 4px radius · 1px border · no shadow · 단일 amore 액센트 · Pretendard
 - 새 컴포넌트는 디자인 시스템 토큰 변수만 사용 — `text-ink`, `border-line`, `bg-paper`, `text-amore`, `text-mute`, `text-mute-soft`, `border-line-soft` 등
-- Primitives는 `src/components/ui/` 에 있음 (Button, Input, Textarea, Modal, Skeleton, Label, FileDropZone, `*-Menu` 류 등). 새 native `<button>/<input>/<textarea>`를 `src/components/ui/` 밖에서 쓰는 건 지양 — 새 variant/size가 필요하면 primitive를 확장해서 별도 PR로 (한 PR 한 변경 — §3.2).
+- Primitives는 `src/components/ui/` 에 있음. 현재 보유: **Button · IconButton · ChromeButton · Input · ChromeInput · Textarea · Checkbox · Select · Modal · Skeleton · Label · FileDropZone · EmptyState · MochiLoader · JobProgress · `*-Menu` 류**. 새 native `<button>/<input>/<textarea>/<select>` 를 `src/components/ui/` 밖에서 쓰는 건 지양 — 새 variant/size 가 필요하면 primitive 를 확장해서 별도 PR 로 (한 PR 한 변경 — §3.2).
+- **새 피처 greenfield 전략**: 새 피처 디렉토리를 만들 때 path-scoped strict ESLint 룰로 native `<button>/<input>/...` 를 그 경로 안에서만 error 처리하면, 레거시 사이트는 warn 으로 두고 신규 코드만 primitive 강제 가능 (`insights-analyzer` 가 이 패턴 — `eslint.config.mjs` 의 `design-system/insights-analyzer-strict` 블록 참고).
 
 ---
 
