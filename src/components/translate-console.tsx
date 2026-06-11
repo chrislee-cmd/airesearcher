@@ -57,6 +57,7 @@ type CleanupCaller =
   | 'start_error_livekit'
   | 'start_error_websocket'
   | 'start_reentry_guard'
+  | 'gemini_dropped'
   | 'stop'
   | 'unmount';
 
@@ -420,6 +421,23 @@ export function TranslateConsole() {
   // PCM audio via session.sendRealtimeInput and receive serverContent
   // messages via the onmessage callback we register at connect time.
   const geminiSessionRef = useRef<GeminiSession | null>(null);
+  // True between Gemini WS `onopen` and `onclose`. The SDK's
+  // `sendRealtimeInput` doesn't check WS state and Chrome's
+  // `WebSocket.send()` on a CLOSED socket logs a console error per call
+  // instead of throwing — so an AudioWorklet that's still posting PCM
+  // when the WS drops will spam hundreds of those errors per second.
+  // Gate the worklet on this ref to keep the console usable and to give
+  // the reconnect path a clear signal that send attempts are paused.
+  const geminiOpenRef = useRef(false);
+  // Stable mirror of `status` for callbacks that get registered once
+  // (Gemini ws callbacks) but need to read the latest status to decide
+  // whether a close is "unexpected" (status==='live') or a planned
+  // teardown (status==='ending'/'ended').
+  const statusRef = useRef<Status>('idle');
+  // Cap automatic reconnects per session so a flapping upstream can't
+  // burn through tokens indefinitely. Reset on every Start.
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
   const micStreamRef = useRef<MediaStream | null>(null);
   const outputPublishedRef = useRef(false);
   // Two AudioContexts so each side runs at its native sample rate
@@ -517,6 +535,13 @@ export function TranslateConsole() {
   const recordingOutputUploadUrlRef = useRef<string | null>(null);
   const recordingStartedAtRef = useRef<number | null>(null);
 
+  // Keep statusRef in sync with `status` so once-registered Gemini
+  // callbacks can decide whether a close is unexpected (live → reconnect)
+  // or expected (ending/ended → no-op).
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
   // Heartbeat ticker for elapsed display.
   useEffect(() => {
     if (status !== 'live') {
@@ -566,6 +591,7 @@ export function TranslateConsole() {
       geminiSessionRef.current?.close();
     } catch {}
     geminiSessionRef.current = null;
+    geminiOpenRef.current = false;
     micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     micStreamRef.current = null;
     outputPublishedRef.current = false;
@@ -907,6 +933,99 @@ export function TranslateConsole() {
     [appendStreaming, flushPlayback, playPcmChunk, sourceLang, targetLang],
   );
 
+  // Open a Gemini Live session given an ephemeral token. Used at Start
+  // and from the auto-reconnect path when the server drops the WS while
+  // status is still 'live'. We keep a ref to this callback so the close
+  // handler can recurse without a stale closure capturing an old token.
+  const openGeminiSessionRef = useRef<
+    ((apiKey: string, model: string) => Promise<void>) | null
+  >(null);
+
+  const openGeminiSession = useCallback(
+    async (apiKey: string, model: string) => {
+      const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' });
+      const session = await ai.live.connect({
+        model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          translationConfig: {
+            targetLanguageCode: targetLang,
+            echoTargetLanguage: false,
+          },
+          // Leave realtimeInputConfig at default — see gemini-live.ts
+          // for why NO_INTERRUPTION turned out to be wrong here.
+        },
+        callbacks: {
+          onopen: () => {
+            geminiOpenRef.current = true;
+            console.info('[translate] gemini ws open');
+          },
+          onmessage: (msg: LiveServerMessage) => handleGeminiMessage(msg),
+          onerror: (err) => {
+            console.warn('[translate] gemini ws error', err);
+          },
+          onclose: (ev) => {
+            geminiOpenRef.current = false;
+            console.info('[translate] gemini ws closed', {
+              code: ev?.code,
+              reason: ev?.reason,
+              status: statusRef.current,
+              attempt: reconnectAttemptsRef.current,
+            });
+            // A close during 'ending'/'ended'/'error' is part of the
+            // expected teardown path — don't try to reconnect.
+            if (statusRef.current !== 'live') return;
+            if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+              setError('gemini_session_dropped');
+              setStatus('error');
+              cleanup('gemini_dropped');
+              return;
+            }
+            reconnectAttemptsRef.current += 1;
+            void (async () => {
+              try {
+                const id = sessionIdRef.current;
+                if (!id) throw new Error('no_session_id');
+                const res = await fetch(
+                  `/api/translate/sessions/${id}/ephemeral`,
+                  { method: 'POST' },
+                );
+                if (!res.ok) throw new Error(`ephemeral_${res.status}`);
+                const j = (await res.json()) as {
+                  gemini: {
+                    model: string;
+                    client_secret: { value: string };
+                  };
+                };
+                const fn = openGeminiSessionRef.current;
+                if (!fn) throw new Error('no_open_fn');
+                await fn(j.gemini.client_secret.value, j.gemini.model);
+                console.info('[translate] gemini ws reconnected', {
+                  attempt: reconnectAttemptsRef.current,
+                });
+              } catch (e) {
+                console.warn('[translate] reconnect failed', e);
+                if (statusRef.current === 'live') {
+                  setError('gemini_session_dropped');
+                  setStatus('error');
+                  cleanup('gemini_dropped');
+                }
+              }
+            })();
+          },
+        },
+      });
+      geminiSessionRef.current = session;
+    },
+    [cleanup, handleGeminiMessage, targetLang],
+  );
+
+  useEffect(() => {
+    openGeminiSessionRef.current = openGeminiSession;
+  }, [openGeminiSession]);
+
   const start = useCallback(async () => {
     // Two-layer guard: (1) the status closure may be stale across rapid
     // invocations (React batches the setStatus('starting') below so a
@@ -934,6 +1053,8 @@ export function TranslateConsole() {
     // Reset event sampler too — each session gets a fresh budget so we
     // see the protocol shape from t=0 of every recording.
     sampleCountRef.current.clear();
+    // Auto-reconnect budget — each Start gets a fresh budget.
+    reconnectAttemptsRef.current = 0;
     setError(null);
     setInputLines([]);
     setOutputLines([]);
@@ -1269,50 +1390,26 @@ export function TranslateConsole() {
     // ── Open the Gemini Live WebSocket ──
     // The browser passes the ephemeral auth-token resource name as
     // apiKey; the SDK auto-routes to v1alpha + access_token= for it.
-    // The session config is locked server-side via liveConnectConstraints
-    // (see src/lib/gemini-live.ts), so we re-state it here only because
-    // the SDK still requires `model` + `config` at connect time.
+    // openGeminiSession handles unexpected close → auto-reconnect using
+    // /api/translate/sessions/{id}/ephemeral to mint a fresh token.
     try {
-      const ai = new GoogleGenAI({
-        apiKey: bundle.gemini.client_secret.value,
-        apiVersion: 'v1alpha',
-      });
-      const session = await ai.live.connect({
-        model: bundle.gemini.model,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          translationConfig: {
-            targetLanguageCode: targetLang,
-            echoTargetLanguage: false,
-          },
-          // Leave realtimeInputConfig at default — see gemini-live.ts
-          // for why NO_INTERRUPTION turned out to be wrong here.
-        },
-        callbacks: {
-          onopen: () => {
-            console.info('[translate] gemini ws open');
-          },
-          onmessage: (msg: LiveServerMessage) => handleGeminiMessage(msg),
-          onerror: (err) => {
-            console.warn('[translate] gemini ws error', err);
-          },
-          onclose: (ev) => {
-            console.info('[translate] gemini ws closed', {
-              code: ev?.code,
-              reason: ev?.reason,
-            });
-          },
-        },
-      });
-      geminiSessionRef.current = session;
+      await openGeminiSession(
+        bundle.gemini.client_secret.value,
+        bundle.gemini.model,
+      );
 
       // The worklet has been emitting PCM frames since the moment it was
       // wired; route them to the open session now. Earlier frames were
       // simply dropped (port had no listener), which is fine — Gemini's
       // VAD doesn't care about the pre-connect tail.
+      //
+      // Gate the send on geminiOpenRef: the SDK's sendRealtimeInput
+      // doesn't check WS state, and WebSocket.send() on a CLOSED socket
+      // logs an error per call instead of throwing — without the gate, a
+      // dropped WS produces hundreds of console errors per second until
+      // the user hits Stop.
       workletNode.port.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
+        if (!geminiOpenRef.current) return;
         const session = geminiSessionRef.current;
         if (!session) return;
         try {
@@ -1353,7 +1450,7 @@ export function TranslateConsole() {
     startInFlightRef.current = false;
   }, [
     cleanup,
-    handleGeminiMessage,
+    openGeminiSession,
     inputSource,
     outputAudible,
     recordEnabled,
