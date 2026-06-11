@@ -46,6 +46,54 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Design-system tokens — block hardcoded Tailwind arbitrary values for
+  // properties that already have semantic tokens. Lock in the radius/z-index
+  // sweep (PRs #249, #250) so the next hand on the codebase doesn't quietly
+  // reintroduce `[border-radius:14px]` / `z-[80]` next to the new utilities.
+  //
+  // Scope:
+  // - `[border-radius:{4|14|24|999|9999}px]` → use `rounded-{xs,sm,md,full}`.
+  //   The 4 outlier values (2/3/8/10px, 22 sites) are intentionally allowed
+  //   through — they're queued for a follow-up PR after design decides
+  //   whether to normalize them or extend the scale.
+  // - `z-[\d+]` → use `z-{table-sticky,table-cell-sticky,table-resize,fab,
+  //   modal,toast,overlay}`. Full block — no outliers.
+  // - `text-[Npx]` is NOT blocked yet — the font-size tokens are still
+  //   pending design alignment (B-1).
+  //
+  // We check both bare string literals and template-literal fragments so
+  // `<div className={`z-[80] ${flag}`}>` is caught too.
+  {
+    name: "design-system/no-hardcoded-tokens",
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "Literal[value=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+          message:
+            "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+          message:
+            "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+        },
+        {
+          selector: "Literal[value=/\\bz-\\[\\d+\\]/]",
+          message:
+            "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\bz-\\[\\d+\\]/]",
+          message:
+            "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
+        },
+      ],
+    },
+  },
   // Insights Analyzer — strict design-system enforcement (errored,
   // greenfield). The merged insights surface is preview-gated and has
   // no JSX written yet, so we error here from day 1 rather than letting
