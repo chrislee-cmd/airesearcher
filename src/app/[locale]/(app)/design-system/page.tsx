@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { ChapterHeader } from '@/components/editorial';
+import { Button, type ButtonVariant, type ButtonSize } from '@/components/ui/button';
+import { IconButton, type IconButtonVariant, type IconButtonSize } from '@/components/ui/icon-button';
+import { ChromeButton, type ChromeButtonVariant, type ChromeButtonSize } from '@/components/ui/chrome-button';
 
 export default async function DesignSystemPage({
   params,
@@ -25,6 +28,9 @@ export default async function DesignSystemPage({
       <RadiusTokens />
       <ColorTokens />
       <ZIndexTokens />
+      <ButtonSection />
+      <IconButtonSection />
+      <ChromeButtonSection />
     </div>
   );
 }
@@ -169,6 +175,141 @@ function ZIndexTokens() {
         </table>
       </div>
     </Section>
+  );
+}
+
+function ButtonSection() {
+  const variants: ButtonVariant[] = [
+    'primary',
+    'secondary',
+    'ghost',
+    'destructive',
+    'link',
+    'destructive-link',
+  ];
+  const sizes: ButtonSize[] = ['xs', 'sm', 'md', 'lg', 'cta'];
+  return (
+    <Section
+      title="Button"
+      hint="src/components/ui/button.tsx · 6 variants × 5 sizes · loading / fullWidth / left|rightIcon"
+    >
+      <Subsection label="Variants (size=md)">
+        <div className="flex flex-wrap gap-2">
+          {variants.map((v) => (
+            <Button key={v} variant={v}>
+              {v}
+            </Button>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="Sizes (variant=primary)">
+        <div className="flex flex-wrap items-center gap-2">
+          {sizes.map((s) => (
+            <Button key={s} size={s}>
+              {s}
+            </Button>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="flex flex-wrap gap-2">
+          <Button>Default</Button>
+          <Button disabled>Disabled</Button>
+          <Button loading loadingLabel="Loading…">
+            Submit
+          </Button>
+        </div>
+      </Subsection>
+
+      <Subsection label="fullWidth">
+        <Button fullWidth>fullWidth</Button>
+      </Subsection>
+    </Section>
+  );
+}
+
+function IconButtonSection() {
+  const variants: IconButtonVariant[] = ['ghost', 'ghost-danger', 'ghost-brand', 'bordered'];
+  const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
+  return (
+    <Section
+      title="IconButton"
+      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · variants for hover treatment · sizes are shape"
+    >
+      <Subsection label="Variants (size=md)">
+        <div className="flex flex-wrap items-center gap-3">
+          {variants.map((v) => (
+            <IconButton key={v} variant={v} size="md" aria-label={v}>
+              <CloseIcon />
+            </IconButton>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="Sizes (variant=bordered)">
+        <div className="flex flex-wrap items-center gap-3">
+          {sizes.map((s) => (
+            <IconButton key={s} variant="bordered" size={s} aria-label={s}>
+              <CloseIcon />
+            </IconButton>
+          ))}
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function ChromeButtonSection() {
+  const variants: ChromeButtonVariant[] = ['default', 'mute', 'primary'];
+  const sizes: ChromeButtonSize[] = ['xs', 'sm', 'md', 'lg'];
+  return (
+    <Section
+      title="ChromeButton"
+      hint="src/components/ui/chrome-button.tsx · 4px radius chrome (별도로 squared) · 보조 액션용. uppercase prop 으로 caps treatment."
+    >
+      <Subsection label="Variants (size=md)">
+        <div className="flex flex-wrap gap-2">
+          {variants.map((v) => (
+            <ChromeButton key={v} variant={v}>
+              {v}
+            </ChromeButton>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="Sizes (variant=default)">
+        <div className="flex flex-wrap items-center gap-2">
+          {sizes.map((s) => (
+            <ChromeButton key={s} size={s}>
+              {s}
+            </ChromeButton>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="uppercase=true">
+        <ChromeButton uppercase>Create folder</ChromeButton>
+      </Subsection>
+    </Section>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Subsection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-5 last:mb-0">
+      <div className="eyebrow-mute mb-2">{label}</div>
+      {children}
+    </div>
   );
 }
 
