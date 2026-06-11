@@ -461,30 +461,35 @@ export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
               </div>
               <ul className="divide-y divide-line-soft border border-line bg-paper rounded-sm">
                 {pastJobs.map((past) => (
-                  <li key={past.id}>
-                    <Button
-                      variant="link"
-                      size="md"
-                      className="!flex w-full items-center justify-between gap-4 px-4 py-3 text-left !no-underline"
-                      onClick={() => loadPastJob(past)}
-                    >
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-2">
-                        {past.title ?? formatDate(past.created_at)}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-3 text-[11.5px] tabular-nums text-mute-soft">
-                        <span>파일 {past.file_count}</span>
-                        <span>·</span>
-                        <span>참여자 {past.participant_count}</span>
-                        <span>·</span>
-                        <span>인용구 {past.quote_count}</span>
-                        {past.title && (
-                          <>
-                            <span>·</span>
-                            <span>{formatDate(past.created_at)}</span>
-                          </>
-                        )}
-                      </span>
-                    </Button>
+                  <li
+                    key={past.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => loadPastJob(past)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        loadPastJob(past);
+                      }
+                    }}
+                    className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 transition-colors duration-[120ms] hover:bg-paper-soft focus:bg-paper-soft focus:outline-none"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-ink-2">
+                      {past.title ?? formatDate(past.created_at)}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-3 text-[11.5px] tabular-nums text-mute-soft">
+                      <span>파일 {past.file_count}</span>
+                      <span>·</span>
+                      <span>참여자 {past.participant_count}</span>
+                      <span>·</span>
+                      <span>인용구 {past.quote_count}</span>
+                      {past.title && (
+                        <>
+                          <span>·</span>
+                          <span>{formatDate(past.created_at)}</span>
+                        </>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
