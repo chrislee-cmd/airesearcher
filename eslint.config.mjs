@@ -13,53 +13,58 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
-  // Design-system boundary: deter new native form controls outside ui/.
-  // Promote `warn` → `error` after the top-5 highest-density pages
-  // (workspace-panel / interview-analyzer / recruiting-brief / translate-
-  // console / scheduler-attendees) finish migrating off native <button>
-  // / <input> / <textarea>.
+  // Design-system enforcement — split into TWO rules so native controls
+  // (warn) and tokenized arbitrary values (error) can carry different
+  // severities. Earlier this lived in two `no-restricted-syntax` scopes;
+  // ESLint flat config silently overwrote one with the other (same rule
+  // key), and the native-control check went dark. We use `react/forbid-
+  // elements` for native control detection so the two rules don't share
+  // a key anymore.
+  //
+  // Native form controls (warn) — surface accidental native usage in PR
+  // diffs but don't block CI yet (131 violations baseline; per-page
+  // migration follows). Promote to error once baseline reaches 0.
   {
     name: "design-system/no-native-controls",
     files: ["src/**/*.{ts,tsx}"],
     ignores: [
-      // Primitives themselves naturally render the native elements.
+      // Primitives render the native elements themselves.
       "src/components/ui/**",
+      // Intentional exemptions: marketing static page + scheduler nav chrome
+      // for which no current Button variant is a clean fit.
+      "src/components/landing/**",
+      "src/components/scheduler/**",
     ],
     rules: {
-      "no-restricted-syntax": [
+      "react/forbid-elements": [
         "warn",
         {
-          selector: 'JSXOpeningElement[name.name="button"]',
-          message:
-            "Use <Button> from @/components/ui/button instead of native <button>. (variant=link/destructive-link cover text-only patterns; size=cta covers pill CTAs. For icon-only triggers use <IconButton>. For 4px-radius chrome use <ChromeButton>.)",
-        },
-        {
-          selector: 'JSXOpeningElement[name.name="input"]',
-          message:
-            "Use <Input> from @/components/ui/input instead of native <input>. (For type=checkbox use <Checkbox>. For 4px-radius chrome inputs use <ChromeInput> from @/components/ui/chrome-input.)",
-        },
-        {
-          selector: 'JSXOpeningElement[name.name="textarea"]',
-          message:
-            "Use <Textarea> from @/components/ui/textarea instead of native <textarea>.",
+          forbid: [
+            {
+              element: "button",
+              message:
+                "Use <Button> from @/components/ui/button instead of native <button>. (variant=link/destructive-link cover text-only patterns; size=cta covers pill CTAs. For icon-only triggers use <IconButton>. For 4px-radius chrome use <ChromeButton>.)",
+            },
+            {
+              element: "input",
+              message:
+                "Use <Input> from @/components/ui/input instead of native <input>. (For type=checkbox use <Checkbox>. For 4px-radius chrome inputs use <ChromeInput> from @/components/ui/chrome-input.)",
+            },
+            {
+              element: "textarea",
+              message:
+                "Use <Textarea> from @/components/ui/textarea instead of native <textarea>.",
+            },
+          ],
         },
       ],
     },
   },
-  // Design-system tokens — block hardcoded Tailwind arbitrary values for
-  // properties that already have semantic tokens. Lock in the radius/z-index
-  // sweep (PRs #249, #250) so the next hand on the codebase doesn't quietly
-  // reintroduce `[border-radius:14px]` / `z-[80]` next to the new utilities.
-  //
-  // Scope:
-  // - `[border-radius:{4|14|24|999|9999}px]` → use `rounded-{xs,sm,md,full}`.
-  //   The 4 outlier values (2/3/8/10px, 22 sites) are intentionally allowed
-  //   through — they're queued for a follow-up PR after design decides
-  //   whether to normalize them or extend the scale.
-  // - `z-[\d+]` → use `z-{table-sticky,table-cell-sticky,table-resize,fab,
-  //   modal,toast,overlay}`. Full block — no outliers.
-  // - `text-[Npx]` is NOT blocked yet — the font-size tokens are still
-  //   pending design alignment (B-1).
+  // Tokenized arbitrary values (error) — locked in by PRs #249 (z-index)
+  // and #250 (radius). The 4 outlier radius values (2/3/8/10px, 22 sites)
+  // are intentionally allowed through — queued for a follow-up PR after
+  // design decides whether to normalize or extend the scale. text-[Npx]
+  // is NOT blocked yet — font-size tokens pending design alignment (B-1).
   //
   // We check both bare string literals and template-literal fragments so
   // `<div className={`z-[80] ${flag}`}>` is caught too.
