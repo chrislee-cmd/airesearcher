@@ -302,6 +302,16 @@ const LANGS: { value: string; label: string }[] = [
 // and treat everything between boundaries as the rolling in-flight line.
 const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 
+// Runaway cap. The Gemini 3.5 Live Translate preview occasionally hangs
+// in a tight loop where the model emits the same comma-separated phrase
+// (e.g. "she wants to, she wants to visit her, …") without ever sending
+// SENTENCE_END punctuation, `finished: true`, or `turnComplete: true`.
+// With no commit signal the partial buffer grows without bound and the
+// prompter visibly accumulates the repetition. Cap the partial here and
+// force a commit at the last whitespace inside the cap so the dedup
+// machinery can suppress the repeats on subsequent runs.
+const MAX_PARTIAL_CHARS = 160;
+
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -840,6 +850,31 @@ export function TranslateConsole() {
         } else {
           partial.current.delete('current');
         }
+      } else if (next.length > MAX_PARTIAL_CHARS) {
+        // Runaway protection — see MAX_PARTIAL_CHARS comment. Cut at the
+        // last whitespace within the cap when one exists (English/spaced
+        // text); otherwise just cut at the cap boundary (CJK without
+        // spaces). The committed prefix goes through the same dedup
+        // path as a SENTENCE_END commit, so a model stuck in a tight
+        // loop only renders one copy of the repeated phrase.
+        const breakAt = next.lastIndexOf(' ', MAX_PARTIAL_CHARS);
+        const cut = breakAt > 0 ? breakAt : MAX_PARTIAL_CHARS;
+        const finalText = next.slice(0, cut).trim();
+        const remainder = next.slice(cut).trim();
+        partial.current.set('current', { id: current.id, text: finalText });
+        forceFlushPartial(kind, lang);
+        if (remainder) {
+          const nextId = `${kind}-${wall}`;
+          partial.current.set('current', { id: nextId, text: remainder });
+          const partialLine: CaptionLine = {
+            id: nextId,
+            text: remainder,
+            final: false,
+            ts: wall,
+          };
+          pushLine(kind, partialLine);
+          broadcastCaption(kind, partialLine, lang);
+        }
       } else {
         partial.current.set('current', { id: current.id, text: next });
         const partialLine: CaptionLine = { id: current.id, text: next, final: false, ts: wall };
@@ -847,7 +882,7 @@ export function TranslateConsole() {
         broadcastCaption(kind, partialLine, lang);
       }
     },
-    [broadcastCaption, persistMessage, pushLine],
+    [broadcastCaption, forceFlushPartial, persistMessage, pushLine],
   );
 
   // Translate a Gemini Transcription event into our appendStreaming
