@@ -57,6 +57,20 @@ type JobSnapshot = {
   failure_reason: string | null;
 };
 
+// Server-fetched list of past ready jobs the org has access to. Shape
+// is intentionally close to JobSnapshot — we hydrate the ready state
+// directly from this row on click without a second round trip.
+export type PastJob = {
+  id: string;
+  title: string | null;
+  status: 'ready';
+  file_count: number;
+  participant_count: number;
+  quote_count: number;
+  failure_reason: string | null;
+  created_at: string;
+};
+
 const ACTIVE_JOB_KEY = 'insights_analyzer:active_job_id';
 
 function formatBytes(n: number): string {
@@ -65,7 +79,17 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function InsightsAnalyzer() {
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day} ${hh}:${mm}`;
+}
+
+export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
   const [files, setFiles] = useState<FileRow[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<JobSnapshot | null>(null);
@@ -310,6 +334,29 @@ export function InsightsAnalyzer() {
     } catch {}
   }
 
+  // Open an existing ready job from the past-jobs list. Counts come
+  // straight from the server-rendered row — no extra round trip — and
+  // the ready-state UI (summary + SearchPanel) renders without any
+  // network fetch beyond what SearchPanel does on user input.
+  function loadPastJob(past: PastJob) {
+    setFiles([]);
+    setError(null);
+    setLiveQuoteCount(null);
+    setJobId(past.id);
+    setJob({
+      id: past.id,
+      status: 'ready',
+      quote_count: past.quote_count,
+      participant_count: past.participant_count,
+      file_count: past.file_count,
+      failure_reason: past.failure_reason,
+    });
+    setPhase('ready');
+    try {
+      window.localStorage.setItem(ACTIVE_JOB_KEY, past.id);
+    } catch {}
+  }
+
   const succeededCount = files.filter((r) => r.phase === 'done').length;
   const failedCount = files.filter((r) => r.phase === 'failed').length;
 
@@ -403,6 +450,46 @@ export function InsightsAnalyzer() {
               분석 시작
             </Button>
           </div>
+
+          {pastJobs.length > 0 && (
+            <div className="mt-10">
+              <div className="mb-3 flex items-baseline justify-between">
+                <div className="eyebrow-mute">이전 분석</div>
+                <div className="text-[11px] text-mute-soft tabular-nums">
+                  최근 {pastJobs.length}개
+                </div>
+              </div>
+              <ul className="divide-y divide-line-soft border border-line bg-paper rounded-sm">
+                {pastJobs.map((past) => (
+                  <li key={past.id}>
+                    <Button
+                      variant="link"
+                      size="md"
+                      className="!flex w-full items-center justify-between gap-4 px-4 py-3 text-left !no-underline"
+                      onClick={() => loadPastJob(past)}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-2">
+                        {past.title ?? formatDate(past.created_at)}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-3 text-[11.5px] tabular-nums text-mute-soft">
+                        <span>파일 {past.file_count}</span>
+                        <span>·</span>
+                        <span>참여자 {past.participant_count}</span>
+                        <span>·</span>
+                        <span>인용구 {past.quote_count}</span>
+                        {past.title && (
+                          <>
+                            <span>·</span>
+                            <span>{formatDate(past.created_at)}</span>
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
