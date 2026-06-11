@@ -11,6 +11,9 @@ import { ChromeInput } from '@/components/ui/chrome-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { ModalDemo, FileDropZoneDemo } from './demos';
 
 export default async function DesignSystemPage({
   params,
@@ -41,6 +44,10 @@ export default async function DesignSystemPage({
       <TextareaSection />
       <SelectSection />
       <CheckboxSection />
+      <ModalSection />
+      <SkeletonSection />
+      <LabelSection />
+      <FileDropZoneSection />
     </div>
   );
 }
@@ -469,6 +476,86 @@ function CheckboxSection() {
             <span>Disabled (checked)</span>
           </label>
         </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function ModalSection() {
+  return (
+    <Section
+      title="Modal"
+      hint="src/components/ui/modal.tsx · 3 sizes (sm/md/lg) · Esc 닫기 · backdrop 클릭 닫기 · body scroll lock · focus restore · z-modal(50)"
+    >
+      <Subsection label="Sizes (interactive)">
+        <ModalDemo />
+      </Subsection>
+    </Section>
+  );
+}
+
+function SkeletonSection() {
+  return (
+    <Section
+      title="Skeleton"
+      hint="src/components/ui/skeleton.tsx · 3 variants (text/block/circle) · animate-pulse bg-line-soft"
+    >
+      <Subsection label="Variants">
+        <div className="grid grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <div className="eyebrow-mute">variant=text</div>
+            <Skeleton variant="text" />
+            <Skeleton variant="text" width="80%" />
+            <Skeleton variant="text" width="60%" />
+          </div>
+          <div className="space-y-2">
+            <div className="eyebrow-mute">variant=block</div>
+            <Skeleton variant="block" height={80} />
+          </div>
+          <div className="space-y-2">
+            <div className="eyebrow-mute">variant=circle</div>
+            <Skeleton variant="circle" />
+            <Skeleton variant="circle" width={48} height={48} />
+            <Skeleton variant="circle" width={64} height={64} />
+          </div>
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function LabelSection() {
+  return (
+    <Section
+      title="Label"
+      hint="src/components/ui/label.tsx · UPPERCASE / tracked / text-[11px] field label · Input/Textarea/Select 가 내부적으로 사용 · 직접 import 는 드물어야 함"
+    >
+      <Subsection label="Default / required">
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="lbl-demo-1">Default</Label>
+            <Input id="lbl-demo-1" placeholder="value" />
+          </div>
+          <div>
+            <Label htmlFor="lbl-demo-2" required>
+              Required
+            </Label>
+            <Input id="lbl-demo-2" required placeholder="value" />
+          </div>
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function FileDropZoneSection() {
+  return (
+    <Section
+      title="FileDropZone"
+      hint="src/components/ui/file-drop-zone.tsx · drag·drop + 클릭 picker · accept / multiple / maxSizeBytes / disabled · 워크스페이스 artifact drop 지원 (onDropRaw)"
+    >
+      <Subsection label="Default (drag or click)">
+        <FileDropZoneDemo />
       </Subsection>
     </Section>
   );
