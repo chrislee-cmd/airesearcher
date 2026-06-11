@@ -30,8 +30,10 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
+  EndSensitivity,
   GoogleGenAI,
   Modality,
+  StartSensitivity,
   type LiveServerMessage,
   type Session as GeminiSession,
 } from '@google/genai';
@@ -1117,8 +1119,19 @@ export function TranslateConsole() {
             targetLanguageCode: targetLang,
             echoTargetLanguage: false,
           },
-          // Leave realtimeInputConfig at default — see gemini-live.ts
-          // for why NO_INTERRUPTION turned out to be wrong here.
+          // VAD tuning — see gemini-live.ts for the rationale (default
+          // END_SENSITIVITY_LOW lets the model loop on continuous tab
+          // audio). Both the server-side liveConnectConstraints and the
+          // client connect config need this, since the SDK passes the
+          // client config through on every reconnect.
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              startOfSpeechSensitivity:
+                StartSensitivity.START_SENSITIVITY_HIGH,
+              endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
+              silenceDurationMs: 600,
+            },
+          },
         },
         callbacks: {
           onopen: () => {
