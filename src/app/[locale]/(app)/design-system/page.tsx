@@ -6,6 +6,11 @@ import { ChapterHeader } from '@/components/editorial';
 import { Button, type ButtonVariant, type ButtonSize } from '@/components/ui/button';
 import { IconButton, type IconButtonVariant, type IconButtonSize } from '@/components/ui/icon-button';
 import { ChromeButton, type ChromeButtonVariant, type ChromeButtonSize } from '@/components/ui/chrome-button';
+import { Input } from '@/components/ui/input';
+import { ChromeInput } from '@/components/ui/chrome-input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default async function DesignSystemPage({
   params,
@@ -31,6 +36,11 @@ export default async function DesignSystemPage({
       <ButtonSection />
       <IconButtonSection />
       <ChromeButtonSection />
+      <InputSection />
+      <ChromeInputSection />
+      <TextareaSection />
+      <SelectSection />
+      <CheckboxSection />
     </div>
   );
 }
@@ -301,6 +311,166 @@ function CloseIcon() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function InputSection() {
+  return (
+    <Section
+      title="Input"
+      hint="src/components/ui/input.tsx · label / helper / error / size (sm|md) / leftSlot / rightSlot / fullWidth · 14px radius capsule"
+    >
+      <Subsection label="Sizes (default + label + helper)">
+        <div className="grid grid-cols-2 gap-6">
+          <Input size="sm" label="size=sm" helper="px-2.5 py-1.5 text-[12px]" placeholder="value" />
+          <Input size="md" label="size=md" helper="px-3 py-2 text-[13px] (default)" placeholder="value" />
+        </div>
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="grid grid-cols-2 gap-6">
+          <Input label="Default" placeholder="value" />
+          <Input label="Disabled" disabled placeholder="value" />
+          <Input label="Error" error="이메일 형식이 올바르지 않습니다." defaultValue="bad" />
+          <Input label="Helper text" helper="회사 도메인 권장" placeholder="email@…" />
+        </div>
+      </Subsection>
+
+      <Subsection label="leftSlot · rightSlot · required">
+        <div className="grid grid-cols-2 gap-6">
+          <Input label="leftSlot" leftSlot={<span aria-hidden>$</span>} placeholder="0.00" />
+          <Input label="rightSlot" rightSlot={<span aria-hidden>%</span>} placeholder="0" />
+          <Input label="required" required placeholder="value" />
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function ChromeInputSection() {
+  return (
+    <Section
+      title="ChromeInput"
+      hint="src/components/ui/chrome-input.tsx · 4px radius (chrome) · in-row name/rename/URL · label/error 없음 — 인라인 사용 의도"
+    >
+      <Subsection label="Sizes">
+        <div className="flex flex-wrap items-center gap-2">
+          <ChromeInput size="xs" placeholder="size=xs" />
+          <ChromeInput size="sm" placeholder="size=sm (default)" />
+        </div>
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="flex flex-wrap items-center gap-2">
+          <ChromeInput placeholder="default" />
+          <ChromeInput disabled placeholder="disabled" />
+          <ChromeInput readOnly defaultValue="readonly value" />
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function TextareaSection() {
+  return (
+    <Section
+      title="Textarea"
+      hint="src/components/ui/textarea.tsx · Input 과 동일한 label/helper/error/fullWidth contract · rows prop (기본 4) · resize-y"
+    >
+      <Subsection label="Default + label + helper">
+        <Textarea label="설명" helper="자유 형식. 줄바꿈 가능." placeholder="여기에 입력…" />
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="grid grid-cols-2 gap-6">
+          <Textarea label="Disabled" disabled placeholder="value" rows={3} />
+          <Textarea label="Error" error="최소 10자 이상 입력하세요." defaultValue="short" rows={3} />
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function SelectSection() {
+  const options = [
+    { value: 'admin', label: '관리자 (admin)' },
+    { value: 'member', label: '멤버 (member)' },
+    { value: 'viewer', label: '뷰어 (viewer)' },
+  ];
+  return (
+    <Section
+      title="Select"
+      hint="src/components/ui/select.tsx · native <select> 위에 appearance-none + 자체 chevron · Input 과 같은 contract"
+    >
+      <Subsection label="Sizes (options prop + placeholder)">
+        <div className="grid grid-cols-2 gap-6">
+          <Select
+            size="sm"
+            label="size=sm"
+            placeholder="역할 선택…"
+            options={options}
+          />
+          <Select
+            size="md"
+            label="size=md (default)"
+            placeholder="역할 선택…"
+            options={options}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="grid grid-cols-2 gap-6">
+          <Select label="Default" defaultValue="member" options={options} />
+          <Select label="Disabled" disabled defaultValue="member" options={options} />
+          <Select label="Error" error="역할을 선택하세요." options={options} />
+          <Select label="Helper" helper="조직 전체에 적용됩니다." options={options} />
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+function CheckboxSection() {
+  return (
+    <Section
+      title="Checkbox"
+      hint="src/components/ui/checkbox.tsx · accent-amore 자동 적용 · 시각만 — 텍스트는 <label> wrapper 로 직접 붙임"
+    >
+      <Subsection label="Sizes">
+        <div className="flex items-center gap-6">
+          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+            <Checkbox size="sm" defaultChecked />
+            <span>size=sm (default)</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+            <Checkbox size="md" defaultChecked />
+            <span>size=md</span>
+          </label>
+        </div>
+      </Subsection>
+
+      <Subsection label="States">
+        <div className="flex items-center gap-6">
+          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+            <Checkbox />
+            <span>Default (off)</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+            <Checkbox defaultChecked />
+            <span>Checked</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-[12px] text-mute">
+            <Checkbox disabled />
+            <span>Disabled (off)</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-[12px] text-mute">
+            <Checkbox disabled defaultChecked />
+            <span>Disabled (checked)</span>
+          </label>
+        </div>
+      </Subsection>
+    </Section>
   );
 }
 
