@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -98,6 +99,76 @@ export function FileDropZoneDemo() {
       ) : (
         <p className="text-[11px] text-mute-soft">
           파일을 드롭하면 여기에 목록이 표시됩니다 (실제 업로드 없음 — 데모용).
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function DropdownMenuDemo() {
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const items: DropdownItem[] = [
+    { key: 'rename', label: '이름 변경', onSelect: () => setPicked('rename') },
+    { key: 'duplicate', label: '복제', onSelect: () => setPicked('duplicate') },
+    { key: 'move', label: '폴더 이동', hint: '⌘M', onSelect: () => setPicked('move') },
+    { key: 'archive', label: '아카이브', disabled: true, onSelect: () => setPicked('archive') },
+    { key: 'delete', label: '삭제', onSelect: () => setPicked('delete') },
+  ];
+
+  const itemsWithLabel: DropdownItem[] = [
+    { key: 'docx', label: 'Microsoft Word', hint: '.docx', onSelect: () => setPicked('docx') },
+    { key: 'pdf', label: 'PDF', hint: '.pdf', onSelect: () => setPicked('pdf') },
+    { key: 'md', label: 'Markdown', hint: '.md', onSelect: () => setPicked('md') },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <DropdownMenu
+          items={items}
+          trigger={({ open, onClick, ...aria }) => (
+            <Button {...aria} onClick={onClick} variant="ghost" size="sm">
+              align=start {open ? '▴' : '▾'}
+            </Button>
+          )}
+        />
+        <DropdownMenu
+          align="end"
+          items={items}
+          trigger={({ open, onClick, ...aria }) => (
+            <Button {...aria} onClick={onClick} variant="ghost" size="sm">
+              align=end {open ? '▴' : '▾'}
+            </Button>
+          )}
+        />
+        <DropdownMenu
+          side="top"
+          items={items}
+          trigger={({ open, onClick, ...aria }) => (
+            <Button {...aria} onClick={onClick} variant="ghost" size="sm">
+              side=top {open ? '▾' : '▴'}
+            </Button>
+          )}
+        />
+        <DropdownMenu
+          label="Export as"
+          items={itemsWithLabel}
+          minWidth={180}
+          trigger={({ open, onClick, ...aria }) => (
+            <Button {...aria} onClick={onClick} variant="secondary" size="sm">
+              with label {open ? '▴' : '▾'}
+            </Button>
+          )}
+        />
+      </div>
+      {picked ? (
+        <p className="text-[11px] text-mute">
+          마지막 선택: <code className="font-mono text-ink-2">{picked}</code>
+        </p>
+      ) : (
+        <p className="text-[11px] text-mute-soft">
+          항목 클릭 또는 키보드 (↓↑ / Enter / Esc) 로 선택. 메뉴 밖 클릭 시 닫힘.
         </p>
       )}
     </div>
