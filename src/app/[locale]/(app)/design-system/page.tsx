@@ -13,7 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { ModalDemo, FileDropZoneDemo } from './demos';
+import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo } from './demos';
 
 export default async function DesignSystemPage({
   params,
@@ -48,6 +48,7 @@ export default async function DesignSystemPage({
       <SkeletonSection />
       <LabelSection />
       <FileDropZoneSection />
+      <MenuSection />
     </div>
   );
 }
@@ -556,6 +557,34 @@ function FileDropZoneSection() {
     >
       <Subsection label="Default (drag or click)">
         <FileDropZoneDemo />
+      </Subsection>
+    </Section>
+  );
+}
+
+function MenuSection() {
+  return (
+    <Section
+      title="DropdownMenu"
+      hint="src/components/ui/dropdown-menu.tsx · headless menu primitive (render-prop trigger) · 키보드 ↑↓ Enter Esc · click-outside 자동 닫기 · align (start|end) · side (top|bottom) · hint 가능 · optional label"
+    >
+      <Subsection label="Interactive (align / side / label)">
+        <DropdownMenuDemo />
+      </Subsection>
+      <Subsection label="Compositions in the codebase">
+        <div className="text-[12px] text-mute space-y-1.5">
+          <p>
+            DropdownMenu 위에 도메인 wrapper 두 개가 있습니다 — 직접 dropdown 코드를 작성하지 말고 가능하면 wrapper 사용:
+          </p>
+          <ul className="ml-4 list-disc space-y-0.5">
+            <li>
+              <code className="font-mono text-ink-2">DownloadMenu</code> (<code className="font-mono">ui/download-menu.tsx</code>) — ExportFormat 별 url / blob / action 항목. 1개일 때는 plain Button 으로 fallback.
+            </li>
+            <li>
+              <code className="font-mono text-ink-2">ShareMenu</code> (<code className="font-mono">ui/share-menu.tsx</code>) — Google Docs / Sheets / Notion 전송. 인증 끊긴 경우 connect URL 로 redirect, 토스트로 결과 알림.
+            </li>
+          </ul>
+        </div>
       </Subsection>
     </Section>
   );
