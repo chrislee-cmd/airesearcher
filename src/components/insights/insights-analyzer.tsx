@@ -536,6 +536,11 @@ export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
 
       {phase === 'ready' && job && (
         <div className="mt-8 space-y-6">
+          <div>
+            <Button variant="link" size="sm" onClick={onReset}>
+              ← 이전 분석 목록
+            </Button>
+          </div>
           <div className="border border-line bg-paper p-5 rounded-sm">
             <div className="text-[12.5px] font-medium text-ink-2">
               분석 완료
