@@ -456,7 +456,17 @@ export function TranslateConsole() {
   const audioStreamEndTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
-  const AUDIO_STREAM_END_INTERVAL_MS = 4000;
+  // Worklet send is suppressed until this wall-clock (ms). The previous
+  // pass at periodic `audioStreamEnd` (PR #267) didn't break the ASR
+  // loop because the AudioWorklet kept posting PCM frames the instant
+  // after audioStreamEnd, so the server never observed a real silence
+  // gap and treated the end marker as a no-op. Now we hard-pause worklet
+  // sends for a short window every time we emit audioStreamEnd, which
+  // gives the server enough silence to actually commit the turn before
+  // a new audio frame reopens the stream.
+  const workletPauseUntilRef = useRef<number>(0);
+  const AUDIO_STREAM_END_INTERVAL_MS = 2000;
+  const AUDIO_STREAM_END_PAUSE_MS = 500;
   // Stable mirror of `status` for callbacks that get registered once
   // (Gemini ws callbacks) but need to read the latest status to decide
   // whether a close is "unexpected" (status==='live') or a planned
@@ -1223,7 +1233,14 @@ export function TranslateConsole() {
               if (!geminiOpenRef.current || !s) return;
               try {
                 s.sendRealtimeInput({ audioStreamEnd: true });
-                console.info('[translate] audioStreamEnd sent');
+                // Pause worklet PCM sends briefly so the server actually
+                // observes silence and commits the turn — see
+                // workletPauseUntilRef comment.
+                workletPauseUntilRef.current =
+                  Date.now() + AUDIO_STREAM_END_PAUSE_MS;
+                console.info('[translate] audioStreamEnd sent', {
+                  pause_ms: AUDIO_STREAM_END_PAUSE_MS,
+                });
               } catch (err) {
                 console.warn('[translate] audioStreamEnd failed', err);
               }
@@ -1681,6 +1698,9 @@ export function TranslateConsole() {
       // the user hits Stop.
       workletNode.port.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
         if (!geminiOpenRef.current) return;
+        // Pause window after audioStreamEnd — drop frames so the
+        // server actually observes silence. See workletPauseUntilRef.
+        if (Date.now() < workletPauseUntilRef.current) return;
         const session = geminiSessionRef.current;
         if (!session) return;
         try {
