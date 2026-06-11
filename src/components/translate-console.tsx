@@ -481,23 +481,6 @@ export function TranslateConsole() {
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
 
-  // Last full transcript text seen per kind. Gemini Live emits
-  // input/outputTranscription text *cumulatively* — each event carries
-  // the entire utterance so far. Treating that as an incremental delta
-  // (the OpenAI pattern this console was originally built for) grows
-  // the partial buffer N² and produces the "same phrase repeating
-  // forever" runaway. We compare each incoming text to the cumulative
-  // we last saw and only feed the genuine tail as a delta; if the new
-  // text doesn't extend the previous (revision, new utterance, fresh
-  // turn), we flush the partial and restart. `finished: true` on the
-  // Transcription or `turnComplete: true` on serverContent both reset.
-  const lastCumulativeRef = useRef<Map<'input' | 'output', string>>(
-    new Map([
-      ['input', ''],
-      ['output', ''],
-    ]),
-  );
-
   // Synchronous re-entry guard for start(). The status closure in start()
   // can be stale across rapid invocations (the captured `status` was
   // 'idle' even after setStatus('starting') was queued but not yet
@@ -679,8 +662,6 @@ export function TranslateConsole() {
     }
     partialInputRef.current.clear();
     partialOutputRef.current.clear();
-    lastCumulativeRef.current.set('input', '');
-    lastCumulativeRef.current.set('output', '');
   }, []);
 
   const pushLine = useCallback(
@@ -869,20 +850,24 @@ export function TranslateConsole() {
     [broadcastCaption, persistMessage, pushLine],
   );
 
-  // Translate a Gemini Transcription event into an incremental delta our
-  // existing appendStreaming pipeline expects, regardless of whether
-  // Gemini's `text` field is cumulative or genuinely incremental:
+  // Translate a Gemini Transcription event into our appendStreaming
+  // pipeline, handling both possible protocol shapes by comparing
+  // against the partial buffer itself (not a separate cumulative ref):
   //
-  //   - new text starts with the cumulative we last saw  → tail is delta
-  //   - new text equals the cumulative we last saw       → no-op (duplicate)
-  //   - new text diverges (revision / new utterance)     → flush partial
-  //                                                        as final, treat
-  //                                                        new text as a
-  //                                                        fresh delta
+  //   - text === current partial          → duplicate emit, no-op
+  //   - text starts with current partial  → cumulative tail; delta is the
+  //                                          newly added suffix
+  //   - text doesn't start with partial   → incremental delta or fresh
+  //                                          turn; append the whole text
   //
-  // The `finished` flag arrives on the Transcription itself; when true
-  // we flush the partial and reset the cumulative ref so the next
-  // utterance starts clean.
+  // Both paths converge on the same partial buffer state, so cumulative
+  // and incremental protocols produce the same result without us having
+  // to detect which one Gemini is using on any given session. The
+  // `finished` flag on the Transcription and `turnComplete` on
+  // serverContent stay authoritative — they flush the partial as final
+  // so utterances commit even when no SENTENCE_END character ever
+  // arrives (Japanese without trailing space after 。, or a runaway
+  // comma-only generation).
   const ingestTranscript = useCallback(
     (
       kind: 'input' | 'output',
@@ -891,26 +876,22 @@ export function TranslateConsole() {
       lang: string,
     ) => {
       if (text) {
-        const prev = lastCumulativeRef.current.get(kind) ?? '';
-        if (text === prev) {
-          // duplicate cumulative emit — server resent same payload
-        } else if (prev.length > 0 && text.startsWith(prev)) {
-          const delta = text.slice(prev.length);
+        const partial = kind === 'input' ? partialInputRef : partialOutputRef;
+        const currentPartial = partial.current.get('current')?.text ?? '';
+        if (text === currentPartial) {
+          // duplicate emit of current partial state
+        } else if (
+          currentPartial.length > 0 &&
+          text.startsWith(currentPartial)
+        ) {
+          const delta = text.slice(currentPartial.length);
           if (delta) appendStreaming(kind, delta, lang);
-        } else if (prev.length === 0) {
-          appendStreaming(kind, text, lang);
         } else {
-          // Diverged from prior cumulative — revision or new utterance
-          // arrived without an explicit `finished` boundary. Commit
-          // whatever we had so it can't get further appended to.
-          forceFlushPartial(kind, lang);
           appendStreaming(kind, text, lang);
         }
-        lastCumulativeRef.current.set(kind, text);
       }
       if (finished) {
         forceFlushPartial(kind, lang);
-        lastCumulativeRef.current.set(kind, '');
       }
     },
     [appendStreaming, forceFlushPartial],
@@ -1057,8 +1038,6 @@ export function TranslateConsole() {
       if (sc.turnComplete) {
         forceFlushPartial('input', sourceLang);
         forceFlushPartial('output', targetLang);
-        lastCumulativeRef.current.set('input', '');
-        lastCumulativeRef.current.set('output', '');
       }
       // `sc.interrupted` from the server means the model abandoned the
       // current turn (typically because new user audio barged in, or
@@ -1070,8 +1049,6 @@ export function TranslateConsole() {
         flushPlayback();
         forceFlushPartial('input', sourceLang);
         forceFlushPartial('output', targetLang);
-        lastCumulativeRef.current.set('input', '');
-        lastCumulativeRef.current.set('output', '');
       }
     },
     [
@@ -1206,9 +1183,6 @@ export function TranslateConsole() {
     sampleCountRef.current.clear();
     // Auto-reconnect budget — each Start gets a fresh budget.
     reconnectAttemptsRef.current = 0;
-    // Cumulative transcript trackers — same lifetime as a session.
-    lastCumulativeRef.current.set('input', '');
-    lastCumulativeRef.current.set('output', '');
     setError(null);
     setInputLines([]);
     setOutputLines([]);
