@@ -16,7 +16,7 @@
 //
 // Reference: https://ai.google.dev/gemini-api/docs/live-api/live-translate
 
-import { ActivityHandling, GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 
 const DEFAULT_LIFETIME_MS = 30 * 60 * 1000; // 30 min — Gemini default
 const DEFAULT_OPEN_WINDOW_MS = 60 * 1000;   // 60 sec to open the WS
@@ -70,12 +70,13 @@ export async function issueLiveTranslateSession(opts: {
               // want to parrot back source-side echo.
               echoTargetLanguage: false,
             },
-            // Continuous simultaneous-interpretation behaviour: don't let
-            // the model's own output get interrupted by incoming mic audio,
-            // and let the server VAD draw transcription boundaries.
-            realtimeInputConfig: {
-              activityHandling: ActivityHandling.NO_INTERRUPTION,
-            },
+            // We leave realtimeInputConfig at the default
+            // (`START_OF_ACTIVITY_INTERRUPTS`). Gemini Live emits
+            // refinement passes — when the model revises its earlier ASR
+            // ("2回目" → "初めて"), the second pass arrives as a brand-new
+            // model turn whose audio gets queued behind the first. Default
+            // barge-in lets the new turn supersede the previous, so the
+            // listener hears the revised translation instead of both.
           },
         },
       },

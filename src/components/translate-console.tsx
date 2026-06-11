@@ -30,7 +30,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
-  ActivityHandling,
   GoogleGenAI,
   Modality,
   type LiveServerMessage,
@@ -441,6 +440,11 @@ export function TranslateConsole() {
   // destinations.
   const playbackGainRef = useRef<GainNode | null>(null);
   const playbackNextStartRef = useRef<number>(0);
+  // Sources currently scheduled on outputCtx so an `interrupted` event
+  // can stop them mid-flight. A refinement pass arrives as a new model
+  // turn while the previous turn's audio is still queued; without an
+  // explicit stop() the listener hears both versions back-to-back.
+  const playbackActiveSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   // LiveKit publish destination — translated PCM chain feeds this, and
   // its MediaStream is what the monitor <audio> element and LiveKit
   // LocalAudioTrack both read from.
@@ -573,6 +577,15 @@ export function TranslateConsole() {
       inputSourceRef.current?.disconnect();
     } catch {}
     inputSourceRef.current = null;
+    for (const src of playbackActiveSourcesRef.current) {
+      try {
+        src.stop();
+      } catch {}
+      try {
+        src.disconnect();
+      } catch {}
+    }
+    playbackActiveSourcesRef.current.clear();
     try {
       playbackGainRef.current?.disconnect();
     } catch {}
@@ -800,9 +813,30 @@ export function TranslateConsole() {
       const startAt = Math.max(ctx.currentTime + 0.02, playbackNextStartRef.current);
       src.start(startAt);
       playbackNextStartRef.current = startAt + buf.duration;
+      playbackActiveSourcesRef.current.add(src);
+      src.onended = () => {
+        playbackActiveSourcesRef.current.delete(src);
+      };
     },
     [decodeBase64Pcm],
   );
+
+  // Stop every scheduled chunk and reset the playback timeline so the
+  // next incoming chunk plays immediately. Used when the server signals
+  // `interrupted` (a refinement pass replaces the prior model turn).
+  const flushPlayback = useCallback(() => {
+    const live = playbackActiveSourcesRef.current;
+    for (const src of live) {
+      try {
+        src.stop();
+      } catch {}
+      try {
+        src.disconnect();
+      } catch {}
+    }
+    live.clear();
+    playbackNextStartRef.current = 0;
+  }, []);
 
   const handleGeminiMessage = useCallback(
     (msg: LiveServerMessage) => {
@@ -821,11 +855,13 @@ export function TranslateConsole() {
               ? 'modelTurn'
               : sc?.turnComplete
                 ? 'turnComplete'
-                : sc?.interrupted
-                  ? 'interrupted'
-                  : msg.goAway
-                    ? 'goAway'
-                    : '<other>';
+                : sc?.generationComplete
+                  ? 'generationComplete'
+                  : sc?.interrupted
+                    ? 'interrupted'
+                    : msg.goAway
+                      ? 'goAway'
+                      : '<other>';
       const seen = sampleCountRef.current.get(sampleKey) ?? 0;
       if (seen < EVENT_SAMPLE_CAP) {
         sampleCountRef.current.set(sampleKey, seen + 1);
@@ -860,14 +896,15 @@ export function TranslateConsole() {
         }
       }
       // `sc.interrupted` from the server means the model abandoned the
-      // current turn — clear the scheduled playback time so the next
-      // chunk plays immediately instead of waiting for the cancelled
-      // tail to finish.
+      // current turn (typically because new user audio bargred in, or
+      // the model itself revised the ASR). Stop every queued chunk so
+      // the listener doesn't hear the stale translation playing through
+      // before the new one starts.
       if (sc.interrupted) {
-        playbackNextStartRef.current = 0;
+        flushPlayback();
       }
     },
-    [appendStreaming, playPcmChunk, sourceLang, targetLang],
+    [appendStreaming, flushPlayback, playPcmChunk, sourceLang, targetLang],
   );
 
   const start = useCallback(async () => {
@@ -1250,9 +1287,8 @@ export function TranslateConsole() {
             targetLanguageCode: targetLang,
             echoTargetLanguage: false,
           },
-          realtimeInputConfig: {
-            activityHandling: ActivityHandling.NO_INTERRUPTION,
-          },
+          // Leave realtimeInputConfig at default — see gemini-live.ts
+          // for why NO_INTERRUPTION turned out to be wrong here.
         },
         callbacks: {
           onopen: () => {
