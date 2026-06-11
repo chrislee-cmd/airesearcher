@@ -20,25 +20,14 @@ type SearchResponse = {
   error?: string;
 };
 
-// Pull out the substrings that should render with <mark> highlighting.
-// We strip websearch operators (-exclude, OR/AND, double-quotes) so the
-// visual highlight tracks what actually contributed to a positive match,
-// not the raw query string the user typed.
+// The server matches the raw query as a single ILIKE substring (one
+// trigram-backed pattern against name/theme/text), so highlight that
+// same substring verbatim. No operator-stripping needed — the previous
+// implementation parsed phrases/exclusions because the server was on
+// websearch_to_tsquery; that path is gone in 0027.
 function extractHighlightTokens(query: string): string[] {
-  const phrases: string[] = [];
-  const stripped = query.replace(/"([^"]+)"/g, (_, captured: string) => {
-    phrases.push(captured);
-    return ' ';
-  });
-  const words = stripped
-    .split(/\s+/)
-    .map((w) => w.trim())
-    .filter((w) => w.length > 0 && !w.startsWith('-'))
-    .filter((w) => {
-      const upper = w.toUpperCase();
-      return upper !== 'OR' && upper !== 'AND';
-    });
-  return [...phrases, ...words];
+  const trimmed = query.trim();
+  return trimmed.length > 0 ? [trimmed] : [];
 }
 
 function HighlightedText({ text, tokens }: { text: string; tokens: string[] }) {
@@ -146,9 +135,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
     <div className="border border-line bg-paper p-5 rounded-sm">
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="text-[12.5px] font-medium text-ink-2">인용구 검색</div>
-        <div className="text-[11px] text-mute-soft">
-          {`구문 "..." · 제외 -단어 · OR 지원`}
-        </div>
+        <div className="text-[11px] text-mute-soft">단어 일부만 입력해도 매칭</div>
       </div>
       <Input
         type="search"

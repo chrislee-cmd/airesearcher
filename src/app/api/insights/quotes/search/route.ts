@@ -32,25 +32,19 @@ export async function POST(request: Request) {
   }
   const { jobId, q, cursor } = parsed.data;
 
-  // RLS on insights_quotes already scopes rows to the caller's
-  // organization via the org_members join, so we don't need an explicit
-  // org check here — the eq(job_id) is enough to namespace within the
-  // already-filtered visible rows.
-  let query = supabase
-    .from('insights_quotes')
-    .select(
-      'id, participant_name, theme, sentiment, text, source_file, source_offset',
-    )
-    .eq('job_id', jobId)
-    .textSearch('tsv', q, { config: 'simple', type: 'websearch' })
-    .order('id', { ascending: false })
-    .limit(LIMIT + 1);
-
-  if (cursor !== undefined) {
-    query = query.lt('id', cursor);
-  }
-
-  const { data, error } = await query;
+  // Substring (pg_trgm) search via RPC. The earlier textSearch path on
+  // the 'simple' tsv config dropped every Korean compound/조사 form
+  // ("광고는" never matched "광고" because 'simple' tokenizes on
+  // whitespace only — no morphology), so "광고" returned 7 rows on a
+  // 71-quote dataset where the actual recall was much higher. ILIKE
+  // backed by trigram GIN indexes (0027) catches all substring matches
+  // and is language-agnostic. RLS still scopes via security invoker.
+  const { data, error } = await supabase.rpc('search_insights_quotes', {
+    p_job_id: jobId,
+    p_q: q,
+    p_cursor: cursor ?? null,
+    p_limit: LIMIT,
+  });
   if (error) {
     return NextResponse.json(
       { error: 'query_failed', detail: error.message },
@@ -58,7 +52,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const rows = data ?? [];
+  const rows = (data ?? []) as Array<{
+    id: number;
+    participant_name: string;
+    theme: string | null;
+    sentiment: number | null;
+    text: string;
+    source_file: string | null;
+    source_offset: number | null;
+  }>;
   // We fetched LIMIT+1 to know whether a next page exists without a
   // separate count(*) call. Trim the sentinel before returning.
   const hasMore = rows.length > LIMIT;
