@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { QuoteSearchPanel } from '@/components/insights/quote-search-panel';
@@ -89,22 +90,45 @@ function formatDate(iso: string): string {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
+export function InsightsAnalyzer({
+  pastJobs = [],
+  initialJob,
+}: {
+  pastJobs?: PastJob[];
+  // When present, hydrate ready state from this server-fetched row and
+  // skip the idle/upload flow. Used by /insights-analyzer/[jobId]/page.
+  initialJob?: PastJob;
+}) {
+  const router = useRouter();
   const [files, setFiles] = useState<FileRow[]>([]);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [job, setJob] = useState<JobSnapshot | null>(null);
+  const [jobId, setJobId] = useState<string | null>(initialJob?.id ?? null);
+  const [job, setJob] = useState<JobSnapshot | null>(
+    initialJob
+      ? {
+          id: initialJob.id,
+          status: 'ready',
+          quote_count: initialJob.quote_count,
+          participant_count: initialJob.participant_count,
+          file_count: initialJob.file_count,
+          failure_reason: initialJob.failure_reason,
+        }
+      : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   // Mirrors job.status during the active run so we can keep the UI in
   // "running" mode even before the first Realtime tick arrives.
-  const [phase, setPhase] = useState<JobStatus | 'idle'>('idle');
+  const [phase, setPhase] = useState<JobStatus | 'idle'>(
+    initialJob ? 'ready' : 'idle',
+  );
 
   const supabase = useMemo(() => createClient(), []);
 
-  // Resume a previously-started job on refresh. We only resume if the
-  // server still considers the job non-terminal — otherwise we show the
-  // terminal state and let the user start over.
+  // Resume a previously-started job on refresh. Skipped when the page
+  // already passed an initialJob via URL — that takes precedence over
+  // whatever the last tab put in localStorage.
   useEffect(() => {
+    if (initialJob) return;
     const stored =
       typeof window !== 'undefined'
         ? window.localStorage.getItem(ACTIVE_JOB_KEY)
@@ -332,29 +356,26 @@ export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
     try {
       window.localStorage.removeItem(ACTIVE_JOB_KEY);
     } catch {}
+    // If we landed via /insights-analyzer/[jobId], pop back to the list
+    // route so the past-jobs section becomes visible again. On root we
+    // already are at the list URL — router.refresh keeps the server-
+    // rendered list fresh after a just-completed analysis.
+    if (initialJob) {
+      router.push('/insights-analyzer');
+    } else {
+      router.refresh();
+    }
   }
 
-  // Open an existing ready job from the past-jobs list. Counts come
-  // straight from the server-rendered row — no extra round trip — and
-  // the ready-state UI (summary + SearchPanel) renders without any
-  // network fetch beyond what SearchPanel does on user input.
+  // Open an existing ready job from the past-jobs list. URL-addressable
+  // route so the user can share / bookmark / use browser back. Local
+  // state reset isn't needed — the [jobId] page hydrates initialJob
+  // and the component re-mounts.
   function loadPastJob(past: PastJob) {
-    setFiles([]);
-    setError(null);
-    setLiveQuoteCount(null);
-    setJobId(past.id);
-    setJob({
-      id: past.id,
-      status: 'ready',
-      quote_count: past.quote_count,
-      participant_count: past.participant_count,
-      file_count: past.file_count,
-      failure_reason: past.failure_reason,
-    });
-    setPhase('ready');
     try {
       window.localStorage.setItem(ACTIVE_JOB_KEY, past.id);
     } catch {}
+    router.push(`/insights-analyzer/${past.id}`);
   }
 
   const succeededCount = files.filter((r) => r.phase === 'done').length;
@@ -564,12 +585,30 @@ export function InsightsAnalyzer({ pastJobs = [] }: { pastJobs?: PastJob[] }) {
                 <dd className="tabular-nums">{job.quote_count}</dd>
               </div>
             </dl>
-            <p className="mt-4 text-[11.5px] text-mute-soft">
-              인사이트 대시보드(클러스터·텐션·모순)는 후속 PR에서 추가됩니다.
-            </p>
           </div>
 
           <QuoteSearchPanel jobId={job.id} />
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <section className="border border-line bg-paper p-5 rounded-sm">
+              <div className="eyebrow-mute mb-2">정량 분석</div>
+              <h2 className="text-[13px] font-semibold text-ink-2">
+                패턴 매트릭스
+              </h2>
+              <p className="mt-2 text-[11.5px] leading-[1.55] text-mute-soft">
+                참여자 × 테마 매트릭스, 클러스터 뷰, 여정 맵, 병렬 좌표, 히트맵 등 정량 시각화는 후속 PR (5a · 6a) 에서 추가됩니다.
+              </p>
+            </section>
+            <section className="border border-line bg-paper p-5 rounded-sm">
+              <div className="eyebrow-mute mb-2">정성 분석</div>
+              <h2 className="text-[13px] font-semibold text-ink-2">
+                긴장·모순 지도
+              </h2>
+              <p className="mt-2 text-[11.5px] leading-[1.55] text-mute-soft">
+                참여자 간 긴장, 발화 모순, 인용구 별자리 등 정성 시각화는 후속 PR (5b · 6b) 에서 추가됩니다.
+              </p>
+            </section>
+          </div>
 
           <div className="flex justify-end">
             <Button variant="secondary" size="lg" onClick={onReset}>
