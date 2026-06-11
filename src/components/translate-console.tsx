@@ -481,6 +481,23 @@ export function TranslateConsole() {
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
 
+  // Last full transcript text seen per kind. Gemini Live emits
+  // input/outputTranscription text *cumulatively* — each event carries
+  // the entire utterance so far. Treating that as an incremental delta
+  // (the OpenAI pattern this console was originally built for) grows
+  // the partial buffer N² and produces the "same phrase repeating
+  // forever" runaway. We compare each incoming text to the cumulative
+  // we last saw and only feed the genuine tail as a delta; if the new
+  // text doesn't extend the previous (revision, new utterance, fresh
+  // turn), we flush the partial and restart. `finished: true` on the
+  // Transcription or `turnComplete: true` on serverContent both reset.
+  const lastCumulativeRef = useRef<Map<'input' | 'output', string>>(
+    new Map([
+      ['input', ''],
+      ['output', ''],
+    ]),
+  );
+
   // Synchronous re-entry guard for start(). The status closure in start()
   // can be stale across rapid invocations (the captured `status` was
   // 'idle' even after setStatus('starting') was queued but not yet
@@ -662,6 +679,8 @@ export function TranslateConsole() {
     }
     partialInputRef.current.clear();
     partialOutputRef.current.clear();
+    lastCumulativeRef.current.set('input', '');
+    lastCumulativeRef.current.set('output', '');
   }, []);
 
   const pushLine = useCallback(
@@ -711,6 +730,58 @@ export function TranslateConsole() {
       }
     },
     [],
+  );
+
+  // Commit the current partial as a final caption with the same
+  // dedup/persist/broadcast pipeline appendStreaming uses on sentence
+  // boundaries. Called when Gemini signals `finished: true` on a
+  // Transcription or `turnComplete: true` on serverContent — both are
+  // authoritative "this utterance is done" markers from the server, so
+  // we should respect them even if our heuristic SENTENCE_END regex
+  // never saw a period (the runaway "Korean man, there's, Korean man,
+  // there's" loop is exactly this case: only commas, no period).
+  const forceFlushPartial = useCallback(
+    (kind: 'input' | 'output', lang: string) => {
+      const partial = kind === 'input' ? partialInputRef : partialOutputRef;
+      const current = partial.current.get('current');
+      partial.current.delete('current');
+      if (!current) return;
+      const finalText = current.text.trim();
+      if (!finalText) return;
+      const wall = Date.now();
+      const dedupKey = normalizeForDedup(finalText);
+      const bucket = recentFinalsRef.current.get(kind) ?? [];
+      const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
+      const isDup =
+        dedupKey.length > 0 &&
+        fresh.some(
+          (e) =>
+            isFuzzyDup(dedupKey, e.key) ||
+            isContainmentDup(dedupKey, e.key) ||
+            isLcsChunkDup(dedupKey, e.key),
+        );
+      if (isDup) {
+        console.info('[translate] dedup-flush', {
+          kind,
+          preview: finalText.slice(0, 40),
+        });
+        const setter = kind === 'input' ? setInputLines : setOutputLines;
+        setter((prev) => prev.filter((l) => l.id !== current.id));
+        return;
+      }
+      fresh.push({ key: dedupKey, ts: wall });
+      recentFinalsRef.current.set(kind, fresh);
+      const finalLine: CaptionLine = {
+        id: current.id,
+        text: finalText,
+        final: true,
+        ts: wall,
+      };
+      pushLine(kind, finalLine);
+      broadcastCaption(kind, finalLine, lang);
+      void persistMessage(kind, finalText, lang);
+    },
+    [broadcastCaption, persistMessage, pushLine],
   );
 
   const appendStreaming = useCallback(
@@ -796,6 +867,53 @@ export function TranslateConsole() {
       }
     },
     [broadcastCaption, persistMessage, pushLine],
+  );
+
+  // Translate a Gemini Transcription event into an incremental delta our
+  // existing appendStreaming pipeline expects, regardless of whether
+  // Gemini's `text` field is cumulative or genuinely incremental:
+  //
+  //   - new text starts with the cumulative we last saw  → tail is delta
+  //   - new text equals the cumulative we last saw       → no-op (duplicate)
+  //   - new text diverges (revision / new utterance)     → flush partial
+  //                                                        as final, treat
+  //                                                        new text as a
+  //                                                        fresh delta
+  //
+  // The `finished` flag arrives on the Transcription itself; when true
+  // we flush the partial and reset the cumulative ref so the next
+  // utterance starts clean.
+  const ingestTranscript = useCallback(
+    (
+      kind: 'input' | 'output',
+      text: string,
+      finished: boolean,
+      lang: string,
+    ) => {
+      if (text) {
+        const prev = lastCumulativeRef.current.get(kind) ?? '';
+        if (text === prev) {
+          // duplicate cumulative emit — server resent same payload
+        } else if (prev.length > 0 && text.startsWith(prev)) {
+          const delta = text.slice(prev.length);
+          if (delta) appendStreaming(kind, delta, lang);
+        } else if (prev.length === 0) {
+          appendStreaming(kind, text, lang);
+        } else {
+          // Diverged from prior cumulative — revision or new utterance
+          // arrived without an explicit `finished` boundary. Commit
+          // whatever we had so it can't get further appended to.
+          forceFlushPartial(kind, lang);
+          appendStreaming(kind, text, lang);
+        }
+        lastCumulativeRef.current.set(kind, text);
+      }
+      if (finished) {
+        forceFlushPartial(kind, lang);
+        lastCumulativeRef.current.set(kind, '');
+      }
+    },
+    [appendStreaming, forceFlushPartial],
   );
 
   // Decode a base64 PCM (int16, little-endian) chunk into a Float32Array
@@ -902,13 +1020,23 @@ export function TranslateConsole() {
 
       // Source-language transcript — auto-detected by the model from the
       // mic audio when inputAudioTranscription is set at session create.
-      if (sc.inputTranscription?.text) {
-        appendStreaming('input', sc.inputTranscription.text, sourceLang);
+      if (sc.inputTranscription) {
+        ingestTranscript(
+          'input',
+          sc.inputTranscription.text ?? '',
+          sc.inputTranscription.finished === true,
+          sourceLang,
+        );
       }
       // Translated text — aligned with the synthesised output audio
       // when outputAudioTranscription is set at session create.
-      if (sc.outputTranscription?.text) {
-        appendStreaming('output', sc.outputTranscription.text, targetLang);
+      if (sc.outputTranscription) {
+        ingestTranscript(
+          'output',
+          sc.outputTranscription.text ?? '',
+          sc.outputTranscription.finished === true,
+          targetLang,
+        );
       }
       // Translated audio — base64 PCM int16 chunks at
       // GEMINI_OUTPUT_SAMPLE_RATE, delivered as inlineData parts on the
@@ -921,16 +1049,39 @@ export function TranslateConsole() {
           if (data) playPcmChunk(data);
         }
       }
+      // `turnComplete` is the server's authoritative "this utterance is
+      // done" marker. Some Transcription events never carry `finished`
+      // (preview model quirk) but the turn boundary still arrives — use
+      // it to flush both partials and reset the cumulative trackers so
+      // the next utterance starts clean.
+      if (sc.turnComplete) {
+        forceFlushPartial('input', sourceLang);
+        forceFlushPartial('output', targetLang);
+        lastCumulativeRef.current.set('input', '');
+        lastCumulativeRef.current.set('output', '');
+      }
       // `sc.interrupted` from the server means the model abandoned the
-      // current turn (typically because new user audio bargred in, or
+      // current turn (typically because new user audio barged in, or
       // the model itself revised the ASR). Stop every queued chunk so
       // the listener doesn't hear the stale translation playing through
-      // before the new one starts.
+      // before the new one starts, and treat the transcript side the
+      // same way — anything queued is now stale.
       if (sc.interrupted) {
         flushPlayback();
+        forceFlushPartial('input', sourceLang);
+        forceFlushPartial('output', targetLang);
+        lastCumulativeRef.current.set('input', '');
+        lastCumulativeRef.current.set('output', '');
       }
     },
-    [appendStreaming, flushPlayback, playPcmChunk, sourceLang, targetLang],
+    [
+      flushPlayback,
+      forceFlushPartial,
+      ingestTranscript,
+      playPcmChunk,
+      sourceLang,
+      targetLang,
+    ],
   );
 
   // Open a Gemini Live session given an ephemeral token. Used at Start
@@ -1055,6 +1206,9 @@ export function TranslateConsole() {
     sampleCountRef.current.clear();
     // Auto-reconnect budget — each Start gets a fresh budget.
     reconnectAttemptsRef.current = 0;
+    // Cumulative transcript trackers — same lifetime as a session.
+    lastCumulativeRef.current.set('input', '');
+    lastCumulativeRef.current.set('output', '');
     setError(null);
     setInputLines([]);
     setOutputLines([]);
