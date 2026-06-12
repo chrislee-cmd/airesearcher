@@ -3,8 +3,11 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { refundCredits } from '@/lib/credits';
+import { extractClusters } from '@/lib/insights-clusters-extract';
 
-export const maxDuration = 30;
+// Bumped from 30s for the cluster pass. 230-quote jobs take ~15-25s on
+// Sonnet 4.6; the prior 30s ceiling barely cleared per-quote extraction.
+export const maxDuration = 60;
 
 // PR 3 threshold (Decision #2 in the scope discussion):
 //   success_ratio >= 0.5 → status=ready, no refund
@@ -97,11 +100,67 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    // Cluster extraction (PR 5a). Best-effort: a failed LLM pass should
+    // NOT roll back the ready status — quote-level search (PR 7) is the
+    // user's #1 priority and is already complete. The viz cards (PR 6a)
+    // gracefully degrade to "no clusters" when this table is empty.
+    let clusterCount = 0;
+    try {
+      const { data: clusterQuotes } = await admin
+        .from('insights_quotes')
+        .select('id, participant_name, theme, text')
+        .eq('job_id', jobId);
+      if (clusterQuotes && clusterQuotes.length > 0) {
+        const clusters = await extractClusters(clusterQuotes);
+        if (clusters.length > 0) {
+          // Insert clusters first to get their generated uuids, then
+          // expand the M:N rows. We could batch with a CTE-style RPC for
+          // atomicity, but a soft-fail on the join table is acceptable
+          // (worst case: a cluster card shows with empty quote list).
+          const clusterRows = clusters.map((c) => ({
+            job_id: jobId,
+            cluster_key: c.cluster_key,
+            label: c.label,
+            insight: c.insight,
+          }));
+          const { data: insertedClusters, error: insertErr } = await admin
+            .from('insights_clusters')
+            .insert(clusterRows)
+            .select('id, cluster_key');
+          if (insertErr) throw new Error(`cluster_insert: ${insertErr.message}`);
+
+          const keyToId = new Map(
+            (insertedClusters ?? []).map((r) => [r.cluster_key, r.id]),
+          );
+          const cqRows = clusters.flatMap((c) => {
+            const clusterId = keyToId.get(c.cluster_key);
+            if (!clusterId) return [];
+            return c.quote_ids.map((quoteId) => ({
+              cluster_id: clusterId,
+              quote_id: quoteId,
+            }));
+          });
+          if (cqRows.length > 0) {
+            await admin.from('insights_cluster_quotes').insert(cqRows);
+          }
+          clusterCount = clusters.length;
+        }
+      }
+    } catch (e) {
+      console.error('[insights/finalize] cluster extraction failed', {
+        jobId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      // Continue — ready status stays.
+    }
+
     return NextResponse.json({
       jobId,
       status: 'ready' as const,
       quote_count: quotes?.length ?? 0,
       participant_count: participants.size,
+      cluster_count: clusterCount,
       success_files: successFiles,
       file_count: fileCount,
     });
