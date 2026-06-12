@@ -364,6 +364,20 @@ export function TranslateConsole() {
   const startedAtRef = useRef<number | null>(null);
   const monitorAudioRef = useRef<HTMLAudioElement | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tab-audio mode only: periodic silence injection. Continuous tab
+  // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
+  // STT VAD never declares end-of-speech and the model keeps re-
+  // translating the same rolling buffer — both OpenAI Realtime and
+  // Gemini Live exhibit this. We toggle the captured audio track's
+  // `enabled` flag off briefly on a 3 s cadence, which emits silence
+  // frames the server VAD treats as the speaker stopping, lets it
+  // commit the current turn, and breaks the otherwise-infinite loop.
+  // Mic mode doesn't need this — speakers pause naturally.
+  const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const TAB_SILENCE_INTERVAL_MS = 3000;
+  const TAB_SILENCE_DURATION_MS = 400;
 
   // Rolling buffer for the currently-streaming caption line per side.
   // The translation API has no explicit completion event, so we keep one
@@ -483,6 +497,10 @@ export function TranslateConsole() {
       pcRef.current?.close();
     } catch {}
     pcRef.current = null;
+    if (tabSilenceTimerRef.current) {
+      clearInterval(tabSilenceTimerRef.current);
+      tabSilenceTimerRef.current = null;
+    }
     micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     micStreamRef.current = null;
     ttsStreamRef.current = null;
@@ -824,6 +842,23 @@ export function TranslateConsole() {
       return;
     }
     micStreamRef.current = mic;
+
+    // Tab audio: start the periodic silence pulse — see
+    // tabSilenceTimerRef comment. Mic mode skips this.
+    if (inputSource === 'tab') {
+      const track = mic.getAudioTracks()[0];
+      if (track) {
+        tabSilenceTimerRef.current = setInterval(() => {
+          if (track.readyState !== 'live') return;
+          track.enabled = false;
+          setTimeout(() => {
+            // Guard: the track may have ended between the dip and the
+            // restore (cleanup, hot-reload, share-stop in the picker).
+            if (track.readyState === 'live') track.enabled = true;
+          }, TAB_SILENCE_DURATION_MS);
+        }, TAB_SILENCE_INTERVAL_MS);
+      }
+    }
 
     // LiveKit FIRST — connect and publish the mic so viewers have something
     // to subscribe to right away. The translated output track gets
