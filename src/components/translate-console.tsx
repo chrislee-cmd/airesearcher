@@ -441,22 +441,6 @@ export function TranslateConsole() {
   // Gate the worklet on this ref to keep the console usable and to give
   // the reconnect path a clear signal that send attempts are paused.
   const geminiOpenRef = useRef(false);
-  // Periodic `audioStreamEnd` ticker. The
-  // `gemini-3.5-live-translate-preview` server-side VAD never declared
-  // end-of-speech on continuous tab-audio (zero `turnComplete` events
-  // across 30+s in production), so the model kept re-presenting the
-  // same handful of Japanese ASR fragments forever — "した方がいい / 自信
-  // / とか まあ" cycled indefinitely as input transcripts, producing the
-  // visible infinite-loop translation. Sending audioStreamEnd
-  // periodically forces a hard turn boundary: the server commits any
-  // pending generation, and the next PCM frame from the worklet starts
-  // a fresh audio stream. The cap interval has to be short enough to
-  // break a stuck loop quickly but long enough that natural sentences
-  // aren't cut mid-utterance.
-  const audioStreamEndTimerRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
-  const AUDIO_STREAM_END_INTERVAL_MS = 4000;
   // Stable mirror of `status` for callbacks that get registered once
   // (Gemini ws callbacks) but need to read the latest status to decide
   // whether a close is "unexpected" (status==='live') or a planned
@@ -615,10 +599,6 @@ export function TranslateConsole() {
       channelRef.current?.unsubscribe();
     } catch {}
     channelRef.current = null;
-    if (audioStreamEndTimerRef.current) {
-      clearInterval(audioStreamEndTimerRef.current);
-      audioStreamEndTimerRef.current = null;
-    }
     try {
       geminiSessionRef.current?.close();
     } catch {}
@@ -1213,21 +1193,6 @@ export function TranslateConsole() {
           onopen: () => {
             geminiOpenRef.current = true;
             console.info('[translate] gemini ws open');
-            // Restart the periodic audioStreamEnd ticker on every
-            // (re)connect — see audioStreamEndTimerRef comment.
-            if (audioStreamEndTimerRef.current) {
-              clearInterval(audioStreamEndTimerRef.current);
-            }
-            audioStreamEndTimerRef.current = setInterval(() => {
-              const s = geminiSessionRef.current;
-              if (!geminiOpenRef.current || !s) return;
-              try {
-                s.sendRealtimeInput({ audioStreamEnd: true });
-                console.info('[translate] audioStreamEnd sent');
-              } catch (err) {
-                console.warn('[translate] audioStreamEnd failed', err);
-              }
-            }, AUDIO_STREAM_END_INTERVAL_MS);
           },
           onmessage: (msg: LiveServerMessage) => handleGeminiMessage(msg),
           onerror: (err) => {
@@ -1235,10 +1200,6 @@ export function TranslateConsole() {
           },
           onclose: (ev) => {
             geminiOpenRef.current = false;
-            if (audioStreamEndTimerRef.current) {
-              clearInterval(audioStreamEndTimerRef.current);
-              audioStreamEndTimerRef.current = null;
-            }
             console.info('[translate] gemini ws closed', {
               code: ev?.code,
               reason: ev?.reason,
