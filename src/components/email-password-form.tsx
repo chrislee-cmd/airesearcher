@@ -7,6 +7,9 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Only allow same-origin app paths to prevent open-redirect via ?next=.
 function safeNext(raw: string | null): string {
@@ -15,10 +18,6 @@ function safeNext(raw: string | null): string {
   return raw;
 }
 
-const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
-const labelCls =
-  'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
 const linkCls =
   'text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2';
 
@@ -130,34 +129,30 @@ export function EmailPasswordForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       {mode === 'signUp' && (
-        <div>
-          <label className={labelCls}>{t('fullName')}</label>
-          <input
-            type="text"
-            autoComplete="name"
-            value={fullName}
-            placeholder={t('fullNamePlaceholder')}
-            onChange={(e) => setFullName(e.target.value)}
-            className={inputCls}
-          />
-        </div>
+        <Input
+          label={t('fullName')}
+          type="text"
+          autoComplete="name"
+          value={fullName}
+          placeholder={t('fullNamePlaceholder')}
+          onChange={(e) => setFullName(e.target.value)}
+        />
       )}
 
-      <div>
-        <label className={labelCls}>{t('email')}</label>
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputCls}
-        />
-      </div>
+      <Input
+        label={t('email')}
+        type="email"
+        required
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
       <div>
-        <div className="flex items-baseline justify-between">
-          <label className={labelCls}>{t('password')}</label>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <Label htmlFor="password" className="mb-0">
+            {t('password')}
+          </Label>
           {mode === 'signIn' && (
             <Link href="/forgot-password" className={linkCls}>
               {t('forgotPassword')}
@@ -169,30 +164,27 @@ export function EmailPasswordForm() {
             </span>
           )}
         </div>
-        <input
+        <Input
+          id="password"
           type="password"
           required
           minLength={8}
           autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={inputCls}
         />
       </div>
 
       {mode === 'signUp' && (
-        <div>
-          <label className={labelCls}>{t('passwordConfirm')}</label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            value={passwordConfirm}
-            onChange={(e) => setPasswordConfirm(e.target.value)}
-            className={inputCls}
-          />
-        </div>
+        <Input
+          label={t('passwordConfirm')}
+          type="password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          value={passwordConfirm}
+          onChange={(e) => setPasswordConfirm(e.target.value)}
+        />
       )}
 
       {error && <p className="text-[11.5px] text-warning">{error}</p>}
@@ -202,38 +194,42 @@ export function EmailPasswordForm() {
           {pendingEmail && (
             <div className="flex items-center gap-2 text-[11px]">
               <span className="text-mute-soft">{t('didntGetEmail')}</span>
-              <button
-                type="button"
+              <Button
+                variant="link"
+                size="xs"
                 onClick={onResend}
                 disabled={pending}
-                className="text-amore underline-offset-2 transition-colors duration-[120ms] hover:underline disabled:opacity-60"
+                className="text-amore underline-offset-2 hover:underline hover:text-amore"
               >
                 {t('resendEmail')}
-              </button>
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="cta"
+        fullWidth
         disabled={pending}
-        className="w-full rounded-full border border-ink bg-ink px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-all duration-[120ms] hover:-translate-y-px hover:bg-ink-2 hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)] disabled:opacity-60"
       >
         {pending ? '…' : t(mode)}
-      </button>
+      </Button>
 
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="sm"
+        fullWidth
         onClick={() => {
           setMode(mode === 'signIn' ? 'signUp' : 'signIn');
           clearStatus();
           setPendingEmail(null);
         }}
-        className="block w-full text-center text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2"
       >
         {mode === 'signIn' ? t('switchToSignUp') : t('switchToSignIn')}
-      </button>
+      </Button>
     </form>
   );
 }
