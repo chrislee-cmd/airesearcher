@@ -1034,62 +1034,6 @@ export function TranslateConsole() {
         });
       }
 
-      // ─── Temporary diagnostic logging (PR #263) ───
-      // Three things to answer at-a-glance whether VAD config is being
-      // honored and whether the model is paraphrasing (vs translating
-      // verbatim):
-      //   (1) setupComplete payload — flatten to JSON.stringify so the
-      //       Chrome inspector doesn't hide nested values behind
-      //       getters. Lets us verify our realtimeInputConfig.* is
-      //       echoed in the server-confirmed session config.
-      //   (2) every turnComplete / generationComplete — print a single
-      //       line. If these never appear over a long session the VAD
-      //       isn't drawing turn boundaries (likely H2/H4).
-      //   (3) raw `text` of the first 20 input/output transcripts —
-      //       lets us compare 1:1 (H5: is output a literal translation
-      //       of input, or a generative response?).
-      if (msg.setupComplete) {
-        console.info(
-          '[translate] diag setupComplete',
-          JSON.stringify(msg.setupComplete),
-        );
-      }
-      if (sc?.turnComplete) {
-        const c = (sampleCountRef.current.get('diag-turnComplete') ?? 0) + 1;
-        sampleCountRef.current.set('diag-turnComplete', c);
-        console.info('[translate] diag turnComplete', { count: c });
-      }
-      if (sc?.generationComplete) {
-        const c =
-          (sampleCountRef.current.get('diag-generationComplete') ?? 0) + 1;
-        sampleCountRef.current.set('diag-generationComplete', c);
-        console.info('[translate] diag generationComplete', { count: c });
-      }
-      const DIAG_TRANSCRIPT_CAP = 20;
-      if (sc?.inputTranscription) {
-        const n = (sampleCountRef.current.get('diag-input-text') ?? 0) + 1;
-        sampleCountRef.current.set('diag-input-text', n);
-        if (n <= DIAG_TRANSCRIPT_CAP) {
-          console.info('[translate] diag input.text', {
-            n,
-            text: sc.inputTranscription.text ?? null,
-            finished: sc.inputTranscription.finished ?? null,
-          });
-        }
-      }
-      if (sc?.outputTranscription) {
-        const n = (sampleCountRef.current.get('diag-output-text') ?? 0) + 1;
-        sampleCountRef.current.set('diag-output-text', n);
-        if (n <= DIAG_TRANSCRIPT_CAP) {
-          console.info('[translate] diag output.text', {
-            n,
-            text: sc.outputTranscription.text ?? null,
-            finished: sc.outputTranscription.finished ?? null,
-          });
-        }
-      }
-      // ─── End diagnostic logging ───
-
       if (!sc) return;
 
       // Source-language transcript — auto-detected by the model from the
