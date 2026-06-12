@@ -8,6 +8,7 @@ import {
   type CreditBundleId,
   type FeatureKey,
 } from '@/lib/features';
+import { ChromeButton } from '@/components/ui/chrome-button';
 
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   starter: 'bundleStarter',
@@ -105,20 +106,12 @@ export function CreditsUsagePredictor() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => reset('even')}
-            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 rounded-sm"
-          >
+          <ChromeButton variant="mute" size="sm" onClick={() => reset('even')}>
             {t('predictorResetEven')}
-          </button>
-          <button
-            type="button"
-            onClick={() => reset('zero')}
-            className="border border-line bg-paper px-3 py-1 text-[11px] text-mute hover:border-ink hover:text-ink-2 rounded-sm"
-          >
+          </ChromeButton>
+          <ChromeButton variant="mute" size="sm" onClick={() => reset('zero')}>
             {t('predictorResetZero')}
-          </button>
+          </ChromeButton>
         </div>
       </div>
 
