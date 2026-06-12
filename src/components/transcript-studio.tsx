@@ -10,6 +10,8 @@ import {
   type TranscriptJobStatus,
 } from './transcript-job-provider';
 import { useWorkspace } from './workspace-provider';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { FileDropZone } from './ui/file-drop-zone';
@@ -471,18 +473,22 @@ function LanguageConfirmDialog({
         </p>
 
         <div className="mt-7 flex items-center justify-end gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="md"
             onClick={onCancel}
-            className="border border-line bg-paper px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 rounded-sm"
+            className="uppercase tracking-[0.18em]"
           >
             {t('cancelCta')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
             onClick={onConfirm}
-            className="border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 rounded-sm"
+            className="uppercase tracking-[0.18em]"
           >
             {t('proceedCta')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -573,20 +579,24 @@ function JobRow({
                 },
               ]}
             />
-            <button
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => setPreviewOpen((v) => !v)}
-              className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+              className="uppercase tracking-[0.18em]"
             >
               {previewOpen ? '접기' : '미리보기'}
-            </button>
+            </Button>
           </div>
         )}
-        <button
+        <IconButton
+          variant="ghost-danger"
+          aria-label="전사 작업 삭제"
           onClick={onDelete}
-          className="text-[11px] text-mute-soft hover:text-warning"
+          className="text-[11px]"
         >
           ✕
-        </button>
+        </IconButton>
       </div>
       {previewOpen && job.status === 'done' && (
         <JobPreview id={job.id} />
