@@ -4,13 +4,14 @@ import nodemailer from 'nodemailer';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
-import { CREDIT_BUNDLES, type CreditBundleId } from '@/lib/features';
+import { CREDIT_BUNDLES } from '@/lib/features';
 import {
+  createLemonSqueezyCheckout,
   generateBankReference,
   getBankAccount,
-  getCreem,
-  getCreemProductId,
+  getLemonSqueezyVariantId,
   normalizeBizNo,
+  type LemonSqueezyLocale,
   type TaxInvoiceRequest,
 } from '@/lib/billing';
 
@@ -112,7 +113,10 @@ const TaxInvoiceSchema = z.object({
 
 const Body = z.object({
   bundleId: z.enum(['starter', 'team', 'studio']),
-  method: z.enum(['creem', 'bank_transfer']),
+  method: z.enum(['lemonsqueezy', 'bank_transfer']),
+  // Locale propagated from the client (next-intl). Drives the Lemon
+  // Squeezy checkout UI language. Default to 'en' for anything unknown.
+  locale: z.enum(['ko', 'en']).optional(),
   taxInvoice: TaxInvoiceSchema.optional(),
 });
 
@@ -134,7 +138,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input', details: parsed.error.format() }, { status: 400 });
   }
-  const { bundleId, method, taxInvoice } = parsed.data;
+  const { bundleId, method, locale, taxInvoice } = parsed.data;
   const bundle = CREDIT_BUNDLES.find((b) => b.id === bundleId);
   if (!bundle || bundle.priceKrw == null) {
     return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
@@ -212,22 +216,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'reference_collision' }, { status: 500 });
   }
 
-  // ── Creem card rail ─────────────────────────────────────────────────────
-  const creem = getCreem();
-  if (!creem) {
-    console.error('[billing/checkout] CREEM_API_KEY missing');
+  // ── Lemon Squeezy card rail ─────────────────────────────────────────────
+  const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+  const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+  if (!apiKey || !storeId) {
+    console.error('[billing/checkout] LEMONSQUEEZY_API_KEY or LEMONSQUEEZY_STORE_ID missing');
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
-  const productId = getCreemProductId(bundleId as CreditBundleId);
-  if (!productId) {
-    console.error(`[billing/checkout] CREEM_PRODUCT_${bundleId.toUpperCase()} missing`);
+  const variantId = getLemonSqueezyVariantId(bundleId);
+  if (!variantId) {
+    console.error(`[billing/checkout] LEMONSQUEEZY_VARIANT_${bundleId.toUpperCase()} missing`);
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
   const origin = originFromRequest(request);
+  const checkoutLocale: LemonSqueezyLocale = locale === 'ko' ? 'ko' : 'en';
 
-  // Insert payment row first so the webhook can correlate via metadata.
+  // Insert payment row first so the webhook can correlate via the
+  // payment_id we thread through `checkout_data.custom`.
   const { data: payment, error: insertErr } = await admin
     .from('payments')
     .insert({
@@ -236,7 +243,7 @@ export async function POST(request: Request) {
       bundle_id: bundle.id,
       credits: bundle.credits,
       amount_krw: bundle.priceKrw,
-      method: 'creem',
+      method: 'lemonsqueezy',
       status: 'pending',
       tax_invoice: taxInvoicePayload as unknown as object,
     })
@@ -247,28 +254,29 @@ export async function POST(request: Request) {
   }
 
   try {
-    const checkout = await creem.checkouts.create({
-      productId,
-      customer: { email: user.email ?? undefined },
-      successUrl: `${origin}/credits?status=success&payment_id=${payment.id}`,
-      metadata: { payment_id: payment.id, org_id: org.org_id },
+    const checkout = await createLemonSqueezyCheckout(apiKey, {
+      storeId,
+      variantId,
+      email: user.email ?? null,
+      locale: checkoutLocale,
+      custom: { payment_id: payment.id, org_id: org.org_id },
+      redirectUrl: `${origin}/${checkoutLocale}/credits?status=success&payment_id=${payment.id}`,
     });
 
-    // Store Creem checkout ID for traceability.
     await admin
       .from('payments')
-      .update({ creem_checkout_id: checkout.id })
+      .update({ lemonsqueezy_checkout_id: checkout.id })
       .eq('id', payment.id);
 
     return NextResponse.json({
       paymentId: payment.id,
-      method: 'creem',
-      checkoutUrl: checkout.checkoutUrl,
+      method: 'lemonsqueezy',
+      checkoutUrl: checkout.url,
     });
   } catch (err) {
     await admin.from('payments').update({ status: 'failed' }).eq('id', payment.id);
     return NextResponse.json(
-      { error: (err as Error).message ?? 'creem_error' },
+      { error: (err as Error).message ?? 'lemonsqueezy_error' },
       { status: 500 },
     );
   }

@@ -1,30 +1,124 @@
-import { Creem } from 'creem';
+import { createHmac, timingSafeEqual } from 'crypto';
 import type { CreditBundleId } from '@/lib/features';
 
-// Lazily resolved Creem client. Returns null when the API key is missing so
-// the checkout route surfaces a clean 503 instead of crashing at import time.
-let _creem: Creem | null = null;
-export function getCreem(): Creem | null {
-  if (_creem) return _creem;
-  const key = process.env.CREEM_API_KEY;
-  if (!key) return null;
-  _creem = new Creem({ serverURL: 'https://api.creem.io', apiKey: key });
-  return _creem;
-}
+// ── Lemon Squeezy ──────────────────────────────────────────────────────────
+//
+// We talk to the API with plain fetch — the surface we need (create
+// checkout + verify webhook signature) is small and adding the official
+// SDK would only bring marshalling sugar at the cost of one more dep.
 
-// Each bundle maps to a pre-created Creem product. Set the env vars to the
-// product IDs from the Creem dashboard (Products → copy ID).
-const CREEM_PRODUCT_ENV: Record<CreditBundleId, string> = {
-  starter:    'CREEM_PRODUCT_STARTER',
-  team:       'CREEM_PRODUCT_TEAM',
-  studio:     'CREEM_PRODUCT_STUDIO',
-  enterprise: 'CREEM_PRODUCT_ENTERPRISE',
+const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
+
+// Each bundle maps to a pre-created Lemon Squeezy product variant.
+// Standard pricing model auto-creates one variant per product, so the
+// variant ID is what we attach to the checkout (not the product ID).
+const LS_VARIANT_ENV: Record<CreditBundleId, string> = {
+  starter:    'LEMONSQUEEZY_VARIANT_STARTER',
+  team:       'LEMONSQUEEZY_VARIANT_TEAM',
+  studio:     'LEMONSQUEEZY_VARIANT_STUDIO',
+  enterprise: 'LEMONSQUEEZY_VARIANT_ENTERPRISE',
 };
 
-export function getCreemProductId(bundleId: CreditBundleId): string | null {
-  const envKey = CREEM_PRODUCT_ENV[bundleId];
+export function getLemonSqueezyVariantId(bundleId: CreditBundleId): string | null {
+  const envKey = LS_VARIANT_ENV[bundleId];
   return process.env[envKey] ?? null;
 }
+
+// Locale supported by Lemon Squeezy's checkout UI. We only ship ko/en so
+// the union is narrow; LS supports many more if we add languages later.
+export type LemonSqueezyLocale = 'ko' | 'en';
+
+export type LemonSqueezyCheckoutParams = {
+  storeId: string;
+  variantId: string;
+  email: string | null;
+  locale: LemonSqueezyLocale;
+  // Custom data threaded back to us via the webhook payload's
+  // `meta.custom_data`. We use payment_id to correlate the order with the
+  // `payments` row we inserted before redirecting.
+  custom: { payment_id: string; org_id: string };
+  redirectUrl: string;
+};
+
+export type LemonSqueezyCheckoutResult = {
+  id: string;       // checkout session ID (LS returns it as data.id)
+  url: string;      // hosted checkout URL the user is sent to
+};
+
+/**
+ * Create a hosted Lemon Squeezy checkout session for `variantId`. Throws
+ * with the LS error body on non-2xx so the caller can mark the payment
+ * row as failed and surface a clean 5xx to the client.
+ */
+export async function createLemonSqueezyCheckout(
+  apiKey: string,
+  params: LemonSqueezyCheckoutParams,
+): Promise<LemonSqueezyCheckoutResult> {
+  const body = {
+    data: {
+      type: 'checkouts',
+      attributes: {
+        checkout_options: {
+          embed: false,
+          media: false,
+          logo: true,
+          locale: params.locale,
+        },
+        checkout_data: {
+          email: params.email ?? undefined,
+          custom: params.custom,
+        },
+        product_options: {
+          redirect_url: params.redirectUrl,
+        },
+      },
+      relationships: {
+        store:   { data: { type: 'stores',   id: params.storeId   } },
+        variant: { data: { type: 'variants', id: params.variantId } },
+      },
+    },
+  };
+
+  const res = await fetch(`${LS_API_BASE}/checkouts`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.api+json',
+      'Content-Type': 'application/vnd.api+json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`lemonsqueezy_checkout_failed status=${res.status} body=${text.slice(0, 400)}`);
+  }
+
+  const json = (await res.json()) as {
+    data: { id: string; attributes: { url: string } };
+  };
+  return { id: json.data.id, url: json.data.attributes.url };
+}
+
+/**
+ * Verify a Lemon Squeezy webhook by recomputing HMAC-SHA256 over the raw
+ * request body and constant-time comparing against the X-Signature
+ * header. Returns false on any mismatch (length, hex parse, signature).
+ */
+export function verifyLemonSqueezySignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string,
+): boolean {
+  if (!signatureHeader) return false;
+  const computed = createHmac('sha256', secret).update(rawBody).digest('hex');
+  const sigBuf = Buffer.from(signatureHeader, 'utf8');
+  const computedBuf = Buffer.from(computed, 'utf8');
+  if (sigBuf.length !== computedBuf.length) return false;
+  return timingSafeEqual(sigBuf, computedBuf);
+}
+
+// ── Bank transfer ──────────────────────────────────────────────────────────
 
 // Bank-transfer reference shown to the user as 입금자명. Short, unambiguous
 // (no easily-confused characters), and uniqueness is enforced by the DB
