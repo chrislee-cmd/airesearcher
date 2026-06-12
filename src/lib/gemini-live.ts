@@ -16,7 +16,7 @@
 //
 // Reference: https://ai.google.dev/gemini-api/docs/live-api/live-translate
 
-import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 
 const DEFAULT_LIFETIME_MS = 30 * 60 * 1000; // 30 min — Gemini default
 const DEFAULT_OPEN_WINDOW_MS = 60 * 1000;   // 60 sec to open the WS
@@ -70,24 +70,13 @@ export async function issueLiveTranslateSession(opts: {
               // want to parrot back source-side echo.
               echoTargetLanguage: false,
             },
-            // Tighten VAD. The default `END_SENSITIVITY_LOW` made the
-            // server reluctant to declare end-of-speech on continuous
-            // tab-audio streams (background sound, music beds, brief
-            // breaths), so the model never received a turn boundary
-            // and kept regenerating the same translation indefinitely —
-            // the prod "infinite loop" we saw on PR #251 even after the
-            // 160-char partial cap. END_SENSITIVITY_HIGH + a short
-            // silenceDurationMs makes the server commit turnComplete
-            // on natural pauses, which lets our client-side flush fire
-            // and stops the model from looping on the same content.
-            realtimeInputConfig: {
-              automaticActivityDetection: {
-                startOfSpeechSensitivity:
-                  StartSensitivity.START_SENSITIVITY_HIGH,
-                endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
-                silenceDurationMs: 600,
-              },
-            },
+            // We leave realtimeInputConfig at the default
+            // (`START_OF_ACTIVITY_INTERRUPTS`). Gemini Live emits
+            // refinement passes — when the model revises its earlier ASR
+            // ("2回目" → "初めて"), the second pass arrives as a brand-new
+            // model turn whose audio gets queued behind the first. Default
+            // barge-in lets the new turn supersede the previous, so the
+            // listener hears the revised translation instead of both.
           },
         },
       },
