@@ -17,10 +17,8 @@ packages:
   - '.'
 allowBuilds:
   '@ffmpeg-installer/darwin-arm64': true
-  '@google/genai': false
   '@parcel/watcher': true
   '@swc/core': true
-  protobufjs: false
   sharp: true
   supabase: true
   unrs-resolver: true
