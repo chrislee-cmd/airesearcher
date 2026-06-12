@@ -8,6 +8,10 @@ import { useRequireAuth } from './auth-provider';
 import { useVideoJobs, type VideoJob, type VideoJobStatus } from './video-job-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
+import { ChromeButton } from './ui/chrome-button';
+import { Textarea } from './ui/textarea';
 import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
 import { computeVideoCredits } from '@/lib/video-credits';
 
@@ -308,19 +312,22 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
         </div>
         <div className="flex items-center gap-2">
           {job.status === 'done' && job.analysis && (
-            <button
+            <Button
+              variant="link"
+              size="xs"
               onClick={() => setOpen((v) => !v)}
-              className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+              className="uppercase tracking-[0.18em]"
             >
               {open ? '접기' : '결과 보기'}
-            </button>
+            </Button>
           )}
-          <button
+          <IconButton
+            variant="ghost-danger"
             onClick={onDelete}
-            className="text-[11px] text-mute-soft hover:text-warning"
+            aria-label="영상 분석 작업 삭제"
           >
             ✕
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -335,28 +342,30 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
               {durationMin ? `${durationMin}분 · ` : ''}이 분석 {estimatedCredits}크레딧
             </div>
           </div>
-          <textarea
+          <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={6}
-            className="w-full resize-y border border-line bg-paper-soft px-3 py-2 font-mono text-[11.5px] leading-[1.7] text-ink-2 outline-none focus:border-ink-2 [border-radius:8px]"
             disabled={submitting || job.status === 'analyzing'}
+            className="bg-paper-soft font-mono text-[11.5px] leading-[1.7]"
           />
           {analyzeError && (
             <div className="mt-1.5 text-[11px] text-warning">{analyzeError}</div>
           )}
           <div className="mt-2 flex gap-2">
-            <button
+            <ChromeButton
+              variant="default"
+              size="md"
+              uppercase
               onClick={submitAnalysis}
               disabled={submitting || !prompt.trim() || job.status === 'analyzing'}
-              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 rounded-sm"
             >
               {submitting
                 ? '요청 중…'
                 : job.status === 'done' || job.status === 'error'
                 ? `다시 분석 (${estimatedCredits}크레딧)`
                 : `분석 시작 (${estimatedCredits}크레딧)`}
-            </button>
+            </ChromeButton>
           </div>
         </div>
       )}
@@ -368,7 +377,10 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
             <VideoMarkdown source={job.analysis} />
           </div>
           <div className="mt-4 flex gap-2">
-            <button
+            <ChromeButton
+              variant="default"
+              size="md"
+              uppercase
               onClick={() => {
                 const blob = new Blob([job.analysis!], { type: 'text/markdown' });
                 const a = document.createElement('a');
@@ -377,10 +389,9 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
                 a.click();
                 URL.revokeObjectURL(a.href);
               }}
-              className="border border-line bg-paper px-4 py-1.5 text-[11px] uppercase tracking-[0.18em] text-ink-2 hover:border-ink-2 rounded-sm"
             >
               MD 다운로드
-            </button>
+            </ChromeButton>
           </div>
         </div>
       )}
