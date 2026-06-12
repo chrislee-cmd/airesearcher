@@ -5,6 +5,11 @@ import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { QuoteSearchPanel } from '@/components/insights/quote-search-panel';
+import { ClusterView } from '@/components/insights/cluster-view';
+import {
+  loadClustersForJob,
+  type ClusterWithQuotes,
+} from '@/lib/insights-clusters-load';
 import { createClient } from '@/lib/supabase/client';
 
 // Union of the two legacy tabs' accept lists. Browsers vary on whether
@@ -93,11 +98,16 @@ function formatDate(iso: string): string {
 export function InsightsAnalyzer({
   pastJobs = [],
   initialJob,
+  initialClusters,
 }: {
   pastJobs?: PastJob[];
   // When present, hydrate ready state from this server-fetched row and
   // skip the idle/upload flow. Used by /insights-analyzer/[jobId]/page.
   initialJob?: PastJob;
+  // Server-fetched clusters from the /[jobId] route. When absent (root
+  // URL or fresh-upload completion) the component fetches client-side
+  // once phase becomes 'ready'.
+  initialClusters?: ClusterWithQuotes[];
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<FileRow[]>([]);
@@ -121,8 +131,36 @@ export function InsightsAnalyzer({
   const [phase, setPhase] = useState<JobStatus | 'idle'>(
     initialJob ? 'ready' : 'idle',
   );
+  // Server-supplied clusters take precedence; null = "haven't fetched
+  // yet for this jobId" (triggers the client-side load below).
+  const [clusters, setClusters] = useState<ClusterWithQuotes[] | null>(
+    initialClusters ?? null,
+  );
 
   const supabase = useMemo(() => createClient(), []);
+
+  // Client-side cluster fetch for the root URL flow (no initialClusters):
+  //   1) localStorage resume of a ready job
+  //   2) fresh upload completion where onStart() flipped phase=ready
+  // The [jobId] route hydrates initialClusters server-side, so this
+  // effect bails out there. Errors fall through as empty array — the
+  // ClusterView graceful-empty message is correct UX either way.
+  useEffect(() => {
+    if (initialClusters !== undefined) return;
+    if (phase !== 'ready' || !jobId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await loadClustersForJob(supabase, jobId);
+        if (!cancelled) setClusters(rows);
+      } catch {
+        if (!cancelled) setClusters([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialClusters, phase, jobId, supabase]);
 
   // Resume a previously-started job on refresh. Skipped when the page
   // already passed an initialJob via URL — that takes precedence over
@@ -593,11 +631,18 @@ export function InsightsAnalyzer({
             <section className="border border-line bg-paper p-5 rounded-sm">
               <div className="eyebrow-mute mb-2">정량 분석</div>
               <h2 className="text-[13px] font-semibold text-ink-2">
-                패턴 매트릭스
+                클러스터 인사이트
               </h2>
-              <p className="mt-2 text-[11.5px] leading-[1.55] text-mute-soft">
-                참여자 × 테마 매트릭스, 클러스터 뷰, 여정 맵, 병렬 좌표, 히트맵 등 정량 시각화는 후속 PR (5a · 6a) 에서 추가됩니다.
+              <p className="mt-1.5 text-[11px] text-mute-soft">
+                인용구를 의미 단위로 묶어 핵심 메시지를 추출합니다.
               </p>
+              <div className="mt-4">
+                {clusters === null ? (
+                  <p className="text-[11.5px] text-mute-soft">불러오는 중…</p>
+                ) : (
+                  <ClusterView clusters={clusters} />
+                )}
+              </div>
             </section>
             <section className="border border-line bg-paper p-5 rounded-sm">
               <div className="eyebrow-mute mb-2">정성 분석</div>
