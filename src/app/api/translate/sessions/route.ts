@@ -2,20 +2,19 @@
 //
 // On a single request we:
 //   1. insert the translate_sessions row (org-scoped, host_user_id)
-//   2. issue a Gemini Live Translate ephemeral auth token (~30 min lifetime,
-//      60s window to open the WebSocket)
+//   2. issue an OpenAI Realtime ephemeral client_secret (~60s)
 //   3. issue a LiveKit host token (publish + subscribe) for the room
 //
-// The client uses (2) to open the Bidi WebSocket against Gemini directly
-// and (3) to publish the original + translated tracks into the LiveKit
-// room that viewers will later subscribe to.
+// The client uses (2) to WebRTC-connect to OpenAI and (3) to publish the
+// original + translated tracks into the LiveKit room that viewers will
+// later subscribe to.
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { buildHostToken, livekitUrl } from '@/lib/livekit-tokens';
-import { issueLiveTranslateSession, liveTranslateModel } from '@/lib/gemini-live';
+import { issueRealtimeSession, realtimeModel } from '@/lib/openai-realtime';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -71,16 +70,16 @@ export async function POST(request: Request) {
     .update({ livekit_room: roomName })
     .eq('id', session.id);
 
-  // 2) Gemini Live Translate ephemeral auth token
-  let geminiSession;
+  // 2) OpenAI Realtime ephemeral
+  let openaiSession;
   try {
-    geminiSession = await issueLiveTranslateSession({
+    openaiSession = await issueRealtimeSession({
       sourceLang: source_lang,
       targetLang: target_lang,
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'gemini_failed' },
+      { error: e instanceof Error ? e.message : 'openai_failed' },
       { status: 502 },
     );
   }
@@ -103,9 +102,9 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     session: { ...session, livekit_room: roomName },
-    gemini: {
-      model: liveTranslateModel(),
-      client_secret: geminiSession.client_secret,
+    openai: {
+      model: realtimeModel(),
+      client_secret: openaiSession.client_secret,
     },
     livekit: {
       url: livekitWsUrl,
