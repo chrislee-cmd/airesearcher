@@ -23,7 +23,6 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "ai": "^6.0.174",
-    "creem": "^1.4.5",
     "docx": "^9.6.1",
     "fflate": "^0.8.3",
     "livekit-client": "^2.19.1",

@@ -28,7 +28,7 @@ const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   enterprise: 'bundleEnterprise',
 };
 
-type Method = 'creem' | 'bank_transfer';
+type Method = 'lemonsqueezy' | 'bank_transfer';
 
 type TaxInvoiceState = {
   enabled: boolean;
@@ -63,12 +63,12 @@ export function CreditsBundles() {
   const locale = useLocale();
   const displayCurrency = currencyForLocale(locale);
   // Prices on the page are shown in the user's local currency for
-  // intuition; the actual transaction (Creem or bank transfer) still
-  // settles in KRW, so non-KRW users get a small note explaining the
-  // billing currency.
+  // intuition; the actual transaction (Lemon Squeezy or bank transfer)
+  // still settles in KRW, so non-KRW users get a small note explaining
+  // the billing currency.
   const formatPrice = (krw: number) => formatCurrency(krw, displayCurrency);
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
-  const [method, setMethod] = useState<Method>('creem');
+  const [method, setMethod] = useState<Method>('lemonsqueezy');
   const [tax, setTax] = useState<TaxInvoiceState>(EMPTY_TAX);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,14 +91,14 @@ export function CreditsBundles() {
     setSelectedBundle(null);
     setBankDetails(null);
     setTax(EMPTY_TAX);
-    setMethod('creem');
+    setMethod('lemonsqueezy');
     setError(null);
   }
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
     track(
-      method === 'creem' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
+      method === 'lemonsqueezy' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
       {
         bundle: selected.id,
         credits: selected.credits,
@@ -123,7 +123,12 @@ export function CreditsBundles() {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ bundleId: selected.id, method, taxInvoice: taxPayload }),
+        body: JSON.stringify({
+          bundleId: selected.id,
+          method,
+          locale: locale === 'ko' ? 'ko' : 'en',
+          taxInvoice: taxPayload,
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -134,7 +139,7 @@ export function CreditsBundles() {
         );
         return;
       }
-      if (method === 'creem' && json.checkoutUrl) {
+      if (method === 'lemonsqueezy' && json.checkoutUrl) {
         window.location.assign(json.checkoutUrl);
         return;
       }
@@ -299,8 +304,8 @@ export function CreditsBundles() {
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <MethodOption
-                        active={method === 'creem'}
-                        onClick={() => setMethod('creem')}
+                        active={method === 'lemonsqueezy'}
+                        onClick={() => setMethod('lemonsqueezy')}
                         label={t('methodCard')}
                         hint={t('methodCardHint')}
                       />
@@ -378,7 +383,7 @@ export function CreditsBundles() {
                     >
                       {submitting
                         ? t('submitting')
-                        : method === 'creem'
+                        : method === 'lemonsqueezy'
                         ? t('payWithCard')
                         : t('issueBankReference')}
                     </Button>

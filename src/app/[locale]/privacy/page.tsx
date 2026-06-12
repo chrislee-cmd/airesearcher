@@ -59,7 +59,7 @@ function KoPrivacy() {
       <H2>1. 수집하는 개인정보 항목</H2>
       <UL>
         <li>회원가입 시: 이메일 주소, 이름(또는 표시명), Google OAuth 식별자(해당 시), 비밀번호 해시</li>
-        <li>유료 결제 시: 결제 처리사 Creem 측에서 카드정보를 수집·처리하며, 회사는 결제 결과(거래 ID, 금액, 결제 상태)만 수신·저장</li>
+        <li>유료 결제 시: 결제 처리사 Lemon Squeezy 측에서 카드정보를 수집·처리하며, 회사는 결제 결과(거래 ID, 금액, 결제 상태)만 수신·저장</li>
         <li>서비스 이용 과정에서 자동 생성: 접속 로그, IP 주소, 디바이스/브라우저 정보, 쿠키, 이용 기록</li>
         <li>이용자가 직접 업로드한 콘텐츠: 인터뷰 녹음·전사본, 설문 데이터, 리서치 문서 등</li>
       </UL>
@@ -83,7 +83,7 @@ function KoPrivacy() {
       <H2>4. 개인정보의 제3자 제공 및 처리위탁</H2>
       <P>회사는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다만, 서비스 운영을 위해 다음의 처리위탁이 이루어지고 있습니다.</P>
       <UL>
-        <li><strong>Creem</strong> — 결제 처리(카드 인증, 결제 승인, 환불)</li>
+        <li><strong>Lemon Squeezy</strong> — 결제 처리(카드 인증, 결제 승인, 환불)</li>
         <li><strong>Supabase</strong> — 데이터베이스·인증·파일 스토리지 호스팅</li>
         <li><strong>Vercel</strong> — 웹 애플리케이션 호스팅 및 로그</li>
         <li><strong>OpenAI / Anthropic</strong> — AI 모델 추론(전사·요약·분석 입력 및 출력)</li>
@@ -142,7 +142,7 @@ function EnPrivacy() {
       <H2>1. Information We Collect</H2>
       <UL>
         <li>Account information — email, display name, Google OAuth identifier (if used), and a hashed password.</li>
-        <li>Payment information — handled directly by our payment processor Creem. We receive and retain only transaction metadata (transaction ID, amount, status); we do not store full card details.</li>
+        <li>Payment information — handled directly by our payment processor Lemon Squeezy. We receive and retain only transaction metadata (transaction ID, amount, status); we do not store full card details.</li>
         <li>Usage data — access logs, IP address, device and browser information, cookies, and product interactions.</li>
         <li>User content — recordings, transcripts, survey data, research documents, and other files you upload.</li>
       </UL>
@@ -166,7 +166,7 @@ function EnPrivacy() {
       <H2>4. Sharing and Processors</H2>
       <P>We do not sell personal data. We share data only with the following subprocessors, each bound by a written agreement:</P>
       <UL>
-        <li><strong>Creem</strong> — payment processing</li>
+        <li><strong>Lemon Squeezy</strong> — payment processing</li>
         <li><strong>Supabase</strong> — database, authentication, and file storage</li>
         <li><strong>Vercel</strong> — application hosting and logs</li>
         <li><strong>OpenAI / Anthropic</strong> — AI model inference (inputs and outputs)</li>

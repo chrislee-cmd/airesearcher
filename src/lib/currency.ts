@@ -1,7 +1,7 @@
 // Static FX conversion for credit-bundle pricing display.
 //
 // The product is invoiced in KRW (the bank-transfer flow shows the
-// exact KRW amount and Creem charges KRW), so foreign currency here is
+// exact KRW amount and Lemon Squeezy settles in KRW), so foreign currency here is
 // purely informational — it gives users a sense of cost in their own
 // money without us taking on the operational burden of live FX rates,
 // caching, or fallback handling.

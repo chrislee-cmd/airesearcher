@@ -79,7 +79,7 @@ function KoTerms() {
       <H2>제6조 (크레딧 및 결제)</H2>
       <UL>
         <li>유료 기능은 크레딧을 차감하여 이용합니다. 기능별 크레딧 비용은 서비스 내 가격 페이지에 게시됩니다.</li>
-        <li>크레딧 결제는 결제 처리사 <strong>Creem</strong>을 통해 이루어지며, 이용자의 결제 정보는 회사가 직접 저장하지 않습니다.</li>
+        <li>크레딧 결제는 결제 처리사 <strong>Lemon Squeezy</strong>를 통해 이루어지며, 이용자의 결제 정보는 회사가 직접 저장하지 않습니다.</li>
         <li>구매한 크레딧의 유효기간 및 환불 정책은 별도 안내에 따릅니다.</li>
       </UL>
 
@@ -164,7 +164,7 @@ function EnTerms() {
       <H2>6. Credits and Payments</H2>
       <UL>
         <li>Paid features consume Credits. Per-feature Credit costs are displayed within the Service.</li>
-        <li>Credit purchases are processed by our payment partner <strong>Creem</strong>. We do not store full payment card details on our servers.</li>
+        <li>Credit purchases are processed by our payment partner <strong>Lemon Squeezy</strong>. We do not store full payment card details on our servers.</li>
         <li>Credit validity and refund eligibility follow the policies set out below and any notices posted on the pricing page.</li>
       </UL>
 
