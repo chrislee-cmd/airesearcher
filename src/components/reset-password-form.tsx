@@ -6,11 +6,8 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
-
-const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
-const labelCls =
-  'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function ResetPasswordForm() {
   const t = useTranslations('Auth');
@@ -50,41 +47,37 @@ export function ResetPasswordForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div>
-        <label className={labelCls}>{t('newPassword')}</label>
-        <input
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputCls}
-        />
-      </div>
-      <div>
-        <label className={labelCls}>{t('passwordConfirm')}</label>
-        <input
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          value={passwordConfirm}
-          onChange={(e) => setPasswordConfirm(e.target.value)}
-          className={inputCls}
-        />
-      </div>
+      <Input
+        label={t('newPassword')}
+        type="password"
+        required
+        minLength={8}
+        autoComplete="new-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <Input
+        label={t('passwordConfirm')}
+        type="password"
+        required
+        minLength={8}
+        autoComplete="new-password"
+        value={passwordConfirm}
+        onChange={(e) => setPasswordConfirm(e.target.value)}
+      />
 
       {error && <p className="text-[11.5px] text-warning">{error}</p>}
       {info && <p className="text-[11.5px] text-mute">{info}</p>}
 
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="cta"
+        fullWidth
         disabled={pending}
-        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 rounded-sm"
       >
         {pending ? '…' : t('updatePassword')}
-      </button>
+      </Button>
     </form>
   );
 }
