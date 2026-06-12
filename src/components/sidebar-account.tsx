@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useTransition } from 'react';
 import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider';
 import { track } from '@/components/mixpanel-provider';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 
 type Props = {
   email: string | null;
@@ -110,8 +112,9 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
+        <IconButton
+          variant="ghost"
+          size="md"
           onClick={() => {
             setOpen((v) => {
               if (!v) track('settings_menu_open_click');
@@ -120,12 +123,10 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
           }}
           aria-label={t('settings')}
           aria-expanded={open}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2 ${
-            open ? 'text-ink-2' : ''
-          }`}
+          className={`shrink-0 ${open ? 'text-ink-2' : ''}`}
         >
           <Gear />
-        </button>
+        </IconButton>
       </div>
 
       {open && (
@@ -137,18 +138,19 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </div>
             <div className="mt-1.5 flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
               {(['ko', 'en'] as const).map((lng) => (
-                <button
+                <Button
                   key={lng}
-                  type="button"
+                  variant="link"
+                  size="xs"
                   onClick={() => changeLocale(lng)}
-                  className={`transition-colors duration-[120ms] ${
+                  className={`!px-0 !py-0 !text-[10.5px] uppercase tracking-[0.18em] ${
                     lng === locale
-                      ? 'text-amore'
+                      ? 'text-amore hover:text-amore'
                       : 'text-mute-soft hover:text-ink-2'
                   }`}
                 >
                   {lng}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -195,13 +197,15 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </>
           )}
           <div className="my-1 h-px bg-line-soft" />
-          <button
-            type="button"
+          <Button
+            variant="destructive-link"
+            size="xs"
+            fullWidth
             onClick={signOut}
-            className="block w-full px-3 py-1.5 text-left text-[11.5px] text-warning transition-colors duration-[120ms] hover:bg-paper-soft"
+            className="!justify-start !px-3 !py-1.5 !text-[11.5px] font-normal text-warning hover:bg-paper-soft hover:text-warning"
           >
             {tAuth('signOut')}
-          </button>
+          </Button>
         </div>
       )}
     </div>
