@@ -15,6 +15,7 @@ import { ShareMenu } from './ui/share-menu';
 import { FeaturePage } from './ui/feature-page';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ChromeInput } from '@/components/ui/chrome-input';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { RecruitingBrief as RecruitingBriefType } from '@/lib/recruiting-schema';
@@ -608,12 +609,12 @@ export function RecruitingBrief() {
           <label className="mb-2 block text-[12px] font-semibold text-ink-2">
             텍스트 붙여넣기
           </label>
-          <textarea
+          <Textarea
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="flex-1 resize-none border border-line bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 placeholder:text-mute-soft focus:border-ink-2 focus:outline-none disabled:opacity-50 rounded-sm"
+            className="h-[188px] resize-none text-[12.5px] text-ink-2"
           />
         </div>
         <div className="flex h-[220px] flex-col">
@@ -697,7 +698,7 @@ export function RecruitingBrief() {
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-mute-soft">
               요약
             </label>
-            <textarea
+            <Textarea
               value={summaryText}
               onChange={(e) =>
                 setEdited((prev) =>
@@ -706,7 +707,7 @@ export function RecruitingBrief() {
               }
               disabled={!edited}
               rows={2}
-              className="w-full resize-y border border-line-soft bg-paper px-3 py-2 text-[12.5px] leading-[1.6] text-ink-2 focus:border-ink-2 focus:outline-none disabled:opacity-60 rounded-sm"
+              className="border-line-soft text-[12.5px] text-ink-2"
             />
           </div>
 
@@ -871,42 +872,45 @@ export function RecruitingBrief() {
                       : 'Google 미연결 — 발행하려면 먼저 계정을 연결하세요.'}
                   </span>
                   {google.connected ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={async () => {
                         if (!confirm('Google 연결을 해제할까요? 다른 계정으로 다시 연결할 수 있습니다.')) return;
                         await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
                         window.location.reload();
                       }}
-                      className="text-mute underline underline-offset-2 hover:text-amore"
+                      className="px-0 py-0 font-normal text-[11px] underline underline-offset-2 hover:text-amore"
                     >
                       연결 해제
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={() => {
                         window.location.href = '/api/recruiting/google/start';
                       }}
-                      className="text-amore underline underline-offset-2"
+                      className="px-0 py-0 font-normal text-[11px] text-amore underline underline-offset-2 hover:text-amore"
                     >
                       Google 계정 연결
-                    </button>
+                    </Button>
                   )}
                 </p>
               )}
               {google?.connected && !google.hasDrive && (
                 <p className="mt-1 text-[11px] text-amore">
                   공개(anyone with link) 권한 부여를 위해 Google 계정을 다시 연결해주세요.{' '}
-                  <button
-                    type="button"
+                  <Button
+                    variant="link"
+                    size="xs"
                     onClick={() => {
                       window.location.href = '/api/recruiting/google/start';
                     }}
-                    className="underline underline-offset-2"
+                    className="px-0 py-0 font-normal text-[11px] text-amore underline underline-offset-2 hover:text-amore"
                   >
                     재연결
-                  </button>
+                  </Button>
                 </p>
               )}
               {surveyError && (
@@ -1179,12 +1183,12 @@ function CriterionEditor({
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <input
+        <ChromeInput
           type="text"
           value={value.category}
           onChange={(e) => onChange('category', e.target.value)}
           placeholder="카테고리"
-          className="w-[140px] border border-line-soft bg-paper px-2 py-1 text-[10.5px] uppercase tracking-[0.04em] text-mute-soft focus:border-ink-2 focus:outline-none [border-radius:3px]"
+          className="w-[140px] border-line-soft text-[10.5px] uppercase tracking-[0.04em] text-mute-soft"
         />
         <label className="flex items-center gap-1 text-[10.5px] text-mute">
           <Checkbox
@@ -1202,19 +1206,19 @@ function CriterionEditor({
           삭제
         </Button>
       </div>
-      <input
+      <ChromeInput
         type="text"
         value={value.label}
         onChange={(e) => onChange('label', e.target.value)}
         placeholder="라벨"
-        className="w-full border border-line-soft bg-paper px-2 py-1 text-[12px] font-semibold text-ink focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        className="w-full border-line-soft font-semibold text-ink"
       />
-      <textarea
+      <Textarea
         value={value.detail}
         onChange={(e) => onChange('detail', e.target.value)}
         placeholder="세부 설명"
         rows={2}
-        className="w-full resize-none border border-line-soft bg-paper px-2 py-1 text-[12px] leading-[1.5] text-mute focus:border-ink-2 focus:outline-none [border-radius:3px]"
+        className="resize-none border-line-soft px-2 py-1 text-[12px] leading-[1.5] text-mute rounded-xs"
       />
     </div>
   );
