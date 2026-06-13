@@ -4,10 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { refundCredits } from '@/lib/credits';
 import { extractClusters } from '@/lib/insights-clusters-extract';
+import { extractQualitative } from '@/lib/insights-qualitative-extract';
 
-// Bumped from 30s for the cluster pass. 230-quote jobs take ~15-25s on
-// Sonnet 4.6; the prior 30s ceiling barely cleared per-quote extraction.
-export const maxDuration = 60;
+// Bumped to 90s for the qualitative pass on top of clusters. Both
+// extractions are best-effort and round trips compound: clusters
+// (~15-20s) + qualitative (~15-25s) needs headroom over the existing
+// finalize work. We're on Vercel Pro so 90 is safe.
+export const maxDuration = 90;
 
 // PR 3 threshold (Decision #2 in the scope discussion):
 //   success_ratio >= 0.5 → status=ready, no refund
@@ -101,23 +104,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Cluster extraction (PR 5a). Best-effort: a failed LLM pass should
-    // NOT roll back the ready status — quote-level search (PR 7) is the
-    // user's #1 priority and is already complete. The viz cards (PR 6a)
-    // gracefully degrade to "no clusters" when this table is empty.
+    // Viz-schema extraction (PR 5a clusters + PR 5b tensions / contradictions).
+    // Both passes are best-effort and independent: a failure in one
+    // never rolls back ready status (PR 7 quote search, the #1 user
+    // priority, is already complete) and never blocks the other pass.
+    // We fetch the quote list once and pass it to both extractors.
     let clusterCount = 0;
-    try {
-      const { data: clusterQuotes } = await admin
-        .from('insights_quotes')
-        .select('id, participant_name, theme, text')
-        .eq('job_id', jobId);
-      if (clusterQuotes && clusterQuotes.length > 0) {
-        const clusters = await extractClusters(clusterQuotes);
+    let tensionCount = 0;
+    let contradictionCount = 0;
+    const { data: extractionQuotes } = await admin
+      .from('insights_quotes')
+      .select('id, participant_name, theme, text')
+      .eq('job_id', jobId);
+
+    if (extractionQuotes && extractionQuotes.length > 0) {
+      try {
+        const clusters = await extractClusters(extractionQuotes);
         if (clusters.length > 0) {
-          // Insert clusters first to get their generated uuids, then
-          // expand the M:N rows. We could batch with a CTE-style RPC for
-          // atomicity, but a soft-fail on the join table is acceptable
-          // (worst case: a cluster card shows with empty quote list).
           const clusterRows = clusters.map((c) => ({
             job_id: jobId,
             cluster_key: c.cluster_key,
@@ -129,7 +132,6 @@ export async function POST(request: Request) {
             .insert(clusterRows)
             .select('id, cluster_key');
           if (insertErr) throw new Error(`cluster_insert: ${insertErr.message}`);
-
           const keyToId = new Map(
             (insertedClusters ?? []).map((r) => [r.cluster_key, r.id]),
           );
@@ -146,13 +148,59 @@ export async function POST(request: Request) {
           }
           clusterCount = clusters.length;
         }
+      } catch (e) {
+        console.error('[insights/finalize] cluster extraction failed', {
+          jobId,
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
-    } catch (e) {
-      console.error('[insights/finalize] cluster extraction failed', {
-        jobId,
-        error: e instanceof Error ? e.message : String(e),
-      });
-      // Continue — ready status stays.
+
+      try {
+        const { tensions, contradictions } = await extractQualitative(
+          extractionQuotes,
+        );
+        if (tensions.length > 0) {
+          const rows = tensions.map((t) => ({
+            job_id: jobId,
+            participant_name: t.participant_name,
+            axis: t.axis,
+            lo_val: t.lo_val,
+            hi_val: t.hi_val,
+            lo_quote_id: t.lo_quote_id,
+            hi_quote_id: t.hi_quote_id,
+          }));
+          const { error: tensionErr } = await admin
+            .from('insights_tensions')
+            .insert(rows);
+          if (tensionErr) throw new Error(`tension_insert: ${tensionErr.message}`);
+          tensionCount = rows.length;
+        }
+        if (contradictions.length > 0) {
+          const rows = contradictions.map((c) => ({
+            job_id: jobId,
+            participant_name: c.participant_name,
+            contradiction_type: c.contradiction_type,
+            strength: c.strength,
+            label: c.label,
+            a_label: c.a_label,
+            a_quote_id: c.a_quote_id,
+            b_label: c.b_label,
+            b_quote_id: c.b_quote_id,
+            insight: c.insight,
+            tag: c.tag,
+          }));
+          const { error: contraErr } = await admin
+            .from('insights_contradictions')
+            .insert(rows);
+          if (contraErr) throw new Error(`contradiction_insert: ${contraErr.message}`);
+          contradictionCount = rows.length;
+        }
+      } catch (e) {
+        console.error('[insights/finalize] qualitative extraction failed', {
+          jobId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
 
     return NextResponse.json({
@@ -161,6 +209,8 @@ export async function POST(request: Request) {
       quote_count: quotes?.length ?? 0,
       participant_count: participants.size,
       cluster_count: clusterCount,
+      tension_count: tensionCount,
+      contradiction_count: contradictionCount,
       success_files: successFiles,
       file_count: fileCount,
     });
