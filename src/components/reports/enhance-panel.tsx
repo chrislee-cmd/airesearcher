@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EnhanceMode, ContextInput } from '@/lib/reports/context-payload';
 import { useWorkspace } from '@/components/workspace-provider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 // Self-contained panel that lives under the report result. Caller passes:
 //   - reportId / parentVersion (the version currently shown)
@@ -220,27 +223,36 @@ export function EnhancePanel({
       <div className="mt-4 grid grid-cols-3 gap-2">
         {(Object.keys(MODE_LABELS) as EnhanceMode[]).map((m) => {
           const active = mode === m;
+          // Card-style mode picker: multi-line content + text-left.
+          // Uses Button as the trigger but overrides the BASE
+          // center-alignment via className. Active/inactive color
+          // states are ink-on-ink vs paper-on-ink-2, which don't
+          // map cleanly onto Button's primary/ghost variants, so we
+          // override colors at the consumer site (see §7.11 — variant
+          // ownership applies to the primitive's BASE, not to
+          // consumer-site overrides).
           return (
-            <button
+            <Button
               key={m}
-              type="button"
+              variant={active ? 'primary' : 'ghost'}
+              size="md"
               disabled={busy}
               onClick={() => pickMode(active ? null : m)}
-              className={`border px-4 py-3 text-left transition-colors duration-[120ms] rounded-xs ${
+              className={`flex-col items-start justify-start gap-0 px-4 py-3 text-left normal-case tracking-normal rounded-xs ${
                 active
-                  ? 'border-ink bg-ink text-paper'
-                  : 'border-line bg-paper text-ink-2 hover:border-ink-2'
-              } disabled:opacity-40`}
+                  ? 'border-ink bg-ink text-paper hover:bg-ink'
+                  : 'border-line bg-paper text-ink-2 hover:border-ink-2 hover:text-ink-2'
+              }`}
             >
-              <div className="text-[12.5px] font-semibold">
+              <span className="block w-full text-[12.5px] font-semibold">
                 {MODE_LABELS[m]}
-              </div>
-              <div
-                className={`mt-1 text-[11px] leading-[1.5] ${active ? 'text-paper/75' : 'text-mute-soft'}`}
+              </span>
+              <span
+                className={`mt-1 block w-full text-[11px] font-normal leading-[1.5] ${active ? 'text-paper/75' : 'text-mute-soft'}`}
               >
                 {MODE_DESC[m]}
-              </div>
-            </button>
+              </span>
+            </Button>
           );
         })}
       </div>
@@ -251,43 +263,54 @@ export function EnhancePanel({
           {/* Tabs */}
           <div className="flex flex-wrap items-center gap-1 border-b border-line-soft pb-2">
             {(['text', 'url', 'file', 'workspace', 'form'] as Tab[]).map((t) => (
-              <button
+              // Tab triggers — small, 4px-radius, border-on-active.
+              // Button variant=link gives us a text-only base; we apply
+              // a small px/py + border override for the active outline.
+              <Button
                 key={t}
-                type="button"
+                variant="link"
+                size="xs"
                 onClick={() => setTab(t)}
-                className={`px-2.5 py-1 text-[11.5px] transition-colors duration-[120ms] rounded-xs ${
+                className={`px-2.5 py-1 text-[11.5px] font-normal normal-case tracking-normal rounded-xs ${
                   tab === t
-                    ? 'border border-ink-2 bg-paper text-ink-2'
+                    ? 'border border-ink-2 bg-paper text-ink-2 hover:text-ink-2'
                     : 'border border-transparent text-mute hover:text-ink-2'
                 }`}
               >
                 {TAB_LABEL[t]}
-              </button>
+              </Button>
             ))}
           </div>
 
           <div className="mt-3">
             {tab === 'text' && (
-              <textarea
+              <Textarea
                 value={textBody}
                 onChange={(e) => setTextBody(e.target.value)}
                 rows={6}
                 placeholder="트렌드 기사/메모/요약을 붙여 넣으세요."
-                className="w-full resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] leading-[1.65] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                className="bg-paper-soft text-[12.5px] leading-[1.65] text-ink-2"
               />
             )}
             {tab === 'url' && (
-              <input
+              <Input
                 value={urlValue}
                 onChange={(e) => setUrlValue(e.target.value)}
                 type="url"
                 placeholder="https://..."
-                className="w-full border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                className="bg-paper-soft text-[12.5px] text-ink-2"
               />
             )}
             {tab === 'file' && (
               <div>
-                <input
+                {/* File inputs are a special case — the Input primitive's
+                    border/bg chrome doesn't compose well with the browser's
+                    native file picker chrome, so we strip the primitive's
+                    visual chrome via className overrides and lean on the
+                    browser default. Wrapping with <Input> still buys us
+                    primitive-ownership (single source of truth for "all
+                    inputs flow through the primitive"). */}
+                <Input
                   type="file"
                   accept=".docx,.md,.markdown,.txt,.xlsx,.csv"
                   disabled={fileBusy}
@@ -295,7 +318,8 @@ export function EnhancePanel({
                     const f = e.target.files?.[0];
                     if (f) void uploadContextFile(f);
                   }}
-                  className="text-[12px] text-mute"
+                  fullWidth={false}
+                  className="border-0 bg-transparent p-0 text-[12px] text-mute focus:border-0 focus-visible:border-0"
                 />
                 {fileBusy && (
                   <div className="mt-2 text-[11.5px] text-mute-soft">
@@ -342,7 +366,7 @@ export function EnhancePanel({
                       {f.label}
                     </span>
                     {f.type === 'textarea' ? (
-                      <textarea
+                      <Textarea
                         rows={3}
                         value={formFields[f.key] ?? ''}
                         onChange={(e) =>
@@ -352,10 +376,10 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="resize-y border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                        className="bg-paper-soft text-[12.5px] text-ink-2"
                       />
                     ) : (
-                      <input
+                      <Input
                         value={formFields[f.key] ?? ''}
                         onChange={(e) =>
                           setFormFields((p) => ({
@@ -364,7 +388,7 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="border border-line bg-paper-soft px-3 py-2 text-[12.5px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                        className="bg-paper-soft text-[12.5px] text-ink-2"
                       />
                     )}
                   </label>
@@ -379,25 +403,26 @@ export function EnhancePanel({
               <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
                 자유 지시 (선택)
               </span>
-              <input
+              <Input
                 value={userNote}
                 onChange={(e) => setUserNote(e.target.value)}
                 placeholder="예: 결론을 이 트렌드와 직접 연결해줘"
-                className="border border-line bg-paper-soft px-3 py-2 text-[12px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                className="bg-paper-soft text-[12px] text-ink-2"
               />
             </label>
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-mute-soft">
                 강화 1회 · 10크레딧
               </span>
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 onClick={run}
                 disabled={!canRun}
-                className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40 rounded-xs"
+                className="rounded-xs"
               >
                 {busy ? '강화 중...' : `v${parentVersion + 1} 생성`}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
