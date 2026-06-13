@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useAuth, useRequireAuth } from './auth-provider';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 
 type Service = {
   key: string;
@@ -181,14 +183,15 @@ export function ModeratorServicesCarousel() {
           </ul>
 
           <div className="relative mt-5">
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => submitInquiry(s)}
               disabled={sending}
-              className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-sm"
+              className="!px-4 disabled:!opacity-50"
             >
               {sending ? t('inquirySending') : t('inquiry')}
-            </button>
+            </Button>
             {showTip && (
               <div
                 role="status"
@@ -214,16 +217,17 @@ export function ModeratorServicesCarousel() {
         {SERVICES.map((item, i) => {
           const active = i === index;
           return (
-            <button
+            <IconButton
               key={item.key}
-              type="button"
               aria-label={item.name}
               aria-current={active}
               onClick={() => goTo(i)}
-              className={`h-[6px] transition-all duration-[160ms] rounded-full ${
+              className={`h-[6px] !transition-all !duration-[160ms] rounded-full ${
                 active ? 'w-6 bg-ink' : 'w-[6px] bg-line hover:bg-mute-soft'
               }`}
-            />
+            >
+              <></>
+            </IconButton>
           );
         })}
       </div>
