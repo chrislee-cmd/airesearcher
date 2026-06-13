@@ -26,6 +26,8 @@ import {
 } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 
 type AudioMode = 'input' | 'output' | 'mute';
 type SessionStatus = 'idle' | 'live' | 'ended';
@@ -431,34 +433,63 @@ export function TranslateViewer({
       </header>
 
       {needsTap ? (
-        <button
+        // ChromeButton primary owns the 4px-radius amore-fill chrome
+        // documented for this exact site. Layout overrides (justify-between,
+        // taller px-4/py-3, text-[13px]) reproduce the original banner shape
+        // — chrome lg defaults to h-8 + px-3 + text-[12.5px].
+        <ChromeButton
+          variant="primary"
+          size="lg"
+          fullWidth
           onClick={enableAudio}
-          className="flex w-full items-center justify-between rounded-[4px] border border-amore bg-amore px-4 py-3 text-[13px] text-paper hover:opacity-90"
+          className="!flex !h-auto !justify-between !px-4 !py-3 !text-[13px]"
         >
           <span>Tap to enable audio</span>
           <span className="text-[11px] opacity-80">
             Mobile browsers require a tap to start playback
           </span>
-        </button>
+        </ChromeButton>
       ) : null}
 
-      <fieldset className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12.5px] text-ink">
+      <fieldset
+        className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12.5px] text-ink"
+        role="radiogroup"
+        aria-label="Audio"
+      >
         <legend className="px-1 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
           Audio
         </legend>
-        {(['input', 'output', 'mute'] as const).map((m) => (
-          <label key={m} className="flex items-center gap-2 text-[12.5px] text-ink">
-            <input
-              type="radio"
-              name="audio-mode"
-              checked={mode === m}
-              onChange={() => selectMode(m)}
-            />
-            {m === 'input' && `${COPY.audioInput} (${langName(sourceLang)})`}
-            {m === 'output' && `${COPY.audioOutput} (${langName(targetLang)})`}
-            {m === 'mute' && COPY.audioMute}
-          </label>
-        ))}
+        {(['input', 'output', 'mute'] as const).map((m) => {
+          const selected = mode === m;
+          const label =
+            m === 'input'
+              ? `${COPY.audioInput} (${langName(sourceLang)})`
+              : m === 'output'
+                ? `${COPY.audioOutput} (${langName(targetLang)})`
+                : COPY.audioMute;
+          // Button role=radio matches the existing in-app pattern
+          // (report-generator's REPORT_TYPES picker). variant="link" keeps
+          // the row text-only; selected state reads amore + bold to mirror
+          // the old "filled radio dot + label" affordance without a native
+          // <input>.
+          return (
+            <Button
+              key={m}
+              variant="link"
+              size="sm"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => selectMode(m)}
+              className={
+                selected
+                  ? '!px-1 !text-[12.5px] !text-amore'
+                  : '!px-1 !font-normal !text-ink hover:!text-amore'
+              }
+            >
+              {label}
+            </Button>
+          );
+        })}
         <span className="ml-auto text-[11px] text-mute-soft">
           {recordEnabled ? COPY.recordedHint : COPY.ephemeralHint}
         </span>
