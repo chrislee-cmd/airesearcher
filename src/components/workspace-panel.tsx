@@ -16,6 +16,7 @@ import { useWorkspace, type WorkspaceScope } from './workspace-provider';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
+import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
@@ -420,18 +421,19 @@ export function WorkspacePanel() {
   return (
     <>
       {/* Floating trigger — fades out as sidebar opens */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="xs"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 border bg-paper px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 rounded-sm ${
-          pulse ? 'workspace-trigger-pulse border-amore text-ink-2' : 'border-line text-mute'
+        className={`fixed bottom-5 right-5 z-40 !gap-2 !px-4 !py-2.5 !text-[10.5px] uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 ${
+          pulse ? 'workspace-trigger-pulse !border-amore !text-ink-2' : ''
         } ${isOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'opacity-100 translate-y-0'}`}
       >
         <span className="inline-block h-1 w-5 bg-amore" />
         {t('eyebrow')}
         <span className="tabular-nums text-mute-soft">· {unfiledCount}</span>
-      </button>
+      </Button>
 
       {/* Right sidebar — width animates 0 → 288px so main content smoothly shifts */}
       <aside
@@ -470,8 +472,9 @@ export function WorkspacePanel() {
           <div className="flex items-center gap-2 border-b border-line-soft px-5 py-2">
             {creatingProject ? (
               <>
-                <input
+                <ChromeInput
                   ref={inputRef}
+                  size="sm"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   onKeyDown={(e) => {
@@ -482,7 +485,7 @@ export function WorkspacePanel() {
                     }
                   }}
                   placeholder={t('newProjectName')}
-                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 rounded-xs"
+                  className="flex-1"
                 />
                 <ChromeButton
                   variant="mute"
@@ -575,8 +578,10 @@ export function WorkspacePanel() {
               </div>
               <ul>
                 <li>
-                  <button
-                    type="button"
+                  <Button
+                    variant="link"
+                    size="xs"
+                    fullWidth
                     onClick={() => setSelectedFolderId(null)}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -594,15 +599,15 @@ export function WorkspacePanel() {
                         if (a) void setFolderId(a, null);
                       }
                     }}
-                    className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] rounded-xs ${
+                    className={`!justify-start !gap-2 !px-2 !py-1 !text-[12px] font-normal !rounded-xs ${
                       selectedFolderId === null
-                        ? 'bg-paper-soft text-ink-2'
-                        : 'text-mute hover:text-ink-2'
+                        ? '!bg-paper-soft !text-ink-2'
+                        : 'hover:!text-ink-2'
                     } ${dropTargetFolder === 'root' ? 'outline outline-1 outline-amore' : ''}`}
                   >
                     <span>📁</span>
                     <span>{t('folderRoot')}</span>
-                  </button>
+                  </Button>
                 </li>
                 {folderTree.map(({ folder, depth }) => {
                   const isSelected = selectedFolderId === folder.id;
@@ -633,8 +638,9 @@ export function WorkspacePanel() {
                         style={{ paddingLeft: `${depth * 14 + 8}px` }}
                       >
                         {isRenaming ? (
-                          <input
+                          <ChromeInput
                             autoFocus
+                            size="xs"
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
                             onBlur={() => void submitFolderRename(folder.id)}
@@ -645,23 +651,24 @@ export function WorkspacePanel() {
                                 setRenameValue('');
                               }
                             }}
-                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
+                            className="flex-1"
                           />
                         ) : (
-                          <button
-                            type="button"
+                          <Button
+                            variant="link"
+                            size="xs"
                             onClick={() => setSelectedFolderId(folder.id)}
                             onDoubleClick={() => {
                               setRenamingFolder(folder.id);
                               setRenameValue(folder.name);
                             }}
-                            className={`flex flex-1 items-center gap-2 py-1 text-left text-[12px] ${
-                              isSelected ? 'text-ink-2' : 'text-mute hover:text-ink-2'
+                            className={`flex-1 !justify-start !gap-2 !px-0 !py-1 !text-[12px] font-normal !border-0 ${
+                              isSelected ? '!text-ink-2' : 'hover:!text-ink-2'
                             }`}
                           >
                             <span>📁</span>
                             <span className="truncate">{folder.name}</span>
-                          </button>
+                          </Button>
                         )}
                         <IconButton
                           onClick={() => {
@@ -691,8 +698,9 @@ export function WorkspacePanel() {
                           className="flex items-center gap-2 py-1"
                           style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
                         >
-                          <input
+                          <ChromeInput
                             autoFocus
+                            size="xs"
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
                             onKeyDown={(e) => {
@@ -703,7 +711,7 @@ export function WorkspacePanel() {
                               }
                             }}
                             placeholder={t('folderName')}
-                            className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
+                            className="flex-1"
                           />
                           <ChromeButton
                             variant="mute"
@@ -721,8 +729,9 @@ export function WorkspacePanel() {
                 })}
                 {creatingFolderParent === null && (
                   <li className="flex items-center gap-2 py-1 pl-2">
-                    <input
+                    <ChromeInput
                       autoFocus
+                      size="xs"
                       value={newFolderName}
                       onChange={(e) => setNewFolderName(e.target.value)}
                       onKeyDown={(e) => {
@@ -733,7 +742,7 @@ export function WorkspacePanel() {
                         }
                       }}
                       placeholder={t('folderName')}
-                      className="flex-1 border border-line bg-paper px-1.5 py-0.5 text-[12px] text-ink-2 rounded-xs"
+                      className="flex-1"
                     />
                     <ChromeButton
                       variant="mute"
@@ -1068,19 +1077,21 @@ function MenuItem({
   trailing?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="link"
+      size="xs"
+      fullWidth
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[11.5px] transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 ${
+      className={`!justify-between !gap-3 !px-3 !py-1.5 !text-[11.5px] font-normal ${
         danger
-          ? 'text-warning hover:bg-paper-soft'
-          : 'text-mute hover:bg-paper-soft hover:text-ink-2'
+          ? '!text-warning hover:bg-paper-soft'
+          : 'hover:bg-paper-soft hover:!text-ink-2'
       }`}
     >
       <span>{children}</span>
       {trailing && <span className="text-mute-soft">{trailing}</span>}
-    </button>
+    </Button>
   );
 }
 
