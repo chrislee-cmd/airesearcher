@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Button } from '@/components/ui/button';
 
 type TaxInvoice = {
   bizNo?: string;
@@ -105,18 +106,15 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
       {/* Filter tabs */}
       <div className="flex gap-1">
         {filters.map((f) => (
-          <button
+          <Button
             key={f}
-            type="button"
+            variant={statusFilter === f ? 'primary' : 'ghost'}
+            size="xs"
             onClick={() => changeFilter(f)}
-            className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] rounded-xs ${
-              statusFilter === f
-                ? 'bg-ink text-paper'
-                : 'border border-line text-mute hover:text-ink-2'
-            }`}
+            className="!px-3 !py-1.5 !text-[11px] uppercase tracking-[0.18em] !rounded-xs"
           >
             {f === 'pending' ? '입금대기' : f === 'paid' ? '완료' : '전체'}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -162,14 +160,15 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
                   </td>
                   <td className="py-3">
                     {p.status === 'pending' && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="xs"
                         disabled={confirming === p.id}
                         onClick={() => confirm(p.id)}
-                        className="border border-amore px-3 py-1 text-[11px] font-semibold text-amore hover:bg-amore hover:text-paper disabled:opacity-40 rounded-xs"
+                        className="!border-amore !px-3 !py-1 !text-[11px] !text-amore hover:!bg-amore hover:!text-paper !rounded-xs"
                       >
                         {confirming === p.id ? '처리 중…' : '입금 확인'}
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
