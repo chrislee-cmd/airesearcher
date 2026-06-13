@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import * as XLSX from 'xlsx';
+import { Button } from './ui/button';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import {
@@ -155,13 +156,14 @@ export function QuantAnalyzer() {
                 {t('columns', { count: summaries.length })}
               </div>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={clearAll}
-              className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 rounded-sm"
+              className="!px-3 !text-[11px] uppercase tracking-[0.18em]"
             >
               {t('reset')}
-            </button>
+            </Button>
           </div>
 
           {/* Pickers */}
@@ -188,18 +190,15 @@ export function QuantAnalyzer() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
               {(['count', 'colpct', 'rowpct'] as const).map((m) => (
-                <button
+                <Button
                   key={m}
-                  type="button"
+                  variant={mode === m ? 'primary' : 'ghost'}
+                  size="xs"
                   onClick={() => setMode(m)}
-                  className={`border px-3 py-1.5 transition-colors duration-[120ms] rounded-sm ${
-                    mode === m
-                      ? 'border-ink bg-ink text-paper'
-                      : 'border-line text-mute hover:text-ink-2'
-                  }`}
+                  className="!px-3 !py-1.5 uppercase tracking-[0.18em]"
                 >
                   {t(`mode_${m}`)}
-                </button>
+                </Button>
               ))}
             </div>
             <DownloadMenu
