@@ -376,6 +376,11 @@ export function InsightsAnalyzer({
       const finalJson: { status?: JobStatus; error?: string } = await finalRes.json();
       if (!finalRes.ok) {
         setError(finalJson.error ?? 'finalize_failed');
+      } else if (finalJson.status === 'ready') {
+        // Hand off to the [jobId] page so the URL is shareable and the
+        // server-rendered initialJob/initialClusters hydrate the ready
+        // state without a second round trip. Mirrors loadPastJob().
+        router.push(`/insights-analyzer/${jid}`);
       } else if (finalJson.status) {
         setPhase(finalJson.status);
       }
