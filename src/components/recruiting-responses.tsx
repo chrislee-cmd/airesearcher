@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from './ui/button';
 import { DownloadMenu } from './ui/download-menu';
 import type {
   FormColumn,
@@ -255,15 +256,16 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
       {hasResponsesScope === false && (
         <div className="mt-3 border border-line-soft bg-paper p-3 text-[12px] text-ink-2 rounded-sm">
           응답 동기화는 새 권한이 필요합니다.{' '}
-          <button
-            type="button"
+          <Button
+            variant="link"
+            size="xs"
             onClick={() => {
               window.location.href = '/api/recruiting/google/start';
             }}
-            className="text-amore underline-offset-2 hover:underline"
+            className="!px-0 !py-0 !border-0 !text-amore underline-offset-2 hover:underline hover:!text-amore"
           >
             Google 재연결
-          </button>
+          </Button>
         </div>
       )}
 
@@ -303,14 +305,15 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                       ? `동기화 ${formatTime(new Date(state.syncedAt).toISOString())}`
                       : '아직 동기화 안 됨'}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => void fetchResponses(f.formId)}
                     disabled={state?.loading || hasResponsesScope === false}
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-ink-2 transition-colors duration-[120ms] hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-40 rounded-sm"
+                    className="!px-3 !py-1 !text-[11.5px] !text-ink-2 hover:!border-ink-2"
                   >
                     {state?.loading ? '동기화 중…' : '새로고침'}
-                  </button>
+                  </Button>
                   <DownloadMenu
                     tone="ghost"
                     align="end"
@@ -334,14 +337,15 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                       },
                     ]}
                   />
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => void removeForm(f.formId)}
                     title="이 폼을 목록에서 제거 (Google Forms 원본은 유지)"
-                    className="border border-line bg-paper px-3 py-1 text-[11.5px] text-mute transition-colors duration-[120ms] hover:border-amore hover:text-amore rounded-sm"
+                    className="!px-3 !py-1 !text-[11.5px] hover:!border-amore hover:!text-amore"
                   >
                     제거
-                  </button>
+                  </Button>
                 </div>
               </header>
 
