@@ -5,11 +5,8 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
-
-const inputCls =
-  'mt-1.5 w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
-const labelCls =
-  'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function ForgotPasswordForm() {
   const t = useTranslations('Auth');
@@ -45,28 +42,27 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div>
-        <label className={labelCls}>{t('email')}</label>
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputCls}
-        />
-      </div>
+      <Input
+        label={t('email')}
+        type="email"
+        required
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
       {error && <p className="text-[11.5px] text-warning">{error}</p>}
       {info && <p className="text-[11.5px] text-mute">{info}</p>}
 
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="cta"
+        fullWidth
         disabled={pending}
-        className="w-full border border-ink bg-ink px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 rounded-sm"
       >
         {pending ? '…' : t('sendResetLink')}
-      </button>
+      </Button>
     </form>
   );
 }
