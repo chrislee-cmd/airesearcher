@@ -8,6 +8,7 @@ import {
   type CreditBundleId,
   type FeatureKey,
 } from '@/lib/features';
+import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
@@ -119,28 +120,35 @@ export function CreditsUsagePredictor() {
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {PREDICTOR_BUNDLES.map((b) => {
           const active = b.id === bundleId;
+          // Card-style toggle reusing Button primitive (PR #291 MethodOption
+          // pattern): heavy ! overrides flip the centered BASE flex into a
+          // left-aligned stacked layout and swap the ghost-variant colors
+          // for the active/inactive border + text treatment this card needs.
+          const layout =
+            '!justify-start !items-start text-left !px-3 !py-2 !font-normal';
+          const state = active
+            ? '!border-ink !bg-paper !text-ink-2'
+            : '!border-line !bg-paper !text-mute hover:!border-ink-2 hover:!text-ink-2';
           return (
-            <button
+            <Button
               key={b.id}
-              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => changeBundle(b.id)}
-              className={
-                'flex flex-col items-start gap-0.5 border px-3 py-2 text-left rounded-sm ' +
-                (active
-                  ? 'border-ink bg-paper text-ink-2'
-                  : 'border-line bg-paper text-mute hover:border-ink-2 hover:text-ink-2')
-              }
+              className={`${layout} ${state}`}
             >
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
-                {t(BUNDLE_LABEL_KEY[b.id])}
-              </span>
-              <span className="text-[14px] font-semibold tabular-nums text-ink">
-                {b.credits.toLocaleString()}{' '}
-                <span className="text-[10.5px] font-normal text-mute-soft">
-                  {t('creditsUnit')}
+              <span className="flex flex-col items-start gap-0.5 w-full">
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                  {t(BUNDLE_LABEL_KEY[b.id])}
+                </span>
+                <span className="text-[14px] font-semibold tabular-nums text-ink">
+                  {b.credits.toLocaleString()}{' '}
+                  <span className="text-[10.5px] font-normal text-mute-soft">
+                    {t('creditsUnit')}
+                  </span>
                 </span>
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
