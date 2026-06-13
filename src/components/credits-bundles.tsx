@@ -10,6 +10,7 @@ import { track } from '@/components/mixpanel-provider';
 import { currencyForLocale, formatCurrency } from '@/lib/currency';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 
 // Plain KRW formatter — used only for the bank-transfer "deposit this
@@ -273,13 +274,13 @@ export function CreditsBundles() {
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
                 {t('checkoutEyebrow')}
               </div>
-              <button
-                type="button"
+              <IconButton
                 onClick={close}
-                className="text-[18px] leading-none text-mute-soft hover:text-ink-2"
+                aria-label="결제 창 닫기"
+                className="text-[18px] leading-none"
               >
                 ×
-              </button>
+              </IconButton>
             </header>
             <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-5 py-5">
                   <h3 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
@@ -407,13 +408,13 @@ export function CreditsBundles() {
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
                 {t('checkoutEyebrow')}
               </div>
-              <button
-                type="button"
+              <IconButton
                 onClick={close}
-                className="text-[18px] leading-none text-mute-soft hover:text-ink-2"
+                aria-label="계좌이체 안내 닫기"
+                className="text-[18px] leading-none"
               >
                 ×
-              </button>
+              </IconButton>
             </header>
             <div className="px-5 py-5">
               <h3 className="text-[14px] font-semibold text-ink-2">{t('bankTitle')}</h3>
@@ -477,23 +478,32 @@ function MethodOption({
   hint: string;
   disabled?: boolean;
 }) {
+  // Card-style toggle: reuses Button primitive's border + disabled wiring
+  // but overrides BASE centered flex with left-aligned padding, and stacks
+  // the two text rows inside a flex-col span (Button wraps children in a
+  // single <span>, so the column layout has to live on a child, not the
+  // button itself). Disabled treatment swaps the primitive's opacity-40
+  // for explicit muted colors so the "준비중" hint stays legible.
+  const layout =
+    '!justify-start !items-start text-left !px-3 !py-2.5 !font-normal';
+  const state = disabled
+    ? '!border-line-soft !bg-paper !text-mute-soft disabled:!opacity-100'
+    : active
+    ? '!border-ink !bg-paper !text-ink-2'
+    : '';
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={onClick}
       disabled={disabled}
-      className={
-        'flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left rounded-sm ' +
-        (disabled
-          ? 'cursor-not-allowed border-line-soft bg-paper text-mute-soft'
-          : active
-          ? 'border-ink bg-paper text-ink-2'
-          : 'border-line bg-paper text-mute hover:text-ink-2')
-      }
+      className={`${layout} ${state}`}
     >
-      <span className="text-[12.5px] font-semibold">{label}</span>
-      <span className="text-[10.5px] text-mute-soft">{hint}</span>
-    </button>
+      <span className="flex flex-col items-start gap-0.5 w-full">
+        <span className="text-[12.5px] font-semibold">{label}</span>
+        <span className="text-[10.5px] text-mute-soft">{hint}</span>
+      </span>
+    </Button>
   );
 }
 
