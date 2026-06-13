@@ -18,6 +18,8 @@ import { useGenerationJobs } from './generation-job-provider';
 import { SEND_TO_MAP } from '@/lib/workspace';
 import { SidebarAccount } from './sidebar-account';
 import { track } from './mixpanel-provider';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 
 type SidebarProject = { id: string; name: string };
 
@@ -404,17 +406,17 @@ export function Sidebar({
           >
             {t('viewProjects')}
           </Link>
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
             onClick={() => setDropdownOpen((v) => !v)}
             aria-label={tProjects('navigate')}
             aria-expanded={dropdownOpen}
-            className={`flex w-9 items-center justify-center text-mute-soft transition-colors duration-[120ms] hover:text-ink-2 ${
-              dropdownOpen ? 'text-ink-2' : ''
+            className={`flex w-9 items-center justify-center ${
+              dropdownOpen ? '!text-ink-2' : ''
             }`}
           >
             <Chevron open={dropdownOpen} />
-          </button>
+          </IconButton>
 
           {dropdownOpen && (
             <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 rounded-sm">
@@ -444,15 +446,17 @@ export function Sidebar({
           const isCollapsed = collapsed.has(g.key);
           return (
             <section key={g.key} className="mt-3 first:mt-2">
-              <button
-                type="button"
+              <Button
+                variant="link"
+                size="xs"
+                fullWidth
                 onClick={() => toggleGroup(g.key)}
                 aria-expanded={!isCollapsed}
-                className="flex w-full items-center justify-between gap-2 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+                rightIcon={<Chevron open={!isCollapsed} small />}
+                className="!justify-between !gap-2 !px-4 !py-1.5 !text-[10px] uppercase tracking-[0.22em] !text-mute-soft hover:!text-ink-2 !rounded-none"
               >
-                <span>{tGroups(g.key)}</span>
-                <Chevron open={!isCollapsed} small />
-              </button>
+                {tGroups(g.key)}
+              </Button>
               {!isCollapsed && (
                 <ul className="mt-0.5">
                   {g.features
