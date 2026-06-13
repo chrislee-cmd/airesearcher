@@ -161,12 +161,14 @@ export function ProjectsView({
                   </td>
                   <td className="px-5 py-3 text-right">
                     {canManage && (
-                      <button
+                      <Button
+                        variant="destructive-link"
+                        size="xs"
                         onClick={() => remove(p.id)}
-                        className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning"
+                        className="!px-0 !py-0 !text-[11px] !font-normal uppercase tracking-[0.18em]"
                       >
                         {t('delete')}
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
@@ -194,17 +196,19 @@ function ViewToggle({
   return (
     <div className="inline-flex items-center gap-1 border border-line p-0.5 rounded-sm">
       {items.map((it) => (
-        <button
+        <Button
           key={it.v}
+          variant="link"
+          size="xs"
           onClick={() => onChange(it.v)}
-          className={`px-3 py-1 text-[11px] uppercase tracking-[0.18em] transition-colors duration-[120ms] [border-radius:3px] ${
+          className={`!px-3 !py-1 !text-[11px] !font-normal uppercase tracking-[0.18em] [border-radius:3px] ${
             value === it.v
-              ? 'bg-ink text-paper'
-              : 'text-mute hover:text-ink-2'
+              ? '!bg-ink !text-paper'
+              : '!text-mute hover:!text-ink-2'
           }`}
         >
           {it.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -238,15 +242,17 @@ function FolderCard({
         </div>
       </Link>
       {canManage && (
-        <button
+        <Button
+          variant="destructive-link"
+          size="xs"
           onClick={(e) => {
             e.preventDefault();
             onDelete(project.id);
           }}
-          className="absolute right-3 top-3 hidden text-[10.5px] uppercase tracking-[0.18em] text-mute group-hover:inline hover:text-warning"
+          className="!absolute !right-3 !top-3 !hidden !px-0 !py-0 !text-[10.5px] !font-normal uppercase tracking-[0.18em] group-hover:!inline-flex"
         >
           {t('delete')}
-        </button>
+        </Button>
       )}
     </div>
   );
