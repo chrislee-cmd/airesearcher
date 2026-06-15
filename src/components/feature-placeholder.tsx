@@ -8,6 +8,8 @@ import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { JobProgress } from './ui/job-progress';
 import { MochiLoader } from './ui/mochi-loader';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
 import type { FeatureKey } from '@/lib/features';
 import { prefillKey } from '@/lib/workspace';
 
@@ -91,12 +93,12 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
       </div>
 
       <div className="mt-8">
-        <textarea
+        <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={12}
           placeholder="원시 인터뷰 텍스트를 붙여넣으세요…"
-          className="w-full border border-line bg-paper p-4 text-[13px] leading-[1.7] text-ink-2 placeholder:text-mute-soft focus:border-amore focus:outline-none rounded-sm"
+          className="p-4 text-[13px] leading-[1.7] text-ink-2"
         />
       </div>
 
@@ -104,13 +106,15 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
         <span className="text-[11px] tabular-nums text-mute-soft">
           {input.length.toLocaleString()} chars
         </span>
-        <button
+        <Button
+          variant="primary"
+          size="cta"
           onClick={onClickRun}
           disabled={running || !input.trim()}
-          className="rounded-full border border-ink bg-ink px-5 py-2.5 text-[12px] font-semibold text-paper transition-all duration-[120ms] hover:-translate-y-px hover:bg-ink-2 hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="px-5 py-2.5 text-[12px] tracking-normal normal-case"
         >
           {running ? tCommon('loading') : tCommon('generate')}
-        </button>
+        </Button>
       </div>
 
       {running && (
