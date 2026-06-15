@@ -18,6 +18,9 @@ import { useWorkspace } from './workspace-provider';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
+import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
+import { Input } from './ui/input';
 import { prefillKey } from '@/lib/workspace';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
@@ -147,20 +150,24 @@ export function InterviewAnalyzer() {
                 })}
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={job.clear}
                   disabled={job.convertingAll || job.analyzing}
-                  className="border border-line px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40 rounded-sm"
+                  className="!text-[11px] uppercase tracking-[0.18em]"
                 >
                   {tUp('clear')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
+                  size="xs"
                   onClick={job.startConvertAll}
                   disabled={job.queuedCount === 0 || job.convertingAll}
-                  className="border border-ink bg-ink px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
+                  className="!text-[11px] uppercase tracking-[0.18em]"
                 >
                   {job.convertingAll ? tCommon('loading') : t('convertAll')}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -339,26 +346,30 @@ function TemplateCard() {
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em]">
             <span className="text-mute-soft">모드</span>
             <div className="inline-flex border border-line rounded-sm">
-              <button
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => job.setTemplateMode('template')}
-                className={`px-3 py-1 ${
+                className={`!border-0 !rounded-none !px-3 !py-1 !text-[11px] uppercase tracking-[0.22em] ${
                   job.templateMode === 'template'
-                    ? 'bg-ink text-paper'
-                    : 'text-mute hover:text-ink-2'
+                    ? '!bg-ink !text-paper'
+                    : '!text-mute hover:!text-ink-2'
                 }`}
               >
                 양식
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => job.setTemplateMode('auto')}
-                className={`px-3 py-1 border-l border-line ${
+                className={`!border-0 !rounded-none !border-l !border-line !px-3 !py-1 !text-[11px] uppercase tracking-[0.22em] ${
                   job.templateMode === 'auto'
-                    ? 'bg-ink text-paper'
-                    : 'text-mute hover:text-ink-2'
+                    ? '!bg-ink !text-paper'
+                    : '!text-mute hover:!text-ink-2'
                 }`}
               >
                 자동
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -376,20 +387,23 @@ function TemplateCard() {
 
         {!hasTemplate ? (
           <div className="flex items-center gap-3">
-            <input
+            <Input
               ref={fileInputRef}
               type="file"
               accept={TEMPLATE_ACCEPT}
               className="hidden"
+              fullWidth={false}
               onChange={(e) => onFilePicked(e.target.files?.[0])}
             />
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={job.templateLoading}
-              className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
+              className="!text-[11px] uppercase tracking-[0.18em]"
             >
               {job.templateLoading ? '업로드 중…' : '양식 업로드 (XLSX·DOCX)'}
-            </button>
+            </Button>
             <span className="text-[11.5px] text-mute-soft">
               XLSX: 첫 컬럼에서 질문을 읽음 · DOCX: 줄·번호·불릿로 분리
             </span>
@@ -408,50 +422,61 @@ function TemplateCard() {
               <div className="flex items-center gap-2">
                 {!editing && (
                   <>
-                    <input
+                    <Input
                       ref={fileInputRef}
                       type="file"
                       accept={TEMPLATE_ACCEPT}
                       className="hidden"
+                      fullWidth={false}
                       onChange={(e) => onFilePicked(e.target.files?.[0])}
                     />
-                    <button
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={job.templateLoading}
-                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2 disabled:opacity-40"
+                      className="!text-[11px] uppercase tracking-[0.18em]"
                     >
                       다른 파일
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={startEdit}
-                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+                      className="!text-[11px] uppercase tracking-[0.18em]"
                     >
                       편집
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="destructive-link"
+                      size="xs"
                       onClick={() => job.deleteTemplate()}
                       disabled={job.templateLoading}
-                      className="text-[11px] uppercase tracking-[0.18em] text-mute-soft hover:text-warning disabled:opacity-40"
+                      className="!text-[11px] uppercase tracking-[0.18em] !text-mute-soft"
                     >
                       제거
-                    </button>
+                    </Button>
                   </>
                 )}
                 {editing && (
                   <>
-                    <button
+                    <Button
+                      variant="primary"
+                      size="xs"
                       onClick={saveEdit}
                       disabled={job.templateLoading}
-                      className="border border-ink bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper hover:bg-ink-2 disabled:opacity-40 rounded-sm"
+                      className="!text-[11px] uppercase tracking-[0.18em]"
                     >
                       저장
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={cancelEdit}
-                      className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+                      className="!text-[11px] uppercase tracking-[0.18em]"
                     >
                       취소
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -469,7 +494,7 @@ function TemplateCard() {
                     </span>
                     {editing ? (
                       <>
-                        <input
+                        <Input
                           value={q}
                           onChange={(e) => {
                             if (!draft) return;
@@ -477,18 +502,20 @@ function TemplateCard() {
                             next[i] = e.target.value;
                             setDraft(next);
                           }}
-                          className="flex-1 border border-line-soft bg-paper px-2 py-1 text-[12.5px] text-ink-2 rounded-sm focus:border-ink focus:outline-none"
+                          size="sm"
+                          className="!border-line-soft !px-2 !py-1 !text-[12.5px] !text-ink-2 focus:!border-ink"
                         />
-                        <button
+                        <IconButton
+                          variant="ghost-danger"
+                          aria-label={t('deleteQuestion')}
                           onClick={() => {
                             if (!draft) return;
                             setDraft(draft.filter((_, idx) => idx !== i));
                           }}
-                          aria-label={t('deleteQuestion')}
-                          className="text-[12px] text-mute-soft hover:text-warning"
+                          className="text-[12px]"
                         >
                           ✕
-                        </button>
+                        </IconButton>
                       </>
                     ) : (
                       <span className="text-ink-2">{q}</span>
@@ -498,12 +525,14 @@ function TemplateCard() {
               )}
             </ol>
             {editing && (
-              <button
+              <Button
+                variant="link"
+                size="xs"
                 onClick={() => setDraft([...(draft ?? []), ''])}
-                className="mt-2 text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+                className="mt-2 !text-[11px] uppercase tracking-[0.18em]"
               >
                 + 질문 추가
-              </button>
+              </Button>
             )}
             {!editing && job.templateMode === 'template' && (
               <div className="mt-3 text-[11px] uppercase tracking-[0.22em] text-amore">
@@ -591,20 +620,23 @@ function ConvRow({
           </div>
         </div>
         {item.status === 'done' && item.markdown && (
-          <button
+          <Button
+            variant="link"
+            size="xs"
             onClick={onToggle}
-            className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-ink-2"
+            className="!text-[11px] uppercase tracking-[0.18em]"
           >
             {item.expanded ? t('hideMd') : t('viewMd')}
-          </button>
+          </Button>
         )}
-        <button
-          onClick={onRemove}
+        <IconButton
+          variant="ghost-danger"
           aria-label={tUp('remove')}
-          className="text-[11px] text-mute-soft hover:text-warning"
+          onClick={onRemove}
+          className="text-[11px]"
         >
           ✕
-        </button>
+        </IconButton>
       </div>
       {item.status === 'done' && item.markdown && item.expanded && (
         <div className="border-t border-line-soft px-5 pb-4 pt-3">
