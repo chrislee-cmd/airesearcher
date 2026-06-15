@@ -805,17 +805,16 @@ function ReportTypeChooser({
         {REPORT_TYPES.map((key) => {
           const selected = value === key;
           return (
-            <button
+            <Button
               key={key}
-              type="button"
+              variant={selected ? 'primary' : 'ghost'}
+              size="sm"
               role="radio"
               aria-checked={selected}
               disabled={disabled}
               onClick={() => onChange(key)}
-              className={`flex h-full flex-col items-start gap-1.5 border px-4 py-3 text-left transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40 rounded-sm ${
-                selected
-                  ? 'border-ink bg-ink text-paper'
-                  : 'border-line bg-paper text-ink-2 hover:border-amore'
+              className={`!h-full !flex-col !items-start !justify-start !gap-1.5 !px-4 !py-3 !text-left !font-normal ${
+                selected ? '' : 'hover:!border-amore !text-ink-2'
               }`}
             >
               <span
@@ -832,7 +831,7 @@ function ReportTypeChooser({
               >
                 {t(`types.${key}.description`)}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
