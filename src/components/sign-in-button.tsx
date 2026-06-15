@@ -2,16 +2,19 @@
 
 import { useTranslations } from 'next-intl';
 import { useAuth } from './auth-provider';
+import { Button } from './ui/button';
 
 export function SignInButton() {
   const { openLogin } = useAuth();
   const t = useTranslations('Auth');
   return (
-    <button
+    <Button
+      variant="primary"
+      size="sm"
       onClick={() => openLogin()}
-      className="border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+      className="!px-3 !text-[11px] uppercase tracking-[0.18em]"
     >
       {t('signIn')}
-    </button>
+    </Button>
   );
 }
