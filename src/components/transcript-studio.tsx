@@ -99,22 +99,36 @@ export function TranscriptStudio() {
     );
     if (pending.length === 0) return;
     let cancelled = false;
-    const tick = () => {
-      pending.forEach((j) => {
-        fetch(`/api/transcripts/jobs/${j.id}/poll`, { method: 'POST' }).catch(
-          () => {},
-        );
-      });
+    const tick = async () => {
+      // When the server flips a job to 'done', the realtime channel should
+      // refresh us — but that hop has been unreliable enough to keep the UI
+      // stuck at "전사 중 95%" until a manual reload. Read the poll response
+      // directly and call refreshJobs on terminal states so the UI advances
+      // even if the realtime broadcast never arrives.
+      let sawTerminal = false;
+      await Promise.all(
+        pending.map((j) =>
+          fetch(`/api/transcripts/jobs/${j.id}/poll`, { method: 'POST' })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((body: { status?: string } | null) => {
+              if (body?.status === 'done' || body?.status === 'error') {
+                sawTerminal = true;
+              }
+            })
+            .catch(() => {}),
+        ),
+      );
+      if (sawTerminal && !cancelled) await job.refreshJobs();
     };
-    tick(); // first hit immediately so completed jobs flip fast on mount
+    void tick(); // first hit immediately so completed jobs flip fast on mount
     const id = setInterval(() => {
-      if (!cancelled) tick();
+      if (!cancelled) void tick();
     }, 5000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [job.jobs]);
+  }, [job, job.jobs]);
 
   const startUploads = useCallback(
     (files: File[]) => {
