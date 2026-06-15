@@ -9,6 +9,7 @@ import { ClusterView } from '@/components/insights/cluster-view';
 import { TensionList } from '@/components/insights/tension-list';
 import { TensionMapScatter } from '@/components/insights/tension-map-scatter';
 import { TensionMapHybrid } from '@/components/insights/tension-map-hybrid';
+import { SAMPLE_QUALITATIVE } from '@/components/insights/sample-qualitative';
 import {
   loadClustersForJob,
   type ClusterWithQuotes,
@@ -684,7 +685,9 @@ export function InsightsAnalyzer({
           </section>
 
           {/* PR 6b-2 exploration — 3 variants stacked for visual A/B/C
-              compare. Winner becomes the real PR; losers get deleted. */}
+              compare. Winner becomes the real PR; losers get deleted.
+              Uses SAMPLE_QUALITATIVE so any ready job (even pre-5b) shows
+              realistic data without re-running /finalize. */}
           <section className="border border-line bg-paper p-5 rounded-sm">
             <div className="eyebrow-mute mb-2">정성 분석</div>
             <h2 className="text-[13px] font-semibold text-ink-2">
@@ -692,31 +695,28 @@ export function InsightsAnalyzer({
             </h2>
             <p className="mt-1.5 text-[11px] text-mute-soft">
               머지 전 시안 검토. 본 PR 에서는 채택된 1개만 남깁니다.
+              아래 데이터는 디자인 비교용 더미 (PR 머지 후 실제 분석 데이터로 교체).
             </p>
-            {qualitative === null ? (
-              <p className="mt-4 text-[11.5px] text-mute-soft">불러오는 중…</p>
-            ) : (
-              <div className="mt-4 space-y-8">
-                <div>
-                  <div className="mb-2 text-[12px] font-semibold text-amore">
-                    Variant A — 축별 스트립 (Scatter)
-                  </div>
-                  <TensionMapScatter tensions={qualitative.tensions} />
+            <div className="mt-4 space-y-8">
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant A — 축별 스트립 (Scatter)
                 </div>
-                <div>
-                  <div className="mb-2 text-[12px] font-semibold text-amore">
-                    Variant B — 카드 리스트 (paired-quote)
-                  </div>
-                  <TensionList tensions={qualitative.tensions} />
-                </div>
-                <div>
-                  <div className="mb-2 text-[12px] font-semibold text-amore">
-                    Variant C — 하이브리드 (개요 + 상세)
-                  </div>
-                  <TensionMapHybrid tensions={qualitative.tensions} />
-                </div>
+                <TensionMapScatter tensions={SAMPLE_QUALITATIVE.tensions} />
               </div>
-            )}
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant B — 카드 리스트 (paired-quote)
+                </div>
+                <TensionList tensions={SAMPLE_QUALITATIVE.tensions} />
+              </div>
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant C — 하이브리드 (개요 + 상세)
+                </div>
+                <TensionMapHybrid tensions={SAMPLE_QUALITATIVE.tensions} />
+              </div>
+            </div>
           </section>
 
           <div className="flex justify-end">
