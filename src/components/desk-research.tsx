@@ -456,6 +456,7 @@ export function DeskResearch() {
                   </IconButton>
                 </span>
               ))}
+              {/* eslint-disable-next-line react/forbid-elements -- Bare chip-extender input inside a styled chip container; Input primitive's wrapper div would break flex-1 layout */}
               <input
                 value={keywordDraft}
                 onChange={(e) => setKeywordDraft(e.target.value)}
