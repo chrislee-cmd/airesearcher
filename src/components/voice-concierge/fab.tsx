@@ -18,6 +18,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Button } from '../ui/button';
+import { IconButton } from '../ui/icon-button';
 import { useFirstTimeFlag } from './first-time';
 import { useVoiceConcierge } from './provider';
 
@@ -123,23 +124,26 @@ export function VoiceConciergeFab() {
             }
           />
         )}
-        <button
-          type="button"
+        <IconButton
+          variant="bordered"
+          size="lg"
           onClick={handleClick}
           title={t('fab_tooltip')}
           aria-label={t('fab_tooltip')}
           aria-pressed={isActive}
           className={
-            'relative flex h-10 w-10 items-center justify-center border bg-paper ' +
-            'transition-colors duration-[120ms] rounded-full ' +
+            // IconButton 'bordered' gives border-line bg-paper text-ink hover:border-amore rounded-xs.
+            // FAB needs a 40x40 circle (overrides size lg's 32x32 + rounded-xs) and
+            // a state-driven color stack. `!` overrides win against the variant.
+            'relative !h-10 !w-10 !rounded-full ' +
             (showFirstTimeCue
-              ? 'ring-1 ring-amore/30 border-amore text-amore '
+              ? 'ring-1 ring-amore/30 !border-amore !text-amore '
               : '') +
             (isActive
-              ? 'border-amore text-amore'
+              ? '!border-amore !text-amore'
               : showFirstTimeCue
                 ? ''
-                : 'border-line text-mute hover:border-amore hover:text-amore')
+                : '!text-mute hover:!text-amore')
           }
         >
           <svg
@@ -158,7 +162,7 @@ export function VoiceConciergeFab() {
             <line x1="12" y1="18" x2="12" y2="22" />
             <line x1="9" y1="22" x2="15" y2="22" />
           </svg>
-        </button>
+        </IconButton>
       </div>
     </>
   );
