@@ -233,18 +233,22 @@ async function dispatchElevenLabs(args: {
   }
 
   // ElevenLabs Speech-to-Text: multipart/form-data with `cloud_storage_url`
-  // (the API fetches it itself — no re-upload). We do NOT use `webhook=true`
-  // — the workspace webhook delivery proved unreliable in practice (no
-  // delivery attempts ever recorded in their analytics dashboard despite
-  // valid registration). Instead we save the `transcription_id` and let the
-  // client poll our /api/transcripts/jobs/[id]/poll endpoint, which proxies
-  // GET /v1/speech-to-text/transcripts/{id} on demand.
+  // (the API fetches it itself — no re-upload). We send `webhook=true` so the
+  // POST returns immediately with just `transcription_id` instead of blocking
+  // until full transcription finishes — long files (a 90-min Korean interview
+  // tripped the Vercel 60s timeout in sync mode). The transcription itself
+  // is fetched by the client via `/api/transcripts/jobs/[id]/poll`, which
+  // proxies `GET /v1/speech-to-text/transcripts/{id}`. (The webhook delivery
+  // itself is unreliable — never delivered in practice — so we don't rely
+  // on it; `webhook=true` is purely the toggle that switches the dispatch
+  // call into async mode.)
   const form = new FormData();
   form.append('model_id', apiModel);
   form.append('cloud_storage_url', signedUrl);
   form.append('diarize', 'true');
   form.append('timestamps_granularity', 'word');
   form.append('tag_audio_events', 'true');
+  form.append('webhook', 'true');
   if (languageCode) form.append('language_code', languageCode);
 
   let resp: Response;
