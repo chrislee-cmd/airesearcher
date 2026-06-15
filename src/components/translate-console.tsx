@@ -29,6 +29,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
+import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
@@ -1657,11 +1658,11 @@ export function TranslateConsole() {
       {shareToken && shareUrl ? (
         <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-ink">
           <span className="text-mute-soft">{t('share.label')}</span>
-          <input
+          <ChromeInput
             readOnly
             value={shareUrl}
             onFocus={(e) => e.currentTarget.select()}
-            className="min-w-[260px] flex-1 rounded-[4px] border border-line-soft bg-paper px-2 py-1 font-mono text-[12px] text-ink"
+            className="min-w-[260px] flex-1 !border-line-soft !text-ink font-mono"
           />
           <ChromeButton
             size="md"
