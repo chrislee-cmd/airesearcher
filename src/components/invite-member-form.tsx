@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function InviteMemberForm({ orgId }: { orgId: string }) {
   const t = useTranslations('Members');
@@ -29,19 +31,22 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
 
   const labelCls =
     'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
-  const inputCls =
-    'mt-1 border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
+  // <select> kept as native (not flagged by forbid-elements) — preserves the
+  // inline editorial chrome alongside the migrated <Input>/<Button>.
+  const selectCls =
+    'mt-1 border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm pr-7';
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
       <div className="min-w-[220px] flex-1">
         <label className={labelCls}>{t('email')}</label>
-        <input
+        <Input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`${inputCls} w-full`}
+          size="sm"
+          className="!mt-1 !px-3 !text-[12.5px] !text-ink-2"
         />
       </div>
       <div>
@@ -49,20 +54,22 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as typeof role)}
-          className={`${inputCls} pr-7`}
+          className={selectCls}
         >
           <option value="admin">{t('admin')}</option>
           <option value="member">{t('member')}</option>
           <option value="viewer">{t('viewer')}</option>
         </select>
       </div>
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="sm"
         disabled={busy}
-        className="border border-ink bg-ink px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 disabled:opacity-60 rounded-sm"
+        className="!text-[11px] uppercase tracking-[0.22em] disabled:!opacity-60"
       >
         {busy ? tCommon('loading') : t('invite')}
-      </button>
+      </Button>
     </form>
   );
 }
