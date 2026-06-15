@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
+import { IconButton } from './ui/icon-button';
 
 export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled' | null }) {
   const t = useTranslations('Credits');
@@ -40,14 +41,14 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
       }`}
     >
       <span>{isSuccess ? t('paymentSuccess') : t('paymentCancelled')}</span>
-      <button
-        type="button"
+      <IconButton
+        variant="ghost"
         onClick={() => setVisible(false)}
-        className="shrink-0 text-[16px] leading-none opacity-50 hover:opacity-100"
+        className="shrink-0 !border-0 text-[16px] leading-none opacity-50 hover:opacity-100"
         aria-label="dismiss"
       >
         ×
-      </button>
+      </IconButton>
     </div>
   );
 }
