@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { GoogleSignInButton } from './google-signin-button';
 import { EmailPasswordForm } from './email-password-form';
+import { IconButton } from './ui/icon-button';
 
 export function LoginDialog({
   open,
@@ -49,13 +50,14 @@ export function LoginDialog({
               {t('signInSubtitle')}
             </p>
           </div>
-          <button
+          <IconButton
+            variant="ghost"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-2 -mt-1 px-2 py-1 text-[14px] text-mute-soft transition-colors duration-[120ms] hover:text-ink-2"
+            className="-mr-2 -mt-1 !border-0 px-2 py-1 text-[14px] !text-mute-soft hover:!text-ink-2"
           >
             ✕
-          </button>
+          </IconButton>
         </div>
 
         <div className="mt-7">
