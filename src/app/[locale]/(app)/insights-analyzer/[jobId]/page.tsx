@@ -3,6 +3,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { InsightsAnalyzer } from '@/components/insights/insights-analyzer';
 import { createClient } from '@/lib/supabase/server';
 import { loadClustersForJob } from '@/lib/insights-clusters-load';
+import { loadQualitativeForJob } from '@/lib/insights-qualitative-load';
 
 // Per-job dashboard route. The job's row carries the counts the ready
 // state needs, so we hydrate <InsightsAnalyzer initialJob={...}/> from
@@ -32,13 +33,17 @@ export default async function InsightsAnalyzerJobPage({
 
   if (!job) notFound();
 
-  const clusters = await loadClustersForJob(supabase, jobId);
+  const [clusters, qualitative] = await Promise.all([
+    loadClustersForJob(supabase, jobId),
+    loadQualitativeForJob(supabase, jobId),
+  ]);
 
   return (
     <InsightsAnalyzer
       initialJob={job}
       pastJobs={[]}
       initialClusters={clusters}
+      initialQualitative={qualitative}
     />
   );
 }

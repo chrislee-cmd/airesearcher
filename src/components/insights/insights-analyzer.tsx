@@ -6,10 +6,18 @@ import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { QuoteSearchPanel } from '@/components/insights/quote-search-panel';
 import { ClusterView } from '@/components/insights/cluster-view';
+import { TensionList } from '@/components/insights/tension-list';
+import { TensionMapScatter } from '@/components/insights/tension-map-scatter';
+import { TensionMapHybrid } from '@/components/insights/tension-map-hybrid';
+import { SAMPLE_QUALITATIVE } from '@/components/insights/sample-qualitative';
 import {
   loadClustersForJob,
   type ClusterWithQuotes,
 } from '@/lib/insights-clusters-load';
+import {
+  loadQualitativeForJob,
+  type QualitativeForJob,
+} from '@/lib/insights-qualitative-load';
 import { createClient } from '@/lib/supabase/client';
 
 // Union of the two legacy tabs' accept lists. Browsers vary on whether
@@ -99,6 +107,7 @@ export function InsightsAnalyzer({
   pastJobs = [],
   initialJob,
   initialClusters,
+  initialQualitative,
 }: {
   pastJobs?: PastJob[];
   // When present, hydrate ready state from this server-fetched row and
@@ -108,6 +117,9 @@ export function InsightsAnalyzer({
   // URL or fresh-upload completion) the component fetches client-side
   // once phase becomes 'ready'.
   initialClusters?: ClusterWithQuotes[];
+  // Same shape for tensions/contradictions. Exploration PR 6b-2 renders
+  // 3 visualization variants stacked so the team can pick a winner.
+  initialQualitative?: QualitativeForJob;
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<FileRow[]>([]);
@@ -136,6 +148,9 @@ export function InsightsAnalyzer({
   const [clusters, setClusters] = useState<ClusterWithQuotes[] | null>(
     initialClusters ?? null,
   );
+  const [qualitative, setQualitative] = useState<QualitativeForJob | null>(
+    initialQualitative ?? null,
+  );
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -161,6 +176,26 @@ export function InsightsAnalyzer({
       cancelled = true;
     };
   }, [initialClusters, phase, jobId, supabase]);
+
+  // Mirror the cluster fallback for qualitative data — root URL flow and
+  // fresh-upload completion both need a client fetch when the /[jobId]
+  // page didn't hydrate it.
+  useEffect(() => {
+    if (initialQualitative !== undefined) return;
+    if (phase !== 'ready' || !jobId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await loadQualitativeForJob(supabase, jobId);
+        if (!cancelled) setQualitative(data);
+      } catch {
+        if (!cancelled) setQualitative({ tensions: [], contradictions: [] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialQualitative, phase, jobId, supabase]);
 
   // Resume a previously-started job on refresh. Skipped when the page
   // already passed an initialJob via URL — that takes precedence over
@@ -632,33 +667,57 @@ export function InsightsAnalyzer({
 
           <QuoteSearchPanel jobId={job.id} />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <section className="border border-line bg-paper p-5 rounded-sm">
-              <div className="eyebrow-mute mb-2">정량 분석</div>
-              <h2 className="text-[13px] font-semibold text-ink-2">
-                클러스터 인사이트
-              </h2>
-              <p className="mt-1.5 text-[11px] text-mute-soft">
-                인용구를 의미 단위로 묶어 핵심 메시지를 추출합니다.
-              </p>
-              <div className="mt-4">
-                {clusters === null ? (
-                  <p className="text-[11.5px] text-mute-soft">불러오는 중…</p>
-                ) : (
-                  <ClusterView clusters={clusters} />
-                )}
+          <section className="border border-line bg-paper p-5 rounded-sm">
+            <div className="eyebrow-mute mb-2">정량 분석</div>
+            <h2 className="text-[13px] font-semibold text-ink-2">
+              클러스터 인사이트
+            </h2>
+            <p className="mt-1.5 text-[11px] text-mute-soft">
+              인용구를 의미 단위로 묶어 핵심 메시지를 추출합니다.
+            </p>
+            <div className="mt-4">
+              {clusters === null ? (
+                <p className="text-[11.5px] text-mute-soft">불러오는 중…</p>
+              ) : (
+                <ClusterView clusters={clusters} />
+              )}
+            </div>
+          </section>
+
+          {/* PR 6b-2 exploration — 3 variants stacked for visual A/B/C
+              compare. Winner becomes the real PR; losers get deleted.
+              Uses SAMPLE_QUALITATIVE so any ready job (even pre-5b) shows
+              realistic data without re-running /finalize. */}
+          <section className="border border-line bg-paper p-5 rounded-sm">
+            <div className="eyebrow-mute mb-2">정성 분석</div>
+            <h2 className="text-[13px] font-semibold text-ink-2">
+              긴장 지도 — 3개 시안 비교 (탐색용)
+            </h2>
+            <p className="mt-1.5 text-[11px] text-mute-soft">
+              머지 전 시안 검토. 본 PR 에서는 채택된 1개만 남깁니다.
+              아래 데이터는 디자인 비교용 더미 (PR 머지 후 실제 분석 데이터로 교체).
+            </p>
+            <div className="mt-4 space-y-8">
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant A — 축별 스트립 (Scatter)
+                </div>
+                <TensionMapScatter tensions={SAMPLE_QUALITATIVE.tensions} />
               </div>
-            </section>
-            <section className="border border-line bg-paper p-5 rounded-sm">
-              <div className="eyebrow-mute mb-2">정성 분석</div>
-              <h2 className="text-[13px] font-semibold text-ink-2">
-                긴장·모순 지도
-              </h2>
-              <p className="mt-2 text-[11.5px] leading-[1.55] text-mute-soft">
-                참여자 간 긴장, 발화 모순, 인용구 별자리 등 정성 시각화는 후속 PR (5b · 6b) 에서 추가됩니다.
-              </p>
-            </section>
-          </div>
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant B — 카드 리스트 (paired-quote)
+                </div>
+                <TensionList tensions={SAMPLE_QUALITATIVE.tensions} />
+              </div>
+              <div>
+                <div className="mb-2 text-[12px] font-semibold text-amore">
+                  Variant C — 하이브리드 (개요 + 상세)
+                </div>
+                <TensionMapHybrid tensions={SAMPLE_QUALITATIVE.tensions} />
+              </div>
+            </div>
+          </section>
 
           <div className="flex justify-end">
             <Button variant="secondary" size="lg" onClick={onReset}>
