@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { getLanguage } from '@/lib/transcripts/languages';
-import { getModel } from '@/lib/transcripts/models';
+import { ELEVENLABS_API_MODEL } from '@/lib/transcripts/models';
 import {
   classifyTextFile,
   extractTextFromBuffer,
@@ -20,7 +20,6 @@ const Body = z.object({
   mime_type: z.string().optional(),
   size_bytes: z.number().int().nonnegative().optional(),
   language: z.string().optional(),
-  model: z.string().optional(),
   project_id: z.string().uuid().nullable().optional(),
 });
 
@@ -43,10 +42,14 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { storage_key, filename, mime_type, size_bytes, language, model, project_id } =
+  const { storage_key, filename, mime_type, size_bytes, language, project_id } =
     parsed.data;
   const langEntry = getLanguage(language);
-  const modelEntry = getModel(model);
+  // Provider is now derived from language (see languages.ts): English →
+  // Deepgram nova-3, everything else → ElevenLabs Scribe v2. The user-facing
+  // model selector was retired.
+  const provider = langEntry.provider;
+  const apiModel = provider === 'deepgram' ? langEntry.dgModel : ELEVENLABS_API_MODEL;
 
   // Insert the job row first so the webhook has somewhere to land.
   const { data: job, error: insertErr } = await supabase
@@ -59,8 +62,8 @@ export async function POST(request: Request) {
       filename,
       mime_type: mime_type ?? null,
       size_bytes: size_bytes ?? null,
-      provider: modelEntry.provider,
-      model: modelEntry.apiModel,
+      provider,
+      model: apiModel,
       status: 'submitting',
     })
     .select('id')
@@ -102,7 +105,7 @@ export async function POST(request: Request) {
     });
   }
 
-  if (modelEntry.provider === 'deepgram') {
+  if (provider === 'deepgram') {
     return await dispatchDeepgram({
       supabase,
       jobId: job.id,
@@ -111,21 +114,13 @@ export async function POST(request: Request) {
     });
   }
 
-  if (modelEntry.provider === 'elevenlabs') {
-    return await dispatchElevenLabs({
-      supabase,
-      jobId: job.id,
-      signedUrl: signed.signedUrl,
-      apiModel: modelEntry.apiModel,
-      languageCode: langEntry.code === 'multi' ? null : langEntry.dgLanguage,
-    });
-  }
-
-  await supabase
-    .from('transcript_jobs')
-    .update({ status: 'error', error_message: 'unknown_provider' })
-    .eq('id', job.id);
-  return NextResponse.json({ error: 'unknown_provider' }, { status: 400 });
+  return await dispatchElevenLabs({
+    supabase,
+    jobId: job.id,
+    signedUrl: signed.signedUrl,
+    apiModel,
+    languageCode: langEntry.code === 'multi' ? null : langEntry.dgLanguage,
+  });
 }
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
