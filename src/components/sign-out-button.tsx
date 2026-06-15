@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { ChromeButton } from './ui/chrome-button';
 
 export function SignOutButton() {
   const router = useRouter();
@@ -16,11 +17,14 @@ export function SignOutButton() {
   }
 
   return (
-    <button
+    <ChromeButton
+      variant="mute"
+      size="sm"
+      uppercase
       onClick={signOut}
-      className="border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-mute transition-colors duration-[120ms] hover:text-ink-2 rounded-sm"
+      className="!px-3 !text-[11px] tracking-[0.18em] hover:!text-ink-2"
     >
       {t('signOut')}
-    </button>
+    </ChromeButton>
   );
 }
