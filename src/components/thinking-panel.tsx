@@ -5,6 +5,7 @@ import {
   useInterviewJob,
   type ThinkingEvent,
 } from './interview-job-provider';
+import { Button } from './ui/button';
 
 export function ThinkingPanel() {
   const { thinkingLog, isWorking, clearThinking } = useInterviewJob();
@@ -31,12 +32,14 @@ export function ThinkingPanel() {
           </span>
         </div>
         {thinkingLog.length > 0 && !isWorking && (
-          <button
+          <Button
+            variant="link"
+            size="xs"
             onClick={clearThinking}
-            className="text-[10px] uppercase tracking-[0.18em] text-mute-soft hover:text-ink-2"
+            className="!px-0 !py-0 !text-[10px] uppercase !tracking-[0.18em] !text-mute-soft hover:!text-ink-2"
           >
             clear
-          </button>
+          </Button>
         )}
       </header>
       <div
