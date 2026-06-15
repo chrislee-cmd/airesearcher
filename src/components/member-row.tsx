@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
+import { Button } from './ui/button';
 import { Select } from './ui/select';
 
 export function MemberRow({
@@ -65,12 +66,14 @@ export function MemberRow({
       </td>
       <td className="px-5 py-3 text-right">
         {editable && (
-          <button
+          <Button
+            variant="destructive-link"
+            size="xs"
             onClick={remove}
-            className="text-[11px] uppercase tracking-[0.18em] text-mute hover:text-warning"
+            className="!px-0 !py-0 !text-[11px] uppercase tracking-[0.18em]"
           >
             {t('removeMember')}
-          </button>
+          </Button>
         )}
       </td>
     </tr>
