@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { Button } from './ui/button';
 
 export type CreditsStatus = {
   balance: number;
@@ -144,13 +145,14 @@ function PaywallModal({
           {t('body', { balance: status?.balance ?? 0 })}
         </p>
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="border border-line bg-paper px-4 py-1.5 text-[12px] text-ink-2 hover:text-amore rounded-sm"
+            className="!text-[12px] !text-ink-2 hover:!text-amore"
           >
             {t('later')}
-          </button>
+          </Button>
           <Link
             href="/credits"
             autoFocus
