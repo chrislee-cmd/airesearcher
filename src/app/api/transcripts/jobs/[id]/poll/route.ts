@@ -6,6 +6,7 @@ import {
   elevenlabsToMarkdown,
   type ElevenLabsScribeResult,
 } from '@/lib/transcripts/elevenlabs';
+import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
 
 export const maxDuration = 30;
 
@@ -138,10 +139,24 @@ export async function POST(
     return NextResponse.json({ status: 'transcribing' });
   }
 
-  // Completed → format and persist.
+  // Completed → speaker-merge pass → format → persist.
+  //
+  // The merge pass runs an LLM over speaker stats + a turn sample to detect
+  // over-split speakers (Scribe v2 occasionally splits one Korean interviewee
+  // across multiple speaker IDs). On low-confidence / no-API-key / LLM error
+  // the original words are returned unchanged — the markdown ends up identical
+  // to the pre-merge build, so the failure mode is "no-op", never a regression.
+  // We attach the decision under `raw_result._speaker_merge` for audit.
+  const root = (body.data ?? body) as ElevenLabsScribeResult;
+  const { words: mergedWords, decision: mergeDecision } = await mergeSpeakers(
+    root.words ?? [],
+    job.filename,
+  );
+  const resultForFormat: ElevenLabsScribeResult = { ...root, words: mergedWords };
+
   let formatted: { markdown: string; duration: number; speakers: number };
   try {
-    formatted = elevenlabsToMarkdown(body, job.filename);
+    formatted = elevenlabsToMarkdown(resultForFormat, job.filename);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'format_failed';
     const admin = createAdminClient();
@@ -153,6 +168,7 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+  const rawWithMeta = { ...body, _speaker_merge: mergeDecision };
   await admin
     .from('transcript_jobs')
     .update({
@@ -160,7 +176,7 @@ export async function POST(
       markdown: formatted.markdown,
       duration_seconds: formatted.duration,
       speakers_count: formatted.speakers,
-      raw_result: body as unknown as object,
+      raw_result: rawWithMeta as unknown as object,
       credits_spent: 1,
     })
     .eq('id', job.id);

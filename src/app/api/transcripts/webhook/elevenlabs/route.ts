@@ -6,6 +6,7 @@ import {
   elevenlabsToMarkdown,
   type ElevenLabsScribeResult,
 } from '@/lib/transcripts/elevenlabs';
+import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
 
 export const maxDuration = 60;
 
@@ -123,9 +124,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'no_transcript' }, { status: 200 });
   }
 
+  // Speaker-merge pass (LLM detects over-split speakers from Scribe v2 and
+  // rewrites speaker_id). Safe fallback to original words on any failure.
+  // See poll/route.ts for the same flow — kept identical so whichever path
+  // (webhook vs poll) lands first produces consistent output.
+  const root = (result.data ?? result) as ElevenLabsScribeResult;
+  const { words: mergedWords, decision: mergeDecision } = await mergeSpeakers(
+    root.words ?? [],
+    job.filename,
+  );
+  const resultForFormat: ElevenLabsScribeResult = { ...root, words: mergedWords };
+
   let formatted: { markdown: string; duration: number; speakers: number };
   try {
-    formatted = elevenlabsToMarkdown(result, job.filename);
+    formatted = elevenlabsToMarkdown(resultForFormat, job.filename);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'format_failed';
     await admin
@@ -135,6 +147,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: msg }, { status: 200 });
   }
 
+  const rawWithMeta = { ...body, _speaker_merge: mergeDecision };
   await admin
     .from('transcript_jobs')
     .update({
@@ -142,7 +155,7 @@ export async function POST(request: Request) {
       markdown: formatted.markdown,
       duration_seconds: formatted.duration,
       speakers_count: formatted.speakers,
-      raw_result: body as unknown as object,
+      raw_result: rawWithMeta as unknown as object,
       credits_spent: 1,
     })
     .eq('id', job.id);
