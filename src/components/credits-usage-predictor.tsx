@@ -199,6 +199,7 @@ export function CreditsUsagePredictor() {
                 </span>
               </div>
               <div className="mt-1.5 flex items-center gap-3">
+                {/* eslint-disable-next-line react/forbid-elements -- Native range slider; no Slider primitive yet. Substituting <Input> would destroy thumb drag, keyboard step, and accent-amore track. */}
                 <input
                   type="range"
                   min={0}
