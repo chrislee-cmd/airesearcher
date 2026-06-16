@@ -60,14 +60,14 @@ export async function POST(
   ];
 
   let resp: Response | null = null;
-  let lastBody = '';
   for (const url of candidates) {
     const r = await fetch(url, {
       headers: { 'xi-api-key': apiKey },
     }).catch(() => null);
     if (!r) continue;
     if (r.status === 404) {
-      lastBody = await r.text().catch(() => '');
+      // Drain body to avoid keep-alive leaks.
+      void r.text().catch(() => '');
       continue; // try next URL shape
     }
     resp = r;
@@ -75,10 +75,12 @@ export async function POST(
   }
 
   if (!resp) {
-    return NextResponse.json(
-      { error: 'elevenlabs_not_found', detail: lastBody.slice(0, 200) },
-      { status: 502 },
-    );
+    // Both candidate paths 404'd — in webhook=true async mode this is the
+    // expected state while ElevenLabs is still processing (the transcript
+    // object isn't queryable until generation finishes). Don't surface as
+    // an error: the next tick will retry. Returning 200 keeps the client's
+    // DevTools console clean during long jobs.
+    return NextResponse.json({ status: 'transcribing', transient: true });
   }
 
   if (!resp.ok) {

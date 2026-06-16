@@ -17,7 +17,6 @@ import { ShareMenu } from './ui/share-menu';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
-import { TRANSCRIPT_MODELS, DEFAULT_MODEL_KEY } from '@/lib/transcripts/models';
 
 function readActiveProjectId(): string | null {
   try {
@@ -66,7 +65,6 @@ export function TranscriptStudio() {
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
-  const [modelKey, setModelKey] = useState<string>(DEFAULT_MODEL_KEY);
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -76,16 +74,12 @@ export function TranscriptStudio() {
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
-  // around `runUploads` is captured once. We mirror live state into refs so
-  // the captured runUploads still reads the current language/model.
+  // around `runUploads` is captured once. We mirror live state into a ref so
+  // the captured runUploads still reads the current language.
   const languageRef = useRef<string>(language);
-  const modelRef = useRef<string>(modelKey);
   useEffect(() => {
     languageRef.current = language;
   }, [language]);
-  useEffect(() => {
-    modelRef.current = modelKey;
-  }, [modelKey]);
 
   // Default the selector to the browser locale on mount. SSR-safe — initial
   // value is "multi" so the server and first client render agree.
@@ -105,22 +99,36 @@ export function TranscriptStudio() {
     );
     if (pending.length === 0) return;
     let cancelled = false;
-    const tick = () => {
-      pending.forEach((j) => {
-        fetch(`/api/transcripts/jobs/${j.id}/poll`, { method: 'POST' }).catch(
-          () => {},
-        );
-      });
+    const tick = async () => {
+      // When the server flips a job to 'done', the realtime channel should
+      // refresh us — but that hop has been unreliable enough to keep the UI
+      // stuck at "전사 중 95%" until a manual reload. Read the poll response
+      // directly and call refreshJobs on terminal states so the UI advances
+      // even if the realtime broadcast never arrives.
+      let sawTerminal = false;
+      await Promise.all(
+        pending.map((j) =>
+          fetch(`/api/transcripts/jobs/${j.id}/poll`, { method: 'POST' })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((body: { status?: string } | null) => {
+              if (body?.status === 'done' || body?.status === 'error') {
+                sawTerminal = true;
+              }
+            })
+            .catch(() => {}),
+        ),
+      );
+      if (sawTerminal && !cancelled) await job.refreshJobs();
     };
-    tick(); // first hit immediately so completed jobs flip fast on mount
+    void tick(); // first hit immediately so completed jobs flip fast on mount
     const id = setInterval(() => {
-      if (!cancelled) tick();
+      if (!cancelled) void tick();
     }, 5000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [job.jobs]);
+  }, [job, job.jobs]);
 
   const startUploads = useCallback(
     (files: File[]) => {
@@ -207,7 +215,8 @@ export function TranscriptStudio() {
           });
           job.setUploadProgress(tempId, 100);
 
-          // 3) tell the server to kick off Deepgram
+          // 3) tell the server to kick off transcription (provider is
+          // language-driven: English → Deepgram nova-3, else → ElevenLabs).
           const startRes = await fetch('/api/transcripts/start', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -217,7 +226,6 @@ export function TranscriptStudio() {
               mime_type: file.type || undefined,
               size_bytes: file.size,
               language: languageRef.current,
-              model: modelRef.current,
               project_id: readActiveProjectId(),
             }),
           });
@@ -228,7 +236,7 @@ export function TranscriptStudio() {
           track('transcripts_upload_start', {
             type: file.type,
             size: file.size,
-            model: modelRef.current,
+            language: languageRef.current,
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'upload_failed';
@@ -293,27 +301,6 @@ export function TranscriptStudio() {
     <div className="space-y-8">
       <section>
         <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="transcript-model"
-              className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
-            >
-              모델
-            </label>
-            <select
-              id="transcript-model"
-              value={modelKey}
-              onChange={(e) => setModelKey(e.target.value)}
-              disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 rounded-sm disabled:opacity-40"
-            >
-              {TRANSCRIPT_MODELS.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="flex items-center gap-3">
             <label
               htmlFor="transcript-language"
