@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
@@ -7,8 +7,13 @@ import {
   type ElevenLabsScribeResult,
 } from '@/lib/transcripts/elevenlabs';
 import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
+import { cleanupTranscript } from '@/lib/transcripts/cleanup';
 
-export const maxDuration = 30;
+// Bumped from 30s to 200s because the cleanup pass scheduled via `after()`
+// extends function lifetime — Vercel keeps the instance alive until after()
+// callbacks resolve, capped at `maxDuration`. The initial response still
+// returns in <10s; the extra budget is just for the background cleanup.
+export const maxDuration = 200;
 
 // Poll endpoint for ElevenLabs jobs. Replaces webhook delivery, which proved
 // unreliable in this workspace (no delivery attempts ever recorded). The
@@ -186,6 +191,47 @@ export async function POST(
   } catch (e) {
     console.warn('[transcripts/poll] credit deduction failed', e);
   }
+
+  // Cleanup pass runs AFTER the response goes out. We've already saved the
+  // un-cleaned `markdown` and marked the job done — the client unblocks now.
+  // Cleanup writes `clean_markdown` separately when it lands (~5-60s later);
+  // realtime UPDATE fires, the UI swaps to the cleaned version. On any
+  // failure clean_markdown stays NULL → UI falls back to `markdown`.
+  after(async () => {
+    try {
+      const { cleanMarkdown, audit } = await cleanupTranscript(
+        mergedWords,
+        job.filename,
+        formatted.duration,
+        formatted.speakers,
+      );
+      if (!cleanMarkdown) {
+        // Still record the audit so we can see why we skipped.
+        await admin
+          .from('transcript_jobs')
+          .update({
+            raw_result: {
+              ...rawWithMeta,
+              _cleanup: audit,
+            } as unknown as object,
+          })
+          .eq('id', job.id);
+        return;
+      }
+      await admin
+        .from('transcript_jobs')
+        .update({
+          clean_markdown: cleanMarkdown,
+          raw_result: {
+            ...rawWithMeta,
+            _cleanup: audit,
+          } as unknown as object,
+        })
+        .eq('id', job.id);
+    } catch (e) {
+      console.warn('[transcripts/poll] cleanup pass failed', e);
+    }
+  });
 
   return NextResponse.json({ status: 'done' });
 }

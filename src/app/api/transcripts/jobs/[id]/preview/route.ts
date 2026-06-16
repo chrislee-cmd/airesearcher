@@ -33,7 +33,7 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from('transcript_jobs')
-    .select('filename, markdown, status, user_id, created_at')
+    .select('filename, markdown, clean_markdown, status, user_id, created_at')
     .eq('id', id)
     .single();
   if (error || !job) {
@@ -42,6 +42,10 @@ export async function GET(
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
+  // Prefer the cleaned version when the background pass succeeded. Fall back
+  // to the original on null — short transcripts, low-confidence runs, and
+  // English-Deepgram jobs all legitimately leave clean_markdown NULL.
+  const sourceMarkdown = (job.clean_markdown as string | null) ?? (job.markdown as string);
 
   const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
   let base: string;
@@ -58,7 +62,7 @@ export async function GET(
     base = `Interview Transcript #${n}`;
   }
 
-  const displayMarkdown = (job.markdown as string).replace(
+  const displayMarkdown = sourceMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${base}`,
   );

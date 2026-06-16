@@ -403,12 +403,16 @@ export async function getArtifactContent(
   if (dbFeature === 'transcript') {
     const { data } = await supabase
       .from('transcript_jobs')
-      .select('markdown')
+      .select('markdown, clean_markdown')
       .eq('org_id', orgId)
       .eq('id', dbId)
       .maybeSingle();
     if (!data?.markdown) return null;
-    return { content: data.markdown as string, kind: 'markdown' };
+    // Cleaned version (when the Korean cleanup pass landed) is what we want
+    // to feed into downstream tools — interview/insights/reports should see
+    // the disfluency-free text. Falls back to the original on NULL.
+    const content = (data.clean_markdown as string | null) ?? (data.markdown as string);
+    return { content, kind: 'markdown' };
   }
 
   if (dbFeature === 'desk') {
