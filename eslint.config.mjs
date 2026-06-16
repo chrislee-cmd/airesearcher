@@ -22,8 +22,12 @@ const eslintConfig = defineConfig([
   // a key anymore.
   //
   // Native form controls (warn) — surface accidental native usage in PR
-  // diffs but don't block CI yet (131 violations baseline; per-page
-  // migration follows). Promote to error once baseline reaches 0.
+  // 봉인 완료 (E-3 sealed): 131 baseline migrated across 38 slices in
+  // PRs #269/#273-280/#283-297/#301-307/#309-317. Single residual native
+  // <input type="range"> in credits-usage-predictor.tsx is documented
+  // with eslint-disable-next-line (no Slider primitive yet — see B-? in
+  // PROJECT.md §9 roadmap). New native <button>/<input>/<textarea>
+  // outside primitives now fails CI.
   {
     name: "design-system/no-native-controls",
     files: ["src/**/*.{ts,tsx}"],
@@ -37,7 +41,7 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "react/forbid-elements": [
-        "warn",
+        "error",
         {
           forbid: [
             {
