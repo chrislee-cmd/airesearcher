@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AdminUsageReport, ProviderUsage } from '@/lib/admin/types';
+import { ChromeButton } from './ui/chrome-button';
 
 type Props = { report: AdminUsageReport };
 
@@ -60,14 +61,16 @@ export function AdminApiUsage({ report: initial }: Props) {
           <span className="text-[10.5px] tabular-nums text-mute-soft">
             {new Date(report.generatedAt).toLocaleString('ko-KR')}
           </span>
-          <button
-            type="button"
+          <ChromeButton
+            variant="default"
+            size="sm"
+            uppercase
             onClick={refresh}
             disabled={refreshing}
-            className="border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2 transition-colors duration-[120ms] hover:border-ink disabled:cursor-not-allowed disabled:text-mute-soft rounded-sm"
+            className="!px-3 !text-[11px] tracking-[0.18em] disabled:!text-mute-soft"
           >
             {refreshing ? t('refreshing') : t('refresh')}
-          </button>
+          </ChromeButton>
         </div>
       </header>
 
