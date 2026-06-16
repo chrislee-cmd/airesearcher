@@ -4,6 +4,7 @@ import { usePathname, useRouter } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { useTransition } from 'react';
 import { routing } from '@/i18n/routing';
+import { Button } from './ui/button';
 
 // Short uppercase label shown in the switcher. Falls back to the locale
 // code uppercased so adding a new locale to `routing.locales` Just Works
@@ -33,17 +34,19 @@ export function LanguageSwitcher() {
     <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
       {routing.locales.map((lng, i) => (
         <span key={lng} className="flex items-center gap-2">
-          <button
+          <Button
+            variant="link"
+            size="xs"
             onClick={() => change(lng)}
             disabled={isPending}
-            className={`transition-colors duration-[120ms] ${
+            className={`!px-0 !py-0 !text-[10px] !font-semibold uppercase tracking-[0.18em] ${
               lng === locale
-                ? 'text-amore'
-                : 'text-mute-soft hover:text-ink-2'
+                ? '!text-amore'
+                : '!text-mute-soft hover:!text-ink-2'
             }`}
           >
             {LOCALE_LABEL[lng] ?? lng.toUpperCase()}
-          </button>
+          </Button>
           {i < routing.locales.length - 1 && (
             <span className="h-3 w-px bg-line" />
           )}
