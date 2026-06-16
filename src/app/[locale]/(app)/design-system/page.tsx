@@ -34,6 +34,7 @@ export default async function DesignSystemPage({
       />
 
       <RadiusTokens />
+      <FontSizeTokens />
       <ColorTokens />
       <ZIndexTokens />
       <ButtonSection />
@@ -73,6 +74,42 @@ function RadiusTokens() {
             <code className="text-[11px] text-ink">{t.name}</code>
             <p className="text-[11px] text-mute-soft tabular-nums">{t.value}</p>
             <p className="text-center text-[10.5px] text-mute">{t.usage}</p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function FontSizeTokens() {
+  const tokens = [
+    { name: 'text-xs', px: '10px', usage: '극소 caps/labels', absorbs: '9, 9.5, 10' },
+    { name: 'text-xs-soft', px: '10.5px', usage: 'amore-soft eyebrow', absorbs: '10.5' },
+    { name: 'text-sm', px: '11.5px', usage: '작은 UI 텍스트', absorbs: '11, 11.5' },
+    { name: 'text-md', px: '12.5px', usage: '기본 본문', absorbs: '12, 12.5' },
+    { name: 'text-lg', px: '13px', usage: '강조 본문', absorbs: '13, 13.5' },
+    { name: 'text-xl', px: '15px', usage: '소제목', absorbs: '14, 15' },
+    { name: 'text-2xl', px: '18px', usage: '제목', absorbs: '16, 17, 18' },
+    { name: 'text-3xl', px: '22px', usage: '대제목', absorbs: '20, 22, 24' },
+    { name: 'text-display', px: '32px', usage: '히어로/디스플레이', absorbs: '26, 28, 42' },
+  ];
+  return (
+    <Section title="Font Size" hint="text-{name} 사용. text-[Npx] 직접 사용은 lint 차단 예정 (B-1 마이그 완료 후).">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {tokens.map((t) => (
+          <div
+            key={t.name}
+            className="flex flex-col gap-2 border border-line bg-paper p-3 rounded-sm"
+          >
+            <div className={`text-ink-2 ${t.name}`}>
+              표준 텍스트 샘플
+            </div>
+            <div className="flex items-center justify-between border-t border-line-soft pt-2">
+              <code className="text-[11px] text-ink">{t.name}</code>
+              <span className="text-[10.5px] tabular-nums text-mute-soft">{t.px}</span>
+            </div>
+            <p className="text-[10.5px] text-mute">{t.usage}</p>
+            <p className="text-[10px] text-mute-soft">흡수: {t.absorbs}</p>
           </div>
         ))}
       </div>
