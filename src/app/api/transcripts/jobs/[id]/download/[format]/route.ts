@@ -47,13 +47,17 @@ function looksAnonymous(base: string): boolean {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; format: string }> },
 ) {
   const { id, format } = await params;
   if (format !== 'md' && format !== 'docx' && format !== 'txt') {
     return NextResponse.json({ error: 'unsupported_format' }, { status: 400 });
   }
+  const url = new URL(req.url);
+  // Mirrors the preview route's ?source query so download links from the
+  // toggled view land the matching file (raw → original, clean → cleaned).
+  const source = url.searchParams.get('source') === 'raw' ? 'raw' : 'clean';
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -70,9 +74,10 @@ export async function GET(
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
-  // Same preference as the preview route — cleaned version wins, original is
-  // the fallback when cleanup was skipped / failed / low-confidence.
-  const sourceMarkdown = (job.clean_markdown as string | null) ?? (job.markdown as string);
+  const sourceMarkdown =
+    source === 'raw'
+      ? (job.markdown as string)
+      : ((job.clean_markdown as string | null) ?? (job.markdown as string));
 
   // 1) Try the original filename. If it looks like a person/identifier, keep it.
   // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",
