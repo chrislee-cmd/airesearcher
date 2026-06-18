@@ -4,11 +4,13 @@
 
 import type { DiagramTemplate, LayoutType, SlideElement } from '../types';
 import { bulletBodyTemplate } from './bullet-body';
+import { twoByTwoTemplate } from './two-by-two';
 
-// Only bullet_body in PR1. two_by_two / process_flow / pyramid land in
-// per-diagram PRs (see SPEC §11 "다음 우선순위").
+// PR1 shipped bullet_body. PR2 adds two_by_two. process_flow / pyramid
+// land in subsequent per-diagram PRs (SPEC §11 "다음 우선순위").
 const TEMPLATES: Record<string, DiagramTemplate<unknown>> = {
   [bulletBodyTemplate.type]: bulletBodyTemplate as DiagramTemplate<unknown>,
+  [twoByTwoTemplate.type]: twoByTwoTemplate as DiagramTemplate<unknown>,
 };
 
 export function getTemplate(

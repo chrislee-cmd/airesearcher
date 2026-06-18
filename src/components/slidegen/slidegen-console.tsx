@@ -18,6 +18,15 @@ const SAMPLE_TEXT = `## 시장 진단
 - 광고주는 측정 가능한 채널로 예산을 재배치
 - 크리에이티브 자동화 수요가 빠르게 증가
 
+## 이슈 우선순위
+@layout:two_by_two
+x: 빈도 낮음 :: 빈도 높음
+y: 영향 낮음 :: 영향 높음
+TL: 모니터 :: 분기 보고 누락 | 백오피스 권한
+TR: 즉시 처리 :: 결제 실패 | 로그인 장애
+BL: 무시 :: 사소한 카피 오탈자
+BR: 자동화 :: 알림 노이즈 | 통계 새로고침 지연
+
 ## 핵심 가설
 - AI 크리에이티브로 제작 시간 70% 단축
 - 브랜드 가이드 학습 후 자율 생성
@@ -56,7 +65,7 @@ export function SlidegenConsole() {
       <section className="flex flex-col gap-3">
         <Textarea
           label="보고서 텍스트"
-          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. 둘 다 없으면 전체 1장."
+          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. `@layout:two_by_two` 마크업으로 2×2 매트릭스 도식 지정 가능."
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={10}
@@ -69,7 +78,7 @@ export function SlidegenConsole() {
           </Button>
           {deck ? (
             <span className="ml-auto text-sm text-mute-soft tabular-nums">
-              {slideCount}장 생성 · 모두 bullet_body 폴백 (PR1)
+              {slideCount}장 생성 · @layout:two_by_two 인식
             </span>
           ) : null}
         </div>
