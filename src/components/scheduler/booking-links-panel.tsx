@@ -194,13 +194,13 @@ export function BookingLinksPanel({
     <section className="rounded border border-line bg-paper p-4">
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-[13px] font-semibold text-ink">{t('title')}</h2>
-          <p className="mt-1 text-[12px] text-mute">{t('description')}</p>
+          <h2 className="text-lg font-semibold text-ink">{t('title')}</h2>
+          <p className="mt-1 text-md text-mute">{t('description')}</p>
         </div>
         <button
           type="button"
           onClick={() => setShowCreate((v) => !v)}
-          className="rounded border border-ink bg-ink px-3 py-1.5 text-[12px] font-medium text-paper"
+          className="rounded border border-ink bg-ink px-3 py-1.5 text-md font-medium text-paper"
         >
           {showCreate ? t('cancel') : t('newLink')}
         </button>
@@ -208,15 +208,15 @@ export function BookingLinksPanel({
 
       {showCreate ? (
         <div className="mt-4 space-y-3 border-t border-line-soft pt-4">
-          <p className="text-[12px] text-mute">
+          <p className="text-md text-mute">
             {t('slotsPreview', { count: slotPreviewCount })}
           </p>
           <label className="block">
-            <span className="text-[12px] text-mute">{t('linkProject')}</span>
+            <span className="text-md text-mute">{t('linkProject')}</span>
             <select
               value={linkProjectId ?? ''}
               onChange={(e) => setLinkProjectId(e.target.value || null)}
-              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
             >
               <option value="">{t('noProject')}</option>
               {projects.map((p) => (
@@ -227,38 +227,38 @@ export function BookingLinksPanel({
             </select>
           </label>
           <label className="block">
-            <span className="text-[12px] text-mute">{t('linkTitle')}</span>
+            <span className="text-md text-mute">{t('linkTitle')}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('linkTitlePlaceholder')}
-              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
             />
           </label>
           <label className="block">
-            <span className="text-[12px] text-mute">{t('linkDescription')}</span>
+            <span className="text-md text-mute">{t('linkDescription')}</span>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
             />
           </label>
           <label className="block">
-            <span className="text-[12px] text-mute">{t('expires')}</span>
+            <span className="text-md text-mute">{t('expires')}</span>
             <input
               type="datetime-local"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+              className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
             />
           </label>
-          {error ? <p className="text-[12px] text-amore">{error}</p> : null}
+          {error ? <p className="text-md text-amore">{error}</p> : null}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowCreate(false)}
-              className="rounded border border-line px-3 py-1.5 text-[12px] text-ink"
+              className="rounded border border-line px-3 py-1.5 text-md text-ink"
             >
               {t('cancel')}
             </button>
@@ -266,7 +266,7 @@ export function BookingLinksPanel({
               type="button"
               disabled={creating || slotPreviewCount === 0}
               onClick={create}
-              className="rounded border border-ink bg-ink px-3 py-1.5 text-[12px] font-medium text-paper disabled:opacity-50"
+              className="rounded border border-ink bg-ink px-3 py-1.5 text-md font-medium text-paper disabled:opacity-50"
             >
               {creating ? t('creating') : t('create')}
             </button>
@@ -276,9 +276,9 @@ export function BookingLinksPanel({
 
       <ul className="mt-4 space-y-3">
         {loading && links.length === 0 ? (
-          <li className="text-[12px] text-mute">{t('loading')}</li>
+          <li className="text-md text-mute">{t('loading')}</li>
         ) : links.length === 0 ? (
-          <li className="text-[12px] text-mute">{t('empty')}</li>
+          <li className="text-md text-mute">{t('empty')}</li>
         ) : (
           links
             .filter((l) => visibleProjectIds.has(l.project_id ?? 'none'))
@@ -291,12 +291,12 @@ export function BookingLinksPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[13px] font-semibold text-ink">
+                      <span className="text-lg font-semibold text-ink">
                         {l.title || t('untitled')}
                       </span>
                       <span
                         className={[
-                          'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] text-ink',
+                          'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs text-ink',
                           colorFor(l.project_id).border,
                         ].join(' ')}
                       >
@@ -308,7 +308,7 @@ export function BookingLinksPanel({
                       </span>
                       <span
                         className={[
-                          'rounded border px-1.5 py-0.5 text-[10px]',
+                          'rounded border px-1.5 py-0.5 text-xs',
                           l.status === 'active'
                             ? 'border-line text-mute'
                             : 'border-line-soft text-mute-soft',
@@ -317,8 +317,8 @@ export function BookingLinksPanel({
                         {l.status === 'active' ? t('statusActive') : t('statusClosed')}
                       </span>
                     </div>
-                    <p className="mt-1 truncate text-[12px] text-mute">{url}</p>
-                    <p className="mt-1 text-[12px] text-mute-soft">
+                    <p className="mt-1 truncate text-md text-mute">{url}</p>
+                    <p className="mt-1 text-md text-mute-soft">
                       {t('progress', { booked, total })} · {l.timezone}
                     </p>
                   </div>
@@ -326,28 +326,28 @@ export function BookingLinksPanel({
                     <button
                       type="button"
                       onClick={() => copy(l.slug, l.id)}
-                      className="rounded border border-line px-2 py-1 text-[11px] text-ink hover:border-ink"
+                      className="rounded border border-line px-2 py-1 text-sm text-ink hover:border-ink"
                     >
                       {copiedId === l.id ? t('copied') : t('copy')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setStatus(l.id, l.status === 'active' ? 'closed' : 'active')}
-                      className="rounded border border-line px-2 py-1 text-[11px] text-ink hover:border-ink"
+                      className="rounded border border-line px-2 py-1 text-sm text-ink hover:border-ink"
                     >
                       {l.status === 'active' ? t('close') : t('reopen')}
                     </button>
                     <button
                       type="button"
                       onClick={() => remove(l.id)}
-                      className="rounded border border-line-soft px-2 py-1 text-[11px] text-mute hover:text-amore"
+                      className="rounded border border-line-soft px-2 py-1 text-sm text-mute hover:text-amore"
                     >
                       {t('delete')}
                     </button>
                   </div>
                 </div>
                 {l.bookings.length > 0 ? (
-                  <ul className="mt-3 space-y-1 border-t border-line-soft pt-2 text-[12px]">
+                  <ul className="mt-3 space-y-1 border-t border-line-soft pt-2 text-md">
                     {l.bookings.map((b) => {
                       const slot = l.slots.find((s) => s.id === b.slot_id);
                       return (

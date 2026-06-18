@@ -427,10 +427,10 @@ export function InsightsAnalyzer({
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           인사이트 분석기
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+        <span className="shrink-0 text-sm tabular-nums text-mute-soft">
           30크레딧 / 배치
         </span>
       </div>
@@ -460,7 +460,7 @@ export function InsightsAnalyzer({
 
           {files.length > 0 && (
             <div className="mt-6 border border-line bg-paper p-4 rounded-sm">
-              <div className="mb-2 flex items-center justify-between text-[11.5px] text-mute-soft">
+              <div className="mb-2 flex items-center justify-between text-sm text-mute-soft">
                 <span>
                   업로드 대기 {files.length} / {MAX_FILES}
                 </span>
@@ -477,7 +477,7 @@ export function InsightsAnalyzer({
                 {files.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center justify-between gap-3 py-2 text-[12.5px] text-ink-2"
+                    className="flex items-center justify-between gap-3 py-2 text-md text-ink-2"
                   >
                     <span className="truncate">{r.file.name}</span>
                     <span className="flex shrink-0 items-center gap-3">
@@ -501,7 +501,7 @@ export function InsightsAnalyzer({
 
           <div className="mt-6 flex items-center justify-end gap-3">
             {error && (
-              <span className="text-[11.5px] text-warning">{error}</span>
+              <span className="text-sm text-warning">{error}</span>
             )}
             <Button
               variant="primary"
@@ -519,7 +519,7 @@ export function InsightsAnalyzer({
             <div className="mt-10">
               <div className="mb-3 flex items-baseline justify-between">
                 <div className="eyebrow-mute">이전 분석</div>
-                <div className="text-[11px] text-mute-soft tabular-nums">
+                <div className="text-sm text-mute-soft tabular-nums">
                   최근 {pastJobs.length}개
                 </div>
               </div>
@@ -538,10 +538,10 @@ export function InsightsAnalyzer({
                     }}
                     className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 transition-colors duration-[120ms] hover:bg-paper-soft focus:bg-paper-soft focus:outline-none"
                   >
-                    <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-ink-2">
+                    <span className="min-w-0 flex-1 truncate text-left text-lg font-medium text-ink-2">
                       {past.title ?? formatDate(past.created_at)}
                     </span>
-                    <span className="flex shrink-0 items-center gap-3 text-[11.5px] tabular-nums text-mute-soft">
+                    <span className="flex shrink-0 items-center gap-3 text-sm tabular-nums text-mute-soft">
                       <span>파일 {past.file_count}</span>
                       <span>·</span>
                       <span>참여자 {past.participant_count}</span>
@@ -565,7 +565,7 @@ export function InsightsAnalyzer({
       {isRunning && (
         <div className="mt-8 space-y-6">
           <div className="border border-line bg-paper p-5 rounded-sm">
-            <div className="flex items-center justify-between gap-3 text-[12.5px] text-ink-2">
+            <div className="flex items-center justify-between gap-3 text-md text-ink-2">
               <span className="font-medium">
                 {phase === 'pending' && '대기 중'}
                 {phase === 'converting' && '파일을 마크다운으로 변환 중'}
@@ -576,7 +576,7 @@ export function InsightsAnalyzer({
                 {succeededCount + failedCount} / {files.length || job?.file_count || 0} 파일 처리
               </span>
             </div>
-            <div className="mt-3 text-[11.5px] text-mute-soft tabular-nums">
+            <div className="mt-3 text-sm text-mute-soft tabular-nums">
               지금까지 수집된 인용구:{' '}
               {(liveQuoteCount ?? job?.quote_count ?? 0).toLocaleString()}개
             </div>
@@ -587,10 +587,10 @@ export function InsightsAnalyzer({
               {files.map((r) => (
                 <li
                   key={r.id}
-                  className="flex items-center justify-between gap-3 px-4 py-2 text-[12.5px] text-ink-2"
+                  className="flex items-center justify-between gap-3 px-4 py-2 text-md text-ink-2"
                 >
                   <span className="truncate">{r.file.name}</span>
-                  <span className="shrink-0 text-[11.5px] text-mute-soft tabular-nums">
+                  <span className="shrink-0 text-sm text-mute-soft tabular-nums">
                     {r.phase === 'queued' && '대기'}
                     {r.phase === 'uploading' && '처리 중…'}
                     {r.phase === 'done' && `완료 · ${r.quoteCount ?? 0}개`}
@@ -611,20 +611,20 @@ export function InsightsAnalyzer({
             </Button>
           </div>
           <div className="border border-line bg-paper p-5 rounded-sm">
-            <div className="text-[12.5px] font-medium text-ink-2">
+            <div className="text-md font-medium text-ink-2">
               분석 완료
             </div>
-            <dl className="mt-3 grid grid-cols-3 gap-4 text-[12.5px] text-ink-2">
+            <dl className="mt-3 grid grid-cols-3 gap-4 text-md text-ink-2">
               <div>
-                <dt className="text-[11px] text-mute-soft">파일</dt>
+                <dt className="text-sm text-mute-soft">파일</dt>
                 <dd className="tabular-nums">{job.file_count}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-mute-soft">참여자</dt>
+                <dt className="text-sm text-mute-soft">참여자</dt>
                 <dd className="tabular-nums">{job.participant_count}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-mute-soft">인용구</dt>
+                <dt className="text-sm text-mute-soft">인용구</dt>
                 <dd className="tabular-nums">{job.quote_count}</dd>
               </div>
             </dl>
@@ -635,15 +635,15 @@ export function InsightsAnalyzer({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section className="border border-line bg-paper p-5 rounded-sm">
               <div className="eyebrow-mute mb-2">정량 분석</div>
-              <h2 className="text-[13px] font-semibold text-ink-2">
+              <h2 className="text-lg font-semibold text-ink-2">
                 클러스터 인사이트
               </h2>
-              <p className="mt-1.5 text-[11px] text-mute-soft">
+              <p className="mt-1.5 text-sm text-mute-soft">
                 인용구를 의미 단위로 묶어 핵심 메시지를 추출합니다.
               </p>
               <div className="mt-4">
                 {clusters === null ? (
-                  <p className="text-[11.5px] text-mute-soft">불러오는 중…</p>
+                  <p className="text-sm text-mute-soft">불러오는 중…</p>
                 ) : (
                   <ClusterView clusters={clusters} />
                 )}
@@ -651,10 +651,10 @@ export function InsightsAnalyzer({
             </section>
             <section className="border border-line bg-paper p-5 rounded-sm">
               <div className="eyebrow-mute mb-2">정성 분석</div>
-              <h2 className="text-[13px] font-semibold text-ink-2">
+              <h2 className="text-lg font-semibold text-ink-2">
                 긴장·모순 지도
               </h2>
-              <p className="mt-2 text-[11.5px] leading-[1.55] text-mute-soft">
+              <p className="mt-2 text-sm leading-[1.55] text-mute-soft">
                 참여자 간 긴장, 발화 모순, 인용구 별자리 등 정성 시각화는 후속 PR (5b · 6b) 에서 추가됩니다.
               </p>
             </section>
@@ -671,15 +671,15 @@ export function InsightsAnalyzer({
       {phase === 'failed' && job && (
         <div className="mt-8 space-y-6">
           <div className="border border-line bg-paper p-5 rounded-sm">
-            <div className="text-[12.5px] font-medium text-warning">
+            <div className="text-md font-medium text-warning">
               분석 실패 — 크레딧이 환불되었습니다
             </div>
-            <p className="mt-2 text-[11.5px] text-mute-soft">
+            <p className="mt-2 text-sm text-mute-soft">
               50% 미만의 파일만 분석에 성공해 결과 품질이 신뢰할 수 없습니다.
               사용된 30크레딧은 자동으로 환불되었습니다.
             </p>
             {job.failure_reason && (
-              <pre className="mt-3 whitespace-pre-wrap text-[11px] text-mute tabular-nums">
+              <pre className="mt-3 whitespace-pre-wrap text-sm text-mute tabular-nums">
                 {job.failure_reason}
               </pre>
             )}

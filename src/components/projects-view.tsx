@@ -119,7 +119,7 @@ export function ProjectsView({
       )}
 
       {projects.length === 0 ? (
-        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
+        <div className="mt-8 border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
           {t('noProjects')}
         </div>
       ) : view === 'folder' ? (
@@ -130,7 +130,7 @@ export function ProjectsView({
         </div>
       ) : (
         <div className="mt-6 border border-line bg-paper rounded-sm">
-          <table className="w-full text-[12.5px]">
+          <table className="w-full text-md">
             <thead className="border-b border-line">
               <tr>
                 <Th>{t('name')}</Th>
@@ -150,7 +150,7 @@ export function ProjectsView({
                       {p.name}
                     </Link>
                     {p.description && (
-                      <div className="mt-0.5 text-[11.5px] text-mute-soft">
+                      <div className="mt-0.5 text-sm text-mute-soft">
                         {p.description}
                       </div>
                     )}
@@ -165,7 +165,7 @@ export function ProjectsView({
                         variant="destructive-link"
                         size="xs"
                         onClick={() => remove(p.id)}
-                        className="!px-0 !py-0 !text-[11px] !font-normal uppercase tracking-[0.18em]"
+                        className="!px-0 !py-0 !text-sm !font-normal uppercase tracking-[0.18em]"
                       >
                         {t('delete')}
                       </Button>
@@ -201,7 +201,7 @@ function ViewToggle({
           variant="link"
           size="xs"
           onClick={() => onChange(it.v)}
-          className={`!px-3 !py-1 !text-[11px] !font-normal uppercase tracking-[0.18em] [border-radius:3px] ${
+          className={`!px-3 !py-1 !text-sm !font-normal uppercase tracking-[0.18em] [border-radius:3px] ${
             value === it.v
               ? '!bg-ink !text-paper'
               : '!text-mute hover:!text-ink-2'
@@ -228,15 +228,15 @@ function FolderCard({
     <div className="group relative border border-line bg-paper-soft p-5 transition-transform duration-[120ms] hover:-translate-y-0.5 rounded-sm [box-shadow:var(--shadow-bento)]">
       <Link href={`/projects/${project.id}`} className="block">
         <FolderIcon />
-        <h3 className="mt-3 truncate text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
+        <h3 className="mt-3 truncate text-xl font-semibold tracking-[-0.005em] text-ink-2">
           {project.name}
         </h3>
         {project.description && (
-          <p className="mt-1 line-clamp-2 text-[11.5px] leading-[1.55] text-mute">
+          <p className="mt-1 line-clamp-2 text-sm leading-[1.55] text-mute">
             {project.description}
           </p>
         )}
-        <div className="mt-3 flex items-center justify-between text-[10.5px] tabular-nums uppercase tracking-[0.18em] text-mute-soft">
+        <div className="mt-3 flex items-center justify-between text-xs-soft tabular-nums uppercase tracking-[0.18em] text-mute-soft">
           <span>{new Date(project.created_at).toISOString().slice(0, 10)}</span>
           <span>{project.item_count} {t('items')}</span>
         </div>
@@ -249,7 +249,7 @@ function FolderCard({
             e.preventDefault();
             onDelete(project.id);
           }}
-          className="!absolute !right-3 !top-3 !hidden !px-0 !py-0 !text-[10.5px] !font-normal uppercase tracking-[0.18em] group-hover:!inline-flex"
+          className="!absolute !right-3 !top-3 !hidden !px-0 !py-0 !text-xs-soft !font-normal uppercase tracking-[0.18em] group-hover:!inline-flex"
         >
           {t('delete')}
         </Button>
@@ -280,7 +280,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft ${className}`}
+      className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft ${className}`}
     >
       {children}
     </th>

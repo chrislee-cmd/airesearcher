@@ -111,7 +111,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
             variant={statusFilter === f ? 'primary' : 'ghost'}
             size="xs"
             onClick={() => changeFilter(f)}
-            className="!px-3 !py-1.5 !text-[11px] uppercase tracking-[0.18em] !rounded-xs"
+            className="!px-3 !py-1.5 !text-sm uppercase tracking-[0.18em] !rounded-xs"
           >
             {f === 'pending' ? '입금대기' : f === 'paid' ? '완료' : '전체'}
           </Button>
@@ -121,15 +121,15 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
       {/* Table */}
       <div className="mt-4 overflow-x-auto">
         {loading ? (
-          <p className="py-8 text-center text-[12px] text-mute">불러오는 중…</p>
+          <p className="py-8 text-center text-md text-mute">불러오는 중…</p>
         ) : payments.length === 0 ? (
-          <p className="py-8 text-center text-[12px] text-mute">결제 내역이 없습니다.</p>
+          <p className="py-8 text-center text-md text-mute">결제 내역이 없습니다.</p>
         ) : (
-          <table className="w-full border-collapse text-[12px]">
+          <table className="w-full border-collapse text-md">
             <thead>
               <tr className="border-b border-line text-left">
                 {['신청일시', '조직', '번들', '금액', '크레딧', '입금자명', '세금계산서', '상태', ''].map((h) => (
-                  <th key={h} className="pb-2 pr-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                  <th key={h} className="pb-2 pr-4 text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
                     {h}
                   </th>
                 ))}
@@ -165,7 +165,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
                         size="xs"
                         disabled={confirming === p.id}
                         onClick={() => confirm(p.id)}
-                        className="!border-amore !px-3 !py-1 !text-[11px] !text-amore hover:!bg-amore hover:!text-paper !rounded-xs"
+                        className="!border-amore !px-3 !py-1 !text-sm !text-amore hover:!bg-amore hover:!text-paper !rounded-xs"
                       >
                         {confirming === p.id ? '처리 중…' : '입금 확인'}
                       </Button>
@@ -185,7 +185,7 @@ export function AdminPayments({ initialPayments }: { initialPayments: Payment[] 
           role="status"
           aria-live="polite"
         >
-          <div className={`border px-4 py-2 text-[12px] font-semibold rounded-xs ${
+          <div className={`border px-4 py-2 text-md font-semibold rounded-xs ${
             toast.ok ? 'border-ink bg-ink text-paper' : 'border-warning bg-paper text-warning'
           }`}>
             {toast.msg}

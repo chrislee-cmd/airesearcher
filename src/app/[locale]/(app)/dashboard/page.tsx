@@ -28,24 +28,24 @@ export default async function DashboardPage({
       <header className="border-b border-line pb-4">
         <div className="flex items-center gap-2">
           <span className="inline-block h-px w-5 bg-amore" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             {t('eyebrow')}
           </span>
         </div>
         <div className="mt-2 flex items-baseline justify-between gap-4">
-          <h1 className="text-[28px] font-bold tracking-[-0.02em] text-ink">
+          <h1 className="text-display font-bold tracking-[-0.02em] text-ink">
             {t('title')}
           </h1>
           {user && org && (
             <Link
               href="/projects"
-              className="border border-ink bg-ink px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+              className="border border-ink bg-ink px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
             >
               {t('newProject')}
             </Link>
           )}
         </div>
-        <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        <p className="mt-3 max-w-[820px] text-md leading-[1.75] text-mute">
           {t('subtitle')}
         </p>
       </header>
@@ -53,7 +53,7 @@ export default async function DashboardPage({
       {!user ? (
         <SignedOutHero />
       ) : !org ? (
-        <p className="mt-10 text-[12.5px] text-mute-soft">{t('noOrg')}</p>
+        <p className="mt-10 text-md text-mute-soft">{t('noOrg')}</p>
       ) : !hasAnyProject ? (
         <FirstProjectHero />
       ) : (
@@ -85,26 +85,26 @@ async function CardView({ card }: { card: ProjectCard }) {
   const inner = (
     <>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="truncate text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+        <h3 className="truncate text-xl font-semibold tracking-[-0.005em] text-ink-2">
           {isUnfiled ? t('unfiled') : card.name ?? '—'}
         </h3>
         {card.runningCount > 0 && (
-          <span className="flex shrink-0 items-center gap-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
+          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-amore">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
             {t('runningCount', { count: card.runningCount })}
           </span>
         )}
       </div>
-      <p className="mt-1 text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+      <p className="mt-1 text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
         {card.lastActivityAt
           ? t('lastActivity', { when: formatRelative(card.lastActivityAt) })
           : t('noActivity')}
       </p>
 
       {total === 0 ? (
-        <p className="mt-5 text-[11.5px] text-mute-soft">{t('emptyProject')}</p>
+        <p className="mt-5 text-sm text-mute-soft">{t('emptyProject')}</p>
       ) : (
-        <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11.5px] tabular-nums">
+        <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm tabular-nums">
           <CountRow label={t('countReports')} count={card.counts.reports} />
           <CountRow label={t('countInterviews')} count={card.counts.interviews} />
           <CountRow label={t('countTranscripts')} count={card.counts.transcripts} />
@@ -117,7 +117,7 @@ async function CardView({ card }: { card: ProjectCard }) {
 
       <div className="flex-1" />
       {!isUnfiled && (
-        <span className="mt-5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft transition-colors duration-[120ms] group-hover:text-amore">
+        <span className="mt-5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft transition-colors duration-[120ms] group-hover:text-amore">
           {t('openProject')} →
         </span>
       )}
@@ -171,15 +171,15 @@ async function FirstProjectHero() {
   const t = await getTranslations('Dashboard');
   return (
     <section className="mt-10 border border-line bg-paper p-8 rounded-sm">
-      <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+      <h2 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
         {t('firstProjectTitle')}
       </h2>
-      <p className="mt-2 max-w-[640px] text-[12.5px] leading-[1.75] text-mute">
+      <p className="mt-2 max-w-[640px] text-md leading-[1.75] text-mute">
         {t('firstProjectBody')}
       </p>
       <Link
         href="/projects"
-        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
       >
         {t('firstProjectCta')}
       </Link>
@@ -191,15 +191,15 @@ async function SignedOutHero() {
   const t = await getTranslations('Dashboard');
   return (
     <section className="mt-10 border border-line bg-paper p-8 rounded-sm">
-      <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+      <h2 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
         {t('signedOutTitle')}
       </h2>
-      <p className="mt-2 max-w-[640px] text-[12.5px] leading-[1.75] text-mute">
+      <p className="mt-2 max-w-[640px] text-md leading-[1.75] text-mute">
         {t('signedOutBody')}
       </p>
       <Link
         href="/login"
-        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+        className="mt-5 inline-block border border-ink bg-ink px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
       >
         {t('signIn')}
       </Link>

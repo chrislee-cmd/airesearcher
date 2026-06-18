@@ -53,22 +53,22 @@ export default async function ProjectDetailPage({
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <ActiveProjectSync id={project.id} name={project.name} />
       <div className="border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {project.name}
         </h1>
       </div>
       {project.description && (
-        <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        <p className="mt-3 max-w-[820px] text-md leading-[1.75] text-mute">
           {project.description}
         </p>
       )}
 
       <div className="mt-8">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
           {t('items')}
         </h2>
         {artifacts.length === 0 ? (
-          <div className="mt-3 border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
+          <div className="mt-3 border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
             아직 이 프로젝트에 등록된 산출물이 없습니다.
           </div>
         ) : (
@@ -83,16 +83,16 @@ export default async function ProjectDetailPage({
                 >
                   <div className="min-w-0 flex-1 pr-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+                      <span className="text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
                         {featureLabel}
                       </span>
                       {a.status && a.status !== 'done' && (
-                        <span className="text-[10.5px] uppercase tracking-[0.14em] text-amore">
+                        <span className="text-xs-soft uppercase tracking-[0.14em] text-amore">
                           {a.status}
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 truncate text-[12.5px] text-ink-2">
+                    <div className="mt-0.5 truncate text-md text-ink-2">
                       {a.title}
                     </div>
                   </div>
@@ -106,7 +106,7 @@ export default async function ProjectDetailPage({
                         unfiledLabel={unfiledLabel}
                       />
                     )}
-                    <div className="text-[11px] text-mute-soft tabular-nums">
+                    <div className="text-sm text-mute-soft tabular-nums">
                       {new Date(a.at).toISOString().replace('T', ' ').slice(0, 16)}
                     </div>
                   </div>

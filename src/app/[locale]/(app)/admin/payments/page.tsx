@@ -44,14 +44,14 @@ export default async function AdminPaymentsPage({
       <div className="border-b border-line pb-4">
         <div className="flex items-center gap-2">
           <span className="inline-block h-px w-5 bg-amore" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             ADMIN
           </span>
         </div>
-        <h1 className="mt-2 text-[22px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.02em] text-ink">
           무통장 결제 관리
         </h1>
-        <p className="mt-1 text-[12px] text-mute">
+        <p className="mt-1 text-md text-mute">
           입금 확인 후 &quot;입금 확인&quot; 버튼을 누르면 해당 조직에 크레딧이 즉시 지급됩니다.
         </p>
       </div>

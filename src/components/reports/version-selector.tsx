@@ -25,7 +25,7 @@ export function VersionSelector({
   if (versions.length <= 1) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+      <span className="text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
         Version
       </span>
       {versions.map((v) => {
@@ -47,7 +47,7 @@ export function VersionSelector({
                 ? `v${v.parent_version}에서 분기 · 더블클릭=head로 설정`
                 : '원본'
             }
-            className={`!px-2.5 !py-1 !text-[11.5px] !rounded-xs ${
+            className={`!px-2.5 !py-1 !text-sm !rounded-xs ${
               active ? '' : 'hover:!border-ink-2'
             }`}
           >

@@ -511,7 +511,7 @@ export function ReportGenerator() {
       />
 
       {rejected.length > 0 && (
-        <div className="mt-3 text-[11.5px] text-amore">
+        <div className="mt-3 text-sm text-amore">
           허용되지 않은 형식: {rejected.join(', ')}
         </div>
       )}
@@ -521,7 +521,7 @@ export function ReportGenerator() {
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
-              className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12.5px]"
+              className="flex items-center justify-between gap-3 px-4 py-2.5 text-md"
             >
               <span className="truncate text-ink-2">{f.name}</span>
               <span className="shrink-0 tabular-nums text-mute-soft">
@@ -532,7 +532,7 @@ export function ReportGenerator() {
                 size="xs"
                 onClick={() => removeFile(i)}
                 disabled={running}
-                className="shrink-0 text-[11.5px]"
+                className="shrink-0 text-sm"
               >
                 제거
               </Button>
@@ -542,7 +542,7 @@ export function ReportGenerator() {
       )}
 
       <div className="mt-4 flex items-center justify-end gap-3">
-        <span className="text-[11px] tabular-nums text-mute-soft">
+        <span className="text-sm tabular-nums text-mute-soft">
           {files.length}개 파일
         </span>
         <Button
@@ -556,7 +556,7 @@ export function ReportGenerator() {
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
           오류: {errorMessage}
         </div>
       )}
@@ -565,10 +565,10 @@ export function ReportGenerator() {
         <div className="mt-10">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+              <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
                 {running ? (stage === 'normalize' ? '1/2' : '2/2') : '결과'}
               </h2>
-              <div className="flex items-center gap-1 text-[11.5px]">
+              <div className="flex items-center gap-1 text-sm">
                 <Button
                   variant={tab === 'html' ? 'primary' : 'ghost'}
                   size="xs"
@@ -642,7 +642,7 @@ export function ReportGenerator() {
             </div>
           </div>
           {result && result.sources.length > 0 && (
-            <p className="mt-3 text-[11.5px] text-mute-soft">
+            <p className="mt-3 text-sm text-mute-soft">
               출처: {result.sources.join(', ')}
             </p>
           )}
@@ -688,7 +688,7 @@ export function ReportGenerator() {
               className="mt-4 h-[78vh] w-full border border-line bg-paper rounded-sm"
             />
           ) : (
-            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-[12.5px] leading-[1.7] text-ink-2 rounded-sm">
+            <pre className="mt-4 max-h-[78vh] overflow-auto whitespace-pre-wrap border border-line bg-paper p-5 text-md leading-[1.7] text-ink-2 rounded-sm">
               {previewMd || '(아직 생성되지 않았습니다)'}
             </pre>
           )}
@@ -747,7 +747,7 @@ function RegenBar({
     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line-soft pt-3">
       <div className="flex items-center gap-2">
         <span className="inline-block h-px w-5 bg-amore" />
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+        <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-amore">
           {t('regenLabel')}
         </span>
       </div>
@@ -759,13 +759,13 @@ function RegenBar({
             size="xs"
             disabled={disabled}
             onClick={() => onRegen(k)}
-            className="px-2.5 text-[11px] hover:border-amore"
+            className="px-2.5 text-sm hover:border-amore"
           >
             {t(`types.${k}.label`)}
           </Button>
         ))}
       </div>
-      <span className="ml-1 text-[10.5px] text-mute-soft">
+      <span className="ml-1 text-xs-soft text-mute-soft">
         {t('regenHelp')}
       </span>
     </div>
@@ -791,11 +791,11 @@ function ReportTypeChooser({
       <div className="flex items-baseline justify-between gap-3 border-b border-line-soft pb-2">
         <div className="flex items-center gap-2">
           <span className="inline-block h-px w-5 bg-amore" />
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-amore">
             {t('typeChooserLabel')}
           </span>
         </div>
-        <span className="text-[11px] text-mute-soft">{t('typeChooserHelp')}</span>
+        <span className="text-sm text-mute-soft">{t('typeChooserHelp')}</span>
       </div>
       <div
         role="radiogroup"
@@ -818,14 +818,14 @@ function ReportTypeChooser({
               }`}
             >
               <span
-                className={`text-[9.5px] font-semibold uppercase tracking-[0.22em] ${
+                className={`text-xs font-semibold uppercase tracking-[0.22em] ${
                   selected ? 'text-paper/70' : 'text-amore'
                 }`}
               >
                 {t(`types.${key}.label`)}
               </span>
               <span
-                className={`text-[12px] leading-[1.5] ${
+                className={`text-md leading-[1.5] ${
                   selected ? 'text-paper/90' : 'text-mute'
                 }`}
               >

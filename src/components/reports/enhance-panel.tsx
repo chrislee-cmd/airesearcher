@@ -211,11 +211,11 @@ export function EnhancePanel({
     <div className="mt-10 border-t border-line pt-6">
       <div className="flex items-center gap-2">
         <span className="h-[1px] w-6 bg-amore" />
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+        <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-amore">
           Enhance
         </span>
       </div>
-      <p className="mt-2 text-[12.5px] text-mute">
+      <p className="mt-2 text-md text-mute">
         외부 맥락을 추가해 v{parentVersion}에서 새 버전을 만듭니다. 원본 사실과 인용은 유지됩니다.
       </p>
 
@@ -244,11 +244,11 @@ export function EnhancePanel({
                   : 'border-line bg-paper text-ink-2 hover:border-ink-2 hover:text-ink-2'
               }`}
             >
-              <span className="block w-full text-[12.5px] font-semibold">
+              <span className="block w-full text-md font-semibold">
                 {MODE_LABELS[m]}
               </span>
               <span
-                className={`mt-1 block w-full text-[11px] font-normal leading-[1.5] ${active ? 'text-paper/75' : 'text-mute-soft'}`}
+                className={`mt-1 block w-full text-sm font-normal leading-[1.5] ${active ? 'text-paper/75' : 'text-mute-soft'}`}
               >
                 {MODE_DESC[m]}
               </span>
@@ -271,7 +271,7 @@ export function EnhancePanel({
                 variant="link"
                 size="xs"
                 onClick={() => setTab(t)}
-                className={`px-2.5 py-1 text-[11.5px] font-normal normal-case tracking-normal rounded-xs ${
+                className={`px-2.5 py-1 text-sm font-normal normal-case tracking-normal rounded-xs ${
                   tab === t
                     ? 'border border-ink-2 bg-paper text-ink-2 hover:text-ink-2'
                     : 'border border-transparent text-mute hover:text-ink-2'
@@ -289,7 +289,7 @@ export function EnhancePanel({
                 onChange={(e) => setTextBody(e.target.value)}
                 rows={6}
                 placeholder="트렌드 기사/메모/요약을 붙여 넣으세요."
-                className="bg-paper-soft text-[12.5px] leading-[1.65] text-ink-2"
+                className="bg-paper-soft text-md leading-[1.65] text-ink-2"
               />
             )}
             {tab === 'url' && (
@@ -298,7 +298,7 @@ export function EnhancePanel({
                 onChange={(e) => setUrlValue(e.target.value)}
                 type="url"
                 placeholder="https://..."
-                className="bg-paper-soft text-[12.5px] text-ink-2"
+                className="bg-paper-soft text-md text-ink-2"
               />
             )}
             {tab === 'file' && (
@@ -319,15 +319,15 @@ export function EnhancePanel({
                     if (f) void uploadContextFile(f);
                   }}
                   fullWidth={false}
-                  className="border-0 bg-transparent p-0 text-[12px] text-mute focus:border-0 focus-visible:border-0"
+                  className="border-0 bg-transparent p-0 text-md text-mute focus:border-0 focus-visible:border-0"
                 />
                 {fileBusy && (
-                  <div className="mt-2 text-[11.5px] text-mute-soft">
+                  <div className="mt-2 text-sm text-mute-soft">
                     추출 중...
                   </div>
                 )}
                 {fileInput && !fileBusy && (
-                  <div className="mt-2 text-[11.5px] text-mute">
+                  <div className="mt-2 text-sm text-mute">
                     {fileInput.filename} ·{' '}
                     {fileInput.normalized_md.length.toLocaleString()}자 추출됨
                   </div>
@@ -339,7 +339,7 @@ export function EnhancePanel({
                 ref={dropRef}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={onArtifactDrop}
-                className="border border-dashed border-line bg-paper-soft px-3 py-3 text-[12px] rounded-xs"
+                className="border border-dashed border-line bg-paper-soft px-3 py-3 text-md rounded-xs"
               >
                 <div className="text-mute-soft">
                   Workspace에서 artifact를 드래그하거나 아래에서 선택하세요.
@@ -347,7 +347,7 @@ export function EnhancePanel({
                 <select
                   value={artifactId}
                   onChange={(e) => setArtifactId(e.target.value)}
-                  className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12px] text-ink-2 outline-none focus:border-ink-2 rounded-xs"
+                  className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-md text-ink-2 outline-none focus:border-ink-2 rounded-xs"
                 >
                   <option value="">— 선택 —</option>
                   {compatibleArtifacts.map((a) => (
@@ -362,7 +362,7 @@ export function EnhancePanel({
               <div className="grid gap-3">
                 {formSchema.map((f) => (
                   <label key={f.key} className="grid gap-1">
-                    <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+                    <span className="text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
                       {f.label}
                     </span>
                     {f.type === 'textarea' ? (
@@ -376,7 +376,7 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="bg-paper-soft text-[12.5px] text-ink-2"
+                        className="bg-paper-soft text-md text-ink-2"
                       />
                     ) : (
                       <Input
@@ -388,7 +388,7 @@ export function EnhancePanel({
                           }))
                         }
                         placeholder={f.placeholder}
-                        className="bg-paper-soft text-[12.5px] text-ink-2"
+                        className="bg-paper-soft text-md text-ink-2"
                       />
                     )}
                   </label>
@@ -400,18 +400,18 @@ export function EnhancePanel({
           {/* User note + run */}
           <div className="mt-4 grid gap-2">
             <label className="grid gap-1">
-              <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+              <span className="text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
                 자유 지시 (선택)
               </span>
               <Input
                 value={userNote}
                 onChange={(e) => setUserNote(e.target.value)}
                 placeholder="예: 결론을 이 트렌드와 직접 연결해줘"
-                className="bg-paper-soft text-[12px] text-ink-2"
+                className="bg-paper-soft text-md text-ink-2"
               />
             </label>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] text-mute-soft">
+              <span className="text-sm text-mute-soft">
                 강화 1회 · 10크레딧
               </span>
               <Button

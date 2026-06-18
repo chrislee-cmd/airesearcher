@@ -238,10 +238,10 @@ export function SchedulerPage() {
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {t('title')}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+        <span className="shrink-0 text-sm tabular-nums text-mute-soft">
           {t('cost')}
         </span>
       </div>
@@ -249,7 +249,7 @@ export function SchedulerPage() {
       <div className="mt-6 space-y-5">
         <RequirementsForm value={requirement} onChange={setRequirement} />
         {(projects.length > 0 || linkBookings.some((b) => !b.projectId)) && (
-          <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+          <div className="flex flex-wrap items-center gap-1.5 text-md">
             <span className="text-mute">{t('projectFilter')}</span>
             {projects.map((p) => {
               const hidden = hiddenProjectIds.has(p.id);

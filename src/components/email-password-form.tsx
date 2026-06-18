@@ -19,7 +19,7 @@ function safeNext(raw: string | null): string {
 }
 
 const linkCls =
-  'text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2';
+  'text-sm text-mute transition-colors duration-[120ms] hover:text-ink-2';
 
 export function EmailPasswordForm() {
   const t = useTranslations('Auth');
@@ -159,7 +159,7 @@ export function EmailPasswordForm() {
             </Link>
           )}
           {mode === 'signUp' && (
-            <span className="text-[10.5px] text-mute-soft">
+            <span className="text-xs-soft text-mute-soft">
               {t('passwordHint')}
             </span>
           )}
@@ -187,12 +187,12 @@ export function EmailPasswordForm() {
         />
       )}
 
-      {error && <p className="text-[11.5px] text-warning">{error}</p>}
+      {error && <p className="text-sm text-warning">{error}</p>}
       {info && (
         <div className="space-y-1.5">
-          <p className="text-[11.5px] text-mute">{info}</p>
+          <p className="text-sm text-mute">{info}</p>
           {pendingEmail && (
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-2 text-sm">
               <span className="text-mute-soft">{t('didntGetEmail')}</span>
               <Button
                 variant="link"

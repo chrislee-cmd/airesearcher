@@ -31,7 +31,7 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
       {routing.locales.map((lng, i) => (
         <span key={lng} className="flex items-center gap-2">
           <Button
@@ -39,7 +39,7 @@ export function LanguageSwitcher() {
             size="xs"
             onClick={() => change(lng)}
             disabled={isPending}
-            className={`!px-0 !py-0 !text-[10px] !font-semibold uppercase tracking-[0.18em] ${
+            className={`!px-0 !py-0 !text-xs !font-semibold uppercase tracking-[0.18em] ${
               lng === locale
                 ? '!text-amore'
                 : '!text-mute-soft hover:!text-ink-2'

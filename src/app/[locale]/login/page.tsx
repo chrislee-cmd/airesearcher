@@ -18,10 +18,10 @@ export default async function LoginPage({
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-[420px] border border-line bg-paper-soft p-9 rounded-md [box-shadow:0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]">
-        <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+        <h1 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
           {t('signInTitle')}
         </h1>
-        <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mt-2 text-md leading-[1.7] text-mute">
           {t('signInSubtitle')}
         </p>
         <div className="mt-7">
@@ -29,7 +29,7 @@ export default async function LoginPage({
         </div>
         <div className="my-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-line" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('or')}
           </span>
           <span className="h-px flex-1 bg-line" />

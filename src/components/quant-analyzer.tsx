@@ -128,12 +128,12 @@ export function QuantAnalyzer() {
           className="py-14"
         >
           {parsing && (
-            <div className="mt-3 text-[11.5px] uppercase tracking-[0.18em] text-amore">
+            <div className="mt-3 text-sm uppercase tracking-[0.18em] text-amore">
               {t('parsing')}
             </div>
           )}
           {error && (
-            <div className="mt-3 text-[11.5px] text-warning">
+            <div className="mt-3 text-sm text-warning">
               {t('parseError')}: <span className="font-mono">{error}</span>
             </div>
           )}
@@ -145,13 +145,13 @@ export function QuantAnalyzer() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                 {t('loaded')}
               </div>
-              <div className="mt-1 truncate text-[13.5px] font-semibold text-ink-2">
+              <div className="mt-1 truncate text-lg font-semibold text-ink-2">
                 {filename}
               </div>
-              <div className="mt-1 text-[11.5px] tabular-nums text-mute-soft">
+              <div className="mt-1 text-sm tabular-nums text-mute-soft">
                 {t('respondents', { count: rows.length })} ·{' '}
                 {t('columns', { count: summaries.length })}
               </div>
@@ -160,7 +160,7 @@ export function QuantAnalyzer() {
               variant="ghost"
               size="sm"
               onClick={clearAll}
-              className="!px-3 !text-[11px] uppercase tracking-[0.18em]"
+              className="!px-3 !text-sm uppercase tracking-[0.18em]"
             >
               {t('reset')}
             </Button>
@@ -188,7 +188,7 @@ export function QuantAnalyzer() {
 
           {/* Display-mode toggle + export */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
+            <div className="flex items-center gap-1 text-xs-soft font-semibold uppercase tracking-[0.18em]">
               {(['count', 'colpct', 'rowpct'] as const).map((m) => (
                 <Button
                   key={m}
@@ -235,7 +235,7 @@ export function QuantAnalyzer() {
           {crossTab ? (
             <CrosstabTable t={crossTab} mode={mode} />
           ) : rowCol === colCol && rowCol ? (
-            <div className="border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 rounded-sm">
+            <div className="border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
               {t('samePickError')}
             </div>
           ) : (
@@ -265,13 +265,13 @@ function ColumnPicker({
   const summary = summaries.find((s) => s.name === value);
   return (
     <div className="border border-line bg-paper p-4 rounded-sm">
-      <div className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
         {label}
       </div>
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm"
+        className="mt-2 w-full border border-line bg-paper px-2 py-1.5 text-md text-ink-2 focus:border-amore focus:outline-none rounded-sm"
       >
         <option value="">—</option>
         {summaries.map((s) => (
@@ -280,19 +280,19 @@ function ColumnPicker({
           </option>
         ))}
       </select>
-      <p className="mt-2 text-[11px] text-mute-soft">{hint}</p>
+      <p className="mt-2 text-sm text-mute-soft">{hint}</p>
       {summary && summary.sample.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {summary.sample.map((v) => (
             <span
               key={v}
-              className="border border-line-soft px-1.5 py-0.5 text-[10.5px] text-mute [border-radius:2px]"
+              className="border border-line-soft px-1.5 py-0.5 text-xs-soft text-mute [border-radius:2px]"
             >
               {v}
             </span>
           ))}
           {summary.uniqueCount > summary.sample.length && (
-            <span className="text-[10.5px] text-mute-soft">
+            <span className="text-xs-soft text-mute-soft">
               +{summary.uniqueCount - summary.sample.length}
             </span>
           )}
@@ -327,10 +327,10 @@ function CrosstabTable({ t: ct, mode }: { t: CrossTab; mode: Mode }) {
 
   return (
     <div className="overflow-x-auto border border-line bg-paper rounded-sm">
-      <table className="w-full border-collapse text-[12px] tabular-nums">
+      <table className="w-full border-collapse text-md tabular-nums">
         <thead>
           <tr className="bg-paper-soft text-ink-2">
-            <th className="border-b border-line px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+            <th className="border-b border-line px-3 py-2 text-left text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">
               {ct.rowName} <span className="text-mute">×</span> {ct.colName}
             </th>
             {ct.colValues.map((cv) => (
@@ -349,7 +349,7 @@ function CrosstabTable({ t: ct, mode }: { t: CrossTab; mode: Mode }) {
         <tbody>
           {ct.rowValues.map((rv, i) => (
             <tr key={rv} className="border-b border-line-soft last:border-0">
-              <th className="px-3 py-1.5 text-left text-[12px] font-medium text-ink-2">
+              <th className="px-3 py-1.5 text-left text-md font-medium text-ink-2">
                 {rv}
               </th>
               {ct.counts[i].map((c, j) => {
@@ -395,7 +395,7 @@ function CrosstabTable({ t: ct, mode }: { t: CrossTab; mode: Mode }) {
             </tr>
           ))}
           <tr className="border-t-2 border-line bg-paper-soft text-mute">
-            <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.18em]">
+            <th className="px-3 py-2 text-left text-xs-soft font-semibold uppercase tracking-[0.18em]">
               Σ
             </th>
             {ct.colTotals.map((c, j) => (

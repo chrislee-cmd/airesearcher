@@ -12,7 +12,7 @@ export function SignInButton() {
       variant="primary"
       size="sm"
       onClick={() => openLogin()}
-      className="!px-3 !text-[11px] uppercase tracking-[0.18em]"
+      className="!px-3 !text-sm uppercase tracking-[0.18em]"
     >
       {t('signIn')}
     </Button>

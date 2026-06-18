@@ -18,7 +18,7 @@ export async function Topbar({
     <header className="flex h-14 items-center justify-between border-b border-line bg-paper px-8">
       <div className="flex items-center gap-3">
         {isAuthed && credits !== null && (
-          <span className="text-[12px] tabular-nums text-mute">
+          <span className="text-md tabular-nums text-mute">
             {t('creditsRemaining', { count: credits })}
           </span>
         )}
@@ -26,7 +26,7 @@ export async function Topbar({
       </div>
       <div className="flex items-center gap-4">
         {isAuthed && (
-          <span className="hidden text-[11.5px] text-mute-soft sm:inline">
+          <span className="hidden text-sm text-mute-soft sm:inline">
             {userEmail}
           </span>
         )}

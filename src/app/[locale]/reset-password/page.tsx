@@ -29,10 +29,10 @@ export default async function ResetPasswordPage({
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-[420px] border border-line bg-paper p-9 rounded-sm">
-        <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+        <h1 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
           {t('resetPasswordTitle')}
         </h1>
-        <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mt-2 text-md leading-[1.7] text-mute">
           {t('resetPasswordSubtitle')}
         </p>
         <div className="mt-7">

@@ -143,11 +143,11 @@ export function PublicBookingClient({ link, initialSlots }: { link: Link; initia
     return (
       <main className="mx-auto max-w-[640px] px-6 py-16">
         <div className="rounded border border-line bg-paper p-8">
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink">
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
             {t('confirmed.title')}
           </h1>
-          <p className="mt-3 text-[13px] leading-[1.7] text-mute">{t('confirmed.body')}</p>
-          <dl className="mt-6 space-y-3 text-[13px]">
+          <p className="mt-3 text-lg leading-[1.7] text-mute">{t('confirmed.body')}</p>
+          <dl className="mt-6 space-y-3 text-lg">
             <div className="flex gap-3">
               <dt className="w-20 text-mute">{t('confirmed.when')}</dt>
               <dd className="text-ink">
@@ -172,29 +172,29 @@ export function PublicBookingClient({ link, initialSlots }: { link: Link; initia
   return (
     <main className="mx-auto max-w-[960px] px-6 py-12">
       <header className="border-b border-line pb-4">
-        <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {link.title || t('fallbackTitle')}
         </h1>
         {link.description ? (
-          <p className="mt-2 text-[13px] leading-[1.7] text-mute">{link.description}</p>
+          <p className="mt-2 text-lg leading-[1.7] text-mute">{link.description}</p>
         ) : null}
-        <p className="mt-2 text-[12px] text-mute-soft">
+        <p className="mt-2 text-md text-mute-soft">
           {t('timezone')}: {link.timezone}
         </p>
       </header>
 
       {allBooked ? (
-        <p className="mt-10 text-[13px] text-mute">{t('allBooked')}</p>
+        <p className="mt-10 text-lg text-mute">{t('allBooked')}</p>
       ) : slots.length === 0 ? (
-        <p className="mt-10 text-[13px] text-mute">{t('noSlots')}</p>
+        <p className="mt-10 text-lg text-mute">{t('noSlots')}</p>
       ) : (
         <div className="mt-6 grid gap-8 md:grid-cols-[1.2fr_1fr]">
           <section>
-            <h2 className="text-[13px] font-semibold text-ink">{t('pickSlot')}</h2>
+            <h2 className="text-lg font-semibold text-ink">{t('pickSlot')}</h2>
             <div className="mt-3 space-y-5">
               {grouped.map(({ date, slots: ds }) => (
                 <div key={date}>
-                  <div className="text-[12px] font-medium text-mute">
+                  <div className="text-md font-medium text-mute">
                     {formatDate(date, 'ko-KR')}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -208,7 +208,7 @@ export function PublicBookingClient({ link, initialSlots }: { link: Link; initia
                           disabled={disabled}
                           onClick={() => setPicked(s)}
                           className={[
-                            'rounded border px-3 py-1.5 text-[12.5px] transition',
+                            'rounded border px-3 py-1.5 text-md transition',
                             disabled
                               ? 'border-line-soft text-mute-soft line-through cursor-not-allowed'
                               : active
@@ -227,56 +227,56 @@ export function PublicBookingClient({ link, initialSlots }: { link: Link; initia
           </section>
 
           <section>
-            <h2 className="text-[13px] font-semibold text-ink">{t('yourInfo')}</h2>
+            <h2 className="text-lg font-semibold text-ink">{t('yourInfo')}</h2>
             <form onSubmit={submit} className="mt-3 space-y-3">
               <label className="block">
-                <span className="text-[12px] text-mute">{t('name')}</span>
+                <span className="text-md text-mute">{t('name')}</span>
                 <input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] text-mute">{t('email')}</span>
+                <span className="text-md text-mute">{t('email')}</span>
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] text-mute">{t('phone')}</span>
+                <span className="text-md text-mute">{t('phone')}</span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
                 />
               </label>
               <label className="block">
-                <span className="text-[12px] text-mute">{t('note')}</span>
+                <span className="text-md text-mute">{t('note')}</span>
                 <textarea
                   rows={3}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-ink"
+                  className="mt-1 w-full rounded border border-line bg-paper px-2.5 py-1.5 text-lg text-ink outline-none focus:border-ink"
                 />
               </label>
               {picked ? (
-                <p className="text-[12px] text-mute">
+                <p className="text-md text-mute">
                   {t('picked')}: {formatDate(picked.date, 'ko-KR')} · {picked.start}–{picked.end}
                 </p>
               ) : (
-                <p className="text-[12px] text-mute-soft">{t('pickFirst')}</p>
+                <p className="text-md text-mute-soft">{t('pickFirst')}</p>
               )}
-              {error ? <p className="text-[12px] text-amore">{error}</p> : null}
+              {error ? <p className="text-md text-amore">{error}</p> : null}
               <button
                 type="submit"
                 disabled={!picked || submitting}
-                className="w-full rounded border border-ink bg-ink px-3 py-2 text-[13px] font-medium text-paper disabled:opacity-50"
+                className="w-full rounded border border-ink bg-ink px-3 py-2 text-lg font-medium text-paper disabled:opacity-50"
               >
                 {submitting ? t('submitting') : t('submit')}
               </button>

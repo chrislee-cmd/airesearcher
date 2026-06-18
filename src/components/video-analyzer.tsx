@@ -62,30 +62,30 @@ function VideoMarkdown({ source }: { source: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-[20px] font-bold tracking-[-0.02em] text-ink first:mt-0">
+          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-3xl font-bold tracking-[-0.02em] text-ink first:mt-0">
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-3 mt-7 text-[16px] font-bold tracking-[-0.015em] text-ink-2 first:mt-0">
+          <h2 className="mb-3 mt-7 text-2xl font-bold tracking-[-0.015em] text-ink-2 first:mt-0">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 mt-4 text-[13.5px] font-semibold text-ink-2">
+          <h3 className="mb-2 mt-4 text-lg font-semibold text-ink-2">
             {children}
           </h3>
         ),
         p: ({ children }) => (
-          <p className="my-2 text-[13px] leading-[1.8] text-ink-2">{children}</p>
+          <p className="my-2 text-lg leading-[1.8] text-ink-2">{children}</p>
         ),
         ul: ({ children }) => (
-          <ul className="my-2 list-disc space-y-1 pl-5 text-[13px] leading-[1.8] marker:text-mute-soft">
+          <ul className="my-2 list-disc space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="my-2 list-decimal space-y-1 pl-5 text-[13px] leading-[1.8] marker:text-mute-soft">
+          <ol className="my-2 list-decimal space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
             {children}
           </ol>
         ),
@@ -94,13 +94,13 @@ function VideoMarkdown({ source }: { source: string }) {
           <strong className="font-semibold text-ink">{children}</strong>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-[12.5px] italic text-ink-2">
+          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-md italic text-ink-2">
             {children}
           </blockquote>
         ),
         hr: () => <hr className="my-5 border-line-soft" />,
         code: ({ children }) => (
-          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-[11.5px] text-ink-2 [border-radius:3px]">
+          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-sm text-ink-2 [border-radius:3px]">
             {children}
           </code>
         ),
@@ -201,7 +201,7 @@ export function VideoAnalyzer() {
   return (
     <div className="space-y-8">
       <section>
-        <p className="mb-3 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mb-3 text-md leading-[1.7] text-mute">
           사용자 테스트 또는 인터뷰 영상을 업로드하세요. AI가 행동 패턴·페인포인트·주요 순간을 분석합니다.
         </p>
         <FileDropZone
@@ -214,7 +214,7 @@ export function VideoAnalyzer() {
           className="py-12"
         >
           {uploadError && (
-            <div className="mt-3 text-[11.5px] text-warning">{uploadError}</div>
+            <div className="mt-3 text-sm text-warning">{uploadError}</div>
           )}
         </FileDropZone>
       </section>
@@ -222,7 +222,7 @@ export function VideoAnalyzer() {
       {/* Local upload progress */}
       {Object.keys(localUploads).length > 0 && (
         <section>
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {tCommon('uploading')}
           </h3>
           <ul className="mt-2 space-y-2">
@@ -238,7 +238,7 @@ export function VideoAnalyzer() {
       {/* Server-side jobs */}
       {jobs.length > 0 && (
         <section>
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             분석 작업
           </h3>
           <ul className="mt-2 space-y-3">
@@ -294,9 +294,9 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
     <li className="border border-line bg-paper rounded-sm">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] text-ink-2">{job.filename}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-mute-soft tabular-nums">
-            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${pill.cls}`}>
+          <div className="truncate text-lg text-ink-2">{job.filename}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-sm text-mute-soft tabular-nums">
+            <span className={`text-xs font-semibold uppercase tracking-[0.22em] ${pill.cls}`}>
               {pill.text}
             </span>
             {job.size_bytes && <span>{formatBytes(job.size_bytes)}</span>}
@@ -335,10 +335,10 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
       {showPromptEditor && (
         <div className="border-t border-line-soft px-5 pb-4 pt-3">
           <div className="mb-1.5 flex items-baseline justify-between gap-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-mute-soft">
               분석 프롬프트
             </div>
-            <div className="text-[11px] text-mute-soft tabular-nums">
+            <div className="text-sm text-mute-soft tabular-nums">
               {durationMin ? `${durationMin}분 · ` : ''}이 분석 {estimatedCredits}크레딧
             </div>
           </div>
@@ -347,10 +347,10 @@ function JobRow({ job, onDelete, onRefresh }: { job: VideoJob; onDelete: () => v
             onChange={(e) => setPrompt(e.target.value)}
             rows={6}
             disabled={submitting || job.status === 'analyzing'}
-            className="bg-paper-soft font-mono text-[11.5px] leading-[1.7]"
+            className="bg-paper-soft font-mono text-sm leading-[1.7]"
           />
           {analyzeError && (
-            <div className="mt-1.5 text-[11px] text-warning">{analyzeError}</div>
+            <div className="mt-1.5 text-sm text-warning">{analyzeError}</div>
           )}
           <div className="mt-2 flex gap-2">
             <ChromeButton

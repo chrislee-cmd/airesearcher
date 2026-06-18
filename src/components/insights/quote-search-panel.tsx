@@ -134,8 +134,8 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
   return (
     <div className="border border-line bg-paper p-5 rounded-sm">
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <div className="text-[12.5px] font-medium text-ink-2">인용구 검색</div>
-        <div className="text-[11px] text-mute-soft">단어 일부만 입력해도 매칭</div>
+        <div className="text-md font-medium text-ink-2">인용구 검색</div>
+        <div className="text-sm text-mute-soft">단어 일부만 입력해도 매칭</div>
       </div>
       <Input
         type="search"
@@ -159,11 +159,11 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
       />
 
       {error && (
-        <div className="mt-3 text-[11.5px] text-warning">{error}</div>
+        <div className="mt-3 text-sm text-warning">{error}</div>
       )}
 
       {debouncedQ && (
-        <div className="mt-4 text-[11px] text-mute-soft tabular-nums">
+        <div className="mt-4 text-sm text-mute-soft tabular-nums">
           {loading
             ? '검색 중…'
             : results.length === 0 && hasSearched
@@ -176,7 +176,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
         <ul className="mt-3 divide-y divide-line-soft">
           {results.map((row) => (
             <li key={row.id} className="py-3">
-              <div className="flex items-baseline justify-between gap-3 text-[11px] text-mute-soft">
+              <div className="flex items-baseline justify-between gap-3 text-sm text-mute-soft">
                 <span className="truncate font-medium text-ink-2">
                   {row.participant_name}
                 </span>
@@ -185,7 +185,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
                   {row.source_file ? ` · ${row.source_file}` : ''}
                 </span>
               </div>
-              <p className="mt-1.5 whitespace-pre-wrap text-[12.5px] leading-[1.55] text-ink">
+              <p className="mt-1.5 whitespace-pre-wrap text-md leading-[1.55] text-ink">
                 <HighlightedText text={row.text} tokens={tokens} />
               </p>
             </li>

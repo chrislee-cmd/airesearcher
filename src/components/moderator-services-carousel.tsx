@@ -133,13 +133,13 @@ export function ModeratorServicesCarousel() {
         aria-live="polite"
       >
         {s.accent && (
-          <span className="absolute right-3 top-3 border border-amore bg-amore-bg px-2 py-[2px] text-[10px] font-medium tracking-[0.06em] text-amore [border-radius:2px]">
+          <span className="absolute right-3 top-3 border border-amore bg-amore-bg px-2 py-[2px] text-xs font-medium tracking-[0.06em] text-amore [border-radius:2px]">
             {t('thisService')}
           </span>
         )}
 
         <div className="flex flex-col justify-center border-b border-line-soft p-6 md:border-b-0 md:border-r">
-          <p className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-mute-soft">
+          <p className="text-xs-soft font-medium uppercase tracking-[0.22em] text-mute-soft">
             {s.region}
           </p>
           {s.logo ? (
@@ -154,7 +154,7 @@ export function ModeratorServicesCarousel() {
               />
             </div>
           ) : (
-            <h3 className="mt-2 text-[28px] font-bold tracking-[-0.02em] text-ink-2">
+            <h3 className="mt-2 text-display font-bold tracking-[-0.02em] text-ink-2">
               {s.name}
             </h3>
           )}
@@ -162,19 +162,19 @@ export function ModeratorServicesCarousel() {
             href={s.href}
             target="_blank"
             rel="noreferrer noopener"
-            className="mt-3 inline-block text-[11.5px] tabular-nums text-mute hover:text-ink"
+            className="mt-3 inline-block text-sm tabular-nums text-mute hover:text-ink"
           >
             {s.href.replace(/^https?:\/\//, '')}
           </a>
         </div>
 
         <div className="flex flex-col p-6">
-          <p className="text-[13px] leading-[1.65] text-ink-2">{s.tagline}</p>
+          <p className="text-lg leading-[1.65] text-ink-2">{s.tagline}</p>
           <ul className="mt-4 space-y-1.5 border-t border-line-soft pt-3">
             {s.highlights.map((h) => (
               <li
                 key={h}
-                className="flex items-start gap-2 text-[12px] leading-[1.55] text-ink-2"
+                className="flex items-start gap-2 text-md leading-[1.55] text-ink-2"
               >
                 <span className="mt-[7px] inline-block h-[3px] w-[3px] shrink-0 bg-mute" />
                 {h}
@@ -195,7 +195,7 @@ export function ModeratorServicesCarousel() {
             {showTip && (
               <div
                 role="status"
-                className={`absolute -top-2 left-0 z-10 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-[11.5px] font-medium rounded-sm ${
+                className={`absolute -top-2 left-0 z-10 -translate-y-full whitespace-nowrap border px-3 py-1.5 text-sm font-medium rounded-sm ${
                   status === 'error'
                     ? 'border-warning-line bg-warning-bg text-warning'
                     : 'border-amore bg-amore-bg text-amore'
@@ -206,7 +206,7 @@ export function ModeratorServicesCarousel() {
             )}
           </div>
           {user && (
-            <p className="mt-2 text-[10.5px] tabular-nums text-mute-soft">
+            <p className="mt-2 text-xs-soft tabular-nums text-mute-soft">
               {t('inquiryFromHint', { email: user.email ?? '' })}
             </p>
           )}

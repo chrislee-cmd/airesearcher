@@ -25,11 +25,11 @@ export function ChapterHeader({
 }) {
   return (
     <div className="mb-6">
-      <h1 className="border-b border-line pb-3 text-[24px] font-bold tracking-[-0.02em] text-ink">
+      <h1 className="border-b border-line pb-3 text-3xl font-bold tracking-[-0.02em] text-ink">
         {title}
       </h1>
       {description && (
-        <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+        <p className="mt-3 max-w-[820px] text-md leading-[1.75] text-mute">
           {description}
         </p>
       )}
@@ -50,16 +50,16 @@ export function StatCard({
 }) {
   return (
     <div className="border border-line bg-paper-soft p-5 rounded-md [box-shadow:0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]">
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-mute-soft">
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-mute-soft">
         {label}
       </div>
       <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="text-[42px] font-bold leading-none tracking-[-0.01em] text-ink">
+        <span className="text-display font-bold leading-none tracking-[-0.01em] text-ink">
           {value}
         </span>
-        {unit && <span className="text-[13px] text-mute">{unit}</span>}
+        {unit && <span className="text-lg text-mute">{unit}</span>}
       </div>
-      {caption && <div className="mt-1.5 text-[13px] text-mute">{caption}</div>}
+      {caption && <div className="mt-1.5 text-lg text-mute">{caption}</div>}
     </div>
   );
 }

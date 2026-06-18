@@ -26,7 +26,7 @@ export default async function MembersPage({
       />
 
       {!org ? (
-        <div className="border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
+        <div className="border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
           로그인 후 조직 정보가 표시됩니다.
         </div>
       ) : (
@@ -82,13 +82,13 @@ async function MembersTable({
 
   return (
     <div className="border border-line bg-paper rounded-sm">
-      <table className="w-full text-[12.5px]">
+      <table className="w-full text-md">
         <thead className="border-b border-line">
           <tr>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('email')}
             </th>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('role')}
             </th>
             <th className="px-5 py-3"></th>

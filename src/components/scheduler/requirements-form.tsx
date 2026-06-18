@@ -69,13 +69,13 @@ export function RequirementsForm({ value, onChange }: Props) {
         >
           ›
         </span>
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
-        <span className="ml-auto truncate text-[11.5px] text-mute-soft">{summary}</span>
+        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+        <span className="ml-auto truncate text-sm text-mute-soft">{summary}</span>
       </button>
 
       {open && (
         <div className="border-t border-line-soft px-5 pb-5 pt-4">
-          <p className="mb-4 text-[12px] leading-[1.7] text-mute">{t('description')}</p>
+          <p className="mb-4 text-md leading-[1.7] text-mute">{t('description')}</p>
 
           <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
             {/* Left: range calendar + time row */}
@@ -86,7 +86,7 @@ export function RequirementsForm({ value, onChange }: Props) {
                 weekdayShort={weekdayShort}
                 onChange={setRange}
               />
-              <div className="text-[11px] text-mute-soft">{t('rangeHint')}</div>
+              <div className="text-sm text-mute-soft">{t('rangeHint')}</div>
               <div className="grid grid-cols-2 gap-2">
                 <Field label={t('startTime')}>
                   <input
@@ -143,7 +143,7 @@ export function RequirementsForm({ value, onChange }: Props) {
                           type="button"
                           onClick={() => toggleDay(d)}
                           className={
-                            'h-7 w-7 border text-[11px] rounded-sm transition-colors duration-[120ms] ' +
+                            'h-7 w-7 border text-sm rounded-sm transition-colors duration-[120ms] ' +
                             (active
                               ? 'border-ink bg-ink text-paper'
                               : 'border-line bg-paper text-mute hover:border-line-soft hover:text-ink-2')
@@ -160,13 +160,13 @@ export function RequirementsForm({ value, onChange }: Props) {
               <div className="border-t border-line-soft pt-3">
                 <div className="flex items-baseline justify-between">
                   <div>
-                    <h3 className="text-[12.5px] font-semibold text-ink-2">{t('explicitSlots')}</h3>
-                    <p className="mt-0.5 text-[11px] text-mute-soft">{t('explicitSlotsHint')}</p>
+                    <h3 className="text-md font-semibold text-ink-2">{t('explicitSlots')}</h3>
+                    <p className="mt-0.5 text-sm text-mute-soft">{t('explicitSlotsHint')}</p>
                   </div>
                   <button
                     type="button"
                     onClick={addSlot}
-                    className="border border-line px-2.5 py-1 text-[11.5px] text-ink-2 hover:border-ink rounded-sm"
+                    className="border border-line px-2.5 py-1 text-sm text-ink-2 hover:border-ink rounded-sm"
                   >
                     + {t('addSlot')}
                   </button>
@@ -198,7 +198,7 @@ export function RequirementsForm({ value, onChange }: Props) {
                         <button
                           type="button"
                           onClick={() => removeSlot(s.id)}
-                          className="ml-auto text-[11px] text-mute hover:text-amore"
+                          className="ml-auto text-sm text-mute hover:text-amore"
                         >
                           {t('remove')}
                         </button>
@@ -226,7 +226,7 @@ function buildSummary(req: Requirement, weekdayShort: string[], emptyText: strin
 }
 
 const inputCls =
-  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
+  'border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 focus:border-amore focus:outline-none rounded-sm';
 
 function Field({
   label,
@@ -239,7 +239,7 @@ function Field({
 }) {
   return (
     <label className={'flex flex-col gap-1 ' + className}>
-      <span className="text-[10.5px] uppercase tracking-[0.06em] text-mute-soft">{label}</span>
+      <span className="text-xs-soft uppercase tracking-[0.06em] text-mute-soft">{label}</span>
       {children}
     </label>
   );

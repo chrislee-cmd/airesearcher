@@ -76,7 +76,7 @@ export function VoiceConciergeFab() {
             // FAB is now top-5 right-5, h-10 → tooltip drops just below
             // it with an 8px gap (20 + 40 + 8 = 68px from the top).
             'fixed top-[68px] right-5 z-fab flex items-center gap-2 ' +
-            'border border-line bg-paper px-3 py-2 text-[12px] text-ink-2 ' +
+            'border border-line bg-paper px-3 py-2 text-md text-ink-2 ' +
             'shadow-[0_2px_8px_rgba(0,0,0,0.06)] [border-radius:10px]'
           }
           role="status"
@@ -87,7 +87,7 @@ export function VoiceConciergeFab() {
             size="xs"
             onClick={handleDismissTooltip}
             aria-label={t('first_time_dismiss')}
-            className="px-0 py-0 text-[11px] font-normal text-mute-soft"
+            className="px-0 py-0 text-sm font-normal text-mute-soft"
           >
             {t('first_time_dismiss')}
           </Button>

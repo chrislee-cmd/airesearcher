@@ -21,11 +21,11 @@ export function LegalShell({
       <header className="flex items-center justify-between border-b border-line-soft px-6 py-4">
         <Link
           href={`/${locale}`}
-          className="text-[13px] font-semibold tracking-[-0.01em] text-ink hover:text-amore"
+          className="text-lg font-semibold tracking-[-0.01em] text-ink hover:text-amore"
         >
           Research-mochi
         </Link>
-        <div className="flex items-center gap-5 text-[12px] text-mute">
+        <div className="flex items-center gap-5 text-md text-mute">
           <Link href={`/${locale}/terms`} className="hover:text-ink">
             {labels.terms}
           </Link>
@@ -38,7 +38,7 @@ export function LegalShell({
           <LanguageSwitcher />
         </div>
       </header>
-      <article className="mx-auto w-full max-w-[760px] px-6 py-14 text-[14px] leading-[1.85] text-ink">
+      <article className="mx-auto w-full max-w-[760px] px-6 py-14 text-xl leading-[1.85] text-ink">
         {children}
       </article>
     </main>

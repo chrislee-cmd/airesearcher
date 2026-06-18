@@ -46,12 +46,12 @@ export function DateRangeCalendar({ start, end, weekdayShort, onChange }: Props)
     <div className="border border-line rounded-sm">
       <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
         <button type="button" onClick={() => shiftMonth(-1)} className={navBtn}>‹</button>
-        <span className="text-[12.5px] tabular-nums text-ink-2">{monthLabel}</span>
+        <span className="text-md tabular-nums text-ink-2">{monthLabel}</span>
         <button type="button" onClick={() => shiftMonth(1)} className={navBtn}>›</button>
       </div>
       <div className="grid grid-cols-7 border-b border-line-soft">
         {weekdayShort.map((w) => (
-          <div key={w} className="py-1 text-center text-[10.5px] uppercase tracking-[0.06em] text-mute-soft">
+          <div key={w} className="py-1 text-center text-xs-soft uppercase tracking-[0.06em] text-mute-soft">
             {w}
           </div>
         ))}
@@ -69,7 +69,7 @@ export function DateRangeCalendar({ start, end, weekdayShort, onChange }: Props)
               type="button"
               onClick={() => pick(iso)}
               className={
-                'h-8 text-[11.5px] tabular-nums transition-colors ' +
+                'h-8 text-sm tabular-nums transition-colors ' +
                 (isStart || isEnd
                   ? 'bg-ink text-paper'
                   : inRange
@@ -89,4 +89,4 @@ export function DateRangeCalendar({ start, end, weekdayShort, onChange }: Props)
 }
 
 const navBtn =
-  'border border-line bg-paper px-2 py-0.5 text-[12px] text-ink-2 hover:border-ink rounded-sm';
+  'border border-line bg-paper px-2 py-0.5 text-md text-ink-2 hover:border-ink rounded-sm';
