@@ -29,6 +29,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Block PRs that introduce a new supabase/migrations/*.sql with a
+      # non-timestamp prefix. The same script is wired into pre-commit; this
+      # CI step catches commits made with --no-verify (PROJECT.md §3.8 / §7.9).
+      - name: Migration naming check
+        run: bash scripts/check-migration-naming.sh
+
       # Lint is soft-launched: existing main has 108 pre-existing errors
       # (mostly react/no-unescaped-entities). We surface failures in PR logs
       # but do not block merges yet. Tighten to required after cleanup PRs.

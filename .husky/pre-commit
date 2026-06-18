@@ -31,4 +31,9 @@ if command -v gitleaks >/dev/null 2>&1; then
   fi
 fi
 
+# Reject new supabase/migrations/*.sql files without a 14-digit timestamp
+# prefix (PROJECT.md §3.8 / §7.9). 4-digit-prefix legacy files are
+# grandfathered — only newly-added files trigger this guard.
+bash scripts/check-migration-naming.sh
+
 pnpm exec lint-staged

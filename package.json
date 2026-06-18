@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "migration:new": "supabase migration new"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": "sh -c 'pnpm exec eslint --fix \"$@\" || true' --"
