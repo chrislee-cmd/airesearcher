@@ -100,6 +100,20 @@ const eslintConfig = defineConfig([
           message:
             "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
         },
+        // Font-size literals (B-1): 781-site baseline being migrated to
+        // text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display}. CI lint is soft
+        // (§3.8 continue-on-error: true) so these errors are visible
+        // tracking, not merge blockers. Hard-flip happens after baseline=0.
+        {
+          selector: "Literal[value=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
+          message:
+            "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
+          message:
+            "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
+        },
       ],
     },
   },
