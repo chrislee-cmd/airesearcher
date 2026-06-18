@@ -482,6 +482,17 @@ function LanguageConfirmDialog({
   );
 }
 
+// Audit slice attached to `raw_result._cleanup` by the cleanup pass. We only
+// read these three fields in the UI — kept inline so we don't import the
+// server-only `cleanup.ts` module from a client component.
+type PreviewCleanupAudit = {
+  chunks_applied?: number;
+  turns_total?: number;
+  turns_touched?: number;
+};
+
+type TranscriptSource = 'clean' | 'raw';
+
 function JobRow({
   job,
   onDelete,
@@ -490,8 +501,21 @@ function JobRow({
   onDelete: () => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Default to the cleaned version — preview/download routes also default to
+  // 'clean' so behaviour matches when the toggle hasn't been touched.
+  const [source, setSource] = useState<TranscriptSource>('clean');
+  // `previewMeta` is populated by JobPreview's first response (the only place
+  // we know whether `clean_markdown` actually landed). DownloadMenu reads it
+  // to decide whether to bother appending the `?source=raw` query.
+  const [previewMeta, setPreviewMeta] = useState<{
+    hasCleanVersion: boolean;
+    cleanupAudit: PreviewCleanupAudit | null;
+  } | null>(null);
   const pill = pillFor(job.status);
   const inFlight = job.status === 'submitting' || job.status === 'transcribing';
+  // Only thread the source query through the download URL when the user has
+  // explicitly switched to raw — keeps existing share links / bookmarks valid.
+  const downloadSuffix = source === 'raw' ? '?source=raw' : '';
 
   return (
     <li className="border border-line bg-paper rounded-sm">
@@ -534,17 +558,17 @@ function JobRow({
                 {
                   format: 'docx',
                   kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/docx`,
+                  href: `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
                 },
                 {
                   format: 'md',
                   kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/md`,
+                  href: `/api/transcripts/jobs/${job.id}/download/md${downloadSuffix}`,
                 },
                 {
                   format: 'txt',
                   kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/txt`,
+                  href: `/api/transcripts/jobs/${job.id}/download/txt${downloadSuffix}`,
                 },
               ]}
             />
@@ -557,7 +581,9 @@ function JobRow({
                   // Reuse the server-built DOCX so Google Doc preserves
                   // the same rich layout users see in the .docx download.
                   getBlob: async () => {
-                    const r = await fetch(`/api/transcripts/jobs/${job.id}/download/docx`);
+                    const r = await fetch(
+                      `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
+                    );
                     return {
                       blob: await r.blob(),
                       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -586,19 +612,52 @@ function JobRow({
         </IconButton>
       </div>
       {previewOpen && job.status === 'done' && (
-        <JobPreview id={job.id} />
+        <JobPreview
+          id={job.id}
+          source={source}
+          setSource={setSource}
+          onMeta={setPreviewMeta}
+          initialMeta={previewMeta}
+        />
       )}
     </li>
   );
 }
 
-function JobPreview({ id }: { id: string }) {
+function JobPreview({
+  id,
+  source,
+  setSource,
+  onMeta,
+  initialMeta,
+}: {
+  id: string;
+  source: TranscriptSource;
+  setSource: (s: TranscriptSource) => void;
+  onMeta: (m: {
+    hasCleanVersion: boolean;
+    cleanupAudit: PreviewCleanupAudit | null;
+  }) => void;
+  initialMeta: {
+    hasCleanVersion: boolean;
+    cleanupAudit: PreviewCleanupAudit | null;
+  } | null;
+}) {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Until the first fetch lands, we can still render the toggle if the
+  // parent has cached meta from a prior open — avoids the toggle blinking out
+  // when the user toggles and we're refetching.
+  const [meta, setMeta] = useState<{
+    hasCleanVersion: boolean;
+    cleanupAudit: PreviewCleanupAudit | null;
+  } | null>(initialMeta);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/transcripts/jobs/${id}/preview`)
+    setHtml(null);
+    setError(null);
+    fetch(`/api/transcripts/jobs/${id}/preview?source=${source}`)
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
@@ -606,9 +665,22 @@ function JobPreview({ id }: { id: string }) {
         }
         return r.json();
       })
-      .then((j: { html: string }) => {
-        if (!cancelled) setHtml(j.html ?? '');
-      })
+      .then(
+        (j: {
+          html: string;
+          hasCleanVersion?: boolean;
+          cleanupAudit?: PreviewCleanupAudit | null;
+        }) => {
+          if (cancelled) return;
+          setHtml(j.html ?? '');
+          const next = {
+            hasCleanVersion: !!j.hasCleanVersion,
+            cleanupAudit: j.cleanupAudit ?? null,
+          };
+          setMeta(next);
+          onMeta(next);
+        },
+      )
       .catch((e) => {
         if (!cancelled)
           setError(e instanceof Error ? e.message : 'fetch_failed');
@@ -616,10 +688,41 @@ function JobPreview({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, source, onMeta]);
+
+  const showToggle = meta?.hasCleanVersion === true;
+  const touched = meta?.cleanupAudit?.turns_touched;
+  const total = meta?.cleanupAudit?.turns_total;
 
   return (
     <div className="border-t border-line-soft px-5 pb-4 pt-3">
+      {showToggle && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={source === 'clean' ? 'primary' : 'ghost'}
+              size="xs"
+              onClick={() => setSource('clean')}
+              className="uppercase tracking-[0.18em]"
+            >
+              정제본
+            </Button>
+            <Button
+              variant={source === 'raw' ? 'primary' : 'ghost'}
+              size="xs"
+              onClick={() => setSource('raw')}
+              className="uppercase tracking-[0.18em]"
+            >
+              원본
+            </Button>
+          </div>
+          {typeof touched === 'number' && typeof total === 'number' && (
+            <div className="text-[10.5px] text-mute-soft tabular-nums">
+              보정 {touched}/{total} turn
+            </div>
+          )}
+        </div>
+      )}
       {error ? (
         <div className="text-[11.5px] text-warning">{error}</div>
       ) : html === null ? (

@@ -22,10 +22,15 @@ function looksAnonymous(base: string): boolean {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const url = new URL(req.url);
+  // `source=raw` forces the original Scribe output; default ('clean' or any
+  // other value) keeps the existing "cleaned-preferred" behaviour. The toggle
+  // UI in transcript-studio passes the explicit value when the user flips.
+  const source = url.searchParams.get('source') === 'raw' ? 'raw' : 'clean';
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +38,9 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from('transcript_jobs')
-    .select('filename, markdown, clean_markdown, status, user_id, created_at')
+    .select(
+      'filename, markdown, clean_markdown, raw_result, status, user_id, created_at',
+    )
     .eq('id', id)
     .single();
   if (error || !job) {
@@ -42,10 +49,16 @@ export async function GET(
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
-  // Prefer the cleaned version when the background pass succeeded. Fall back
-  // to the original on null — short transcripts, low-confidence runs, and
-  // English-Deepgram jobs all legitimately leave clean_markdown NULL.
-  const sourceMarkdown = (job.clean_markdown as string | null) ?? (job.markdown as string);
+  // source=raw → original markdown. source=clean (default) → cleaned if it
+  // landed, otherwise fall back to original. Short / low-confidence /
+  // English-Deepgram jobs legitimately leave clean_markdown NULL.
+  const sourceMarkdown =
+    source === 'raw'
+      ? (job.markdown as string)
+      : ((job.clean_markdown as string | null) ?? (job.markdown as string));
+  const hasCleanVersion = !!job.clean_markdown;
+  const cleanupAudit =
+    (job.raw_result as { _cleanup?: unknown } | null)?._cleanup ?? null;
 
   const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
   let base: string;
@@ -73,5 +86,10 @@ export async function GET(
   const buf = await markdownToDocx(displayMarkdown);
   const { value: html } = await mammoth.convertToHtml({ buffer: buf });
 
-  return NextResponse.json({ html });
+  return NextResponse.json({
+    html,
+    source,
+    hasCleanVersion,
+    cleanupAudit,
+  });
 }
