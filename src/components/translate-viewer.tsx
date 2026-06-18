@@ -410,17 +410,17 @@ export function TranslateViewer({
     <div className="space-y-5">
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-ink">
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
             Research-mochi · Live
           </h1>
-          <p className="mt-1 text-[12px] text-mute">
+          <p className="mt-1 text-md text-mute">
             {COPY.hostLabel}: <span className="text-ink">{langName(sourceLang)}</span>
             {' · '}
             {COPY.viewerLabel}: <span className="text-ink">{langName(targetLang)}</span>
           </p>
         </div>
         <span
-          className={`rounded-[4px] border px-2 py-0.5 text-[11px] ${
+          className={`rounded-[4px] border px-2 py-0.5 text-sm ${
             status === 'live'
               ? 'border-amore text-amore'
               : status === 'ended'
@@ -435,28 +435,28 @@ export function TranslateViewer({
       {needsTap ? (
         // ChromeButton primary owns the 4px-radius amore-fill chrome
         // documented for this exact site. Layout overrides (justify-between,
-        // taller px-4/py-3, text-[13px]) reproduce the original banner shape
-        // — chrome lg defaults to h-8 + px-3 + text-[12.5px].
+        // taller px-4/py-3, text-lg) reproduce the original banner shape
+        // — chrome lg defaults to h-8 + px-3 + text-md.
         <ChromeButton
           variant="primary"
           size="lg"
           fullWidth
           onClick={enableAudio}
-          className="!flex !h-auto !justify-between !px-4 !py-3 !text-[13px]"
+          className="!flex !h-auto !justify-between !px-4 !py-3 !text-lg"
         >
           <span>Tap to enable audio</span>
-          <span className="text-[11px] opacity-80">
+          <span className="text-sm opacity-80">
             Mobile browsers require a tap to start playback
           </span>
         </ChromeButton>
       ) : null}
 
       <fieldset
-        className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12.5px] text-ink"
+        className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-ink"
         role="radiogroup"
         aria-label="Audio"
       >
-        <legend className="px-1 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
+        <legend className="px-1 text-sm uppercase tracking-[0.08em] text-mute-soft">
           Audio
         </legend>
         {(['input', 'output', 'mute'] as const).map((m) => {
@@ -482,7 +482,7 @@ export function TranslateViewer({
               onClick={() => selectMode(m)}
               className={
                 selected
-                  ? '!px-1 !text-[12.5px] !text-amore'
+                  ? '!px-1 !text-md !text-amore'
                   : '!px-1 !font-normal !text-ink hover:!text-amore'
               }
             >
@@ -490,19 +490,19 @@ export function TranslateViewer({
             </Button>
           );
         })}
-        <span className="ml-auto text-[11px] text-mute-soft">
+        <span className="ml-auto text-sm text-mute-soft">
           {recordEnabled ? COPY.recordedHint : COPY.ephemeralHint}
         </span>
       </fieldset>
 
       {error ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
+        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
           {error}
         </div>
       ) : null}
 
       {status === 'ended' ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
+        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
           {COPY.hostOnlyDownload}
         </div>
       ) : null}
@@ -539,10 +539,10 @@ function PrompterPane({ lines }: { lines: CaptionLine[] }) {
     >
       <div
         ref={scrollRef}
-        className="mx-auto flex max-h-[68vh] min-h-[420px] w-full max-w-[820px] flex-col gap-4 overflow-y-auto px-4 py-10 text-[20px] leading-[1.65] tracking-[-0.005em] text-ink"
+        className="mx-auto flex max-h-[68vh] min-h-[420px] w-full max-w-[820px] flex-col gap-4 overflow-y-auto px-4 py-10 text-3xl leading-[1.65] tracking-[-0.005em] text-ink"
       >
         {lines.length === 0 ? (
-          <div className="m-auto text-center text-[14px] text-mute-soft">…</div>
+          <div className="m-auto text-center text-xl text-mute-soft">…</div>
         ) : (
           lines.map((l) => (
             <p

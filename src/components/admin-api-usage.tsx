@@ -49,16 +49,16 @@ export function AdminApiUsage({ report: initial }: Props) {
     <div className="mx-auto max-w-[960px] space-y-6">
       <header className="flex items-end justify-between gap-4 border-b border-line pb-4">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             {t('label')}
           </div>
-          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.01em] text-ink">
+          <h1 className="mt-1 text-3xl font-semibold tracking-[-0.01em] text-ink">
             {t('title')}
           </h1>
-          <p className="mt-1 text-[12.5px] text-mute">{t('subtitle')}</p>
+          <p className="mt-1 text-md text-mute">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10.5px] tabular-nums text-mute-soft">
+          <span className="text-xs-soft tabular-nums text-mute-soft">
             {new Date(report.generatedAt).toLocaleString('ko-KR')}
           </span>
           <ChromeButton
@@ -67,7 +67,7 @@ export function AdminApiUsage({ report: initial }: Props) {
             uppercase
             onClick={refresh}
             disabled={refreshing}
-            className="!px-3 !text-[11px] tracking-[0.18em] disabled:!text-mute-soft"
+            className="!px-3 !text-sm tracking-[0.18em] disabled:!text-mute-soft"
           >
             {refreshing ? t('refreshing') : t('refresh')}
           </ChromeButton>
@@ -92,7 +92,7 @@ export function AdminApiUsage({ report: initial }: Props) {
       </section>
 
       {refreshError && (
-        <div className="border border-warning/40 bg-warning/5 px-3 py-2 text-[12px] text-warning rounded-sm">
+        <div className="border border-warning/40 bg-warning/5 px-3 py-2 text-md text-warning rounded-sm">
           {refreshError}
         </div>
       )}
@@ -117,14 +117,14 @@ function SummaryCard({
 }) {
   return (
     <div className="border border-line bg-paper px-4 py-3 rounded-sm">
-      <div className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
         {label}
       </div>
-      <div className="mt-1 text-[20px] font-semibold tabular-nums tracking-[-0.01em] text-ink">
+      <div className="mt-1 text-3xl font-semibold tabular-nums tracking-[-0.01em] text-ink">
         {value}
       </div>
       {hint && (
-        <div className="mt-1 text-[10.5px] text-mute-soft">{hint}</div>
+        <div className="mt-1 text-xs-soft text-mute-soft">{hint}</div>
       )}
     </div>
   );
@@ -136,7 +136,7 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
     <article className="border border-line bg-paper px-4 py-3 rounded-sm">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold tracking-[-0.005em] text-ink">
+          <span className="text-xl font-semibold tracking-[-0.005em] text-ink">
             {p.name}
           </span>
           <StatusPill status={p.status} />
@@ -149,7 +149,7 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
             href={p.dashboardUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] tracking-normal text-mute-soft hover:text-mute"
+            className="text-xs tracking-normal text-mute-soft hover:text-mute"
           >
             {t('openDashboard')} ↗
           </a>
@@ -157,15 +157,15 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
       </header>
 
       {p.error && p.status === 'error' && (
-        <div className="mt-2 text-[11.5px] text-warning">{p.error}</div>
+        <div className="mt-2 text-sm text-warning">{p.error}</div>
       )}
       {p.error && p.status !== 'error' && p.error !== undefined && (
-        <div className="mt-2 text-[11px] text-mute-soft">{p.error}</div>
+        <div className="mt-2 text-sm text-mute-soft">{p.error}</div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-[12px]">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-md">
         {p.periodLabel && (
-          <span className="text-[10.5px] uppercase tracking-[0.18em] text-mute-soft">
+          <span className="text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
             {p.periodLabel}
           </span>
         )}
@@ -187,7 +187,7 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
         {p.envKeys.map((k) => (
           <span
             key={k.key}
-            className={`border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] [border-radius:2px] ${
+            className={`border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.18em] [border-radius:2px] ${
               k.present
                 ? 'border-line-soft text-mute'
                 : 'border-warning/40 text-warning'
@@ -205,7 +205,7 @@ function ProviderRow({ provider: p }: { provider: ProviderUsage }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1.5">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+      <span className="text-xs uppercase tracking-[0.18em] text-mute-soft">
         {label}
       </span>
       <span className="font-semibold tabular-nums text-ink-2">{value}</span>
@@ -223,7 +223,7 @@ function StatusPill({ status }: { status: ProviderUsage['status'] }) {
         : 'border-line-soft text-mute-soft';
   return (
     <span
-      className={`border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.22em] [border-radius:2px] ${cls}`}
+      className={`border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.22em] [border-radius:2px] ${cls}`}
     >
       {t(`status.${status}`)}
     </span>

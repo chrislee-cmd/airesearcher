@@ -27,7 +27,7 @@ export function ThinkingPanel() {
               isWorking ? 'animate-pulse bg-amore' : 'bg-mute-soft'
             }`}
           />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             Thinking · {thinkingLog.length} events
           </span>
         </div>
@@ -36,7 +36,7 @@ export function ThinkingPanel() {
             variant="link"
             size="xs"
             onClick={clearThinking}
-            className="!px-0 !py-0 !text-[10px] uppercase !tracking-[0.18em] !text-mute-soft hover:!text-ink-2"
+            className="!px-0 !py-0 !text-xs uppercase !tracking-[0.18em] !text-mute-soft hover:!text-ink-2"
           >
             clear
           </Button>
@@ -44,7 +44,7 @@ export function ThinkingPanel() {
       </header>
       <div
         ref={scrollerRef}
-        className="max-h-[320px] overflow-y-auto px-4 py-3 font-mono text-[12px] leading-[1.7]"
+        className="max-h-[320px] overflow-y-auto px-4 py-3 font-mono text-md leading-[1.7]"
       >
         {thinkingLog.map((evt) => (
           <EventLine key={evt.id} evt={evt} />

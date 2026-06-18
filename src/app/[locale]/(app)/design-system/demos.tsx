@@ -89,7 +89,7 @@ export function FileDropZoneDemo() {
         className="px-6 py-10"
       />
       {files.length > 0 ? (
-        <ul className="text-[12px] text-mute">
+        <ul className="text-md text-mute">
           {files.map((f, i) => (
             <li key={i}>
               {f.name} — {(f.size / 1024).toFixed(1)} KB
@@ -97,7 +97,7 @@ export function FileDropZoneDemo() {
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-mute-soft">
+        <p className="text-sm text-mute-soft">
           파일을 드롭하면 여기에 목록이 표시됩니다 (실제 업로드 없음 — 데모용).
         </p>
       )}
@@ -163,11 +163,11 @@ export function DropdownMenuDemo() {
         />
       </div>
       {picked ? (
-        <p className="text-[11px] text-mute">
+        <p className="text-sm text-mute">
           마지막 선택: <code className="font-mono text-ink-2">{picked}</code>
         </p>
       ) : (
-        <p className="text-[11px] text-mute-soft">
+        <p className="text-sm text-mute-soft">
           항목 클릭 또는 키보드 (↓↑ / Enter / Esc) 로 선택. 메뉴 밖 클릭 시 닫힘.
         </p>
       )}

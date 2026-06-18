@@ -1529,13 +1529,13 @@ export function TranslateConsole() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3 border-b border-line-soft pb-3">
-        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+        <label className="flex flex-col gap-1 text-sm text-mute">
           <span>{t('sourceLang')}</span>
           <select
             value={sourceLang}
             onChange={(e) => setSourceLang(e.target.value)}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -1544,13 +1544,13 @@ export function TranslateConsole() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+        <label className="flex flex-col gap-1 text-sm text-mute">
           <span>{t('targetLang')}</span>
           <select
             value={targetLang}
             onChange={(e) => setTargetLang(e.target.value)}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -1559,14 +1559,14 @@ export function TranslateConsole() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-[11.5px] text-mute">
+        <label className="flex flex-col gap-1 text-sm text-mute">
           <span className="flex items-center gap-1">
             {t('inputSource.label')}
             {inputSource === 'tab' ? (
               <span
                 aria-label={t('inputSource.tabHint')}
                 title={t('inputSource.tabHint')}
-                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-[9px] leading-none text-mute-soft"
+                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-xs leading-none text-mute-soft"
               >
                 ?
               </span>
@@ -1576,13 +1576,13 @@ export function TranslateConsole() {
             value={inputSource}
             onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-[12.5px] text-ink"
+            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
           >
             <option value="mic">{t('inputSource.mic')}</option>
             <option value="tab">{t('inputSource.tab')}</option>
           </select>
         </label>
-        <label className="flex items-center gap-2 text-[12.5px] text-mute">
+        <label className="flex items-center gap-2 text-md text-mute">
           <Checkbox
             checked={recordEnabled}
             onChange={(e) => setRecordEnabled(e.target.checked)}
@@ -1591,7 +1591,7 @@ export function TranslateConsole() {
           {t('recordEnabled')}
         </label>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-[12px] tabular-nums text-mute">
+          <span className="text-md tabular-nums text-mute">
             {live ? formatElapsed(elapsed) : '00:00'}
           </span>
           <IconButton
@@ -1605,7 +1605,7 @@ export function TranslateConsole() {
             {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
           </IconButton>
           <span
-            className={`rounded-[4px] border px-2 py-0.5 text-[11px] ${
+            className={`rounded-[4px] border px-2 py-0.5 text-sm ${
               live
                 ? 'border-amore text-amore'
                 : status === 'error'
@@ -1617,7 +1617,7 @@ export function TranslateConsole() {
           </span>
           {live && recordEnabled && recorderActive ? (
             <span
-              className="inline-flex items-center gap-1 rounded-[4px] border border-amore px-2 py-0.5 text-[11px] text-amore"
+              className="inline-flex items-center gap-1 rounded-[4px] border border-amore px-2 py-0.5 text-sm text-amore"
               aria-label={t('recording.indicatorAria')}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
@@ -1656,7 +1656,7 @@ export function TranslateConsole() {
       </div>
 
       {shareToken && shareUrl ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-ink">
+        <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-ink">
           <span className="text-mute-soft">{t('share.label')}</span>
           <ChromeInput
             readOnly
@@ -1678,12 +1678,12 @@ export function TranslateConsole() {
           >
             {t('share.revoke')}
           </ChromeButton>
-          <span className="text-[11px] text-mute-soft">{t('share.expiresIn4h')}</span>
+          <span className="text-sm text-mute-soft">{t('share.expiresIn4h')}</span>
         </div>
       ) : null}
 
       {error ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-[12px] text-mute">
+        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
           {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
         </div>
       ) : null}
@@ -1737,26 +1737,26 @@ function RecordingDownloadPanel({
   const unlocked = recording?.status === 'unlocked';
 
   return (
-    <section className="rounded-[4px] border border-line bg-paper p-4 text-[12.5px] text-ink">
-      <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-mute-soft">
+    <section className="rounded-[4px] border border-line bg-paper p-4 text-md text-ink">
+      <div className="mb-2 text-sm uppercase tracking-[0.08em] text-mute-soft">
         {t('download.eyebrow')}
       </div>
       {recordingError ? (
-        <div className="mb-3 rounded-[4px] border border-line-soft px-3 py-2 text-[12px] text-mute">
+        <div className="mb-3 rounded-[4px] border border-line-soft px-3 py-2 text-md text-mute">
           {t.has(`download.errors.${recordingError}`)
             ? t(`download.errors.${recordingError}`)
             : recordingError}
         </div>
       ) : null}
       {!recording ? (
-        <p className="text-[12.5px] text-mute">{t('download.notAvailable')}</p>
+        <p className="text-md text-mute">{t('download.notAvailable')}</p>
       ) : !ready ? (
-        <p className="text-[12.5px] text-mute">{t('download.preparing')}</p>
+        <p className="text-md text-mute">{t('download.preparing')}</p>
       ) : !unlocked ? (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[220px]">
-            <div className="text-[13px] text-ink">{t('download.lockedTitle')}</div>
-            <div className="mt-1 text-[12px] text-mute">
+            <div className="text-lg text-ink">{t('download.lockedTitle')}</div>
+            <div className="mt-1 text-md text-mute">
               {t('download.lockedHint', { credits: RECORDING_UNLOCK_CREDITS })}
             </div>
           </div>
@@ -1773,7 +1773,7 @@ function RecordingDownloadPanel({
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-[4px] border border-amore px-2 py-0.5 text-[11px] text-amore">
+          <span className="rounded-[4px] border border-amore px-2 py-0.5 text-sm text-amore">
             {t('download.unlockedPill')}
           </span>
           <ChromeButton
@@ -1883,10 +1883,10 @@ function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string })
     >
       <div
         ref={scrollRef}
-        className="mx-auto flex max-h-[60vh] min-h-[360px] w-full max-w-[760px] flex-col gap-3 overflow-y-auto px-4 py-8 text-[18px] leading-[1.7] tracking-[-0.005em] text-ink"
+        className="mx-auto flex max-h-[60vh] min-h-[360px] w-full max-w-[760px] flex-col gap-3 overflow-y-auto px-4 py-8 text-2xl leading-[1.7] tracking-[-0.005em] text-ink"
       >
         {lines.length === 0 ? (
-          <div className="m-auto text-center text-[14px] text-mute-soft">{empty}</div>
+          <div className="m-auto text-center text-xl text-mute-soft">{empty}</div>
         ) : (
           lines.map((l) => (
             <p

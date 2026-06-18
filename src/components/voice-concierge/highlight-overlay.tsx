@@ -157,7 +157,7 @@ export function HighlightOverlay() {
       {message && (
         <div
           className={
-            'absolute border border-line bg-paper px-3 py-2 text-[12.5px] ' +
+            'absolute border border-line bg-paper px-3 py-2 text-md ' +
             'text-ink-2 [border-radius:10px] shadow-[0_4px_12px_rgba(15,17,21,0.18)]'
           }
           style={{

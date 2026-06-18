@@ -135,7 +135,7 @@ export function VoiceConciergePanel({
       <div
         ref={captionRef}
         className={
-          'flex-1 overflow-y-auto text-[13px] leading-[1.45] text-ink-2 ' +
+          'flex-1 overflow-y-auto text-lg leading-[1.45] text-ink-2 ' +
           'max-h-[38px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
         }
       >

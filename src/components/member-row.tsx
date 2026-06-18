@@ -59,7 +59,7 @@ export function MemberRow({
             ]}
           />
         ) : (
-          <span className="text-[11px] uppercase tracking-[0.18em] text-mute-soft">
+          <span className="text-sm uppercase tracking-[0.18em] text-mute-soft">
             {t(role)}
           </span>
         )}
@@ -70,7 +70,7 @@ export function MemberRow({
             variant="destructive-link"
             size="xs"
             onClick={remove}
-            className="!px-0 !py-0 !text-[11px] uppercase tracking-[0.18em]"
+            className="!px-0 !py-0 !text-sm uppercase tracking-[0.18em]"
           >
             {t('removeMember')}
           </Button>

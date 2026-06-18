@@ -14,17 +14,17 @@ export default async function Page({
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {t('moderator.title')}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+        <span className="shrink-0 text-sm tabular-nums text-mute-soft">
           {t('moderator.cost')}
         </span>
       </div>
 
       <ModeratorServicesCarousel />
 
-      <p className="mt-12 text-[11.5px] uppercase tracking-[0.22em] text-mute-soft">
+      <p className="mt-12 text-sm uppercase tracking-[0.22em] text-mute-soft">
         {tCommon('comingSoon')}
       </p>
     </div>

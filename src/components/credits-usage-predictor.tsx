@@ -99,10 +99,10 @@ export function CreditsUsagePredictor() {
     <section className="mt-12 max-w-[560px]">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
         <div>
-          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+          <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
             {t('predictorTitle')}
           </h2>
-          <p className="mt-1 max-w-[680px] text-[11.5px] leading-[1.7] text-mute-soft">
+          <p className="mt-1 max-w-[680px] text-sm leading-[1.7] text-mute-soft">
             {t('predictorSubtitle')}
           </p>
         </div>
@@ -138,12 +138,12 @@ export function CreditsUsagePredictor() {
               className={`${layout} ${state}`}
             >
               <span className="flex flex-col items-start gap-0.5 w-full">
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
                   {t(BUNDLE_LABEL_KEY[b.id])}
                 </span>
-                <span className="text-[14px] font-semibold tabular-nums text-ink">
+                <span className="text-xl font-semibold tabular-nums text-ink">
                   {b.credits.toLocaleString()}{' '}
-                  <span className="text-[10.5px] font-normal text-mute-soft">
+                  <span className="text-xs-soft font-normal text-mute-soft">
                     {t('creditsUnit')}
                   </span>
                 </span>
@@ -156,16 +156,16 @@ export function CreditsUsagePredictor() {
       {/* Budget bar */}
       <div className="mt-5 border border-line bg-paper p-4 rounded-sm">
         <div className="flex items-baseline justify-between gap-3">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <div className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('predictorBudgetLabel')}
           </div>
-          <div className="text-[12.5px] tabular-nums text-mute">
+          <div className="text-md tabular-nums text-mute">
             <span className={overBudget ? 'text-warning font-semibold' : 'text-ink-2 font-semibold'}>
               {totalSpent.toLocaleString()}
             </span>
             <span className="mx-1 text-mute-soft">/</span>
             <span>{budget.toLocaleString()}</span>{' '}
-            <span className="text-[10.5px] text-mute-soft">{t('creditsUnit')}</span>
+            <span className="text-xs-soft text-mute-soft">{t('creditsUnit')}</span>
           </div>
         </div>
         <div className="mt-2 h-1.5 w-full overflow-hidden bg-line-soft [border-radius:2px]">
@@ -174,7 +174,7 @@ export function CreditsUsagePredictor() {
             style={{ width: `${pctSpent}%` }}
           />
         </div>
-        <div className="mt-2 text-[10.5px] tabular-nums text-mute-soft">
+        <div className="mt-2 text-xs-soft tabular-nums text-mute-soft">
           {t('predictorRemaining', { count: remaining.toLocaleString() })}
         </div>
       </div>
@@ -193,8 +193,8 @@ export function CreditsUsagePredictor() {
           return (
             <div key={f.key} className="border-b border-line-soft py-2.5">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[12.5px] text-ink-2">{tSidebar(f.key)}</span>
-                <span className="text-[11px] tabular-nums text-mute-soft">
+                <span className="text-md text-ink-2">{tSidebar(f.key)}</span>
+                <span className="text-sm tabular-nums text-mute-soft">
                   {t('predictorPerUse', { cost: f.cost })}
                 </span>
               </div>
@@ -210,17 +210,17 @@ export function CreditsUsagePredictor() {
                   className="h-1 flex-1 cursor-pointer appearance-none bg-line-soft accent-amore [border-radius:2px]"
                   aria-label={tSidebar(f.key)}
                 />
-                <div className="min-w-[110px] text-right text-[12px] tabular-nums">
+                <div className="min-w-[110px] text-right text-md tabular-nums">
                   <span className="font-semibold text-ink">
                     {t('predictorUses', { count })}
                   </span>
-                  <span className="ml-1 text-[10.5px] text-mute-soft">
+                  <span className="ml-1 text-xs-soft text-mute-soft">
                     ({spentHere.toLocaleString()} {t('creditsUnit')})
                   </span>
                 </div>
               </div>
               {count >= maxForThis && maxForThis < absMax && !overBudget && (
-                <div className="mt-1 text-[10px] text-mute-soft">
+                <div className="mt-1 text-xs text-mute-soft">
                   {t('predictorAtCap')}
                 </div>
               )}
@@ -229,7 +229,7 @@ export function CreditsUsagePredictor() {
         })}
       </div>
 
-      <p className="mt-5 max-w-[820px] text-[11px] leading-[1.7] text-mute-soft">
+      <p className="mt-5 max-w-[820px] text-sm leading-[1.7] text-mute-soft">
         {t('schemeNote')}
       </p>
     </section>

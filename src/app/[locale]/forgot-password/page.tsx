@@ -18,10 +18,10 @@ export default async function ForgotPasswordPage({
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-[420px] border border-line bg-paper p-9 rounded-sm">
-        <h1 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+        <h1 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
           {t('forgotPasswordTitle')}
         </h1>
-        <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mt-2 text-md leading-[1.7] text-mute">
           {t('forgotPasswordSubtitle')}
         </p>
         <div className="mt-7">
@@ -30,7 +30,7 @@ export default async function ForgotPasswordPage({
         <div className="mt-6 text-center">
           <Link
             href="/login"
-            className="text-[11.5px] text-mute transition-colors duration-[120ms] hover:text-ink-2"
+            className="text-sm text-mute transition-colors duration-[120ms] hover:text-ink-2"
           >
             {t('backToSignIn')}
           </Link>

@@ -30,11 +30,11 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
   }
 
   const labelCls =
-    'text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft';
+    'text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft';
   // <select> kept as native (not flagged by forbid-elements) — preserves the
   // inline editorial chrome alongside the migrated <Input>/<Button>.
   const selectCls =
-    'mt-1 border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm pr-7';
+    'mt-1 border border-line bg-paper px-3 py-1.5 text-md text-ink-2 focus:border-amore focus:outline-none rounded-sm pr-7';
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
@@ -46,7 +46,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           size="sm"
-          className="!mt-1 !px-3 !text-[12.5px] !text-ink-2"
+          className="!mt-1 !px-3 !text-md !text-ink-2"
         />
       </div>
       <div>
@@ -66,7 +66,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
         variant="primary"
         size="sm"
         disabled={busy}
-        className="!text-[11px] uppercase tracking-[0.22em] disabled:!opacity-60"
+        className="!text-sm uppercase tracking-[0.22em] disabled:!opacity-60"
       >
         {busy ? tCommon('loading') : t('invite')}
       </Button>

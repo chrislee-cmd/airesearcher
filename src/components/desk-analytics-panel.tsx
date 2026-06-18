@@ -31,7 +31,7 @@ function ChartBar({ chart }: { chart: DeskChart }) {
       {chart.data.map((d, i) => {
         const w = max === 0 ? 0 : (d.value / max) * 100;
         return (
-          <li key={`${d.label}-${i}`} className="text-[12.5px] leading-tight">
+          <li key={`${d.label}-${i}`} className="text-md leading-tight">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-ink-2">{d.label}</span>
               <span className="tabular-nums text-mute">
@@ -110,7 +110,7 @@ function ChartPie({ chart }: { chart: DeskChart }) {
           {chart.unit === 'percent' ? '100%' : Math.round(total)}
         </text>
       </svg>
-      <ul className="flex-1 space-y-1.5 text-[12px]">
+      <ul className="flex-1 space-y-1.5 text-md">
         {slices.map((s, i) => (
           <li key={i} className="flex items-baseline justify-between gap-3">
             <span className="flex items-center gap-2 text-ink-2">
@@ -164,10 +164,10 @@ export function DeskAnalyticsPanel({ analytics }: { analytics: DeskAnalytics }) 
   return (
     <section className="mt-10">
       <div className="flex items-baseline justify-between border-b border-line pb-3">
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
           📊 정량 분석
         </h2>
-        <span className="text-[10.5px] uppercase tracking-[.22em] text-mute-soft">
+        <span className="text-xs-soft uppercase tracking-[.22em] text-mute-soft">
           quantitative
         </span>
       </div>
@@ -179,13 +179,13 @@ export function DeskAnalyticsPanel({ analytics }: { analytics: DeskAnalytics }) 
             className="border border-line bg-paper p-5 rounded-sm"
           >
             <header className="mb-3">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[.22em] text-amore">
+              <div className="text-xs-soft font-semibold uppercase tracking-[.22em] text-amore">
                 {c.type === 'pie' ? 'pie · 비율' : 'bar · 분포'}
               </div>
-              <h3 className="mt-1 text-[13.5px] font-semibold text-ink-2">
+              <h3 className="mt-1 text-lg font-semibold text-ink-2">
                 {c.title}
               </h3>
-              <p className="mt-1 text-[12px] leading-[1.65] text-mute">
+              <p className="mt-1 text-md leading-[1.65] text-mute">
                 {c.insight}
               </p>
             </header>

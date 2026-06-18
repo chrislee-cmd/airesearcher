@@ -20,16 +20,16 @@ export default async function ProjectsPage({
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {t('title')}
         </h1>
       </div>
-      <p className="mt-3 max-w-[820px] text-[12.5px] leading-[1.75] text-mute">
+      <p className="mt-3 max-w-[820px] text-md leading-[1.75] text-mute">
         {t('description')}
       </p>
 
       {!org ? (
-        <div className="mt-8 border border-line bg-paper-soft p-6 text-[12.5px] text-mute rounded-sm">
+        <div className="mt-8 border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
           {t('noActiveOrg')}
         </div>
       ) : (

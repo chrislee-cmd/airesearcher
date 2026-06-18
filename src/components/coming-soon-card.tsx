@@ -26,13 +26,13 @@ export function ComingSoonCard({ feature }: Props) {
 
   return (
     <div className="mx-auto max-w-[520px] border border-line bg-paper p-7 rounded-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
         {t('eyebrow')}
       </p>
-      <h1 className="mt-2 text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+      <h1 className="mt-2 text-3xl font-bold tracking-[-0.018em] text-ink-2">
         {tSidebar(feature)}
       </h1>
-      <p className="mt-3 text-[13px] leading-[1.7] text-mute">{t('body')}</p>
+      <p className="mt-3 text-lg leading-[1.7] text-mute">{t('body')}</p>
     </div>
   );
 }

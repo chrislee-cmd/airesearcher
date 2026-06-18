@@ -66,8 +66,8 @@ export function ResetPasswordForm() {
         onChange={(e) => setPasswordConfirm(e.target.value)}
       />
 
-      {error && <p className="text-[11.5px] text-warning">{error}</p>}
-      {info && <p className="text-[11.5px] text-mute">{info}</p>}
+      {error && <p className="text-sm text-warning">{error}</p>}
+      {info && <p className="text-sm text-mute">{info}</p>}
 
       <Button
         type="submit"

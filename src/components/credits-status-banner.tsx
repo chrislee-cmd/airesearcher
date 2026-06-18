@@ -34,7 +34,7 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
     <div
       role="status"
       aria-live="polite"
-      className={`mb-4 flex items-center justify-between gap-4 border px-4 py-3 text-[12.5px] rounded-xs ${
+      className={`mb-4 flex items-center justify-between gap-4 border px-4 py-3 text-md rounded-xs ${
         isSuccess
           ? 'border-amore/30 bg-amore/5 text-amore'
           : 'border-line bg-paper text-mute'
@@ -44,7 +44,7 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
       <IconButton
         variant="ghost"
         onClick={() => setVisible(false)}
-        className="shrink-0 !border-0 text-[16px] leading-none opacity-50 hover:opacity-100"
+        className="shrink-0 !border-0 text-2xl leading-none opacity-50 hover:opacity-100"
         aria-label="dismiss"
       >
         ×

@@ -304,7 +304,7 @@ export function TranscriptStudio() {
           <div className="flex items-center gap-3">
             <label
               htmlFor="transcript-language"
-              className="text-[11px] uppercase tracking-[0.22em] text-mute-soft"
+              className="text-sm uppercase tracking-[0.22em] text-mute-soft"
             >
               언어
             </label>
@@ -313,7 +313,7 @@ export function TranscriptStudio() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 rounded-sm disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-md text-ink-2 rounded-sm disabled:opacity-40"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -334,7 +334,7 @@ export function TranscriptStudio() {
           className="py-12"
         >
           {uploadError && (
-            <div className="mt-3 text-[11.5px] text-warning">{uploadError}</div>
+            <div className="mt-3 text-sm text-warning">{uploadError}</div>
           )}
         </FileDropZone>
       </section>
@@ -342,7 +342,7 @@ export function TranscriptStudio() {
       {/* Active uploads (client-side progress, before the job row exists) */}
       {Object.keys(job.localUploads).length > 0 && (
         <section>
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {tCommon('uploading')}
           </h3>
           <ul className="mt-2 space-y-2">
@@ -358,7 +358,7 @@ export function TranscriptStudio() {
       {/* Server-side jobs */}
       {job.jobs.length > 0 && (
         <section>
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             전사 작업
           </h3>
           <ul className="mt-2 space-y-3">
@@ -424,17 +424,17 @@ function LanguageConfirmDialog({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[460px] border border-line bg-paper p-8 rounded-sm"
       >
-        <h2 className="text-[17px] font-semibold tracking-[-0.012em] text-ink-2">
+        <h2 className="text-2xl font-semibold tracking-[-0.012em] text-ink-2">
           {t('title')}
         </h2>
-        <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mt-2 text-md leading-[1.7] text-mute">
           {t('body')}
         </p>
 
         <div className="mt-6 space-y-2">
           <label
             htmlFor="transcript-language-confirm"
-            className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft"
+            className="block text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft"
           >
             {t('languageLabel')}
           </label>
@@ -443,7 +443,7 @@ function LanguageConfirmDialog({
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
             autoFocus
-            className="w-full border border-line bg-paper px-3 py-2 text-[13px] text-ink-2 rounded-sm focus:border-ink focus:outline-none"
+            className="w-full border border-line bg-paper px-3 py-2 text-lg text-ink-2 rounded-sm focus:border-ink focus:outline-none"
           >
             {LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>
@@ -453,7 +453,7 @@ function LanguageConfirmDialog({
           </select>
         </div>
 
-        <p className="mt-4 text-[11.5px] text-mute-soft">
+        <p className="mt-4 text-sm text-mute-soft">
           {files.length === 1
             ? t('fileCountSingular')
             : t('fileCountPlural', { count: files.length })}
@@ -521,10 +521,10 @@ function JobRow({
     <li className="border border-line bg-paper rounded-sm">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] text-ink-2">{job.filename}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-mute-soft tabular-nums">
+          <div className="truncate text-lg text-ink-2">{job.filename}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-sm text-mute-soft tabular-nums">
             <span
-              className={`uppercase tracking-[0.22em] text-[10px] font-semibold ${pill.cls}`}
+              className={`uppercase tracking-[0.22em] text-xs font-semibold ${pill.cls}`}
             >
               {pill.text}
             </span>
@@ -606,7 +606,7 @@ function JobRow({
           variant="ghost-danger"
           aria-label="전사 작업 삭제"
           onClick={onDelete}
-          className="text-[11px]"
+          className="text-sm"
         >
           ✕
         </IconButton>
@@ -717,19 +717,19 @@ function JobPreview({
             </Button>
           </div>
           {typeof touched === 'number' && typeof total === 'number' && (
-            <div className="text-[10.5px] text-mute-soft tabular-nums">
+            <div className="text-xs-soft text-mute-soft tabular-nums">
               보정 {touched}/{total} turn
             </div>
           )}
         </div>
       )}
       {error ? (
-        <div className="text-[11.5px] text-warning">{error}</div>
+        <div className="text-sm text-warning">{error}</div>
       ) : html === null ? (
-        <div className="text-[11.5px] text-mute-soft">불러오는 중…</div>
+        <div className="text-sm text-mute-soft">불러오는 중…</div>
       ) : (
         <div
-          className="docx-preview max-h-[400px] overflow-y-auto text-[12.5px] leading-[1.7] text-ink-2"
+          className="docx-preview max-h-[400px] overflow-y-auto text-md leading-[1.7] text-ink-2"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}

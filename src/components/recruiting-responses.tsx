@@ -242,19 +242,19 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
 
   return (
     <div className="mt-10 border-t border-line pt-8">
-      <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+      <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
         발행한 폼 응답
       </h2>
-      <p className="mt-1 text-[11px] text-mute-soft">
+      <p className="mt-1 text-sm text-mute-soft">
         30분마다 자동 동기화되며, 새로고침 버튼으로 즉시 갱신할 수 있습니다.
       </p>
       {listError && (
-        <div className="mt-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore rounded-sm">
+        <div className="mt-3 border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
           폼 목록 로드 오류: {listError}
         </div>
       )}
       {hasResponsesScope === false && (
-        <div className="mt-3 border border-line-soft bg-paper p-3 text-[12px] text-ink-2 rounded-sm">
+        <div className="mt-3 border border-line-soft bg-paper p-3 text-md text-ink-2 rounded-sm">
           응답 동기화는 새 권한이 필요합니다.{' '}
           <Button
             variant="link"
@@ -276,10 +276,10 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
             <li key={f.formId} className="border border-line bg-paper rounded-sm">
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-[13px] font-semibold text-ink">
+                  <div className="truncate text-lg font-semibold text-ink">
                     {f.title || '(제목 없음)'}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-mute-soft">
+                  <div className="mt-1 flex flex-wrap gap-3 text-sm text-mute-soft">
                     <span>발행 {formatTime(f.createdAt)}</span>
                     <a
                       href={f.editUri}
@@ -300,7 +300,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="tabular-nums text-[11px] text-mute-soft">
+                  <span className="tabular-nums text-sm text-mute-soft">
                     {state?.syncedAt
                       ? `동기화 ${formatTime(new Date(state.syncedAt).toISOString())}`
                       : '아직 동기화 안 됨'}
@@ -310,7 +310,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     size="sm"
                     onClick={() => void fetchResponses(f.formId)}
                     disabled={state?.loading || hasResponsesScope === false}
-                    className="!px-3 !py-1 !text-[11.5px] !text-ink-2 hover:!border-ink-2"
+                    className="!px-3 !py-1 !text-sm !text-ink-2 hover:!border-ink-2"
                   >
                     {state?.loading ? '동기화 중…' : '새로고침'}
                   </Button>
@@ -342,7 +342,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
                     size="sm"
                     onClick={() => void removeForm(f.formId)}
                     title="이 폼을 목록에서 제거 (Google Forms 원본은 유지)"
-                    className="!px-3 !py-1 !text-[11.5px] hover:!border-amore hover:!text-amore"
+                    className="!px-3 !py-1 !text-sm hover:!border-amore hover:!text-amore"
                   >
                     제거
                   </Button>
@@ -350,7 +350,7 @@ export function RecruitingResponses({ publishVersion, hasResponsesScope }: Props
               </header>
 
               {state?.error && (
-                <div className="border-b border-line-soft bg-amore-bg px-4 py-2 text-[12px] text-amore">
+                <div className="border-b border-line-soft bg-amore-bg px-4 py-2 text-md text-amore">
                   오류: {state.error}
                 </div>
               )}
@@ -437,7 +437,7 @@ function ResponseTable({
   return (
     <div className="overflow-x-auto">
       <table
-        className="border-collapse text-[12px]"
+        className="border-collapse text-md"
         style={{ tableLayout: 'fixed' }}
       >
         <colgroup>

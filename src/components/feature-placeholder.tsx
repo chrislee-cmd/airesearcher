@@ -84,10 +84,10 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-ink">
+        <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {t(`${feature}.title`)}
         </h1>
-        <span className="shrink-0 text-[11.5px] tabular-nums text-mute-soft">
+        <span className="shrink-0 text-sm tabular-nums text-mute-soft">
           {t(`${feature}.cost`)}
         </span>
       </div>
@@ -98,12 +98,12 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           onChange={(e) => setInput(e.target.value)}
           rows={12}
           placeholder="원시 인터뷰 텍스트를 붙여넣으세요…"
-          className="p-4 text-[13px] leading-[1.7] text-ink-2"
+          className="p-4 text-lg leading-[1.7] text-ink-2"
         />
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-3">
-        <span className="text-[11px] tabular-nums text-mute-soft">
+        <span className="text-sm tabular-nums text-mute-soft">
           {input.length.toLocaleString()} chars
         </span>
         <Button
@@ -111,7 +111,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
           size="cta"
           onClick={onClickRun}
           disabled={running || !input.trim()}
-          className="px-5 py-2.5 text-[12px] tracking-normal normal-case"
+          className="px-5 py-2.5 text-md tracking-normal normal-case"
         >
           {running ? tCommon('loading') : tCommon('generate')}
         </Button>
@@ -131,10 +131,10 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
 
       {result && (
         <div className="mt-10">
-          <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+          <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
             결과
           </h2>
-          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-[13px] leading-[1.75] text-ink-2 rounded-sm">
+          <pre className="mt-4 whitespace-pre-wrap border border-line bg-paper p-5 text-lg leading-[1.75] text-ink-2 rounded-sm">
             {result}
           </pre>
         </div>

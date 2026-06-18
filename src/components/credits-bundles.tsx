@@ -194,30 +194,30 @@ export function CreditsBundles() {
               }`}
             >
               {b.popular && (
-                <span className="absolute -top-2 left-4 bg-amore px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-paper [border-radius:2px]">
+                <span className="absolute -top-2 left-4 bg-amore px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.22em] text-paper [border-radius:2px]">
                   {t('popular')}
                 </span>
               )}
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                 {t(labelKey)}
               </div>
               <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-[28px] font-bold tracking-[-0.02em] text-ink tabular-nums">
+                <span className="text-display font-bold tracking-[-0.02em] text-ink tabular-nums">
                   {b.credits.toLocaleString()}
                 </span>
-                <span className="text-[11px] text-mute-soft">{t('creditsUnit')}</span>
+                <span className="text-sm text-mute-soft">{t('creditsUnit')}</span>
               </div>
-              <div className="mt-4 text-[15px] font-semibold text-ink-2 tabular-nums">
+              <div className="mt-4 text-xl font-semibold text-ink-2 tabular-nums">
                 {isContact ? '—' : formatPrice(b.priceKrw!)}
               </div>
-              <div className="mt-1 flex items-center gap-2 text-[10.5px] text-mute-soft tabular-nums">
+              <div className="mt-1 flex items-center gap-2 text-xs-soft text-mute-soft tabular-nums">
                 {b.perCreditKrw !== null && (
                   <span>
                     {formatPrice(b.perCreditKrw)} {t('perCredit')}
                   </span>
                 )}
                 {b.discountPct > 0 && (
-                  <span className="border border-amore px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore [border-radius:2px]">
+                  <span className="border border-amore px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.18em] text-amore [border-radius:2px]">
                     {t('discountOff', { percent: b.discountPct })}
                   </span>
                 )}
@@ -254,7 +254,7 @@ export function CreditsBundles() {
           role="status"
           aria-live="polite"
         >
-          <div className="border border-ink bg-ink px-4 py-2 text-[12px] font-semibold text-paper rounded-sm">
+          <div className="border border-ink bg-ink px-4 py-2 text-md font-semibold text-paper rounded-sm">
             {toast}
           </div>
         </div>
@@ -271,23 +271,23 @@ export function CreditsBundles() {
             className="w-full max-w-[560px] border border-line bg-paper rounded-sm"
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
                 {t('checkoutEyebrow')}
               </div>
               <IconButton
                 onClick={close}
                 aria-label="결제 창 닫기"
-                className="text-[18px] leading-none"
+                className="text-2xl leading-none"
               >
                 ×
               </IconButton>
             </header>
             <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-5 py-5">
-                  <h3 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+                  <h3 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
                     {t(BUNDLE_LABEL_KEY[selected.id])} ·{' '}
                     {selected.credits.toLocaleString()} {t('creditsUnit')}
                   </h3>
-                  <p className="mt-1 text-[12.5px] text-mute tabular-nums">
+                  <p className="mt-1 text-md text-mute tabular-nums">
                     {formatPrice(selected.priceKrw!)}
                     {displayCurrency !== 'KRW' && (
                       <span className="ml-2 text-mute-soft">
@@ -300,7 +300,7 @@ export function CreditsBundles() {
 
                   {/* Method selection */}
                   <div className="mt-5">
-                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                    <p className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
                       {t('methodLabel')}
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -321,7 +321,7 @@ export function CreditsBundles() {
 
                   {/* Tax invoice */}
                   <div className="mt-5">
-                    <label className="flex items-center gap-2 text-[12.5px] text-ink-2">
+                    <label className="flex items-center gap-2 text-md text-ink-2">
                       <Checkbox
                         checked={tax.enabled}
                         onChange={(e) => setTax((s) => ({ ...s, enabled: e.target.checked }))}
@@ -363,7 +363,7 @@ export function CreditsBundles() {
                   </div>
 
                   {error && (
-                    <p className="mt-4 text-[11.5px] text-warning">{error}</p>
+                    <p className="mt-4 text-sm text-warning">{error}</p>
                   )}
 
                   <div className="mt-6 flex items-center justify-end gap-3">
@@ -371,7 +371,7 @@ export function CreditsBundles() {
                       variant="ghost"
                       size="sm"
                       onClick={close}
-                      className="text-[12px] text-ink-2 hover:text-amore"
+                      className="text-md text-ink-2 hover:text-amore"
                     >
                       {t('cancel')}
                     </Button>
@@ -380,7 +380,7 @@ export function CreditsBundles() {
                       size="sm"
                       disabled={submitting || !taxValid}
                       onClick={submit}
-                      className="text-[12px]"
+                      className="text-md"
                     >
                       {submitting
                         ? t('submitting')
@@ -405,54 +405,54 @@ export function CreditsBundles() {
             className="w-full max-w-[480px] border border-line bg-paper rounded-sm"
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
                 {t('checkoutEyebrow')}
               </div>
               <IconButton
                 onClick={close}
                 aria-label="계좌이체 안내 닫기"
-                className="text-[18px] leading-none"
+                className="text-2xl leading-none"
               >
                 ×
               </IconButton>
             </header>
             <div className="px-5 py-5">
-              <h3 className="text-[14px] font-semibold text-ink-2">{t('bankTitle')}</h3>
-              <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('bankBody')}</p>
+              <h3 className="text-xl font-semibold text-ink-2">{t('bankTitle')}</h3>
+              <p className="mt-1.5 text-md leading-[1.7] text-mute">{t('bankBody')}</p>
 
               <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
                 {bankDetails.bankName && (
                   <>
-                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankBankName')}</dt>
-                    <dd className="text-[13px] font-medium text-ink-2">{bankDetails.bankName}</dd>
+                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankBankName')}</dt>
+                    <dd className="text-lg font-medium text-ink-2">{bankDetails.bankName}</dd>
                   </>
                 )}
                 {bankDetails.accountNumber && (
                   <>
-                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountNumber')}</dt>
-                    <dd className="text-[13px] font-medium text-ink-2 tabular-nums">{bankDetails.accountNumber}</dd>
+                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountNumber')}</dt>
+                    <dd className="text-lg font-medium text-ink-2 tabular-nums">{bankDetails.accountNumber}</dd>
                   </>
                 )}
                 {bankDetails.accountHolder && (
                   <>
-                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountHolder')}</dt>
-                    <dd className="text-[13px] font-medium text-ink-2">{bankDetails.accountHolder}</dd>
+                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountHolder')}</dt>
+                    <dd className="text-lg font-medium text-ink-2">{bankDetails.accountHolder}</dd>
                   </>
                 )}
-                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAmount')}</dt>
-                <dd className="text-[13px] font-medium text-ink-2 tabular-nums">{formatKrw(bankDetails.amountKrw)}</dd>
-                <dt className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankReference')}</dt>
-                <dd className="font-mono text-[15px] font-bold tracking-[0.08em] text-amore">{bankDetails.bankReference}</dd>
+                <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAmount')}</dt>
+                <dd className="text-lg font-medium text-ink-2 tabular-nums">{formatKrw(bankDetails.amountKrw)}</dd>
+                <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankReference')}</dt>
+                <dd className="font-mono text-xl font-bold tracking-[0.08em] text-amore">{bankDetails.bankReference}</dd>
               </dl>
 
-              <p className="mt-4 text-[11px] leading-[1.6] text-mute-soft">{t('bankFootnote')}</p>
+              <p className="mt-4 text-sm leading-[1.6] text-mute-soft">{t('bankFootnote')}</p>
 
               <div className="mt-6 flex justify-end">
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={close}
-                  className="px-5 text-[12px]"
+                  className="px-5 text-md"
                 >
                   {t('done')}
                 </Button>
@@ -500,8 +500,8 @@ function MethodOption({
       className={`${layout} ${state}`}
     >
       <span className="flex flex-col items-start gap-0.5 w-full">
-        <span className="text-[12.5px] font-semibold">{label}</span>
-        <span className="text-[10.5px] text-mute-soft">{hint}</span>
+        <span className="text-md font-semibold">{label}</span>
+        <span className="text-xs-soft text-mute-soft">{hint}</span>
       </span>
     </Button>
   );
@@ -524,7 +524,7 @@ function Field({
 }) {
   return (
     <label className={`flex flex-col gap-1 ${full ? 'col-span-2' : ''}`}>
-      <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+      <span className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">
         {label}
       </span>
       <Input
@@ -532,7 +532,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="px-2.5 py-1.5 text-[12.5px] text-ink-2"
+        className="px-2.5 py-1.5 text-md text-ink-2"
       />
     </label>
   );

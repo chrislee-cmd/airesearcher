@@ -119,11 +119,11 @@ export function InterviewAnalyzer() {
 
       {/* Stage 1 */}
       <section>
-        <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
           {t('stage1Title')}
         </h2>
-        <p className="mt-1 text-[12px] text-mute">{t('stage1Help')}</p>
-        <p className="mt-1 text-[11.5px] text-mute-soft">{t('pipelineHint')}</p>
+        <p className="mt-1 text-md text-mute">{t('stage1Help')}</p>
+        <p className="mt-1 text-sm text-mute-soft">{t('pipelineHint')}</p>
 
         <FileDropZone
           accept={ACCEPT}
@@ -142,7 +142,7 @@ export function InterviewAnalyzer() {
 
         {job.items.length > 0 && (
           <div className="mt-5">
-            <div className="flex items-center justify-between border-b border-line-soft pb-2 text-[11.5px] text-mute">
+            <div className="flex items-center justify-between border-b border-line-soft pb-2 text-sm text-mute">
               <span className="tabular-nums">
                 {tUp('filesDone', {
                   done: job.doneCount,
@@ -155,7 +155,7 @@ export function InterviewAnalyzer() {
                   size="xs"
                   onClick={job.clear}
                   disabled={job.convertingAll || job.analyzing}
-                  className="!text-[11px] uppercase tracking-[0.18em]"
+                  className="!text-sm uppercase tracking-[0.18em]"
                 >
                   {tUp('clear')}
                 </Button>
@@ -164,7 +164,7 @@ export function InterviewAnalyzer() {
                   size="xs"
                   onClick={job.startConvertAll}
                   disabled={job.queuedCount === 0 || job.convertingAll}
-                  className="!text-[11px] uppercase tracking-[0.18em]"
+                  className="!text-sm uppercase tracking-[0.18em]"
                 >
                   {job.convertingAll ? tCommon('loading') : t('convertAll')}
                 </Button>
@@ -204,7 +204,7 @@ export function InterviewAnalyzer() {
               </div>
             )}
             {job.analyzeError && (
-              <span className="text-[11.5px] text-warning">{job.analyzeError}</span>
+              <span className="text-sm text-warning">{job.analyzeError}</span>
             )}
           </div>
         )}
@@ -215,19 +215,19 @@ export function InterviewAnalyzer() {
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
               {job.summarizing && (
-                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
                   요약 생성 중
                 </span>
               )}
               {job.verticallySynthesizing && (
-                <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amore">
+                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
                   전체 흐름 분석 중
                 </span>
               )}
               {(job.summarizeError || job.verticalSynthError) && (
-                <span className="text-[11.5px] text-warning">
+                <span className="text-sm text-warning">
                   {job.summarizeError ?? job.verticalSynthError}
                 </span>
               )}
@@ -331,26 +331,26 @@ function TemplateCard() {
     <section className="border border-line-soft bg-paper-soft rounded-sm">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             양식 (선택)
           </div>
-          <h3 className="mt-1 text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
+          <h3 className="mt-1 text-xl font-semibold tracking-[-0.005em] text-ink-2">
             인터뷰 질문 골격 등록
           </h3>
-          <p className="mt-1 text-[12px] text-mute">
+          <p className="mt-1 text-md text-mute">
             XLSX·DOCX 파일을 올리면 그 질문 순서대로 매트릭스가 정렬됩니다.
             등록하지 않으면 AI 가 자동으로 공통 질문을 추론합니다.
           </p>
         </div>
         {hasTemplate && (
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em]">
+          <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em]">
             <span className="text-mute-soft">모드</span>
             <div className="inline-flex border border-line rounded-sm">
               <Button
                 variant="ghost"
                 size="xs"
                 onClick={() => job.setTemplateMode('template')}
-                className={`!border-0 !rounded-none !px-3 !py-1 !text-[11px] uppercase tracking-[0.22em] ${
+                className={`!border-0 !rounded-none !px-3 !py-1 !text-sm uppercase tracking-[0.22em] ${
                   job.templateMode === 'template'
                     ? '!bg-ink !text-paper'
                     : '!text-mute hover:!text-ink-2'
@@ -362,7 +362,7 @@ function TemplateCard() {
                 variant="ghost"
                 size="xs"
                 onClick={() => job.setTemplateMode('auto')}
-                className={`!border-0 !rounded-none !border-l !border-line !px-3 !py-1 !text-[11px] uppercase tracking-[0.22em] ${
+                className={`!border-0 !rounded-none !border-l !border-line !px-3 !py-1 !text-sm uppercase tracking-[0.22em] ${
                   job.templateMode === 'auto'
                     ? '!bg-ink !text-paper'
                     : '!text-mute hover:!text-ink-2'
@@ -377,10 +377,10 @@ function TemplateCard() {
 
       <div className="px-5 py-4 space-y-3">
         {errorHint && (
-          <div className="text-[12px] text-warning">{errorHint}</div>
+          <div className="text-md text-warning">{errorHint}</div>
         )}
         {job.templateTruncated && (
-          <div className="text-[12px] text-warning">
+          <div className="text-md text-warning">
             질문이 너무 많아 앞쪽 200개만 보관했습니다.
           </div>
         )}
@@ -400,18 +400,18 @@ function TemplateCard() {
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={job.templateLoading}
-              className="!text-[11px] uppercase tracking-[0.18em]"
+              className="!text-sm uppercase tracking-[0.18em]"
             >
               {job.templateLoading ? '업로드 중…' : '양식 업로드 (XLSX·DOCX)'}
             </Button>
-            <span className="text-[11.5px] text-mute-soft">
+            <span className="text-sm text-mute-soft">
               XLSX: 첫 컬럼에서 질문을 읽음 · DOCX: 줄·번호·불릿로 분리
             </span>
           </div>
         ) : (
           <div>
             <div className="flex items-center justify-between gap-3">
-              <div className="text-[11.5px] text-mute">
+              <div className="text-sm text-mute">
                 <span className="text-ink-2 font-medium">
                   {job.template!.source_filename}
                 </span>
@@ -435,7 +435,7 @@ function TemplateCard() {
                       size="xs"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={job.templateLoading}
-                      className="!text-[11px] uppercase tracking-[0.18em]"
+                      className="!text-sm uppercase tracking-[0.18em]"
                     >
                       다른 파일
                     </Button>
@@ -443,7 +443,7 @@ function TemplateCard() {
                       variant="link"
                       size="xs"
                       onClick={startEdit}
-                      className="!text-[11px] uppercase tracking-[0.18em]"
+                      className="!text-sm uppercase tracking-[0.18em]"
                     >
                       편집
                     </Button>
@@ -452,7 +452,7 @@ function TemplateCard() {
                       size="xs"
                       onClick={() => job.deleteTemplate()}
                       disabled={job.templateLoading}
-                      className="!text-[11px] uppercase tracking-[0.18em] !text-mute-soft"
+                      className="!text-sm uppercase tracking-[0.18em] !text-mute-soft"
                     >
                       제거
                     </Button>
@@ -465,7 +465,7 @@ function TemplateCard() {
                       size="xs"
                       onClick={saveEdit}
                       disabled={job.templateLoading}
-                      className="!text-[11px] uppercase tracking-[0.18em]"
+                      className="!text-sm uppercase tracking-[0.18em]"
                     >
                       저장
                     </Button>
@@ -473,7 +473,7 @@ function TemplateCard() {
                       variant="link"
                       size="xs"
                       onClick={cancelEdit}
-                      className="!text-[11px] uppercase tracking-[0.18em]"
+                      className="!text-sm uppercase tracking-[0.18em]"
                     >
                       취소
                     </Button>
@@ -482,14 +482,14 @@ function TemplateCard() {
               </div>
             </div>
 
-            <ol className="mt-3 space-y-1.5 text-[12.5px]">
+            <ol className="mt-3 space-y-1.5 text-md">
               {(editing ? draft ?? [] : job.template!.questions).map(
                 (q, i) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 leading-[1.6]"
                   >
-                    <span className="mt-[1px] inline-block min-w-[20px] text-[10.5px] tabular-nums text-mute-soft">
+                    <span className="mt-[1px] inline-block min-w-[20px] text-xs-soft tabular-nums text-mute-soft">
                       {i + 1}.
                     </span>
                     {editing ? (
@@ -503,7 +503,7 @@ function TemplateCard() {
                             setDraft(next);
                           }}
                           size="sm"
-                          className="!border-line-soft !px-2 !py-1 !text-[12.5px] !text-ink-2 focus:!border-ink"
+                          className="!border-line-soft !px-2 !py-1 !text-md !text-ink-2 focus:!border-ink"
                         />
                         <IconButton
                           variant="ghost-danger"
@@ -512,7 +512,7 @@ function TemplateCard() {
                             if (!draft) return;
                             setDraft(draft.filter((_, idx) => idx !== i));
                           }}
-                          className="text-[12px]"
+                          className="text-md"
                         >
                           ✕
                         </IconButton>
@@ -529,13 +529,13 @@ function TemplateCard() {
                 variant="link"
                 size="xs"
                 onClick={() => setDraft([...(draft ?? []), ''])}
-                className="mt-2 !text-[11px] uppercase tracking-[0.18em]"
+                className="mt-2 !text-sm uppercase tracking-[0.18em]"
               >
                 + 질문 추가
               </Button>
             )}
             {!editing && job.templateMode === 'template' && (
-              <div className="mt-3 text-[11px] uppercase tracking-[0.22em] text-amore">
+              <div className="mt-3 text-sm uppercase tracking-[0.22em] text-amore">
                 이 인터뷰는 양식 모드로 분석합니다 · 매칭되지 않은 응답은 「기타 응답」 행에 모입니다
               </div>
             )}
@@ -571,11 +571,11 @@ function ConvRow({
     <li className="border-t border-line-soft first:border-t-0">
       <div className="flex items-center gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] text-ink-2">{item.file.name}</div>
-          <div className="mt-0.5 flex items-center gap-3 text-[11px] text-mute-soft tabular-nums">
+          <div className="truncate text-lg text-ink-2">{item.file.name}</div>
+          <div className="mt-0.5 flex items-center gap-3 text-sm text-mute-soft tabular-nums">
             <span>{formatBytes(item.file.size)}</span>
             <span
-              className={`uppercase tracking-[0.22em] text-[10px] font-semibold ${pill.cls}`}
+              className={`uppercase tracking-[0.22em] text-xs font-semibold ${pill.cls}`}
             >
               {pill.text}
             </span>
@@ -589,7 +589,7 @@ function ConvRow({
                 />
               )}
             {item.extractStatus === 'extracting' && (
-              <span className="text-amore uppercase tracking-[0.22em] text-[10px] font-semibold">
+              <span className="text-amore uppercase tracking-[0.22em] text-xs font-semibold">
                 추출 중
               </span>
             )}
@@ -624,7 +624,7 @@ function ConvRow({
             variant="link"
             size="xs"
             onClick={onToggle}
-            className="!text-[11px] uppercase tracking-[0.18em]"
+            className="!text-sm uppercase tracking-[0.18em]"
           >
             {item.expanded ? t('hideMd') : t('viewMd')}
           </Button>
@@ -633,14 +633,14 @@ function ConvRow({
           variant="ghost-danger"
           aria-label={tUp('remove')}
           onClick={onRemove}
-          className="text-[11px]"
+          className="text-sm"
         >
           ✕
         </IconButton>
       </div>
       {item.status === 'done' && item.markdown && item.expanded && (
         <div className="border-t border-line-soft px-5 pb-4 pt-3">
-          <pre className="whitespace-pre-wrap font-mono text-[12px] leading-[1.7] text-ink-2">
+          <pre className="whitespace-pre-wrap font-mono text-md leading-[1.7] text-ink-2">
             {item.markdown}
           </pre>
         </div>
@@ -664,7 +664,7 @@ function OutlierItem({ outlier }: { outlier: OutlierCase }) {
           {outlier.filenames.map((fn) => (
             <span
               key={fn}
-              className="inline-block border border-line-soft px-1.5 py-[1px] text-[10px] tracking-[0.04em] text-mute rounded-sm"
+              className="inline-block border border-line-soft px-1.5 py-[1px] text-xs tracking-[0.04em] text-mute rounded-sm"
             >
               {fn}
             </span>
@@ -683,7 +683,7 @@ function RowSummaryCell({ summary }: { summary: RowSummary }) {
     <div className="space-y-3">
       {hasMainstream && (
         <div>
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             대표 경향성
           </div>
           <div className="leading-[1.7] whitespace-pre-wrap text-ink-2">
@@ -693,7 +693,7 @@ function RowSummaryCell({ summary }: { summary: RowSummary }) {
       )}
       {hasOutliers && (
         <div className={hasMainstream ? 'border-t border-line-soft pt-3' : ''}>
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             소수 케이스
           </div>
           <ul className="space-y-1.5">
@@ -720,19 +720,19 @@ function ResultTable({
 }) {
   return (
     <div className="overflow-x-auto border border-line bg-paper rounded-sm">
-      <table className="w-full min-w-[800px] text-[12.5px]">
+      <table className="w-full min-w-[800px] text-md">
         <thead className="border-b border-line bg-paper-soft">
           <tr>
-            <th className="sticky left-0 z-10 bg-paper-soft px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="sticky left-0 z-10 bg-paper-soft px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('question')}
             </th>
-            <th className="border-l border-line px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="border-l border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('summary')}
             </th>
             {filenames.map((f) => (
               <th
                 key={f}
-                className="border-l border-line px-4 py-3 text-left text-[10.5px] tracking-[0.05em]"
+                className="border-l border-line px-4 py-3 text-left text-xs-soft tracking-[0.05em]"
               >
                 <div className="truncate font-semibold text-ink-2">{f}</div>
               </th>
@@ -755,7 +755,7 @@ function ResultTable({
               <tr key={idx} className={rowClass}>
                 <td className={qCellClass}>
                   {row.isResidual && (
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                       MISC
                     </div>
                   )}
@@ -765,7 +765,7 @@ function ResultTable({
                   {hasSummaryContent(row.summary) ? (
                     <RowSummaryCell summary={row.summary!} />
                   ) : summarizing ? (
-                    <span className="text-[11px] uppercase tracking-[0.22em] text-mute-soft">
+                    <span className="text-sm uppercase tracking-[0.22em] text-mute-soft">
                       …
                     </span>
                   ) : null}
@@ -806,10 +806,10 @@ function VocList({
       {items.map((v, i) => (
         <li
           key={i}
-          className="text-[12px] italic leading-[1.65] text-mute"
+          className="text-md italic leading-[1.65] text-mute"
         >
           “{v.voc}”
-          <span className="ml-2 not-italic text-[10.5px] tracking-[0.05em] text-mute-soft">
+          <span className="ml-2 not-italic text-xs-soft tracking-[0.05em] text-mute-soft">
             — {v.filename}
           </span>
         </li>
@@ -829,13 +829,13 @@ function FinalSummaryTable({
 }) {
   return (
     <div className="overflow-hidden border border-line bg-paper rounded-sm">
-      <table className="w-full text-[12.5px]">
+      <table className="w-full text-md">
         <thead className="border-b border-line bg-paper-soft">
           <tr>
-            <th className="w-[28%] px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="w-[28%] px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('question')}
             </th>
-            <th className="border-l border-line px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th className="border-l border-line px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
               {t('summary')}
             </th>
           </tr>
@@ -853,7 +853,7 @@ function FinalSummaryTable({
                   <div>{insight.topic}</div>
                   {insight.sourceIndices.length > 1 && (
                     <div className="mt-2">
-                      <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-mute-soft">
+                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-mute-soft">
                         융합된 문항
                       </div>
                       <ul className="space-y-0.5">
@@ -861,7 +861,7 @@ function FinalSummaryTable({
                           rows[si] ? (
                             <li
                               key={si}
-                              className="text-[11px] leading-[1.6] text-mute"
+                              className="text-sm leading-[1.6] text-mute"
                             >
                               {rows[si].question}
                             </li>
@@ -874,7 +874,7 @@ function FinalSummaryTable({
                 <td className="border-l border-line px-5 py-4 align-top text-ink-2">
                   {hasMainstream && (
                     <div>
-                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-amore">
+                      <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-amore">
                         대표 경향성
                       </div>
                       <div className="leading-[1.8] whitespace-pre-wrap">
@@ -882,7 +882,7 @@ function FinalSummaryTable({
                       </div>
                       {hasMainstreamVocs && (
                         <div className="mt-3">
-                          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                          <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                             대표 VOC
                           </div>
                           <VocList items={insight.mainstreamVocs} />
@@ -898,7 +898,7 @@ function FinalSummaryTable({
                           : ''
                       }
                     >
-                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                      <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                         소수 케이스
                       </div>
                       <ul className="space-y-1.5">
@@ -908,7 +908,7 @@ function FinalSummaryTable({
                       </ul>
                       {hasOutlierVocs && (
                         <div className="mt-3">
-                          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                          <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                             소수 케이스 VOC
                           </div>
                           <VocList items={insight.outlierVocs} />

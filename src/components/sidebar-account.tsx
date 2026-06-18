@@ -77,7 +77,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
         <Link
           href="/login"
           onClick={() => track('sidebar_signin_link_click')}
-          className="block border border-ink bg-ink px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+          className="block border border-ink bg-ink px-3 py-2 text-center text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
         >
           {tAuth('signIn')}
         </Link>
@@ -93,21 +93,21 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
     <div className="relative border-t border-line-soft px-3 py-3" ref={popRef}>
       <div className="flex items-center gap-2 px-2">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[12px] font-semibold text-ink-2">
+          <div className="truncate text-md font-semibold text-ink-2">
             {displayName}
           </div>
           {status?.isUnlimited ? (
-            <div className="mt-0.5 text-[10.5px] tabular-nums text-amore">
+            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
               {tCommon('unlimitedAccess')}
             </div>
           ) : status?.isTrialActive && status.trialEndsAt ? (
-            <div className="mt-0.5 text-[10.5px] tabular-nums text-amore">
+            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
               {tCommon('trialRemaining', {
                 remaining: formatTrialRemaining(status.trialEndsAt),
               })}
             </div>
           ) : credits !== null ? (
-            <div className="mt-0.5 text-[10.5px] tabular-nums text-mute-soft">
+            <div className="mt-0.5 text-xs-soft tabular-nums text-mute-soft">
               {tCommon('creditsRemaining', { count: credits })}
             </div>
           ) : null}
@@ -130,20 +130,20 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
       </div>
 
       {open && (
-        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-[11.5px] rounded-sm">
+        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-sm rounded-sm">
           {/* Language toggle */}
           <div className="px-3 py-2">
-            <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
               {tCommon('language')}
             </div>
-            <div className="mt-1.5 flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.18em]">
+            <div className="mt-1.5 flex items-center gap-3 text-xs-soft font-semibold uppercase tracking-[0.18em]">
               {(['ko', 'en'] as const).map((lng) => (
                 <Button
                   key={lng}
                   variant="link"
                   size="xs"
                   onClick={() => changeLocale(lng)}
-                  className={`!px-0 !py-0 !text-[10.5px] uppercase tracking-[0.18em] ${
+                  className={`!px-0 !py-0 !text-xs-soft uppercase tracking-[0.18em] ${
                     lng === locale
                       ? 'text-amore hover:text-amore'
                       : 'text-mute-soft hover:text-ink-2'
@@ -202,7 +202,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             size="xs"
             fullWidth
             onClick={signOut}
-            className="!justify-start !px-3 !py-1.5 !text-[11.5px] font-normal text-warning hover:bg-paper-soft hover:text-warning"
+            className="!justify-start !px-3 !py-1.5 !text-sm font-normal text-warning hover:bg-paper-soft hover:text-warning"
           >
             {tAuth('signOut')}
           </Button>
@@ -225,7 +225,7 @@ function PopoverLink({
     <Link
       href={href}
       onClick={onClick}
-      className="block px-3 py-1.5 text-[11.5px] text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
+      className="block px-3 py-1.5 text-sm text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
     >
       {children}
     </Link>

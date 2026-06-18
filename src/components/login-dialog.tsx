@@ -43,10 +43,10 @@ export function LoginDialog({
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-[20px] font-bold tracking-[-0.018em] text-ink-2">
+            <h2 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
               {t('signInTitle')}
             </h2>
-            <p className="mt-2 text-[12.5px] leading-[1.7] text-mute">
+            <p className="mt-2 text-md leading-[1.7] text-mute">
               {t('signInSubtitle')}
             </p>
           </div>
@@ -54,7 +54,7 @@ export function LoginDialog({
             variant="ghost"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-2 -mt-1 !border-0 px-2 py-1 text-[14px] !text-mute-soft hover:!text-ink-2"
+            className="-mr-2 -mt-1 !border-0 px-2 py-1 text-xl !text-mute-soft hover:!text-ink-2"
           >
             ✕
           </IconButton>
@@ -66,7 +66,7 @@ export function LoginDialog({
 
         <div className="my-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-line" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('or')}
           </span>
           <span className="h-px flex-1 bg-line" />

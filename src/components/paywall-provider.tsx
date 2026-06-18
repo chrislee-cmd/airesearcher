@@ -135,13 +135,13 @@ function PaywallModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[440px] border border-line bg-paper p-7 rounded-sm"
       >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
           {t('eyebrow')}
         </p>
-        <h2 className="mt-2 text-[18px] font-bold tracking-[-0.018em] text-ink-2">
+        <h2 className="mt-2 text-2xl font-bold tracking-[-0.018em] text-ink-2">
           {t('title')}
         </h2>
-        <p className="mt-3 text-[12.5px] leading-[1.7] text-mute">
+        <p className="mt-3 text-md leading-[1.7] text-mute">
           {t('body', { balance: status?.balance ?? 0 })}
         </p>
         <div className="mt-6 flex items-center justify-end gap-3">
@@ -149,7 +149,7 @@ function PaywallModal({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="!text-[12px] !text-ink-2 hover:!text-amore"
+            className="!text-md !text-ink-2 hover:!text-amore"
           >
             {t('later')}
           </Button>
@@ -157,7 +157,7 @@ function PaywallModal({
             href="/credits"
             autoFocus
             onClick={onClose}
-            className="border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink-2 rounded-sm"
+            className="border border-ink bg-ink px-4 py-1.5 text-md font-semibold text-paper hover:bg-ink-2 rounded-sm"
           >
             {t('cta')}
           </Link>

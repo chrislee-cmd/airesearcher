@@ -21,7 +21,7 @@ export function BackgroundJobPill() {
     : null;
 
   const content = (
-    <span className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.22em] text-amore">
+    <span className="flex items-center gap-2 text-xs-soft uppercase tracking-[0.22em] text-amore">
       <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
       {label}
       {detail && (

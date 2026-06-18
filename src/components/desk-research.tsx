@@ -82,30 +82,30 @@ function DeskMarkdown({ source }: { source: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-[22px] font-bold tracking-[-0.02em] text-ink first:mt-0">
+          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-3xl font-bold tracking-[-0.02em] text-ink first:mt-0">
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-3 mt-8 text-[17px] font-bold tracking-[-0.018em] text-ink-2 first:mt-0">
+          <h2 className="mb-3 mt-8 text-2xl font-bold tracking-[-0.018em] text-ink-2 first:mt-0">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 mt-5 text-[14px] font-semibold tracking-[-0.005em] text-ink-2">
+          <h3 className="mb-2 mt-5 text-xl font-semibold tracking-[-0.005em] text-ink-2">
             {children}
           </h3>
         ),
         p: ({ children }) => (
-          <p className="my-2.5 text-[13.5px] leading-[1.8] text-ink-2">{children}</p>
+          <p className="my-2.5 text-lg leading-[1.8] text-ink-2">{children}</p>
         ),
         ul: ({ children }) => (
-          <ul className="my-2.5 list-disc space-y-1 pl-5 text-[13.5px] leading-[1.8] marker:text-mute-soft">
+          <ul className="my-2.5 list-disc space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="my-2.5 list-decimal space-y-1 pl-5 text-[13.5px] leading-[1.8] marker:text-mute-soft">
+          <ol className="my-2.5 list-decimal space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
             {children}
           </ol>
         ),
@@ -121,12 +121,12 @@ function DeskMarkdown({ source }: { source: string }) {
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-[13px] italic text-ink-2">
+          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-lg italic text-ink-2">
             {children}
           </blockquote>
         ),
         code: ({ children }) => (
-          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-[12px] text-ink-2 [border-radius:3px]">
+          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-md text-ink-2 [border-radius:3px]">
             {children}
           </code>
         ),
@@ -437,14 +437,14 @@ export function DeskResearch() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <section>
-            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('keywordLabel')}
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore rounded-sm">
               {keywords.map((k, idx) => (
                 <span
                   key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-[12px] text-ink-2 rounded-sm"
+                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-md text-ink-2 rounded-sm"
                 >
                   {k}
                   <IconButton
@@ -470,16 +470,16 @@ export function DeskResearch() {
                     ? tDesk('keywordPlaceholder')
                     : tDesk('keywordAddMore')
                 }
-                className="min-w-[140px] flex-1 bg-transparent py-0.5 text-[13px] text-ink-2 placeholder:text-mute-soft focus:outline-none"
+                className="min-w-[140px] flex-1 bg-transparent py-0.5 text-lg text-ink-2 placeholder:text-mute-soft focus:outline-none"
               />
             </div>
-            <span className="mt-1.5 block text-[10.5px] text-mute-soft">
+            <span className="mt-1.5 block text-xs-soft text-mute-soft">
               {tDesk('keywordHint')}
             </span>
           </section>
 
           <section>
-            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('rangeLabel')}
             </span>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -500,7 +500,7 @@ export function DeskResearch() {
               ))}
             </div>
             {(preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo))) && (
-              <div className="mt-3 flex items-center gap-2 text-[12px] text-mute">
+              <div className="mt-3 flex items-center gap-2 text-md text-mute">
                 <Input
                   type="date"
                   size="sm"
@@ -534,7 +534,7 @@ export function DeskResearch() {
 
         <div className="space-y-6">
           <section>
-            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('regionLabel')}
             </span>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -552,21 +552,21 @@ export function DeskResearch() {
                 </Button>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-mute-soft">
+            <p className="mt-2 text-sm text-mute-soft">
               <span className="mr-1.5 font-semibold uppercase tracking-[.16em] text-mute">
                 {tDesk('regionPortalsLabel')}
               </span>
               {DESK_REGION_PORTALS[region].join(' · ')}
             </p>
             {region !== 'KR' && (
-              <p className="mt-1 text-[11px] text-mute-soft">
+              <p className="mt-1 text-sm text-mute-soft">
                 {tDesk('regionKrOnlyHidden')}
               </p>
             )}
           </section>
 
           <section>
-            <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
               {tDesk('sourcesLabel')}
             </span>
             <div className="mt-2 space-y-1.5">
@@ -581,7 +581,7 @@ export function DeskResearch() {
                     key={g}
                     className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 rounded-sm"
                   >
-                    <span className="w-[68px] shrink-0 text-[11.5px] font-semibold text-ink-2">
+                    <span className="w-[68px] shrink-0 text-sm font-semibold text-ink-2">
                       {isEn ? meta.labelEn : meta.label}
                     </span>
                     <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
@@ -590,7 +590,7 @@ export function DeskResearch() {
                         return (
                           <label
                             key={s.id}
-                            className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-2 hover:text-amore"
+                            className="flex cursor-pointer items-center gap-1.5 text-md text-ink-2 hover:text-amore"
                           >
                             <Checkbox
                               checked={checked}
@@ -605,7 +605,7 @@ export function DeskResearch() {
                       variant="link"
                       size="xs"
                       onClick={() => toggleGroup(g)}
-                      className="shrink-0 px-0 py-0 text-[10px] font-normal uppercase tracking-[.18em] text-mute-soft hover:text-amore"
+                      className="shrink-0 px-0 py-0 text-xs font-normal uppercase tracking-[.18em] text-mute-soft hover:text-amore"
                     >
                       {allOn ? tDesk('groupNone') : tDesk('groupAll')}
                     </Button>
@@ -618,7 +618,7 @@ export function DeskResearch() {
       </div>
 
       <div className="mt-6 flex items-center justify-end gap-3">
-        <span className="text-[11px] tabular-nums text-mute-soft">
+        <span className="text-sm tabular-nums text-mute-soft">
           {keywords.length} {tDesk('keywordUnit')} · {selected.size} {tDesk('sourcesUnit')}
         </span>
         <Button
@@ -663,14 +663,14 @@ export function DeskResearch() {
             />
           ) : (
             <div className="border border-line bg-paper-soft px-4 py-2 rounded-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
                 {tDesk('thinkingDone')}
               </span>
             </div>
           )}
           <div
             ref={thoughtsScroller}
-            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-[12.5px] leading-[1.7] rounded-sm"
+            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-md leading-[1.7] rounded-sm"
           >
             {events.map((line, i) => (
               <div key={i} className="py-0.5 text-ink-2">
@@ -683,13 +683,13 @@ export function DeskResearch() {
       )}
 
       {error && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 rounded-sm">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
           {tDesk('error')}: <span className="font-mono">{error}</span>
         </div>
       )}
 
       {job?.status === 'error' && job.error_message && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12.5px] text-ink-2 rounded-sm">
+        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
           {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
         </div>
       )}
@@ -703,9 +703,9 @@ export function DeskResearch() {
       {showResult && (
         <>
           {job.skipped && job.skipped.length > 0 && (
-            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-[12px] text-ink-2 rounded-sm">
+            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
               <div className="font-semibold">{tDesk('skippedTitle')}</div>
-              <ul className="mt-1.5 space-y-0.5 font-mono text-[11.5px] text-mute">
+              <ul className="mt-1.5 space-y-0.5 font-mono text-sm text-mute">
                 {job.skipped.map((s) => (
                   <li key={s.source}>
                     · {s.source} — {s.missing}
@@ -717,14 +717,14 @@ export function DeskResearch() {
 
           {job.similar_keywords.length > 0 && (
             <section className="mt-10">
-              <span className="block text-[11px] font-semibold uppercase tracking-[.22em] text-amore">
+              <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
                 {tDesk('similarKeywords')}
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {job.similar_keywords.map((k) => (
                   <span
                     key={k}
-                    className="border border-line bg-paper-soft px-2.5 py-1 text-[11.5px] text-mute rounded-sm"
+                    className="border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute rounded-sm"
                   >
                     {k}
                   </span>
@@ -737,7 +737,7 @@ export function DeskResearch() {
 
           <section className="mt-10">
             <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-              <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+              <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
                 {tDesk('reportTitle')}
               </h2>
               <DownloadMenu
@@ -797,14 +797,14 @@ export function DeskResearch() {
                 ]}
               />
             </div>
-            <article className="mt-4 border border-line bg-paper p-6 text-[13.5px] leading-[1.75] text-ink-2 rounded-sm">
+            <article className="mt-4 border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2 rounded-sm">
               <DeskMarkdown source={job.output ?? ''} />
             </article>
           </section>
 
           {job.articles && job.articles.length > 0 && (
             <section className="mt-10">
-              <h2 className="border-b border-line pb-3 text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+              <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
                 {tDesk('collected')} ({job.articles.length})
               </h2>
               <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
@@ -814,18 +814,18 @@ export function DeskResearch() {
                       href={a.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[13px] font-semibold text-ink-2 hover:text-amore"
+                      className="text-lg font-semibold text-ink-2 hover:text-amore"
                     >
                       {a.title}
                     </a>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-mute-soft">
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-mute-soft">
                       <span className="uppercase tracking-[.18em]">{a.source}</span>
                       {a.origin && <span>{a.origin}</span>}
                       {a.publishedAt && <span>{a.publishedAt}</span>}
                       <span className="text-amore">#{a.keyword}</span>
                     </div>
                     {a.snippet && (
-                      <p className="mt-1.5 text-[12px] leading-[1.65] text-mute">
+                      <p className="mt-1.5 text-md leading-[1.65] text-mute">
                         {a.snippet}
                       </p>
                     )}

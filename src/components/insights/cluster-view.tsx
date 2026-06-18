@@ -21,15 +21,15 @@ function ClusterCard({ cluster }: { cluster: ClusterWithQuotes }) {
   return (
     <div className="border border-line bg-paper p-4 rounded-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[13.5px] font-semibold text-ink-2">
+        <h3 className="text-lg font-semibold text-ink-2">
           {cluster.label}
         </h3>
-        <span className="shrink-0 text-[11px] tabular-nums text-mute-soft">
+        <span className="shrink-0 text-sm tabular-nums text-mute-soft">
           {cluster.quotes.length} 인용구
         </span>
       </div>
       {cluster.insight && (
-        <p className="mt-1.5 text-[12px] leading-[1.55] text-mute">
+        <p className="mt-1.5 text-md leading-[1.55] text-mute">
           {cluster.insight}
         </p>
       )}
@@ -37,10 +37,10 @@ function ClusterCard({ cluster }: { cluster: ClusterWithQuotes }) {
         <ul className="mt-3 divide-y divide-line-soft border-t border-line-soft">
           {visible.map((q) => (
             <li key={q.id} className="py-2">
-              <div className="text-[11px] font-medium text-mute-soft">
+              <div className="text-sm font-medium text-mute-soft">
                 {q.participant_name}
               </div>
-              <p className="mt-0.5 text-[12.5px] leading-[1.55] text-ink-2">
+              <p className="mt-0.5 text-md leading-[1.55] text-ink-2">
                 {q.text}
               </p>
             </li>
@@ -68,7 +68,7 @@ function ClusterCard({ cluster }: { cluster: ClusterWithQuotes }) {
 export function ClusterView({ clusters }: { clusters: ClusterWithQuotes[] }) {
   if (clusters.length === 0) {
     return (
-      <p className="text-[11.5px] leading-[1.55] text-mute-soft">
+      <p className="text-sm leading-[1.55] text-mute-soft">
         이 분석에는 클러스터 데이터가 없습니다 (PR 5a 이전 생성된 분석은
         새 분석으로 다시 실행하면 자동 생성됩니다).
       </p>

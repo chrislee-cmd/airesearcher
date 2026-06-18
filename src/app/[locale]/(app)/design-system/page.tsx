@@ -71,9 +71,9 @@ function RadiusTokens() {
             className="flex flex-col items-center gap-2 border border-line bg-paper p-4 rounded-sm"
           >
             <div className={`h-16 w-16 bg-amore-bg ${t.name}`} />
-            <code className="text-[11px] text-ink">{t.name}</code>
-            <p className="text-[11px] text-mute-soft tabular-nums">{t.value}</p>
-            <p className="text-center text-[10.5px] text-mute">{t.usage}</p>
+            <code className="text-sm text-ink">{t.name}</code>
+            <p className="text-sm text-mute-soft tabular-nums">{t.value}</p>
+            <p className="text-center text-xs-soft text-mute">{t.usage}</p>
           </div>
         ))}
       </div>
@@ -105,11 +105,11 @@ function FontSizeTokens() {
               표준 텍스트 샘플
             </div>
             <div className="flex items-center justify-between border-t border-line-soft pt-2">
-              <code className="text-[11px] text-ink">{t.name}</code>
-              <span className="text-[10.5px] tabular-nums text-mute-soft">{t.px}</span>
+              <code className="text-sm text-ink">{t.name}</code>
+              <span className="text-xs-soft tabular-nums text-mute-soft">{t.px}</span>
             </div>
-            <p className="text-[10.5px] text-mute">{t.usage}</p>
-            <p className="text-[10px] text-mute-soft">흡수: {t.absorbs}</p>
+            <p className="text-xs-soft text-mute">{t.usage}</p>
+            <p className="text-xs text-mute-soft">흡수: {t.absorbs}</p>
           </div>
         ))}
       </div>
@@ -182,8 +182,8 @@ function ColorTokens() {
                   className="flex flex-col items-center gap-1.5 rounded-xs"
                 >
                   <div className={`h-12 w-12 rounded-xs ${t.cls}`} />
-                  <code className="text-[10.5px] text-ink">{t.name}</code>
-                  <p className="text-[10px] text-mute-soft tabular-nums">{t.hex}</p>
+                  <code className="text-xs-soft text-ink">{t.name}</code>
+                  <p className="text-xs text-mute-soft tabular-nums">{t.hex}</p>
                 </div>
               ))}
             </div>
@@ -210,7 +210,7 @@ function ZIndexTokens() {
       hint="z-{name} 사용. z-[N] 직접 사용은 lint 차단. 같은 레이어 안에서는 DOM 순서로 정렬."
     >
       <div className="border border-line bg-paper rounded-sm">
-        <table className="w-full text-[12px]">
+        <table className="w-full text-md">
           <thead className="border-b border-line">
             <tr className="text-left">
               <th className="px-4 py-2.5 font-semibold text-ink-2">Token</th>
@@ -367,8 +367,8 @@ function InputSection() {
     >
       <Subsection label="Sizes (default + label + helper)">
         <div className="grid grid-cols-2 gap-6">
-          <Input size="sm" label="size=sm" helper="px-2.5 py-1.5 text-[12px]" placeholder="value" />
-          <Input size="md" label="size=md" helper="px-3 py-2 text-[13px] (default)" placeholder="value" />
+          <Input size="sm" label="size=sm" helper="px-2.5 py-1.5 text-md" placeholder="value" />
+          <Input size="md" label="size=md" helper="px-3 py-2 text-lg (default)" placeholder="value" />
         </div>
       </Subsection>
 
@@ -484,11 +484,11 @@ function CheckboxSection() {
     >
       <Subsection label="Sizes">
         <div className="flex items-center gap-6">
-          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+          <label className="inline-flex items-center gap-2 text-md text-ink">
             <Checkbox size="sm" defaultChecked />
             <span>size=sm (default)</span>
           </label>
-          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+          <label className="inline-flex items-center gap-2 text-md text-ink">
             <Checkbox size="md" defaultChecked />
             <span>size=md</span>
           </label>
@@ -497,19 +497,19 @@ function CheckboxSection() {
 
       <Subsection label="States">
         <div className="flex items-center gap-6">
-          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+          <label className="inline-flex items-center gap-2 text-md text-ink">
             <Checkbox />
             <span>Default (off)</span>
           </label>
-          <label className="inline-flex items-center gap-2 text-[12px] text-ink">
+          <label className="inline-flex items-center gap-2 text-md text-ink">
             <Checkbox defaultChecked />
             <span>Checked</span>
           </label>
-          <label className="inline-flex items-center gap-2 text-[12px] text-mute">
+          <label className="inline-flex items-center gap-2 text-md text-mute">
             <Checkbox disabled />
             <span>Disabled (off)</span>
           </label>
-          <label className="inline-flex items-center gap-2 text-[12px] text-mute">
+          <label className="inline-flex items-center gap-2 text-md text-mute">
             <Checkbox disabled defaultChecked />
             <span>Disabled (checked)</span>
           </label>
@@ -566,7 +566,7 @@ function LabelSection() {
   return (
     <Section
       title="Label"
-      hint="src/components/ui/label.tsx · UPPERCASE / tracked / text-[11px] field label · Input/Textarea/Select 가 내부적으로 사용 · 직접 import 는 드물어야 함"
+      hint="src/components/ui/label.tsx · UPPERCASE / tracked / text-sm field label · Input/Textarea/Select 가 내부적으로 사용 · 직접 import 는 드물어야 함"
     >
       <Subsection label="Default / required">
         <div className="grid grid-cols-2 gap-6">
@@ -609,7 +609,7 @@ function MenuSection() {
         <DropdownMenuDemo />
       </Subsection>
       <Subsection label="Compositions in the codebase">
-        <div className="text-[12px] text-mute space-y-1.5">
+        <div className="text-md text-mute space-y-1.5">
           <p>
             DropdownMenu 위에 도메인 wrapper 두 개가 있습니다 — 직접 dropdown 코드를 작성하지 말고 가능하면 wrapper 사용:
           </p>
@@ -648,8 +648,8 @@ function Section({
   return (
     <section className="mb-10">
       <div className="mb-4 flex items-baseline justify-between border-b border-line-soft pb-2">
-        <h2 className="text-[16px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
-        {hint ? <p className="text-[11px] text-mute-soft">{hint}</p> : null}
+        <h2 className="text-2xl font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+        {hint ? <p className="text-sm text-mute-soft">{hint}</p> : null}
       </div>
       {children}
     </section>

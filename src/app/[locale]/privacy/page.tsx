@@ -29,13 +29,13 @@ export default async function PrivacyPage({
 }
 
 function H1({ children }: { children: React.ReactNode }) {
-  return <h1 className="mb-2 text-[26px] font-bold tracking-[-0.02em] text-ink-2">{children}</h1>;
+  return <h1 className="mb-2 text-display font-bold tracking-[-0.02em] text-ink-2">{children}</h1>;
 }
 function Meta({ children }: { children: React.ReactNode }) {
-  return <p className="mb-10 text-[12px] text-mute-soft">{children}</p>;
+  return <p className="mb-10 text-md text-mute-soft">{children}</p>;
 }
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 mb-3 text-[16px] font-semibold tracking-[-0.01em] text-ink-2">{children}</h2>;
+  return <h2 className="mt-10 mb-3 text-2xl font-semibold tracking-[-0.01em] text-ink-2">{children}</h2>;
 }
 function P({ children }: { children: React.ReactNode }) {
   return <p className="mb-3 text-mute">{children}</p>;

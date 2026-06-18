@@ -426,7 +426,7 @@ export function WorkspacePanel() {
         size="xs"
         onClick={() => setOpen(true)}
         aria-label={t('expand')}
-        className={`fixed bottom-5 right-5 z-40 !gap-2 !px-4 !py-2.5 !text-[10.5px] uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 ${
+        className={`fixed bottom-5 right-5 z-40 !gap-2 !px-4 !py-2.5 !text-xs-soft uppercase tracking-[0.22em] transition duration-[180ms] hover:border-amore hover:text-ink-2 ${
           pulse ? 'workspace-trigger-pulse !border-amore !text-ink-2' : ''
         } ${isOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'opacity-100 translate-y-0'}`}
       >
@@ -446,10 +446,10 @@ export function WorkspacePanel() {
           <header className="flex items-center justify-between border-b border-line px-5 py-3">
             <div className="flex items-center gap-2">
               <span className="inline-block h-px w-5 bg-amore" />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-amore">
+              <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-amore">
                 {t('eyebrow')}
               </span>
-              <span className="text-[11px] tabular-nums text-mute-soft">
+              <span className="text-sm tabular-nums text-mute-soft">
                 · {artifacts.length}
               </span>
             </div>
@@ -460,7 +460,7 @@ export function WorkspacePanel() {
                 setViewing(null);
               }}
               aria-label={t('collapse')}
-              className="text-[18px] leading-none"
+              className="text-2xl leading-none"
             >
               ×
             </IconButton>
@@ -503,7 +503,7 @@ export function WorkspacePanel() {
                     setCreatingProject(false);
                     setNewProjectName('');
                   }}
-                  className="px-0 py-0 text-[11px] font-normal text-mute-soft"
+                  className="px-0 py-0 text-sm font-normal text-mute-soft"
                 >
                   {t('cancel')}
                 </Button>
@@ -526,7 +526,7 @@ export function WorkspacePanel() {
                       if (p) setActive(p);
                     }
                   }}
-                  className="flex-1 border border-line bg-paper px-2 py-1 text-[12px] text-ink-2 rounded-xs"
+                  className="flex-1 border border-line bg-paper px-2 py-1 text-md text-ink-2 rounded-xs"
                 >
                   <option value="active">
                     {active
@@ -561,7 +561,7 @@ export function WorkspacePanel() {
           {resolvedKind === 'project' && (
             <div className="border-b border-line-soft px-5 py-2">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
                   {t('folders')}
                 </span>
                 <Button
@@ -571,7 +571,7 @@ export function WorkspacePanel() {
                     setCreatingFolderParent(null);
                     setNewFolderName('');
                   }}
-                  className="px-0 py-0 text-[10.5px] uppercase tracking-[0.18em] text-mute hover:text-amore"
+                  className="px-0 py-0 text-xs-soft uppercase tracking-[0.18em] text-mute hover:text-amore"
                 >
                   + {t('newFolder')}
                 </Button>
@@ -599,7 +599,7 @@ export function WorkspacePanel() {
                         if (a) void setFolderId(a, null);
                       }
                     }}
-                    className={`!justify-start !gap-2 !px-2 !py-1 !text-[12px] font-normal !rounded-xs ${
+                    className={`!justify-start !gap-2 !px-2 !py-1 !text-md font-normal !rounded-xs ${
                       selectedFolderId === null
                         ? '!bg-paper-soft !text-ink-2'
                         : 'hover:!text-ink-2'
@@ -662,7 +662,7 @@ export function WorkspacePanel() {
                               setRenamingFolder(folder.id);
                               setRenameValue(folder.name);
                             }}
-                            className={`flex-1 !justify-start !gap-2 !px-0 !py-1 !text-[12px] font-normal !border-0 ${
+                            className={`flex-1 !justify-start !gap-2 !px-0 !py-1 !text-md font-normal !border-0 ${
                               isSelected ? '!text-ink-2' : 'hover:!text-ink-2'
                             }`}
                           >
@@ -676,7 +676,7 @@ export function WorkspacePanel() {
                             setNewFolderName('');
                           }}
                           aria-label={t('newFolder')}
-                          className="px-1.5 py-0.5 text-[12px]"
+                          className="px-1.5 py-0.5 text-md"
                         >
                           +
                         </IconButton>
@@ -688,7 +688,7 @@ export function WorkspacePanel() {
                             }
                           }}
                           aria-label={t('deleteFolder')}
-                          className="pr-2 text-[12px]"
+                          className="pr-2 text-md"
                         >
                           ×
                         </IconButton>
@@ -760,7 +760,7 @@ export function WorkspacePanel() {
           )}
 
           {artifacts.length > 0 && (
-            <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-[11px]">
+            <div className="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-2 text-sm">
               <label className="flex cursor-pointer items-center gap-2 text-mute hover:text-ink-2">
                 <Checkbox
                   checked={allSelected}
@@ -869,12 +869,12 @@ export function WorkspacePanel() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loading && artifacts.length === 0 ? (
               <div className="px-5 py-12 text-center">
-                <p className="text-[12px] text-mute-soft">{t('loading')}</p>
+                <p className="text-md text-mute-soft">{t('loading')}</p>
               </div>
             ) : artifacts.length === 0 ? (
               <div className="px-5 py-12 text-center">
-                <p className="text-[12px] text-mute-soft">{t('empty')}</p>
-                <p className="mt-2 text-[11px] text-mute-soft">{t('emptyHint')}</p>
+                <p className="text-md text-mute-soft">{t('empty')}</p>
+                <p className="mt-2 text-sm text-mute-soft">{t('emptyHint')}</p>
               </div>
             ) : (
               <ul>
@@ -916,10 +916,10 @@ export function WorkspacePanel() {
                           aria-label={t('select')}
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-amore">
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amore">
                             {tSidebar(a.featureKey)}
                           </div>
-                          <div className="mt-0.5 truncate text-[12px] text-ink-2">
+                          <div className="mt-0.5 truncate text-md text-ink-2">
                             {a.title}
                           </div>
                           {showAssignSelect && (
@@ -932,7 +932,7 @@ export function WorkspacePanel() {
                                 });
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1.5 w-full truncate border border-line bg-paper px-2 py-1 text-[10.5px] text-mute-soft transition-colors hover:text-ink-2 rounded-sm"
+                              className="mt-1.5 w-full truncate border border-line bg-paper px-2 py-1 text-xs-soft text-mute-soft transition-colors hover:text-ink-2 rounded-sm"
                               aria-label={t('assignProject')}
                             >
                               <option value="__unfiled__">{tDashboard('unfiled')}</option>
@@ -957,7 +957,7 @@ export function WorkspacePanel() {
                             }}
                             aria-label={t('actions')}
                           >
-                            <span className="text-[16px] leading-none">⋯</span>
+                            <span className="text-2xl leading-none">⋯</span>
                           </IconButton>
                           {isMenuOpen && (
                             <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] border border-line bg-paper py-1 rounded-sm">
@@ -1044,7 +1044,7 @@ export function WorkspacePanel() {
           </div>
 
           {toast && (
-            <div className="border-t border-line-soft px-5 py-2 text-[11px] text-mute">
+            <div className="border-t border-line-soft px-5 py-2 text-sm text-mute">
               {toast}
             </div>
           )}
@@ -1083,7 +1083,7 @@ function MenuItem({
       fullWidth
       disabled={disabled}
       onClick={onClick}
-      className={`!justify-between !gap-3 !px-3 !py-1.5 !text-[11.5px] font-normal ${
+      className={`!justify-between !gap-3 !px-3 !py-1.5 !text-sm font-normal ${
         danger
           ? '!text-warning hover:bg-paper-soft'
           : 'hover:bg-paper-soft hover:!text-ink-2'
@@ -1115,18 +1115,18 @@ function ViewerOverlay({
         className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-line bg-paper rounded-sm"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <div className="truncate text-[13px] font-semibold text-ink-2">
+          <div className="truncate text-lg font-semibold text-ink-2">
             {title}
           </div>
           <IconButton
             onClick={onClose}
             aria-label={t('closeViewer')}
-            className="text-[18px] leading-none"
+            className="text-2xl leading-none"
           >
             ×
           </IconButton>
         </header>
-        <pre className="flex-1 overflow-auto whitespace-pre-wrap p-5 text-[12.5px] leading-[1.7] text-ink-2">
+        <pre className="flex-1 overflow-auto whitespace-pre-wrap p-5 text-md leading-[1.7] text-ink-2">
           {content === null ? '…' : content}
         </pre>
       </div>

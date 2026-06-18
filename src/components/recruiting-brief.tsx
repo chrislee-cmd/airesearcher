@@ -606,7 +606,7 @@ export function RecruitingBrief() {
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex h-[220px] flex-col">
-          <label className="mb-2 block text-[12px] font-semibold text-ink-2">
+          <label className="mb-2 block text-md font-semibold text-ink-2">
             텍스트 붙여넣기
           </label>
           <Textarea
@@ -614,11 +614,11 @@ export function RecruitingBrief() {
             onChange={(e) => setPasted(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="h-[188px] resize-none text-[12.5px] text-ink-2"
+            className="h-[188px] resize-none text-md text-ink-2"
           />
         </div>
         <div className="flex h-[220px] flex-col">
-          <label className="mb-2 block text-[12px] font-semibold text-ink-2">
+          <label className="mb-2 block text-md font-semibold text-ink-2">
             파일 업로드
           </label>
           <FileDropZone
@@ -633,7 +633,7 @@ export function RecruitingBrief() {
       </div>
 
       {rejected.length > 0 && (
-        <div className="mt-3 text-[11.5px] text-amore">
+        <div className="mt-3 text-sm text-amore">
           허용되지 않은 형식: {rejected.join(', ')}
         </div>
       )}
@@ -643,7 +643,7 @@ export function RecruitingBrief() {
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
-              className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12.5px]"
+              className="flex items-center justify-between gap-3 px-4 py-2.5 text-md"
             >
               <span className="truncate text-ink-2">{f.name}</span>
               <span className="shrink-0 tabular-nums text-mute-soft">
@@ -654,7 +654,7 @@ export function RecruitingBrief() {
                 size="xs"
                 onClick={() => removeFile(i)}
                 disabled={running}
-                className="shrink-0 text-[11.5px]"
+                className="shrink-0 text-sm"
               >
                 제거
               </Button>
@@ -664,7 +664,7 @@ export function RecruitingBrief() {
       )}
 
       <div className="mt-4 flex items-center justify-end gap-3">
-        <span className="text-[11px] tabular-nums text-mute-soft">
+        <span className="text-sm tabular-nums text-mute-soft">
           {files.length}개 파일 · {pasted.length}자
         </span>
         <Button
@@ -678,7 +678,7 @@ export function RecruitingBrief() {
       </div>
 
       {errorMessage && (
-        <div className="mt-6 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+        <div className="mt-6 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
           오류: {errorMessage}
         </div>
       )}
@@ -686,16 +686,16 @@ export function RecruitingBrief() {
       {showResultPanel && (
         <div className="mt-10">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-            <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+            <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
               {running ? '추출 중…' : '추출 결과'}
             </h2>
-            <span className="text-[11px] text-mute-soft">
+            <span className="text-sm text-mute-soft">
               인라인 편집 가능 — 수정 후 “설문 생성”을 누르세요
             </span>
           </div>
 
           <div className="mt-3">
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.04em] text-mute-soft">
+            <label className="mb-1 block text-sm font-semibold uppercase tracking-[0.04em] text-mute-soft">
               요약
             </label>
             <Textarea
@@ -707,7 +707,7 @@ export function RecruitingBrief() {
               }
               disabled={!edited}
               rows={2}
-              className="border-line-soft text-[12.5px] text-ink-2"
+              className="border-line-soft text-md text-ink-2"
             />
           </div>
 
@@ -718,7 +718,7 @@ export function RecruitingBrief() {
           <div className="mt-4 h-[480px]">
             <section className="flex h-full min-h-0 flex-col border border-line bg-paper rounded-sm">
               <header className="flex items-center justify-between border-b border-line-soft px-3 py-2">
-                <h3 className="text-[12px] font-semibold text-ink-2">
+                <h3 className="text-md font-semibold text-ink-2">
                   대상자 조건 ({previewCriteria.length})
                 </h3>
                 {edited && (
@@ -726,7 +726,7 @@ export function RecruitingBrief() {
                     variant="link"
                     size="xs"
                     onClick={addCriterion}
-                    className="text-[11px]"
+                    className="text-sm"
                   >
                     + 항목 추가
                   </Button>
@@ -741,7 +741,7 @@ export function RecruitingBrief() {
                 ) : (
                   <ul className="divide-y divide-line-soft">
                     {previewCriteria.map((c, i) => (
-                      <li key={i} className="px-3 py-2 text-[12px]">
+                      <li key={i} className="px-3 py-2 text-md">
                         {edited ? (
                           <CriterionEditor
                             value={c}
@@ -764,7 +764,7 @@ export function RecruitingBrief() {
           {edited && (
             <div className="mt-10 border-t border-line pt-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">
+                <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
                   설문 (Google Forms)
                 </h2>
                 <div className="flex items-center gap-2">
@@ -817,7 +817,7 @@ export function RecruitingBrief() {
                     size="sm"
                     onClick={() => requireAuth(() => void generateSurvey())}
                     disabled={surveyRunning}
-                    className="text-[12px]"
+                    className="text-md"
                   >
                     {surveyRunning
                       ? '생성 중…'
@@ -833,7 +833,7 @@ export function RecruitingBrief() {
                           size="sm"
                           onClick={() => void openStartModal()}
                           disabled={starting}
-                          className="text-[12px]"
+                          className="text-md"
                         >
                           {starting ? '메일 발송 중…' : '리크루팅 시작'}
                         </Button>
@@ -843,7 +843,7 @@ export function RecruitingBrief() {
                           size="sm"
                           onClick={() => void publishToGoogle()}
                           disabled={publishing}
-                          className="text-[12px]"
+                          className="text-md"
                         >
                           {publishing ? '발행 중…' : 'Google Forms로 발행'}
                         </Button>
@@ -856,7 +856,7 @@ export function RecruitingBrief() {
                           window.location.href =
                             '/api/recruiting/google/start';
                         }}
-                        className="text-[12px]"
+                        className="text-md"
                       >
                         Google 계정 연결
                       </Button>
@@ -865,7 +865,7 @@ export function RecruitingBrief() {
               </div>
 
               {google && (
-                <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-mute-soft">
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-mute-soft">
                   <span>
                     {google.connected
                       ? `Google 연결됨${google.email ? ` · ${google.email}` : ''}`
@@ -880,7 +880,7 @@ export function RecruitingBrief() {
                         await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
                         window.location.reload();
                       }}
-                      className="px-0 py-0 font-normal text-[11px] underline underline-offset-2 hover:text-amore"
+                      className="px-0 py-0 font-normal text-sm underline underline-offset-2 hover:text-amore"
                     >
                       연결 해제
                     </Button>
@@ -891,7 +891,7 @@ export function RecruitingBrief() {
                       onClick={() => {
                         window.location.href = '/api/recruiting/google/start';
                       }}
-                      className="px-0 py-0 font-normal text-[11px] text-amore underline underline-offset-2 hover:text-amore"
+                      className="px-0 py-0 font-normal text-sm text-amore underline underline-offset-2 hover:text-amore"
                     >
                       Google 계정 연결
                     </Button>
@@ -899,7 +899,7 @@ export function RecruitingBrief() {
                 </p>
               )}
               {google?.connected && !google.hasDrive && (
-                <p className="mt-1 text-[11px] text-amore">
+                <p className="mt-1 text-sm text-amore">
                   공개(anyone with link) 권한 부여를 위해 Google 계정을 다시 연결해주세요.{' '}
                   <Button
                     variant="link"
@@ -907,41 +907,41 @@ export function RecruitingBrief() {
                     onClick={() => {
                       window.location.href = '/api/recruiting/google/start';
                     }}
-                    className="px-0 py-0 font-normal text-[11px] text-amore underline underline-offset-2 hover:text-amore"
+                    className="px-0 py-0 font-normal text-sm text-amore underline underline-offset-2 hover:text-amore"
                   >
                     재연결
                   </Button>
                 </p>
               )}
               {surveyError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
                   설문 생성 오류: {surveyError}
                 </div>
               )}
               {publishError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
                   발행 오류: {publishError}
                 </div>
               )}
               {googleAuthError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
                   Google 연결 오류: {googleAuthError} — 연결 해제 후 다시 시도해주세요.
                 </div>
               )}
               {startError && (
-                <div className="mt-4 border border-amore bg-amore-bg p-4 text-[12.5px] text-amore rounded-sm">
+                <div className="mt-4 border border-amore bg-amore-bg p-4 text-md text-amore rounded-sm">
                   메일 발송 오류: {startError}
                 </div>
               )}
               {started && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] text-ink rounded-sm">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-md text-ink rounded-sm">
                   리크루팅 메일을 {started.to}로 발송했습니다.
                 </div>
               )}
               {published && (
-                <div className="mt-4 border border-line-soft bg-paper p-4 text-[12.5px] rounded-sm">
+                <div className="mt-4 border border-line-soft bg-paper p-4 text-md rounded-sm">
                   <div className="font-semibold text-ink">발행 완료</div>
-                  <div className="mt-1 flex flex-wrap gap-3 text-[12px]">
+                  <div className="mt-1 flex flex-wrap gap-3 text-md">
                     <a
                       href={published.editUri}
                       target="_blank"
@@ -965,12 +965,12 @@ export function RecruitingBrief() {
               {(surveyRunning || surveyRows.length > 0) && (
                 <div className="mt-6">
                   {(surveyPartial?.title || survey?.title) && (
-                    <div className="mb-3 text-[13px] font-semibold text-ink">
+                    <div className="mb-3 text-lg font-semibold text-ink">
                       {survey?.title ?? surveyPartial?.title}
                     </div>
                   )}
                   <div className="h-[480px] overflow-auto border border-line bg-paper rounded-sm">
-                    <table className="w-full min-w-[760px] border-collapse text-[12px]">
+                    <table className="w-full min-w-[760px] border-collapse text-md">
                       <thead className="sticky top-0 z-table-sticky bg-paper">
                         <tr className="text-left">
                           <th className="border-b border-line-soft px-3 py-2 font-semibold text-ink-2 w-[42px]">
@@ -1046,15 +1046,15 @@ export function RecruitingBrief() {
             className="w-full max-w-[640px] border border-line bg-paper p-5 rounded-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold text-ink">
+            <div className="mb-1 flex items-center gap-2 text-xl font-semibold text-ink">
               리크루팅 메일 발송
               {draftLoading && (
-                <span className="text-[11px] font-normal text-mute">
+                <span className="text-sm font-normal text-mute">
                   · 추출된 조건으로 초안 생성 중…
                 </span>
               )}
             </div>
-            <div className="mb-4 text-[11.5px] text-mute">
+            <div className="mb-4 text-sm text-mute">
               각 항목을 검토·수정한 뒤 최종 승인하면 lee880728@gmail.com으로 발송됩니다.
             </div>
 
@@ -1070,7 +1070,7 @@ export function RecruitingBrief() {
                 ] as const
               ).map(({ key, label, multiline }) => (
                 <label key={key} className="block">
-                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
+                  <div className="mb-1 text-sm font-semibold uppercase tracking-[0.04em] text-mute">
                     {label}
                   </div>
                   {multiline ? (
@@ -1081,7 +1081,7 @@ export function RecruitingBrief() {
                       }
                       rows={2}
                       disabled={draftLoading}
-                      className="text-[12.5px] leading-[1.5]"
+                      className="text-md leading-[1.5]"
                     />
                   ) : (
                     <Input
@@ -1091,28 +1091,28 @@ export function RecruitingBrief() {
                         setMailFields((prev) => ({ ...prev, [key]: e.target.value }))
                       }
                       disabled={draftLoading}
-                      className="text-[12.5px]"
+                      className="text-md"
                     />
                   )}
                 </label>
               ))}
               <div className="block">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-mute">
+                <div className="mb-1 text-sm font-semibold uppercase tracking-[0.04em] text-mute">
                   인터뷰 신청서 링크 (자동)
                 </div>
-                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-[11.5px] text-mute rounded-sm">
+                <div className="break-all border border-line-soft bg-paper-2 px-3 py-2 text-sm text-mute rounded-sm">
                   {published?.responderUri ?? ''}
                 </div>
               </div>
             </div>
 
             {draftError && (
-              <div className="mb-3 border border-line-soft bg-paper p-3 text-[11.5px] text-mute rounded-sm">
+              <div className="mb-3 border border-line-soft bg-paper p-3 text-sm text-mute rounded-sm">
                 초안 자동 생성 실패 — 직접 입력해주세요. ({draftError})
               </div>
             )}
             {startError && (
-              <div className="mb-3 border border-amore bg-amore-bg p-3 text-[12px] text-amore rounded-sm">
+              <div className="mb-3 border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
                 메일 발송 오류: {startError}
               </div>
             )}
@@ -1122,7 +1122,7 @@ export function RecruitingBrief() {
                 size="sm"
                 onClick={() => setStartModalOpen(false)}
                 disabled={starting}
-                className="border-line text-[12px]"
+                className="border-line text-md"
               >
                 취소
               </Button>
@@ -1136,7 +1136,7 @@ export function RecruitingBrief() {
                   !mailFields.purpose.trim() ||
                   !mailFields.target.trim()
                 }
-                className="text-[12px]"
+                className="text-md"
               >
                 {starting ? '발송 중…' : '최종 승인'}
               </Button>
@@ -1152,14 +1152,14 @@ function CriterionStreamingView({ c }: { c: Criterion }) {
   return (
     <div>
       <div className="flex items-center gap-2">
-        <span className="text-[10.5px] uppercase tracking-[0.04em] text-mute-soft">
+        <span className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
           {c.category}
         </span>
         <span
           className={
             c.required
-              ? 'border border-amore px-1.5 py-px text-[10px] text-amore [border-radius:3px]'
-              : 'border border-line px-1.5 py-px text-[10px] text-mute [border-radius:3px]'
+              ? 'border border-amore px-1.5 py-px text-xs text-amore [border-radius:3px]'
+              : 'border border-line px-1.5 py-px text-xs text-mute [border-radius:3px]'
           }
         >
           {c.required ? '필수' : '우대'}
@@ -1188,9 +1188,9 @@ function CriterionEditor({
           value={value.category}
           onChange={(e) => onChange('category', e.target.value)}
           placeholder="카테고리"
-          className="w-[140px] border-line-soft text-[10.5px] uppercase tracking-[0.04em] text-mute-soft"
+          className="w-[140px] border-line-soft text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
         />
-        <label className="flex items-center gap-1 text-[10.5px] text-mute">
+        <label className="flex items-center gap-1 text-xs-soft text-mute">
           <Checkbox
             checked={value.required}
             onChange={(e) => onChange('required', e.target.checked)}
@@ -1218,7 +1218,7 @@ function CriterionEditor({
         onChange={(e) => onChange('detail', e.target.value)}
         placeholder="세부 설명"
         rows={2}
-        className="resize-none border-line-soft px-2 py-1 text-[12px] leading-[1.5] text-mute rounded-xs"
+        className="resize-none border-line-soft px-2 py-1 text-md leading-[1.5] text-mute rounded-xs"
       />
     </div>
   );

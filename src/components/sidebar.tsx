@@ -379,7 +379,7 @@ export function Sidebar({
             style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 7 }}
           />
           <div>
-            <div className="text-[14px] font-bold tracking-[-0.01em] text-ink">
+            <div className="text-xl font-bold tracking-[-0.01em] text-ink">
               {tBrand('name')}
             </div>
             <div className="mt-0.5 h-px w-5 bg-amore" />
@@ -398,7 +398,7 @@ export function Sidebar({
             href="/projects"
             prefetch
             onClick={() => track('sidebar_projects_click')}
-            className={`flex-1 px-4 py-2 text-[12.5px] transition-colors duration-[120ms] ${
+            className={`flex-1 px-4 py-2 text-md transition-colors duration-[120ms] ${
               projectsActive
                 ? 'font-semibold text-ink-2'
                 : 'text-mute hover:text-ink-2'
@@ -421,7 +421,7 @@ export function Sidebar({
           {dropdownOpen && (
             <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 rounded-sm">
               {projects.length === 0 ? (
-                <div className="px-3 py-2 text-[11.5px] text-mute-soft">
+                <div className="px-3 py-2 text-sm text-mute-soft">
                   {tProjects('noProjects')}
                 </div>
               ) : (
@@ -430,7 +430,7 @@ export function Sidebar({
                     key={p.id}
                     href={`/projects/${p.id}`}
                     onClick={() => setDropdownOpen(false)}
-                    className="block truncate px-3 py-1.5 text-[12px] text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
+                    className="block truncate px-3 py-1.5 text-md text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
                   >
                     {p.name}
                   </Link>
@@ -453,7 +453,7 @@ export function Sidebar({
                 onClick={() => toggleGroup(g.key)}
                 aria-expanded={!isCollapsed}
                 rightIcon={<Chevron open={!isCollapsed} small />}
-                className="!justify-between !gap-2 !px-4 !py-1.5 !text-[10px] uppercase tracking-[0.22em] !text-mute-soft hover:!text-ink-2 !rounded-none"
+                className="!justify-between !gap-2 !px-4 !py-1.5 !text-xs uppercase tracking-[0.22em] !text-mute-soft hover:!text-ink-2 !rounded-none"
               >
                 {tGroups(g.key)}
               </Button>
@@ -534,7 +534,7 @@ export function Sidebar({
                               if (path) router.push(path);
                             });
                           }}
-                          className={`flex items-center justify-between gap-2 px-4 py-1.5 text-[12.5px] transition-colors duration-[120ms] border-l-2 ${
+                          className={`flex items-center justify-between gap-2 px-4 py-1.5 text-md transition-colors duration-[120ms] border-l-2 ${
                             active
                               ? 'border-amore text-ink-2 font-semibold'
                               : isDragOver
@@ -558,7 +558,7 @@ export function Sidebar({
                             return (
                               <span
                                 title={t('working')}
-                                className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em] text-amore"
+                                className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-[0.18em] text-amore"
                               >
                                 <Spinner />
                                 {text}
@@ -566,7 +566,7 @@ export function Sidebar({
                             );
                           })() : isRecentlyDone(f.key) ? (
                             <span
-                              className="flex shrink-0 items-center gap-1 text-[9.5px] uppercase tracking-[0.18em]"
+                              className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-[0.18em]"
                               style={{ color: 'var(--color-success, #16a34a)' }}
                             >
                               <span

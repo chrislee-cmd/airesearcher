@@ -46,8 +46,8 @@ export function AttendeesPanel({
     <section className="border border-line bg-paper p-5 rounded-sm">
       <header className="flex items-start justify-between gap-3 border-b border-line pb-3">
         <div>
-          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
-          <p className="mt-1.5 text-[12px] leading-[1.7] text-mute">{t('description')}</p>
+          <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+          <p className="mt-1.5 text-md leading-[1.7] text-mute">{t('description')}</p>
         </div>
         <div className="flex items-start gap-2">
           <ExportButtons
@@ -121,13 +121,13 @@ function ImportButton({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="border border-line bg-paper px-3 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-50 rounded-sm"
+        className="border border-line bg-paper px-3 py-1.5 text-md text-ink-2 hover:border-ink disabled:opacity-50 rounded-sm"
       >
         {busy ? '…' : `↑ ${t('import')}`}
       </button>
       <span
         className={
-          'max-w-[260px] text-right text-[10.5px] ' +
+          'max-w-[260px] text-right text-xs-soft ' +
           (status?.kind === 'err' ? 'text-amore' : 'text-mute-soft')
         }
       >
@@ -155,7 +155,7 @@ function ExportButtons({
         type="button"
         disabled={disabled}
         onClick={() => downloadAttendees('csv', attendees, confirmed, importHeaders)}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
+        className="border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
       >
         ↓ {t('exportCsv')}
       </button>
@@ -163,7 +163,7 @@ function ExportButtons({
         type="button"
         disabled={disabled}
         onClick={() => downloadAttendees('xlsx', attendees, confirmed, importHeaders)}
-        className="border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
+        className="border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
       >
         ↓ {t('exportXlsx')}
       </button>
@@ -222,13 +222,13 @@ function AttendeeList({
   return (
     <div className="border border-line-soft rounded-sm">
       <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
-        <span className="text-[11px] uppercase tracking-[0.06em] text-mute-soft">
+        <span className="text-sm uppercase tracking-[0.06em] text-mute-soft">
           {attendees.length}
         </span>
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}
-          className="text-[12px] text-ink-2 hover:text-amore"
+          className="text-md text-ink-2 hover:text-amore"
         >
           + {t('addAttendee')}
         </button>
@@ -256,7 +256,7 @@ function AttendeeList({
                 setName('');
                 setPhone('');
               }}
-              className="px-2 py-1 text-[11.5px] text-mute hover:text-ink-2"
+              className="px-2 py-1 text-sm text-mute hover:text-ink-2"
             >
               {t('cancel')}
             </button>
@@ -264,7 +264,7 @@ function AttendeeList({
               type="button"
               onClick={submit}
               disabled={!name.trim()}
-              className="border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 rounded-sm"
+              className="border border-ink bg-ink px-3 py-1 text-sm text-paper disabled:opacity-40 rounded-sm"
             >
               {t('save')}
             </button>
@@ -272,7 +272,7 @@ function AttendeeList({
         </div>
       )}
       {attendees.length === 0 && !adding ? (
-        <div className="px-3 py-6 text-center text-[12px] text-mute-soft">{t('empty')}</div>
+        <div className="px-3 py-6 text-center text-md text-mute-soft">{t('empty')}</div>
       ) : (
         <ul>
           {sortedAttendees.map((a) => {
@@ -289,22 +289,22 @@ function AttendeeList({
                   }
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-[12.5px] text-ink-2">{a.name}</div>
+                    <div className="truncate text-md text-ink-2">{a.name}</div>
                     {a.phone && (
-                      <div className="truncate text-[11px] tabular-nums text-mute-soft">{a.phone}</div>
+                      <div className="truncate text-sm tabular-nums text-mute-soft">{a.phone}</div>
                     )}
                     {a.note && (
-                      <div className="mt-0.5 line-clamp-2 text-[11px] leading-[1.5] text-mute">
+                      <div className="mt-0.5 line-clamp-2 text-sm leading-[1.5] text-mute">
                         {a.note}
                       </div>
                     )}
                   </div>
                   {slot ? (
-                    <span className="shrink-0 border border-ink bg-ink px-1.5 py-0.5 text-[10px] tabular-nums text-paper rounded-sm">
+                    <span className="shrink-0 border border-ink bg-ink px-1.5 py-0.5 text-xs tabular-nums text-paper rounded-sm">
                       {slot.date.slice(5)} {slot.start}
                     </span>
                   ) : (
-                    <span className="shrink-0 text-[10.5px] uppercase tracking-[0.06em] text-mute-soft">—</span>
+                    <span className="shrink-0 text-xs-soft uppercase tracking-[0.06em] text-mute-soft">—</span>
                   )}
                 </button>
               </li>
@@ -333,7 +333,7 @@ function AttendeeDetail({
 
   if (!attendee) {
     return (
-      <div className="flex items-center justify-center border border-dashed border-line-soft p-8 text-center text-[12px] text-mute-soft rounded-sm">
+      <div className="flex items-center justify-center border border-dashed border-line-soft p-8 text-center text-md text-mute-soft rounded-sm">
         {t('selectedNone')}
       </div>
     );
@@ -375,29 +375,29 @@ function AttendeeDetail({
         <button
           type="button"
           onClick={() => onRemove(attendee.id)}
-          className="shrink-0 text-[11.5px] text-mute hover:text-amore"
+          className="shrink-0 text-sm text-mute hover:text-amore"
         >
           {t('remove')}
         </button>
       </div>
 
       <div className="mt-4 border-t border-line-soft pt-4">
-        <h3 className="text-[13px] font-semibold text-ink-2">{t('confirmedSlot')}</h3>
+        <h3 className="text-lg font-semibold text-ink-2">{t('confirmedSlot')}</h3>
         {slot ? (
           <div className="mt-2 flex items-center gap-3">
-            <span className="border border-ink bg-ink px-2 py-1 text-[11.5px] tabular-nums text-paper rounded-sm">
+            <span className="border border-ink bg-ink px-2 py-1 text-sm tabular-nums text-paper rounded-sm">
               {slot.date} · {slot.start}–{slot.end}
             </span>
             <button
               type="button"
               onClick={() => onSetSlot(attendee.id, null)}
-              className="text-[11.5px] text-mute hover:text-amore"
+              className="text-sm text-mute hover:text-amore"
             >
               {t('clearSlot')}
             </button>
           </div>
         ) : (
-          <p className="mt-2 text-[12px] text-mute-soft">{t('noConfirmed')}</p>
+          <p className="mt-2 text-md text-mute-soft">{t('noConfirmed')}</p>
         )}
 
         <ManualSlotEntry attendeeId={attendee.id} onSetSlot={onSetSlot} />
@@ -405,12 +405,12 @@ function AttendeeDetail({
 
       {attendee.customFields && Object.keys(attendee.customFields).length > 0 && (
         <div className="mt-4 border-t border-line-soft pt-4">
-          <h3 className="text-[13px] font-semibold text-ink-2">{t('customFields')}</h3>
+          <h3 className="text-lg font-semibold text-ink-2">{t('customFields')}</h3>
           <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
             {Object.entries(attendee.customFields).map(([k, v]) => (
               <div key={k} className="flex flex-col gap-0.5">
-                <dt className="text-[10.5px] uppercase tracking-[0.06em] text-mute-soft">{k}</dt>
-                <dd className="break-words text-[12.5px] text-ink-2">{v}</dd>
+                <dt className="text-xs-soft uppercase tracking-[0.06em] text-mute-soft">{k}</dt>
+                <dd className="break-words text-md text-ink-2">{v}</dd>
               </div>
             ))}
           </dl>
@@ -440,7 +440,7 @@ function ManualSlotEntry({
 
   return (
     <div className="mt-4 border-t border-dashed border-line-soft pt-3">
-      <div className="text-[11px] uppercase tracking-[0.06em] text-mute-soft">{t('manualSlot')}</div>
+      <div className="text-sm uppercase tracking-[0.06em] text-mute-soft">{t('manualSlot')}</div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
         <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={inputCls} />
@@ -450,7 +450,7 @@ function ManualSlotEntry({
           type="button"
           onClick={submit}
           disabled={!date}
-          className="ml-auto border border-ink bg-ink px-3 py-1 text-[11.5px] text-paper disabled:opacity-40 rounded-sm"
+          className="ml-auto border border-ink bg-ink px-3 py-1 text-sm text-paper disabled:opacity-40 rounded-sm"
         >
           {t('save')}
         </button>
@@ -460,7 +460,7 @@ function ManualSlotEntry({
 }
 
 const inputCls =
-  'border border-line bg-paper px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:border-amore focus:outline-none rounded-sm';
+  'border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 focus:border-amore focus:outline-none rounded-sm';
 
 function Field({
   label,
@@ -473,7 +473,7 @@ function Field({
 }) {
   return (
     <label className={'flex flex-col gap-1.5 ' + className}>
-      <span className="text-[11px] uppercase tracking-[0.06em] text-mute-soft">{label}</span>
+      <span className="text-sm uppercase tracking-[0.06em] text-mute-soft">{label}</span>
       {children}
     </label>
   );

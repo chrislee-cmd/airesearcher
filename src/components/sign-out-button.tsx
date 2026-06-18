@@ -22,7 +22,7 @@ export function SignOutButton() {
       size="sm"
       uppercase
       onClick={signOut}
-      className="!px-3 !text-[11px] tracking-[0.18em] hover:!text-ink-2"
+      className="!px-3 !text-sm tracking-[0.18em] hover:!text-ink-2"
     >
       {t('signOut')}
     </ChromeButton>

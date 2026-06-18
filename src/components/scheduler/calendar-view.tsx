@@ -103,8 +103,8 @@ export function CalendarView({
     <section className="border border-line bg-paper p-5 rounded-sm">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
-          <p className="text-[11px] text-mute-soft">
+          <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">{t('title')}</h2>
+          <p className="text-sm text-mute-soft">
             {t('timezoneSource', { tz: sourceTz, offset: sourceOffset })}
             {tzMismatch && (
               <>
@@ -128,7 +128,7 @@ export function CalendarView({
         </div>
       </header>
       {tzMismatch && (
-        <p className="mt-2 text-[11px] text-mute">{t('timezoneMismatchHint')}</p>
+        <p className="mt-2 text-sm text-mute">{t('timezoneMismatchHint')}</p>
       )}
 
       <div className="mt-4">
@@ -172,7 +172,7 @@ export function CalendarView({
         )}
       </div>
 
-      <footer className="mt-4 flex flex-wrap items-center gap-4 border-t border-line-soft pt-3 text-[11.5px] text-mute">
+      <footer className="mt-4 flex flex-wrap items-center gap-4 border-t border-line-soft pt-3 text-sm text-mute">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 border border-amore bg-amore/10" /> {t('legendAvailable')}
         </span>
@@ -187,7 +187,7 @@ export function CalendarView({
 }
 
 const navBtn =
-  'border border-line bg-paper px-2.5 py-1 text-[12px] text-ink-2 hover:border-ink rounded-sm';
+  'border border-line bg-paper px-2.5 py-1 text-md text-ink-2 hover:border-ink rounded-sm';
 
 function ModeToggle({
   mode,
@@ -207,7 +207,7 @@ function ModeToggle({
           type="button"
           onClick={() => onChange(m)}
           className={
-            'px-3 py-1 text-[12px] transition-colors ' +
+            'px-3 py-1 text-md transition-colors ' +
             (mode === m ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink-2')
           }
         >
@@ -242,7 +242,7 @@ function MonthGrid({
     <div>
       <div className="grid grid-cols-7 border-b border-line-soft pb-1.5">
         {weekdayShort.map((w) => (
-          <div key={w} className="text-center text-[11px] uppercase tracking-[0.06em] text-mute-soft">
+          <div key={w} className="text-center text-sm uppercase tracking-[0.06em] text-mute-soft">
             {w}
           </div>
         ))}
@@ -269,17 +269,17 @@ function MonthGrid({
               }
             >
               <div className="flex items-center justify-between">
-                <span className={'text-[11.5px] tabular-nums ' + (inReq ? 'text-ink-2' : 'text-mute')}>
+                <span className={'text-sm tabular-nums ' + (inReq ? 'text-ink-2' : 'text-mute')}>
                   {d.getDate()}
                 </span>
                 {confirmedCount > 0 && (
-                  <span className="rounded-sm bg-ink px-1 text-[10px] tabular-nums text-paper">
+                  <span className="rounded-sm bg-ink px-1 text-xs tabular-nums text-paper">
                     {confirmedCount}
                   </span>
                 )}
               </div>
               {inReq && slots.length > 0 && (
-                <div className="mt-1 text-[10px] tabular-nums text-amore">
+                <div className="mt-1 text-xs tabular-nums text-amore">
                   {slots.length} slots
                 </div>
               )}
@@ -325,7 +325,7 @@ function WeekGrid({
       {days.map((d) => (
         <div
           key={toIso(d)}
-          className="border-b border-l border-line-soft px-2 py-1.5 text-center text-[11px]"
+          className="border-b border-l border-line-soft px-2 py-1.5 text-center text-sm"
         >
           <div className="uppercase tracking-[0.06em] text-mute-soft">{weekdayShort[d.getDay()]}</div>
           <div className="tabular-nums text-ink-2">{d.getMonth() + 1}/{d.getDate()}</div>
@@ -374,7 +374,7 @@ function RowGroup({
     <>
       <div
         className={
-          'border-b border-line-soft px-2 py-1.5 text-right text-[10.5px] tabular-nums ' +
+          'border-b border-line-soft px-2 py-1.5 text-right text-xs-soft tabular-nums ' +
           (isHour ? 'text-mute' : 'text-mute-soft/70')
         }
       >
@@ -413,7 +413,7 @@ function RowGroup({
                     disabled={!canPick && !isConfirmed}
                     onClick={() => onPick(iso, s.start, s.end)}
                     className={
-                      'w-full truncate px-1.5 py-1 text-left text-[11px] tabular-nums rounded-sm ' +
+                      'w-full truncate px-1.5 py-1 text-left text-sm tabular-nums rounded-sm ' +
                       (isConfirmed
                         ? 'border border-ink bg-ink text-paper'
                         : 'border border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
@@ -458,12 +458,12 @@ function DayList({
 
   return (
     <div>
-      <div className="mb-2 text-[12.5px] text-ink-2">
+      <div className="mb-2 text-md text-ink-2">
         {cursor.getFullYear()}.{String(cursor.getMonth() + 1).padStart(2, '0')}.
         {String(cursor.getDate()).padStart(2, '0')}
       </div>
       {slots.length === 0 ? (
-        <div className="border border-dashed border-line-soft p-6 text-center text-[12px] text-mute-soft rounded-sm">
+        <div className="border border-dashed border-line-soft p-6 text-center text-md text-mute-soft rounded-sm">
           —
         </div>
       ) : (
@@ -481,7 +481,7 @@ function DayList({
                   disabled={!canPick && !isConfirmed}
                   onClick={() => onPick(iso, s.start, s.end)}
                   className={
-                    'flex w-full items-center justify-between border px-3 py-2 text-[12.5px] rounded-sm ' +
+                    'flex w-full items-center justify-between border px-3 py-2 text-md rounded-sm ' +
                     (isConfirmed
                       ? 'border-ink bg-ink text-paper'
                       : 'border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
@@ -490,7 +490,7 @@ function DayList({
                 >
                   <span className="tabular-nums">{s.start} – {s.end}</span>
                   {isConfirmed && (
-                    <span className="text-[11.5px]">
+                    <span className="text-sm">
                       {confirmedHere
                         .map((c) => attendeeById.get(c.attendeeId)?.name ?? '—')
                         .join(', ')}
