@@ -3,7 +3,7 @@
 import type { LabelHTMLAttributes, ReactNode } from 'react';
 
 // Shared <Label> — codifies the recurring UPPERCASE/tracked field-label
-// pattern (text-[11px] uppercase tracking-[0.22em] text-mute-soft).
+// pattern (text-sm uppercase tracking-[0.22em] text-mute-soft).
 //
 // Used together with <Input>, <Textarea>, <Select>.
 
@@ -19,7 +19,7 @@ export function Label({
   ...rest
 }: Props) {
   const cls = [
-    'block text-[11px] font-medium uppercase tracking-[0.22em] text-mute-soft',
+    'block text-sm font-medium uppercase tracking-[0.22em] text-mute-soft',
     className ?? '',
   ]
     .filter(Boolean)

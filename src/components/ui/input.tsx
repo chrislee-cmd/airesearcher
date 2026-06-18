@@ -19,8 +19,8 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
 };
 
 const SIZE = {
-  sm: 'px-2.5 py-1.5 text-[12px]',
-  md: 'px-3 py-2 text-[13px]',
+  sm: 'px-2.5 py-1.5 text-md',
+  md: 'px-3 py-2 text-lg',
 };
 
 export const Input = forwardRef<HTMLInputElement, Props>(function Input(
@@ -92,11 +92,11 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
         ) : null}
       </div>
       {error ? (
-        <p id={`${inputId}-error`} className="mt-1 text-[11px] text-warning">
+        <p id={`${inputId}-error`} className="mt-1 text-sm text-warning">
           {error}
         </p>
       ) : helper ? (
-        <p id={`${inputId}-helper`} className="mt-1 text-[11px] text-mute-soft">
+        <p id={`${inputId}-helper`} className="mt-1 text-sm text-mute-soft">
           {helper}
         </p>
       ) : null}

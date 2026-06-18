@@ -147,7 +147,7 @@ export function DropdownMenu({
           style={{ minWidth }}
         >
           {label ? (
-            <div className="px-3 pb-1 pt-1.5 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-mute-soft">
+            <div className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
               {label}
             </div>
           ) : null}
@@ -163,7 +163,7 @@ export function DropdownMenu({
               disabled={item.disabled}
               onMouseEnter={() => setActiveIndex(i)}
               onClick={() => onItemClick(item)}
-              className={`flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-[11.5px] transition-colors duration-[120ms] ${
+              className={`flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
                 item.disabled
                   ? 'cursor-not-allowed text-mute-soft/60'
                   : 'text-ink-2 hover:bg-line-soft/40 focus:bg-line-soft/40 focus:outline-none'
@@ -171,7 +171,7 @@ export function DropdownMenu({
             >
               <span className="truncate">{item.label}</span>
               {item.hint ? (
-                <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-mute-soft">
+                <span className="shrink-0 font-mono text-xs-soft tabular-nums text-mute-soft">
                   {item.hint}
                 </span>
               ) : null}

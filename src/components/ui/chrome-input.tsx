@@ -11,8 +11,8 @@ import { forwardRef, type InputHTMLAttributes } from 'react';
 // (4) and translate-console share URL readonly (1).
 //
 // Sizes:
-//   xs   px-1.5 py-0.5 text-[12px]   in-row chrome (workspace folder rename)
-//   sm   px-2   py-1   text-[12px]   standalone chrome (workspace new project,
+//   xs   px-1.5 py-0.5 text-md   in-row chrome (workspace folder rename)
+//   sm   px-2   py-1   text-md   standalone chrome (workspace new project,
 //                                    translate share URL)
 //
 // Layout: doesn't bake `flex-1`. Caller passes `className="flex-1"` (or
@@ -32,8 +32,8 @@ const BASE =
   'disabled:opacity-40 disabled:cursor-not-allowed';
 
 const SIZE = {
-  xs: 'px-1.5 py-0.5 text-[12px]',
-  sm: 'px-2 py-1 text-[12px]',
+  xs: 'px-1.5 py-0.5 text-md',
+  sm: 'px-2 py-1 text-md',
 };
 
 export const ChromeInput = forwardRef<HTMLInputElement, Props>(function ChromeInput(

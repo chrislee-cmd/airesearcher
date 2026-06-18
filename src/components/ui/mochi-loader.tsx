@@ -16,7 +16,7 @@ export function MochiLoader({ size = 56, label }: Props) {
         style={{ width: size, height: size, objectFit: 'contain' }}
       />
       {label && (
-        <span className="text-[11.5px] font-medium uppercase tracking-[.12em] text-mute-soft">
+        <span className="text-sm font-medium uppercase tracking-[.12em] text-mute-soft">
           {label}
         </span>
       )}
