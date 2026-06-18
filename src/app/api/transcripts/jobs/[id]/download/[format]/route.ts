@@ -61,7 +61,7 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from('transcript_jobs')
-    .select('filename, markdown, status, user_id, created_at')
+    .select('filename, markdown, clean_markdown, status, user_id, created_at')
     .eq('id', id)
     .single();
   if (error || !job) {
@@ -70,6 +70,9 @@ export async function GET(
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
+  // Same preference as the preview route — cleaned version wins, original is
+  // the fallback when cleanup was skipped / failed / low-confidence.
+  const sourceMarkdown = (job.clean_markdown as string | null) ?? (job.markdown as string);
 
   // 1) Try the original filename. If it looks like a person/identifier, keep it.
   // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",
@@ -97,7 +100,7 @@ export async function GET(
 
   // Mirror the resolved display name into the front-matter `file:` field so the
   // cover H1 and the meta grid show the human-friendly name, not the UUID.
-  const displayMarkdown = (job.markdown as string).replace(
+  const displayMarkdown = sourceMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${displayBase}`,
   );

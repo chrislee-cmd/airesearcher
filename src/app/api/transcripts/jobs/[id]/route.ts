@@ -13,7 +13,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, created_at, updated_at',
+      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, clean_markdown, created_at, updated_at',
     )
     .eq('id', id)
     .single();

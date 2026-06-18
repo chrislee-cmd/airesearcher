@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
@@ -7,8 +7,11 @@ import {
   type ElevenLabsScribeResult,
 } from '@/lib/transcripts/elevenlabs';
 import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
+import { cleanupTranscript } from '@/lib/transcripts/cleanup';
 
-export const maxDuration = 60;
+// Bumped from 60s to 200s because cleanup is scheduled via `after()` and
+// shares this route's maxDuration budget — see poll/route.ts for the mirror.
+export const maxDuration = 200;
 
 // ElevenLabs webhooks sign each delivery. The header carries a timestamp and
 // one or more v0 signatures separated by commas, e.g.
@@ -165,6 +168,44 @@ export async function POST(request: Request) {
   } catch (e) {
     console.warn('[transcripts/webhook/elevenlabs] credit deduction failed', e);
   }
+
+  // Background cleanup pass — see poll/route.ts for the same shape. Writes
+  // `clean_markdown` only on success, leaves NULL on any failure so the UI
+  // falls back to the original markdown.
+  after(async () => {
+    try {
+      const { cleanMarkdown, audit } = await cleanupTranscript(
+        mergedWords,
+        job.filename,
+        formatted.duration,
+        formatted.speakers,
+      );
+      if (!cleanMarkdown) {
+        await admin
+          .from('transcript_jobs')
+          .update({
+            raw_result: {
+              ...rawWithMeta,
+              _cleanup: audit,
+            } as unknown as object,
+          })
+          .eq('id', job.id);
+        return;
+      }
+      await admin
+        .from('transcript_jobs')
+        .update({
+          clean_markdown: cleanMarkdown,
+          raw_result: {
+            ...rawWithMeta,
+            _cleanup: audit,
+          } as unknown as object,
+        })
+        .eq('id', job.id);
+    } catch (e) {
+      console.warn('[transcripts/webhook/elevenlabs] cleanup pass failed', e);
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }
