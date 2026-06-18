@@ -206,6 +206,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "Video Analyzer",
     "translate": "Live Interpreter",
+    "slidegen": "Slide Generator",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -503,6 +504,11 @@
       "title": "Live Interpreter",
       "description": "OpenAI Realtime translates your microphone audio on the fly. Generate a share link so remote viewers see the live captions and pick the language they listen to.",
       "cost": "50 credits to start, then 10 credits per 10 minutes"
+    },
+    "slidegen": {
+      "title": "Slide Generator",
+      "description": "Paste a report and get a diagram-driven slide deck. This is the skeleton step — deterministic split with a bullet fallback only; the editor, LLM classifier, and export land in follow-up PRs.",
+      "cost": "Free during preview"
     },
     "voice_concierge": {
       "title": "Voice Concierge",

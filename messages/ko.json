@@ -206,6 +206,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "영상분석기",
     "translate": "AI 동시통역",
+    "slidegen": "PPT 생성기",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -503,6 +504,11 @@
       "title": "AI 동시통역",
       "description": "마이크로 말한 내용을 OpenAI Realtime이 실시간으로 통역합니다. 공유 링크를 만들어 외부 청취자에게도 자막과 오디오를 그대로 전달합니다.",
       "cost": "시작 시 50크레딧, 이후 10분당 10크레딧"
+    },
+    "slidegen": {
+      "title": "PPT 생성기",
+      "description": "보고서 텍스트를 붙여넣으면 도식 슬라이드 덱으로 자동 변환합니다. 현재 뼈대 단계로 결정론적 분할(bullet 폴백)만 동작하며, 편집·LLM 분류·다운로드는 후속 PR에서 들어옵니다.",
+      "cost": "프리뷰 무료"
     },
     "voice_concierge": {
       "title": "보이스 컨시어지",

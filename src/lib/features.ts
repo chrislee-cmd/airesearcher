@@ -14,6 +14,10 @@ export type FeatureKey =
   | 'affinity_bubble'
   | 'video'
   | 'translate'
+  // PPT 생성기 (SlideGen) — 보고서 텍스트를 도식 슬라이드 덱으로 변환. PR1 은
+  // 결정론적 뼈대(`##` 헤딩 분할 + bullet_body 폴백)만. LLM 분류기 / 편집기 /
+  // PptxGenJS export 는 후속 PR. PREVIEW 게이트로 super-admin 만 노출.
+  | 'slidegen'
   // Global voice concierge — not a sidebar item, mounted as a FAB in
   // (app)/layout.tsx. Cost is stubbed at 0 for PR1; the credit policy
   // is still open (design §12.5) so the foundation ships as free beta.
@@ -56,6 +60,9 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // lump as the headline number; the per-10-minute surcharge lives in the
   // locale `Features.translate.cost` string.
   { key: 'translate', href: '/live', cost: 50 },
+  // SlideGen — PR1 skeleton; cost is a placeholder until the LLM-backed
+  // classifier/storyline PRs land. Free during PREVIEW (super-admin only).
+  { key: 'slidegen', href: '/slidegen', cost: 0 },
   // Global voice concierge — bottom-right FAB on every (app) route. No
   // dedicated page in PR1 (the FAB only pops a coming-soon toast); the
   // href is reserved for future expand/settings routes. Free during the
@@ -83,6 +90,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'translate',
   'voice_concierge',
   'insights_analyzer',
+  'slidegen',
 ]);
 
 // Single source of truth for credit pricing — read by both the
@@ -148,5 +156,5 @@ export const FEATURE_GROUPS: {
 }[] = [
   { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
   { key: 'conduct', features: ['moderator', 'survey', 'translate'] },
-  { key: 'analysis', features: ['insights_analyzer', 'quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'affinity_bubble'] },
+  { key: 'analysis', features: ['insights_analyzer', 'quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'slidegen', 'affinity_bubble'] },
 ];
