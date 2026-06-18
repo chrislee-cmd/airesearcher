@@ -56,6 +56,21 @@
   --radius-lg: 32px;
   --radius-pill: 999px;
 
+  /* Font-size scale (B-1, option C — conservative consolidation).
+     Bucket boundaries derived from frequency audit of 781 text-[Npx]
+     literals. Each token absorbs adjacent half-px sizes that pair to
+     the same visual role; the 11/11.5 and 12/12.5 splits stay separated
+     because the editorial tone uses both deliberately. */
+  --text-xs: 10px;         /* absorbs 9, 9.5, 10 — extra-small caps/labels */
+  --text-xs-soft: 10.5px;  /* boundary: amore-soft eyebrow labels */
+  --text-sm: 11.5px;       /* absorbs 11, 11.5 — small UI text */
+  --text-md: 12.5px;       /* absorbs 12, 12.5 — default body */
+  --text-lg: 13px;         /* absorbs 13, 13.5 — emphasized body */
+  --text-xl: 15px;         /* absorbs 14, 15 — subhead */
+  --text-2xl: 18px;        /* absorbs 16, 17, 18 — heading */
+  --text-3xl: 22px;        /* absorbs 20, 22, 24 — large heading */
+  --text-display: 32px;    /* absorbs 26, 28, 42 — hero/display */
+
   /* Single shadow token */
   --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 }
