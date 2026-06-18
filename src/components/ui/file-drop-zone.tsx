@@ -118,10 +118,10 @@ export function FileDropZone({
         }}
       />
       {label !== undefined && (
-        <div className="text-[13.5px] font-medium text-ink-2">{label}</div>
+        <div className="text-lg font-medium text-ink-2">{label}</div>
       )}
       {helperText !== undefined && (
-        <div className="mt-2 text-[11.5px] text-mute-soft">{helperText}</div>
+        <div className="mt-2 text-sm text-mute-soft">{helperText}</div>
       )}
       {children}
     </div>

@@ -19,10 +19,10 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 //                                         "Tap to enable audio")
 //
 // Sizes:
-//   xs   px-2 py-0.5 text-[10.5px]       in-row chrome (workspace subfolder)
-//   sm   px-2 py-1   text-[10.5px]       standalone chrome (workspace Create)
-//   md   h-7 px-2    text-[11.5px]       small toolbar (translate Copy)
-//   lg   h-8 px-3    text-[12.5px]       toolbar chrome (translate Stop)
+//   xs   px-2 py-0.5 text-xs-soft       in-row chrome (workspace subfolder)
+//   sm   px-2 py-1   text-xs-soft       standalone chrome (workspace Create)
+//   md   h-7 px-2    text-sm       small toolbar (translate Copy)
+//   lg   h-8 px-3    text-md       toolbar chrome (translate Stop)
 //
 // `uppercase` toggles the caps treatment used by workspace chrome
 // (font-semibold + uppercase + tracking-[0.18em]). Translate chrome
@@ -61,10 +61,10 @@ const VARIANT: Record<ChromeButtonVariant, string> = {
 };
 
 const SIZE: Record<ChromeButtonSize, string> = {
-  xs: 'px-2 py-0.5 text-[10.5px]',
-  sm: 'px-2 py-1 text-[10.5px]',
-  md: 'inline-flex h-7 items-center px-2 text-[11.5px]',
-  lg: 'inline-flex h-8 items-center px-3 text-[12.5px]',
+  xs: 'px-2 py-0.5 text-xs-soft',
+  sm: 'px-2 py-1 text-xs-soft',
+  md: 'inline-flex h-7 items-center px-2 text-sm',
+  lg: 'inline-flex h-8 items-center px-3 text-md',
 };
 
 const UPPERCASE = 'font-semibold uppercase tracking-[0.18em]';

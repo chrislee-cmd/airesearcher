@@ -123,19 +123,19 @@ export function Modal({
             {title ? (
               <h2
                 id={headingId}
-                className="text-[16px] font-semibold tracking-[-0.01em] text-ink-2"
+                className="text-2xl font-semibold tracking-[-0.01em] text-ink-2"
               >
                 {title}
               </h2>
             ) : null}
             {description ? (
-              <p className="mt-1 text-[12px] leading-[1.6] text-mute">
+              <p className="mt-1 text-md leading-[1.6] text-mute">
                 {description}
               </p>
             ) : null}
           </header>
         )}
-        <div className="px-5 py-4 text-[13px] leading-[1.65] text-ink-2">
+        <div className="px-5 py-4 text-lg leading-[1.65] text-ink-2">
           {children}
         </div>
         {footer ? (

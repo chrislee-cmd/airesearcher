@@ -31,8 +31,8 @@ type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & {
 };
 
 const SIZE = {
-  sm: 'px-2.5 py-1.5 text-[12px]',
-  md: 'px-3 py-2 text-[13px]',
+  sm: 'px-2.5 py-1.5 text-md',
+  md: 'px-3 py-2 text-lg',
 };
 
 export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
@@ -137,11 +137,11 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
         </span>
       </div>
       {error ? (
-        <p id={`${selectId}-error`} className="mt-1 text-[11px] text-warning">
+        <p id={`${selectId}-error`} className="mt-1 text-sm text-warning">
           {error}
         </p>
       ) : helper ? (
-        <p id={`${selectId}-helper`} className="mt-1 text-[11px] text-mute-soft">
+        <p id={`${selectId}-helper`} className="mt-1 text-sm text-mute-soft">
           {helper}
         </p>
       ) : null}

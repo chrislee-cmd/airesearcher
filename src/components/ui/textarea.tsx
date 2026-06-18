@@ -31,7 +31,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
   const inputId = id ?? autoId;
 
   const taCls = [
-    'border bg-paper px-3 py-2 text-[13px] leading-[1.6] text-ink placeholder:text-mute-soft',
+    'border bg-paper px-3 py-2 text-lg leading-[1.6] text-ink placeholder:text-mute-soft',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
     'rounded-sm',
@@ -67,11 +67,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
         {...rest}
       />
       {error ? (
-        <p id={`${inputId}-error`} className="mt-1 text-[11px] text-warning">
+        <p id={`${inputId}-error`} className="mt-1 text-sm text-warning">
           {error}
         </p>
       ) : helper ? (
-        <p id={`${inputId}-helper`} className="mt-1 text-[11px] text-mute-soft">
+        <p id={`${inputId}-helper`} className="mt-1 text-sm text-mute-soft">
           {helper}
         </p>
       ) : null}

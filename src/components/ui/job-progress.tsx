@@ -36,19 +36,19 @@ export function JobProgress({
             }`}
           />
           <span
-            className={`truncate text-[10.5px] font-semibold uppercase tracking-[0.22em] ${labelTone}`}
+            className={`truncate text-xs-soft font-semibold uppercase tracking-[0.22em] ${labelTone}`}
           >
             {label}
           </span>
           {determinate && (
-            <span className="tabular-nums text-[11px] text-mute-soft">
+            <span className="tabular-nums text-sm text-mute-soft">
               {Math.round(pct)}%
             </span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {hint && (
-            <span className="text-[11px] tabular-nums text-mute-soft">
+            <span className="text-sm tabular-nums text-mute-soft">
               {hint}
             </span>
           )}
@@ -56,7 +56,7 @@ export function JobProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="border border-line bg-paper px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning rounded-sm"
+              className="border border-line bg-paper px-2.5 py-1 text-xs-soft font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning rounded-sm"
             >
               {cancelLabel}
             </button>
