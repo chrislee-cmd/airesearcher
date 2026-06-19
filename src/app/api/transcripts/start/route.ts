@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     jobId: job.id,
     signedUrl: signed.signedUrl,
     apiModel,
-    languageCode: langEntry.code === 'multi' ? null : langEntry.dgLanguage,
+    languageCode: langEntry.dgLanguage,
   });
 }
 

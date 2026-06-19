@@ -239,7 +239,7 @@ export const panelsEn: Panels = {
               <div className="dz-row">
                 <span className="pill amore">drag → instant transcription</span>
                 <span className="pill">up to 25MB</span>
-                <span className="pill">Korean / English auto-detect</span>
+                <span className="pill">Korean · English · 30+ languages</span>
               </div>
               <button className="btn dz-btn" data-vbdemo="1" type="button">Try with a demo file</button>
             </div>

@@ -2,11 +2,16 @@
 //
 // Each entry maps an internal code to the language value AND the provider that
 // transcribes it best. English (en, en-GB) → Deepgram nova-3 (English SOTA).
-// Everything else, including `multi` (auto-detect), → ElevenLabs Scribe v2,
-// which beat Deepgram nova-2 by ~2.15× word recall on a 90-min Korean
-// interview (A1 experiment, 2026-06-16). `dgLanguage` doubles as the
-// ElevenLabs `language_code` — Scribe v2 accepts both ISO 639-1 ("ko") and
-// 639-3 ("kor"), verified directly.
+// Everything else → ElevenLabs Scribe v2, which beat Deepgram nova-2 by
+// ~2.15× word recall on a 90-min Korean interview (A1 experiment, 2026-06-16).
+// `dgLanguage` doubles as the ElevenLabs `language_code` — Scribe v2 accepts
+// both ISO 639-1 ("ko") and 639-3 ("kor"), verified directly.
+//
+// "자동 감지" was removed 2026-06-19 — Korean-specific post-processing passes
+// (cleanup / term-normalize / number-normalize / speaker-roles) would run on
+// whatever language the model returned, producing 질문자/응답자 labels on
+// English transcripts etc. Users now explicitly pick the audio language;
+// default is Korean (most common case in this product).
 
 export type LanguageEntry = {
   code: string;       // internal code; matches what the client sends
@@ -18,8 +23,6 @@ export type LanguageEntry = {
 };
 
 export const LANGUAGES: LanguageEntry[] = [
-  { code: 'multi',  label: '자동 감지',         flag: '🌐', dgLanguage: 'multi',  dgModel: 'nova-3', provider: 'elevenlabs' },
-
   // Northeast Asia
   { code: 'ko',     label: '한국어',            flag: '🇰🇷', dgLanguage: 'ko',     dgModel: 'nova-2', provider: 'elevenlabs' },
   { code: 'ja',     label: '일본어',            flag: '🇯🇵', dgLanguage: 'ja',     dgModel: 'nova-3', provider: 'elevenlabs' },
@@ -71,18 +74,23 @@ const BY_CODE: Record<string, LanguageEntry> = Object.fromEntries(
   LANGUAGES.map((l) => [l.code, l]),
 );
 
+// `ko` is the default fallback — most common in this product and the only
+// language with the cleanup / term-normalize / number-normalize / speaker-roles
+// post-processing pipeline. Past jobs may still have `language='multi'` in
+// the DB; mapping those to `ko` is a safe display fallback (we never re-run
+// the transcription, just need a valid entry to show metadata).
 export function getLanguage(code: string | null | undefined): LanguageEntry {
-  if (!code) return BY_CODE.multi;
-  return BY_CODE[code] ?? BY_CODE.multi;
+  if (!code) return BY_CODE.ko;
+  return BY_CODE[code] ?? BY_CODE.ko;
 }
 
 /**
  * Pick a sensible default from a browser locale string (e.g. "ko-KR", "en-US",
- * "zh-TW"). Returns the closest known internal code, or "multi" if nothing
- * matches.
+ * "zh-TW"). Returns the closest known internal code, or "ko" if nothing
+ * matches (Korean is the product's primary user base).
  */
 export function pickFromBrowser(navLang: string | null | undefined): string {
-  if (!navLang) return 'multi';
+  if (!navLang) return 'ko';
   // Exact match — handles "en-GB", "zh-TW", etc.
   if (BY_CODE[navLang]) return navLang;
   // Primary subtag — "en-US" → "en", "ja-JP" → "ja"
@@ -90,5 +98,5 @@ export function pickFromBrowser(navLang: string | null | undefined): string {
   if (BY_CODE[primary]) return primary;
   // zh-* (other than zh-TW) → simplified zh
   if (primary === 'zh') return 'zh';
-  return 'multi';
+  return 'ko';
 }

@@ -236,7 +236,7 @@ export const panelsKo: Panels = {
               <div className="dz-row">
                 <span className="pill amore">drag → 즉시 변환</span>
                 <span className="pill">최대 25MB</span>
-                <span className="pill">한국어 / 영어 자동 감지</span>
+                <span className="pill">한국어 · 영어 · 30+ 언어</span>
               </div>
               <button className="btn dz-btn" data-vbdemo="1" type="button">데모로 변환해보기</button>
             </div>
