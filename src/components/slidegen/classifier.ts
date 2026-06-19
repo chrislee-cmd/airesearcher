@@ -1,20 +1,26 @@
 // Deterministic Phase 0/1 classifier — splits a plain text / markdown
 // report into slide-sized chunks and produces a DeckSpec. Each chunk is
 // inspected for an `@layout:` marker; recognised layouts (currently
-// `bullet_body`, `two_by_two`) parse their structured payload, and
-// anything unrecognised — or any payload that fails its diagram's
-// validate() — falls back to `bullet_body` so a slide is always
-// renderable. LLM-backed Storyline + Layout classifier (SPEC §11 A/B)
-// replaces this in later PRs; this stays as the offline fallback and
-// the contract anchor for tests.
+// `bullet_body`, `two_by_two`, `process_flow`) parse their structured
+// payload, and anything unrecognised — or any payload that fails its
+// diagram's validate() — falls back to `bullet_body` so a slide is
+// always renderable. LLM-backed Storyline + Layout classifier (SPEC §11
+// A/B) replaces this in later PRs; this stays as the offline fallback
+// and the contract anchor for tests.
 //
 // Split priority:
 //   1. `---` thematic breaks delimit slides explicitly.
 //   2. `##` headings split otherwise (heading text → actionTitle).
 //   3. If neither marker is present, the whole text is one slide.
 
-import type { DeckSpec, SlideSpec, TwoByTwoPayload } from './types';
+import type {
+  DeckSpec,
+  ProcessFlowPayload,
+  SlideSpec,
+  TwoByTwoPayload,
+} from './types';
 import { twoByTwoTemplate } from './diagrams/two-by-two';
+import { processFlowTemplate } from './diagrams/process-flow';
 
 const MAX_BULLETS = 8;
 const DEFAULT_TITLE = '제목 없음';
@@ -141,11 +147,43 @@ function parseTwoByTwoBody(body: string): TwoByTwoPayload | null {
   return twoByTwoTemplate.validate(payload) ? payload : null;
 }
 
-function detectLayout(body: string): 'two_by_two' | null {
+// `@layout:process_flow` parser. SPEC §8 markup:
+//   @layout:process_flow
+//   1: 진단 :: 시장 정체를 정량 데이터로 정리
+//   2: 설계 :: 자동화 파이프라인 정의
+//   3: 검증 :: 파일럿 3사로 KPI 측정
+//   4: 확장 :: SaaS 전환
+//
+// Returns null when fewer than one valid `N: title :: desc` line is
+// parsed or the template's validate() rejects (e.g. >6 steps). Order is
+// taken from the leading number, not file position, so users can paste
+// out-of-order lines without breaking the diagram.
+function parseProcessFlowBody(body: string): ProcessFlowPayload | null {
+  const lines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const steps: ProcessFlowPayload['steps'] = [];
+  for (const line of lines) {
+    const m = line.match(/^(\d+)\s*[:.)]\s*(.+?)\s*::\s*(.+)$/);
+    if (!m) continue;
+    const order = Number.parseInt(m[1], 10);
+    if (!Number.isFinite(order)) continue;
+    steps.push({ order, title: m[2].trim(), desc: m[3].trim() });
+  }
+
+  if (steps.length === 0) return null;
+  const payload: ProcessFlowPayload = { steps };
+  return processFlowTemplate.validate(payload) ? payload : null;
+}
+
+function detectLayout(body: string): 'two_by_two' | 'process_flow' | null {
   const match = body.match(/^@layout\s*:\s*([a-z_]+)\s*$/im);
   if (!match) return null;
   const layout = match[1].toLowerCase();
   if (layout === 'two_by_two') return 'two_by_two';
+  if (layout === 'process_flow') return 'process_flow';
   return null;
 }
 
@@ -160,6 +198,19 @@ function buildSlide(chunk: Chunk): SlideSpec {
         speakerNotes: null,
         sourceRefs: [chunk.sourceRef],
         layoutType: 'two_by_two',
+        payload,
+      };
+    }
+  }
+  if (layout === 'process_flow') {
+    const payload = parseProcessFlowBody(chunk.body);
+    if (payload) {
+      return {
+        id: `slide-${chunk.sourceRef}`,
+        actionTitle: chunk.actionTitle,
+        speakerNotes: null,
+        sourceRefs: [chunk.sourceRef],
+        layoutType: 'process_flow',
         payload,
       };
     }

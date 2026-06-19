@@ -32,6 +32,13 @@ BR: 자동화 :: 알림 노이즈 | 통계 새로고침 지연
 - 브랜드 가이드 학습 후 자율 생성
 - 캠페인별 성과 피드백을 다음 변형에 반영
 
+## 실행 로드맵
+@layout:process_flow
+1: 진단 :: 시장 정체와 광고주 통점을 정량 데이터로 확정
+2: 설계 :: 브랜드 가이드 학습 · 자동 변형 파이프라인 정의
+3: 검증 :: 톱티어 광고주 3사 파일럿, 리드타임·CTR·ROAS 측정
+4: 확장 :: SaaS 모델로 패키징 · 셀프서브 온보딩 오픈
+
 ## 제안
 - 6개월 파일럿: 톱티어 광고주 3사
 - KPI: 제작 리드타임 · 클릭률 · 광고비 효율
@@ -65,7 +72,7 @@ export function SlidegenConsole() {
       <section className="flex flex-col gap-3">
         <Textarea
           label="보고서 텍스트"
-          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. `@layout:two_by_two` 마크업으로 2×2 매트릭스 도식 지정 가능."
+          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. `@layout:two_by_two` · `@layout:process_flow` 마크업으로 도식 지정 가능."
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={10}
@@ -78,7 +85,7 @@ export function SlidegenConsole() {
           </Button>
           {deck ? (
             <span className="ml-auto text-sm text-mute-soft tabular-nums">
-              {slideCount}장 생성 · @layout:two_by_two 인식
+              {slideCount}장 생성 · @layout:two_by_two · process_flow 인식
             </span>
           ) : null}
         </div>
