@@ -38,6 +38,9 @@ const eslintConfig = defineConfig([
       // for which no current Button variant is a clean fit.
       "src/components/landing/**",
       "src/components/scheduler/**",
+      // Mock lab — primitive 채택 전 단계. canvas-lab 위젯이 production
+      // 으로 승격될 때 strict 적용. (`*` 는 [locale] segment 매칭)
+      "src/app/*/(canvas-lab)/**",
     ],
     rules: {
       "react/forbid-elements": [
