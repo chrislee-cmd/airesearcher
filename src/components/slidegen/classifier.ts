@@ -1,15 +1,20 @@
 // Deterministic Phase 0/1 classifier — splits a plain text / markdown
-// report into slide-sized chunks and produces a DeckSpec where every
-// slide is `bullet_body`. The LLM-backed Storyline + Layout classifier
-// (SPEC §11 A/B) replaces this in later PRs; this stays as the offline
-// fallback and the contract anchor for tests.
+// report into slide-sized chunks and produces a DeckSpec. Each chunk is
+// inspected for an `@layout:` marker; recognised layouts (currently
+// `bullet_body`, `two_by_two`) parse their structured payload, and
+// anything unrecognised — or any payload that fails its diagram's
+// validate() — falls back to `bullet_body` so a slide is always
+// renderable. LLM-backed Storyline + Layout classifier (SPEC §11 A/B)
+// replaces this in later PRs; this stays as the offline fallback and
+// the contract anchor for tests.
 //
 // Split priority:
 //   1. `---` thematic breaks delimit slides explicitly.
 //   2. `##` headings split otherwise (heading text → actionTitle).
 //   3. If neither marker is present, the whole text is one slide.
 
-import type { DeckSpec, SlideSpec } from './types';
+import type { DeckSpec, SlideSpec, TwoByTwoPayload } from './types';
+import { twoByTwoTemplate } from './diagrams/two-by-two';
 
 const MAX_BULLETS = 8;
 const DEFAULT_TITLE = '제목 없음';
@@ -80,6 +85,88 @@ function extractTitle(segment: string, sourceRef: number): Chunk {
   };
 }
 
+// `@layout:two_by_two` parser. SPEC §8 markup:
+//   @layout:two_by_two
+//   x: 빈도 낮음 :: 빈도 높음
+//   y: 영향 낮음 :: 영향 높음
+//   TL: 모니터 :: 분기 보고 이슈 | 백오피스 권한
+//   TR: ...
+//   BL: ...
+//   BR: ...
+//
+// Returns null when any required line is missing or malformed; the
+// caller falls back to bullet_body. Pipe `|` separates list items; lines
+// with no `::` are treated as label-only quadrants.
+function parseTwoByTwoBody(body: string): TwoByTwoPayload | null {
+  const lines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const axis: { x?: { low: string; high: string }; y?: { low: string; high: string } } = {};
+  const quadrants: TwoByTwoPayload['quadrants'] = [];
+
+  for (const line of lines) {
+    const xMatch = line.match(/^x\s*:\s*(.+?)\s*::\s*(.+)$/i);
+    if (xMatch) {
+      axis.x = { low: xMatch[1].trim(), high: xMatch[2].trim() };
+      continue;
+    }
+    const yMatch = line.match(/^y\s*:\s*(.+?)\s*::\s*(.+)$/i);
+    if (yMatch) {
+      axis.y = { low: yMatch[1].trim(), high: yMatch[2].trim() };
+      continue;
+    }
+    const qMatch = line.match(/^(TL|TR|BL|BR)\s*:\s*(.+)$/i);
+    if (qMatch) {
+      const position = qMatch[1].toUpperCase() as 'TL' | 'TR' | 'BL' | 'BR';
+      const rest = qMatch[2].trim();
+      const [labelPart, itemsPart] = rest.includes('::')
+        ? rest.split(/\s*::\s*/, 2)
+        : [rest, ''];
+      const items = itemsPart
+        .split('|')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      quadrants.push({ position, label: labelPart.trim(), items });
+    }
+  }
+
+  if (!axis.x || !axis.y || quadrants.length !== 4) return null;
+  const payload: TwoByTwoPayload = {
+    xAxis: axis.x,
+    yAxis: axis.y,
+    quadrants,
+  };
+  return twoByTwoTemplate.validate(payload) ? payload : null;
+}
+
+function detectLayout(body: string): 'two_by_two' | null {
+  const match = body.match(/^@layout\s*:\s*([a-z_]+)\s*$/im);
+  if (!match) return null;
+  const layout = match[1].toLowerCase();
+  if (layout === 'two_by_two') return 'two_by_two';
+  return null;
+}
+
+function buildSlide(chunk: Chunk): SlideSpec {
+  const layout = detectLayout(chunk.body);
+  if (layout === 'two_by_two') {
+    const payload = parseTwoByTwoBody(chunk.body);
+    if (payload) {
+      return {
+        id: `slide-${chunk.sourceRef}`,
+        actionTitle: chunk.actionTitle,
+        speakerNotes: null,
+        sourceRefs: [chunk.sourceRef],
+        layoutType: 'two_by_two',
+        payload,
+      };
+    }
+  }
+  return toBulletBody(chunk);
+}
+
 function toBulletBody(chunk: Chunk): SlideSpec {
   const lines = chunk.body
     .split('\n')
@@ -126,7 +213,7 @@ export function buildDeckSpec(
   options: { title?: string } = {},
 ): DeckSpec {
   const chunks = splitIntoChunks(text);
-  const slides = chunks.map(toBulletBody);
+  const slides = chunks.map(buildSlide);
   return {
     meta: {
       title: options.title ?? slides[0]?.actionTitle ?? DEFAULT_TITLE,
