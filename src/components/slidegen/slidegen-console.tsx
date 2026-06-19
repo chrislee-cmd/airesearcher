@@ -32,6 +32,13 @@ BR: 자동화 :: 알림 노이즈 | 통계 새로고침 지연
 - 브랜드 가이드 학습 후 자율 생성
 - 캠페인별 성과 피드백을 다음 변형에 반영
 
+## 가치 체계
+@layout:pyramid
+1: 비전 :: 광고주가 신뢰하는 산업 표준 SaaS 플랫폼
+2: 핵심 가치 :: 자동화 · 신뢰성 · 확장성
+3: 운영 원칙 :: 빠른 실행 · 고객 피드백 루프 · 데이터 우선
+4: 일상 실행 :: 분기 OKR · 주간 운영 회의 · 사후 회고
+
 ## 실행 로드맵
 @layout:process_flow
 1: 진단 :: 시장 정체와 광고주 통점을 정량 데이터로 확정
@@ -72,7 +79,7 @@ export function SlidegenConsole() {
       <section className="flex flex-col gap-3">
         <Textarea
           label="보고서 텍스트"
-          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. `@layout:two_by_two` · `@layout:process_flow` 마크업으로 도식 지정 가능."
+          helper="`---` 또는 `##` 헤딩 단위로 슬라이드를 분할합니다. `@layout:two_by_two` · `process_flow` · `pyramid` 마크업으로 도식 지정 가능."
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={10}
@@ -85,7 +92,7 @@ export function SlidegenConsole() {
           </Button>
           {deck ? (
             <span className="ml-auto text-sm text-mute-soft tabular-nums">
-              {slideCount}장 생성 · @layout:two_by_two · process_flow 인식
+              {slideCount}장 생성 · @layout: two_by_two · process_flow · pyramid 인식
             </span>
           ) : null}
         </div>
