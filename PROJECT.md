@@ -132,7 +132,7 @@ GitHub Actions CI, GitHub branch protection으로 **자동 강제**됩니다.
 | commit prefix (`feat\|fix\|chore\|hotfix:`) | commit-msg | hard | 위반 commit 거부 |
 | lint-staged `eslint --fix` | pre-commit | **soft** (`\|\| true`) | 자동 수정 시도, 실패해도 commit 진행 |
 | 디자인 시스템 룰 (`no-restricted-syntax` + `react/forbid-elements`) | CI (`Design-system lint (blocking)`) | hard | radius / z-index / text-[Npx] 하드코드, primitive 밖 native `<button>/<input>/<textarea>` 시 머지 차단 |
-| `pnpm lint` 나머지 | CI (`Lint (non-blocking)`) | **soft** (`continue-on-error: true`) | 잔여 ~23 `react-hooks/set-state-in-effect` 정리 후 hard 전환 예정 |
+| `pnpm lint` 전체 | CI (`Lint`) | hard | 모든 lint 에러가 머지 차단. 정당한 패턴은 per-line `eslint-disable-next-line <rule> -- reason` 으로 마킹 |
 | `pnpm typecheck` | CI | hard | 실패 시 PR 머지 차단 |
 | gitleaks 풀스캔 | CI (`secrets-scan` job) | hard | 시크릿 머지 차단 |
 | Vercel preview 빌드 | CI status check | hard | 빌드 실패 시 머지 차단 |

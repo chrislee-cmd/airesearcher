@@ -53,11 +53,11 @@ jobs:
           fi
           echo "✓ No design-system rule violations"
 
-      # Full lint stays soft-launched: ~23 pre-existing errors (react-hooks
-      # /set-state-in-effect) tracked separately. Design-system violations
-      # already blocked above.
-      - name: Lint (non-blocking)
-        continue-on-error: true
+      # Full lint is hard-flipped (PR #335). Baseline 0 errors on main
+      # after PR #334 suppressed 23 intentional set-state-in-effect sites
+      # with reasoned `eslint-disable-next-line`. New violations now block
+      # merge. Add per-line disables with reasons for legit patterns.
+      - name: Lint
         run: pnpm lint
 
       - name: Typecheck
