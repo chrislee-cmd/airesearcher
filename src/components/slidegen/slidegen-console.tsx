@@ -68,7 +68,7 @@ export function SlidegenConsole() {
             샘플 불러오기
           </Button>
           {deck ? (
-            <span className="ml-auto text-[11.5px] text-mute-soft tabular-nums">
+            <span className="ml-auto text-sm text-mute-soft tabular-nums">
               {slideCount}장 생성 · 모두 bullet_body 폴백 (PR1)
             </span>
           ) : null}
@@ -97,11 +97,11 @@ export function SlidegenConsole() {
               >
                 다음 →
               </Button>
-              <span className="text-[12px] text-mute tabular-nums">
+              <span className="text-md text-mute tabular-nums">
                 {activeIdx + 1} / {slideCount}
               </span>
             </div>
-            <span className="text-[11.5px] text-mute-soft">
+            <span className="text-sm text-mute-soft">
               {deck.slides[activeIdx]?.layoutType}
             </span>
           </div>
@@ -123,7 +123,7 @@ export function SlidegenConsole() {
           </ul>
         </section>
       ) : (
-        <p className="text-[12.5px] text-mute">
+        <p className="text-md text-mute">
           위에 텍스트를 붙여넣고 <b>덱 생성</b> 을 누르면 슬라이드 미리보기가
           여기에 표시됩니다.
         </p>
