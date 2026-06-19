@@ -43,7 +43,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, user_id, created_at',
+      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, provider, user_id, created_at, updated_at',
     )
     .eq('id', id)
     .single();
@@ -52,6 +52,31 @@ export async function GET(
   }
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
+  }
+
+  // Post-pass gate: ElevenLabs jobs go through cleanup → term-normalize →
+  // number-normalize → speaker-roles in an `after()` block AFTER `status`
+  // flips to 'done'. There's a ~30-60s window where status='done' but the
+  // post-pass outputs (clean_markdown, speaker_roles, raw_result._cleanup)
+  // are still NULL. Opening the preview in that window renders the raw
+  // markdown with English "Speaker 1" labels and un-normalized numbers —
+  // confusing for users. We return 409 `post_passes_pending` so the client
+  // polls and only renders once the passes land.
+  //
+  // Heuristic for "passes still pending":
+  //   - provider must be elevenlabs (Deepgram has no post-passes)
+  //   - raw_result._cleanup must be missing (the canonical signal)
+  //   - updated_at within last 5 minutes (older jobs are grandfathered —
+  //     they finished before this code shipped and will never have passes)
+  const rawRes = (job.raw_result ?? null) as { _cleanup?: unknown } | null;
+  const cleanupAuditPresent = !!rawRes?._cleanup;
+  const recentlyDone =
+    new Date(job.updated_at).getTime() > Date.now() - 5 * 60 * 1000;
+  if (job.provider === 'elevenlabs' && !cleanupAuditPresent && recentlyDone) {
+    return NextResponse.json(
+      { error: 'post_passes_pending' },
+      { status: 409 },
+    );
   }
   // source=raw → original markdown. source=clean (default) → cleaned if it
   // landed, otherwise fall back to original. Short / low-confidence /

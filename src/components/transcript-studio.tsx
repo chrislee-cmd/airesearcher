@@ -646,6 +646,10 @@ function JobPreview({
 }) {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // `pending` 은 서버가 `post_passes_pending` 으로 응답한 상태 — 정제·라벨·
+  // 숫자 정규화 패스 (after() 블록) 가 아직 완료되지 않음. 미리보기 fetch 를
+  // 5초마다 재시도해서 패스가 끝나면 자동으로 렌더.
+  const [pending, setPending] = useState(false);
   // Until the first fetch lands, we can still render the toggle if the
   // parent has cached meta from a prior open — avoids the toggle blinking out
   // when the user toggles and we're refetching.
@@ -656,39 +660,56 @@ function JobPreview({
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
-    setHtml(null);
-    setError(null);
-    fetch(`/api/transcripts/jobs/${id}/preview?source=${source}`)
-      .then(async (r) => {
-        if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
-          throw new Error(j.error ?? `preview ${r.status}`);
-        }
-        return r.json();
-      })
-      .then(
-        (j: {
-          html: string;
-          hasCleanVersion?: boolean;
-          cleanupAudit?: PreviewCleanupAudit | null;
-        }) => {
-          if (cancelled) return;
-          setHtml(j.html ?? '');
-          const next = {
-            hasCleanVersion: !!j.hasCleanVersion,
-            cleanupAudit: j.cleanupAudit ?? null,
-          };
-          setMeta(next);
-          onMeta(next);
-        },
-      )
-      .catch((e) => {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : 'fetch_failed');
-      });
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const tryFetch = () => {
+      setHtml(null);
+      setError(null);
+      fetch(`/api/transcripts/jobs/${id}/preview?source=${source}`)
+        .then(async (r) => {
+          if (r.status === 409) {
+            const j = await r.json().catch(() => ({}));
+            if (j.error === 'post_passes_pending') {
+              if (cancelled) return null;
+              setPending(true);
+              retryTimer = setTimeout(tryFetch, 5000);
+              return null;
+            }
+            throw new Error(j.error ?? `preview ${r.status}`);
+          }
+          if (!r.ok) {
+            const j = await r.json().catch(() => ({}));
+            throw new Error(j.error ?? `preview ${r.status}`);
+          }
+          return r.json();
+        })
+        .then(
+          (
+            j: {
+              html: string;
+              hasCleanVersion?: boolean;
+              cleanupAudit?: PreviewCleanupAudit | null;
+            } | null,
+          ) => {
+            if (!j || cancelled) return;
+            setPending(false);
+            setHtml(j.html ?? '');
+            const next = {
+              hasCleanVersion: !!j.hasCleanVersion,
+              cleanupAudit: j.cleanupAudit ?? null,
+            };
+            setMeta(next);
+            onMeta(next);
+          },
+        )
+        .catch((e) => {
+          if (!cancelled)
+            setError(e instanceof Error ? e.message : 'fetch_failed');
+        });
+    };
+    tryFetch();
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [id, source, onMeta]);
 
@@ -727,6 +748,11 @@ function JobPreview({
       )}
       {error ? (
         <div className="text-sm text-warning">{error}</div>
+      ) : pending ? (
+        <div className="text-sm text-mute-soft">
+          AI 가 정제 · 화자 라벨 · 숫자 정규화 패스를 마무리하는 중입니다. 보통
+          30~60초 안에 끝납니다.
+        </div>
       ) : html === null ? (
         <div className="text-sm text-mute-soft">불러오는 중…</div>
       ) : (

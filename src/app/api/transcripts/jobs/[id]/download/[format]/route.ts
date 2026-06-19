@@ -70,7 +70,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, speaker_roles, status, user_id, created_at',
+      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, provider, user_id, created_at, updated_at',
     )
     .eq('id', id)
     .single();
@@ -79,6 +79,22 @@ export async function GET(
   }
   if (job.status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
+  }
+
+  // Mirror of preview/route.ts post-pass gate. ElevenLabs jobs need the
+  // after() block (cleanup + term-normalize + number-normalize + roles) to
+  // complete before download — otherwise the user gets raw markdown with
+  // English "Speaker 1" labels and un-normalized numbers. See preview/route
+  // for the rationale + heuristic.
+  const rawRes = (job.raw_result ?? null) as { _cleanup?: unknown } | null;
+  const cleanupAuditPresent = !!rawRes?._cleanup;
+  const recentlyDone =
+    new Date(job.updated_at).getTime() > Date.now() - 5 * 60 * 1000;
+  if (job.provider === 'elevenlabs' && !cleanupAuditPresent && recentlyDone) {
+    return NextResponse.json(
+      { error: 'post_passes_pending' },
+      { status: 409 },
+    );
   }
   const sourceMarkdown =
     source === 'raw'
