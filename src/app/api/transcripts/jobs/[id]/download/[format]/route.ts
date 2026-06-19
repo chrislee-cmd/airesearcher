@@ -5,6 +5,10 @@ import {
   buildArtifactFilename,
   contentDispositionHeader,
 } from '@/lib/filename';
+import {
+  applySpeakerLabels,
+  type SpeakerRolesMap,
+} from '@/lib/transcripts/speaker-roles';
 
 export const maxDuration = 60;
 
@@ -65,7 +69,9 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from('transcript_jobs')
-    .select('filename, markdown, clean_markdown, status, user_id, created_at')
+    .select(
+      'filename, markdown, clean_markdown, speaker_roles, status, user_id, created_at',
+    )
     .eq('id', id)
     .single();
   if (error || !job) {
@@ -78,6 +84,10 @@ export async function GET(
     source === 'raw'
       ? (job.markdown as string)
       : ((job.clean_markdown as string | null) ?? (job.markdown as string));
+  const speakerRoles = (job.speaker_roles as SpeakerRolesMap | null) ?? null;
+  // Apply 질문자/응답자 labels before front-matter rewrite so the downloaded
+  // file shows the same role labels the user saw in the preview.
+  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles);
 
   // 1) Try the original filename. If it looks like a person/identifier, keep it.
   // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",
@@ -105,7 +115,7 @@ export async function GET(
 
   // Mirror the resolved display name into the front-matter `file:` field so the
   // cover H1 and the meta grid show the human-friendly name, not the UUID.
-  const displayMarkdown = sourceMarkdown.replace(
+  const displayMarkdown = labeledMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${displayBase}`,
   );

@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import type { FeatureKey } from '@/lib/features';
 import { buildArtifactFilename } from '@/lib/filename';
+import {
+  applySpeakerLabels,
+  type SpeakerRolesMap,
+} from '@/lib/transcripts/speaker-roles';
 
 // Server-side workspace data model. The list endpoint returns this shape;
 // content() is a separate lazy fetch keyed by (dbFeature, dbId).
@@ -403,7 +407,7 @@ export async function getArtifactContent(
   if (dbFeature === 'transcript') {
     const { data } = await supabase
       .from('transcript_jobs')
-      .select('markdown, clean_markdown')
+      .select('markdown, clean_markdown, speaker_roles')
       .eq('org_id', orgId)
       .eq('id', dbId)
       .maybeSingle();
@@ -411,7 +415,13 @@ export async function getArtifactContent(
     // Cleaned version (when the Korean cleanup pass landed) is what we want
     // to feed into downstream tools — interview/insights/reports should see
     // the disfluency-free text. Falls back to the original on NULL.
-    const content = (data.clean_markdown as string | null) ?? (data.markdown as string);
+    const base = (data.clean_markdown as string | null) ?? (data.markdown as string);
+    const roles = (data.speaker_roles as SpeakerRolesMap | null) ?? null;
+    // Downstream features (interview / insights / reports) consume this
+    // markdown for analysis — labelling speakers as 질문자/응답자 lets the
+    // analysis prompts treat them correctly instead of guessing from raw
+    // "Speaker N" tags.
+    const content = applySpeakerLabels(base, roles);
     return { content, kind: 'markdown' };
   }
 

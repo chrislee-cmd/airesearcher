@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import mammoth from 'mammoth';
 import { createClient } from '@/lib/supabase/server';
 import { markdownToDocx } from '@/lib/transcripts/docx';
+import {
+  applySpeakerLabels,
+  type SpeakerRolesMap,
+} from '@/lib/transcripts/speaker-roles';
 
 export const maxDuration = 60;
 
@@ -39,7 +43,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, raw_result, status, user_id, created_at',
+      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, user_id, created_at',
     )
     .eq('id', id)
     .single();
@@ -59,6 +63,9 @@ export async function GET(
   const hasCleanVersion = !!job.clean_markdown;
   const cleanupAudit =
     (job.raw_result as { _cleanup?: unknown } | null)?._cleanup ?? null;
+  const speakerRoles = (job.speaker_roles as SpeakerRolesMap | null) ?? null;
+  const rolesAudit =
+    (job.raw_result as { _roles?: unknown } | null)?._roles ?? null;
 
   const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
   let base: string;
@@ -75,7 +82,12 @@ export async function GET(
     base = `Interview Transcript #${n}`;
   }
 
-  const displayMarkdown = sourceMarkdown.replace(
+  // Substitute "Speaker N:" with "질문자 N:" / "응답자 N:" when we have a
+  // role classification. Done at render-time so the persisted markdown stays
+  // in the canonical Speaker N format — keeps re-classification cheap if we
+  // ever need to rerun the LLM pass.
+  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles);
+  const displayMarkdown = labeledMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${base}`,
   );
@@ -91,5 +103,7 @@ export async function GET(
     source,
     hasCleanVersion,
     cleanupAudit,
+    hasSpeakerRoles: !!speakerRoles,
+    rolesAudit,
   });
 }
