@@ -150,32 +150,133 @@ export async function normalizeTermsInTranscript(
     return { normalized: null, audit };
   }
 
-  // Vet + apply clusters one at a time so the doc-drift cap composes
-  // across the whole pass (not per cluster). Each cluster that survives
-  // its guard contributes to a running `current` string that the next
-  // cluster sees.
-  let current = markdown;
-  const appliedClusters: NonNullable<TermNormalizeAudit['applied_clusters']> = [];
-
+  // Per-cluster pre-vet against the ORIGINAL doc (so longer cluster's
+  // tokenization doesn't hide a shorter cluster's variant occurrences).
+  type AcceptedCluster = {
+    cluster: TermCluster;
+    variants: string[]; // dedup, canonical-removed
+  };
+  const accepted: AcceptedCluster[] = [];
   for (const cluster of decision.clusters) {
-    const result = vetAndApply(current, cluster);
-    if (!result.applied) {
+    const { canonical } = cluster;
+    const variants = Array.from(new Set(cluster.variants)).filter(
+      (v) => v && v !== canonical,
+    );
+    if (variants.length === 0) {
       audit.clusters_rejected += 1;
       continue;
     }
-    current = result.next;
-    audit.clusters_applied += 1;
-    audit.substitutions += result.substitutions;
+    // Guard 1: canonical must occur ≥1 in the doc.
+    if (countOccurrences(markdown, canonical) < 1) {
+      audit.clusters_rejected += 1;
+      continue;
+    }
+    // Guard 2: each variant must occur ≥1 in the doc.
+    if (variants.some((v) => countOccurrences(markdown, v) < 1)) {
+      audit.clusters_rejected += 1;
+      continue;
+    }
+    // Guard 3: at least one of (canonical | variants) must occur ≥2.
+    const allCounts = [
+      countOccurrences(markdown, canonical),
+      ...variants.map((v) => countOccurrences(markdown, v)),
+    ];
+    if (!allCounts.some((n) => n >= 2)) {
+      audit.clusters_rejected += 1;
+      continue;
+    }
+    // Guard 4: per-variant length similarity (within ±2 of canonical).
+    if (variants.some((v) => Math.abs(v.length - canonical.length) > 2)) {
+      audit.clusters_rejected += 1;
+      continue;
+    }
+    accepted.push({ cluster, variants });
+  }
+
+  if (accepted.length === 0) {
+    audit.reason = 'all_clusters_rejected';
+    return { normalized: null, audit };
+  }
+
+  // Atomic token-based substitution. Flatten ALL (variant → canonical) pairs
+  // across clusters, dedupe by variant, sort variants longest-first so a
+  // longer variant tokenizes before any shorter substring of it. Each unique
+  // variant gets a sentinel placeholder ( PH%d ) — the NULL chars
+  // never appear in markdown so pass-2 can't accidentally hit a placeholder
+  // with another variant's regex. This defangs the (variant → canonical →
+  // variant of another cluster) chain that the previous sequential apply
+  // was vulnerable to.
+  type Rule = { variant: string; canonical: string; clusterIdx: number };
+  const ruleByVariant = new Map<string, Rule>();
+  for (let ci = 0; ci < accepted.length; ci += 1) {
+    const { cluster, variants } = accepted[ci];
+    for (const v of variants) {
+      if (!ruleByVariant.has(v)) {
+        ruleByVariant.set(v, { variant: v, canonical: cluster.canonical, clusterIdx: ci });
+      }
+    }
+  }
+  const rules = Array.from(ruleByVariant.values()).sort(
+    (a, b) => b.variant.length - a.variant.length,
+  );
+
+  // Private-Use-Area sentinels written as \u escape sequences. U+E000 /
+  // U+E001 never appear in real Korean text, have no special regex meaning,
+  // and keep the source file plain ASCII (Git diff-able).
+  const SENTINEL_OPEN = '\uE000';
+  const SENTINEL_CLOSE = '\uE001';
+  let working = markdown;
+  const ph = (i: number): string => `${SENTINEL_OPEN}PH${i}${SENTINEL_CLOSE}`;
+  const ruleCounts = new Map<number, number>(); // ruleIdx → substitutions
+  for (let i = 0; i < rules.length; i += 1) {
+    const rule = rules[i];
+    const placeholder = ph(i);
+    const before = working;
+    working = working.replace(new RegExp(escapeRegex(rule.variant), 'g'), placeholder);
+    if (working === before) {
+      ruleCounts.set(i, 0);
+      continue;
+    }
+    const phRe = new RegExp(escapeRegex(placeholder), 'g');
+    ruleCounts.set(i, (working.match(phRe) ?? []).length);
+  }
+  for (let i = 0; i < rules.length; i += 1) {
+    const placeholder = ph(i);
+    working = working.replace(
+      new RegExp(escapeRegex(placeholder), 'g'),
+      rules[i].canonical,
+    );
+  }
+
+  // Build per-cluster audit. A cluster counts as "applied" if any of its
+  // variants survived substitution (i.e. >0 substitutions for at least one
+  // of its variants).
+  const subsByCluster = new Map<number, number>();
+  for (let i = 0; i < rules.length; i += 1) {
+    const r = rules[i];
+    subsByCluster.set(r.clusterIdx, (subsByCluster.get(r.clusterIdx) ?? 0) + (ruleCounts.get(i) ?? 0));
+  }
+  const appliedClusters: NonNullable<TermNormalizeAudit['applied_clusters']> = [];
+  for (let ci = 0; ci < accepted.length; ci += 1) {
+    const subs = subsByCluster.get(ci) ?? 0;
+    if (subs === 0) {
+      // Variants tokenized inside a longer cluster's match — count as rejected.
+      audit.clusters_rejected += 1;
+      continue;
+    }
+    const { cluster } = accepted[ci];
     appliedClusters.push({
       canonical: cluster.canonical,
       variants: cluster.variants,
       reason: cluster.reason,
-      substitutions: result.substitutions,
+      substitutions: subs,
     });
+    audit.clusters_applied += 1;
+    audit.substitutions += subs;
   }
 
   audit.applied_clusters = appliedClusters;
-  const drift = Math.abs(current.length - markdown.length) / Math.max(markdown.length, 1);
+  const drift = Math.abs(working.length - markdown.length) / Math.max(markdown.length, 1);
   audit.doc_drift = Number(drift.toFixed(4));
 
   if (audit.clusters_applied === 0) {
@@ -187,60 +288,5 @@ export async function normalizeTermsInTranscript(
     return { normalized: null, audit };
   }
 
-  return { normalized: current, audit };
-}
-
-type VetResult =
-  | { applied: false }
-  | { applied: true; next: string; substitutions: number };
-
-function vetAndApply(doc: string, cluster: TermCluster): VetResult {
-  const { canonical } = cluster;
-  // Dedupe + drop canonical from the variants-to-replace list (we don't
-  // need to substitute it onto itself).
-  const variants = Array.from(new Set(cluster.variants)).filter((v) => v && v !== canonical);
-  if (variants.length === 0) return { applied: false };
-
-  // Guard 1: canonical must occur ≥1 in the doc (no LLM-invented words).
-  // Guard 2: each variant must occur ≥1 in the doc.
-  if (countOccurrences(doc, canonical) < 1) return { applied: false };
-  for (const v of variants) {
-    if (countOccurrences(doc, v) < 1) return { applied: false };
-  }
-
-  // Guard 3: at least one of (canonical, variant₀, variant₁, …) must occur
-  // ≥2 times. Otherwise this is just 3 coincidentally similar singletons.
-  const allOccurrences = [
-    countOccurrences(doc, canonical),
-    ...variants.map((v) => countOccurrences(doc, v)),
-  ];
-  if (!allOccurrences.some((n) => n >= 2)) return { applied: false };
-
-  // Guard 4: per-pair length similarity. Each variant must be within ±2
-  // characters of canonical, with a similarity floor (block "공항" → "공장"
-  // style merges where the chars overlap but meaning diverges).
-  for (const v of variants) {
-    const lenDiff = Math.abs(v.length - canonical.length);
-    if (lenDiff > 2) return { applied: false };
-  }
-
-  // Apply substitutions in descending length order so "스피커 폰" gets
-  // replaced before "스피커폰" — otherwise the shorter variant's regex
-  // would consume the prefix of the longer one.
-  const ordered = variants.slice().sort((a, b) => b.length - a.length);
-  let next = doc;
-  let substitutions = 0;
-  for (const v of ordered) {
-    const before = next;
-    const re = new RegExp(escapeRegex(v), 'g');
-    next = next.replace(re, canonical);
-    // Net change in `v`'s occurrence count = number of times we replaced it.
-    substitutions += Math.max(
-      0,
-      countOccurrences(before, v) - countOccurrences(next, v),
-    );
-  }
-
-  if (substitutions === 0) return { applied: false };
-  return { applied: true, next, substitutions };
+  return { normalized: working, audit };
 }

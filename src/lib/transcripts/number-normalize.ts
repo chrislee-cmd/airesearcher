@@ -12,19 +12,35 @@ import {
 // Converts text-form numerals like "삼 년", "오천만 원", "스무 살" into
 // digit + Korean-unit forms ("3년", "5천만 원", "20살").
 //
-// Same defense-in-depth pattern as term-normalize:
-//  1. Each `original` must occur in the document (LLM can't invent spans).
+// Defense-in-depth:
+//  1. Each `original` must literally appear in the document.
 //  2. Length similarity gate per span (normalized within ±5 chars).
-//  3. Document-level length drift capped at 5%.
-//  4. Conservative system prompt — figurative / idiomatic uses excluded.
-//
-// On any failure / no spans → returns null and the caller keeps the
-// upstream cleaned+normalized markdown.
+//  3. Unit-suffix guard: if `normalized` introduces a Korean unit char that
+//     `original` doesn't already have, reject — the LLM is "adding" unit
+//     information that may be wrong when applied globally (e.g. "오백" →
+//     "500만 원" would mangle "오백만 원" into "500만 원만 원").
+//  4. Atomic token-based substitution: each accepted span's `original` is
+//     first rewritten to a unique sentinel (Private-Use-Area code points
+//     that never appear in real text), then sentinels are rewritten to
+//     `normalized`. This prevents chaining where one span's output becomes
+//     the input of a later span (the "이천만 원" → "2천만 원" → "21천만 원"
+//     → "211천만 원" PR #337 bug).
+//  5. Spans deduped by (original, normalized) to defang LLM repeating itself.
+//  6. Document-level length drift capped at 5% after all substitutions.
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const MIN_DOC_LENGTH = 400;
 const MAX_DOC_DRIFT = 0.05;
 const MAX_SPAN_LEN_DIFF = 5;
+// Korean unit chars commonly appended by number normalization. The
+// unit-suffix guard rejects spans where `normalized` introduces any of
+// these chars that `original` doesn't already contain.
+const KOREAN_UNIT_CHARS = '만억조천백십년월일시분초세살명번개대회회차주원천원';
+// Private-Use-Area sentinels written as \u escape sequences so the source
+// file stays plain ASCII (Git diff-able). U+E000 / U+E001 never appear in
+// real Korean transcripts and have no special regex meaning.
+const SENTINEL_OPEN = '\uE000';
+const SENTINEL_CLOSE = '\uE001';
 
 function countOccurrences(haystack: string, needle: string): number {
   if (!needle) return 0;
@@ -41,6 +57,19 @@ function countOccurrences(haystack: string, needle: string): number {
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Returns true iff `normalized` introduces a Korean unit char that
+// `original` doesn't already include. Used to reject spans like "오백" →
+// "500만 원" which silently mangle the doc when "오백만 원" appears intact
+// elsewhere.
+function introducesNewUnitChar(original: string, normalized: string): boolean {
+  for (const ch of normalized) {
+    if (KOREAN_UNIT_CHARS.includes(ch) && !original.includes(ch)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type NumberNormalizeAudit = {
@@ -131,35 +160,97 @@ export async function normalizeNumbersInTranscript(
     return { normalized: null, audit };
   }
 
-  // Apply spans longest-first so overlapping replacements don't cascade
-  // (e.g. "오천만 원" must be replaced before its substring "오천만").
-  const ordered = decision.spans
-    .slice()
-    .sort((a, b) => b.original.length - a.original.length);
+  // Dedup by (original, normalized). LLM occasionally repeats the same
+  // span — without dedup the duplicate would compound the substitution.
+  const dedupMap = new Map<string, NumberSpan>();
+  for (const span of decision.spans) {
+    const key = `${span.original}|${span.normalized}`;
+    if (!dedupMap.has(key)) dedupMap.set(key, span);
+  }
 
-  let current = markdown;
-  const appliedSpans: NonNullable<NumberNormalizeAudit['applied_spans']> = [];
-
-  for (const span of ordered) {
-    const result = vetAndApply(current, span);
-    if (!result.applied) {
+  // Per-span pre-vet against the ORIGINAL document. Occurrences check uses
+  // the unmodified markdown so a later (longer) span's placeholder
+  // substitution doesn't hide a shorter span's original instance.
+  const accepted: NumberSpan[] = [];
+  for (const span of dedupMap.values()) {
+    if (!span.original || !span.normalized || span.original === span.normalized) {
       audit.spans_rejected += 1;
       continue;
     }
-    current = result.next;
-    audit.spans_applied += 1;
-    audit.substitutions += result.substitutions;
+    if (countOccurrences(markdown, span.original) === 0) {
+      audit.spans_rejected += 1;
+      continue;
+    }
+    if (Math.abs(span.normalized.length - span.original.length) > MAX_SPAN_LEN_DIFF) {
+      audit.spans_rejected += 1;
+      continue;
+    }
+    if (introducesNewUnitChar(span.original, span.normalized)) {
+      audit.spans_rejected += 1;
+      continue;
+    }
+    accepted.push(span);
+  }
+
+  if (accepted.length === 0) {
+    audit.reason = 'all_spans_rejected';
+    return { normalized: null, audit };
+  }
+
+  // Atomic token-based substitution. Longest-first ensures "이천만 원" is
+  // tokenized before its substring "천만 원" — so the shorter span only
+  // matches occurrences OUTSIDE the longer span's instances.
+  accepted.sort((a, b) => b.original.length - a.original.length);
+
+  const ph = (i: number): string => `${SENTINEL_OPEN}NN${i}${SENTINEL_CLOSE}`;
+
+  let working = markdown;
+  const phCounts = new Map<NumberSpan, number>();
+  for (let i = 0; i < accepted.length; i += 1) {
+    const span = accepted[i];
+    const placeholder = ph(i);
+    const re = new RegExp(escapeRegex(span.original), 'g');
+    const before = working;
+    working = working.replace(re, placeholder);
+    if (working === before) {
+      phCounts.set(span, 0);
+      continue;
+    }
+    const phRe = new RegExp(escapeRegex(placeholder), 'g');
+    phCounts.set(span, (working.match(phRe) ?? []).length);
+  }
+  // Second pass: replace each placeholder with its normalized form. The
+  // sentinel chars guarantee no other span's `original` matches a placeholder.
+  for (let i = 0; i < accepted.length; i += 1) {
+    const placeholder = ph(i);
+    working = working.replace(
+      new RegExp(escapeRegex(placeholder), 'g'),
+      accepted[i].normalized,
+    );
+  }
+
+  const appliedSpans: NonNullable<NumberNormalizeAudit['applied_spans']> = [];
+  for (const span of accepted) {
+    const count = phCounts.get(span) ?? 0;
+    if (count === 0) {
+      // The span's original was entirely absorbed by a longer span's
+      // tokenization — treat as rejected so the audit reflects reality.
+      audit.spans_rejected += 1;
+      continue;
+    }
     appliedSpans.push({
       original: span.original,
       normalized: span.normalized,
       kind: span.kind,
       reason: span.reason,
-      substitutions: result.substitutions,
+      substitutions: count,
     });
+    audit.spans_applied += 1;
+    audit.substitutions += count;
   }
 
   audit.applied_spans = appliedSpans;
-  const drift = Math.abs(current.length - markdown.length) / Math.max(markdown.length, 1);
+  const drift = Math.abs(working.length - markdown.length) / Math.max(markdown.length, 1);
   audit.doc_drift = Number(drift.toFixed(4));
 
   if (audit.spans_applied === 0) {
@@ -171,32 +262,5 @@ export async function normalizeNumbersInTranscript(
     return { normalized: null, audit };
   }
 
-  return { normalized: current, audit };
-}
-
-type VetResult =
-  | { applied: false }
-  | { applied: true; next: string; substitutions: number };
-
-function vetAndApply(doc: string, span: NumberSpan): VetResult {
-  const { original, normalized } = span;
-  if (!original || !normalized || original === normalized) return { applied: false };
-
-  // Guard 1: original must literally appear in the doc.
-  const occurrences = countOccurrences(doc, original);
-  if (occurrences === 0) return { applied: false };
-
-  // Guard 2: per-span length similarity. Numbers don't usually balloon —
-  // "오천만 원" (6) → "5천만 원" (5) is fine; >5 char swing suggests the
-  // LLM is rewriting more than just the number.
-  const lenDiff = Math.abs(normalized.length - original.length);
-  if (lenDiff > MAX_SPAN_LEN_DIFF) return { applied: false };
-
-  // Apply globally — numbers often recur (e.g. interviewer asks "스무 살"
-  // multiple times). One span = one rewrite rule.
-  const re = new RegExp(escapeRegex(original), 'g');
-  const next = doc.replace(re, normalized);
-  if (next === doc) return { applied: false };
-
-  return { applied: true, next, substitutions: occurrences };
+  return { normalized: working, audit };
 }
