@@ -35,9 +35,27 @@ jobs:
       - name: Migration naming check
         run: bash scripts/check-migration-naming.sh
 
-      # Lint is soft-launched: existing main has 108 pre-existing errors
-      # (mostly react/no-unescaped-entities). We surface failures in PR logs
-      # but do not block merges yet. Tighten to required after cleanup PRs.
+      # Design-system rules are hard-flipped: any violation of
+      # `no-restricted-syntax` (radius / z-index / text-[Npx] hardcoded
+      # tokens) or `react/forbid-elements` (native button/input/textarea
+      # outside primitives) blocks merge. Baseline is 0 on main as of
+      # B-1 step 9 (PR #326). The rest of lint stays soft below — the
+      # ~23 react-hooks/set-state-in-effect errors are tracked separately.
+      - name: Design-system lint (blocking)
+        run: |
+          set -e
+          pnpm exec eslint . --format=json > /tmp/lint.json || true
+          DS_COUNT=$(jq '[.[] | .messages[] | select(.ruleId == "no-restricted-syntax" or .ruleId == "react/forbid-elements")] | length' /tmp/lint.json)
+          if [ "$DS_COUNT" -gt 0 ]; then
+            echo "::error::Design-system rule violations ($DS_COUNT):"
+            jq -r '.[] | select(.messages | any(.ruleId == "no-restricted-syntax" or .ruleId == "react/forbid-elements")) | "\n📁 \(.filePath)" + ([.messages[] | select(.ruleId == "no-restricted-syntax" or .ruleId == "react/forbid-elements") | "\n  Line \(.line): [\(.ruleId)] \(.message)"] | join(""))' /tmp/lint.json
+            exit 1
+          fi
+          echo "✓ No design-system rule violations"
+
+      # Full lint stays soft-launched: ~23 pre-existing errors (react-hooks
+      # /set-state-in-effect) tracked separately. Design-system violations
+      # already blocked above.
       - name: Lint (non-blocking)
         continue-on-error: true
         run: pnpm lint

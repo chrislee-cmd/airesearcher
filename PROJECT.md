@@ -131,7 +131,8 @@ GitHub Actions CI, GitHub branch protection으로 **자동 강제**됩니다.
 | 새 마이그 timestamp 강제 | pre-commit + CI (`Lint + Typecheck` 안 `Migration naming check` step) | hard | `supabase/migrations/` 신규 파일이 14자리 timestamp prefix 아니면 거부 (PROJECT.md §7.9) |
 | commit prefix (`feat\|fix\|chore\|hotfix:`) | commit-msg | hard | 위반 commit 거부 |
 | lint-staged `eslint --fix` | pre-commit | **soft** (`\|\| true`) | 자동 수정 시도, 실패해도 commit 진행 |
-| `pnpm lint` | CI | **soft** (`continue-on-error: true`) | 30 baseline error 정리 후 hard 전환 예정 |
+| 디자인 시스템 룰 (`no-restricted-syntax` + `react/forbid-elements`) | CI (`Design-system lint (blocking)`) | hard | radius / z-index / text-[Npx] 하드코드, primitive 밖 native `<button>/<input>/<textarea>` 시 머지 차단 |
+| `pnpm lint` 나머지 | CI (`Lint (non-blocking)`) | **soft** (`continue-on-error: true`) | 잔여 ~23 `react-hooks/set-state-in-effect` 정리 후 hard 전환 예정 |
 | `pnpm typecheck` | CI | hard | 실패 시 PR 머지 차단 |
 | gitleaks 풀스캔 | CI (`secrets-scan` job) | hard | 시크릿 머지 차단 |
 | Vercel preview 빌드 | CI status check | hard | 빌드 실패 시 머지 차단 |
