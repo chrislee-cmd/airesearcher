@@ -6,13 +6,15 @@ import type { DiagramTemplate, LayoutType, SlideElement } from '../types';
 import { bulletBodyTemplate } from './bullet-body';
 import { twoByTwoTemplate } from './two-by-two';
 import { processFlowTemplate } from './process-flow';
+import { pyramidTemplate } from './pyramid';
 
-// PR1 shipped bullet_body. PR2 added two_by_two. PR3 adds process_flow.
-// pyramid lands in the next per-diagram PR (SPEC §11 "다음 우선순위").
+// PR1 shipped bullet_body. PR2 added two_by_two. PR3 added process_flow.
+// PR4 adds pyramid — SPEC §11 "다음 우선순위" 시리즈를 마감.
 const TEMPLATES: Record<string, DiagramTemplate<unknown>> = {
   [bulletBodyTemplate.type]: bulletBodyTemplate as DiagramTemplate<unknown>,
   [twoByTwoTemplate.type]: twoByTwoTemplate as DiagramTemplate<unknown>,
   [processFlowTemplate.type]: processFlowTemplate as DiagramTemplate<unknown>,
+  [pyramidTemplate.type]: pyramidTemplate as DiagramTemplate<unknown>,
 };
 
 export function getTemplate(

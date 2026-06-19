@@ -1,12 +1,12 @@
 // Deterministic Phase 0/1 classifier — splits a plain text / markdown
 // report into slide-sized chunks and produces a DeckSpec. Each chunk is
 // inspected for an `@layout:` marker; recognised layouts (currently
-// `bullet_body`, `two_by_two`, `process_flow`) parse their structured
-// payload, and anything unrecognised — or any payload that fails its
-// diagram's validate() — falls back to `bullet_body` so a slide is
-// always renderable. LLM-backed Storyline + Layout classifier (SPEC §11
-// A/B) replaces this in later PRs; this stays as the offline fallback
-// and the contract anchor for tests.
+// `bullet_body`, `two_by_two`, `process_flow`, `pyramid`) parse their
+// structured payload, and anything unrecognised — or any payload that
+// fails its diagram's validate() — falls back to `bullet_body` so a
+// slide is always renderable. LLM-backed Storyline + Layout classifier
+// (SPEC §11 A/B) replaces this in later PRs; this stays as the offline
+// fallback and the contract anchor for tests.
 //
 // Split priority:
 //   1. `---` thematic breaks delimit slides explicitly.
@@ -16,11 +16,13 @@
 import type {
   DeckSpec,
   ProcessFlowPayload,
+  PyramidPayload,
   SlideSpec,
   TwoByTwoPayload,
 } from './types';
 import { twoByTwoTemplate } from './diagrams/two-by-two';
 import { processFlowTemplate } from './diagrams/process-flow';
+import { pyramidTemplate } from './diagrams/pyramid';
 
 const MAX_BULLETS = 8;
 const DEFAULT_TITLE = '제목 없음';
@@ -178,12 +180,44 @@ function parseProcessFlowBody(body: string): ProcessFlowPayload | null {
   return processFlowTemplate.validate(payload) ? payload : null;
 }
 
-function detectLayout(body: string): 'two_by_two' | 'process_flow' | null {
+// `@layout:pyramid` parser. SPEC §8 markup:
+//   @layout:pyramid
+//   1: 비전 :: 산업 표준 SaaS 플랫폼 (정점)
+//   2: 가치 :: 자동화 · 신뢰성 · 확장성
+//   3: 원칙 :: 빠른 실행 · 고객 피드백 루프
+//   4: 실행 :: 분기 OKR · 주간 운영 회의
+//
+// tier 1 이 최상위(피라미드 정점), 큰 숫자가 밑변. 2~5단 만 허용 — 그
+// 이상은 가독성이 떨어져 bullet_body 로 폴백시킨다.
+function parsePyramidBody(body: string): PyramidPayload | null {
+  const lines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const levels: PyramidPayload['levels'] = [];
+  for (const line of lines) {
+    const m = line.match(/^(\d+)\s*[:.)]\s*(.+?)\s*::\s*(.+)$/);
+    if (!m) continue;
+    const tier = Number.parseInt(m[1], 10);
+    if (!Number.isFinite(tier)) continue;
+    levels.push({ tier, label: m[2].trim(), desc: m[3].trim() });
+  }
+
+  if (levels.length === 0) return null;
+  const payload: PyramidPayload = { levels };
+  return pyramidTemplate.validate(payload) ? payload : null;
+}
+
+function detectLayout(
+  body: string,
+): 'two_by_two' | 'process_flow' | 'pyramid' | null {
   const match = body.match(/^@layout\s*:\s*([a-z_]+)\s*$/im);
   if (!match) return null;
   const layout = match[1].toLowerCase();
   if (layout === 'two_by_two') return 'two_by_two';
   if (layout === 'process_flow') return 'process_flow';
+  if (layout === 'pyramid') return 'pyramid';
   return null;
 }
 
@@ -211,6 +245,19 @@ function buildSlide(chunk: Chunk): SlideSpec {
         speakerNotes: null,
         sourceRefs: [chunk.sourceRef],
         layoutType: 'process_flow',
+        payload,
+      };
+    }
+  }
+  if (layout === 'pyramid') {
+    const payload = parsePyramidBody(chunk.body);
+    if (payload) {
+      return {
+        id: `slide-${chunk.sourceRef}`,
+        actionTitle: chunk.actionTitle,
+        speakerNotes: null,
+        sourceRefs: [chunk.sourceRef],
+        layoutType: 'pyramid',
         payload,
       };
     }
