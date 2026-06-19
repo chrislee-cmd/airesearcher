@@ -64,7 +64,7 @@ export function TranscriptStudio() {
 
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<string>('multi');
+  const [language, setLanguage] = useState<string>('ko');
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -82,7 +82,7 @@ export function TranscriptStudio() {
   }, [language]);
 
   // Default the selector to the browser locale on mount. SSR-safe — initial
-  // value is "multi" so the server and first client render agree.
+  // value is "ko" so the server and first client render agree.
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
