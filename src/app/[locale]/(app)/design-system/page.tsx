@@ -13,7 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo, SliderDemo } from './demos';
+import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo, SliderDemo, ChipInputDemo } from './demos';
 
 export default async function DesignSystemPage({
   params,
@@ -42,6 +42,7 @@ export default async function DesignSystemPage({
       <ChromeButtonSection />
       <InputSection />
       <ChromeInputSection />
+      <ChipInputSection />
       <TextareaSection />
       <SelectSection />
       <CheckboxSection />
@@ -595,6 +596,19 @@ function FileDropZoneSection() {
     >
       <Subsection label="Default (drag or click)">
         <FileDropZoneDemo />
+      </Subsection>
+    </Section>
+  );
+}
+
+function ChipInputSection() {
+  return (
+    <Section
+      title="ChipInput"
+      hint="src/components/ui/chip-input.tsx · 칩 컨테이너 안에서 다음 값을 입력하는 bare extender input · border/background 없음 (부모 컨테이너의 focus-within 프레임이 소유) · 사용처: desk-research 키워드 입력"
+    >
+      <Subsection label="Interactive (Enter 또는 쉼표로 추가)">
+        <ChipInputDemo />
       </Subsection>
     </Section>
   );

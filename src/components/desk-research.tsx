@@ -35,6 +35,7 @@ import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { IconButton } from './ui/icon-button';
 import { Input } from './ui/input';
+import { ChipInput } from './ui/chip-input';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
@@ -457,8 +458,7 @@ export function DeskResearch() {
                   </IconButton>
                 </span>
               ))}
-              {/* eslint-disable-next-line react/forbid-elements -- Bare chip-extender input inside a styled chip container; Input primitive's wrapper div would break flex-1 layout */}
-              <input
+              <ChipInput
                 value={keywordDraft}
                 onChange={(e) => setKeywordDraft(e.target.value)}
                 onKeyDown={onKeywordKeyDown}
@@ -471,7 +471,7 @@ export function DeskResearch() {
                     ? tDesk('keywordPlaceholder')
                     : tDesk('keywordAddMore')
                 }
-                className="min-w-[140px] flex-1 bg-transparent py-0.5 text-lg text-ink-2 placeholder:text-mute-soft focus:outline-none"
+                className="min-w-[140px] flex-1"
               />
             </div>
             <span className="mt-1.5 block text-xs-soft text-mute-soft">

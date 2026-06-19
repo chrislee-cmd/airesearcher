@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
+import { ChipInput } from '@/components/ui/chip-input';
+import { IconButton } from '@/components/ui/icon-button';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -210,6 +212,49 @@ export function SliderDemo() {
           disabled
         </span>
       </div>
+    </div>
+  );
+}
+
+export function ChipInputDemo() {
+  const [chips, setChips] = useState<string[]>(['리서치', '브랜드']);
+  const [draft, setDraft] = useState('');
+  const commit = () => {
+    const v = draft.trim();
+    if (!v) return;
+    if (!chips.includes(v)) setChips((prev) => [...prev, v]);
+    setDraft('');
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore rounded-sm">
+      {chips.map((c, idx) => (
+        <span
+          key={`${c}-${idx}`}
+          className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-md text-ink-2 rounded-sm"
+        >
+          {c}
+          <IconButton
+            variant="ghost-brand"
+            onClick={() => setChips((prev) => prev.filter((_, i) => i !== idx))}
+            aria-label={`remove ${c}`}
+          >
+            ×
+          </IconButton>
+        </span>
+      ))}
+      <ChipInput
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={commit}
+        placeholder={chips.length === 0 ? '키워드 입력 후 Enter' : '추가 키워드…'}
+        className="min-w-[140px] flex-1"
+      />
     </div>
   );
 }
