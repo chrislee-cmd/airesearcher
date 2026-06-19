@@ -13,7 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo } from './demos';
+import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo, SliderDemo } from './demos';
 
 export default async function DesignSystemPage({
   params,
@@ -49,6 +49,7 @@ export default async function DesignSystemPage({
       <SkeletonSection />
       <LabelSection />
       <FileDropZoneSection />
+      <SliderSection />
       <MenuSection />
     </div>
   );
@@ -594,6 +595,19 @@ function FileDropZoneSection() {
     >
       <Subsection label="Default (drag or click)">
         <FileDropZoneDemo />
+      </Subsection>
+    </Section>
+  );
+}
+
+function SliderSection() {
+  return (
+    <Section
+      title="Slider"
+      hint="src/components/ui/slider.tsx · native range input wrapper · accent-amore track · h-1 default · 모든 native props pass-through (min/max/step/value/onChange/disabled/aria-label)"
+    >
+      <Subsection label="Interactive (sync to label)">
+        <SliderDemo />
       </Subsection>
     </Section>
   );

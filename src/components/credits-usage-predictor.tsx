@@ -10,6 +10,7 @@ import {
 } from '@/lib/features';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { Slider } from '@/components/ui/slider';
 
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   starter: 'bundleStarter',
@@ -199,15 +200,13 @@ export function CreditsUsagePredictor() {
                 </span>
               </div>
               <div className="mt-1.5 flex items-center gap-3">
-                {/* eslint-disable-next-line react/forbid-elements -- Native range slider; no Slider primitive yet. Substituting <Input> would destroy thumb drag, keyboard step, and accent-amore track. */}
-                <input
-                  type="range"
+                <Slider
                   min={0}
                   max={absMax}
                   step={1}
                   value={count}
                   onChange={(e) => setCount(f.key, Number(e.target.value))}
-                  className="h-1 flex-1 cursor-pointer appearance-none bg-line-soft accent-amore [border-radius:2px]"
+                  className="flex-1"
                   aria-label={tSidebar(f.key)}
                 />
                 <div className="min-w-[110px] text-right text-md tabular-nums">

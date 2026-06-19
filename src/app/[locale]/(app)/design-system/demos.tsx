@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
+import { Slider } from '@/components/ui/slider';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -171,6 +172,44 @@ export function DropdownMenuDemo() {
           항목 클릭 또는 키보드 (↓↑ / Enter / Esc) 로 선택. 메뉴 밖 클릭 시 닫힘.
         </p>
       )}
+    </div>
+  );
+}
+
+export function SliderDemo() {
+  const [value, setValue] = useState(40);
+  const [disabledValue] = useState(20);
+  return (
+    <div className="grid gap-5">
+      <div className="flex items-center gap-3">
+        <Slider
+          min={0}
+          max={100}
+          step={1}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          className="flex-1"
+          aria-label="Slider example"
+        />
+        <span className="min-w-[40px] text-right text-md tabular-nums text-ink">
+          {value}
+        </span>
+      </div>
+      <div className="flex items-center gap-3 opacity-100">
+        <Slider
+          min={0}
+          max={100}
+          step={1}
+          value={disabledValue}
+          onChange={() => {}}
+          disabled
+          className="flex-1"
+          aria-label="Disabled slider"
+        />
+        <span className="min-w-[40px] text-right text-md tabular-nums text-mute-soft">
+          disabled
+        </span>
+      </div>
     </div>
   );
 }
