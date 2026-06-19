@@ -8,6 +8,7 @@ import {
 } from '@/lib/transcripts/elevenlabs';
 import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
 import { cleanupTranscript } from '@/lib/transcripts/cleanup';
+import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 
 // Bumped from 60s to 200s because cleanup is scheduled via `after()` and
 // shares this route's maxDuration budget — see poll/route.ts for the mirror.
@@ -169,41 +170,41 @@ export async function POST(request: Request) {
     console.warn('[transcripts/webhook/elevenlabs] credit deduction failed', e);
   }
 
-  // Background cleanup pass — see poll/route.ts for the same shape. Writes
-  // `clean_markdown` only on success, leaves NULL on any failure so the UI
-  // falls back to the original markdown.
+  // Background passes — cleanup (text rewrite) and speaker-roles
+  // (질문자/응답자 classification) run in parallel and write together in a
+  // single final UPDATE. See poll/route.ts for the mirror — kept identical so
+  // whichever path lands first produces consistent output. On any pass
+  // failure that column stays NULL → UI falls back to raw markdown + Speaker
+  // N labels.
   after(async () => {
     try {
-      const { cleanMarkdown, audit } = await cleanupTranscript(
-        mergedWords,
-        job.filename,
-        formatted.duration,
-        formatted.speakers,
-      );
-      if (!cleanMarkdown) {
-        await admin
-          .from('transcript_jobs')
-          .update({
-            raw_result: {
-              ...rawWithMeta,
-              _cleanup: audit,
-            } as unknown as object,
-          })
-          .eq('id', job.id);
-        return;
-      }
-      await admin
-        .from('transcript_jobs')
-        .update({
-          clean_markdown: cleanMarkdown,
-          raw_result: {
-            ...rawWithMeta,
-            _cleanup: audit,
-          } as unknown as object,
-        })
-        .eq('id', job.id);
+      const [cleanupRes, rolesRes] = await Promise.all([
+        cleanupTranscript(
+          mergedWords,
+          job.filename,
+          formatted.duration,
+          formatted.speakers,
+        ).catch((e) => {
+          console.warn('[transcripts/webhook/elevenlabs] cleanup pass failed', e);
+          return null;
+        }),
+        classifySpeakerRoles(mergedWords, job.filename).catch((e) => {
+          console.warn('[transcripts/webhook/elevenlabs] roles pass failed', e);
+          return null;
+        }),
+      ]);
+      const patch: Record<string, unknown> = {
+        raw_result: {
+          ...rawWithMeta,
+          ...(cleanupRes ? { _cleanup: cleanupRes.audit } : {}),
+          ...(rolesRes ? { _roles: rolesRes.audit } : {}),
+        },
+      };
+      if (cleanupRes?.cleanMarkdown) patch.clean_markdown = cleanupRes.cleanMarkdown;
+      if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
+      await admin.from('transcript_jobs').update(patch).eq('id', job.id);
     } catch (e) {
-      console.warn('[transcripts/webhook/elevenlabs] cleanup pass failed', e);
+      console.warn('[transcripts/webhook/elevenlabs] post-pass write failed', e);
     }
   });
 
