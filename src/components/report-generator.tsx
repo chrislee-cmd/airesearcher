@@ -326,6 +326,7 @@ export function ReportGenerator() {
       const f = new File([raw], `workspace_${stamp}.md`, {
         type: 'text/markdown',
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
       addFiles([f]);
     } catch {}
      

@@ -360,6 +360,7 @@ export function DeskResearch() {
   useEffect(() => {
     if (!pendingJobId) return;
     if (latestJob?.id === pendingJobId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
       setPendingJobId(null);
       setSubmitting(false);
       return;

@@ -229,6 +229,7 @@ export function Sidebar({
       prevBusyRef.current.set(f.key, cur);
     }
     if (transitioned.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setDoneFlags((prev) => {
       const next = new Set(prev);
       for (const k of transitioned) next.add(k);
@@ -245,6 +246,7 @@ export function Sidebar({
   useEffect(() => {
     const matched = FEATURES.find((f) => f.href === pathname);
     if (!matched) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setDoneFlags((prev) => {
       if (!prev.has(matched.key)) return prev;
       const next = new Set(prev);
@@ -277,6 +279,7 @@ export function Sidebar({
       const raw = localStorage.getItem(COLLAPSE_STORAGE_KEY);
       if (raw) {
         const arr = JSON.parse(raw);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
         if (Array.isArray(arr)) setCollapsed(new Set(arr as FeatureGroupKey[]));
       }
     } catch {}
@@ -303,6 +306,7 @@ export function Sidebar({
   )?.key;
   useEffect(() => {
     if (!activeGroup) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setCollapsed((prev) => {
       if (!prev.has(activeGroup)) return prev;
       const next = new Set(prev);
@@ -318,6 +322,7 @@ export function Sidebar({
   useEffect(() => {
     if (!dragSourceFeature) return;
     const targets = new Set(SEND_TO_MAP[dragSourceFeature] ?? []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setCollapsed((prev) => {
       const next = new Set(prev);
       let changed = false;

@@ -39,6 +39,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
       const k = prefillKey(feature);
       const pre = sessionStorage.getItem(k);
       if (pre) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
         setInput(pre);
         sessionStorage.removeItem(k);
       }

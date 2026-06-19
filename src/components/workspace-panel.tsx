@@ -140,6 +140,7 @@ export function WorkspacePanel() {
 
   // Drop stale selections (artifact left current scope or was deleted).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setSelected((prev) => {
       const ids = new Set(artifacts.map((a) => a.id));
       const next = new Set<string>();
@@ -201,6 +202,7 @@ export function WorkspacePanel() {
   // Lazy-load the view modal content when an artifact opens.
   useEffect(() => {
     if (!viewing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
       setViewingContent(null);
       return;
     }

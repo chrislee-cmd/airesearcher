@@ -88,6 +88,7 @@ export function TranscriptJobProvider({
   }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     void refreshJobs();
   }, [refreshJobs]);
 

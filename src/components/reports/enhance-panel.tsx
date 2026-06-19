@@ -81,6 +81,7 @@ export function EnhancePanel({
 
   // Pre-fetch artifact content when selection changes so buildInput() stays sync.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     if (!artifactId) { setArtifactContent(null); return; }
     const a = workspace.artifacts.find((x) => x.id === artifactId);
     if (!a) { setArtifactContent(null); return; }

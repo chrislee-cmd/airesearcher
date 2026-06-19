@@ -87,6 +87,7 @@ export function VideoJobProvider({ children }: { children: React.ReactNode }) {
 
   // Load jobs on mount and when user changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     if (!user) { setJobs([]); return; }
     void refreshJobs();
   }, [user, refreshJobs]);
