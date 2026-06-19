@@ -10,9 +10,9 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  // We pull `raw_result` here only to extract the cleanup + speaker-roles
-  // audit slices. The full payload (megabytes for long interviews) is then
-  // dropped — the UI just needs the `_cleanup` / `_roles` meta to render
+  // We pull `raw_result` here only to extract audit slices (cleanup,
+  // term-normalize, speaker-roles). The full payload (megabytes for long
+  // interviews) is then dropped — the UI just needs the meta to render
   // status lines.
   const { data, error } = await supabase
     .from('transcript_jobs')
@@ -23,12 +23,15 @@ export async function GET(
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
 
-  const raw = data.raw_result as { _cleanup?: unknown; _roles?: unknown } | null;
+  const raw = data.raw_result as
+    | { _cleanup?: unknown; _term_normalize?: unknown; _roles?: unknown }
+    | null;
   const { raw_result: _drop, ...rest } = data;
   void _drop;
   return NextResponse.json({
     ...rest,
     cleanup_audit: raw?._cleanup ?? null,
+    term_normalize_audit: raw?._term_normalize ?? null,
     roles_audit: raw?._roles ?? null,
   });
 }
