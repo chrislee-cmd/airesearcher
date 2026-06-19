@@ -10,6 +10,7 @@ import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
 import { cleanupTranscript } from '@/lib/transcripts/cleanup';
 import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
+import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 
 // Bumped from 30s to 200s because the cleanup pass scheduled via `after()`
 // extends function lifetime — Vercel keeps the instance alive until after()
@@ -198,16 +199,15 @@ export async function POST(
   // saved un-cleaned `markdown` and marked the job done — the client unblocks
   // now. Two independent pipelines run in parallel and write together in a
   // single final UPDATE (avoids raw_result race):
-  //   1. cleanup (per-chunk filler/stutter removal) → term-normalize
-  //      (cross-turn STT variant consolidation). Sequential — normalize
-  //      reads cleanup's output.
+  //   1. cleanup → term-normalize → number-normalize. Sequential chain —
+  //      each reads the previous step's output.
   //   2. speaker-roles (질문자/응답자 classification) — independent.
   //
   // On any pass failure that column stays NULL → UI falls back to raw
   // markdown + Speaker N labels.
   after(async () => {
     try {
-      const [cleanupAndNormalize, rolesRes] = await Promise.all([
+      const [textPipeline, rolesRes] = await Promise.all([
         (async () => {
           const cleanup = await cleanupTranscript(
             mergedWords,
@@ -218,28 +218,42 @@ export async function POST(
             console.warn('[transcripts/poll] cleanup pass failed', e);
             return null;
           });
-          if (!cleanup?.cleanMarkdown) return { cleanup, normalize: null };
-          const normalize = await normalizeTermsInTranscript(
+          if (!cleanup?.cleanMarkdown) {
+            return { cleanup, termNormalize: null, numberNormalize: null };
+          }
+          const termNormalize = await normalizeTermsInTranscript(
             cleanup.cleanMarkdown,
           ).catch((e) => {
             console.warn('[transcripts/poll] term-normalize pass failed', e);
             return null;
           });
-          return { cleanup, normalize };
+          const afterTerms = termNormalize?.normalized ?? cleanup.cleanMarkdown;
+          const numberNormalize = await normalizeNumbersInTranscript(
+            afterTerms,
+          ).catch((e) => {
+            console.warn('[transcripts/poll] number-normalize pass failed', e);
+            return null;
+          });
+          return { cleanup, termNormalize, numberNormalize };
         })(),
         classifySpeakerRoles(mergedWords, job.filename).catch((e) => {
           console.warn('[transcripts/poll] roles pass failed', e);
           return null;
         }),
       ]);
-      const { cleanup: cleanupRes, normalize: normalizeRes } = cleanupAndNormalize;
+      const { cleanup: cleanupRes, termNormalize: termRes, numberNormalize: numberRes } =
+        textPipeline;
       const finalCleanMarkdown =
-        normalizeRes?.normalized ?? cleanupRes?.cleanMarkdown ?? null;
+        numberRes?.normalized ??
+        termRes?.normalized ??
+        cleanupRes?.cleanMarkdown ??
+        null;
       const patch: Record<string, unknown> = {
         raw_result: {
           ...rawWithMeta,
           ...(cleanupRes ? { _cleanup: cleanupRes.audit } : {}),
-          ...(normalizeRes ? { _term_normalize: normalizeRes.audit } : {}),
+          ...(termRes ? { _term_normalize: termRes.audit } : {}),
+          ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
         },
       };

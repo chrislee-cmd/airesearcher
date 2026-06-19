@@ -10,6 +10,7 @@ import { mergeSpeakers } from '@/lib/transcripts/speaker-merge';
 import { cleanupTranscript } from '@/lib/transcripts/cleanup';
 import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
+import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 
 // Bumped from 60s to 200s because cleanup is scheduled via `after()` and
 // shares this route's maxDuration budget — see poll/route.ts for the mirror.
@@ -171,14 +172,15 @@ export async function POST(request: Request) {
     console.warn('[transcripts/webhook/elevenlabs] credit deduction failed', e);
   }
 
-  // Background passes — cleanup → term-normalize (sequential) in parallel
-  // with speaker-roles. Single final UPDATE keeps raw_result race-free. See
-  // poll/route.ts for the mirror — kept identical so whichever path lands
-  // first produces consistent output. On any pass failure that column stays
-  // NULL → UI falls back to raw markdown + Speaker N labels.
+  // Background passes — cleanup → term-normalize → number-normalize
+  // (sequential chain) in parallel with speaker-roles. Single final UPDATE
+  // keeps raw_result race-free. See poll/route.ts for the mirror — kept
+  // identical so whichever path lands first produces consistent output. On
+  // any pass failure that column stays NULL → UI falls back to raw markdown
+  // + Speaker N labels.
   after(async () => {
     try {
-      const [cleanupAndNormalize, rolesRes] = await Promise.all([
+      const [textPipeline, rolesRes] = await Promise.all([
         (async () => {
           const cleanup = await cleanupTranscript(
             mergedWords,
@@ -189,8 +191,10 @@ export async function POST(request: Request) {
             console.warn('[transcripts/webhook/elevenlabs] cleanup pass failed', e);
             return null;
           });
-          if (!cleanup?.cleanMarkdown) return { cleanup, normalize: null };
-          const normalize = await normalizeTermsInTranscript(
+          if (!cleanup?.cleanMarkdown) {
+            return { cleanup, termNormalize: null, numberNormalize: null };
+          }
+          const termNormalize = await normalizeTermsInTranscript(
             cleanup.cleanMarkdown,
           ).catch((e) => {
             console.warn(
@@ -199,21 +203,36 @@ export async function POST(request: Request) {
             );
             return null;
           });
-          return { cleanup, normalize };
+          const afterTerms = termNormalize?.normalized ?? cleanup.cleanMarkdown;
+          const numberNormalize = await normalizeNumbersInTranscript(
+            afterTerms,
+          ).catch((e) => {
+            console.warn(
+              '[transcripts/webhook/elevenlabs] number-normalize pass failed',
+              e,
+            );
+            return null;
+          });
+          return { cleanup, termNormalize, numberNormalize };
         })(),
         classifySpeakerRoles(mergedWords, job.filename).catch((e) => {
           console.warn('[transcripts/webhook/elevenlabs] roles pass failed', e);
           return null;
         }),
       ]);
-      const { cleanup: cleanupRes, normalize: normalizeRes } = cleanupAndNormalize;
+      const { cleanup: cleanupRes, termNormalize: termRes, numberNormalize: numberRes } =
+        textPipeline;
       const finalCleanMarkdown =
-        normalizeRes?.normalized ?? cleanupRes?.cleanMarkdown ?? null;
+        numberRes?.normalized ??
+        termRes?.normalized ??
+        cleanupRes?.cleanMarkdown ??
+        null;
       const patch: Record<string, unknown> = {
         raw_result: {
           ...rawWithMeta,
           ...(cleanupRes ? { _cleanup: cleanupRes.audit } : {}),
-          ...(normalizeRes ? { _term_normalize: normalizeRes.audit } : {}),
+          ...(termRes ? { _term_normalize: termRes.audit } : {}),
+          ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
         },
       };
