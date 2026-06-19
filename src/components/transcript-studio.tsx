@@ -85,6 +85,7 @@ export function TranscriptStudio() {
   // value is "multi" so the server and first client render agree.
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
       setLanguage(pickFromBrowser(navigator.language));
     }
   }, []);
@@ -655,6 +656,7 @@ function JobPreview({
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     setHtml(null);
     setError(null);
     fetch(`/api/transcripts/jobs/${id}/preview?source=${source}`)

@@ -28,6 +28,7 @@ export function ActiveProjectProvider({
       if (!raw) return;
       const parsed = JSON.parse(raw) as ActiveProject;
       if (parsed && projects.some((p) => p.id === parsed.id)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
         setActiveState(parsed);
       } else if (parsed) {
         window.localStorage.removeItem(STORAGE_KEY);

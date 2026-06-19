@@ -220,6 +220,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   // covers updates that arrive while a panel-open user is mid-generation.
   useEffect(() => {
     if (!isOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     void refresh();
     void refreshFolders();
   }, [isOpen, refresh, refreshFolders]);
@@ -273,6 +274,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   // selection — keep it consistent so the panel never queries a folder
   // that lives in a different project.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setSelectedFolderId(null);
   }, [resolvedProjectId, resolvedKind]);
 

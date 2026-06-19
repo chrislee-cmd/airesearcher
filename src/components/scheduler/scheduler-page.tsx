@@ -52,6 +52,7 @@ export function SchedulerPage() {
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string | 'none'>>(new Set());
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     setProjectId(readActiveProjectId());
     void (async () => {
       try {

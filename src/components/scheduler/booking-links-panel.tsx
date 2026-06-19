@@ -67,6 +67,7 @@ export function BookingLinksPanel({
   const [expiresAt, setExpiresAt] = useState('');
   const [linkProjectId, setLinkProjectId] = useState<string | null>(projectId);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to external/prop/ref change
     setLinkProjectId(projectId);
   }, [projectId]);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +119,7 @@ export function BookingLinksPanel({
   }, [onBookingsChange]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     void refresh();
     // Poll every 15s so a new public booking shows up in the in-app
     // canvas within the same minute without a page reload.

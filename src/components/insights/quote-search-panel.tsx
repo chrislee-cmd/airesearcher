@@ -74,6 +74,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
   useEffect(() => {
     if (!debouncedQ) return;
     const myReq = ++reqIdRef.current;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     setLoading(true);
     setError(null);
     void (async () => {

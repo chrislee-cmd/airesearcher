@@ -120,6 +120,7 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
     void refresh();
   }, [refresh]);
 
