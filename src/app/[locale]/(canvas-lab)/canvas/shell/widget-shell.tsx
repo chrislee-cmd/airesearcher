@@ -33,15 +33,28 @@ export function WidgetShell({
 }) {
   const h = getCardHeight(content, collapsed);
 
+  // selected — amore 보더 + 소프트 amore 링 + 살짝 들림 (지속).
+  // hover(미선택) — ink 보더 + 살짝 들림 (인터랙티브 단서).
+  // lift 는 transform 으로만 표현 → absolute 레이아웃 좌표 흩지 않음.
+  const stateClass = selected
+    ? '-translate-y-0.5 border-amore shadow-bento ring-1 ring-amore-bg'
+    : 'border-line shadow-bento hover:-translate-y-0.5 hover:border-ink';
+
   return (
     <div
-      className={`absolute flex flex-col rounded-md border bg-paper-soft transition-all ${
-        selected
-          ? 'border-amore shadow-bento'
-          : 'border-line shadow-bento hover:border-ink'
-      }`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`${content.meta.label} 카드`}
+      className={`absolute flex flex-col rounded-md border bg-paper-soft transition-[transform,border-color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amore ${stateClass}`}
       style={{ left: x, top: y, width: CARD_W, height: h }}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <CardHeader content={content} collapsed={collapsed} onToggle={onToggle} />
       {!collapsed && (
