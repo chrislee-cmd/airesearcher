@@ -1,7 +1,8 @@
-import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 import { TranscriptStudio } from '@/components/transcript-studio';
-import { FeaturePage } from '@/components/ui/feature-page';
 
+// canvas 카드 디자인 — 본문 자체가 라벨/상태/비용 헤더를 들고 있어서
+// FeaturePage wrapper 의 페이지 헤더는 중복. 카드가 페이지 전체 chrome.
 export default async function Page({
   params,
 }: {
@@ -9,14 +10,5 @@ export default async function Page({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations('Features');
-
-  return (
-    <FeaturePage
-      title={t('quotes.title')}
-      headerRight={t('quotes.cost')}
-    >
-      <TranscriptStudio />
-    </FeaturePage>
-  );
+  return <TranscriptStudio />;
 }

@@ -298,77 +298,142 @@ export function TranscriptStudio() {
     await job.refreshJobs();
   }
 
+  // Group jobs for the canvas card layout: in-flight 큐 vs 완료된 산출물.
+  // pillFor 가 보는 status 5종 중 'done' 만 recents 로, 나머지는 queue 로.
+  const queueJobs = job.jobs.filter((j) => j.status !== 'done');
+  const doneJobs = job.jobs.filter((j) => j.status === 'done');
+  const hasUploads = Object.keys(job.localUploads).length > 0;
+  const isRunning =
+    hasUploads ||
+    queueJobs.some((j) => j.status === 'submitting' || j.status === 'transcribing');
+  const cardState = isRunning ? 'running' : queueJobs.some((j) => j.status === 'error') ? 'error' : 'idle';
+
+  // 처리한 시간 = done 잡들의 duration_seconds 합.
+  // 평균 처리속도 = duration / wall-clock(updated_at - created_at) 의 평균 (real-time factor).
+  const totalDurationSec = doneJobs.reduce(
+    (sum, j) => sum + (j.duration_seconds ?? 0),
+    0,
+  );
+  const avgSpeed = (() => {
+    const ratios = doneJobs
+      .map((j) => {
+        const dur = j.duration_seconds ?? 0;
+        const wall = (new Date(j.updated_at).getTime() - new Date(j.created_at).getTime()) / 1000;
+        return dur > 0 && wall > 0 ? dur / wall : 0;
+      })
+      .filter((r) => r > 0);
+    return ratios.length === 0 ? null : ratios.reduce((s, r) => s + r, 0) / ratios.length;
+  })();
+  const headerProgress = hasUploads
+    ? Math.max(...Object.values(job.localUploads), 0)
+    : null;
+
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="transcript-language"
-              className="text-sm uppercase tracking-[0.22em] text-mute-soft"
-            >
-              언어
-            </label>
-            <select
-              id="transcript-language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              disabled={busyUpload}
-              className="border border-line bg-paper px-3 py-1.5 text-md text-ink-2 rounded-sm disabled:opacity-40"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.flag} {l.label} ({l.code})
-                </option>
-              ))}
-            </select>
+    <>
+      <div className="mx-auto w-full max-w-[860px]">
+        <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
+          {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용 */}
+          <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-lav">
+              <span className="text-xl text-ink">◇</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-medium text-ink-2">전사록 생성기</span>
+                <span
+                  className={`inline-flex items-center rounded-pill px-2 py-0 text-xs ${stateBadge(cardState).cls}`}
+                >
+                  {stateBadge(cardState).label}
+                </span>
+              </div>
+              <div className="mt-0.5 text-sm text-mute line-clamp-1">
+                녹음 파일을 화자 분리 + 시점 stamp 가 찍힌 전사록으로
+              </div>
+              {isRunning && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="h-1 w-40 overflow-hidden rounded-pill bg-line-soft">
+                    <div
+                      className="h-full rounded-pill bg-amore"
+                      style={{ width: `${headerProgress ?? 35}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-mute">
+                    {queueJobs.length + (hasUploads ? Object.keys(job.localUploads).length : 0)}건 진행 중
+                  </span>
+                </div>
+              )}
+            </div>
+            <span className="shrink-0 text-xs text-mute-soft">25 크레딧</span>
           </div>
-        </div>
-        <FileDropZone
-          accept={ACCEPT}
-          multiple
-          disabled={busyUpload}
-          onFiles={(files) => startUploads(files)}
-          onDropRaw={handleArtifactDrop}
-          label={tUp('dropHere')}
-          helperText={tUp('supported')}
-          className="py-12"
-        >
-          {uploadError && (
-            <div className="mt-3 text-sm text-warning">{uploadError}</div>
+
+          {/* 3 stat 타일 — 누적 메트릭 */}
+          <div className="grid grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
+            <StatTile label="처리한 시간" value={formatDuration(totalDurationSec) || '0m'} />
+            <StatTile label="평균 처리속도" value={avgSpeed ? `${avgSpeed.toFixed(1)}×` : '—'} />
+            <StatTile label="라이브러리" value={`${doneJobs.length}건`} />
+          </div>
+
+          {/* 본문 — 드롭존 + 업로드 진행 + 큐 */}
+          <div className="space-y-5 px-5 py-5">
+            <FileDropZone
+              accept={ACCEPT}
+              multiple
+              disabled={busyUpload}
+              onFiles={(files) => startUploads(files)}
+              onDropRaw={handleArtifactDrop}
+              label={tUp('dropHere')}
+              helperText={tUp('supported')}
+              className="py-10"
+            >
+              {uploadError && (
+                <div className="mt-3 text-sm text-warning">{uploadError}</div>
+              )}
+            </FileDropZone>
+
+            {hasUploads && (
+              <div>
+                <SectionLabel>{tCommon('uploading')}</SectionLabel>
+                <ul className="mt-2 space-y-2">
+                  {Object.entries(job.localUploads).map(([id, pct]) => (
+                    <li key={id}>
+                      <JobProgress value={pct} label={tCommon('uploadingFiles')} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {queueJobs.length > 0 && (
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <SectionLabel>진행 중 / 대기</SectionLabel>
+                  <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
+                </div>
+                <ul className="space-y-3">
+                  {queueJobs.map((j) => (
+                    <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* 최근 산출물 — done 잡들 (full JobRow 로 download/share/preview/delete 보존) */}
+          {doneJobs.length > 0 && (
+            <div className="border-t border-line-soft px-5 py-5">
+              <div className="mb-2 flex items-center justify-between">
+                <SectionLabel>최근 산출물</SectionLabel>
+                <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
+              </div>
+              <ul className="space-y-3">
+                {doneJobs.map((j) => (
+                  <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+                ))}
+              </ul>
+            </div>
           )}
-        </FileDropZone>
-      </section>
-
-      {/* Active uploads (client-side progress, before the job row exists) */}
-      {Object.keys(job.localUploads).length > 0 && (
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-            {tCommon('uploading')}
-          </h3>
-          <ul className="mt-2 space-y-2">
-            {Object.entries(job.localUploads).map(([id, pct]) => (
-              <li key={id}>
-                <JobProgress value={pct} label={tCommon('uploadingFiles')} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Server-side jobs */}
-      {job.jobs.length > 0 && (
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-            전사 작업
-          </h3>
-          <ul className="mt-2 space-y-3">
-            {job.jobs.map((j) => (
-              <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
-            ))}
-          </ul>
-        </section>
-      )}
+        </div>
+      </div>
 
       {pendingFiles && (
         <LanguageConfirmDialog
@@ -379,8 +444,34 @@ export function TranscriptStudio() {
           onCancel={cancelPendingUpload}
         />
       )}
+    </>
+  );
+}
+
+// 카드 셸의 라벨 패턴 — uppercase tracking-wider mute-soft
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+      {children}
     </div>
   );
+}
+
+// stat 행의 단일 타일
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-5 py-3">
+      <div className="text-xs text-mute-soft">{label}</div>
+      <div className="mt-0.5 text-2xl font-medium text-ink">{value}</div>
+    </div>
+  );
+}
+
+// 카드 헤더의 상태 pill — running/error/idle
+function stateBadge(state: 'running' | 'idle' | 'error'): { label: string; cls: string } {
+  if (state === 'running') return { label: '진행 중', cls: 'bg-amore-bg text-amore' };
+  if (state === 'error') return { label: '오류', cls: 'bg-warning-bg text-warning' };
+  return { label: '대기', cls: 'bg-paper text-mute' };
 }
 
 // Gates every transcript upload on an explicit language confirmation.
