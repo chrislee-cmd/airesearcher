@@ -2,10 +2,14 @@ import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import {
   SPEAKER_ROLES_SYSTEM,
+  SPEAKER_ROLES_SYSTEM_EN,
   speakerRolesSchema,
   type SpeakerRolesDecision,
 } from './speaker-roles-schema';
 import type { ElevenLabsWord } from './elevenlabs';
+import type { DeepgramResult } from './format';
+
+export type TranscriptLanguage = 'ko' | 'en';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const HEAD_TURNS = 15;
@@ -34,6 +38,31 @@ function buildTurns(words: ElevenLabsWord[]): Turn[] {
     }
   }
   return turns;
+}
+
+// Deepgram payload → same Turn[] shape. Prefer `results.utterances` (one row
+// per speaker-segmented utterance) since that's already speaker-grouped.
+// Fall back to per-word paragraphs if utterances is missing.
+function buildTurnsFromDeepgram(result: DeepgramResult): Turn[] {
+  const utterances = result.results?.utterances;
+  if (utterances && utterances.length > 0) {
+    const turns: Turn[] = [];
+    for (const u of utterances) {
+      const speaker = typeof u.speaker === 'number' ? u.speaker : 0;
+      const text = (u.transcript ?? '').trim();
+      if (!text) continue;
+      const prev = turns[turns.length - 1];
+      if (prev && prev.speaker === speaker) {
+        prev.text = `${prev.text} ${text}`.trim();
+      } else {
+        turns.push({ speaker, text });
+      }
+    }
+    return turns;
+  }
+  // No utterances → no reliable per-speaker grouping. Caller will treat
+  // empty result as skip (too few turns).
+  return [];
 }
 
 type SpeakerStats = { count: number; avgLen: number };
@@ -89,12 +118,30 @@ export async function classifySpeakerRoles(
   words: ElevenLabsWord[],
   filename: string,
 ): Promise<SpeakerRolesResult> {
+  return classifyFromTurns(buildTurns(words), filename, 'ko');
+}
+
+/**
+ * Deepgram counterpart — same classification, but reads `results.utterances`
+ * to build the per-speaker turn list and uses the English prompt.
+ */
+export async function classifySpeakerRolesEn(
+  result: DeepgramResult,
+  filename: string,
+): Promise<SpeakerRolesResult> {
+  return classifyFromTurns(buildTurnsFromDeepgram(result), filename, 'en');
+}
+
+async function classifyFromTurns(
+  turns: Turn[],
+  filename: string,
+  language: TranscriptLanguage,
+): Promise<SpeakerRolesResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return { roles: null, audit: { skipped: true, reason: 'missing_api_key' } };
   }
 
-  const turns = buildTurns(words);
   if (turns.length < MIN_TURNS) {
     return { roles: null, audit: { skipped: true, reason: 'too_few_turns' } };
   }
@@ -117,7 +164,18 @@ export async function classifySpeakerRoles(
     .map((t) => `Speaker ${t.speaker + 1}: ${t.text.slice(0, SAMPLE_TEXT_CAP)}`)
     .join('\n');
 
-  const prompt = `파일: ${filename}
+  const prompt =
+    language === 'en'
+      ? `file: ${filename}
+total speakers: ${distinct.length}
+total turns: ${turns.length}
+
+[per-speaker stats]
+${statsLines}
+
+[first ${head.length} turns]
+${sampleLines}`
+      : `파일: ${filename}
 총 화자 수: ${distinct.length}
 총 turn: ${turns.length}
 
@@ -130,15 +188,15 @@ ${sampleLines}`;
   let decision: SpeakerRolesDecision;
   try {
     const anthropic = createAnthropic({ apiKey });
-    const result = await generateObject({
+    const llmResult = await generateObject({
       model: anthropic(MODEL),
       schema: speakerRolesSchema,
-      system: SPEAKER_ROLES_SYSTEM,
+      system: language === 'en' ? SPEAKER_ROLES_SYSTEM_EN : SPEAKER_ROLES_SYSTEM,
       prompt,
       temperature: 0.1,
       maxOutputTokens: 1024,
     });
-    decision = result.object;
+    decision = llmResult.object;
   } catch (e) {
     console.warn('[transcripts/speaker-roles] LLM call failed', e);
     return {
@@ -176,17 +234,21 @@ ${sampleLines}`;
 
 /**
  * Render-time helper: substitute "Speaker N:" tokens inside markdown / HTML
- * with Korean role labels using a `speaker_roles` map. Safe to call with a
+ * with role labels using a `speaker_roles` map. Safe to call with a
  * null/undefined map — returns the input unchanged. Used by preview, download,
- * and docx generation so the user sees "질문자 1" / "응답자 1" everywhere.
+ * and docx generation. Labels are rendered in the transcript's source language
+ * ("질문자 1" / "응답자 1" for Korean, "Interviewer 1" / "Interviewee 1" for
+ * English) — pass the job's STT language so downstream tools can read each
+ * transcript in the same language as the audio.
  */
 export function applySpeakerLabels(
   text: string,
   roles: SpeakerRolesMap | null | undefined,
+  language: TranscriptLanguage = 'ko',
 ): string {
   if (!roles || !text) return text;
 
-  // The markdown shape emitted by elevenlabsToMarkdown / cleanupTranscript is
+  // The markdown shape emitted by elevenlabsToMarkdown / deepgramToMarkdown is
   // `[HH:MM:SS] Speaker N: ...` (1-indexed N). Build a single replacer over
   // 1-indexed speaker numbers so callers can pass either raw or cleaned md.
   return text.replace(/Speaker (\d+):/g, (match, raw: string) => {
@@ -194,8 +256,12 @@ export function applySpeakerLabels(
     if (!Number.isFinite(oneIndexed) || oneIndexed < 1) return match;
     const entry = roles[`speaker_${oneIndexed - 1}`];
     if (!entry) return match;
-    if (entry.role === 'interviewer') return `질문자 ${entry.n}:`;
-    if (entry.role === 'interviewee') return `응답자 ${entry.n}:`;
+    if (entry.role === 'interviewer') {
+      return language === 'en' ? `Interviewer ${entry.n}:` : `질문자 ${entry.n}:`;
+    }
+    if (entry.role === 'interviewee') {
+      return language === 'en' ? `Interviewee ${entry.n}:` : `응답자 ${entry.n}:`;
+    }
     return match;
   });
 }

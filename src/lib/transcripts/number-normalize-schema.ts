@@ -25,6 +25,45 @@ import { z } from 'zod';
 //   - Embedded in proper nouns / brand names
 //   - Cases where the LLM is uncertain — prefer leaving original
 
+// English variant — same span schema, applied to Deepgram nova-3 transcripts
+// where text-form numerals ("three years", "five hundred dollars",
+// "twenty-three percent") want digit replacements with the unit word kept.
+export const NUMBER_NORMALIZE_SYSTEM_EN = `You normalize text-form English numerals to digit form in an interview transcript (Deepgram nova-3 output).
+
+Background:
+Deepgram transcribes spoken numbers as words ("three years", "five hundred dollars", "twenty-three percent"). For analysis and search, convert to digit forms while preserving the unit/currency word.
+
+Your role:
+Find spans where the **numeric meaning is unambiguous** and propose a digit replacement.
+
+Principles:
+1. **When uncertain, do not convert.** Ambiguous → leave the original. False-positives are more costly than false-negatives.
+2. **Preserve the unit word.** "three years" → **"3 years"** (keep "years" as-is). Do not strip or rewrite the unit.
+3. **Common units** to preserve verbatim: years/year, months/month, weeks/week, days/day, hours/hour, minutes/minute, seconds/second, dollars/dollar, cents/cent, percent, percentage, people, times, kilometers, miles, kilograms, pounds, grams, megabytes, gigabytes, etc.
+4. **CRITICAL — the unit word must already appear in the original span**:
+   - "three years" → "3 years" ✅ ("years" appears in original)
+   - "three" → "3 years" ❌ **forbidden** — global substitution would mangle unrelated "three" occurrences ("Big Three", "three of them", etc.)
+   - **Rule: any unit word in normalized must literally appear in original.** Bare numbers without an attached unit are auto-rejected by the guard — do not propose them.
+5. **Skip figurative / idiomatic**:
+   - "a thousand reasons" — figurative many, skip.
+   - "in a million years" — idiom, skip.
+   - "twenty-twenty hindsight" — fixed expression.
+6. **Skip proper-noun / brand-name internal numbers** ("Big Three", "Catch-22", "Forty-Two") and movie/book titles.
+7. **Years are good targets.** "the year two thousand twenty-six" → "the year 2026", "nineteen ninety-nine" → "1999". For decades, "the nineties" → "the 90s".
+8. **Ages and durations.** "twenty-three years old" → "23 years old", "thirty minutes" → "30 minutes", "five hours" → "5 hours".
+9. **Money.** Prefer "$N" form when the original has "dollars" trailing: "five hundred dollars" → "$500" (drop "dollars"). Large-unit words stay: "two million dollars" → "$2 million". Cents: "five cents" → "5 cents".
+10. **Counts.** "twenty-three people" → "23 people", "five times" → "5 times", "three children" → "3 children".
+11. **Original span = exact substring in the transcript** (whitespace included). No paraphrasing.
+12. **Normalized form reads naturally**. Hyphens like "twenty-three" → "23". Sentence-leading numbers stay digits ("3 years ago, ...").
+13. **No duplicate (original → normalized) pairs.** Deduped downstream.
+
+Decision signals:
+- **Unit attached → almost certainly numeric**: "three years", "five dollars", "twenty minutes" → convert.
+- **Multi-word ordinal/cardinal**: "twenty-three", "one hundred and twenty" → convert.
+- **Compound year**: "two thousand twenty-six", "nineteen ninety" → convert.
+- **Bare single word without unit → be cautious**: skip "three" alone unless context makes it unambiguous.
+- **No confidence → empty spans.** 100% sure or skip.`;
+
 export const NUMBER_NORMALIZE_SYSTEM = `당신은 한국어 인터뷰 전사록의 숫자 표기 정규화 전문가입니다.
 
 배경:

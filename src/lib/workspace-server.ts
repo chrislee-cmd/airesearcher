@@ -407,21 +407,23 @@ export async function getArtifactContent(
   if (dbFeature === 'transcript') {
     const { data } = await supabase
       .from('transcript_jobs')
-      .select('markdown, clean_markdown, speaker_roles')
+      .select('markdown, clean_markdown, speaker_roles, provider')
       .eq('org_id', orgId)
       .eq('id', dbId)
       .maybeSingle();
     if (!data?.markdown) return null;
-    // Cleaned version (when the Korean cleanup pass landed) is what we want
-    // to feed into downstream tools — interview/insights/reports should see
-    // the disfluency-free text. Falls back to the original on NULL.
+    // Cleaned version (when the cleanup / number-normalize pass landed) is
+    // what we want to feed into downstream tools — interview/insights/reports
+    // should see the post-processed text. Falls back to the original on NULL.
     const base = (data.clean_markdown as string | null) ?? (data.markdown as string);
     const roles = (data.speaker_roles as SpeakerRolesMap | null) ?? null;
     // Downstream features (interview / insights / reports) consume this
-    // markdown for analysis — labelling speakers as 질문자/응답자 lets the
+    // markdown for analysis — labelling speakers in the source language
+    // (Korean 질문자/응답자 vs English Interviewer/Interviewee) lets the
     // analysis prompts treat them correctly instead of guessing from raw
     // "Speaker N" tags.
-    const content = applySpeakerLabels(base, roles);
+    const labelLang = data.provider === 'deepgram' ? 'en' : 'ko';
+    const content = applySpeakerLabels(base, roles, labelLang);
     return { content, kind: 'markdown' };
   }
 

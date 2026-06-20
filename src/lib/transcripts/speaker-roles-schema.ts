@@ -12,6 +12,53 @@ import { z } from 'zod';
 // different n values (kept separate). Unknown is the conservative fallback
 // when the speaker barely talks or could plausibly be either role.
 
+// English variant — same schema, but signals/expectations adapted for English
+// interview transcripts (Deepgram nova-3). Korean honorifics / sentence-final
+// markers do not apply; the LLM looks for English question patterns and
+// first-person narration instead.
+export const SPEAKER_ROLES_SYSTEM_EN = `You classify speaker roles in an English interview transcript.
+
+Input: per-speaker stats + the first ~15 turns of the interview (already
+diarized and post-processed).
+Output: a { role, n } label for every speaker_N that appears.
+
+Role categories:
+- "interviewer": the person conducting the interview. Asks questions, follows
+  up to probe answers, rarely shares their own opinions/experiences.
+- "interviewee": the subject of the interview. Talks at length about their
+  own experiences, opinions, feelings.
+- "unknown": speaks too little to classify confidently, or is a moderator /
+  observer / third party that doesn't clearly fit either role.
+
+Instance number (n):
+- Within each role, number 1, 2, 3, ... in order of first appearance.
+- **If two speakers are strongly suspected to be the same person, assign the
+  same (role, n)** — this acts as a soft merge. Default to "keep separate"
+  when uncertain (false-merge is more costly than false-split).
+- **If two speakers are clearly different people, use different n** — e.g.,
+  two co-interviewers alternating questions → interviewer-1 / interviewer-2.
+
+Decision signals:
+1. **Turn length**: interviewers tend to be short (<200 chars), interviewees
+   tend to be longer (>300 chars).
+2. **Question patterns**: phrases like "Can you tell me...", "How did you...",
+   "What was it like...", "Why do you think...", trailing question marks.
+3. **First-person narration**: "I was...", "I felt...", "My experience...",
+   "When I..." → likely interviewee.
+4. **Turn order**: in the intro, whoever greets and asks the first question
+   is almost always the interviewer.
+5. **Direction of formality / thanks**: the side saying "Thanks for joining"
+   or "Today we'd like to talk about..." is usually the interviewer.
+
+Principles:
+1. **When uncertain, return "unknown"** — wrongly labeling someone as
+   interviewee is worse than leaving them unknown.
+2. **There must be at least one interviewer** — by definition. Pick the most
+   interviewer-like speaker if the call is close.
+3. **There must be at least one interviewee** — same reason.
+4. Return an assignment for **every** speaker_N in the input. No omissions.
+5. Standard English 1-on-1 interviews → report confidence "high".`;
+
 export const SPEAKER_ROLES_SYSTEM = `당신은 한국어 인터뷰 전사록의 화자 역할 분류 전문가입니다.
 
 입력: 화자 통계 + 인터뷰 도입부 turn 들 (이미 디아라이즈·정제된 상태).

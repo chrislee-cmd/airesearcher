@@ -43,7 +43,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, user_id, created_at',
+      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, user_id, created_at, provider',
     )
     .eq('id', id)
     .single();
@@ -82,11 +82,13 @@ export async function GET(
     base = `Interview Transcript #${n}`;
   }
 
-  // Substitute "Speaker N:" with "질문자 N:" / "응답자 N:" when we have a
-  // role classification. Done at render-time so the persisted markdown stays
-  // in the canonical Speaker N format — keeps re-classification cheap if we
-  // ever need to rerun the LLM pass.
-  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles);
+  // Substitute "Speaker N:" with role labels — 질문자/응답자 for Korean
+  // (ElevenLabs) jobs, Interviewer/Interviewee for English (Deepgram) jobs.
+  // Done at render-time so the persisted markdown stays in the canonical
+  // Speaker N format — keeps re-classification cheap if we ever rerun the
+  // LLM pass.
+  const labelLang = job.provider === 'deepgram' ? 'en' : 'ko';
+  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
   const displayMarkdown = labeledMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${base}`,
