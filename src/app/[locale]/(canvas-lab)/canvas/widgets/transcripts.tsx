@@ -5,9 +5,9 @@ import { Label } from '../shell/primitives';
 
 function PrimaryAction() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Label>파일 추가</Label>
-      <div className="flex h-24 items-center justify-center rounded-xs border border-dashed border-line bg-paper text-md text-mute hover:border-amore hover:bg-amore-bg">
+      <div className="flex h-52 items-center justify-center rounded-xs border border-dashed border-line bg-paper text-md text-mute hover:border-amore hover:bg-amore-bg">
         파일 드래그 또는 <span className="ml-1 text-amore">클릭해서 선택</span>
       </div>
       <div className="flex gap-2 text-xs text-mute-soft">
@@ -46,5 +46,5 @@ export const transcriptsContent: WidgetContent = {
     { name: 'FGD_세션2.mp3', progress: 0, eta: '대기 중' },
   ],
   PrimaryAction,
-  expandedHeight: 660,
+  expandedHeight: 720,
 };

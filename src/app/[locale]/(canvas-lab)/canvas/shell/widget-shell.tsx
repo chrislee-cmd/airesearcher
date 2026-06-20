@@ -1,66 +1,89 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   WidgetShell — 카드 골격 (헤더 + Stats + PrimaryAction + Queue + Recent).
+   WidgetShell — 카드 골격 (헤더 + Stats + PrimaryAction + Queue + Recents).
    컨텐츠 모듈의 도메인 모름. WidgetContent 만 받음.
+   선택(클릭) 상태에서만 최근 산출물 + 접기 토글 노출 — 평소엔 슬림.
    ──────────────────────────────────────────────────────────────────── */
 
 import type { Recent, StatTile, WidgetContent } from '../widget-types';
-import { ACCENT_BG, ACCENT_ICON, CARD_H_COLLAPSED, CARD_W, statePill } from './tokens';
+import { ACCENT_BG, ACCENT_ICON, CARD_W, RECENTS_PANEL_H, statePill } from './tokens';
 import { Pill } from './primitives';
 import { QueuePanel } from './queue-panel';
 
-export function getCardHeight(content: WidgetContent, collapsed: boolean): number {
-  return collapsed ? CARD_H_COLLAPSED : content.expandedHeight;
+export function getCardHeight(content: WidgetContent, selected: boolean): number {
+  const hasRecents = selected && content.recents.length > 0;
+  return content.expandedHeight + (hasRecents ? RECENTS_PANEL_H : 0);
 }
 
 export function WidgetShell({
   content,
   x,
   y,
-  collapsed,
   selected,
-  onToggle,
   onSelect,
+  onCollapse,
 }: {
   content: WidgetContent;
   x: number;
   y: number;
-  collapsed: boolean;
   selected: boolean;
-  onToggle: () => void;
   onSelect: () => void;
+  onCollapse: () => void;
 }) {
-  const h = getCardHeight(content, collapsed);
+  return (
+    <div className="absolute" style={{ left: x, top: y }}>
+      <WidgetCard
+        content={content}
+        selected={selected}
+        onSelect={onSelect}
+        onCollapse={onCollapse}
+      />
+    </div>
+  );
+}
+
+// 위치(절대 좌표) 없이 카드 자체만 렌더. canvas-mock 의 stack 밖에서 단독 사용
+// (예: in-app 라우트 `/transcripts` 본문에 단일 위젯으로 마운트).
+export function WidgetCard({
+  content,
+  selected,
+  onSelect,
+  onCollapse,
+}: {
+  content: WidgetContent;
+  selected: boolean;
+  onSelect?: () => void;
+  onCollapse: () => void;
+}) {
+  const h = getCardHeight(content, selected);
 
   return (
     <div
-      className={`absolute flex flex-col rounded-md border bg-paper-soft transition-all ${
+      className={`flex flex-col rounded-md border bg-paper-soft transition-all ${
         selected
           ? 'border-amore shadow-bento'
           : 'border-line shadow-bento hover:border-ink'
       }`}
-      style={{ left: x, top: y, width: CARD_W, height: h }}
+      style={{ width: CARD_W, height: h }}
       onClick={onSelect}
     >
-      <CardHeader content={content} collapsed={collapsed} onToggle={onToggle} />
-      {!collapsed && (
-        <div className="flex-1 overflow-hidden">
-          <CardBody content={content} />
-        </div>
-      )}
+      <CardHeader content={content} selected={selected} onCollapse={onCollapse} />
+      <div className="flex-1 overflow-hidden">
+        <CardBody content={content} selected={selected} />
+      </div>
     </div>
   );
 }
 
 function CardHeader({
   content,
-  collapsed,
-  onToggle,
+  selected,
+  onCollapse,
 }: {
   content: WidgetContent;
-  collapsed: boolean;
-  onToggle: () => void;
+  selected: boolean;
+  onCollapse: () => void;
 }) {
   const pill = statePill(content.state);
   return (
@@ -90,37 +113,41 @@ function CardHeader({
           </div>
         )}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-2">
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
         <span className="text-xs text-mute-soft">
           {content.meta.cost === 0 ? '무료' : `${content.meta.cost} 크레딧`}
         </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          className="rounded-xs border border-line bg-paper px-2 py-0.5 text-xs text-mute hover:border-ink hover:text-ink"
-          aria-label={collapsed ? '펼치기' : '접기'}
-        >
-          {collapsed ? '펼치기 ▾' : '접기 ▴'}
-        </button>
+        {selected && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCollapse();
+            }}
+            className="rounded-xs border border-line bg-paper px-2 py-0.5 text-xs text-mute hover:border-ink hover:text-ink"
+            aria-label="접기"
+          >
+            접기 ▲
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function CardBody({ content }: { content: WidgetContent }) {
+function CardBody({ content, selected }: { content: WidgetContent; selected: boolean }) {
   const { PrimaryAction } = content;
   return (
     <div className="flex h-full flex-col">
       <StatsRow stats={content.stats} />
-      <div className="flex-1 overflow-hidden border-t border-line-soft px-5 py-4">
+      <div className="flex-1 overflow-auto border-t border-line-soft px-5 py-4">
         <PrimaryAction />
         {content.state === 'running' && content.queue && (
           <QueuePanel queue={content.queue} />
         )}
       </div>
-      <RecentSection recents={content.recents} />
+      {selected && content.recents.length > 0 && (
+        <RecentsPanel recents={content.recents} />
+      )}
     </div>
   );
 }
@@ -141,26 +168,28 @@ function StatsRow({ stats }: { stats: StatTile[] }) {
   );
 }
 
-function RecentSection({ recents }: { recents: Recent[] }) {
+function RecentsPanel({ recents }: { recents: Recent[] }) {
   return (
-    <div className="shrink-0 border-t border-line-soft px-5 py-3">
+    <div className="shrink-0 border-t border-line-soft px-5 py-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-mute-soft">
           최근 산출물
         </span>
         <button className="text-xs text-amore hover:underline">전체 →</button>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {recents.slice(0, 3).map((r) => (
           <div
             key={r.name}
-            className="flex items-center justify-between rounded-xs px-2 py-1.5 text-md text-ink hover:bg-paper"
+            className="flex items-center justify-between rounded-xs border border-line bg-paper px-3 py-2"
           >
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{r.name}</div>
+              <div className="truncate text-md text-ink">{r.name}</div>
               <div className="text-xs text-mute-soft">{r.meta}</div>
             </div>
-            <button className="ml-2 text-xs text-amore hover:underline">열기</button>
+            <button className="ml-3 shrink-0 text-xs text-amore hover:underline">
+              열기
+            </button>
           </div>
         ))}
       </div>

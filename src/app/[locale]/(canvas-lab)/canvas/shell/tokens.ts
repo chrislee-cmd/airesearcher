@@ -6,10 +6,13 @@
 import type { AccentColor, WidgetState } from '../widget-types';
 
 export const CARD_W = 680;
-export const CARD_H_COLLAPSED = 88;
 export const ROW_GAP = 40;
 export const COL_X = 200;
 export const TOP_OFFSET = 96;
+
+// 선택 시 카드 아래에 붙는 "최근 산출물" 패널 추가 높이 (px).
+// label + 3 items + 패딩 합.
+export const RECENTS_PANEL_H = 220;
 
 export const ACCENT_BG: Record<AccentColor, string> = {
   sky: 'bg-sky',

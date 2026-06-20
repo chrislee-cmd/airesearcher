@@ -19,16 +19,9 @@ import { transcriptsContent } from './widgets/transcripts';
 const WIDGETS: WidgetContent[] = [transcriptsContent];
 
 export function CanvasMock() {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
-    Object.fromEntries(WIDGETS.map((w) => [w.key, false])),
-  );
   const [selected, setSelected] = useState<string | null>(
     WIDGETS[0]?.key ?? null,
   );
-
-  function toggle(key: string) {
-    setCollapsed((c) => ({ ...c, [key]: !c[key] }));
-  }
 
   const layout = WIDGETS.reduce<{
     positions: { key: string; y: number }[];
@@ -36,7 +29,7 @@ export function CanvasMock() {
   }>(
     (acc, w) => ({
       positions: [...acc.positions, { key: w.key, y: acc.cursor }],
-      cursor: acc.cursor + getCardHeight(w, collapsed[w.key]) + ROW_GAP,
+      cursor: acc.cursor + getCardHeight(w, selected === w.key) + ROW_GAP,
     }),
     { positions: [], cursor: TOP_OFFSET },
   );
@@ -87,10 +80,9 @@ export function CanvasMock() {
                 content={w}
                 x={COL_X}
                 y={pos.y}
-                collapsed={collapsed[w.key]}
                 selected={selected === w.key}
-                onToggle={() => toggle(w.key)}
                 onSelect={() => setSelected(w.key)}
+                onCollapse={() => setSelected(null)}
               />
             );
           })}
