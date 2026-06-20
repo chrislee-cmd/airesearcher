@@ -12,11 +12,12 @@ import type { WidgetContent } from './widget-types';
 import { CARD_W, COL_X, ROW_GAP, TOP_OFFSET, statePill } from './shell/tokens';
 import { Pill, Section } from './shell/primitives';
 import { WidgetShell, getCardHeight } from './shell/widget-shell';
+import { deskContent } from './widgets/desk';
 import { transcriptsContent } from './widgets/transcripts';
 
 // 활성 위젯. 다른 도구를 노출하려면 widgets/{key} import 후 여기에 추가.
 // 비노출 컨텐츠 모듈은 widgets/ 아래에 그대로 보존.
-const WIDGETS: WidgetContent[] = [transcriptsContent];
+const WIDGETS: WidgetContent[] = [deskContent, transcriptsContent];
 
 export function CanvasMock() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
