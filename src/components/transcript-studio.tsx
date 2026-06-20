@@ -16,6 +16,7 @@ import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { FileDropZone } from './ui/file-drop-zone';
 import { JobProgress } from './ui/job-progress';
+import { Modal } from './ui/modal';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
@@ -65,6 +66,7 @@ export function TranscriptStudio() {
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
+  const [showAllRecents, setShowAllRecents] = useState(false);
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -418,15 +420,27 @@ export function TranscriptStudio() {
             )}
           </div>
 
-          {/* 최근 산출물 — done 잡들 (full JobRow 로 download/share/preview/delete 보존) */}
+          {/* 최근 산출물 — 카드에는 최근 2건만, 나머지는 "더보기" 모달.
+              full JobRow 로 download/share/preview/delete 모두 보존. */}
           {doneJobs.length > 0 && (
             <div className="border-t border-line-soft px-5 py-5">
               <div className="mb-2 flex items-center justify-between">
                 <SectionLabel>최근 산출물</SectionLabel>
-                <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
+                {doneJobs.length > 2 ? (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setShowAllRecents(true)}
+                    className="uppercase tracking-[0.18em]"
+                  >
+                    더보기 ({doneJobs.length})
+                  </Button>
+                ) : (
+                  <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
+                )}
               </div>
               <ul className="space-y-3">
-                {doneJobs.map((j) => (
+                {doneJobs.slice(0, 2).map((j) => (
                   <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
                 ))}
               </ul>
@@ -444,6 +458,21 @@ export function TranscriptStudio() {
           onCancel={cancelPendingUpload}
         />
       )}
+
+      {/* 전체 산출물 — 카드 밖에서 풀 리스트로 열람. JobRow 그대로라
+          모달 안에서도 다운로드/공유/미리보기/삭제 모두 동작. */}
+      <Modal
+        open={showAllRecents}
+        onClose={() => setShowAllRecents(false)}
+        title={`최근 산출물 (${doneJobs.length})`}
+        size="lg"
+      >
+        <ul className="space-y-3">
+          {doneJobs.map((j) => (
+            <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+          ))}
+        </ul>
+      </Modal>
     </>
   );
 }
