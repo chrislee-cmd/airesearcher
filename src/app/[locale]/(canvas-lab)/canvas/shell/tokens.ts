@@ -6,7 +6,6 @@
 import type { AccentColor, WidgetState } from '../widget-types';
 
 export const CARD_W = 680;
-export const CARD_H_COLLAPSED = 88;
 export const ROW_GAP = 40;
 export const COL_X = 200;
 export const TOP_OFFSET = 96;
