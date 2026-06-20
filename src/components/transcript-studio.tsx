@@ -421,29 +421,32 @@ export function TranscriptStudio() {
           </div>
 
           {/* 최근 산출물 — 카드에는 최근 2건만, 나머지는 "더보기" 모달.
-              full JobRow 로 download/share/preview/delete 모두 보존. */}
+              full JobRow 로 download/share/preview/delete 모두 보존.
+              더보기 버튼은 마지막 행 하단에 — 헤더에 두면 스캔 동선이
+              꺾여서, 자연스러운 list-end 위치에 배치. */}
           {doneJobs.length > 0 && (
             <div className="border-t border-line-soft px-5 py-5">
               <div className="mb-2 flex items-center justify-between">
                 <SectionLabel>최근 산출물</SectionLabel>
-                {doneJobs.length > 2 ? (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => setShowAllRecents(true)}
-                    className="uppercase tracking-[0.18em]"
-                  >
-                    더보기 ({doneJobs.length})
-                  </Button>
-                ) : (
-                  <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
-                )}
+                <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
               </div>
               <ul className="space-y-3">
                 {doneJobs.slice(0, 2).map((j) => (
                   <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
                 ))}
               </ul>
+              {doneJobs.length > 2 && (
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllRecents(true)}
+                    className="uppercase tracking-[0.18em]"
+                  >
+                    더보기 ({doneJobs.length - 2}건 더)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
