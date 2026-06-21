@@ -14,6 +14,7 @@
 
 import {
   useCallback,
+  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -25,40 +26,15 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.04;
-// 절대 좌표 layout — 카드가 (col, row) 위치에 고정. CSS grid auto-flow
-// 시 expanded col-span-2 가 자동 reshuffle 되어 "center merge" 현상이
-// 생겼던 게 root cause. position: absolute 로 각 카드가 자기 슬롯 유지.
+// Flex row layout — 각 row 가 독립 flex container. 카드 expanded 시 width
+// 480 으로 자라면 같은 row 의 우측 카드들이 자연스럽게 push. row 사이엔
+// 영향 X — 카드들이 자기 row 슬롯 유지. CSS grid auto-flow 의 center
+// reshuffle (merge) 도, absolute 의 overlap 도 모두 회피.
 const CARD_W_COLLAPSED = 240;
-const CARD_W_EXPANDED = 480; // 1.5 cells (PITCH 절반 정도 overlap 허용)
+const CARD_W_EXPANDED = 480;
 const CELL_GAP = 48;
-const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288
 const GRID_COLS = 3;
-const GRID_W = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP; // 816
-
-// 카드 i 의 좌상단 (절대 좌표, 그리드 surface 내부 기준).
-function cardPosition(idx: number): { left: number; top: number } {
-  const col = idx % GRID_COLS;
-  const row = Math.floor(idx / GRID_COLS);
-  return {
-    left: col * PITCH,
-    top: row * PITCH,
-  };
-}
-
-// 카드 i 의 collapsed 중심 (그리드 surface 중심 기준 offset). pan-to-center
-// 계산용. grid_W/2 = 408, grid_H/2 = 264 (2 rows).
-function cardCenterOffset(
-  idx: number,
-  totalRows: number,
-): { x: number; y: number } {
-  const gridH =
-    totalRows * CARD_W_COLLAPSED + Math.max(0, totalRows - 1) * CELL_GAP;
-  const pos = cardPosition(idx);
-  return {
-    x: pos.left + CARD_W_COLLAPSED / 2 - GRID_W / 2,
-    y: pos.top + CARD_W_COLLAPSED / 2 - gridH / 2,
-  };
-}
+const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288 — collapsed 시 카드 중심 거리
 
 export function CanvasBoard({
   widgets,
@@ -88,18 +64,40 @@ export function CanvasBoard({
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
+  // widgets 를 row 별로 chunked. flex row layout 의 기본 단위.
   const totalRows = Math.ceil(widgets.length / GRID_COLS);
+  const rows = useMemo(() => {
+    const out: { row: number; items: { w: WidgetContent; idx: number }[] }[] = [];
+    for (let r = 0; r < totalRows; r += 1) {
+      const items: { w: WidgetContent; idx: number }[] = [];
+      for (let c = 0; c < GRID_COLS; c += 1) {
+        const idx = r * GRID_COLS + c;
+        if (idx < widgets.length) items.push({ w: widgets[idx], idx });
+      }
+      out.push({ row: r, items });
+    }
+    return out;
+  }, [widgets, totalRows]);
 
-  // 카드 클릭 시 expandedKeys 에 추가 + 그 카드 중심으로 부드럽게 pan
-  // (graceful zoom-into-widget). 기존 expanded 카드들은 그대로.
+  // 카드 클릭 시 expandedKeys 에 추가. 이전 expanded 카드 없을 때만 pan-to
+  // -widget — 다른 카드 이미 열려있으면 flex 가 동적으로 layout 재계산하니
+  // static 좌표 기반 pan 은 부정확. 사용자가 직접 pan / wheel 로 navigate.
   const expandTo = useCallback(
     (key: string) => {
       const idx = widgets.findIndex((w) => w.key === key);
-      if (idx !== -1) {
-        const offset = cardCenterOffset(idx, totalRows);
+      if (idx !== -1 && expandedKeys.size === 0) {
+        // 첫 expand — 카드 collapsed 위치 기준 pan-to-center. row 별
+        // 가운데 정렬 가정 (flex justify-center).
+        const col = idx % GRID_COLS;
+        const row = Math.floor(idx / GRID_COLS);
+        const rowWidth = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP;
+        const colCenter = col * PITCH + CARD_W_COLLAPSED / 2 - rowWidth / 2;
+        const totalH =
+          totalRows * CARD_W_COLLAPSED + Math.max(0, totalRows - 1) * CELL_GAP;
+        const rowCenter = row * PITCH + CARD_W_COLLAPSED / 2 - totalH / 2;
         setPan({
-          x: -offset.x * zoom,
-          y: -offset.y * zoom,
+          x: -colCenter * zoom,
+          y: -rowCenter * zoom,
         });
       }
       setExpandedKeys((prev) => {
@@ -109,7 +107,7 @@ export function CanvasBoard({
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- widgets 정적
-    [zoom, totalRows],
+    [zoom, totalRows, expandedKeys.size],
   );
 
   // 개별 위젯 collapse — 다른 expanded 위젯엔 영향 X. pan 도 그대로 (사용자
@@ -185,49 +183,52 @@ export function CanvasBoard({
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className="relative"
+          className="flex flex-col items-center"
           style={{
-            // 절대 좌표 surface — CSS grid auto-flow 의 reshuffle 문제 회피.
-            // 각 카드는 cardPosition(idx) 의 (left, top) 에 고정. expanded
-            // 시에도 위치 변경 X (width / height 만 성장). 여러 expanded
-            // 동시 가능 — z-10 으로 겹침 처리.
-            width: `${GRID_W}px`,
-            height: `${totalRows * CARD_W_COLLAPSED + Math.max(0, totalRows - 1) * CELL_GAP}px`,
+            // flex row layout — 같은 row 의 카드들이 expand 시 우측 카드를
+            // push (overlap X). row 사이엔 영향 X — items-start 로 row 상단
+            // 정렬, expanded 카드가 길어도 같은 row 의 collapsed 카드는
+            // 위쪽에 머무름.
+            gap: `${CELL_GAP}px`,
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: 'center center',
-            // pan 중엔 transition 없음 (드래그가 부드럽게 따라옴). 그 외엔
-            // 0.28s ease-out — 카드 클릭 시 카메라가 그쪽으로 부드럽게 이동.
             transition: isPanning ? 'none' : 'transform 0.28s ease-out',
           }}
         >
-          {widgets.map((w, idx) => {
-            const isExpanded = expandedKeys.has(w.key);
-            const pos = cardPosition(idx);
-            return (
-              <div
-                key={w.key}
-                data-canvas-card
-                style={{
-                  position: 'absolute',
-                  left: pos.left,
-                  top: pos.top,
-                  width: isExpanded ? CARD_W_EXPANDED : CARD_W_COLLAPSED,
-                  // 높이: collapsed 는 정사각형 강제 (CARD_W_COLLAPSED),
-                  // expanded 는 자연 자람 (minHeight 만 보장).
-                  minHeight: CARD_W_COLLAPSED,
-                  zIndex: isExpanded ? 10 : 1,
-                  transition: 'width 0.3s ease-out',
-                }}
-              >
-                <WidgetShell
-                  content={w}
-                  expanded={isExpanded}
-                  onExpand={() => expandTo(w.key)}
-                  onCollapse={() => collapseKey(w.key)}
-                />
-              </div>
-            );
-          })}
+          {rows.map(({ row, items }) => (
+            <div
+              key={row}
+              className="flex items-start"
+              style={{ gap: `${CELL_GAP}px` }}
+            >
+              {items.map(({ w }) => {
+                const isExpanded = expandedKeys.has(w.key);
+                return (
+                  <div
+                    key={w.key}
+                    data-canvas-card
+                    style={{
+                      // 카드 wrapper — collapsed = 240, expanded = 480.
+                      // minHeight = 240 으로 collapsed 정사각형 유지, expanded
+                      // 는 본문 자연 높이로 자라남.
+                      width: isExpanded
+                        ? CARD_W_EXPANDED
+                        : CARD_W_COLLAPSED,
+                      minHeight: CARD_W_COLLAPSED,
+                      transition: 'width 0.3s ease-out',
+                    }}
+                  >
+                    <WidgetShell
+                      content={w}
+                      expanded={isExpanded}
+                      onExpand={() => expandTo(w.key)}
+                      onCollapse={() => collapseKey(w.key)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
     </div>
