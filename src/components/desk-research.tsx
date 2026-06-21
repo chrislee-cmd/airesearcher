@@ -30,9 +30,7 @@ import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
-import { FeaturePage } from './ui/feature-page';
 import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
 import { IconButton } from './ui/icon-button';
 import { Input } from './ui/input';
 import { ChipInput } from './ui/chip-input';
@@ -41,16 +39,11 @@ import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
 import {
   DESK_REGIONS,
-  DESK_REGION_PORTALS,
   DESK_SOURCES,
-  DESK_SOURCE_GROUPS,
   KR_ONLY_GROUPS,
   type DeskRegion,
-  type DeskSourceGroup,
   type DeskSourceId,
 } from '@/lib/desk-sources';
-
-const GROUP_ORDER: DeskSourceGroup[] = ['naver', 'kakao', 'youtube', 'global'];
 
 type RangePreset = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
@@ -75,6 +68,17 @@ function splitKeywords(raw: string): string[] {
     .split(/[,\n\t、·]+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+// 수집 소스는 항상 전체 (단 region 변경 시 KR-only 그룹 자동 제외).
+// 디자인에서 사용자 노출 제거 — selected 는 region 에 의존적으로 자동 관리.
+function sourcesForRegion(region: DeskRegion): Set<DeskSourceId> {
+  const out = new Set<DeskSourceId>();
+  for (const s of DESK_SOURCES) {
+    if (region !== 'KR' && KR_ONLY_GROUPS.includes(s.group)) continue;
+    out.add(s.id);
+  }
+  return out;
 }
 
 function DeskMarkdown({ source }: { source: string }) {
@@ -143,55 +147,34 @@ function DeskMarkdown({ source }: { source: string }) {
 }
 
 export function DeskResearch() {
-  const t = useTranslations('Features');
   const tDesk = useTranslations('Desk');
   const tCommon = useTranslations('Common');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { latestJob, isWorking, cancelJob } = useDeskJobs();
-  // The desk pipeline only emits sources in `ko` or `en`. Any other
-  // locale (ja, future additions) is treated as English for source-side
-  // formatting and API region defaults.
-  const isEn = locale !== 'ko';
 
-  // ─── inputs ────────────────────────────────────────────────────────────────
+  // ─── inputs ──────────────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordDraft, setKeywordDraft] = useState('');
   const [preset, setPreset] = useState<RangePreset>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [selected, setSelected] = useState<Set<DeskSourceId>>(
-    new Set<DeskSourceId>(['naver_news', 'naver_blog', 'google_news']),
-  );
   const [region, setRegion] = useState<DeskRegion>('KR');
+  // selected 는 region 에 의존적으로 자동 관리 — UI 미노출.
+  const [selected, setSelected] = useState<Set<DeskSourceId>>(() =>
+    sourcesForRegion('KR'),
+  );
 
-  // When the user picks a non-KR region, auto-drop Naver/Kakao selections —
-  // those APIs only return Korean-language content and would waste the budget.
   function changeRegion(next: DeskRegion) {
     setRegion(next);
-    if (next !== 'KR') {
-      setSelected((prev) => {
-        const out = new Set<DeskSourceId>();
-        for (const id of prev) {
-          const meta = DESK_SOURCES.find((s) => s.id === id);
-          if (meta && KR_ONLY_GROUPS.includes(meta.group)) continue;
-          out.add(id);
-        }
-        // Make sure at least Google News stays on so the run isn't empty.
-        if (out.size === 0) out.add('google_news');
-        return out;
-      });
-    }
+    setSelected(sourcesForRegion(next));
   }
+
   const [submitting, setSubmitting] = useState(false);
-  // After a successful POST we keep the button disabled until the provider's
-  // realtime subscription delivers the new row. Without this hand-off, there's
-  // a ~100-500ms gap where `submitting` is already false but `isWorking` hasn't
-  // flipped yet — users read the live button as "my click didn't register" and
-  // double-click, which creates a duplicate paid job.
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Receive workspace "send to" prefills — splits the artifact text the
   // same way the paste/keydown handlers do so a list of keywords (or a
@@ -204,17 +187,10 @@ export function DeskResearch() {
       sessionStorage.removeItem(k);
       pushKeywords(splitKeywords(raw));
     } catch {}
-     
+
   }, []);
 
-  const grouped = useMemo(() => {
-    const map = new Map<DeskSourceGroup, typeof DESK_SOURCES>();
-    for (const g of GROUP_ORDER) map.set(g, []);
-    for (const s of DESK_SOURCES) map.get(s.group)!.push(s);
-    return map;
-  }, []);
-
-  // ─── keyword tag input ─────────────────────────────────────────────────────
+  // ─── keyword tag input ────────────────────────────────────────────────────
   function pushKeywords(parts: string[]) {
     if (parts.length === 0) return;
     setKeywords((prev) => {
@@ -271,7 +247,7 @@ export function DeskResearch() {
     }
   }
 
-  // ─── date range ────────────────────────────────────────────────────────────
+  // ─── date range ──────────────────────────────────────────────────────────
   function applyPreset(p: RangePreset) {
     setPreset(p);
     if (p === 'all') {
@@ -286,29 +262,7 @@ export function DeskResearch() {
     }
   }
 
-  // ─── source toggle ─────────────────────────────────────────────────────────
-  function toggle(id: DeskSourceId) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-  function toggleGroup(group: DeskSourceGroup) {
-    const ids = DESK_SOURCES.filter((s) => s.group === group).map((s) => s.id);
-    const allOn = ids.every((id) => selected.has(id));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (allOn) next.delete(id);
-        else next.add(id);
-      }
-      return next;
-    });
-  }
-
-  // ─── submit ────────────────────────────────────────────────────────────────
+  // ─── submit ──────────────────────────────────────────────────────────────
   function onClickRun() {
     requireAuth(() => void doSubmit());
   }
@@ -342,8 +296,6 @@ export function DeskResearch() {
         return;
       }
       track('desk_generate_success', { feature: 'desk', job_id: json.job_id });
-      // Hand the disabled-state off to realtime; the effect below releases it
-      // once `latestJob` reflects the new row (or after the 8s safety timeout).
       if (typeof json.job_id === 'string') {
         setPendingJobId(json.job_id);
       } else {
@@ -355,9 +307,6 @@ export function DeskResearch() {
     }
   }
 
-  // Bridge POST → realtime: drop the local guard once the provider has seen
-  // our job, or after a safety timeout so a missed realtime message can't
-  // wedge the button forever.
   useEffect(() => {
     if (!pendingJobId) return;
     if (latestJob?.id === pendingJobId) {
@@ -375,8 +324,8 @@ export function DeskResearch() {
 
   // ─── current job + thinking panel ──────────────────────────────────────────
   const job: DeskJob | null = latestJob;
-  const events = job?.progress?.events ?? [];
-  const showPanel = !!job && (isWorking || events.length > 0);
+  const events = useMemo(() => job?.progress?.events ?? [], [job?.progress?.events]);
+  const showStream = !!job && (isWorking || events.length > 0);
   const thoughtsScroller = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (thoughtsScroller.current) {
@@ -385,10 +334,6 @@ export function DeskResearch() {
   }, [events.length]);
 
   // ─── download ──────────────────────────────────────────────────────────────
-  // Stamps the filename with `job.created_at` (not the current clock) so
-  // re-downloading the same desk run later doesn't drift the name. Routes
-  // through the shared helper so the workspace-server list view, the MD/
-  // DOCX downloads, and the Google Docs title all produce the same string.
   function buildFilename(): string {
     return buildArtifactBaseName({
       prefix: 'desk',
@@ -429,78 +374,84 @@ export function DeskResearch() {
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
-  const showResult = job?.status === 'done' && job.output;
+  const showResult = !!(job?.status === 'done' && job.output);
+  const cardState: 'idle' | 'running' | 'done' | 'error' =
+    job?.status === 'error'
+      ? 'error'
+      : isWorking
+        ? 'running'
+        : job?.status === 'done'
+          ? 'done'
+          : 'idle';
+  const showRange = preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo));
+
+  // 결과 row 메타: 출처 수 / 처리 시간 (wall-clock)
+  const sourcesCount = job?.articles?.length ?? 0;
+  const wallSec = job
+    ? Math.max(
+        0,
+        Math.round(
+          (new Date(job.updated_at).getTime() - new Date(job.created_at).getTime()) /
+            1000,
+        ),
+      )
+    : 0;
+  const wallLabel =
+    wallSec >= 60
+      ? `${Math.floor(wallSec / 60)}분 ${wallSec % 60}초`
+      : `${wallSec}초`;
 
   return (
-    <FeaturePage
-      title={t('desk.title')}
-      headerRight={t('desk.cost')}
-    >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <section>
-            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
-              {tDesk('keywordLabel')}
-            </span>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore rounded-sm">
-              {keywords.map((k, idx) => (
-                <span
-                  key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-md text-ink-2 rounded-sm"
-                >
-                  {k}
-                  <IconButton
-                    variant="ghost-brand"
-                    onClick={() => removeKeyword(idx)}
-                    aria-label={`remove ${k}`}
-                  >
-                    ×
-                  </IconButton>
-                </span>
-              ))}
-              <ChipInput
-                value={keywordDraft}
-                onChange={(e) => setKeywordDraft(e.target.value)}
-                onKeyDown={onKeywordKeyDown}
-                onPaste={onKeywordPaste}
-                onBlur={() => {
-                  if (keywordDraft.trim()) commitDraft();
-                }}
-                placeholder={
-                  keywords.length === 0
-                    ? tDesk('keywordPlaceholder')
-                    : tDesk('keywordAddMore')
-                }
-                className="min-w-[140px] flex-1"
-              />
+    <div className="mx-auto w-full max-w-[860px]">
+      <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
+        {/* Header */}
+        <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-sky">
+            <span className="text-xl text-ink">◐</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-medium text-ink-2">데스크 리서치</span>
+              <StatePill phase={cardState} />
             </div>
-            <span className="mt-1.5 block text-xs-soft text-mute-soft">
-              {tDesk('keywordHint')}
-            </span>
-          </section>
+            <div className="mt-0.5 text-sm text-mute line-clamp-1">
+              키워드만 넣으면 웹을 훑어 인용 + 한 줄 요약 보고서로
+            </div>
+          </div>
+          <span className="shrink-0 text-xs text-mute-soft">25 크레딧</span>
+        </div>
 
-          <section>
-            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
-              {tDesk('rangeLabel')}
-            </span>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+        {/* Inputs */}
+        <div className="space-y-5 px-5 py-5">
+          <Field label={tDesk('regionLabel')}>
+            <div className="flex flex-wrap gap-1.5">
+              {DESK_REGIONS.map((r) => (
+                <Button
+                  key={r}
+                  variant={region === r ? 'primary' : 'ghost'}
+                  size="xs"
+                  onClick={() => changeRegion(r)}
+                >
+                  {tDesk(`region.${r}`)}
+                </Button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label={tDesk('rangeLabel')}>
+            <div className="flex flex-wrap gap-1.5">
               {RANGE_PRESETS.map((p) => (
                 <Button
                   key={p.id}
-                  variant="ghost"
+                  variant={preset === p.id ? 'primary' : 'ghost'}
                   size="xs"
                   onClick={() => applyPreset(p.id)}
-                  className={
-                    preset === p.id
-                      ? 'border-amore bg-amore-bg text-ink-2 hover:border-amore hover:text-ink-2'
-                      : 'hover:border-amore hover:text-amore'
-                  }
                 >
                   {tDesk(`range_${p.id}` as const)}
                 </Button>
               ))}
             </div>
-            {(preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo))) && (
+            {showRange && (
               <div className="mt-3 flex items-center gap-2 text-md text-mute">
                 <Input
                   type="date"
@@ -530,217 +481,227 @@ export function DeskResearch() {
                 />
               </div>
             )}
-          </section>
+          </Field>
+
+          <Field label={tDesk('keywordLabel')}>
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+              {keywords.map((k, idx) => (
+                <span
+                  key={`${k}-${idx}`}
+                  className="inline-flex items-center gap-1 rounded-pill border border-amore bg-amore-bg px-2.5 py-0.5 text-xs text-amore"
+                >
+                  {k}
+                  <IconButton
+                    variant="ghost-brand"
+                    onClick={() => removeKeyword(idx)}
+                    aria-label={`remove ${k}`}
+                  >
+                    ×
+                  </IconButton>
+                </span>
+              ))}
+              <ChipInput
+                value={keywordDraft}
+                onChange={(e) => setKeywordDraft(e.target.value)}
+                onKeyDown={onKeywordKeyDown}
+                onPaste={onKeywordPaste}
+                onBlur={() => {
+                  if (keywordDraft.trim()) commitDraft();
+                }}
+                placeholder={
+                  keywords.length === 0
+                    ? tDesk('keywordPlaceholder')
+                    : tDesk('keywordAddMore')
+                }
+                className="min-w-[140px] flex-1"
+              />
+            </div>
+            <span className="mt-1.5 block text-xs text-mute-soft">
+              {tDesk('keywordHint')}
+            </span>
+          </Field>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={onClickRun}
+            disabled={!canRun}
+            className="w-full"
+          >
+            {submitting || pendingJobId || isWorking
+              ? tCommon('loading')
+              : tDesk('search')}
+          </Button>
         </div>
 
-        <div className="space-y-6">
-          <section>
-            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
-              {tDesk('regionLabel')}
-            </span>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {DESK_REGIONS.map((r) => (
-                <Button
-                  key={r}
-                  variant={region === r ? 'primary' : 'ghost'}
-                  size="xs"
-                  onClick={() => changeRegion(r)}
-                  className={
-                    region === r ? '' : 'text-ink-2 hover:text-amore'
-                  }
-                >
-                  {tDesk(`region.${r}`)}
-                </Button>
+        {/* Streaming panel — running 또는 events 있을 때 */}
+        {showStream && (
+          <div className="border-t border-line-soft bg-paper px-5 py-4">
+            {isWorking ? (
+              <JobProgress
+                value={
+                  job?.progress?.crawl_total
+                    ? Math.round(
+                        ((job.progress.crawl_done ?? 0) /
+                          job.progress.crawl_total) *
+                          100,
+                      )
+                    : undefined
+                }
+                label={tDesk('thinkingActive')}
+                hint={
+                  job?.progress?.crawl_total
+                    ? `${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
+                    : undefined
+                }
+                onCancel={
+                  job
+                    ? job.cancel_requested
+                      ? undefined
+                      : () => void cancelJob(job.id)
+                    : undefined
+                }
+                cancelLabel={
+                  job?.cancel_requested ? tDesk('stopRequested') : tDesk('stop')
+                }
+              />
+            ) : (
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+                  {tDesk('thinkingDone')}
+                </span>
+                <span className="text-xs text-mute-soft">{events.length} 이벤트</span>
+              </div>
+            )}
+            <div
+              ref={thoughtsScroller}
+              className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-paper-soft px-4 py-3 text-md leading-[1.7]"
+            >
+              {events.map((line, i) => (
+                <div key={i} className="py-0.5 text-ink-2">
+                  <span className="mr-2 text-amore">›</span>
+                  {line}
+                </div>
               ))}
             </div>
-            <p className="mt-2 text-sm text-mute-soft">
-              <span className="mr-1.5 font-semibold uppercase tracking-[.16em] text-mute">
-                {tDesk('regionPortalsLabel')}
-              </span>
-              {DESK_REGION_PORTALS[region].join(' · ')}
-            </p>
-            {region !== 'KR' && (
-              <p className="mt-1 text-sm text-mute-soft">
-                {tDesk('regionKrOnlyHidden')}
-              </p>
-            )}
-          </section>
-
-          <section>
-            <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
-              {tDesk('sourcesLabel')}
-            </span>
-            <div className="mt-2 space-y-1.5">
-              {GROUP_ORDER.filter(
-                (g) => region === 'KR' || !KR_ONLY_GROUPS.includes(g),
-              ).map((g) => {
-                const meta = DESK_SOURCE_GROUPS[g];
-                const items = grouped.get(g) ?? [];
-                const allOn = items.every((s) => selected.has(s.id));
-                return (
-                  <div
-                    key={g}
-                    className="flex items-center gap-2 border border-line bg-paper px-3 py-1.5 rounded-sm"
-                  >
-                    <span className="w-[68px] shrink-0 text-sm font-semibold text-ink-2">
-                      {isEn ? meta.labelEn : meta.label}
-                    </span>
-                    <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-                      {items.map((s) => {
-                        const checked = selected.has(s.id);
-                        return (
-                          <label
-                            key={s.id}
-                            className="flex cursor-pointer items-center gap-1.5 text-md text-ink-2 hover:text-amore"
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onChange={() => toggle(s.id)}
-                            />
-                            <span>{isEn ? s.labelEn : s.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      onClick={() => toggleGroup(g)}
-                      className="shrink-0 px-0 py-0 text-xs font-normal uppercase tracking-[.18em] text-mute-soft hover:text-amore"
-                    >
-                      {allOn ? tDesk('groupNone') : tDesk('groupAll')}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-center justify-end gap-3">
-        <span className="text-sm tabular-nums text-mute-soft">
-          {keywords.length} {tDesk('keywordUnit')} · {selected.size} {tDesk('sourcesUnit')}
-        </span>
-        <Button
-          variant="primary"
-          size="md"
-          onClick={onClickRun}
-          disabled={!canRun}
-        >
-          {submitting || pendingJobId || isWorking ? tCommon('loading') : tDesk('search')}
-        </Button>
-      </div>
-
-      {showPanel && (
-        <section className="mt-6">
-          {isWorking ? (
-            <JobProgress
-              value={
-                job?.progress?.crawl_total
-                  ? Math.round(
-                      ((job.progress.crawl_done ?? 0) /
-                        job.progress.crawl_total) *
-                        100,
-                    )
-                  : undefined
-              }
-              label={tDesk('thinkingActive')}
-              hint={
-                job?.progress?.crawl_total
-                  ? `${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
-                  : undefined
-              }
-              onCancel={
-                job
-                  ? job.cancel_requested
-                    ? undefined
-                    : () => void cancelJob(job.id)
-                  : undefined
-              }
-              cancelLabel={
-                job?.cancel_requested ? tDesk('stopRequested') : tDesk('stop')
-              }
-            />
-          ) : (
-            <div className="border border-line bg-paper-soft px-4 py-2 rounded-sm">
-              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-                {tDesk('thinkingDone')}
-              </span>
-            </div>
-          )}
-          <div
-            ref={thoughtsScroller}
-            className="mt-2 max-h-[280px] overflow-y-auto border border-line bg-paper-soft px-4 py-3 text-md leading-[1.7] rounded-sm"
-          >
-            {events.map((line, i) => (
-              <div key={i} className="py-0.5 text-ink-2">
-                <span className="mr-2 text-amore">›</span>
-                {line}
-              </div>
-            ))}
           </div>
-        </section>
-      )}
+        )}
 
-      {error && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
-          {tDesk('error')}: <span className="font-mono">{error}</span>
-        </div>
-      )}
-
-      {job?.status === 'error' && job.error_message && (
-        <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
-          {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
-        </div>
-      )}
-
-      {job?.status === 'cancelled' && (
-        <div className="mt-6">
-          <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
-        </div>
-      )}
-
-      {showResult && (
-        <>
-          {job.skipped && job.skipped.length > 0 && (
-            <div className="mt-6 border border-warning-line bg-warning-bg p-4 text-md text-ink-2 rounded-sm">
-              <div className="font-semibold">{tDesk('skippedTitle')}</div>
-              <ul className="mt-1.5 space-y-0.5 font-mono text-sm text-mute">
-                {job.skipped.map((s) => (
-                  <li key={s.source}>
-                    · {s.source} — {s.missing}
-                  </li>
-                ))}
-              </ul>
+        {/* 방금 만든 결과물 — 1개 row */}
+        {showResult && job && (
+          <div className="border-t border-line-soft px-5 py-4">
+            <div className="mb-2 text-xs uppercase tracking-wider text-mute-soft">
+              방금 만든 결과물
             </div>
-          )}
-
-          {job.similar_keywords.length > 0 && (
-            <section className="mt-10">
-              <span className="block text-sm font-semibold uppercase tracking-[.22em] text-amore">
-                {tDesk('similarKeywords')}
-              </span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {job.similar_keywords.map((k) => (
-                  <span
-                    key={k}
-                    className="border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute rounded-sm"
-                  >
-                    {k}
-                  </span>
-                ))}
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setPreviewOpen(true)}
+              className="w-full justify-start gap-3 border border-line bg-paper px-4 py-3 hover:border-ink"
+            >
+              <span className="text-lg">📄</span>
+              <div className="min-w-0 flex-1 text-left">
+                <div className="truncate text-md font-medium text-ink-2">
+                  {job.keywords.join(', ')} · {tDesk('reportTitle')}
+                </div>
+                <div className="mt-0.5 text-xs text-mute-soft">
+                  {sourcesCount} sources · {wallLabel}
+                </div>
               </div>
-            </section>
-          )}
+              <span className="shrink-0 text-xs text-amore">프리뷰 →</span>
+            </Button>
+            <div className="mt-2 flex gap-1.5">
+              <div className="flex-1">
+                <DownloadMenu
+                  tone="ghost"
+                  align="end"
+                  disabled={exporting}
+                  items={[
+                    {
+                      format: 'md',
+                      kind: 'blob',
+                      filename: `${buildFilename()}.md`,
+                      build: () => {
+                        track('desk_export_md_click', {
+                          feature: 'desk',
+                          format: 'md',
+                        });
+                        return new Blob([job.output ?? ''], {
+                          type: 'text/markdown;charset=utf-8',
+                        });
+                      },
+                    },
+                    {
+                      format: 'docx',
+                      kind: 'action',
+                      onSelect: () => downloadDocx(job.output ?? ''),
+                    },
+                  ]}
+                />
+              </div>
+              <div className="flex-1">
+                <ShareMenu
+                  align="end"
+                  disabled={!job.output}
+                  items={[
+                    {
+                      destination: 'google-docs',
+                      title: buildFilename(),
+                      getBlob: async () => {
+                        const res = await fetch('/api/desk/export', {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({
+                            markdown: job.output ?? '',
+                            filename: buildFilename(),
+                            title: job.keywords?.length
+                              ? `데스크 리서치 — ${job.keywords.join(', ')}`
+                              : '데스크 리서치',
+                          }),
+                        });
+                        return {
+                          blob: await res.blob(),
+                          mimeType:
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        };
+                      },
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
-          {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
+        {/* error / cancelled banners */}
+        {error && (
+          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
+            {tDesk('error')}: <span className="font-mono">{error}</span>
+          </div>
+        )}
+        {job?.status === 'error' && job.error_message && (
+          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
+            {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
+          </div>
+        )}
+        {job?.status === 'cancelled' && (
+          <div className="border-t border-line-soft px-5 py-4">
+            <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
+          </div>
+        )}
+      </div>
 
-          <section className="mt-10">
-            <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-              <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
-                {tDesk('reportTitle')}
-              </h2>
+      {/* Preview modal — fullscreen */}
+      {previewOpen && showResult && job && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-paper">
+          <div className="flex shrink-0 items-center justify-between border-b border-line bg-paper-soft px-6 py-4">
+            <div className="min-w-0">
+              <div className="text-xs text-mute-soft">데스크 리서치 결과</div>
+              <div className="mt-0.5 truncate text-lg font-medium text-ink-2">
+                {job.keywords.join(', ')} · {tDesk('reportTitle')}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <DownloadMenu
                 tone="ghost"
                 align="end"
@@ -750,15 +711,10 @@ export function DeskResearch() {
                     format: 'md',
                     kind: 'blob',
                     filename: `${buildFilename()}.md`,
-                    build: () => {
-                      track('desk_export_md_click', {
-                        feature: 'desk',
-                        format: 'md',
-                      });
-                      return new Blob([job.output ?? ''], {
+                    build: () =>
+                      new Blob([job.output ?? ''], {
                         type: 'text/markdown;charset=utf-8',
-                      });
-                    },
+                      }),
                   },
                   {
                     format: 'docx',
@@ -774,8 +730,6 @@ export function DeskResearch() {
                   {
                     destination: 'google-docs',
                     title: buildFilename(),
-                    // Reuse the server-built DOCX (same as the docx download
-                    // option) so the Google Doc preserves the rich layout.
                     getBlob: async () => {
                       const res = await fetch('/api/desk/export', {
                         method: 'POST',
@@ -797,46 +751,119 @@ export function DeskResearch() {
                   },
                 ]}
               />
+              <IconButton
+                variant="ghost"
+                onClick={() => setPreviewOpen(false)}
+                aria-label="닫기"
+              >
+                ✕
+              </IconButton>
             </div>
-            <article className="mt-4 border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2 rounded-sm">
-              <DeskMarkdown source={job.output ?? ''} />
-            </article>
-          </section>
+          </div>
 
-          {job.articles && job.articles.length > 0 && (
-            <section className="mt-10">
-              <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
-                {tDesk('collected')} ({job.articles.length})
-              </h2>
-              <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
-                {job.articles.map((a) => (
-                  <li key={`${a.source}-${a.url}`} className="px-4 py-3">
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-lg font-semibold text-ink-2 hover:text-amore"
-                    >
-                      {a.title}
-                    </a>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-mute-soft">
-                      <span className="uppercase tracking-[.18em]">{a.source}</span>
-                      {a.origin && <span>{a.origin}</span>}
-                      {a.publishedAt && <span>{a.publishedAt}</span>}
-                      <span className="text-amore">#{a.keyword}</span>
-                    </div>
-                    {a.snippet && (
-                      <p className="mt-1.5 text-md leading-[1.65] text-mute">
-                        {a.snippet}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
+          <div className="flex-1 overflow-auto px-10 py-8">
+            <div className="mx-auto max-w-3xl space-y-6">
+              {job.skipped && job.skipped.length > 0 && (
+                <div className="rounded-sm border border-warning-line bg-warning-bg p-4 text-md text-ink-2">
+                  <div className="font-semibold">{tDesk('skippedTitle')}</div>
+                  <ul className="mt-1.5 space-y-0.5 font-mono text-sm text-mute">
+                    {job.skipped.map((s) => (
+                      <li key={s.source}>
+                        · {s.source} — {s.missing}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {job.similar_keywords.length > 0 && (
+                <section>
+                  <span className="block text-xs uppercase tracking-[.22em] text-amore">
+                    {tDesk('similarKeywords')}
+                  </span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {job.similar_keywords.map((k) => (
+                      <span
+                        key={k}
+                        className="rounded-sm border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute"
+                      >
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
+
+              <article className="rounded-sm border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2">
+                <DeskMarkdown source={job.output ?? ''} />
+              </article>
+
+              {job.articles && job.articles.length > 0 && (
+                <section>
+                  <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+                    {tDesk('collected')} ({job.articles.length})
+                  </h2>
+                  <ul className="mt-3 divide-y divide-line rounded-sm border border-line bg-paper">
+                    {job.articles.map((a) => (
+                      <li key={`${a.source}-${a.url}`} className="px-4 py-3">
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-semibold text-ink-2 hover:text-amore"
+                        >
+                          {a.title}
+                        </a>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-mute-soft">
+                          <span className="uppercase tracking-[.18em]">
+                            {a.source}
+                          </span>
+                          {a.origin && <span>{a.origin}</span>}
+                          {a.publishedAt && <span>{a.publishedAt}</span>}
+                          <span className="text-amore">#{a.keyword}</span>
+                        </div>
+                        {a.snippet && (
+                          <p className="mt-1.5 text-md leading-[1.65] text-mute">
+                            {a.snippet}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
       )}
-    </FeaturePage>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 text-xs uppercase tracking-wider text-mute-soft">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StatePill({ phase }: { phase: 'idle' | 'running' | 'done' | 'error' }) {
+  const map = {
+    idle: { label: '대기', cls: 'bg-paper text-mute' },
+    running: { label: '진행 중', cls: 'bg-amore-bg text-amore' },
+    done: { label: '완료', cls: 'bg-mint text-ink' },
+    error: { label: '오류', cls: 'bg-warning-bg text-warning' },
+  };
+  const v = map[phase];
+  return (
+    <span className={`inline-flex items-center rounded-pill px-2 py-0 text-xs ${v.cls}`}>
+      {v.label}
+    </span>
   );
 }
