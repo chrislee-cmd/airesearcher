@@ -148,13 +148,28 @@ export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
 
 // Sidebar grouping. Features not listed here are still routable but
 // hidden from the sidebar — useful for legacy or work-in-progress flows.
+// `/canvas` 의 6장 widget (desk · quotes · moderator · translate · reports ·
+// slidegen) 은 PR3 에서 사이드바 항목 제거 — 캔버스 entry 가 진입점이고
+// 페이지 라우트는 그대로 유지 (deep-link 호환). Sidebar 라벨은 페이지
+// 헤더 등 다른 곳에서 여전히 참조될 수 있어 messages/*.json 의
+// Sidebar 섹션은 변경 X.
 export type FeatureGroupKey = 'design' | 'conduct' | 'analysis';
 
 export const FEATURE_GROUPS: {
   key: FeatureGroupKey;
   features: FeatureKey[];
 }[] = [
-  { key: 'design', features: ['desk', 'recruiting', 'scheduler', 'transcripts'] },
-  { key: 'conduct', features: ['moderator', 'survey', 'translate'] },
-  { key: 'analysis', features: ['insights_analyzer', 'quotes', 'interviews', 'reports', 'analyzer', 'quant', 'video', 'slidegen', 'affinity_bubble'] },
+  { key: 'design', features: ['recruiting', 'scheduler', 'transcripts'] },
+  { key: 'conduct', features: ['survey'] },
+  {
+    key: 'analysis',
+    features: [
+      'insights_analyzer',
+      'interviews',
+      'analyzer',
+      'quant',
+      'video',
+      'affinity_bubble',
+    ],
+  },
 ];
