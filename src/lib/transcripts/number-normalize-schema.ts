@@ -117,10 +117,10 @@ export const numberSpanSchema = z.object({
   kind: z
     .enum(['year', 'duration', 'time', 'age', 'count', 'money', 'date', 'other'])
     .describe('변환된 숫자의 의미 종류 (감사 로그용).'),
-  reason: z
-    .string()
-    .max(120)
-    .describe('이 변환을 선택한 근거 (한 줄).'),
+  // .max() 제거: 영어 LLM 이 한국어보다 길게 reason 을 작성해서 캡으로
+  // schema validation 실패 → 전체 패스 폐기됐던 회귀 (PR #350 진단).
+  // audit 전용 필드라 길이 제약 무의미.
+  reason: z.string().describe('이 변환을 선택한 근거.'),
 });
 
 export const numberNormalizeSchema = z.object({
@@ -129,10 +129,7 @@ export const numberNormalizeSchema = z.object({
     .describe(
       '변환 후보 spans. 확신 없으면 빈 배열 — false-positive 가 false-negative 보다 비용 큼.',
     ),
-  reasoning: z
-    .string()
-    .max(300)
-    .describe('전체 작업 한 줄 요약 (감사 로그용).'),
+  reasoning: z.string().describe('전체 작업 요약 (감사 로그용).'),
 });
 
 export type NumberSpan = z.infer<typeof numberSpanSchema>;
