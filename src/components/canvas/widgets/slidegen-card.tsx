@@ -17,7 +17,12 @@ function ExpandedBody() {
 
 export const slidegenCard: WidgetContent = {
   key: 'slidegen',
-  meta: { label: 'PPT 생성기', accent: 'sun', cost: 0 },
+  meta: {
+    label: 'PPT 생성기',
+    accent: 'sun',
+    cost: 0,
+    description: '보고서 텍스트를 도식 슬라이드 덱으로 자동 변환',
+  },
   state: 'idle',
   ExpandedBody,
 };
