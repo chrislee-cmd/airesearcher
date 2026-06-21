@@ -11,6 +11,29 @@ import type { DeepgramResult } from './format';
 
 export type TranscriptLanguage = 'ko' | 'en';
 
+// AI SDK's NoObjectGeneratedError carries the raw LLM `text` + `cause` (the
+// underlying Zod or provider error). Without those the audit's "llm_error: ..."
+// is just the headline ("response did not match schema") with no clue about
+// which field broke. Capture everything we can find on the error object.
+export function serializeLlmError(e: unknown): string {
+  if (!(e instanceof Error)) return String(e).slice(0, 500);
+  const parts: string[] = [e.message];
+  const anyErr = e as Error & { text?: unknown; cause?: unknown };
+  if (typeof anyErr.text === 'string' && anyErr.text.length > 0) {
+    parts.push(`text="${anyErr.text.slice(0, 400)}"`);
+  }
+  if (anyErr.cause) {
+    const causeMsg =
+      anyErr.cause instanceof Error
+        ? anyErr.cause.message
+        : typeof anyErr.cause === 'string'
+          ? anyErr.cause
+          : JSON.stringify(anyErr.cause).slice(0, 300);
+    parts.push(`cause="${causeMsg.slice(0, 300)}"`);
+  }
+  return parts.join(' | ');
+}
+
 const MODEL = 'claude-haiku-4-5-20251001';
 const HEAD_TURNS = 15;
 const MIN_TURNS = 3;
@@ -194,16 +217,25 @@ ${sampleLines}`;
       system: language === 'en' ? SPEAKER_ROLES_SYSTEM_EN : SPEAKER_ROLES_SYSTEM,
       prompt,
       temperature: 0.1,
-      maxOutputTokens: 1024,
+      // 1024 → 2048: 영어 인터뷰에서 LLM 이 reasoning 을 길게 쓰면 truncation
+      // → schema validation 실패 가능성. 2배 여유 (PR #348 first run 진단).
+      maxOutputTokens: 2048,
     });
     decision = llmResult.object;
   } catch (e) {
-    console.warn('[transcripts/speaker-roles] LLM call failed', e);
+    // 진단: NoObjectGeneratedError 의 e.text (LLM 응답 raw 텍스트) + e.cause
+    // 까지 audit 에 남겨야 root cause 추적 가능. 이전엔 e.message 만 120자로
+    // 잘랐던 게 한계였음. PII 없으니 길게 남겨도 OK.
+    const detail = serializeLlmError(e);
+    console.warn(
+      `[transcripts/speaker-roles] LLM call failed (lang=${language}, turns=${turns.length}, speakers=${distinct.length})`,
+      detail,
+    );
     return {
       roles: null,
       audit: {
         skipped: true,
-        reason: e instanceof Error ? `llm_error: ${e.message.slice(0, 120)}` : 'llm_error',
+        reason: `llm_error: ${detail.slice(0, 500)}`,
       },
     };
   }

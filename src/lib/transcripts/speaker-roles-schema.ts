@@ -115,10 +115,12 @@ export const speakerRolesSchema = z.object({
     .describe(
       '전체 분류 신뢰도. 명확한 1-on-1 인터뷰 패턴이면 high, 발화 분포가 애매하면 low.',
     ),
+  // .max() 제거: 영어 LLM 이 reasoning 을 한국어보다 길게 작성해서 500자
+  // 캡으로 schema validation 실패 → 전체 패스 폐기됐던 회귀 (PR #350 진단).
+  // audit 전용 필드라 길이 제약 무의미.
   reasoning: z
     .string()
-    .max(500)
-    .describe('한 줄짜리 분류 근거 (어떤 시그널을 봤는지). 감사 로그용.'),
+    .describe('분류 근거 (어떤 시그널을 봤는지). 감사 로그용.'),
 });
 
 export type SpeakerRoleAssignment = z.infer<typeof speakerRoleAssignmentSchema>;
