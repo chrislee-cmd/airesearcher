@@ -311,20 +311,18 @@ export function TranscriptStudio() {
   const cardState = isRunning ? 'running' : queueJobs.some((j) => j.status === 'error') ? 'error' : 'idle';
 
   // 처리한 시간 = done 잡들의 duration_seconds 합.
-  // 평균 처리속도 = duration / wall-clock(updated_at - created_at) 의 평균 (real-time factor).
+  // 전사록 평균 시간 = duration_seconds 평균 (오디오 길이 평균).
   const totalDurationSec = doneJobs.reduce(
     (sum, j) => sum + (j.duration_seconds ?? 0),
     0,
   );
-  const avgSpeed = (() => {
-    const ratios = doneJobs
-      .map((j) => {
-        const dur = j.duration_seconds ?? 0;
-        const wall = (new Date(j.updated_at).getTime() - new Date(j.created_at).getTime()) / 1000;
-        return dur > 0 && wall > 0 ? dur / wall : 0;
-      })
-      .filter((r) => r > 0);
-    return ratios.length === 0 ? null : ratios.reduce((s, r) => s + r, 0) / ratios.length;
+  const avgDurationSec = (() => {
+    const durations = doneJobs
+      .map((j) => j.duration_seconds ?? 0)
+      .filter((d) => d > 0);
+    return durations.length === 0
+      ? null
+      : durations.reduce((s, d) => s + d, 0) / durations.length;
   })();
   const headerProgress = hasUploads
     ? Math.max(...Object.values(job.localUploads), 0)
@@ -372,7 +370,10 @@ export function TranscriptStudio() {
           {/* 3 stat 타일 — 누적 메트릭 */}
           <div className="grid grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
             <StatTile label="처리한 시간" value={formatDuration(totalDurationSec) || '0m'} />
-            <StatTile label="평균 처리속도" value={avgSpeed ? `${avgSpeed.toFixed(1)}×` : '—'} />
+            <StatTile
+              label="전사록 평균 시간"
+              value={avgDurationSec ? formatDuration(avgDurationSec) : '—'}
+            />
             <StatTile label="라이브러리" value={`${doneJobs.length}건`} />
           </div>
 
