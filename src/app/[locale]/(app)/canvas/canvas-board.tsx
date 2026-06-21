@@ -111,10 +111,13 @@ export function CanvasBoard({
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className="grid grid-cols-3 gap-3"
+          className="grid grid-cols-3 gap-6"
           style={{
-            width: '1116px',
-            gridAutoRows: '360px',
+            // 3*240 + 2*24(gap-6) = 792. 카드를 compact tile 로 줄이고 위젯
+            // 사이 여백을 넓혀 도구함 느낌 강조. expanded col-span-2 row-span-2
+            // = 504×504 — 본문은 카드 안 overflow-y-auto 로 스크롤.
+            width: '792px',
+            gridAutoRows: '240px',
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: 'center center',
             transition: isPanning ? 'none' : 'transform 0.18s ease-out',

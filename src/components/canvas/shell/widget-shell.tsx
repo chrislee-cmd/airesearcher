@@ -38,7 +38,7 @@ export function WidgetShell({
   }
 
   if (!expanded) {
-    return <CollapsedTile content={content} onExpand={onExpand} onKeyDown={handleKey} pill={pill} />;
+    return <CollapsedTile content={content} onExpand={onExpand} onKeyDown={handleKey} />;
   }
 
   return (
@@ -101,18 +101,17 @@ export function WidgetShell({
   );
 }
 
-// Collapsed 모드 — 정사각형 그리드 셀. 썸네일/액센트 박스가 top 절반,
-// 텍스트 영역이 bottom 절반. flex-col 로 라벨↑·부제→pill/cost 분할.
+// Collapsed 모드 — compact 정사각형 (canvas-board gridAutoRows 240px).
+// 썸네일이 카드 거의 가득 (fill object-cover), 하단에 라벨+cost 만 compact
+// bar. state pill 은 expanded 헤더에만 노출 (collapsed 는 시각 노이즈 축소).
 function CollapsedTile({
   content,
   onExpand,
   onKeyDown,
-  pill,
 }: {
   content: WidgetContent;
   onExpand: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
-  pill: { label: string; cls: string };
 }) {
   return (
     // h-full: canvas-board 의 gridAutoRows 360px 가 셀 높이를 정함. card 가
@@ -126,15 +125,16 @@ function CollapsedTile({
       onKeyDown={onKeyDown}
       aria-expanded={false}
     >
-      {/* 상단 — 썸네일/액센트 박스. 카드 폭에 비례해 큰 시각 비중. */}
-      <div className="flex flex-1 items-center justify-center">
+      {/* 상단 — 썸네일/액센트 박스. `fill` + object-cover 로 카드 폭 가득.
+          썸네일이 거의 가득 차게 보이도록 컨테이너 자체를 채움. */}
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
-            width={96}
-            height={96}
-            className="h-24 w-24 rounded-sm border border-amore-tint object-cover"
+            fill
+            sizes="240px"
+            className="object-cover"
           />
         ) : (
           <div
@@ -146,23 +146,15 @@ function CollapsedTile({
           </div>
         )}
       </div>
-      {/* 하단 — 라벨 + 부제 + (pill · cost) bottom row. */}
-      <div className="flex shrink-0 flex-col gap-1.5 border-t border-line-soft bg-paper-soft px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-md font-semibold text-ink-2">
-            {content.meta.label}
-          </span>
-          <Pill {...pill} />
-        </div>
-        {content.meta.description && (
-          <div className="text-xs text-mute line-clamp-2">
-            {content.meta.description}
-          </div>
-        )}
+      {/* 하단 — 라벨 + cost. compact (carrd 가 작아진 만큼 정보 핵심만). */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-soft bg-paper-soft px-3 py-2">
+        <span className="truncate text-sm font-semibold text-ink-2">
+          {content.meta.label}
+        </span>
         {typeof content.meta.cost === 'number' && (
-          <div className="text-xs text-mute-soft">
-            {content.meta.cost === 0 ? '무료' : `${content.meta.cost} 크레딧`}
-          </div>
+          <span className="shrink-0 text-xs text-mute-soft">
+            {content.meta.cost === 0 ? '무료' : `${content.meta.cost}`}
+          </span>
         )}
       </div>
     </div>
