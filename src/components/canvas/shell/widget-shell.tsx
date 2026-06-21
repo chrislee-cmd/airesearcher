@@ -34,7 +34,7 @@ export function WidgetShell({
 
   return (
     <div
-      className={`flex flex-col rounded-md border bg-paper-soft shadow-bento transition-all ${
+      className={`flex flex-col overflow-hidden rounded-md border bg-paper-soft shadow-bento transition-all ${
         expanded
           ? 'border-amore'
           : 'cursor-pointer border-line hover:border-ink'
@@ -45,36 +45,42 @@ export function WidgetShell({
       onKeyDown={handleKey}
       aria-expanded={expanded}
     >
-      {/* Card 헤더 — collapsed 일 때도 동일 (높이 88px). 액센트 박스 +
-          제목 + 상태 pill + 비용. 시각 비중은 #347 quotes 헤더와 동일. */}
-      <div className="flex h-[88px] shrink-0 items-center gap-4 px-5 py-5">
+      {/* Card 헤더 — collapsed 일 때도 동일 (높이 88px). 썸네일/액센트 박스
+          (48px) + 제목 (text-xl) + 부제 (line-clamp-1) + 상태 pill + 비용.
+          시각 비중은 #349 desk-research 헤더와 일관. */}
+      <div className="flex h-[88px] shrink-0 items-center gap-4 bg-amore-tint px-5 py-4">
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
-            width={56}
-            height={56}
-            className="h-14 w-14 shrink-0 rounded-sm object-cover"
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 rounded-sm object-cover"
           />
         ) : (
           <div
-            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
           >
-            <span className="text-2xl text-ink">
+            <span className="text-xl text-ink">
               {ACCENT_ICON[content.meta.accent]}
             </span>
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl font-semibold tracking-tight text-ink-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-medium text-ink-2">
               {content.meta.label}
             </span>
             <Pill {...pill} />
           </div>
+          {content.meta.description && (
+            <div className="mt-0.5 text-sm text-mute line-clamp-1">
+              {content.meta.description}
+            </div>
+          )}
         </div>
         {typeof content.meta.cost === 'number' && (
-          <span className="shrink-0 text-sm text-mute">
+          <span className="shrink-0 text-xs text-mute-soft">
             {content.meta.cost === 0
               ? '무료'
               : `${content.meta.cost} 크레딧`}

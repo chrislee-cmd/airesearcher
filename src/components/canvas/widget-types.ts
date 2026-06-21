@@ -20,6 +20,9 @@ export type WidgetContent = {
     // 옵션: `/public` 아래 썸네일 경로. 지정 시 widget-shell 이 accent 박스
     // 대신 next/image 로 렌더 (PR #352 의 deskresearch.png 패턴).
     thumbnail?: string;
+    // 옵션: 헤더 타이틀 아래 부제 1줄 (line-clamp-1). messages 의
+    // Features.{key}.description 과 일관성 유지.
+    description?: string;
   };
   state: WidgetState;
   ExpandedBody: FC;

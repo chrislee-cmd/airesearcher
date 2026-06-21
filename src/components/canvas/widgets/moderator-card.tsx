@@ -16,7 +16,13 @@ function ExpandedBody() {
 
 export const moderatorCard: WidgetContent = {
   key: 'moderator',
-  meta: { label: 'AI 모더레이터', accent: 'peach', cost: 1 },
+  meta: {
+    label: 'AI 모더레이터',
+    accent: 'peach',
+    cost: 1,
+    thumbnail: '/thumbnail/interview.png',
+    description: '인터뷰 가이드 자동 생성 + 실시간 모더레이션 보조',
+  },
   state: 'idle',
   ExpandedBody,
 };

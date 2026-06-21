@@ -17,7 +17,12 @@ function ExpandedBody() {
 
 export const toplineCard: WidgetContent = {
   key: 'topline',
-  meta: { label: '전체 리포트 생성기', accent: 'rose', cost: 50 },
+  meta: {
+    label: '전체 리포트 생성기',
+    accent: 'rose',
+    cost: 50,
+    description: '전사록·인터뷰 결과를 종합해 한 페이지 토플라인 보고서로',
+  },
   state: 'idle',
   ExpandedBody,
 };
