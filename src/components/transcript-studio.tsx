@@ -331,12 +331,12 @@ export function TranscriptStudio() {
   return (
     <>
       <div className="mx-auto w-full max-w-[860px]">
-        <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
+        <div className="flex flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento">
           {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용.
               부제 제거 + 제목 크기/굵기 ↑ + 좌측 아이콘 14×14 로 시각 비중
               맞춤. running 상태 진행 바는 헤더 안에 inline 으로 유지. */}
-          <div className="flex items-center gap-4 border-b border-line-soft px-5 py-5">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-lav">
+          <div className="flex items-center gap-4 border-b border-line-soft bg-amore-bg px-5 py-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-paper">
               <span className="text-2xl text-ink">◇</span>
             </div>
             <div className="min-w-0 flex-1">
