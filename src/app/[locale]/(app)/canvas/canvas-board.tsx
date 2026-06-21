@@ -26,11 +26,11 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.04;
 // Pan-to-center 계산용 셀 메트릭 — grid auto-flow 3-col, 1x1 collapsed
-// 셀이 240×240, gap 24. 한 줄에 3장. 카드 index → 그리드 중심 기준 offset
-// (px). 클릭 시 카드 중심이 viewport 중심에 오도록 pan 보정.
+// 셀이 240×240, gap 48 (도구함 breathing room). 카드 index → 그리드 중심
+// 기준 offset (px). 클릭 시 카드 중심이 viewport 중심에 오도록 pan 보정.
 const CELL_SIZE = 240;
-const CELL_GAP = 24;
-const PITCH = CELL_SIZE + CELL_GAP; // 264
+const CELL_GAP = 48;
+const PITCH = CELL_SIZE + CELL_GAP; // 288
 // 6 widget 그리드는 3 col × 2 row 가 default (collapsed 일 때).
 // 카드 i의 grid 내부 중심 offset (그리드 중심 기준):
 //   x = (col - 1) * PITCH  → col 0 = -264, col 1 = 0, col 2 = 264
@@ -51,13 +51,16 @@ export function CanvasBoard({
   widgets: WidgetContent[];
   initialFocus?: string;
 }) {
-  // 초기엔 affordance 위해 1장 열림 (focus param 또는 첫 widget). 사용자가
-  // 접기 누르면 null 로 — 모든 widget collapsed 상태도 허용.
+  // 여러 위젯 동시 expand 가능 — Set 으로 관리. 초기엔 affordance 위해
+  // 1장만 열림 (focus param 또는 첫 widget). 그 후엔 사용자가 자유롭게
+  // expand/collapse — 다른 카드 클릭해도 기존 열려있던 카드 닫히지 X.
   const initial =
     initialFocus && widgets.some((w) => w.key === initialFocus)
       ? initialFocus
       : (widgets[0]?.key ?? null);
-  const [expanded, setExpanded] = useState<string | null>(initial);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
+    initial ? new Set([initial]) : new Set(),
+  );
 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -69,39 +72,39 @@ export function CanvasBoard({
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
-  // 카드 클릭 시 그 카드 중심으로 부드럽게 pan (graceful zoom-into-widget
-  // 효과). transform transition 이 0.28s ease-out 으로 보간.
+  // 카드 클릭 시 expandedKeys 에 추가 + 그 카드 중심으로 부드럽게 pan
+  // (graceful zoom-into-widget). 기존 expanded 카드들은 그대로.
   const expandTo = useCallback(
     (key: string) => {
       const idx = widgets.findIndex((w) => w.key === key);
-      if (idx === -1) {
-        setExpanded(key);
-        return;
+      if (idx !== -1) {
+        // expanded 카드는 col-span-2 — 좌상단이 (col, row), 중심은 그
+        // 카드의 1×1 자리 + (PITCH/2, PITCH/2) 만큼 우측·아래.
+        const offset = cardCenterOffset(idx);
+        setPan({
+          x: -(offset.x + PITCH / 2) * zoom,
+          y: -(offset.y + PITCH / 2) * zoom,
+        });
       }
-      // Expanded 카드는 col-span-2 row-span-2 — 좌상단이 (col, row) 위치.
-      // expanded 카드 중심 = 그 카드의 1×1 자리 + (PITCH/2, PITCH/2) 만큼
-      // 우측·아래로 (2×2 가 좌상단 셀에서 시작).
-      const offset = cardCenterOffset(idx);
-      const expandedCenter = {
-        x: offset.x + PITCH / 2,
-        y: offset.y + PITCH / 2,
-      };
-      // pan = -expandedCenter * zoom (현재 zoom 반영). pan 적용 시 카드가
-      // viewport 중앙에 오게 됨.
-      setPan({
-        x: -expandedCenter.x * zoom,
-        y: -expandedCenter.y * zoom,
+      setExpandedKeys((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        return next;
       });
-      setExpanded(key);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- widgets 정적
     [zoom],
   );
 
-  const collapseAll = useCallback(() => {
-    setExpanded(null);
-    // pan 은 그대로 — 사용자 시야 유지. 원위치 복귀를 원하면 사용자가 직접
-    // pan / wheel 조정.
+  // 개별 위젯 collapse — 다른 expanded 위젯엔 영향 X. pan 도 그대로 (사용자
+  // 시야 유지).
+  const collapseKey = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
   }, []);
 
   const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
@@ -166,12 +169,12 @@ export function CanvasBoard({
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className="grid grid-cols-3 gap-6"
+          className="grid grid-cols-3 gap-12"
           style={{
-            // 3*240 + 2*24(gap-6) = 792. 카드를 compact tile 로 줄이고 위젯
-            // 사이 여백을 넓혀 도구함 느낌 강조. expanded col-span-2 row-span-2
-            // = 504×504 — 본문은 카드 안 overflow-y-auto 로 스크롤.
-            width: '792px',
+            // 3*240 + 2*48(gap-12) = 816. 위젯 사이 여백을 더 넓혀 도구함
+            // breathing room 확보. expanded col-span-2 = 528 폭, 높이는 자연
+            // 자라남 (row-span 강제 X — self-start + z-10 으로 overflow OK).
+            width: '816px',
             gridAutoRows: '240px',
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: 'center center',
@@ -182,7 +185,7 @@ export function CanvasBoard({
           }}
         >
           {widgets.map((w) => {
-            const isExpanded = expanded === w.key;
+            const isExpanded = expandedKeys.has(w.key);
             return (
               <div
                 key={w.key}
@@ -191,7 +194,8 @@ export function CanvasBoard({
                   isExpanded
                     ? // col-span-2 만 — 높이는 자연 자람 (row-span 제거).
                       // self-start = 셀 위쪽 정렬 (stretch X), z-10 = 본문이
-                      // 길어 다음 row 와 겹치면 위로 떠오름.
+                      // 길어 다음 row 와 겹치면 위로 떠오름. 여러 expanded
+                      // 카드가 공존 가능 — DOM 순서로 stacking 결정.
                       'z-10 col-span-2 self-start transition-all duration-300 ease-out'
                     : 'transition-all duration-300 ease-out'
                 }
@@ -200,7 +204,7 @@ export function CanvasBoard({
                   content={w}
                   expanded={isExpanded}
                   onExpand={() => expandTo(w.key)}
-                  onCollapse={collapseAll}
+                  onCollapse={() => collapseKey(w.key)}
                 />
               </div>
             );
