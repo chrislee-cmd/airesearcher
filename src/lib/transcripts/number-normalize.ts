@@ -2,10 +2,13 @@ import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import {
   NUMBER_NORMALIZE_SYSTEM,
+  NUMBER_NORMALIZE_SYSTEM_EN,
   numberNormalizeSchema,
   type NumberSpan,
   type NumberNormalizeDecision,
 } from './number-normalize-schema';
+
+export type NumberLanguage = 'ko' | 'en';
 
 // Korean number normalization pass. Runs AFTER cleanup + term-normalize,
 // so the input is already disfluency-free and terminologically consistent.
@@ -36,6 +39,45 @@ const MAX_SPAN_LEN_DIFF = 5;
 // unit-suffix guard rejects spans where `normalized` introduces any of
 // these chars that `original` doesn't already contain.
 const KOREAN_UNIT_CHARS = '만억조천백십년월일시분초세살명번개대회회차주원천원';
+
+// English unit words for the equivalent guard. Each word here is whole-word
+// matched (case-insensitive). The guard rejects a span if `normalized`
+// contains any of these words that `original` doesn't already contain — same
+// idea as the Korean guard: a normalized span must not "introduce" new unit
+// information that risks mangling other parts of the doc during substitution.
+const ENGLISH_UNIT_WORDS = [
+  // time
+  'year', 'years', 'month', 'months', 'week', 'weeks', 'day', 'days',
+  'hour', 'hours', 'minute', 'minutes', 'second', 'seconds',
+  // money
+  'dollar', 'dollars', 'cent', 'cents',
+  // proportions
+  'percent', 'percentage', 'pct',
+  // counts (interview-common)
+  'people', 'person', 'times', 'children', 'kids', 'employees', 'customers',
+  // size/distance
+  'kilometer', 'kilometers', 'mile', 'miles', 'meter', 'meters',
+  'kilogram', 'kilograms', 'pound', 'pounds', 'gram', 'grams',
+  // data
+  'megabyte', 'megabytes', 'gigabyte', 'gigabytes', 'terabyte', 'terabytes',
+];
+
+function tokensIn(text: string): Set<string> {
+  const out = new Set<string>();
+  const re = /[A-Za-z]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) out.add(m[0].toLowerCase());
+  return out;
+}
+
+function introducesNewUnitWord(original: string, normalized: string): boolean {
+  const oTokens = tokensIn(original);
+  const nTokens = tokensIn(normalized);
+  for (const w of ENGLISH_UNIT_WORDS) {
+    if (nTokens.has(w) && !oTokens.has(w)) return true;
+  }
+  return false;
+}
 // Private-Use-Area sentinels written as \u escape sequences so the source
 // file stays plain ASCII (Git diff-able). U+E000 / U+E001 never appear in
 // real Korean transcripts and have no special regex meaning.
@@ -114,6 +156,7 @@ const emptyAudit = (reason: string): NumberNormalizeAudit => ({
  */
 export async function normalizeNumbersInTranscript(
   markdown: string,
+  language: NumberLanguage = 'ko',
 ): Promise<NumberNormalizeResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { normalized: null, audit: emptyAudit('missing_api_key') };
@@ -127,8 +170,11 @@ export async function normalizeNumbersInTranscript(
     const result = await generateObject({
       model: anthropic(MODEL),
       schema: numberNormalizeSchema,
-      system: NUMBER_NORMALIZE_SYSTEM,
-      prompt: `다음 인터뷰 전사록에서 한국어 텍스트형 숫자 표현을 찾아 디지트 + 한국식 단위로 변환할 spans 을 반환하세요. 확신 없는 span 은 결과에서 제외.\n\n[전사록]\n${markdown}`,
+      system: language === 'en' ? NUMBER_NORMALIZE_SYSTEM_EN : NUMBER_NORMALIZE_SYSTEM,
+      prompt:
+        language === 'en'
+          ? `Find text-form English numerals in the interview transcript below and propose digit-form spans (with the unit word preserved). Skip any span you're not 100% sure about.\n\n[transcript]\n${markdown}`
+          : `다음 인터뷰 전사록에서 한국어 텍스트형 숫자 표현을 찾아 디지트 + 한국식 단위로 변환할 spans 을 반환하세요. 확신 없는 span 은 결과에서 제외.\n\n[전사록]\n${markdown}`,
       temperature: 0.1,
       maxOutputTokens: 4096,
     });
@@ -185,7 +231,11 @@ export async function normalizeNumbersInTranscript(
       audit.spans_rejected += 1;
       continue;
     }
-    if (introducesNewUnitChar(span.original, span.normalized)) {
+    const introducesNewUnit =
+      language === 'en'
+        ? introducesNewUnitWord(span.original, span.normalized)
+        : introducesNewUnitChar(span.original, span.normalized);
+    if (introducesNewUnit) {
       audit.spans_rejected += 1;
       continue;
     }
