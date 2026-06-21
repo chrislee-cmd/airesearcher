@@ -155,11 +155,13 @@ function CollapsedTile({
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
 }) {
   return (
-    // h-full: canvas-board 의 gridAutoRows 360px 가 셀 높이를 정함. card 가
-    // 셀 높이 전체를 채우게 h-full (aspect-square 대신 — explicit grid row
-    // height 와 충돌 방지).
+    // aspect-square: canvas-board 가 절대 좌표로 카드 부모의 width 만 정함
+    // (CARD_W_COLLAPSED). aspect-square 로 카드가 자기 width 에 맞춰 높이도
+    // 정사각형으로 자동 계산. (이전 h-full 은 grid cell 의 explicit height
+    // 가 있어야 동작 — 절대 좌표 layout 에서는 부모 height 가 minHeight 만
+    // 이라 h-full 이 의도대로 안 됨).
     <div
-      className="flex h-full cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
+      className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
       onClick={onExpand}
       role="button"
       tabIndex={0}

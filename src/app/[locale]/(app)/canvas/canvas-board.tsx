@@ -25,22 +25,38 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.04;
-// Pan-to-center 계산용 셀 메트릭 — grid auto-flow 3-col, 1x1 collapsed
-// 셀이 240×240, gap 48 (도구함 breathing room). 카드 index → 그리드 중심
-// 기준 offset (px). 클릭 시 카드 중심이 viewport 중심에 오도록 pan 보정.
-const CELL_SIZE = 240;
+// 절대 좌표 layout — 카드가 (col, row) 위치에 고정. CSS grid auto-flow
+// 시 expanded col-span-2 가 자동 reshuffle 되어 "center merge" 현상이
+// 생겼던 게 root cause. position: absolute 로 각 카드가 자기 슬롯 유지.
+const CARD_W_COLLAPSED = 240;
+const CARD_W_EXPANDED = 480; // 1.5 cells (PITCH 절반 정도 overlap 허용)
 const CELL_GAP = 48;
-const PITCH = CELL_SIZE + CELL_GAP; // 288
-// 6 widget 그리드는 3 col × 2 row 가 default (collapsed 일 때).
-// 카드 i의 grid 내부 중심 offset (그리드 중심 기준):
-//   x = (col - 1) * PITCH  → col 0 = -264, col 1 = 0, col 2 = 264
-//   y = (row - 0.5) * PITCH  → row 0 = -132, row 1 = 132
-function cardCenterOffset(idx: number): { x: number; y: number } {
-  const col = idx % 3;
-  const row = Math.floor(idx / 3);
+const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288
+const GRID_COLS = 3;
+const GRID_W = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP; // 816
+
+// 카드 i 의 좌상단 (절대 좌표, 그리드 surface 내부 기준).
+function cardPosition(idx: number): { left: number; top: number } {
+  const col = idx % GRID_COLS;
+  const row = Math.floor(idx / GRID_COLS);
   return {
-    x: (col - 1) * PITCH,
-    y: (row - 0.5) * PITCH,
+    left: col * PITCH,
+    top: row * PITCH,
+  };
+}
+
+// 카드 i 의 collapsed 중심 (그리드 surface 중심 기준 offset). pan-to-center
+// 계산용. grid_W/2 = 408, grid_H/2 = 264 (2 rows).
+function cardCenterOffset(
+  idx: number,
+  totalRows: number,
+): { x: number; y: number } {
+  const gridH =
+    totalRows * CARD_W_COLLAPSED + Math.max(0, totalRows - 1) * CELL_GAP;
+  const pos = cardPosition(idx);
+  return {
+    x: pos.left + CARD_W_COLLAPSED / 2 - GRID_W / 2,
+    y: pos.top + CARD_W_COLLAPSED / 2 - gridH / 2,
   };
 }
 
@@ -72,18 +88,18 @@ export function CanvasBoard({
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
+  const totalRows = Math.ceil(widgets.length / GRID_COLS);
+
   // 카드 클릭 시 expandedKeys 에 추가 + 그 카드 중심으로 부드럽게 pan
   // (graceful zoom-into-widget). 기존 expanded 카드들은 그대로.
   const expandTo = useCallback(
     (key: string) => {
       const idx = widgets.findIndex((w) => w.key === key);
       if (idx !== -1) {
-        // expanded 카드는 col-span-2 — 좌상단이 (col, row), 중심은 그
-        // 카드의 1×1 자리 + (PITCH/2, PITCH/2) 만큼 우측·아래.
-        const offset = cardCenterOffset(idx);
+        const offset = cardCenterOffset(idx, totalRows);
         setPan({
-          x: -(offset.x + PITCH / 2) * zoom,
-          y: -(offset.y + PITCH / 2) * zoom,
+          x: -offset.x * zoom,
+          y: -offset.y * zoom,
         });
       }
       setExpandedKeys((prev) => {
@@ -93,7 +109,7 @@ export function CanvasBoard({
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- widgets 정적
-    [zoom],
+    [zoom, totalRows],
   );
 
   // 개별 위젯 collapse — 다른 expanded 위젯엔 영향 X. pan 도 그대로 (사용자
@@ -169,36 +185,39 @@ export function CanvasBoard({
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className="grid grid-cols-3 gap-12"
+          className="relative"
           style={{
-            // 3*240 + 2*48(gap-12) = 816. 위젯 사이 여백을 더 넓혀 도구함
-            // breathing room 확보. expanded col-span-2 = 528 폭, 높이는 자연
-            // 자라남 (row-span 강제 X — self-start + z-10 으로 overflow OK).
-            width: '816px',
-            gridAutoRows: '240px',
+            // 절대 좌표 surface — CSS grid auto-flow 의 reshuffle 문제 회피.
+            // 각 카드는 cardPosition(idx) 의 (left, top) 에 고정. expanded
+            // 시에도 위치 변경 X (width / height 만 성장). 여러 expanded
+            // 동시 가능 — z-10 으로 겹침 처리.
+            width: `${GRID_W}px`,
+            height: `${totalRows * CARD_W_COLLAPSED + Math.max(0, totalRows - 1) * CELL_GAP}px`,
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: 'center center',
             // pan 중엔 transition 없음 (드래그가 부드럽게 따라옴). 그 외엔
-            // 0.28s ease-out — 카드 클릭 시 카메라가 그쪽으로 부드럽게 이동
-            // 하는 graceful zoom-in 효과.
+            // 0.28s ease-out — 카드 클릭 시 카메라가 그쪽으로 부드럽게 이동.
             transition: isPanning ? 'none' : 'transform 0.28s ease-out',
           }}
         >
-          {widgets.map((w) => {
+          {widgets.map((w, idx) => {
             const isExpanded = expandedKeys.has(w.key);
+            const pos = cardPosition(idx);
             return (
               <div
                 key={w.key}
                 data-canvas-card
-                className={
-                  isExpanded
-                    ? // col-span-2 만 — 높이는 자연 자람 (row-span 제거).
-                      // self-start = 셀 위쪽 정렬 (stretch X), z-10 = 본문이
-                      // 길어 다음 row 와 겹치면 위로 떠오름. 여러 expanded
-                      // 카드가 공존 가능 — DOM 순서로 stacking 결정.
-                      'z-10 col-span-2 self-start transition-all duration-300 ease-out'
-                    : 'transition-all duration-300 ease-out'
-                }
+                style={{
+                  position: 'absolute',
+                  left: pos.left,
+                  top: pos.top,
+                  width: isExpanded ? CARD_W_EXPANDED : CARD_W_COLLAPSED,
+                  // 높이: collapsed 는 정사각형 강제 (CARD_W_COLLAPSED),
+                  // expanded 는 자연 자람 (minHeight 만 보장).
+                  minHeight: CARD_W_COLLAPSED,
+                  zIndex: isExpanded ? 10 : 1,
+                  transition: 'width 0.3s ease-out',
+                }}
               >
                 <WidgetShell
                   content={w}
