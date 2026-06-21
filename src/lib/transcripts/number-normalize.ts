@@ -7,6 +7,7 @@ import {
   type NumberSpan,
   type NumberNormalizeDecision,
 } from './number-normalize-schema';
+import { serializeLlmError } from './speaker-roles';
 
 export type NumberLanguage = 'ko' | 'en';
 
@@ -176,16 +177,24 @@ export async function normalizeNumbersInTranscript(
           ? `Find text-form English numerals in the interview transcript below and propose digit-form spans (with the unit word preserved). Skip any span you're not 100% sure about.\n\n[transcript]\n${markdown}`
           : `다음 인터뷰 전사록에서 한국어 텍스트형 숫자 표현을 찾아 디지트 + 한국식 단위로 변환할 spans 을 반환하세요. 확신 없는 span 은 결과에서 제외.\n\n[전사록]\n${markdown}`,
       temperature: 0.1,
-      maxOutputTokens: 4096,
+      // 4096 → 8192: 20-min 영어 인터뷰 1건의 span 수 (30~50개) × reason 120자
+      // 한도 + reasoning + JSON overhead ≈ 5-7k tokens. 기존 4096 은 truncation
+      // 가능성 — 2배 여유 (PR #348 first run 진단).
+      maxOutputTokens: 8192,
     });
     decision = result.object;
   } catch (e) {
-    console.warn('[transcripts/number-normalize] LLM call failed', e);
+    // 진단: NoObjectGeneratedError 의 e.text / e.cause 까지 audit 에 남김.
+    // 이전 e.message.slice(0, 120) 은 "response did not match schema" 헤드라인
+    // 만 남아서 어디서 깨졌는지 추적 불가능.
+    const detail = serializeLlmError(e);
+    console.warn(
+      `[transcripts/number-normalize] LLM call failed (lang=${language}, docLen=${markdown.length})`,
+      detail,
+    );
     return {
       normalized: null,
-      audit: emptyAudit(
-        e instanceof Error ? `llm_error: ${e.message.slice(0, 120)}` : 'llm_error',
-      ),
+      audit: emptyAudit(`llm_error: ${detail.slice(0, 500)}`),
     };
   }
 
