@@ -48,18 +48,18 @@ export function WidgetShell({
     >
       {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
           PR #349/#347 패턴과 시각 일관. */}
-      <div className="flex h-[88px] shrink-0 items-center gap-4 bg-amore-tint px-5 py-4">
+      <div className="flex h-[88px] shrink-0 items-center gap-4 px-5 py-4">
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
             width={48}
             height={48}
-            className="h-12 w-12 shrink-0 rounded-sm object-cover"
+            className="h-12 w-12 shrink-0 rounded-sm border border-amore-tint object-cover"
           />
         ) : (
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-amore-tint ${ACCENT_BG[content.meta.accent]}`}
           >
             <span className="text-xl text-ink">
               {ACCENT_ICON[content.meta.accent]}
@@ -120,18 +120,18 @@ function CollapsedTile({
       aria-expanded={false}
     >
       {/* 상단 — 썸네일/액센트 박스. 카드 폭에 비례해 큰 시각 비중. */}
-      <div className="flex flex-1 items-center justify-center bg-amore-tint">
+      <div className="flex flex-1 items-center justify-center">
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
             width={96}
             height={96}
-            className="h-24 w-24 rounded-sm object-cover"
+            className="h-24 w-24 rounded-sm border border-amore-tint object-cover"
           />
         ) : (
           <div
-            className={`flex h-20 w-20 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-20 w-20 items-center justify-center rounded-sm border border-amore-tint ${ACCENT_BG[content.meta.accent]}`}
           >
             <span className="text-3xl text-ink">
               {ACCENT_ICON[content.meta.accent]}
