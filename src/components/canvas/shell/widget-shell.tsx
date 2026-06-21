@@ -42,8 +42,12 @@ export function WidgetShell({
   }
 
   return (
+    // h-full + flex-col: 부모 (canvas-board 의 col-span-2 row-span-2 셀) 의
+    // 높이 전체를 채우고, 헤더(88px 고정) 외 영역은 body 가 flex-1 +
+    // overflow-y-auto 로 내부 스크롤. 본문(desk/quotes) 이 셀 높이를 넘기면
+    // 카드 안에서만 스크롤되어 그리드 layout 깨지지 않음.
     <div
-      className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento transition-all"
+      className="flex h-full flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento transition-all"
       aria-expanded
     >
       {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
@@ -87,10 +91,10 @@ export function WidgetShell({
           </span>
         )}
       </div>
-      {/* border-t 만 — 패딩 / 섹션 구분은 ExpandedBody 가 책임. desk /
-          transcript 본문은 다중 sub-section + border-t 로 분할되어 있어서
-          shell 측 단일 padding 컨테이너와 충돌. */}
-      <div className="border-t border-line-soft">
+      {/* flex-1 overflow-y-auto: 헤더 외 영역 채우면서 본문 overflow 시
+          카드 내부 스크롤. desk / transcript 본문은 다중 sub-section +
+          border-t 로 분할 — shell 측 단일 padding 추가 없이 그대로 렌더. */}
+      <div className="flex-1 overflow-y-auto border-t border-line-soft">
         <ExpandedBody />
       </div>
     </div>
@@ -111,8 +115,11 @@ function CollapsedTile({
   pill: { label: string; cls: string };
 }) {
   return (
+    // h-full: canvas-board 의 gridAutoRows 360px 가 셀 높이를 정함. card 가
+    // 셀 높이 전체를 채우게 h-full (aspect-square 대신 — explicit grid row
+    // height 와 충돌 방지).
     <div
-      className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
+      className="flex h-full cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
       onClick={onExpand}
       role="button"
       tabIndex={0}
