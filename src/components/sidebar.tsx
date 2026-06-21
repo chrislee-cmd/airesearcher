@@ -446,6 +446,24 @@ export function Sidebar({
         </div>
       </div>
 
+      {/* Canvas entry — production /canvas (도구 6장 카드 board).
+          PR1 에서는 사이드바 도구 항목들과 공존; PR3 에서 사이드바
+          재구성 (quotes/desk 개별 항목 → canvas 단일 entry) 검토. */}
+      <div className="px-3 pb-2">
+        <Link
+          href="/canvas"
+          prefetch
+          onClick={() => track('sidebar_canvas_click')}
+          className={`block border-l-2 px-4 py-2 text-md transition-colors duration-[120ms] ${
+            pathname === '/canvas'
+              ? 'border-amore font-semibold text-ink-2'
+              : 'border-transparent text-mute hover:text-ink-2'
+          }`}
+        >
+          {t('canvas')}
+        </Link>
+      </div>
+
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
         {FEATURE_GROUPS.map((g) => {
           const isCollapsed = collapsed.has(g.key);
