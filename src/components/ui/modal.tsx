@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 //
 // Status: NOT YET CONSUMED. Migrations land in follow-up PRs.
 
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 type Props = {
   open: boolean;
@@ -39,6 +39,7 @@ const SIZE: Record<Size, string> = {
   sm: 'max-w-[420px]',
   md: 'max-w-[560px]',
   lg: 'max-w-[760px]',
+  xl: 'max-w-[1100px]',
 };
 
 export function Modal({

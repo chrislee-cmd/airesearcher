@@ -8,6 +8,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
 } from 'react';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -32,6 +33,7 @@ import { EmptyState } from './ui/empty-state';
 import { JobProgress } from './ui/job-progress';
 import { Button } from './ui/button';
 import { IconButton } from './ui/icon-button';
+import { Modal } from './ui/modal';
 import { Input } from './ui/input';
 import { ChipInput } from './ui/chip-input';
 import { triggerBlobDownload } from '@/lib/export/download';
@@ -406,9 +408,13 @@ export function DeskResearch() {
       <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-sky">
-            <span className="text-xl text-ink">◐</span>
-          </div>
+          <Image
+            src="/thumbnail/deskresearch.png"
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 rounded-sm object-cover"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-xl font-medium text-ink-2">데스크 리서치</span>
@@ -610,66 +616,6 @@ export function DeskResearch() {
               </div>
               <span className="shrink-0 text-xs text-amore">프리뷰 →</span>
             </Button>
-            <div className="mt-2 flex gap-1.5">
-              <div className="flex-1">
-                <DownloadMenu
-                  tone="ghost"
-                  align="end"
-                  disabled={exporting}
-                  items={[
-                    {
-                      format: 'md',
-                      kind: 'blob',
-                      filename: `${buildFilename()}.md`,
-                      build: () => {
-                        track('desk_export_md_click', {
-                          feature: 'desk',
-                          format: 'md',
-                        });
-                        return new Blob([job.output ?? ''], {
-                          type: 'text/markdown;charset=utf-8',
-                        });
-                      },
-                    },
-                    {
-                      format: 'docx',
-                      kind: 'action',
-                      onSelect: () => downloadDocx(job.output ?? ''),
-                    },
-                  ]}
-                />
-              </div>
-              <div className="flex-1">
-                <ShareMenu
-                  align="end"
-                  disabled={!job.output}
-                  items={[
-                    {
-                      destination: 'google-docs',
-                      title: buildFilename(),
-                      getBlob: async () => {
-                        const res = await fetch('/api/desk/export', {
-                          method: 'POST',
-                          headers: { 'content-type': 'application/json' },
-                          body: JSON.stringify({
-                            markdown: job.output ?? '',
-                            filename: buildFilename(),
-                            title: job.keywords?.length
-                              ? `데스크 리서치 — ${job.keywords.join(', ')}`
-                              : '데스크 리서치',
-                          }),
-                        });
-                        return {
-                          blob: await res.blob(),
-                          mimeType:
-                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        };
-                      },
-                    },
-                  ]}
-                />
-              </div>
-            </div>
           </div>
         )}
 
@@ -691,17 +637,15 @@ export function DeskResearch() {
         )}
       </div>
 
-      {/* Preview modal — fullscreen */}
-      {previewOpen && showResult && job && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-paper">
-          <div className="flex shrink-0 items-center justify-between border-b border-line bg-paper-soft px-6 py-4">
-            <div className="min-w-0">
-              <div className="text-xs text-mute-soft">데스크 리서치 결과</div>
-              <div className="mt-0.5 truncate text-lg font-medium text-ink-2">
-                {job.keywords.join(', ')} · {tDesk('reportTitle')}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+      <Modal
+        open={previewOpen && showResult && job != null}
+        onClose={() => setPreviewOpen(false)}
+        size="xl"
+        title={job ? `${job.keywords.join(', ')} · ${tDesk('reportTitle')}` : ''}
+        description="데스크 리서치 결과"
+        footer={
+          job ? (
+            <>
               <DownloadMenu
                 tone="ghost"
                 align="end"
@@ -751,93 +695,86 @@ export function DeskResearch() {
                   },
                 ]}
               />
-              <IconButton
-                variant="ghost"
-                onClick={() => setPreviewOpen(false)}
-                aria-label="닫기"
-              >
-                ✕
-              </IconButton>
-            </div>
-          </div>
+            </>
+          ) : null
+        }
+      >
+        {job && (
+          <div className="space-y-6">
+            {job.skipped && job.skipped.length > 0 && (
+              <div className="rounded-sm border border-warning-line bg-warning-bg p-4 text-md text-ink-2">
+                <div className="font-semibold">{tDesk('skippedTitle')}</div>
+                <ul className="mt-1.5 space-y-0.5 font-mono text-sm text-mute">
+                  {job.skipped.map((s) => (
+                    <li key={s.source}>
+                      · {s.source} — {s.missing}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <div className="flex-1 overflow-auto px-10 py-8">
-            <div className="mx-auto max-w-3xl space-y-6">
-              {job.skipped && job.skipped.length > 0 && (
-                <div className="rounded-sm border border-warning-line bg-warning-bg p-4 text-md text-ink-2">
-                  <div className="font-semibold">{tDesk('skippedTitle')}</div>
-                  <ul className="mt-1.5 space-y-0.5 font-mono text-sm text-mute">
-                    {job.skipped.map((s) => (
-                      <li key={s.source}>
-                        · {s.source} — {s.missing}
-                      </li>
-                    ))}
-                  </ul>
+            {job.similar_keywords.length > 0 && (
+              <section>
+                <span className="block text-xs uppercase tracking-[.22em] text-amore">
+                  {tDesk('similarKeywords')}
+                </span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {job.similar_keywords.map((k) => (
+                    <span
+                      key={k}
+                      className="rounded-sm border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute"
+                    >
+                      {k}
+                    </span>
+                  ))}
                 </div>
-              )}
+              </section>
+            )}
 
-              {job.similar_keywords.length > 0 && (
-                <section>
-                  <span className="block text-xs uppercase tracking-[.22em] text-amore">
-                    {tDesk('similarKeywords')}
-                  </span>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {job.similar_keywords.map((k) => (
-                      <span
-                        key={k}
-                        className="rounded-sm border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute"
+            {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
+
+            <article className="rounded-sm border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2">
+              <DeskMarkdown source={job.output ?? ''} />
+            </article>
+
+            {job.articles && job.articles.length > 0 && (
+              <section>
+                <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+                  {tDesk('collected')} ({job.articles.length})
+                </h2>
+                <ul className="mt-3 divide-y divide-line rounded-sm border border-line bg-paper">
+                  {job.articles.map((a) => (
+                    <li key={`${a.source}-${a.url}`} className="px-4 py-3">
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-lg font-semibold text-ink-2 hover:text-amore"
                       >
-                        {k}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
-
-              <article className="rounded-sm border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2">
-                <DeskMarkdown source={job.output ?? ''} />
-              </article>
-
-              {job.articles && job.articles.length > 0 && (
-                <section>
-                  <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
-                    {tDesk('collected')} ({job.articles.length})
-                  </h2>
-                  <ul className="mt-3 divide-y divide-line rounded-sm border border-line bg-paper">
-                    {job.articles.map((a) => (
-                      <li key={`${a.source}-${a.url}`} className="px-4 py-3">
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-lg font-semibold text-ink-2 hover:text-amore"
-                        >
-                          {a.title}
-                        </a>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-mute-soft">
-                          <span className="uppercase tracking-[.18em]">
-                            {a.source}
-                          </span>
-                          {a.origin && <span>{a.origin}</span>}
-                          {a.publishedAt && <span>{a.publishedAt}</span>}
-                          <span className="text-amore">#{a.keyword}</span>
-                        </div>
-                        {a.snippet && (
-                          <p className="mt-1.5 text-md leading-[1.65] text-mute">
-                            {a.snippet}
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </div>
+                        {a.title}
+                      </a>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-mute-soft">
+                        <span className="uppercase tracking-[.18em]">
+                          {a.source}
+                        </span>
+                        {a.origin && <span>{a.origin}</span>}
+                        {a.publishedAt && <span>{a.publishedAt}</span>}
+                        <span className="text-amore">#{a.keyword}</span>
+                      </div>
+                      {a.snippet && (
+                        <p className="mt-1.5 text-md leading-[1.65] text-mute">
+                          {a.snippet}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
