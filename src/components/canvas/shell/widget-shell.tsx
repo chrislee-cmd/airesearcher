@@ -12,7 +12,7 @@
    → 직전 expanded auto-collapse.
    ──────────────────────────────────────────────────────────────────── */
 
-import type { KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
@@ -47,12 +47,11 @@ export function WidgetShell({
   }
 
   return (
-    // h-full + flex-col: 부모 (canvas-board 의 col-span-2 row-span-2 셀) 의
-    // 높이 전체를 채우고, 헤더(88px 고정) 외 영역은 body 가 flex-1 +
-    // overflow-y-auto 로 내부 스크롤. 본문(desk/quotes) 이 셀 높이를 넘기면
-    // 카드 안에서만 스크롤되어 그리드 layout 깨지지 않음.
+    // 자연 높이로 자라남 (h-full / row-span 제거 — canvas-board 에서 셀에
+    // align-self start + z-10 으로 grid 밖으로 overflow 허용). 본문 내부
+    // 스크롤 X — 캔버스 자체가 pan/zoom 으로 navigable.
     <div
-      className="flex h-full flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento transition-all"
+      className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento"
       aria-expanded
     >
       {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
@@ -110,12 +109,35 @@ export function WidgetShell({
           ✕
         </IconButton>
       </div>
-      {/* flex-1 overflow-y-auto: 헤더 외 영역 채우면서 본문 overflow 시
-          카드 내부 스크롤. desk / transcript 본문은 다중 sub-section +
-          border-t 로 분할 — shell 측 단일 padding 추가 없이 그대로 렌더. */}
-      <div className="flex-1 overflow-y-auto border-t border-line-soft">
+      {/* Notion 토글식 open animation — grid-template-rows: 0fr → 1fr
+          보간으로 본문이 부드럽게 펼쳐짐. 본문 내부 스크롤 X — 자연 높이
+          그대로 자라남. */}
+      <ExpandableBody>
         <ExpandedBody />
-      </div>
+      </ExpandableBody>
+    </div>
+  );
+}
+
+// CSS grid-template-rows 트릭으로 height 0 → auto 전환을 부드럽게 보간.
+// 마운트 즉시 1프레임 0fr 로 렌더 후 RAF 로 1fr 토글 — 브라우저가 transition
+// 을 거는 변화로 인식. 내부 wrapper 는 overflow-hidden + min-h-0 이어야
+// 0fr 가 실제로 0 으로 collapsed.
+function ExpandableBody({ children }: { children: ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return (
+    <div
+      className="grid border-t border-line-soft"
+      style={{
+        gridTemplateRows: isOpen ? '1fr' : '0fr',
+        transition: 'grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
   );
 }

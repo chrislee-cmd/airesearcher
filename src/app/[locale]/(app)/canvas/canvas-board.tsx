@@ -187,7 +187,14 @@ export function CanvasBoard({
               <div
                 key={w.key}
                 data-canvas-card
-                className={`${isExpanded ? 'col-span-2 row-span-2' : ''} transition-all duration-300 ease-out`}
+                className={
+                  isExpanded
+                    ? // col-span-2 만 — 높이는 자연 자람 (row-span 제거).
+                      // self-start = 셀 위쪽 정렬 (stretch X), z-10 = 본문이
+                      // 길어 다음 row 와 겹치면 위로 떠오름.
+                      'z-10 col-span-2 self-start transition-all duration-300 ease-out'
+                    : 'transition-all duration-300 ease-out'
+                }
               >
                 <WidgetShell
                   content={w}
