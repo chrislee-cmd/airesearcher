@@ -25,6 +25,24 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.04;
+// Pan-to-center 계산용 셀 메트릭 — grid auto-flow 3-col, 1x1 collapsed
+// 셀이 240×240, gap 24. 한 줄에 3장. 카드 index → 그리드 중심 기준 offset
+// (px). 클릭 시 카드 중심이 viewport 중심에 오도록 pan 보정.
+const CELL_SIZE = 240;
+const CELL_GAP = 24;
+const PITCH = CELL_SIZE + CELL_GAP; // 264
+// 6 widget 그리드는 3 col × 2 row 가 default (collapsed 일 때).
+// 카드 i의 grid 내부 중심 offset (그리드 중심 기준):
+//   x = (col - 1) * PITCH  → col 0 = -264, col 1 = 0, col 2 = 264
+//   y = (row - 0.5) * PITCH  → row 0 = -132, row 1 = 132
+function cardCenterOffset(idx: number): { x: number; y: number } {
+  const col = idx % 3;
+  const row = Math.floor(idx / 3);
+  return {
+    x: (col - 1) * PITCH,
+    y: (row - 0.5) * PITCH,
+  };
+}
 
 export function CanvasBoard({
   widgets,
@@ -33,6 +51,8 @@ export function CanvasBoard({
   widgets: WidgetContent[];
   initialFocus?: string;
 }) {
+  // 초기엔 affordance 위해 1장 열림 (focus param 또는 첫 widget). 사용자가
+  // 접기 누르면 null 로 — 모든 widget collapsed 상태도 허용.
   const initial =
     initialFocus && widgets.some((w) => w.key === initialFocus)
       ? initialFocus
@@ -48,6 +68,41 @@ export function CanvasBoard({
     panY: number;
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+
+  // 카드 클릭 시 그 카드 중심으로 부드럽게 pan (graceful zoom-into-widget
+  // 효과). transform transition 이 0.28s ease-out 으로 보간.
+  const expandTo = useCallback(
+    (key: string) => {
+      const idx = widgets.findIndex((w) => w.key === key);
+      if (idx === -1) {
+        setExpanded(key);
+        return;
+      }
+      // Expanded 카드는 col-span-2 row-span-2 — 좌상단이 (col, row) 위치.
+      // expanded 카드 중심 = 그 카드의 1×1 자리 + (PITCH/2, PITCH/2) 만큼
+      // 우측·아래로 (2×2 가 좌상단 셀에서 시작).
+      const offset = cardCenterOffset(idx);
+      const expandedCenter = {
+        x: offset.x + PITCH / 2,
+        y: offset.y + PITCH / 2,
+      };
+      // pan = -expandedCenter * zoom (현재 zoom 반영). pan 적용 시 카드가
+      // viewport 중앙에 오게 됨.
+      setPan({
+        x: -expandedCenter.x * zoom,
+        y: -expandedCenter.y * zoom,
+      });
+      setExpanded(key);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- widgets 정적
+    [zoom],
+  );
+
+  const collapseAll = useCallback(() => {
+    setExpanded(null);
+    // pan 은 그대로 — 사용자 시야 유지. 원위치 복귀를 원하면 사용자가 직접
+    // pan / wheel 조정.
+  }, []);
 
   const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
     // wheel = zoom (Miro-식). Ctrl/Cmd 가드 없이도 작동 — 캔버스가 viewport
@@ -120,7 +175,10 @@ export function CanvasBoard({
             gridAutoRows: '240px',
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: 'center center',
-            transition: isPanning ? 'none' : 'transform 0.18s ease-out',
+            // pan 중엔 transition 없음 (드래그가 부드럽게 따라옴). 그 외엔
+            // 0.28s ease-out — 카드 클릭 시 카메라가 그쪽으로 부드럽게 이동
+            // 하는 graceful zoom-in 효과.
+            transition: isPanning ? 'none' : 'transform 0.28s ease-out',
           }}
         >
           {widgets.map((w) => {
@@ -129,12 +187,13 @@ export function CanvasBoard({
               <div
                 key={w.key}
                 data-canvas-card
-                className={isExpanded ? 'col-span-2 row-span-2' : ''}
+                className={`${isExpanded ? 'col-span-2 row-span-2' : ''} transition-all duration-300 ease-out`}
               >
                 <WidgetShell
                   content={w}
                   expanded={isExpanded}
-                  onExpand={() => setExpanded(w.key)}
+                  onExpand={() => expandTo(w.key)}
+                  onCollapse={collapseAll}
                 />
               </div>
             );

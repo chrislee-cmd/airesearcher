@@ -17,15 +17,20 @@ import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
+import { IconButton } from '@/components/ui/icon-button';
 
 export function WidgetShell({
   content,
   expanded,
   onExpand,
+  onCollapse,
 }: {
   content: WidgetContent;
   expanded: boolean;
   onExpand: () => void;
+  // expanded 일 때 헤더의 접기 버튼이 호출. 모든 widget collapsed 도 가능
+  // (canvas-board state 가 null 허용) — 클릭 시 setExpanded(null).
+  onCollapse: () => void;
 }) {
   const { ExpandedBody } = content;
   const pill = statePill(content.state);
@@ -90,6 +95,20 @@ export function WidgetShell({
               : `${content.meta.cost} 크레딧`}
           </span>
         )}
+        {/* 접기 버튼 — 클릭 시 widget 이 collapsed 상태로 (board state null
+            허용). 본문 클릭과 분리되도록 헤더 우측에. */}
+        <IconButton
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCollapse();
+          }}
+          aria-label="접기"
+          className="ml-1 shrink-0"
+        >
+          ✕
+        </IconButton>
       </div>
       {/* flex-1 overflow-y-auto: 헤더 외 영역 채우면서 본문 overflow 시
           카드 내부 스크롤. desk / transcript 본문은 다중 sub-section +
