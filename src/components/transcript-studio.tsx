@@ -334,25 +334,26 @@ export function TranscriptStudio() {
     <>
       <div className="mx-auto w-full max-w-[860px]">
         <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
-          {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용 */}
-          <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-lav">
-              <span className="text-xl text-ink">◇</span>
+          {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용.
+              부제 제거 + 제목 크기/굵기 ↑ + 좌측 아이콘 14×14 로 시각 비중
+              맞춤. running 상태 진행 바는 헤더 안에 inline 으로 유지. */}
+          <div className="flex items-center gap-4 border-b border-line-soft px-5 py-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-lav">
+              <span className="text-2xl text-ink">◇</span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-medium text-ink-2">전사록 생성기</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl font-semibold tracking-tight text-ink-2">
+                  전사록 생성기
+                </span>
                 <span
-                  className={`inline-flex items-center rounded-pill px-2 py-0 text-xs ${stateBadge(cardState).cls}`}
+                  className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-xs ${stateBadge(cardState).cls}`}
                 >
                   {stateBadge(cardState).label}
                 </span>
               </div>
-              <div className="mt-0.5 text-sm text-mute line-clamp-1">
-                녹음 파일을 화자 분리 + 시점 stamp 가 찍힌 전사록으로
-              </div>
               {isRunning && (
-                <div className="mt-1.5 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2">
                   <div className="h-1 w-40 overflow-hidden rounded-pill bg-line-soft">
                     <div
                       className="h-full rounded-pill bg-amore"
@@ -365,7 +366,7 @@ export function TranscriptStudio() {
                 </div>
               )}
             </div>
-            <span className="shrink-0 text-xs text-mute-soft">25 크레딧</span>
+            <span className="shrink-0 text-sm text-mute">25 크레딧</span>
           </div>
 
           {/* 3 stat 타일 — 누적 메트릭 */}
