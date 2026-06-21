@@ -2,21 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRequireAuth } from './auth-provider';
-import { track } from './mixpanel-provider';
+import { useRequireAuth } from '@/components/auth-provider';
+import { track } from '@/components/mixpanel-provider';
 import {
   useTranscriptJobs,
   type TranscriptJob,
   type TranscriptJobStatus,
-} from './transcript-job-provider';
-import { useWorkspace } from './workspace-provider';
-import { Button } from './ui/button';
-import { IconButton } from './ui/icon-button';
-import { DownloadMenu } from './ui/download-menu';
-import { ShareMenu } from './ui/share-menu';
-import { FileDropZone } from './ui/file-drop-zone';
-import { JobProgress } from './ui/job-progress';
-import { Modal } from './ui/modal';
+} from '@/components/transcript-job-provider';
+import { useWorkspace } from '@/components/workspace-provider';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { DownloadMenu } from '@/components/ui/download-menu';
+import { ShareMenu } from '@/components/ui/share-menu';
+import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { JobProgress } from '@/components/ui/job-progress';
+import { Modal } from '@/components/ui/modal';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
@@ -56,7 +56,10 @@ function formatDuration(seconds: number | null) {
   return `${s}s`;
 }
 
-export function TranscriptStudio() {
+// 전사록 카드 본문 — canvas widget shell 의 ExpandedBody slot 에 마운트.
+// chrome / 헤더 (◇ accent + 라벨 + state pill + cost) 는 widget-shell 책임.
+// stats 3타일 + 드롭존 + 큐 + 최근 산출물 + 모달은 PR #347 디자인 그대로.
+export function QuotesCardBody() {
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
@@ -305,10 +308,8 @@ export function TranscriptStudio() {
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const hasUploads = Object.keys(job.localUploads).length > 0;
-  const isRunning =
-    hasUploads ||
-    queueJobs.some((j) => j.status === 'submitting' || j.status === 'transcribing');
-  const cardState = isRunning ? 'running' : queueJobs.some((j) => j.status === 'error') ? 'error' : 'idle';
+  // cardState / headerProgress / isRunning 은 widget-shell 의 헤더로 옮겨지면서
+  // body 안에서 미사용 — 후속 PR 에서 shell 로 live state 주입할 때 복구 검토.
 
   // 처리한 시간 = done 잡들의 duration_seconds 합.
   // 전사록 평균 시간 = duration_seconds 평균 (오디오 길이 평균).
@@ -324,51 +325,16 @@ export function TranscriptStudio() {
       ? null
       : durations.reduce((s, d) => s + d, 0) / durations.length;
   })();
-  const headerProgress = hasUploads
-    ? Math.max(...Object.values(job.localUploads), 0)
-    : null;
+  // headerProgress 도 동일 — shell 로 옮겨질 예정.
 
   return (
     <>
-      <div className="mx-auto w-full max-w-[860px]">
-        <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
-          {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용.
-              부제 제거 + 제목 크기/굵기 ↑ + 좌측 아이콘 14×14 로 시각 비중
-              맞춤. running 상태 진행 바는 헤더 안에 inline 으로 유지. */}
-          <div className="flex items-center gap-4 border-b border-line-soft px-5 py-5">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-lav">
-              <span className="text-2xl text-ink">◇</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl font-semibold tracking-tight text-ink-2">
-                  전사록 생성기
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-xs ${stateBadge(cardState).cls}`}
-                >
-                  {stateBadge(cardState).label}
-                </span>
-              </div>
-              {isRunning && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="h-1 w-40 overflow-hidden rounded-pill bg-line-soft">
-                    <div
-                      className="h-full rounded-pill bg-amore"
-                      style={{ width: `${headerProgress ?? 35}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-mute">
-                    {queueJobs.length + (hasUploads ? Object.keys(job.localUploads).length : 0)}건 진행 중
-                  </span>
-                </div>
-              )}
-            </div>
-            <span className="shrink-0 text-sm text-mute">25 크레딧</span>
-          </div>
-
-          {/* 3 stat 타일 — 누적 메트릭 */}
-          <div className="grid grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. stats / 본문 / 최근 산출물
+          은 PR #347 디자인 그대로. cardState / headerProgress / isRunning 은
+          현재 body 안에서는 미사용 — 후속 PR 에서 widget-shell 로 주입 검토. */}
+      <div>
+        {/* 3 stat 타일 — 누적 메트릭 */}
+        <div className="grid grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
             <StatTile label="처리한 시간" value={formatDuration(totalDurationSec) || '0m'} />
             <StatTile
               label="전사록 평균 시간"
@@ -451,7 +417,6 @@ export function TranscriptStudio() {
               )}
             </div>
           )}
-        </div>
       </div>
 
       {pendingFiles && (
@@ -502,11 +467,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 // 카드 헤더의 상태 pill — running/error/idle
-function stateBadge(state: 'running' | 'idle' | 'error'): { label: string; cls: string } {
-  if (state === 'running') return { label: '진행 중', cls: 'bg-amore-bg text-amore' };
-  if (state === 'error') return { label: '오류', cls: 'bg-warning-bg text-warning' };
-  return { label: '대기', cls: 'bg-paper text-mute' };
-}
+// stateBadge 는 widget-shell 측에서 statePill (tokens.ts) 로 그림 — body 안에서는 제거.
 
 // Gates every transcript upload on an explicit language confirmation.
 // The selector inside the modal writes back to the same state as the
