@@ -8,6 +8,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { KeyboardEvent } from 'react';
+import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
@@ -47,13 +48,23 @@ export function WidgetShell({
       {/* Card 헤더 — collapsed 일 때도 동일 (높이 88px). 액센트 박스 +
           제목 + 상태 pill + 비용. 시각 비중은 #347 quotes 헤더와 동일. */}
       <div className="flex h-[88px] shrink-0 items-center gap-4 px-5 py-5">
-        <div
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
-        >
-          <span className="text-2xl text-ink">
-            {ACCENT_ICON[content.meta.accent]}
-          </span>
-        </div>
+        {content.meta.thumbnail ? (
+          <Image
+            src={content.meta.thumbnail}
+            alt=""
+            width={56}
+            height={56}
+            className="h-14 w-14 shrink-0 rounded-sm object-cover"
+          />
+        ) : (
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
+          >
+            <span className="text-2xl text-ink">
+              {ACCENT_ICON[content.meta.accent]}
+            </span>
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl font-semibold tracking-tight text-ink-2">
@@ -71,7 +82,10 @@ export function WidgetShell({
         )}
       </div>
       {expanded && (
-        <div className="border-t border-line-soft px-5 py-5">
+        // border-t 만 — 패딩 / 섹션 구분은 ExpandedBody 가 책임. desk-research /
+        // transcript-studio 패턴은 본문 안에 다중 sub-section + border-t 로
+        // 분할되어 있어서 shell 측의 단일 padding 컨테이너와 충돌.
+        <div className="border-t border-line-soft">
           <ExpandedBody />
         </div>
       )}

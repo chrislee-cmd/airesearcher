@@ -8,12 +8,11 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
 } from 'react';
-import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { track } from './mixpanel-provider';
-import { useRequireAuth } from './auth-provider';
+import { track } from '@/components/mixpanel-provider';
+import { useRequireAuth } from '@/components/auth-provider';
 
 function readActiveProjectId(): string | null {
   try {
@@ -25,17 +24,17 @@ function readActiveProjectId(): string | null {
     return null;
   }
 }
-import { useDeskJobs, type DeskJob } from './desk-job-provider';
-import { DeskAnalyticsPanel } from './desk-analytics-panel';
-import { DownloadMenu } from './ui/download-menu';
-import { ShareMenu } from './ui/share-menu';
-import { EmptyState } from './ui/empty-state';
-import { JobProgress } from './ui/job-progress';
-import { Button } from './ui/button';
-import { IconButton } from './ui/icon-button';
-import { Modal } from './ui/modal';
-import { Input } from './ui/input';
-import { ChipInput } from './ui/chip-input';
+import { useDeskJobs, type DeskJob } from '@/components/desk-job-provider';
+import { DeskAnalyticsPanel } from '@/components/desk-analytics-panel';
+import { DownloadMenu } from '@/components/ui/download-menu';
+import { ShareMenu } from '@/components/ui/share-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import { JobProgress } from '@/components/ui/job-progress';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { Modal } from '@/components/ui/modal';
+import { Input } from '@/components/ui/input';
+import { ChipInput } from '@/components/ui/chip-input';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
@@ -148,7 +147,11 @@ function DeskMarkdown({ source }: { source: string }) {
   );
 }
 
-export function DeskResearch() {
+// 데스크 리서치 카드 본문 — canvas widget shell 의 ExpandedBody slot 에 마운트.
+// 시각적 chrome (border / rounded / shadow) + 헤더 (썸네일 + 라벨 + state pill +
+// cost) 는 widget-shell 이 그리고, 본문 (입력 + 스트리밍 + 결과 + 모달) 만 여기.
+// hooks · handlers · 모든 helpers 는 PR #349/#352 디자인 그대로 가져옴.
+export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
   const tCommon = useTranslations('Common');
   const locale = useLocale();
@@ -377,14 +380,8 @@ export function DeskResearch() {
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
   const showResult = !!(job?.status === 'done' && job.output);
-  const cardState: 'idle' | 'running' | 'done' | 'error' =
-    job?.status === 'error'
-      ? 'error'
-      : isWorking
-        ? 'running'
-        : job?.status === 'done'
-          ? 'done'
-          : 'idle';
+  // cardState 는 widget shell 외부에서 결정 (PR2 시점에는 widget meta.state
+  // 가 'idle' 로 고정 — 후속 PR 에서 widget shell 로 live state 주입 검토).
   const showRange = preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo));
 
   // 결과 row 메타: 출처 수 / 처리 시간 (wall-clock)
@@ -404,29 +401,11 @@ export function DeskResearch() {
       : `${wallSec}초`;
 
   return (
-    <div className="mx-auto w-full max-w-[860px]">
-      <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
-        {/* Header */}
-        <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
-          <Image
-            src="/thumbnail/deskresearch.png"
-            alt=""
-            width={48}
-            height={48}
-            className="h-12 w-12 shrink-0 rounded-sm object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-medium text-ink-2">데스크 리서치</span>
-              <StatePill phase={cardState} />
-            </div>
-            <div className="mt-0.5 text-sm text-mute line-clamp-1">
-              키워드만 넣으면 웹을 훑어 인용 + 한 줄 요약 보고서로
-            </div>
-          </div>
-          <span className="shrink-0 text-xs text-mute-soft">25 크레딧</span>
-        </div>
-
+    <>
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 본문 안의 다중 sub-section
+          은 PR #349 의 패턴 그대로 (각 섹션이 border-t + px-5 py-* 로 자기
+          영역 정의). cardState 는 widget shell 의 state pill 로 노출됨. */}
+      <div>
         {/* Inputs */}
         <div className="space-y-5 px-5 py-5">
           <Field label={tDesk('regionLabel')}>
@@ -775,7 +754,7 @@ export function DeskResearch() {
           </div>
         )}
       </Modal>
-    </div>
+    </>
   );
 }
 
@@ -790,17 +769,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function StatePill({ phase }: { phase: 'idle' | 'running' | 'done' | 'error' }) {
-  const map = {
-    idle: { label: '대기', cls: 'bg-paper text-mute' },
-    running: { label: '진행 중', cls: 'bg-amore-bg text-amore' },
-    done: { label: '완료', cls: 'bg-mint text-ink' },
-    error: { label: '오류', cls: 'bg-warning-bg text-warning' },
-  };
-  const v = map[phase];
-  return (
-    <span className={`inline-flex items-center rounded-pill px-2 py-0 text-xs ${v.cls}`}>
-      {v.label}
-    </span>
-  );
-}
+// StatePill 은 widget-shell 측에서 그림 — body 안에서는 제거 (헤더 stripped).

@@ -17,6 +17,9 @@ export type WidgetContent = {
     label: string;
     accent: AccentColor;
     cost?: number;
+    // 옵션: `/public` 아래 썸네일 경로. 지정 시 widget-shell 이 accent 박스
+    // 대신 next/image 로 렌더 (PR #352 의 deskresearch.png 패턴).
+    thumbnail?: string;
   };
   state: WidgetState;
   ExpandedBody: FC;
