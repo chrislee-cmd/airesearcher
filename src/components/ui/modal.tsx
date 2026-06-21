@@ -113,13 +113,16 @@ export function Modal({
       <div
         ref={panelRef}
         className={[
-          'relative w-full overflow-hidden border border-line bg-paper-soft',
+          // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
+          // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
+          // 없어서 화면 위아래로 spill 한 버그)
+          'relative flex w-full max-h-[calc(100vh-2rem)] flex-col overflow-hidden border border-line bg-paper-soft',
           'rounded-sm [box-shadow:var(--shadow-bento)]',
           SIZE[size],
         ].join(' ')}
       >
         {(title || description) && (
-          <header className="border-b border-line-soft px-5 pb-3 pt-4">
+          <header className="shrink-0 border-b border-line-soft px-5 pb-3 pt-4">
             {title ? (
               <h2
                 id={headingId}
@@ -135,11 +138,11 @@ export function Modal({
             ) : null}
           </header>
         )}
-        <div className="px-5 py-4 text-lg leading-[1.65] text-ink-2">
+        <div className="flex-1 overflow-auto px-5 py-4 text-lg leading-[1.65] text-ink-2">
           {children}
         </div>
         {footer ? (
-          <footer className="flex items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
+          <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
             {footer}
           </footer>
         ) : null}
