@@ -46,7 +46,7 @@ export function WidgetShell({
     >
       {/* Card 헤더 — collapsed 일 때도 동일 (높이 88px). 액센트 박스 +
           제목 + 상태 pill + 비용. 시각 비중은 #347 quotes 헤더와 동일. */}
-      <div className="flex h-[88px] shrink-0 items-center gap-4 bg-amore-bg px-5 py-5">
+      <div className="flex h-[88px] shrink-0 items-center gap-4 bg-amore-tint px-5 py-5">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-sm ${ACCENT_BG[content.meta.accent]}`}
         >

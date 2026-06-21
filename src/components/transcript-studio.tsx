@@ -324,10 +324,6 @@ export function TranscriptStudio() {
       ? null
       : durations.reduce((s, d) => s + d, 0) / durations.length;
   })();
-  const headerProgress = hasUploads
-    ? Math.max(...Object.values(job.localUploads), 0)
-    : null;
-
   return (
     <>
       <div className="mx-auto w-full max-w-[860px]">
@@ -335,13 +331,13 @@ export function TranscriptStudio() {
           {/* Canvas card 헤더 — 라벨 + 상태 pill + 진행 바 + 비용.
               부제 제거 + 제목 크기/굵기 ↑ + 좌측 아이콘 14×14 로 시각 비중
               맞춤. running 상태 진행 바는 헤더 안에 inline 으로 유지. */}
-          <div className="flex items-center gap-4 border-b border-line-soft bg-amore-bg px-5 py-5">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-paper">
-              <span className="text-2xl text-ink">◇</span>
+          <div className="flex items-center gap-4 border-b border-line-soft bg-amore-tint px-5 py-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-paper">
+              <span className="text-xl text-ink">◇</span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl font-semibold tracking-tight text-ink-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-medium text-ink-2">
                   전사록 생성기
                 </span>
                 <span
@@ -350,21 +346,11 @@ export function TranscriptStudio() {
                   {stateBadge(cardState).label}
                 </span>
               </div>
-              {isRunning && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="h-1 w-40 overflow-hidden rounded-pill bg-line-soft">
-                    <div
-                      className="h-full rounded-pill bg-amore"
-                      style={{ width: `${headerProgress ?? 35}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-mute">
-                    {queueJobs.length + (hasUploads ? Object.keys(job.localUploads).length : 0)}건 진행 중
-                  </span>
-                </div>
-              )}
+              <div className="mt-0.5 text-sm text-mute line-clamp-1">
+                오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.
+              </div>
             </div>
-            <span className="shrink-0 text-sm text-mute">25 크레딧</span>
+            <span className="shrink-0 text-xs text-mute-soft">25 크레딧</span>
           </div>
 
           {/* 3 stat 타일 — 누적 메트릭 */}

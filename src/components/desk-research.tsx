@@ -407,7 +407,7 @@ export function DeskResearch() {
     <div className="mx-auto w-full max-w-[860px]">
       <div className="flex flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento">
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-line-soft bg-amore-bg px-5 py-4">
+        <div className="flex items-center gap-4 border-b border-line-soft bg-amore-tint px-5 py-4">
           <Image
             src="/thumbnail/deskresearch.png"
             alt=""
