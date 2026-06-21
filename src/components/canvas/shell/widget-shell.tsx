@@ -12,20 +12,25 @@
    → 직전 expanded auto-collapse.
    ──────────────────────────────────────────────────────────────────── */
 
-import type { KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
+import { IconButton } from '@/components/ui/icon-button';
 
 export function WidgetShell({
   content,
   expanded,
   onExpand,
+  onCollapse,
 }: {
   content: WidgetContent;
   expanded: boolean;
   onExpand: () => void;
+  // expanded 일 때 헤더의 접기 버튼이 호출. 모든 widget collapsed 도 가능
+  // (canvas-board state 가 null 허용) — 클릭 시 setExpanded(null).
+  onCollapse: () => void;
 }) {
   const { ExpandedBody } = content;
   const pill = statePill(content.state);
@@ -38,12 +43,15 @@ export function WidgetShell({
   }
 
   if (!expanded) {
-    return <CollapsedTile content={content} onExpand={onExpand} onKeyDown={handleKey} pill={pill} />;
+    return <CollapsedTile content={content} onExpand={onExpand} onKeyDown={handleKey} />;
   }
 
   return (
+    // 자연 높이로 자라남 (h-full / row-span 제거 — canvas-board 에서 셀에
+    // align-self start + z-10 으로 grid 밖으로 overflow 허용). 본문 내부
+    // 스크롤 X — 캔버스 자체가 pan/zoom 으로 navigable.
     <div
-      className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento transition-all"
+      className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento"
       aria-expanded
     >
       {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
@@ -86,31 +94,72 @@ export function WidgetShell({
               : `${content.meta.cost} 크레딧`}
           </span>
         )}
+        {/* 접기 버튼 — 클릭 시 widget 이 collapsed 상태로 (board state null
+            허용). 본문 클릭과 분리되도록 헤더 우측에. */}
+        <IconButton
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCollapse();
+          }}
+          aria-label="접기"
+          className="ml-1 shrink-0"
+        >
+          ✕
+        </IconButton>
       </div>
-      {/* border-t 만 — 패딩 / 섹션 구분은 ExpandedBody 가 책임. desk /
-          transcript 본문은 다중 sub-section + border-t 로 분할되어 있어서
-          shell 측 단일 padding 컨테이너와 충돌. */}
-      <div className="border-t border-line-soft">
+      {/* Notion 토글식 open animation — grid-template-rows: 0fr → 1fr
+          보간으로 본문이 부드럽게 펼쳐짐. 본문 내부 스크롤 X — 자연 높이
+          그대로 자라남. */}
+      <ExpandableBody>
         <ExpandedBody />
-      </div>
+      </ExpandableBody>
     </div>
   );
 }
 
-// Collapsed 모드 — 정사각형 그리드 셀. 썸네일/액센트 박스가 top 절반,
-// 텍스트 영역이 bottom 절반. flex-col 로 라벨↑·부제→pill/cost 분할.
+// CSS grid-template-rows 트릭으로 height 0 → auto 전환을 부드럽게 보간.
+// 마운트 즉시 1프레임 0fr 로 렌더 후 RAF 로 1fr 토글 — 브라우저가 transition
+// 을 거는 변화로 인식. 내부 wrapper 는 overflow-hidden + min-h-0 이어야
+// 0fr 가 실제로 0 으로 collapsed.
+function ExpandableBody({ children }: { children: ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return (
+    <div
+      className="grid border-t border-line-soft"
+      style={{
+        gridTemplateRows: isOpen ? '1fr' : '0fr',
+        transition: 'grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+// Collapsed 모드 — compact 정사각형 (canvas-board gridAutoRows 240px).
+// 썸네일이 카드 거의 가득 (fill object-cover), 하단에 라벨+cost 만 compact
+// bar. state pill 은 expanded 헤더에만 노출 (collapsed 는 시각 노이즈 축소).
 function CollapsedTile({
   content,
   onExpand,
   onKeyDown,
-  pill,
 }: {
   content: WidgetContent;
   onExpand: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
-  pill: { label: string; cls: string };
 }) {
   return (
+    // aspect-square: canvas-board 가 절대 좌표로 카드 부모의 width 만 정함
+    // (CARD_W_COLLAPSED). aspect-square 로 카드가 자기 width 에 맞춰 높이도
+    // 정사각형으로 자동 계산. (이전 h-full 은 grid cell 의 explicit height
+    // 가 있어야 동작 — 절대 좌표 layout 에서는 부모 height 가 minHeight 만
+    // 이라 h-full 이 의도대로 안 됨).
     <div
       className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
       onClick={onExpand}
@@ -119,15 +168,16 @@ function CollapsedTile({
       onKeyDown={onKeyDown}
       aria-expanded={false}
     >
-      {/* 상단 — 썸네일/액센트 박스. 카드 폭에 비례해 큰 시각 비중. */}
-      <div className="flex flex-1 items-center justify-center">
+      {/* 상단 — 썸네일/액센트 박스. `fill` + object-cover 로 카드 폭 가득.
+          썸네일이 거의 가득 차게 보이도록 컨테이너 자체를 채움. */}
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
-            width={96}
-            height={96}
-            className="h-24 w-24 rounded-sm border border-amore-tint object-cover"
+            fill
+            sizes="240px"
+            className="object-cover"
           />
         ) : (
           <div
@@ -139,23 +189,15 @@ function CollapsedTile({
           </div>
         )}
       </div>
-      {/* 하단 — 라벨 + 부제 + (pill · cost) bottom row. */}
-      <div className="flex shrink-0 flex-col gap-1.5 border-t border-line-soft bg-paper-soft px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-md font-semibold text-ink-2">
-            {content.meta.label}
-          </span>
-          <Pill {...pill} />
-        </div>
-        {content.meta.description && (
-          <div className="text-xs text-mute line-clamp-2">
-            {content.meta.description}
-          </div>
-        )}
+      {/* 하단 — 라벨 + cost. compact (carrd 가 작아진 만큼 정보 핵심만). */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-soft bg-paper-soft px-3 py-2">
+        <span className="truncate text-sm font-semibold text-ink-2">
+          {content.meta.label}
+        </span>
         {typeof content.meta.cost === 'number' && (
-          <div className="text-xs text-mute-soft">
-            {content.meta.cost === 0 ? '무료' : `${content.meta.cost} 크레딧`}
-          </div>
+          <span className="shrink-0 text-xs text-mute-soft">
+            {content.meta.cost === 0 ? '무료' : `${content.meta.cost}`}
+          </span>
         )}
       </div>
     </div>
