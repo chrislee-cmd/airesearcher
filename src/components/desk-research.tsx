@@ -8,6 +8,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
 } from 'react';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -407,9 +408,13 @@ export function DeskResearch() {
       <div className="flex flex-col rounded-md border border-line bg-paper-soft shadow-bento">
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-line-soft px-5 py-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-sky">
-            <span className="text-xl text-ink">◐</span>
-          </div>
+          <Image
+            src="/thumbnail/deskresearch.png"
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 rounded-sm object-cover"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-xl font-medium text-ink-2">데스크 리서치</span>
