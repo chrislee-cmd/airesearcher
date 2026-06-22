@@ -9,6 +9,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 export type CanvasWidgetKey =
+  | 'recruiting'
   | 'quotes'
   | 'desk'
   | 'interviews'
@@ -18,6 +19,7 @@ export type CanvasWidgetKey =
   | 'slidegen';
 
 export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
+  recruiting: true,
   quotes: true,
   desk: true,
   interviews: true,
@@ -28,10 +30,10 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
 };
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
-// FEATURE_GROUPS 에서 자연스러운 카테고리 순서 (수집 → 진행 → 분석 → 산출)
-// 와 비슷하게 — quotes/desk/interviews (수집·리서치·분석) →
+// 리서치 흐름 순 — recruiting (모집) → quotes/desk/interviews (수집·분석) →
 // moderator/translate (진행) → topline/slidegen (산출).
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
+  'recruiting',
   'quotes',
   'desk',
   'interviews',
