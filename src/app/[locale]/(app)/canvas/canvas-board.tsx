@@ -163,21 +163,41 @@ export function CanvasBoard({
 
   return (
     <div
-      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
+      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-[#0d1117] font-mono"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+      style={{
+        cursor: isPanning ? 'grabbing' : 'grab',
+        fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, monospace',
+      }}
     >
-      {/* dot grid 배경 — pan 시 함께 이동해야 표면 이동 감각이 살아남.
-          background-position 을 pan offset 에 동기화. */}
+      {/* terminal prompt bar — dark IDE 시안의 chrome */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 border-b border-gray-800 bg-[#161b22] px-5 py-2 text-xs text-gray-400 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-green-400">chris@desk</span>
+          <span className="text-gray-600">:</span>
+          <span className="text-cyan-400">~/canvas</span>
+          <span className="text-gray-600">$</span>
+          <span className="text-gray-300">tools list --all</span>
+          <span className="ml-1 inline-block h-3 w-1.5 bg-gray-500 animate-pulse" />
+        </div>
+        <div className="flex items-center gap-3">
+          <span>session</span>
+          <span className="text-cyan-400">4f2a:c9d1</span>
+          <span>·</span>
+          <span className="text-green-400">● connected</span>
+        </div>
+      </div>
+
+      {/* dot grid 배경 — cyan 톤 neon. pan 시 함께 이동해 surface 이동 감각. */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            'radial-gradient(circle, rgba(29,27,32,0.06) 1px, transparent 1px)',
+            'radial-gradient(circle, rgba(140,240,255,0.08) 1px, transparent 1px)',
           backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}

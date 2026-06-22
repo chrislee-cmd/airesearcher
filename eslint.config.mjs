@@ -41,6 +41,10 @@ const eslintConfig = defineConfig([
       // Mock lab — primitive 채택 전 단계. canvas-lab 위젯이 production
       // 으로 승격될 때 strict 적용. (`*` 는 [locale] segment 매칭)
       "src/app/*/(canvas-lab)/**",
+      // Canvas terminal skin — dark IDE 톤 시안 (껍데기 ui). body 본문은
+      // 기존 디자인 시스템 유지.
+      "src/app/*/(app)/canvas/**",
+      "src/components/canvas/shell/**",
     ],
     rules: {
       "react/forbid-elements": [
@@ -78,6 +82,11 @@ const eslintConfig = defineConfig([
   {
     name: "design-system/no-hardcoded-tokens",
     files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      // Canvas terminal skin — dark/neon arbitrary values 사용
+      "src/app/*/(app)/canvas/**",
+      "src/components/canvas/shell/**",
+    ],
     rules: {
       "no-restricted-syntax": [
         "error",
