@@ -11,6 +11,7 @@
 export type CanvasWidgetKey =
   | 'quotes'
   | 'desk'
+  | 'interviews'
   | 'moderator'
   | 'translate'
   | 'topline'
@@ -19,6 +20,7 @@ export type CanvasWidgetKey =
 export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   quotes: true,
   desk: true,
+  interviews: true,
   moderator: false,
   translate: false,
   topline: false,
@@ -27,11 +29,12 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
 // FEATURE_GROUPS 에서 자연스러운 카테고리 순서 (수집 → 진행 → 분석 → 산출)
-// 와 비슷하게 — quotes/desk (수집·리서치) → moderator/translate (진행) →
-// topline/slidegen (산출).
+// 와 비슷하게 — quotes/desk/interviews (수집·리서치·분석) →
+// moderator/translate (진행) → topline/slidegen (산출).
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
   'quotes',
   'desk',
+  'interviews',
   'moderator',
   'translate',
   'topline',
