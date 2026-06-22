@@ -122,9 +122,10 @@ export function CanvasBoard({
   }, []);
 
   const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
-    // wheel = zoom (Miro-식). Ctrl/Cmd 가드 없이도 작동 — 캔버스가 viewport
-    // 점유하므로 페이지 스크롤은 어차피 없음.
-    e.preventDefault();
+    // 카드 위 휠 = 본문 자연 스크롤 우선 (캔버스 줌 X). 카드 밖 빈 영역에서만
+    // zoom — Miro / n8n 동일 패턴. (이전: viewport 전체가 zoom 잡아 widget
+    // 본문 스크롤과 canvas zoom 이 동시에 발생하던 회귀.)
+    if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
     const direction = e.deltaY < 0 ? 1 : -1;
     setZoom((z) => {
       const next = z + direction * ZOOM_STEP;
