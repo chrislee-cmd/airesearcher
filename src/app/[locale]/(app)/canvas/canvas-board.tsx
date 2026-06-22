@@ -56,10 +56,18 @@ const TRANSPARENT_GHOST_SRC =
 
 type Coords = { col: number; row: number };
 
+// 첫 사용자(localStorage 비어있음) 의 default 배치 — 캔버스 중앙 row 에
+// 가로로 N 위젯을 centered 정렬. row 는 약간 위쪽 (floor((R-1)/2)) 으로
+// 잡아서 expand 시 본문이 아래로 자랄 여유 확보.
 function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
   const out: Record<string, Coords> = {};
+  const N = widgets.length;
+  const startCol = Math.max(0, Math.floor((GRID_COLS - N) / 2));
+  const centerRow = Math.floor((GRID_ROWS - 1) / 2);
   widgets.forEach((w, i) => {
-    out[w.key] = { col: i % GRID_COLS, row: Math.floor(i / GRID_COLS) };
+    const col = (startCol + i) % GRID_COLS;
+    const rowOffset = Math.floor((startCol + i) / GRID_COLS);
+    out[w.key] = { col, row: centerRow + rowOffset };
   });
   return out;
 }
