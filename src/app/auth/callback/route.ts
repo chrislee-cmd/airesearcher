@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const target = explicitNext ?? `/${locale}/dashboard`;
+  const target = explicitNext ?? `/${locale}/canvas`;
   const response = NextResponse.redirect(new URL(target, url.origin));
   // Persist for next-intl middleware so subsequent visits skip
   // Accept-Language detection and respect the user's saved preference.

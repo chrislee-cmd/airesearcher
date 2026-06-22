@@ -39,7 +39,7 @@ export function ResetPasswordForm() {
       track('auth_reset_password_success');
       setInfo(t('passwordUpdated'));
       window.setTimeout(() => {
-        router.replace('/dashboard');
+        router.replace('/canvas');
         router.refresh();
       }, 1200);
     });

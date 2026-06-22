@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label';
 
 // Only allow same-origin app paths to prevent open-redirect via ?next=.
 function safeNext(raw: string | null): string {
-  if (!raw) return '/dashboard';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+  if (!raw) return '/canvas';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/canvas';
   return raw;
 }
 

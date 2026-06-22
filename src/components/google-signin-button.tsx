@@ -24,7 +24,7 @@ export function GoogleSignInButton({ label }: { label: string }) {
     setLoading(true);
     const supabase = createClient();
     const origin = window.location.origin;
-    const nextPath = safeNext(searchParams.get('next')) ?? '/dashboard';
+    const nextPath = safeNext(searchParams.get('next')) ?? '/canvas';
     const next = `/${locale}${nextPath}`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',

@@ -4,33 +4,49 @@
    WidgetShell — production canvas 카드 셸.
 
    - collapsed: 정사각형 (aspect-square) + 세로 stack 레이아웃 (썸네일 ↑ /
-     라벨 · 부제 / pill · cost ↓). 3-col 그리드 셀에 fit.
+     라벨 · 부제 / pill · cost ↓). 클릭 어디든 expand, drag 도 어디든 가능
+     (parent 가 dragHandleProps 로 wire-up).
    - expanded: 가로 헤더 (썸네일 + 라벨 + 부제 + pill + cost) + 본문.
-     canvas-board 가 col-span-3 으로 풀폭 row 차지.
+     헤더 클릭 = collapse (✕ 버튼 제거), 헤더 어디든 drag handle.
 
-   board 가 expanded state 단일 관리 (B-2: 1장만 펼침). 클릭 → onExpand
-   → 직전 expanded auto-collapse.
+   board 가 expanded state Set 으로 관리 (B-2 multi-expand). 클릭 → onExpand
+   / onCollapse 토글.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react';
 import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
-import { IconButton } from '@/components/ui/icon-button';
+
+// 부모(canvas-board) 가 위치 변경 dnd 를 wire-up 하는 prop 묶음. collapsed
+// 일 때는 tile 전체, expanded 일 때는 헤더 영역에 spread.
+export type DragHandleProps = {
+  draggable: boolean;
+  onDragStart: (e: ReactDragEvent<HTMLElement>) => void;
+  onDragEnd: (e: ReactDragEvent<HTMLElement>) => void;
+  onMouseDown: (e: ReactMouseEvent<HTMLElement>) => void;
+};
 
 export function WidgetShell({
   content,
   expanded,
   onExpand,
   onCollapse,
+  dragHandleProps,
 }: {
   content: WidgetContent;
   expanded: boolean;
   onExpand: () => void;
-  // expanded 일 때 헤더의 접기 버튼이 호출. 모든 widget collapsed 도 가능
-  // (canvas-board state 가 null 허용) — 클릭 시 setExpanded(null).
   onCollapse: () => void;
+  dragHandleProps?: DragHandleProps;
 }) {
   const { ExpandedBody } = content;
   const pill = statePill(content.state);
@@ -43,26 +59,45 @@ export function WidgetShell({
   }
 
   if (!expanded) {
-    return <CollapsedTile content={content} onExpand={onExpand} onKeyDown={handleKey} />;
+    return (
+      <CollapsedTile
+        content={content}
+        onExpand={onExpand}
+        onKeyDown={handleKey}
+        dragHandleProps={dragHandleProps}
+      />
+    );
   }
 
   return (
-    // 자연 높이로 자라남 (h-full / row-span 제거 — canvas-board 에서 셀에
-    // align-self start + z-10 으로 grid 밖으로 overflow 허용). 본문 내부
-    // 스크롤 X — 캔버스 자체가 pan/zoom 으로 navigable.
+    // 자연 높이로 자라남. 본문 내부 스크롤 X — 캔버스 자체가 pan/zoom 으로
+    // navigable.
     <div
       className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento"
       aria-expanded
     >
-      {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
-          PR #349/#347 패턴과 시각 일관. */}
-      <div className="flex h-[88px] shrink-0 items-center gap-4 px-5 py-4">
+      {/* Expanded 헤더 — 클릭 어디든 collapse, drag 어디든 reposition. */}
+      <div
+        className="flex h-[88px] shrink-0 cursor-grab items-center gap-4 px-5 py-4 active:cursor-grabbing"
+        onClick={onCollapse}
+        role="button"
+        aria-label="접기"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onCollapse();
+          }
+        }}
+        {...dragHandleProps}
+      >
         {content.meta.thumbnail ? (
           <Image
             src={content.meta.thumbnail}
             alt=""
             width={48}
             height={48}
+            draggable={false}
             className="h-12 w-12 shrink-0 rounded-sm border border-amore-tint object-cover"
           />
         ) : (
@@ -94,24 +129,9 @@ export function WidgetShell({
               : `${content.meta.cost} 크레딧`}
           </span>
         )}
-        {/* 접기 버튼 — 클릭 시 widget 이 collapsed 상태로 (board state null
-            허용). 본문 클릭과 분리되도록 헤더 우측에. */}
-        <IconButton
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCollapse();
-          }}
-          aria-label="접기"
-          className="ml-1 shrink-0"
-        >
-          ✕
-        </IconButton>
       </div>
       {/* Notion 토글식 open animation — grid-template-rows: 0fr → 1fr
-          보간으로 본문이 부드럽게 펼쳐짐. 본문 내부 스크롤 X — 자연 높이
-          그대로 자라남. */}
+          보간으로 본문이 부드럽게 펼쳐짐. */}
       <ExpandableBody>
         <ExpandedBody />
       </ExpandableBody>
@@ -119,10 +139,6 @@ export function WidgetShell({
   );
 }
 
-// CSS grid-template-rows 트릭으로 height 0 → auto 전환을 부드럽게 보간.
-// 마운트 즉시 1프레임 0fr 로 렌더 후 RAF 로 1fr 토글 — 브라우저가 transition
-// 을 거는 변화로 인식. 내부 wrapper 는 overflow-hidden + min-h-0 이어야
-// 0fr 가 실제로 0 으로 collapsed.
 function ExpandableBody({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
@@ -142,34 +158,30 @@ function ExpandableBody({ children }: { children: ReactNode }) {
   );
 }
 
-// Collapsed 모드 — compact 정사각형 (canvas-board gridAutoRows 240px).
-// 썸네일이 카드 거의 가득 (fill object-cover), 하단에 라벨+cost 만 compact
-// bar. state pill 은 expanded 헤더에만 노출 (collapsed 는 시각 노이즈 축소).
+// Collapsed 모드 — 썸네일 + 라벨/cost compact bar. 전체 tile 이 클릭 → expand
+// 이자 drag handle. 클릭 vs 드래그는 native dnd 가 mousedown + move 임계로
+// 분리 — 짧은 클릭은 onClick, 누른 채 이동은 dragstart.
 function CollapsedTile({
   content,
   onExpand,
   onKeyDown,
+  dragHandleProps,
 }: {
   content: WidgetContent;
   onExpand: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  dragHandleProps?: DragHandleProps;
 }) {
   return (
-    // aspect-square: canvas-board 가 절대 좌표로 카드 부모의 width 만 정함
-    // (CARD_W_COLLAPSED). aspect-square 로 카드가 자기 width 에 맞춰 높이도
-    // 정사각형으로 자동 계산. (이전 h-full 은 grid cell 의 explicit height
-    // 가 있어야 동작 — 절대 좌표 layout 에서는 부모 height 가 minHeight 만
-    // 이라 h-full 이 의도대로 안 됨).
     <div
-      className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
+      className="flex aspect-square cursor-grab flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink active:cursor-grabbing"
       onClick={onExpand}
       role="button"
       tabIndex={0}
       onKeyDown={onKeyDown}
       aria-expanded={false}
+      {...dragHandleProps}
     >
-      {/* 상단 — 썸네일/액센트 박스. `fill` + object-cover 로 카드 폭 가득.
-          썸네일이 거의 가득 차게 보이도록 컨테이너 자체를 채움. */}
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {content.meta.thumbnail ? (
           <Image
@@ -177,6 +189,7 @@ function CollapsedTile({
             alt=""
             fill
             sizes="240px"
+            draggable={false}
             className="object-cover"
           />
         ) : (
@@ -189,7 +202,6 @@ function CollapsedTile({
           </div>
         )}
       </div>
-      {/* 하단 — 라벨 + cost. compact (carrd 가 작아진 만큼 정보 핵심만). */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-soft bg-paper-soft px-3 py-2">
         <span className="truncate text-sm font-semibold text-ink-2">
           {content.meta.label}

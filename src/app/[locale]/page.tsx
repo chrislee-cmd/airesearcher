@@ -13,7 +13,7 @@ export default async function LocaleIndexPage({
 
   const user = await getCurrentUser();
   if (user) {
-    redirect({ href: '/dashboard', locale });
+    redirect({ href: '/canvas', locale });
   }
   return <LandingPage locale={locale} />;
 }
