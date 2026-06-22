@@ -41,6 +41,9 @@ const eslintConfig = defineConfig([
       // Mock lab — primitive 채택 전 단계. canvas-lab 위젯이 production
       // 으로 승격될 때 strict 적용. (`*` 는 [locale] segment 매칭)
       "src/app/*/(canvas-lab)/**",
+      // Design exploration sandbox — 3 시안 비교용. production 디자인 시스템
+      // 룰을 의도적으로 벗어남 (다른 톤/색/타이포 실험).
+      "src/app/*/(design-explore)/**",
     ],
     rules: {
       "react/forbid-elements": [
@@ -78,6 +81,10 @@ const eslintConfig = defineConfig([
   {
     name: "design-system/no-hardcoded-tokens",
     files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      // Design exploration sandbox — 의도적으로 다른 디자인 토큰 사용
+      "src/app/*/(design-explore)/**",
+    ],
     rules: {
       "no-restricted-syntax": [
         "error",
