@@ -17,7 +17,6 @@ import Image from 'next/image';
 import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
-import { IconButton } from '@/components/ui/icon-button';
 
 export function WidgetShell({
   content,
@@ -51,11 +50,31 @@ export function WidgetShell({
     // align-self start + z-10 으로 grid 밖으로 overflow 허용). 본문 내부
     // 스크롤 X — 캔버스 자체가 pan/zoom 으로 navigable.
     <div
-      className="flex flex-col overflow-hidden rounded-md border border-amore bg-paper-soft shadow-bento"
+      className="flex flex-col overflow-hidden border border-cyan-700 bg-[#161b22]"
       aria-expanded
     >
-      {/* Expanded 헤더 — 가로 형태. desk-research / transcript-studio 의
-          PR #349/#347 패턴과 시각 일관. */}
+      {/* file tab — IDE 시안 헤더 */}
+      <div className="flex items-center justify-between border-b border-gray-800 bg-[#0d1117] px-3 py-1.5 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-purple-400">▾</span>
+          <span className="text-cyan-300">{content.meta.label}.tool</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <span>{typeof content.meta.cost === 'number' ? (content.meta.cost === 0 ? 'free' : `${content.meta.cost} cr`) : ''}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCollapse();
+            }}
+            aria-label="접기"
+            className="px-1.5 text-gray-500 hover:text-cyan-300"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      {/* Expanded 헤더 — IDE/dark 톤. 썸네일 + 라벨 + 부제 + state. */}
       <div className="flex h-[88px] shrink-0 items-center gap-4 px-5 py-4">
         {content.meta.thumbnail ? (
           <Image
@@ -63,11 +82,13 @@ export function WidgetShell({
             alt=""
             width={48}
             height={48}
-            className="h-12 w-12 shrink-0 rounded-sm border border-amore-tint object-cover"
+            className="h-12 w-12 shrink-0 border border-cyan-700 object-cover"
+            style={{ borderRadius: 2 }}
           />
         ) : (
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-amore-tint ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center border border-cyan-700 ${ACCENT_BG[content.meta.accent]}`}
+            style={{ borderRadius: 2 }}
           >
             <span className="text-xl text-ink">
               {ACCENT_ICON[content.meta.accent]}
@@ -76,38 +97,17 @@ export function WidgetShell({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-medium text-ink-2">
+            <span className="text-xl font-medium text-gray-100">
               {content.meta.label}
             </span>
             <Pill {...pill} />
           </div>
           {content.meta.description && (
-            <div className="mt-0.5 text-sm text-mute line-clamp-1">
-              {content.meta.description}
+            <div className="mt-0.5 text-sm text-gray-500 line-clamp-1">
+              <span className="text-gray-600">{'//'}</span> {content.meta.description}
             </div>
           )}
         </div>
-        {typeof content.meta.cost === 'number' && (
-          <span className="shrink-0 text-xs text-mute-soft">
-            {content.meta.cost === 0
-              ? '무료'
-              : `${content.meta.cost} 크레딧`}
-          </span>
-        )}
-        {/* 접기 버튼 — 클릭 시 widget 이 collapsed 상태로 (board state null
-            허용). 본문 클릭과 분리되도록 헤더 우측에. */}
-        <IconButton
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCollapse();
-          }}
-          aria-label="접기"
-          className="ml-1 shrink-0"
-        >
-          ✕
-        </IconButton>
       </div>
       {/* Notion 토글식 open animation — grid-template-rows: 0fr → 1fr
           보간으로 본문이 부드럽게 펼쳐짐. 본문 내부 스크롤 X — 자연 높이
@@ -131,7 +131,7 @@ function ExpandableBody({ children }: { children: ReactNode }) {
   }, []);
   return (
     <div
-      className="grid border-t border-line-soft"
+      className="grid border-t border-gray-800"
       style={{
         gridTemplateRows: isOpen ? '1fr' : '0fr',
         transition: 'grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -161,15 +161,26 @@ function CollapsedTile({
     // 가 있어야 동작 — 절대 좌표 layout 에서는 부모 height 가 minHeight 만
     // 이라 h-full 이 의도대로 안 됨).
     <div
-      className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-md border border-line bg-paper-soft shadow-bento transition-all hover:border-ink"
+      className="group flex aspect-square cursor-pointer flex-col overflow-hidden border border-gray-800 bg-[#161b22] transition-colors hover:border-cyan-700 hover:bg-[#1c2128]"
       onClick={onExpand}
       role="button"
       tabIndex={0}
       onKeyDown={onKeyDown}
       aria-expanded={false}
     >
-      {/* 상단 — 썸네일/액센트 박스. `fill` + object-cover 로 카드 폭 가득.
-          썸네일이 거의 가득 차게 보이도록 컨테이너 자체를 채움. */}
+      {/* file tab — 미니 chrome */}
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-800 bg-[#0d1117] px-2.5 py-1 text-[10px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-purple-400">▸</span>
+          <span className="text-cyan-300">{content.meta.label.replace(/\s+/g, '_').toLowerCase()}.tool</span>
+        </div>
+        {typeof content.meta.cost === 'number' && (
+          <span className="text-yellow-300">
+            {content.meta.cost === 0 ? 'free' : `${content.meta.cost}cr`}
+          </span>
+        )}
+      </div>
+      {/* 상단 — 썸네일. dark bg 위 floating image. */}
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {content.meta.thumbnail ? (
           <Image
@@ -177,11 +188,12 @@ function CollapsedTile({
             alt=""
             fill
             sizes="240px"
-            className="object-cover"
+            className="object-cover opacity-95 group-hover:opacity-100"
           />
         ) : (
           <div
-            className={`flex h-20 w-20 items-center justify-center rounded-sm border border-amore-tint ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-20 w-20 items-center justify-center border border-cyan-700 ${ACCENT_BG[content.meta.accent]}`}
+            style={{ borderRadius: 2 }}
           >
             <span className="text-3xl text-ink">
               {ACCENT_ICON[content.meta.accent]}
@@ -189,16 +201,10 @@ function CollapsedTile({
           </div>
         )}
       </div>
-      {/* 하단 — 라벨 + cost. compact (carrd 가 작아진 만큼 정보 핵심만). */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-soft bg-paper-soft px-3 py-2">
-        <span className="truncate text-sm font-semibold text-ink-2">
-          {content.meta.label}
-        </span>
-        {typeof content.meta.cost === 'number' && (
-          <span className="shrink-0 text-xs text-mute-soft">
-            {content.meta.cost === 0 ? '무료' : `${content.meta.cost}`}
-          </span>
-        )}
+      {/* 하단 — label line + run hint */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-800 bg-[#161b22] px-3 py-2 text-xs">
+        <span className="truncate text-gray-100">{content.meta.label}</span>
+        <span className="shrink-0 text-cyan-400 group-hover:text-cyan-300">→</span>
       </div>
     </div>
   );
