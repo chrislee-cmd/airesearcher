@@ -7,6 +7,7 @@ import {
 } from '@/lib/canvas/visibility';
 import { quotesCard } from '@/components/canvas/widgets/quotes-card';
 import { deskCard } from '@/components/canvas/widgets/desk-card';
+import { interviewsCard } from '@/components/canvas/widgets/interviews-card';
 import { moderatorCard } from '@/components/canvas/widgets/moderator-card';
 import { translateCard } from '@/components/canvas/widgets/translate-card';
 import { toplineCard } from '@/components/canvas/widgets/topline-card';
@@ -18,6 +19,7 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   quotes: quotesCard,
   desk: deskCard,
+  interviews: interviewsCard,
   moderator: moderatorCard,
   translate: translateCard,
   topline: toplineCard,
