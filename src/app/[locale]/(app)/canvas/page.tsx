@@ -5,6 +5,8 @@ import {
   CANVAS_VISIBILITY,
   type CanvasWidgetKey,
 } from '@/lib/canvas/visibility';
+import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
+import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { quotesCard } from '@/components/canvas/widgets/quotes-card';
 import { deskCard } from '@/components/canvas/widgets/desk-card';
 import { interviewsCard } from '@/components/canvas/widgets/interviews-card';
@@ -26,6 +28,16 @@ const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   slidegen: slidegenCard,
 };
 
+// preview-gated widgets — 일반 유저에게는 숨김, is_unlimited org 만 노출.
+// CanvasWidgetKey 와 FeatureKey 가 같은 문자열일 때만 게이트 발동 (topline 처럼
+// FeatureKey 에 없는 키는 미체크 — 단순 visibility map 만 적용).
+async function hasPreviewAccess(): Promise<boolean> {
+  const org = await getActiveOrg();
+  if (!org) return false;
+  const flags = await getOrgFlags(org.org_id);
+  return flags.isUnlimited;
+}
+
 export default async function CanvasPage({
   params,
   searchParams,
@@ -37,11 +49,16 @@ export default async function CanvasPage({
   const { focus } = await searchParams;
   setRequestLocale(locale);
 
-  // server-side visibility resolve — PR1 hard-coded map.
-  // PR3 에서 org flags / super-admin db 조회로 교체.
-  const widgets = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k]).map(
-    (k) => CARD_REGISTRY[k],
-  );
+  const previewOk = await hasPreviewAccess();
+
+  // server-side visibility resolve — hard-coded map + preview gate.
+  // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
+  const widgets = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k])
+    .filter(
+      (k) =>
+        !PREVIEW_FEATURES.has(k as FeatureKey) || previewOk,
+    )
+    .map((k) => CARD_REGISTRY[k]);
 
   return <CanvasBoard widgets={widgets} initialFocus={focus} />;
 }

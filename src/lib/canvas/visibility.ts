@@ -22,7 +22,7 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   desk: true,
   interviews: true,
   moderator: false,
-  translate: false,
+  translate: true,
   topline: false,
   slidegen: false,
 };

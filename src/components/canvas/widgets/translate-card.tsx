@@ -1,15 +1,15 @@
 'use client';
 
 import type { WidgetContent } from '../widget-types';
+import { TranslateConsole } from '@/components/translate-console';
 
+// AI 동시통역 canvas widget — 기존 /live 페이지의 TranslateConsole 을 그대로
+// widget body 로 마운트 (lightweight wrapper). desk/quotes 와 동일 패턴 — 본문
+// 폴리시는 후속 PR.
 function ExpandedBody() {
   return (
-    <div className="space-y-3">
-      <div className="text-md text-mute">
-        PR2 에서 <strong className="text-ink-2">AI 동시통역</strong>{' '}
-        본문(실시간 STT + 번역 듀얼 패널) 이 합쳐집니다.
-      </div>
-      <div className="h-32 rounded-xs border border-dashed border-line-soft bg-paper" />
+    <div className="p-5">
+      <TranslateConsole />
     </div>
   );
 }
