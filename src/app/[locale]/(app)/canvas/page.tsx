@@ -7,6 +7,7 @@ import {
 } from '@/lib/canvas/visibility';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
+import { recruitingCard } from '@/components/canvas/widgets/recruiting-card';
 import { quotesCard } from '@/components/canvas/widgets/quotes-card';
 import { deskCard } from '@/components/canvas/widgets/desk-card';
 import { interviewsCard } from '@/components/canvas/widgets/interviews-card';
@@ -19,6 +20,7 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
 // page 가 board 로 전달 → board 가 vertical stack 으로 렌더.
 const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
+  recruiting: recruitingCard,
   quotes: quotesCard,
   desk: deskCard,
   interviews: interviewsCard,
