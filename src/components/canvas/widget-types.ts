@@ -23,6 +23,12 @@ export type WidgetContent = {
     // 옵션: 헤더 타이틀 아래 부제 1줄 (line-clamp-1). messages 의
     // Features.{key}.description 과 일관성 유지.
     description?: string;
+    // 옵션: expand 시 셀 몇 개 너비로 확장할지. 미지정 = 2.
+    // 1: collapsed 와 동일 너비 (240) — vertical 만 확장
+    // 2: 두 셀 너비 (528 = 240 + 48 + 240) — 일반 도구
+    // 3: 세 셀 너비 (816 = 240 + 48 + 240 + 48 + 240) — 전사록/데스크
+    //    처럼 가로 정보 밀도 높은 본문
+    expandedCols?: 1 | 2 | 3;
   };
   state: WidgetState;
   ExpandedBody: FC;

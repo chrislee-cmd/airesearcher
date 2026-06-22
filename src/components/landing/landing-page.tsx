@@ -39,7 +39,7 @@ export async function LandingPage({ locale }: { locale: string }) {
   };
 
   // Hero CTAs
-  const ctaStart = '/login?next=/dashboard';
+  const ctaStart = '/login?next=/canvas';
   const ctaCredits = '/login?next=/credits';
 
   return (
