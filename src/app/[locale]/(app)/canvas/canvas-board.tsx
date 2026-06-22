@@ -33,7 +33,7 @@ import {
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
-const MIN_ZOOM = 0.5;
+const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.04;
 const CARD_W_COLLAPSED = 240;
@@ -43,8 +43,8 @@ const CELL_GAP = 48;
 function expandedWidthOf(cols: 1 | 2 | 3): number {
   return cols * CARD_W_COLLAPSED + (cols - 1) * CELL_GAP;
 }
-const GRID_COLS = 10;
-const GRID_ROWS = 8;
+const GRID_COLS = 20;
+const GRID_ROWS = 14;
 const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288
 const GRID_W = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP;
 const GRID_H = GRID_ROWS * CARD_W_COLLAPSED + (GRID_ROWS - 1) * CELL_GAP;
@@ -381,6 +381,7 @@ export function CanvasBoard({
                       onDrop={onCellDrop(c, r)}
                       className="rounded-md"
                       style={{
+                        flexShrink: 0,
                         width: isExpanded
                           ? expandedWidthOf(w.meta.expandedCols ?? 2)
                           : CARD_W_COLLAPSED,
@@ -420,6 +421,7 @@ export function CanvasBoard({
                     onDrop={onCellDrop(c, r)}
                     className="rounded-md bg-paper-soft"
                     style={{
+                      flexShrink: 0,
                       width: CARD_W_COLLAPSED,
                       height: CARD_W_COLLAPSED,
                       border: showHint
