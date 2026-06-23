@@ -32,6 +32,8 @@ export type WidgetOutputsProps<T> = {
   renderItem: (item: T) => ReactNode;
   // 2건 초과 시 "더보기 (N건 더)" 버튼 노출. 미지정 시 더보기 안 그림.
   onMoreClick?: () => void;
+  // items.length === 0 일 때 노출할 안내. 미지정 시 기본 메시지.
+  emptyText?: string;
 };
 
 // 카드에 노출할 최근 산출물 개수 — primitive 가 강제. 매직넘버 OK (PR-F SSOT).
@@ -42,8 +44,9 @@ export function WidgetOutputs<T>({
   items,
   renderItem,
   onMoreClick,
+  emptyText = '아직 생성된 산출물이 없습니다',
 }: WidgetOutputsProps<T>) {
-  if (items.length === 0) return null;
+  const isEmpty = items.length === 0;
   const shown = items.slice(0, VISIBLE_COUNT);
   const remaining = items.length - shown.length;
 
@@ -53,7 +56,13 @@ export function WidgetOutputs<T>({
         <SectionLabel>{label}</SectionLabel>
         <span className="text-xs text-mute-soft">총 {items.length}건</span>
       </div>
-      <ul className="space-y-3">{shown.map((item) => renderItem(item))}</ul>
+      {isEmpty ? (
+        <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+          {emptyText}
+        </div>
+      ) : (
+        <ul className="space-y-3">{shown.map((item) => renderItem(item))}</ul>
+      )}
       {remaining > 0 && onMoreClick && (
         <div className="mt-3 flex justify-center">
           <Button

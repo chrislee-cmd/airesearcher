@@ -598,38 +598,35 @@ export function DeskCardBody() {
         </div>
 
         {/* 최근 산출물 — 카드 바닥에 고정 (flex column 의 마지막 자식).
-            데스크는 latestJob 1건만 노출하지만 primitive 가 "최근 2건"
-            패턴을 강제 — quotes 와 시각 통일 (border-t + SectionLabel +
-            총 N건 + WidgetOutputRow). Download / Share 는 row 가 아닌
-            모달 footer 에 — 기존 동작 유지. */}
-        {showResult && job && (
-          <WidgetOutputs
-            label="최근 산출물"
-            items={[job]}
-            renderItem={(j) => (
-              <WidgetOutputRow
-                key={j.id}
-                title={`${j.keywords.join(', ')} · ${tDesk('reportTitle')}`}
-                meta={
-                  <>
-                    <span>{sourcesCount} sources</span>
-                    <span>{wallLabel}</span>
-                  </>
-                }
-                actions={
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => setPreviewOpen(true)}
-                    className="uppercase tracking-[0.18em]"
-                  >
-                    미리보기
-                  </Button>
-                }
-              />
-            )}
-          />
-        )}
+            primitive 가 빈 상태 placeholder 도 책임 — done 잡 없으면
+            "아직 없습니다" 안내. quotes 와 시각 통일. Download / Share 는
+            row 가 아닌 모달 footer 에 — 기존 동작 유지. */}
+        <WidgetOutputs
+          label="최근 산출물"
+          items={showResult && job ? [job] : []}
+          renderItem={(j) => (
+            <WidgetOutputRow
+              key={j.id}
+              title={`${j.keywords.join(', ')} · ${tDesk('reportTitle')}`}
+              meta={
+                <>
+                  <span>{sourcesCount} sources</span>
+                  <span>{wallLabel}</span>
+                </>
+              }
+              actions={
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setPreviewOpen(true)}
+                  className="uppercase tracking-[0.18em]"
+                >
+                  미리보기
+                </Button>
+              }
+            />
+          )}
+        />
       </div>
 
       <Modal
