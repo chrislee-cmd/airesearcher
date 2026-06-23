@@ -42,8 +42,8 @@ const CELL_GAP = 48;
 function expandedWidthOf(cols: 1 | 2 | 3): number {
   return cols * CARD_W_COLLAPSED + (cols - 1) * CELL_GAP;
 }
-const GRID_COLS = 20;
-const GRID_ROWS = 14;
+const GRID_COLS = 6;
+const GRID_ROWS = 8;
 const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288
 const GRID_W = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP;
 const GRID_H = GRID_ROWS * CARD_W_COLLAPSED + (GRID_ROWS - 1) * CELL_GAP;
@@ -163,6 +163,8 @@ export function CanvasBoard({
     panY: number;
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+  // viewport ref — expand 시 widget 의 실제 화면 위치 측정용.
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [hoverCell, setHoverCell] = useState<string | null>(null);
@@ -176,24 +178,53 @@ export function CanvasBoard({
     ghostRef.current = img;
   }, []);
 
+  // wide zoom — viewport 너비 기준 동적 계산. height 무시 (6×8 그리드는
+  // 세로로 길어서 full-fit 시 zoom 이 0.3 대로 작아짐 — "조금 더 가깝게"
+  // 피드백 반영). 사용자는 wide 에서도 세로 pan 으로 하단 row 접근 가능.
+  // 0.55~0.8 clamp 로 적정 사이즈 유지.
+  const [wideZoom, setWideZoom] = useState(0.7);
+  useEffect(() => {
+    const recompute = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const next = el.clientWidth / (GRID_W * 1.05);
+       
+      setWideZoom(Math.max(0.55, Math.min(0.8, next)));
+    };
+    recompute();
+    window.addEventListener('resize', recompute);
+    return () => window.removeEventListener('resize', recompute);
+  }, []);
+
+  // 위젯 펼침 시 viewport 중앙으로 pan — DOM rect 측정으로 정확한 visual
+  // center 계산 (zoom transition + body 펼침 + flex push 모두 반영).
+  const centerOnWidget = useCallback((key: string) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const widget = container.querySelector(
+      `[data-widget-key="${key}"]`,
+    ) as HTMLElement | null;
+    if (!widget) return;
+    const cr = container.getBoundingClientRect();
+    const wr = widget.getBoundingClientRect();
+    const dx = cr.left + cr.width / 2 - (wr.left + wr.width / 2);
+    const dy = cr.top + cr.height / 2 - (wr.top + wr.height / 2);
+    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+  }, []);
+
   const expandTo = useCallback(
     (key: string) => {
-      const pos = positions[key];
-      if (pos && expandedKeys.size === 0) {
-        const colCenter = pos.col * PITCH + CARD_W_COLLAPSED / 2 - GRID_W / 2;
-        const rowCenter = pos.row * PITCH + CARD_W_COLLAPSED / 2 - GRID_H / 2;
-        setPan({
-          x: -colCenter * zoom,
-          y: -rowCenter * zoom,
-        });
-      }
       setExpandedKeys((prev) => {
         const next = new Set(prev);
         next.add(key);
         return next;
       });
+      // close-up: zoom 1 + viewport 중앙. zoom transition (0.28s) + body
+      // 펼침 (0.32s) + flex reflow 끝나는 ~360ms 후 widget rect 측정 → pan.
+      setZoom(1);
+      window.setTimeout(() => centerOnWidget(key), 360);
     },
-    [zoom, positions, expandedKeys.size],
+    [centerOnWidget],
   );
 
   const collapseKey = useCallback((key: string) => {
@@ -203,6 +234,25 @@ export function CanvasBoard({
       next.delete(key);
       return next;
     });
+  }, []);
+
+  // 모든 위젯 닫힘 → wide view 복귀 (zoom = wideZoom, pan 0).
+  useEffect(() => {
+    if (expandedKeys.size === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- wide view reset
+      setZoom(wideZoom);
+       
+      setPan({ x: 0, y: 0 });
+    }
+  }, [expandedKeys, wideZoom]);
+
+  // 초기 mount — initialFocus 위젯이 있으면 중앙 정렬.
+  useEffect(() => {
+    const initial = Array.from(expandedKeys)[0];
+    if (!initial) return;
+    const id = window.setTimeout(() => centerOnWidget(initial), 360);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
   const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
@@ -317,6 +367,7 @@ export function CanvasBoard({
 
   return (
     <div
+      ref={containerRef}
       className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
@@ -375,6 +426,7 @@ export function CanvasBoard({
                     <div
                       key={`slot-${cellKey}`}
                       data-canvas-card
+                      data-widget-key={occupantKey}
                       onDragOver={onCellDragOver(c, r)}
                       onDragLeave={onCellDragLeave(c, r)}
                       onDrop={onCellDrop(c, r)}
