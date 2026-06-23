@@ -12,7 +12,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
-import { FeaturePage } from './ui/feature-page';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChromeInput } from '@/components/ui/chrome-input';
@@ -169,7 +168,6 @@ async function buildSurveyXlsxBlob(rows: SurveyRow[]): Promise<Blob> {
 }
 
 export function RecruitingBrief() {
-  const t = useTranslations('Features');
   const tCommon = useTranslations('Common');
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
@@ -600,10 +598,7 @@ export function RecruitingBrief() {
   );
 
   return (
-    <FeaturePage
-      title={t('recruiting.title')}
-      headerRight={t('recruiting.cost')}
-    >
+    <>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex h-[220px] flex-col">
           <label className="mb-2 block text-md font-semibold text-ink-2">
@@ -1144,7 +1139,7 @@ export function RecruitingBrief() {
           </div>
         </div>
       )}
-    </FeaturePage>
+    </>
   );
 }
 
