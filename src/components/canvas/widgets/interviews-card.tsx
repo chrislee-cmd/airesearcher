@@ -2,11 +2,18 @@
 
 import type { WidgetContent } from '../widget-types';
 import { InterviewAnalyzer } from '@/components/interview-analyzer';
+import { WidgetOutputs } from '../shell/widget-outputs';
 
 function ExpandedBody() {
+  // body 는 flex column — 분석 UI 는 중간 (flex-1, 자체 스크롤), 산출물
+  // 영역은 카드 바닥에 고정 (quotes / desk 와 시각 통일). 인터뷰는 아직
+  // 결과 history 가 없어서 items=[] 로 항상 빈 상태 placeholder 노출.
   return (
-    <div className="space-y-5 px-5 py-5">
-      <InterviewAnalyzer />
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        <InterviewAnalyzer />
+      </div>
+      <WidgetOutputs label="최근 산출물" items={[]} renderItem={() => null} />
     </div>
   );
 }

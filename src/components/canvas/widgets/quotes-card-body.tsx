@@ -334,12 +334,14 @@ export function QuotesCardBody() {
 
   return (
     <>
-      {/* 본문 — chrome 과 헤더는 widget-shell 책임. stats / 본문 / 최근 산출물
-          은 PR #347 디자인 그대로. cardState / headerProgress / isRunning 은
-          현재 body 안에서는 미사용 — 후속 PR 에서 widget-shell 로 주입 검토. */}
-      <div>
-        {/* 3 stat 타일 — 누적 메트릭 */}
-        <div className="grid grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
+          으로 stats (top) / 중간 영역 (flex-1) / 최근 산출물 (bottom) 3단
+          으로 나뉘어 — 산출물이 카드 바닥에 고정되고 빈 공간은 중간이
+          흡수. cardState / headerProgress / isRunning 은 현재 body 안에서
+          는 미사용 — 후속 PR 에서 widget-shell 로 주입 검토. */}
+      <div className="flex h-full flex-col">
+        {/* 3 stat 타일 — 누적 메트릭 (top, fixed) */}
+        <div className="grid shrink-0 grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
             <StatTile label="처리한 시간" value={formatDuration(totalDurationSec) || '0m'} />
             <StatTile
               label="전사록 평균 시간"
@@ -348,8 +350,9 @@ export function QuotesCardBody() {
             <StatTile label="라이브러리" value={`${doneJobs.length}건`} />
           </div>
 
-          {/* 본문 — 드롭존 + 업로드 진행 + 큐 */}
-          <div className="space-y-5 px-5 py-5">
+          {/* 중간 영역 — 드롭존 + 업로드 진행 + 큐. flex-1 로 산출물을
+              바닥으로 밀어내고, 내용이 길어지면 자체적으로 스크롤. */}
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
             <FileDropZone
               accept={ACCEPT}
               multiple
@@ -393,13 +396,12 @@ export function QuotesCardBody() {
             )}
           </div>
 
-          {/* 최근 산출물 — 카드에는 최근 2건만, 나머지는 "더보기" 모달.
-              <WidgetOutputs> 가 외곽 컨테이너 + 더보기 버튼을 그리고,
-              JobRow (= WidgetOutputRow) 가 단일 row 시각/액션을 책임. */}
+          {/* 최근 산출물 — 카드 바닥에 고정 (flex column 의 마지막 자식).
+              primitive 가 "최근 2건만" 강제, 초과 시 더보기 모달. JobRow
+              (= WidgetOutputRow) 가 단일 row 시각/액션을 책임. */}
           <WidgetOutputs
             label="최근 산출물"
             items={doneJobs}
-            visible={2}
             onMoreClick={() => setShowAllRecents(true)}
             renderItem={(j) => (
               <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
