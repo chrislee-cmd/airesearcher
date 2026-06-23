@@ -8,7 +8,7 @@ import { TranslateConsole } from '@/components/translate-console';
 // 폴리시는 후속 PR.
 function ExpandedBody() {
   return (
-    <div className="p-5">
+    <div className="space-y-5 px-5 py-5">
       <TranslateConsole />
     </div>
   );

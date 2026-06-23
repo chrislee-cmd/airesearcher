@@ -525,7 +525,7 @@ export function DeskCardBody() {
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
-          <div className="border-t border-line-soft bg-paper px-5 py-4">
+          <div className="border-t border-line-soft bg-paper px-5 py-5">
             {isWorking ? (
               <JobProgress
                 value={
@@ -621,7 +621,7 @@ export function DeskCardBody() {
           </div>
         )}
         {job?.status === 'cancelled' && (
-          <div className="border-t border-line-soft px-5 py-4">
+          <div className="border-t border-line-soft px-5 py-5">
             <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
           </div>
         )}

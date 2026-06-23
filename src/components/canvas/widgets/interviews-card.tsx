@@ -5,7 +5,7 @@ import { InterviewAnalyzer } from '@/components/interview-analyzer';
 
 function ExpandedBody() {
   return (
-    <div className="p-5">
+    <div className="space-y-5 px-5 py-5">
       <InterviewAnalyzer />
     </div>
   );
