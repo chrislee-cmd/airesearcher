@@ -71,7 +71,7 @@ export function WidgetShell({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-2xl font-semibold tracking-[-0.012em] text-ink-2">
+            <span className="truncate text-3xl font-semibold tracking-[-0.018em] text-ink-2">
               {content.meta.label}
             </span>
             <Pill {...pill} />
