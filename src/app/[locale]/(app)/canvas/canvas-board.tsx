@@ -33,11 +33,8 @@ import {
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 1.5;
-// 곱셈식 zoom step — 어느 zoom level 에서도 균일한 5% 변화 (덧셈식이면
-// 작은 zoom 일 때 한 tick 이 큰 % 변화, 큰 zoom 일 때 작은 % 변화로 비균일).
-const ZOOM_FACTOR = 1.05;
+// zoom 비활성화 (scale=1 고정) — MIN_ZOOM / MAX_ZOOM / ZOOM_FACTOR 는 제거.
+// 필요 시 wheel handler 와 함께 복원.
 const CARD_W_COLLAPSED = 240;
 const CELL_GAP = 48;
 // 위젯별 expand 너비는 meta.expandedCols (1/2/3) 로 변동.
@@ -166,8 +163,6 @@ export function CanvasBoard({
     panY: number;
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  // 외곽 viewport ref — wheel zoom 시 커서의 상대 위치 계산용.
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [hoverCell, setHoverCell] = useState<string | null>(null);
@@ -210,35 +205,14 @@ export function CanvasBoard({
     });
   }, []);
 
-  const onWheel = useCallback(
-    (e: ReactWheelEvent<HTMLDivElement>) => {
-      if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
-      const container = containerRef.current;
-      if (!container) return;
-      // 곱셈식 step — 어디서든 균일한 5% 변화.
-      const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-      const nextZoom = Math.max(
-        MIN_ZOOM,
-        Math.min(MAX_ZOOM, zoom * factor),
-      );
-      if (nextZoom === zoom) return;
-      // 커서 아래 surface 점이 zoom 전후 동일 화면 좌표에 머물도록 pan 보정.
-      // surface center 는 viewport 중앙 + pan offset 에 위치.
-      // 커서의 viewport 상대 위치 (rect 기준) → center 로부터의 offset →
-      // 해당 surface 점이 (cursor - center) * ratio + currentPan * ratio 만큼
-      // 이동하지 않도록 pan 을 (cursor - center) * (1 - ratio) + pan * ratio 로.
-      const rect = container.getBoundingClientRect();
-      const cx = e.clientX - rect.left - rect.width / 2;
-      const cy = e.clientY - rect.top - rect.height / 2;
-      const ratio = nextZoom / zoom;
-      setPan({
-        x: cx * (1 - ratio) + pan.x * ratio,
-        y: cy * (1 - ratio) + pan.y * ratio,
-      });
-      setZoom(nextZoom);
-    },
-    [zoom, pan],
-  );
+  const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
+    // 카드 위 휠 = 본문 자연 스크롤 우선 (PR #358 격리 유지).
+    // 캔버스 zoom 은 비활성화 — 사용자 피드백: zoom 동작이 불편해서 위젯
+    // 크기를 적정 사이즈로 고정 (scale=1). pan 은 빈 영역 drag 으로 제공.
+    // wheel 이벤트는 캔버스 위에서 아무 동작 안 함 (page scroll 도 viewport
+    // overflow-hidden 이라 영향 X).
+    if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
+  }, []);
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -343,7 +317,6 @@ export function CanvasBoard({
 
   return (
     <div
-      ref={containerRef}
       className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
