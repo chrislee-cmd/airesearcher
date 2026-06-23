@@ -163,41 +163,42 @@ export function CanvasBoard({
 
   return (
     <div
-      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-[#0d1117] font-mono"
+      className="canvas-terminal relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      style={{
-        cursor: isPanning ? 'grabbing' : 'grab',
-        fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, monospace',
-      }}
+      style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
     >
-      {/* terminal prompt bar — dark IDE 시안의 chrome */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 border-b border-gray-800 bg-[#161b22] px-5 py-2 text-xs text-gray-400 flex items-center justify-between">
+      {/* terminal prompt bar — IDE 시안 chrome (토큰 기반 — .canvas-terminal
+          scope 에서 자동 dark) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 border-b border-line-soft bg-paper-soft px-5 py-2 text-xs text-mute flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-green-400">chris@desk</span>
-          <span className="text-gray-600">:</span>
-          <span className="text-cyan-400">~/canvas</span>
-          <span className="text-gray-600">$</span>
-          <span className="text-gray-300">tools list --all</span>
-          <span className="ml-1 inline-block h-3 w-1.5 bg-gray-500 animate-pulse" />
+          <span style={{ color: '#3fb950' }}>chris@desk</span>
+          <span className="text-mute-soft">:</span>
+          <span className="text-amore">~/canvas</span>
+          <span className="text-mute-soft">$</span>
+          <span className="text-ink">tools list --all</span>
+          <span
+            className="ml-1 inline-block h-3 w-1.5 animate-pulse"
+            style={{ backgroundColor: 'currentColor' }}
+          />
         </div>
         <div className="flex items-center gap-3">
           <span>session</span>
-          <span className="text-cyan-400">4f2a:c9d1</span>
+          <span className="text-amore">4f2a:c9d1</span>
           <span>·</span>
-          <span className="text-green-400">● connected</span>
+          <span style={{ color: '#3fb950' }}>● connected</span>
         </div>
       </div>
 
-      {/* dot grid 배경 — cyan 톤 neon. pan 시 함께 이동해 surface 이동 감각. */}
+      {/* dot grid — cyan neon. pan 시 함께 이동. */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            'radial-gradient(circle, rgba(140,240,255,0.08) 1px, transparent 1px)',
+            'radial-gradient(circle, rgba(140,240,255,0.10) 1px, transparent 1px)',
           backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}

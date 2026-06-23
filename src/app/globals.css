@@ -77,6 +77,39 @@
 }
 
 /* =========================================================================
+   .canvas-terminal — /canvas 의 dark IDE 시안 scope.
+   디자인 시스템 토큰을 dark/neon 톤으로 override. 안의 모든 컴포넌트가
+   자동으로 dark 톤으로 렌더 (Tailwind v4 utility 가 var(--color-*) 참조).
+   ========================================================================= */
+.canvas-terminal {
+  --color-paper: #0d1117;
+  --color-paper-soft: #161b22;
+  --color-ink: #e6edf3;
+  --color-ink-2: #f0f6fc;
+  --color-mute: #8b949e;
+  --color-mute-soft: #6e7681;
+  --color-gray-warm: #6e7681;
+  --color-line: rgba(140, 240, 255, 0.10);
+  --color-line-soft: rgba(255, 255, 255, 0.06);
+  --color-amore: #79c0ff;
+  --color-amore-soft: #58a6ff;
+  --color-amore-bg: rgba(121, 192, 255, 0.10);
+  --color-amore-tint: rgba(121, 192, 255, 0.22);
+  --color-lav: rgba(177, 156, 217, 0.18);
+  --color-peach: rgba(255, 166, 87, 0.18);
+  --color-mint: rgba(63, 185, 80, 0.18);
+  --color-sun: rgba(250, 204, 21, 0.18);
+  --color-sky: rgba(56, 189, 248, 0.18);
+  --color-rose: rgba(248, 113, 113, 0.18);
+  --color-warning: #ffa657;
+  --color-warning-bg: rgba(239, 108, 0, 0.10);
+  --color-warning-line: rgba(239, 108, 0, 0.30);
+  --shadow-bento: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--color-ink);
+}
+
+/* =========================================================================
    z-index 스케일 — 산발한 z-[NN] 하드코드 정리.
    레이어 순서는 의도된 stacking: table 로컬 < FAB < modal < toast < overlay.
    ========================================================================= */
