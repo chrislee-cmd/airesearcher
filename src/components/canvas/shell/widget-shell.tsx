@@ -46,7 +46,7 @@ export function WidgetShell({
       aria-expanded
     >
       <div
-        className={`flex h-[96px] shrink-0 items-center gap-4 px-5 py-4 ${
+        className={`flex h-[116px] shrink-0 items-center gap-4 px-5 py-4 ${
           isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
         }`}
         {...dragHandleProps}
@@ -76,6 +76,11 @@ export function WidgetShell({
             </span>
             <Pill {...pill} />
           </div>
+          {content.meta.description && (
+            <div className="mt-1 truncate text-sm text-mute">
+              {content.meta.description}
+            </div>
+          )}
         </div>
         {typeof content.meta.cost === 'number' && (
           <span className="shrink-0 text-xs text-mute-soft">
