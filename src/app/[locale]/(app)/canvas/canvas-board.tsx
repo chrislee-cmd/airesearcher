@@ -5,8 +5,8 @@
 
    - 모든 위젯 항상 펼친 상태 (collapse 없음).
    - 너비 위젯별 (meta.expandedCols 1/2/3 → 240 / 528 / 816 px).
-   - height 통일 640 — 본문 길면 widget-shell 의 overflow-y-auto.
-   - 6×5 그리드 절대 좌표 (CELL_W 240, CELL_H 640, GAP 48). 각 위젯이
+   - height 통일 800 — 본문 길면 widget-shell 의 overflow-y-auto.
+   - 6×5 그리드 절대 좌표 (CELL_W 240, CELL_H 800, GAP 48). 각 위젯이
      (col, row) anchor 를 가지고 expandedCols 만큼 col 방향으로 span.
    - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
      다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
@@ -28,7 +28,7 @@ import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
 const CELL_W = 240;
-const CELL_H = 640;
+const CELL_H = 800;
 const GAP = 48;
 const GRID_COLS = 6;
 const GRID_ROWS = 5;
