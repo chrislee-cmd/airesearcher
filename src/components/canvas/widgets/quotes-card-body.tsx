@@ -17,6 +17,11 @@ import { ShareMenu } from '@/components/ui/share-menu';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { JobProgress } from '@/components/ui/job-progress';
 import { Modal } from '@/components/ui/modal';
+import {
+  SectionLabel,
+  WidgetOutputRow,
+  WidgetOutputs,
+} from '@/components/canvas/shell/widget-outputs';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
@@ -389,34 +394,17 @@ export function QuotesCardBody() {
           </div>
 
           {/* 최근 산출물 — 카드에는 최근 2건만, 나머지는 "더보기" 모달.
-              full JobRow 로 download/share/preview/delete 모두 보존.
-              더보기 버튼은 마지막 행 하단에 — 헤더에 두면 스캔 동선이
-              꺾여서, 자연스러운 list-end 위치에 배치. */}
-          {doneJobs.length > 0 && (
-            <div className="border-t border-line-soft px-5 py-5">
-              <div className="mb-2 flex items-center justify-between">
-                <SectionLabel>최근 산출물</SectionLabel>
-                <span className="text-xs text-mute-soft">총 {doneJobs.length}건</span>
-              </div>
-              <ul className="space-y-3">
-                {doneJobs.slice(0, 2).map((j) => (
-                  <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
-                ))}
-              </ul>
-              {doneJobs.length > 2 && (
-                <div className="mt-3 flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAllRecents(true)}
-                    className="uppercase tracking-[0.18em]"
-                  >
-                    더보기 ({doneJobs.length - 2}건 더)
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+              <WidgetOutputs> 가 외곽 컨테이너 + 더보기 버튼을 그리고,
+              JobRow (= WidgetOutputRow) 가 단일 row 시각/액션을 책임. */}
+          <WidgetOutputs
+            label="최근 산출물"
+            items={doneJobs}
+            visible={2}
+            onMoreClick={() => setShowAllRecents(true)}
+            renderItem={(j) => (
+              <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+            )}
+          />
       </div>
 
       {pendingFiles && (
@@ -444,15 +432,6 @@ export function QuotesCardBody() {
         </ul>
       </Modal>
     </>
-  );
-}
-
-// 카드 셸의 라벨 패턴 — uppercase tracking-wider mute-soft
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-      {children}
-    </div>
   );
 }
 
@@ -605,99 +584,104 @@ function JobRow({
   const downloadSuffix = source === 'raw' ? '?source=raw' : '';
 
   return (
-    <li className="border border-line bg-paper rounded-sm">
-      <div className="flex items-start gap-4 px-5 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-lg text-ink-2">{job.filename}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-sm text-mute-soft tabular-nums">
-            <span
-              className={`uppercase tracking-[0.22em] text-xs font-semibold ${pill.cls}`}
-            >
-              {pill.text}
-            </span>
-            {job.size_bytes !== null && <span>{formatBytes(job.size_bytes)}</span>}
-            {job.duration_seconds !== null && (
-              <span>{formatDuration(job.duration_seconds)}</span>
-            )}
-            {job.speakers_count !== null && (
-              <span>{job.speakers_count} speakers</span>
-            )}
-            {job.error_message && (
-              <span className="text-warning">{job.error_message}</span>
-            )}
-          </div>
-          {inFlight && (
-            <ProgressEstimate
-              startedAt={job.created_at}
-              sizeBytes={job.size_bytes}
-            />
+    <WidgetOutputRow
+      title={job.filename}
+      meta={
+        <>
+          <span
+            className={`uppercase tracking-[0.22em] text-xs font-semibold ${pill.cls}`}
+          >
+            {pill.text}
+          </span>
+          {job.size_bytes !== null && <span>{formatBytes(job.size_bytes)}</span>}
+          {job.duration_seconds !== null && (
+            <span>{formatDuration(job.duration_seconds)}</span>
           )}
-        </div>
-        {job.status === 'done' && (
-          <div className="flex items-center gap-2">
-            <DownloadMenu
-              tone="primary"
-              align="end"
-              onExport={(format) =>
-                track('quotes_download_click', { format, jobId: job.id })
-              }
-              items={[
-                {
-                  format: 'docx',
-                  kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
-                },
-                {
-                  format: 'md',
-                  kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/md${downloadSuffix}`,
-                },
-                {
-                  format: 'txt',
-                  kind: 'url',
-                  href: `/api/transcripts/jobs/${job.id}/download/txt${downloadSuffix}`,
-                },
-              ]}
-            />
-            <ShareMenu
-              align="end"
-              items={[
-                {
-                  destination: 'google-docs',
-                  title: job.filename || '전사록',
-                  // Reuse the server-built DOCX so Google Doc preserves
-                  // the same rich layout users see in the .docx download.
-                  getBlob: async () => {
-                    const r = await fetch(
-                      `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
-                    );
-                    return {
-                      blob: await r.blob(),
-                      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    };
+          {job.speakers_count !== null && (
+            <span>{job.speakers_count} speakers</span>
+          )}
+          {job.error_message && (
+            <span className="text-warning">{job.error_message}</span>
+          )}
+        </>
+      }
+      extra={
+        inFlight ? (
+          <ProgressEstimate
+            startedAt={job.created_at}
+            sizeBytes={job.size_bytes}
+          />
+        ) : null
+      }
+      actions={
+        <>
+          {job.status === 'done' && (
+            <div className="flex items-center gap-2">
+              <DownloadMenu
+                tone="primary"
+                align="end"
+                onExport={(format) =>
+                  track('quotes_download_click', { format, jobId: job.id })
+                }
+                items={[
+                  {
+                    format: 'docx',
+                    kind: 'url',
+                    href: `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
                   },
-                },
-              ]}
-            />
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => setPreviewOpen((v) => !v)}
-              className="uppercase tracking-[0.18em]"
-            >
-              {previewOpen ? '접기' : '미리보기'}
-            </Button>
-          </div>
-        )}
-        <IconButton
-          variant="ghost-danger"
-          aria-label="전사 작업 삭제"
-          onClick={onDelete}
-          className="text-sm"
-        >
-          ✕
-        </IconButton>
-      </div>
+                  {
+                    format: 'md',
+                    kind: 'url',
+                    href: `/api/transcripts/jobs/${job.id}/download/md${downloadSuffix}`,
+                  },
+                  {
+                    format: 'txt',
+                    kind: 'url',
+                    href: `/api/transcripts/jobs/${job.id}/download/txt${downloadSuffix}`,
+                  },
+                ]}
+              />
+              <ShareMenu
+                align="end"
+                items={[
+                  {
+                    destination: 'google-docs',
+                    title: job.filename || '전사록',
+                    // Reuse the server-built DOCX so Google Doc preserves
+                    // the same rich layout users see in the .docx download.
+                    getBlob: async () => {
+                      const r = await fetch(
+                        `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
+                      );
+                      return {
+                        blob: await r.blob(),
+                        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      };
+                    },
+                  },
+                ]}
+              />
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setPreviewOpen((v) => !v)}
+                className="uppercase tracking-[0.18em]"
+              >
+                {previewOpen ? '접기' : '미리보기'}
+              </Button>
+            </div>
+          )}
+          <IconButton
+            variant="ghost-danger"
+            aria-label="전사 작업 삭제"
+            onClick={onDelete}
+            className="text-sm"
+          >
+            ✕
+          </IconButton>
+        </>
+      }
+    >
       {previewOpen && job.status === 'done' && (
         <JobPreview
           id={job.id}
@@ -707,7 +691,7 @@ function JobRow({
           initialMeta={previewMeta}
         />
       )}
-    </li>
+    </WidgetOutputRow>
   );
 }
 

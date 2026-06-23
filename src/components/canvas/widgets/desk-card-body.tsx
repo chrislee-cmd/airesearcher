@@ -35,6 +35,10 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { ChipInput } from '@/components/ui/chip-input';
+import {
+  WidgetOutputRow,
+  WidgetOutputs,
+} from '@/components/canvas/shell/widget-outputs';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
@@ -572,30 +576,37 @@ export function DeskCardBody() {
           </div>
         )}
 
-        {/* 방금 만든 결과물 — 1개 row */}
+        {/* 최근 산출물 — 데스크는 latestJob 1건만 노출. 전사록과 시각 통일
+            (border-t + SectionLabel + 총 N건 + WidgetOutputRow). Download /
+            Share 는 row 가 아닌 모달 footer 에 — 기존 동작 유지. */}
         {showResult && job && (
-          <div className="border-t border-line-soft px-5 py-4">
-            <div className="mb-2 text-xs uppercase tracking-wider text-mute-soft">
-              방금 만든 결과물
-            </div>
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={() => setPreviewOpen(true)}
-              className="w-full justify-start gap-3 border border-line bg-paper px-4 py-3 hover:border-ink"
-            >
-              <span className="text-lg">📄</span>
-              <div className="min-w-0 flex-1 text-left">
-                <div className="truncate text-md font-medium text-ink-2">
-                  {job.keywords.join(', ')} · {tDesk('reportTitle')}
-                </div>
-                <div className="mt-0.5 text-xs text-mute-soft">
-                  {sourcesCount} sources · {wallLabel}
-                </div>
-              </div>
-              <span className="shrink-0 text-xs text-amore">프리뷰 →</span>
-            </Button>
-          </div>
+          <WidgetOutputs
+            label="최근 산출물"
+            items={[job]}
+            visible={2}
+            renderItem={(j) => (
+              <WidgetOutputRow
+                key={j.id}
+                title={`${j.keywords.join(', ')} · ${tDesk('reportTitle')}`}
+                meta={
+                  <>
+                    <span>{sourcesCount} sources</span>
+                    <span>{wallLabel}</span>
+                  </>
+                }
+                actions={
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setPreviewOpen(true)}
+                    className="uppercase tracking-[0.18em]"
+                  >
+                    미리보기
+                  </Button>
+                }
+              />
+            )}
+          />
         )}
 
         {/* error / cancelled banners */}
