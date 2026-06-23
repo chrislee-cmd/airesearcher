@@ -217,9 +217,8 @@ export function CanvasBoard({
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
-      const el = e.target as HTMLElement;
-      if (el.closest('[data-canvas-card]')) return;
-      if (el.closest('[data-canvas-cell]')) return;
+      // 위젯 본문 / 빈 셀 / 캔버스 배경 어디서든 pan 시작.
+      // 위젯 헤더는 widget-shell 이 자체 stopPropagation 으로 보호 (재배치 dnd 우선).
       panRef.current = {
         startX: e.clientX,
         startY: e.clientY,
