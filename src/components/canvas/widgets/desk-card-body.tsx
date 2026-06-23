@@ -406,10 +406,13 @@ export function DeskCardBody() {
 
   return (
     <>
-      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 본문 안의 다중 sub-section
-          은 PR #349 의 패턴 그대로 (각 섹션이 border-t + px-5 py-* 로 자기
-          영역 정의). cardState 는 widget shell 의 state pill 로 노출됨. */}
-      <div>
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
+          으로 중간 영역 (flex-1, inputs + streaming + 에러 배너) / 최근
+          산출물 (bottom) 로 나뉘어 — 산출물이 카드 바닥에 고정. */}
+      <div className="flex h-full flex-col">
+        {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
+            길어지면 자체적으로 스크롤. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
         {/* Inputs */}
         <div className="space-y-5 px-5 py-5">
           <Field label={tDesk('regionLabel')}>
@@ -576,14 +579,33 @@ export function DeskCardBody() {
           </div>
         )}
 
-        {/* 최근 산출물 — 데스크는 latestJob 1건만 노출. 전사록과 시각 통일
-            (border-t + SectionLabel + 총 N건 + WidgetOutputRow). Download /
-            Share 는 row 가 아닌 모달 footer 에 — 기존 동작 유지. */}
+        {/* error / cancelled banners */}
+        {error && (
+          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
+            {tDesk('error')}: <span className="font-mono">{error}</span>
+          </div>
+        )}
+        {job?.status === 'error' && job.error_message && (
+          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
+            {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
+          </div>
+        )}
+        {job?.status === 'cancelled' && (
+          <div className="border-t border-line-soft px-5 py-5">
+            <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
+          </div>
+        )}
+        </div>
+
+        {/* 최근 산출물 — 카드 바닥에 고정 (flex column 의 마지막 자식).
+            데스크는 latestJob 1건만 노출하지만 primitive 가 "최근 2건"
+            패턴을 강제 — quotes 와 시각 통일 (border-t + SectionLabel +
+            총 N건 + WidgetOutputRow). Download / Share 는 row 가 아닌
+            모달 footer 에 — 기존 동작 유지. */}
         {showResult && job && (
           <WidgetOutputs
             label="최근 산출물"
             items={[job]}
-            visible={2}
             renderItem={(j) => (
               <WidgetOutputRow
                 key={j.id}
@@ -607,23 +629,6 @@ export function DeskCardBody() {
               />
             )}
           />
-        )}
-
-        {/* error / cancelled banners */}
-        {error && (
-          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
-            {tDesk('error')}: <span className="font-mono">{error}</span>
-          </div>
-        )}
-        {job?.status === 'error' && job.error_message && (
-          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
-            {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
-          </div>
-        )}
-        {job?.status === 'cancelled' && (
-          <div className="border-t border-line-soft px-5 py-5">
-            <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
-          </div>
         )}
       </div>
 

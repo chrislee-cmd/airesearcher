@@ -24,36 +24,34 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 
 export type WidgetOutputsProps<T> = {
   label: string;
+  // 호출부는 전체 산출물 배열을 그대로 전달. 카드 안에는 최근 2건만,
+  // 초과분은 onMoreClick 으로 (모달 등) — slicing 은 primitive 책임.
   items: T[];
   // 단일 row 렌더링. WidgetOutputRow 를 반환하면 시각 통일 — key 는
   // renderItem 안에서 부여 (호출부가 안정 id 를 안다).
   renderItem: (item: T) => ReactNode;
-  // 카드 안에 노출할 최근 N건. 초과분은 onMoreClick 로 모달 등에서.
-  visible?: number;
-  // "총 N건" 우측 카운트. 미지정 시 items.length.
-  total?: number;
-  // 지정 시 visible 초과분이 있을 때 "더보기 (N건 더)" 버튼 노출.
+  // 2건 초과 시 "더보기 (N건 더)" 버튼 노출. 미지정 시 더보기 안 그림.
   onMoreClick?: () => void;
 };
+
+// 카드에 노출할 최근 산출물 개수 — primitive 가 강제. 매직넘버 OK (PR-F SSOT).
+const VISIBLE_COUNT = 2;
 
 export function WidgetOutputs<T>({
   label,
   items,
   renderItem,
-  visible = 2,
-  total,
   onMoreClick,
 }: WidgetOutputsProps<T>) {
   if (items.length === 0) return null;
-  const shown = items.slice(0, visible);
+  const shown = items.slice(0, VISIBLE_COUNT);
   const remaining = items.length - shown.length;
-  const totalLabel = total ?? items.length;
 
   return (
-    <div className="border-t border-line-soft px-5 py-5">
+    <div className="shrink-0 border-t border-line-soft px-5 py-5">
       <div className="mb-2 flex items-center justify-between">
         <SectionLabel>{label}</SectionLabel>
-        <span className="text-xs text-mute-soft">총 {totalLabel}건</span>
+        <span className="text-xs text-mute-soft">총 {items.length}건</span>
       </div>
       <ul className="space-y-3">{shown.map((item) => renderItem(item))}</ul>
       {remaining > 0 && onMoreClick && (
