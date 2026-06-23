@@ -197,7 +197,6 @@ export function CanvasBoard({
 
   const onWheel = useCallback(
     (e: ReactWheelEvent<HTMLDivElement>) => {
-      if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
       const container = containerRef.current;
       if (!container) return;
       const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
