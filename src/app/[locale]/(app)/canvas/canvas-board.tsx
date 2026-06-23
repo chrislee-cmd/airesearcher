@@ -1,23 +1,17 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   CanvasBoard — production /canvas. Miro / n8n 풍 navigatable 캔버스.
+   CanvasBoard — production /canvas. 대시보드 + pan + zoom-out + 자유 reposition.
 
-   - 외곽 viewport (overflow-hidden) + 중앙 grid surface (transform 으로
-     pan/zoom). 마우스 wheel 로 zoom (Ctrl/Cmd 없이도), 빈 영역 drag 으로
-     pan. 카드 위 드래그는 pan 안 함 (data-canvas-card 가드).
-   - 그리드: 5×5 슬롯. 각 row 는 flex 컨테이너 — 빈 슬롯은 placeholder
-     div, 점유 슬롯은 WidgetShell. expand 시 widget 너비 480 → flex 자연
-     push (이웃 슬롯 우측 이동, overlap 안 됨).
-   - 상태 모델: positions: Record<key, {col, row}> — col 은 그 row 안에서
-     widget 의 슬롯 인덱스. 한 셀에 1 widget invariant.
-   - B-2 multi-expand: 여러 카드 동시 expand 가능. 같은 row 안에서 push,
-     row 사이엔 영향 X.
-   - 위치 영속: localStorage('canvas:widget-positions:v2'), mount 시 hydrate.
-   - reorder: 카드 헤더/타일 어디든 잡고 드래그 (widget-shell 의 dragHandleProps).
-     빈 슬롯 drop = 이동, 다른 위젯 위 drop = swap.
-   - 드래그 ghost: 투명 1×1 image — zoom 시 native 크기로 보이는 "확대"
-     이슈 회피. 시각 피드백은 source opacity 0.4 + drop target ring.
+   - 모든 위젯 항상 펼친 상태 (collapse 없음).
+   - 너비 위젯별 (meta.expandedCols 1/2/3 → 240 / 528 / 816 px).
+   - height 통일 640 — 본문 길면 widget-shell 의 overflow-y-auto.
+   - 6×5 그리드 절대 좌표 (CELL_W 240, CELL_H 640, GAP 48). 각 위젯이
+     (col, row) anchor 를 가지고 expandedCols 만큼 col 방향으로 span.
+   - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
+     다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
+   - 빈 영역 drag = pan, 휠 = zoom-out (1.0 ~ 0.4, cursor focal point).
+   - 위젯 header 영역 drag = 순서/위치 변경. localStorage 영속.
    ──────────────────────────────────────────────────────────────────── */
 
 import {
@@ -33,70 +27,68 @@ import {
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
-// zoom 비활성화 (scale=1 고정) — MIN_ZOOM / MAX_ZOOM / ZOOM_FACTOR 는 제거.
-// 필요 시 wheel handler 와 함께 복원.
-const CARD_W_COLLAPSED = 240;
-const CELL_GAP = 48;
-// 위젯별 expand 너비는 meta.expandedCols (1/2/3) 로 변동.
-// expandedWidth(n) = n * CARD_W_COLLAPSED + (n-1) * CELL_GAP
-function expandedWidthOf(cols: 1 | 2 | 3): number {
-  return cols * CARD_W_COLLAPSED + (cols - 1) * CELL_GAP;
-}
-const GRID_COLS = 20;
-const GRID_ROWS = 14;
-const PITCH = CARD_W_COLLAPSED + CELL_GAP; // 288
-const GRID_W = GRID_COLS * CARD_W_COLLAPSED + (GRID_COLS - 1) * CELL_GAP;
-const GRID_H = GRID_ROWS * CARD_W_COLLAPSED + (GRID_ROWS - 1) * CELL_GAP;
-const POSITIONS_STORAGE_KEY = 'canvas:widget-positions:v2';
-// 투명 1×1 gif — drag ghost 로 setDragImage 에 사용 (브라우저 기본 ghost
-// 비활성화 효과). 모듈 스코프 1회 생성.
+const CELL_W = 240;
+const CELL_H = 640;
+const GAP = 48;
+const GRID_COLS = 6;
+const GRID_ROWS = 5;
+const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
+const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 1.0;
+const ZOOM_FACTOR = 1.05;
+const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v1';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 type Coords = { col: number; row: number };
 
-// 첫 사용자(localStorage 비어있음) 의 default 배치 — 캔버스 중앙 row 에
-// 가로로 N 위젯을 centered 정렬. row 는 약간 위쪽 (floor((R-1)/2)) 으로
-// 잡아서 expand 시 본문이 아래로 자랄 여유 확보.
+function expandedWidthOf(cols: number): number {
+  return cols * CELL_W + (cols - 1) * GAP;
+}
+
+function spanOf(w: WidgetContent | undefined): number {
+  return w?.meta.expandedCols ?? 2;
+}
+
+// 좌측 상단부터 row-major 로 위젯을 채움 — 각 위젯의 span 만큼 col 진행,
+// 다음 위젯이 row 끝 초과하면 새 row 로.
 function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
   const out: Record<string, Coords> = {};
-  const N = widgets.length;
-  const startCol = Math.max(0, Math.floor((GRID_COLS - N) / 2));
-  const centerRow = Math.floor((GRID_ROWS - 1) / 2);
-  widgets.forEach((w, i) => {
-    const col = (startCol + i) % GRID_COLS;
-    const rowOffset = Math.floor((startCol + i) / GRID_COLS);
-    out[w.key] = { col, row: centerRow + rowOffset };
-  });
+  let col = 0;
+  let row = 0;
+  for (const w of widgets) {
+    const span = spanOf(w);
+    if (col + span > GRID_COLS) {
+      col = 0;
+      row += 1;
+    }
+    out[w.key] = { col, row };
+    col += span;
+  }
   return out;
 }
 
 export function CanvasBoard({
   widgets,
-  initialFocus,
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
 }) {
-  const initial =
-    initialFocus && widgets.some((w) => w.key === initialFocus)
-      ? initialFocus
-      : (widgets[0]?.key ?? null);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
-    initial ? new Set([initial]) : new Set(),
-  );
-
   const [positions, setPositions] = useState<Record<string, Coords>>(() =>
     defaultPositions(widgets),
   );
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
       if (!raw) return;
       const stored = JSON.parse(raw) as Record<string, Coords>;
       if (typeof stored !== 'object' || stored === null) return;
+      const valid = new Set(widgets.map((w) => w.key));
       const merged: Record<string, Coords> = {};
       const occupied = new Set<string>();
+      // stored 좌표 채택 (valid widget + range 안에 있을 때만).
       widgets.forEach((w) => {
         const p = stored[w.key];
         if (
@@ -104,26 +96,46 @@ export function CanvasBoard({
           typeof p.col === 'number' &&
           typeof p.row === 'number' &&
           p.col >= 0 &&
-          p.col < GRID_COLS &&
+          p.col + spanOf(w) <= GRID_COLS &&
           p.row >= 0 &&
           p.row < GRID_ROWS
         ) {
           merged[w.key] = { col: p.col, row: p.row };
-          occupied.add(`${p.col},${p.row}`);
+          for (let i = 0; i < spanOf(w); i += 1) {
+            occupied.add(`${p.col + i},${p.row}`);
+          }
         }
       });
-      let cursor = 0;
+      // stored 에 없는 widget 은 빈 셀에 row-major 로 fallback.
+      let cursorCol = 0;
+      let cursorRow = 0;
       widgets.forEach((w) => {
+        if (!valid.has(w.key)) return;
         if (merged[w.key]) return;
-        while (cursor < GRID_COLS * GRID_ROWS) {
-          const col = cursor % GRID_COLS;
-          const row = Math.floor(cursor / GRID_COLS);
-          cursor += 1;
-          if (!occupied.has(`${col},${row}`)) {
-            merged[w.key] = { col, row };
-            occupied.add(`${col},${row}`);
+        const span = spanOf(w);
+        // 첫 fit cell 찾기
+        while (cursorRow < GRID_ROWS) {
+          if (cursorCol + span > GRID_COLS) {
+            cursorCol = 0;
+            cursorRow += 1;
+            continue;
+          }
+          let fits = true;
+          for (let i = 0; i < span; i += 1) {
+            if (occupied.has(`${cursorCol + i},${cursorRow}`)) {
+              fits = false;
+              break;
+            }
+          }
+          if (fits) {
+            merged[w.key] = { col: cursorCol, row: cursorRow };
+            for (let i = 0; i < span; i += 1) {
+              occupied.add(`${cursorCol + i},${cursorRow}`);
+            }
+            cursorCol += span;
             break;
           }
+          cursorCol += 1;
         }
       });
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
@@ -135,9 +147,12 @@ export function CanvasBoard({
 
   const persist = useCallback((next: Record<string, Coords>) => {
     try {
-      window.localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(
+        POSITIONS_STORAGE_KEY,
+        JSON.stringify(next),
+      );
     } catch {
-      /* quota / private mode — 메모리 상태만 유지 */
+      /* quota / private mode */
     }
   }, []);
 
@@ -146,14 +161,19 @@ export function CanvasBoard({
     [widgets],
   );
 
-  const widgetAtCell = useMemo(() => {
-    const m: Record<string, string> = {};
-    Object.entries(positions).forEach(([key, p]) => {
-      m[`${p.col},${p.row}`] = key;
+  // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용.
+  const occupiedCells = useMemo(() => {
+    const occ = new Map<string, string>(); // "c,r" → widget key
+    Object.entries(positions).forEach(([k, p]) => {
+      const span = spanOf(widgetByKey[k]);
+      for (let i = 0; i < span; i += 1) {
+        occ.set(`${p.col + i},${p.row}`, k);
+      }
     });
-    return m;
-  }, [positions]);
+    return occ;
+  }, [positions, widgetByKey]);
 
+  // pan / zoom
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const panRef = useRef<{
@@ -163,12 +183,11 @@ export function CanvasBoard({
     panY: number;
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // dnd
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [hoverCell, setHoverCell] = useState<string | null>(null);
-
-  // 투명 ghost 이미지 — mount 시 1회 prepare. 브라우저는 setDragImage 호출
-  // 시 image element 가 로드된 상태여야 함 (Safari 일부 케이스).
   const ghostRef = useRef<HTMLImageElement | null>(null);
   useEffect(() => {
     const img = new window.Image();
@@ -176,43 +195,26 @@ export function CanvasBoard({
     ghostRef.current = img;
   }, []);
 
-  const expandTo = useCallback(
-    (key: string) => {
-      const pos = positions[key];
-      if (pos && expandedKeys.size === 0) {
-        const colCenter = pos.col * PITCH + CARD_W_COLLAPSED / 2 - GRID_W / 2;
-        const rowCenter = pos.row * PITCH + CARD_W_COLLAPSED / 2 - GRID_H / 2;
-        setPan({
-          x: -colCenter * zoom,
-          y: -rowCenter * zoom,
-        });
-      }
-      setExpandedKeys((prev) => {
-        const next = new Set(prev);
-        next.add(key);
-        return next;
+  const onWheel = useCallback(
+    (e: ReactWheelEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
+      const container = containerRef.current;
+      if (!container) return;
+      const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
+      if (nextZoom === zoom) return;
+      const rect = container.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      const ratio = nextZoom / zoom;
+      setPan({
+        x: cx * (1 - ratio) + pan.x * ratio,
+        y: cy * (1 - ratio) + pan.y * ratio,
       });
+      setZoom(nextZoom);
     },
-    [zoom, positions, expandedKeys.size],
+    [zoom, pan],
   );
-
-  const collapseKey = useCallback((key: string) => {
-    setExpandedKeys((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  }, []);
-
-  const onWheel = useCallback((e: ReactWheelEvent<HTMLDivElement>) => {
-    // 카드 위 휠 = 본문 자연 스크롤 우선 (PR #358 격리 유지).
-    // 캔버스 zoom 은 비활성화 — 사용자 피드백: zoom 동작이 불편해서 위젯
-    // 크기를 적정 사이즈로 고정 (scale=1). pan 은 빈 영역 drag 으로 제공.
-    // wheel 이벤트는 캔버스 위에서 아무 동작 안 함 (page scroll 도 viewport
-    // overflow-hidden 이라 영향 X).
-    if ((e.target as HTMLElement).closest('[data-canvas-card]')) return;
-  }, []);
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -243,17 +245,15 @@ export function CanvasBoard({
     setIsPanning(false);
   }, []);
 
-  // ── 위치 변경 dnd ────────────────────────────────────────────────────
-  const onGripDragStart = useCallback(
+  // ── dnd reposition ──────────────────────────────────────────────────
+  const onHandleDragStart = useCallback(
     (key: string) => (e: ReactDragEvent<HTMLElement>) => {
       e.stopPropagation();
-      // 투명 ghost 사용 — 기본 드래그 프리뷰가 zoom 무시한 native 크기로
-      // 노출되는 "확대" 현상 회피. 시각 피드백은 source opacity + cell ring.
       if (ghostRef.current) {
         try {
           e.dataTransfer.setDragImage(ghostRef.current, 0, 0);
         } catch {
-          /* Firefox 등 일부 환경에서 setDragImage 가 throw — 무시 */
+          /* Firefox 일부 */
         }
       }
       e.dataTransfer.setData('text/plain', key);
@@ -290,33 +290,50 @@ export function CanvasBoard({
       setDragKey(null);
       setHoverCell(null);
       if (!sourceKey) return;
+      const sourceWidget = widgetByKey[sourceKey];
+      if (!sourceWidget) return;
+      const span = spanOf(sourceWidget);
+      // span 이 grid 끝 초과하지 않게 col clamp.
+      const targetCol = Math.max(0, Math.min(GRID_COLS - span, col));
+      const targetRow = row;
       setPositions((curr) => {
         const sourcePos = curr[sourceKey];
         if (!sourcePos) return curr;
-        if (sourcePos.col === col && sourcePos.row === row) return curr;
+        if (sourcePos.col === targetCol && sourcePos.row === targetRow)
+          return curr;
         const next = { ...curr };
-        const occupant = Object.keys(next).find(
-          (k) =>
-            k !== sourceKey &&
-            next[k].col === col &&
-            next[k].row === row,
-        );
-        if (occupant) next[occupant] = { ...sourcePos };
-        next[sourceKey] = { col, row };
+        // target footprint 안에 다른 widget 점유 셀이 있는지 확인 — 있으면
+        // 그 widget 을 source 의 옛 자리로 swap.
+        const overlapKeys = new Set<string>();
+        for (let i = 0; i < span; i += 1) {
+          const cellKey = `${targetCol + i},${targetRow}`;
+          const occupant = occupiedCells.get(cellKey);
+          if (occupant && occupant !== sourceKey) overlapKeys.add(occupant);
+        }
+        if (overlapKeys.size === 1) {
+          // 단일 swap 시도 — overlap widget 을 source 옛 자리로
+          const [overlapKey] = Array.from(overlapKeys);
+          next[overlapKey] = { ...sourcePos };
+        } else if (overlapKeys.size > 1) {
+          // 여러 widget 겹침 — drop 거부 (간단 정책).
+          return curr;
+        }
+        next[sourceKey] = { col: targetCol, row: targetRow };
         persist(next);
         return next;
       });
     },
-    [dragKey, persist],
+    [dragKey, persist, widgetByKey, occupiedCells],
   );
 
-  const onGripDragEnd = useCallback(() => {
+  const onHandleDragEnd = useCallback(() => {
     setDragKey(null);
     setHoverCell(null);
   }, []);
 
   return (
     <div
+      ref={containerRef}
       className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
@@ -325,118 +342,95 @@ export function CanvasBoard({
       onMouseLeave={onMouseUp}
       style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
     >
-      {/* 배경 dot-grid — 캔버스 "paper texture" 톤. opacity 매우 낮춰서
-          cell border 와 시각 충돌 X (이전 0.06 → 0.025). pan 시 함께 이동해서
-          surface 이동 감각 살림. */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle, rgba(29,27,32,0.025) 1px, transparent 1px)',
-          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-          backgroundPosition: `${pan.x}px ${pan.y}px`,
-        }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
+          않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
+          중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
+      <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
-          className="flex flex-col"
+          className="relative"
           style={{
-            width: GRID_W,
-            minHeight: GRID_H,
-            gap: `${CELL_GAP}px`,
+            width: SURFACE_W,
+            height: SURFACE_H,
             transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
-            transformOrigin: 'center center',
+            transformOrigin: 'center top',
             transition: isPanning ? 'none' : 'transform 0.28s ease-out',
           }}
         >
-          {/* row 컨테이너 — 안쪽은 flex row (horizontal push), 바깥쪽 outer
-              는 flex column (vertical push). expand 로 widget 본문이 자라면
-              그 row 의 높이가 늘고, 뒤 row 들이 자연스럽게 아래로 밀림. */}
-          {Array.from({ length: GRID_ROWS }).map((_, r) => (
-            <div
-              key={`row-${r}`}
-              className="flex items-start"
-              style={{
-                gap: `${CELL_GAP}px`,
-              }}
-            >
-              {Array.from({ length: GRID_COLS }).map((__, c) => {
-                const cellKey = `${c},${r}`;
-                const occupantKey = widgetAtCell[cellKey];
-                const isHover =
-                  hoverCell === cellKey && dragKey !== occupantKey;
-                const showHint = dragKey !== null;
-                if (occupantKey) {
-                  const w = widgetByKey[occupantKey];
-                  if (!w) return null;
-                  const isExpanded = expandedKeys.has(occupantKey);
-                  const isDragSource = dragKey === occupantKey;
-                  return (
-                    <div
-                      key={`slot-${cellKey}`}
-                      data-canvas-card
-                      onDragOver={onCellDragOver(c, r)}
-                      onDragLeave={onCellDragLeave(c, r)}
-                      onDrop={onCellDrop(c, r)}
-                      className="rounded-md"
-                      style={{
-                        flexShrink: 0,
-                        width: isExpanded
-                          ? expandedWidthOf(w.meta.expandedCols ?? 2)
-                          : CARD_W_COLLAPSED,
-                        minHeight: CARD_W_COLLAPSED,
-                        opacity: isDragSource ? 0.4 : 1,
-                        boxShadow: isHover
-                          ? '0 0 0 2px var(--color-amore)'
-                          : 'none',
-                        transition:
-                          'width 0.3s ease-out, opacity 0.15s ease-out, box-shadow 0.12s ease-out',
-                      }}
-                    >
-                      <WidgetShell
-                        content={w}
-                        expanded={isExpanded}
-                        onExpand={() => expandTo(occupantKey)}
-                        onCollapse={() => collapseKey(occupantKey)}
-                        dragHandleProps={{
-                          draggable: true,
-                          onDragStart: onGripDragStart(occupantKey),
-                          onDragEnd: onGripDragEnd,
-                          onMouseDown: (e) => e.stopPropagation(),
-                        }}
-                      />
-                    </div>
-                  );
-                }
-                // 빈 슬롯 — drop target placeholder. 항상 faint border +
-                // 살짝 어두운 bg + 안쪽 그림자로 "패인 자리" 입체감. 드래그
-                // 중엔 dashed + 진한 색, hover 시 amore inset ring.
-                return (
-                  <div
-                    key={`empty-${cellKey}`}
-                    data-canvas-cell
-                    onDragOver={onCellDragOver(c, r)}
-                    onDragLeave={onCellDragLeave(c, r)}
-                    onDrop={onCellDrop(c, r)}
-                    className="rounded-md bg-paper-soft"
-                    style={{
-                      flexShrink: 0,
-                      width: CARD_W_COLLAPSED,
-                      height: CARD_W_COLLAPSED,
-                      border: showHint
-                        ? '1px dashed var(--color-line)'
-                        : '1px solid var(--color-line-soft)',
-                      boxShadow: isHover
-                        ? 'inset 0 0 0 2px var(--color-amore)'
-                        : 'inset 0 1px 2px rgba(29,27,32,0.04)',
-                      transition:
-                        'box-shadow 0.12s ease-out, border-color 0.2s ease-out',
-                    }}
-                  />
-                );
-              })}
-            </div>
-          ))}
+          {/* 빈 셀 — 드래그 중일 때만 시각화. 모든 cell 을 drop target 으로
+              렌더 (점유 cell 의 drop event 는 그 위 widget card 가 먼저
+              잡음). */}
+          {Array.from({ length: GRID_ROWS }).flatMap((_, r) =>
+            Array.from({ length: GRID_COLS }).map((__, c) => {
+              const cellKey = `${c},${r}`;
+              const isOccupied = occupiedCells.has(cellKey);
+              if (isOccupied) return null;
+              const isHover = hoverCell === cellKey && dragKey !== null;
+              const showHint = dragKey !== null;
+              return (
+                <div
+                  key={`empty-${cellKey}`}
+                  data-canvas-cell
+                  onDragOver={onCellDragOver(c, r)}
+                  onDragLeave={onCellDragLeave(c, r)}
+                  onDrop={onCellDrop(c, r)}
+                  className="absolute rounded-md"
+                  style={{
+                    left: c * (CELL_W + GAP),
+                    top: r * (CELL_H + GAP),
+                    width: CELL_W,
+                    height: CELL_H,
+                    // 평소엔 완전 투명 (그리드 비가시).
+                    // 드래그 중일 때만 옅은 dashed border 로 drop 가능 영역 hint.
+                    border: showHint
+                      ? '1px dashed var(--color-line-soft)'
+                      : '1px solid transparent',
+                    boxShadow: isHover
+                      ? 'inset 0 0 0 2px var(--color-amore)'
+                      : 'none',
+                    transition: 'box-shadow 0.12s ease-out',
+                  }}
+                />
+              );
+            }),
+          )}
+          {/* 위젯 카드 — 절대 좌표 배치, expandedCols 만큼 span. */}
+          {widgets.map((w) => {
+            const pos = positions[w.key];
+            if (!pos) return null;
+            const span = spanOf(w);
+            const width = expandedWidthOf(span);
+            const isDragSource = dragKey === w.key;
+            return (
+              <div
+                key={w.key}
+                data-canvas-card
+                data-widget-key={w.key}
+                className="absolute rounded-md"
+                onDragOver={onCellDragOver(pos.col, pos.row)}
+                onDragLeave={onCellDragLeave(pos.col, pos.row)}
+                onDrop={onCellDrop(pos.col, pos.row)}
+                style={{
+                  left: pos.col * (CELL_W + GAP),
+                  top: pos.row * (CELL_H + GAP),
+                  width,
+                  height: CELL_H,
+                  opacity: isDragSource ? 0.4 : 1,
+                  transition: 'opacity 0.15s ease-out',
+                }}
+              >
+                <WidgetShell
+                  content={w}
+                  dashboardMode
+                  dragHandleProps={{
+                    draggable: true,
+                    onDragStart: onHandleDragStart(w.key),
+                    onDragEnd: onHandleDragEnd,
+                    onMouseDown: (e) => e.stopPropagation(),
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

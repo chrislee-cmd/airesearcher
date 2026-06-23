@@ -22,6 +22,7 @@ export const translateCard: WidgetContent = {
     cost: 50,
     thumbnail: '/thumbnail/interpreter.png',
     description: '마이크 음성을 실시간 STT + 동시통역. 공유 링크로 외부 청취',
+    expandedCols: 3,
   },
   state: 'idle',
   ExpandedBody,
