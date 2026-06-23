@@ -105,6 +105,12 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={headingId}
+      // React synthetic events bubble through the React tree, not the DOM tree.
+      // Without this stop, wheel inside the modal bubbles up to ancestors that
+      // mount the modal (e.g. canvas-board onWheel zoom) even though the DOM
+      // is portal'd to body. Stop here so the modal's wheel/touch never leaks.
+      onWheel={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
     >
       <div
         className="absolute inset-0 bg-ink/40"
