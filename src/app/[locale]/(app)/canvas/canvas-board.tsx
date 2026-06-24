@@ -17,6 +17,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -174,14 +175,12 @@ export function CanvasBoard({
   }, [positions, widgetByKey]);
 
   // pan / zoom
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  // pan 좌표는 React state 가 아니라 ref 로 관리하고 transform 을 imperative
+  // 하게 (surfaceRef.style.transform) 쓴다. 매 mousemove 마다 setState 하면
+  // CanvasBoard 전체 트리 (6 위젯 × 본문 수백~수천 줄 + 30 grid cell) 가
+  // 재 reconcile 되어 본문 떨림 / pan jank 가 발생한다 (PR #398 진단). zoom 만
+  // wheel 이벤트로 드물게 변경되므로 React state 로 유지.
   const [zoom, setZoom] = useState(1);
-  const panRef = useRef<{
-    startX: number;
-    startY: number;
-    panX: number;
-    panY: number;
-  } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   // 빈 영역 drag 가 즉시 pan 을 시작하면 텍스트 선택·셀 클릭 같은 자연스러운
   // 마우스 동작이 막힌다. 스페이스바를 누르고 있을 때만 pan 모드로 전환
@@ -189,6 +188,35 @@ export function CanvasBoard({
   // drag 중엔 grabbing.
   const [isSpaceHeld, setIsSpaceHeld] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const panStartRef = useRef<{
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // surface 의 transform 을 직접 쓴다. React 의 inline style 에는 transform 을
+  // 두지 않아 zoom state 변화에도 stale write 가 발생하지 않는다.
+  const applyTransform = useCallback(() => {
+    const el = surfaceRef.current;
+    if (!el) return;
+    const { x, y } = panRef.current;
+    el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${zoomRef.current})`;
+  }, []);
+
+  // 매 render 직후 transform 을 동기화 — 초기 마운트, zoom 변경, 그 외 React
+  // 가 트리거한 모든 commit 후에 imperative write 한 번. paint 전이라 깜빡임 X.
+  useLayoutEffect(() => {
+    applyTransform();
+  });
 
   // dnd
   const [dragKey, setDragKey] = useState<string | null>(null);
@@ -233,20 +261,26 @@ export function CanvasBoard({
     (e: ReactWheelEvent<HTMLDivElement>) => {
       const container = containerRef.current;
       if (!container) return;
+      const currentZoom = zoomRef.current;
       const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
-      if (nextZoom === zoom) return;
+      const nextZoom = Math.max(
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, currentZoom * factor),
+      );
+      if (nextZoom === currentZoom) return;
       const rect = container.getBoundingClientRect();
       const cx = e.clientX - rect.left - rect.width / 2;
       const cy = e.clientY - rect.top - rect.height / 2;
-      const ratio = nextZoom / zoom;
-      setPan({
-        x: cx * (1 - ratio) + pan.x * ratio,
-        y: cy * (1 - ratio) + pan.y * ratio,
-      });
+      const ratio = nextZoom / currentZoom;
+      // pan 도 ref — focal point 보정 후 곧 useLayoutEffect 가 transform 동기화.
+      panRef.current = {
+        x: cx * (1 - ratio) + panRef.current.x * ratio,
+        y: cy * (1 - ratio) + panRef.current.y * ratio,
+      };
+      zoomRef.current = nextZoom;
       setZoom(nextZoom);
     },
-    [zoom, pan],
+    [],
   );
 
   const onMouseDown = useCallback(
@@ -255,29 +289,47 @@ export function CanvasBoard({
       // 마우스 동작을 막지 않는다 (위젯 헤더 drag-reposition 은 widget-shell 이
       // 자체 stopPropagation 으로 처리).
       if (!isSpaceHeld) return;
-      panRef.current = {
+      panStartRef.current = {
         startX: e.clientX,
         startY: e.clientY,
-        panX: pan.x,
-        panY: pan.y,
+        panX: panRef.current.x,
+        panY: panRef.current.y,
       };
       setIsPanning(true);
     },
-    [pan, isSpaceHeld],
+    [isSpaceHeld],
   );
 
-  const onMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-    if (!panRef.current) return;
-    setPan({
-      x: panRef.current.panX + (e.clientX - panRef.current.startX),
-      y: panRef.current.panY + (e.clientY - panRef.current.startY),
-    });
-  }, []);
+  const onMouseMove = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const start = panStartRef.current;
+      if (!start) return;
+      // ref 만 갱신. setState 하지 않으므로 React 트리 재 reconcile 없음.
+      panRef.current = {
+        x: start.panX + (e.clientX - start.startX),
+        y: start.panY + (e.clientY - start.startY),
+      };
+      // RAF coalesce — 1000Hz 게이밍 마우스에서도 frame 당 1회만 paint 트리거.
+      if (rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          applyTransform();
+        });
+      }
+    },
+    [applyTransform],
+  );
 
   const onMouseUp = useCallback(() => {
-    panRef.current = null;
+    panStartRef.current = null;
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      // 마지막 mousemove 의 결과가 paint 되도록 한 번 더 commit.
+      applyTransform();
+    }
     setIsPanning(false);
-  }, []);
+  }, [applyTransform]);
 
   // ── dnd reposition ──────────────────────────────────────────────────
   const onHandleDragStart = useCallback(
@@ -365,25 +417,29 @@ export function CanvasBoard({
     setHoverCell(null);
   }, []);
 
-  // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
-  // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker
-  // 가 발생 (PR #391 회귀). 대신 useEffect 로 document.head 에 <style> 을
-  // 한 번만 주입하고 body cursor 도 직접 세팅 — pan 모드 활성 동안 모든
-  // 엘리먼트가 universal selector + !important 로 단일 cursor 를 유지.
+  // pan 모드 cursor — `<html>` 에 data 속성 하나만 토글한다. globals.css 의
+  // `html[data-canvas-pan="..."] *` 규칙이 정적으로 매칭되므로 React 가 동적
+  // `<style>` 을 append/remove 하면서 생기는 1-frame race 가 사라진다
+  // (PR #391/#392 잔존 flicker 의 root cause). dataset write 는 atomic — 매
+  // mousemove 마다 호출되지도 않고, state 가 안 바뀌면 effect 자체가 안 돈다.
   useEffect(() => {
-    if (!isPanning && !isSpaceHeld) return;
-    const cursor = isPanning ? 'grabbing' : 'grab';
-    const prevBodyCursor = document.body.style.cursor;
-    document.body.style.cursor = cursor;
-    const styleEl = document.createElement('style');
-    styleEl.dataset.canvasPanCursor = '';
-    styleEl.textContent = `*, *::before, *::after { cursor: ${cursor} !important; }`;
-    document.head.appendChild(styleEl);
-    return () => {
-      document.body.style.cursor = prevBodyCursor;
-      styleEl.remove();
-    };
+    const root = document.documentElement;
+    if (isPanning) {
+      root.dataset.canvasPan = 'grabbing';
+    } else if (isSpaceHeld) {
+      root.dataset.canvasPan = 'grab';
+    } else {
+      delete root.dataset.canvasPan;
+    }
   }, [isPanning, isSpaceHeld]);
+
+  // 언마운트 시 누수 방지.
+  useEffect(
+    () => () => {
+      delete document.documentElement.dataset.canvasPan;
+    },
+    [],
+  );
 
   return (
     <div
@@ -400,13 +456,17 @@ export function CanvasBoard({
           중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
+          ref={surfaceRef}
           className="relative"
           style={{
             width: SURFACE_W,
             height: SURFACE_H,
-            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            // transform 은 applyTransform 이 imperative 하게 write — React style
+            // prop 에 두면 zoom 등의 re-render 가 pan ref 갱신을 덮어쓴다.
             transformOrigin: 'center top',
             transition: isPanning ? 'none' : 'transform 0.28s ease-out',
+            // GPU layer 사전 promote — 첫 pan 시 layer promotion stall 제거.
+            willChange: 'transform',
           }}
         >
           {/* 빈 셀 — 드래그 중일 때만 시각화. 모든 cell 을 drop target 으로

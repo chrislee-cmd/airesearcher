@@ -225,4 +225,21 @@ html, body {
 .docx-preview strong { font-weight: 600; color: var(--color-ink); }
 .docx-preview em { font-style: italic; color: var(--color-mute); }
 
+/* /canvas pan cursor — html 의 data-canvas-pan 속성을 통해 단일 정적 규칙으로
+   강제. 동적 <style> 주입/제거 race (PR #391/#392 잔존 flicker) 와 Tailwind
+   utility 와의 specificity 경합을 모두 제거. canvas-board.tsx 는 attribute 만
+   토글하면 됨. */
+html[data-canvas-pan="grab"],
+html[data-canvas-pan="grab"] *,
+html[data-canvas-pan="grab"] *::before,
+html[data-canvas-pan="grab"] *::after {
+  cursor: grab !important;
+}
+html[data-canvas-pan="grabbing"],
+html[data-canvas-pan="grabbing"] *,
+html[data-canvas-pan="grabbing"] *::before,
+html[data-canvas-pan="grabbing"] *::after {
+  cursor: grabbing !important;
+}
+
 ::selection { background: var(--color-ink); color: var(--color-paper); }
