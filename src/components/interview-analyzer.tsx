@@ -9,6 +9,7 @@ import {
   type ConsolidatedInsight,
   type ConvItem,
   type ConvStatus,
+  type IndexStatus,
   type OutlierCase,
   type RowSummary,
 } from './interview-job-provider';
@@ -265,9 +266,39 @@ export function InterviewAnalyzer() {
                 t={t}
               />
             )}
+            <CorpusIndexingStatus status={job.indexStatus} />
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// Single-line status chip telling the user that the corpus is being
+// indexed for the (forthcoming) chat surface. Hidden when there is
+// nothing to indicate ('idle' = pre-snapshot; the chip would just be
+// noise next to the freshly-generated report).
+function CorpusIndexingStatus({ status }: { status: IndexStatus }) {
+  if (status === 'idle') return null;
+  const label =
+    status === 'indexing'
+      ? '진행 중'
+      : status === 'done'
+        ? '완료'
+        : status === 'error'
+          ? '실패'
+          : '대기 중';
+  const tone =
+    status === 'error'
+      ? 'text-warning'
+      : status === 'done'
+        ? 'text-mute'
+        : 'text-amore';
+  return (
+    <div className="mt-4 flex justify-end">
+      <span className={`text-xs uppercase tracking-[0.22em] ${tone}`}>
+        코퍼스 인덱싱: {label}
+      </span>
     </div>
   );
 }
