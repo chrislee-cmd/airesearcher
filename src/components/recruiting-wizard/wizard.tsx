@@ -656,7 +656,7 @@ function CriteriaInputArea({
             onChange={(e) => onPasteChange(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="h-[160px] resize-none text-md text-ink-2"
+            className="h-[120px] resize-none text-md text-ink-2"
           />
         </div>
         <div className="flex flex-col">
@@ -669,7 +669,7 @@ function CriteriaInputArea({
             onFiles={(f) => onAddFiles(f)}
             label="파일을 끌어다 놓거나 클릭"
             helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
-            className="h-[160px] gap-2 px-6"
+            className="h-[120px] gap-2 px-6"
           />
         </div>
       </div>
