@@ -31,6 +31,10 @@ import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
+import {
+  useRealtimeTranscriptLiveBinding,
+  useRealtimeTranscriptPublisher,
+} from './realtime-transcript-provider';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -387,6 +391,16 @@ export function TranslateConsole() {
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
 
+  // Shared transcript publisher — provider 가 mount 되어 있을 때 (예: /canvas)
+  // 다른 위젯이 input transcript 를 구독할 수 있게 함. /live 페이지처럼
+  // provider 없는 곳에서는 hook 이 no-op publisher 를 반환.
+  const transcriptPublisher = useRealtimeTranscriptPublisher();
+  // input line id → started_at(ms). publish 시 segment 의 started_at 으로 사용.
+  const inputLineStartedAtRef = useRef<Map<string, number>>(new Map());
+  // 라이브 상태를 provider 로 전달 — probing 같은 위젯이 isLive 로 헤더
+  // 표시/대기 placeholder 를 판단. unmount 시 자동 false 처리.
+  useRealtimeTranscriptLiveBinding(status === 'live');
+
   // Synchronous re-entry guard for start(). The status closure in start()
   // can be stale across rapid invocations (the captured `status` was
   // 'idle' even after setStatus('starting') was queued but not yet
@@ -611,6 +625,27 @@ export function TranslateConsole() {
       // boundary commits.
       const current = partial.current.get('current') ?? { id: `${kind}-${wall}`, text: '' };
       const next = current.text + delta;
+      // Shared transcript publisher 는 input (source) 만 노출 — probing
+      // 같은 위젯은 인터뷰이의 발화 (= mic input) 만 보면 된다. publishInput
+      // 헬퍼 안에서 started_at lookup/seed + provider 호출 처리.
+      const publishInput = (
+        text: string,
+        endedAt: number | undefined,
+      ): void => {
+        if (kind !== 'input') return;
+        let startedAt = inputLineStartedAtRef.current.get(current.id);
+        if (startedAt === undefined) {
+          startedAt = wall;
+          inputLineStartedAtRef.current.set(current.id, startedAt);
+        }
+        transcriptPublisher.publishSegment({
+          id: current.id,
+          text,
+          started_at: startedAt,
+          ended_at: endedAt,
+          locale: lang,
+        });
+      };
       const match = next.match(SENTENCE_END);
       if (match && match.index !== undefined) {
         const cut = match.index + match[1].length;
@@ -666,6 +701,7 @@ export function TranslateConsole() {
             pushLine(kind, finalLine);
             broadcastCaption(kind, finalLine, lang);
             void persistMessage(kind, finalText, lang);
+            publishInput(finalText, wall);
           }
         }
         if (remainder) {
@@ -674,6 +710,17 @@ export function TranslateConsole() {
           const partialLine: CaptionLine = { id: nextId, text: remainder, final: false, ts: wall };
           pushLine(kind, partialLine);
           broadcastCaption(kind, partialLine, lang);
+          if (kind === 'input') {
+            // 새 line — 별도 started_at 으로 등록 후 publish.
+            inputLineStartedAtRef.current.set(nextId, wall);
+            transcriptPublisher.publishSegment({
+              id: nextId,
+              text: remainder,
+              started_at: wall,
+              ended_at: undefined,
+              locale: lang,
+            });
+          }
         } else {
           partial.current.delete('current');
         }
@@ -682,9 +729,10 @@ export function TranslateConsole() {
         const partialLine: CaptionLine = { id: current.id, text: next, final: false, ts: wall };
         pushLine(kind, partialLine);
         broadcastCaption(kind, partialLine, lang);
+        publishInput(next, undefined);
       }
     },
-    [broadcastCaption, persistMessage, pushLine],
+    [broadcastCaption, persistMessage, pushLine, transcriptPublisher],
   );
 
   const handleOaiEvent = useCallback(
@@ -756,6 +804,10 @@ export function TranslateConsole() {
     // we revert to the simpler "fresh memory per session" semantics.
     recentFinalsRef.current.set('input', []);
     recentFinalsRef.current.set('output', []);
+    inputLineStartedAtRef.current.clear();
+    // Shared transcript provider — 새 세션이 시작되면 이전 세그먼트는 무효.
+    // provider 가 없는 컨텍스트 (/live) 에서는 no-op.
+    transcriptPublisher.clear();
     // Reset event sampler too — each session gets a fresh budget so we
     // see the protocol shape from t=0 of every recording.
     sampleCountRef.current.clear();
@@ -1150,6 +1202,7 @@ export function TranslateConsole() {
     sourceLang,
     targetLang,
     status,
+    transcriptPublisher,
   ]);
 
   // Stop one MediaRecorder cleanly and wait for the final dataavailable

@@ -13,8 +13,10 @@ import { deskCard } from '@/components/canvas/widgets/desk-card';
 import { interviewsCard } from '@/components/canvas/widgets/interviews-card';
 import { moderatorCard } from '@/components/canvas/widgets/moderator-card';
 import { translateCard } from '@/components/canvas/widgets/translate-card';
+import { probingCard } from '@/components/canvas/widgets/probing-card';
 import { toplineCard } from '@/components/canvas/widgets/topline-card';
 import { slidegenCard } from '@/components/canvas/widgets/slidegen-card';
+import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
@@ -26,6 +28,7 @@ const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   interviews: interviewsCard,
   moderator: moderatorCard,
   translate: translateCard,
+  probing: probingCard,
   topline: toplineCard,
   slidegen: slidegenCard,
 };
@@ -62,5 +65,12 @@ export default async function CanvasPage({
     )
     .map((k) => CARD_REGISTRY[k]);
 
-  return <CanvasBoard widgets={widgets} initialFocus={focus} />;
+  // RealtimeTranscriptProvider — translate 위젯이 publisher, probing 등
+  // 다른 위젯이 consumer. canvas 안에서만 의미 있어 layout 이 아니라 page
+  // 레벨에서 마운트. /live 페이지에는 영향 없음.
+  return (
+    <RealtimeTranscriptProvider>
+      <CanvasBoard widgets={widgets} initialFocus={focus} />
+    </RealtimeTranscriptProvider>
+  );
 }
