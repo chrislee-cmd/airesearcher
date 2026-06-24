@@ -22,7 +22,10 @@ import { ShareMenu } from './ui/share-menu';
 import { Button } from './ui/button';
 import { IconButton } from './ui/icon-button';
 import { Input } from './ui/input';
+import { InterviewChat } from './interview-chat';
 import { prefillKey } from '@/lib/workspace';
+
+type ResultTab = 'report' | 'chat';
 
 // Sanitize the artifact title and ensure exactly one .md extension —
 // many artifacts already carry .md in the title, so blindly appending
@@ -110,6 +113,11 @@ export function InterviewAnalyzer() {
   const exportCsv = job.exportCsv;
   const exportXlsx = job.exportXlsx;
   const exportDocx = job.exportDocx;
+
+  // Result-area tab: default 표 형식 보고서, optional 코퍼스 채팅. Tab
+  // state is scoped here (not the provider) so navigating away resets it
+  // — the chat surface restores its own thread from the API on remount.
+  const [resultTab, setResultTab] = useState<ResultTab>('report');
 
   return (
     <div className="space-y-10">
@@ -214,62 +222,134 @@ export function InterviewAnalyzer() {
 
         {job.analysis && job.analysis.rows.length > 0 && (
           <div className="mt-6">
-            <div className="mb-3 flex items-center justify-end gap-2">
-              {job.summarizing && (
-                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                  요약 생성 중
-                </span>
-              )}
-              {job.verticallySynthesizing && (
-                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                  전체 흐름 분석 중
-                </span>
-              )}
-              {(job.summarizeError || job.verticalSynthError) && (
-                <span className="text-sm text-warning">
-                  {job.summarizeError ?? job.verticalSynthError}
-                </span>
-              )}
-              <DownloadMenu
-                tone="primary"
-                align="end"
-                items={[
-                  { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
-                  { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
-                  { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
-                ]}
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <ResultTabs
+                value={resultTab}
+                onChange={setResultTab}
+                indexStatus={job.indexStatus}
               />
-              <ShareMenu
-                align="end"
-                items={[
-                  {
-                    destination: 'google-sheets',
-                    title: '인터뷰 분석',
-                    getRows: () => job.getMatrixRows(),
-                  },
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                {job.summarizing && (
+                  <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                    요약 생성 중
+                  </span>
+                )}
+                {job.verticallySynthesizing && (
+                  <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                    전체 흐름 분석 중
+                  </span>
+                )}
+                {(job.summarizeError || job.verticalSynthError) && (
+                  <span className="text-sm text-warning">
+                    {job.summarizeError ?? job.verticalSynthError}
+                  </span>
+                )}
+                {/* Download / share belong to the table view only — the
+                    chat surface has no per-message export today. */}
+                {resultTab === 'report' && (
+                  <>
+                    <DownloadMenu
+                      tone="primary"
+                      align="end"
+                      items={[
+                        { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
+                        { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
+                        { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
+                      ]}
+                    />
+                    <ShareMenu
+                      align="end"
+                      items={[
+                        {
+                          destination: 'google-sheets',
+                          title: '인터뷰 분석',
+                          getRows: () => job.getMatrixRows(),
+                        },
+                      ]}
+                    />
+                  </>
+                )}
+              </div>
             </div>
-            {job.verticalDone && job.analysis.consolidated ? (
-              <FinalSummaryTable
-                insights={job.analysis.consolidated}
-                rows={job.analysis.rows}
-                t={t}
-              />
+            {resultTab === 'report' ? (
+              <>
+                {job.verticalDone && job.analysis.consolidated ? (
+                  <FinalSummaryTable
+                    insights={job.analysis.consolidated}
+                    rows={job.analysis.rows}
+                    t={t}
+                  />
+                ) : (
+                  <ResultTable
+                    filenames={job.filenameOrder}
+                    rows={job.analysis.rows}
+                    summarizing={job.summarizing}
+                    t={t}
+                  />
+                )}
+                <CorpusIndexingStatus status={job.indexStatus} />
+              </>
             ) : (
-              <ResultTable
-                filenames={job.filenameOrder}
-                rows={job.analysis.rows}
-                summarizing={job.summarizing}
-                t={t}
+              <InterviewChat
+                jobId={job.lastSnapshotJobId}
+                indexStatus={job.indexStatus}
               />
             )}
-            <CorpusIndexingStatus status={job.indexStatus} />
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// Tab strip above the result area. The chat tab is always visible but
+// disabled until the corpus is indexed — surfacing the affordance even
+// in the "not ready" state is the spec's preference (lets the user
+// discover the feature even on legacy jobs, where the chat panel itself
+// will explain why it's inert).
+function ResultTabs({
+  value,
+  onChange,
+  indexStatus,
+}: {
+  value: ResultTab;
+  onChange: (tab: ResultTab) => void;
+  indexStatus: IndexStatus;
+}) {
+  // Same shape as the 양식/자동 toggle in TemplateCard above — ghost
+  // buttons with !border-0 !rounded-none overrides to draw a flat tab
+  // strip. Keeps the result-area look consistent across both surfaces.
+  const tabCls = (active: boolean) =>
+    `!border-0 !rounded-none !px-3 !py-2 !text-sm uppercase tracking-[0.22em] ${
+      active
+        ? '!text-ink-2 !border-b-2 !border-amore'
+        : '!text-mute hover:!text-ink-2'
+    }`;
+  return (
+    <div className="inline-flex items-center gap-1 border-b border-line-soft">
+      <Button
+        variant="ghost"
+        size="xs"
+        onClick={() => onChange('report')}
+        className={tabCls(value === 'report')}
+      >
+        📊 표 형식 보고서
+      </Button>
+      <Button
+        variant="ghost"
+        size="xs"
+        onClick={() => onChange('chat')}
+        className={tabCls(value === 'chat')}
+        title={
+          indexStatus === 'done'
+            ? undefined
+            : '코퍼스가 인덱싱된 후 사용할 수 있어요. (탭을 클릭하면 안내 + 인덱싱 버튼이 보입니다.)'
+        }
+      >
+        📨 코퍼스에 질문하기
+      </Button>
     </div>
   );
 }
