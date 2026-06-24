@@ -4,15 +4,18 @@
    프로빙 어시스턴트 — canvas widget.
 
    PR-1: realtime input transcript 미리보기 + 빈 산출물 영역.
-   PR-2: LLM 호출로 후속 질문 (probing) 제안 + 산출물 히스토리.
+   PR-2: LLM 호출로 후속 질문 (probing) 제안.
+   PR-3: 가이드 컨텍스트 (조사목적/가설/의도) 2-stage 매칭. 사용자 정리
+         지시로 본문은 제안 질문 4개만 큼지막하게 — 2×2 grid. 히스토리 /
+         transcript 미리보기 영역은 본질이 아니라 제거.
 
    트리거:
    - 자동: translate isLive 가 true 가 된 시점부터 60초 후 첫 호출,
      이후 매 60초. translate 가 stop 되면 타이머 stop.
    - 수동: "지금 제안" 버튼 — 자동 타이머 reset 하고 즉시 호출.
 
-   휘발성: 모든 제안은 React state. translate 가 새로 시작 (false→true)
-   되면 히스토리 리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
+   휘발성: 현재 제안 세트만 React state. translate 새 세션 시작 시 리셋.
+   페이지 새로고침 → 모든 데이터 손실 (의도).
 
    provider 가 mount 안 되어 있어도 hook 이 빈 stub 을 반환하므로 안전.
    ──────────────────────────────────────────────────────────────────── */
@@ -21,15 +24,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
 import {
-  WidgetOutputRow,
-  WidgetOutputs,
-} from '@/components/canvas/shell/widget-outputs';
-import {
   useRealtimeTranscript,
   type TranscriptSegment,
 } from '@/components/realtime-transcript-provider';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import {
   PROBING_TECHNIQUE_LABEL,
@@ -42,7 +40,6 @@ import {
   type ProbingGuide,
 } from '@/lib/probing-guide';
 import { useActiveProjectId } from '@/components/active-project-provider';
-import { ProbingHistoryModal } from '@/components/canvas/modals/probing-history-modal';
 import type {
   ProbingQuestion,
   ProbingSuggestionSet,
@@ -54,9 +51,6 @@ const PROBING_WINDOW_MS = 90_000;
 const AUTO_INTERVAL_MS = 60_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
-// 산출물 영역에 표시할 최대 카운트 — primitive 가 자체적으로 2건 잘라내지만
-// 메모리 누수 방지 위해 누적 cap.
-const HISTORY_CAP = 50;
 
 // transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
@@ -66,22 +60,6 @@ function useNowTick(intervalMs = 1000): number {
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
-}
-
-function SegmentRow({ seg }: { seg: TranscriptSegment }) {
-  const inFlight = seg.ended_at === undefined;
-  return (
-    <li
-      className={`rounded-xs border px-3 py-2 text-md leading-[1.6] ${
-        inFlight
-          ? 'border-line-soft bg-paper text-mute'
-          : 'border-line bg-paper text-ink-2'
-      }`}
-    >
-      {seg.text}
-      {inFlight && <span className="text-mute-soft"> …</span>}
-    </li>
-  );
 }
 
 function windowText(segments: TranscriptSegment[]): string {
@@ -106,12 +84,10 @@ function ExpandedBody() {
   const hasTranscript = segments.length > 0;
 
   // 현재 본문에 표시되는 제안 세트 (stream 진행 중 + 완료 후 직전 세트).
+  // 본문은 항상 "지금" 세트만 — 히스토리는 의도적으로 안 둔다.
   const [current, setCurrent] = useState<ProbingSuggestionSet | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<ProbingSuggestionSet[]>([]);
-  const [openSet, setOpenSet] = useState<ProbingSuggestionSet | null>(null);
-  const [showAll, setShowAll] = useState(false);
 
   // PR-3: 활성 프로젝트의 가이드 (조사목적/가설/의도) 와 직전 Stage 1
   // focus 결과. 가이드는 mount + project 전환 시 1회 fetch — 짧고 작아서
@@ -249,17 +225,15 @@ function ExpandedBody() {
         }
       }
 
-      // 스트림이 끝나면 history 에도 push. 이전 current 가 stream 도중 덮였을
-      // 가능성도 있으므로 lastQuestions 를 그대로 사용.
+      // 스트림이 끝나면 마지막 partial 이 어떻게 끊겼는 final 값으로 한 번 더
+      // 박는다 — partial parser 가 마지막 청크에서 잘린 카드를 표시 안 한
+      // 경우를 보정. lastQuestions 가 비면 (전 카드 거부됨) error UI 가
+      // 표시되지 않도록 current 도 비운다.
       if (lastQuestions.length > 0) {
-        const finalSet: ProbingSuggestionSet = {
+        setCurrent({
           id: setId,
           created_at: started_at,
           questions: lastQuestions,
-        };
-        setHistory((prev) => {
-          const next = [finalSet, ...prev];
-          return next.slice(0, HISTORY_CAP);
         });
       }
     } catch (e) {
@@ -293,14 +267,12 @@ function ExpandedBody() {
     return () => clearInterval(id);
   }, [isLive, runSuggest]);
 
-  // 새 세션 시작 시 (isLive false → true 전이) 히스토리 리셋. 같은 세션
-  // 안에서 transcript 가 잠시 끊겼다 다시 잡혀도 isLive 가 토글되면 리셋.
-  // 스펙: "translate 가 새로 시작 되면 probing 의 제안 히스토리 리셋."
+  // 새 세션 시작 시 (isLive false → true 전이) 본문 리셋. 같은 세션 안에서
+  // transcript 가 잠시 끊겼다 다시 잡혀도 isLive 가 토글되면 리셋.
   const prevLiveRef = useRef(false);
   useEffect(() => {
     const prev = prevLiveRef.current;
     if (!prev && isLive) {
-      setHistory([]);
       setCurrent(null);
       setError(null);
     }
@@ -375,94 +347,49 @@ function ExpandedBody() {
           </Button>
         </div>
 
-        {/* 중간 — 제안 카드 + transcript 미리보기. flex-1 로 산출물을
-            카드 바닥에 고정. */}
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          {/* 제안 카드 영역. current 가 있으면 카드, 없으면 placeholder. */}
-          {current && current.questions.length > 0 ? (
-            <SuggestionList set={current} onCopy={handleCopy} streaming={streaming} />
-          ) : streaming ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              제안 생성 중…
-            </div>
-          ) : !isLive ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              실시간 통역(translate) 위젯을 먼저 시작해 주세요.
-              <br />
-              시작 후 60초마다 후속 질문이 제안됩니다.
-            </div>
-          ) : !hasTranscript ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              transcript 가 들어오면 첫 제안이 표시됩니다.
-            </div>
-          ) : (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              첫 자동 제안까지 대기 중. &lsquo;지금 제안&rsquo; 으로 즉시 시도할 수 있어요.
-            </div>
-          )}
-
+        {/* 메인 — 제안 질문 4개를 2×2 grid 로. 본문 전체 세로 공간을
+            그리드가 차지해서 카드가 큼지막하게 보이도록 flex-1 + h-full. */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {error && (
-            <div className="rounded-xs border border-warning bg-paper px-3 py-2 text-sm text-warning">
+            <div className="mb-3 rounded-xs border border-warning bg-paper px-3 py-2 text-sm text-warning">
               제안 생성 실패: {error}
             </div>
           )}
 
-          {/* transcript 미리보기 — probing 이 어떤 transcript 위에서 제안하는지
-              사용자가 한 눈에 확인. */}
-          {hasTranscript && (
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-                  최근 90초 transcript
-                </span>
-                <span className="text-xs text-mute-soft tabular-nums">
-                  {segments.length}개 세그먼트
-                </span>
-              </div>
-              <ul className="space-y-2">
-                {segments.map((s) => (
-                  <SegmentRow key={s.id} seg={s} />
-                ))}
-              </ul>
-            </div>
+          {current && current.questions.length > 0 ? (
+            <SuggestionGrid
+              set={current}
+              onCopy={handleCopy}
+              streaming={streaming}
+            />
+          ) : streaming ? (
+            <PlaceholderBox>제안 생성 중…</PlaceholderBox>
+          ) : !isLive ? (
+            <PlaceholderBox>
+              실시간 통역(translate) 위젯을 먼저 시작해 주세요.
+              <br />
+              시작 후 60초마다 후속 질문이 제안됩니다.
+            </PlaceholderBox>
+          ) : !hasTranscript ? (
+            <PlaceholderBox>
+              transcript 가 들어오면 첫 제안이 표시됩니다.
+            </PlaceholderBox>
+          ) : (
+            <PlaceholderBox>
+              첫 자동 제안까지 대기 중. &lsquo;지금 제안&rsquo; 으로 즉시 시도할 수 있어요.
+            </PlaceholderBox>
           )}
         </div>
-
-        {/* 산출물 — probing 제안 히스토리. WidgetOutputs 가 최근 2건 강제,
-            초과 시 더보기 모달로 전체 리스트 노출. */}
-        <WidgetOutputs
-          label="제안 히스토리"
-          items={history}
-          onMoreClick={() => setShowAll(true)}
-          renderItem={(set) => (
-            <HistoryRow
-              key={set.id}
-              set={set}
-              onExpand={() => setOpenSet(set)}
-            />
-          )}
-          emptyText="아직 제안된 질문이 없습니다 — translate 시작 60초 후 첫 제안이 표시됩니다"
-        />
       </div>
-
-      <ProbingHistoryModal
-        set={openSet}
-        onClose={() => setOpenSet(null)}
-        onCopy={handleCopy}
-      />
-
-      {/* 전체 히스토리 모달 — quotes-card 의 "최근 산출물 (N)" 패턴과 동일. */}
-      {showAll && (
-        <ProbingAllSetsModal
-          history={history}
-          onClose={() => setShowAll(false)}
-          onExpand={(s) => {
-            setShowAll(false);
-            setOpenSet(s);
-          }}
-        />
-      )}
     </>
+  );
+}
+
+function PlaceholderBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-full items-center justify-center rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+      <div>{children}</div>
+    </div>
   );
 }
 
@@ -530,7 +457,10 @@ function GuideBanner({
   );
 }
 
-function SuggestionList({
+// 제안 질문 4개를 2×2 grid 로. 카드 자체가 본문 핵심이므로 글자도 더 크게.
+// auto-rows-fr 로 4개 row 가 균등 높이 — 3개 이하 (partial 스트림) 일 때는
+// 첫 행만 채워지고 두 번째 행이 자연스럽게 짧아진다.
+function SuggestionGrid({
   set,
   onCopy,
   streaming,
@@ -540,8 +470,8 @@ function SuggestionList({
   streaming: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
+    <div className="flex h-full flex-col">
+      <div className="mb-3 flex shrink-0 items-center justify-between">
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           제안 질문 {set.questions.length}개
         </span>
@@ -549,100 +479,38 @@ function SuggestionList({
           {streaming ? '스트리밍…' : '카드 클릭 → 복사'}
         </span>
       </div>
-      <ul className="space-y-2">
-        {set.questions.map((q, i) => {
+      <div className="grid min-h-0 flex-1 grid-cols-2 auto-rows-fr gap-3">
+        {set.questions.slice(0, 4).map((q, i) => {
           const label =
             q.technique && q.technique in PROBING_TECHNIQUE_LABEL
               ? PROBING_TECHNIQUE_LABEL[q.technique as ProbingTechnique]
               : q.technique || '제안';
           return (
-            <li key={i}>
-              {/* eslint-disable-next-line react/forbid-elements -- card-shaped clickable. <Button> primitive enforces center-aligned single-line capsule layout incompatible with this multi-row text+chip+why card. */}
-              <button
-                type="button"
-                onClick={() => onCopy(q.text)}
-                className="w-full rounded-sm border border-line bg-paper px-4 py-3 text-left transition-colors duration-[120ms] hover:border-amore"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-lg leading-[1.55] text-ink-2">
-                    {q.text}
-                  </span>
-                  <span className="shrink-0 rounded-xs border border-line-soft px-2 py-0.5 text-xs uppercase tracking-[0.18em] text-mute-soft">
-                    {label}
-                  </span>
-                </div>
-                {q.why && (
-                  <p className="mt-1.5 text-sm leading-[1.6] text-mute">
-                    {q.why}
-                  </p>
-                )}
-              </button>
-            </li>
+            // eslint-disable-next-line react/forbid-elements -- card-shaped clickable. <Button> primitive enforces center-aligned single-line capsule layout incompatible with this multi-row text+chip+why card.
+            <button
+              key={i}
+              type="button"
+              onClick={() => onCopy(q.text)}
+              className="flex min-h-0 flex-col rounded-sm border border-line bg-paper p-5 text-left transition-colors duration-[120ms] hover:border-amore"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-xl font-medium leading-[1.4] text-ink">
+                  {q.text}
+                </span>
+                <span className="shrink-0 rounded-xs border border-line-soft px-2 py-0.5 text-xs uppercase tracking-[0.18em] text-mute-soft">
+                  {label}
+                </span>
+              </div>
+              {q.why && (
+                <p className="mt-3 text-md leading-[1.55] text-mute">
+                  {q.why}
+                </p>
+              )}
+            </button>
           );
         })}
-      </ul>
+      </div>
     </div>
-  );
-}
-
-function HistoryRow({
-  set,
-  onExpand,
-}: {
-  set: ProbingSuggestionSet;
-  onExpand: () => void;
-}) {
-  const d = new Date(set.created_at);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
-  return (
-    <WidgetOutputRow
-      title={`제안 세트 · ${hh}:${mm}:${ss}`}
-      meta={
-        <>
-          <span>{set.questions.length}개 질문</span>
-        </>
-      }
-      actions={
-        <Button
-          variant="link"
-          size="sm"
-          onClick={onExpand}
-          className="uppercase tracking-[0.18em]"
-        >
-          펼치기
-        </Button>
-      }
-    />
-  );
-}
-
-// 전체 히스토리 모달 — Modal primitive 안에서 history row 를 다시 그린다.
-// 단일 set 펼치기 모달 (ProbingHistoryModal) 과 분리한 이유: 두 모달이
-// 다른 의도 (목록 vs 단건) 이고 동시에 떠 있을 수 있다.
-function ProbingAllSetsModal({
-  history,
-  onClose,
-  onExpand,
-}: {
-  history: ProbingSuggestionSet[];
-  onClose: () => void;
-  onExpand: (s: ProbingSuggestionSet) => void;
-}) {
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`제안 히스토리 (${history.length})`}
-      size="lg"
-    >
-      <ul className="space-y-3">
-        {history.map((s) => (
-          <HistoryRow key={s.id} set={s} onExpand={() => onExpand(s)} />
-        ))}
-      </ul>
-    </Modal>
   );
 }
 
