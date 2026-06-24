@@ -74,19 +74,7 @@ export type AnalysisRow = {
   // XLSX export.
   summary?: RowSummary;
   cells: { filename: string; voc: string }[];
-  // True for the trailing "기타 응답" row that template mode emits to
-  // collect responses that didn't fit any template question. The UI
-  // styles this row differently so it reads as a catch-all bucket.
-  isResidual?: boolean;
 };
-
-export type InterviewTemplate = {
-  questions: string[];
-  source_filename: string;
-  uploaded_at: string;
-};
-
-export type TemplateMode = 'auto' | 'template';
 
 // Consolidated insight produced by the vertical synthesis pass. One
 // insight may fuse multiple AnalysisRows together (sourceIndices points
@@ -127,8 +115,7 @@ function normalizePartial(obj: unknown): AnalysisResult | null {
         filename: typeof c.filename === 'string' ? c.filename : '',
         voc: typeof c.voc === 'string' ? c.voc : '',
       }));
-    const isResidual = rr.isResidual === true;
-    rows.push(isResidual ? { question, cells, isResidual } : { question, cells });
+    rows.push({ question, cells });
   }
   const questions = Array.isArray(o.questions)
     ? (o.questions.filter((q) => typeof q === 'string') as string[])
@@ -196,21 +183,6 @@ type Ctx = {
   exportDocx: () => Promise<void>;
   // For share-to-Sheets: returns the final summary matrix as rows.
   getMatrixRows: () => string[][];
-  // Template (사용자 정의 질문 골격). When `template` is non-null and
-  // `templateMode === 'template'`, analyze runs in alignment mode and
-  // its row set is fixed to template.questions plus a 기타 응답 row.
-  // null project_id is OK for guest-ish flows but template loading
-  // requires an active project — the upload button surfaces a hint
-  // when none is selected.
-  template: InterviewTemplate | null;
-  templateMode: TemplateMode;
-  templateLoading: boolean;
-  templateError: string | null;
-  templateTruncated: boolean;
-  setTemplateMode: (m: TemplateMode) => void;
-  uploadTemplate: (file: File) => Promise<void>;
-  updateTemplateQuestions: (qs: string[]) => Promise<void>;
-  deleteTemplate: () => Promise<void>;
 };
 
 // Render a RowSummary (mainstream + outliers) into a single text block
@@ -429,164 +401,6 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const clearThinking = useCallback(() => setThinkingLog([]), []);
-
-  // Template state. Loaded from /api/interviews/template when the
-  // active project changes; falls back to null/auto when no project
-  // selected or project has no template uploaded.
-  const [template, setTemplate] = useState<InterviewTemplate | null>(null);
-  const [templateMode, setTemplateModeState] = useState<TemplateMode>('auto');
-  const [templateLoading, setTemplateLoading] = useState(false);
-  const [templateError, setTemplateError] = useState<string | null>(null);
-  const [templateTruncated, setTemplateTruncated] = useState(false);
-  // Track the project we last loaded for so we don't refetch on every
-  // render (the readActiveProjectId helper is sync, but project ids
-  // change across navigations).
-  const lastLoadedProjectIdRef = useRef<string | null>(null);
-
-  const reloadTemplate = useCallback(async () => {
-    const pid = readActiveProjectId();
-    if (!pid) {
-      setTemplate(null);
-      setTemplateModeState((prev) => (prev === 'template' ? 'auto' : prev));
-      lastLoadedProjectIdRef.current = null;
-      return;
-    }
-    lastLoadedProjectIdRef.current = pid;
-    setTemplateLoading(true);
-    setTemplateError(null);
-    try {
-      const res = await fetch(
-        `/api/interviews/template?project_id=${encodeURIComponent(pid)}`,
-      );
-      if (!res.ok) {
-        setTemplate(null);
-        return;
-      }
-      const json = (await res.json()) as { template: InterviewTemplate | null };
-      setTemplate(json.template ?? null);
-      // Default mode: if the project has a template, start in template
-      // mode. The user can flip to auto for an exploratory pass.
-      setTemplateModeState(json.template ? 'template' : 'auto');
-    } catch (e) {
-      setTemplateError(e instanceof Error ? e.message : 'load_failed');
-    } finally {
-      setTemplateLoading(false);
-    }
-  }, []);
-
-  // Initial load + poll for active-project changes (localStorage doesn't
-  // emit events in the same tab, so we listen to "storage" for cross-tab
-  // changes and re-check on focus for same-tab swaps via the picker).
-  useEffect(() => {
-    // Defer the initial state update so the rule that bans synchronous
-    // setState inside an effect body is satisfied (reloadTemplate may
-    // setTemplate(null) before its first await when no project is
-    // active). A microtask is enough — runs after this render, before
-    // paint.
-    queueMicrotask(() => void reloadTemplate());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'active_project:v1') void reloadTemplate();
-    };
-    const onFocus = () => {
-      const pid = readActiveProjectId();
-      if (pid !== lastLoadedProjectIdRef.current) void reloadTemplate();
-    };
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [reloadTemplate]);
-
-  const setTemplateMode = useCallback((m: TemplateMode) => {
-    setTemplateModeState(m);
-  }, []);
-
-  const uploadTemplate = useCallback(async (file: File) => {
-    const pid = readActiveProjectId();
-    if (!pid) {
-      setTemplateError('project_required');
-      return;
-    }
-    setTemplateLoading(true);
-    setTemplateError(null);
-    setTemplateTruncated(false);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch(
-        `/api/interviews/template?project_id=${encodeURIComponent(pid)}`,
-        { method: 'POST', body: fd },
-      );
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setTemplateError(json.error ?? 'upload_failed');
-        return;
-      }
-      setTemplate(json.template as InterviewTemplate);
-      setTemplateModeState('template');
-      setTemplateTruncated(json.truncated === true);
-    } catch (e) {
-      setTemplateError(e instanceof Error ? e.message : 'upload_failed');
-    } finally {
-      setTemplateLoading(false);
-    }
-  }, []);
-
-  const updateTemplateQuestions = useCallback(async (qs: string[]) => {
-    const pid = readActiveProjectId();
-    if (!pid) {
-      setTemplateError('project_required');
-      return;
-    }
-    setTemplateLoading(true);
-    setTemplateError(null);
-    try {
-      const res = await fetch(
-        `/api/interviews/template?project_id=${encodeURIComponent(pid)}`,
-        {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ questions: qs }),
-        },
-      );
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setTemplateError(json.error ?? 'update_failed');
-        return;
-      }
-      setTemplate(json.template as InterviewTemplate);
-    } catch (e) {
-      setTemplateError(e instanceof Error ? e.message : 'update_failed');
-    } finally {
-      setTemplateLoading(false);
-    }
-  }, []);
-
-  const deleteTemplate = useCallback(async () => {
-    const pid = readActiveProjectId();
-    if (!pid) return;
-    setTemplateLoading(true);
-    setTemplateError(null);
-    try {
-      const res = await fetch(
-        `/api/interviews/template?project_id=${encodeURIComponent(pid)}`,
-        { method: 'DELETE' },
-      );
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setTemplateError(json.error ?? 'delete_failed');
-        return;
-      }
-      setTemplate(null);
-      setTemplateModeState('auto');
-    } catch (e) {
-      setTemplateError(e instanceof Error ? e.message : 'delete_failed');
-    } finally {
-      setTemplateLoading(false);
-    }
-  }, []);
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
@@ -934,22 +748,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     const ac = new AbortController();
     analyzeAbortRef.current = ac;
     try {
-      // Attach template questions when the user is in template mode and
-      // the active project has a question set loaded. The server falls
-      // back to automatic clustering whenever the field is absent or
-      // empty, so this is safe to send conditionally.
-      const useTemplate =
-        templateMode === 'template' &&
-        !!template &&
-        template.questions.length > 0;
       // Stamp the current active project so the resulting generations row
       // joins the workspace panel's default 'active' scope. peekActive…
       // reads localStorage directly because this provider lives outside
       // ActiveProjectProvider in the layout tree.
       const activeProjectId = peekActiveProjectId();
-      const body = useTemplate
-        ? { ...payload, templateQuestions: template!.questions, project_id: activeProjectId }
-        : { ...payload, project_id: activeProjectId };
+      const body = { ...payload, project_id: activeProjectId };
       const res = await fetch('/api/interviews/analyze', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1436,15 +1240,6 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     exportXlsx,
     exportDocx,
     getMatrixRows,
-    template,
-    templateMode,
-    templateLoading,
-    templateError,
-    templateTruncated,
-    setTemplateMode,
-    uploadTemplate,
-    updateTemplateQuestions,
-    deleteTemplate,
   };
 
   return (

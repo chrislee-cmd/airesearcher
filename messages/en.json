@@ -405,7 +405,6 @@
       "cost": "10 credits"
     },
     "interviewsView": {
-      "deleteQuestion": "Delete question",
       "stage1Title": "Step 1 — Convert files to .md",
       "stage1Help": "Each file is converted to markdown. Audio/video is transcribed first; text files are wrapped as-is.",
       "convertAll": "Start",
