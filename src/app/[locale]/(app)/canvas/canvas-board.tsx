@@ -365,28 +365,29 @@ export function CanvasBoard({
     setHoverCell(null);
   }, []);
 
+  // pan 모드 활성 시 자식의 cursor 속성이 부모를 덮어 flicker 나는 문제를
+  // 막기 위해 `data-pan-mode` 와 인라인 <style> 의 universal-descendant
+  // 셀렉터 + !important 로 강제. Tailwind arbitrary variant (`[&_*]:cursor-*`)
+  // 는 v3/v4 important 문법 차이로 컴파일 결과가 환경마다 다를 수 있어
+  // 의존하지 않는다 (PR #389 회귀 원인).
+  const panMode = isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : undefined;
+
   return (
     <div
       ref={containerRef}
-      className={`relative h-[calc(100vh-3rem)] overflow-hidden bg-paper ${
-        isPanning
-          ? '[&_*]:!cursor-grabbing'
-          : isSpaceHeld
-            ? '[&_*]:!cursor-grab'
-            : ''
-      }`}
+      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
+      data-pan-mode={panMode}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      style={{
-        // 자식 요소의 cursor 속성이 부모를 덮어 flicker 가 나던 문제는 위
-        // `[&_*]:!cursor-...` arbitrary variant 가 모든 자손에 !important 로
-        // 강제. 컨테이너 자체는 inline style 로 동일 값 (default 도 처리).
-        cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
-      }}
+      style={{ cursor: panMode ?? 'default' }}
     >
+      <style>{`
+        [data-pan-mode="grab"], [data-pan-mode="grab"] * { cursor: grab !important; }
+        [data-pan-mode="grabbing"], [data-pan-mode="grabbing"] * { cursor: grabbing !important; }
+      `}</style>
       {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
           않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
           중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
