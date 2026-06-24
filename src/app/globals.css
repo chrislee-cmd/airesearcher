@@ -77,6 +77,67 @@
 }
 
 /* =========================================================================
+   Airbnb design tokens — opt-in via `data-design="airbnb"` on a wrapper.
+   Source: jarvis/design-system/DESIGN-airbnb.md frontmatter.
+   Bento tokens that share a name (amore, ink, line, paper, mute…) are
+   overridden so the same component classes (text-ink, border-line, bg-amore…)
+   render in Airbnb tone inside the wrapper. Airbnb-specific tokens (rausch,
+   luxe, plus, cereal font, pill radius) are added as new variables for use
+   within the comparison sample-cluster.
+   ========================================================================= */
+[data-design="airbnb"] {
+  /* Brand voltage (Rausch carries every primary CTA) */
+  --color-amore: #ff385c;          /* rausch */
+  --color-amore-soft: #ff6480;     /* lighter rausch tint for hover/secondary */
+  --color-amore-bg: #ffd1da;       /* rausch-disabled — pale pink wash */
+  --color-amore-tint: #ffe4ea;     /* even softer wash for hover surfaces */
+
+  /* Surfaces */
+  --color-paper: #ffffff;          /* canvas — pure white */
+  --color-paper-soft: #f7f7f7;     /* surface-soft */
+  --color-pacific: #222222;        /* ink */
+  --color-pacific-bg: #f2f2f2;     /* surface-strong */
+
+  /* Text */
+  --color-ink: #222222;
+  --color-ink-2: #3f3f3f;          /* body — secondary running text */
+  --color-mute: #6a6a6a;
+  --color-mute-soft: #929292;
+  --color-gray-warm: #6a6a6a;
+
+  /* Lines (hairlines run at solid hex in airbnb, not rgba) */
+  --color-line: #dddddd;
+  --color-line-soft: #ebebeb;
+
+  /* Airbnb-specific brand tokens (sub-brands + state colors) */
+  --color-airbnb-rausch: #ff385c;
+  --color-airbnb-rausch-active: #e00b41;
+  --color-airbnb-rausch-disabled: #ffd1da;
+  --color-airbnb-luxe: #460479;
+  --color-airbnb-plus: #92174d;
+  --color-airbnb-error: #c13515;
+  --color-airbnb-border-strong: #c1c1c1;
+
+  /* Typography — Cereal VF is licensed; fall back to system stack. */
+  --font-sans: "Airbnb Cereal VF", Circular, -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+  --font-airbnb-display: "Airbnb Cereal VF", Circular, -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+
+  /* Radius scale — airbnb is softer + adds a pill (full) and a hard 0 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;                /* button radius — was 14px in bento */
+  --radius-md: 14px;               /* card radius */
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+  --radius-airbnb-card: 14px;
+  --radius-airbnb-pill: 9999px;
+  --radius-airbnb-button: 8px;
+
+  /* Shadow — single tier in airbnb */
+  --shadow-bento: rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+}
+
+/* =========================================================================
    z-index 스케일 — 산발한 z-[NN] 하드코드 정리.
    레이어 순서는 의도된 stacking: table 로컬 < FAB < modal < toast < overlay.
    ========================================================================= */

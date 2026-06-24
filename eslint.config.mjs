@@ -41,6 +41,10 @@ const eslintConfig = defineConfig([
       // Mock lab — primitive 채택 전 단계. canvas-lab 위젯이 production
       // 으로 승격될 때 strict 적용. (`*` 는 [locale] segment 매칭)
       "src/app/*/(canvas-lab)/**",
+      // Design-system 실험 harness — token override 비교용. 기존 primitive
+      // 는 색을 하드코딩(bg-ink 등)해서 [data-design] 오버라이드가 보이지
+      // 않으므로 sample-cluster 는 raw <button>/<input> 으로 토큰만 사용.
+      "src/app/*/(app)/design/**",
     ],
     rules: {
       "react/forbid-elements": [
