@@ -405,7 +405,6 @@
       "cost": "10크레딧"
     },
     "interviewsView": {
-      "deleteQuestion": "질문 삭제",
       "stage1Title": "1단계 — 파일을 .md로 변환",
       "stage1Help": "각 파일을 마크다운으로 변환합니다. 음성·영상은 전사 후 마크다운으로, 텍스트는 그대로 마크다운으로 정리합니다.",
       "convertAll": "분석 시작",
