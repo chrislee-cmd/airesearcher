@@ -368,13 +368,22 @@ export function CanvasBoard({
   return (
     <div
       ref={containerRef}
-      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
+      className={`relative h-[calc(100vh-3rem)] overflow-hidden bg-paper ${
+        isPanning
+          ? '[&_*]:!cursor-grabbing'
+          : isSpaceHeld
+            ? '[&_*]:!cursor-grab'
+            : ''
+      }`}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
       style={{
+        // 자식 요소의 cursor 속성이 부모를 덮어 flicker 가 나던 문제는 위
+        // `[&_*]:!cursor-...` arbitrary variant 가 모든 자손에 !important 로
+        // 강제. 컨테이너 자체는 inline style 로 동일 값 (default 도 처리).
         cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
       }}
     >
