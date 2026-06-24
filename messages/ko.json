@@ -469,8 +469,8 @@
     },
     "desk": {
       "title": "데스크 리서치",
-      "description": "주제·산업·키워드를 입력하면 공개 출처 위주의 데스크 리서치 요약을 생성합니다.",
-      "cost": "25크레딧"
+      "description": "주제·산업·키워드를 입력하면 공개 출처에서 자료를 수집해 질문→답변→자가검토를 거친 6섹션 컨설팅 리포트를 생성합니다.",
+      "cost": "75크레딧"
     },
     "keywords": {
       "title": "키워드 크롤링",
@@ -647,6 +647,32 @@
     "regionLabel": "검색 지역",
     "regionPortalsLabel": "주요 노출 매체 (Google News 경유)",
     "regionKrOnlyHidden": "한국 전용 소스(네이버·카카오·다음)는 다른 지역에서 결과가 거의 없어 숨겼습니다.",
+    "rqAnswersTitle": "리서치 질문별 답변",
+    "quantSnapshotsTitle": "정량 스냅샷",
+    "quantSnapshotsEmpty": "수집된 정량주장이 없습니다.",
+    "tierDistributionTitle": "출처 신뢰도 분포",
+    "tierUnknownLabel": "미분류",
+    "confidenceLabel": "신뢰도",
+    "weaknessesLabel": "검토 약점",
+    "missingDataLabel": "더 알아볼 점",
+    "missingDataEmpty": "추가 조사 필요 항목이 없습니다.",
+    "cols": {
+      "subject": "주장",
+      "value": "수치",
+      "source": "출처",
+      "tier": "tier",
+      "confidence": "신뢰도"
+    },
+    "phaseLabel": {
+      "expanding": "유사 키워드 확장",
+      "scoping": "리서치 질문 정리",
+      "crawling": "자료 수집",
+      "extracting": "정량주장 추출",
+      "drafting": "RQ 답변 초안",
+      "critiquing": "자가 검토 + 보완",
+      "synthesizing": "최종 보고서 합성",
+      "summarizing": "요약 정리"
+    },
     "region": {
       "KR": "한국",
       "US": "미국",

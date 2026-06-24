@@ -27,10 +27,22 @@ export type DeskJobProgress = {
     | 'scoping'
     | 'crawling'
     | 'extracting'
+    | 'drafting'
+    | 'critiquing'
+    | 'synthesizing'
     | 'summarizing';
   crawl_total?: number;
   crawl_done?: number;
   events: string[];
+};
+
+export type DeskRqAnswer = {
+  rq_id: string;
+  answer_md: string;
+  confidence: 'high' | 'medium' | 'low';
+  weaknesses: string[];
+  missing_data: string[];
+  cited_article_urls: string[];
 };
 
 export type DeskResearchQuestion = {
@@ -97,6 +109,7 @@ export type DeskJob = {
   analytics: DeskAnalytics | null;
   research_questions: DeskResearchQuestion[] | null;
   claims: DeskClaim[] | null;
+  rq_answers: DeskRqAnswer[] | null;
   skipped: { source: DeskSourceId; missing: string }[] | null;
   error_message: string | null;
   generation_id: string | null;
