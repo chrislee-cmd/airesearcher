@@ -13,7 +13,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('recruiting_forms')
-    .select('form_id,title,responder_uri,edit_uri,created_at')
+    .select('form_id,title,responder_uri,edit_uri,sheet_url,created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) {
@@ -26,6 +26,7 @@ export async function GET() {
       title: r.title,
       responderUri: r.responder_uri,
       editUri: r.edit_uri,
+      sheetUrl: r.sheet_url ?? null,
       createdAt: r.created_at,
     })),
   });
