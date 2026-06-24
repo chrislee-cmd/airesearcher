@@ -119,7 +119,7 @@ export const probingCard: WidgetContent = {
     cost: 0,
     thumbnail: '/thumbnail/probing.svg',
     description: '실시간 통역을 듣고 후속 질문을 제안합니다 (PR-2 예정)',
-    expandedCols: 2,
+    expandedCols: 3,
   },
   state: 'idle',
   ExpandedBody,
