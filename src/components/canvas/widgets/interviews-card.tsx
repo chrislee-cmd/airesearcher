@@ -28,7 +28,7 @@ export const interviewsCard: WidgetContent = {
     label: '인터뷰 결과 생성기',
     accent: 'peach',
     cost: 10,
-    thumbnail: '/thumbnail/interview.png',
+    thumbnail: '/thumbnail/analysis.png',
     description:
       '여러 인터뷰 파일을 .md 로 변환하고, 공통 문항별 답변 요약 + VOC 인용 표로 정리합니다.',
     expandedCols: 3,
