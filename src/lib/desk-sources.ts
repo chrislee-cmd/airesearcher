@@ -105,4 +105,8 @@ export type DeskArticle = {
   publishedAt?: string;
   origin?: string;
   keyword: string;
+  // Domain-tier classification — populated by `classifyTier` after dedupe.
+  // Optional so older code paths and persisted rows from before PR-1 stay
+  // valid; downstream code should fall back to 'unknown' if missing.
+  tier?: 'T1' | 'T2' | 'T3' | 'unknown';
 };

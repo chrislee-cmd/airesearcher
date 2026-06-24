@@ -41,6 +41,7 @@ const COLLAPSE_STORAGE_KEY = 'sidebar:collapsed-groups:v1';
 
 type ProgressPhase =
   | 'expanding'
+  | 'scoping'
   | 'crawling'
   | 'summarizing'
   | 'uploading'
@@ -60,9 +61,11 @@ type ProgressPhase =
 // finishes (last phase is capped well below 100 — `done` flips the
 // indicator to the green "작업완료" badge instead).
 const DESK_STAGE = {
-  expanding: { base: 0, width: 25 },
-  crawling: { base: 25, width: 41 }, // 25 → 66
-  summarizing: { base: 66, width: 29 }, // 66 → 95
+  expanding: { base: 0, width: 12 }, // 0 → 12
+  scoping: { base: 12, width: 13 }, // 12 → 25
+  crawling: { base: 25, width: 35 }, // 25 → 60
+  extracting: { base: 60, width: 25 }, // 60 → 85
+  summarizing: { base: 85, width: 10 }, // 85 → 95
 } as const;
 const INTERVIEW_STAGE = {
   converting: { base: 0, width: 15 },
@@ -118,6 +121,9 @@ export function Sidebar({
       if (p.phase === 'expanding') {
         return { percent: DESK_STAGE.expanding.base, phase: 'expanding' };
       }
+      if (p.phase === 'scoping') {
+        return { percent: DESK_STAGE.scoping.base, phase: 'scoping' };
+      }
       if (p.phase === 'crawling') {
         const s = DESK_STAGE.crawling;
         let frac = 0;
@@ -128,6 +134,9 @@ export function Sidebar({
           percent: Math.min(99, Math.round(s.base + frac * s.width)),
           phase: 'crawling',
         };
+      }
+      if (p.phase === 'extracting') {
+        return { percent: DESK_STAGE.extracting.base, phase: 'extracting' };
       }
       if (p.phase === 'summarizing') {
         return { percent: DESK_STAGE.summarizing.base, phase: 'summarizing' };

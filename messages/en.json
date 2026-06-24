@@ -219,6 +219,7 @@
     "done": "done",
     "progress": {
       "expanding": "Expanding",
+      "scoping": "Scoping questions",
       "crawling": "Crawling",
       "summarizing": "Summarizing",
       "uploading": "Uploading",
@@ -628,6 +629,10 @@
     "errorNoKeyword": "Add at least one keyword",
     "similarKeywords": "Expanded keywords",
     "reportTitle": "Summary report",
+    "researchQuestions": "Research questions",
+    "extractedClaims": "Extracted quantitative claims",
+    "importance": "Importance",
+    "viewSource": "View source",
     "collected": "Collected articles",
     "groupAll": "Select all",
     "groupNone": "Clear",
