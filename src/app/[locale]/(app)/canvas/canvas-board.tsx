@@ -183,6 +183,11 @@ export function CanvasBoard({
     panY: number;
   } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+  // 빈 영역 drag 가 즉시 pan 을 시작하면 텍스트 선택·셀 클릭 같은 자연스러운
+  // 마우스 동작이 막힌다. 스페이스바를 누르고 있을 때만 pan 모드로 전환
+  // (Figma·Miro 류 표준). 커서: 평소 default(arrow), space-held 시 grab,
+  // drag 중엔 grabbing.
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // dnd
@@ -193,6 +198,35 @@ export function CanvasBoard({
     const img = new window.Image();
     img.src = TRANSPARENT_GHOST_SRC;
     ghostRef.current = img;
+  }, []);
+
+  // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
+  useEffect(() => {
+    const isEditableTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      setIsSpaceHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      if (isEditableTarget(e.target)) return;
+      setIsSpaceHeld(false);
+    };
+    const onBlur = () => setIsSpaceHeld(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
   }, []);
 
   const onWheel = useCallback(
@@ -217,8 +251,10 @@ export function CanvasBoard({
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
-      // 위젯 본문 / 빈 셀 / 캔버스 배경 어디서든 pan 시작.
-      // 위젯 헤더는 widget-shell 이 자체 stopPropagation 으로 보호 (재배치 dnd 우선).
+      // 스페이스바를 누르고 있을 때만 pan 시작. 그 외엔 위젯/셀 클릭 등 자연스러운
+      // 마우스 동작을 막지 않는다 (위젯 헤더 drag-reposition 은 widget-shell 이
+      // 자체 stopPropagation 으로 처리).
+      if (!isSpaceHeld) return;
       panRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -227,7 +263,7 @@ export function CanvasBoard({
       };
       setIsPanning(true);
     },
-    [pan],
+    [pan, isSpaceHeld],
   );
 
   const onMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
@@ -338,7 +374,9 @@ export function CanvasBoard({
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+      style={{
+        cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default',
+      }}
     >
       {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
           않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
