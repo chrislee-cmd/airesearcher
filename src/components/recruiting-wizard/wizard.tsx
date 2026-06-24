@@ -483,56 +483,58 @@ export function RecruitingWizard() {
           )}
       </WizardCard>
 
-      {/* CARD 2 — 심사 설문 */}
-      <WizardCard
-        index={2}
-        title="심사 설문"
-        phase={surveyPhase}
-        accentColor="amore"
-        disabled={criteriaPhase !== 'approved'}
-      >
-        {criteriaPhase === 'approved' && surveyPhase === 'idle' && (
-          <GeneratingRow label="설문 생성 대기 중…" />
-        )}
+      {/* CARD 2 — 심사 설문. Card 1 승인 전에는 아예 렌더하지 않음 — 단계가
+          진행되면서 카드가 하나씩 순차로 나타나도록. restartCriteria 가
+          criteriaPhase 를 'idle' 로 되돌리면 자동으로 다시 사라짐. */}
+      {criteriaPhase === 'approved' && (
+        <WizardCard
+          index={2}
+          title="심사 설문"
+          phase={surveyPhase}
+          accentColor="amore"
+        >
+          {surveyPhase === 'idle' && (
+            <GeneratingRow label="설문 생성 대기 중…" />
+          )}
 
-        {surveyPhase === 'generating' && (
-          <GeneratingRow label="조건에 맞춘 설문 생성 중…" />
-        )}
+          {surveyPhase === 'generating' && (
+            <GeneratingRow label="조건에 맞춘 설문 생성 중…" />
+          )}
 
-        {(surveyPhase === 'review' || surveyPhase === 'approved') && survey && (
-          <ReviewRow
-            title={survey.title || '설문 생성 완료'}
-            meta={`${survey.sections.length}개 섹션 · ${survey.sections.reduce(
-              (n, s) => n + s.questions.length,
-              0,
-            )}개 질문`}
-            phase={surveyPhase}
-            onPreview={() =>
-              setModal({ open: true, card: 'survey', mode: 'preview' })
-            }
-            onEdit={() =>
-              setModal({ open: true, card: 'survey', mode: 'editor' })
-            }
-            onApprove={approveSurvey}
-            onRestart={regenerateSurvey}
-            restartLabel="설문 다시 생성"
-          />
-        )}
+          {(surveyPhase === 'review' || surveyPhase === 'approved') && survey && (
+            <ReviewRow
+              title={survey.title || '설문 생성 완료'}
+              meta={`${survey.sections.length}개 섹션 · ${survey.sections.reduce(
+                (n, s) => n + s.questions.length,
+                0,
+              )}개 질문`}
+              phase={surveyPhase}
+              onPreview={() =>
+                setModal({ open: true, card: 'survey', mode: 'preview' })
+              }
+              onEdit={() =>
+                setModal({ open: true, card: 'survey', mode: 'editor' })
+              }
+              onApprove={approveSurvey}
+              onRestart={regenerateSurvey}
+              restartLabel="설문 다시 생성"
+            />
+          )}
 
-        {surveyError && (
-          <ErrorBlock>설문 생성 오류: {surveyError}</ErrorBlock>
-        )}
-      </WizardCard>
+          {surveyError && (
+            <ErrorBlock>설문 생성 오류: {surveyError}</ErrorBlock>
+          )}
+        </WizardCard>
+      )}
 
-      {/* CARD 3 — Google Form 생성 */}
-      <WizardCard
-        index={3}
-        title="Google Form 생성"
-        phase={published ? 'approved' : surveyPhase === 'approved' ? 'review' : 'idle'}
-        accentColor="amore"
-        disabled={surveyPhase !== 'approved'}
-      >
-        {surveyPhase === 'approved' && (
+      {/* CARD 3 — Google Form 생성. Card 2 승인 전에는 렌더 X. */}
+      {surveyPhase === 'approved' && (
+        <WizardCard
+          index={3}
+          title="Google Form 생성"
+          phase={published ? 'approved' : 'review'}
+          accentColor="amore"
+        >
           <FormPublishRow
             google={google}
             googleAuthError={googleAuthError}
@@ -547,8 +549,8 @@ export function RecruitingWizard() {
             }}
             onClearAuthError={() => setGoogleAuthError(null)}
           />
-        )}
-      </WizardCard>
+        </WizardCard>
+      )}
 
       {/* Approval modal — shared across cards 1 & 2 */}
       <ReviewModal
@@ -580,33 +582,23 @@ function WizardCard({
   title,
   phase,
   accentColor,
-  disabled,
   children,
 }: {
   index: number;
   title: string;
   phase: Phase;
   accentColor: 'amore';
-  disabled?: boolean;
   children?: ReactNode;
 }) {
   void accentColor;
-  const tone =
-    disabled
-      ? 'border-line-soft bg-paper-soft opacity-60'
-      : phase === 'approved'
-        ? 'border-line bg-paper'
-        : 'border-line bg-paper';
   return (
-    <section className={`border ${tone} rounded-sm transition-opacity`}>
+    <section className="border border-line bg-paper rounded-sm transition-opacity">
       <header className="flex items-center gap-3 border-b border-line-soft px-4 py-3">
         <span
           className={
             phase === 'approved'
               ? 'inline-flex h-6 w-6 items-center justify-center border border-amore bg-amore text-paper text-xs font-semibold rounded-full'
-              : disabled
-                ? 'inline-flex h-6 w-6 items-center justify-center border border-line-soft text-mute-soft text-xs font-semibold rounded-full'
-                : 'inline-flex h-6 w-6 items-center justify-center border border-ink text-ink text-xs font-semibold rounded-full'
+              : 'inline-flex h-6 w-6 items-center justify-center border border-ink text-ink text-xs font-semibold rounded-full'
           }
         >
           {phase === 'approved' ? '✓' : index}
@@ -616,7 +608,7 @@ function WizardCard({
           <span className="text-sm text-amore">승인됨</span>
         )}
       </header>
-      <div className="px-4 py-4">{disabled ? null : children}</div>
+      <div className="px-4 py-4">{children}</div>
     </section>
   );
 }
