@@ -43,15 +43,21 @@ async function hasPreviewAccess(): Promise<boolean> {
   return flags.isUnlimited;
 }
 
+// Design-system override allowlist for `?design=<name>`. Adding a new
+// reference system means: (1) define its tokens in globals.css under
+// `[data-design="<name>"]`, (2) add the name here. Default (no param)
+// keeps the bento tone — production behavior is unchanged.
+const DESIGN_OVERRIDES = new Set(['airbnb']);
+
 export default async function CanvasPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string; design?: string }>;
 }) {
   const { locale } = await params;
-  const { focus } = await searchParams;
+  const { focus, design } = await searchParams;
   setRequestLocale(locale);
 
   const previewOk = await hasPreviewAccess();
@@ -65,12 +71,22 @@ export default async function CanvasPage({
     )
     .map((k) => CARD_REGISTRY[k]);
 
+  const designOverride = design && DESIGN_OVERRIDES.has(design) ? design : null;
+
   // RealtimeTranscriptProvider — translate 위젯이 publisher, probing 등
   // 다른 위젯이 consumer. canvas 안에서만 의미 있어 layout 이 아니라 page
   // 레벨에서 마운트. /live 페이지에는 영향 없음.
-  return (
+  const board = (
     <RealtimeTranscriptProvider>
       <CanvasBoard widgets={widgets} initialFocus={focus} />
     </RealtimeTranscriptProvider>
+  );
+
+  return designOverride ? (
+    <div data-design={designOverride} className="contents">
+      {board}
+    </div>
+  ) : (
+    board
   );
 }
