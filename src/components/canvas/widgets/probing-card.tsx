@@ -514,7 +514,7 @@ export const probingCard: WidgetContent = {
     // 사용자가 위젯을 꺼버린다. 옵션 A (무료, 시스템 흡수) 로 시작 — 사용량
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
-    thumbnail: '/thumbnail/probing.svg',
+    thumbnail: '/thumbnail/probing.png',
     description: '실시간 통역을 듣고 후속 질문 3~5개를 60초마다 제안합니다',
     expandedCols: 3,
   },
