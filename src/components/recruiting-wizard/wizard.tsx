@@ -344,12 +344,18 @@ export function RecruitingWizard() {
     setPublishing(true);
     setPublishError(null);
     try {
+      // Cap the round-trip at 45s — comfortably above the worst-case
+      // Google Forms create + batchUpdate + Drive permission round-trip
+      // we've measured, but well under Vercel's maxDuration=60 so the
+      // user gets a clear error instead of a button stuck in "발행중"
+      // when something upstream silently hangs.
       const res = await fetch('/api/recruiting/google/forms/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ survey }),
+        signal: AbortSignal.timeout(45_000),
       });
-      const j = await res.json();
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(j.error ?? `publish_failed: ${res.statusText}`);
       }
@@ -398,7 +404,11 @@ export function RecruitingWizard() {
         });
       }
     } catch (e) {
-      setPublishError(e instanceof Error ? e.message : 'publish_failed');
+      if (e instanceof DOMException && e.name === 'TimeoutError') {
+        setPublishError('publish_timeout: 45초 내에 응답이 없습니다. 다시 시도해 주세요.');
+      } else {
+        setPublishError(e instanceof Error ? e.message : 'publish_failed');
+      }
     } finally {
       setPublishing(false);
     }
