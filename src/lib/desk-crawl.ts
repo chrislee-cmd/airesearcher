@@ -1,4 +1,5 @@
 import type { DeskArticle, DeskRegion, DeskSourceId } from './desk-sources';
+import { classifyTier } from './desk-source-tiers';
 
 // Map target region to Google News (`hl`/`gl`/`ceid`) and YouTube
 // (`regionCode`/`relevanceLanguage`). GLOBAL falls back to en/US — Google News
@@ -573,7 +574,10 @@ export function dedupeArticles(articles: DeskArticle[]): DeskArticle[] {
     const key = a.url || `${a.source}|${a.title}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(a);
+    // Tag with source tier in the same pass — every article that survives
+    // dedupe should carry a tier so the runner / downstream synthesis can
+    // weight evidence without re-running the classifier later.
+    out.push({ ...a, tier: classifyTier(a.url) });
   }
   return out;
 }

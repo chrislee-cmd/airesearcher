@@ -22,11 +22,53 @@ export type DeskJobStatus =
   | 'cancelled';
 
 export type DeskJobProgress = {
-  phase?: 'expanding' | 'crawling' | 'summarizing';
+  phase?:
+    | 'expanding'
+    | 'scoping'
+    | 'crawling'
+    | 'extracting'
+    | 'summarizing';
   crawl_total?: number;
   crawl_done?: number;
   events: string[];
 };
+
+export type DeskResearchQuestion = {
+  id: string;
+  question: string;
+  category:
+    | 'market_size'
+    | 'competition'
+    | 'trends'
+    | 'regulation_risk'
+    | 'user_signals'
+    | 'business_model'
+    | 'technology';
+  importance: number;
+};
+
+export type DeskClaim =
+  | {
+      kind: 'quant';
+      article_url: string;
+      tier: 'T1' | 'T2' | 'T3' | 'unknown';
+      value: string;
+      unit?: string;
+      subject: string;
+      source_quote: string;
+      rq_ids: string[];
+      confidence: 'direct' | 'paraphrased' | 'speculation';
+    }
+  | {
+      kind: 'entity';
+      article_url: string;
+      tier: 'T1' | 'T2' | 'T3' | 'unknown';
+      name: string;
+      role: 'company' | 'person' | 'product' | 'org';
+      source_quote: string;
+      rq_ids: string[];
+      confidence: 'direct' | 'paraphrased' | 'speculation';
+    };
 
 export type DeskChart = {
   type: 'bar' | 'pie';
@@ -53,6 +95,8 @@ export type DeskJob = {
   output: string | null;
   articles: DeskArticle[] | null;
   analytics: DeskAnalytics | null;
+  research_questions: DeskResearchQuestion[] | null;
+  claims: DeskClaim[] | null;
   skipped: { source: DeskSourceId; missing: string }[] | null;
   error_message: string | null;
   generation_id: string | null;

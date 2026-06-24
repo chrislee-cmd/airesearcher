@@ -726,6 +726,75 @@ export function DeskCardBody() {
 
             {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
 
+            {job.research_questions && job.research_questions.length > 0 && (
+              <section>
+                <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+                  {tDesk('researchQuestions')} ({job.research_questions.length})
+                </h2>
+                <ul className="mt-3 space-y-1.5">
+                  {job.research_questions.map((rq) => (
+                    <li
+                      key={rq.id}
+                      className="rounded-sm border border-line bg-paper px-4 py-3 text-md leading-[1.6] text-ink-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
+                        <span>{rq.id}</span>
+                        <span className="text-amore">{rq.category}</span>
+                        <span>
+                          {tDesk('importance')} {rq.importance}/5
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-md text-ink-2">{rq.question}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {(() => {
+              const quantClaims =
+                job.claims?.filter((c) => c.kind === 'quant') ?? [];
+              if (quantClaims.length === 0) return null;
+              return (
+                <section>
+                  <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+                    {tDesk('extractedClaims')} ({quantClaims.length})
+                  </h2>
+                  <ul className="mt-3 divide-y divide-line rounded-sm border border-line bg-paper">
+                    {quantClaims.slice(0, 30).map((c, i) => {
+                      if (c.kind !== 'quant') return null;
+                      return (
+                        <li key={`${c.article_url}-${i}`} className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
+                            <span>{c.tier}</span>
+                            <span>{c.confidence}</span>
+                          </div>
+                          <p className="mt-1 text-md font-semibold text-ink-2">
+                            {c.subject}
+                            <span className="ml-2 text-amore">
+                              {c.value}
+                              {c.unit ? ` ${c.unit}` : ''}
+                            </span>
+                          </p>
+                          <p className="mt-1 text-sm leading-[1.6] text-mute">
+                            “{c.source_quote}”
+                          </p>
+                          <a
+                            href={c.article_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-xs text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
+                          >
+                            {tDesk('viewSource')}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              );
+            })()}
+
             <article className="rounded-sm border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2">
               <DeskMarkdown source={job.output ?? ''} />
             </article>

@@ -219,6 +219,7 @@
     "done": "작업완료",
     "progress": {
       "expanding": "확장 중",
+      "scoping": "리서치 질문 분해 중",
       "crawling": "크롤링 중",
       "summarizing": "요약 중",
       "uploading": "업로드 중",
@@ -628,6 +629,10 @@
     "errorNoKeyword": "키워드를 1개 이상 입력하세요",
     "similarKeywords": "확장된 유사 키워드",
     "reportTitle": "요약 보고서",
+    "researchQuestions": "리서치 질문",
+    "extractedClaims": "추출된 정량 클레임",
+    "importance": "중요도",
+    "viewSource": "원문 보기",
     "collected": "수집된 기사",
     "groupAll": "전체 선택",
     "groupNone": "전체 해제",
