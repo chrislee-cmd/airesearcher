@@ -849,6 +849,10 @@ export function TranslateConsole() {
     }
 
     sessionIdRef.current = bundle.session.id;
+    console.info('[translate] session ok — acquiring source', {
+      inputSource,
+      sessionId: bundle.session.id,
+    });
 
     // Source stream — either the host's microphone or a captured
     // browser tab's audio (Zoom/Meet/Teams running in another tab).
@@ -862,16 +866,30 @@ export function TranslateConsole() {
         // that supports tab-audio capture; we ask for the cheapest
         // surface (browser tab) and immediately stop the video track
         // since we never render or upload it.
+        //
+        // `ideal` (not `exact`) constraints — Chrome's getDisplayMedia
+        // audio pipeline ignores most constraints and we don't want to
+        // trip OverconstrainedError if it can't honor them. The hint
+        // helps when Chrome can downmix stereo→mono at capture time,
+        // which matches what the OpenAI Realtime translations endpoint
+        // expects (mono PCM).
+        console.info('[translate] requesting getDisplayMedia');
         const display = await navigator.mediaDevices.getDisplayMedia({
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
+            channelCount: { ideal: 1 },
+            sampleRate: { ideal: 48000 },
           },
           video: { displaySurface: 'browser' },
         });
         display.getVideoTracks().forEach((tr) => tr.stop());
         const audioTracks = display.getAudioTracks();
+        console.info('[translate] getDisplayMedia ok', {
+          audioTracks: audioTracks.length,
+          settings: audioTracks.map((tr) => tr.getSettings()),
+        });
         if (audioTracks.length === 0) {
           // The host picked a surface but didn't enable "Share tab
           // audio" in the picker — or the platform doesn't support
@@ -888,8 +906,20 @@ export function TranslateConsole() {
       } else {
         mic = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
-    } catch {
-      setError(inputSource === 'tab' ? 'tab_audio_denied' : 'microphone_denied');
+    } catch (e) {
+      // NotAllowedError → the user explicitly dismissed the picker /
+      // permission prompt. Any other DOMException (NotFoundError,
+      // NotReadableError, OverconstrainedError, AbortError, …) means
+      // capture is broken at the OS / browser level, which surfaces
+      // differently in the UI so the host knows it's not just a
+      // cancellation.
+      const name = e instanceof DOMException ? e.name : '';
+      console.warn('[translate] capture failed', { inputSource, name, error: e });
+      if (inputSource === 'tab') {
+        setError(name === 'NotAllowedError' ? 'tab_audio_denied' : 'tab_audio_failed');
+      } else {
+        setError('microphone_denied');
+      }
       setStatus('error');
       startInFlightRef.current = false;
       return;
@@ -921,12 +951,14 @@ export function TranslateConsole() {
     // the audio track exists — would silently no-op and viewers who
     // toggle "Translation" later would hear nothing.
     outputPublishedRef.current = false;
+    console.info('[translate] connecting livekit');
     try {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       await room.connect(bundle.livekit.url, bundle.livekit.token);
       roomRef.current = room;
       const inputTrack = new LocalAudioTrack(mic.getAudioTracks()[0]);
       await room.localParticipant.publishTrack(inputTrack, { name: 'input' });
+      console.info('[translate] livekit input published');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'livekit_failed');
       setStatus('error');
@@ -935,8 +967,23 @@ export function TranslateConsole() {
       return;
     }
 
-    // OpenAI WebRTC
-    const pc = new RTCPeerConnection();
+    // OpenAI WebRTC.
+    // STUN server is explicit so ICE works on networks where the host
+    // OS / browser has no default STUN configured. OpenAI's signalling
+    // endpoint is reachable, but ICE candidate gathering for the audio
+    // flow can stall on restrictive networks without a public reflexive
+    // candidate — both mic and tab modes share this path, but tab mode
+    // is more sensitive in practice (no natural mic activity = no early
+    // hint that audio is flowing).
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+    pc.onconnectionstatechange = () => {
+      console.info('[translate] pc.connectionState', pc.connectionState);
+    };
+    pc.oniceconnectionstatechange = () => {
+      console.info('[translate] pc.iceConnectionState', pc.iceConnectionState);
+    };
     pcRef.current = pc;
     mic.getAudioTracks().forEach((tr) => pc.addTrack(tr, mic));
     pc.ontrack = (e) => {
@@ -1149,10 +1196,14 @@ export function TranslateConsole() {
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
     dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+    dc.onopen = () => console.info('[translate] dc open');
+    dc.onclose = () => console.info('[translate] dc close');
+    dc.onerror = (ev) => console.warn('[translate] dc error', ev);
 
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.info('[translate] sdp offer ready, posting to openai');
       // The translation-model SDP exchange has its own endpoint family.
       const sdpRes = await fetch(
         'https://api.openai.com/v1/realtime/translations/calls',
@@ -1165,9 +1216,17 @@ export function TranslateConsole() {
           body: offer.sdp ?? '',
         },
       );
-      if (!sdpRes.ok) throw new Error(`openai_sdp_${sdpRes.status}`);
+      console.info('[translate] sdp response', { status: sdpRes.status });
+      if (!sdpRes.ok) {
+        // Log the failure body for the diagnostic window. Truncated to
+        // 500 chars — OpenAI sometimes returns multi-KB error pages.
+        const body = await sdpRes.text().catch(() => '');
+        console.warn('[translate] sdp error body', body.slice(0, 500));
+        throw new Error(`openai_sdp_${sdpRes.status}`);
+      }
       const answerSdp = await sdpRes.text();
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+      console.info('[translate] sdp answer applied');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'webrtc_failed');
       setStatus('error');
