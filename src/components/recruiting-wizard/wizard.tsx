@@ -782,6 +782,34 @@ function ReviewRow({
   );
 }
 
+// Google revokes the refresh token if the user changed password, hit
+// the 6-month inactivity window, or the OAuth client rotated. The
+// server surfaces these as `google_token_refresh_failed` / `invalid_grant`
+// / `unauthorized`. When we see one of these, the only recovery is to
+// disconnect (drops the stale row) and re-OAuth. Detect via substring so
+// the message can wrap upstream JSON without breaking matching.
+function isReauthError(msg: string | null): boolean {
+  if (!msg) return false;
+  return (
+    /token_refresh_failed|invalid_grant|unauthorized|google_not_connected/i.test(
+      msg,
+    )
+  );
+}
+
+async function reconnectGoogle() {
+  try {
+    await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
+  } catch {
+    // Best-effort: even if disconnect fails locally, kicking off
+    // /google/start re-runs the OAuth consent flow which overwrites the
+    // stored token row.
+  }
+  if (typeof window !== 'undefined') {
+    window.location.href = '/api/recruiting/google/start';
+  }
+}
+
 function FormPublishRow({
   google,
   googleAuthError,
@@ -801,6 +829,7 @@ function FormPublishRow({
   onConnect: () => void;
   onClearAuthError: () => void;
 }) {
+  const needsReauth = isReauthError(publishError);
   return (
     <div className="space-y-3">
       {published ? (
@@ -830,10 +859,20 @@ function FormPublishRow({
         </div>
       ) : google?.connected ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-mute-soft">
-            승인된 설문을 Google Forms로 발행합니다.
-            {google.email ? ` (${google.email})` : ''}
-          </p>
+          <div className="min-w-0">
+            <p className="text-sm text-mute-soft">
+              승인된 설문을 Google Forms로 발행합니다.
+              {google.email ? ` (${google.email})` : ''}
+            </p>
+            <Button
+              variant="link"
+              size="xs"
+              onClick={() => void reconnectGoogle()}
+              className="px-0 py-0 font-normal text-xs-soft text-mute underline underline-offset-2 hover:text-amore"
+            >
+              다른 계정으로 재연결
+            </Button>
+          </div>
           <Button
             variant="primary"
             size="md"
@@ -861,7 +900,7 @@ function FormPublishRow({
           <Button
             variant="link"
             size="xs"
-            onClick={onConnect}
+            onClick={() => void reconnectGoogle()}
             className="px-0 py-0 font-normal text-sm text-amore underline underline-offset-2 hover:text-amore"
           >
             재연결
@@ -883,7 +922,25 @@ function FormPublishRow({
         </div>
       )}
 
-      {publishError && <ErrorBlock>발행 오류: {publishError}</ErrorBlock>}
+      {publishError && (
+        <div className="border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
+          <div>발행 오류: {publishError}</div>
+          {needsReauth && (
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-sm">
+                Google 토큰이 만료/취소된 것 같습니다. 재연결로 복구하세요.
+              </span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void reconnectGoogle()}
+              >
+                Google 재연결
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
