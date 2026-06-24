@@ -490,7 +490,6 @@ export function RecruitingWizard() {
         phase={surveyPhase}
         accentColor="amore"
         disabled={criteriaPhase !== 'approved'}
-        disabledHint="카드 1을 승인하면 자동으로 생성됩니다."
       >
         {criteriaPhase === 'approved' && surveyPhase === 'idle' && (
           <GeneratingRow label="설문 생성 대기 중…" />
@@ -532,7 +531,6 @@ export function RecruitingWizard() {
         phase={published ? 'approved' : surveyPhase === 'approved' ? 'review' : 'idle'}
         accentColor="amore"
         disabled={surveyPhase !== 'approved'}
-        disabledHint="카드 2를 승인하면 활성화됩니다."
       >
         {surveyPhase === 'approved' && (
           <FormPublishRow
@@ -583,7 +581,6 @@ function WizardCard({
   phase,
   accentColor,
   disabled,
-  disabledHint,
   children,
 }: {
   index: number;
@@ -591,7 +588,6 @@ function WizardCard({
   phase: Phase;
   accentColor: 'amore';
   disabled?: boolean;
-  disabledHint?: string;
   children?: ReactNode;
 }) {
   void accentColor;
@@ -620,13 +616,7 @@ function WizardCard({
           <span className="text-sm text-amore">승인됨</span>
         )}
       </header>
-      <div className="px-4 py-4">
-        {disabled ? (
-          <p className="text-sm text-mute-soft">{disabledHint}</p>
-        ) : (
-          children
-        )}
-      </div>
+      <div className="px-4 py-4">{disabled ? null : children}</div>
     </section>
   );
 }
@@ -666,7 +656,7 @@ function CriteriaInputArea({
             onChange={(e) => onPasteChange(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="h-[120px] resize-none text-md text-ink-2"
+            className="h-[60px] resize-none text-md text-ink-2"
           />
         </div>
         <div className="flex flex-col">
@@ -679,7 +669,7 @@ function CriteriaInputArea({
             onFiles={(f) => onAddFiles(f)}
             label="파일을 끌어다 놓거나 클릭"
             helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
-            className="h-[120px] gap-2 px-6"
+            className="h-[60px] gap-2 px-6"
           />
         </div>
       </div>
