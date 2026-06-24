@@ -384,6 +384,27 @@ export function TranslateConsole() {
   const TAB_SILENCE_INTERVAL_MS = 3000;
   const TAB_SILENCE_DURATION_MS = 400;
 
+  // Tab-mode only: a dedicated AudioContext that "lifts" the
+  // getDisplayMedia track through WebAudio so the track we hand to
+  // RTCPeerConnection/LiveKit is a fresh, normalised one. PR #393's
+  // sampleRate hint on getDisplayMedia is silently ignored by Chrome,
+  // so we force a 24 kHz mono path here — that's the canonical rate
+  // for the OpenAI Realtime translations model and removes one of the
+  // two known stall hypotheses (the other being ICE; see below).
+  // Kept separate from `audioCtxRef` (which is created lazily in
+  // pc.ontrack for the OUTPUT re-emit) so input cleanup doesn't fight
+  // output cleanup.
+  const tabResampleCtxRef = useRef<AudioContext | null>(null);
+
+  // Watchdog: if start() doesn't reach setStatus('live') within
+  // CONNECT_TIMEOUT_MS we surface `translate_timeout` and tear down.
+  // Pre-PR-394 a hang in room.connect / publishTrack / fetch(openai SDP)
+  // would leave the UI on "연결 중" forever with no signal. The diagnostic
+  // logs added in PR #393 give us the WHERE; this watchdog gives the
+  // user a way OUT.
+  const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const CONNECT_TIMEOUT_MS = 10_000;
+
   // Rolling buffer for the currently-streaming caption line per side.
   // The translation API has no explicit completion event, so we keep one
   // mutable "current" entry per side and flush it whenever sentence-ending
@@ -516,6 +537,14 @@ export function TranslateConsole() {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
     }
+    if (connectWatchdogRef.current) {
+      clearTimeout(connectWatchdogRef.current);
+      connectWatchdogRef.current = null;
+    }
+    try {
+      void tabResampleCtxRef.current?.close();
+    } catch {}
+    tabResampleCtxRef.current = null;
     micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     micStreamRef.current = null;
     ttsStreamRef.current = null;
@@ -825,6 +854,32 @@ export function TranslateConsole() {
     setDownloadingFormat(null);
     setStatus('starting');
 
+    // Arm the connect watchdog. Any path that succeeds clears it (live
+    // reached). Any path that fails has already called cleanup(), which
+    // also clears it. The fallback fires only when start() makes no
+    // forward progress for CONNECT_TIMEOUT_MS — typically a silent
+    // hang in room.connect / publishTrack / openai SDP fetch / ICE
+    // gathering. We log the last-known PC/DC state so the diagnostic
+    // window points at the right stage.
+    if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
+    connectWatchdogRef.current = setTimeout(() => {
+      connectWatchdogRef.current = null;
+      const pc = pcRef.current;
+      const dc = dcRef.current;
+      console.warn('[translate] connect timeout', {
+        pcConnection: pc?.connectionState ?? null,
+        pcIce: pc?.iceConnectionState ?? null,
+        pcSignaling: pc?.signalingState ?? null,
+        pcGathering: pc?.iceGatheringState ?? null,
+        dcReadyState: dc?.readyState ?? null,
+        hasRoom: !!roomRef.current,
+      });
+      setError('translate_timeout');
+      setStatus('error');
+      cleanup('start_error_webrtc');
+      startInFlightRef.current = false;
+    }, CONNECT_TIMEOUT_MS);
+
     let bundle: SessionBundle;
     try {
       const res = await fetch('/api/translate/sessions', {
@@ -859,7 +914,15 @@ export function TranslateConsole() {
     // `mic` keeps the variable name because the rest of the pipeline
     // (LiveKit "input" publish, OpenAI WebRTC addTrack, cleanup via
     // micStreamRef) doesn't care which kind of capture it is.
+    // `mic` = the original capture (mic OR raw tab). Lives on
+    // micStreamRef so cleanup can stop the underlying track (which is
+    // also what makes the Chrome "Sharing this tab's audio" banner
+    // disappear). `publishStream` = what we actually hand to LiveKit
+    // and the OpenAI RTCPeerConnection — for mic mode it's the same
+    // object; for tab mode it's a 24 kHz mono MediaStream emitted by
+    // a WebAudio resampling graph (see below).
     let mic: MediaStream;
+    let publishStream: MediaStream;
     try {
       if (inputSource === 'tab') {
         // getDisplayMedia requires a video constraint on every browser
@@ -903,8 +966,57 @@ export function TranslateConsole() {
           return;
         }
         mic = new MediaStream(audioTracks);
+
+        // Resample to 24 kHz mono via WebAudio. Why this exists:
+        //
+        // 1. Chrome's getDisplayMedia ignores `sampleRate`/`channelCount`
+        //    constraint hints (PR #393 set them; capture-time downmix
+        //    didn't actually happen on at least some Chrome builds).
+        // 2. The OpenAI Realtime translations model expects 24 kHz
+        //    mono PCM; sending the raw 48 kHz stereo capture from a
+        //    YouTube tab forces a server-side resample that sometimes
+        //    silently fails the negotiation (one of the two stall
+        //    hypotheses behind PR #393's follow-up).
+        // 3. WebAudio "lifting" the raw display track into a fresh
+        //    MediaStreamTrack is a known workaround for stale-clock
+        //    quirks on the display-capture pipeline that intermittently
+        //    confuse the WebRTC engine.
+        //
+        // If AudioContext construction at the requested sample rate
+        // fails (very old Chrome, exotic OS audio config), we fall
+        // back to the original capture stream — no resample, but the
+        // session still starts. The watchdog above catches any
+        // resulting hang.
+        try {
+          type WebkitWindow = Window &
+            typeof globalThis & {
+              webkitAudioContext?: typeof AudioContext;
+            };
+          const w = window as WebkitWindow;
+          const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
+          if (!AudioCtx) throw new Error('no AudioContext');
+          const ctx = new AudioCtx({ sampleRate: 24000 });
+          tabResampleCtxRef.current = ctx;
+          if (ctx.state === 'suspended') {
+            void ctx.resume().catch((err) => {
+              console.warn('[translate] tab resample ctx.resume failed', err);
+            });
+          }
+          const src = ctx.createMediaStreamSource(mic);
+          const dst = ctx.createMediaStreamDestination();
+          src.connect(dst);
+          publishStream = dst.stream;
+          console.info('[translate] tab resample graph wired', {
+            ctxSampleRate: ctx.sampleRate,
+            publishTracks: publishStream.getAudioTracks().length,
+          });
+        } catch (err) {
+          console.warn('[translate] tab resample failed, passing raw stream', err);
+          publishStream = mic;
+        }
       } else {
         mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        publishStream = mic;
       }
     } catch (e) {
       // NotAllowedError → the user explicitly dismissed the picker /
@@ -956,7 +1068,10 @@ export function TranslateConsole() {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       await room.connect(bundle.livekit.url, bundle.livekit.token);
       roomRef.current = room;
-      const inputTrack = new LocalAudioTrack(mic.getAudioTracks()[0]);
+      // Publish the (possibly resampled) publishStream — for tab mode
+      // this is the 24 kHz WebAudio output; for mic mode it's the raw
+      // capture (same object as `mic`).
+      const inputTrack = new LocalAudioTrack(publishStream.getAudioTracks()[0]);
       await room.localParticipant.publishTrack(inputTrack, { name: 'input' });
       console.info('[translate] livekit input published');
     } catch (e) {
@@ -968,24 +1083,41 @@ export function TranslateConsole() {
     }
 
     // OpenAI WebRTC.
-    // STUN server is explicit so ICE works on networks where the host
-    // OS / browser has no default STUN configured. OpenAI's signalling
-    // endpoint is reachable, but ICE candidate gathering for the audio
-    // flow can stall on restrictive networks without a public reflexive
-    // candidate — both mic and tab modes share this path, but tab mode
-    // is more sensitive in practice (no natural mic activity = no early
-    // hint that audio is flowing).
+    // Two public STUN servers (one is enough for most networks; the
+    // second is a cheap redundancy in case Google rotates a host or
+    // it's reachable from one resolver but not the other). For corp
+    // networks that block UDP STUN entirely we'd need a TURN server,
+    // which is a separate piece of infra and not in scope here — the
+    // watchdog above is the user-visible fallback for that case.
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+      ],
     });
+    pc.onsignalingstatechange = () => {
+      console.info('[translate] pc.signalingState', pc.signalingState);
+    };
     pc.onconnectionstatechange = () => {
       console.info('[translate] pc.connectionState', pc.connectionState);
     };
     pc.oniceconnectionstatechange = () => {
       console.info('[translate] pc.iceConnectionState', pc.iceConnectionState);
     };
+    pc.onicegatheringstatechange = () => {
+      console.info('[translate] pc.iceGatheringState', pc.iceGatheringState);
+    };
+    pc.onicecandidate = (e) => {
+      // Candidate spam can be heavy — log only the type+protocol so
+      // the diagnostic window stays readable. `null` candidate signals
+      // gathering complete.
+      console.info('[translate] ice-candidate', {
+        type: e.candidate?.type ?? 'end-of-candidates',
+        protocol: e.candidate?.protocol ?? null,
+      });
+    };
     pcRef.current = pc;
-    mic.getAudioTracks().forEach((tr) => pc.addTrack(tr, mic));
+    publishStream.getAudioTracks().forEach((tr) => pc.addTrack(tr, publishStream));
     pc.ontrack = (e) => {
       const stream = e.streams[0];
       ttsStreamRef.current = stream;
@@ -1249,6 +1381,11 @@ export function TranslateConsole() {
       .update({ status: 'live', started_at: new Date().toISOString() })
       .eq('id', bundle.session.id);
 
+    // Connect succeeded — disarm the watchdog before flipping live.
+    if (connectWatchdogRef.current) {
+      clearTimeout(connectWatchdogRef.current);
+      connectWatchdogRef.current = null;
+    }
     startedAtRef.current = Date.now();
     setStatus('live');
     startInFlightRef.current = false;
