@@ -33,8 +33,15 @@ import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import {
   PROBING_TECHNIQUE_LABEL,
+  type ProbingFocus,
   type ProbingTechnique,
 } from '@/lib/probing-prompts';
+import {
+  EMPTY_GUIDE,
+  hasGuideContent,
+  type ProbingGuide,
+} from '@/lib/probing-guide';
+import { useActiveProjectId } from '@/components/active-project-provider';
 import { ProbingHistoryModal } from '@/components/canvas/modals/probing-history-modal';
 import type {
   ProbingQuestion,
@@ -88,6 +95,7 @@ function ExpandedBody() {
   const { isLive, recent } = useRealtimeTranscript();
   const toast = useToast();
   const now = useNowTick();
+  const activeProjectId = useActiveProjectId();
 
   // 90초 윈도우 — preview 와 LLM 호출이 같은 윈도우를 본다.
   const segments = useMemo(
@@ -104,6 +112,49 @@ function ExpandedBody() {
   const [history, setHistory] = useState<ProbingSuggestionSet[]>([]);
   const [openSet, setOpenSet] = useState<ProbingSuggestionSet | null>(null);
   const [showAll, setShowAll] = useState(false);
+
+  // PR-3: 활성 프로젝트의 가이드 (조사목적/가설/의도) 와 직전 Stage 1
+  // focus 결과. 가이드는 mount + project 전환 시 1회 fetch — 짧고 작아서
+  // SWR 안 깐다. focus 는 매 호출마다 응답 헤더로 옴.
+  const [guide, setGuide] = useState<ProbingGuide>(EMPTY_GUIDE);
+  const [guideLoaded, setGuideLoaded] = useState(false);
+  const [focus, setFocus] = useState<ProbingFocus | null>(null);
+  const projectIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    projectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!activeProjectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset guide state when project deselected
+      setGuide(EMPTY_GUIDE);
+      setGuideLoaded(true);
+      return;
+    }
+    setGuideLoaded(false);
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/projects/${activeProjectId}/probing-guide`,
+        );
+        if (!alive) return;
+        if (res.ok) {
+          const json = (await res.json()) as { guide?: ProbingGuide };
+          setGuide(json.guide ?? EMPTY_GUIDE);
+        } else {
+          setGuide(EMPTY_GUIDE);
+        }
+      } catch {
+        if (alive) setGuide(EMPTY_GUIDE);
+      } finally {
+        if (alive) setGuideLoaded(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeProjectId]);
 
   // 자동 타이머가 "다음 호출까지 남은 시간" 을 표시하기 위해 next-call epoch
   // 를 ref + state 양쪽에 보관. ref 는 setInterval/setTimeout 안에서 stale
@@ -146,13 +197,28 @@ function ExpandedBody() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           transcript_window: text,
-          interview_guide: '',
+          project_id: projectIdRef.current,
           max_questions: 4,
         }),
       });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? `suggest_failed_${res.status}`);
+      }
+      // PR-3: Stage 1 결과를 응답 헤더로 받아 위젯 상단에 표시. 가이드가
+      // 없는 호출이면 헤더 자체가 없음 — focus 는 null 유지.
+      const focusEncoded = res.headers.get('x-probing-focus');
+      if (focusEncoded) {
+        try {
+          const next = JSON.parse(decodeURIComponent(focusEncoded));
+          if (next && typeof next === 'object') {
+            setFocus(next as ProbingFocus);
+          }
+        } catch {
+          // 헤더 파싱 실패는 무시 — body stream 은 계속 처리.
+        }
+      } else {
+        setFocus(null);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -263,9 +329,22 @@ function ExpandedBody() {
       ? Math.max(0, Math.ceil((nextCallAt - now) / 1000))
       : null;
 
+  const guideReady = guideLoaded && hasGuideContent(guide);
+
   return (
     <>
       <div className="flex h-full flex-col">
+        {/* PR-3 가이드 banner — 활성 프로젝트의 가이드 요약 + Stage 1
+            focus_summary 한 줄. 가이드 없으면 등록 안내. 사용자가 위젯이
+            지금 어떤 컨텍스트를 보고 제안하는지 한 눈에 확인. */}
+        <GuideBanner
+          activeProjectId={activeProjectId}
+          guideLoaded={guideLoaded}
+          guide={guide}
+          guideReady={guideReady}
+          focus={focus}
+        />
+
         {/* 상단 — live 상태 + 카운트다운 + 수동 버튼. */}
         <div className="flex shrink-0 items-center justify-between border-b border-line-soft px-5 py-3">
           <div className="flex items-center gap-2">
@@ -384,6 +463,70 @@ function ExpandedBody() {
         />
       )}
     </>
+  );
+}
+
+function GuideBanner({
+  activeProjectId,
+  guideLoaded,
+  guide,
+  guideReady,
+  focus,
+}: {
+  activeProjectId: string | null;
+  guideLoaded: boolean;
+  guide: ProbingGuide;
+  guideReady: boolean;
+  focus: ProbingFocus | null;
+}) {
+  // 활성 프로젝트가 없으면 banner 자체를 안 그린다 — 위젯의 기본 안내
+  // (translate placeholder) 가 그 자리에서 가이드를 굳이 강제하지 않는다.
+  if (!activeProjectId) {
+    return (
+      <div className="shrink-0 border-b border-line-soft bg-paper-soft px-5 py-3 text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
+        활성 프로젝트 없음 — 사이드바에서 프로젝트를 선택하면 가이드를 사용합니다
+      </div>
+    );
+  }
+
+  if (!guideLoaded) {
+    return (
+      <div className="shrink-0 border-b border-line-soft bg-paper-soft px-5 py-3 text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
+        가이드 불러오는 중…
+      </div>
+    );
+  }
+
+  if (!guideReady) {
+    return (
+      <div className="shrink-0 border-b border-line-soft bg-paper-soft px-5 py-3 text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
+        가이드 미등록 — 프로젝트 페이지에서 조사목적·가설·의도를 등록하면 매칭 제안이 켜집니다
+      </div>
+    );
+  }
+
+  return (
+    <div className="shrink-0 space-y-1.5 border-b border-line-soft bg-paper-soft px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs-soft uppercase tracking-[0.18em] text-mute-soft">
+        <span>가이드 활성</span>
+        {guide.objective.trim() && (
+          <span className="rounded-xs border border-line-soft px-1.5 py-0.5">
+            조사목적
+          </span>
+        )}
+        <span className="rounded-xs border border-line-soft px-1.5 py-0.5 tabular-nums">
+          가설 {guide.hypotheses.length}
+        </span>
+        <span className="rounded-xs border border-line-soft px-1.5 py-0.5 tabular-nums">
+          의도 {guide.question_intents.length}
+        </span>
+      </div>
+      {focus?.focus_summary && (
+        <div className="text-sm text-ink-2 leading-[1.55]">
+          <span className="text-mute-soft">지금 응답자 →</span> {focus.focus_summary}
+        </div>
+      )}
+    </div>
   );
 }
 

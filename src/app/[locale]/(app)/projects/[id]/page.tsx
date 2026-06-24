@@ -5,6 +5,7 @@ import { getActiveOrg } from '@/lib/org';
 import { getProjectArtifacts, listProjects, type ProjectArtifact } from '@/lib/projects';
 import { ActiveProjectSync } from '@/components/active-project-sync';
 import { ArtifactAssignMenu } from '@/components/artifact-assign-menu';
+import { ProbingGuideEditor } from '@/components/probing-guide-editor';
 
 const REASSIGNABLE = new Set<ProjectArtifact['feature']>([
   'report',
@@ -63,7 +64,19 @@ export default async function ProjectDetailPage({
         </p>
       )}
 
-      <div className="mt-8">
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
+          프로빙 가이드
+        </h2>
+        <p className="mt-1.5 max-w-[760px] text-sm text-mute">
+          실시간 프로빙 어시스턴트가 인터뷰 중 발화를 이 가이드와 매칭해서
+          가설 검증/심화 질문을 제안합니다. 가이드를 비워두면 위젯은 transcript
+          만 보고 일반 follow-up 을 제안합니다.
+        </p>
+        <ProbingGuideEditor projectId={project.id} />
+      </div>
+
+      <div className="mt-10">
         <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
           {t('items')}
         </h2>
