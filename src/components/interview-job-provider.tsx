@@ -23,6 +23,11 @@ export const MAX_FILES = 25;
 export type ConvStatus = 'queued' | 'converting' | 'done' | 'error';
 export type ExtractStatus = 'idle' | 'extracting' | 'done' | 'error';
 
+// Corpus indexing happens after the topline report finishes. 'idle' covers
+// the gap before the snapshot persists (no job id yet); after that it
+// transitions pending → indexing → done | error driven by /api/interviews/index.
+export type IndexStatus = 'idle' | 'pending' | 'indexing' | 'done' | 'error';
+
 export type ExtractItem = {
   question: string;
   voc: string;
@@ -171,6 +176,11 @@ type Ctx = {
   // reads this so its workspace artifact can carry a dbId, which in
   // turn lets the modal's project picker reach /api/artifacts/assign.
   lastSnapshotJobId: string | null;
+  // Background corpus-indexing pipeline state. Surfaced as a small chip
+  // under the result table — the chat surface (PR-2) will need a
+  // populated chunk index to answer questions, so users get a
+  // best-effort signal that the index is being built.
+  indexStatus: IndexStatus;
   isWorking: boolean;
   thinkingLog: ThinkingEvent[];
   clearThinking: () => void;
@@ -580,6 +590,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [lastSnapshotJobId, setLastSnapshotJobId] = useState<string | null>(null);
+  const [indexStatus, setIndexStatus] = useState<IndexStatus>('idle');
   // Captured when analysis completes so subsequent CSV/XLSX/DOCX exports use
   // a stable timestamp. Sub-second drift vs. `interview_jobs.created_at` is
   // fine — both default to "now()" within the same request flow.
@@ -799,6 +810,48 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     }
   }
 
+  // Fire-and-forget corpus indexing. The endpoint is synchronous (waits
+  // for embeddings + inserts to finish), so the eventual response tells
+  // us the terminal state directly — no polling needed.
+  async function runIndexInBackground(jobId: string) {
+    const docs = itemsRef.current
+      .filter(
+        (i) =>
+          i.status === 'done' &&
+          typeof i.markdown === 'string' &&
+          i.markdown.length > 0,
+      )
+      .map((i) => ({
+        filename: i.file.name,
+        mime: i.file.type || undefined,
+        markdown: i.markdown!,
+      }));
+    if (docs.length === 0) {
+      setIndexStatus('idle');
+      return;
+    }
+    setIndexStatus('indexing');
+    try {
+      const res = await fetch('/api/interviews/index', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          interview_job_id: jobId,
+          project_id: readActiveProjectId(),
+          documents: docs,
+        }),
+      });
+      if (!res.ok) {
+        setIndexStatus('error');
+        return;
+      }
+      setIndexStatus('done');
+    } catch (err) {
+      console.warn('[interviews] index call failed', err);
+      setIndexStatus('error');
+    }
+  }
+
   async function runSummarize(result: AnalysisResult) {
     if (result.rows.length === 0) return;
     setSummarizing(true);
@@ -877,6 +930,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     setAnalyzing(true);
     setAnalyzeError(null);
     setAnalysis(null);
+    setIndexStatus('idle');
     const ac = new AbortController();
     analyzeAbortRef.current = ac;
     try {
@@ -924,7 +978,14 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
         extractions: payload.extractions,
         matrix: result,
       }).then((id) => {
-        if (id) setLastSnapshotJobId(id);
+        if (!id) return;
+        setLastSnapshotJobId(id);
+        // Kick off corpus indexing once the snapshot has a persistent
+        // row. Reads markdown directly from itemsRef so we don't depend
+        // on whichever component re-render is in flight. Indexing is a
+        // background step — its failure is non-fatal for the topline
+        // report the user is already looking at.
+        void runIndexInBackground(id);
       });
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
@@ -1360,6 +1421,7 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     verticalSynthError,
     verticalDone,
     lastSnapshotJobId,
+    indexStatus,
     isWorking,
     thinkingLog,
     clearThinking,
