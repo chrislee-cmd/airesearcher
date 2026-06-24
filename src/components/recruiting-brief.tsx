@@ -362,6 +362,11 @@ export function RecruitingBrief() {
       }
       setPublished(j);
       setPublishVersion((v) => v + 1);
+      // Canvas widget listens for this so its bottom-align outputs area
+      // refreshes immediately instead of waiting for the 30 s poll tick.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('recruiting:published'));
+      }
       track('recruiting_publish_success', { feature: 'recruiting_publish' });
       // Register the published form as a workspace artifact so it shows
       // up in the modal and can be assigned to a project. The Google

@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
-import { refreshAccessToken } from '@/lib/google-oauth';
+import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
 import { createGoogleForm } from '@/lib/google-forms';
+import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey, type SurveyQuestion } from '@/lib/survey-schema';
 
 export const maxDuration = 60;
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: row } = await admin
     .from('user_google_oauth')
-    .select('refresh_token')
+    .select('refresh_token, scope')
     .eq('user_id', user.id)
     .maybeSingle();
   if (!row?.refresh_token) {
@@ -107,6 +108,31 @@ export async function POST(request: Request) {
 
   try {
     const result = await createGoogleForm(accessToken, survey);
+    // Best-effort: create a companion Google Sheet seeded with the
+    // form's question titles as headers when the user has the Sheets
+    // scope. The Google Forms API does not expose a way to attach an
+    // existing Sheet as the form's response destination, so this Sheet
+    // is a standalone artifact — recruiting flows still rely on the
+    // Forms responses API for the live data, but the widget surfaces
+    // this URL as a one-click "응답 시트" CTA. Failures are swallowed:
+    // the form is published either way, and the widget shows the
+    // "시트 연결" fallback button when sheet_url stays null.
+    let sheetUrl: string | null = null;
+    let sheetId: string | null = null;
+    if (hasSheetsScope(row.scope)) {
+      try {
+        const headers = sheetHeaders(survey);
+        const sheet = await createGoogleSheet(
+          accessToken,
+          `${survey.title || '리서치 설문'} — 응답`,
+          [headers],
+        );
+        sheetUrl = sheet.url;
+        sheetId = sheet.spreadsheetId;
+      } catch {
+        // ignore — keep null and let the UI offer "시트 연결" later
+      }
+    }
     // Stamp org_id at creation so the dashboard's recruiting count
     // attributes new forms to the user's active org. Older rows can
     // remain null — they show up under "unfiled" until backfilled.
@@ -118,10 +144,25 @@ export async function POST(request: Request) {
       title: survey.title || '',
       responder_uri: result.responderUri,
       edit_uri: result.editUri,
+      sheet_url: sheetUrl,
+      sheet_id: sheetId,
     });
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, sheetUrl });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'forms_create_failed';
     return NextResponse.json({ error: msg }, { status: 502 });
   }
+}
+
+// Flatten the survey's questions in form order, mirroring the column
+// order the Forms response API returns. Section titles are dropped
+// because the responses sheet only needs question columns.
+function sheetHeaders(survey: Survey): string[] {
+  const headers = ['응답시각'];
+  for (const section of survey.sections) {
+    for (const q of section.questions) {
+      headers.push(q.title);
+    }
+  }
+  return headers;
 }
