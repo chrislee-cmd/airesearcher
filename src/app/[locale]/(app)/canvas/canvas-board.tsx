@@ -365,29 +365,36 @@ export function CanvasBoard({
     setHoverCell(null);
   }, []);
 
-  // pan 모드 활성 시 자식의 cursor 속성이 부모를 덮어 flicker 나는 문제를
-  // 막기 위해 `data-pan-mode` 와 인라인 <style> 의 universal-descendant
-  // 셀렉터 + !important 로 강제. Tailwind arbitrary variant (`[&_*]:cursor-*`)
-  // 는 v3/v4 important 문법 차이로 컴파일 결과가 환경마다 다를 수 있어
-  // 의존하지 않는다 (PR #389 회귀 원인).
-  const panMode = isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : undefined;
+  // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
+  // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker
+  // 가 발생 (PR #391 회귀). 대신 useEffect 로 document.head 에 <style> 을
+  // 한 번만 주입하고 body cursor 도 직접 세팅 — pan 모드 활성 동안 모든
+  // 엘리먼트가 universal selector + !important 로 단일 cursor 를 유지.
+  useEffect(() => {
+    if (!isPanning && !isSpaceHeld) return;
+    const cursor = isPanning ? 'grabbing' : 'grab';
+    const prevBodyCursor = document.body.style.cursor;
+    document.body.style.cursor = cursor;
+    const styleEl = document.createElement('style');
+    styleEl.dataset.canvasPanCursor = '';
+    styleEl.textContent = `*, *::before, *::after { cursor: ${cursor} !important; }`;
+    document.head.appendChild(styleEl);
+    return () => {
+      document.body.style.cursor = prevBodyCursor;
+      styleEl.remove();
+    };
+  }, [isPanning, isSpaceHeld]);
 
   return (
     <div
       ref={containerRef}
       className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
-      data-pan-mode={panMode}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
-      style={{ cursor: panMode ?? 'default' }}
     >
-      <style>{`
-        [data-pan-mode="grab"], [data-pan-mode="grab"] * { cursor: grab !important; }
-        [data-pan-mode="grabbing"], [data-pan-mode="grabbing"] * { cursor: grabbing !important; }
-      `}</style>
       {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
           않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
           중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
