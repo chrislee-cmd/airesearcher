@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { WidgetContent } from '../widget-types';
-import { RecruitingBrief } from '@/components/recruiting-brief';
+import { RecruitingWizard } from '@/components/recruiting-wizard';
 import {
   WidgetOutputRow,
   WidgetOutputs,
@@ -14,10 +14,11 @@ import {
   formatTime,
 } from './recruiting-card-outputs';
 
-// 본문 (RecruitingBrief) + 바닥 산출물 영역. 전사록/데스크 위젯과 동일한
-// flex column 패턴 — 중간이 flex-1 로 늘어나고 산출물이 카드 바닥에 고정.
-// 산출물 데이터는 사용자가 Google 을 연결한 뒤 /forms/list 를 30 s 주기로
-// 폴링. 폴링은 위젯이 열려있는 동안만 (hook unmount 시 정리).
+// 본문 (RecruitingWizard, 3-step 카드) + 바닥 산출물 영역. 전사록/데스크
+// 위젯과 동일한 flex column 패턴 — 중간이 flex-1 로 늘어나고 산출물이
+// 카드 바닥에 고정. 산출물 데이터는 사용자가 Google 을 연결한 뒤
+// /forms/list 를 30 s 주기로 폴링. 폴링은 위젯이 열려있는 동안만
+// (hook unmount 시 정리).
 function ExpandedBody() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [publishVersion, setPublishVersion] = useState(0);
@@ -38,7 +39,7 @@ function ExpandedBody() {
     };
   }, []);
 
-  // RecruitingBrief 가 polling 호출에 의존하지 않고 publish 직후 곧바로
+  // RecruitingWizard 가 polling 호출에 의존하지 않고 publish 직후 곧바로
   // 새 폼이 바닥 산출물 영역에 보이도록 publishVersion 을 bump 하는 콜백.
   // 본문에서 fetch 가 200 으로 끝나는 순간 window 이벤트로 트리거.
   useEffect(() => {
@@ -58,7 +59,7 @@ function ExpandedBody() {
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-5 px-5 py-5">
-          <RecruitingBrief />
+          <RecruitingWizard />
         </div>
       </div>
       <WidgetOutputs
@@ -97,9 +98,9 @@ function ExpandedBody() {
   );
 }
 
-// 리크루팅 canvas widget — 기존 /recruiting 페이지의 RecruitingBrief 를
-// widget body 로 그대로 마운트. PREVIEW_FEATURES 에 속해 canvas/page.tsx
-// 의 server-side preview gate 가 일반 유저에게 자동 숨김.
+// 리크루팅 canvas widget — 3-step 카드 wizard (조건 → 설문 → Google Form)
+// 를 widget body 에 마운트. PREVIEW_FEATURES 에 속해 canvas/page.tsx 의
+// server-side preview gate 가 일반 유저에게 자동 숨김.
 export const recruitingCard: WidgetContent = {
   key: 'recruiting',
   meta: {
