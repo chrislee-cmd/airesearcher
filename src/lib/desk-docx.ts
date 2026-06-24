@@ -5,6 +5,12 @@ import {
   TextRun,
   ExternalHyperlink,
   HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+  type FileChild,
 } from 'docx';
 
 // Inline markdown parser — handles `**bold**`, `*italic*`, `` `code` ``, and
@@ -109,12 +115,115 @@ function inlineToRuns(inlines: Inline[]): (TextRun | ExternalHyperlink)[] {
   return out;
 }
 
+// Split a markdown table row `| a | b | c |` into its cell strings. Empty
+// leading/trailing pipes are dropped so the cell list matches the visible
+// columns. Returns null if the line isn't pipe-fenced — caller treats that
+// as "not a table row".
+function parseTableRowCells(line: string): string[] | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|')) return null;
+  const inner = trimmed.replace(/^\|/, '').replace(/\|\s*$/, '');
+  return inner.split('|').map((c) => c.trim());
+}
+
+// A table separator row looks like `| --- | :---: | ---: |` — each cell is
+// dashes with optional leading/trailing colons (for alignment).
+function isTableSeparatorCells(cells: string[]): boolean {
+  return (
+    cells.length > 0 &&
+    cells.every((c) => /^:?-{3,}:?$/.test(c.replace(/\s+/g, '')))
+  );
+}
+
+function inlineToRunsWithBoldOverride(
+  inlines: Inline[],
+  forceBold: boolean,
+): (TextRun | ExternalHyperlink)[] {
+  const out: (TextRun | ExternalHyperlink)[] = [];
+  for (const it of inlines) {
+    if (it.kind === 'link') {
+      out.push(
+        new ExternalHyperlink({
+          link: it.url,
+          children: [
+            new TextRun({
+              text: it.label,
+              style: 'Hyperlink',
+              color: '1F5795',
+              underline: {},
+              bold: forceBold || undefined,
+            }),
+          ],
+        }),
+      );
+    } else {
+      out.push(
+        new TextRun({
+          text: it.text,
+          bold: forceBold || it.bold,
+          italics: it.italic,
+          font: it.code ? 'JetBrains Mono' : undefined,
+          color: it.code ? '7D7D7D' : undefined,
+        }),
+      );
+    }
+  }
+  return out;
+}
+
+function makeTableCell(text: string, header: boolean): TableCell {
+  return new TableCell({
+    width: { size: 100 / 5, type: WidthType.AUTO },
+    children: [
+      new Paragraph({
+        children: inlineToRunsWithBoldOverride(parseInline(text), header),
+      }),
+    ],
+  });
+}
+
+function buildTable(headerCells: string[], bodyRows: string[][]): Table {
+  const rows: TableRow[] = [];
+  rows.push(
+    new TableRow({
+      tableHeader: true,
+      children: headerCells.map((c) => makeTableCell(c, true)),
+    }),
+  );
+  const colCount = headerCells.length;
+  for (const body of bodyRows) {
+    // Normalize cell count — pad or truncate to match the header so docx
+    // doesn't render misaligned rows.
+    const padded = [...body];
+    while (padded.length < colCount) padded.push('');
+    padded.length = colCount;
+    rows.push(
+      new TableRow({
+        children: padded.map((c) => makeTableCell(c, false)),
+      }),
+    );
+  }
+  const thin = { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' };
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows,
+    borders: {
+      top: thin,
+      bottom: thin,
+      left: thin,
+      right: thin,
+      insideHorizontal: thin,
+      insideVertical: thin,
+    },
+  });
+}
+
 export async function deskMarkdownToDocx(
   markdown: string,
   title?: string,
 ): Promise<Buffer> {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n');
-  const children: Paragraph[] = [];
+  const children: FileChild[] = [];
 
   if (title) {
     children.push(
@@ -125,11 +234,38 @@ export async function deskMarkdownToDocx(
     );
   }
 
-  for (const raw of lines) {
+  // Pre-scan for tables: a header line (pipe-fenced) immediately followed by
+  // a separator line marks a table that extends as long as subsequent lines
+  // stay pipe-fenced. Outside that, fall back to per-line handling.
+  let idx = 0;
+  while (idx < lines.length) {
+    const raw = lines[idx];
     const line = raw.replace(/\s+$/, '');
+
+    // Table detection
+    const headerCells = parseTableRowCells(line);
+    const nextLine = idx + 1 < lines.length ? lines[idx + 1].replace(/\s+$/, '') : '';
+    const nextCells = parseTableRowCells(nextLine);
+    if (headerCells && nextCells && isTableSeparatorCells(nextCells)) {
+      const bodyRows: string[][] = [];
+      let j = idx + 2;
+      while (j < lines.length) {
+        const rowLine = lines[j].replace(/\s+$/, '');
+        const rowCells = parseTableRowCells(rowLine);
+        if (!rowCells) break;
+        bodyRows.push(rowCells);
+        j += 1;
+      }
+      children.push(buildTable(headerCells, bodyRows));
+      // Blank paragraph after table for readability.
+      children.push(new Paragraph({ children: [new TextRun({ text: '' })] }));
+      idx = j;
+      continue;
+    }
 
     if (!line.trim()) {
       children.push(new Paragraph({ children: [new TextRun({ text: '' })] }));
+      idx += 1;
       continue;
     }
 
@@ -152,6 +288,7 @@ export async function deskMarkdownToDocx(
           children: inlineToRuns(parseInline(text)),
         }),
       );
+      idx += 1;
       continue;
     }
 
@@ -164,6 +301,7 @@ export async function deskMarkdownToDocx(
           children: inlineToRuns(parseInline(b[1])),
         }),
       );
+      idx += 1;
       continue;
     }
 
@@ -176,6 +314,7 @@ export async function deskMarkdownToDocx(
           children: inlineToRuns(parseInline(n[1])),
         }),
       );
+      idx += 1;
       continue;
     }
 
@@ -183,6 +322,7 @@ export async function deskMarkdownToDocx(
     children.push(
       new Paragraph({ children: inlineToRuns(parseInline(line)) }),
     );
+    idx += 1;
   }
 
   const doc = new Document({

@@ -44,7 +44,7 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   { key: 'scheduler', href: '/scheduler', cost: 0 },
   { key: 'moderator', href: '/moderator', cost: 1 },
   { key: 'analyzer', href: '/analyzer', cost: 1 },
-  { key: 'desk', href: '/desk', cost: 25 },
+  { key: 'desk', href: '/desk', cost: 75 },
   { key: 'keywords', href: '/keywords', cost: 1 },
   { key: 'recruiting', href: '/recruiting', cost: 10 },
   { key: 'survey', href: '/survey', cost: 1 },

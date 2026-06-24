@@ -24,7 +24,13 @@ function readActiveProjectId(): string | null {
     return null;
   }
 }
-import { useDeskJobs, type DeskJob } from '@/components/desk-job-provider';
+import {
+  useDeskJobs,
+  type DeskJob,
+  type DeskClaim,
+  type DeskResearchQuestion,
+  type DeskRqAnswer,
+} from '@/components/desk-job-provider';
 import { DeskAnalyticsPanel } from '@/components/desk-analytics-panel';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
@@ -540,7 +546,17 @@ export function DeskCardBody() {
                       )
                     : undefined
                 }
-                label={tDesk('thinkingActive')}
+                label={(() => {
+                  const phase = job?.progress?.phase;
+                  if (phase) {
+                    try {
+                      return tDesk(`phaseLabel.${phase}` as never);
+                    } catch {
+                      return tDesk('thinkingActive');
+                    }
+                  }
+                  return tDesk('thinkingActive');
+                })()}
                 hint={
                   job?.progress?.crawl_total
                     ? `${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
@@ -727,73 +743,18 @@ export function DeskCardBody() {
             {job.analytics && <DeskAnalyticsPanel analytics={job.analytics} />}
 
             {job.research_questions && job.research_questions.length > 0 && (
-              <section>
-                <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
-                  {tDesk('researchQuestions')} ({job.research_questions.length})
-                </h2>
-                <ul className="mt-3 space-y-1.5">
-                  {job.research_questions.map((rq) => (
-                    <li
-                      key={rq.id}
-                      className="rounded-sm border border-line bg-paper px-4 py-3 text-md leading-[1.6] text-ink-2"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
-                        <span>{rq.id}</span>
-                        <span className="text-amore">{rq.category}</span>
-                        <span>
-                          {tDesk('importance')} {rq.importance}/5
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-md text-ink-2">{rq.question}</p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <RqFindingsSection
+                rqs={job.research_questions}
+                answers={job.rq_answers}
+                tDesk={tDesk}
+              />
             )}
 
-            {(() => {
-              const quantClaims =
-                job.claims?.filter((c) => c.kind === 'quant') ?? [];
-              if (quantClaims.length === 0) return null;
-              return (
-                <section>
-                  <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
-                    {tDesk('extractedClaims')} ({quantClaims.length})
-                  </h2>
-                  <ul className="mt-3 divide-y divide-line rounded-sm border border-line bg-paper">
-                    {quantClaims.slice(0, 30).map((c, i) => {
-                      if (c.kind !== 'quant') return null;
-                      return (
-                        <li key={`${c.article_url}-${i}`} className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
-                            <span>{c.tier}</span>
-                            <span>{c.confidence}</span>
-                          </div>
-                          <p className="mt-1 text-md font-semibold text-ink-2">
-                            {c.subject}
-                            <span className="ml-2 text-amore">
-                              {c.value}
-                              {c.unit ? ` ${c.unit}` : ''}
-                            </span>
-                          </p>
-                          <p className="mt-1 text-sm leading-[1.6] text-mute">
-                            “{c.source_quote}”
-                          </p>
-                          <a
-                            href={c.article_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-block text-xs text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
-                          >
-                            {tDesk('viewSource')}
-                          </a>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              );
-            })()}
+            <QuantSnapshotsSection claims={job.claims} tDesk={tDesk} />
+
+            {job.claims && job.claims.length > 0 && (
+              <TierDistributionSection claims={job.claims} tDesk={tDesk} />
+            )}
 
             <article className="rounded-sm border border-line bg-paper p-6 text-lg leading-[1.75] text-ink-2">
               <DeskMarkdown source={job.output ?? ''} />
@@ -848,6 +809,206 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </div>
       {children}
     </div>
+  );
+}
+
+type TDesk = ReturnType<typeof useTranslations<'Desk'>>;
+
+const CONFIDENCE_ICON: Record<DeskRqAnswer['confidence'], string> = {
+  high: '🟢',
+  medium: '🟡',
+  low: '🔴',
+};
+
+function RqFindingsSection({
+  rqs,
+  answers,
+  tDesk,
+}: {
+  rqs: DeskResearchQuestion[];
+  answers: DeskRqAnswer[] | null;
+  tDesk: TDesk;
+}) {
+  const byId = new Map(answers?.map((a) => [a.rq_id, a]) ?? []);
+  return (
+    <section>
+      <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+        {tDesk('rqAnswersTitle')} ({rqs.length})
+      </h2>
+      <ul className="mt-3 space-y-3">
+        {rqs.map((rq) => {
+          const a = byId.get(rq.id);
+          return (
+            <li
+              key={rq.id}
+              className="rounded-sm border border-line bg-paper px-4 py-3 text-md leading-[1.6] text-ink-2"
+            >
+              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
+                <span>{rq.id}</span>
+                <span className="text-amore">{rq.category}</span>
+                <span>
+                  {tDesk('importance')} {rq.importance}/5
+                </span>
+                {a && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft px-2 py-0.5 normal-case tracking-normal text-mute">
+                    <span aria-hidden>{CONFIDENCE_ICON[a.confidence]}</span>
+                    <span>
+                      {tDesk('confidenceLabel')} · {a.confidence}
+                    </span>
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 font-semibold text-ink-2">{rq.question}</p>
+              {a && (
+                <>
+                  <div className="mt-2 whitespace-pre-line text-md leading-[1.7] text-ink-2">
+                    {a.answer_md}
+                  </div>
+                  {a.missing_data.length > 0 && (
+                    <div className="mt-3 rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
+                      <div className="text-xs uppercase tracking-[.18em] text-mute-soft">
+                        {tDesk('missingDataLabel')}
+                      </div>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {a.missing_data.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function QuantSnapshotsSection({
+  claims,
+  tDesk,
+}: {
+  claims: DeskClaim[] | null;
+  tDesk: TDesk;
+}) {
+  const quant = (claims ?? []).filter(
+    (c): c is Extract<DeskClaim, { kind: 'quant' }> => c.kind === 'quant',
+  );
+  return (
+    <section>
+      <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+        {tDesk('quantSnapshotsTitle')} ({quant.length})
+      </h2>
+      {quant.length === 0 ? (
+        <p className="mt-3 rounded-sm border border-line-soft bg-paper-soft px-4 py-3 text-md text-mute">
+          {tDesk('quantSnapshotsEmpty')}
+        </p>
+      ) : (
+        <div className="mt-3 overflow-x-auto rounded-sm border border-line">
+          <table className="w-full border-collapse text-md">
+            <thead className="bg-paper-soft text-xs uppercase tracking-[.16em] text-mute-soft">
+              <tr>
+                <th className="border-b border-line px-3 py-2 text-left font-medium">
+                  {tDesk('cols.subject')}
+                </th>
+                <th className="border-b border-line px-3 py-2 text-left font-medium">
+                  {tDesk('cols.value')}
+                </th>
+                <th className="border-b border-line px-3 py-2 text-left font-medium">
+                  {tDesk('cols.source')}
+                </th>
+                <th className="border-b border-line px-3 py-2 text-left font-medium">
+                  {tDesk('cols.tier')}
+                </th>
+                <th className="border-b border-line px-3 py-2 text-left font-medium">
+                  {tDesk('cols.confidence')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {quant.slice(0, 30).map((c, i) => (
+                <tr key={`${c.article_url}-${i}`} className="text-ink-2">
+                  <td className="border-b border-line-soft px-3 py-2 align-top">
+                    {c.subject}
+                  </td>
+                  <td className="border-b border-line-soft px-3 py-2 align-top font-semibold text-amore">
+                    {c.value}
+                    {c.unit ? ` ${c.unit}` : ''}
+                  </td>
+                  <td className="border-b border-line-soft px-3 py-2 align-top">
+                    <a
+                      href={c.article_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
+                    >
+                      {tDesk('viewSource')}
+                    </a>
+                  </td>
+                  <td className="border-b border-line-soft px-3 py-2 align-top text-mute">
+                    {c.tier}
+                  </td>
+                  <td className="border-b border-line-soft px-3 py-2 align-top text-mute">
+                    {c.confidence}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TierDistributionSection({
+  claims,
+  tDesk,
+}: {
+  claims: DeskClaim[];
+  tDesk: TDesk;
+}) {
+  const counts = claims.reduce<Record<string, number>>((acc, c) => {
+    acc[c.tier] = (acc[c.tier] ?? 0) + 1;
+    return acc;
+  }, {});
+  const rows: { key: string; label: string; count: number }[] = [
+    { key: 'T1', label: 'T1', count: counts.T1 ?? 0 },
+    { key: 'T2', label: 'T2', count: counts.T2 ?? 0 },
+    { key: 'T3', label: 'T3', count: counts.T3 ?? 0 },
+    { key: 'unknown', label: tDesk('tierUnknownLabel'), count: counts.unknown ?? 0 },
+  ];
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  if (total === 0) return null;
+  return (
+    <section>
+      <h2 className="border-b border-line pb-3 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+        {tDesk('tierDistributionTitle')}
+      </h2>
+      <ul className="mt-3 space-y-2">
+        {rows.map((r) => {
+          const pct = Math.round((r.count / total) * 100);
+          return (
+            <li key={r.key} className="flex items-center gap-3 text-md text-ink-2">
+              <span className="w-16 shrink-0 text-xs uppercase tracking-[.18em] text-mute">
+                {r.label}
+              </span>
+              <div className="h-2 flex-1 overflow-hidden rounded-pill bg-paper-soft">
+                <div
+                  className="h-full bg-amore"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="w-20 shrink-0 text-right text-sm text-mute">
+                {r.count} · {pct}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

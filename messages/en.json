@@ -469,8 +469,8 @@
     },
     "desk": {
       "title": "Desk Research",
-      "description": "Generate a desk-research summary from a topic, industry, or keyword set using public sources.",
-      "cost": "25 credits"
+      "description": "Crawl public sources, then run a question → answer → self-critique pipeline to assemble a six-section consulting report.",
+      "cost": "75 credits"
     },
     "keywords": {
       "title": "Keyword Crawling",
@@ -647,6 +647,32 @@
     "regionLabel": "Target region",
     "regionPortalsLabel": "Featured outlets (via Google News)",
     "regionKrOnlyHidden": "Korea-only sources (Naver/Kakao/Daum) are hidden — they return little for non-KR queries.",
+    "rqAnswersTitle": "Research question findings",
+    "quantSnapshotsTitle": "Quantitative snapshots",
+    "quantSnapshotsEmpty": "No quantitative claims were extracted.",
+    "tierDistributionTitle": "Source tier distribution",
+    "tierUnknownLabel": "Untiered",
+    "confidenceLabel": "Confidence",
+    "weaknessesLabel": "Review weaknesses",
+    "missingDataLabel": "Open questions",
+    "missingDataEmpty": "No follow-up gaps flagged.",
+    "cols": {
+      "subject": "Claim",
+      "value": "Value",
+      "source": "Source",
+      "tier": "Tier",
+      "confidence": "Confidence"
+    },
+    "phaseLabel": {
+      "expanding": "Expanding keywords",
+      "scoping": "Scoping research questions",
+      "crawling": "Crawling sources",
+      "extracting": "Extracting claims",
+      "drafting": "Drafting RQ answers",
+      "critiquing": "Self-critique + revise",
+      "synthesizing": "Synthesizing final report",
+      "summarizing": "Summarizing"
+    },
     "region": {
       "KR": "Korea",
       "US": "United States",
