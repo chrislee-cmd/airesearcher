@@ -87,14 +87,11 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const TAB_SILENCE_INTERVAL_MS = 3000;
 const TAB_SILENCE_DURATION_MS = 400;
 
-// WebAudio "lift" 그래프의 sample rate — Chrome 시스템 기본값 (48 kHz) 과
-// 일치시켜 WebRTC Opus 가 추가 resample 없이 인코딩하게 한다. 24 kHz 로
-// 명시하면 mic 모드는 정상이지만 transcription endpoint 에서 tab 모드만
-// session.created 직후 dc close 되는 회귀가 관측됨 (mic 은 native 48 kHz
-// 로 들어와 mismatch 없음). translate-console 도 24 kHz 를 쓰지만 endpoint
-// (`/v1/realtime/translations/calls`) 가 mismatch 에 더 관대.
-// `undefined` 를 넘기면 Chrome 이 시스템 기본 (보통 48 kHz) 을 채택.
-const TAB_AUDIO_SAMPLE_RATE: number | undefined = undefined;
+// 진단 단계: tab 모드는 WebAudio resample 그래프를 우회하고 getDisplayMedia 의
+// raw 트랙을 그대로 publish — 트랙 출처 (hardware mic vs WebAudio-generated) 가
+// transcription endpoint 의 dc close 회귀 원인인지 격리. resample 관련 상수와
+// 참조 (TAB_AUDIO_SAMPLE_RATE, WebkitWindow, tabResampleCtxRef) 는 검증 후
+// 결과에 따라 영구 제거 또는 복원.
 
 type OaiEvent = {
   type?: string;
@@ -103,11 +100,6 @@ type OaiEvent = {
   transcript?: string;
   [k: string]: unknown;
 };
-
-type WebkitWindow = Window &
-  typeof globalThis & {
-    webkitAudioContext?: typeof AudioContext;
-  };
 
 // transcription session 이 deltas/completed 이벤트에 같은 item_id 를
 // 부여한다. fallback 으로 type-prefix + Date.now() 사용 — 같은 item_id 가
@@ -411,92 +403,21 @@ export function useRealtimeTranscription(opts?: {
           }
           captureStream = new MediaStream(audioTracks);
 
-          // 24 kHz mono 로 WebAudio resample. 이유 (translate-console PR #396):
-          // 1. Chrome 의 getDisplayMedia 가 sampleRate/channelCount 힌트를
-          //    무시 — capture-time downmix 가 실제로 일어나지 않는다.
-          // 2. OpenAI Realtime transcription 은 24 kHz mono PCM 을 기대.
-          //    raw 48 kHz stereo 를 보내면 서버 resample 이 가끔 silent
-          //    negotiation 실패 (#393 follow-up 의 stall 가설 중 하나).
-          // 3. WebAudio 로 raw display 트랙을 fresh MediaStreamTrack 으로
-          //    "lift" 하는 것 자체가 display-capture pipeline 의 stale-clock
-          //    quirk 을 우회하는 알려진 workaround.
-          //
-          // AudioContext 생성이 실패하면 (아주 오래된 Chrome 등) raw stream
-          // 으로 fallback — resample 없이라도 세션은 시작. 결과적으로 hang
-          // 이 나면 watchdog 가 잡는다.
-          try {
-            const w = window as WebkitWindow;
-            const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
-            if (!AudioCtx) throw new Error('no AudioContext');
-            // sampleRate 미지정 → Chrome 시스템 기본값 (보통 48 kHz, WebRTC
-            // Opus 와 정렬). 명시적 24 kHz 는 mic 모드와 달리 tab 모드에서만
-            // transcription endpoint 가 dc 를 즉시 닫는 회귀의 주요 의심점.
-            const ctxOpts: AudioContextOptions = {};
-            if (TAB_AUDIO_SAMPLE_RATE !== undefined) {
-              ctxOpts.sampleRate = TAB_AUDIO_SAMPLE_RATE;
-            }
-            const ctx = new AudioCtx(ctxOpts);
-            tabResampleCtxRef.current = ctx;
-            console.info('[probing] tab resample ctx created', {
-              state: ctx.state,
-              sampleRate: ctx.sampleRate,
-            });
-            if (ctx.state === 'suspended') {
-              // 명시적 await — connect 전 ctx 가 running 이어야 source node 가
-              // 실제로 sample 을 pull. suspended 상태로 connect 하면 dst 트랙이
-              // 0-valued frame 만 흘리고 OpenAI 가 silence 만 받는다.
-              try {
-                await ctx.resume();
-                console.info('[probing] tab resample ctx resumed', {
-                  state: ctx.state,
-                });
-              } catch (err) {
-                console.warn('[probing] tab resample ctx.resume failed', err);
-              }
-            }
-            const src = ctx.createMediaStreamSource(captureStream);
-            const dst = ctx.createMediaStreamDestination();
-            // 명시적 stereo → mono 다운믹스. MediaStreamDestination 의
-            // channelCount setter 는 Chrome 에서 무시되므로 (publishTrack
-            // settings 가 channelCount: 2 로 그대로 남음), splitter + 0.5 gain
-            // + merger 로 노드 그래프를 직접 짠다. OpenAI Realtime
-            // transcription 은 mono PCM 을 기대 — translate-console 의
-            // translation endpoint 는 stereo 에 더 관대해서 PR #396 패턴이
-            // mono 강제 없이도 동작했지만 transcription 에서는 별도 처리.
-            const splitter = ctx.createChannelSplitter(2);
-            const merger = ctx.createChannelMerger(1);
-            const gainL = ctx.createGain();
-            const gainR = ctx.createGain();
-            gainL.gain.value = 0.5;
-            gainR.gain.value = 0.5;
-            src.connect(splitter);
-            splitter.connect(gainL, 0);
-            splitter.connect(gainR, 1);
-            gainL.connect(merger, 0, 0);
-            gainR.connect(merger, 0, 0);
-            merger.connect(dst);
-            publishStream = dst.stream;
-            const pubTrack = publishStream.getAudioTracks()[0];
-            // captureStream (raw tab) 트랙 상태도 함께 — 입력 자체가 muted
-            // 면 resample graph 가 silence 만 출력한다.
-            const capTrack = captureStream.getAudioTracks()[0];
-            console.info('[probing] tab resample graph wired', {
-              ctxState: ctx.state,
-              ctxSampleRate: ctx.sampleRate,
-              publishTracks: publishStream.getAudioTracks().length,
-              publishTrackEnabled: pubTrack?.enabled,
-              publishTrackMuted: pubTrack?.muted,
-              publishTrackReadyState: pubTrack?.readyState,
-              publishTrackSettings: pubTrack?.getSettings(),
-              captureTrackEnabled: capTrack?.enabled,
-              captureTrackMuted: capTrack?.muted,
-              captureTrackReadyState: capTrack?.readyState,
-              captureTrackSettings: capTrack?.getSettings(),
-            });
-          } catch (err) {
-            console.warn('[probing] tab resample failed, passing raw stream', err);
-            publishStream = captureStream;
-          }
+          // 진단: WebAudio resample 경로 우회. mic 모드 (native hardware track)
+          // 가 정상 동작 / tab 모드 (WebAudio-generated track) 가 session.created
+          // 직후 dc close 되는 패턴이 stereo 도 24 kHz 도 아니고 트랙 출처 자체일
+          // 가능성을 검증. 이 분기가 transcript 생성하면 WebAudio "lift" 가
+          // transcription endpoint 와 호환되지 않는 게 확정 — 그 경우 resample
+          // 그래프를 영구 제거.
+          publishStream = captureStream;
+          const capTrack0 = captureStream.getAudioTracks()[0];
+          console.info('[probing] tab raw passthrough (no resample)', {
+            tracks: captureStream.getAudioTracks().length,
+            captureTrackEnabled: capTrack0?.enabled,
+            captureTrackMuted: capTrack0?.muted,
+            captureTrackReadyState: capTrack0?.readyState,
+            captureTrackSettings: capTrack0?.getSettings(),
+          });
         } else {
           captureStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
