@@ -24,7 +24,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "ai": "^6.0.174",
-    "docx": "^9.6.1",
+    "docx": "^9.7.1",
     "fflate": "^0.8.3",
     "livekit-client": "^2.19.1",
     "livekit-server-sdk": "^2.15.4",
