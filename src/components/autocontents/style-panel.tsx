@@ -36,20 +36,15 @@ function defaultPreviewTopic(lang: Language) {
 
 export default function StylePanel({ value, onChange, embedded = false }: Props) {
   const [open, setOpen] = useState(true);
-  const [previewTopic, setPreviewTopic] = useState(
-    defaultPreviewTopic(value.language),
-  );
-  const [previewTopicTouched, setPreviewTopicTouched] = useState(false);
-  const lastLangRef = useRef(value.language);
-
-  useEffect(() => {
-    if (lastLangRef.current !== value.language) {
-      lastLangRef.current = value.language;
-      if (!previewTopicTouched) {
-        setPreviewTopic(defaultPreviewTopic(value.language));
-      }
-    }
-  }, [value.language, previewTopicTouched]);
+  // Track a user-set topic separately so language flips can fall back to the
+  // localized default without needing a sync effect (which lints as a cascading
+  // render under react-hooks/set-state-in-effect).
+  const [topicOverride, setTopicOverride] = useState<string | null>(null);
+  const previewTopic = topicOverride ?? defaultPreviewTopic(value.language);
+  const setPreviewTopic = (next: string) => setTopicOverride(next);
+  const setPreviewTopicTouched = (touched: boolean) => {
+    if (!touched) setTopicOverride(null);
+  };
   const [previewText, setPreviewText] = useState("");
   const [previewStatus, setPreviewStatus] = useState<
     "idle" | "loading" | "done" | "error"
