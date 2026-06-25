@@ -83,9 +83,11 @@ const SEGMENT_CAP = 1000;
 // `probing_timeout`. translate-console PR #396 과 동일 수치.
 const CONNECT_TIMEOUT_MS = 10_000;
 
-// tab 모드 VAD 안전망 — 3초마다 400ms 트랙 mute (translate-console PR #396 패턴).
-const TAB_SILENCE_INTERVAL_MS = 3000;
-const TAB_SILENCE_DURATION_MS = 400;
+// tab 모드 VAD 안전망 (3초마다 400ms 트랙 mute) — translate-console PR #396 패턴.
+// transcript 안 나오는 회귀에서 일시 비활성 — 결과 확인 후 복원 또는 제거.
+// (참조만 남기고 sourcing 제거됨)
+// const TAB_SILENCE_INTERVAL_MS = 3000;
+// const TAB_SILENCE_DURATION_MS = 400;
 
 // 진단 단계: tab 모드는 WebAudio resample 그래프를 우회하고 getDisplayMedia 의
 // raw 트랙을 그대로 publish — 트랙 출처 (hardware mic vs WebAudio-generated) 가
@@ -443,23 +445,9 @@ export function useRealtimeTranscription(opts?: {
       }
       captureStreamRef.current = captureStream;
 
-      // tab 모드: 3초마다 400ms 트랙 mute 로 OpenAI VAD 가 end-of-speech 를
-      // 잡게 강제. 안 하면 YouTube/Meet 처럼 휴지 없는 탭은 utterance 가
-      // 영원히 안 닫혀서 transcript 가 stall (translate-console PR #396 패턴).
-      if (source === 'tab') {
-        const track = captureStream.getAudioTracks()[0];
-        if (track) {
-          tabSilenceTimerRef.current = setInterval(() => {
-            if (track.readyState !== 'live') return;
-            track.enabled = false;
-            setTimeout(() => {
-              // Guard: track 이 dip 과 restore 사이에 끝났을 수 있다
-              // (cleanup, hot-reload, picker 의 share-stop).
-              if (track.readyState === 'live') track.enabled = true;
-            }, TAB_SILENCE_DURATION_MS);
-          }, TAB_SILENCE_INTERVAL_MS);
-        }
-      }
+      // tab 모드 silence injection 일시 비활성 — transcript 안 나오는 회귀에서
+      // track.enabled toggle 이 WebRTC encoder 를 의도치 않게 stall 시키는 가능성
+      // 격리. 검증 후 결과에 따라 복원 또는 영구 제거.
 
       // 3) RTCPeerConnection + datachannel + SDP 교환
       const pc = new RTCPeerConnection({
@@ -508,28 +496,26 @@ export function useRealtimeTranscription(opts?: {
           pcSignaling: pc.signalingState,
         });
       };
-      // 진단성: 첫 OAI 이벤트가 도착하는지, 어떤 type 들이 들어오는지 보기 위해
-      // 알려지지 않은 type 은 첫 5개까지 콘솔에 dump. session.created /
-      // session.updated / input_audio_buffer.* 등이 보여야 audio in 이
-      // 실제로 OpenAI 까지 도달했다는 신호. 길이 cap 늘려서 session.created 의
-      // 전체 audio.input 설정도 볼 수 있게.
-      let unknownLogged = 0;
+      // 진단성: transcript 안 들어오는 회귀 추적 — non-delta 이벤트는 전부
+      // 로그 (cap 제거). speech_started / speech_stopped / committed 가 보이면
+      // VAD 가 audio 를 감지하는 것, 안 보이면 audio 가 silent 또는 미도달.
+      // delta 만 cap (첫 3개) — 정상 흐름에선 노이즈가 너무 큼.
+      let deltaLogged = 0;
       dc.onmessage = (ev) => {
         const raw = String(ev.data);
-        if (unknownLogged < 5) {
-          try {
-            const parsed = JSON.parse(raw) as { type?: string };
-            const type = parsed?.type ?? 'unknown';
-            if (
-              type !== 'conversation.item.input_audio_transcription.delta' &&
-              type !== 'conversation.item.input_audio_transcription.completed'
-            ) {
-              unknownLogged += 1;
-              console.info('[probing] oai event', { type, raw: raw.slice(0, 1500) });
+        try {
+          const parsed = JSON.parse(raw) as { type?: string };
+          const type = parsed?.type ?? 'unknown';
+          if (type === 'conversation.item.input_audio_transcription.delta') {
+            if (deltaLogged < 3) {
+              deltaLogged += 1;
+              console.info('[probing] oai delta', { type, raw: raw.slice(0, 300) });
             }
-          } catch {
-            /* not JSON */
+          } else {
+            console.info('[probing] oai event', { type, raw: raw.slice(0, 1500) });
           }
+        } catch {
+          /* not JSON */
         }
         handleOaiEvent(raw);
       };
