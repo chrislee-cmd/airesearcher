@@ -28,10 +28,12 @@ export const autocontentsCard: WidgetContent = {
     accent: 'lav',
     cost: 0,
     description: '콘텐츠 자동 생성 도구 — 마이그 진행 중',
-    // 보드 전체 너비 (1680px). 메인 캔버스 + 우측 사이드바 인스펙터를
+    // 보드 전체 너비 (1680px). 메인 캔버스 + 좌측 사이드바 인스펙터를
     // 둘 다 넉넉히 수용 (440px 사이드바 + 1fr 메인).
     expandedCols: 6,
-    expandedRows: 3,
+    // 2 rows (1648px) — 캔버스 source/output/image/deploy 노드들을 한
+    // 화면에 보여주기 충분하면서 3 rows (2496px) 의 과한 white space 회피.
+    expandedRows: 2,
   },
   state: 'idle',
   ExpandedBody,
