@@ -28,7 +28,9 @@ export const autocontentsCard: WidgetContent = {
     accent: 'lav',
     cost: 0,
     description: '콘텐츠 자동 생성 도구 — 마이그 진행 중',
-    expandedCols: 3,
+    // 보드 전체 너비 (1680px). 메인 캔버스 + 우측 사이드바 인스펙터를
+    // 둘 다 넉넉히 수용 (440px 사이드바 + 1fr 메인).
+    expandedCols: 6,
     expandedRows: 3,
   },
   state: 'idle',

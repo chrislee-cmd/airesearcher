@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChromeButton } from "@/components/ui/chrome-button";
 import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { Topic } from "./lib/topics";
 import { Markdown } from "./markdown";
@@ -1564,7 +1563,14 @@ export default function TopicsClient() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] px-6 py-6">
+      <main
+        className={
+          "mx-auto grid max-w-[1400px] gap-6 px-6 py-6 " +
+          (selection
+            ? "lg:grid-cols-[minmax(0,1fr)_440px]"
+            : "lg:grid-cols-1")
+        }
+      >
         <section className="min-w-0">
           <Canvas
             sourceBadge={sourceBadge}
@@ -1608,9 +1614,10 @@ export default function TopicsClient() {
         </section>
 
         {selection && (
-          <Inspector
-            selection={selection}
-            onClose={() => setSelection(null)}
+          <aside className="lg:sticky lg:top-4 lg:self-start">
+            <Inspector
+              selection={selection}
+              onClose={() => setSelection(null)}
               sources={sources}
               onApplyUrl={(s) =>
                 setSources((prev) => ({ ...prev, url: s }))
@@ -1708,8 +1715,9 @@ export default function TopicsClient() {
                 if (deployActiveResultId)
                   void quickExport(deployActiveResultId, kind);
               }}
-            onCloseDeploySelection={() => setDeployActiveResultId(null)}
-          />
+              onCloseDeploySelection={() => setDeployActiveResultId(null)}
+            />
+          </aside>
         )}
       </main>
     </div>
@@ -1823,23 +1831,31 @@ function Inspector(props: {
       ? customizes.find((c) => c.id === selection.id) ?? null
       : null;
 
-  const title = (
-    <div className="flex items-center gap-2">
-      <span className="text-2xl leading-none">{meta.icon}</span>
-      <span>
-        {selection.kind === "customize" && activeCustomize
-          ? activeCustomize.name
-          : meta.title}
-      </span>
-      <span className="rounded-full bg-paper-soft px-1.5 py-0.5 text-xs font-medium text-mute">
-        Inspector
-      </span>
-    </div>
-  );
-
   return (
-    <Modal open onClose={onClose} title={title} size="lg">
-      <div>
+    <div className="rounded-xs border border-line bg-paper ">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3 ">
+        <div className="flex items-center gap-2">
+          <span className="text-lg leading-none">{meta.icon}</span>
+          <span className="text-sm font-semibold">
+            {selection.kind === "customize" && activeCustomize
+              ? activeCustomize.name
+              : meta.title}
+          </span>
+          <span className="rounded-full bg-paper-soft px-1.5 py-0.5 text-xs font-medium text-mute ">
+            Inspector
+          </span>
+        </div>
+        <ChromeButton
+          onClick={onClose}
+          size="xs"
+          variant="mute"
+          aria-label="인스펙터 닫기"
+        >
+          ✕
+        </ChromeButton>
+      </div>
+
+      <div className="max-h-[calc(100vh-160px)] overflow-y-auto">
         {selection.kind === "source" && (
           <SourceInspector
             sources={sources}
@@ -1929,7 +1945,7 @@ function Inspector(props: {
           />
         )}
       </div>
-    </Modal>
+    </div>
   );
 }
 
