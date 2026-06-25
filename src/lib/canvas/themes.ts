@@ -129,3 +129,37 @@ export function resolveFont(theme: CanvasTheme, fontKey: string): FontVariant {
   const meta = getThemeMeta(theme);
   return meta.fonts.find((f) => f.key === fontKey) ?? meta.fonts[0];
 }
+
+/* ────────────────────────────────────────────────────────────────────
+   Widget layout — 노드 카드 자체의 구조 variant.
+   theme/font 와 독립적인 dimension — pop + outfit 위에서도, default 위에서도
+   동일하게 작동. 5개 시각 paradigm:
+     classic       — 상단 헤더 + 본문 가득 (기존)
+     banner-top    — 큰 컬러 hero 헤더 (label 크게) + 본문 60%
+     banner-bottom — 본문 dominant + 하단 caption frame (Polaroid)
+     sidebar       — 좌측 세로 strip (icon/state) + 우측 본문
+     sticker       — 헤더 chrome 제거 + 카드 밖에 떠 있는 sticker label
+                     + 살짝 기울기
+   ──────────────────────────────────────────────────────────────────── */
+
+export type WidgetLayout =
+  | 'classic'
+  | 'banner-top'
+  | 'banner-bottom'
+  | 'sidebar'
+  | 'sticker';
+
+export const WIDGET_LAYOUTS: { key: WidgetLayout; label: string; hint: string }[] = [
+  { key: 'classic',       label: 'Classic',  hint: '상단 헤더 + 본문 (현재)' },
+  { key: 'banner-top',    label: 'Banner',   hint: '큰 컬러 hero 헤더' },
+  { key: 'banner-bottom', label: 'Polaroid', hint: '하단 caption (사진처럼)' },
+  { key: 'sidebar',       label: 'Sidebar',  hint: '좌측 세로 strip + 본문' },
+  { key: 'sticker',       label: 'Sticker',  hint: '떠 있는 라벨 + 기울기' },
+];
+
+const LAYOUT_KEYS = new Set<string>(WIDGET_LAYOUTS.map((l) => l.key));
+
+export function asWidgetLayout(input: unknown): WidgetLayout {
+  if (typeof input === 'string' && LAYOUT_KEYS.has(input)) return input as WidgetLayout;
+  return 'classic';
+}

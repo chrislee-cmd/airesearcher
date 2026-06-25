@@ -12,7 +12,13 @@
 
 import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { CANVAS_THEMES, getThemeMeta, type CanvasTheme } from '@/lib/canvas/themes';
+import {
+  CANVAS_THEMES,
+  WIDGET_LAYOUTS,
+  getThemeMeta,
+  type CanvasTheme,
+  type WidgetLayout,
+} from '@/lib/canvas/themes';
 
 // chip 미니 swatch — chrome / accent 색을 inline 표시.
 const SWATCH: Record<CanvasTheme, { bg: string; accent: string; border: string }> = {
@@ -24,13 +30,22 @@ const SWATCH: Record<CanvasTheme, { bg: string; accent: string; border: string }
   pop:     { bg: '#ffd53d',                                   accent: '#ff5c8a', border: '#000000' },
 };
 
-function syncUrl(theme: CanvasTheme, fontKey: string, fontIsDefault: boolean) {
+type UrlState = {
+  theme: CanvasTheme;
+  fontKey: string;
+  fontIsDefault: boolean;
+  layout: WidgetLayout;
+};
+
+function syncUrl({ theme, fontKey, fontIsDefault, layout }: UrlState) {
   try {
     const url = new URL(window.location.href);
     if (theme === 'default') url.searchParams.delete('theme');
     else url.searchParams.set('theme', theme);
     if (fontIsDefault) url.searchParams.delete('font');
     else url.searchParams.set('font', fontKey);
+    if (layout === 'classic') url.searchParams.delete('layout');
+    else url.searchParams.set('layout', layout);
     window.history.replaceState({}, '', url.toString());
   } catch {
     /* ignore (private mode / no history) */
@@ -40,31 +55,44 @@ function syncUrl(theme: CanvasTheme, fontKey: string, fontIsDefault: boolean) {
 export function CanvasThemeSwitcher({
   theme,
   fontKey,
+  layout,
   onChangeTheme,
   onChangeFont,
+  onChangeLayout,
 }: {
   theme: CanvasTheme;
   fontKey: string;
+  layout: WidgetLayout;
   onChangeTheme: (next: CanvasTheme) => void;
   onChangeFont: (next: string) => void;
+  onChangeLayout: (next: WidgetLayout) => void;
 }) {
   const handleTheme = useCallback(
     (next: CanvasTheme) => {
       onChangeTheme(next);
       // theme 변경 시 board 도 font 를 첫 번째로 reset (canvas-board setTheme).
       const defaultFont = getThemeMeta(next).fonts[0].key;
-      syncUrl(next, defaultFont, true);
+      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout });
     },
-    [onChangeTheme],
+    [onChangeTheme, layout],
   );
 
   const handleFont = useCallback(
     (next: string) => {
       onChangeFont(next);
       const isDefault = getThemeMeta(theme).fonts[0].key === next;
-      syncUrl(theme, next, isDefault);
+      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout });
     },
-    [onChangeFont, theme],
+    [onChangeFont, theme, layout],
+  );
+
+  const handleLayout = useCallback(
+    (next: WidgetLayout) => {
+      onChangeLayout(next);
+      const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next });
+    },
+    [onChangeLayout, theme, fontKey],
   );
 
   const themeMeta = getThemeMeta(theme);
@@ -153,6 +181,42 @@ export function CanvasThemeSwitcher({
                 }}
               >
                 {f.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* row 3 — widget layout chips (5개) */}
+        <div
+          className="flex items-center gap-1 border-t pt-1.5"
+          style={{ borderColor: 'var(--canvas-chrome-border)' }}
+        >
+          <span
+            className="px-1 text-xs tracking-[0.08em] uppercase"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            Layout
+          </span>
+          {WIDGET_LAYOUTS.map((l) => {
+            const active = l.key === layout;
+            return (
+              <Button
+                key={l.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handleLayout(l.key)}
+                title={l.hint}
+                className="!px-2"
+                style={{
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                {l.label}
               </Button>
             );
           })}
