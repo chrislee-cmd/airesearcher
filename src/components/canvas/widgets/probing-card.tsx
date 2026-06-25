@@ -7,17 +7,16 @@
    PR-2: LLM 호출로 후속 질문 (probing) 제안 + 산출물 히스토리.
    PR-4: translate 의존 제거 — 위젯이 자체 OpenAI Realtime transcription
          세션을 들고 transcript 를 받는다. mic-only MVP.
+   PR-5: 탭 오디오 지원 — source picker tab 옵션 활성화. hook 에 source
+         인자 전달, 에러 코드별 한국어 안내 (probing_timeout / tab_audio_*).
 
    세션 lifecycle:
-   - "세션 시작" 버튼 → useRealtimeTranscription.start() → 상태 'live'.
+   - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
    - 'live' 인 동안: 60초 자동 + 수동 "지금 제안" 트리거.
-   - "정지" 버튼 → hook.stop() → 상태 'idle', 마이크 해제.
+   - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
    휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
    리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
-
-   tab audio: pr-probing-5-tab-audio 에서 추가 예정. 현 PR 에서는
-   source picker UI 만 존재 (탭 옵션 disabled + "준비 중" 안내).
 
    참고: 더이상 RealtimeTranscriptProvider 의 consumer 가 아님.
    provider 는 translate-console 전용으로 유지.
@@ -90,10 +89,10 @@ function windowText(segments: TranscriptionSegment[]): string {
     .join('\n');
 }
 
-// PR-4: source picker. mic 만 활성, tab 은 disabled + "준비 중" 안내.
-// 별 PR (pr-probing-5-tab-audio) 에서 tab 옵션 활성화 예정. radio 두 개를
-// 직접 그리지 않고 Button primitive 의 selected/unselected 시각 차이를
-// 흉내내는 segmented control — design-system 토큰만 사용.
+// PR-5: source picker — mic / tab 둘 다 활성. tab 선택 시 hook 이
+// getDisplayMedia 로 Chrome 의 탭 picker 를 띄운다. radio 두 개를 직접
+// 그리지 않고 Button primitive 의 selected/unselected 시각 차이를 흉내내는
+// segmented control — design-system 토큰만 사용.
 type SourceKind = 'mic' | 'tab';
 function SourcePicker({
   value,
@@ -116,14 +115,13 @@ function SourcePicker({
         마이크
       </Button>
       <Button
-        variant="ghost"
+        variant={value === 'tab' ? 'primary' : 'ghost'}
         size="xs"
-        onClick={() => undefined}
-        disabled
-        title="탭 오디오는 후속 PR 에서 추가됩니다"
+        onClick={() => onChange('tab')}
+        disabled={disabled}
         className="uppercase tracking-[0.18em]"
       >
-        탭 오디오 · 준비 중
+        탭 오디오
       </Button>
     </div>
   );
@@ -142,8 +140,7 @@ function ExpandedBody() {
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
 
-  // source picker — mic-only MVP. tab 은 disabled 라 선택 변경 자체가
-  // 가능하지 않지만 상태는 보존해서 후속 PR 에서 활성화하기 쉽게.
+  // source picker — mic / tab. 세션 시작 시 hook 의 start({ source }) 로 전달.
   const [source, setSource] = useState<SourceKind>('mic');
 
   const isLive = sessionStatus === 'live';
@@ -324,8 +321,8 @@ function ExpandedBody() {
 
   // 세션 시작 / 정지 — hook 호출 + 사용자 친화 에러 메시지.
   const handleStartSession = useCallback(async () => {
-    await startSession();
-  }, [startSession]);
+    await startSession({ source });
+  }, [startSession, source]);
 
   const handleStopSession = useCallback(async () => {
     await stopSession();
@@ -343,7 +340,15 @@ function ExpandedBody() {
         ? '마이크 권한이 거절되었습니다 — 브라우저 권한을 허용해 주세요'
         : sessionError === 'microphone_failed'
           ? '마이크 캡처에 실패했습니다 — 다른 앱이 사용 중인지 확인해 주세요'
-          : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
+          : sessionError === 'tab_audio_denied'
+            ? '탭 공유가 취소되었습니다'
+            : sessionError === 'tab_audio_unavailable'
+              ? "Chrome picker 에서 '탭 오디오 공유' 를 체크해 주세요"
+              : sessionError === 'tab_audio_failed'
+                ? '탭 오디오 캡처에 실패했습니다 — 다른 탭에서 다시 시도해 주세요'
+                : sessionError === 'probing_timeout'
+                  ? '네트워크 확인 후 다시 시작해 주세요'
+                  : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
     toast.push(human, { tone: 'warn' });
   }, [sessionError, toast]);
 
@@ -459,7 +464,7 @@ function ExpandedBody() {
             </div>
           ) : !isLive ? (
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              상단 &lsquo;세션 시작&rsquo; 으로 마이크 세션을 켜 주세요.
+              상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
               <br />
               시작 후 60초마다 후속 질문이 제안됩니다.
             </div>
@@ -666,7 +671,7 @@ export const probingCard: WidgetContent = {
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 세션을 들고 후속 질문 3~5개를 60초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3~5개를 60초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
