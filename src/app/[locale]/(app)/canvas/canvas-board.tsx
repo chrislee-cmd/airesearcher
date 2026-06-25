@@ -5,9 +5,10 @@
 
    - 모든 위젯 항상 펼친 상태 (collapse 없음).
    - 너비 위젯별 (meta.expandedCols 1/2/3 → 240 / 528 / 816 px).
-   - height 통일 800 — 본문 길면 widget-shell 의 overflow-y-auto.
+   - 높이 위젯별 (meta.expandedRows 1/2/3 → 800 / 1648 / 2496 px,
+     default 1). 본문 길면 widget-shell 의 overflow-y-auto.
    - 6×5 그리드 절대 좌표 (CELL_W 240, CELL_H 800, GAP 48). 각 위젯이
-     (col, row) anchor 를 가지고 expandedCols 만큼 col 방향으로 span.
+     (col, row) anchor 를 가지고 expandedCols × expandedRows 만큼 span.
    - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
      다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
    - 빈 영역 drag = pan, 휠 = zoom-out (1.0 ~ 0.4, cursor focal point).
@@ -42,29 +43,55 @@ const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 type Coords = { col: number; row: number };
+type Span = { cols: number; rows: number };
 
 function expandedWidthOf(cols: number): number {
   return cols * CELL_W + (cols - 1) * GAP;
 }
 
-function spanOf(w: WidgetContent | undefined): number {
-  return w?.meta.expandedCols ?? 2;
+function expandedHeightOf(rows: number): number {
+  return rows * CELL_H + (rows - 1) * GAP;
 }
 
-// 좌측 상단부터 row-major 로 위젯을 채움 — 각 위젯의 span 만큼 col 진행,
-// 다음 위젯이 row 끝 초과하면 새 row 로.
+function spanOf(w: WidgetContent | undefined): Span {
+  return {
+    cols: w?.meta.expandedCols ?? 2,
+    rows: w?.meta.expandedRows ?? 1,
+  };
+}
+
+// 좌측 상단부터 row-major 로 위젯을 채움 — 점유 셀을 추적해 multi-row
+// 위젯이 아래 row 를 미리 점유한 경우 그 셀들을 건너뜀.
 function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
   const out: Record<string, Coords> = {};
+  const occupied = new Set<string>();
   let col = 0;
   let row = 0;
   for (const w of widgets) {
-    const span = spanOf(w);
-    if (col + span > GRID_COLS) {
-      col = 0;
-      row += 1;
+    const { cols, rows } = spanOf(w);
+    while (row < GRID_ROWS) {
+      if (col + cols > GRID_COLS) {
+        col = 0;
+        row += 1;
+        continue;
+      }
+      if (row + rows > GRID_ROWS) break;
+      let fits = true;
+      for (let dc = 0; dc < cols && fits; dc += 1) {
+        for (let dr = 0; dr < rows && fits; dr += 1) {
+          if (occupied.has(`${col + dc},${row + dr}`)) fits = false;
+        }
+      }
+      if (fits) break;
+      col += 1;
     }
     out[w.key] = { col, row };
-    col += span;
+    for (let dc = 0; dc < cols; dc += 1) {
+      for (let dr = 0; dr < rows; dr += 1) {
+        occupied.add(`${col + dc},${row + dr}`);
+      }
+    }
+    col += cols;
   }
   return out;
 }
@@ -88,51 +115,68 @@ export function CanvasBoard({
       const valid = new Set(widgets.map((w) => w.key));
       const merged: Record<string, Coords> = {};
       const occupied = new Set<string>();
-      // stored 좌표 채택 (valid widget + range 안에 있을 때만).
+      // stored 좌표 채택 (valid widget + 전체 footprint 가 grid 안 +
+      // 이미 채택된 위젯과 겹치지 않을 때만). multi-row 위젯이 grid 끝
+      // 초과하는 stored 좌표 (예: 3-row 위젯이 row 13 시작 — §7 함정)
+      // 는 여기서 reject 되고 아래 fallback 으로 빠짐.
       widgets.forEach((w) => {
         const p = stored[w.key];
+        const { cols, rows } = spanOf(w);
         if (
           p &&
           typeof p.col === 'number' &&
           typeof p.row === 'number' &&
           p.col >= 0 &&
-          p.col + spanOf(w) <= GRID_COLS &&
+          p.col + cols <= GRID_COLS &&
           p.row >= 0 &&
-          p.row < GRID_ROWS
+          p.row + rows <= GRID_ROWS
         ) {
-          merged[w.key] = { col: p.col, row: p.row };
-          for (let i = 0; i < spanOf(w); i += 1) {
-            occupied.add(`${p.col + i},${p.row}`);
+          let conflicts = false;
+          for (let dc = 0; dc < cols && !conflicts; dc += 1) {
+            for (let dr = 0; dr < rows && !conflicts; dr += 1) {
+              if (occupied.has(`${p.col + dc},${p.row + dr}`)) conflicts = true;
+            }
+          }
+          if (!conflicts) {
+            merged[w.key] = { col: p.col, row: p.row };
+            for (let dc = 0; dc < cols; dc += 1) {
+              for (let dr = 0; dr < rows; dr += 1) {
+                occupied.add(`${p.col + dc},${p.row + dr}`);
+              }
+            }
           }
         }
       });
-      // stored 에 없는 widget 은 빈 셀에 row-major 로 fallback.
+      // stored 에 없거나 invalid 한 widget 은 빈 셀에 row-major 로 fallback.
       let cursorCol = 0;
       let cursorRow = 0;
       widgets.forEach((w) => {
         if (!valid.has(w.key)) return;
         if (merged[w.key]) return;
-        const span = spanOf(w);
-        // 첫 fit cell 찾기
+        const { cols, rows } = spanOf(w);
         while (cursorRow < GRID_ROWS) {
-          if (cursorCol + span > GRID_COLS) {
+          if (cursorCol + cols > GRID_COLS) {
             cursorCol = 0;
             cursorRow += 1;
             continue;
           }
+          if (cursorRow + rows > GRID_ROWS) break;
           let fits = true;
-          for (let i = 0; i < span; i += 1) {
-            if (occupied.has(`${cursorCol + i},${cursorRow}`)) {
-              fits = false;
-              break;
+          for (let dc = 0; dc < cols && fits; dc += 1) {
+            for (let dr = 0; dr < rows && fits; dr += 1) {
+              if (occupied.has(`${cursorCol + dc},${cursorRow + dr}`)) {
+                fits = false;
+              }
             }
           }
           if (fits) {
             merged[w.key] = { col: cursorCol, row: cursorRow };
-            for (let i = 0; i < span; i += 1) {
-              occupied.add(`${cursorCol + i},${cursorRow}`);
+            for (let dc = 0; dc < cols; dc += 1) {
+              for (let dr = 0; dr < rows; dr += 1) {
+                occupied.add(`${cursorCol + dc},${cursorRow + dr}`);
+              }
             }
-            cursorCol += span;
+            cursorCol += cols;
             break;
           }
           cursorCol += 1;
@@ -161,13 +205,16 @@ export function CanvasBoard({
     [widgets],
   );
 
-  // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용.
+  // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용. multi-row 위젯은
+  // cols × rows footprint 의 모든 셀이 점유로 표시됨.
   const occupiedCells = useMemo(() => {
     const occ = new Map<string, string>(); // "c,r" → widget key
     Object.entries(positions).forEach(([k, p]) => {
-      const span = spanOf(widgetByKey[k]);
-      for (let i = 0; i < span; i += 1) {
-        occ.set(`${p.col + i},${p.row}`, k);
+      const { cols, rows } = spanOf(widgetByKey[k]);
+      for (let dc = 0; dc < cols; dc += 1) {
+        for (let dr = 0; dr < rows; dr += 1) {
+          occ.set(`${p.col + dc},${p.row + dr}`, k);
+        }
       }
     });
     return occ;
@@ -326,27 +373,43 @@ export function CanvasBoard({
       if (!sourceKey) return;
       const sourceWidget = widgetByKey[sourceKey];
       if (!sourceWidget) return;
-      const span = spanOf(sourceWidget);
-      // span 이 grid 끝 초과하지 않게 col clamp.
-      const targetCol = Math.max(0, Math.min(GRID_COLS - span, col));
-      const targetRow = row;
+      const sourceSpan = spanOf(sourceWidget);
+      // span 이 grid 끝 초과하지 않게 col/row clamp.
+      const targetCol = Math.max(
+        0,
+        Math.min(GRID_COLS - sourceSpan.cols, col),
+      );
+      const targetRow = Math.max(
+        0,
+        Math.min(GRID_ROWS - sourceSpan.rows, row),
+      );
       setPositions((curr) => {
         const sourcePos = curr[sourceKey];
         if (!sourcePos) return curr;
         if (sourcePos.col === targetCol && sourcePos.row === targetRow)
           return curr;
         const next = { ...curr };
-        // target footprint 안에 다른 widget 점유 셀이 있는지 확인 — 있으면
-        // 그 widget 을 source 의 옛 자리로 swap.
+        // target footprint (cols × rows) 안에 다른 widget 점유 셀이 있는지
+        // 확인 — 단일 widget 만 겹치면 그 widget 을 source 의 옛 자리로 swap.
         const overlapKeys = new Set<string>();
-        for (let i = 0; i < span; i += 1) {
-          const cellKey = `${targetCol + i},${targetRow}`;
-          const occupant = occupiedCells.get(cellKey);
-          if (occupant && occupant !== sourceKey) overlapKeys.add(occupant);
+        for (let dc = 0; dc < sourceSpan.cols; dc += 1) {
+          for (let dr = 0; dr < sourceSpan.rows; dr += 1) {
+            const cellKey = `${targetCol + dc},${targetRow + dr}`;
+            const occupant = occupiedCells.get(cellKey);
+            if (occupant && occupant !== sourceKey) overlapKeys.add(occupant);
+          }
         }
         if (overlapKeys.size === 1) {
-          // 단일 swap 시도 — overlap widget 을 source 옛 자리로
           const [overlapKey] = Array.from(overlapKeys);
+          const overlapSpan = spanOf(widgetByKey[overlapKey]);
+          // overlap widget 의 footprint 가 source 옛 자리에서 grid 밖으로
+          // 나가면 swap 불가 — 거부.
+          if (
+            sourcePos.col + overlapSpan.cols > GRID_COLS ||
+            sourcePos.row + overlapSpan.rows > GRID_ROWS
+          ) {
+            return curr;
+          }
           next[overlapKey] = { ...sourcePos };
         } else if (overlapKeys.size > 1) {
           // 여러 widget 겹침 — drop 거부 (간단 정책).
@@ -446,12 +509,13 @@ export function CanvasBoard({
               );
             }),
           )}
-          {/* 위젯 카드 — 절대 좌표 배치, expandedCols 만큼 span. */}
+          {/* 위젯 카드 — 절대 좌표 배치, expandedCols × expandedRows 만큼 span. */}
           {widgets.map((w) => {
             const pos = positions[w.key];
             if (!pos) return null;
-            const span = spanOf(w);
-            const width = expandedWidthOf(span);
+            const { cols, rows } = spanOf(w);
+            const width = expandedWidthOf(cols);
+            const height = expandedHeightOf(rows);
             const isDragSource = dragKey === w.key;
             return (
               <div
@@ -466,7 +530,7 @@ export function CanvasBoard({
                   left: pos.col * (CELL_W + GAP),
                   top: pos.row * (CELL_H + GAP),
                   width,
-                  height: CELL_H,
+                  height,
                   opacity: isDragSource ? 0.4 : 1,
                   transition: 'opacity 0.15s ease-out',
                 }}
