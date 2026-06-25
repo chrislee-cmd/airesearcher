@@ -46,8 +46,11 @@ export type UseRealtimeTranscriptionResult = {
   stop: () => Promise<void>;
 };
 
-const REALTIME_SDP_URL =
-  'https://api.openai.com/v1/realtime?intent=transcription';
+// Unified Realtime GA SDP endpoint. 이전 `/v1/realtime?intent=transcription`
+// 은 Beta API shape 으로 deprecated (HTTP 400 beta_api_shape_disabled).
+// 세션 type 은 client_secrets POST 의 `session.type` 으로 표현되므로 SDP
+// 호출은 query param 없는 단일 path.
+const REALTIME_SDP_URL = 'https://api.openai.com/v1/realtime/calls';
 
 // translate-console 과 동일 — host 의 회사망에 STUN 이 없을 때 ICE 가
 // 정체되는 케이스 대비.
