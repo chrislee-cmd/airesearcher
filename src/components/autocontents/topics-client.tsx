@@ -1549,22 +1549,12 @@ export default function TopicsClient() {
   ).length;
   const progress = { completed: completedCount, total: results.length };
 
+  // chrome (header / accent) 은 widget-shell 책임. 본문만 flex column
+  // 으로 — 캔버스(top) + 인스펙터(bottom stack). 위젯 body 가 자체적으로
+  // overflow-y-auto 를 가지므로 여기선 내부 padding 만 부여.
   return (
-    <div className="min-h-screen w-full bg-paper-soft text-ink ">
-      <header className="border-b border-line ">
-        <div className="mx-auto max-w-[1400px] px-6 py-4">
-          <h1 className="text-xl font-semibold tracking-tight">
-            컨텐츠 자동 생성기
-          </h1>
-          <p className="mt-0.5 text-sm text-mute">
-            소스에서 프롬프트를 골라 캔버스로 옮기고, 원하는 커스터마이즈
-            위젯으로 드래그하세요
-          </p>
-        </div>
-      </header>
-
-      <main className="mx-auto flex max-w-[1400px] flex-col gap-6 px-6 py-6">
-        <section className="min-w-0">
+    <div className="flex h-full flex-col gap-5 px-5 py-5">
+      <section className="min-w-0">
           <Canvas
             sourceBadge={sourceBadge}
             sourceDetail={sourceDetail}
@@ -1712,7 +1702,6 @@ export default function TopicsClient() {
             />
           </aside>
         )}
-      </main>
     </div>
   );
 }

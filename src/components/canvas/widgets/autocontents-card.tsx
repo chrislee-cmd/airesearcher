@@ -13,28 +13,23 @@
 import TopicsClient from '@/components/autocontents/topics-client';
 import type { WidgetContent } from '../widget-types';
 
-function ExpandedBody() {
-  return (
-    <div className="-mx-4 -mb-4">
-      <TopicsClient />
-    </div>
-  );
-}
-
+// chrome (헤더 / accent / pill / description) 은 widget-shell 이 그림.
+// ExpandedBody 는 TopicsClient 의 본문만 — 자체 padding 은 topics-client
+// 가 내부에서 (px-5 py-5 + flex h-full) 부여하므로 wrapper 불필요.
 export const autocontentsCard: WidgetContent = {
   key: 'autocontents',
   meta: {
     label: '오토컨텐츠',
     accent: 'lav',
     cost: 0,
-    description: '콘텐츠 자동 생성 도구 — 마이그 진행 중',
+    description: '리포트·블로그·SNS 콘텐츠 자동 생성',
     // 보드 좌측 절반 (3 cols = 816px) 을 세로로 (4 rows = 3344px) 차지.
     // CANVAS_ORDER 에서 첫 번째 위치 + row-major auto-layout 로 보드 top-left
     // 점유 → 다른 6개 위젯이 우측 (cols 3-5) 에 stack. 인스펙터가 열렸을 때
-    // 위젯 내부에서 캔버스 아래로 stack (lg 사이드바 미사용).
+    // 위젯 내부에서 캔버스 아래로 stack.
     expandedCols: 3,
     expandedRows: 4,
   },
   state: 'idle',
-  ExpandedBody,
+  ExpandedBody: TopicsClient,
 };
