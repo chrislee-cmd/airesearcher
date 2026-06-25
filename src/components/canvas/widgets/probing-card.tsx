@@ -411,10 +411,12 @@ function ExpandedBody() {
     setStreaming(true);
     setError(null);
 
-    // 새 세트의 빈 골격을 먼저 push — partial 동안 본문이 자연스럽게 채워짐.
+    // 빈 골격은 push 하지 않는다 — stream 동안엔 카드가 안 보이고 (헤더
+    // 의 statusLabel 이 "생성 중…" 으로 피드백), 응답이 완성되면 한 번에
+    // setCurrent(full) 로 카드가 일괄 표시된다. partial 한 글자씩 채움
+    // 효과는 의도적으로 제거 — 사용자 요청.
     const setId = `probing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const started_at = Date.now();
-    setCurrent({ id: setId, created_at: started_at, questions: [] });
 
     // stream 종료 시점에 잡힌 최종 questions. POST persist 에 사용.
     let finalQuestions: ProbingQuestion[] = [];
@@ -434,6 +436,9 @@ function ExpandedBody() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? `suggest_failed_${res.status}`);
       }
+      // 전체 응답을 다 받은 뒤 한 번만 파싱. partial JSON 헬퍼는 그대로
+      // 사용 — 서버가 trailing whitespace / 누락 닫힘 으로 끝낼 수 있어도
+      // 너그럽게 받아준다.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -441,29 +446,27 @@ function ExpandedBody() {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const parsed = await parsePartialJson(buffer);
-        // 서버 schema 는 questions[*].{text, technique} 가 먼저 emit 되고
-        // 그 다음 intents[i] 가 같은 인덱스 순서로 옴. partial 동안 intents
-        // 가 아직 비어 있으면 why 는 빈 문자열 — SuggestionList 의 조건부
-        // 렌더 (q.why && <p>...) 가 자동으로 의도를 숨김. 모든 질문 핵심이
-        // 노출된 다음 intents 가 차례로 채워지면서 사후 입력 효과.
-        const obj = parsed.value as
-          | {
-              questions?: Array<{ text?: string; technique?: string }>;
-              intents?: string[];
-            }
-          | null;
-        if (obj && Array.isArray(obj.questions)) {
-          const intents = Array.isArray(obj.intents) ? obj.intents : [];
-          const clean: ProbingQuestion[] = obj.questions
-            .filter((q): q is { text?: string; technique?: string } => !!q)
-            .map((q, i) => ({
-              text: typeof q.text === 'string' ? q.text : '',
-              technique:
-                typeof q.technique === 'string' ? q.technique : 'tell_more',
-              why: typeof intents[i] === 'string' ? intents[i] : '',
-            }))
-            .filter((q) => q.text.trim().length > 0);
+      }
+      const parsed = await parsePartialJson(buffer);
+      const obj = parsed.value as
+        | {
+            questions?: Array<{ text?: string; technique?: string }>;
+            intents?: string[];
+          }
+        | null;
+      if (obj && Array.isArray(obj.questions)) {
+        const clean: ProbingQuestion[] = obj.questions
+          .filter((q): q is { text?: string; technique?: string } => !!q)
+          .map((q) => ({
+            text: typeof q.text === 'string' ? q.text : '',
+            technique:
+              typeof q.technique === 'string' ? q.technique : 'tell_more',
+            // 의도 (why) 서브 텍스트는 사용자 요청으로 UI 에서 제거.
+            // 타입 호환을 위해 빈 문자열 유지.
+            why: '',
+          }))
+          .filter((q) => q.text.trim().length > 0);
+        if (clean.length > 0) {
           setCurrent({ id: setId, created_at: started_at, questions: clean });
           finalQuestions = clean;
         }
@@ -805,12 +808,19 @@ function ExpandedBody() {
             hydrate 도 끝났으면 컨텍스트별 placeholder. flex-1 로 위젯
             height 800px 안을 채운다. */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          {/* stream 중 인디케이터 — 이미 history 가 있어 empty placeholder
+              로 떨어지지 않을 때만 list 맨 위에 짧게 표시. */}
+          {streaming && !current && suggestions.length > 0 && (
+            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-3 py-2 text-center text-sm text-mute-soft">
+              제안 생성 중…
+            </div>
+          )}
+
           {current && current.questions.length > 0 && (
             <SuggestionList
               questions={current.questions}
               createdAtMs={current.created_at}
               onCopy={handleCopy}
-              streaming={streaming}
               nowMs={now}
             />
           )}
@@ -821,7 +831,6 @@ function ExpandedBody() {
               questions={row.questions}
               createdAtMs={Date.parse(row.created_at)}
               onCopy={handleCopy}
-              streaming={false}
               nowMs={now}
             />
           ))}
@@ -924,13 +933,11 @@ function SuggestionList({
   questions,
   createdAtMs,
   onCopy,
-  streaming,
   nowMs,
 }: {
   questions: ProbingQuestion[];
   createdAtMs: number;
   onCopy: (text: string) => void;
-  streaming: boolean;
   nowMs: number;
 }) {
   const rel = formatRelativeKo(createdAtMs, nowMs);
@@ -940,9 +947,7 @@ function SuggestionList({
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           제안 질문 {questions.length}개{rel ? ` · ${rel}` : ''}
         </span>
-        <span className="text-xs text-mute-soft">
-          {streaming ? '스트리밍…' : '카드 클릭 → 복사'}
-        </span>
+        <span className="text-xs text-mute-soft">카드 클릭 → 복사</span>
       </div>
       <ul className="space-y-2">
         {questions.map((q, i) => {
@@ -966,11 +971,6 @@ function SuggestionList({
                     {label}
                   </span>
                 </div>
-                {q.why && (
-                  <p className="mt-1.5 text-sm leading-[1.6] text-mute">
-                    {q.why}
-                  </p>
-                )}
               </button>
             </li>
           );
