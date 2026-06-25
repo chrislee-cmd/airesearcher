@@ -1,7 +1,5 @@
 /* ────────────────────────────────────────────────────────────────────
-   probing-types — probing-card 와 probing-history-modal 이 공유하는
-   세션 state 모양. 별도 파일로 둔 이유: card → modal, modal → card
-   순환 import 를 피하기 위함.
+   probing-types — probing-card 가 현재 제안 세트의 모양을 표기하는 타입.
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ProbingTechnique } from '@/lib/probing-prompts';
