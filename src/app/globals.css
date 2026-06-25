@@ -428,6 +428,207 @@ html, body {
   --canvas-selection-width: 2px;
   --canvas-backdrop: none;
 }
+[data-canvas-theme="mocha"] {
+  --canvas-bg: #f3e9d6;
+  --canvas-bg-image: radial-gradient(circle, rgba(80, 50, 20, 0.08) 1px, transparent 1px);
+  --canvas-bg-size: 22px 22px;
+  --canvas-card-bg: #fdf6e8;
+  --canvas-card-border: #6b4f2b;
+  --canvas-card-border-width: 1px;
+  --canvas-card-border-style: solid;
+  --canvas-card-radius: 12px;
+  --canvas-card-shadow: 0 4px 14px rgba(80, 50, 20, 0.12);
+  --canvas-card-header-bg: #e8d8b8;
+  --canvas-card-header-divider: rgba(107, 79, 43, 0.25);
+  --canvas-card-header-text: #3d2817;
+  --canvas-card-header-font: var(--font-cormorant-garamond), Georgia, serif;
+  --canvas-card-header-weight: 600;
+  --canvas-card-header-transform: none;
+  --canvas-card-header-tracking: -0.005em;
+  --canvas-card-mute: #8a6b48;
+  --canvas-accent: #b04a18;
+  --canvas-edge: #6b4f2b;
+  --canvas-edge-live: #b04a18;
+  --canvas-edge-width: 1.5px;
+  --canvas-edge-live-width: 2px;
+  --canvas-edge-opacity: 0.85;
+  --canvas-edge-filter: none;
+  --canvas-port-in-bg: #fdf6e8;
+  --canvas-port-in-border: #6b4f2b;
+  --canvas-port-out-bg: #b04a18;
+  --canvas-port-out-border: #6b4f2b;
+  --canvas-port-ring: #f3e9d6;
+  --canvas-chrome-bg: #fdf6e8;
+  --canvas-chrome-border: #6b4f2b;
+  --canvas-chrome-text: #3d2817;
+  --canvas-chrome-shadow: 0 4px 14px rgba(80, 50, 20, 0.15);
+  --canvas-chrome-radius: 10px;
+  --canvas-selection-border: #b04a18;
+  --canvas-selection-width: 2px;
+  --canvas-backdrop: none;
+}
+[data-canvas-theme="synthwave"] {
+  --canvas-bg: linear-gradient(180deg, #1a0c2e 0%, #2d1b54 35%, #6b1d8a 65%, #f0317d 100%);
+  --canvas-bg-image:
+    linear-gradient(rgba(236, 64, 122, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 64, 122, 0.18) 1px, transparent 1px);
+  --canvas-bg-size: 40px 40px;
+  --canvas-card-bg: rgba(20, 8, 40, 0.85);
+  --canvas-card-border: #ec407a;
+  --canvas-card-border-width: 1px;
+  --canvas-card-border-style: solid;
+  --canvas-card-radius: 4px;
+  --canvas-card-shadow: 0 0 0 1px rgba(236, 64, 122, 0.5), 0 0 24px rgba(236, 64, 122, 0.4);
+  --canvas-card-header-bg: rgba(45, 27, 84, 0.9);
+  --canvas-card-header-divider: rgba(236, 64, 122, 0.5);
+  --canvas-card-header-text: #00ffe1;
+  --canvas-card-header-font: var(--font-orbitron), ui-monospace, monospace;
+  --canvas-card-header-weight: 700;
+  --canvas-card-header-transform: uppercase;
+  --canvas-card-header-tracking: 0.1em;
+  --canvas-card-mute: #a78bfa;
+  --canvas-accent: #ec407a;
+  --canvas-edge: #ec407a;
+  --canvas-edge-live: #00ffe1;
+  --canvas-edge-width: 2px;
+  --canvas-edge-live-width: 2.5px;
+  --canvas-edge-opacity: 1;
+  --canvas-edge-filter: drop-shadow(0 0 6px rgba(236, 64, 122, 0.7));
+  --canvas-port-in-bg: #1a0c2e;
+  --canvas-port-in-border: #00ffe1;
+  --canvas-port-out-bg: #ec407a;
+  --canvas-port-out-border: #00ffe1;
+  --canvas-port-ring: #1a0c2e;
+  --canvas-chrome-bg: rgba(20, 8, 40, 0.9);
+  --canvas-chrome-border: #ec407a;
+  --canvas-chrome-text: #00ffe1;
+  --canvas-chrome-shadow: 0 0 16px rgba(236, 64, 122, 0.5);
+  --canvas-chrome-radius: 4px;
+  --canvas-selection-border: #00ffe1;
+  --canvas-selection-width: 2px;
+  --canvas-backdrop: blur(8px);
+}
+[data-canvas-theme="risograph"] {
+  --canvas-bg: #f3edd9;
+  --canvas-bg-image:
+    radial-gradient(rgba(225, 90, 75, 0.18) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(60, 90, 175, 0.18) 1.5px, transparent 1.5px);
+  --canvas-bg-size: 8px 8px, 8px 8px;
+  --canvas-card-bg: #fbf5e4;
+  --canvas-card-border: #1a1a1a;
+  --canvas-card-border-width: 1.5px;
+  --canvas-card-border-style: solid;
+  --canvas-card-radius: 0;
+  --canvas-card-shadow: 4px 4px 0 #e15a4b, -2px -2px 0 #3c5aaf;
+  --canvas-card-header-bg: #e8e0c8;
+  --canvas-card-header-divider: #1a1a1a;
+  --canvas-card-header-text: #1a1a1a;
+  --canvas-card-header-font: var(--font-special-elite), ui-monospace, monospace;
+  --canvas-card-header-weight: 400;
+  --canvas-card-header-transform: uppercase;
+  --canvas-card-header-tracking: 0.06em;
+  --canvas-card-mute: #5c5648;
+  --canvas-accent: #e15a4b;
+  --canvas-edge: #1a1a1a;
+  --canvas-edge-live: #e15a4b;
+  --canvas-edge-width: 2px;
+  --canvas-edge-live-width: 2.5px;
+  --canvas-edge-opacity: 0.85;
+  --canvas-edge-filter: none;
+  --canvas-port-in-bg: #fbf5e4;
+  --canvas-port-in-border: #1a1a1a;
+  --canvas-port-out-bg: #e15a4b;
+  --canvas-port-out-border: #1a1a1a;
+  --canvas-port-ring: #fbf5e4;
+  --canvas-chrome-bg: #fbf5e4;
+  --canvas-chrome-border: #1a1a1a;
+  --canvas-chrome-text: #1a1a1a;
+  --canvas-chrome-shadow: 3px 3px 0 #3c5aaf;
+  --canvas-chrome-radius: 0;
+  --canvas-selection-border: #e15a4b;
+  --canvas-selection-width: 2.5px;
+  --canvas-backdrop: none;
+}
+[data-canvas-theme="blueprint"] {
+  --canvas-bg: #0d3b66;
+  --canvas-bg-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  --canvas-bg-size: 28px 28px;
+  --canvas-card-bg: rgba(13, 59, 102, 0.8);
+  --canvas-card-border: #f4f8ff;
+  --canvas-card-border-width: 1.5px;
+  --canvas-card-border-style: solid;
+  --canvas-card-radius: 0;
+  --canvas-card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --canvas-card-header-bg: rgba(255, 255, 255, 0.06);
+  --canvas-card-header-divider: rgba(255, 255, 255, 0.4);
+  --canvas-card-header-text: #f4f8ff;
+  --canvas-card-header-font: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  --canvas-card-header-weight: 500;
+  --canvas-card-header-transform: uppercase;
+  --canvas-card-header-tracking: 0.1em;
+  --canvas-card-mute: #a3c4e8;
+  --canvas-accent: #fcd34d;
+  --canvas-edge: #f4f8ff;
+  --canvas-edge-live: #fcd34d;
+  --canvas-edge-width: 1px;
+  --canvas-edge-live-width: 1.5px;
+  --canvas-edge-opacity: 0.7;
+  --canvas-edge-filter: none;
+  --canvas-port-in-bg: #0d3b66;
+  --canvas-port-in-border: #f4f8ff;
+  --canvas-port-out-bg: #fcd34d;
+  --canvas-port-out-border: #0d3b66;
+  --canvas-port-ring: #0d3b66;
+  --canvas-chrome-bg: rgba(13, 59, 102, 0.85);
+  --canvas-chrome-border: #f4f8ff;
+  --canvas-chrome-text: #f4f8ff;
+  --canvas-chrome-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  --canvas-chrome-radius: 0;
+  --canvas-selection-border: #fcd34d;
+  --canvas-selection-width: 2px;
+  --canvas-backdrop: blur(4px);
+}
+[data-canvas-theme="pastel"] {
+  --canvas-bg: #fdf2f8;
+  --canvas-bg-image: radial-gradient(circle, rgba(244, 114, 182, 0.12) 1.5px, transparent 1.5px);
+  --canvas-bg-size: 28px 28px;
+  --canvas-card-bg: #fff8fb;
+  --canvas-card-border: #fbcfe8;
+  --canvas-card-border-width: 1.5px;
+  --canvas-card-border-style: solid;
+  --canvas-card-radius: 22px;
+  --canvas-card-shadow: 0 6px 24px rgba(244, 114, 182, 0.15);
+  --canvas-card-header-bg: #fce7f3;
+  --canvas-card-header-divider: rgba(244, 114, 182, 0.25);
+  --canvas-card-header-text: #831843;
+  --canvas-card-header-font: var(--font-quicksand), var(--font-sans);
+  --canvas-card-header-weight: 600;
+  --canvas-card-header-transform: none;
+  --canvas-card-header-tracking: -0.005em;
+  --canvas-card-mute: #be9ab3;
+  --canvas-accent: #ec4899;
+  --canvas-edge: #fbcfe8;
+  --canvas-edge-live: #ec4899;
+  --canvas-edge-width: 2px;
+  --canvas-edge-live-width: 2.5px;
+  --canvas-edge-opacity: 0.85;
+  --canvas-edge-filter: none;
+  --canvas-port-in-bg: #fff8fb;
+  --canvas-port-in-border: #fbcfe8;
+  --canvas-port-out-bg: #ec4899;
+  --canvas-port-out-border: #fce7f3;
+  --canvas-port-ring: #fff8fb;
+  --canvas-chrome-bg: #fff8fb;
+  --canvas-chrome-border: #fbcfe8;
+  --canvas-chrome-text: #831843;
+  --canvas-chrome-shadow: 0 4px 16px rgba(244, 114, 182, 0.15);
+  --canvas-chrome-radius: 18px;
+  --canvas-selection-border: #ec4899;
+  --canvas-selection-width: 2px;
+  --canvas-backdrop: none;
+}
 [data-canvas-theme="pop"] {
   --canvas-bg: #fffce1;
   --canvas-bg-image: radial-gradient(circle, rgba(0, 0, 0, 0.18) 2px, transparent 2px);
@@ -618,6 +819,87 @@ html, body {
   font-size: 22px;
 }
 
+/* caps — 모두 UPPERCASE + wide tracking */
+[data-canvas-typography="caps"] [data-canvas-body] :is(h1, h2, h3, h4, .text-xl, .text-2xl, .text-3xl, .text-display, p, span, div, button) {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+[data-canvas-typography="caps"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+/* hand — 본문 손글씨 (Caveat) */
+[data-canvas-typography="hand"] [data-canvas-body],
+[data-canvas-typography="hand"] [data-canvas-body] :is(p, span, div, h1, h2, h3, h4, button) {
+  font-family: var(--font-caveat), "Caveat", cursive;
+  font-weight: 600;
+}
+[data-canvas-typography="hand"] [data-canvas-body] {
+  font-size: 18px;
+  line-height: 1.4;
+}
+[data-canvas-typography="hand"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+/* magazine — 큰 drop cap + serif 본문 */
+[data-canvas-typography="magazine"] [data-canvas-body],
+[data-canvas-typography="magazine"] [data-canvas-body] :is(p, span, div) {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+[data-canvas-typography="magazine"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-family: var(--font-playfair-display), Georgia, serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 28px;
+  line-height: 1.1;
+}
+[data-canvas-typography="magazine"] [data-canvas-body] p:first-of-type::first-letter {
+  font-family: var(--font-playfair-display), Georgia, serif;
+  font-size: 3.5em;
+  font-weight: 700;
+  float: left;
+  line-height: 0.85;
+  margin: 0.05em 0.08em 0 0;
+  color: var(--color-amore);
+}
+
+/* code — code-block 톤 (monospace + 미세 줄간격 + 옅은 bg) */
+[data-canvas-typography="code"] [data-canvas-body],
+[data-canvas-typography="code"] [data-canvas-body] :is(p, span, div, h1, h2, h3, h4) {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+[data-canvas-typography="code"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 14px;
+  font-weight: 700;
+}
+[data-canvas-typography="code"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display)::before {
+  content: '// ';
+  opacity: 0.5;
+}
+
+/* poster — 극단 display weight (Bagel/Bricolage) heavy */
+[data-canvas-typography="poster"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-family: var(--font-bagel-fat-one), var(--font-bricolage-grotesque), var(--font-sans);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+[data-canvas-typography="poster"] [data-canvas-body] :is(h2, .text-2xl) {
+  font-size: 30px;
+}
+[data-canvas-typography="poster"] [data-canvas-body] :is(h3, .text-xl) {
+  font-size: 24px;
+}
+
 /* paper — 인쇄물 minimal: button = text link, input = 하단 line만 */
 [data-canvas-interior="paper"] [data-canvas-body] button {
   border: none;
@@ -647,4 +929,155 @@ html, body {
 [data-canvas-interior="paper"] [data-canvas-body] :is(input, textarea, select):focus {
   border-bottom-color: var(--color-ink-2);
   outline: none;
+}
+
+/* glass-comp — frosted blur button/input */
+[data-canvas-interior="glass-comp"] [data-canvas-body] button {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  color: #1a1a2a;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(120, 80, 200, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+[data-canvas-interior="glass-comp"] [data-canvas-body] button:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+[data-canvas-interior="glass-comp"] [data-canvas-body] :is(input, textarea, select) {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  color: #1a1a2a;
+  padding: 0.5rem 0.8rem;
+}
+[data-canvas-interior="glass-comp"] [data-canvas-body] :is(input, textarea, select):focus {
+  outline: 2px solid rgba(124, 58, 237, 0.6);
+  outline-offset: 1px;
+}
+
+/* soft3d — Neumorphism: 부드러운 dual shadow (안 / 밖) */
+[data-canvas-interior="soft3d"] [data-canvas-body] button {
+  background: #ecf0f3;
+  border: none;
+  border-radius: 12px;
+  color: #4a5568;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.6), -6px -6px 12px rgba(255, 255, 255, 0.8);
+  transition: box-shadow 0.18s, transform 0.12s;
+}
+[data-canvas-interior="soft3d"] [data-canvas-body] button:hover {
+  box-shadow: 4px 4px 8px rgba(163, 177, 198, 0.7), -4px -4px 8px rgba(255, 255, 255, 0.9);
+}
+[data-canvas-interior="soft3d"] [data-canvas-body] button:active {
+  box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+  transform: scale(0.98);
+}
+[data-canvas-interior="soft3d"] [data-canvas-body] :is(input, textarea, select) {
+  background: #ecf0f3;
+  border: none;
+  border-radius: 10px;
+  color: #4a5568;
+  padding: 0.55rem 0.9rem;
+  box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.5), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+}
+[data-canvas-interior="soft3d"] [data-canvas-body] :is(input, textarea, select):focus {
+  outline: none;
+  box-shadow: inset 2px 2px 6px rgba(163, 177, 198, 0.7), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+}
+
+/* sketch-comp — 손그림 dashed border 컴포넌트 */
+[data-canvas-interior="sketch-comp"] [data-canvas-body] button {
+  background: #fffdf8;
+  border: 1.5px dashed #2a2a2a;
+  border-radius: 10px;
+  color: #2a2a2a;
+  padding: 0.4rem 0.9rem;
+  font-family: var(--font-caveat), cursive;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 2px 2px 0 rgba(40, 40, 40, 0.18);
+  transition: transform 0.12s;
+}
+[data-canvas-interior="sketch-comp"] [data-canvas-body] button:hover {
+  transform: rotate(-1deg);
+}
+[data-canvas-interior="sketch-comp"] [data-canvas-body] :is(input, textarea, select) {
+  background: #fffdf8;
+  border: 1.5px dashed #2a2a2a;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+}
+[data-canvas-interior="sketch-comp"] [data-canvas-body] :is(input, textarea, select):focus {
+  outline: 2px dashed #d12c2c;
+  outline-offset: 2px;
+}
+
+/* brutalist — 0 radius + 극단 contrast (검정 fill + 흰 글자) */
+[data-canvas-interior="brutalist"] [data-canvas-body] button {
+  background: #000;
+  border: none;
+  border-radius: 0;
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: none;
+}
+[data-canvas-interior="brutalist"] [data-canvas-body] button:hover {
+  background: #ff3b00;
+  color: #fff;
+}
+[data-canvas-interior="brutalist"] [data-canvas-body] :is(input, textarea, select) {
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 0;
+  color: #000;
+  padding: 0.5rem 0.8rem;
+}
+[data-canvas-interior="brutalist"] [data-canvas-body] :is(input, textarea, select):focus {
+  outline: 3px solid #ff3b00;
+  outline-offset: 0;
+}
+
+/* material — drop shadow + 색 + ripple (mock) */
+[data-canvas-interior="material"] [data-canvas-body] button {
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.5rem 1.1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(37, 99, 235, 0.25);
+  transition: box-shadow 0.2s, transform 0.12s;
+}
+[data-canvas-interior="material"] [data-canvas-body] button:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
+}
+[data-canvas-interior="material"] [data-canvas-body] button:active {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transform: translateY(0);
+}
+[data-canvas-interior="material"] [data-canvas-body] :is(input, textarea, select) {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.42);
+  border-radius: 4px 4px 0 0;
+  padding: 0.7rem 0.7rem 0.35rem;
+  transition: border-color 0.18s;
+}
+[data-canvas-interior="material"] [data-canvas-body] :is(input, textarea, select):focus {
+  outline: none;
+  border-bottom-color: #2563eb;
+  border-bottom-width: 2px;
 }

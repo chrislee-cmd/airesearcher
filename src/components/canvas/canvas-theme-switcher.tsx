@@ -28,12 +28,17 @@ import {
 
 // chip 미니 swatch — chrome / accent 색을 inline 표시.
 const SWATCH: Record<CanvasTheme, { bg: string; accent: string; border: string }> = {
-  default: { bg: '#FFFFFF',                                   accent: '#2EAADC', border: 'rgba(55,53,47,0.15)' },
-  cyber:   { bg: '#0a0a12',                                   accent: '#00e0ff', border: '#2a2a3e' },
-  glass:   { bg: 'linear-gradient(135deg,#c4b5fd,#fda4af)',   accent: '#ec4899', border: 'rgba(255,255,255,0.6)' },
-  swiss:   { bg: '#FFFFFF',                                   accent: '#ff3b00', border: '#000000' },
-  sketch:  { bg: '#fff7d6',                                   accent: '#d12c2c', border: '#2a2a2a' },
-  pop:     { bg: '#ffd53d',                                   accent: '#ff5c8a', border: '#000000' },
+  default:   { bg: '#FFFFFF',                                  accent: '#2EAADC', border: 'rgba(55,53,47,0.15)' },
+  cyber:     { bg: '#0a0a12',                                  accent: '#00e0ff', border: '#2a2a3e' },
+  glass:     { bg: 'linear-gradient(135deg,#c4b5fd,#fda4af)',  accent: '#ec4899', border: 'rgba(255,255,255,0.6)' },
+  swiss:     { bg: '#FFFFFF',                                  accent: '#ff3b00', border: '#000000' },
+  sketch:    { bg: '#fff7d6',                                  accent: '#d12c2c', border: '#2a2a2a' },
+  pop:       { bg: '#ffd53d',                                  accent: '#ff5c8a', border: '#000000' },
+  mocha:     { bg: '#f3e9d6',                                  accent: '#b04a18', border: '#6b4f2b' },
+  synthwave: { bg: 'linear-gradient(135deg,#1a0c2e,#f0317d)',  accent: '#00ffe1', border: '#ec407a' },
+  risograph: { bg: '#f3edd9',                                  accent: '#e15a4b', border: '#1a1a1a' },
+  blueprint: { bg: '#0d3b66',                                  accent: '#fcd34d', border: '#f4f8ff' },
+  pastel:    { bg: '#fdf2f8',                                  accent: '#ec4899', border: '#fbcfe8' },
 };
 
 type UrlState = {

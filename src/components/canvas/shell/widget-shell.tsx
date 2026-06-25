@@ -59,15 +59,19 @@ type ShellProps = {
 
 export function WidgetShell(props: ShellProps) {
   const { layout = 'classic' } = props;
-  // panel default 도 같이 normalize → 자식 layout 들이 panel prop 보장.
   const normalized = { panel: 'plain' as WidgetPanel, ...props };
   switch (layout) {
-    case 'banner-top':    return <BannerTopLayout {...normalized} />;
-    case 'banner-bottom': return <BannerBottomLayout {...normalized} />;
-    case 'sidebar':       return <SidebarLayout {...normalized} />;
-    case 'sticker':       return <StickerLayout {...normalized} />;
+    case 'banner-top':       return <BannerTopLayout {...normalized} />;
+    case 'banner-bottom':    return <BannerBottomLayout {...normalized} />;
+    case 'sidebar':          return <SidebarLayout {...normalized} />;
+    case 'sticker':          return <StickerLayout {...normalized} />;
+    case 'hero':             return <HeroLayout {...normalized} />;
+    case 'tabs':             return <TabsLayout {...normalized} />;
+    case 'floating-pills':   return <FloatingPillsLayout {...normalized} />;
+    case 'diagonal':         return <DiagonalLayout {...normalized} />;
+    case 'reverse-sidebar':  return <ReverseSidebarLayout {...normalized} />;
     case 'classic':
-    default:              return <ClassicLayout {...normalized} />;
+    default:                 return <ClassicLayout {...normalized} />;
   }
 }
 
@@ -324,6 +328,58 @@ function PanelMain({
   theme: CanvasTheme;
   children: ReactNode;
 }) {
+  if (panel === 'progress') {
+    // 본문 위 얇은 progress bar (3px) — 가짜 진행률 60%, theme accent 색.
+    return (
+      <div data-canvas-body className="relative min-h-0 flex-1 overflow-y-auto bg-paper">
+        <div
+          aria-hidden
+          className="sticky top-0 z-10"
+          style={{
+            height: 3,
+            width: '100%',
+            background: 'var(--canvas-card-header-divider)',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: '60%',
+              background: 'var(--canvas-accent)',
+              transition: 'width 0.5s',
+            }}
+          />
+        </div>
+        {children}
+      </div>
+    );
+  }
+  if (panel === 'watermark') {
+    // 본문 뒤 큰 watermark 텍스트 (위젯 type 명) — 옅음
+    return (
+      <div
+        data-canvas-body
+        className="relative min-h-0 flex-1 overflow-y-auto bg-paper"
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          style={{
+            fontSize: 88,
+            fontWeight: 900,
+            color: 'var(--canvas-card-mute)',
+            opacity: 0.08,
+            textTransform: 'uppercase',
+            letterSpacing: '-0.04em',
+            fontFamily: 'var(--canvas-card-header-font)',
+          }}
+        >
+          BETA
+        </span>
+        <div className="relative">{children}</div>
+      </div>
+    );
+  }
   if (panel === 'framed') {
     const borderColor =
       theme === 'pop' || theme === 'swiss' ? '#000' : 'var(--canvas-card-border)';
@@ -359,7 +415,98 @@ function PanelFooter({
   content: WidgetContent;
   theme: CanvasTheme;
 }) {
-  if (panel === 'plain' || panel === 'framed') return null;
+  if (panel === 'plain' || panel === 'framed' || panel === 'progress' || panel === 'watermark') return null;
+
+  if (panel === 'tab-footer') {
+    const tabs = ['Settings', 'History', 'Help'];
+    return (
+      <div
+        className="flex shrink-0 items-stretch px-1"
+        style={{
+          height: 44,
+          background: 'var(--canvas-card-bg)',
+          borderTop: '1px solid var(--canvas-card-header-divider)',
+          fontFamily: 'var(--canvas-card-header-font)',
+        }}
+      >
+        {tabs.map((t, i) => (
+          <Button
+            key={t}
+            variant="ghost"
+            size="xs"
+            className="flex-1 !rounded-none"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              color: i === 0 ? 'var(--canvas-card-header-text)' : 'var(--canvas-card-mute)',
+              fontWeight: i === 0 ? 700 : 500,
+              borderTop: i === 0 ? '2px solid var(--canvas-accent)' : 'none',
+              marginTop: i === 0 ? -1 : 0,
+              background: 'transparent',
+            }}
+          >
+            {t}
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
+  if (panel === 'multi-action') {
+    const actions = ['↻ 새로고침', '📋 복사', '⤴ 공유'];
+    return (
+      <div
+        className="flex shrink-0 items-center gap-2 px-3"
+        style={{
+          height: 56,
+          background: 'var(--canvas-card-bg)',
+          borderTop: '1px solid var(--canvas-card-header-divider)',
+          fontFamily: 'var(--canvas-card-header-font)',
+        }}
+      >
+        {actions.map((a) => (
+          <Button
+            key={a}
+            variant="ghost"
+            size="xs"
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1"
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--canvas-card-border)',
+              borderRadius: 6,
+              color: 'var(--canvas-card-header-text)',
+              cursor: 'pointer',
+            }}
+          >
+            {a}
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
+  if (panel === 'notification') {
+    const stripBg = theme === 'pop' ? '#fff7d6' : 'var(--color-warning-bg)';
+    const stripLine = theme === 'pop' ? '#000' : 'var(--color-warning-line)';
+    const stripText = theme === 'pop' ? '#000' : 'var(--color-warning)';
+    return (
+      <div
+        className="flex shrink-0 items-center gap-2 px-4"
+        style={{
+          height: 44,
+          background: stripBg,
+          borderTop: theme === 'pop' ? '3px solid #000' : `1px solid ${stripLine}`,
+          color: stripText,
+          fontFamily: 'var(--canvas-card-header-font)',
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        <span>⚠</span>
+        <span>잠시만요 — 최근 변경 사항 동기화 중입니다.</span>
+      </div>
+    );
+  }
 
   if (panel === 'strip-footer') {
     // 하단 컬러 strip — pop 에선 검은 strip + 흰 글자 (banner 노랑의 contrast).
@@ -885,6 +1032,356 @@ function StickerLayout({
           {content.meta.cost === 0 ? '무료' : `${content.meta.cost} 크레딧`}
         </div>
       )}
+    </div>
+  );
+}
+
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 6 — Hero — 상단 60% 큰 색 hero + 본문 40%
+   ──────────────────────────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 6 — Hero — 상단 60% 큰 색 hero (icon 가운데 + label 크게) + 본문 40%
+   ──────────────────────────────────────────────────────────────────── */
+function HeroLayout({
+  content,
+  theme = 'default',
+  panel = 'plain',
+  dragHandleProps,
+  isCollapsed = false,
+  isSelected = false,
+  onToggleCollapse,
+  onSelect,
+}: ShellProps) {
+  const { ExpandedBody } = content;
+  const isDraggable = !!dragHandleProps?.draggable;
+  const headerClick = makeHeaderClickHandlers({ onSelect, onToggleCollapse });
+  const HERO_H = isCollapsed ? 64 : '60%';
+  const heroBg = theme === 'pop' ? '#ff5c8a' : 'var(--canvas-accent)';
+  const heroText = '#fff';
+
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden" aria-expanded={!isCollapsed} style={cardStyle(isSelected)}>
+      <Ports />
+      <div
+        className={`relative flex shrink-0 flex-col items-center justify-center gap-3 px-6 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        {...dragHandleProps}
+        onClick={headerClick}
+        style={{
+          height: HERO_H,
+          background: heroBg,
+          color: heroText,
+          fontFamily: 'var(--canvas-card-header-font)',
+        }}
+      >
+        <ThemedIcon content={content} theme={theme} />
+        <div className="text-center" style={{ ...labelStyle(), color: heroText, fontSize: 36, lineHeight: 1.05 }}>
+          {content.meta.label}
+        </div>
+        <div className="flex items-center gap-2 text-xs opacity-90">
+          <StatePill content={content} theme={theme} />
+          <span>{content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0} 크레딧`}</span>
+        </div>
+        {onToggleCollapse && (
+          <div className="absolute right-3 top-3">
+            <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
+          </div>
+        )}
+      </div>
+      {!isCollapsed && (
+        <>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 7 — Tabs — 헤더 = 탭 네비 (overview/data/history) + 본문
+   ──────────────────────────────────────────────────────────────────── */
+function TabsLayout({
+  content,
+  theme = 'default',
+  panel = 'plain',
+  dragHandleProps,
+  isCollapsed = false,
+  isSelected = false,
+  onToggleCollapse,
+  onSelect,
+}: ShellProps) {
+  const { ExpandedBody } = content;
+  const isDraggable = !!dragHandleProps?.draggable;
+  const headerClick = makeHeaderClickHandlers({ onSelect, onToggleCollapse });
+  const tabs = [content.meta.label, 'Data', 'History'];
+
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden" aria-expanded={!isCollapsed} style={cardStyle(isSelected)}>
+      <Ports />
+      <div
+        className={`flex shrink-0 items-stretch gap-0 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        {...dragHandleProps}
+        onClick={headerClick}
+        style={{
+          height: 48,
+          background: 'var(--canvas-card-header-bg)',
+          fontFamily: 'var(--canvas-card-header-font)',
+          borderBottom: isCollapsed ? 'none' : '1px solid var(--canvas-card-header-divider)',
+        }}
+      >
+        {tabs.map((t, i) => (
+          <div
+            key={t}
+            className="flex items-center px-4 text-sm"
+            style={{
+              fontWeight: i === 0 ? 700 : 500,
+              color: i === 0 ? 'var(--canvas-card-header-text)' : 'var(--canvas-card-mute)',
+              borderBottom: i === 0 ? '2px solid var(--canvas-accent)' : 'none',
+              marginBottom: i === 0 ? -1 : 0,
+              ...labelStyle(),
+            }}
+          >
+            {i === 0 ? t : t}
+          </div>
+        ))}
+        <span className="ml-auto flex items-center gap-2 pr-3">
+          <StatePill content={content} theme={theme} />
+          {onToggleCollapse && (
+            <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
+          )}
+        </span>
+      </div>
+      {!isCollapsed && (
+        <>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 8 — FloatingPills — 메타가 본문 위 떠 있는 칩 (헤더 chrome 거의 없음)
+   ──────────────────────────────────────────────────────────────────── */
+function FloatingPillsLayout({
+  content,
+  theme = 'default',
+  panel = 'plain',
+  dragHandleProps,
+  isCollapsed = false,
+  isSelected = false,
+  onToggleCollapse,
+  onSelect,
+}: ShellProps) {
+  const { ExpandedBody } = content;
+  const isDraggable = !!dragHandleProps?.draggable;
+  const headerClick = makeHeaderClickHandlers({ onSelect, onToggleCollapse });
+  const pillBg = theme === 'pop' ? '#ffd53d' : 'var(--canvas-card-header-bg)';
+  const pillBorder = theme === 'pop' ? '2px solid #000' : '1px solid var(--canvas-card-border)';
+  const pillShadow = theme === 'pop' ? '2px 2px 0 #000' : 'var(--canvas-card-shadow)';
+
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden" aria-expanded={!isCollapsed} style={cardStyle(isSelected)}>
+      <Ports />
+      {/* drag area — 위쪽 thin grip */}
+      <div
+        className={`absolute left-0 right-0 top-0 z-20 h-12 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        {...dragHandleProps}
+        onClick={headerClick}
+        aria-label="drag handle"
+      />
+      {/* floating pills — label, state, cost */}
+      <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
+        <span
+          className="pointer-events-auto px-3 py-1 text-md"
+          style={{
+            background: pillBg,
+            color: 'var(--canvas-card-header-text)',
+            border: pillBorder,
+            borderRadius: 999,
+            boxShadow: pillShadow,
+            fontFamily: 'var(--canvas-card-header-font)',
+            ...labelStyle(),
+          }}
+        >
+          {content.meta.label}
+        </span>
+        <span
+          className="pointer-events-auto inline-flex items-center px-2.5 py-1 text-xs"
+          style={{
+            background: pillBg,
+            border: pillBorder,
+            borderRadius: 999,
+            boxShadow: pillShadow,
+            fontFamily: 'var(--canvas-card-header-font)',
+          }}
+        >
+          <StatePill content={content} theme={theme} />
+        </span>
+        <span
+          className="pointer-events-auto px-2.5 py-1 text-xs"
+          style={{
+            background: pillBg,
+            color: 'var(--canvas-card-mute)',
+            border: pillBorder,
+            borderRadius: 999,
+            boxShadow: pillShadow,
+            fontFamily: 'var(--canvas-card-header-font)',
+          }}
+        >
+          {content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0} 크레딧`}
+        </span>
+      </div>
+      {onToggleCollapse && (
+        <div className="absolute right-3 top-3 z-20">
+          <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
+        </div>
+      )}
+      {!isCollapsed && (
+        <div className="flex flex-1 flex-col" style={{ paddingTop: 56 }}>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 9 — Diagonal — 헤더가 사선 컷 (clip-path) + 본문
+   ──────────────────────────────────────────────────────────────────── */
+function DiagonalLayout({
+  content,
+  theme = 'default',
+  panel = 'plain',
+  dragHandleProps,
+  isCollapsed = false,
+  isSelected = false,
+  onToggleCollapse,
+  onSelect,
+}: ShellProps) {
+  const { ExpandedBody } = content;
+  const isDraggable = !!dragHandleProps?.draggable;
+  const headerClick = makeHeaderClickHandlers({ onSelect, onToggleCollapse });
+  const heroBg = theme === 'pop' ? '#ffd53d' : 'var(--canvas-card-header-bg)';
+
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden" aria-expanded={!isCollapsed} style={cardStyle(isSelected)}>
+      <Ports />
+      {/* diagonal hero — 100% 너비, clip-path 로 우하단 사선 */}
+      <div
+        className={`relative shrink-0 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        {...dragHandleProps}
+        onClick={headerClick}
+        style={{
+          height: isCollapsed ? 64 : 120,
+          background: heroBg,
+          color: 'var(--canvas-card-header-text)',
+          fontFamily: 'var(--canvas-card-header-font)',
+          clipPath: isCollapsed ? 'none' : 'polygon(0 0, 100% 0, 100% 78%, 0 100%)',
+          paddingBottom: 24,
+        }}
+      >
+        <div className="flex h-full items-center gap-3 px-5">
+          <ThemedIcon content={content} theme={theme} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xl" style={labelStyle()}>{content.meta.label}</div>
+            <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: 'var(--canvas-card-mute)' }}>
+              <StatePill content={content} theme={theme} />
+              <span>{content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0} 크레딧`}</span>
+            </div>
+          </div>
+          {onToggleCollapse && (
+            <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
+          )}
+        </div>
+      </div>
+      {!isCollapsed && (
+        <>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Layout 10 — ReverseSidebar — 좌측 본문 + 우측 80px 세로 strip (mirror)
+   ──────────────────────────────────────────────────────────────────── */
+function ReverseSidebarLayout({
+  content,
+  theme = 'default',
+  panel = 'plain',
+  index = 1,
+  dragHandleProps,
+  isCollapsed = false,
+  isSelected = false,
+  onToggleCollapse,
+  onSelect,
+}: ShellProps) {
+  const { ExpandedBody } = content;
+  const isDraggable = !!dragHandleProps?.draggable;
+  const headerClick = makeHeaderClickHandlers({ onSelect, onToggleCollapse });
+  const SIDEBAR_W = 80;
+  const stripBg = theme === 'pop' ? '#ffd53d' : theme === 'sketch' ? '#fff7d6' : 'var(--canvas-card-header-bg)';
+  const stripText = theme === 'pop' || theme === 'sketch' ? '#000' : 'var(--canvas-card-header-text)';
+
+  return (
+    <div className="relative flex h-full overflow-hidden" aria-expanded={!isCollapsed} style={cardStyle(isSelected)}>
+      <Ports />
+      {/* 좌측 영역 — 헤더 + 본문 */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={`flex shrink-0 items-center gap-2 px-4 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          {...dragHandleProps}
+          onClick={headerClick}
+          style={{
+            height: 48,
+            background: 'var(--canvas-card-bg)',
+            color: 'var(--canvas-card-header-text)',
+            fontFamily: 'var(--canvas-card-header-font)',
+            borderBottom: isCollapsed ? 'none' : '1px solid var(--canvas-card-header-divider)',
+          }}
+        >
+          {onToggleCollapse && (
+            <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
+          )}
+          <StatePill content={content} theme={theme} />
+          <div className="min-w-0 flex-1 truncate text-md" style={labelStyle()}>{content.meta.label}</div>
+        </div>
+        {!isCollapsed && (
+          <>
+            <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+            <PanelFooter panel={panel} content={content} theme={theme} />
+          </>
+        )}
+      </div>
+      {/* 우측 strip — sidebar 의 mirror */}
+      <div
+        className="flex shrink-0 flex-col items-center justify-between py-4"
+        style={{
+          width: SIDEBAR_W,
+          background: stripBg,
+          borderLeft: theme === 'pop' || theme === 'swiss' ? '3px solid #000' : '1px solid var(--canvas-card-header-divider)',
+          color: stripText,
+          fontFamily: 'var(--canvas-card-header-font)',
+        }}
+      >
+        <div className="text-xs font-semibold" style={{ color: stripText }}>
+          {content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0}`}
+        </div>
+        <div
+          className="flex-1 flex items-center justify-center text-xs uppercase tracking-widest"
+          style={{ writingMode: 'vertical-rl', color: stripText, opacity: 0.7 }}
+        >
+          {theme === 'swiss' ? `${String(index).padStart(2, '0')} · ${content.state}` : content.state}
+        </div>
+        <ThemedIcon content={content} theme={theme} />
+      </div>
     </div>
   );
 }
