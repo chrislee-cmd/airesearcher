@@ -136,17 +136,54 @@ export async function POST(request: Request) {
     // Stamp org_id at creation so the dashboard's recruiting count
     // attributes new forms to the user's active org. Older rows can
     // remain null — they show up under "unfiled" until backfilled.
-    const org = await getActiveOrg();
-    await admin.from('recruiting_forms').upsert({
+    // getActiveOrg() reads cookies + DB; a transient failure here used
+    // to bubble up and trash a successful Google publish, so we tolerate
+    // it and persist with org_id=null.
+    let activeOrgId: string | null = null;
+    try {
+      const org = await getActiveOrg();
+      activeOrgId = org?.org_id ?? null;
+    } catch (orgErr) {
+      console.error('forms_create_active_org_failed', orgErr);
+    }
+    // Two-stage persist: prefer the full row (with sheet_url/sheet_id
+    // from migration 20260624032912). When those columns aren't yet
+    // applied in this environment, Postgres throws 42703; we fall back
+    // to the legacy column set so the published form still lands in
+    // recruiting_forms and shows up in the list. Without this fallback
+    // the Google Form would be created but invisible to the widget,
+    // which the user sees as a stuck "발행중" round-trip.
+    const baseRow = {
       form_id: result.formId,
       user_id: user.id,
-      org_id: org?.org_id ?? null,
+      org_id: activeOrgId,
       title: survey.title || '',
       responder_uri: result.responderUri,
       edit_uri: result.editUri,
-      sheet_url: sheetUrl,
-      sheet_id: sheetId,
-    });
+    };
+    const upsert = await admin
+      .from('recruiting_forms')
+      .upsert({ ...baseRow, sheet_url: sheetUrl, sheet_id: sheetId });
+    if (upsert.error) {
+      // Postgres native column-not-found is 42703, but supabase-js routes
+      // through PostgREST which catches it at the schema-cache layer and
+      // surfaces PGRST204 with a "Could not find the 'X' column" message
+      // (observed in prod when migration 20260624032912 hadn't landed).
+      // Match either code, narrowed to the sheet columns by message so we
+      // don't swallow unrelated PGRST204s.
+      const errMsg = upsert.error.message ?? '';
+      const isMissingSheetColumn =
+        upsert.error.code === '42703' ||
+        (upsert.error.code === 'PGRST204' && /sheet_(url|id)/.test(errMsg));
+      if (isMissingSheetColumn) {
+        const retry = await admin.from('recruiting_forms').upsert(baseRow);
+        if (retry.error) {
+          console.error('forms_create_persist_failed', retry.error);
+        }
+      } else {
+        console.error('forms_create_persist_failed', upsert.error);
+      }
+    }
     return NextResponse.json({ ...result, sheetUrl });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'forms_create_failed';

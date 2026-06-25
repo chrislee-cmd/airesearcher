@@ -20,7 +20,7 @@
        the share-scoped Google start URL.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +34,11 @@ export type RecruitingForm = {
 };
 
 const POLL_INTERVAL_MS = 30 * 1000;
+// When forms/list keeps failing (e.g. prod migration not yet applied),
+// back the polling cadence way off after a few attempts so console + Vercel
+// logs aren't carpeted with one 500 every 30 s per open canvas widget.
+const POLL_INTERVAL_BACKOFF_MS = 5 * 60 * 1000;
+const POLL_FAILURE_THRESHOLD = 3;
 
 function formatTime(iso: string): string {
   if (!iso) return '';
@@ -58,17 +63,26 @@ export function useRecruitingForms({ enabled, publishVersion }: UseRecruitingFor
   const [loading, setLoading] = useState(false);
   const [linking, setLinking] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  // Track consecutive refetch failures so the interval poll can back off
+  // when the backend is sustained-failing. ref (not state) so the bump
+  // doesn't trigger a re-render or invalidate the setInterval closure.
+  const failureCountRef = useRef(0);
 
   const refetch = useCallback(async () => {
     if (!enabled) return;
     setLoading(true);
     try {
       const res = await fetch('/api/recruiting/google/forms/list');
-      if (!res.ok) return;
+      if (!res.ok) {
+        failureCountRef.current += 1;
+        return;
+      }
       const json = (await res.json()) as { forms?: RecruitingForm[] };
       setForms(json.forms ?? []);
+      failureCountRef.current = 0;
     } catch {
       // network blips are silent — keep the previous list visible.
+      failureCountRef.current += 1;
     } finally {
       setLoading(false);
     }
@@ -81,10 +95,24 @@ export function useRecruitingForms({ enabled, publishVersion }: UseRecruitingFor
 
   useEffect(() => {
     if (!enabled) return;
-    const id = window.setInterval(() => {
-      void refetch();
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    let timerId: number | undefined;
+    function schedule() {
+      const delay =
+        failureCountRef.current >= POLL_FAILURE_THRESHOLD
+          ? POLL_INTERVAL_BACKOFF_MS
+          : POLL_INTERVAL_MS;
+      timerId = window.setTimeout(async () => {
+        if (cancelled) return;
+        await refetch();
+        if (!cancelled) schedule();
+      }, delay);
+    }
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timerId !== undefined) window.clearTimeout(timerId);
+    };
   }, [enabled, refetch]);
 
   const linkSheet = useCallback(async (formId: string) => {
