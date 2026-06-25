@@ -444,16 +444,37 @@ export function useRealtimeTranscription(opts?: {
             }
             const src = ctx.createMediaStreamSource(captureStream);
             const dst = ctx.createMediaStreamDestination();
+            // Force mono — getDisplayMedia 는 channelCount hint 를 무시하고
+            // stereo 트랙을 만든다. MediaStreamDestination 의 channelCount 를
+            // 1 로 명시하면 'speakers' interpretation 에 따라 src 의 L+R 이
+            // 자동 다운믹스. OpenAI Realtime transcription 이 stereo 를
+            // mono 로 silently 처리하지 못해서 dc 를 즉시 닫는 회귀의
+            // 주요 가설.
+            try {
+              dst.channelCount = 1;
+              dst.channelCountMode = 'explicit';
+              dst.channelInterpretation = 'speakers';
+            } catch (err) {
+              console.warn('[probing] dst channelCount=1 unsupported', err);
+            }
             src.connect(dst);
             publishStream = dst.stream;
             const pubTrack = publishStream.getAudioTracks()[0];
+            // captureStream (raw tab) 트랙 상태도 함께 — 입력 자체가 muted
+            // 면 resample graph 가 silence 만 출력한다.
+            const capTrack = captureStream.getAudioTracks()[0];
             console.info('[probing] tab resample graph wired', {
               ctxState: ctx.state,
               ctxSampleRate: ctx.sampleRate,
               publishTracks: publishStream.getAudioTracks().length,
               publishTrackEnabled: pubTrack?.enabled,
+              publishTrackMuted: pubTrack?.muted,
               publishTrackReadyState: pubTrack?.readyState,
               publishTrackSettings: pubTrack?.getSettings(),
+              captureTrackEnabled: capTrack?.enabled,
+              captureTrackMuted: capTrack?.muted,
+              captureTrackReadyState: capTrack?.readyState,
+              captureTrackSettings: capTrack?.getSettings(),
             });
           } catch (err) {
             console.warn('[probing] tab resample failed, passing raw stream', err);
@@ -542,11 +563,18 @@ export function useRealtimeTranscription(opts?: {
       const dc = pc.createDataChannel('oai-events');
       dcRef.current = dc;
       dc.onopen = () => console.info('[probing] dc open');
-      dc.onclose = () => console.info('[probing] dc close');
+      dc.onclose = () => {
+        console.info('[probing] dc close', {
+          pcConnection: pc.connectionState,
+          pcIce: pc.iceConnectionState,
+          pcSignaling: pc.signalingState,
+        });
+      };
       // 진단성: 첫 OAI 이벤트가 도착하는지, 어떤 type 들이 들어오는지 보기 위해
       // 알려지지 않은 type 은 첫 5개까지 콘솔에 dump. session.created /
       // session.updated / input_audio_buffer.* 등이 보여야 audio in 이
-      // 실제로 OpenAI 까지 도달했다는 신호.
+      // 실제로 OpenAI 까지 도달했다는 신호. 길이 cap 늘려서 session.created 의
+      // 전체 audio.input 설정도 볼 수 있게.
       let unknownLogged = 0;
       dc.onmessage = (ev) => {
         const raw = String(ev.data);
@@ -559,7 +587,7 @@ export function useRealtimeTranscription(opts?: {
               type !== 'conversation.item.input_audio_transcription.completed'
             ) {
               unknownLogged += 1;
-              console.info('[probing] oai event', { type, raw: raw.slice(0, 200) });
+              console.info('[probing] oai event', { type, raw: raw.slice(0, 1500) });
             }
           } catch {
             /* not JSON */
