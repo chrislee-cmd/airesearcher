@@ -87,9 +87,14 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const TAB_SILENCE_INTERVAL_MS = 3000;
 const TAB_SILENCE_DURATION_MS = 400;
 
-// Chrome 의 getDisplayMedia 가 무시하는 sampleRate 힌트를 강제하기 위한 목표 rate.
-// OpenAI Realtime transcription 의 canonical PCM rate.
-const TAB_TARGET_SAMPLE_RATE = 24000;
+// WebAudio "lift" 그래프의 sample rate — Chrome 시스템 기본값 (48 kHz) 과
+// 일치시켜 WebRTC Opus 가 추가 resample 없이 인코딩하게 한다. 24 kHz 로
+// 명시하면 mic 모드는 정상이지만 transcription endpoint 에서 tab 모드만
+// session.created 직후 dc close 되는 회귀가 관측됨 (mic 은 native 48 kHz
+// 로 들어와 mismatch 없음). translate-console 도 24 kHz 를 쓰지만 endpoint
+// (`/v1/realtime/translations/calls`) 가 mismatch 에 더 관대.
+// `undefined` 를 넘기면 Chrome 이 시스템 기본 (보통 48 kHz) 을 채택.
+const TAB_AUDIO_SAMPLE_RATE: number | undefined = undefined;
 
 type OaiEvent = {
   type?: string;
@@ -423,7 +428,14 @@ export function useRealtimeTranscription(opts?: {
             const w = window as WebkitWindow;
             const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
             if (!AudioCtx) throw new Error('no AudioContext');
-            const ctx = new AudioCtx({ sampleRate: TAB_TARGET_SAMPLE_RATE });
+            // sampleRate 미지정 → Chrome 시스템 기본값 (보통 48 kHz, WebRTC
+            // Opus 와 정렬). 명시적 24 kHz 는 mic 모드와 달리 tab 모드에서만
+            // transcription endpoint 가 dc 를 즉시 닫는 회귀의 주요 의심점.
+            const ctxOpts: AudioContextOptions = {};
+            if (TAB_AUDIO_SAMPLE_RATE !== undefined) {
+              ctxOpts.sampleRate = TAB_AUDIO_SAMPLE_RATE;
+            }
+            const ctx = new AudioCtx(ctxOpts);
             tabResampleCtxRef.current = ctx;
             console.info('[probing] tab resample ctx created', {
               state: ctx.state,
@@ -444,20 +456,25 @@ export function useRealtimeTranscription(opts?: {
             }
             const src = ctx.createMediaStreamSource(captureStream);
             const dst = ctx.createMediaStreamDestination();
-            // Force mono — getDisplayMedia 는 channelCount hint 를 무시하고
-            // stereo 트랙을 만든다. MediaStreamDestination 의 channelCount 를
-            // 1 로 명시하면 'speakers' interpretation 에 따라 src 의 L+R 이
-            // 자동 다운믹스. OpenAI Realtime transcription 이 stereo 를
-            // mono 로 silently 처리하지 못해서 dc 를 즉시 닫는 회귀의
-            // 주요 가설.
-            try {
-              dst.channelCount = 1;
-              dst.channelCountMode = 'explicit';
-              dst.channelInterpretation = 'speakers';
-            } catch (err) {
-              console.warn('[probing] dst channelCount=1 unsupported', err);
-            }
-            src.connect(dst);
+            // 명시적 stereo → mono 다운믹스. MediaStreamDestination 의
+            // channelCount setter 는 Chrome 에서 무시되므로 (publishTrack
+            // settings 가 channelCount: 2 로 그대로 남음), splitter + 0.5 gain
+            // + merger 로 노드 그래프를 직접 짠다. OpenAI Realtime
+            // transcription 은 mono PCM 을 기대 — translate-console 의
+            // translation endpoint 는 stereo 에 더 관대해서 PR #396 패턴이
+            // mono 강제 없이도 동작했지만 transcription 에서는 별도 처리.
+            const splitter = ctx.createChannelSplitter(2);
+            const merger = ctx.createChannelMerger(1);
+            const gainL = ctx.createGain();
+            const gainR = ctx.createGain();
+            gainL.gain.value = 0.5;
+            gainR.gain.value = 0.5;
+            src.connect(splitter);
+            splitter.connect(gainL, 0);
+            splitter.connect(gainR, 1);
+            gainL.connect(merger, 0, 0);
+            gainR.connect(merger, 0, 0);
+            merger.connect(dst);
             publishStream = dst.stream;
             const pubTrack = publishStream.getAudioTracks()[0];
             // captureStream (raw tab) 트랙 상태도 함께 — 입력 자체가 muted
