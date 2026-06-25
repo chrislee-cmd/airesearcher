@@ -34,6 +34,7 @@ import {
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import {
@@ -41,6 +42,11 @@ import {
   type ProbingTechnique,
 } from '@/lib/probing-prompts';
 import { ProbingHistoryModal } from '@/components/canvas/modals/probing-history-modal';
+import {
+  GUIDE_MAX_CHARS,
+  getStoredGuide,
+  saveGuide,
+} from '@/lib/probing-guide-storage';
 import type {
   ProbingQuestion,
   ProbingSuggestionSet,
@@ -48,6 +54,8 @@ import type {
 
 // transcript window — 최근 90초. probing prompt 가 받는 양과 동일.
 const PROBING_WINDOW_MS = 90_000;
+// 가이드 textarea localStorage 저장 debounce.
+const GUIDE_SAVE_DEBOUNCE_MS = 500;
 // 자동 호출 간격. 5초 — 빠른 피드백 위해 단축. in-flight 가드 (inFlightRef)
 // 가 중복 호출 방지하므로 LLM latency > 5s 여도 안전.
 const AUTO_INTERVAL_MS = 5_000;
@@ -128,6 +136,64 @@ function SourcePicker({
   );
 }
 
+// 가이드 collapsible — chevron + "가이드 추가" / "가이드 (N자)" 라벨.
+// 펼친 상태에서 Textarea primitive 노출. max-h + overflow-y-auto 로 위젯
+// height 800px 안에서 자연스럽게 (3~5줄 정도).
+function GuideSection({
+  value,
+  onChange,
+  open,
+  onToggle,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const count = value.length;
+  const label = count === 0 ? '가이드 추가' : `가이드 (${count.toLocaleString()}자)`;
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="link"
+        size="xs"
+        onClick={onToggle}
+        aria-expanded={open}
+        leftIcon={
+          <svg
+            viewBox="0 0 24 24"
+            width="10"
+            height="10"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className={`transition-transform duration-[120ms] ${open ? 'rotate-90' : ''}`}
+          >
+            <polyline points="9 6 15 12 9 18" />
+          </svg>
+        }
+        className="self-start uppercase tracking-[0.18em]"
+      >
+        {label}
+      </Button>
+      {open && (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value.slice(0, GUIDE_MAX_CHARS))}
+          rows={4}
+          maxLength={GUIDE_MAX_CHARS}
+          placeholder="조사 목적 / 핵심 가설 / 질문 의도 등을 자유롭게 입력하세요. 비워두면 transcript 만 보고 제안합니다."
+          helper={`${count.toLocaleString()} / ${GUIDE_MAX_CHARS.toLocaleString()}자`}
+          className="max-h-32 text-md resize-none"
+        />
+      )}
+    </div>
+  );
+}
+
 function ExpandedBody() {
   const toast = useToast();
   const now = useNowTick();
@@ -143,6 +209,24 @@ function ExpandedBody() {
 
   // source picker — mic / tab. 세션 시작 시 hook 의 start({ source }) 로 전달.
   const [source, setSource] = useState<SourceKind>('mic');
+
+  // 가이드 textarea — 사용자가 자유롭게 쓰는 한 덩어리. localStorage 영속화.
+  // mount 시 1회 read, change 시 500ms debounce 로 save.
+  const [guide, setGuide] = useState('');
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time localStorage hydration; useState(() => getStoredGuide()) would cause SSR/client mismatch when localStorage has content.
+    setGuide(getStoredGuide());
+  }, []);
+  useEffect(() => {
+    const id = setTimeout(() => saveGuide(guide), GUIDE_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [guide]);
+  // suggest 콜백이 stale closure 없이 최신 guide 를 보도록 ref 동기화.
+  const guideRef = useRef(guide);
+  useEffect(() => {
+    guideRef.current = guide;
+  }, [guide]);
 
   const isLive = sessionStatus === 'live';
 
@@ -209,7 +293,7 @@ function ExpandedBody() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           transcript_window: text,
-          interview_guide: '',
+          interview_guide: guideRef.current,
           max_questions: 3,
         }),
       });
@@ -458,6 +542,16 @@ function ExpandedBody() {
               지금 제안
             </Button>
           </div>
+
+          {/* 가이드 — 사용자가 적어두는 free-form 컨텍스트. 비어 있으면
+              backend 가 무시, 채워두면 prompt 에 [인터뷰 가이드 / RQ] 블록
+              으로 전달. localStorage 영속화 (key: probing-guide-v1). */}
+          <GuideSection
+            value={guide}
+            onChange={setGuide}
+            open={guideOpen}
+            onToggle={() => setGuideOpen((o) => !o)}
+          />
         </div>
 
         {/* 중간 — 제안 카드 + transcript 미리보기. flex-1 로 산출물을
