@@ -38,9 +38,10 @@ export const autocontentsCard: WidgetContent = {
     accent: 'lav',
     cost: 0,
     description: '콘텐츠 자동 생성 도구 — 마이그 진행 중',
-    expandedCols: 2,
-    // AC1 (#405) 의 multi-row 인프라 활용 — 3행 높이로 보고서/토픽/본문/
-    // 미리보기/이미지 패널이 한 화면에 들어가게.
+    // 다른 위젯과 동일한 표준 3-셀 너비.
+    expandedCols: 3,
+    // AC1 (#405) 의 multi-row 인프라 활용 — 위젯 3개 stack 합친 높이 (2496px)
+    // 로 보고서/토픽/본문/미리보기/이미지 패널이 한 화면에 들어가게.
     expandedRows: 3,
   },
   state: 'idle',
