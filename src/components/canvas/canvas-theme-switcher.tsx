@@ -3,18 +3,18 @@
 /* ────────────────────────────────────────────────────────────────────
    CanvasThemeSwitcher — 좌상단 floating pill. /canvas 한정.
 
-   - 6개 theme chip 한 줄 (default / cyber / glass / swiss / sketch / pop).
-   - 클릭 = theme 변경 + URL ?theme=<key> 동기화 (replaceState — 새로고침
-     시에도 마지막 선택 유지).
-   - chip 자체 미니 swatch — 각 theme 의 chrome / accent 색을 작은 dot
-     으로 표시 (한눈 비교).
+   - 1행: theme chip 6개 (default / cyber / glass / swiss / sketch / pop)
+     각 chip 미니 swatch (chrome + accent).
+   - 2행: 현재 theme 의 font variant 5개 (각 폰트로 라벨 자체가 렌더 —
+     한 눈에 비교 가능).
+   - 클릭 = state 변경 + URL ?theme=...&font=... 동기화 (replaceState).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { CANVAS_THEMES, type CanvasTheme } from '@/lib/canvas/themes';
+import { CANVAS_THEMES, getThemeMeta, type CanvasTheme } from '@/lib/canvas/themes';
 
-// chip 미니 swatch — chrome / accent 색을 inline 표시 (한눈 비교).
+// chip 미니 swatch — chrome / accent 색을 inline 표시.
 const SWATCH: Record<CanvasTheme, { bg: string; accent: string; border: string }> = {
   default: { bg: '#FFFFFF',                                   accent: '#2EAADC', border: 'rgba(55,53,47,0.15)' },
   cyber:   { bg: '#0a0a12',                                   accent: '#00e0ff', border: '#2a2a3e' },
@@ -24,32 +24,55 @@ const SWATCH: Record<CanvasTheme, { bg: string; accent: string; border: string }
   pop:     { bg: '#ffd53d',                                   accent: '#ff5c8a', border: '#000000' },
 };
 
+function syncUrl(theme: CanvasTheme, fontKey: string, fontIsDefault: boolean) {
+  try {
+    const url = new URL(window.location.href);
+    if (theme === 'default') url.searchParams.delete('theme');
+    else url.searchParams.set('theme', theme);
+    if (fontIsDefault) url.searchParams.delete('font');
+    else url.searchParams.set('font', fontKey);
+    window.history.replaceState({}, '', url.toString());
+  } catch {
+    /* ignore (private mode / no history) */
+  }
+}
+
 export function CanvasThemeSwitcher({
   theme,
-  onChange,
+  fontKey,
+  onChangeTheme,
+  onChangeFont,
 }: {
   theme: CanvasTheme;
-  onChange: (next: CanvasTheme) => void;
+  fontKey: string;
+  onChangeTheme: (next: CanvasTheme) => void;
+  onChangeFont: (next: string) => void;
 }) {
-  const handle = useCallback(
+  const handleTheme = useCallback(
     (next: CanvasTheme) => {
-      onChange(next);
-      try {
-        const url = new URL(window.location.href);
-        if (next === 'default') url.searchParams.delete('theme');
-        else url.searchParams.set('theme', next);
-        window.history.replaceState({}, '', url.toString());
-      } catch {
-        /* ignore (private mode / no history) */
-      }
+      onChangeTheme(next);
+      // theme 변경 시 board 도 font 를 첫 번째로 reset (canvas-board setTheme).
+      const defaultFont = getThemeMeta(next).fonts[0].key;
+      syncUrl(next, defaultFont, true);
     },
-    [onChange],
+    [onChangeTheme],
   );
+
+  const handleFont = useCallback(
+    (next: string) => {
+      onChangeFont(next);
+      const isDefault = getThemeMeta(theme).fonts[0].key === next;
+      syncUrl(theme, next, isDefault);
+    },
+    [onChangeFont, theme],
+  );
+
+  const themeMeta = getThemeMeta(theme);
 
   return (
     <div className="pointer-events-none absolute left-6 top-6 z-fab">
       <div
-        className="pointer-events-auto flex items-center gap-1 px-1.5 py-1.5"
+        className="pointer-events-auto flex flex-col gap-1.5 px-1.5 py-1.5"
         style={{
           background: 'var(--canvas-chrome-bg)',
           border: '1px solid var(--canvas-chrome-border)',
@@ -59,47 +82,87 @@ export function CanvasThemeSwitcher({
           WebkitBackdropFilter: 'var(--canvas-backdrop)' as unknown as string,
         }}
       >
-        {CANVAS_THEMES.map((t) => {
-          const active = t.key === theme;
-          const sw = SWATCH[t.key];
-          return (
-            <Button
-              key={t.key}
-              variant="ghost"
-              size="xs"
-              onClick={() => handle(t.key)}
-              title={t.hint}
-              className="!px-2"
-              style={{
-                color: 'var(--canvas-chrome-text)',
-                fontWeight: active ? 700 : 500,
-                outline: active
-                  ? '1.5px solid var(--canvas-selection-border)'
-                  : 'none',
-                outlineOffset: '1px',
-              }}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden
-                  className="inline-block h-3.5 w-3.5 rounded-full"
-                  style={{
-                    background: sw.bg,
-                    border: `1px solid ${sw.border}`,
-                    boxShadow: `inset -3px -3px 0 ${sw.accent}`,
-                  }}
-                />
-                {t.label}
-              </span>
-            </Button>
-          );
-        })}
+        {/* row 1 — theme chips */}
+        <div className="flex items-center gap-1">
+          {CANVAS_THEMES.map((t) => {
+            const active = t.key === theme;
+            const sw = SWATCH[t.key];
+            return (
+              <Button
+                key={t.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handleTheme(t.key)}
+                title={t.hint}
+                className="!px-2"
+                style={{
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className="inline-block h-3.5 w-3.5 rounded-full"
+                    style={{
+                      background: sw.bg,
+                      border: `1px solid ${sw.border}`,
+                      boxShadow: `inset -3px -3px 0 ${sw.accent}`,
+                    }}
+                  />
+                  {t.label}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* row 2 — font chips (현재 theme 의 5개 variant) — 라벨이 그 폰트로 렌더 */}
+        <div
+          className="flex items-center gap-1 border-t pt-1.5"
+          style={{ borderColor: 'var(--canvas-chrome-border)' }}
+        >
+          <span
+            className="px-1 text-xs tracking-[0.08em] uppercase"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            Font
+          </span>
+          {themeMeta.fonts.map((f) => {
+            const active = f.key === fontKey;
+            return (
+              <Button
+                key={f.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handleFont(f.key)}
+                title={f.label}
+                className="!px-2"
+                style={{
+                  fontFamily: f.family,
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                {f.label}
+              </Button>
+            );
+          })}
+        </div>
       </div>
       <div
-        className="mt-2 max-w-[280px] text-xs"
+        className="mt-2 max-w-[480px] text-xs"
         style={{ color: 'var(--canvas-card-mute)' }}
       >
-        {CANVAS_THEMES.find((t) => t.key === theme)?.hint}
+        {themeMeta.hint}
       </div>
     </div>
   );

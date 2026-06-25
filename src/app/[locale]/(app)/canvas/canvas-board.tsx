@@ -31,7 +31,12 @@ import { CanvasToolbar } from '@/components/canvas/canvas-toolbar';
 import { CanvasMinimap } from '@/components/canvas/canvas-minimap';
 import { CanvasThemeSwitcher } from '@/components/canvas/canvas-theme-switcher';
 import type { WidgetContent } from '@/components/canvas/widget-types';
-import { type CanvasTheme } from '@/lib/canvas/themes';
+import {
+  asFontKey,
+  getThemeMeta,
+  resolveFont,
+  type CanvasTheme,
+} from '@/lib/canvas/themes';
 import {
   CANVAS_W,
   CANVAS_H,
@@ -83,14 +88,28 @@ function heightOf(s: WidgetState): number {
 export function CanvasBoard({
   widgets,
   initialTheme = 'default',
+  initialFontKey,
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
   initialTheme?: CanvasTheme;
+  initialFontKey?: string;
 }) {
   const [graph, setGraph] = useState<GraphState>(() => defaultStateFor(widgets));
   const [selected, setSelected] = useState<string | null>(null);
-  const [theme, setTheme] = useState<CanvasTheme>(initialTheme);
+  const [theme, setThemeRaw] = useState<CanvasTheme>(initialTheme);
+  const [fontKey, setFontKey] = useState<string>(
+    () => asFontKey(initialTheme, initialFontKey),
+  );
+
+  // theme 변경 시 font 도 그 theme 의 default(첫번째) 로 reset.
+  // 사용자가 명시적으로 같은 theme 안에서 font 만 바꿀 땐 setFontKey 직접 호출.
+  const setTheme = useCallback((next: CanvasTheme) => {
+    setThemeRaw(next);
+    setFontKey(getThemeMeta(next).fonts[0].key);
+  }, []);
+
+  const activeFont = useMemo(() => resolveFont(theme, fontKey), [theme, fontKey]);
 
   // hydrate from localStorage
   useEffect(() => {
@@ -451,7 +470,12 @@ export function CanvasBoard({
       ref={containerRef}
       data-canvas-theme={theme}
       className="relative h-[calc(100vh-3rem)] overflow-hidden"
-      style={{ background: 'var(--canvas-bg)' }}
+      style={{
+        background: 'var(--canvas-bg)',
+        // 활성 font 를 헤더 폰트 variable 에 주입 — 자식 WidgetShell /
+        // Toolbar / Switcher 가 모두 var(--canvas-card-header-font) 사용.
+        ['--canvas-card-header-font' as never]: activeFont.family,
+      }}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
@@ -482,7 +506,7 @@ export function CanvasBoard({
           visibleKeys={visibleKeys}
         />
         {/* widgets */}
-        {widgets.map((w) => {
+        {widgets.map((w, idx) => {
           const s = graph[w.key];
           if (!s) return null;
           const h = heightOf(s);
@@ -503,6 +527,8 @@ export function CanvasBoard({
               <WidgetShell
                 content={w}
                 dashboardMode
+                theme={theme}
+                index={idx + 1}
                 isCollapsed={s.collapsed}
                 isSelected={selected === w.key}
                 onSelect={() => setSelected(w.key)}
@@ -519,7 +545,7 @@ export function CanvasBoard({
         })}
       </div>
 
-      {/* edge live 애니메이션 — global keyframe (CSS-in-JS 회피, 한 번만 inject). */}
+      {/* edge live + cyber LED 애니메이션 — global keyframe (한 번만 inject). */}
       <style jsx global>{`
         @keyframes canvasEdgeFlow {
           to {
@@ -529,9 +555,18 @@ export function CanvasBoard({
         .canvas-edge-live {
           animation: canvasEdgeFlow 1.4s linear infinite;
         }
+        @keyframes cyberLedPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.55; transform: scale(1.2); }
+        }
       `}</style>
 
-      <CanvasThemeSwitcher theme={theme} onChange={setTheme} />
+      <CanvasThemeSwitcher
+        theme={theme}
+        fontKey={fontKey}
+        onChangeTheme={setTheme}
+        onChangeFont={setFontKey}
+      />
 
       <CanvasMinimap
         boxes={boxes}
