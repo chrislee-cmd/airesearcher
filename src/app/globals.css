@@ -563,6 +563,61 @@ html, body {
   outline-offset: 1px;
 }
 
+/* =========================================================================
+   Widget typography — 패널 안 본문의 heading / body / mono 폰트 스케일.
+   selectors: [data-canvas-typography=X] [data-canvas-body] {...}
+   widget body 안의 :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl,
+   .text-display) 헤딩과 (선택) 본문 자체.
+   ========================================================================= */
+
+/* display — 큰 헤딩 + 굵게 + tight tracking (hero 톤) */
+[data-canvas-typography="display"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+[data-canvas-typography="display"] [data-canvas-body] :is(h1, .text-3xl, .text-display) {
+  font-size: 32px;
+}
+
+/* compact — 작은 본문 + dense line + 헤딩도 작게 (info-dense) */
+[data-canvas-typography="compact"] [data-canvas-body] {
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+[data-canvas-typography="compact"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+/* mono — 본문 전체 monospace (JetBrains Mono 등) */
+[data-canvas-typography="mono"] [data-canvas-body],
+[data-canvas-typography="mono"] [data-canvas-body] :is(p, span, div, button, input, textarea, h1, h2, h3, h4) {
+  font-family: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+[data-canvas-typography="mono"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* editorial — 헤딩 serif (Instrument Serif) + 본문 sans Pretendard */
+[data-canvas-typography="editorial"] [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-family: var(--font-instrument-serif), Georgia, "Apple Garamond", "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+[data-canvas-typography="editorial"] [data-canvas-body] :is(h1, .text-3xl, .text-display) {
+  font-size: 30px;
+}
+[data-canvas-typography="editorial"] [data-canvas-body] :is(h2, .text-2xl) {
+  font-size: 22px;
+}
+
 /* paper — 인쇄물 minimal: button = text link, input = 하단 line만 */
 [data-canvas-interior="paper"] [data-canvas-body] button {
   border: none;

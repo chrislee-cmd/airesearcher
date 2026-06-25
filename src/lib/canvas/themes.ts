@@ -226,3 +226,39 @@ export function asWidgetInterior(input: unknown): WidgetInterior {
   if (typeof input === 'string' && INTERIOR_KEYS.has(input)) return input as WidgetInterior;
   return 'default';
 }
+
+/* ────────────────────────────────────────────────────────────────────
+   Widget typography — 패널 안 (ExpandedBody) 의 heading / body / mono 폰트
+   스케일. CSS scoped override — [data-canvas-typography=X] [data-canvas-body]
+   안의 :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl) 등 타이포 레이어.
+
+     default   — override 없음 (글로벌 Pretendard)
+     display   — 헤딩 26px / 800 / tight tracking (hero)
+     compact   — 본문 11.5px / line 1.35 / 헤딩 13.5px (info-dense)
+     mono      — 본문 전체 monospace (JetBrains Mono fallback)
+     editorial — 헤딩 serif (Instrument Serif) / 본문 sans (Pretendard)
+
+   ExpandedBody 자체 마크업 zero touch — CSS layer only.
+   ──────────────────────────────────────────────────────────────────── */
+
+export type WidgetTypography =
+  | 'default'
+  | 'display'
+  | 'compact'
+  | 'mono'
+  | 'editorial';
+
+export const WIDGET_TYPOGRAPHIES: { key: WidgetTypography; label: string; hint: string }[] = [
+  { key: 'default',   label: 'Default',   hint: '글로벌 Pretendard (현재)' },
+  { key: 'display',   label: 'Display',   hint: '큰 헤딩 + 굵게 + tight (hero)' },
+  { key: 'compact',   label: 'Compact',   hint: '작게 + dense line (info)' },
+  { key: 'mono',      label: 'Mono',      hint: '본문 전체 monospace' },
+  { key: 'editorial', label: 'Editorial', hint: '헤딩 serif + 본문 sans' },
+];
+
+const TYPOGRAPHY_KEYS = new Set<string>(WIDGET_TYPOGRAPHIES.map((t) => t.key));
+
+export function asWidgetTypography(input: unknown): WidgetTypography {
+  if (typeof input === 'string' && TYPOGRAPHY_KEYS.has(input)) return input as WidgetTypography;
+  return 'default';
+}

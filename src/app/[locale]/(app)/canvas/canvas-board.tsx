@@ -39,6 +39,7 @@ import {
   type WidgetLayout,
   type WidgetPanel,
   type WidgetInterior,
+  type WidgetTypography,
 } from '@/lib/canvas/themes';
 import {
   CANVAS_W,
@@ -95,6 +96,7 @@ export function CanvasBoard({
   initialLayout = 'classic',
   initialPanel = 'plain',
   initialInterior = 'default',
+  initialTypography = 'default',
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
@@ -103,6 +105,7 @@ export function CanvasBoard({
   initialLayout?: WidgetLayout;
   initialPanel?: WidgetPanel;
   initialInterior?: WidgetInterior;
+  initialTypography?: WidgetTypography;
 }) {
   const [graph, setGraph] = useState<GraphState>(() => defaultStateFor(widgets));
   const [selected, setSelected] = useState<string | null>(null);
@@ -113,6 +116,7 @@ export function CanvasBoard({
   const [layout, setLayout] = useState<WidgetLayout>(initialLayout);
   const [panel, setPanel] = useState<WidgetPanel>(initialPanel);
   const [interior, setInterior] = useState<WidgetInterior>(initialInterior);
+  const [typography, setTypography] = useState<WidgetTypography>(initialTypography);
 
   // theme 변경 시 font 도 그 theme 의 default(첫번째) 로 reset.
   // 사용자가 명시적으로 같은 theme 안에서 font 만 바꿀 땐 setFontKey 직접 호출.
@@ -482,6 +486,7 @@ export function CanvasBoard({
       ref={containerRef}
       data-canvas-theme={theme}
       data-canvas-interior={interior}
+      data-canvas-typography={typography}
       className="relative h-[calc(100vh-3rem)] overflow-hidden"
       style={{
         background: 'var(--canvas-bg)',
@@ -582,11 +587,13 @@ export function CanvasBoard({
         layout={layout}
         panel={panel}
         interior={interior}
+        typography={typography}
         onChangeTheme={setTheme}
         onChangeFont={setFontKey}
         onChangeLayout={setLayout}
         onChangePanel={setPanel}
         onChangeInterior={setInterior}
+        onChangeTypography={setTypography}
       />
 
       <CanvasMinimap

@@ -13,6 +13,7 @@ import {
   asWidgetLayout,
   asWidgetPanel,
   asWidgetInterior,
+  asWidgetTypography,
 } from '@/lib/canvas/themes';
 import { recruitingCard } from '@/components/canvas/widgets/recruiting-card';
 import { quotesCard } from '@/components/canvas/widgets/quotes-card';
@@ -62,10 +63,11 @@ export default async function CanvasPage({
     layout?: string;
     panel?: string;
     interior?: string;
+    typography?: string;
   }>;
 }) {
   const { locale } = await params;
-  const { focus, theme, font, layout, panel, interior } = await searchParams;
+  const { focus, theme, font, layout, panel, interior, typography } = await searchParams;
   setRequestLocale(locale);
 
   const previewOk = await hasPreviewAccess();
@@ -74,6 +76,7 @@ export default async function CanvasPage({
   const initialLayout = asWidgetLayout(layout);
   const initialPanel = asWidgetPanel(panel);
   const initialInterior = asWidgetInterior(interior);
+  const initialTypography = asWidgetTypography(typography);
 
   // server-side visibility resolve — hard-coded map + preview gate.
   // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
@@ -97,6 +100,7 @@ export default async function CanvasPage({
         initialLayout={initialLayout}
         initialPanel={initialPanel}
         initialInterior={initialInterior}
+        initialTypography={initialTypography}
       />
     </RealtimeTranscriptProvider>
   );

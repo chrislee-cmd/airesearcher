@@ -17,11 +17,13 @@ import {
   WIDGET_LAYOUTS,
   WIDGET_PANELS,
   WIDGET_INTERIORS,
+  WIDGET_TYPOGRAPHIES,
   getThemeMeta,
   type CanvasTheme,
   type WidgetLayout,
   type WidgetPanel,
   type WidgetInterior,
+  type WidgetTypography,
 } from '@/lib/canvas/themes';
 
 // chip 미니 swatch — chrome / accent 색을 inline 표시.
@@ -41,9 +43,18 @@ type UrlState = {
   layout: WidgetLayout;
   panel: WidgetPanel;
   interior: WidgetInterior;
+  typography: WidgetTypography;
 };
 
-function syncUrl({ theme, fontKey, fontIsDefault, layout, panel, interior }: UrlState) {
+function syncUrl({
+  theme,
+  fontKey,
+  fontIsDefault,
+  layout,
+  panel,
+  interior,
+  typography,
+}: UrlState) {
   try {
     const url = new URL(window.location.href);
     if (theme === 'default') url.searchParams.delete('theme');
@@ -56,6 +67,8 @@ function syncUrl({ theme, fontKey, fontIsDefault, layout, panel, interior }: Url
     else url.searchParams.set('panel', panel);
     if (interior === 'default') url.searchParams.delete('interior');
     else url.searchParams.set('interior', interior);
+    if (typography === 'default') url.searchParams.delete('typography');
+    else url.searchParams.set('typography', typography);
     window.history.replaceState({}, '', url.toString());
   } catch {
     /* ignore (private mode / no history) */
@@ -68,66 +81,79 @@ export function CanvasThemeSwitcher({
   layout,
   panel,
   interior,
+  typography,
   onChangeTheme,
   onChangeFont,
   onChangeLayout,
   onChangePanel,
   onChangeInterior,
+  onChangeTypography,
 }: {
   theme: CanvasTheme;
   fontKey: string;
   layout: WidgetLayout;
   panel: WidgetPanel;
   interior: WidgetInterior;
+  typography: WidgetTypography;
   onChangeTheme: (next: CanvasTheme) => void;
   onChangeFont: (next: string) => void;
   onChangeLayout: (next: WidgetLayout) => void;
   onChangePanel: (next: WidgetPanel) => void;
   onChangeInterior: (next: WidgetInterior) => void;
+  onChangeTypography: (next: WidgetTypography) => void;
 }) {
   const handleTheme = useCallback(
     (next: CanvasTheme) => {
       onChangeTheme(next);
       const defaultFont = getThemeMeta(next).fonts[0].key;
-      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout, panel, interior });
+      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout, panel, interior, typography });
     },
-    [onChangeTheme, layout, panel, interior],
+    [onChangeTheme, layout, panel, interior, typography],
   );
 
   const handleFont = useCallback(
     (next: string) => {
       onChangeFont(next);
       const isDefault = getThemeMeta(theme).fonts[0].key === next;
-      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout, panel, interior });
+      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout, panel, interior, typography });
     },
-    [onChangeFont, theme, layout, panel, interior],
+    [onChangeFont, theme, layout, panel, interior, typography],
   );
 
   const handleLayout = useCallback(
     (next: WidgetLayout) => {
       onChangeLayout(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next, panel, interior });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next, panel, interior, typography });
     },
-    [onChangeLayout, theme, fontKey, panel, interior],
+    [onChangeLayout, theme, fontKey, panel, interior, typography],
   );
 
   const handlePanel = useCallback(
     (next: WidgetPanel) => {
       onChangePanel(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel: next, interior });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel: next, interior, typography });
     },
-    [onChangePanel, theme, fontKey, layout, interior],
+    [onChangePanel, theme, fontKey, layout, interior, typography],
   );
 
   const handleInterior = useCallback(
     (next: WidgetInterior) => {
       onChangeInterior(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel, interior: next });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel, interior: next, typography });
     },
-    [onChangeInterior, theme, fontKey, layout, panel],
+    [onChangeInterior, theme, fontKey, layout, panel, typography],
+  );
+
+  const handleTypography = useCallback(
+    (next: WidgetTypography) => {
+      onChangeTypography(next);
+      const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel, interior, typography: next });
+    },
+    [onChangeTypography, theme, fontKey, layout, panel, interior],
   );
 
   const themeMeta = getThemeMeta(theme);
@@ -324,6 +350,42 @@ export function CanvasThemeSwitcher({
                 }}
               >
                 {i.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* row 6 — widget typography (panel 안 헤딩/본문 폰트 스케일) chips (5개) */}
+        <div
+          className="flex items-center gap-1 border-t pt-1.5"
+          style={{ borderColor: 'var(--canvas-chrome-border)' }}
+        >
+          <span
+            className="px-1 text-xs tracking-[0.08em] uppercase"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            Typography
+          </span>
+          {WIDGET_TYPOGRAPHIES.map((t) => {
+            const active = t.key === typography;
+            return (
+              <Button
+                key={t.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handleTypography(t.key)}
+                title={t.hint}
+                className="!px-2"
+                style={{
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                {t.label}
               </Button>
             );
           })}
