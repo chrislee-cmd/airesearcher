@@ -8,12 +8,14 @@
    - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
-   휘발성: 현재 제안 세트는 React state. 페이지 새로고침 / 새 세션
-   시작 → 초기화 (의도).
+   영속화 (PR-8): suggest stream 완료 직후 POST /api/probing/suggestions
+   로 한 row 저장. mount 시 GET 으로 최근 N개 로드. 새로고침 / 다른
+   디바이스에서도 같은 user 면 동일 list. 정렬은 created_at DESC — 최신
+   상단.
 
-   PR-7 (이 PR) 에서 transcript live preview UI 와 푸터 산출물 히스토리
-   영역을 제거. transcript_window 데이터는 그대로 suggest 호출 body 에
-   전달 — UI 노출만 사라짐.
+   pause (PR-8): ⏸/▶ 토글로 자동 트리거만 skip. transcript 수집은 계속
+   되며 "지금 제안" 수동 버튼은 paused 와 무관 (강제 트리거 가능). 토글
+   상태는 in-memory only — 새로고침 시 ▶ default.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -42,6 +44,7 @@ import {
 } from '@/lib/probing-guide-import';
 import type {
   ProbingQuestion,
+  ProbingSuggestionRow,
   ProbingSuggestionSet,
 } from './probing-types';
 
@@ -54,6 +57,9 @@ const GUIDE_SAVE_DEBOUNCE_MS = 500;
 const AUTO_INTERVAL_MS = 5_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
+// 위젯에 표시할 / fetch 할 최근 제안 set 갯수. 무한 스크롤 / "더 불러오기"
+// 는 후속 PR (스펙 §F 범위 밖) — 단순 상한으로 시작.
+const DISPLAY_LIMIT = 10;
 
 // transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
@@ -260,10 +266,25 @@ function ExpandedBody() {
   );
   const hasTranscript = segments.length > 0;
 
-  // 현재 본문에 표시되는 제안 세트 (stream 진행 중 + 완료 후 직전 세트).
+  // stream 진행 중인 단일 set — 완료되면 POST 응답으로 받은 row 로
+  // suggestions 에 prepend 되고 current 는 다시 null.
   const [current, setCurrent] = useState<ProbingSuggestionSet | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // DB 영속화된 누적 list (sort DESC). mount 시 GET 으로 채우고 새 stream
+  // 완료 후 prepend. 표시 상한 DISPLAY_LIMIT.
+  const [suggestions, setSuggestions] = useState<ProbingSuggestionRow[]>([]);
+  // 첫 GET 응답을 기다리는 동안엔 빈 empty state 대신 hydrating 힌트.
+  const [hydrating, setHydrating] = useState(true);
+
+  // 자동 트리거 일시 정지 토글. in-memory only (세션 단위) — 새로고침 시
+  // false default. setInterval 안에서 stale closure 없이 보도록 ref 동기화.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   // 자동 타이머가 "다음 호출까지 남은 시간" 을 표시하기 위해 next-call epoch
   // 를 ref + state 양쪽에 보관. ref 는 setInterval/setTimeout 안에서 stale
@@ -279,6 +300,99 @@ function ExpandedBody() {
   useEffect(() => {
     rawSegmentsRef.current = rawSegments;
   }, [rawSegments]);
+
+  // mount 시 1회 — 최근 N개 DB row 를 가져와 list 초기화. 실패해도 새 stream
+  // 은 가능하므로 silent (토스트 X).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/probing/suggestions?limit=${DISPLAY_LIMIT}`,
+          { cache: 'no-store' },
+        );
+        if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
+        const j = (await res.json()) as {
+          rows?: Array<{
+            id: string;
+            suggestion_set: { questions?: ProbingQuestion[] } | null;
+            created_at: string;
+          }>;
+        };
+        if (cancelled) return;
+        const rows: ProbingSuggestionRow[] = (j.rows ?? [])
+          .map((r) => ({
+            id: r.id,
+            created_at: r.created_at,
+            questions: r.suggestion_set?.questions ?? [],
+          }))
+          .filter((r) => r.questions.length > 0);
+        setSuggestions(rows);
+      } catch {
+        // 영속화는 best-effort. fetch 실패 = 새 세션처럼 빈 list 에서 시작.
+      } finally {
+        if (!cancelled) setHydrating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // stream 완료된 set 을 DB 로 보내고 응답을 받으면 suggestions 의 맨 앞에
+  // 꽂는다. POST 실패 시에도 사용자가 결과를 잃지 않도록 in-memory row 로
+  // fallback prepend — 다음 새로고침 때 사라지는 게 유일한 차이.
+  const persistSet = useCallback(
+    async (
+      streamingId: string,
+      questions: ProbingQuestion[],
+      cutoff: string,
+    ) => {
+      let row: ProbingSuggestionRow | null = null;
+      try {
+        const res = await fetch('/api/probing/suggestions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            suggestion_set: { questions },
+            transcript_cutoff: cutoff,
+          }),
+        });
+        if (res.ok) {
+          const j = (await res.json()) as {
+            row?: {
+              id: string;
+              suggestion_set: { questions?: ProbingQuestion[] } | null;
+              created_at: string;
+            };
+          };
+          if (j.row) {
+            row = {
+              id: j.row.id,
+              created_at: j.row.created_at,
+              questions: j.row.suggestion_set?.questions ?? questions,
+            };
+          }
+        }
+      } catch {
+        // fall through — fallback row 으로 떨어짐
+      }
+      if (!row) {
+        // synthetic id 로 in-memory fallback. 'local-' prefix 라 실제
+        // UUID 와 겹치지 않으며 react key 충돌도 없음.
+        row = {
+          id: `local-${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          created_at: new Date().toISOString(),
+          questions,
+        };
+      }
+      setSuggestions((prev) => [row!, ...prev].slice(0, DISPLAY_LIMIT));
+      // 같은 stream 이 여전히 current 일 때만 비운다 — 사용자가 그 사이에
+      // 또 트리거 했으면 새 stream 을 가리키므로 건드리면 안 됨.
+      setCurrent((cur) => (cur?.id === streamingId ? null : cur));
+    },
+    [],
+  );
 
   const runSuggest = useCallback(async () => {
     if (inFlightRef.current) return;
@@ -301,6 +415,10 @@ function ExpandedBody() {
     const setId = `probing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const started_at = Date.now();
     setCurrent({ id: setId, created_at: started_at, questions: [] });
+
+    // stream 종료 시점에 잡힌 최종 questions. POST persist 에 사용.
+    let finalQuestions: ProbingQuestion[] = [];
+    let succeeded = false;
 
     try {
       const res = await fetch('/api/probing/suggest', {
@@ -347,8 +465,10 @@ function ExpandedBody() {
             }))
             .filter((q) => q.text.trim().length > 0);
           setCurrent({ id: setId, created_at: started_at, questions: clean });
+          finalQuestions = clean;
         }
       }
+      succeeded = true;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'suggest_failed';
       setError(msg);
@@ -361,7 +481,13 @@ function ExpandedBody() {
       inFlightRef.current = false;
       setStreaming(false);
     }
-  }, [toast]);
+
+    // stream 정상 종료 + 질문이 1개 이상 잡혔으면 DB 영속화. fire-and-
+    // forget — persistSet 가 fallback in-memory row 까지 처리한다.
+    if (succeeded && finalQuestions.length > 0) {
+      void persistSet(setId, finalQuestions, text);
+    }
+  }, [persistSet, toast]);
 
   // 자동 타이머. isLive 가 true → AUTO_INTERVAL_MS 후 첫 호출, 이후 같은 주기.
   // isLive 가 false 가 되면 타이머 stop + nextCallAt 초기화.
@@ -374,6 +500,12 @@ function ExpandedBody() {
     // isLive 전이 직후 다음 호출 시각 = 지금 + AUTO_INTERVAL_MS.
     setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
     const id = setInterval(() => {
+      // pause 토글이 켜져 있으면 자동 호출만 skip. transcript 수집과
+      // 카운트다운 ref 는 그대로 — ▶ 누르면 곧장 다음 주기에 재개.
+      if (pausedRef.current) {
+        setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
+        return;
+      }
       void runSuggest();
       setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
     }, AUTO_INTERVAL_MS);
@@ -511,9 +643,10 @@ function ExpandedBody() {
     }
   }, [sessionStatus]);
 
-  // 카운트다운 — "다음 자동 제안: N초 후". now 가 1초마다 갱신.
+  // 카운트다운 — "다음 자동 제안: N초 후". now 가 1초마다 갱신. paused
+  // 일 땐 null — 라벨이 "자동 일시 정지됨" 으로 대체된다.
   const secondsToNext =
-    isLive && nextCallAt
+    isLive && !paused && nextCallAt
       ? Math.max(0, Math.ceil((nextCallAt - now) / 1000))
       : null;
 
@@ -524,6 +657,7 @@ function ExpandedBody() {
     if (sessionStatus === 'error') return '세션 오류';
     if (!isLive) return '세션 대기';
     if (streaming) return '생성 중…';
+    if (paused) return '자동 일시 정지됨';
     if (secondsToNext !== null) return `다음 자동 제안: ${secondsToNext}초 후`;
     return '대기 중';
   })();
@@ -591,15 +725,52 @@ function ExpandedBody() {
                 {statusLabel}
               </span>
             </div>
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={handleManual}
-              disabled={!isLive || streaming || !hasTranscript}
-              className="uppercase tracking-[0.18em]"
-            >
-              지금 제안
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={paused ? 'primary' : 'ghost'}
+                size="xs"
+                onClick={() => setPaused((p) => !p)}
+                disabled={!isLive}
+                aria-pressed={paused}
+                aria-label={paused ? '자동 제안 재개' : '자동 제안 일시 정지'}
+                leftIcon={
+                  paused ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="10"
+                      height="10"
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <polygon points="7 4 20 12 7 20 7 4" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="10"
+                      height="10"
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <rect x="6" y="5" width="4" height="14" rx="1" />
+                      <rect x="14" y="5" width="4" height="14" rx="1" />
+                    </svg>
+                  )
+                }
+                className="uppercase tracking-[0.18em]"
+              >
+                {paused ? '재개' : '자동 정지'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={handleManual}
+                disabled={!isLive || streaming || !hasTranscript}
+                className="uppercase tracking-[0.18em]"
+              >
+                지금 제안
+              </Button>
+            </div>
           </div>
 
           {/* 가이드 — 사용자가 적어두는 free-form 컨텍스트. 비어 있으면
@@ -629,37 +800,65 @@ function ExpandedBody() {
           />
         </div>
 
-        {/* 중간 — 제안 카드 영역. flex-1 로 위젯 height 800px 안을 채운다. */}
+        {/* 중간 — 제안 카드 영역. 위에서부터 (1) stream 진행 중 set,
+            (2) DB 영속화된 누적 list (sort DESC). 둘 다 비어 있고
+            hydrate 도 끝났으면 컨텍스트별 placeholder. flex-1 로 위젯
+            height 800px 안을 채운다. */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          {/* current 가 있으면 카드, 없으면 placeholder. */}
-          {current && current.questions.length > 0 ? (
-            <SuggestionList set={current} onCopy={handleCopy} streaming={streaming} />
-          ) : streaming ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              제안 생성 중…
-            </div>
-          ) : !isLive ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
-              <br />
-              시작 후 5초마다 후속 질문 3개가 제안됩니다.
-              {source === 'tab' && (
-                <>
-                  <br />
-                  <span className="mt-1 inline-block text-xs text-mute-soft">
-                    탭 오디오는 공유한 탭에서 <strong>재생되는 소리</strong>만 캡처합니다 (본인 마이크 발화 제외). Zoom 은 zoom.us/wc 웹클라이언트 탭을 공유해야 다른 참가자 발언을 캡처할 수 있습니다.
-                  </span>
-                </>
-              )}
-            </div>
-          ) : !hasTranscript ? (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              transcript 가 들어오면 첫 제안이 표시됩니다.
-            </div>
-          ) : (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              첫 자동 제안까지 대기 중. &lsquo;지금 제안&rsquo; 으로 즉시 시도할 수 있어요.
-            </div>
+          {current && current.questions.length > 0 && (
+            <SuggestionList
+              questions={current.questions}
+              createdAtMs={current.created_at}
+              onCopy={handleCopy}
+              streaming={streaming}
+              nowMs={now}
+            />
+          )}
+
+          {suggestions.map((row) => (
+            <SuggestionList
+              key={row.id}
+              questions={row.questions}
+              createdAtMs={Date.parse(row.created_at)}
+              onCopy={handleCopy}
+              streaming={false}
+              nowMs={now}
+            />
+          ))}
+
+          {/* placeholder — 영속화 list 도 비어 있고 stream 도 없을 때만. */}
+          {!current && suggestions.length === 0 && (
+            hydrating ? (
+              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+                저장된 제안 불러오는 중…
+              </div>
+            ) : streaming ? (
+              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+                제안 생성 중…
+              </div>
+            ) : !isLive ? (
+              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+                상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
+                <br />
+                시작 후 5초마다 후속 질문 3개가 제안됩니다.
+                {source === 'tab' && (
+                  <>
+                    <br />
+                    <span className="mt-1 inline-block text-xs text-mute-soft">
+                      탭 오디오는 공유한 탭에서 <strong>재생되는 소리</strong>만 캡처합니다 (본인 마이크 발화 제외). Zoom 은 zoom.us/wc 웹클라이언트 탭을 공유해야 다른 참가자 발언을 캡처할 수 있습니다.
+                    </span>
+                  </>
+                )}
+              </div>
+            ) : !hasTranscript ? (
+              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+                transcript 가 들어오면 첫 제안이 표시됩니다.
+              </div>
+            ) : (
+              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+                첫 자동 제안까지 대기 중. &lsquo;지금 제안&rsquo; 으로 즉시 시도할 수 있어요.
+              </div>
+            )
           )}
 
           {error && (
@@ -709,27 +908,44 @@ function ExpandedBody() {
   );
 }
 
+// 한국어 상대 시간 — "방금 전 / N분 전 / N시간 전 / N일 전". 위젯 안에서만
+// 쓰이는 보조라 외부 i18n 헬퍼는 과함. nowMs 가 1초마다 갱신되어 라벨이
+// 자연스럽게 흘러간다.
+function formatRelativeKo(epochMs: number, nowMs: number): string {
+  if (!Number.isFinite(epochMs)) return '';
+  const diff = Math.max(0, nowMs - epochMs);
+  if (diff < 30_000) return '방금 전';
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}분 전`;
+  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+  return `${Math.floor(diff / 86_400_000)}일 전`;
+}
+
 function SuggestionList({
-  set,
+  questions,
+  createdAtMs,
   onCopy,
   streaming,
+  nowMs,
 }: {
-  set: ProbingSuggestionSet;
+  questions: ProbingQuestion[];
+  createdAtMs: number;
   onCopy: (text: string) => void;
   streaming: boolean;
+  nowMs: number;
 }) {
+  const rel = formatRelativeKo(createdAtMs, nowMs);
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-          제안 질문 {set.questions.length}개
+          제안 질문 {questions.length}개{rel ? ` · ${rel}` : ''}
         </span>
         <span className="text-xs text-mute-soft">
           {streaming ? '스트리밍…' : '카드 클릭 → 복사'}
         </span>
       </div>
       <ul className="space-y-2">
-        {set.questions.map((q, i) => {
+        {questions.map((q, i) => {
           const label =
             q.technique && q.technique in PROBING_TECHNIQUE_LABEL
               ? PROBING_TECHNIQUE_LABEL[q.technique as ProbingTechnique]
