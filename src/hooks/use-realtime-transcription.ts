@@ -111,6 +111,61 @@ function eventToItemId(ev: OaiEvent, fallback: string): string {
   return fallback;
 }
 
+// SDP munge — Opus fmtp 라인에 `stereo=0; sprop-stereo=0` 강제. mic 는
+// native mono 트랙이라 Chrome 의 Opus encoder 가 자연스럽게 mono Opus 로
+// 인코딩 → OpenAI transcription pipeline 이 처리. tab (getDisplayMedia) 은
+// stereo 트랙이라 Chrome 이 stereo Opus 로 인코딩 → transcription endpoint 가
+// VAD speech_started 도 못 emit 하는 패턴이 관측됨 (PR #401 진단). SDP fmtp 의
+// stereo 파라미터를 0 으로 강제하면 Chrome encoder 가 mono Opus 로 다운믹스해서
+// 전송, OpenAI 도 mono Opus 로 decode.
+function forceOpusMonoSdp(sdp: string): string {
+  const lines = sdp.split('\r\n');
+  let opusPt: string | null = null;
+  for (const line of lines) {
+    const m = /^a=rtpmap:(\d+)\s+opus\/48000/i.exec(line);
+    if (m) {
+      opusPt = m[1];
+      break;
+    }
+  }
+  if (!opusPt) return sdp;
+
+  let fmtpSeen = false;
+  const fmtpPrefix = `a=fmtp:${opusPt}`;
+  const result = lines.map((line) => {
+    if (line.startsWith(fmtpPrefix)) {
+      fmtpSeen = true;
+      const params = line
+        .substring(fmtpPrefix.length)
+        .trim()
+        .split(';')
+        .map((p) => p.trim())
+        .filter(
+          (p) =>
+            p.length > 0 &&
+            !p.startsWith('stereo=') &&
+            !p.startsWith('sprop-stereo='),
+        );
+      params.push('stereo=0', 'sprop-stereo=0');
+      return `${fmtpPrefix} ${params.join(';')}`;
+    }
+    return line;
+  });
+
+  if (fmtpSeen) return result.join('\r\n');
+
+  // 보호: fmtp 라인이 없으면 rtpmap 직후에 새로 추가.
+  const out: string[] = [];
+  const rtpmapRe = new RegExp(`^a=rtpmap:${opusPt}\\s+opus`);
+  for (const line of result) {
+    out.push(line);
+    if (rtpmapRe.test(line)) {
+      out.push(`${fmtpPrefix} stereo=0;sprop-stereo=0`);
+    }
+  }
+  return out.join('\r\n');
+}
+
 export function useRealtimeTranscription(opts?: {
   locale?: string;
 }): UseRealtimeTranscriptionResult {
@@ -525,14 +580,25 @@ export function useRealtimeTranscription(opts?: {
 
       try {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        // tab 모드만 Opus mono 강제. mic 는 native mono 라 munge 불필요 (회귀 방지).
+        const offerSdp =
+          source === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
+        if (source === 'tab') {
+          const beforeStereo = (offer.sdp ?? '').match(/stereo=\d/g);
+          const afterStereo = offerSdp.match(/stereo=\d/g);
+          console.info('[probing] SDP opus mono munge', {
+            before: beforeStereo,
+            after: afterStereo,
+          });
+        }
+        await pc.setLocalDescription({ type: 'offer', sdp: offerSdp });
         const sdpRes = await fetch(REALTIME_SDP_URL, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${clientSecret}`,
             'Content-Type': 'application/sdp',
           },
-          body: offer.sdp ?? '',
+          body: offerSdp,
         });
         if (!sdpRes.ok) {
           const body = await sdpRes.text().catch(() => '');
