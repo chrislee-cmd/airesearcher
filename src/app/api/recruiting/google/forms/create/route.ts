@@ -165,7 +165,17 @@ export async function POST(request: Request) {
       .from('recruiting_forms')
       .upsert({ ...baseRow, sheet_url: sheetUrl, sheet_id: sheetId });
     if (upsert.error) {
-      if (upsert.error.code === '42703') {
+      // Postgres native column-not-found is 42703, but supabase-js routes
+      // through PostgREST which catches it at the schema-cache layer and
+      // surfaces PGRST204 with a "Could not find the 'X' column" message
+      // (observed in prod when migration 20260624032912 hadn't landed).
+      // Match either code, narrowed to the sheet columns by message so we
+      // don't swallow unrelated PGRST204s.
+      const errMsg = upsert.error.message ?? '';
+      const isMissingSheetColumn =
+        upsert.error.code === '42703' ||
+        (upsert.error.code === 'PGRST204' && /sheet_(url|id)/.test(errMsg));
+      if (isMissingSheetColumn) {
         const retry = await admin.from('recruiting_forms').upsert(baseRow);
         if (retry.error) {
           console.error('forms_create_persist_failed', retry.error);
