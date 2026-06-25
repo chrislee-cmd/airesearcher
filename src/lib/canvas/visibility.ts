@@ -17,7 +17,8 @@ export type CanvasWidgetKey =
   | 'translate'
   | 'probing'
   | 'topline'
-  | 'slidegen';
+  | 'slidegen'
+  | 'autocontents';
 
 export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   recruiting: true,
@@ -29,6 +30,7 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   probing: true,
   topline: false,
   slidegen: false,
+  autocontents: true,
 };
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
@@ -45,6 +47,7 @@ export const CANVAS_ORDER: CanvasWidgetKey[] = [
   'probing',
   'topline',
   'slidegen',
+  'autocontents',
 ];
 
 export function visibleCanvasWidgets(): CanvasWidgetKey[] {

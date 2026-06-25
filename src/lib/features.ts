@@ -26,7 +26,11 @@ export type FeatureKey =
   // full-report generators into one upload → dashboard → chat surface.
   // Stays in PREVIEW_FEATURES until the dashboard/viz/chat PRs land; the
   // GA flip + legacy route redirect is the last PR in the series.
-  | 'insights_analyzer';
+  | 'insights_analyzer'
+  // Autocontents (enko) — sibling product embedded in /canvas via iframe.
+  // No dedicated route in this app — the widget is the only surface. Stays
+  // in PREVIEW_FEATURES until the embed is verified for general users.
+  | 'autocontents';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -91,6 +95,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'voice_concierge',
   'insights_analyzer',
   'slidegen',
+  'autocontents',
 ]);
 
 // Single source of truth for credit pricing — read by both the
