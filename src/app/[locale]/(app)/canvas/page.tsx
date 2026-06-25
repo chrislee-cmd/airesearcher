@@ -18,6 +18,7 @@ import { toplineCard } from '@/components/canvas/widgets/topline-card';
 import { slidegenCard } from '@/components/canvas/widgets/slidegen-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
+import { DESIGN_BRAND_OVERRIDE_KEYS } from '@/lib/design-brands';
 
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
 // page 가 board 로 전달 → board 가 vertical stack 으로 렌더.
@@ -43,11 +44,12 @@ async function hasPreviewAccess(): Promise<boolean> {
   return flags.isUnlimited;
 }
 
-// Design-system override allowlist for `?design=<name>`. Adding a new
-// reference system means: (1) define its tokens in globals.css under
-// `[data-design="<name>"]`, (2) add the name here. Default (no param)
-// keeps the bento tone — production behavior is unchanged.
-const DESIGN_OVERRIDES = new Set(['airbnb']);
+// Design-system override allowlist for `?design=<name>`. Keys are sourced
+// from src/lib/design-brands.ts (SSOT shared with the /design grid). Adding
+// a new reference brand only needs: (1) its `[data-design="<key>"]` block
+// in globals.css, (2) a row in DESIGN_BRANDS — this set picks it up
+// automatically. Default (no param) keeps the bento tone.
+const DESIGN_OVERRIDES = DESIGN_BRAND_OVERRIDE_KEYS;
 
 export default async function CanvasPage({
   params,
