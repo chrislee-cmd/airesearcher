@@ -438,6 +438,7 @@ export function RecruitingWizard() {
         title="대상자 조건"
         phase={criteriaPhase}
         accentColor="amore"
+        collapseOnApprove
       >
         {criteriaPhase === 'idle' && (
           <CriteriaInputArea
@@ -492,6 +493,7 @@ export function RecruitingWizard() {
           title="심사 설문"
           phase={surveyPhase}
           accentColor="amore"
+          collapseOnApprove
         >
           {surveyPhase === 'idle' && (
             <GeneratingRow label="설문 생성 대기 중…" />
@@ -582,18 +584,58 @@ function WizardCard({
   title,
   phase,
   accentColor,
+  collapseOnApprove = false,
   children,
 }: {
   index: number;
   title: string;
   phase: Phase;
   accentColor: 'amore';
+  collapseOnApprove?: boolean;
   children?: ReactNode;
 }) {
   void accentColor;
+  // Auto-collapse when the user approves so the wizard's focus shifts to
+  // the next active card. Header stays clickable for manual expand/collapse.
+  // Sync via render-conditional setState (the codebase's `seededFor` pattern)
+  // rather than useEffect, which the react-hooks/set-state-in-effect rule
+  // forbids.
+  const [collapsed, setCollapsed] = useState(false);
+  const [trackedPhase, setTrackedPhase] = useState<Phase>(phase);
+  if (collapseOnApprove && phase !== trackedPhase) {
+    setTrackedPhase(phase);
+    setCollapsed(phase === 'approved');
+  }
+
+  const toggle = collapseOnApprove
+    ? () => setCollapsed((c) => !c)
+    : undefined;
+
   return (
     <section className="border border-line bg-paper rounded-sm transition-opacity">
-      <header className="flex items-center gap-3 border-b border-line-soft px-4 py-3">
+      <header
+        className={[
+          'flex items-center gap-3 px-4 py-3',
+          collapsed ? '' : 'border-b border-line-soft',
+          toggle ? 'cursor-pointer select-none' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        role={toggle ? 'button' : undefined}
+        tabIndex={toggle ? 0 : undefined}
+        aria-expanded={toggle ? !collapsed : undefined}
+        onClick={toggle}
+        onKeyDown={
+          toggle
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggle();
+                }
+              }
+            : undefined
+        }
+      >
         <span
           className={
             phase === 'approved'
@@ -607,8 +649,16 @@ function WizardCard({
         {phase === 'approved' && (
           <span className="text-sm text-amore">승인됨</span>
         )}
+        {toggle && (
+          <span
+            className="ml-auto text-sm text-mute-soft"
+            aria-hidden="true"
+          >
+            {collapsed ? '▸' : '▾'}
+          </span>
+        )}
       </header>
-      <div className="px-4 py-4">{children}</div>
+      {!collapsed && <div className="px-4 py-4">{children}</div>}
     </section>
   );
 }
