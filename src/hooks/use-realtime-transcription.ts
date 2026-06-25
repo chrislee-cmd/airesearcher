@@ -425,18 +425,35 @@ export function useRealtimeTranscription(opts?: {
             if (!AudioCtx) throw new Error('no AudioContext');
             const ctx = new AudioCtx({ sampleRate: TAB_TARGET_SAMPLE_RATE });
             tabResampleCtxRef.current = ctx;
+            console.info('[probing] tab resample ctx created', {
+              state: ctx.state,
+              sampleRate: ctx.sampleRate,
+            });
             if (ctx.state === 'suspended') {
-              void ctx.resume().catch((err) => {
+              // 명시적 await — connect 전 ctx 가 running 이어야 source node 가
+              // 실제로 sample 을 pull. suspended 상태로 connect 하면 dst 트랙이
+              // 0-valued frame 만 흘리고 OpenAI 가 silence 만 받는다.
+              try {
+                await ctx.resume();
+                console.info('[probing] tab resample ctx resumed', {
+                  state: ctx.state,
+                });
+              } catch (err) {
                 console.warn('[probing] tab resample ctx.resume failed', err);
-              });
+              }
             }
             const src = ctx.createMediaStreamSource(captureStream);
             const dst = ctx.createMediaStreamDestination();
             src.connect(dst);
             publishStream = dst.stream;
+            const pubTrack = publishStream.getAudioTracks()[0];
             console.info('[probing] tab resample graph wired', {
+              ctxState: ctx.state,
               ctxSampleRate: ctx.sampleRate,
               publishTracks: publishStream.getAudioTracks().length,
+              publishTrackEnabled: pubTrack?.enabled,
+              publishTrackReadyState: pubTrack?.readyState,
+              publishTrackSettings: pubTrack?.getSettings(),
             });
           } catch (err) {
             console.warn('[probing] tab resample failed, passing raw stream', err);
@@ -510,13 +527,46 @@ export function useRealtimeTranscription(opts?: {
         });
       };
       pcRef.current = pc;
-      publishStream
-        .getAudioTracks()
-        .forEach((tr) => pc.addTrack(tr, publishStream));
+      const pubTracks = publishStream.getAudioTracks();
+      console.info('[probing] addTrack to pc', {
+        count: pubTracks.length,
+        tracks: pubTracks.map((tr) => ({
+          id: tr.id,
+          enabled: tr.enabled,
+          readyState: tr.readyState,
+          muted: tr.muted,
+        })),
+      });
+      pubTracks.forEach((tr) => pc.addTrack(tr, publishStream));
 
       const dc = pc.createDataChannel('oai-events');
       dcRef.current = dc;
-      dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+      dc.onopen = () => console.info('[probing] dc open');
+      dc.onclose = () => console.info('[probing] dc close');
+      // 진단성: 첫 OAI 이벤트가 도착하는지, 어떤 type 들이 들어오는지 보기 위해
+      // 알려지지 않은 type 은 첫 5개까지 콘솔에 dump. session.created /
+      // session.updated / input_audio_buffer.* 등이 보여야 audio in 이
+      // 실제로 OpenAI 까지 도달했다는 신호.
+      let unknownLogged = 0;
+      dc.onmessage = (ev) => {
+        const raw = String(ev.data);
+        if (unknownLogged < 5) {
+          try {
+            const parsed = JSON.parse(raw) as { type?: string };
+            const type = parsed?.type ?? 'unknown';
+            if (
+              type !== 'conversation.item.input_audio_transcription.delta' &&
+              type !== 'conversation.item.input_audio_transcription.completed'
+            ) {
+              unknownLogged += 1;
+              console.info('[probing] oai event', { type, raw: raw.slice(0, 200) });
+            }
+          } catch {
+            /* not JSON */
+          }
+        }
+        handleOaiEvent(raw);
+      };
       dc.onerror = (ev) => {
         console.warn('[probing] dc error', ev);
       };
