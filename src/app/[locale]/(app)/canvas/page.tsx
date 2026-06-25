@@ -71,12 +71,16 @@ export default async function CanvasPage({
   setRequestLocale(locale);
 
   const previewOk = await hasPreviewAccess();
-  const initialTheme = asCanvasTheme(theme);
-  const initialFontKey = asFontKey(initialTheme, font);
-  const initialLayout = asWidgetLayout(layout);
-  const initialPanel = asWidgetPanel(panel);
-  const initialInterior = asWidgetInterior(interior);
-  const initialTypography = asWidgetTypography(typography);
+  // 사용자 잠근 design combo — 2026-06-25:
+  //   pop · outfit · banner-top · framed · bold · display
+  // URL ?theme=... 등으로 override 가능 (switcher 가 비교용 — spec writer
+  // 가 switcher / 다른 variant cleanup 스펙 작성 예정).
+  const initialTheme = asCanvasTheme(theme ?? 'pop');
+  const initialFontKey = asFontKey(initialTheme, font ?? 'outfit');
+  const initialLayout = asWidgetLayout(layout ?? 'banner-top');
+  const initialPanel = asWidgetPanel(panel ?? 'framed');
+  const initialInterior = asWidgetInterior(interior ?? 'bold');
+  const initialTypography = asWidgetTypography(typography ?? 'display');
 
   // server-side visibility resolve — hard-coded map + preview gate.
   // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
