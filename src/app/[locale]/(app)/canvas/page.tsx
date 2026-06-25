@@ -7,7 +7,13 @@ import {
 } from '@/lib/canvas/visibility';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
-import { asCanvasTheme, asFontKey, asWidgetLayout, asWidgetPanel } from '@/lib/canvas/themes';
+import {
+  asCanvasTheme,
+  asFontKey,
+  asWidgetLayout,
+  asWidgetPanel,
+  asWidgetInterior,
+} from '@/lib/canvas/themes';
 import { recruitingCard } from '@/components/canvas/widgets/recruiting-card';
 import { quotesCard } from '@/components/canvas/widgets/quotes-card';
 import { deskCard } from '@/components/canvas/widgets/desk-card';
@@ -55,10 +61,11 @@ export default async function CanvasPage({
     font?: string;
     layout?: string;
     panel?: string;
+    interior?: string;
   }>;
 }) {
   const { locale } = await params;
-  const { focus, theme, font, layout, panel } = await searchParams;
+  const { focus, theme, font, layout, panel, interior } = await searchParams;
   setRequestLocale(locale);
 
   const previewOk = await hasPreviewAccess();
@@ -66,6 +73,7 @@ export default async function CanvasPage({
   const initialFontKey = asFontKey(initialTheme, font);
   const initialLayout = asWidgetLayout(layout);
   const initialPanel = asWidgetPanel(panel);
+  const initialInterior = asWidgetInterior(interior);
 
   // server-side visibility resolve — hard-coded map + preview gate.
   // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
@@ -88,6 +96,7 @@ export default async function CanvasPage({
         initialFontKey={initialFontKey}
         initialLayout={initialLayout}
         initialPanel={initialPanel}
+        initialInterior={initialInterior}
       />
     </RealtimeTranscriptProvider>
   );

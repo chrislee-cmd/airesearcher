@@ -325,12 +325,11 @@ function PanelMain({
   children: ReactNode;
 }) {
   if (panel === 'framed') {
-    // inner frame — bg-paper 위에 검은 inset 박스 (mat / 액자 느낌)
     const borderColor =
       theme === 'pop' || theme === 'swiss' ? '#000' : 'var(--canvas-card-border)';
     const borderWidth = theme === 'pop' ? 2.5 : 1.5;
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto bg-paper p-3">
+      <div data-canvas-body className="min-h-0 flex-1 overflow-y-auto bg-paper p-3">
         <div
           className="h-full overflow-y-auto bg-paper"
           style={{
@@ -345,7 +344,7 @@ function PanelMain({
     );
   }
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-paper">
+    <div data-canvas-body className="min-h-0 flex-1 overflow-y-auto bg-paper">
       {children}
     </div>
   );

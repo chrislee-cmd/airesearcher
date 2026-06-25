@@ -16,10 +16,12 @@ import {
   CANVAS_THEMES,
   WIDGET_LAYOUTS,
   WIDGET_PANELS,
+  WIDGET_INTERIORS,
   getThemeMeta,
   type CanvasTheme,
   type WidgetLayout,
   type WidgetPanel,
+  type WidgetInterior,
 } from '@/lib/canvas/themes';
 
 // chip 미니 swatch — chrome / accent 색을 inline 표시.
@@ -38,9 +40,10 @@ type UrlState = {
   fontIsDefault: boolean;
   layout: WidgetLayout;
   panel: WidgetPanel;
+  interior: WidgetInterior;
 };
 
-function syncUrl({ theme, fontKey, fontIsDefault, layout, panel }: UrlState) {
+function syncUrl({ theme, fontKey, fontIsDefault, layout, panel, interior }: UrlState) {
   try {
     const url = new URL(window.location.href);
     if (theme === 'default') url.searchParams.delete('theme');
@@ -51,6 +54,8 @@ function syncUrl({ theme, fontKey, fontIsDefault, layout, panel }: UrlState) {
     else url.searchParams.set('layout', layout);
     if (panel === 'plain') url.searchParams.delete('panel');
     else url.searchParams.set('panel', panel);
+    if (interior === 'default') url.searchParams.delete('interior');
+    else url.searchParams.set('interior', interior);
     window.history.replaceState({}, '', url.toString());
   } catch {
     /* ignore (private mode / no history) */
@@ -62,54 +67,67 @@ export function CanvasThemeSwitcher({
   fontKey,
   layout,
   panel,
+  interior,
   onChangeTheme,
   onChangeFont,
   onChangeLayout,
   onChangePanel,
+  onChangeInterior,
 }: {
   theme: CanvasTheme;
   fontKey: string;
   layout: WidgetLayout;
   panel: WidgetPanel;
+  interior: WidgetInterior;
   onChangeTheme: (next: CanvasTheme) => void;
   onChangeFont: (next: string) => void;
   onChangeLayout: (next: WidgetLayout) => void;
   onChangePanel: (next: WidgetPanel) => void;
+  onChangeInterior: (next: WidgetInterior) => void;
 }) {
   const handleTheme = useCallback(
     (next: CanvasTheme) => {
       onChangeTheme(next);
       const defaultFont = getThemeMeta(next).fonts[0].key;
-      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout, panel });
+      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout, panel, interior });
     },
-    [onChangeTheme, layout, panel],
+    [onChangeTheme, layout, panel, interior],
   );
 
   const handleFont = useCallback(
     (next: string) => {
       onChangeFont(next);
       const isDefault = getThemeMeta(theme).fonts[0].key === next;
-      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout, panel });
+      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout, panel, interior });
     },
-    [onChangeFont, theme, layout, panel],
+    [onChangeFont, theme, layout, panel, interior],
   );
 
   const handleLayout = useCallback(
     (next: WidgetLayout) => {
       onChangeLayout(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next, panel });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next, panel, interior });
     },
-    [onChangeLayout, theme, fontKey, panel],
+    [onChangeLayout, theme, fontKey, panel, interior],
   );
 
   const handlePanel = useCallback(
     (next: WidgetPanel) => {
       onChangePanel(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel: next });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel: next, interior });
     },
-    [onChangePanel, theme, fontKey, layout],
+    [onChangePanel, theme, fontKey, layout, interior],
+  );
+
+  const handleInterior = useCallback(
+    (next: WidgetInterior) => {
+      onChangeInterior(next);
+      const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel, interior: next });
+    },
+    [onChangeInterior, theme, fontKey, layout, panel],
   );
 
   const themeMeta = getThemeMeta(theme);
@@ -270,6 +288,42 @@ export function CanvasThemeSwitcher({
                 }}
               >
                 {p.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* row 5 — widget interior (button/input 등 component) chips (5개) */}
+        <div
+          className="flex items-center gap-1 border-t pt-1.5"
+          style={{ borderColor: 'var(--canvas-chrome-border)' }}
+        >
+          <span
+            className="px-1 text-xs tracking-[0.08em] uppercase"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            Interior
+          </span>
+          {WIDGET_INTERIORS.map((i) => {
+            const active = i.key === interior;
+            return (
+              <Button
+                key={i.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handleInterior(i.key)}
+                title={i.hint}
+                className="!px-2"
+                style={{
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                {i.label}
               </Button>
             );
           })}

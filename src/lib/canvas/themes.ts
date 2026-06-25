@@ -193,3 +193,36 @@ export function asWidgetPanel(input: unknown): WidgetPanel {
   if (typeof input === 'string' && PANEL_KEYS.has(input)) return input as WidgetPanel;
   return 'plain';
 }
+
+/* ────────────────────────────────────────────────────────────────────
+   Widget interior — 패널 안 (ExpandedBody) 의 component/token 레이어.
+   CSS scoped override — [data-canvas-interior="<key>"] [data-canvas-body]
+   안에서 button / input / select / textarea 의 외관을 통째로 교체.
+
+     default   — override 없음 (글로벌 primitive 그대로)
+     bold      — Memphis: 굵은 검은 border + offset shadow (pop 매칭)
+     outlined  — outline-only, hover 시 fill
+     pill      — rounded-full + 부드러운 bg hover
+     paper     — button = text link, input = 하단 border-only (minimal)
+
+   ExpandedBody 자체 코드는 zero touch — CSS 한 layer 만.
+   다른 라우트 / canvas chrome (toolbar/switcher/minimap) 영향 X
+   ([data-canvas-body] 가 PanelMain 의 widget body 안에만 존재).
+   ──────────────────────────────────────────────────────────────────── */
+
+export type WidgetInterior = 'default' | 'bold' | 'outlined' | 'pill' | 'paper';
+
+export const WIDGET_INTERIORS: { key: WidgetInterior; label: string; hint: string }[] = [
+  { key: 'default',  label: 'Default',  hint: '글로벌 primitive (현재)' },
+  { key: 'bold',     label: 'Bold',     hint: 'Memphis 검은 border + offset shadow' },
+  { key: 'outlined', label: 'Outlined', hint: 'outline-only, hover 시 fill' },
+  { key: 'pill',     label: 'Pill',     hint: 'rounded-full + 부드러운 hover' },
+  { key: 'paper',    label: 'Paper',    hint: 'text link + underline 입력 (minimal)' },
+];
+
+const INTERIOR_KEYS = new Set<string>(WIDGET_INTERIORS.map((i) => i.key));
+
+export function asWidgetInterior(input: unknown): WidgetInterior {
+  if (typeof input === 'string' && INTERIOR_KEYS.has(input)) return input as WidgetInterior;
+  return 'default';
+}
