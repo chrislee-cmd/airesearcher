@@ -15,14 +15,26 @@
    - datachannel: `oai-events` 에서 `conversation.item.input_audio_*` 이벤트 수신
 
    탭 오디오 지원 (PR-5 / pr-probing-5-tab-audio):
-   - 24 kHz mono resample — Chrome 의 getDisplayMedia 가 sampleRate 힌트를
-     무시하므로 AudioContext 로 강제 변환 (translate-console PR #396 패턴).
+   - raw passthrough — getDisplayMedia 의 트랙을 그대로 pc.addTrack. WebAudio
+     resample 그래프 (translate-console PR #396 패턴) 는 transcription endpoint
+     에서 dc 를 즉시 close 시키는 회귀 유발. PR #401 진단에서 확정.
+   - SDP Opus mono hint — Chrome 의 createOffer SDP 에 `stereo=0;sprop-stereo=0`
+     명시. Opus 기본값이 mono 라 no-op 에 가깝지만 보수적 안전망 (translation
+     endpoint 와 달리 transcription pipeline 이 stereo 에 더 strict).
    - 10s connect watchdog — 'starting' 진입 시 setTimeout 으로 안전망,
      'live' 도달 시 clear. 만료되면 pc/dc 상태 dump + `probing_timeout` 에러.
    - ICE 보강 — STUN 2개 + signaling/ice 상태 변화 콘솔 로그.
-   - tab VAD 안전망 — 탭 오디오는 자연스러운 휴지가 없어 OpenAI VAD 가
-     end-of-speech 를 못 잡고 transcript 가 stall. 3초마다 400ms 트랙 mute
-     해서 강제로 utterance 끊김 신호 (translate-console PR #396 패턴).
+   - tab VAD 안전망 — 휴지 없는 continuous 콘텐츠 (YouTube/스트리밍) 가
+     OpenAI VAD 가 end-of-speech 를 못 잡고 transcript 가 stall 되는 걸 방지.
+     3초마다 400ms 트랙 mute 로 강제 utterance 끊김 신호 (translate-console
+     PR #396 패턴).
+
+   탭 오디오 캡처 의미 (사용자 mental model):
+   - tab audio = 그 탭에서 **재생되는** 소리만 캡처 (browser audio output).
+   - 본인이 mic 으로 말한 건 echo cancellation 으로 본인 탭에서 재생되지 않음 →
+     캡처되지 않음. 본인 발화 캡처는 mic 모드로.
+   - Zoom 데스크탑 앱 윈도우 공유는 macOS Chrome 에서 audio 캡처 불가 (OS 제약).
+     Zoom 웹클라이언트 (zoom.us/wc) 사용해야 다른 참가자 발언 캡처 가능.
 
    범위 밖: 화자 분리, 탭 vs 마이크 자동 detection. 동시 세션 (translate +
    probing) 은 각자 별도 capture 호출 — 사용자가 picker 두 번 선택.
@@ -84,16 +96,10 @@ const SEGMENT_CAP = 1000;
 const CONNECT_TIMEOUT_MS = 10_000;
 
 // tab 모드 VAD 안전망 (3초마다 400ms 트랙 mute) — translate-console PR #396 패턴.
-// transcript 안 나오는 회귀에서 일시 비활성 — 결과 확인 후 복원 또는 제거.
-// (참조만 남기고 sourcing 제거됨)
-// const TAB_SILENCE_INTERVAL_MS = 3000;
-// const TAB_SILENCE_DURATION_MS = 400;
-
-// 진단 단계: tab 모드는 WebAudio resample 그래프를 우회하고 getDisplayMedia 의
-// raw 트랙을 그대로 publish — 트랙 출처 (hardware mic vs WebAudio-generated) 가
-// transcription endpoint 의 dc close 회귀 원인인지 격리. resample 관련 상수와
-// 참조 (TAB_AUDIO_SAMPLE_RATE, WebkitWindow, tabResampleCtxRef) 는 검증 후
-// 결과에 따라 영구 제거 또는 복원.
+// 휴지 없는 continuous content (YouTube 등) 에서 OpenAI server_vad 가
+// end-of-speech 를 못 잡아 utterance 가 commit 안 되는 문제 회피.
+const TAB_SILENCE_INTERVAL_MS = 3000;
+const TAB_SILENCE_DURATION_MS = 400;
 
 type OaiEvent = {
   type?: string;
@@ -111,13 +117,11 @@ function eventToItemId(ev: OaiEvent, fallback: string): string {
   return fallback;
 }
 
-// SDP munge — Opus fmtp 라인에 `stereo=0; sprop-stereo=0` 강제. mic 는
-// native mono 트랙이라 Chrome 의 Opus encoder 가 자연스럽게 mono Opus 로
-// 인코딩 → OpenAI transcription pipeline 이 처리. tab (getDisplayMedia) 은
-// stereo 트랙이라 Chrome 이 stereo Opus 로 인코딩 → transcription endpoint 가
-// VAD speech_started 도 못 emit 하는 패턴이 관측됨 (PR #401 진단). SDP fmtp 의
-// stereo 파라미터를 0 으로 강제하면 Chrome encoder 가 mono Opus 로 다운믹스해서
-// 전송, OpenAI 도 mono Opus 로 decode.
+// SDP munge — Opus fmtp 라인에 `stereo=0; sprop-stereo=0` 강제. Opus 기본값이
+// mono 라 Chrome 의 createOffer 가 보통 stereo= 파라미터를 명시 안 함 (= 기본
+// mono). 이 munge 는 그 기본값을 명시적으로 못박는 보수적 안전망. tab 모드만
+// 적용 (mic 는 native mono 트랙이라 회귀 위험 0). transcription endpoint 가
+// stereo Opus 처리에 strict 한 케이스 (다른 OpenAI realtime model 보다) 대비.
 function forceOpusMonoSdp(sdp: string): string {
   const lines = sdp.split('\r\n');
   let opusPt: string | null = null;
@@ -178,10 +182,8 @@ export function useRealtimeTranscription(opts?: {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   // 원본 capture stream (mic 또는 raw tab). cleanup 시 트랙 stop 으로 Chrome
-  // "탭 공유 중" 배너가 사라진다 — 반드시 resample 결과가 아닌 원본을 보관.
+  // "탭 공유 중" 배너가 사라진다.
   const captureStreamRef = useRef<MediaStream | null>(null);
-  // tab 모드에서 24 kHz resample 용 AudioContext. cleanup 시 close 필요.
-  const tabResampleCtxRef = useRef<AudioContext | null>(null);
   // tab 모드 silence injection 타이머.
   const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -245,15 +247,6 @@ export function useRealtimeTranscription(opts?: {
         }
       });
       captureStreamRef.current = null;
-    }
-    const ctx = tabResampleCtxRef.current;
-    if (ctx) {
-      try {
-        void ctx.close();
-      } catch {
-        /* already closed */
-      }
-      tabResampleCtxRef.current = null;
     }
     itemStartedAtRef.current.clear();
     lastTextRef.current.clear();
@@ -415,21 +408,16 @@ export function useRealtimeTranscription(opts?: {
         return;
       }
 
-      // 2) capture — source 분기.
-      //    captureStream = 원본 (cleanup 시 stop 대상, Chrome 탭 공유 배너 해제용).
-      //    publishStream = WebRTC 로 보낼 것 (tab 모드는 24 kHz resample 결과).
+      // 2) capture — source 분기. tab 모드는 getDisplayMedia 의 트랙을 그대로
+      // pc.addTrack (raw passthrough). WebAudio resample 그래프를 끼우면
+      // transcription endpoint 가 dc 를 즉시 close (PR #401 진단으로 확정).
       let captureStream: MediaStream;
-      let publishStream: MediaStream;
       try {
         if (source === 'tab') {
           // getDisplayMedia 는 모든 지원 브라우저에서 video 제약을 요구한다.
           // 가장 가벼운 surface (브라우저 탭) 를 요청하고 비디오 트랙은 즉시
-          // stop — 우리는 화면이 아닌 오디오만 필요.
-          //
-          // `ideal` 제약 (not `exact`): Chrome 의 getDisplayMedia 오디오
-          // 파이프라인이 대부분의 제약을 무시하므로 OverconstrainedError 를
-          // 피하면서도 가능하면 mono 로 downmix 되도록 hint 만 전달.
-          console.info('[probing] requesting getDisplayMedia');
+          // stop — 우리는 화면이 아닌 오디오만 필요. `ideal` 제약 (not `exact`)
+          // 으로 Chrome 의 OverconstrainedError 회피 + mono / 48 kHz hint 전달.
           const display = await navigator.mediaDevices.getDisplayMedia({
             audio: {
               echoCancellation: false,
@@ -442,15 +430,10 @@ export function useRealtimeTranscription(opts?: {
           });
           display.getVideoTracks().forEach((tr) => tr.stop());
           const audioTracks = display.getAudioTracks();
-          console.info('[probing] getDisplayMedia ok', {
-            audioTracks: audioTracks.length,
-            settings: audioTracks.map((tr) => tr.getSettings()),
-          });
           if (audioTracks.length === 0) {
-            // 사용자가 picker 에서 surface 는 골랐지만 "탭 오디오 공유" 를
-            // 체크 안 한 경우. Safari / 대부분의 모바일 브라우저처럼 플랫폼
-            // 자체가 미지원이어도 같은 분기. transcript 할 게 없으므로 전용
-            // 에러로 surface.
+            // picker 에서 surface 는 골랐지만 "탭 오디오 공유" 미체크.
+            // Safari / 대부분 모바일도 같은 분기 (플랫폼 미지원). macOS Chrome
+            // 의 window/screen surface 도 보통 여기 (네이티브 앱 audio 미캡처).
             display.getTracks().forEach((tr) => tr.stop());
             setError('tab_audio_unavailable');
             setStatus('error');
@@ -459,27 +442,10 @@ export function useRealtimeTranscription(opts?: {
             return;
           }
           captureStream = new MediaStream(audioTracks);
-
-          // 진단: WebAudio resample 경로 우회. mic 모드 (native hardware track)
-          // 가 정상 동작 / tab 모드 (WebAudio-generated track) 가 session.created
-          // 직후 dc close 되는 패턴이 stereo 도 24 kHz 도 아니고 트랙 출처 자체일
-          // 가능성을 검증. 이 분기가 transcript 생성하면 WebAudio "lift" 가
-          // transcription endpoint 와 호환되지 않는 게 확정 — 그 경우 resample
-          // 그래프를 영구 제거.
-          publishStream = captureStream;
-          const capTrack0 = captureStream.getAudioTracks()[0];
-          console.info('[probing] tab raw passthrough (no resample)', {
-            tracks: captureStream.getAudioTracks().length,
-            captureTrackEnabled: capTrack0?.enabled,
-            captureTrackMuted: capTrack0?.muted,
-            captureTrackReadyState: capTrack0?.readyState,
-            captureTrackSettings: capTrack0?.getSettings(),
-          });
         } else {
           captureStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
           });
-          publishStream = captureStream;
         }
       } catch (e) {
         // NotAllowedError → 사용자가 picker / 권한 prompt 를 명시적으로
@@ -500,97 +466,47 @@ export function useRealtimeTranscription(opts?: {
       }
       captureStreamRef.current = captureStream;
 
-      // tab 모드 silence injection 일시 비활성 — transcript 안 나오는 회귀에서
-      // track.enabled toggle 이 WebRTC encoder 를 의도치 않게 stall 시키는 가능성
-      // 격리. 검증 후 결과에 따라 복원 또는 영구 제거.
+      // tab 모드 silence injection — 3초마다 400ms track.enabled=false 로
+      // OpenAI server_vad 가 end-of-speech 를 잡아 utterance 를 commit 하게
+      // 강제. YouTube / 스트리밍처럼 휴지 없는 continuous content 에서 transcript
+      // 가 commit 안 되는 stall 회피 (translate-console PR #396 패턴).
+      if (source === 'tab') {
+        const track = captureStream.getAudioTracks()[0];
+        if (track) {
+          tabSilenceTimerRef.current = setInterval(() => {
+            if (track.readyState !== 'live') return;
+            track.enabled = false;
+            setTimeout(() => {
+              if (track.readyState === 'live') track.enabled = true;
+            }, TAB_SILENCE_DURATION_MS);
+          }, TAB_SILENCE_INTERVAL_MS);
+        }
+      }
 
       // 3) RTCPeerConnection + datachannel + SDP 교환
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: STUN_URLS }],
       });
-      pc.onsignalingstatechange = () => {
-        console.info('[probing] pc.signalingState', pc.signalingState);
-      };
-      pc.onconnectionstatechange = () => {
-        console.info('[probing] pc.connectionState', pc.connectionState);
-      };
       pc.oniceconnectionstatechange = () => {
         console.info('[probing] pc.iceConnectionState', pc.iceConnectionState);
       };
-      pc.onicegatheringstatechange = () => {
-        console.info('[probing] pc.iceGatheringState', pc.iceGatheringState);
-      };
-      pc.onicecandidate = (e) => {
-        // Candidate spam 이 무거우므로 type+protocol 만 로깅. null candidate
-        // 는 gathering 완료 신호.
-        console.info('[probing] ice-candidate', {
-          type: e.candidate?.type ?? 'end-of-candidates',
-          protocol: e.candidate?.protocol ?? null,
-        });
-      };
       pcRef.current = pc;
-      const pubTracks = publishStream.getAudioTracks();
-      console.info('[probing] addTrack to pc', {
-        count: pubTracks.length,
-        tracks: pubTracks.map((tr) => ({
-          id: tr.id,
-          enabled: tr.enabled,
-          readyState: tr.readyState,
-          muted: tr.muted,
-        })),
-      });
-      pubTracks.forEach((tr) => pc.addTrack(tr, publishStream));
+      captureStream
+        .getAudioTracks()
+        .forEach((tr) => pc.addTrack(tr, captureStream));
 
       const dc = pc.createDataChannel('oai-events');
       dcRef.current = dc;
-      dc.onopen = () => console.info('[probing] dc open');
-      dc.onclose = () => {
-        console.info('[probing] dc close', {
-          pcConnection: pc.connectionState,
-          pcIce: pc.iceConnectionState,
-          pcSignaling: pc.signalingState,
-        });
-      };
-      // 진단성: transcript 안 들어오는 회귀 추적 — non-delta 이벤트는 전부
-      // 로그 (cap 제거). speech_started / speech_stopped / committed 가 보이면
-      // VAD 가 audio 를 감지하는 것, 안 보이면 audio 가 silent 또는 미도달.
-      // delta 만 cap (첫 3개) — 정상 흐름에선 노이즈가 너무 큼.
-      let deltaLogged = 0;
-      dc.onmessage = (ev) => {
-        const raw = String(ev.data);
-        try {
-          const parsed = JSON.parse(raw) as { type?: string };
-          const type = parsed?.type ?? 'unknown';
-          if (type === 'conversation.item.input_audio_transcription.delta') {
-            if (deltaLogged < 3) {
-              deltaLogged += 1;
-              console.info('[probing] oai delta', { type, raw: raw.slice(0, 300) });
-            }
-          } else {
-            console.info('[probing] oai event', { type, raw: raw.slice(0, 1500) });
-          }
-        } catch {
-          /* not JSON */
-        }
-        handleOaiEvent(raw);
-      };
       dc.onerror = (ev) => {
         console.warn('[probing] dc error', ev);
       };
+      dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
 
       try {
         const offer = await pc.createOffer();
         // tab 모드만 Opus mono 강제. mic 는 native mono 라 munge 불필요 (회귀 방지).
         const offerSdp =
           source === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
-        if (source === 'tab') {
-          const beforeStereo = (offer.sdp ?? '').match(/stereo=\d/g);
-          const afterStereo = offerSdp.match(/stereo=\d/g);
-          console.info('[probing] SDP opus mono munge', {
-            before: beforeStereo,
-            after: afterStereo,
-          });
-        }
         await pc.setLocalDescription({ type: 'offer', sdp: offerSdp });
         const sdpRes = await fetch(REALTIME_SDP_URL, {
           method: 'POST',

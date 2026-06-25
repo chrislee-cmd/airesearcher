@@ -467,6 +467,14 @@ function ExpandedBody() {
               상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
               <br />
               시작 후 60초마다 후속 질문이 제안됩니다.
+              {source === 'tab' && (
+                <>
+                  <br />
+                  <span className="mt-1 inline-block text-xs text-mute-soft">
+                    탭 오디오는 공유한 탭에서 <strong>재생되는 소리</strong>만 캡처합니다 (본인 마이크 발화 제외). Zoom 은 zoom.us/wc 웹클라이언트 탭을 공유해야 다른 참가자 발언을 캡처할 수 있습니다.
+                  </span>
+                </>
+              )}
             </div>
           ) : !hasTranscript ? (
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
