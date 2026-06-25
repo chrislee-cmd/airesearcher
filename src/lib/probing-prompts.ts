@@ -4,11 +4,13 @@ import { z } from 'zod';
    probing-prompts — `/api/probing/suggest` 의 system prompt + schema.
 
    PR-2: transcript window 를 받아 인터뷰어가 다음에 던질 probing
-   질문 3~5개를 생성. technique 는 질적 인터뷰의 표준 probing 5종
+   질문 3개를 생성. technique 는 질적 인터뷰의 표준 probing 5종
    (Wright 1996 / Spradley 1979 의 ethnographic interview 모델).
 
    schema 는 streamObject 의 출력 형식. 클라이언트가 partial JSON 으로
-   parsing 하면서 카드 stream 표시.
+   parsing 하면서 카드 stream 표시. questions 의 핵심 (text + technique)
+   이 먼저 emit 되고 intents 가 사후 emit 되도록 schema key 순서 고정 —
+   인터뷰어가 핵심 질문을 빠르게 받고 의도는 부가로 따라오는 UX.
    ──────────────────────────────────────────────────────────────────── */
 
 export const PROBING_TECHNIQUES = [
@@ -32,10 +34,11 @@ export const PROBING_TECHNIQUE_LABEL: Record<ProbingTechnique, string> = {
   hypothetical: '가정',
 };
 
+// schema 의 key 순서가 LLM 출력 순서를 결정한다. questions 의 핵심 (text +
+// technique) 을 먼저 모두 emit 한 다음 intents 가 뒤따라옴 — 클라이언트가
+// partial JSON parse 하면서 카드의 질문 본문은 빠르게 채우고 "의도" 는
+// 사후 입력되는 UX 를 만든다. 같은 인덱스가 questions[i] ↔ intents[i] 대응.
 export const probingSuggestionSchema = z.object({
-  // 3~5개 — 모델이 4개를 자주 고를 수 있도록 prompt 에 가이드. min/max 는
-  // 강제하되 streamObject 가 partial 동안에는 길이 제약을 검증하지 않으므로
-  // 클라이언트는 도착하는 대로 표시.
   questions: z
     .array(
       z.object({
@@ -45,21 +48,25 @@ export const probingSuggestionSchema = z.object({
         technique: z
           .enum(PROBING_TECHNIQUES)
           .describe('probing 기법 분류.'),
-        why: z
-          .string()
-          .describe('왜 이 질문이 유용한지 1~2문장 사유.'),
       }),
     )
     .min(3)
-    .max(5)
-    .describe('probing 질문 3~5개.'),
+    .max(3)
+    .describe('probing 질문 3개 (핵심).'),
+  intents: z
+    .array(z.string())
+    .min(3)
+    .max(3)
+    .describe(
+      '각 질문의 의도. questions 와 같은 인덱스 순서. 1~2문장. **questions 3개를 모두 emit 한 뒤 한꺼번에 작성** (클라이언트 UX 요구사항 — 핵심 질문이 먼저 보이고 의도가 사후 입력되어야 함).',
+    ),
 });
 
 export type ProbingSuggestion = z.infer<typeof probingSuggestionSchema>;
 
 // 한국어 디폴트 — transcript 의 주 언어를 모델이 감지해서 응답 언어를
 // 그대로 따라가도록 명시. 영어/일본어 인터뷰여도 카드가 자연스럽게 표시됨.
-export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니다. 인터뷰어가 라이브 인터뷰를 진행하는 동안, 최근 transcript 를 보고 **바로 다음에 던질 후속 질문 (probing question)** 3~5개를 제안합니다.
+export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니다. 인터뷰어가 라이브 인터뷰를 진행하는 동안, 최근 transcript 를 보고 **바로 다음에 던질 후속 질문 (probing question)** 3개를 제안합니다.
 
 좋은 probing 질문의 원칙:
 - **응답자의 직전 발화** 를 받아서 더 깊이 파고듭니다. 새 주제로 점프 X.
@@ -76,11 +83,16 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 5. **hypothetical** — 가정 시나리오. "만약 그 기능이 없었다면 어떻게 하셨을까요?"
 
 생성 규칙:
-- 3~5개. 같은 기법이 반복돼도 OK — 단, 가능한 한 2가지 이상 기법 섞기.
+- 정확히 3개. 같은 기법이 반복돼도 OK — 단, 가능한 한 2가지 이상 기법 섞기.
 - 각 질문은 **응답자에게 그대로 던질 수 있는 한 문장**.
-- 각 질문의 \`why\` 는 1~2문장으로 짧게. 인터뷰어가 빠르게 스캔할 수 있도록.
+- 각 질문의 \`intent\` (의도) 는 1~2문장으로 짧게. 인터뷰어가 빠르게 스캔할 수 있도록.
 - **transcript 의 주 언어** (한국어/영어/일본어 등) 를 그대로 따라 응답하세요. 한국어 인터뷰는 한국어로, 영어 인터뷰는 영어로.
 - transcript 가 너무 짧거나 의미 파악이 어려우면 일반적인 follow-up 질문 (tell_more 기반) 으로 채우세요.
+
+**출력 순서 (중요)**:
+- 먼저 \`questions\` 배열에 3개 질문의 핵심 (text + technique) 만 모두 emit.
+- 그 다음 \`intents\` 배열에 3개의 의도를 같은 인덱스 순서로 emit.
+- 클라이언트가 partial JSON 으로 받아 핵심 질문을 먼저 보여주고 의도를 사후 노출하는 UX 라, 이 순서를 반드시 지켜야 합니다.
 
 interview_guide 가 함께 제공되면 그 가이드의 RQ / 챕터 흐름에 맞춰 질문을 우선 제안하세요. 비어 있으면 transcript 만 보고 판단.
 

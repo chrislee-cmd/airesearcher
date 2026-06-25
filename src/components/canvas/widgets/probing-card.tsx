@@ -7,17 +7,16 @@
    PR-2: LLM 호출로 후속 질문 (probing) 제안 + 산출물 히스토리.
    PR-4: translate 의존 제거 — 위젯이 자체 OpenAI Realtime transcription
          세션을 들고 transcript 를 받는다. mic-only MVP.
+   PR-5: 탭 오디오 지원 — source picker tab 옵션 활성화. hook 에 source
+         인자 전달, 에러 코드별 한국어 안내 (probing_timeout / tab_audio_*).
 
    세션 lifecycle:
-   - "세션 시작" 버튼 → useRealtimeTranscription.start() → 상태 'live'.
-   - 'live' 인 동안: 60초 자동 + 수동 "지금 제안" 트리거.
-   - "정지" 버튼 → hook.stop() → 상태 'idle', 마이크 해제.
+   - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
+   - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
+   - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
    휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
    리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
-
-   tab audio: pr-probing-5-tab-audio 에서 추가 예정. 현 PR 에서는
-   source picker UI 만 존재 (탭 옵션 disabled + "준비 중" 안내).
 
    참고: 더이상 RealtimeTranscriptProvider 의 consumer 가 아님.
    provider 는 translate-console 전용으로 유지.
@@ -49,8 +48,9 @@ import type {
 
 // transcript window — 최근 90초. probing prompt 가 받는 양과 동일.
 const PROBING_WINDOW_MS = 90_000;
-// 자동 호출 간격. 60초 = SSOT 스펙.
-const AUTO_INTERVAL_MS = 60_000;
+// 자동 호출 간격. 5초 — 빠른 피드백 위해 단축. in-flight 가드 (inFlightRef)
+// 가 중복 호출 방지하므로 LLM latency > 5s 여도 안전.
+const AUTO_INTERVAL_MS = 5_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
 // 산출물 영역에 표시할 최대 카운트 — primitive 가 자체적으로 2건 잘라내지만
@@ -90,10 +90,10 @@ function windowText(segments: TranscriptionSegment[]): string {
     .join('\n');
 }
 
-// PR-4: source picker. mic 만 활성, tab 은 disabled + "준비 중" 안내.
-// 별 PR (pr-probing-5-tab-audio) 에서 tab 옵션 활성화 예정. radio 두 개를
-// 직접 그리지 않고 Button primitive 의 selected/unselected 시각 차이를
-// 흉내내는 segmented control — design-system 토큰만 사용.
+// PR-5: source picker — mic / tab 둘 다 활성. tab 선택 시 hook 이
+// getDisplayMedia 로 Chrome 의 탭 picker 를 띄운다. radio 두 개를 직접
+// 그리지 않고 Button primitive 의 selected/unselected 시각 차이를 흉내내는
+// segmented control — design-system 토큰만 사용.
 type SourceKind = 'mic' | 'tab';
 function SourcePicker({
   value,
@@ -116,14 +116,13 @@ function SourcePicker({
         마이크
       </Button>
       <Button
-        variant="ghost"
+        variant={value === 'tab' ? 'primary' : 'ghost'}
         size="xs"
-        onClick={() => undefined}
-        disabled
-        title="탭 오디오는 후속 PR 에서 추가됩니다"
+        onClick={() => onChange('tab')}
+        disabled={disabled}
         className="uppercase tracking-[0.18em]"
       >
-        탭 오디오 · 준비 중
+        탭 오디오
       </Button>
     </div>
   );
@@ -142,8 +141,7 @@ function ExpandedBody() {
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
 
-  // source picker — mic-only MVP. tab 은 disabled 라 선택 변경 자체가
-  // 가능하지 않지만 상태는 보존해서 후속 PR 에서 활성화하기 쉽게.
+  // source picker — mic / tab. 세션 시작 시 hook 의 start({ source }) 로 전달.
   const [source, setSource] = useState<SourceKind>('mic');
 
   const isLive = sessionStatus === 'live';
@@ -176,8 +174,8 @@ function ExpandedBody() {
   // in-flight 호출 중복 방지. 자동 + 수동 모두 inFlightRef 가 true 면 skip.
   const inFlightRef = useRef(false);
 
-  // segments 의 최신값을 콜백 안에서 stale 없이 보기 위한 ref. setTimeout
-  // 안에서 React 의 useState 를 closure 로 잡으면 60초 전 값을 들고 호출됨.
+  // segments 의 최신값을 콜백 안에서 stale 없이 보기 위한 ref. setInterval
+  // 안에서 React 의 useState 를 closure 로 잡으면 직전 값을 들고 호출됨.
   const rawSegmentsRef = useRef(rawSegments);
   useEffect(() => {
     rawSegmentsRef.current = rawSegments;
@@ -212,7 +210,7 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: text,
           interview_guide: '',
-          max_questions: 4,
+          max_questions: 3,
         }),
       });
       if (!res.ok || !res.body) {
@@ -228,19 +226,26 @@ function ExpandedBody() {
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const parsed = await parsePartialJson(buffer);
+        // 서버 schema 는 questions[*].{text, technique} 가 먼저 emit 되고
+        // 그 다음 intents[i] 가 같은 인덱스 순서로 옴. partial 동안 intents
+        // 가 아직 비어 있으면 why 는 빈 문자열 — SuggestionList 의 조건부
+        // 렌더 (q.why && <p>...) 가 자동으로 의도를 숨김. 모든 질문 핵심이
+        // 노출된 다음 intents 가 차례로 채워지면서 사후 입력 효과.
         const obj = parsed.value as
-          | { questions?: Array<Partial<ProbingQuestion>> }
+          | {
+              questions?: Array<{ text?: string; technique?: string }>;
+              intents?: string[];
+            }
           | null;
         if (obj && Array.isArray(obj.questions)) {
-          // partial 동안에는 text / technique / why 가 누락된 항목이 섞일 수
-          // 있다. text 가 비어 있으면 아직 표시 X — UI 가 빈 카드를 그리지 않게.
+          const intents = Array.isArray(obj.intents) ? obj.intents : [];
           const clean: ProbingQuestion[] = obj.questions
-            .filter((q): q is Partial<ProbingQuestion> => !!q)
-            .map((q) => ({
+            .filter((q): q is { text?: string; technique?: string } => !!q)
+            .map((q, i) => ({
               text: typeof q.text === 'string' ? q.text : '',
               technique:
                 typeof q.technique === 'string' ? q.technique : 'tell_more',
-              why: typeof q.why === 'string' ? q.why : '',
+              why: typeof intents[i] === 'string' ? intents[i] : '',
             }))
             .filter((q) => q.text.trim().length > 0);
           lastQuestions = clean;
@@ -275,15 +280,15 @@ function ExpandedBody() {
     }
   }, [toast]);
 
-  // 자동 타이머. isLive 가 true → 60초 후 첫 호출, 이후 60초마다. isLive
-  // 가 false 가 되면 타이머 stop + nextCallAt 초기화.
+  // 자동 타이머. isLive 가 true → AUTO_INTERVAL_MS 후 첫 호출, 이후 같은 주기.
+  // isLive 가 false 가 되면 타이머 stop + nextCallAt 초기화.
   useEffect(() => {
     if (!isLive) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on isLive transition to false
       setNextCallAt(null);
       return;
     }
-    // isLive 전이 직후 다음 호출 시각 = 지금 + 60초.
+    // isLive 전이 직후 다음 호출 시각 = 지금 + AUTO_INTERVAL_MS.
     setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
     const id = setInterval(() => {
       void runSuggest();
@@ -306,7 +311,7 @@ function ExpandedBody() {
     prevLiveRef.current = isLive;
   }, [isLive]);
 
-  // "지금 제안" 수동 버튼. 자동 타이머 reset — 다음 자동 호출은 지금 +60초.
+  // "지금 제안" 수동 버튼. 자동 타이머 reset — 다음 자동 호출은 지금 + AUTO_INTERVAL_MS.
   function handleManual() {
     if (inFlightRef.current) return;
     setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
@@ -324,8 +329,8 @@ function ExpandedBody() {
 
   // 세션 시작 / 정지 — hook 호출 + 사용자 친화 에러 메시지.
   const handleStartSession = useCallback(async () => {
-    await startSession();
-  }, [startSession]);
+    await startSession({ source });
+  }, [startSession, source]);
 
   const handleStopSession = useCallback(async () => {
     await stopSession();
@@ -343,7 +348,15 @@ function ExpandedBody() {
         ? '마이크 권한이 거절되었습니다 — 브라우저 권한을 허용해 주세요'
         : sessionError === 'microphone_failed'
           ? '마이크 캡처에 실패했습니다 — 다른 앱이 사용 중인지 확인해 주세요'
-          : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
+          : sessionError === 'tab_audio_denied'
+            ? '탭 공유가 취소되었습니다'
+            : sessionError === 'tab_audio_unavailable'
+              ? "Chrome picker 에서 '탭 오디오 공유' 를 체크해 주세요"
+              : sessionError === 'tab_audio_failed'
+                ? '탭 오디오 캡처에 실패했습니다 — 다른 탭에서 다시 시도해 주세요'
+                : sessionError === 'probing_timeout'
+                  ? '네트워크 확인 후 다시 시작해 주세요'
+                  : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
     toast.push(human, { tone: 'warn' });
   }, [sessionError, toast]);
 
@@ -459,9 +472,17 @@ function ExpandedBody() {
             </div>
           ) : !isLive ? (
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              상단 &lsquo;세션 시작&rsquo; 으로 마이크 세션을 켜 주세요.
+              상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
               <br />
-              시작 후 60초마다 후속 질문이 제안됩니다.
+              시작 후 5초마다 후속 질문 3개가 제안됩니다.
+              {source === 'tab' && (
+                <>
+                  <br />
+                  <span className="mt-1 inline-block text-xs text-mute-soft">
+                    탭 오디오는 공유한 탭에서 <strong>재생되는 소리</strong>만 캡처합니다 (본인 마이크 발화 제외). Zoom 은 zoom.us/wc 웹클라이언트 탭을 공유해야 다른 참가자 발언을 캡처할 수 있습니다.
+                  </span>
+                </>
+              )}
             </div>
           ) : !hasTranscript ? (
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
@@ -513,7 +534,7 @@ function ExpandedBody() {
               onExpand={() => setOpenSet(set)}
             />
           )}
-          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 60초 후 첫 제안이 표시됩니다"
+          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 5초 후 첫 제안이 표시됩니다"
         />
       </div>
 
@@ -661,12 +682,12 @@ export const probingCard: WidgetContent = {
     // sky — 분석/컨설팅 톤. 8개 위젯이 6개 accent 색을 공유하는 구조라
     // 재사용 (peach/sun 도 2번씩). translate 의 mint 와 시각 구분.
     accent: 'sky',
-    // 호출 단위 비용은 사용자 친화 X — 60초마다 자동 호출되는데 매번 차감하면
+    // 호출 단위 비용은 사용자 친화 X — 5초마다 자동 호출되는데 매번 차감하면
     // 사용자가 위젯을 꺼버린다. 옵션 A (무료, 시스템 흡수) 로 시작 — 사용량
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 세션을 들고 후속 질문 3~5개를 60초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3개를 5초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
