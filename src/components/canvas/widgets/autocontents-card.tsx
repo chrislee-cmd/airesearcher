@@ -10,8 +10,10 @@ import { WidgetIframe } from '../shell/widget-iframe';
 //
 // URL 은 NEXT_PUBLIC_AUTOCONTENTS_URL 로 override 가능 — 실 production
 // URL 확정 후 Vercel env 에 등록하면 코드 변경 없이 swap.
+// 기본값은 현재 enko 의 작업 브랜치 preview (feat/source-extract-list).
 const AUTOCONTENTS_URL =
-  process.env.NEXT_PUBLIC_AUTOCONTENTS_URL ?? 'https://enko.vercel.app';
+  process.env.NEXT_PUBLIC_AUTOCONTENTS_URL ??
+  'https://enko-git-feat-source-extract-list-chris-projects-eb483193.vercel.app';
 
 function ExpandedBody() {
   return (
