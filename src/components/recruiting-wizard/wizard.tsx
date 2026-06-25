@@ -888,9 +888,9 @@ function FormPublishRow({
   return (
     <div className="space-y-3">
       {published ? (
-        <div className="space-y-3 border border-line-soft bg-paper p-3 rounded-sm">
+        <div className="space-y-2 border border-line-soft bg-paper p-3 rounded-sm">
           <div className="font-semibold text-ink">발행 완료</div>
-          <div className="flex flex-wrap gap-3 text-md">
+          <div className="flex flex-wrap items-center gap-3 text-md">
             <a
               href={published.editUri}
               target="_blank"
@@ -907,34 +907,25 @@ function FormPublishRow({
             >
               응답 폼 열기
             </a>
-          </div>
-          <div>
-            <div className="mb-1 text-sm font-semibold text-ink-2">
-              참석자용 링크
-            </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-2/5 items-center gap-2">
+              <span className="shrink-0 text-sm text-mute-soft">참석자용</span>
               <Input
                 value={published.responderUri}
                 readOnly
                 size="sm"
                 onFocus={(e) => e.currentTarget.select()}
-                className="font-mono text-sm"
+                className="flex-1 font-mono text-sm"
               />
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => void copyResponderUri()}
+                className="shrink-0"
               >
                 {copied ? '복사됨' : '복사'}
               </Button>
             </div>
-            <p className="mt-1 text-sm text-mute-soft">
-              이 URL 을 후보자에게 그대로 공유하세요.
-            </p>
           </div>
-          <p className="text-sm text-mute-soft">
-            아래 산출물 영역에서 시트 자동연결을 진행하세요.
-          </p>
         </div>
       ) : google?.connected ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
