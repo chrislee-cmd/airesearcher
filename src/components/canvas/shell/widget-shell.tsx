@@ -6,8 +6,11 @@
    - 헤더 = drag handle. 클릭 = select. 더블클릭 / chevron = collapse 토글.
    - 좌/우 edge 중간에 작은 port dot (cosmetic — 후속 PR 에서 connection
      drag-create 의 anchor 가 됨).
-   - collapsed 모드: 본문 숨김, 헤더만 (h=116 → 부모가 height 도 함께 조정).
-   - 선택 상태 (isSelected) 일 때 amore outline + 살짝 더 진한 shadow.
+   - collapsed 모드: 본문 숨김, 헤더만 (h=64 → 부모가 height 도 함께 조정).
+   - 선택 상태 (isSelected) 일 때 outline 강조.
+
+   theme: --canvas-card-* / --canvas-port-* / --canvas-selection-* CSS
+   variables 사용. /canvas 의 data-canvas-theme 컨테이너 안에서 override.
    ──────────────────────────────────────────────────────────────────── */
 
 import type {
@@ -47,43 +50,81 @@ export function WidgetShell({
   const pill = statePill(content.state);
   const isDraggable = !!dragHandleProps?.draggable;
 
-  // header click = select (canvas-board 가 selection 처리)
-  // header double-click = collapse toggle
+  // header click = select. double-click = collapse toggle.
   const headerOnClick = (e: ReactMouseEvent<HTMLElement>) => {
-    // drag handle 인 경우 click 이지만 drag 종료 직후도 click 으로 잡힘 — OK.
     if (e.detail === 2 && onToggleCollapse) onToggleCollapse();
     else if (onSelect) onSelect();
   };
 
+  // theme-aware container styles. border 와 outline (selection) 둘 다 같이
+  // 그리기 위해 outline 사용 — border-width 가 theme 마다 다른데 그대로 유지.
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--canvas-card-bg)',
+    border: 'var(--canvas-card-border-width) var(--canvas-card-border-style) var(--canvas-card-border)',
+    borderRadius: 'var(--canvas-card-radius)',
+    boxShadow: 'var(--canvas-card-shadow)',
+    backdropFilter: 'var(--canvas-backdrop)',
+    WebkitBackdropFilter: 'var(--canvas-backdrop)' as unknown as string,
+    outline: isSelected
+      ? 'var(--canvas-selection-width) solid var(--canvas-selection-border)'
+      : 'none',
+    outlineOffset: isSelected ? '2px' : '0',
+    transition: 'outline-color 0.12s, outline-width 0.12s, box-shadow 0.18s',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    height: 64,
+    background: 'var(--canvas-card-header-bg)',
+    color: 'var(--canvas-card-header-text)',
+    fontFamily: 'var(--canvas-card-header-font)',
+    borderBottom: isCollapsed
+      ? 'none'
+      : '1px solid var(--canvas-card-header-divider)',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontWeight: 'var(--canvas-card-header-weight)' as unknown as number,
+    letterSpacing: 'var(--canvas-card-header-tracking)',
+    textTransform: 'var(--canvas-card-header-transform)' as unknown as React.CSSProperties['textTransform'],
+    color: 'var(--canvas-card-header-text)',
+  };
+
+  const portRing = '0 0 0 2px var(--canvas-port-ring)';
+
   return (
     <div
-      className={`relative flex h-full flex-col overflow-hidden rounded-md bg-paper transition-shadow ${
-        isSelected
-          ? 'border-2 border-amore shadow-bento'
-          : 'border border-line shadow-bento'
-      }`}
+      className="relative flex h-full flex-col overflow-hidden"
       aria-expanded={!isCollapsed}
+      style={cardStyle}
     >
       {/* port dot — left (input) */}
       <span
         aria-hidden
-        className="absolute -left-[5px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-line bg-paper"
-        style={{ boxShadow: '0 0 0 2px var(--color-paper)' }}
+        className="absolute -left-[5px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full"
+        style={{
+          background: 'var(--canvas-port-in-bg)',
+          border: '1px solid var(--canvas-port-in-border)',
+          boxShadow: portRing,
+        }}
       />
       {/* port dot — right (output) */}
       <span
         aria-hidden
-        className="absolute -right-[5px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-amore bg-amore-bg"
-        style={{ boxShadow: '0 0 0 2px var(--color-paper)' }}
+        className="absolute -right-[5px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full"
+        style={{
+          background: 'var(--canvas-port-out-bg)',
+          border: '1px solid var(--canvas-port-out-border)',
+          boxShadow: portRing,
+        }}
       />
 
       <div
         className={`flex shrink-0 items-center gap-3 px-4 py-3 ${
           isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
-        } ${isCollapsed ? '' : 'border-b border-line-soft'}`}
+        }`}
         {...dragHandleProps}
         onClick={headerOnClick}
-        style={{ height: 64 }}
+        style={headerStyle}
       >
         {content.meta.thumbnail ? (
           <Image
@@ -92,11 +133,13 @@ export function WidgetShell({
             width={36}
             height={36}
             draggable={false}
-            className="h-9 w-9 shrink-0 rounded-xs border border-line object-cover"
+            className="h-9 w-9 shrink-0 rounded-xs object-cover"
+            style={{ border: '1px solid var(--canvas-card-border)' }}
           />
         ) : (
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xs border border-line ${ACCENT_BG[content.meta.accent]}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xs ${ACCENT_BG[content.meta.accent]}`}
+            style={{ border: '1px solid var(--canvas-card-border)' }}
           >
             <span className="text-base text-ink">
               {ACCENT_ICON[content.meta.accent]}
@@ -105,19 +148,25 @@ export function WidgetShell({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-md font-semibold tracking-[-0.005em] text-ink-2">
+            <span className="truncate text-md" style={labelStyle}>
               {content.meta.label}
             </span>
             <Pill {...pill} />
           </div>
           {content.meta.description && !isCollapsed && (
-            <div className="mt-0.5 truncate text-xs text-mute">
+            <div
+              className="mt-0.5 truncate text-xs"
+              style={{ color: 'var(--canvas-card-mute)' }}
+            >
               {content.meta.description}
             </div>
           )}
         </div>
         {typeof content.meta.cost === 'number' && !isCollapsed && (
-          <span className="shrink-0 text-xs text-mute-soft">
+          <span
+            className="shrink-0 text-xs"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
             {content.meta.cost === 0 ? '무료' : `${content.meta.cost} 크레딧`}
           </span>
         )}
@@ -132,6 +181,7 @@ export function WidgetShell({
               onToggleCollapse();
             }}
             className="shrink-0"
+            style={{ color: 'var(--canvas-card-header-text)' }}
           >
             <svg
               width="14"
@@ -154,7 +204,7 @@ export function WidgetShell({
         )}
       </div>
       {!isCollapsed && (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-paper">
           <ExpandedBody />
         </div>
       )}

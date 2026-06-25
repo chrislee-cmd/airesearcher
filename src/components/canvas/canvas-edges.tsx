@@ -3,12 +3,13 @@
 /* ────────────────────────────────────────────────────────────────────
    CanvasEdges — n8n 스타일 SVG bezier 연결선 오버레이.
 
-   - 위젯 좌표 (positions) + 크기 (sizes) 와 EDGES SSOT 를 받아 각 edge 의
-     출발점 (from 위젯 right-middle port) → 도착점 (to 위젯 left-middle port)
-     사이 horizontal-bias cubic bezier 를 그림.
+   - 위젯 좌표 (boxes) + EDGES SSOT 로 각 edge 의 출발점 (from 오른쪽 port)
+     → 도착점 (to 왼쪽 port) 사이 horizontal-bias cubic bezier.
    - 위젯이 collapsed 면 height 가 작아 port y 도 자동 조정.
    - kind='live' 는 dashed + stroke-dashoffset 애니메이션 (CSS keyframe).
-   - SVG 는 캔버스 surface 와 동일 transform 을 받아 pan/zoom 자동 정합.
+   - SVG 는 surface 와 동일 transform 을 받아 pan/zoom 자동 정합.
+   - theme: --canvas-edge / --canvas-edge-live / --canvas-edge-filter
+     CSS variables. data-canvas-theme 컨테이너 안에서 override.
    - pointer-events: none — edge 가 위젯 클릭 방해 X.
    ──────────────────────────────────────────────────────────────────── */
 
@@ -25,8 +26,6 @@ function portIn(b: Box): { x: number; y: number } {
   return { x: b.x, y: b.y + b.h / 2 };
 }
 
-// horizontal-bias cubic bezier — control point 가 출발/도착점 사이 가로
-// 거리의 절반만큼 right/left 로 뻗어나가 부드러운 S 또는 직선 곡선.
 function bezierPath(from: Box, to: Box): string {
   const a = portOut(from);
   const b = portIn(to);
@@ -63,7 +62,7 @@ export function CanvasEdges({
       width={surfaceW}
       height={surfaceH}
       viewBox={`0 0 ${surfaceW} ${surfaceH}`}
-      style={{ overflow: 'visible' }}
+      style={{ overflow: 'visible', filter: 'var(--canvas-edge-filter)' }}
     >
       <defs>
         <marker
@@ -75,7 +74,7 @@ export function CanvasEdges({
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-mute-soft)" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--canvas-edge)" />
         </marker>
         <marker
           id="canvas-edge-arrow-live"
@@ -86,7 +85,7 @@ export function CanvasEdges({
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-amore)" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--canvas-edge-live)" />
         </marker>
       </defs>
       {active.map((e) => {
@@ -97,12 +96,12 @@ export function CanvasEdges({
             <path
               d={d}
               fill="none"
-              stroke={live ? 'var(--color-amore)' : 'var(--color-mute-soft)'}
-              strokeWidth={live ? 2 : 1.5}
+              stroke={live ? 'var(--canvas-edge-live)' : 'var(--canvas-edge)'}
+              strokeWidth={live ? 'var(--canvas-edge-live-width)' : 'var(--canvas-edge-width)'}
               strokeDasharray={live ? '6 6' : undefined}
               markerEnd={`url(#${live ? 'canvas-edge-arrow-live' : 'canvas-edge-arrow'})`}
               className={live ? 'canvas-edge-live' : undefined}
-              opacity={0.85}
+              style={{ opacity: 'var(--canvas-edge-opacity)' as unknown as number }}
             />
           </g>
         );

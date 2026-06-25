@@ -29,7 +29,9 @@ import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { CanvasEdges } from '@/components/canvas/canvas-edges';
 import { CanvasToolbar } from '@/components/canvas/canvas-toolbar';
 import { CanvasMinimap } from '@/components/canvas/canvas-minimap';
+import { CanvasThemeSwitcher } from '@/components/canvas/canvas-theme-switcher';
 import type { WidgetContent } from '@/components/canvas/widget-types';
+import { type CanvasTheme } from '@/lib/canvas/themes';
 import {
   CANVAS_W,
   CANVAS_H,
@@ -78,9 +80,17 @@ function heightOf(s: WidgetState): number {
   return s.collapsed ? NODE_COLLAPSED_H : NODE_DEFAULT_H;
 }
 
-export function CanvasBoard({ widgets }: { widgets: WidgetContent[]; initialFocus?: string }) {
+export function CanvasBoard({
+  widgets,
+  initialTheme = 'default',
+}: {
+  widgets: WidgetContent[];
+  initialFocus?: string;
+  initialTheme?: CanvasTheme;
+}) {
   const [graph, setGraph] = useState<GraphState>(() => defaultStateFor(widgets));
   const [selected, setSelected] = useState<string | null>(null);
+  const [theme, setTheme] = useState<CanvasTheme>(initialTheme);
 
   // hydrate from localStorage
   useEffect(() => {
@@ -439,7 +449,9 @@ export function CanvasBoard({ widgets }: { widgets: WidgetContent[]; initialFocu
   return (
     <div
       ref={containerRef}
-      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
+      data-canvas-theme={theme}
+      className="relative h-[calc(100vh-3rem)] overflow-hidden"
+      style={{ background: 'var(--canvas-bg)' }}
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
@@ -448,8 +460,8 @@ export function CanvasBoard({ widgets }: { widgets: WidgetContent[]; initialFocu
       onDragOver={onSurfaceDragOver}
       onDrop={onSurfaceDrop}
     >
-      {/* surface — pan + zoom 적용. 점 grid 배경은 surface 안에 두면 zoom 에
-          따라 dot 사이 간격도 변함 (n8n / Figma 와 동일 동작). */}
+      {/* surface — pan + zoom 적용. dot grid 는 theme 의 --canvas-bg-image
+          + --canvas-bg-size 로 결정 (theme 마다 dot 크기/색/유무 다름). */}
       <div
         className="absolute left-0 top-0 origin-top-left"
         style={{
@@ -457,10 +469,8 @@ export function CanvasBoard({ widgets }: { widgets: WidgetContent[]; initialFocu
           height: CANVAS_H,
           transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
           transition: isPanning ? 'none' : 'transform 0.2s ease-out',
-          backgroundColor: 'var(--color-paper)',
-          backgroundImage:
-            'radial-gradient(circle, var(--color-line) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
+          backgroundImage: 'var(--canvas-bg-image)',
+          backgroundSize: 'var(--canvas-bg-size)',
           backgroundPosition: '0 0',
         }}
       >
@@ -520,6 +530,8 @@ export function CanvasBoard({ widgets }: { widgets: WidgetContent[]; initialFocu
           animation: canvasEdgeFlow 1.4s linear infinite;
         }
       `}</style>
+
+      <CanvasThemeSwitcher theme={theme} onChange={setTheme} />
 
       <CanvasMinimap
         boxes={boxes}
