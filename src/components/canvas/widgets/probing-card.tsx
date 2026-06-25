@@ -12,7 +12,7 @@
 
    세션 lifecycle:
    - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
-   - 'live' 인 동안: 10초 자동 + 수동 "지금 제안" 트리거.
+   - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
    휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
@@ -48,9 +48,9 @@ import type {
 
 // transcript window — 최근 90초. probing prompt 가 받는 양과 동일.
 const PROBING_WINDOW_MS = 90_000;
-// 자동 호출 간격. 10초 — 빠른 피드백을 위해 단축. in-flight 가드 (inFlightRef)
-// 가 중복 호출 방지하므로 LLM latency > 10s 여도 안전.
-const AUTO_INTERVAL_MS = 10_000;
+// 자동 호출 간격. 5초 — 빠른 피드백 위해 단축. in-flight 가드 (inFlightRef)
+// 가 중복 호출 방지하므로 LLM latency > 5s 여도 안전.
+const AUTO_INTERVAL_MS = 5_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
 // 산출물 영역에 표시할 최대 카운트 — primitive 가 자체적으로 2건 잘라내지만
@@ -210,7 +210,7 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: text,
           interview_guide: '',
-          max_questions: 4,
+          max_questions: 3,
         }),
       });
       if (!res.ok || !res.body) {
@@ -226,19 +226,26 @@ function ExpandedBody() {
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const parsed = await parsePartialJson(buffer);
+        // 서버 schema 는 questions[*].{text, technique} 가 먼저 emit 되고
+        // 그 다음 intents[i] 가 같은 인덱스 순서로 옴. partial 동안 intents
+        // 가 아직 비어 있으면 why 는 빈 문자열 — SuggestionList 의 조건부
+        // 렌더 (q.why && <p>...) 가 자동으로 의도를 숨김. 모든 질문 핵심이
+        // 노출된 다음 intents 가 차례로 채워지면서 사후 입력 효과.
         const obj = parsed.value as
-          | { questions?: Array<Partial<ProbingQuestion>> }
+          | {
+              questions?: Array<{ text?: string; technique?: string }>;
+              intents?: string[];
+            }
           | null;
         if (obj && Array.isArray(obj.questions)) {
-          // partial 동안에는 text / technique / why 가 누락된 항목이 섞일 수
-          // 있다. text 가 비어 있으면 아직 표시 X — UI 가 빈 카드를 그리지 않게.
+          const intents = Array.isArray(obj.intents) ? obj.intents : [];
           const clean: ProbingQuestion[] = obj.questions
-            .filter((q): q is Partial<ProbingQuestion> => !!q)
-            .map((q) => ({
+            .filter((q): q is { text?: string; technique?: string } => !!q)
+            .map((q, i) => ({
               text: typeof q.text === 'string' ? q.text : '',
               technique:
                 typeof q.technique === 'string' ? q.technique : 'tell_more',
-              why: typeof q.why === 'string' ? q.why : '',
+              why: typeof intents[i] === 'string' ? intents[i] : '',
             }))
             .filter((q) => q.text.trim().length > 0);
           lastQuestions = clean;
@@ -467,7 +474,7 @@ function ExpandedBody() {
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
               상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
               <br />
-              시작 후 10초마다 후속 질문이 제안됩니다.
+              시작 후 5초마다 후속 질문 3개가 제안됩니다.
               {source === 'tab' && (
                 <>
                   <br />
@@ -527,7 +534,7 @@ function ExpandedBody() {
               onExpand={() => setOpenSet(set)}
             />
           )}
-          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 10초 후 첫 제안이 표시됩니다"
+          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 5초 후 첫 제안이 표시됩니다"
         />
       </div>
 
@@ -675,12 +682,12 @@ export const probingCard: WidgetContent = {
     // sky — 분석/컨설팅 톤. 8개 위젯이 6개 accent 색을 공유하는 구조라
     // 재사용 (peach/sun 도 2번씩). translate 의 mint 와 시각 구분.
     accent: 'sky',
-    // 호출 단위 비용은 사용자 친화 X — 10초마다 자동 호출되는데 매번 차감하면
+    // 호출 단위 비용은 사용자 친화 X — 5초마다 자동 호출되는데 매번 차감하면
     // 사용자가 위젯을 꺼버린다. 옵션 A (무료, 시스템 흡수) 로 시작 — 사용량
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3~5개를 10초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3개를 5초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
