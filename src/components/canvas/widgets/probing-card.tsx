@@ -3,32 +3,22 @@
 /* ────────────────────────────────────────────────────────────────────
    프로빙 어시스턴트 — canvas widget.
 
-   PR-1: realtime input transcript 미리보기 + 빈 산출물 영역.
-   PR-2: LLM 호출로 후속 질문 (probing) 제안 + 산출물 히스토리.
-   PR-4: translate 의존 제거 — 위젯이 자체 OpenAI Realtime transcription
-         세션을 들고 transcript 를 받는다. mic-only MVP.
-   PR-5: 탭 오디오 지원 — source picker tab 옵션 활성화. hook 에 source
-         인자 전달, 에러 코드별 한국어 안내 (probing_timeout / tab_audio_*).
-
    세션 lifecycle:
    - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
    - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
-   휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
-   리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
+   휘발성: 현재 제안 세트는 React state. 페이지 새로고침 / 새 세션
+   시작 → 초기화 (의도).
 
-   참고: 더이상 RealtimeTranscriptProvider 의 consumer 가 아님.
-   provider 는 translate-console 전용으로 유지.
+   PR-7 (이 PR) 에서 transcript live preview UI 와 푸터 산출물 히스토리
+   영역을 제거. transcript_window 데이터는 그대로 suggest 호출 body 에
+   전달 — UI 노출만 사라짐.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
-import {
-  WidgetOutputRow,
-  WidgetOutputs,
-} from '@/components/canvas/shell/widget-outputs';
 import {
   useRealtimeTranscription,
   type TranscriptionSegment,
@@ -41,7 +31,6 @@ import {
   PROBING_TECHNIQUE_LABEL,
   type ProbingTechnique,
 } from '@/lib/probing-prompts';
-import { ProbingHistoryModal } from '@/components/canvas/modals/probing-history-modal';
 import {
   GUIDE_MAX_CHARS,
   getStoredGuide,
@@ -65,9 +54,6 @@ const GUIDE_SAVE_DEBOUNCE_MS = 500;
 const AUTO_INTERVAL_MS = 5_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
-// 산출물 영역에 표시할 최대 카운트 — primitive 가 자체적으로 2건 잘라내지만
-// 메모리 누수 방지 위해 누적 cap.
-const HISTORY_CAP = 50;
 
 // transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
@@ -77,22 +63,6 @@ function useNowTick(intervalMs = 1000): number {
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
-}
-
-function SegmentRow({ seg }: { seg: TranscriptionSegment }) {
-  const inFlight = seg.ended_at === undefined;
-  return (
-    <li
-      className={`rounded-xs border px-3 py-2 text-md leading-[1.6] ${
-        inFlight
-          ? 'border-line-soft bg-paper text-mute'
-          : 'border-line bg-paper text-ink-2'
-      }`}
-    >
-      {seg.text}
-      {inFlight && <span className="text-mute-soft"> …</span>}
-    </li>
-  );
 }
 
 function windowText(segments: TranscriptionSegment[]): string {
@@ -277,8 +247,9 @@ function ExpandedBody() {
 
   const isLive = sessionStatus === 'live';
 
-  // 90초 윈도우 — preview 와 LLM 호출이 같은 윈도우를 본다. hook 의
-  // 전체 segments 에서 시간 cutoff 만 적용. now 가 1초마다 갱신되어
+  // 90초 윈도우 — LLM 호출이 받는 transcript_window 와 같은 윈도우. UI
+  // 에서는 hasTranscript 만 사용 (제안 카드 empty state + 수동 트리거 가드).
+  // hook 의 전체 segments 에서 시간 cutoff 만 적용. now 가 1초마다 갱신되어
   // 세션이 idle 인 동안에도 cutoff 가 흘러간다.
   const segments = useMemo(
     () => {
@@ -293,9 +264,6 @@ function ExpandedBody() {
   const [current, setCurrent] = useState<ProbingSuggestionSet | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<ProbingSuggestionSet[]>([]);
-  const [openSet, setOpenSet] = useState<ProbingSuggestionSet | null>(null);
-  const [showAll, setShowAll] = useState(false);
 
   // 자동 타이머가 "다음 호출까지 남은 시간" 을 표시하기 위해 next-call epoch
   // 를 ref + state 양쪽에 보관. ref 는 setInterval/setTimeout 안에서 stale
@@ -351,7 +319,6 @@ function ExpandedBody() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let lastQuestions: ProbingQuestion[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -379,23 +346,8 @@ function ExpandedBody() {
               why: typeof intents[i] === 'string' ? intents[i] : '',
             }))
             .filter((q) => q.text.trim().length > 0);
-          lastQuestions = clean;
           setCurrent({ id: setId, created_at: started_at, questions: clean });
         }
-      }
-
-      // 스트림이 끝나면 history 에도 push. 이전 current 가 stream 도중 덮였을
-      // 가능성도 있으므로 lastQuestions 를 그대로 사용.
-      if (lastQuestions.length > 0) {
-        const finalSet: ProbingSuggestionSet = {
-          id: setId,
-          created_at: started_at,
-          questions: lastQuestions,
-        };
-        setHistory((prev) => {
-          const next = [finalSet, ...prev];
-          return next.slice(0, HISTORY_CAP);
-        });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'suggest_failed';
@@ -428,14 +380,13 @@ function ExpandedBody() {
     return () => clearInterval(id);
   }, [isLive, runSuggest]);
 
-  // 새 세션 시작 시 (isLive false → true 전이) 히스토리 리셋. 같은 세션
-  // 안에서 transcript 가 잠시 끊겼다 다시 잡혀도 isLive 가 토글되면 리셋.
-  // 스펙: "새 세션이 시작되면 probing 의 제안 히스토리 리셋."
+  // 새 세션 시작 시 (isLive false → true 전이) 현재 제안 / 에러 리셋.
+  // 같은 세션 안에서 transcript 가 잠시 끊겼다 다시 잡혀도 isLive 가 토글되면
+  // 리셋.
   const prevLiveRef = useRef(false);
   useEffect(() => {
     const prev = prevLiveRef.current;
     if (!prev && isLive) {
-      setHistory([]);
       setCurrent(null);
       setError(null);
     }
@@ -678,10 +629,9 @@ function ExpandedBody() {
           />
         </div>
 
-        {/* 중간 — 제안 카드 + transcript 미리보기. flex-1 로 산출물을
-            카드 바닥에 고정. */}
+        {/* 중간 — 제안 카드 영역. flex-1 로 위젯 height 800px 안을 채운다. */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          {/* 제안 카드 영역. current 가 있으면 카드, 없으면 placeholder. */}
+          {/* current 가 있으면 카드, 없으면 placeholder. */}
           {current && current.questions.length > 0 ? (
             <SuggestionList set={current} onCopy={handleCopy} streaming={streaming} />
           ) : streaming ? (
@@ -717,50 +667,8 @@ function ExpandedBody() {
               제안 생성 실패: {error}
             </div>
           )}
-
-          {/* transcript 미리보기 — probing 이 어떤 transcript 위에서 제안하는지
-              사용자가 한 눈에 확인. */}
-          {hasTranscript && (
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-                  최근 90초 transcript
-                </span>
-                <span className="text-xs text-mute-soft tabular-nums">
-                  {segments.length}개 세그먼트
-                </span>
-              </div>
-              <ul className="space-y-2">
-                {segments.map((s) => (
-                  <SegmentRow key={s.id} seg={s} />
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
-
-        {/* 산출물 — probing 제안 히스토리. WidgetOutputs 가 최근 2건 강제,
-            초과 시 더보기 모달로 전체 리스트 노출. */}
-        <WidgetOutputs
-          label="제안 히스토리"
-          items={history}
-          onMoreClick={() => setShowAll(true)}
-          renderItem={(set) => (
-            <HistoryRow
-              key={set.id}
-              set={set}
-              onExpand={() => setOpenSet(set)}
-            />
-          )}
-          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 5초 후 첫 제안이 표시됩니다"
-        />
       </div>
-
-      <ProbingHistoryModal
-        set={openSet}
-        onClose={() => setOpenSet(null)}
-        onCopy={handleCopy}
-      />
 
       {/* 파일 import — 기존 가이드 비어있지 않을 때 교체 confirm.
           확인 시 runImport, 취소 시 pendingFile drop. */}
@@ -796,18 +704,6 @@ function ExpandedBody() {
             파일: <span className="text-ink-2">{pendingFile.name}</span>
           </p>
         </Modal>
-      )}
-
-      {/* 전체 히스토리 모달 — quotes-card 의 "최근 산출물 (N)" 패턴과 동일. */}
-      {showAll && (
-        <ProbingAllSetsModal
-          history={history}
-          onClose={() => setShowAll(false)}
-          onExpand={(s) => {
-            setShowAll(false);
-            setOpenSet(s);
-          }}
-        />
       )}
     </>
   );
@@ -865,67 +761,6 @@ function SuggestionList({
         })}
       </ul>
     </div>
-  );
-}
-
-function HistoryRow({
-  set,
-  onExpand,
-}: {
-  set: ProbingSuggestionSet;
-  onExpand: () => void;
-}) {
-  const d = new Date(set.created_at);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
-  return (
-    <WidgetOutputRow
-      title={`제안 세트 · ${hh}:${mm}:${ss}`}
-      meta={
-        <>
-          <span>{set.questions.length}개 질문</span>
-        </>
-      }
-      actions={
-        <Button
-          variant="link"
-          size="sm"
-          onClick={onExpand}
-          className="uppercase tracking-[0.18em]"
-        >
-          펼치기
-        </Button>
-      }
-    />
-  );
-}
-
-// 전체 히스토리 모달 — Modal primitive 안에서 history row 를 다시 그린다.
-// 단일 set 펼치기 모달 (ProbingHistoryModal) 과 분리한 이유: 두 모달이
-// 다른 의도 (목록 vs 단건) 이고 동시에 떠 있을 수 있다.
-function ProbingAllSetsModal({
-  history,
-  onClose,
-  onExpand,
-}: {
-  history: ProbingSuggestionSet[];
-  onClose: () => void;
-  onExpand: (s: ProbingSuggestionSet) => void;
-}) {
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`제안 히스토리 (${history.length})`}
-      size="lg"
-    >
-      <ul className="space-y-3">
-        {history.map((s) => (
-          <HistoryRow key={s.id} set={s} onExpand={() => onExpand(s)} />
-        ))}
-      </ul>
-    </Modal>
   );
 }
 
