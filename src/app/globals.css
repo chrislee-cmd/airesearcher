@@ -1,35 +1,36 @@
 @import "tailwindcss";
 
 /* =========================================================================
-   Bento Design System tokens (전역 SSOT).
-   /Users/churryboy/AI-researcher/design-system-bento.md 참고.
-   기존 토큰 이름(amore / ink / mute / paper / line …) 은 보존하고
-   값만 bento 로 교체 → 앱 전체 (58 곳에서 참조) 가 자동으로 새 톤을 입음.
+   Design System v3 tokens — Notion 베이스 + n8n 캔버스 elevation (인앱 한정).
+   docs/design-system-v3-notion-draft.md 참고.
+   기존 토큰 이름(amore / ink / mute / paper / line …) 은 보존하고 값만 교체
+   → 앱 전체 (198 곳에서 참조) 가 자동으로 새 톤을 입음. 마케팅/랜딩 면은
+   별도 결정으로 처리 (D8 보류).
    ========================================================================= */
 @theme {
-  /* Brand accent — bento purple (formerly amore navy) */
-  --color-amore: #a06fda;
-  --color-amore-soft: #b690e2;
-  --color-amore-bg: #e7defe;
-  --color-amore-tint: #d6c3fb;     /* 카드 헤더 포인트 톤 — amore-bg 보다 한 단계 진함 */
-  --color-pacific: #1d1b20;
-  --color-pacific-bg: #f3f0eb;
+  /* Brand accent — Notion blue (formerly bento purple) */
+  --color-amore: #2EAADC;
+  --color-amore-soft: #5BBEE3;
+  --color-amore-bg: #D3EDF8;
+  --color-amore-tint: #A5DBED;     /* 카드 헤더 포인트 톤 — amore-bg 보다 한 단계 진함 */
+  --color-pacific: #37352F;
+  --color-pacific-bg: #F1F1EF;
 
-  /* Text */
-  --color-ink: #1d1b20;
-  --color-ink-2: #2a262f;
-  --color-mute: #5b5965;
-  --color-mute-soft: #8a8693;
+  /* Text — Notion grayscale */
+  --color-ink: #37352F;
+  --color-ink-2: #37352F;
+  --color-mute: #787774;
+  --color-mute-soft: #9B9A97;
   --color-gray-warm: #6f6c78;
 
   /* Surfaces / lines */
-  --color-line: rgba(29, 27, 32, 0.10);
-  --color-line-soft: rgba(29, 27, 32, 0.06);
-  --color-paper: #fbf7f2;          /* warm cream (page bg) */
-  --color-paper-soft: #fefaf5;     /* card surface — warm white, reads elevated above cream */
+  --color-line: rgba(55, 53, 47, 0.09);
+  --color-line-soft: rgba(55, 53, 47, 0.055);
+  --color-paper: #FFFFFF;          /* pure white — Notion in-app bg */
+  --color-paper-soft: #F7F7F5;     /* Notion panel grey — card surface, zebra */
 
-  /* Bento pastel palette */
-  --color-lav: #e7defe;
+  /* Pastel palette — 데이터 시각화 / 컬러 라벨용 (보존, lav 만 블루 wash 정합) */
+  --color-lav: #D3EDF8;
   --color-peach: #ffd9c9;
   --color-mint: #cdebd9;
   --color-sun: #fff1b6;
@@ -50,11 +51,11 @@
   --font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-hand: "Caveat", cursive;
 
-  /* Radius scale */
+  /* Radius scale — Notion 베이스 (작은 곡률) + n8n 캔버스 lg */
   --radius-xs: 4px;
-  --radius-sm: 14px;
-  --radius-md: 24px;
-  --radius-lg: 32px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
 
   /* Font-size scale (B-1, option C — conservative consolidation).
@@ -72,8 +73,8 @@
   --text-3xl: 22px;        /* absorbs 20, 22, 24 — large heading */
   --text-display: 32px;    /* absorbs 26, 28, 42 — hero/display */
 
-  /* Single shadow token */
-  --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+  /* Single shadow token — n8n 캔버스 elevation 보다 살짝 lighter */
+  --shadow-bento: 0 1px 2px rgba(55, 53, 47, 0.03), 0 4px 12px rgba(55, 53, 47, 0.04);
 }
 
 /* =========================================================================

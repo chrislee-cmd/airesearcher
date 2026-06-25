@@ -1,5 +1,7 @@
 # Design System v2 — Draft
 
+> **⚠️ Superseded by v3 (노션 베이스, 2026-06-25)** — v2 의 editorial + bento hybrid 방향은 유지되지 않습니다. 인앱은 노션 베이스 + n8n 캔버스 elevation 으로 전환됐습니다. 새 방향은 `docs/design-system-v3-notion-draft.md` 참조. 이 문서는 히스토리 보존용으로 남깁니다.
+>
 > **상태**: 검토 대기. **이 문서는 production 에 영향을 주지 않습니다.**
 > 검토·승인 후 외부 파일 `/Users/churryboy/AI-researcher/design-system.md` 를
 > 이 문서로 교체할 예정. 교체 전까지 기존 doc 들이 SSOT.
