@@ -34,9 +34,10 @@ export type WidgetContent = {
     // 옵션: 위젯이 차지하는 row 수. 미지정 = 1.
     // 1: 한 셀 높이 (800)
     // 2: 두 셀 높이 (1648 = 800 + 48 + 800)
-    // 3: 세 셀 높이 (2496 = 800 + 48 + 800 + 48 + 800) — autocontents
-    //    같이 본문 분량이 많은 도구
-    expandedRows?: 1 | 2 | 3;
+    // 3: 세 셀 높이 (2496 = 800 + 48 + 800 + 48 + 800)
+    // 4: 네 셀 높이 (3344) — autocontents 좌측 세로 strip 처럼 다중 row span
+    // 5: 다섯 셀 (GRID_ROWS) 까지 가능
+    expandedRows?: 1 | 2 | 3 | 4 | 5;
   };
   state: WidgetState;
   ExpandedBody: FC;

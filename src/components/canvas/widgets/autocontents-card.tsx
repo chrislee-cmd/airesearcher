@@ -28,12 +28,12 @@ export const autocontentsCard: WidgetContent = {
     accent: 'lav',
     cost: 0,
     description: '콘텐츠 자동 생성 도구 — 마이그 진행 중',
-    // 보드 전체 너비 (1680px). 메인 캔버스 + 좌측 사이드바 인스펙터를
-    // 둘 다 넉넉히 수용 (440px 사이드바 + 1fr 메인).
-    expandedCols: 6,
-    // 2 rows (1648px) — 캔버스 source/output/image/deploy 노드들을 한
-    // 화면에 보여주기 충분하면서 3 rows (2496px) 의 과한 white space 회피.
-    expandedRows: 2,
+    // 보드 좌측 절반 (3 cols = 816px) 을 세로로 (4 rows = 3344px) 차지.
+    // CANVAS_ORDER 에서 첫 번째 위치 + row-major auto-layout 로 보드 top-left
+    // 점유 → 다른 6개 위젯이 우측 (cols 3-5) 에 stack. 인스펙터가 열렸을 때
+    // 위젯 내부에서 캔버스 아래로 stack (lg 사이드바 미사용).
+    expandedCols: 3,
+    expandedRows: 4,
   },
   state: 'idle',
   ExpandedBody,

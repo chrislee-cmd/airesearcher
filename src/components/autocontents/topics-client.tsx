@@ -1563,15 +1563,8 @@ export default function TopicsClient() {
         </div>
       </header>
 
-      <main
-        className={
-          "mx-auto grid max-w-[1400px] gap-6 px-6 py-6 " +
-          (selection
-            ? "lg:grid-cols-[440px_minmax(0,1fr)]"
-            : "lg:grid-cols-1")
-        }
-      >
-        <section className="min-w-0 lg:order-2">
+      <main className="mx-auto flex max-w-[1400px] flex-col gap-6 px-6 py-6">
+        <section className="min-w-0">
           <Canvas
             sourceBadge={sourceBadge}
             sourceDetail={sourceDetail}
@@ -1614,7 +1607,7 @@ export default function TopicsClient() {
         </section>
 
         {selection && (
-          <aside className="lg:order-1 lg:sticky lg:top-4 lg:self-start">
+          <aside>
             <Inspector
               selection={selection}
               onClose={() => setSelection(null)}
