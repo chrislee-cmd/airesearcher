@@ -12,7 +12,7 @@
 
    세션 lifecycle:
    - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
-   - 'live' 인 동안: 60초 자동 + 수동 "지금 제안" 트리거.
+   - 'live' 인 동안: 10초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
    휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
@@ -48,8 +48,9 @@ import type {
 
 // transcript window — 최근 90초. probing prompt 가 받는 양과 동일.
 const PROBING_WINDOW_MS = 90_000;
-// 자동 호출 간격. 60초 = SSOT 스펙.
-const AUTO_INTERVAL_MS = 60_000;
+// 자동 호출 간격. 10초 — 빠른 피드백을 위해 단축. in-flight 가드 (inFlightRef)
+// 가 중복 호출 방지하므로 LLM latency > 10s 여도 안전.
+const AUTO_INTERVAL_MS = 10_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
 // 산출물 영역에 표시할 최대 카운트 — primitive 가 자체적으로 2건 잘라내지만
@@ -173,8 +174,8 @@ function ExpandedBody() {
   // in-flight 호출 중복 방지. 자동 + 수동 모두 inFlightRef 가 true 면 skip.
   const inFlightRef = useRef(false);
 
-  // segments 의 최신값을 콜백 안에서 stale 없이 보기 위한 ref. setTimeout
-  // 안에서 React 의 useState 를 closure 로 잡으면 60초 전 값을 들고 호출됨.
+  // segments 의 최신값을 콜백 안에서 stale 없이 보기 위한 ref. setInterval
+  // 안에서 React 의 useState 를 closure 로 잡으면 직전 값을 들고 호출됨.
   const rawSegmentsRef = useRef(rawSegments);
   useEffect(() => {
     rawSegmentsRef.current = rawSegments;
@@ -272,15 +273,15 @@ function ExpandedBody() {
     }
   }, [toast]);
 
-  // 자동 타이머. isLive 가 true → 60초 후 첫 호출, 이후 60초마다. isLive
-  // 가 false 가 되면 타이머 stop + nextCallAt 초기화.
+  // 자동 타이머. isLive 가 true → AUTO_INTERVAL_MS 후 첫 호출, 이후 같은 주기.
+  // isLive 가 false 가 되면 타이머 stop + nextCallAt 초기화.
   useEffect(() => {
     if (!isLive) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on isLive transition to false
       setNextCallAt(null);
       return;
     }
-    // isLive 전이 직후 다음 호출 시각 = 지금 + 60초.
+    // isLive 전이 직후 다음 호출 시각 = 지금 + AUTO_INTERVAL_MS.
     setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
     const id = setInterval(() => {
       void runSuggest();
@@ -303,7 +304,7 @@ function ExpandedBody() {
     prevLiveRef.current = isLive;
   }, [isLive]);
 
-  // "지금 제안" 수동 버튼. 자동 타이머 reset — 다음 자동 호출은 지금 +60초.
+  // "지금 제안" 수동 버튼. 자동 타이머 reset — 다음 자동 호출은 지금 + AUTO_INTERVAL_MS.
   function handleManual() {
     if (inFlightRef.current) return;
     setNextCallAt(Date.now() + AUTO_INTERVAL_MS);
@@ -466,7 +467,7 @@ function ExpandedBody() {
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
               상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
               <br />
-              시작 후 60초마다 후속 질문이 제안됩니다.
+              시작 후 10초마다 후속 질문이 제안됩니다.
               {source === 'tab' && (
                 <>
                   <br />
@@ -526,7 +527,7 @@ function ExpandedBody() {
               onExpand={() => setOpenSet(set)}
             />
           )}
-          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 60초 후 첫 제안이 표시됩니다"
+          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 10초 후 첫 제안이 표시됩니다"
         />
       </div>
 
@@ -674,12 +675,12 @@ export const probingCard: WidgetContent = {
     // sky — 분석/컨설팅 톤. 8개 위젯이 6개 accent 색을 공유하는 구조라
     // 재사용 (peach/sun 도 2번씩). translate 의 mint 와 시각 구분.
     accent: 'sky',
-    // 호출 단위 비용은 사용자 친화 X — 60초마다 자동 호출되는데 매번 차감하면
+    // 호출 단위 비용은 사용자 친화 X — 10초마다 자동 호출되는데 매번 차감하면
     // 사용자가 위젯을 꺼버린다. 옵션 A (무료, 시스템 흡수) 로 시작 — 사용량
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3~5개를 60초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3~5개를 10초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
