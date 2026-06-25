@@ -15,9 +15,11 @@ import { Button } from '@/components/ui/button';
 import {
   CANVAS_THEMES,
   WIDGET_LAYOUTS,
+  WIDGET_PANELS,
   getThemeMeta,
   type CanvasTheme,
   type WidgetLayout,
+  type WidgetPanel,
 } from '@/lib/canvas/themes';
 
 // chip 미니 swatch — chrome / accent 색을 inline 표시.
@@ -35,9 +37,10 @@ type UrlState = {
   fontKey: string;
   fontIsDefault: boolean;
   layout: WidgetLayout;
+  panel: WidgetPanel;
 };
 
-function syncUrl({ theme, fontKey, fontIsDefault, layout }: UrlState) {
+function syncUrl({ theme, fontKey, fontIsDefault, layout, panel }: UrlState) {
   try {
     const url = new URL(window.location.href);
     if (theme === 'default') url.searchParams.delete('theme');
@@ -46,6 +49,8 @@ function syncUrl({ theme, fontKey, fontIsDefault, layout }: UrlState) {
     else url.searchParams.set('font', fontKey);
     if (layout === 'classic') url.searchParams.delete('layout');
     else url.searchParams.set('layout', layout);
+    if (panel === 'plain') url.searchParams.delete('panel');
+    else url.searchParams.set('panel', panel);
     window.history.replaceState({}, '', url.toString());
   } catch {
     /* ignore (private mode / no history) */
@@ -56,43 +61,55 @@ export function CanvasThemeSwitcher({
   theme,
   fontKey,
   layout,
+  panel,
   onChangeTheme,
   onChangeFont,
   onChangeLayout,
+  onChangePanel,
 }: {
   theme: CanvasTheme;
   fontKey: string;
   layout: WidgetLayout;
+  panel: WidgetPanel;
   onChangeTheme: (next: CanvasTheme) => void;
   onChangeFont: (next: string) => void;
   onChangeLayout: (next: WidgetLayout) => void;
+  onChangePanel: (next: WidgetPanel) => void;
 }) {
   const handleTheme = useCallback(
     (next: CanvasTheme) => {
       onChangeTheme(next);
-      // theme 변경 시 board 도 font 를 첫 번째로 reset (canvas-board setTheme).
       const defaultFont = getThemeMeta(next).fonts[0].key;
-      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout });
+      syncUrl({ theme: next, fontKey: defaultFont, fontIsDefault: true, layout, panel });
     },
-    [onChangeTheme, layout],
+    [onChangeTheme, layout, panel],
   );
 
   const handleFont = useCallback(
     (next: string) => {
       onChangeFont(next);
       const isDefault = getThemeMeta(theme).fonts[0].key === next;
-      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout });
+      syncUrl({ theme, fontKey: next, fontIsDefault: isDefault, layout, panel });
     },
-    [onChangeFont, theme, layout],
+    [onChangeFont, theme, layout, panel],
   );
 
   const handleLayout = useCallback(
     (next: WidgetLayout) => {
       onChangeLayout(next);
       const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
-      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next });
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout: next, panel });
     },
-    [onChangeLayout, theme, fontKey],
+    [onChangeLayout, theme, fontKey, panel],
+  );
+
+  const handlePanel = useCallback(
+    (next: WidgetPanel) => {
+      onChangePanel(next);
+      const isDefaultFont = getThemeMeta(theme).fonts[0].key === fontKey;
+      syncUrl({ theme, fontKey, fontIsDefault: isDefaultFont, layout, panel: next });
+    },
+    [onChangePanel, theme, fontKey, layout],
   );
 
   const themeMeta = getThemeMeta(theme);
@@ -217,6 +234,42 @@ export function CanvasThemeSwitcher({
                 }}
               >
                 {l.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* row 4 — widget panel (main + footer) chips (5개) */}
+        <div
+          className="flex items-center gap-1 border-t pt-1.5"
+          style={{ borderColor: 'var(--canvas-chrome-border)' }}
+        >
+          <span
+            className="px-1 text-xs tracking-[0.08em] uppercase"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            Panel
+          </span>
+          {WIDGET_PANELS.map((p) => {
+            const active = p.key === panel;
+            return (
+              <Button
+                key={p.key}
+                variant="ghost"
+                size="xs"
+                onClick={() => handlePanel(p.key)}
+                title={p.hint}
+                className="!px-2"
+                style={{
+                  color: 'var(--canvas-chrome-text)',
+                  fontWeight: active ? 700 : 500,
+                  outline: active
+                    ? '1.5px solid var(--canvas-selection-border)'
+                    : 'none',
+                  outlineOffset: '1px',
+                }}
+              >
+                {p.label}
               </Button>
             );
           })}

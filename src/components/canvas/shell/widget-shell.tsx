@@ -33,7 +33,8 @@ import type { WidgetContent } from '../widget-types';
 import { ACCENT_BG, ACCENT_ICON, statePill } from './tokens';
 import { Pill } from './primitives';
 import { IconButton } from '@/components/ui/icon-button';
-import type { CanvasTheme, WidgetLayout } from '@/lib/canvas/themes';
+import type { CanvasTheme, WidgetLayout, WidgetPanel } from '@/lib/canvas/themes';
+import { Button } from '@/components/ui/button';
 
 export type DragHandleProps = {
   draggable: boolean;
@@ -47,6 +48,7 @@ type ShellProps = {
   dashboardMode?: boolean;
   theme?: CanvasTheme;
   layout?: WidgetLayout;
+  panel?: WidgetPanel;
   index?: number;
   dragHandleProps?: DragHandleProps;
   isCollapsed?: boolean;
@@ -57,13 +59,15 @@ type ShellProps = {
 
 export function WidgetShell(props: ShellProps) {
   const { layout = 'classic' } = props;
+  // panel default 도 같이 normalize → 자식 layout 들이 panel prop 보장.
+  const normalized = { panel: 'plain' as WidgetPanel, ...props };
   switch (layout) {
-    case 'banner-top':    return <BannerTopLayout {...props} />;
-    case 'banner-bottom': return <BannerBottomLayout {...props} />;
-    case 'sidebar':       return <SidebarLayout {...props} />;
-    case 'sticker':       return <StickerLayout {...props} />;
+    case 'banner-top':    return <BannerTopLayout {...normalized} />;
+    case 'banner-bottom': return <BannerBottomLayout {...normalized} />;
+    case 'sidebar':       return <SidebarLayout {...normalized} />;
+    case 'sticker':       return <StickerLayout {...normalized} />;
     case 'classic':
-    default:              return <ClassicLayout {...props} />;
+    default:              return <ClassicLayout {...normalized} />;
   }
 }
 
@@ -306,12 +310,162 @@ function CostText({ content }: { content: WidgetContent }) {
   );
 }
 
-function BodyArea({ children }: { children: ReactNode }) {
+/* ────────────────────────────────────────────────────────────────────
+   Panel system — main 본문 frame + (옵션) footer.
+   각 layout 의 BodyArea 자리에 PanelMain + PanelFooter 호출.
+   ──────────────────────────────────────────────────────────────────── */
+
+function PanelMain({
+  panel,
+  theme,
+  children,
+}: {
+  panel: WidgetPanel;
+  theme: CanvasTheme;
+  children: ReactNode;
+}) {
+  if (panel === 'framed') {
+    // inner frame — bg-paper 위에 검은 inset 박스 (mat / 액자 느낌)
+    const borderColor =
+      theme === 'pop' || theme === 'swiss' ? '#000' : 'var(--canvas-card-border)';
+    const borderWidth = theme === 'pop' ? 2.5 : 1.5;
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto bg-paper p-3">
+        <div
+          className="h-full overflow-y-auto bg-paper"
+          style={{
+            border: `${borderWidth}px solid ${borderColor}`,
+            borderRadius: 6,
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.6), inset 0 2px 6px rgba(0,0,0,0.05)',
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-paper">
       {children}
     </div>
   );
+}
+
+function PanelFooter({
+  panel,
+  content,
+  theme,
+}: {
+  panel: WidgetPanel;
+  content: WidgetContent;
+  theme: CanvasTheme;
+}) {
+  if (panel === 'plain' || panel === 'framed') return null;
+
+  if (panel === 'strip-footer') {
+    // 하단 컬러 strip — pop 에선 검은 strip + 흰 글자 (banner 노랑의 contrast).
+    // 다른 theme 은 ink-dark on light.
+    const stripBg = theme === 'pop' ? '#000' : theme === 'swiss' ? '#000' : 'var(--canvas-card-header-bg)';
+    const stripText = theme === 'pop' || theme === 'swiss' ? '#fff' : 'var(--canvas-card-header-text)';
+    return (
+      <div
+        className="flex shrink-0 items-center gap-3 px-4 py-2"
+        style={{
+          height: 48,
+          background: stripBg,
+          color: stripText,
+          fontFamily: 'var(--canvas-card-header-font)',
+          borderTop: theme === 'pop' || theme === 'swiss' ? '3px solid #000' : '1px solid var(--canvas-card-header-divider)',
+        }}
+      >
+        <StatePill content={content} theme={theme} />
+        <span className="ml-auto text-xs">
+          {content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0} 크레딧`}
+        </span>
+      </div>
+    );
+  }
+
+  if (panel === 'cta-footer') {
+    // 하단 큰 액션 버튼 — pop 에선 핑크 + 굵은 검은 border + offset shadow
+    const btnBg = theme === 'pop' ? '#ff5c8a' : 'var(--canvas-accent)';
+    const btnText = theme === 'pop' ? '#000' : '#fff';
+    const btnBorder = theme === 'pop' || theme === 'swiss' ? '2.5px solid #000' : 'none';
+    const btnShadow = theme === 'pop' ? '3px 3px 0 #000' : 'none';
+    return (
+      <div
+        className="flex shrink-0 items-center gap-3 px-4"
+        style={{
+          height: 72,
+          background: 'var(--canvas-card-bg)',
+          fontFamily: 'var(--canvas-card-header-font)',
+          borderTop: '1px solid var(--canvas-card-header-divider)',
+        }}
+      >
+        <span className="text-xs" style={{ color: 'var(--canvas-card-mute)' }}>
+          {content.meta.cost === 0 ? '무료' : `${content.meta.cost ?? 0} 크레딧`}
+        </span>
+        <Button
+          variant="ghost"
+          size="md"
+          className="ml-auto !rounded-xs !px-4"
+          style={{
+            background: btnBg,
+            color: btnText,
+            border: btnBorder,
+            boxShadow: btnShadow,
+            fontWeight: 700,
+            fontFamily: 'inherit',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          도구 열기 →
+        </Button>
+      </div>
+    );
+  }
+
+  if (panel === 'receipt') {
+    // 영수증 mini summary — monospace + dot-leader 정렬 + dashed divider
+    const lines: { label: string; value: string }[] = [
+      { label: 'COST',  value: content.meta.cost === 0 ? 'FREE' : `${content.meta.cost ?? 0} CR` },
+      { label: 'STATE', value: content.state.toUpperCase() },
+      { label: 'TYPE',  value: content.key.toUpperCase() },
+    ];
+    return (
+      <div
+        className="shrink-0 px-4 py-3"
+        style={{
+          background: 'var(--canvas-card-bg)',
+          color: 'var(--canvas-card-header-text)',
+          fontFamily: 'ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace',
+          borderTop: '1.5px dashed var(--canvas-card-border)',
+        }}
+      >
+        {lines.map((l) => (
+          <div
+            key={l.label}
+            className="flex items-baseline gap-2 text-xs leading-relaxed"
+            style={{ color: 'var(--canvas-card-mute)' }}
+          >
+            <span style={{ minWidth: 56 }}>{l.label}</span>
+            <span
+              className="flex-1 overflow-hidden"
+              style={{
+                borderBottom: '1px dotted currentColor',
+                marginBottom: 4,
+                opacity: 0.5,
+              }}
+            />
+            <span style={{ color: 'var(--canvas-card-header-text)', fontWeight: 600 }}>
+              {l.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
 }
 
 /* ────────────────────────────────────────────────────────────────────
@@ -320,6 +474,7 @@ function BodyArea({ children }: { children: ReactNode }) {
 function ClassicLayout({
   content,
   theme = 'default',
+  panel = 'plain',
   index = 1,
   dragHandleProps,
   isCollapsed = false,
@@ -389,7 +544,12 @@ function ClassicLayout({
           <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
         )}
       </div>
-      {!isCollapsed && <BodyArea><ExpandedBody /></BodyArea>}
+      {!isCollapsed && (
+        <>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </>
+      )}
     </div>
   );
 }
@@ -400,6 +560,7 @@ function ClassicLayout({
 function BannerTopLayout({
   content,
   theme = 'default',
+  panel = 'plain',
   index = 1,
   dragHandleProps,
   isCollapsed = false,
@@ -471,7 +632,12 @@ function BannerTopLayout({
           </div>
         )}
       </div>
-      {!isCollapsed && <BodyArea><ExpandedBody /></BodyArea>}
+      {!isCollapsed && (
+        <>
+          <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+          <PanelFooter panel={panel} content={content} theme={theme} />
+        </>
+      )}
     </div>
   );
 }
@@ -482,6 +648,7 @@ function BannerTopLayout({
 function BannerBottomLayout({
   content,
   theme = 'default',
+  panel = 'plain',
   dragHandleProps,
   isCollapsed = false,
   isSelected = false,
@@ -513,10 +680,10 @@ function BannerBottomLayout({
         aria-label="drag handle"
       />
       {!isCollapsed && (
-        <div className="min-h-0 flex-1 overflow-y-auto bg-paper" style={{ paddingTop: 8 }}>
-          <ExpandedBody />
-        </div>
+        <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
       )}
+      {/* panel footer — caption 위에 들어감 (caption 자체가 Polaroid 정체성) */}
+      {!isCollapsed && <PanelFooter panel={panel} content={content} theme={theme} />}
       {/* caption frame — 하단, 라벨/cost/chevron */}
       <div
         className="flex shrink-0 items-center gap-3 px-4"
@@ -551,6 +718,7 @@ function BannerBottomLayout({
 function SidebarLayout({
   content,
   theme = 'default',
+  panel = 'plain',
   index = 1,
   dragHandleProps,
   isCollapsed = false,
@@ -617,7 +785,12 @@ function SidebarLayout({
             <CollapseButton isCollapsed={isCollapsed} onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }} />
           )}
         </div>
-        {!isCollapsed && <BodyArea><ExpandedBody /></BodyArea>}
+        {!isCollapsed && (
+          <>
+            <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+            <PanelFooter panel={panel} content={content} theme={theme} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -629,6 +802,7 @@ function SidebarLayout({
 function StickerLayout({
   content,
   theme = 'default',
+  panel = 'plain',
   dragHandleProps,
   isCollapsed = false,
   isSelected = false,
@@ -657,7 +831,12 @@ function StickerLayout({
         style={cardStyle(isSelected)}
       >
         <Ports />
-        {!isCollapsed && <BodyArea><ExpandedBody /></BodyArea>}
+        {!isCollapsed && (
+          <>
+            <PanelMain panel={panel} theme={theme}><ExpandedBody /></PanelMain>
+            <PanelFooter panel={panel} content={content} theme={theme} />
+          </>
+        )}
         {isCollapsed && (
           <div
             className={`flex h-full items-center justify-center px-4 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}

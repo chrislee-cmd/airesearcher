@@ -163,3 +163,33 @@ export function asWidgetLayout(input: unknown): WidgetLayout {
   if (typeof input === 'string' && LAYOUT_KEYS.has(input)) return input as WidgetLayout;
   return 'classic';
 }
+
+/* ────────────────────────────────────────────────────────────────────
+   Widget panel — main 본문 + footer 의 visual treatment.
+   layout (헤더 구조) 과 별도 dimension. layout × panel = 25 조합 가능.
+
+     plain         — 본문만 (현재). footer 없음.
+     framed        — 본문에 inner frame border + inset shadow (mat 느낌).
+     strip-footer  — 하단 컬러 strip footer (state + cost).
+     cta-footer    — 하단 큰 CTA 버튼 footer ("도구 열기").
+     receipt       — 본문 아래 dashed divider + monospace 영수증 lines.
+
+   ExpandedBody 자체는 안 건드림 — 그 주변 frame / footer 만 panel 별로.
+   ──────────────────────────────────────────────────────────────────── */
+
+export type WidgetPanel = 'plain' | 'framed' | 'strip-footer' | 'cta-footer' | 'receipt';
+
+export const WIDGET_PANELS: { key: WidgetPanel; label: string; hint: string }[] = [
+  { key: 'plain',        label: 'Plain',   hint: '본문만 (현재)' },
+  { key: 'framed',       label: 'Framed',  hint: '본문 inner frame + inset shadow' },
+  { key: 'strip-footer', label: 'Strip',   hint: '하단 컬러 strip footer' },
+  { key: 'cta-footer',   label: 'CTA',     hint: '하단 큰 액션 버튼 footer' },
+  { key: 'receipt',      label: 'Receipt', hint: '본문 아래 영수증 라인' },
+];
+
+const PANEL_KEYS = new Set<string>(WIDGET_PANELS.map((p) => p.key));
+
+export function asWidgetPanel(input: unknown): WidgetPanel {
+  if (typeof input === 'string' && PANEL_KEYS.has(input)) return input as WidgetPanel;
+  return 'plain';
+}

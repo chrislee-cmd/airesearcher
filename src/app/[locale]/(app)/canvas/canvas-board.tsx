@@ -37,6 +37,7 @@ import {
   resolveFont,
   type CanvasTheme,
   type WidgetLayout,
+  type WidgetPanel,
 } from '@/lib/canvas/themes';
 import {
   CANVAS_W,
@@ -91,12 +92,14 @@ export function CanvasBoard({
   initialTheme = 'default',
   initialFontKey,
   initialLayout = 'classic',
+  initialPanel = 'plain',
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
   initialTheme?: CanvasTheme;
   initialFontKey?: string;
   initialLayout?: WidgetLayout;
+  initialPanel?: WidgetPanel;
 }) {
   const [graph, setGraph] = useState<GraphState>(() => defaultStateFor(widgets));
   const [selected, setSelected] = useState<string | null>(null);
@@ -105,6 +108,7 @@ export function CanvasBoard({
     () => asFontKey(initialTheme, initialFontKey),
   );
   const [layout, setLayout] = useState<WidgetLayout>(initialLayout);
+  const [panel, setPanel] = useState<WidgetPanel>(initialPanel);
 
   // theme 변경 시 font 도 그 theme 의 default(첫번째) 로 reset.
   // 사용자가 명시적으로 같은 theme 안에서 font 만 바꿀 땐 setFontKey 직접 호출.
@@ -533,6 +537,7 @@ export function CanvasBoard({
                 dashboardMode
                 theme={theme}
                 layout={layout}
+                panel={panel}
                 index={idx + 1}
                 isCollapsed={s.collapsed}
                 isSelected={selected === w.key}
@@ -570,9 +575,11 @@ export function CanvasBoard({
         theme={theme}
         fontKey={fontKey}
         layout={layout}
+        panel={panel}
         onChangeTheme={setTheme}
         onChangeFont={setFontKey}
         onChangeLayout={setLayout}
+        onChangePanel={setPanel}
       />
 
       <CanvasMinimap
