@@ -46,9 +46,17 @@ export async function POST(request: Request) {
   }
   const anthropic = createAnthropic({ apiKey });
 
-  const guideBlock = interview_guide.trim().length > 0
-    ? `\n\n[인터뷰 가이드 / RQ]\n${interview_guide}\n`
+  // 가이드는 transcript 보다 먼저 배치 — LLM 이 가이드의 가설 / 의도를
+  // 1순위 기준으로 잡고 transcript 의 직전 발화를 그 의도에 대한 답변
+  // 신호로 해석하도록. PROBING_SYSTEM 의 "가이드 활용" 섹션과 짝.
+  const guideText = interview_guide.trim();
+  const hasGuide = guideText.length > 0;
+  const guideBlock = hasGuide
+    ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideText}\n\n위 가이드가 모든 제안의 1순위 기준입니다. 각 질문이 가이드의 어느 부분과 정합되는지 \`guide_reference\` 에 명시하세요.\n\n`
     : '';
+  const closingInstruction = hasGuide
+    ? '위 가이드와 transcript 를 기반으로 **3개의 probing 질문** 을 제안하세요. 응답자의 직전 발화에서 출발하되, 가이드의 가설 / 의도 검증을 우선합니다.'
+    : '위 transcript 를 기반으로 **3개의 probing 질문** 을 제안하세요. 응답자의 직전 발화에서 출발하세요.';
 
   // max_questions 은 호환을 위해 받지만 현재 스키마는 정확히 3 으로 고정.
   void max_questions;
@@ -56,15 +64,24 @@ export async function POST(request: Request) {
     model: anthropic('claude-sonnet-4-6'),
     schema: probingSuggestionSchema,
     system: PROBING_SYSTEM,
-    prompt: `다음은 라이브 인터뷰의 최근 ~90초 transcript 입니다. **3개의 probing 질문**을 제안하세요. 응답자의 직전 발화에서 출발하세요. \`questions\` 의 3개 핵심 (text + technique) 을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.${guideBlock}
+    prompt: `${guideBlock}## Transcript (최근 ~90초)
+${transcript_window}
 
-[transcript]
-${transcript_window}`,
+---
+${closingInstruction} \`questions\` 의 3개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,
     // 0.4 — 같은 transcript 에서도 매 호출마다 약간 다른 각도가 제안되도록.
     // 0 에 두면 5초마다 거의 동일한 질문이 반복돼 위젯 가치가 떨어짐.
     temperature: 0.4,
-    maxOutputTokens: 600,
+    // guide_reference 필드 추가로 응답 길이가 조금 늘어남 (1~2 문장 × 3).
+    // 600 → 800 으로 여유 확보.
+    maxOutputTokens: 800,
   });
 
-  return result.toTextStreamResponse();
+  // 디버그 헤더 — preview / 운영에서 가이드가 실제로 전송됐는지 빠르게
+  // 확인. 운영 영향 0, 인증된 사용자만 호출하므로 보안 노출 아님.
+  return result.toTextStreamResponse({
+    headers: {
+      'x-probing-guide-length': String(guideText.length),
+    },
+  });
 }
