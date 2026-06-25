@@ -306,7 +306,6 @@ export function useRealtimeTranscription(opts?: {
         headers: {
           Authorization: `Bearer ${clientSecret}`,
           'Content-Type': 'application/sdp',
-          'OpenAI-Beta': 'realtime=v1',
         },
         body: offer.sdp ?? '',
       });

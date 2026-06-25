@@ -17,8 +17,10 @@ import { getActiveOrg } from '@/lib/org';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-const TRANSCRIPTION_SESSIONS_URL =
-  'https://api.openai.com/v1/realtime/transcription_sessions';
+// Unified Realtime client_secrets endpoint. transcription-only 세션은
+// body 의 `session.type = 'transcription'` + `audio.input.transcription`
+// 으로 표현. 이전 `/v1/realtime/transcription_sessions` 는 deprecated (404).
+const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
 
 export async function POST() {
@@ -42,28 +44,36 @@ export async function POST() {
   // turn_detection.server_vad 가 있어야 transcription session 이
   // utterance 경계마다 `*.completed` 이벤트를 emit. 없으면 delta 만
   // 흘러서 final commit 시점을 위젯이 알 수 없다.
+  //
+  // 통합 세션 schema — `session.type='transcription'` 로 transcription-only
+  // 모드 지정. translate-console 이 쓰는 `gpt-realtime-translate` 와 같은
+  // `/v1/realtime/client_secrets` 엔드포인트를 공유하지만 type 만 다르다.
   const body = {
-    input_audio_format: 'pcm16',
-    input_audio_transcription: {
-      model: transcriptionModel,
-    },
-    turn_detection: {
-      type: 'server_vad',
-      threshold: 0.5,
-      prefix_padding_ms: 300,
-      silence_duration_ms: 500,
+    session: {
+      type: 'transcription',
+      audio: {
+        input: {
+          transcription: {
+            model: transcriptionModel,
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500,
+          },
+        },
+      },
     },
   };
 
   let res: Response;
   try {
-    res = await fetch(TRANSCRIPTION_SESSIONS_URL, {
+    res = await fetch(CLIENT_SECRETS_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        // Transcription sessions are documented under the realtime beta header.
-        'OpenAI-Beta': 'realtime=v1',
       },
       body: JSON.stringify(body),
     });
