@@ -1,0 +1,113 @@
+// 프로빙 어시스턴트 — transcription-only Realtime session.
+//
+// translate-console 이 `gpt-realtime-translate` (translation 모델) 위에서
+// host transcript 를 부산물로 받는 것과 달리, probing 위젯은 transcript
+// 자체가 출발점이라 OpenAI 의 dedicated transcription session API 를 쓴다.
+// 세션은 단방향 (audio in → text out), translation/TTS 트랙 없음.
+//
+// 응답: { model, client_secret: { value, expires_at } }. 클라이언트는
+// value 를 들고 `https://api.openai.com/v1/realtime?intent=transcription`
+// 으로 SDP 교환만 수행. translate sessions/route 와 의도적으로 같은
+// shape — 다만 LiveKit / DB row 는 필요 없다 (위젯이 휘발성).
+
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getActiveOrg } from '@/lib/org';
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
+const TRANSCRIPTION_SESSIONS_URL =
+  'https://api.openai.com/v1/realtime/transcription_sessions';
+const DEFAULT_TTL_SECONDS = 600;
+
+export async function POST() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const org = await getActiveOrg();
+  if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
+  }
+
+  const transcriptionModel =
+    process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+
+  // turn_detection.server_vad 가 있어야 transcription session 이
+  // utterance 경계마다 `*.completed` 이벤트를 emit. 없으면 delta 만
+  // 흘러서 final commit 시점을 위젯이 알 수 없다.
+  const body = {
+    input_audio_format: 'pcm16',
+    input_audio_transcription: {
+      model: transcriptionModel,
+    },
+    turn_detection: {
+      type: 'server_vad',
+      threshold: 0.5,
+      prefix_padding_ms: 300,
+      silence_duration_ms: 500,
+    },
+  };
+
+  let res: Response;
+  try {
+    res = await fetch(TRANSCRIPTION_SESSIONS_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        // Transcription sessions are documented under the realtime beta header.
+        'OpenAI-Beta': 'realtime=v1',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'openai_unreachable' },
+      { status: 502 },
+    );
+  }
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    return NextResponse.json(
+      { error: `openai_session_failed_${res.status}`, detail: detail.slice(0, 300) },
+      { status: 502 },
+    );
+  }
+
+  const json = (await res.json().catch(() => ({}))) as {
+    client_secret?: { value?: string; expires_at?: number } | string;
+    value?: string;
+    expires_at?: number;
+  };
+
+  // OpenAI 가 응답 shape 을 두 가지로 돌려준 사례가 있어 둘 다 흡수:
+  //   1. `{ client_secret: { value, expires_at } }`  (transcription_sessions 기본)
+  //   2. `{ client_secret: "<value>", expires_at }`  (일부 beta 변형)
+  const cs = json.client_secret;
+  const value =
+    typeof cs === 'string' ? cs : cs?.value ?? json.value;
+  const expires_at =
+    typeof cs === 'object' && cs ? cs.expires_at : json.expires_at;
+  if (!value || typeof value !== 'string') {
+    return NextResponse.json(
+      { error: 'openai_session_invalid_response' },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json({
+    model: transcriptionModel,
+    client_secret: {
+      value,
+      expires_at: expires_at ?? Math.floor(Date.now() / 1000) + DEFAULT_TTL_SECONDS,
+    },
+  });
+}

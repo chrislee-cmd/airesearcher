@@ -5,16 +5,22 @@
 
    PR-1: realtime input transcript 미리보기 + 빈 산출물 영역.
    PR-2: LLM 호출로 후속 질문 (probing) 제안 + 산출물 히스토리.
+   PR-4: translate 의존 제거 — 위젯이 자체 OpenAI Realtime transcription
+         세션을 들고 transcript 를 받는다. mic-only MVP.
 
-   트리거:
-   - 자동: translate isLive 가 true 가 된 시점부터 60초 후 첫 호출,
-     이후 매 60초. translate 가 stop 되면 타이머 stop.
-   - 수동: "지금 제안" 버튼 — 자동 타이머 reset 하고 즉시 호출.
+   세션 lifecycle:
+   - "세션 시작" 버튼 → useRealtimeTranscription.start() → 상태 'live'.
+   - 'live' 인 동안: 60초 자동 + 수동 "지금 제안" 트리거.
+   - "정지" 버튼 → hook.stop() → 상태 'idle', 마이크 해제.
 
-   휘발성: 모든 제안은 React state. translate 가 새로 시작 (false→true)
-   되면 히스토리 리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
+   휘발성: 모든 제안은 React state. 새 세션 (idle→live) 마다 히스토리
+   리셋. 페이지 새로고침 → 모든 데이터 손실 (의도).
 
-   provider 가 mount 안 되어 있어도 hook 이 빈 stub 을 반환하므로 안전.
+   tab audio: pr-probing-5-tab-audio 에서 추가 예정. 현 PR 에서는
+   source picker UI 만 존재 (탭 옵션 disabled + "준비 중" 안내).
+
+   참고: 더이상 RealtimeTranscriptProvider 의 consumer 가 아님.
+   provider 는 translate-console 전용으로 유지.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,9 +31,9 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import {
-  useRealtimeTranscript,
-  type TranscriptSegment,
-} from '@/components/realtime-transcript-provider';
+  useRealtimeTranscription,
+  type TranscriptionSegment,
+} from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
@@ -61,7 +67,7 @@ function useNowTick(intervalMs = 1000): number {
   return now;
 }
 
-function SegmentRow({ seg }: { seg: TranscriptSegment }) {
+function SegmentRow({ seg }: { seg: TranscriptionSegment }) {
   const inFlight = seg.ended_at === undefined;
   return (
     <li
@@ -77,23 +83,80 @@ function SegmentRow({ seg }: { seg: TranscriptSegment }) {
   );
 }
 
-function windowText(segments: TranscriptSegment[]): string {
+function windowText(segments: TranscriptionSegment[]): string {
   return segments
     .map((s) => s.text.trim())
     .filter(Boolean)
     .join('\n');
 }
 
+// PR-4: source picker. mic 만 활성, tab 은 disabled + "준비 중" 안내.
+// 별 PR (pr-probing-5-tab-audio) 에서 tab 옵션 활성화 예정. radio 두 개를
+// 직접 그리지 않고 Button primitive 의 selected/unselected 시각 차이를
+// 흉내내는 segmented control — design-system 토큰만 사용.
+type SourceKind = 'mic' | 'tab';
+function SourcePicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: SourceKind;
+  onChange: (next: SourceKind) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-xs border border-line-soft bg-paper p-0.5">
+      <Button
+        variant={value === 'mic' ? 'primary' : 'ghost'}
+        size="xs"
+        onClick={() => onChange('mic')}
+        disabled={disabled}
+        className="uppercase tracking-[0.18em]"
+      >
+        마이크
+      </Button>
+      <Button
+        variant="ghost"
+        size="xs"
+        onClick={() => undefined}
+        disabled
+        title="탭 오디오는 후속 PR 에서 추가됩니다"
+        className="uppercase tracking-[0.18em]"
+      >
+        탭 오디오 · 준비 중
+      </Button>
+    </div>
+  );
+}
+
 function ExpandedBody() {
-  const { isLive, recent } = useRealtimeTranscript();
   const toast = useToast();
   const now = useNowTick();
 
-  // 90초 윈도우 — preview 와 LLM 호출이 같은 윈도우를 본다.
+  // PR-4: standalone session. translate isLive 의존 제거.
+  const {
+    status: sessionStatus,
+    segments: rawSegments,
+    error: sessionError,
+    start: startSession,
+    stop: stopSession,
+  } = useRealtimeTranscription({ locale: 'ko' });
+
+  // source picker — mic-only MVP. tab 은 disabled 라 선택 변경 자체가
+  // 가능하지 않지만 상태는 보존해서 후속 PR 에서 활성화하기 쉽게.
+  const [source, setSource] = useState<SourceKind>('mic');
+
+  const isLive = sessionStatus === 'live';
+
+  // 90초 윈도우 — preview 와 LLM 호출이 같은 윈도우를 본다. hook 의
+  // 전체 segments 에서 시간 cutoff 만 적용. now 가 1초마다 갱신되어
+  // 세션이 idle 인 동안에도 cutoff 가 흘러간다.
   const segments = useMemo(
-    () => recent(PROBING_WINDOW_MS),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- now 가 시간 흐름 트리거
-    [recent, now],
+    () => {
+      const cutoff = now - PROBING_WINDOW_MS;
+      return rawSegments.filter((s) => s.started_at >= cutoff);
+    },
+    [rawSegments, now],
   );
   const hasTranscript = segments.length > 0;
 
@@ -114,16 +177,18 @@ function ExpandedBody() {
   const inFlightRef = useRef(false);
 
   // segments 의 최신값을 콜백 안에서 stale 없이 보기 위한 ref. setTimeout
-  // 안에서 React 의 useState segments 를 closure 로 잡으면 60초 전 값을
-  // 들고 호출됨.
-  const recentRef = useRef(recent);
+  // 안에서 React 의 useState 를 closure 로 잡으면 60초 전 값을 들고 호출됨.
+  const rawSegmentsRef = useRef(rawSegments);
   useEffect(() => {
-    recentRef.current = recent;
-  }, [recent]);
+    rawSegmentsRef.current = rawSegments;
+  }, [rawSegments]);
 
   const runSuggest = useCallback(async () => {
     if (inFlightRef.current) return;
-    const segs = recentRef.current(PROBING_WINDOW_MS);
+    const cutoff = Date.now() - PROBING_WINDOW_MS;
+    const segs = rawSegmentsRef.current.filter(
+      (s) => s.started_at >= cutoff,
+    );
     const text = windowText(segs);
     if (text.length < MIN_TRANSCRIPT_CHARS) {
       // 의미 없는 호출 방지 — 자동 호출 시 transcript 가 빈약하면 skip.
@@ -229,7 +294,7 @@ function ExpandedBody() {
 
   // 새 세션 시작 시 (isLive false → true 전이) 히스토리 리셋. 같은 세션
   // 안에서 transcript 가 잠시 끊겼다 다시 잡혀도 isLive 가 토글되면 리셋.
-  // 스펙: "translate 가 새로 시작 되면 probing 의 제안 히스토리 리셋."
+  // 스펙: "새 세션이 시작되면 probing 의 제안 히스토리 리셋."
   const prevLiveRef = useRef(false);
   useEffect(() => {
     const prev = prevLiveRef.current;
@@ -257,43 +322,129 @@ function ExpandedBody() {
     }
   }
 
+  // 세션 시작 / 정지 — hook 호출 + 사용자 친화 에러 메시지.
+  const handleStartSession = useCallback(async () => {
+    await startSession();
+  }, [startSession]);
+
+  const handleStopSession = useCallback(async () => {
+    await stopSession();
+  }, [stopSession]);
+
+  // hook 에서 surface 된 에러를 토스트로 한 번만 보여준다. 같은 에러
+  // string 이 다시 들어와도 한 번만 push (소음 방지).
+  const lastSessionErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sessionError) return;
+    if (lastSessionErrorRef.current === sessionError) return;
+    lastSessionErrorRef.current = sessionError;
+    const human =
+      sessionError === 'microphone_denied'
+        ? '마이크 권한이 거절되었습니다 — 브라우저 권한을 허용해 주세요'
+        : sessionError === 'microphone_failed'
+          ? '마이크 캡처에 실패했습니다 — 다른 앱이 사용 중인지 확인해 주세요'
+          : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
+    toast.push(human, { tone: 'warn' });
+  }, [sessionError, toast]);
+
+  // 세션이 idle 로 돌아가면 lastError ref 도 비워서 다음 시도가 다시
+  // 안내될 수 있게.
+  useEffect(() => {
+    if (sessionStatus === 'idle') {
+      lastSessionErrorRef.current = null;
+    }
+  }, [sessionStatus]);
+
   // 카운트다운 — "다음 자동 제안: N초 후". now 가 1초마다 갱신.
   const secondsToNext =
     isLive && nextCallAt
       ? Math.max(0, Math.ceil((nextCallAt - now) / 1000))
       : null;
 
+  // 상태 라벨 — sessionStatus 와 streaming 상태를 한 줄로 표현.
+  const statusLabel = (() => {
+    if (sessionStatus === 'starting') return '세션 연결 중…';
+    if (sessionStatus === 'stopping') return '세션 종료 중…';
+    if (sessionStatus === 'error') return '세션 오류';
+    if (!isLive) return '세션 대기';
+    if (streaming) return '생성 중…';
+    if (secondsToNext !== null) return `다음 자동 제안: ${secondsToNext}초 후`;
+    return '대기 중';
+  })();
+
+  const startDisabled =
+    sessionStatus === 'starting' ||
+    sessionStatus === 'live' ||
+    sessionStatus === 'stopping';
+  const stopDisabled =
+    sessionStatus === 'idle' ||
+    sessionStatus === 'starting' ||
+    sessionStatus === 'stopping' ||
+    sessionStatus === 'error';
+
   return (
     <>
       <div className="flex h-full flex-col">
-        {/* 상단 — live 상태 + 카운트다운 + 수동 버튼. */}
-        <div className="flex shrink-0 items-center justify-between border-b border-line-soft px-5 py-3">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isLive ? 'bg-amore' : 'bg-line'
-              }`}
-              aria-hidden
+        {/* 상단 — source picker + 세션 시작/정지. */}
+        <div className="flex shrink-0 flex-col gap-3 border-b border-line-soft px-5 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <SourcePicker
+              value={source}
+              onChange={setSource}
+              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
             />
-            <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-              {!isLive
-                ? '통역 대기 중'
-                : streaming
-                ? '생성 중…'
-                : secondsToNext !== null
-                ? `다음 자동 제안: ${secondsToNext}초 후`
-                : '대기 중'}
-            </span>
+            <div className="flex items-center gap-2">
+              {isLive ? (
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  onClick={handleStopSession}
+                  disabled={stopDisabled}
+                  className="uppercase tracking-[0.18em]"
+                >
+                  정지
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="xs"
+                  onClick={handleStartSession}
+                  disabled={startDisabled}
+                  className="uppercase tracking-[0.18em]"
+                >
+                  세션 시작
+                </Button>
+              )}
+            </div>
           </div>
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={handleManual}
-            disabled={!isLive || streaming || !hasTranscript}
-            className="uppercase tracking-[0.18em]"
-          >
-            지금 제안
-          </Button>
+
+          {/* 상태 라인 + 카운트다운 + 수동 트리거. */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isLive
+                    ? 'bg-amore'
+                    : sessionStatus === 'error'
+                      ? 'bg-warning'
+                      : 'bg-line'
+                }`}
+                aria-hidden
+              />
+              <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+                {statusLabel}
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={handleManual}
+              disabled={!isLive || streaming || !hasTranscript}
+              className="uppercase tracking-[0.18em]"
+            >
+              지금 제안
+            </Button>
+          </div>
         </div>
 
         {/* 중간 — 제안 카드 + transcript 미리보기. flex-1 로 산출물을
@@ -308,7 +459,7 @@ function ExpandedBody() {
             </div>
           ) : !isLive ? (
             <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
-              실시간 통역(translate) 위젯을 먼저 시작해 주세요.
+              상단 &lsquo;세션 시작&rsquo; 으로 마이크 세션을 켜 주세요.
               <br />
               시작 후 60초마다 후속 질문이 제안됩니다.
             </div>
@@ -362,7 +513,7 @@ function ExpandedBody() {
               onExpand={() => setOpenSet(set)}
             />
           )}
-          emptyText="아직 제안된 질문이 없습니다 — translate 시작 60초 후 첫 제안이 표시됩니다"
+          emptyText="아직 제안된 질문이 없습니다 — 세션 시작 60초 후 첫 제안이 표시됩니다"
         />
       </div>
 
@@ -515,7 +666,7 @@ export const probingCard: WidgetContent = {
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '실시간 통역을 듣고 후속 질문 3~5개를 60초마다 제안합니다',
+    description: '마이크 세션을 들고 후속 질문 3~5개를 60초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
