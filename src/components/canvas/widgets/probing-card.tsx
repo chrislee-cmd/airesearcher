@@ -47,6 +47,10 @@ import {
   getStoredGuide,
   saveGuide,
 } from '@/lib/probing-guide-storage';
+import {
+  GuideImportError,
+  importGuideFile,
+} from '@/lib/probing-guide-import';
 import type {
   ProbingQuestion,
   ProbingSuggestionSet,
@@ -137,18 +141,22 @@ function SourcePicker({
 }
 
 // 가이드 collapsible — chevron + "가이드 추가" / "가이드 (N자)" 라벨.
-// 펼친 상태에서 Textarea primitive 노출. max-h + overflow-y-auto 로 위젯
-// height 800px 안에서 자연스럽게 (3~5줄 정도).
+// 펼친 상태에서 Textarea primitive + "파일 가져오기" 버튼 노출. max-h +
+// overflow-y-auto 로 위젯 height 800px 안에서 자연스럽게 (3~5줄 정도).
 function GuideSection({
   value,
   onChange,
   open,
   onToggle,
+  onImportClick,
+  importing,
 }: {
   value: string;
   onChange: (next: string) => void;
   open: boolean;
   onToggle: () => void;
+  onImportClick: () => void;
+  importing: boolean;
 }) {
   const count = value.length;
   const label = count === 0 ? '가이드 추가' : `가이드 (${count.toLocaleString()}자)`;
@@ -180,15 +188,48 @@ function GuideSection({
         {label}
       </Button>
       {open && (
-        <Textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value.slice(0, GUIDE_MAX_CHARS))}
-          rows={4}
-          maxLength={GUIDE_MAX_CHARS}
-          placeholder="조사 목적 / 핵심 가설 / 질문 의도 등을 자유롭게 입력하세요. 비워두면 transcript 만 보고 제안합니다."
-          helper={`${count.toLocaleString()} / ${GUIDE_MAX_CHARS.toLocaleString()}자`}
-          className="max-h-32 text-md resize-none"
-        />
+        <>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={onImportClick}
+              disabled={importing}
+              loading={importing}
+              loadingLabel="가져오는 중…"
+              leftIcon={
+                <svg
+                  viewBox="0 0 24 24"
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 3 14 8 19 8" />
+                  <line x1="12" y1="18" x2="12" y2="12" />
+                  <polyline points="9 15 12 12 15 15" />
+                </svg>
+              }
+              className="uppercase tracking-[0.18em]"
+            >
+              파일 가져오기
+            </Button>
+          </div>
+          <Textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value.slice(0, GUIDE_MAX_CHARS))}
+            rows={4}
+            maxLength={GUIDE_MAX_CHARS}
+            placeholder="조사 목적 / 핵심 가설 / 질문 의도 등을 자유롭게 입력하세요. 비워두면 transcript 만 보고 제안합니다."
+            helper={`${count.toLocaleString()} / ${GUIDE_MAX_CHARS.toLocaleString()}자  ·  .md / .txt / .docx 가져오기 지원`}
+            className="max-h-32 text-md resize-none"
+          />
+        </>
       )}
     </div>
   );
@@ -214,6 +255,12 @@ function ExpandedBody() {
   // mount 시 1회 read, change 시 500ms debounce 로 save.
   const [guide, setGuide] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
+  // 파일 import 상태 (PR-6b). importing: 파싱 중 / 토스트 미정 구간 비활성화.
+  // pendingFile: 기존 가이드 비어있지 않을 때 confirm 다이얼로그를 띄우기
+  // 위해 잠시 들고 있는 File.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time localStorage hydration; useState(() => getStoredGuide()) would cause SSR/client mismatch when localStorage has content.
     setGuide(getStoredGuide());
@@ -411,6 +458,67 @@ function ExpandedBody() {
     }
   }
 
+  // 파일 import 실제 파싱 — confirm 통과 후 또는 기존 가이드가 비어있을 때.
+  const runImport = useCallback(
+    async (file: File) => {
+      setImporting(true);
+      try {
+        const { text, truncated } = await importGuideFile(file);
+        setGuide(text);
+        setGuideOpen(true);
+        if (truncated) {
+          toast.push(
+            `가이드 최대 ${GUIDE_MAX_CHARS.toLocaleString()}자까지 — 이후 부분 잘림`,
+            { tone: 'warn' },
+          );
+        } else {
+          toast.push(`가이드 가져옴 — ${text.length.toLocaleString()}자`, {
+            tone: 'info',
+            ttlMs: 2000,
+          });
+        }
+      } catch (e) {
+        const code = e instanceof GuideImportError ? e.code : 'parse_failed';
+        const msg =
+          code === 'unsupported_type'
+            ? '지원하지 않는 파일 형식입니다 (.md, .txt, .docx 만 가능)'
+            : code === 'too_large'
+              ? '파일이 너무 큽니다 — 5MB 이하만 가져올 수 있습니다'
+              : '파일을 읽을 수 없습니다 — 확인 후 다시 시도해 주세요';
+        toast.push(msg, { tone: 'warn' });
+      } finally {
+        setImporting(false);
+      }
+    },
+    [toast],
+  );
+
+  // "파일 가져오기" 클릭 — hidden file input trigger.
+  function handleImportClick() {
+    if (importing) return;
+    fileInputRef.current?.click();
+  }
+
+  // 파일 선택 후. 기존 가이드가 있으면 confirm; 비어있으면 바로 파싱.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // 같은 파일을 다시 선택해도 onChange 가 다시 발화하도록 input 초기화.
+    e.target.value = '';
+    if (!file) return;
+    if (guide.trim().length > 0) {
+      setPendingFile(file);
+      return;
+    }
+    void runImport(file);
+  }
+
+  // confirm 통과 — pendingFile 파싱.
+  function handleConfirmReplace() {
+    const file = pendingFile;
+    setPendingFile(null);
+    if (file) void runImport(file);
+  }
+
   // 세션 시작 / 정지 — hook 호출 + 사용자 친화 에러 메시지.
   const handleStartSession = useCallback(async () => {
     await startSession({ source });
@@ -551,6 +659,22 @@ function ExpandedBody() {
             onChange={setGuide}
             open={guideOpen}
             onToggle={() => setGuideOpen((o) => !o)}
+            onImportClick={handleImportClick}
+            importing={importing}
+          />
+          {/* hidden file picker — Button 이 programmatic 으로 trigger. <Input>
+              primitive 는 라벨/helper wrapper 가 강제라 native picker 보다
+              무거우므로 여기선 native 유지. (attendees-panel.tsx 와 동일
+              패턴 — 단 scheduler 디렉토리는 design-system lint 면제 구역.) */}
+          {/* eslint-disable-next-line react/forbid-elements -- hidden file picker triggered programmatically; <Input> primitive's label/helper wrapper is unnecessary chrome for an invisible element. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-hidden
+            tabIndex={-1}
           />
         </div>
 
@@ -637,6 +761,42 @@ function ExpandedBody() {
         onClose={() => setOpenSet(null)}
         onCopy={handleCopy}
       />
+
+      {/* 파일 import — 기존 가이드 비어있지 않을 때 교체 confirm.
+          확인 시 runImport, 취소 시 pendingFile drop. */}
+      {pendingFile && (
+        <Modal
+          open
+          onClose={() => setPendingFile(null)}
+          size="sm"
+          title="가이드를 교체할까요?"
+          description={`현재 가이드 (${guide.length.toLocaleString()}자) 가 가져온 파일 내용으로 교체됩니다. 되돌릴 수 없습니다.`}
+          footer={
+            <>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setPendingFile(null)}
+                className="uppercase tracking-[0.18em]"
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmReplace}
+                className="uppercase tracking-[0.18em]"
+              >
+                교체
+              </Button>
+            </>
+          }
+        >
+          <p className="text-md leading-[1.6] text-mute">
+            파일: <span className="text-ink-2">{pendingFile.name}</span>
+          </p>
+        </Modal>
+      )}
 
       {/* 전체 히스토리 모달 — quotes-card 의 "최근 산출물 (N)" 패턴과 동일. */}
       {showAll && (
