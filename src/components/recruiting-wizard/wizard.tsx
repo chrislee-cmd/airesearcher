@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
@@ -872,12 +873,24 @@ function FormPublishRow({
   onClearAuthError: () => void;
 }) {
   const needsReauth = isReauthError(publishError);
+  const [copied, setCopied] = useState(false);
+  async function copyResponderUri() {
+    if (!published?.responderUri) return;
+    try {
+      await navigator.clipboard.writeText(published.responderUri);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard API blocked (e.g. permissions-policy in some embeds) —
+      // user can still select the input text manually.
+    }
+  }
   return (
     <div className="space-y-3">
       {published ? (
-        <div className="border border-line-soft bg-paper p-3 rounded-sm">
+        <div className="space-y-3 border border-line-soft bg-paper p-3 rounded-sm">
           <div className="font-semibold text-ink">발행 완료</div>
-          <div className="mt-1 flex flex-wrap gap-3 text-md">
+          <div className="flex flex-wrap gap-3 text-md">
             <a
               href={published.editUri}
               target="_blank"
@@ -895,7 +908,31 @@ function FormPublishRow({
               응답 폼 열기
             </a>
           </div>
-          <p className="mt-2 text-sm text-mute-soft">
+          <div>
+            <div className="mb-1 text-sm font-semibold text-ink-2">
+              참석자용 링크
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={published.responderUri}
+                readOnly
+                size="sm"
+                onFocus={(e) => e.currentTarget.select()}
+                className="font-mono text-sm"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void copyResponderUri()}
+              >
+                {copied ? '복사됨' : '복사'}
+              </Button>
+            </div>
+            <p className="mt-1 text-sm text-mute-soft">
+              이 URL 을 후보자에게 그대로 공유하세요.
+            </p>
+          </div>
+          <p className="text-sm text-mute-soft">
             아래 산출물 영역에서 시트 자동연결을 진행하세요.
           </p>
         </div>
