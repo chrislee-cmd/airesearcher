@@ -26,7 +26,12 @@ export type FeatureKey =
   // full-report generators into one upload → dashboard → chat surface.
   // Stays in PREVIEW_FEATURES until the dashboard/viz/chat PRs land; the
   // GA flip + legacy route redirect is the last PR in the series.
-  | 'insights_analyzer';
+  | 'insights_analyzer'
+  // Autocontents (enko) native migration — canvas-only entry point.
+  // PR-1 ships the placeholder widget + API shells; PR-2 ports the UI;
+  // PR-3 wires real generation/deploy. Stays in PREVIEW_FEATURES across
+  // the whole 3-PR sequence; credit cost finalized in PR-3.
+  | 'autocontents';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -73,6 +78,11 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // all searchable via chat. Cost reflects the bundle discount vs. running
   // interviews (10) + reports (50) separately; viz extraction is included.
   { key: 'insights_analyzer', href: '/insights-analyzer', cost: 30 },
+  // Autocontents — canvas-only entry (no dedicated page route in PR-1).
+  // Cost 0 during migration; final pricing lands with PR-3 (generate /
+  // image cost models). href points back to canvas so any sidebar/dialog
+  // fallback resolves cleanly.
+  { key: 'autocontents', href: '/canvas', cost: 0 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
@@ -91,6 +101,7 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'voice_concierge',
   'insights_analyzer',
   'slidegen',
+  'autocontents',
 ]);
 
 // Single source of truth for credit pricing — read by both the

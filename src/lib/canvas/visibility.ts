@@ -17,7 +17,8 @@ export type CanvasWidgetKey =
   | 'translate'
   | 'probing'
   | 'topline'
-  | 'slidegen';
+  | 'slidegen'
+  | 'autocontents';
 
 export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   recruiting: true,
@@ -29,12 +30,14 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   probing: true,
   topline: false,
   slidegen: false,
+  autocontents: true,
 };
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
 // 리서치 흐름 순 — recruiting (모집) → quotes/desk/interviews (수집·분석) →
 // moderator/translate/probing (진행) → topline/slidegen (산출).
 // probing 은 translate 의 transcript 를 구독하므로 translate 바로 다음.
+// autocontents 는 산출 도구 — 보고/배포 끝단.
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
   'recruiting',
   'quotes',
@@ -45,6 +48,7 @@ export const CANVAS_ORDER: CanvasWidgetKey[] = [
   'probing',
   'topline',
   'slidegen',
+  'autocontents',
 ];
 
 export function visibleCanvasWidgets(): CanvasWidgetKey[] {
