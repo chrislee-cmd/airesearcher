@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,9 @@ export async function POST() {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   return NextResponse.json(
     { error: 'not_implemented', migration_phase: 'foundation' },

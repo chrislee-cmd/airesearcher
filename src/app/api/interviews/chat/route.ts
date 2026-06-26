@@ -5,6 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   searchChunks,
   hitToCitation,
@@ -94,6 +95,9 @@ export async function POST(req: Request) {
   if (!org?.org_id) {
     return NextResponse.json({ error: 'no_org' }, { status: 403 });
   }
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const parsed = PostBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

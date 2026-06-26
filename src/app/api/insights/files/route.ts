@@ -10,6 +10,7 @@ import {
   INSIGHTS_EXTRACTION_SYSTEM,
   type InsightsQuote,
 } from '@/lib/insights-schema';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 // Batch size for incremental INSERTs into insights_quotes while the LLM
 // streams. Small enough that the client's 2s poll picks up movement, large
@@ -64,6 +65,12 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
+
+  // /files runs Whisper + Sonnet per upload. Bucket by user.id (per-min)
+  // and org from the job row (per-day) so a batch upload across files
+  // counts toward both limits.
+  const limited = await checkLlmRateLimit(user.id, job.org_id ?? null);
+  if (limited) return limited;
 
   const admin = createAdminClient();
 

@@ -4,6 +4,7 @@ import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { fileExtractionSchema } from '@/lib/interview-schema';
 
 export const maxDuration = 300;
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const parsed = Body.safeParse(await request.json());
   if (!parsed.success) {

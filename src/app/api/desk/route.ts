@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits, refundCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   crawlSource,
   dedupeArticles,
@@ -390,6 +391,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
