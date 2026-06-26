@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 

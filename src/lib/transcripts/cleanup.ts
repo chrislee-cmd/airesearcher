@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '../llm/config';
 import { CLEANUP_SYSTEM, cleanupSchema } from './cleanup-schema';
 import type { ElevenLabsWord } from './elevenlabs';
@@ -136,7 +137,7 @@ export async function cleanupTranscript(
   duration: number,
   speakers: number,
 ): Promise<CleanupResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return { cleanMarkdown: null, audit: emptyAudit() };
   // Hoist into a local so TS preserves the narrow across the worker closure.
   const key = apiKey;

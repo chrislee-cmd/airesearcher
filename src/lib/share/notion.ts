@@ -1,3 +1,5 @@
+import { env } from '@/env';
+
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
@@ -120,9 +122,9 @@ export async function createNotionPage(
 }
 
 export function getNotionEnv() {
-  const clientId = process.env.NOTION_CLIENT_ID;
-  const clientSecret = process.env.NOTION_CLIENT_SECRET;
-  const redirectUri = process.env.NOTION_REDIRECT_URI;
+  const clientId = env.NOTION_CLIENT_ID;
+  const clientSecret = env.NOTION_CLIENT_SECRET;
+  const redirectUri = env.NOTION_REDIRECT_URI;
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('missing_notion_oauth_env');
   }

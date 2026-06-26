@@ -7,13 +7,14 @@
 // into a system-prompt evidence block and a citations envelope.
 
 import OpenAI from 'openai';
+import { env } from '@/env';
 
 const EMBED_MODEL = 'text-embedding-3-small';
 
 let _client: OpenAI | null = null;
 function client(): OpenAI {
   if (!_client) {
-    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   }
   return _client;
 }
@@ -63,7 +64,7 @@ export async function searchChunks(opts: {
 }): Promise<InterviewSearchHit[]> {
   const { client: db, jobId, query, k = 12 } = opts;
   if (!query.trim()) return [];
-  if (!process.env.OPENAI_API_KEY) {
+  if (!env.OPENAI_API_KEY) {
     throw new Error('missing_openai_api_key');
   }
 

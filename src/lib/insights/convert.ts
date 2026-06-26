@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { tryRegexMarkdown, tryMarkdownPassthrough } from '@/lib/markdown-format';
@@ -52,7 +53,7 @@ export async function convertFileToMarkdown(file: File): Promise<ConvertResult> 
 
   let rawText: string;
   if (kind === 'audio' || kind === 'video') {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('missing_openai_key');
     const openai = new OpenAI({ apiKey });
     const audioFile = new File([buffer], file.name, {
@@ -95,7 +96,7 @@ export async function convertFileToMarkdown(file: File): Promise<ConvertResult> 
     };
   }
 
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const anthropicKey = env.ANTHROPIC_API_KEY;
   if (!anthropicKey) {
     const fallback = `---\nfile: ${file.name}\n---\n\n${rawText.replace(/\r\n?/g, '\n').trim()}\n`;
     return {

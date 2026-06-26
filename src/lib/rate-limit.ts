@@ -1,33 +1,27 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { env } from '@/env';
 
 // SEC-003 / SEC-019 (audit Phase 0). Application-level rate limit on top
 // of network/CDN — Upstash Redis is shared across Vercel regions so the
-// counter doesn't drift between Fluid Compute instances. If the env vars
-// are missing (e.g. preview before the marketplace integration is wired)
-// we fail open so dev/preview keeps working; warn loudly so the gap is
-// obvious in logs.
+// counter doesn't drift between Fluid Compute instances.
+//
+// PR-SEC21 — fail-closed. UPSTASH_REDIS_REST_URL/TOKEN are required in
+// env.ts so the schema rejects builds that lack them. Previously a
+// missing env silently disabled rate limiting in prod (fail-open). The
+// limiter now always exists; the only remaining failure mode is the
+// Upstash API call itself, which we surface to the caller.
 
 type Window = `${number} s` | `${number} m` | `${number} h` | `${number} d`;
 
 let redis: Redis | null = null;
-let warned = false;
 
-function getRedis(): Redis | null {
+function getRedis(): Redis {
   if (redis) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    if (!warned) {
-      warned = true;
-      console.warn(
-        '[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing — failing open. ' +
-          'Add the Upstash Redis marketplace integration to enable rate limiting.',
-      );
-    }
-    return null;
-  }
-  redis = new Redis({ url, token });
+  redis = new Redis({
+    url: env.UPSTASH_REDIS_REST_URL,
+    token: env.UPSTASH_REDIS_REST_TOKEN,
+  });
   return redis;
 }
 
@@ -42,14 +36,12 @@ function getLimiter(
   prefix: string,
   limit: number,
   window: Window,
-): Ratelimit | null {
+): Ratelimit {
   const cacheKey = `${prefix}:${limit}:${window}`;
   const cached = limiters.get(cacheKey);
   if (cached) return cached;
-  const r = getRedis();
-  if (!r) return null;
   const limiter = new Ratelimit({
-    redis: r,
+    redis: getRedis(),
     limiter: Ratelimit.slidingWindow(limit, window),
     prefix: `rl:${prefix}`,
     // Analytics so the Upstash dashboard surfaces hot keys without us
@@ -82,10 +74,6 @@ export async function rateLimit(
   window: Window,
 ): Promise<RateLimitResult> {
   const limiter = getLimiter(prefix, limit, window);
-  if (!limiter) {
-    // Fail open — see warning above.
-    return { success: true, retryAfter: 0, remaining: limit, limit };
-  }
   const { success, reset, remaining } = await limiter.limit(identifier);
   const retryAfter = success
     ? 0
@@ -123,14 +111,14 @@ export async function rateLimitMany(
  * so the limiter always has a non-empty key — better to over-bucket NAT'd
  * users together than to skip the check entirely.
  *
- * XFF first-hop trust is gated to Vercel (`process.env.VERCEL === '1'`)
+ * XFF first-hop trust is gated to Vercel (`env.VERCEL === '1'`)
  * where the platform guarantees the leftmost address is the real client.
  * In any other environment a client can forge `x-forwarded-for` / `x-real-ip`
  * to evade per-IP limits, so we deliberately decline to read those headers
  * outside Vercel and fall through to `unknown`.
  */
 export function getClientIp(request: Request): string {
-  if (process.env.VERCEL === '1') {
+  if (env.VERCEL === '1') {
     const xff = request.headers.get('x-forwarded-for');
     if (xff) {
       const first = xff.split(',')[0]?.trim();

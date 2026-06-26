@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { env } from '@/env';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
@@ -48,7 +49,7 @@ import {
 // /messages POST → DB). Disabled in production so a 30 min session
 // doesn't flood the browser console.
 const TRACE_ENCODING =
-  typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+  typeof process !== 'undefined' && env.NODE_ENV !== 'production';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -1859,7 +1860,7 @@ export function TranslateConsole() {
   const shareUrl = useMemo(() => {
     if (!shareToken) return null;
     if (typeof window === 'undefined') return null;
-    const subdomain = process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST;
+    const subdomain = env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST;
     const host = subdomain || window.location.host;
     return `${window.location.protocol}//${host}/live/${shareToken}`;
   }, [shareToken]);

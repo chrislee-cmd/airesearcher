@@ -7,11 +7,11 @@
 //
 // Auth: standard Vercel cron pattern — request must carry
 //   Authorization: Bearer <CRON_SECRET>
-// matching the env var. CRON_SECRET is missing only in local dev; in that
-// case we let the route through so `curl localhost:3000/api/cron/retention`
-// works for manual checks.
+// matching the env var. CRON_SECRET is enforced as required in env.ts so
+// it is always present at runtime (PR-SEC21 fail-closed).
 
 import { NextResponse } from 'next/server';
+import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -24,10 +24,8 @@ const TRANSLATE_MESSAGES_DAYS = 30;
 const AUDIT_LOG_DAYS = 365;
 
 function authorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return true;
   const header = request.headers.get('authorization') ?? '';
-  return header === `Bearer ${expected}`;
+  return header === `Bearer ${env.CRON_SECRET}`;
 }
 
 type CleanupResult = {

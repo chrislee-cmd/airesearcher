@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 
 export const maxDuration = 60;
@@ -27,8 +28,8 @@ export async function POST(req: Request) {
   }
   const { body, subject } = parsed.data;
 
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = env.GMAIL_USER;
+  const gmailPass = env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailPass) {
     return NextResponse.json({ error: 'email_not_configured' }, { status: 500 });
   }

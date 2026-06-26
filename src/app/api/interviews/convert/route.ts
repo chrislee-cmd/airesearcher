@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
   let _openai: OpenAI | null = null;
   function getOpenAI(): OpenAI {
     if (_openai) return _openai;
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('missing_openai_key');
     _openai = new OpenAI({ apiKey });
     return _openai;
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
     markdown = passthroughMd;
   } else {
     formatPath = 'llm';
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicKey = env.ANTHROPIC_API_KEY;
     if (!anthropicKey) {
       // No LLM available → degrade to raw text rather than blocking upload.
       console.warn('[interviews/convert] no anthropic key, using raw fallback', file.name);

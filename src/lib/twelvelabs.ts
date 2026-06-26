@@ -2,16 +2,18 @@
 // New asset-based flow: /assets → /indexed-assets → /analyze (Pegasus)
 // /search still uses marengo index via /search endpoint.
 
+import { env } from '@/env';
+
 const BASE = 'https://api.twelvelabs.io/v1.3';
 
 function getKey(): string {
-  const key = process.env.TWELVELABS_API_KEY;
+  const key = env.TWELVELABS_API_KEY;
   if (!key) throw new Error('missing_twelvelabs_key');
   return key;
 }
 
 export function getAnalyzeIndexId(): string {
-  const id = process.env.TWELVELABS_ANALYZE_INDEX_ID;
+  const id = env.TWELVELABS_ANALYZE_INDEX_ID;
   if (!id) throw new Error('missing_twelvelabs_analyze_index_id');
   return id;
 }

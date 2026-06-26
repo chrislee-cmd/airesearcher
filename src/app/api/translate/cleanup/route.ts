@@ -12,16 +12,17 @@
 // the same treatment so LiveKit rooms don't linger.
 
 import { NextResponse } from 'next/server';
+import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+// PR-SEC21 — fail-closed. CRON_SECRET is required in env.ts; absent
+// previously meant skipping auth entirely.
 function authorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return true; // local dev / no secret set
   const header = request.headers.get('authorization') ?? '';
-  return header === `Bearer ${expected}`;
+  return header === `Bearer ${env.CRON_SECRET}`;
 }
 
 export async function GET(request: Request) {

@@ -1,4 +1,5 @@
 import { NextResponse, after } from 'next/server';
+import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
 import { deepgramToMarkdown, type DeepgramResult } from '@/lib/transcripts/format';
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get('secret');
   const jobId = url.searchParams.get('job');
-  const expected = process.env.DEEPGRAM_WEBHOOK_SECRET;
+  const expected = env.DEEPGRAM_WEBHOOK_SECRET;
 
   if (!expected || !secret || secret !== expected) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

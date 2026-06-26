@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+import { env } from '@/env';
 import type { CreditBundleId } from '@/lib/features';
 
 // ── Lemon Squeezy ──────────────────────────────────────────────────────────
@@ -12,16 +13,15 @@ const LS_API_BASE = 'https://api.lemonsqueezy.com/v1';
 // Each bundle maps to a pre-created Lemon Squeezy product variant.
 // Standard pricing model auto-creates one variant per product, so the
 // variant ID is what we attach to the checkout (not the product ID).
-const LS_VARIANT_ENV: Record<CreditBundleId, string> = {
-  starter:    'LEMONSQUEEZY_VARIANT_STARTER',
-  team:       'LEMONSQUEEZY_VARIANT_TEAM',
-  studio:     'LEMONSQUEEZY_VARIANT_STUDIO',
-  enterprise: 'LEMONSQUEEZY_VARIANT_ENTERPRISE',
+const LS_VARIANT_BY_BUNDLE: Record<CreditBundleId, string | undefined> = {
+  starter: env.LEMONSQUEEZY_VARIANT_STARTER,
+  team: env.LEMONSQUEEZY_VARIANT_TEAM,
+  studio: env.LEMONSQUEEZY_VARIANT_STUDIO,
+  enterprise: env.LEMONSQUEEZY_VARIANT_ENTERPRISE,
 };
 
 export function getLemonSqueezyVariantId(bundleId: CreditBundleId): string | null {
-  const envKey = LS_VARIANT_ENV[bundleId];
-  return process.env[envKey] ?? null;
+  return LS_VARIANT_BY_BUNDLE[bundleId] ?? null;
 }
 
 // Locale supported by Lemon Squeezy's checkout UI. We only ship ko/en so
@@ -139,9 +139,9 @@ export function getBankAccount(): {
   accountNumber: string;
   accountHolder: string;
 } | null {
-  const bankName = process.env.BILLING_BANK_NAME;
-  const accountNumber = process.env.BILLING_ACCOUNT_NUMBER;
-  const accountHolder = process.env.BILLING_ACCOUNT_HOLDER;
+  const bankName = env.BILLING_BANK_NAME;
+  const accountNumber = env.BILLING_ACCOUNT_NUMBER;
+  const accountHolder = env.BILLING_ACCOUNT_HOLDER;
   if (!bankName || !accountNumber || !accountHolder) return null;
   return { bankName, accountNumber, accountHolder };
 }

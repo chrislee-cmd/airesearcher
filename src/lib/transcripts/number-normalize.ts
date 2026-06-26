@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '../llm/config';
 import {
   NUMBER_NORMALIZE_SYSTEM,
@@ -160,7 +161,7 @@ export async function normalizeNumbersInTranscript(
   markdown: string,
   language: NumberLanguage = 'ko',
 ): Promise<NumberNormalizeResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return { normalized: null, audit: emptyAudit('missing_api_key') };
   if (!markdown || markdown.length < MIN_DOC_LENGTH) {
     return { normalized: null, audit: emptyAudit('document_too_short') };

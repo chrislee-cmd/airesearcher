@@ -63,9 +63,9 @@ export type AuditOpts = {
 };
 
 // Reuse the rate-limiter's hardened helper: first-hop XFF trust is gated
-// to `process.env.VERCEL === '1'` so non-Vercel environments can't be
-// spoofed. We normalize the 'unknown' sentinel back to null since `ip` is
-// a nullable text column in audit_log.
+// to `env.VERCEL === '1'` so non-Vercel environments can't be spoofed.
+// We normalize the 'unknown' sentinel back to null since `ip` is a
+// nullable text column in audit_log.
 function extractIp(request: Request): string | null {
   const ip = getClientIp(request);
   return ip === 'unknown' ? null : ip;

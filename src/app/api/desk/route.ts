@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateObject, generateText, type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -323,7 +324,7 @@ type PersistedClaim =
     };
 
 function getModel(): LanguageModel {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
   return createAnthropic({ apiKey })('claude-sonnet-4-6');
 }
@@ -331,7 +332,7 @@ function getModel(): LanguageModel {
 // Haiku — used for the per-article claim extraction loop. Spec calls out
 // `claude-haiku-4-5-20251001` so the loop's cost stays well below summarize's.
 function getClaimModel(): LanguageModel {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
   return createAnthropic({ apiKey })('claude-haiku-4-5-20251001');
 }
@@ -341,7 +342,7 @@ function getClaimModel(): LanguageModel {
 // long-form report stays on Sonnet for quality; only the structured chart
 // extraction moves to OpenAI.
 function getAnalyticsModel(): LanguageModel | null {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) return null;
   return createOpenAI({ apiKey })('gpt-4o-mini');
 }
@@ -397,7 +398,7 @@ export async function POST(request: Request) {
   const limited = await checkLlmRateLimit(user.id, org.org_id);
   if (limited) return limited;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   }
 

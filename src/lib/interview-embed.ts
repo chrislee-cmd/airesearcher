@@ -10,6 +10,7 @@
 //     single SDK surface for the index pipeline.
 
 import OpenAI from 'openai';
+import { env } from '@/env';
 import { getCacheMany, hashString, setCacheMany } from './cache';
 import type { InterviewChunk } from './interview-chunking';
 
@@ -32,7 +33,7 @@ export type EmbeddedInterviewChunk = InterviewChunk & {
 let _client: OpenAI | null = null;
 function client(): OpenAI {
   if (!_client) {
-    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   }
   return _client;
 }
@@ -61,7 +62,7 @@ export async function embedInterviewChunks(
   chunks: InterviewChunk[],
 ): Promise<EmbeddedInterviewChunk[]> {
   if (chunks.length === 0) return [];
-  if (!process.env.OPENAI_API_KEY) {
+  if (!env.OPENAI_API_KEY) {
     throw new Error('missing_openai_api_key');
   }
 

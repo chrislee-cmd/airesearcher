@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
+import { env } from '@/env';
 import { updateSession } from '@/lib/supabase/middleware';
 import {
   LIMITS,
@@ -65,7 +66,7 @@ const LOCALE_ALIASES: Record<string, string> = {
 // rewrite `/` and `/<token>` to `/live/<token>` and reject everything
 // else as 404 — the marketing app, dashboard, sign-in flow, etc. all
 // stay on the main domain. Unset = single-domain mode (path-only).
-const VIEWER_HOST = process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST?.toLowerCase();
+const VIEWER_HOST = env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST?.toLowerCase();
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

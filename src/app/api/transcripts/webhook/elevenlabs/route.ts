@@ -1,5 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import crypto from 'node:crypto';
+import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
 import {
@@ -64,7 +65,7 @@ type WebhookEnvelope = {
 };
 
 export async function POST(request: Request) {
-  const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
+  const secret = env.ELEVENLABS_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: 'missing_secret' }, { status: 500 });
   }

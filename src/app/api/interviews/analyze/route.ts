@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
@@ -306,7 +307,7 @@ export async function POST(request: Request) {
 
   // Pass 3 — LLM semantic consolidation. Skip silently on missing key or
   // any failure (deterministic clusters are still valid).
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (apiKey && clusters.length >= 2) {
     const canonicals = clusters.map(pickCanonical);
     const groups = await llmConsolidate(canonicals, apiKey);

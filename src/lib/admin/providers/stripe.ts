@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // Stripe is the *revenue* side, not an API cost. We still surface the
@@ -13,12 +14,12 @@ type StripeBalance = {
 };
 
 export async function getStripeUsage(): Promise<ProviderUsage> {
-  const present = !!process.env.STRIPE_SECRET_KEY;
+  const present = !!env.STRIPE_SECRET_KEY;
   const envKeys = [
     { key: 'STRIPE_SECRET_KEY', present },
     {
       key: 'STRIPE_WEBHOOK_SECRET',
-      present: !!process.env.STRIPE_WEBHOOK_SECRET,
+      present: !!env.STRIPE_WEBHOOK_SECRET,
     },
   ];
   const dashboardUrl = 'https://dashboard.stripe.com/balance';
@@ -35,7 +36,7 @@ export async function getStripeUsage(): Promise<ProviderUsage> {
 
   try {
     const res = await fetch(BALANCE_URL, {
-      headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY!}` },
+      headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY!}` },
       cache: 'no-store',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

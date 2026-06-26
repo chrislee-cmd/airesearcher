@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { env } from '@/env';
 
 // `@supabase/ssr` ships its own browser singleton in `createBrowserClient`,
 // but the cache lives at module scope inside the library. If the bundler
@@ -14,8 +15,8 @@ import { createBrowserClient } from '@supabase/ssr';
 // single client instance per browser regardless of the library's caching.
 function buildClient() {
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 }
 
