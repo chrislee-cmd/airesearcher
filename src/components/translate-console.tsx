@@ -49,7 +49,7 @@ import {
 // /messages POST → DB). Disabled in production so a 30 min session
 // doesn't flood the browser console.
 const TRACE_ENCODING =
-  typeof process !== 'undefined' && env.NODE_ENV !== 'production';
+  typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
