@@ -355,31 +355,6 @@
       "pptx": "파워포인트"
     }
   },
-  "Concierge": {
-    "close": "닫기",
-    "coming_soon": "곧 출시! 베타 등록 중이에요.",
-    "fab_tooltip": "모치 부르기",
-    "first_time_dismiss": "다음부터 안 보이게",
-    "first_time_tooltip": "처음이세요? 눌러주세요",
-    "mic_denied": "마이크 권한이 필요해요. 브라우저 설정에서 허용해주세요.",
-    "mochi_label": "모치",
-    "panel_title": "모치 컨시어지",
-    "quota_exceeded": "오늘 사용 한도(10분)에 도달했어요. 내일 다시 만나요!",
-    "state_connecting": "연결 중",
-    "state_error": "연결에 문제가 있어요. 다시 시도해주세요.",
-    "state_idle": "말씀해 주세요",
-    "state_listening": "듣고 있어요",
-    "state_speaking": "말하고 있어요",
-    "text_mode_mic_denied_hint": "마이크를 못 쓰는 환경이네요. 텍스트로 대화할 수 있어요.",
-    "text_mode_placeholder": "메시지 입력...",
-    "text_mode_toggle_to_text": "텍스트로 전환",
-    "text_mode_toggle_to_voice": "음성으로 전환",
-    "tool_escalating": "담당팀에게 메일 보내드릴게요",
-    "tool_highlight_fallback": "여기를 봐주세요",
-    "tool_navigating": "이동 중이에요",
-    "tool_opening_purchase": "충전 페이지 열게요",
-    "you_label": "당신"
-  },
   "Features": {
     "quotes": {
       "title": "전사록 생성기",
@@ -538,11 +513,6 @@
       "title": "PPT 생성기",
       "description": "보고서 텍스트를 붙여넣으면 도식 슬라이드 덱으로 자동 변환합니다. 현재 뼈대 단계로 결정론적 분할(bullet 폴백)만 동작하며, 편집·LLM 분류·다운로드는 후속 PR에서 들어옵니다.",
       "cost": "프리뷰 무료"
-    },
-    "voice_concierge": {
-      "title": "보이스 컨시어지",
-      "description": "말로 모치를 부르세요. 어떤 화면에서든 도와드려요.",
-      "cost": "무료 베타"
     }
   },
   "Quant": {

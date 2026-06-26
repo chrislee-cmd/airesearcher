@@ -18,10 +18,6 @@ export type FeatureKey =
   // 결정론적 뼈대(`##` 헤딩 분할 + bullet_body 폴백)만. LLM 분류기 / 편집기 /
   // PptxGenJS export 는 후속 PR. PREVIEW 게이트로 super-admin 만 노출.
   | 'slidegen'
-  // Global voice concierge — not a sidebar item, mounted as a FAB in
-  // (app)/layout.tsx. Cost is stubbed at 0 for PR1; the credit policy
-  // is still open (design §12.5) so the foundation ships as free beta.
-  | 'voice_concierge'
   // Unified Insights Analyzer — merges the existing interview-result and
   // full-report generators into one upload → dashboard → chat surface.
   // Stays in PREVIEW_FEATURES until the dashboard/viz/chat PRs land; the
@@ -68,11 +64,6 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // SlideGen — PR1 skeleton; cost is a placeholder until the LLM-backed
   // classifier/storyline PRs land. Free during PREVIEW (super-admin only).
   { key: 'slidegen', href: '/slidegen', cost: 0 },
-  // Global voice concierge — bottom-right FAB on every (app) route. No
-  // dedicated page in PR1 (the FAB only pops a coming-soon toast); the
-  // href is reserved for future expand/settings routes. Free during the
-  // beta — credit policy lands with PR2/PR3 (design §12.5).
-  { key: 'voice_concierge', href: '/voice', cost: 0 },
   // Insights Analyzer — one upload produces the interview matrix +
   // consolidated insights + auto-generated visualizations + full report,
   // all searchable via chat. Cost reflects the bundle discount vs. running
@@ -98,7 +89,6 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   'quant',
   'video',
   'translate',
-  'voice_concierge',
   'insights_analyzer',
   'slidegen',
   'autocontents',

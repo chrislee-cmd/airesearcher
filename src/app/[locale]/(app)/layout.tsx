@@ -2,7 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Outfit } from 'next/font/google';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
-import { getActiveOrg, getOrgFlags } from '@/lib/org';
+import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
 import { Sidebar } from '@/components/sidebar';
@@ -17,7 +17,6 @@ import { VideoJobProvider } from '@/components/video-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
-import { VoiceConciergeProvider } from '@/components/voice-concierge';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -43,22 +42,20 @@ export default async function AppLayout({
   const user = await getCurrentUser();
 
   const org = user ? await getActiveOrg() : null;
-  // Once we have org, the three follow-up reads are independent — fan
-  // them out so the slowest one bounds total latency, not their sum.
-  // (Each is also cache()d so duplicate reads from page.tsx in the same
-  // request hit memory instead of Supabase.)
-  const [credits, projects, flags] = org
+  // Once we have org, the follow-up reads are independent — fan them out
+  // so the slowest one bounds total latency, not their sum. (Each is
+  // also cache()d so duplicate reads from page.tsx in the same request
+  // hit memory instead of Supabase.)
+  const [credits, projects] = org
     ? await Promise.all([
         getOrgCredits(org.org_id),
         listProjects(org.org_id),
-        getOrgFlags(org.org_id),
       ])
-    : [null, [] as Awaited<ReturnType<typeof listProjects>>, { isUnlimited: false }];
+    : [null, [] as Awaited<ReturnType<typeof listProjects>>];
 
   return (
     <PaywallProvider>
      <ToastProvider>
-     <VoiceConciergeProvider showPreviewFeatures={flags.isUnlimited}>
      <VideoJobProvider>
      <InterviewJobProvider>
       <TranscriptJobProvider>
@@ -85,7 +82,6 @@ export default async function AppLayout({
       </TranscriptJobProvider>
      </InterviewJobProvider>
      </VideoJobProvider>
-     </VoiceConciergeProvider>
      </ToastProvider>
     </PaywallProvider>
   );
