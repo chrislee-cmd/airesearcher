@@ -429,7 +429,6 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: text,
           interview_guide: guideRef.current,
-          max_questions: 3,
         }),
       });
       if (!res.ok || !res.body) {
@@ -849,7 +848,7 @@ function ExpandedBody() {
               <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
                 상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
                 <br />
-                시작 후 5초마다 후속 질문 3개가 제안됩니다.
+                시작 후 5초마다 모든 기법별 후속 질문이 한 번에 제안됩니다.
                 {source === 'tab' && (
                   <>
                     <br />
@@ -947,9 +946,12 @@ function SuggestionList({
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           제안 질문 {questions.length}개{rel ? ` · ${rel}` : ''}
         </span>
-        <span className="text-xs text-mute-soft">카드 클릭 → 복사</span>
+        <span className="text-xs text-mute-soft">항목 클릭 → 복사</span>
       </div>
-      <ul className="space-y-2">
+      {/* PR-10: 한 set 가 10 항목 (기법 각 1개). 컨테이너 / border 없이
+          단순 1열 텍스트 리스트 — 위젯 안 공간 차지 최소화. 기법 라벨을
+          텍스트 앞에 inline prefix 로 노출 (chip / box X). */}
+      <ul className="divide-y divide-line-soft">
         {questions.map((q, i) => {
           const label =
             q.technique && q.technique in PROBING_TECHNIQUE_LABEL
@@ -957,20 +959,16 @@ function SuggestionList({
               : q.technique || '제안';
           return (
             <li key={i}>
-              {/* eslint-disable-next-line react/forbid-elements -- card-shaped clickable. <Button> primitive enforces center-aligned single-line capsule layout incompatible with this multi-row text+chip+why card. */}
+              {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
               <button
                 type="button"
                 onClick={() => onCopy(q.text)}
-                className="w-full rounded-sm border border-line bg-paper px-4 py-3 text-left transition-colors duration-[120ms] hover:border-amore"
+                className="w-full px-1 py-1.5 text-left text-md leading-[1.55] text-ink-2 transition-colors duration-[120ms] hover:text-amore"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-lg leading-[1.55] text-ink-2">
-                    {q.text}
-                  </span>
-                  <span className="shrink-0 rounded-xs border border-line-soft px-2 py-0.5 text-xs uppercase tracking-[0.18em] text-mute-soft">
-                    {label}
-                  </span>
-                </div>
+                <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
+                  {label}
+                </span>
+                {q.text}
               </button>
             </li>
           );
@@ -992,7 +990,7 @@ export const probingCard: WidgetContent = {
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 후속 질문 3개를 5초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 기법별 후속 질문을 5초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
