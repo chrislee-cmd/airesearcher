@@ -118,7 +118,16 @@
   --color-pop-banner: #ffd53d;     /* canvas hero header bg 와 동일 — topbar 노랑 */
   --shadow-pop-offset: 6px 6px 0 0 #000;
   --shadow-pop-offset-sm: 3px 3px 0 0 #000;
+  --shadow-pop-offset-xs: 2px 2px 0 0 #000;
   --font-pop: var(--font-outfit), "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* PR-D5 — 사이드바 full pop. chrome 토큰 위에서 sidebar/header bg 와
+     nav item active 톤을 명시 — D3 (chrome) + D4 (내부) 의 subtle 톤
+     → D5 bold 톤 (사이드바 전체 노랑 + 메뉴 Memphis 카드 + 핑크 active
+     wash + 흰 텍스트). */
+  --sidebar-bg: var(--color-pop-yellow);
+  --sidebar-active-bg: var(--color-pop-pink);
+  --sidebar-active-text: #ffffff;
 }
 
 /* =========================================================================
@@ -336,76 +345,95 @@ html, body {
    ========================================================================= */
 
 /* 사이드바 nav item — Projects / Canvas / feature 메뉴 entry 공통.
-   default = 무색 / mute, hover = 옅은 노랑 wash + 검정 좌측 thick bar,
-   active = 핑크 wash + 핑크 좌측 thick bar + ink. */
+   PR-D5: D4 의 좌측 thick bar + 옅은 wash → bold Memphis 카드 (흰 bg +
+   검정 2.5px hard border + 2px offset shadow). hover = 노랑 + shadow
+   강조, active = 핑크 bg + 흰 텍스트 + 검정 border (캔버스 톤 통일). */
 [data-shell-nav] {
   font-family: var(--font-pop);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.005em;
-  border-left: 3px solid transparent;
+  background: #ffffff;
+  border: 2.5px solid var(--color-pop-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-pop-offset-xs);
+  color: var(--color-ink);
   transition: background 120ms ease, color 120ms ease,
-              border-color 120ms ease;
+              box-shadow 120ms ease, transform 120ms ease;
 }
 [data-shell-nav]:hover {
   background: var(--color-pop-yellow);
-  border-left-color: var(--color-pop-border);
+  box-shadow: var(--shadow-pop-offset-sm);
+  transform: translate(-1px, -1px);
   color: var(--color-ink);
 }
 [data-shell-nav][data-active="true"] {
-  background: color-mix(in srgb, var(--color-pop-pink) 14%, transparent);
-  border-left-color: var(--color-pop-pink);
-  color: var(--color-ink);
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  border-color: var(--color-pop-border);
+  box-shadow: var(--shadow-pop-offset-sm);
   font-weight: 700;
+}
+[data-shell-nav][data-active="true"]:hover {
+  /* active 상태에서 hover 시 노랑 → 핑크 톤 유지 (캔버스 일관). */
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
 }
 [data-shell-nav][data-drag-over="true"] {
   background: var(--color-pop-yellow);
-  border-left-color: var(--color-pop-border);
+  box-shadow: var(--shadow-pop-offset-sm);
   color: var(--color-ink);
 }
 [data-shell-nav][data-compatible="true"]:not([data-active="true"]):not([data-drag-over="true"]) {
-  border-left-color: var(--color-pop-pink);
+  /* compat target — 옅은 핑크 hint, 카드는 그대로 흰. */
+  background: color-mix(in srgb, var(--color-pop-pink) 8%, #ffffff);
   color: var(--color-ink);
 }
 [data-shell-nav][data-dimmed="true"] {
-  opacity: 0.45;
+  opacity: 0.4;
+  box-shadow: none;
 }
 
 /* 그룹 헤더 (설계 / 진행 / 분석 toggle). Outfit / 검정 / uppercase. */
+/* PR-D5: ink-2 → ink (검정 강화), tracking 0.2em 유지. */
 [data-shell-group] {
   font-family: var(--font-pop);
   font-weight: 700;
-  color: var(--color-ink-2);
-  letter-spacing: 0.2em;
+  color: var(--color-ink);
+  letter-spacing: 0.18em;
   transition: color 120ms ease;
 }
 [data-shell-group]:hover {
   color: var(--color-pop-pink);
 }
 
-/* sidebar-account — Memphis 카드 (2.5px 검은 border + offset shadow). */
+/* sidebar-account — Memphis 카드.
+   PR-D5: 흰 bg + 2.5px + 3px shadow → 노랑 banner bg + 3px hard border +
+   6px offset shadow (캔버스 카드와 동일 톤). */
 [data-shell-account-card] {
-  border: 2.5px solid var(--color-pop-border);
+  border: 3px solid var(--color-pop-border);
   border-radius: 8px;
-  background: #fff;
-  box-shadow: var(--shadow-pop-offset-sm);
+  background: var(--color-pop-banner);
+  box-shadow: var(--shadow-pop-offset);
   font-family: var(--font-pop);
 }
 
-/* 아바타 initial circle — 검정 2px border + 2px offset shadow. */
+/* 아바타 initial circle — 검정 2.5px border + 2px offset shadow.
+   PR-D5: account card 가 노랑 banner 가 되어 아바타도 노랑이면 겹침
+   → 핑크 (canvas-accent) + 흰 텍스트 — active nav item 톤과 일관. */
 [data-shell-avatar] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 2px solid var(--color-pop-border);
+  border: 2.5px solid var(--color-pop-border);
   border-radius: 999px;
-  background: var(--color-pop-banner);
-  box-shadow: 2px 2px 0 0 #000;
+  background: var(--color-pop-pink);
+  box-shadow: var(--shadow-pop-offset-xs);
   font-family: var(--font-pop);
   font-weight: 800;
-  font-size: 12px;
-  color: var(--color-ink);
+  font-size: 13px;
+  color: #ffffff;
   letter-spacing: 0;
 }
 
