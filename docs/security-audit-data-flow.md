@@ -1,6 +1,6 @@
 # 보안 audit — 데이터 흐름 + 외부 서비스 매핑 (GDPR 핵심)
 
-- **버전**: 1.0 (2026-06-26)
+- **버전**: 1.1 (2026-06-26 — PR-SEC11: Supabase region 확인 + DPA evidence)
 - **상위 문서**: `docs/security-audit-baseline-2026-06-26.md`
 - **목적**: GDPR Article 28/30/32/44–49 응답 — 어느 데이터가 어디로 가는지, 누가 처리자 (processor) 인지, EU→US 전송 적합성
 
@@ -20,7 +20,7 @@ flowchart TB
     Cron["Vercel Cron<br/>/api/translate/cleanup (1h)"]
   end
 
-  subgraph DB["Supabase (region 미고정 — us-east-1 추정)"]
+  subgraph DB["Supabase (AWS ap-northeast-2 / Seoul — KR adequacy ✓)"]
     Auth[Supabase Auth<br/>JWT 세션]
     Postgres["Postgres + RLS<br/>40+ 테이블"]
     Storage["Supabase Storage<br/>audio-uploads, video-uploads<br/>(private bucket)"]
@@ -91,13 +91,13 @@ flowchart TB
 
   classDef us fill:#fee,stroke:#c00,color:#000
   classDef eu fill:#efe,stroke:#0a0,color:#000
+  classDef kr fill:#eef,stroke:#06c,color:#000
   classDef unknown fill:#ffe,stroke:#a90,color:#000
   class OAI,Anthropic,Gemini,Deepgram,EL,TL,Stripe,LS,MP,Mail,Google,Notion us
-  class Kakao,Naver unknown
-  class DB unknown
+  class Kakao,Naver,DB kr
 ```
 
-색 의미: **빨강** = US, **노랑** = 미정 (리전 코드 pin 없음), **초록** = EU (현재 없음)
+색 의미: **빨강** = US, **초록** = EU (현재 없음), **파랑** = KR (한국 — EU adequacy ✓ 2021-12), **노랑** = 미정. Supabase 는 AWS ap-northeast-2 (Seoul) 로 확인됨 (2026-06-26) — EU 사용자 데이터 한국 전송은 adequacy decision 으로 SCC 불필요.
 
 ---
 
@@ -183,7 +183,7 @@ flowchart TB
 | 처리자 | 본사 / 데이터 위치 | 우리가 보내는 데이터 | 데이터 카테고리 | DPA 공개 | EU 적합성 메커니즘 | 위험 등급 |
 |---|---|---|---|---|---|---|
 | **Vercel** | US (글로벌 edge) | source / 로그 / 요청 context / function arg | metadata + 로그 | ✓ vercel.com/legal/dpa | SCC + EU-US Data Privacy Framework (DPF) certified | LOW |
-| **Supabase** | AWS (region 미고정 — 코드에 명시 없음) | 전체 PII + 인증 토큰 | ALL | ✓ supabase.com/security/dpa | region 이 EU 면 SCC 불필요, US 면 SCC 필수. **현재 미확인** | **HIGH (region 확인 필요)** |
+| **Supabase** | AWS ap-northeast-2 (Seoul, KR) — 확인 2026-06-26 | 전체 PII + 인증 토큰 | ALL | ✓ supabase.com/legal/dpa — DPA 2026-06-01 ver. `docs/legal/dpa-supabase-2026-06-01.pdf` (서명 대기) | EU→KR 한국 adequacy decision 2021-12 ✓ (SCC 불필요) | LOW |
 | **OpenAI (API)** | US | transcript / 인터뷰 텍스트 / 키워드 / Realtime audio | Sensitive PII | ✓ openai.com/policies/data-processing-addendum | SCC + DPF. **zero-retention header (`OpenAI-Beta`) 미사용** → 30일 기본 보존 | **HIGH** |
 | **Anthropic (Claude)** | US/글로벌 | insights / chat / report 입력 (PII 포함) | Sensitive PII | ✓ anthropic.com/legal/dpa | SCC + DPF. API 기본 zero-retention (모델 학습 미사용) — 확인 권장 | MEDIUM |
 | **Deepgram** | US | raw audio + speaker | Sensitive PII (생체 가능성) | ✓ deepgram.com/legal | SCC + DPF | MEDIUM |
@@ -206,16 +206,23 @@ flowchart TB
 
 ---
 
-## 5. Supabase region 확인 절차 (P0)
+## 5. Supabase region 확인 절차 + 현재 상태 (P1 — SEC11)
 
-코드에 region pin 없음 (`createClient({ url: SUPABASE_URL, ... })` 만 사용). 확인 방법:
+**현재 상태 (2026-06-26 확인)**:
+- **Region**: AWS `ap-northeast-2` (Seoul, South Korea)
+- **DPA**: Supabase Data Processing Addendum 2026-06-01 버전 — PDF `docs/legal/dpa-supabase-2026-06-01.pdf` 보관. 실제 서명은 PandaDoc 워크플로우 (`supabase.com/dashboard` → Legal Documents) 통해 별도 진행 필요 — 본 PR 의 PDF 는 백서/평가용 reference template
+- **EU→KR 적합성**: 2021-12 한국 adequacy decision (Commission Implementing Decision (EU) 2022/254) ✓ — EU 사용자 데이터를 한국 처리자에게 전송 시 SCC 또는 추가 보호 조치 **불필요**
+- **코드 pin**: 없음 (`createClient(url, anonKey)` 만 사용). region 은 project URL `qdhfbvppeilzyihzlusj.supabase.co` 의 dashboard 메타데이터로 고정. 다른 region 으로 migrate 하려면 신규 project 생성 + data export/import 필요 (downtime cost)
+
+**확인 방법** (재검증 시):
 ```bash
 # Supabase 대시보드 → Settings → General → Region
-# 또는
-curl -sI "$NEXT_PUBLIC_SUPABASE_URL" | grep -i x-region   # 헤더에 노출 안 될 수 있음
+# (HTTP 헤더로는 region 노출 안 됨 — Cloudflare CDN 이 fronting)
 ```
-- 만약 `us-east-1` 또는 비-EU 리전 → EU 사용자 데이터에 대해 SCC + DPA + 명시 통지 필요
-- 또는 EU 리전 (eu-west-1, eu-central-1) 으로 신규 project migrate (downtime cost)
+
+**남은 작업** (SEC11 follow-up):
+- DPA PandaDoc 실제 서명 (legal/founder 책임) — 본 PR 의 PDF 와 별개의 행정 단계
+- 서명 완료 후 `data-flow.md` 의 "(서명 대기)" 문구 갱신 + 서명 evidence (이메일/대시보드 캡처) 를 `docs/legal/dpa-supabase-signed-{date}.pdf` 로 commit
 
 ---
 
@@ -259,7 +266,7 @@ curl -sI "$NEXT_PUBLIC_SUPABASE_URL" | grep -i x-region   # 헤더에 노출 안
 
 | 데이터 흐름 위험 | 조치 | PR 후보 (followups.md) |
 |---|---|---|
-| Supabase region 미확인 | dashboard 에서 region 확인 → us 면 EU 사용자 SCC 또는 migrate | PR-SEC11 |
+| ~~Supabase region 미확인~~ → ap-northeast-2 확정 (2026-06-26) | EU→KR adequacy decision 적용. SCC 불필요. DPA template 보관 + 실서명 행정 단계 남음 | PR-SEC11 ✓ |
 | OpenAI 30일 보존 | enterprise / ZDR 활성 + 동의 흐름 | PR-SEC10 |
 | Mixpanel US + 동의 없이 init | consent gate + EU residency 또는 privacy-friendly 대체 (Plausible 등) | PR-SEC8 |
 | 익명 사용자 LLM 비용 abuse | 어플리케이션 rate limit (SEC-003) | PR-SEC4 |
@@ -288,7 +295,7 @@ curl -sI "$NEXT_PUBLIC_SUPABASE_URL" | grep -i x-region   # 헤더에 노출 안
 
 - 처리자 자체는 evidence-based 로 모두 GDPR 적합 (DPF 인증 다수). DPA 서명 단순 확인만 남음
 - **고객 (Meteor Research) 측 책임 영역** 이 거의 비어 있음:
-  - Supabase region 코드 pin / 명시
+  - ~~Supabase region 코드 pin / 명시~~ → ap-northeast-2 확인 + 본 문서에 기록 (PR-SEC11, 2026-06-26). Supabase DPA template (2026-06-01) 도 `docs/legal/` 보관 — PandaDoc 서명만 남음
   - LLM 처리자에 zero-retention 협의
   - Mixpanel 동의 gate 또는 alternative
   - 사용자 동의 / 권리 endpoint (Art. 15/17/20)
