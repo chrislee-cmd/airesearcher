@@ -1,0 +1,46 @@
+/* =============================================================
+   Loading fallback — pop 톤 (PR-D13). Memphis bg (노랑 + dot grid)
+   + 흰 카드 (3px 검정 border + offset shadow) + 핑크 액센트 라벨.
+   .loading-pop 안에 scoped — 다른 라우트 영향 0.
+   ============================================================= */
+
+.loading-pop {
+  background-color: #fffce1;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  background-position: 0 0;
+}
+
+.loading-pop .loading-pop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: #ffffff;
+  border: 3px solid #000;
+  border-radius: 6px;
+  box-shadow: 6px 6px 0 #000;
+  padding: 32px 40px;
+}
+
+.loading-pop .loading-pop-label {
+  font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #000;
+  background: #ff5c8a;
+  padding: 4px 12px;
+  border: 2.5px solid #000;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #000;
+}
+
+@media (max-width: 480px) {
+  .loading-pop .loading-pop-card {
+    padding: 24px 28px;
+    border-width: 2.5px;
+    box-shadow: 4px 4px 0 #000;
+  }
+}

@@ -1,0 +1,316 @@
+/* =============================================================
+   Login page styles — pop 톤 (PR-D13). canvas 의 잠긴 pop 톤과
+   동일한 시각 언어: 노랑 banner + 검정 3px border + 6px offset
+   shadow + Outfit display + 핑크 액센트. 모든 룰은 .auth-pop 안에
+   scoped — 다른 라우트 영향 0.
+
+   primitive 의 className 을 갈아끼우지 않고 descendant selector
+   로 Memphis 톤을 입힌다 (Button/Input primitive 가 native
+   element 를 렌더링하므로 type/role 매칭으로 안정적).
+   ============================================================= */
+
+.auth-pop {
+  /* Pop palette — canvas / landing 잠금 토큰과 정렬 */
+  --pop-yellow: #fffce1;
+  --pop-yellow-strong: #ffd53d;
+  --pop-pink: #ff5c8a;
+  --pop-pink-hover: #ff3d75;
+  --pop-pink-soft: #ffd0e2;
+  --pop-mint: #cdebd9;
+  --pop-sun: #fff1b6;
+
+  /* Memphis primitives */
+  --mem-border: 3px solid #000;
+  --mem-border-2: 2.5px solid #000;
+  --mem-shadow-xs: 2px 2px 0 #000;
+  --mem-shadow-sm: 3px 3px 0 #000;
+  --mem-shadow: 6px 6px 0 #000;
+  --mem-radius: 6px;
+  --mem-radius-lg: 10px;
+  --mem-radius-pill: 999px;
+
+  --outfit: var(--font-outfit), 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  background-color: var(--pop-yellow);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.6px, transparent 1.6px);
+  background-size: 28px 28px;
+  background-position: 0 0;
+  min-height: 100vh;
+  color: #000;
+}
+
+.auth-pop ::selection { background: var(--pop-pink); color: #fff; }
+
+/* ── language switcher chip ───────────────────────────────── */
+.auth-pop .pop-lang {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  z-index: 5;
+  background: #fff;
+  border: var(--mem-border-2);
+  border-radius: var(--mem-radius-pill);
+  box-shadow: var(--mem-shadow-xs);
+  padding: 4px 10px;
+  font-family: var(--outfit);
+  font-weight: 700;
+}
+/* override the generic link-button rule inside the lang chip — keep it
+   compact (no underline, current locale = pink). */
+.auth-pop .pop-lang button[type="button"] {
+  text-decoration: none !important;
+  padding: 2px 4px !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+}
+
+/* ── hero ─────────────────────────────────────────────────── */
+.auth-pop .pop-hero {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.auth-pop .pop-eyebrow {
+  display: inline-block;
+  font-family: var(--outfit);
+  font-weight: 800;
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #000;
+  background: var(--pop-pink);
+  padding: 4px 12px;
+  border: 2.5px solid #000;
+  border-radius: var(--mem-radius-pill);
+  box-shadow: 2px 2px 0 #000;
+  margin-bottom: 18px;
+  transform: rotate(-1.5deg);
+}
+.auth-pop .pop-display {
+  font-family: var(--outfit);
+  font-weight: 800;
+  font-size: clamp(32px, 6vw, 48px);
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  color: #000;
+  margin: 0;
+}
+.auth-pop .pop-subtitle {
+  margin-top: 14px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── card ─────────────────────────────────────────────────── */
+.auth-pop .pop-card {
+  background: #ffffff;
+  border: var(--mem-border);
+  border-radius: var(--mem-radius);
+  box-shadow: var(--mem-shadow);
+  padding: 28px 26px 26px;
+  position: relative;
+}
+
+/* ── form sections ────────────────────────────────────────── */
+/* Replace Tailwind divider classes (h-px bg-line) with Memphis 1.5px
+   black bar inside the OR row. We can't easily target without an
+   extra class, so style the existing divider via .pop-card hr-like
+   spans (the existing JSX uses <span className="h-px flex-1 bg-line" />). */
+.auth-pop .pop-card .h-px { height: 1.5px; background: #000; }
+.auth-pop .pop-card .text-mute-soft { color: #5b5965; }
+.auth-pop .pop-card .uppercase.tracking-\[0\.22em\] {
+  font-family: var(--outfit);
+  font-weight: 800;
+  color: #000;
+}
+
+/* ── inputs (Memphis) ─────────────────────────────────────── */
+.auth-pop input[type="email"],
+.auth-pop input[type="password"],
+.auth-pop input[type="text"] {
+  border: var(--mem-border-2);
+  background: #ffffff;
+  color: #000;
+  box-shadow: var(--mem-shadow-sm);
+  border-radius: var(--mem-radius);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.auth-pop input[type="email"]:focus,
+.auth-pop input[type="password"]:focus,
+.auth-pop input[type="text"]:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 4px 4px 0 var(--pop-pink);
+}
+.auth-pop input::placeholder { color: #8a8693; }
+
+/* labels — Outfit bold */
+.auth-pop label,
+.auth-pop legend {
+  font-family: var(--outfit);
+  font-weight: 700;
+  color: #000;
+  letter-spacing: -0.01em;
+}
+
+/* checkbox — Memphis */
+.auth-pop input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid #000;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 1.5px 1.5px 0 #000;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s;
+}
+.auth-pop input[type="checkbox"]:checked {
+  background: var(--pop-pink);
+}
+.auth-pop input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0px;
+  width: 5px;
+  height: 10px;
+  border: solid #000;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+/* ── buttons ──────────────────────────────────────────────── */
+/* Primary CTA (submit): pink Memphis */
+.auth-pop button[type="submit"] {
+  border: var(--mem-border);
+  background: var(--pop-pink);
+  color: #ffffff;
+  box-shadow: var(--mem-shadow);
+  border-radius: var(--mem-radius-pill);
+  font-family: var(--outfit);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 14px 22px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
+}
+.auth-pop button[type="submit"]:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #000;
+  background: var(--pop-pink-hover);
+}
+.auth-pop button[type="submit"]:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #000;
+}
+.auth-pop button[type="submit"]:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Google OAuth button (ghost variant, type=button) — Memphis white.
+   Distinguishes from link-variant buttons (border-transparent) via
+   class attribute matching. */
+.auth-pop button[type="button"]:not([class*="border-transparent"]) {
+  border: var(--mem-border-2);
+  background: #ffffff;
+  color: #000;
+  box-shadow: var(--mem-shadow-sm);
+  border-radius: var(--mem-radius-pill);
+  font-family: var(--outfit);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 18px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s;
+}
+.auth-pop button[type="button"]:not([class*="border-transparent"]):hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #000;
+  background: var(--pop-sun);
+}
+.auth-pop button[type="button"]:not([class*="border-transparent"]):active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #000;
+}
+
+/* Link-variant buttons (switch sign-in/up, resend email) — text-only with
+   pink underline. Identified by Button primitive's `border-transparent`
+   on the link variant. */
+.auth-pop button[type="button"][class*="border-transparent"] {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: #000;
+  font-family: var(--outfit);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--pop-pink);
+  padding: 8px 4px;
+  border-radius: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13.5px;
+}
+.auth-pop button[type="button"][class*="border-transparent"]:hover {
+  background: transparent;
+  color: var(--pop-pink);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ── inline anchors / "forgot password" / consent links ───── */
+.auth-pop a {
+  color: #000;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--pop-pink);
+  font-weight: 600;
+}
+.auth-pop a:hover { color: var(--pop-pink); }
+
+/* ── status text ──────────────────────────────────────────── */
+.auth-pop .text-warning {
+  color: #000;
+  background: var(--pop-pink-soft);
+  border: 2px solid #000;
+  border-radius: var(--mem-radius);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+/* ── fieldset divider ─────────────────────────────────────── */
+.auth-pop fieldset {
+  border-top: 2px solid #000;
+  padding-top: 16px;
+}
+
+/* ── responsive ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-pop .pop-card {
+    padding: 22px 18px 20px;
+    border-width: 2.5px;
+    box-shadow: 4px 4px 0 #000;
+  }
+  .auth-pop button[type="submit"] {
+    box-shadow: 4px 4px 0 #000;
+  }
+  .auth-pop input[type="email"],
+  .auth-pop input[type="password"],
+  .auth-pop input[type="text"] {
+    box-shadow: 2px 2px 0 #000;
+  }
+}

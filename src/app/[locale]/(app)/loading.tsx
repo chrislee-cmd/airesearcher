@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { MochiLoader } from '@/components/ui/mochi-loader';
+import './loading.css';
 
 // Loading.tsx is rendered as a Suspense fallback. Next.js does not pass
 // `params` to it, so there's no locale to feed into `setRequestLocale`.
@@ -18,8 +19,11 @@ import { MochiLoader } from '@/components/ui/mochi-loader';
 export default function Loading() {
   const t = useTranslations('Common');
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center">
-      <MochiLoader size={64} label={t('loading')} />
+    <div className="loading-pop flex min-h-[60vh] flex-col items-center justify-center">
+      <div className="loading-pop-card">
+        <MochiLoader size={56} />
+        <span className="loading-pop-label">{t('loading')}</span>
+      </div>
     </div>
   );
 }
