@@ -3,6 +3,23 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+// Baseline security headers (PR-SEC3 stage 1) — applied to every response.
+// `Permissions-Policy` keeps camera/mic available for the LiveKit translate
+// flow but blocks geolocation outright (we never request it).
+const securityHeaders = [
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(self), microphone=(self), geolocation=()',
+  },
+];
+
 const nextConfig: NextConfig = {
   // @ffmpeg-installer/ffmpeg does a runtime require() of a platform-specific
   // binary package (e.g. @ffmpeg-installer/linux-x64), which Turbopack's
@@ -21,6 +38,14 @@ const nextConfig: NextConfig = {
       dynamic: 30,
       static: 60,
     },
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
   },
 };
 
