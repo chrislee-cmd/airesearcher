@@ -119,18 +119,26 @@ export async function rateLimitMany(
 }
 
 /**
- * Best-effort IP extraction from Vercel/Edge request headers. Falls back
- * to `unknown` so the limiter always has a non-empty key — better to
- * over-bucket NAT'd users together than to skip the check entirely.
+ * Best-effort IP extraction from request headers. Falls back to `unknown`
+ * so the limiter always has a non-empty key — better to over-bucket NAT'd
+ * users together than to skip the check entirely.
+ *
+ * XFF first-hop trust is gated to Vercel (`process.env.VERCEL === '1'`)
+ * where the platform guarantees the leftmost address is the real client.
+ * In any other environment a client can forge `x-forwarded-for` / `x-real-ip`
+ * to evade per-IP limits, so we deliberately decline to read those headers
+ * outside Vercel and fall through to `unknown`.
  */
 export function getClientIp(request: Request): string {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
+  if (process.env.VERCEL === '1') {
+    const xff = request.headers.get('x-forwarded-for');
+    if (xff) {
+      const first = xff.split(',')[0]?.trim();
+      if (first) return first;
+    }
+    const real = request.headers.get('x-real-ip');
+    if (real) return real.trim();
   }
-  const real = request.headers.get('x-real-ip');
-  if (real) return real.trim();
   return 'unknown';
 }
 
