@@ -58,10 +58,10 @@ export default async function DesignSystemPage({
 
 function RadiusTokens() {
   const tokens = [
+    { name: 'rounded-2xs', value: '2px', usage: 'slider track · 얇은 progress bar' },
     { name: 'rounded-xs', value: '4px', usage: 'chip · badge · 작은 카드' },
     { name: 'rounded-sm', value: '14px', usage: '카드 · 모달 · 입력창 (기본)' },
     { name: 'rounded-md', value: '24px', usage: '대형 카드' },
-    { name: 'rounded-lg', value: '32px', usage: '대형 컨테이너' },
     { name: 'rounded-full', value: '∞', usage: 'pill · 원형 버튼' },
   ];
   return (
@@ -127,8 +127,6 @@ function ColorTokens() {
         { name: 'amore', cls: 'bg-amore', hex: '#a06fda' },
         { name: 'amore-soft', cls: 'bg-amore-soft', hex: '#b690e2' },
         { name: 'amore-bg', cls: 'bg-amore-bg', hex: '#e7defe' },
-        { name: 'pacific', cls: 'bg-pacific', hex: '#1d1b20' },
-        { name: 'pacific-bg', cls: 'bg-pacific-bg', hex: '#f3f0eb' },
         { name: 'paper', cls: 'bg-paper border-line border', hex: '#fbf7f2' },
         { name: 'paper-soft', cls: 'bg-paper-soft border-line border', hex: '#fefaf5' },
       ],
@@ -140,7 +138,6 @@ function ColorTokens() {
         { name: 'ink-2', cls: 'bg-ink-2', hex: '#2a262f' },
         { name: 'mute', cls: 'bg-mute', hex: '#5b5965' },
         { name: 'mute-soft', cls: 'bg-mute-soft', hex: '#8a8693' },
-        { name: 'gray-warm', cls: 'bg-gray-warm', hex: '#6f6c78' },
         { name: 'line', cls: 'bg-line', hex: 'ink/10%' },
         { name: 'line-soft', cls: 'bg-line-soft', hex: 'ink/6%' },
       ],
