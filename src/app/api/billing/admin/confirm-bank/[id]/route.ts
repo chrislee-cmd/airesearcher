@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { logAudit } from '@/lib/audit';
 
 export const maxDuration = 30;
 
@@ -43,7 +44,23 @@ export async function POST(
     p_payment_id: payment.id,
   });
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[billing/admin/confirm-bank] grant failed', error);
+    await logAudit({
+      event_type: 'admin_action_error',
+      user_id: user.id,
+      actor_email: user.email ?? null,
+      org_id: payment.org_id ?? null,
+      resource_type: 'payment',
+      resource_id: payment.id,
+      metadata: {
+        action: 'confirm_bank_transfer',
+        db_code: error.code ?? null,
+        db_message: error.message ?? null,
+        db_hint: error.hint ?? null,
+      },
+      request,
+    });
+    return NextResponse.json({ error: 'payment_processing_error' }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }

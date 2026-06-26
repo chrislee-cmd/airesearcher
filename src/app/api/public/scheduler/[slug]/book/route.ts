@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 
 // Anonymous booking endpoint. Validates input then delegates to the
 // book_slot RPC which atomically transitions the slot 'open' → 'booked'
@@ -45,16 +46,22 @@ export async function POST(
     if (error.message?.includes('link_not_found')) {
       return NextResponse.json({ error: 'link_not_found' }, { status: 404 });
     }
+    // Don't leak DB detail / code / hint to anonymous callers. Keep the
+    // forensic information in audit_log + server logs only.
     console.error('[public/scheduler/:slug/book] rpc failed', error);
-    return NextResponse.json(
-      {
-        error: 'book_failed',
-        detail: error.message,
-        code: error.code,
-        hint: error.hint,
+    await logAudit({
+      event_type: 'public_booking_error',
+      resource_type: 'scheduler_link',
+      resource_id: slug,
+      metadata: {
+        slot_id,
+        db_code: error.code ?? null,
+        db_message: error.message ?? null,
+        db_hint: error.hint ?? null,
       },
-      { status: 500 },
-    );
+      request: req,
+    });
+    return NextResponse.json({ error: 'booking_failed' }, { status: 500 });
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return NextResponse.json({ error: 'book_failed' }, { status: 500 });

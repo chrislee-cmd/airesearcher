@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const maxDuration = 30;
 
@@ -19,10 +20,11 @@ const Body = z.object({
 });
 
 function publicIp(req: Request): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]!.trim();
-  const real = req.headers.get('x-real-ip');
-  return real ?? null;
+  // Hardened: first-hop XFF trust is only honored under VERCEL=1; elsewhere
+  // the helper returns 'unknown' which we map back to null so the /24 hash
+  // falls back to fingerprint-only on untrusted environments.
+  const ip = getClientIp(req);
+  return ip === 'unknown' ? null : ip;
 }
 
 function ip24(ip: string | null): string | null {

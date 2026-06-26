@@ -11,6 +11,7 @@
 // server.
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getClientIp } from '@/lib/rate-limit';
 
 export type AuditEventType =
   | 'consent_granted'
@@ -21,7 +22,9 @@ export type AuditEventType =
   | 'login_failure'
   | 'permission_denied'
   | 'rate_limited'
-  | 'admin_action';
+  | 'admin_action'
+  | 'admin_action_error'
+  | 'public_booking_error';
 
 export type AuditOpts = {
   event_type: AuditEventType;
@@ -36,12 +39,13 @@ export type AuditOpts = {
   request?: Request;
 };
 
-// Best-effort IP extraction. Vercel proxies set x-forwarded-for; we take
-// the first hop (client). Falls back to x-real-ip and finally null.
+// Reuse the rate-limiter's hardened helper: first-hop XFF trust is gated
+// to `process.env.VERCEL === '1'` so non-Vercel environments can't be
+// spoofed. We normalize the 'unknown' sentinel back to null since `ip` is
+// a nullable text column in audit_log.
 function extractIp(request: Request): string | null {
-  const fwd = request.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0]!.trim();
-  return request.headers.get('x-real-ip');
+  const ip = getClientIp(request);
+  return ip === 'unknown' ? null : ip;
 }
 
 /**
