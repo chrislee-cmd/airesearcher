@@ -22,6 +22,7 @@
     "@deepgram/sdk": "^5.1.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@openai/agents": "^0.11.6",
+    "@sentry/nextjs": "^10.60.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "@upstash/ratelimit": "^2.0.8",

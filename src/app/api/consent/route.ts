@@ -91,6 +91,36 @@ export async function POST(request: Request) {
       },
       request,
     });
+
+    // PR-SEC12: detect re-consent on a policy version bump. If the user
+    // had a prior consent of the same type at a different version, this
+    // insert is the demonstrable acceptance of the new policy text —
+    // emit a dedicated event so legal can prove version coverage
+    // (GDPR Art. 7(1) "demonstrate consent").
+    if (row.granted) {
+      const { data: prior } = await supabase
+        .from('user_consents')
+        .select('version')
+        .eq('user_id', user.id)
+        .eq('consent_type', row.consent_type)
+        .neq('version', row.version)
+        .limit(1);
+      if (prior && prior.length > 0) {
+        await logAudit({
+          event_type: 'consent_version_updated',
+          user_id: user.id,
+          actor_email: user.email ?? null,
+          resource_type: 'user_consent',
+          metadata: {
+            consent_type: row.consent_type,
+            from_version: prior[0]!.version,
+            to_version: row.version,
+            source: body.source ?? 'unspecified',
+          },
+          request,
+        });
+      }
+    }
   }
 
   return NextResponse.json({ ok: true, count: rows.length });

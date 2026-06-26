@@ -50,6 +50,17 @@ export async function POST(request: Request) {
     return rateLimitResponse(rl);
   }
 
+  // Two-phase audit (PR-SEC12): _requested fires before the expensive
+  // bundle build so the trail captures intent even if collect/upload
+  // fails later. _completed only fires on a delivered signed URL.
+  await logAudit({
+    event_type: 'data_export_requested',
+    user_id: user.id,
+    actor_email: user.email ?? null,
+    resource_type: 'account_export',
+    request,
+  });
+
   const admin = createAdminClient();
   const bundle = await collectAccountExport(admin, {
     userId: user.id,
@@ -108,7 +119,7 @@ export async function POST(request: Request) {
   ).toISOString();
 
   await logAudit({
-    event_type: 'account_exported',
+    event_type: 'data_export_completed',
     user_id: user.id,
     actor_email: user.email ?? null,
     resource_type: 'account_export',
