@@ -304,6 +304,55 @@ const LANGS: { value: string; label: string }[] = [
 // in-flight line.
 const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 
+// PR-T2 turn detection. The translations API has no `speech_started` /
+// `speech_stopped` events (see src/lib/openai-realtime.ts) — to spot a
+// turn boundary we watch the gap between successive deltas of the same
+// kind. A silence longer than this means the speaker actually stopped
+// talking and the next delta begins a fresh turn.
+//
+// 1400 ms reads as the sweet spot in prod traces:
+//   - shorter (~800 ms) catches mid-sentence word-search pauses and
+//     splits a single utterance across multiple "turns" — the prompter
+//     loses the visual flow.
+//   - longer (~2500 ms) merges short-acknowledgement turns ("Yes.",
+//     "맞아요.") into the prior speaker's line — exactly the failure
+//     the user reported.
+const TURN_SILENCE_MS = 1400;
+
+// Join two delta fragments while inserting a space at chunk boundaries
+// that look like word-fusion. The translations API streams deltas
+// without consistent surrounding whitespace; in prod we've observed
+// pairs like "There's also" + "Once you submit" arriving back-to-back
+// without a separator, producing "alsoOnce" in the persisted line.
+// The model never emits a lowercase→Uppercase or punctuation→letter
+// transition mid-word, so each pattern below is a structural signal
+// that the chunk boundary swallowed a space.
+function joinDelta(prev: string, delta: string): string {
+  if (!prev) return delta;
+  if (!delta) return prev;
+  const lastChar = prev[prev.length - 1];
+  const firstChar = delta[0];
+  // Already separated by whitespace at the join — nothing to do.
+  if (/\s/.test(lastChar) || /\s/.test(firstChar)) return prev + delta;
+  // "alsoOnce" / "serviceWe" pattern — lowercase letter or digit
+  // running directly into a capital letter.
+  if (/[\p{Ll}\p{Nd}]/u.test(lastChar) && /\p{Lu}/u.test(firstChar)) {
+    return prev + ' ' + delta;
+  }
+  // Sentence-end punctuation flowing into a letter without a space —
+  // ".../for that person,Yes." rather than ".../for that person, Yes."
+  // ASCII covers the prod cases; CJK punctuation visually carries its
+  // own space and doesn't need patching.
+  if (/[.!?,;:]/.test(lastChar) && /\p{L}/u.test(firstChar)) {
+    return prev + ' ' + delta;
+  }
+  // Closing quote / bracket running into a letter without a space.
+  if (/['")\]}]/.test(lastChar) && /\p{L}/u.test(firstChar)) {
+    return prev + ' ' + delta;
+  }
+  return prev + delta;
+}
+
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -425,6 +474,15 @@ export function TranslateConsole() {
   // punctuation arrives in the delta stream.
   const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
   const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
+
+  // PR-T2: wall-clock of the most recent delta per kind. A gap larger
+  // than TURN_SILENCE_MS between two deltas of the same kind is treated
+  // as a turn boundary — we commit the current partial before appending
+  // the new delta. The translations API has no native turn marker
+  // (see src/lib/openai-realtime.ts) so this silence-gap signal is the
+  // only thing that distinguishes a real turn break from a within-turn
+  // pause for breath.
+  const lastDeltaAtRef = useRef<Map<'input' | 'output', number>>(new Map());
 
   // Shared transcript publisher — provider 가 mount 되어 있을 때 (예: /canvas)
   // 다른 위젯이 input transcript 를 구독할 수 있게 함. /live 페이지처럼
@@ -656,7 +714,17 @@ export function TranslateConsole() {
   );
 
   const persistMessage = useCallback(
-    async (kind: 'input' | 'output', text: string, lang: string) => {
+    async (
+      kind: 'input' | 'output',
+      text: string,
+      lang: string,
+      // PR-T2: 'host' (interviewer on mic) or 'guest' (interviewee via
+      // the captured tab). Output rows inherit the same speaker since
+      // they translate the same person's utterance. Omit when the host
+      // hasn't picked a source (idle state) — column persists NULL and
+      // the renderer falls back to "unknown".
+      speaker: 'host' | 'guest' | null,
+    ) => {
       const id = sessionIdRef.current;
       if (!id) return;
       const counters = fidelityCountersRef.current[kind];
@@ -664,6 +732,7 @@ export function TranslateConsole() {
       if (TRACE_ENCODING) {
         console.info('[translate] persist →', {
           kind,
+          speaker,
           ...summarizeFidelity(text),
           preview: text.slice(0, 24),
         });
@@ -672,7 +741,7 @@ export function TranslateConsole() {
         const res = await fetch(`/api/translate/sessions/${id}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind, text, lang }),
+          body: JSON.stringify({ kind, text, lang, speaker }),
         });
         if (res.ok) counters.persistOk++;
         else counters.persistFail++;
@@ -684,15 +753,91 @@ export function TranslateConsole() {
     [],
   );
 
+  // PR-T2 speaker mapping. The inputSource picker is the SSOT:
+  //   - 'mic' = the host's microphone (interviewer)
+  //   - 'tab' = a tab-captured audio source (interviewee on Zoom/Meet)
+  // Output rows get the same tag — the translated TTS is just the same
+  // speaker's words rendered in the target language. Computed inline so
+  // the callback closure carries the current value at commit time.
+  const speakerForSession: 'host' | 'guest' = inputSource === 'mic' ? 'host' : 'guest';
+
   const appendStreaming = useCallback(
     (kind: 'input' | 'output', delta: string, lang: string) => {
       if (!delta) return;
       const partial = kind === 'input' ? partialInputRef : partialOutputRef;
       const wall = Date.now();
+
+      // PR-T2 silence-based turn detection. If a long enough gap has
+      // elapsed since the previous delta of the same kind, the prior
+      // partial line represents a finished turn — commit it (and start
+      // a fresh partial for the new delta) BEFORE appending. Without
+      // this the "Yes." acknowledgement gets stitched onto the end of
+      // the prior speaker's sentence with no punctuation between them,
+      // producing the "... for that person, Yes." line in the user's
+      // report. The translations API has no native turn marker, so
+      // silence is the only signal we have.
+      const lastAt = lastDeltaAtRef.current.get(kind);
+      lastDeltaAtRef.current.set(kind, wall);
+      const existing = partial.current.get('current');
+      if (
+        existing &&
+        existing.text.trim() &&
+        lastAt !== undefined &&
+        wall - lastAt >= TURN_SILENCE_MS
+      ) {
+        const turnText = existing.text.trim();
+        const turnKey = normalizeForDedup(turnText);
+        const bucket = recentFinalsRef.current.get(kind) ?? [];
+        const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
+        const isDup =
+          turnKey.length > 0 &&
+          fresh.some(
+            (e) =>
+              isFuzzyDup(turnKey, e.key) ||
+              isContainmentDup(turnKey, e.key) ||
+              isLcsChunkDup(turnKey, e.key),
+          );
+        if (isDup) {
+          console.info('[translate] dedup (turn-silence)', {
+            kind,
+            preview: turnText.slice(0, 40),
+          });
+          const setter = kind === 'input' ? setInputLines : setOutputLines;
+          setter((prev) => prev.filter((l) => l.id !== existing.id));
+        } else {
+          fresh.push({ key: turnKey, ts: wall });
+          recentFinalsRef.current.set(kind, fresh);
+          const finalLine: CaptionLine = {
+            id: existing.id,
+            text: turnText,
+            final: true,
+            ts: wall,
+          };
+          pushLine(kind, finalLine);
+          broadcastCaption(kind, finalLine, lang);
+          void persistMessage(kind, turnText, lang, speakerForSession);
+          if (kind === 'input') {
+            const startedAt =
+              inputLineStartedAtRef.current.get(existing.id) ?? wall;
+            transcriptPublisher.publishSegment({
+              id: existing.id,
+              text: turnText,
+              started_at: startedAt,
+              ended_at: wall,
+              locale: lang,
+            });
+          }
+        }
+        partial.current.delete('current');
+      }
+
       // Reuse a single rolling line id per kind, replaced when a sentence
       // boundary commits.
       const current = partial.current.get('current') ?? { id: `${kind}-${wall}`, text: '' };
-      const next = current.text + delta;
+      // PR-T2 chunk-boundary join — see joinDelta comment. Plain `+`
+      // produced the "alsoOnce" / "serviceWe" word-fusion the user
+      // reported.
+      const next = joinDelta(current.text, delta);
       // Shared transcript publisher 는 input (source) 만 노출 — probing
       // 같은 위젯은 인터뷰이의 발화 (= mic input) 만 보면 된다. publishInput
       // 헬퍼 안에서 started_at lookup/seed + provider 호출 처리.
@@ -768,7 +913,7 @@ export function TranslateConsole() {
             const finalLine: CaptionLine = { id: current.id, text: finalText, final: true, ts: wall };
             pushLine(kind, finalLine);
             broadcastCaption(kind, finalLine, lang);
-            void persistMessage(kind, finalText, lang);
+            void persistMessage(kind, finalText, lang, speakerForSession);
             publishInput(finalText, wall);
           }
         }
@@ -800,7 +945,7 @@ export function TranslateConsole() {
         publishInput(next, undefined);
       }
     },
-    [broadcastCaption, persistMessage, pushLine, transcriptPublisher],
+    [broadcastCaption, persistMessage, pushLine, speakerForSession, transcriptPublisher],
   );
 
   const handleOaiEvent = useCallback(
@@ -895,6 +1040,10 @@ export function TranslateConsole() {
     recentFinalsRef.current.set('input', []);
     recentFinalsRef.current.set('output', []);
     inputLineStartedAtRef.current.clear();
+    // PR-T2: fresh silence tracker each session — a stale `lastAt`
+    // from a prior session would force-commit the first delta of the
+    // new one as a turn boundary against empty state.
+    lastDeltaAtRef.current.clear();
     // Shared transcript provider — 새 세션이 시작되면 이전 세그먼트는 무효.
     // provider 가 없는 컨텍스트 (/live) 에서는 no-op.
     transcriptPublisher.clear();
@@ -1642,7 +1791,7 @@ export function TranslateConsole() {
         };
         pushLine(kind, finalLine);
         broadcastCaption(kind, finalLine, lang);
-        void persistMessage(kind, current.text.trim(), lang);
+        void persistMessage(kind, current.text.trim(), lang, speakerForSession);
       }
     }
 
@@ -1713,6 +1862,7 @@ export function TranslateConsole() {
     persistMessage,
     pushLine,
     sourceLang,
+    speakerForSession,
     status,
     targetLang,
     uploadAndFinalizeRecording,

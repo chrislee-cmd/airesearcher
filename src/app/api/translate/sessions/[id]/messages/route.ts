@@ -25,6 +25,10 @@ const Body = z.object({
   kind: z.enum(['input', 'output']),
   text: z.string().min(1).max(8000),
   lang: z.string().min(2).max(8).optional(),
+  // PR-T2: host vs guest tag derived from the inputSource picker
+  // ('mic' → host, 'tab' → guest). Legacy clients omit it and the
+  // column stays NULL; export renderers fall back to "unknown".
+  speaker: z.enum(['host', 'guest']).optional(),
 });
 
 // Special-case payload emitted by the host console at session end. Carries
@@ -139,6 +143,7 @@ export async function POST(
     kind: parsed.data.kind,
     text: parsed.data.text,
     lang: parsed.data.lang ?? null,
+    speaker: parsed.data.speaker ?? null,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, recorded: true });
