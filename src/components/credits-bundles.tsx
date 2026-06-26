@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
@@ -28,6 +28,43 @@ const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   studio: 'bundleStudio',
   enterprise: 'bundleEnterprise',
 };
+
+// PR-D17 pop 톤: Outfit display stack + Memphis CTA / 카드. /credits 라우트는
+// (app)/layout 의 Outfit 변수 안에 있어 var(--font-outfit) 가 그대로 해석됨.
+const outfitStack = 'var(--font-outfit), var(--font-sans)';
+
+function memphisCta(tone: 'pink' | 'paper' | 'ink'): CSSProperties {
+  // Bundle/modal CTA: 3px black border + 4px offset shadow + Outfit display.
+  // 결제 흐름 회귀 0 — 시각 layer 만 덮어쓰고 Button primitive 의 hover/disabled
+  // wiring 은 그대로.
+  const bg =
+    tone === 'pink' ? 'var(--canvas-accent)' : tone === 'ink' ? '#000' : '#fff';
+  const fg = tone === 'paper' ? '#000' : '#fff';
+  return {
+    background: bg,
+    color: fg,
+    border: '3px solid var(--canvas-card-border)',
+    borderRadius: '10px',
+    boxShadow: '4px 4px 0 var(--canvas-card-border)',
+    fontFamily: outfitStack,
+    fontWeight: 800,
+    letterSpacing: '0.18em',
+    textTransform: 'uppercase',
+  };
+}
+
+function memphisGhost(active: boolean): CSSProperties {
+  // Method picker / inactive toggles: 2.5px border, no shadow, white card.
+  return {
+    background: '#fff',
+    color: '#000',
+    border: '2.5px solid var(--canvas-card-border)',
+    borderRadius: '10px',
+    boxShadow: active ? '3px 3px 0 var(--canvas-card-border)' : 'none',
+    fontFamily: outfitStack,
+    fontWeight: 700,
+  };
+}
 
 type Method = 'lemonsqueezy' | 'bank_transfer';
 
@@ -182,50 +219,85 @@ export function CreditsBundles() {
 
   return (
     <>
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-10 grid grid-cols-1 gap-6 pt-3 sm:grid-cols-2 lg:grid-cols-4">
         {CREDIT_BUNDLES.map((b) => {
           const labelKey = BUNDLE_LABEL_KEY[b.id];
           const isContact = b.priceKrw === null;
           return (
             <div
               key={b.id}
-              className={`relative flex flex-col border bg-paper p-5 rounded-sm ${
-                b.popular ? 'border-amore' : 'border-line'
-              }`}
+              style={{
+                background: b.popular ? '#fff0f4' : '#ffffff',
+                border: `${b.popular ? '4px' : '3px'} solid var(--canvas-card-border)`,
+                borderRadius: 'var(--canvas-card-radius)',
+                boxShadow: 'var(--canvas-card-shadow)',
+              }}
+              className="relative flex flex-col p-5 rounded-sm"
             >
               {b.popular && (
-                <span className="absolute -top-2 left-4 bg-amore px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.22em] text-paper [border-radius:2px]">
+                <span
+                  style={{
+                    background: 'var(--canvas-accent)',
+                    border: '2.5px solid var(--canvas-card-border)',
+                    boxShadow: 'var(--memphis-shadow-xs)',
+                    transform: 'rotate(-3deg)',
+                    fontFamily: outfitStack,
+                  }}
+                  className="absolute -top-3 left-4 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-paper"
+                >
                   {t('popular')}
                 </span>
               )}
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              <div
+                style={{ fontFamily: outfitStack }}
+                className="text-xs font-bold uppercase tracking-[0.22em] text-ink-2"
+              >
                 {t(labelKey)}
               </div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-display font-bold tracking-[-0.02em] text-ink tabular-nums">
+              <div className="mt-3 flex items-baseline gap-1.5">
+                <span
+                  style={{
+                    fontFamily: outfitStack,
+                    fontWeight: 800,
+                    fontSize: '44px',
+                    lineHeight: 1,
+                    letterSpacing: '-0.035em',
+                  }}
+                  className="text-ink-2 tabular-nums"
+                >
                   {b.credits.toLocaleString()}
                 </span>
-                <span className="text-sm text-mute-soft">{t('creditsUnit')}</span>
+                <span className="text-sm font-semibold text-mute-soft">
+                  {t('creditsUnit')}
+                </span>
               </div>
-              <div className="mt-4 text-xl font-semibold text-ink-2 tabular-nums">
+              <div className="mt-4 text-xl font-bold text-ink-2 tabular-nums">
                 {isContact ? '—' : formatPrice(b.priceKrw!)}
               </div>
-              <div className="mt-1 flex items-center gap-2 text-xs-soft text-mute-soft tabular-nums">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs-soft text-mute tabular-nums">
                 {b.perCreditKrw !== null && (
                   <span>
                     {formatPrice(b.perCreditKrw)} {t('perCredit')}
                   </span>
                 )}
                 {b.discountPct > 0 && (
-                  <span className="border border-amore px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.18em] text-amore [border-radius:2px]">
+                  <span
+                    style={{
+                      background: 'var(--color-sun)',
+                      border: '2px solid var(--canvas-card-border)',
+                      boxShadow: '2px 2px 0 var(--canvas-card-border)',
+                      fontFamily: outfitStack,
+                    }}
+                    className="rounded-xs px-1.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] text-ink-2"
+                  >
                     {t('discountOff', { percent: b.discountPct })}
                   </span>
                 )}
               </div>
               <div className="flex-1" />
               <Button
-                variant={b.popular ? 'primary' : 'ghost'}
-                size="sm"
+                variant="primary"
+                size="md"
                 onClick={() => {
                   if (isContact) {
                     track('credits_contact_sales_click', { bundle: b.id });
@@ -239,7 +311,8 @@ export function CreditsBundles() {
                     open(b.id);
                   }
                 }}
-                className="mt-5 px-4 py-2 uppercase tracking-[0.18em]"
+                style={memphisCta(b.popular ? 'pink' : 'paper')}
+                className="mt-6 uppercase"
               >
                 {isContact ? t('contactSales') : t('purchase')}
               </Button>
@@ -254,24 +327,49 @@ export function CreditsBundles() {
           role="status"
           aria-live="polite"
         >
-          <div className="border border-ink bg-ink px-4 py-2 text-md font-semibold text-paper rounded-sm">
+          <div
+            style={{
+              background: '#000',
+              border: '3px solid #000',
+              boxShadow: '4px 4px 0 var(--canvas-accent)',
+              fontFamily: outfitStack,
+            }}
+            className="px-4 py-2 text-md font-bold text-paper rounded-sm"
+          >
             {toast}
           </div>
         </div>
       )}
 
-      {/* Checkout modal */}
+      {/* Checkout modal — Memphis container */}
       {selected && selected.priceKrw != null && !bankDetails && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-ink/40 px-4"
           onClick={close}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[560px] border border-line bg-paper rounded-sm"
+            style={{
+              background: '#fff',
+              border: '3px solid var(--canvas-card-border)',
+              borderRadius: 'var(--canvas-card-radius)',
+              boxShadow: 'var(--canvas-card-shadow)',
+            }}
+            className="w-full max-w-[560px] rounded-sm"
           >
-            <header className="flex items-center justify-between border-b border-line px-5 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
+            <header
+              style={{
+                background: 'var(--canvas-bg)',
+                borderBottom: '2.5px solid var(--canvas-card-border)',
+                borderTopLeftRadius: 'var(--canvas-card-radius)',
+                borderTopRightRadius: 'var(--canvas-card-radius)',
+              }}
+              className="flex items-center justify-between px-5 py-3"
+            >
+              <div
+                style={{ fontFamily: outfitStack }}
+                className="text-xs font-extrabold uppercase tracking-[0.22em] text-ink-2"
+              >
                 {t('checkoutEyebrow')}
               </div>
               <IconButton
@@ -283,7 +381,10 @@ export function CreditsBundles() {
               </IconButton>
             </header>
             <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-5 py-5">
-                  <h3 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
+                  <h3
+                    style={{ fontFamily: outfitStack, letterSpacing: '-0.02em' }}
+                    className="text-2xl font-extrabold text-ink-2"
+                  >
                     {t(BUNDLE_LABEL_KEY[selected.id])} ·{' '}
                     {selected.credits.toLocaleString()} {t('creditsUnit')}
                   </h3>
@@ -377,10 +478,10 @@ export function CreditsBundles() {
                     </Button>
                     <Button
                       variant="primary"
-                      size="sm"
+                      size="md"
                       disabled={submitting || !taxValid}
                       onClick={submit}
-                      className="text-md"
+                      style={memphisCta('pink')}
                     >
                       {submitting
                         ? t('submitting')
@@ -394,18 +495,35 @@ export function CreditsBundles() {
         </div>
       )}
 
-      {/* Bank transfer instruction panel */}
+      {/* Bank transfer instruction panel — Memphis container */}
       {bankDetails && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-ink/40 px-4"
           onClick={close}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[480px] border border-line bg-paper rounded-sm"
+            style={{
+              background: '#fff',
+              border: '3px solid var(--canvas-card-border)',
+              borderRadius: 'var(--canvas-card-radius)',
+              boxShadow: 'var(--canvas-card-shadow)',
+            }}
+            className="w-full max-w-[480px] rounded-sm"
           >
-            <header className="flex items-center justify-between border-b border-line px-5 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amore">
+            <header
+              style={{
+                background: 'var(--canvas-bg)',
+                borderBottom: '2.5px solid var(--canvas-card-border)',
+                borderTopLeftRadius: 'var(--canvas-card-radius)',
+                borderTopRightRadius: 'var(--canvas-card-radius)',
+              }}
+              className="flex items-center justify-between px-5 py-3"
+            >
+              <div
+                style={{ fontFamily: outfitStack }}
+                className="text-xs font-extrabold uppercase tracking-[0.22em] text-ink-2"
+              >
                 {t('checkoutEyebrow')}
               </div>
               <IconButton
@@ -417,32 +535,80 @@ export function CreditsBundles() {
               </IconButton>
             </header>
             <div className="px-5 py-5">
-              <h3 className="text-xl font-semibold text-ink-2">{t('bankTitle')}</h3>
-              <p className="mt-1.5 text-md leading-[1.7] text-mute">{t('bankBody')}</p>
+              <h3
+                style={{ fontFamily: outfitStack, letterSpacing: '-0.02em' }}
+                className="text-2xl font-extrabold text-ink-2"
+              >
+                {t('bankTitle')}
+              </h3>
+              <p className="mt-2 text-md leading-[1.7] text-mute">{t('bankBody')}</p>
 
-              <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
+              <dl
+                style={{
+                  background: 'var(--canvas-bg)',
+                  border: '2.5px solid var(--canvas-card-border)',
+                  borderRadius: '10px',
+                  boxShadow: 'var(--memphis-shadow-xs)',
+                }}
+                className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 px-4 py-4"
+              >
                 {bankDetails.bankName && (
                   <>
-                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankBankName')}</dt>
-                    <dd className="text-lg font-medium text-ink-2">{bankDetails.bankName}</dd>
+                    <dt
+                      style={{ fontFamily: outfitStack }}
+                      className="text-xs-soft font-bold uppercase tracking-[0.18em] text-ink-2"
+                    >
+                      {t('bankBankName')}
+                    </dt>
+                    <dd className="text-lg font-semibold text-ink-2">{bankDetails.bankName}</dd>
                   </>
                 )}
                 {bankDetails.accountNumber && (
                   <>
-                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountNumber')}</dt>
-                    <dd className="text-lg font-medium text-ink-2 tabular-nums">{bankDetails.accountNumber}</dd>
+                    <dt
+                      style={{ fontFamily: outfitStack }}
+                      className="text-xs-soft font-bold uppercase tracking-[0.18em] text-ink-2"
+                    >
+                      {t('bankAccountNumber')}
+                    </dt>
+                    <dd className="text-lg font-semibold text-ink-2 tabular-nums">{bankDetails.accountNumber}</dd>
                   </>
                 )}
                 {bankDetails.accountHolder && (
                   <>
-                    <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAccountHolder')}</dt>
-                    <dd className="text-lg font-medium text-ink-2">{bankDetails.accountHolder}</dd>
+                    <dt
+                      style={{ fontFamily: outfitStack }}
+                      className="text-xs-soft font-bold uppercase tracking-[0.18em] text-ink-2"
+                    >
+                      {t('bankAccountHolder')}
+                    </dt>
+                    <dd className="text-lg font-semibold text-ink-2">{bankDetails.accountHolder}</dd>
                   </>
                 )}
-                <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankAmount')}</dt>
-                <dd className="text-lg font-medium text-ink-2 tabular-nums">{formatKrw(bankDetails.amountKrw)}</dd>
-                <dt className="text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">{t('bankReference')}</dt>
-                <dd className="font-mono text-xl font-bold tracking-[0.08em] text-amore">{bankDetails.bankReference}</dd>
+                <dt
+                  style={{ fontFamily: outfitStack }}
+                  className="text-xs-soft font-bold uppercase tracking-[0.18em] text-ink-2"
+                >
+                  {t('bankAmount')}
+                </dt>
+                <dd className="text-lg font-semibold text-ink-2 tabular-nums">{formatKrw(bankDetails.amountKrw)}</dd>
+                <dt
+                  style={{ fontFamily: outfitStack }}
+                  className="text-xs-soft font-bold uppercase tracking-[0.18em] text-ink-2"
+                >
+                  {t('bankReference')}
+                </dt>
+                <dd
+                  style={{
+                    background: 'var(--canvas-accent)',
+                    border: '2px solid var(--canvas-card-border)',
+                    boxShadow: 'var(--memphis-shadow-xs)',
+                    borderRadius: '6px',
+                  }}
+                  className="inline-block self-start px-2 py-0.5 font-mono text-xl font-bold tracking-[0.08em] text-paper"
+                >
+                  {bankDetails.bankReference}
+                </dd>
               </dl>
 
               <p className="mt-4 text-sm leading-[1.6] text-mute-soft">{t('bankFootnote')}</p>
@@ -450,9 +616,9 @@ export function CreditsBundles() {
               <div className="mt-6 flex justify-end">
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="md"
                   onClick={close}
-                  className="px-5 text-md"
+                  style={memphisCta('pink')}
                 >
                   {t('done')}
                 </Button>
@@ -478,30 +644,40 @@ function MethodOption({
   hint: string;
   disabled?: boolean;
 }) {
-  // Card-style toggle: reuses Button primitive's border + disabled wiring
-  // but overrides BASE centered flex with left-aligned padding, and stacks
-  // the two text rows inside a flex-col span (Button wraps children in a
-  // single <span>, so the column layout has to live on a child, not the
-  // button itself). Disabled treatment swaps the primitive's opacity-40
-  // for explicit muted colors so the "준비중" hint stays legible.
+  // PR-D17 pop: Memphis card-style toggle. Active = pink-tinted bg + offset
+  // shadow; inactive = white paper. Reuses Button primitive for hover /
+  // disabled wiring; style overrides drop the centered BASE flex into a
+  // left-aligned stacked layout.
   const layout =
     '!justify-start !items-start text-left !px-3 !py-2.5 !font-normal';
-  const state = disabled
-    ? '!border-line-soft !bg-paper !text-mute-soft disabled:!opacity-100'
-    : active
-    ? '!border-ink !bg-paper !text-ink-2'
-    : '';
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={onClick}
       disabled={disabled}
-      className={`${layout} ${state}`}
+      style={{
+        ...memphisGhost(active && !disabled),
+        background: disabled
+          ? '#f3f3f3'
+          : active
+          ? '#fff0f4'
+          : '#fff',
+        color: disabled ? 'var(--color-mute-soft)' : '#000',
+        opacity: 1,
+      }}
+      className={layout}
     >
       <span className="flex flex-col items-start gap-0.5 w-full">
-        <span className="text-md font-semibold">{label}</span>
-        <span className="text-xs-soft text-mute-soft">{hint}</span>
+        <span
+          style={{ fontFamily: outfitStack }}
+          className="text-md font-extrabold uppercase tracking-[0.08em]"
+        >
+          {label}
+        </span>
+        <span className="text-xs-soft text-mute-soft normal-case tracking-normal">
+          {hint}
+        </span>
       </span>
     </Button>
   );

@@ -12,6 +12,10 @@ import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { Slider } from '@/components/ui/slider';
 
+// PR-D17 pop 톤: predictor section 도 Memphis 카드 + Outfit display 로 정렬.
+// 로직 (budget / clamp / slider) 은 변경 없음.
+const outfitStack = 'var(--font-outfit), var(--font-sans)';
+
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
   starter: 'bundleStarter',
   team: 'bundleTeam',
@@ -97,13 +101,22 @@ export function CreditsUsagePredictor() {
   }
 
   return (
-    <section className="mt-12 max-w-[560px]">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+    <section className="mt-14 max-w-[640px]">
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
+          <span
+            style={{
+              fontFamily: outfitStack,
+              background: 'var(--canvas-accent)',
+              border: '2.5px solid var(--canvas-card-border)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+              color: '#fff',
+            }}
+            className="inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.18em]"
+          >
             {t('predictorTitle')}
-          </h2>
-          <p className="mt-1 max-w-[680px] text-sm leading-[1.7] text-mute-soft">
+          </span>
+          <p className="mt-3 max-w-[680px] text-sm leading-[1.7] text-mute">
             {t('predictorSubtitle')}
           </p>
         </div>
@@ -117,32 +130,46 @@ export function CreditsUsagePredictor() {
         </div>
       </div>
 
-      {/* Bundle selector */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {/* Bundle selector — Memphis cards */}
+      <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {PREDICTOR_BUNDLES.map((b) => {
           const active = b.id === bundleId;
-          // Card-style toggle reusing Button primitive (PR #291 MethodOption
-          // pattern): heavy ! overrides flip the centered BASE flex into a
-          // left-aligned stacked layout and swap the ghost-variant colors
-          // for the active/inactive border + text treatment this card needs.
           const layout =
             '!justify-start !items-start text-left !px-3 !py-2 !font-normal';
-          const state = active
-            ? '!border-ink !bg-paper !text-ink-2'
-            : '!border-line !bg-paper !text-mute hover:!border-ink-2 hover:!text-ink-2';
           return (
             <Button
               key={b.id}
               variant="ghost"
               size="sm"
               onClick={() => changeBundle(b.id)}
-              className={`${layout} ${state}`}
+              style={{
+                background: active ? '#fff0f4' : '#fff',
+                color: '#000',
+                border: `${active ? 3 : 2.5}px solid var(--canvas-card-border)`,
+                borderRadius: '10px',
+                boxShadow: active ? '4px 4px 0 var(--canvas-card-border)' : '2px 2px 0 var(--canvas-card-border)',
+                fontFamily: outfitStack,
+                fontWeight: 700,
+                opacity: 1,
+              }}
+              className={layout}
             >
               <span className="flex flex-col items-start gap-0.5 w-full">
-                <span className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
+                <span
+                  style={{ fontFamily: outfitStack }}
+                  className="text-xs-soft font-extrabold uppercase tracking-[0.22em] text-ink-2"
+                >
                   {t(BUNDLE_LABEL_KEY[b.id])}
                 </span>
-                <span className="text-xl font-semibold tabular-nums text-ink">
+                <span
+                  style={{
+                    fontFamily: outfitStack,
+                    fontWeight: 800,
+                    fontSize: '22px',
+                    letterSpacing: '-0.02em',
+                  }}
+                  className="tabular-nums text-ink-2"
+                >
                   {b.credits.toLocaleString()}{' '}
                   <span className="text-xs-soft font-normal text-mute-soft">
                     {t('creditsUnit')}
@@ -154,52 +181,97 @@ export function CreditsUsagePredictor() {
         })}
       </div>
 
-      {/* Budget bar */}
-      <div className="mt-5 border border-line bg-paper p-4 rounded-sm">
+      {/* Budget bar — Memphis yellow card */}
+      <div
+        style={{
+          background: 'var(--canvas-bg)',
+          border: '3px solid var(--canvas-card-border)',
+          borderRadius: 'var(--canvas-card-radius)',
+          boxShadow: 'var(--canvas-card-shadow)',
+        }}
+        className="mt-6 rounded-sm p-4"
+      >
         <div className="flex items-baseline justify-between gap-3">
-          <div className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          <div
+            style={{ fontFamily: outfitStack }}
+            className="text-xs-soft font-bold uppercase tracking-[0.22em] text-ink-2"
+          >
             {t('predictorBudgetLabel')}
           </div>
           <div className="text-md tabular-nums text-mute">
-            <span className={overBudget ? 'text-warning font-semibold' : 'text-ink-2 font-semibold'}>
+            <span
+              style={{ fontFamily: outfitStack }}
+              className={overBudget ? 'text-warning font-extrabold' : 'text-ink-2 font-extrabold'}
+            >
               {totalSpent.toLocaleString()}
             </span>
             <span className="mx-1 text-mute-soft">/</span>
-            <span>{budget.toLocaleString()}</span>{' '}
+            <span
+              style={{ fontFamily: outfitStack }}
+              className="font-bold text-ink-2"
+            >
+              {budget.toLocaleString()}
+            </span>{' '}
             <span className="text-xs-soft text-mute-soft">{t('creditsUnit')}</span>
           </div>
         </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden bg-line-soft [border-radius:2px]">
+        <div
+          style={{
+            border: '2px solid var(--canvas-card-border)',
+            borderRadius: '999px',
+            background: '#fff',
+          }}
+          className="mt-3 h-3 w-full overflow-hidden"
+        >
           <div
-            className={'h-full transition-[width] duration-150 ' + (overBudget ? 'bg-warning' : 'bg-amore')}
+            className={'h-full transition-[width] duration-150 ' + (overBudget ? 'bg-warning' : 'bg-[var(--canvas-accent)]')}
             style={{ width: `${pctSpent}%` }}
           />
         </div>
-        <div className="mt-2 text-xs-soft tabular-nums text-mute-soft">
+        <div className="mt-2 text-xs-soft tabular-nums text-ink-2">
           {t('predictorRemaining', { count: remaining.toLocaleString() })}
         </div>
       </div>
 
-      {/* Per-feature sliders */}
-      <div className="mt-5 flex flex-col">
-        {PREDICTOR_FEATURES.map((f) => {
+      {/* Per-feature sliders — Memphis hairline rows */}
+      <div
+        style={{
+          background: '#fff',
+          border: '3px solid var(--canvas-card-border)',
+          borderRadius: 'var(--canvas-card-radius)',
+          boxShadow: 'var(--canvas-card-shadow)',
+        }}
+        className="mt-6 flex flex-col rounded-sm px-4 py-2"
+      >
+        {PREDICTOR_FEATURES.map((f, idx) => {
           const count = counts[f.key] ?? 0;
           const others = totalSpent - count * f.cost;
           const maxForThis = Math.floor(Math.max(0, budget - others) / f.cost);
-          // Slider absolute max = total budget at this cost (so the track length
-          // is stable across features); the "soft" cap maxForThis is enforced
-          // in setCount when the value lands.
           const absMax = Math.max(1, Math.floor(budget / f.cost));
           const spentHere = count * f.cost;
+          const isLast = idx === PREDICTOR_FEATURES.length - 1;
           return (
-            <div key={f.key} className="border-b border-line-soft py-2.5">
+            <div
+              key={f.key}
+              style={{
+                borderBottom: isLast
+                  ? 'none'
+                  : '1.5px solid var(--canvas-card-border)',
+              }}
+              className="py-3 transition-colors hover:bg-[var(--canvas-bg)]"
+            >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-md text-ink-2">{tSidebar(f.key)}</span>
-                <span className="text-sm tabular-nums text-mute-soft">
+                <span
+                  style={{ fontFamily: outfitStack }}
+                  className="text-md font-bold text-ink-2"
+                >
+                  {tSidebar(f.key)}
+                </span>
+                <span className="text-sm tabular-nums text-mute">
                   {t('predictorPerUse', { cost: f.cost })}
                 </span>
               </div>
-              <div className="mt-1.5 flex items-center gap-3">
+              <div className="mt-2 flex items-center gap-3">
                 <Slider
                   min={0}
                   max={absMax}
@@ -210,7 +282,10 @@ export function CreditsUsagePredictor() {
                   aria-label={tSidebar(f.key)}
                 />
                 <div className="min-w-[110px] text-right text-md tabular-nums">
-                  <span className="font-semibold text-ink">
+                  <span
+                    style={{ fontFamily: outfitStack }}
+                    className="font-extrabold text-ink-2"
+                  >
                     {t('predictorUses', { count })}
                   </span>
                   <span className="ml-1 text-xs-soft text-mute-soft">
