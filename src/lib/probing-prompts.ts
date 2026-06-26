@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
 
 /* ────────────────────────────────────────────────────────────────────
    probing-prompts — `/api/probing/suggest` 의 system prompt + schema.
@@ -138,4 +139,4 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 
 가이드가 비어 있으면 transcript 만 보고 일반 probing follow-up 을 생성합니다 (\`guide_reference\` 는 생략).
 
-출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.`;
+출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.${ISOLATION_NOTICE}`;

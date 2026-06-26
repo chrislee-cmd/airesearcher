@@ -6,6 +6,7 @@ import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 300;
 
@@ -110,15 +111,24 @@ export async function POST(request: Request) {
 - 출력 순서는 입력 순서와 정확히 일치해야 하며, 입력 row 개수와 정확히 같은 개수의 summary 객체를 반환합니다.
 - filenames에 적는 이름은 반드시 입력에 등장한 (filename) 그대로 사용 — 변형 금지.
 - 응답이 없거나 불충분한 경우 mainstream에 "충분한 응답이 수집되지 않음" 등으로 간결히 표시하고 outliers는 빈 배열.
-- 출력은 정의된 JSON 스키마(summaries 배열)만, 그 외 텍스트 금지.`;
+- 출력은 정의된 JSON 스키마(summaries 배열)만, 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
 
   try {
     const anthropic = createAnthropic({ apiKey });
+    const responseCorpus = blocks.join('\n\n');
+    const corpusSan = await sanitizeUserInput(responseCorpus, 'interview_responses', {
+      endpoint: '/api/interviews/summarize',
+      user_id: user.id,
+      org_id: org?.org_id ?? null,
+      actor_email: user.email ?? null,
+      input_length: responseCorpus.length,
+      input_label: 'interview_responses',
+    });
     const result = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: responseSchema,
       system: SYSTEM,
-      prompt: `총 ${rows.length}개 문항입니다. 각각에 대해 모든 응답자 발화를 종합해서, mainstream(대표 경향성)과 outliers(소수 케이스)로 분리해 요약해주세요.\n\n${blocks.join('\n\n')}`,
+      prompt: `총 ${rows.length}개 문항입니다. 각각에 대해 모든 응답자 발화를 종합해서, mainstream(대표 경향성)과 outliers(소수 케이스)로 분리해 요약해주세요.\n\n${corpusSan.wrapped}`,
       temperature: 0.2,
       providerOptions: ZERO_RETENTION,
     });

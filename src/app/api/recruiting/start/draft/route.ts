@@ -6,6 +6,7 @@ import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
 import { recruitingEmailDraftSchema } from '@/lib/recruiting-email-schema';
+import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 60;
 
@@ -21,7 +22,7 @@ const SYSTEM = `당신은 정량 리서치 모집 코디네이터입니다. 추�
 - location 기본값: "온라인 인터뷰".
 - incentive 기본값: "현금 7만원" (brief에 명시 없을 때).
 - 모든 필드는 한국어.
-- 정의된 JSON 스키마만 출력.`;
+- 정의된 JSON 스키마만 출력.${ISOLATION_NOTICE}`;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -37,12 +38,21 @@ export async function POST(req: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
+  const briefJson = JSON.stringify(parsed.data.brief, null, 2);
+  const briefSan = await sanitizeUserInput(briefJson, 'recruiting_brief', {
+    endpoint: '/api/recruiting/start/draft',
+    user_id: user.id,
+    org_id: null,
+    actor_email: user.email ?? null,
+    input_length: briefJson.length,
+    input_label: 'recruiting_brief',
+  });
   try {
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: recruitingEmailDraftSchema,
       system: SYSTEM,
-      prompt: `다음 모집 브리프를 토대로 메일 필드를 채워주세요.\n\n${JSON.stringify(parsed.data.brief, null, 2)}`,
+      prompt: `다음 모집 브리프를 토대로 메일 필드를 채워주세요.\n\n${briefSan.wrapped}`,
       temperature: 0.2,
       providerOptions: ZERO_RETENTION,
     });

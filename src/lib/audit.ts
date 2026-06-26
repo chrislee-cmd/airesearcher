@@ -45,7 +45,8 @@ export type AuditEventType =
   | 'admin_action_error'
   | 'admin_impersonation'
   | 'public_booking_error'
-  | 'config_changed';
+  | 'config_changed'
+  | 'llm_prompt_injection_detected';
 
 export type AuditOpts = {
   event_type: AuditEventType;

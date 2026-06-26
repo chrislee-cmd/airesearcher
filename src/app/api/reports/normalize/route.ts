@@ -8,6 +8,7 @@ import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { coerceReportType } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
 // Pro plan allows up to 800s for Serverless Functions; pair with a
 // matching maxOutputTokens below so very long reports don't truncate.
@@ -100,10 +101,18 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
+  const corpusSan = await sanitizeUserInput(corpus, 'report_corpus', {
+    endpoint: '/api/reports/normalize',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+    input_length: corpus.length,
+    input_label: 'report_corpus',
+  });
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: prompts.NORMALIZE_SYSTEM,
-    prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 위 스키마를 따라 표준 양식 Markdown으로 정리하세요.\n\n${corpus}`,
+    prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 위 스키마를 따라 표준 양식 Markdown으로 정리하세요.\n\n${corpusSan.wrapped}`,
     temperature: prompts.TEMPERATURE.normalize,
     maxOutputTokens: 64000,
     providerOptions: ZERO_RETENTION,
