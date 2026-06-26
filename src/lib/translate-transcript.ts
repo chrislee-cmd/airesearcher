@@ -31,6 +31,7 @@ import {
   Paragraph,
   TextRun,
 } from 'docx';
+import { UTF8_BOM } from './translate-fidelity';
 
 export type TranscriptMessage = {
   kind: 'input' | 'output';
@@ -158,7 +159,9 @@ export function renderTranslateTranscriptText(
     lines.push(meta.locale === 'ko' ? '(전사록이 비어 있습니다)' : '(transcript is empty)');
   }
 
-  return lines.join('\n') + '\n';
+  // BOM forces Notepad / Excel into UTF-8 mode. Without it Korean / Thai
+  // characters render as Latin1 garbage in viewers that guess the codec.
+  return UTF8_BOM + lines.join('\n') + '\n';
 }
 
 // ── docx design tokens (mirrors src/lib/transcripts/docx.ts) ──
