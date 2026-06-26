@@ -18,6 +18,11 @@ packages:
 allowBuilds:
   '@ffmpeg-installer/darwin-arm64': true
   '@parcel/watcher': true
+  # @sentry/cli ships the binary used for source-map upload; PR-SEC12
+  # only wires Sentry.init + beforeSend, not source maps, so we skip the
+  # postinstall download. Flip to `true` when adopting `withSentryConfig`
+  # or running `sentry-cli sourcemaps upload` in CI.
+  '@sentry/cli': false
   '@swc/core': true
   sharp: true
   supabase: true

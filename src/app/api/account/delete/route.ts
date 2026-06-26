@@ -32,10 +32,13 @@ export async function POST(request: Request) {
   const userId = user.id;
   const userEmail = user.email ?? null;
 
-  // Write audit first. logAudit never throws so a write failure here
-  // won't strand the delete; the helper logs to Vercel function output.
+  // Two-phase audit (PR-SEC12): _requested before the destructive call,
+  // _completed after success. If deleteUser fails the _requested row
+  // alone tells the forensic story; _completed only ever appears on a
+  // confirmed delete. logAudit never throws so a write failure here
+  // won't strand the delete.
   await logAudit({
-    event_type: 'account_deleted',
+    event_type: 'account_deletion_requested',
     user_id: userId,
     actor_email: userEmail,
     resource_type: 'user',
@@ -51,6 +54,17 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  await logAudit({
+    event_type: 'account_deletion_completed',
+    // user_id intentionally null — the auth.users row no longer exists
+    // and the FK is `on delete set null`. actor_email keeps the trail.
+    user_id: null,
+    actor_email: userEmail,
+    resource_type: 'user',
+    resource_id: userId,
+    request,
+  });
 
   // Sign the session out server-side too — the auth.users row is gone
   // but the browser still holds sb-* cookies until they expire. Best

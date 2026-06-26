@@ -13,18 +13,39 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getClientIp } from '@/lib/rate-limit';
 
+// Canonical event_type values. Extending this union is the SSOT — the
+// audit_log migration comment and the ROPA in docs/legal/ both point
+// here. Group conventions:
+//   - consent_*               PR-SEC7 + PR-SEC12 (privacy policy version bumps)
+//   - account_deletion_*      PR-SEC5 + PR-SEC12 (Art. 17 erasure flow)
+//   - data_export_*           PR-SEC6 + PR-SEC12 (Art. 15 / 20 portability)
+//   - login_*                 PR-SEC7 (auth)
+//   - permission_denied       PR-SEC7 (app-level deny)
+//   - rls_violation_attempted PR-SEC12 (DB-level RLS reject)
+//   - rate_limited            PR-SEC4 (Upstash limiter)
+//   - admin_action            PR-SEC7 (member role / remove etc.)
+//   - admin_action_error      PR-SEC19 (admin route runtime error)
+//   - admin_impersonation     PR-SEC12 (admin views as user — reserved)
+//   - public_booking_error    PR-SEC19 (public booking route runtime error)
+//   - config_changed          PR-SEC12 (cron / env / migration ops)
 export type AuditEventType =
   | 'consent_granted'
   | 'consent_revoked'
-  | 'account_deleted'
-  | 'account_exported'
+  | 'consent_version_updated'
+  | 'account_deletion_requested'
+  | 'account_deletion_completed'
+  | 'data_export_requested'
+  | 'data_export_completed'
   | 'login_success'
   | 'login_failure'
   | 'permission_denied'
+  | 'rls_violation_attempted'
   | 'rate_limited'
   | 'admin_action'
   | 'admin_action_error'
-  | 'public_booking_error';
+  | 'admin_impersonation'
+  | 'public_booking_error'
+  | 'config_changed';
 
 export type AuditOpts = {
   event_type: AuditEventType;

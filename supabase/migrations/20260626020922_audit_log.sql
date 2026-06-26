@@ -15,12 +15,17 @@ create table if not exists public.audit_log (
   user_id uuid references auth.users(id) on delete set null,
   -- preserved after user deletion so the trail survives erasure requests.
   actor_email text,
-  -- canonical event types (extensible — string column not enum):
-  --   consent_granted, consent_revoked,
-  --   account_deleted, account_exported,
+  -- canonical event types (extensible — string column not enum). The
+  -- SSOT is `AuditEventType` in src/lib/audit.ts; this comment is a
+  -- discoverability aid for DBAs reading the schema directly. Groups:
+  --   consent_granted, consent_revoked, consent_version_updated,
+  --   account_deletion_requested, account_deletion_completed,
+  --   data_export_requested, data_export_completed,
   --   login_success, login_failure,
-  --   permission_denied, rate_limited,
-  --   admin_action
+  --   permission_denied, rls_violation_attempted,
+  --   rate_limited,
+  --   admin_action, admin_impersonation,
+  --   config_changed
   event_type text not null,
   resource_type text,
   resource_id text,
