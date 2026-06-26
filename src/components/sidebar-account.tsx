@@ -71,13 +71,27 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
     router.refresh();
   }
 
+  // PR-D5: 캔버스와 같은 시각 — Memphis 카드 (노랑 bg + 검정 3px
+   // border + offset shadow). Outfit 폰트.
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
+
   if (!isAuthed) {
     return (
-      <div className="border-t border-line-soft px-5 py-4">
+      <div className="px-3 pb-4 pt-3">
         <Link
           href="/login"
           onClick={() => track('sidebar_signin_link_click')}
-          className="block border border-ink bg-ink px-3 py-2 text-center text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+          className="block px-3 py-2 text-center text-sm uppercase tracking-[0.18em] transition-transform duration-[120ms] hover:-translate-y-0.5"
+          style={{
+            background: 'var(--sidebar-border)',
+            color: '#fff',
+            border:
+              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+            borderRadius: 'var(--sidebar-nav-radius)',
+            boxShadow: 'var(--memphis-shadow-sm)',
+            fontFamily: outfitStack,
+            fontWeight: 700,
+          }}
         >
           {tAuth('signIn')}
         </Link>
@@ -88,26 +102,83 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
   // The visible name in the row — the local-part of the email reads more
   // like a display name when no separate display field exists.
   const displayName = email ? email.split('@')[0] : '';
+  const avatarLetter = (displayName.charAt(0) || '?').toUpperCase();
 
   return (
-    <div className="relative border-t border-line-soft px-3 py-3" ref={popRef}>
-      <div className="flex items-center gap-2 px-2">
+    <div className="relative px-3 pb-4 pt-3" ref={popRef}>
+      <div
+        className="flex items-center gap-2 px-2.5 py-2.5"
+        style={{
+          background: 'var(--sidebar-bg-strong)',
+          border:
+            'var(--sidebar-border-width) solid var(--sidebar-border)',
+          borderRadius: 'var(--sidebar-nav-radius)',
+          boxShadow: 'var(--memphis-shadow-sm)',
+        }}
+      >
+        <div
+          className="flex shrink-0 items-center justify-center"
+          style={{
+            width: 30,
+            height: 30,
+            background: '#fff',
+            color: '#000',
+            border:
+              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+            borderRadius: 'var(--sidebar-nav-radius)',
+            boxShadow: 'var(--memphis-shadow-xs)',
+            fontFamily: outfitStack,
+            fontWeight: 800,
+            fontSize: 13,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {avatarLetter}
+        </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-md font-semibold text-ink-2">
+          <div
+            className="truncate text-md"
+            style={{
+              fontFamily: outfitStack,
+              fontWeight: 700,
+              color: 'var(--sidebar-border)',
+            }}
+          >
             {displayName}
           </div>
           {status?.isUnlimited ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
+            <div
+              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              style={{
+                fontFamily: outfitStack,
+                fontWeight: 600,
+                color: 'var(--canvas-accent)',
+              }}
+            >
               {tCommon('unlimitedAccess')}
             </div>
           ) : status?.isTrialActive && status.trialEndsAt ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
+            <div
+              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              style={{
+                fontFamily: outfitStack,
+                fontWeight: 600,
+                color: 'var(--canvas-accent)',
+              }}
+            >
               {tCommon('trialRemaining', {
                 remaining: formatTrialRemaining(status.trialEndsAt),
               })}
             </div>
           ) : credits !== null ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-mute-soft">
+            <div
+              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              style={{
+                fontFamily: outfitStack,
+                fontWeight: 600,
+                color: 'var(--sidebar-border)',
+              }}
+            >
               {tCommon('creditsRemaining', { count: credits })}
             </div>
           ) : null}
@@ -123,14 +194,24 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
           }}
           aria-label={t('settings')}
           aria-expanded={open}
-          className={`shrink-0 ${open ? 'text-ink-2' : ''}`}
+          className="shrink-0"
+          style={{ color: 'var(--sidebar-border)' }}
         >
           <Gear />
         </IconButton>
       </div>
 
       {open && (
-        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-sm rounded-sm">
+        <div
+          className="absolute bottom-full left-3 right-3 z-modal mb-2 py-1 text-sm"
+          style={{
+            background: 'var(--sidebar-nav-bg)',
+            border:
+              'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+            borderRadius: 'var(--sidebar-nav-radius)',
+            boxShadow: 'var(--memphis-shadow-sm)',
+          }}
+        >
           {/* Language toggle */}
           <div className="px-3 py-2">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
