@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 import { parsePartialJson } from 'ai';
-import * as XLSX from 'xlsx';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
@@ -179,7 +178,7 @@ type Ctx = {
   startAnalyze: () => void;
   stopAnalyze: () => void;
   exportCsv: () => void;
-  exportXlsx: () => void;
+  exportXlsx: () => Promise<void>;
   exportDocx: () => Promise<void>;
   // For share-to-Sheets: returns the final summary matrix as rows.
   getMatrixRows: () => string[][];
@@ -308,13 +307,16 @@ function makeCsvBlob(matrix: string[][]) {
   return new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
 }
 
-function makeXlsxBlob(sheets: { name: string; matrix: string[][] }[]) {
-  const wb = XLSX.utils.book_new();
+async function makeXlsxBlob(sheets: { name: string; matrix: string[][] }[]) {
+  // exceljs is heavy — lazy-import so the interview page bundle stays slim
+  // and the library only loads when the user actually exports.
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
   for (const s of sheets) {
-    const ws = XLSX.utils.aoa_to_sheet(s.matrix);
-    XLSX.utils.book_append_sheet(wb, ws, s.name);
+    const ws = wb.addWorksheet(s.name);
+    for (const row of s.matrix) ws.addRow(row);
   }
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
@@ -1180,21 +1182,19 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       makeExportFilename('csv'),
     );
   }
-  function exportXlsx() {
+  async function exportXlsx() {
     if (!analysis || !filenameOrder.length) return;
     // Sheet 1: final summary (문항, 요약). Sheet 2: 응답자별 행렬 with the
     // horizontal summary preserved (vertical summary intentionally omitted
     // so sheet 2 stays the "raw" cross-respondent matrix).
-    triggerDownload(
-      makeXlsxBlob([
-        { name: '최종 요약', matrix: buildFinalMatrix(analysis) },
-        {
-          name: '응답자별',
-          matrix: buildRespondentMatrix(analysis, filenameOrder),
-        },
-      ]),
-      makeExportFilename('xlsx'),
-    );
+    const blob = await makeXlsxBlob([
+      { name: '최종 요약', matrix: buildFinalMatrix(analysis) },
+      {
+        name: '응답자별',
+        matrix: buildRespondentMatrix(analysis, filenameOrder),
+      },
+    ]);
+    triggerDownload(blob, makeExportFilename('xlsx'));
   }
   function getMatrixRows(): string[][] {
     if (!analysis || !filenameOrder.length) return [];

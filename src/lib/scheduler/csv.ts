@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { parseCsvString } from '@/lib/csv-parse';
 import type { Attendee, ConfirmedSlot, HHmm, IsoDate } from './types';
 
 // Header aliases — kept inline (no separate i18n table) so a translator can
@@ -167,20 +168,11 @@ function decodeCsvBuffer(buf: ArrayBuffer): string {
 export async function parseAttendeeFile(file: File, defaultDurationMin = 60): Promise<ImportResult> {
   const buf = await file.arrayBuffer();
   const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
-  const wb = isCsv
-    ? XLSX.read(decodeCsvBuffer(buf), { type: 'string', cellDates: true })
-    : XLSX.read(buf, { type: 'array', cellDates: true });
-  const sheetName = wb.SheetNames[0];
-  if (!sheetName) return { attendees: [], slots: [], headers: [] };
-  const sheet = wb.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-    defval: '',
-    raw: false,
-    dateNF: 'yyyy-mm-dd',
-  });
+  const { headers, rows } = isCsv
+    ? parseCsvString(decodeCsvBuffer(buf))
+    : await parseXlsxToRows(buf);
 
   if (rows.length === 0) return { attendees: [], slots: [], headers: [] };
-  const headers = Object.keys(rows[0]);
 
   const nameKey = findKey(headers, NAME_KEYS);
   const phoneKey = findKey(headers, PHONE_KEYS);
@@ -314,23 +306,23 @@ export function attendeesToCsv(
   return '﻿' + lines.join('\r\n');
 }
 
-export function attendeesToXlsxBlob(
+export async function attendeesToXlsxBlob(
   attendees: Attendee[],
   confirmed: ConfirmedSlot[],
   importHeaders: string[],
-): Blob {
+): Promise<Blob> {
   const { headers, rows } = buildExportRows(attendees, confirmed, importHeaders);
-  const aoa: (string | number)[][] = [headers, ...rows.map((r) => headers.map((h) => r[h] ?? ''))];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'attendees');
-  const buf: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('attendees');
+  ws.addRow(headers);
+  for (const r of rows) ws.addRow(headers.map((h) => r[h] ?? ''));
+  const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 }
 
-export function downloadAttendees(
+export async function downloadAttendees(
   format: ExportFormat,
   attendees: Attendee[],
   confirmed: ConfirmedSlot[],
@@ -345,7 +337,7 @@ export function downloadAttendees(
       ? new Blob([attendeesToCsv(attendees, confirmed, importHeaders)], {
           type: 'text/csv;charset=utf-8',
         })
-      : attendeesToXlsxBlob(attendees, confirmed, importHeaders);
+      : await attendeesToXlsxBlob(attendees, confirmed, importHeaders);
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -355,3 +347,79 @@ export function downloadAttendees(
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+// ─── exceljs-backed parsers ────────────────────────────────────────────
+
+type ParsedRows = { headers: string[]; rows: Record<string, unknown>[] };
+
+async function parseXlsxToRows(buf: ArrayBuffer): Promise<ParsedRows> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  const sheet = wb.worksheets[0];
+  if (!sheet) return { headers: [], rows: [] };
+
+  // Header row = first non-empty row in the sheet. exceljs `eachRow` skips
+  // truly empty rows when `includeEmpty:false`; we mirror xlsx's behavior
+  // of treating the very first populated row as the header.
+  let headerRowNumber: number | null = null;
+  const headers: string[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (headerRowNumber != null) return;
+    headerRowNumber = rowNumber;
+    const max = row.cellCount;
+    for (let c = 1; c <= max; c++) {
+      const v = cellValueToString(row.getCell(c).value);
+      headers.push(v);
+    }
+  });
+  if (headerRowNumber == null) return { headers: [], rows: [] };
+
+  const rows: Record<string, unknown>[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber <= headerRowNumber!) return;
+    const obj: Record<string, unknown> = {};
+    let hasAny = false;
+    for (let i = 0; i < headers.length; i++) {
+      const cell = row.getCell(i + 1).value;
+      const v = cellValueToRaw(cell);
+      obj[headers[i] ?? `_col${i}`] = v ?? '';
+      if (v != null && v !== '') hasAny = true;
+    }
+    if (hasAny) rows.push(obj);
+  });
+  return { headers, rows };
+}
+
+// Coerce an exceljs cell value into a string (used for header normalization).
+function cellValueToString(value: unknown): string {
+  const raw = cellValueToRaw(value);
+  if (raw == null) return '';
+  if (raw instanceof Date) {
+    return isNaN(raw.getTime()) ? '' : raw.toISOString().slice(0, 10);
+  }
+  return typeof raw === 'string' ? raw : String(raw);
+}
+
+// Unwrap an exceljs cell `value` object — preserving Date and primitive
+// types so downstream `toIsoDate` / `toHHmm` can recognize them.
+function cellValueToRaw(value: unknown): unknown {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'object') {
+    const v = value as Record<string, unknown>;
+    if (Array.isArray((v as { richText?: unknown }).richText)) {
+      return ((v as { richText: { text?: string }[] }).richText)
+        .map((r) => r.text ?? '')
+        .join('');
+    }
+    if ('text' in v) return cellValueToRaw((v as { text: unknown }).text);
+    if ('result' in v) return cellValueToRaw((v as { result: unknown }).result);
+    if ('error' in v) return String((v as { error: unknown }).error);
+    if ('hyperlink' in v) return String((v as { hyperlink: unknown }).hyperlink);
+  }
+  return String(value);
+}
+

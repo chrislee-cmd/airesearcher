@@ -154,7 +154,7 @@ function ExportButtons({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => downloadAttendees('csv', attendees, confirmed, importHeaders)}
+        onClick={() => void downloadAttendees('csv', attendees, confirmed, importHeaders)}
         className="border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
       >
         ↓ {t('exportCsv')}
@@ -162,7 +162,7 @@ function ExportButtons({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => downloadAttendees('xlsx', attendees, confirmed, importHeaders)}
+        onClick={() => void downloadAttendees('xlsx', attendees, confirmed, importHeaders)}
         className="border border-line bg-paper px-2.5 py-1.5 text-md text-ink-2 hover:border-ink disabled:opacity-40 rounded-sm"
       >
         ↓ {t('exportXlsx')}
