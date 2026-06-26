@@ -990,7 +990,7 @@ export const probingCard: WidgetContent = {
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 10개 기법별 후속 질문을 5초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 기법별 후속 질문을 5초마다 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',

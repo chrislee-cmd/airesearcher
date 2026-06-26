@@ -5,11 +5,14 @@ import { z } from 'zod';
 
    PR-2: transcript window 를 받아 probing 질문을 생성. technique 는
    질적 인터뷰의 표준 probing 모델 (Wright 1996 / Spradley 1979 의
-   ethnographic interview) + 추가 5종 (devils_advocate / balance_game /
-   clarification / emotional / timeline).
+   ethnographic interview) 중 발화-driven 5종 (contrast /
+   devils_advocate / balance_game / clarification / timeline).
 
    PR-10: 매 호출마다 정의된 모든 기법 각 1개씩 = 총
-   PROBING_TECHNIQUES.length 개 질문 (전체 노출). 3~5개 선정 방식 폐기.
+   PROBING_TECHNIQUES.length 개 질문 (전체 노출). 일부만 선정하는
+   방식 폐기. 기법 리스트는 사용자가 명시적으로 큐레이트한 5종
+   (why / tell_more / example / hypothetical / emotional 은 일반
+   follow-up 에 가깝다는 판단으로 제외).
 
    schema 는 streamObject 의 출력 형식. 클라이언트가 partial JSON 으로
    parsing 하면서 카드 stream 표시. questions 의 핵심 (text + technique)
@@ -18,15 +21,10 @@ import { z } from 'zod';
    ──────────────────────────────────────────────────────────────────── */
 
 export const PROBING_TECHNIQUES = [
-  'why',
-  'tell_more',
-  'example',
   'contrast',
-  'hypothetical',
   'devils_advocate',
   'balance_game',
   'clarification',
-  'emotional',
   'timeline',
 ] as const;
 
@@ -35,15 +33,10 @@ export type ProbingTechnique = (typeof PROBING_TECHNIQUES)[number];
 // UI 칩 라벨 — 한국어. technique 가 모델에서 invalid 로 와도 카드는 표시
 // 되어야 하므로 fallback 은 호출부에서 그냥 raw 값을 노출.
 export const PROBING_TECHNIQUE_LABEL: Record<ProbingTechnique, string> = {
-  why: '이유',
-  tell_more: '확장',
-  example: '예시',
   contrast: '대조',
-  hypothetical: '가정',
   devils_advocate: '반대시각',
   balance_game: '양자택일',
   clarification: '명확화',
-  emotional: '감정',
   timeline: '시점',
 };
 
@@ -100,16 +93,11 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 - **1인칭 응답자 관점**. "고객이 보통…" 이 아니라 "본인은 그때…".
 
 기법 ${PROBING_QUESTION_COUNT}종 — **매 호출에서 각 기법 정확히 1개**:
-1. **why** — 행동·선택의 이유 캐기. "왜 그렇게 하셨어요?"
-2. **tell_more** — 직전 응답을 확장. "조금 더 구체적으로 말씀해 주실 수 있어요?"
-3. **example** — 추상을 구체화. "그런 적이 있었던 최근 사례 하나만 들려주세요."
-4. **contrast** — 비교로 차이 끌어내기. "이전 회사에서는 어땠어요?" / "다른 도구랑 비교하면?"
-5. **hypothetical** — 가정 시나리오. "만약 그 기능이 없었다면 어떻게 하셨을까요?"
-6. **devils_advocate** — 응답자 입장과 반대 시각 / 반박 가설 제시 후 어떻게 생각하는지. "그런데 다른 시각에서는 X 일 수도 있는데, 그 경우엔 어떻게 생각하세요?"
-7. **balance_game** — 두 trade-off 사이 양자택일 강제. "A 와 B 중 하나만 골라야 한다면 어느 쪽이고, 그 이유는요?"
-8. **clarification** — 모호한 지시어 / 단어 / 표현 명확화. "방금 '그것' 이 정확히 무엇을 의미하셨어요?"
-9. **emotional** — 그 순간의 감정 / 가치 / 의미. "그때 어떤 느낌이었어요? 그게 본인에게 어떤 의미였어요?"
-10. **timeline** — 시점 / 순서 / 변화. "처음 그렇게 느낀 게 언제부터인가요? 그 사이에 뭐가 달라졌어요?"
+1. **contrast** — 비교로 차이 끌어내기. "이전 회사에서는 어땠어요?" / "다른 도구랑 비교하면?"
+2. **devils_advocate** — 응답자 입장과 반대 시각 / 반박 가설 제시 후 어떻게 생각하는지. "그런데 다른 시각에서는 X 일 수도 있는데, 그 경우엔 어떻게 생각하세요?"
+3. **balance_game** — 두 trade-off 사이 양자택일 강제. "A 와 B 중 하나만 골라야 한다면 어느 쪽이고, 그 이유는요?"
+4. **clarification** — 모호한 지시어 / 단어 / 표현 명확화. "방금 '그것' 이 정확히 무엇을 의미하셨어요?"
+5. **timeline** — 시점 / 순서 / 변화. "처음 그렇게 느낀 게 언제부터인가요? 그 사이에 뭐가 달라졌어요?"
 
 생성 규칙:
 - **정확히 ${PROBING_QUESTION_COUNT}개**. 위 기법 ${PROBING_QUESTION_COUNT}종이 **각각 정확히 1번씩** 등장 (technique 값이 중복되면 안 됨, 빠지면 안 됨).
@@ -118,7 +106,7 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 - 같은 발화에서 ${PROBING_QUESTION_COUNT}개 기법이 모두 자연스럽게 나오기 어려우면, transcript 의 가장 풍부한 부분 + 가이드 (있으면) 의 가설을 결합해 각 기법에 맞는 각도를 만듭니다 — 기법은 무조건 ${PROBING_QUESTION_COUNT}종 모두 채우세요.
 - 각 질문의 \`intent\` (의도) 는 1~2문장으로 짧게. 인터뷰어가 빠르게 스캔할 수 있도록.
 - **transcript 의 주 언어** (한국어/영어/일본어 등) 를 그대로 따라 응답하세요. 한국어 인터뷰는 한국어로, 영어 인터뷰는 영어로.
-- transcript 가 너무 짧거나 의미 파악이 어려우면 일반적인 follow-up 으로 채우되, ${PROBING_QUESTION_COUNT}종 기법 룰은 그대로 유지하세요 (tell_more 로 모두 채우지 말고 각 기법의 각도를 살릴 것).
+- transcript 가 너무 짧거나 의미 파악이 어려우면 일반적인 follow-up 으로 채우되, ${PROBING_QUESTION_COUNT}종 기법 룰은 그대로 유지하세요 (하나의 기법으로 모두 채우지 말고 각 기법의 각도를 살릴 것).
 
 **출력 순서 (중요)**:
 - 먼저 \`questions\` 배열에 ${PROBING_QUESTION_COUNT}개 질문의 핵심 (text + technique, 가이드가 있으면 guide_reference 포함) 을 모두 emit.
