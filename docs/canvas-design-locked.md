@@ -4,6 +4,7 @@
 > 이 디자인은 main 의 `/canvas` 라우트에 적용 (PR-D2 재정의) —
 > switcher / 다른 variant / 비교 인프라 없이 잠금 조합 1개만.
 > PR #403 자체는 production 머지 X (adhoc 비교 인프라 포함).
+> **PR-D3 (2026-06-26)**: 글로벌 shell (사이드바 + topbar) 도 pop 톤 (chrome only) 적용 — `--color-pop-*` / `--shadow-pop-*` / `--font-pop` 토큰 추가. 메뉴 항목 / topbar 컨텐츠 / 다른 라우트 본문은 영향 0.
 
 ## 잠근 조합
 

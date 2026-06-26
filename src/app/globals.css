@@ -105,6 +105,20 @@
   --canvas-chrome-radius: 12px;
   --canvas-selection-border: #ff5c8a;
   --canvas-selection-width: 3px;
+
+  /* =======================================================================
+     Pop shell tokens — 글로벌 shell (사이드바 + topbar) 적용 (PR-D3).
+     /canvas 한정 토큰 (`--canvas-*`) 와 hex 정합 — 톤 일관.
+     사이드바 메뉴 항목 / topbar 내부 컨텐츠 / 다른 라우트 본문은 영향 0
+     (이 토큰을 참조하지 않음 — chrome 만 적용).
+     ======================================================================= */
+  --color-pop-yellow: #fffce1;     /* canvas bg 와 동일 — 옅은 wash */
+  --color-pop-pink: #ff5c8a;       /* canvas-accent 와 동일 — 액센트 */
+  --color-pop-border: #000000;     /* hard 검정 frame */
+  --color-pop-banner: #ffd53d;     /* canvas hero header bg 와 동일 — topbar 노랑 */
+  --shadow-pop-offset: 6px 6px 0 0 #000;
+  --shadow-pop-offset-sm: 3px 3px 0 0 #000;
+  --font-pop: var(--font-outfit), "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 /* =========================================================================

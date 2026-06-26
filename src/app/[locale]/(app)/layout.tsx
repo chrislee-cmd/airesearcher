@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
+import { Outfit } from 'next/font/google';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
@@ -17,6 +18,16 @@ import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
 import { VoiceConciergeProvider } from '@/components/voice-concierge';
+
+// Outfit — pop shell 의 display 폰트. `--font-outfit` CSS 변수 노출 →
+// globals.css 의 `--font-pop` 토큰이 var(--font-outfit) 로 참조.
+// 사이드바 헤더 / topbar 노랑 banner 등 chrome 한정 사용.
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export default async function AppLayout({
   children,
@@ -54,7 +65,7 @@ export default async function AppLayout({
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
-         <div className="flex flex-1 overflow-hidden">
+         <div className={`${outfit.variable} flex flex-1 overflow-hidden`}>
            <Sidebar
              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
              email={user?.email ?? null}

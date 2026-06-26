@@ -375,10 +375,15 @@ export function Sidebar({
   }
 
   return (
+    // PR-D3 — chrome pop 적용: 우측 2.5px 검은 hard frame.
+    // 본문 (nav 메뉴 list / sidebar-account) 시각은 그대로.
     <aside
       data-coachmark-id="sidebar"
-      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r border-line bg-paper md:flex"
+      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r-[2.5px] bg-paper md:flex"
+      style={{ borderColor: 'var(--color-pop-border)' }}
     >
+      {/* 브랜드 / 로고 영역 — pop 액센트 (Outfit + 검정 hard rule).
+          메뉴 항목 list 와 분리된 frame 영역. */}
       <div className="px-7 pb-6 pt-7">
         <Link
           href="/dashboard"
@@ -393,10 +398,16 @@ export function Sidebar({
             style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 7 }}
           />
           <div>
-            <div className="text-xl font-bold tracking-[-0.01em] text-ink">
+            <div
+              className="text-xl font-extrabold tracking-[-0.02em] text-ink"
+              style={{ fontFamily: 'var(--font-pop)' }}
+            >
               {tBrand('name')}
             </div>
-            <div className="mt-0.5 h-px w-5 bg-amore" />
+            <div
+              className="mt-0.5 h-px w-5"
+              style={{ background: 'var(--color-pop-pink)' }}
+            />
           </div>
         </Link>
       </div>
