@@ -27,3 +27,14 @@ allowBuilds:
   sharp: true
   supabase: true
   unrs-resolver: true
+# Security overrides (PR-SEC18 — 2026-06-26). Transitive deps with HIGH/MODERATE
+# CVE that don't have a direct top-level bump available. Pinned to the lowest
+# patched range so npm/snyk audit reports go to 0 high. Re-evaluate when
+# upstream parents (next, @openai/agents, eslint, @supabase/realtime-js) ship
+# updates that drop the old transitive dep naturally.
+overrides:
+  ws@>=8.0.0 <8.21.0: ^8.21.0
+  hono@<4.12.25: ^4.12.25
+  postcss@<8.5.10: ^8.5.10
+  brace-expansion@>=5.0.0 <5.0.6: ^5.0.6
+  uuid@<11.1.1: ^11.1.1
