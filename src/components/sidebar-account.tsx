@@ -77,7 +77,14 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
         <Link
           href="/login"
           onClick={() => track('sidebar_signin_link_click')}
-          className="block border border-ink bg-ink px-3 py-2 text-center text-sm font-semibold uppercase tracking-[0.18em] text-paper transition-colors duration-[120ms] hover:bg-ink-2 rounded-sm"
+          // PR-D4: sign-in CTA pop 톤 — 검정 bg + 2px black border +
+          // 2px offset shadow, Outfit weight 800.
+          className="block border-[2px] border-ink bg-ink px-3 py-2 text-center text-sm uppercase tracking-[0.18em] text-paper transition-transform duration-[120ms] hover:-translate-y-[1px] rounded-xs"
+          style={{
+            fontFamily: 'var(--font-pop)',
+            fontWeight: 800,
+            boxShadow: 'var(--shadow-pop-offset-sm)',
+          }}
         >
           {tAuth('signIn')}
         </Link>
@@ -88,126 +95,142 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
   // The visible name in the row — the local-part of the email reads more
   // like a display name when no separate display field exists.
   const displayName = email ? email.split('@')[0] : '';
+  // PR-D4: 1자리 initial (대문자) — Memphis 아바타.
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
 
   return (
-    <div className="relative border-t border-line-soft px-3 py-3" ref={popRef}>
-      <div className="flex items-center gap-2 px-2">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-md font-semibold text-ink-2">
-            {displayName}
+    // PR-D4: Memphis 카드 (2.5px 검은 border + offset shadow + Outfit).
+    // 사이드바 footer 영역 — D3 의 chrome 안 content pop 톤 통일.
+    <div className="px-3 pb-3 pt-3" ref={popRef}>
+      <div className="relative" data-shell-account-card>
+        <div className="flex items-center gap-2 px-3 py-2">
+          <span data-shell-avatar aria-hidden>{initial}</span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-md font-bold text-ink">
+              {displayName}
+            </div>
+            {status?.isUnlimited ? (
+              <div className="mt-0.5 text-xs-soft tabular-nums" style={{ color: 'var(--color-pop-pink)' }}>
+                {tCommon('unlimitedAccess')}
+              </div>
+            ) : status?.isTrialActive && status.trialEndsAt ? (
+              <div className="mt-0.5 text-xs-soft tabular-nums" style={{ color: 'var(--color-pop-pink)' }}>
+                {tCommon('trialRemaining', {
+                  remaining: formatTrialRemaining(status.trialEndsAt),
+                })}
+              </div>
+            ) : credits !== null ? (
+              <div className="mt-0.5 text-xs-soft tabular-nums text-mute">
+                {tCommon('creditsRemaining', { count: credits })}
+              </div>
+            ) : null}
           </div>
-          {status?.isUnlimited ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
-              {tCommon('unlimitedAccess')}
-            </div>
-          ) : status?.isTrialActive && status.trialEndsAt ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-amore">
-              {tCommon('trialRemaining', {
-                remaining: formatTrialRemaining(status.trialEndsAt),
-              })}
-            </div>
-          ) : credits !== null ? (
-            <div className="mt-0.5 text-xs-soft tabular-nums text-mute-soft">
-              {tCommon('creditsRemaining', { count: credits })}
-            </div>
-          ) : null}
+          <IconButton
+            variant="ghost"
+            size="md"
+            onClick={() => {
+              setOpen((v) => {
+                if (!v) track('settings_menu_open_click');
+                return !v;
+              });
+            }}
+            aria-label={t('settings')}
+            aria-expanded={open}
+            className={`shrink-0 ${open ? 'text-ink-2' : ''}`}
+          >
+            <Gear />
+          </IconButton>
         </div>
-        <IconButton
-          variant="ghost"
-          size="md"
-          onClick={() => {
-            setOpen((v) => {
-              if (!v) track('settings_menu_open_click');
-              return !v;
-            });
-          }}
-          aria-label={t('settings')}
-          aria-expanded={open}
-          className={`shrink-0 ${open ? 'text-ink-2' : ''}`}
-        >
-          <Gear />
-        </IconButton>
-      </div>
 
-      {open && (
-        <div className="absolute bottom-full left-3 right-3 z-30 mb-2 border border-line bg-paper py-1 text-sm rounded-sm">
-          {/* Language toggle */}
-          <div className="px-3 py-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
-              {tCommon('language')}
+        {open && (
+          <div
+            data-shell-panel
+            className="absolute bottom-full left-0 right-0 z-30 mb-2 py-1 text-sm"
+          >
+            {/* Language toggle */}
+            <div className="px-3 py-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                {tCommon('language')}
+              </div>
+              <div className="mt-1.5 flex items-center gap-3 text-xs-soft uppercase tracking-[0.18em]">
+                {(['ko', 'en'] as const).map((lng) => (
+                  <Button
+                    key={lng}
+                    variant="link"
+                    size="xs"
+                    onClick={() => changeLocale(lng)}
+                    className={`!px-0 !py-0 !text-xs-soft uppercase tracking-[0.18em] !font-bold ${
+                      lng === locale
+                        ? 'hover:text-[var(--color-pop-pink)]'
+                        : 'text-mute-soft hover:text-ink-2'
+                    }`}
+                    style={
+                      lng === locale
+                        ? { color: 'var(--color-pop-pink)' }
+                        : undefined
+                    }
+                  >
+                    {lng}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="mt-1.5 flex items-center gap-3 text-xs-soft font-semibold uppercase tracking-[0.18em]">
-              {(['ko', 'en'] as const).map((lng) => (
-                <Button
-                  key={lng}
-                  variant="link"
-                  size="xs"
-                  onClick={() => changeLocale(lng)}
-                  className={`!px-0 !py-0 !text-xs-soft uppercase tracking-[0.18em] ${
-                    lng === locale
-                      ? 'text-amore hover:text-amore'
-                      : 'text-mute-soft hover:text-ink-2'
-                  }`}
+            <div className="my-1 h-px" style={{ background: 'var(--color-pop-border)', opacity: 0.15 }} />
+            <PopoverLink
+              href="/members"
+              onClick={() => {
+                track('settings_members_click');
+                setOpen(false);
+              }}
+            >
+              {t('members')}
+            </PopoverLink>
+            <PopoverLink
+              href="/credits"
+              onClick={() => {
+                track('settings_buy_credits_click');
+                setOpen(false);
+              }}
+            >
+              {t('buyCredits')}
+            </PopoverLink>
+            {isSuperAdmin && (
+              <>
+                <div className="my-1 h-px" style={{ background: 'var(--color-pop-border)', opacity: 0.15 }} />
+                <PopoverLink
+                  href="/admin/api-usage"
+                  onClick={() => {
+                    track('admin_api_usage_open_click');
+                    setOpen(false);
+                  }}
                 >
-                  {lng}
-                </Button>
-              ))}
-            </div>
+                  {t('adminApiUsage')}
+                </PopoverLink>
+                <PopoverLink
+                  href="/admin/payments"
+                  onClick={() => {
+                    track('admin_payments_open_click');
+                    setOpen(false);
+                  }}
+                >
+                  {t('adminPayments')}
+                </PopoverLink>
+              </>
+            )}
+            <div className="my-1 h-px" style={{ background: 'var(--color-pop-border)', opacity: 0.15 }} />
+            <Button
+              variant="destructive-link"
+              size="xs"
+              fullWidth
+              onClick={signOut}
+              data-shell-panel-item
+              className="!justify-start !px-3 !py-1.5 !text-sm !font-semibold text-warning hover:text-warning"
+            >
+              {tAuth('signOut')}
+            </Button>
           </div>
-          <div className="my-1 h-px bg-line-soft" />
-          <PopoverLink
-            href="/members"
-            onClick={() => {
-              track('settings_members_click');
-              setOpen(false);
-            }}
-          >
-            {t('members')}
-          </PopoverLink>
-          <PopoverLink
-            href="/credits"
-            onClick={() => {
-              track('settings_buy_credits_click');
-              setOpen(false);
-            }}
-          >
-            {t('buyCredits')}
-          </PopoverLink>
-          {isSuperAdmin && (
-            <>
-              <div className="my-1 h-px bg-line-soft" />
-              <PopoverLink
-                href="/admin/api-usage"
-                onClick={() => {
-                  track('admin_api_usage_open_click');
-                  setOpen(false);
-                }}
-              >
-                {t('adminApiUsage')}
-              </PopoverLink>
-              <PopoverLink
-                href="/admin/payments"
-                onClick={() => {
-                  track('admin_payments_open_click');
-                  setOpen(false);
-                }}
-              >
-                {t('adminPayments')}
-              </PopoverLink>
-            </>
-          )}
-          <div className="my-1 h-px bg-line-soft" />
-          <Button
-            variant="destructive-link"
-            size="xs"
-            fullWidth
-            onClick={signOut}
-            className="!justify-start !px-3 !py-1.5 !text-sm font-normal text-warning hover:bg-paper-soft hover:text-warning"
-          >
-            {tAuth('signOut')}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -225,7 +248,8 @@ function PopoverLink({
     <Link
       href={href}
       onClick={onClick}
-      className="block px-3 py-1.5 text-sm text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
+      data-shell-panel-item
+      className="block px-3 py-1.5 text-sm text-mute"
     >
       {children}
     </Link>

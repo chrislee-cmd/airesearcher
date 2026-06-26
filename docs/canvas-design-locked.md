@@ -5,6 +5,7 @@
 > switcher / 다른 variant / 비교 인프라 없이 잠금 조합 1개만.
 > PR #403 자체는 production 머지 X (adhoc 비교 인프라 포함).
 > **PR-D3 (2026-06-26)**: 글로벌 shell (사이드바 + topbar) 도 pop 톤 (chrome only) 적용 — `--color-pop-*` / `--shadow-pop-*` / `--font-pop` 토큰 추가. 메뉴 항목 / topbar 컨텐츠 / 다른 라우트 본문은 영향 0.
+> **PR-D4 (2026-06-26)**: shell internals (사이드바 nav item / 그룹 헤더 / sidebar-account 카드 / topbar 내부 컨텐츠) 까지 pop 톤 적용. `data-shell-*` attribute 로 scope — 다른 라우트 본문 영향 0. D3 의 chrome + D4 의 internals = 사이드바/헤더 완전 deprecate-and-redesign.
 
 ## 잠근 조합
 

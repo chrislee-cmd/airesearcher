@@ -327,3 +327,125 @@ html, body {
 [data-canvas-body] :is(h1, .text-3xl, .text-display) {
   font-size: 32px;
 }
+
+/* =========================================================================
+   Pop shell internals (PR-D4) — 사이드바 nav item / 그룹 헤더 /
+   account 카드 / topbar 컨텐츠 의 pop 톤 적용.
+   data-shell-* attribute 로 scope — 다른 라우트 / 컴포넌트 영향 0.
+   D3 의 chrome (외곽 frame) 와 hex / shadow / font 정합.
+   ========================================================================= */
+
+/* 사이드바 nav item — Projects / Canvas / feature 메뉴 entry 공통.
+   default = 무색 / mute, hover = 옅은 노랑 wash + 검정 좌측 thick bar,
+   active = 핑크 wash + 핑크 좌측 thick bar + ink. */
+[data-shell-nav] {
+  font-family: var(--font-pop);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  border-left: 3px solid transparent;
+  transition: background 120ms ease, color 120ms ease,
+              border-color 120ms ease;
+}
+[data-shell-nav]:hover {
+  background: var(--color-pop-yellow);
+  border-left-color: var(--color-pop-border);
+  color: var(--color-ink);
+}
+[data-shell-nav][data-active="true"] {
+  background: color-mix(in srgb, var(--color-pop-pink) 14%, transparent);
+  border-left-color: var(--color-pop-pink);
+  color: var(--color-ink);
+  font-weight: 700;
+}
+[data-shell-nav][data-drag-over="true"] {
+  background: var(--color-pop-yellow);
+  border-left-color: var(--color-pop-border);
+  color: var(--color-ink);
+}
+[data-shell-nav][data-compatible="true"]:not([data-active="true"]):not([data-drag-over="true"]) {
+  border-left-color: var(--color-pop-pink);
+  color: var(--color-ink);
+}
+[data-shell-nav][data-dimmed="true"] {
+  opacity: 0.45;
+}
+
+/* 그룹 헤더 (설계 / 진행 / 분석 toggle). Outfit / 검정 / uppercase. */
+[data-shell-group] {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  color: var(--color-ink-2);
+  letter-spacing: 0.2em;
+  transition: color 120ms ease;
+}
+[data-shell-group]:hover {
+  color: var(--color-pop-pink);
+}
+
+/* sidebar-account — Memphis 카드 (2.5px 검은 border + offset shadow). */
+[data-shell-account-card] {
+  border: 2.5px solid var(--color-pop-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-pop-offset-sm);
+  font-family: var(--font-pop);
+}
+
+/* 아바타 initial circle — 검정 2px border + 2px offset shadow. */
+[data-shell-avatar] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--color-pop-border);
+  border-radius: 999px;
+  background: var(--color-pop-banner);
+  box-shadow: 2px 2px 0 0 #000;
+  font-family: var(--font-pop);
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--color-ink);
+  letter-spacing: 0;
+}
+
+/* 드롭다운 popover (account / project) — Memphis 패널. */
+[data-shell-panel] {
+  border: 2.5px solid var(--color-pop-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-pop-offset-sm);
+  font-family: var(--font-pop);
+}
+[data-shell-panel] [data-shell-panel-item] {
+  font-family: var(--font-pop);
+  font-weight: 500;
+  transition: background 120ms ease, color 120ms ease;
+}
+[data-shell-panel] [data-shell-panel-item]:hover {
+  background: var(--color-pop-yellow);
+  color: var(--color-ink);
+}
+
+/* topbar 컨텐츠 (credits / user email / breadcrumb / 검색) — Outfit. */
+[data-shell-topbar] {
+  font-family: var(--font-pop);
+}
+[data-shell-topbar] [data-shell-topbar-label] {
+  font-family: var(--font-pop);
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.005em;
+}
+[data-shell-topbar] [data-shell-topbar-breadcrumb] {
+  font-family: var(--font-pop);
+  font-weight: 500;
+  color: var(--color-mute);
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+[data-shell-topbar] [data-shell-topbar-breadcrumb]:hover {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}

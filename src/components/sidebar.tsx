@@ -413,21 +413,20 @@ export function Sidebar({
       </div>
 
       {/* Projects entry */}
+      {/* PR-D4: nav item pop 톤 — data-shell-nav rule (globals.css) 가
+          hover / active 시 핑크 wash + 검정 좌측 thick bar 적용. */}
       <div className="px-3 pb-2">
         <div
           ref={dropdownRef}
-          className="relative flex items-stretch border-l-2 border-transparent"
-          style={projectsActive ? { borderColor: 'var(--color-amore)' } : undefined}
+          className="relative flex items-stretch"
         >
           <Link
             href="/projects"
             prefetch
             onClick={() => track('sidebar_projects_click')}
-            className={`flex-1 px-4 py-2 text-md transition-colors duration-[120ms] ${
-              projectsActive
-                ? 'font-semibold text-ink-2'
-                : 'text-mute hover:text-ink-2'
-            }`}
+            data-shell-nav
+            data-active={projectsActive || undefined}
+            className="flex-1 px-4 py-2 text-md text-mute"
           >
             {t('viewProjects')}
           </Link>
@@ -444,7 +443,10 @@ export function Sidebar({
           </IconButton>
 
           {dropdownOpen && (
-            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 rounded-sm">
+            <div
+              data-shell-panel
+              className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto py-1"
+            >
               {projects.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-mute-soft">
                   {tProjects('noProjects')}
@@ -455,7 +457,8 @@ export function Sidebar({
                     key={p.id}
                     href={`/projects/${p.id}`}
                     onClick={() => setDropdownOpen(false)}
-                    className="block truncate px-3 py-1.5 text-md text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
+                    data-shell-panel-item
+                    className="block truncate px-3 py-1.5 text-md text-mute"
                   >
                     {p.name}
                   </Link>
@@ -474,11 +477,9 @@ export function Sidebar({
           href="/canvas"
           prefetch
           onClick={() => track('sidebar_canvas_click')}
-          className={`block border-l-2 px-4 py-2 text-md transition-colors duration-[120ms] ${
-            pathname === '/canvas'
-              ? 'border-amore font-semibold text-ink-2'
-              : 'border-transparent text-mute hover:text-ink-2'
-          }`}
+          data-shell-nav
+          data-active={pathname === '/canvas' || undefined}
+          className="block px-4 py-2 text-md text-mute"
         >
           {t('canvas')}
         </Link>
@@ -496,7 +497,8 @@ export function Sidebar({
                 onClick={() => toggleGroup(g.key)}
                 aria-expanded={!isCollapsed}
                 rightIcon={<Chevron open={!isCollapsed} small />}
-                className="!justify-between !gap-2 !px-4 !py-1.5 !text-xs uppercase tracking-[0.22em] !text-mute-soft hover:!text-ink-2 !rounded-none"
+                data-shell-group
+                className="!justify-between !gap-2 !px-4 !py-1.5 !text-xs uppercase !rounded-none"
               >
                 {tGroups(g.key)}
               </Button>
@@ -577,17 +579,12 @@ export function Sidebar({
                               if (path) router.push(path);
                             });
                           }}
-                          className={`flex items-center justify-between gap-2 px-4 py-1.5 text-md transition-colors duration-[120ms] border-l-2 ${
-                            active
-                              ? 'border-amore text-ink-2 font-semibold'
-                              : isDragOver
-                              ? 'border-amore bg-paper-soft text-ink-2'
-                              : isCompatible
-                              ? 'border-amore text-ink-2'
-                              : isDimmed
-                              ? 'border-transparent text-mute-soft'
-                              : 'border-transparent text-mute hover:text-ink-2'
-                          }`}
+                          data-shell-nav
+                          data-active={active || undefined}
+                          data-drag-over={isDragOver || undefined}
+                          data-compatible={isCompatible || undefined}
+                          data-dimmed={isDimmed || undefined}
+                          className="flex items-center justify-between gap-2 px-4 py-1.5 text-md text-mute"
                         >
                           <span className="truncate">{t(f.key)}</span>
                           {busy ? (() => {
