@@ -6,6 +6,18 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+const OUTFIT_STACK = 'var(--font-outfit), var(--font-sans)';
+
+// Memphis chrome reused across email input / role select. 2.5px border +
+// xs offset shadow keeps editorial weight consistent with the surrounding
+// PR-D5 shell tokens.
+const MEMPHIS_FIELD_STYLE = {
+  border: 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+  borderRadius: 'var(--sidebar-nav-radius)',
+  background: 'var(--sidebar-nav-bg)',
+  boxShadow: 'var(--memphis-shadow-xs)',
+} as const;
+
 export function InviteMemberForm({ orgId }: { orgId: string }) {
   const t = useTranslations('Members');
   const tCommon = useTranslations('Common');
@@ -29,32 +41,48 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
     }
   }
 
-  const labelCls =
-    'text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft';
-  // <select> kept as native (not flagged by forbid-elements) — preserves the
-  // inline editorial chrome alongside the migrated <Input>/<Button>.
+  const labelStyle = {
+    fontFamily: OUTFIT_STACK,
+    fontWeight: 800,
+    color: 'var(--sidebar-border)',
+  } as const;
+
+  // <select> kept as native — react/forbid-elements only blocks
+  // button/input/textarea. Same Memphis chrome via shared style.
   const selectCls =
-    'mt-1 border border-line bg-paper px-3 py-1.5 text-md text-ink-2 focus:border-amore focus:outline-none rounded-sm pr-7';
+    'mt-1.5 px-3 py-2 pr-7 text-md text-ink focus:outline-none';
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
       <div className="min-w-[220px] flex-1">
-        <label className={labelCls}>{t('email')}</label>
+        <label
+          className="text-xs uppercase tracking-[0.22em]"
+          style={labelStyle}
+        >
+          {t('email')}
+        </label>
         <Input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           size="sm"
-          className="!mt-1 !px-3 !text-md !text-ink-2"
+          className="!mt-1.5 !border-0 !px-3 !py-2 !text-md !text-ink rounded-[var(--sidebar-nav-radius)] focus-visible:!border-0"
+          style={MEMPHIS_FIELD_STYLE}
         />
       </div>
       <div>
-        <label className={labelCls}>{t('role')}</label>
+        <label
+          className="text-xs uppercase tracking-[0.22em]"
+          style={labelStyle}
+        >
+          {t('role')}
+        </label>
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as typeof role)}
           className={selectCls}
+          style={MEMPHIS_FIELD_STYLE}
         >
           <option value="admin">{t('admin')}</option>
           <option value="member">{t('member')}</option>
@@ -66,7 +94,16 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
         variant="primary"
         size="sm"
         disabled={busy}
-        className="!text-sm uppercase tracking-[0.22em] disabled:!opacity-60"
+        className="!border-0 uppercase tracking-[0.22em] transition-transform duration-[120ms] hover:-translate-y-0.5 disabled:!opacity-60"
+        style={{
+          fontFamily: OUTFIT_STACK,
+          fontWeight: 800,
+          background: 'var(--sidebar-active-bg)',
+          color: 'var(--sidebar-active-text)',
+          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          borderRadius: 'var(--sidebar-nav-radius)',
+          boxShadow: 'var(--memphis-shadow-sm)',
+        }}
       >
         {busy ? tCommon('loading') : t('invite')}
       </Button>

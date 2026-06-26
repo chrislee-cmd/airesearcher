@@ -5,6 +5,26 @@ import { useRouter } from '@/i18n/navigation';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 
+type Role = 'owner' | 'admin' | 'member' | 'viewer';
+
+const OUTFIT_STACK = 'var(--font-outfit), var(--font-sans)';
+
+// Memphis wash per role — each variant carries a distinct pop hue so
+// owner/admin/member/viewer are scannable in a single glance.
+const ROLE_BG: Record<Role, string> = {
+  owner: 'var(--sidebar-active-bg)',  // pink — top of the hierarchy
+  admin: '#ffd53d',                   // yellow-strong — privileged
+  member: '#cdebd9',                  // mint — standard
+  viewer: '#cfe6ff',                  // sky — read-only
+};
+
+const ROLE_TEXT: Record<Role, string> = {
+  owner: 'var(--sidebar-active-text)',
+  admin: 'var(--sidebar-border)',
+  member: 'var(--sidebar-border)',
+  viewer: 'var(--sidebar-border)',
+};
+
 export function MemberRow({
   orgId,
   userId,
@@ -15,7 +35,7 @@ export function MemberRow({
   orgId: string;
   userId: string | null;
   email: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: Role;
   canManage: boolean;
 }) {
   const t = useTranslations('Members');
@@ -41,10 +61,50 @@ export function MemberRow({
   }
 
   const editable = canManage && role !== 'owner';
+  const avatarLetter = (email.charAt(0) || '?').toUpperCase();
 
   return (
-    <tr className="border-t border-line-soft">
-      <td className="px-5 py-3 text-ink-2">{email}</td>
+    <tr
+      className="transition-colors hover:bg-[var(--sidebar-nav-bg-hover)]"
+      style={{
+        borderTop:
+          'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+      }}
+    >
+      <td className="px-5 py-3">
+        <div className="flex items-center gap-3">
+          <span
+            className="inline-flex shrink-0 items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              background: 'var(--sidebar-nav-bg)',
+              border:
+                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              borderRadius: 'var(--sidebar-nav-radius)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+              fontFamily: OUTFIT_STACK,
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: '-0.02em',
+              color: 'var(--sidebar-border)',
+            }}
+            aria-hidden
+          >
+            {avatarLetter}
+          </span>
+          <span
+            className="text-md"
+            style={{
+              fontFamily: OUTFIT_STACK,
+              fontWeight: 700,
+              color: 'var(--sidebar-border)',
+            }}
+          >
+            {email}
+          </span>
+        </div>
+      </td>
       <td className="px-5 py-3">
         {editable ? (
           <Select
@@ -52,6 +112,16 @@ export function MemberRow({
             fullWidth={false}
             defaultValue={role}
             onChange={(e) => changeRole(e.target.value)}
+            className="!border-0 !rounded-[var(--sidebar-nav-radius)]"
+            style={{
+              border:
+                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              borderRadius: 'var(--sidebar-nav-radius)',
+              background: 'var(--sidebar-nav-bg)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+              fontFamily: OUTFIT_STACK,
+              fontWeight: 700,
+            }}
             options={[
               { value: 'admin', label: t('admin') },
               { value: 'member', label: t('member') },
@@ -59,7 +129,19 @@ export function MemberRow({
             ]}
           />
         ) : (
-          <span className="text-sm uppercase tracking-[0.18em] text-mute-soft">
+          <span
+            className="inline-flex items-center px-2.5 py-1 text-xs uppercase tracking-[0.18em]"
+            style={{
+              fontFamily: OUTFIT_STACK,
+              fontWeight: 800,
+              background: ROLE_BG[role],
+              color: ROLE_TEXT[role],
+              border:
+                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              borderRadius: 'var(--sidebar-nav-radius)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+            }}
+          >
             {t(role)}
           </span>
         )}
@@ -67,10 +149,20 @@ export function MemberRow({
       <td className="px-5 py-3 text-right">
         {editable && (
           <Button
-            variant="destructive-link"
+            variant="secondary"
             size="xs"
             onClick={remove}
-            className="!px-0 !py-0 !text-sm uppercase tracking-[0.18em]"
+            className="!border-0 uppercase tracking-[0.18em] transition-transform duration-[120ms] hover:-translate-y-0.5"
+            style={{
+              fontFamily: OUTFIT_STACK,
+              fontWeight: 800,
+              background: 'var(--sidebar-nav-bg)',
+              color: 'var(--sidebar-border)',
+              border:
+                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              borderRadius: 'var(--sidebar-nav-radius)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+            }}
           >
             {t('removeMember')}
           </Button>
