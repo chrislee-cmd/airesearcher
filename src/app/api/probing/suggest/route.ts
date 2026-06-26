@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
@@ -94,6 +95,7 @@ ${closingInstruction} \`questions\` 의 ${count}개 핵심을 먼저 emit 한 �
     temperature: 0.4,
     // PR-13: 1 질문이면 ~200 token, 풀 batch 면 ~2000 token. count 에 비례.
     maxOutputTokens: isSingle ? 400 : 2000,
+    providerOptions: ZERO_RETENTION,
   });
 
   // 디버그 헤더 — preview / 운영에서 가이드와 count 가 실제로 전송됐는지

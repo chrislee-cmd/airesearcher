@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from './llm/config';
 import {
   INSIGHTS_CLUSTERS_SYSTEM,
   insightsClustersExtractionSchema,
@@ -53,6 +54,7 @@ export async function extractClusters(
     // exploration. Still low enough for stable runs.
     temperature: 0.2,
     maxOutputTokens: 8192,
+    providerOptions: ZERO_RETENTION,
   });
 
   const validIds = new Set(quotes.map((q) => q.id));

@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { tryRegexMarkdown, tryMarkdownPassthrough } from '@/lib/markdown-format';
 
@@ -113,6 +114,7 @@ export async function convertFileToMarkdown(file: File): Promise<ConvertResult> 
       prompt: `파일명: ${file.name}\n\n원문 인터뷰 텍스트:\n\n${rawText}`,
       temperature: 0.2,
       maxOutputTokens: 16384,
+      providerOptions: ZERO_RETENTION,
     });
     const md = result.text.trim() || rawText;
     return {

@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from './llm/config';
 import {
   INSIGHTS_QUALITATIVE_SYSTEM,
   insightsQualitativeExtractionSchema,
@@ -54,6 +55,7 @@ export async function extractQualitative(
     // enough to be replayable.
     temperature: 0.3,
     maxOutputTokens: 8192,
+    providerOptions: ZERO_RETENTION,
   });
 
   const validIds = new Set(quotes.map((q) => q.id));

@@ -125,7 +125,7 @@ flowchart TB
 6. UI 표시 — RLS 로 org member 만 조회
 
 **PII 흐름**: 음성 (Deepgram US) → 텍스트 (Supabase) → 정제 텍스트 (Anthropic US) → UI
-**보유 위치**: Supabase audio bucket + transcript_jobs.markdown + Deepgram (default 30일?) + Anthropic (API default zero-retention 추정 but DPA 확인 필요)
+**보유 위치**: Supabase audio bucket + transcript_jobs.markdown + Deepgram (default 30일 — PR-SEC11 대상) + Anthropic (Messages API default zero-retention, DPA `docs/legal/dpa-anthropic.md` 체결)
 
 ### 3.2 시나리오 B — 실시간 통역 세션 (live translate)
 1. host → `/api/translate/sessions` (POST) → `translate_sessions` insert + LiveKit room 생성 (server SDK token mint)
@@ -184,8 +184,8 @@ flowchart TB
 |---|---|---|---|---|---|---|
 | **Vercel** | US (글로벌 edge) | source / 로그 / 요청 context / function arg | metadata + 로그 | ✓ vercel.com/legal/dpa | SCC + EU-US Data Privacy Framework (DPF) certified | LOW |
 | **Supabase** | AWS ap-northeast-2 (Seoul, KR) — 확인 2026-06-26 | 전체 PII + 인증 토큰 | ALL | ✓ supabase.com/legal/dpa — DPA 2026-06-01 ver. `docs/legal/dpa-supabase-2026-06-01.pdf` (서명 대기) | EU→KR 한국 adequacy decision 2021-12 ✓ (SCC 불필요) | LOW |
-| **OpenAI (API)** | US | transcript / 인터뷰 텍스트 / 키워드 / Realtime audio | Sensitive PII | ✓ openai.com/policies/data-processing-addendum | SCC + DPF. **zero-retention header (`OpenAI-Beta`) 미사용** → 30일 기본 보존 | **HIGH** |
-| **Anthropic (Claude)** | US/글로벌 | insights / chat / report 입력 (PII 포함) | Sensitive PII | ✓ anthropic.com/legal/dpa | SCC + DPF. API 기본 zero-retention (모델 학습 미사용) — 확인 권장 | MEDIUM |
+| **OpenAI (API)** | US | transcript / 인터뷰 텍스트 / 키워드 / Realtime audio | Sensitive PII | ✓ openai.com/policies/data-processing-addendum (체결: `docs/legal/dpa-openai.md`) | SCC (DPA Schedule 2) + DPF. **PR-SEC10 이후 모든 chat 호출에 `store: false`** (per-call zero-retention). audio / Realtime / embeddings 은 org 차원 ZDR 신청 대상 | MEDIUM (chat) · HIGH (audio/Realtime, 신청 필요) |
+| **Anthropic (Claude)** | US/글로벌 | insights / chat / report 입력 (PII 포함) | Sensitive PII | ✓ anthropic.com/legal/dpa (체결: `docs/legal/dpa-anthropic.md`) | SCC (DPA Schedule 3 — EU SCC 2021/914 Module 2) + DPF. Messages API 기본 zero-retention (학습·로깅 미사용). `metadata.user_id` 미전송 — PR-SEC10 | LOW |
 | **Deepgram** | US | raw audio + speaker | Sensitive PII (생체 가능성) | ✓ deepgram.com/legal | SCC + DPF | MEDIUM |
 | **ElevenLabs** | US/EU | text → TTS, 전사 audio | Sensitive PII | ✓ elevenlabs.io/legal/dpa | SCC. zero-retention enterprise plan 옵션 | MEDIUM |
 | **LiveKit** | Distributed (Cloud tier 면 multi-region) | WebRTC SFU (audio stream) | Sensitive PII | ✓ livekit.io/legal/dpa | tier 따라 EU region 선택 가능. **현재 config 미확인** | MEDIUM-HIGH |
@@ -226,22 +226,26 @@ flowchart TB
 
 ---
 
-## 6. zero-retention / no-training 설정 권장 (LLM)
+## 6. zero-retention / no-training 설정 (LLM)
 
 ### OpenAI
-- Standard API: default 30일 보존 (abuse monitoring). zero-retention 은 enterprise / ZDR endpoint 또는 데이터 처리 협의 후 활성
-- 모델 학습 opt-out: API tier 는 default opt-out (chat completion API 는 학습에 미사용)
-- 권장: API request 시 `OpenAI-Beta: ...` 또는 enterprise 계약 검토. 우리 spendCredits 가 이미 per-org 제한 — 동의 + ZDR 활성 합치면 EU 안전
+- Standard API default: 30일 abuse-monitoring 보존. 모델 학습은 API tier default opt-out.
+- **PR-SEC10 (#TBD) 적용 상태 — 모든 chat 호출에 `providerOptions: { openai: { store: false } }`**:
+  - AI SDK 경로: `streamText / generateText / generateObject / streamObject` 전체 (`src/lib/llm/config.ts` 의 `ZERO_RETENTION` 상수 import — 24 call site)
+  - request 단위로 OpenAI 가 input/output 을 logs/Conversations API 에 저장하지 않음 (`store: false` 효과)
+  - audio (`openai.audio.transcriptions.create`) · Realtime sessions · embeddings 은 per-call `store` 옵션 없음 → org 차원 **Zero Data Retention 신청** 필요 (Enterprise 또는 별도 신청 — dashboard owner action)
+- Env override: `LLM_ZERO_RETENTION=false` 로 끌 수 있음 (debug 시에만 — 운영 default 는 enabled)
 
 ### Anthropic
-- API 기본 zero-retention (모델 학습 미사용). 추가 설정 불필요
-- DPA 서명만 확인
+- Messages API default zero-retention — 학습·로깅 미사용. 추가 per-call 플래그 불필요.
+- PR-SEC10 후: `metadata.user_id` 등 PII 필드 송신 0 — 토큰 카운트 / 타이밍만 provider 측에 남음.
+- DPA (`docs/legal/dpa-anthropic.md`) Schedule 3 에 EU SCC 2021/914 Module 2 포함 — 별도 SCC 체결 불필요.
 
 ### Deepgram
-- enterprise plan 에서 zero-retention 옵션. 현재 plan 확인 권장
+- enterprise plan 에서 zero-retention 옵션. 현재 plan 확인 권장 (PR-SEC11 대상).
 
 ### ElevenLabs
-- enterprise 에서 zero-retention. consumer plan 은 ToS 에 따라 일부 보존
+- enterprise 에서 zero-retention. consumer plan 은 ToS 에 따라 일부 보존 (PR-SEC11 대상).
 
 ---
 
@@ -252,7 +256,7 @@ flowchart TB
 | 수집 | 가입 | email, full_name, password hash, OAuth identifier | 영구 (계정 활성 동안) | Art. 6(1)(b) contract — OK |
 | 수집 | 첫 방문 | IP, UA → trial_fingerprints | 7일 (인덱스, but cron 없음 SEC-015) | Art. 6(1)(f) legitimate interest — 명시 필요 |
 | 수집 | 콘텐츠 업로드 | audio / video / docx → Storage + transcript_jobs.markdown | 영구 (사용자 삭제까지) | Art. 6(1)(b) — OK |
-| 처리 | LLM 호출 | transcript 텍스트, keywords, interview text → OpenAI / Anthropic | 처리자 측 30일 (OpenAI default) | Art. 28 + 44–49 — DPA + SCC + 동의 필요 |
+| 처리 | LLM 호출 | transcript 텍스트, keywords, interview text → OpenAI / Anthropic | OpenAI chat: `store: false` 즉시 미보존 / Anthropic: 기본 미보존 (PR-SEC10) | Art. 28 + 44–49 — DPA 체결 ✓ · SCC (DPA Schedule) ✓ · 명시 동의 (privacy policy) — TODO |
 | 처리 | 분석 | quotes / clusters → insights_* | 영구 | Art. 6(1)(b) — OK, but 정정권 (Art. 16) 부재 |
 | 보존 | 결제 | tax_invoice + receipt → payments | 5년 (전자상거래법) | Art. 6(1)(c) legal obligation — OK |
 | 익명화 | 없음 | — | — | (gap) |
@@ -267,7 +271,7 @@ flowchart TB
 | 데이터 흐름 위험 | 조치 | PR 후보 (followups.md) |
 |---|---|---|
 | ~~Supabase region 미확인~~ → ap-northeast-2 확정 (2026-06-26) | EU→KR adequacy decision 적용. SCC 불필요. DPA template 보관 + 실서명 행정 단계 남음 | PR-SEC11 ✓ |
-| OpenAI 30일 보존 | enterprise / ZDR 활성 + 동의 흐름 | PR-SEC10 |
+| OpenAI 30일 보존 | per-call `store: false` (chat) + org-level ZDR 신청 (audio/Realtime) + DPA | PR-SEC10 ✓ |
 | Mixpanel US + 동의 없이 init | consent gate + EU residency 또는 privacy-friendly 대체 (Plausible 등) | PR-SEC8 |
 | 익명 사용자 LLM 비용 abuse | 어플리케이션 rate limit (SEC-003) | PR-SEC4 |
 | respondent (3자) PII 처리 | use-policy 업데이트 + scheduler/insights 입력 폼에 "consent 받았는가" 체크 | PR-SEC12 |

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { generateObject, generateText, type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -594,6 +595,7 @@ async function runJob(args: {
             system: EXPAND_SYSTEM,
             prompt: keywords[0],
             temperature: 0.3,
+            providerOptions: ZERO_RETENTION,
           });
           similar = text
             .trim()
@@ -654,6 +656,7 @@ async function runJob(args: {
         temperature: 0.3,
         maxOutputTokens: 2000,
         maxRetries: 1,
+        providerOptions: ZERO_RETENTION,
       });
       researchQuestions = rqResult.object.research_questions;
       await patch({ research_questions: researchQuestions });
@@ -867,6 +870,7 @@ async function runJob(args: {
                 temperature: 0.2,
                 maxOutputTokens: 1500,
                 maxRetries: 1,
+                providerOptions: ZERO_RETENTION,
               });
               for (const q of result.object.quant) {
                 persistedClaims.push({
@@ -1032,6 +1036,7 @@ async function runJob(args: {
             temperature: 0.3,
             maxOutputTokens: 2000,
             maxRetries: 1,
+            providerOptions: ZERO_RETENTION,
           });
           draftAnswer = draftRes.object.answer_md.trim();
           draftCited = draftRes.object.cited_article_urls;
@@ -1066,6 +1071,7 @@ async function runJob(args: {
             temperature: 0.2,
             maxOutputTokens: 1500,
             maxRetries: 1,
+            providerOptions: ZERO_RETENTION,
           });
           critique = critiqueRes.object;
         } catch (err) {
@@ -1104,6 +1110,7 @@ async function runJob(args: {
               temperature: 0.3,
               maxOutputTokens: 2000,
               maxRetries: 1,
+              providerOptions: ZERO_RETENTION,
             });
             finalAnswer = reviseRes.object.answer_md.trim();
             finalCited = reviseRes.object.cited_article_urls;
@@ -1236,6 +1243,7 @@ async function runJob(args: {
         temperature: 0.2,
         maxOutputTokens: 8000,
         maxRetries: 1,
+        providerOptions: ZERO_RETENTION,
       });
       output = text.trim();
     } catch (err) {
@@ -1285,6 +1293,7 @@ async function runJob(args: {
         temperature: 0.2,
         maxOutputTokens: 4000,
         maxRetries: 1,
+        providerOptions: ZERO_RETENTION,
       });
       analytics = result.object;
       await pushAndPatch(

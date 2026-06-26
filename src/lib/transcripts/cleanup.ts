@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '../llm/config';
 import { CLEANUP_SYSTEM, cleanupSchema } from './cleanup-schema';
 import type { ElevenLabsWord } from './elevenlabs';
 
@@ -94,6 +95,7 @@ ${formatContext('after', after)}
     prompt,
     temperature: 0.1,
     maxOutputTokens: 4096,
+    providerOptions: ZERO_RETENTION,
   });
   return result.object.cleaned;
 }

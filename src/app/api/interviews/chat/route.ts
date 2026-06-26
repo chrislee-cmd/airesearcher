@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -179,6 +180,7 @@ export async function POST(req: Request) {
     messages: conversation.map((m) => ({ role: m.role, content: m.content })),
     temperature: 0.2,
     maxOutputTokens: 4096,
+    providerOptions: ZERO_RETENTION,
     onFinish: async ({ text }) => {
       try {
         await admin.from('interview_chat_messages').insert({

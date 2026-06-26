@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
       system: SYSTEM,
       prompt: `총 ${rows.length}개 문항입니다. 각각에 대해 모든 응답자 발화를 종합해서, mainstream(대표 경향성)과 outliers(소수 케이스)로 분리해 요약해주세요.\n\n${blocks.join('\n\n')}`,
       temperature: 0.2,
+      providerOptions: ZERO_RETENTION,
     });
     let summaries = result.object.summaries;
     // Defensive: pad/truncate to match row count exactly so the UI can map

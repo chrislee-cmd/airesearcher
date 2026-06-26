@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
 import { recruitingEmailDraftSchema } from '@/lib/recruiting-email-schema';
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
       system: SYSTEM,
       prompt: `다음 모집 브리프를 토대로 메일 필드를 채워주세요.\n\n${JSON.stringify(parsed.data.brief, null, 2)}`,
       temperature: 0.2,
+      providerOptions: ZERO_RETENTION,
     });
     return NextResponse.json({ draft: object });
   } catch (e) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits, getCreditsStatus } from '@/lib/credits';
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
     prompt: `다음은 1차 정리된 표준 양식 Markdown입니다(보고서 유형: ${reportType}). 이 내용을 그대로 보존하면서, 위 디자인 토큰과 이 유형의 챕터 구조 규칙을 따르는 단일 HTML 리포트를 작성하세요. Markdown 섹션 헤더는 HTML 챕터 구조에 1:1로 매핑하세요.\n\n${markdown}`,
     temperature: prompts.TEMPERATURE.generate,
     maxOutputTokens: 64000,
+    providerOptions: ZERO_RETENTION,
     onFinish: async ({ text }) => {
       if (skip_persist) return;
       let html = text.trim();
