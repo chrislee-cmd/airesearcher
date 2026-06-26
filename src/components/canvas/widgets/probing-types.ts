@@ -25,6 +25,8 @@ export type ProbingSuggestionSet = {
 // 위젯 mount 시 GET 으로 가져오고 stream 완료 시 N 번 POST → N row prepend.
 // id 는 server UUID 또는 POST 실패 시 in-memory fallback 의 'local-' prefix.
 // created_at 은 ISO 8601 (timestamptz) — 표시할 때 Date.parse 로 ms 변환.
+// PR-13: is_core — 인터뷰어가 ★ 로 마킹한 핵심 질문. 표시(시각)만, 정렬 영향
+// 없음. 새 row 는 default false, 토글은 PATCH /api/probing/questions/[id].
 export type ProbingQuestionRow = {
   id: string;
   created_at: string;
@@ -32,4 +34,5 @@ export type ProbingQuestionRow = {
   technique: ProbingQuestion['technique'];
   why: string;
   guide_reference?: string | null;
+  is_core: boolean;
 };

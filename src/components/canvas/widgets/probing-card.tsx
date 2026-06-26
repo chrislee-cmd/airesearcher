@@ -17,6 +17,10 @@
    pause (PR-8): ⏸/▶ 토글로 자동 트리거만 skip. transcript 수집은 계속
    되며 "지금 제안" 수동 버튼은 paused 와 무관 (강제 트리거 가능). 토글
    상태는 in-memory only — 새로고침 시 ▶ default.
+
+   PR-13: 호출 단위를 60초 × 10 질문 묶음 → 5초 × 1 질문 단일로 전환.
+   max_questions: 1 을 body 로 보내 서버 schema 가 단일 질문으로 응답.
+   각 질문 행에 ★ 토글이 붙어 핵심 표시 시 핑크 wash highlight.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -325,6 +329,7 @@ function ExpandedBody() {
             technique: string;
             why: string | null;
             guide_reference: string | null;
+            is_core: boolean | null;
             created_at: string;
           }>;
         };
@@ -337,6 +342,7 @@ function ExpandedBody() {
             technique: r.technique ?? 'tell_more',
             why: r.why ?? '',
             guide_reference: r.guide_reference ?? null,
+            is_core: r.is_core === true,
           }))
           .filter((r) => r.text.trim().length > 0);
         setQuestions(rows);
@@ -387,6 +393,7 @@ function ExpandedBody() {
                   technique: string;
                   why: string | null;
                   guide_reference: string | null;
+                  is_core: boolean | null;
                   created_at: string;
                 };
               };
@@ -398,6 +405,7 @@ function ExpandedBody() {
                   technique: j.row.technique,
                   why: j.row.why ?? '',
                   guide_reference: j.row.guide_reference ?? null,
+                  is_core: j.row.is_core === true,
                 };
               }
             }
@@ -414,6 +422,7 @@ function ExpandedBody() {
             technique: q.technique,
             why: q.why,
             guide_reference: null,
+            is_core: false,
           };
         })(),
       );
@@ -468,6 +477,9 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: text,
           interview_guide: guideRef.current,
+          // PR-13: 5초 주기 단일 질문. LLM 이 transcript / 가이드 보고 가장
+          // 정합되는 1 기법을 선택해 1 질문만 반환한다.
+          max_questions: 1,
         }),
       });
       if (!res.ok || !res.body) {
@@ -581,6 +593,47 @@ function ExpandedBody() {
       toast.push('복사 실패 — 직접 선택해서 복사해 주세요', { tone: 'warn' });
     }
   }
+
+  // PR-13: ★ 클릭 → is_core toggle. 즉시 UI 갱신 (optimistic) + PATCH 호출.
+  // 'local-' prefix 는 server 에 없으므로 in-memory 만 토글. PATCH 실패 시
+  // 토스트 + 직전 값으로 롤백.
+  const handleToggleCore = useCallback(
+    async (id: string) => {
+      let prevValue: boolean | null = null;
+      let nextValue: boolean | null = null;
+      setQuestions((prev) =>
+        prev.map((q) => {
+          if (q.id !== id) return q;
+          prevValue = q.is_core;
+          nextValue = !q.is_core;
+          return { ...q, is_core: nextValue };
+        }),
+      );
+      if (prevValue === null || nextValue === null) return;
+      if (id.startsWith('local-')) return;
+      try {
+        const res = await fetch(
+          `/api/probing/questions/${encodeURIComponent(id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ is_core: nextValue }),
+          },
+        );
+        if (!res.ok) throw new Error(`patch_failed_${res.status}`);
+      } catch {
+        // 실패 — 직전 값으로 롤백.
+        const restored = prevValue;
+        setQuestions((prev) =>
+          prev.map((q) => (q.id === id ? { ...q, is_core: restored } : q)),
+        );
+        toast.push('핵심 표시 저장 실패 — 잠시 후 다시 시도해 주세요', {
+          tone: 'warn',
+        });
+      }
+    },
+    [toast],
+  );
 
   // PR-12: ✕ 클릭 → 즉시 UI 제거 (optimistic) + DELETE 호출. 사용자 명시로
   // confirm / undo 모두 없음. DB 삭제 실패 시 토스트 + 같은 위치 복구.
@@ -910,13 +963,13 @@ function ExpandedBody() {
                 제안 질문 {(current?.questions.length ?? 0) + questions.length}개
               </span>
               <span className="text-xs text-mute-soft">
-                항목 클릭 → 복사 · ✕ → 삭제
+                클릭 → 복사 · ★ → 핵심 · ✕ → 삭제
               </span>
             </div>
           ) : null}
 
           <ul className="divide-y divide-line-soft">
-            {/* 진행 중 stream 의 질문들 — 아직 DB 미반영이라 ✕ 미노출
+            {/* 진행 중 stream 의 질문들 — 아직 DB 미반영이라 ✕ / ★ 미노출
                 (id 가 아직 없음). */}
             {current?.questions.map((q, i) => (
               <QuestionRow
@@ -927,9 +980,11 @@ function ExpandedBody() {
                 nowMs={now}
                 isSelected={false}
                 isDimmed={selectedId !== null}
+                isCore={false}
                 onClick={() => {
                   void handleCopy(q.text);
                 }}
+                onToggleCore={null}
                 onDelete={null}
               />
             ))}
@@ -946,9 +1001,13 @@ function ExpandedBody() {
                   nowMs={now}
                   isSelected={isSelected}
                   isDimmed={isDimmed}
+                  isCore={row.is_core}
                   onClick={() => {
                     void handleCopy(row.text);
                     setSelectedId((prev) => (prev === row.id ? null : row.id));
+                  }}
+                  onToggleCore={() => {
+                    void handleToggleCore(row.id);
                   }}
                   onDelete={() => {
                     void handleDelete(row.id);
@@ -972,7 +1031,7 @@ function ExpandedBody() {
               <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
                 상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
                 <br />
-                시작 후 5초마다 모든 기법별 후속 질문이 한 번에 제안됩니다.
+                시작 후 5초마다 한 개씩 후속 질문이 제안됩니다.
                 {source === 'tab' && (
                   <>
                     <br />
@@ -1052,9 +1111,12 @@ function formatRelativeKo(epochMs: number, nowMs: number): string {
   return `${Math.floor(diff / 86_400_000)}일 전`;
 }
 
-// PR-12: 개별 질문 한 줄 — 평면 list 의 한 row. 클릭 시 복사 + selection
-// toggle. hover 시 우측에 ✕ 버튼 (onDelete null 이면 미노출 — stream 중 transient
-// row 용). dim 상태는 부모가 전달.
+// PR-12/13: 개별 질문 한 줄 — 평면 list 의 한 row.
+// - 클릭: 복사 + selection toggle (PR-11 dim 효과).
+// - hover 우측: ★ (핵심 토글) + ✕ (삭제). 둘 다 transient stream row 에는
+//   미노출 (id 미정).
+// - isCore = true 면 행 전체에 rose wash + thicker rose border. dim 상태에서
+//   다른 row 가 어두워질 때도 핵심 표시는 유지된다 (시각 우선순위: 핵심 > dim).
 function QuestionRow({
   text,
   technique,
@@ -1062,7 +1124,9 @@ function QuestionRow({
   nowMs,
   isSelected,
   isDimmed,
+  isCore,
   onClick,
+  onToggleCore,
   onDelete,
 }: {
   text: string;
@@ -1071,7 +1135,9 @@ function QuestionRow({
   nowMs: number;
   isSelected: boolean;
   isDimmed: boolean;
+  isCore: boolean;
   onClick: () => void;
+  onToggleCore: (() => void) | null;
   onDelete: (() => void) | null;
 }) {
   const label =
@@ -1079,16 +1145,25 @@ function QuestionRow({
       ? PROBING_TECHNIQUE_LABEL[technique as ProbingTechnique]
       : technique || '제안';
   const rel = formatRelativeKo(createdAtMs, nowMs);
+  // 핵심 highlight 우선 — dim 상태에서도 살짝 보존되어 인터뷰어가 흐름을
+  // 잃지 않도록 (60% > 일반 dim 의 40%). 핵심 + selected 면 정상 opacity.
+  const wrapperOpacity = isDimmed ? (isCore ? 'opacity-60' : 'opacity-40') : '';
+  // 핵심 행: rose wash + thicker rose border. 일반 행: invisible border 로
+  // 자리만 점유 (highlight 토글 시 layout 안 흔들리도록).
+  const coreClasses = isCore
+    ? 'bg-rose/30 border-l-2 border-rose'
+    : 'border-l-2 border-transparent';
+  const reserveRight = onDelete && onToggleCore ? 'pr-14' : onDelete ? 'pr-8' : '';
   return (
-    <li className="group relative">
+    <li
+      className={`group relative rounded-xs transition duration-200 ${coreClasses} ${wrapperOpacity}`}
+    >
       {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
       <button
         type="button"
         aria-pressed={isSelected}
         onClick={onClick}
-        className={`w-full px-1 py-1.5 pr-8 text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore ${
-          isDimmed ? 'opacity-40' : ''
-        }`}
+        className={`w-full px-2 py-1.5 ${reserveRight} text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore`}
       >
         <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
           {label}
@@ -1098,6 +1173,38 @@ function QuestionRow({
           <span className="ml-2 text-xs text-mute-soft">· {rel}</span>
         )}
       </button>
+      {onToggleCore && (
+        // eslint-disable-next-line react/forbid-elements -- micro icon-button overlaid inside list row; <IconButton> primitive enforces 28px+ chrome which crowds the inline text layout.
+        <button
+          type="button"
+          aria-label={isCore ? '핵심 표시 해제' : '핵심으로 표시'}
+          aria-pressed={isCore}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCore();
+          }}
+          className={`absolute ${onDelete ? 'right-7' : 'right-1'} top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-xs transition duration-150 hover:bg-paper ${
+            isCore
+              ? 'text-amore'
+              : 'text-mute-soft opacity-0 hover:text-ink-2 group-hover:opacity-100 focus-visible:opacity-100'
+          }`}
+        >
+          {/* 빈 별(☆) / 채워진 별(★) — fill 만 토글, stroke 는 동일. */}
+          <svg
+            viewBox="0 0 24 24"
+            width="13"
+            height="13"
+            fill={isCore ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </button>
+      )}
       {onDelete && (
         // eslint-disable-next-line react/forbid-elements -- micro icon-button overlaid inside list row; <IconButton> primitive enforces 28px+ chrome which crowds the inline text layout.
         <button
@@ -1141,7 +1248,7 @@ export const probingCard: WidgetContent = {
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 기법별 후속 질문을 5초마다 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 5초마다 후속 질문을 한 개씩 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',
