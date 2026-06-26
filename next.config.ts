@@ -6,7 +6,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 // Baseline security headers (PR-SEC3 stage 1) — applied to every response.
 // `Permissions-Policy` keeps camera/mic available for the LiveKit translate
 // flow but blocks geolocation outright (we never request it).
-const securityHeaders = [
+const baseSecurityHeaders = [
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',
@@ -18,6 +18,53 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(self), geolocation=()',
   },
+];
+
+// PR-SEC3 stage 2 — Content Security Policy in report-only mode.
+// Enforced version (with nonce) is deferred to stage 3 after a week of
+// violation monitoring on preview/prod. Origin allowlist is derived from
+// runtime call sites (see PROJECT.md §12.2) — third parties currently
+// reached from the browser:
+//   - Supabase (REST + realtime websocket): https/wss://*.supabase.co
+//   - LiveKit cloud (translate room media): https/wss://*.livekit.cloud
+//   - Mixpanel browser SDK: https://api*.mixpanel.com, https://*.mxpnl.com
+//   - Vercel Speed Insights / Analytics beacons: https://*.vercel-insights.com
+//   - Google Fonts + Pretendard CDN: fonts.googleapis.com / gstatic.com /
+//     cdn.jsdelivr.net
+// `'unsafe-inline'` / `'unsafe-eval'` stay until stage 3 swaps to nonce.
+const cspReportOnly = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+  "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+  "img-src 'self' blob: data: https:",
+  "media-src 'self' blob: data: https:",
+  "worker-src 'self' blob:",
+  [
+    "connect-src 'self'",
+    'https://*.supabase.co',
+    'wss://*.supabase.co',
+    'https://*.livekit.cloud',
+    'wss://*.livekit.cloud',
+    'https://api.openai.com',
+    'https://api.anthropic.com',
+    'https://api.mixpanel.com',
+    'https://api-js.mixpanel.com',
+    'https://*.mxpnl.com',
+    'https://*.vercel-insights.com',
+    'https://vitals.vercel-insights.com',
+  ].join(' '),
+  "frame-src 'self' https:",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  'upgrade-insecure-requests',
+].join('; ');
+
+const securityHeaders = [
+  ...baseSecurityHeaders,
+  { key: 'Content-Security-Policy-Report-Only', value: cspReportOnly },
 ];
 
 const nextConfig: NextConfig = {
