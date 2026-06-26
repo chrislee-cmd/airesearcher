@@ -80,6 +80,15 @@ const MIN_TRANSCRIPT_CHARS = 30;
 // 무한 스크롤 / "더 불러오기" 는 후속 PR.
 const DISPLAY_LIMIT = 50;
 
+// PR-D15: placeholder / streaming preview boxes — Memphis 라이트 (2px 검정
+// solid + 6px radius + xs offset shadow). 위젯 안 secondary 컨테이너라 sm 보다
+// 한 단계 작은 톤. 재사용 위해 module-level 객체로 (re-render 시 동일 ref).
+const memphisPlaceholderStyle = {
+  border: '2px solid var(--canvas-card-border)',
+  borderRadius: 'var(--sidebar-nav-radius)',
+  boxShadow: 'var(--memphis-shadow-xs)',
+} as const;
+
 // transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -977,7 +986,16 @@ function ExpandedBody() {
           {/* stream 중 인디케이터 — 이미 history 가 있어 empty placeholder
               로 떨어지지 않을 때만 list 맨 위에 짧게 표시. */}
           {streaming && !current && questions.length > 0 && (
-            <div className="mb-3 rounded-xs border border-dashed border-line-soft bg-paper px-3 py-2 text-center text-sm text-mute-soft">
+            // PR-D15: 옛 dashed → Memphis 라이트 (2px solid border + xs offset
+            // shadow). 위젯 안 secondary 컨테이너라 sm 보다 한 단계 작게.
+            <div
+              className="mb-3 bg-paper px-3 py-2 text-center text-sm text-ink-2"
+              style={{
+                border: '2px solid var(--canvas-card-border)',
+                borderRadius: 'var(--sidebar-nav-radius)',
+                boxShadow: 'var(--memphis-shadow-xs)',
+              }}
+            >
               제안 생성 중…
             </div>
           )}
@@ -1042,18 +1060,19 @@ function ExpandedBody() {
             })}
           </ul>
 
-          {/* placeholder — 영속화 list 도 비어 있고 stream 도 없을 때만. */}
+          {/* placeholder — 영속화 list 도 비어 있고 stream 도 없을 때만.
+              PR-D15: Memphis 라이트 (2px solid + xs offset shadow). */}
           {!current && questions.length === 0 && (
             hydrating ? (
-              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+              <div className="bg-paper px-4 py-6 text-center text-md text-ink-2" style={memphisPlaceholderStyle}>
                 저장된 제안 불러오는 중…
               </div>
             ) : streaming ? (
-              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+              <div className="bg-paper px-4 py-6 text-center text-md text-ink-2" style={memphisPlaceholderStyle}>
                 제안 생성 중…
               </div>
             ) : !isLive ? (
-              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+              <div className="bg-paper px-4 py-6 text-center text-md text-ink-2" style={memphisPlaceholderStyle}>
                 상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
                 <br />
                 시작 후 30초마다 직전 발화에 맞춘 날카로운 후속 질문 3개가 제안됩니다.
@@ -1067,18 +1086,25 @@ function ExpandedBody() {
                 )}
               </div>
             ) : !hasTranscript ? (
-              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+              <div className="bg-paper px-4 py-6 text-center text-md text-ink-2" style={memphisPlaceholderStyle}>
                 transcript 가 들어오면 첫 제안이 표시됩니다.
               </div>
             ) : (
-              <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+              <div className="bg-paper px-4 py-6 text-center text-md text-ink-2" style={memphisPlaceholderStyle}>
                 첫 자동 제안까지 대기 중. &lsquo;지금 제안&rsquo; 으로 즉시 시도할 수 있어요.
               </div>
             )
           )}
 
           {error && (
-            <div className="mt-3 rounded-xs border border-warning bg-paper px-3 py-2 text-sm text-warning">
+            <div
+              className="mt-3 bg-paper px-3 py-2 text-sm text-warning"
+              style={{
+                border: '2px solid var(--color-warning)',
+                borderRadius: 'var(--sidebar-nav-radius)',
+                boxShadow: '2px 2px 0 var(--color-warning)',
+              }}
+            >
               제안 생성 실패: {error}
             </div>
           )}

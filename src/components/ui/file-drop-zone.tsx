@@ -66,6 +66,21 @@ export function FileDropZone({
     inputRef.current?.click();
   }
 
+  // PR-D15 — Memphis tone (shell pop 정합):
+  // - 3px 검정 hard border (실선) + 6px radius + 3px offset 검정 shadow
+  // - 흰 bg base · hover 시 옅은 노랑 wash · drag-over 시 핑크 accent border
+  //   + offset shadow 살짝 확장 (4px) 로 "들고 있는" 감각 + 미세한 translate
+  // - label 은 Outfit weight 700 검정 (지원 형식 라벨은 weight 500)
+  const memphisBorder = dragOver
+    ? 'var(--canvas-accent)'
+    : 'var(--canvas-card-border)';
+  const memphisShadow = dragOver
+    ? '4px 4px 0 var(--canvas-card-border)'
+    : 'var(--memphis-shadow-sm)';
+  const memphisBg = dragOver
+    ? 'var(--sidebar-nav-bg-hover)'
+    : 'var(--sidebar-nav-bg)';
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
   return (
     <div
       onDragOver={(e) => {
@@ -95,14 +110,15 @@ export function FileDropZone({
           openPicker();
         }
       }}
-      className={`flex flex-col items-center justify-center border bg-paper text-center transition-colors duration-[120ms] rounded-sm ${
+      className={`flex flex-col items-center justify-center text-center transition-[transform,box-shadow,background-color,border-color] duration-[140ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--canvas-accent)] ${
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-      } ${
-        dragOver
-          ? 'border-ink'
-          : 'border-dashed border-line hover:border-mute-soft'
-      } ${className ?? ''}`}
-      style={{ borderStyle: dragOver ? 'solid' : 'dashed' }}
+      } ${dragOver ? '-translate-x-[1px] -translate-y-[1px]' : ''} ${className ?? ''}`}
+      style={{
+        background: memphisBg,
+        border: `3px solid ${memphisBorder}`,
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: memphisShadow,
+      }}
       {...rest}
     >
       <input
@@ -118,10 +134,20 @@ export function FileDropZone({
         }}
       />
       {label !== undefined && (
-        <div className="text-lg font-medium text-ink-2">{label}</div>
+        <div
+          className="text-lg text-ink"
+          style={{ fontFamily: outfitStack, fontWeight: 700, letterSpacing: '-0.005em' }}
+        >
+          {label}
+        </div>
       )}
       {helperText !== undefined && (
-        <div className="mt-2 text-sm text-mute-soft">{helperText}</div>
+        <div
+          className="mt-2 text-sm text-ink-2"
+          style={{ fontFamily: outfitStack, fontWeight: 500 }}
+        >
+          {helperText}
+        </div>
       )}
       {children}
     </div>
