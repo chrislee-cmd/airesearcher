@@ -5,7 +5,7 @@
 
    세션 lifecycle:
    - "세션 시작" 버튼 → useRealtimeTranscription.start({ source }) → 'live'.
-   - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
+   - 'live' 인 동안: 30초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
    영속화 (PR-8 → PR-12): suggest stream 완료 직후 응답의 각 질문을
@@ -19,8 +19,14 @@
    상태는 in-memory only — 새로고침 시 ▶ default.
 
    PR-13: 호출 단위를 60초 × 10 질문 묶음 → 5초 × 1 질문 단일로 전환.
-   max_questions: 1 을 body 로 보내 서버 schema 가 단일 질문으로 응답.
    각 질문 행에 ★ 토글이 붙어 핵심 표시 시 핑크 wash highlight.
+
+   PR-14: 5초 × 1q → **30초 × 3q** 로 호흡 확장. transcript window 도
+   90초 → 30초 (사용자 명시 — 직전 30초 발화에 집중). PROBING_SYSTEM 이
+   why 깊이 / 맥락 hook / sharpness 룰을 우선하도록 재작성됐고, 각 질문에
+   `why_sharp` 메타가 붙어 인터뷰어가 sharpness 를 즉시 검증 가능 — UI
+   노출은 X, DB row.why 로 영속화 후 사후 검증용. 호출 빈도 -83%
+   (12/min → 2/min), 총 token 은 비슷해서 비용은 약간 감소.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,13 +59,20 @@ import type {
   ProbingSuggestionSet,
 } from './probing-types';
 
-// transcript window — 최근 90초. probing prompt 가 받는 양과 동일.
-const PROBING_WINDOW_MS = 90_000;
+// transcript window — PR-14: 최근 30초 (사용자 명시). probing prompt 가 받는
+// 양과 동일. 90초 → 30초 로 줄여 직전 발화의 구체 단어 / 망설임을 더 정확히
+// hook 하도록.
+const PROBING_WINDOW_MS = 30_000;
 // 가이드 textarea localStorage 저장 debounce.
 const GUIDE_SAVE_DEBOUNCE_MS = 500;
-// 자동 호출 간격. 5초 — 빠른 피드백 위해 단축. in-flight 가드 (inFlightRef)
-// 가 중복 호출 방지하므로 LLM latency > 5s 여도 안전.
-const AUTO_INTERVAL_MS = 5_000;
+// 자동 호출 간격 — PR-14: 5초 → 30초. 5초 × 1q 가 표면적 follow-up 으로
+// 흐른다는 사용자 평가에 대응, 호흡을 늘려 sharp 한 3q 묶음을 받는다.
+// in-flight 가드 (inFlightRef) 가 중복 호출 방지하므로 LLM latency > 30s
+// 여도 안전.
+const AUTO_INTERVAL_MS = 30_000;
+// 한 호출당 받을 질문 수 — PR-14: 1 → 3. 30초 윈도우에서 다른 angle 의
+// 날카로운 follow-up 3개를 묶음으로 받는다.
+const QUESTIONS_PER_CALL = 3;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
 // 위젯에 표시할 / fetch 할 최근 질문 갯수. PR-12 에서 set 묶음 → 개별 질문
@@ -259,7 +272,7 @@ function ExpandedBody() {
 
   const isLive = sessionStatus === 'live';
 
-  // 90초 윈도우 — LLM 호출이 받는 transcript_window 와 같은 윈도우. UI
+  // 30초 윈도우 — LLM 호출이 받는 transcript_window 와 같은 윈도우. UI
   // 에서는 hasTranscript 만 사용 (제안 카드 empty state + 수동 트리거 가드).
   // hook 의 전체 segments 에서 시간 cutoff 만 적용. now 가 1초마다 갱신되어
   // 세션이 idle 인 동안에도 cutoff 가 흘러간다.
@@ -477,9 +490,10 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: text,
           interview_guide: guideRef.current,
-          // PR-13: 5초 주기 단일 질문. LLM 이 transcript / 가이드 보고 가장
-          // 정합되는 1 기법을 선택해 1 질문만 반환한다.
-          max_questions: 1,
+          // PR-14: 30초 주기 3 질문 묶음. LLM 이 직전 30초 발화를 보고
+          // why 깊이 / 맥락 hook / sharpness 룰에 맞춰 3개 angle 을 만들어
+          // 반환한다.
+          max_questions: QUESTIONS_PER_CALL,
         }),
       });
       if (!res.ok || !res.body) {
@@ -500,20 +514,31 @@ function ExpandedBody() {
       const parsed = await parsePartialJson(buffer);
       const obj = parsed.value as
         | {
-            questions?: Array<{ text?: string; technique?: string }>;
+            questions?: Array<{
+              text?: string;
+              technique?: string;
+              why_sharp?: string;
+            }>;
             intents?: string[];
           }
         | null;
       if (obj && Array.isArray(obj.questions)) {
         const clean: ProbingQuestion[] = obj.questions
-          .filter((q): q is { text?: string; technique?: string } => !!q)
+          .filter(
+            (q): q is { text?: string; technique?: string; why_sharp?: string } =>
+              !!q,
+          )
           .map((q) => ({
             text: typeof q.text === 'string' ? q.text : '',
             technique:
               typeof q.technique === 'string' ? q.technique : 'tell_more',
-            // 의도 (why) 서브 텍스트는 사용자 요청으로 UI 에서 제거.
-            // 타입 호환을 위해 빈 문자열 유지.
-            why: '',
+            // PR-14: UI 는 의도 서브 텍스트를 더 이상 표시하지 않지만,
+            // 모델이 반환한 why_sharp (어느 발화 신호를 hook 했는지) 를
+            // DB row.why 로 저장해 인터뷰어 / 워커가 사후 검증할 수 있게
+            // 한다. 없으면 빈 문자열.
+            why: typeof q.why_sharp === 'string' ? q.why_sharp : '',
+            why_sharp:
+              typeof q.why_sharp === 'string' ? q.why_sharp : undefined,
           }))
           .filter((q) => q.text.trim().length > 0);
         if (clean.length > 0) {
@@ -1031,7 +1056,7 @@ function ExpandedBody() {
               <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
                 상단에서 마이크 또는 탭 오디오를 선택하고 &lsquo;세션 시작&rsquo;을 눌러 주세요.
                 <br />
-                시작 후 5초마다 한 개씩 후속 질문이 제안됩니다.
+                시작 후 30초마다 직전 발화에 맞춘 날카로운 후속 질문 3개가 제안됩니다.
                 {source === 'tab' && (
                   <>
                     <br />
@@ -1243,12 +1268,12 @@ export const probingCard: WidgetContent = {
     // sky — 분석/컨설팅 톤. 8개 위젯이 6개 accent 색을 공유하는 구조라
     // 재사용 (peach/sun 도 2번씩). translate 의 mint 와 시각 구분.
     accent: 'sky',
-    // 호출 단위 비용은 사용자 친화 X — 5초마다 자동 호출되는데 매번 차감하면
+    // 호출 단위 비용은 사용자 친화 X — 30초마다 자동 호출되는데 매번 차감하면
     // 사용자가 위젯을 꺼버린다. 옵션 A (무료, 시스템 흡수) 로 시작 — 사용량
     // 폭증 시 후속 PR 에서 세션 단위 부과 (옵션 B) 로 전환.
     cost: 0,
     thumbnail: '/thumbnail/probing.png',
-    description: '마이크 또는 탭 오디오 세션에서 5초마다 후속 질문을 한 개씩 제안합니다',
+    description: '마이크 또는 탭 오디오 세션에서 30초마다 직전 발화에 맞춘 날카로운 후속 질문을 3개씩 제안합니다',
     expandedCols: 3,
   },
   state: 'idle',

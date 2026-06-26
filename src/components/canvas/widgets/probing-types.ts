@@ -6,10 +6,15 @@ import type { ProbingTechnique } from '@/lib/probing-prompts';
 
 // 표시용 단일 질문. server schema 와 모양이 같지만 partial 스트림 동안에는
 // technique 이 invalid string 일 수 있으므로 string 으로 완화.
+//
+// PR-14: `why_sharp` 메타 — 이 질문이 응답자의 어느 발화 신호 (구체 단어 /
+// 망설임 / 모순) 를 hook 하는지 한 줄. UI 에는 노출 X (DB row.why 에 저장
+// 되어 인터뷰어 / 워커가 sharpness 를 사후 검증 가능).
 export type ProbingQuestion = {
   text: string;
   technique: ProbingTechnique | string;
   why: string;
+  why_sharp?: string;
 };
 
 // stream 진행 중인 transient 묶음. 완료 직후 각 질문이 ProbingQuestionRow 로
