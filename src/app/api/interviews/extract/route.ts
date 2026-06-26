@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `파일명: ${filename}\n\n인터뷰 마크다운:\n\n${markdown.slice(0, 200000)}`,
     temperature: 0.1,
+    providerOptions: ZERO_RETENTION,
   });
 
   return result.toTextStreamResponse();

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
@@ -171,6 +172,7 @@ VOC는 filename도 발화도 입력에 있는 문자열 그대로 — 절대 변
       system: SYSTEM,
       prompt: `총 ${rows.length}개 문항입니다. 단계 1(주제 그룹핑) → 단계 2(융합 인사이트 작성) 순으로 작업해주세요. 결과 row 개수는 입력보다 줄어들어도 좋습니다 — 의미적으로 묶이는 문항은 반드시 묶어서 하나의 인사이트로 통합하세요. 단, 각 인사이트 안에서 대표 경향성과 소수 케이스는 끝까지 분리해서 적습니다.\n\n${blocks.join('\n\n')}`,
       temperature: 0.3,
+      providerOptions: ZERO_RETENTION,
     });
     return result.toTextStreamResponse();
   } catch (e) {

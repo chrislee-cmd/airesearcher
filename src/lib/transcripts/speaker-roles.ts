@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '../llm/config';
 import {
   SPEAKER_ROLES_SYSTEM,
   SPEAKER_ROLES_SYSTEM_EN,
@@ -220,6 +221,7 @@ ${sampleLines}`;
       // 1024 → 2048: 영어 인터뷰에서 LLM 이 reasoning 을 길게 쓰면 truncation
       // → schema validation 실패 가능성. 2배 여유 (PR #348 first run 진단).
       maxOutputTokens: 2048,
+      providerOptions: ZERO_RETENTION,
     });
     decision = llmResult.object;
   } catch (e) {

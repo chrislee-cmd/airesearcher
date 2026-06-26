@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음 모집 브리프로 설문을 설계하세요.\n\n${JSON.stringify(brief, null, 2)}`,
     temperature: 0.3,
+    providerOptions: ZERO_RETENTION,
   });
 
   return result.toTextStreamResponse();

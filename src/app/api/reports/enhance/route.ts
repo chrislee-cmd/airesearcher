@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getCreditsStatus } from '@/lib/credits';
@@ -174,6 +175,7 @@ export async function POST(request: Request) {
     prompt: userPrompt,
     temperature: 0.4,
     maxOutputTokens: 64000,
+    providerOptions: ZERO_RETENTION,
     onFinish: async ({ text }) => {
       let markdown = text.trim();
       if (markdown.startsWith('```')) {

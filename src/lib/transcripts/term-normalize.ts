@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '../llm/config';
 import {
   TERM_NORMALIZE_SYSTEM,
   termNormalizeSchema,
@@ -119,6 +120,7 @@ export async function normalizeTermsInTranscript(
       prompt: `다음 인터뷰 전사록 전체를 보고, 같은 고유명사·전문용어의 STT 변형 클러스터를 찾아 정규화하세요. 확신 없는 클러스터는 결과에서 제외.\n\n[전사록]\n${markdown}`,
       temperature: 0.1,
       maxOutputTokens: 2048,
+      providerOptions: ZERO_RETENTION,
     });
     decision = result.object;
   } catch (e) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { slideOutlineSchema } from '@/lib/reports-slides-schema';
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
       prompt: `다음은 1차 정리된 표준 양식 Markdown 보고서입니다(보고서 유형: ${reportType}). 위 가이드에 따라 slide outline JSON을 작성하세요.\n\n${markdown}`,
       temperature: 0.3,
       maxOutputTokens: 16000,
+      providerOptions: ZERO_RETENTION,
     });
     return NextResponse.json({ outline: result.object });
   } catch (e) {

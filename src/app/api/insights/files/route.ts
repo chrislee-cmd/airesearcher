@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { convertFileToMarkdown } from '@/lib/insights/convert';
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
       // input window and avoids paying for prompt tokens on outlier inputs.
       prompt: `파일명: ${file.name}\n\n마크다운:\n\n${markdown.slice(0, 200_000)}`,
       temperature: 0.1,
+      providerOptions: ZERO_RETENTION,
     });
 
     for await (const quote of elementStream) {

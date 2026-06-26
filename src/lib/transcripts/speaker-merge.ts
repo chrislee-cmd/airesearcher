@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '../llm/config';
 import {
   SPEAKER_MERGE_SYSTEM,
   speakerMergeSchema,
@@ -116,6 +117,7 @@ ${sample.map((s) => `Speaker ${s.speaker}: ${s.text}`).join('\n')}`;
       prompt,
       temperature: 0.1,
       maxOutputTokens: 1024,
+      providerOptions: ZERO_RETENTION,
     });
     decision = result.object;
   } catch (e) {

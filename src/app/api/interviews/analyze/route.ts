@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { spendCredits, getCreditsStatus } from '@/lib/credits';
@@ -176,6 +177,7 @@ async function llmConsolidate(
       system: SYSTEM,
       prompt: `질문 목록 (총 ${questions.length}개):\n\n${numbered}`,
       temperature: 0,
+      providerOptions: ZERO_RETENTION,
     });
     return result.object.groups;
   } catch (e) {

@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '../llm/config';
 import {
   NUMBER_NORMALIZE_SYSTEM,
   NUMBER_NORMALIZE_SYSTEM_EN,
@@ -181,6 +182,7 @@ export async function normalizeNumbersInTranscript(
       // 한도 + reasoning + JSON overhead ≈ 5-7k tokens. 기존 4096 은 truncation
       // 가능성 — 2배 여유 (PR #348 first run 진단).
       maxOutputTokens: 8192,
+      providerOptions: ZERO_RETENTION,
     });
     decision = result.object;
   } catch (e) {

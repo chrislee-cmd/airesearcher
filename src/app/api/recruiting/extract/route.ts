@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
     system: SYSTEM,
     prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 모집 조건과 일정을 추출하세요.\n\n${corpus}`,
     temperature: 0.1,
+    providerOptions: ZERO_RETENTION,
   });
 
   return result.toTextStreamResponse();
