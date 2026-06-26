@@ -6,7 +6,7 @@
    pop 잠금 디자인 (PR-D2 재정의) — banner-top + framed + display.
    - 카드 chrome: 흰 bg + 3px 검은 border + 14px radius + 6px offset shadow.
      (canvas pop 토큰 — globals.css @theme).
-   - 헤더 (banner-top, 140px): 노랑 #ffd53d bg + 검은 3px bottom border +
+   - 헤더 (banner-top, 140px): 노랑 bg (canvas-card-header-bg) + 검은 3px bottom border +
      Outfit 폰트. 윗줄에 cost (좌) + state pill (우), 아래에 대형 32px label
      + description.
    - 본문 (framed): 2.5px 검은 inner border + inset shadow 액자 wrapper.
@@ -47,11 +47,11 @@ function PopStatePill({ state }: { state: WidgetState }) {
     <span
       className="shrink-0 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider"
       style={{
-        background: '#fff',
-        color: '#000',
-        border: '2px solid #000',
+        background: 'var(--canvas-card-bg)',
+        color: 'var(--canvas-card-border)',
+        border: '2px solid var(--canvas-card-border)',
         borderRadius: 4,
-        boxShadow: '2px 2px 0 #000',
+        boxShadow: '2px 2px 0 var(--canvas-card-border)',
       }}
     >
       {popStatePillLabel(state)}
@@ -141,7 +141,7 @@ export function WidgetShell({
         <div
           className="h-full overflow-y-auto"
           style={{
-            border: '2.5px solid #000',
+            border: '2.5px solid var(--canvas-card-border)',
             borderRadius: 6,
             boxShadow:
               'inset 0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 2px 6px rgba(0, 0, 0, 0.05)',
