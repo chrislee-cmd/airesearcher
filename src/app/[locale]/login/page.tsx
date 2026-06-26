@@ -1,7 +1,17 @@
+import { Outfit } from 'next/font/google';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { GoogleSignInButton } from '@/components/google-signin-button';
 import { EmailPasswordForm } from '@/components/email-password-form';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import './login.css';
+
+// Outfit display 폰트 — PR-D13 pop 톤 정렬. landing / canvas 와 동일 weight.
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export default async function LoginPage({
   params,
@@ -13,28 +23,29 @@ export default async function LoginPage({
   const t = await getTranslations('Auth');
 
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
-      <div className="absolute right-6 top-6">
+    <main
+      className={`${outfit.variable} auth-pop relative flex flex-1 items-center justify-center px-6 py-12`}
+    >
+      <div className="pop-lang">
         <LanguageSwitcher />
       </div>
-      <div className="w-full max-w-[420px] border border-line bg-paper-soft p-9 rounded-md [box-shadow:var(--shadow-bento)]">
-        <h1 className="text-3xl font-bold tracking-[-0.018em] text-ink-2">
-          {t('signInTitle')}
-        </h1>
-        <p className="mt-2 text-md leading-[1.7] text-mute">
-          {t('signInSubtitle')}
-        </p>
-        <div className="mt-7">
+      <div className="w-full max-w-[440px]">
+        <header className="pop-hero">
+          <span className="pop-eyebrow">Research-mochi</span>
+          <h1 className="pop-display">{t('signInTitle')}</h1>
+          <p className="pop-subtitle">{t('signInSubtitle')}</p>
+        </header>
+        <div className="pop-card">
           <GoogleSignInButton label={t('google')} />
+          <div className="my-6 flex items-center gap-3">
+            <span className="h-px flex-1" />
+            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
+              {t('or')}
+            </span>
+            <span className="h-px flex-1" />
+          </div>
+          <EmailPasswordForm />
         </div>
-        <div className="my-6 flex items-center gap-3">
-          <span className="h-px flex-1 bg-line" />
-          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-            {t('or')}
-          </span>
-          <span className="h-px flex-1 bg-line" />
-        </div>
-        <EmailPasswordForm />
       </div>
     </main>
   );
