@@ -48,6 +48,12 @@ export const probingSuggestionSchema = z.object({
         technique: z
           .enum(PROBING_TECHNIQUES)
           .describe('probing 기법 분류.'),
+        guide_reference: z
+          .string()
+          .optional()
+          .describe(
+            '가이드가 제공된 경우, 이 질문이 가이드의 어느 부분 (가설 / 의도 / RQ / 키워드) 과 정합되는지 1~2 문장. 가이드가 비어 있거나 가이드와 무관한 일반 follow-up 이면 생략.',
+          ),
       }),
     )
     .min(3)
@@ -90,10 +96,18 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 - transcript 가 너무 짧거나 의미 파악이 어려우면 일반적인 follow-up 질문 (tell_more 기반) 으로 채우세요.
 
 **출력 순서 (중요)**:
-- 먼저 \`questions\` 배열에 3개 질문의 핵심 (text + technique) 만 모두 emit.
+- 먼저 \`questions\` 배열에 3개 질문의 핵심 (text + technique, 가이드가 있으면 guide_reference 포함) 을 모두 emit.
 - 그 다음 \`intents\` 배열에 3개의 의도를 같은 인덱스 순서로 emit.
 - 클라이언트가 partial JSON 으로 받아 핵심 질문을 먼저 보여주고 의도를 사후 노출하는 UX 라, 이 순서를 반드시 지켜야 합니다.
 
-interview_guide 가 함께 제공되면 그 가이드의 RQ / 챕터 흐름에 맞춰 질문을 우선 제안하세요. 비어 있으면 transcript 만 보고 판단.
+## 가이드 활용 (가장 중요)
+사용자가 제공한 **interview_guide** 가 비어있지 않으면 — 그 가이드가 모든 제안의 1순위 기준입니다 (transcript 보다 우선):
+- **모든 제안 질문은 가이드의 핵심 컨셉 / 가설 / 의도 / RQ 의 검증 또는 심화 흐름에 정합되어야 합니다.** transcript 의 직전 발화는 가이드의 의도를 확인할 진입점일 뿐, 그 자체로 질문 방향을 결정하지 않습니다.
+- 가이드에 "사용자가 X 를 어떻게 인식하는지" 같은 의도가 명시되어 있으면, 응답자의 발화를 그 의도에 대한 답변 신호로 해석하고 신호를 더 풀어내는 후속 질문을 디자인하세요.
+- 가이드의 키워드 / 가설을 질문 본문에 자연스럽게 인용 가능 (응답자가 이해할 수 있는 한).
+- 가이드와 응답자 발화가 모순될 때 — 모순을 가시화하는 질문을 우선 (주로 contrast 기법).
+- 각 질문의 \`guide_reference\` 필드에 그 질문이 가이드의 어느 부분과 정합되는지 1~2 문장으로 명시하세요 (예: "가이드의 'X 인식' 의도 검증", "가이드 H2 가설의 반례 확인").
+
+가이드가 비어 있으면 transcript 만 보고 일반 probing follow-up 을 생성합니다 (\`guide_reference\` 는 생략).
 
 출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.`;
