@@ -13,9 +13,9 @@ import {
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
-// 위젯 trigger 는 PR-13 부터 5초 주기 × 1 질문. 단일 호출이 5초 안에 끝날
+// 위젯 trigger 는 PR-14 부터 30초 주기 × 3 질문. 한 호출이 30초 안에 끝날
 // 필요는 없음 — client 의 inFlightRef 가드가 중복 호출 방지. Sonnet 4.6 의
-// 1 질문 응답은 보통 1~3 초.
+// 3 질문 응답은 보통 3~6 초.
 export const maxDuration = 60;
 
 const Body = z.object({
@@ -25,16 +25,16 @@ const Body = z.object({
   // PR-2 범위 밖. client 는 빈 문자열로 보냄. 후속 PR 에서 interview_jobs
   // template 를 묶을 자리.
   interview_guide: z.string().max(20_000).optional().default(''),
-  // PR-13: 클라이언트가 1 ~ PROBING_QUESTION_COUNT 사이를 보낸다. 기본값
-  // 1 — 5초 주기 단일 질문. 풀-기법 batch 가 필요한 호출자는 명시적으로
-  // PROBING_QUESTION_COUNT 를 보내면 된다.
+  // PR-13/14: 클라이언트가 1 ~ PROBING_QUESTION_COUNT 사이를 보낸다. 기본값
+  // 3 — 30초 주기 sharp 3 질문 묶음 (PR-14). 풀-기법 batch 가 필요한 호출자
+  // 는 명시적으로 PROBING_QUESTION_COUNT 를 보내면 된다.
   max_questions: z
     .number()
     .int()
     .min(1)
     .max(PROBING_QUESTION_COUNT)
     .optional()
-    .default(1),
+    .default(3),
 });
 
 export async function POST(request: Request) {
@@ -92,40 +92,50 @@ export async function POST(request: Request) {
     ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideSan.wrapped}\n\n위 가이드가 모든 제안의 1순위 기준입니다. 각 질문이 가이드의 어느 부분과 정합되는지 \`guide_reference\` 에 명시하세요.\n\n`
     : '';
 
-  // PR-13: count 가 1 이면 "모든 기법 각 1개씩" 룰을 한 호출에 적용할 수
-  // 없으므로 "가장 정합되는 1 기법 선택" 으로 바꾼다. count 가 풀 길이면
-  // 기존 PR-10 룰 유지.
+  // PR-13/14: count 에 따라 기법 분배 룰을 다르게 보낸다.
+  //  - count = 1 (legacy): "가장 정합되는 1 기법 선택" — 한 호출에 "모든
+  //    기법 각 1개씩" 룰은 적용 불가.
+  //  - count = PROBING_QUESTION_COUNT (풀 batch): PR-10 룰 그대로 — 5개
+  //    기법 각 1개씩.
+  //  - 그 외 (PR-14 의 기본값 3 등): 5개 기법 중 가장 정합되는 N 개 선택,
+  //    중복 없음. PROBING_SYSTEM 의 sharpness 룰이 기법 다양화보다 우선.
   const techniqueRule = isSingle
     ? '정의된 기법 중 transcript / 가이드 와 가장 정합되는 **1 기법** 을 선택해 1 질문만 생성하세요.'
-    : `정의된 ${PROBING_QUESTION_COUNT}개 기법 중 ${count}개를 선택, 각 기법은 정확히 1번씩 등장 (technique 값이 중복되면 안 됨).`;
+    : count >= PROBING_QUESTION_COUNT
+      ? `정의된 ${PROBING_QUESTION_COUNT}개 기법 각 1개씩 (technique 값이 중복되면 안 됨).`
+      : `정의된 ${PROBING_QUESTION_COUNT}개 기법 중 transcript / 가이드 의 hook 신호와 가장 정합되는 **${count}개** 각도를 선택해 ${count} 질문을 만드세요. **기법 다양화보다 PROBING_SYSTEM 의 sharpness / why 깊이 / 맥락 hook 룰이 항상 우선**.`;
   const closingInstruction = hasGuide
-    ? `위 가이드와 transcript 를 기반으로 **${count}개의 probing 질문** 을 제안하세요. ${techniqueRule} 응답자의 직전 발화에서 출발하되, 가이드의 가설 / 의도 검증을 우선합니다.`
-    : `위 transcript 를 기반으로 **${count}개의 probing 질문** 을 제안하세요. ${techniqueRule} 응답자의 직전 발화에서 출발하세요.`;
+    ? `위 가이드와 transcript 를 기반으로 **${count}개의 날카로운 probing 질문** 을 제안하세요. ${techniqueRule} 직전 30초 발화의 구체 단어 / 망설임 / 모순에서 출발하되, 가이드의 가설 / 의도 검증을 우선합니다.`
+    : `위 transcript 를 기반으로 **${count}개의 날카로운 probing 질문** 을 제안하세요. ${techniqueRule} 직전 30초 발화의 구체 단어 / 망설임 / 모순에서 출발하세요.`;
 
   const schema = buildProbingSuggestionSchema(count);
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema,
     system: PROBING_SYSTEM,
-    prompt: `${guideBlock}## Transcript (최근 ~90초)
+    prompt: `${guideBlock}## Transcript (최근 ~30초)
 ${transcriptSan.wrapped}
 
 ---
-${closingInstruction} \`questions\` 의 ${count}개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,
+${closingInstruction} 각 질문에 \`why_sharp\` (응답자의 어느 발화 신호를 hook 했는지 한 줄) 를 반드시 채우세요. \`questions\` 의 ${count}개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,
     // 0.4 — 같은 transcript 에서도 매 호출마다 약간 다른 각도가 제안되도록.
     // 0 에 두면 거의 동일한 질문이 반복돼 위젯 가치가 떨어짐.
     temperature: 0.4,
-    // PR-13: 1 질문이면 ~200 token, 풀 batch 면 ~2000 token. count 에 비례.
-    maxOutputTokens: isSingle ? 400 : 2000,
+    // PR-13/14: 1 질문 ~400 / 3 질문 ~1200 / 풀 batch ~2000 token. why_sharp
+    // 메타 추가로 질문당 ~100 token 여유 더 둠.
+    maxOutputTokens: isSingle ? 400 : count >= PROBING_QUESTION_COUNT ? 2000 : 1600,
     providerOptions: ZERO_RETENTION,
   });
 
-  // 디버그 헤더 — preview / 운영에서 가이드와 count 가 실제로 전송됐는지
-  // 빠르게 확인. 운영 영향 0, 인증된 사용자만 호출하므로 보안 노출 아님.
+  // 디버그 헤더 — preview / 운영에서 가이드 / count / window 크기가 실제로
+  // 전송됐는지 빠르게 확인. 운영 영향 0, 인증된 사용자만 호출하므로 보안
+  // 노출 아님. window-chars 는 client 의 30초 window 추출이 정상 동작하는지
+  // 검증용 (PR-14).
   return result.toTextStreamResponse({
     headers: {
       'x-probing-guide-length': String(guideText.length),
       'x-probing-question-count': String(count),
+      'x-probing-window-chars': String(transcript_window.length),
     },
   });
 }
