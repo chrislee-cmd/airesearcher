@@ -946,12 +946,12 @@ function SuggestionList({
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           제안 질문 {questions.length}개{rel ? ` · ${rel}` : ''}
         </span>
-        <span className="text-xs text-mute-soft">카드 클릭 → 복사</span>
+        <span className="text-xs text-mute-soft">항목 클릭 → 복사</span>
       </div>
-      {/* PR-10: 한 set 가 10 카드 (기법 각 1개). 위젯 width 안에서 5행 ×
-          2열 grid — 한 set 전체가 한 화면에 보이도록 압축. 좁은 폭에서는
-          1열 stack 으로 자연스럽게 fallback. */}
-      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {/* PR-10: 한 set 가 10 항목 (기법 각 1개). 컨테이너 / border 없이
+          단순 1열 텍스트 리스트 — 위젯 안 공간 차지 최소화. 기법 라벨을
+          텍스트 앞에 inline prefix 로 노출 (chip / box X). */}
+      <ul className="divide-y divide-line-soft">
         {questions.map((q, i) => {
           const label =
             q.technique && q.technique in PROBING_TECHNIQUE_LABEL
@@ -959,18 +959,16 @@ function SuggestionList({
               : q.technique || '제안';
           return (
             <li key={i}>
-              {/* eslint-disable-next-line react/forbid-elements -- card-shaped clickable. <Button> primitive enforces center-aligned single-line capsule layout incompatible with this multi-row text+chip card. */}
+              {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
               <button
                 type="button"
                 onClick={() => onCopy(q.text)}
-                className="flex h-full w-full flex-col gap-2 rounded-sm border border-line bg-paper px-4 py-3 text-left transition-colors duration-[120ms] hover:border-amore"
+                className="w-full px-1 py-1.5 text-left text-md leading-[1.55] text-ink-2 transition-colors duration-[120ms] hover:text-amore"
               >
-                <span className="self-start rounded-xs border border-line-soft px-2 py-0.5 text-xs uppercase tracking-[0.18em] text-mute-soft">
+                <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
                   {label}
                 </span>
-                <span className="text-md leading-[1.55] text-ink-2">
-                  {q.text}
-                </span>
+                {q.text}
               </button>
             </li>
           );
