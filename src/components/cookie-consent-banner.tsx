@@ -8,6 +8,7 @@ import {
   CONSENT_VERSION,
   COOKIE_CONSENT_STORAGE_KEY,
 } from '@/lib/consent';
+import { CONSENT_CHANGED_EVENT } from '@/hooks/use-consent';
 
 // CookieConsentBanner — mounted in the locale-layout, shown once per
 // browser. The user picks essential/analytics/marketing and the choice
@@ -17,9 +18,8 @@ import {
 //
 // We deliberately do NOT block render or interaction. The banner is
 // fixed-bottom and dismissible by accepting/rejecting; analytics
-// libraries (Mixpanel) read the stored decision before sending events
-// in a follow-up PR (SEC8). For this PR the banner only persists
-// preferences — it doesn't gate any tracker today.
+// libraries (Mixpanel) read the stored decision via the useConsent hook
+// (PR-SEC8) and init/reset reactively when the choice changes.
 
 type Choice = {
   essential: true; // always on, non-negotiable
@@ -50,6 +50,15 @@ function persistStored(choice: Choice) {
     );
   } catch {
     // Private mode / quota — fall through; user will see banner again.
+  }
+  // Notify same-tab listeners (Mixpanel gate, future settings UI) — the
+  // native `storage` event only fires in other tabs, so without this
+  // dispatch the analytics SDK would not init / reset until reload.
+  try {
+    window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));
+  } catch {
+    // Ancient browsers — `Event` constructor unavailable. Banner falls
+    // back to next page load picking up the new state from localStorage.
   }
 }
 

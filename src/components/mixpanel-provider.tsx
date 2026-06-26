@@ -3,7 +3,11 @@
 import { useEffect } from 'react';
 import mixpanel from 'mixpanel-browser';
 import { createClient } from '@/lib/supabase/client';
+import { useConsent } from '@/hooks/use-consent';
 
+// Module-level so the wrapped `track()` (callable from anywhere) can short
+// circuit before the user grants analytics consent. Flipped by the
+// provider effect when consent changes.
 let initialized = false;
 
 // 피처 키 → 한글 라벨. 사이드바·생성 이벤트에서 동적으로 조립할 때 사용.
@@ -106,9 +110,34 @@ function identifyUser(u: { id: string; email?: string | null }) {
 }
 
 export function MixpanelProvider({ children }: { children: React.ReactNode }) {
+  // PR-SEC8 — gate init/track on the user's analytics consent (GDPR
+  // ePrivacy). `useConsent` defaults to deny on SSR + first paint, so the
+  // network call to mixpanel.com only happens after explicit grant.
+  const { analytics } = useConsent();
+
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
     if (!token) return;
+
+    if (!analytics) {
+      // Either pre-decision or explicit revoke. If we previously init'd in
+      // this session (consent grant → later revoke), tear identity down and
+      // persist mixpanel's opt-out so even a direct mixpanel.* call would
+      // be a no-op.
+      if (initialized) {
+        try {
+          mixpanel.reset();
+          mixpanel.opt_out_tracking();
+        } catch {
+          // SDK occasionally throws if localStorage is unavailable — the
+          // module-level `initialized = false` below is what `track()`
+          // actually reads, so this catch is purely defensive.
+        }
+        initialized = false;
+      }
+      return;
+    }
+
     if (!initialized) {
       mixpanel.init(token, {
         track_pageview: 'full-url',
@@ -118,6 +147,13 @@ export function MixpanelProvider({ children }: { children: React.ReactNode }) {
         // 명시 track() 만 신뢰 소스로 사용한다.
         autocapture: false,
       });
+      // Clears any persisted opt-out flag from a prior revoke in this
+      // browser, so re-granting consent resumes tracking without reload.
+      try {
+        mixpanel.opt_in_tracking();
+      } catch {
+        // see note in revoke branch above
+      }
       initialized = true;
     }
 
@@ -139,6 +175,6 @@ export function MixpanelProvider({ children }: { children: React.ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [analytics]);
   return <>{children}</>;
 }
