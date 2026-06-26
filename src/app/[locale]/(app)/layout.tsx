@@ -68,11 +68,9 @@ export default async function AppLayout({
          <WorkspaceProvider>
          <div className={`${outfit.variable} flex flex-1 overflow-hidden`}>
            <Sidebar
-             projects={projects.map((p) => ({ id: p.id, name: p.name }))}
              email={user?.email ?? null}
              credits={credits}
              isAuthed={!!user}
-             showPreviewFeatures={flags.isUnlimited}
              isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
            <main className="flex-1 overflow-auto p-6">{children}</main>
