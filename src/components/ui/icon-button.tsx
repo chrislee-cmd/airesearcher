@@ -4,8 +4,8 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 // Shared <IconButton> primitive — codifies the recurring icon-only
 // button patterns scattered across the app. Audit observed ~14 sites
-// (workspace-panel 5, voice-concierge 2, desk-research 1, translate-
-// console 1, plus admin chrome ~5) that wrap a single glyph or SVG in
+// (workspace-panel 5, desk-research 1, translate-console 1, plus admin
+// chrome ~5) that wrap a single glyph or SVG in
 // a <button> with hover-color-only treatment.
 //
 // Variants (color/treatment):

@@ -7,7 +7,7 @@
 //   - event.user.email / username / ip_address  → keep id only
 //   - event.request.cookies / Authorization & Cookie headers
 //   - event.request.data — body of POSTs to our PII-bearing routes
-//     (transcripts, interviews, voice, translate, account, billing).
+//     (transcripts, interviews, translate, account, billing).
 //     We don't try to detect PII inside arbitrary JSON — instead we
 //     drop the whole body for those paths.
 //   - event.extra / event.contexts string values matching obvious PII
@@ -39,7 +39,6 @@ const PII_ROUTE_PREFIXES: readonly string[] = [
   '/api/transcripts/',
   '/api/translate/',
   '/api/video/',
-  '/api/voice/',
 ];
 
 const PII_HEADER_KEYS: readonly string[] = [
