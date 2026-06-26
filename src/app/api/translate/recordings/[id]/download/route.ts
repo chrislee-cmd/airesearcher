@@ -122,7 +122,7 @@ async function loadTranscript(
   for (let i = 0; i < 50; i++) {
     let q = admin
       .from('translate_messages')
-      .select('kind, text, lang, ts')
+      .select('kind, text, lang, speaker, ts')
       .eq('session_id', sessionId)
       .order('ts', { ascending: true })
       .order('id', { ascending: true })

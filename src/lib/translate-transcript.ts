@@ -37,6 +37,9 @@ export type TranscriptMessage = {
   kind: 'input' | 'output';
   text: string;
   lang: string | null;
+  // PR-T2 turn detection. NULL on legacy rows (pre-migration) — falls
+  // back to the "unknown" label in the renderer.
+  speaker?: 'host' | 'guest' | null;
   ts: string; // ISO timestamp
 };
 
@@ -57,6 +60,28 @@ const TAG_LABELS: Record<
   ja: { input: 'source', output: 'output' },
   th: { input: 'source', output: 'output' },
 };
+
+// Speaker tags rendered alongside the kind tag when the row carries a
+// PR-T2 speaker label. Legacy rows fall back to the "unknown" string.
+const SPEAKER_LABELS: Record<
+  'ko' | 'en' | 'ja' | 'th',
+  { host: string; guest: string; unknown: string }
+> = {
+  ko: { host: '진행자', guest: '응답자', unknown: '미지정' },
+  en: { host: 'host', guest: 'guest', unknown: 'unknown' },
+  ja: { host: 'ホスト', guest: 'ゲスト', unknown: '不明' },
+  th: { host: 'host', guest: 'guest', unknown: 'unknown' },
+};
+
+function speakerLabel(
+  locale: 'ko' | 'en' | 'ja' | 'th',
+  speaker: 'host' | 'guest' | null | undefined,
+): string {
+  const labels = SPEAKER_LABELS[locale];
+  if (speaker === 'host') return labels.host;
+  if (speaker === 'guest') return labels.guest;
+  return labels.unknown;
+}
 
 const FILE_HEADERS: Record<
   'ko' | 'en' | 'ja' | 'th',
@@ -152,7 +177,12 @@ export function renderTranslateTranscriptText(
     // Korean tags can be longer (2-char hangul), so we pad to 8 cols
     // regardless of locale.
     const padded = `[${tag}]`.padEnd(8, ' ');
-    lines.push(`[${stamp}] ${padded} ${m.text}`);
+    // PR-T2: prefix with the speaker tag so a reader can scan
+    // host vs guest at a glance. Width-padded for the same reason as
+    // the kind tag — Korean / Japanese labels can be wider.
+    const speaker = speakerLabel(meta.locale, m.speaker);
+    const speakerPad = `[${speaker}]`.padEnd(10, ' ');
+    lines.push(`[${stamp}] ${speakerPad}${padded} ${m.text}`);
   }
 
   if (messages.length === 0) {
@@ -342,6 +372,13 @@ export async function renderTranslateTranscriptDocx(
     const stamp = offsetFromStart(m.ts, startMs);
     const tag = m.kind === 'input' ? tags.input : tags.output;
     const tagColor = m.kind === 'input' ? AP.muteSoft : AP.amore;
+    const speaker = speakerLabel(meta.locale, m.speaker);
+    const speakerColor =
+      m.speaker === 'host'
+        ? AP.amore
+        : m.speaker === 'guest'
+          ? AP.ink
+          : AP.muteSoft;
     children.push(
       new Paragraph({
         spacing: { before: 180, after: 30 },
@@ -354,6 +391,12 @@ export async function renderTranslateTranscriptDocx(
             characterSpacing: 30,
             font: { ascii: 'Inter', cs: 'Sarabun', eastAsia: 'Pretendard' },
           }),
+          new TextRun({
+            text: '   ·   ',
+            size: SIZE.tag,
+            color: AP.muteSoft,
+          }),
+          eyebrow(speaker, speakerColor),
           new TextRun({
             text: '   ·   ',
             size: SIZE.tag,
