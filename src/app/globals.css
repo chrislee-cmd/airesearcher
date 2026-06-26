@@ -11,16 +11,12 @@
   --color-amore: #a06fda;
   --color-amore-soft: #b690e2;
   --color-amore-bg: #e7defe;
-  --color-amore-tint: #d6c3fb;     /* 카드 헤더 포인트 톤 — amore-bg 보다 한 단계 진함 */
-  --color-pacific: #1d1b20;
-  --color-pacific-bg: #f3f0eb;
 
   /* Text */
   --color-ink: #1d1b20;
   --color-ink-2: #2a262f;
   --color-mute: #5b5965;
   --color-mute-soft: #8a8693;
-  --color-gray-warm: #6f6c78;
 
   /* Surfaces / lines */
   --color-line: rgba(29, 27, 32, 0.10);
@@ -51,10 +47,10 @@
   --font-hand: "Caveat", cursive;
 
   /* Radius scale */
+  --radius-2xs: 2px;
   --radius-xs: 4px;
   --radius-sm: 14px;
   --radius-md: 24px;
-  --radius-lg: 32px;
   --radius-pill: 999px;
 
   /* Font-size scale (B-1, option C — conservative consolidation).
@@ -149,56 +145,8 @@ html, body {
 }
 
 /* =========================================================================
-   Bento primitives — Tailwind 클래스로 표현하기 어려운 통합 패턴.
+   Editorial primitives — Tailwind 클래스로 표현하기 어려운 통합 패턴.
    ========================================================================= */
-.bento-card {
-  background: var(--color-paper-soft);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-bento);
-  padding: 22px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s ease;
-}
-.bento-card:hover { transform: translateY(-2px); }
-.bento-surface {
-  background: var(--color-paper-soft);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-bento);
-}
-.bento-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-line);
-  background: var(--color-paper-soft);
-  color: var(--color-ink);
-  font-weight: 600;
-  font-size: 13.5px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.bento-pill:hover { transform: translateY(-1px); box-shadow: var(--shadow-bento); }
-.bento-pill.primary { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
-.bento-pill.primary:hover { background: #000; }
-.bento-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-pacific-bg);
-  color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
 .hand { font-family: var(--font-hand); }
 
 /* Editorial eyebrow primitives — bento 톤으로 살짝 완화 */
