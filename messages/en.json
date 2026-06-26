@@ -216,6 +216,14 @@
     "rejectAll": "Reject all",
     "savePreferences": "Save preferences"
   },
+  "Topbar": {
+    "tabs": {
+      "canvas": "Canvas",
+      "projects": "Projects",
+      "members": "Members",
+      "settings": "Settings"
+    }
+  },
   "Sidebar": {
     "dashboard": "Dashboard",
     "quotes": "Transcript Generator",

@@ -5,7 +5,7 @@ import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
-import { Sidebar } from '@/components/sidebar';
+import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { DeskJobProvider } from '@/components/desk-job-provider';
@@ -63,15 +63,17 @@ export default async function AppLayout({
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
-         <div className={`${outfit.variable} flex flex-1 overflow-hidden`}>
-           <Sidebar
-             email={user?.email ?? null}
+         <div className={`${outfit.variable} flex flex-1 flex-col overflow-hidden`}>
+           <Topbar
+             userEmail={user?.email ?? null}
              credits={credits}
              isAuthed={!!user}
              isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
-           <main className="flex-1 overflow-auto p-6">{children}</main>
-           <WorkspacePanel />
+           <div className="flex flex-1 overflow-hidden">
+             <main className="flex-1 overflow-auto p-6">{children}</main>
+             <WorkspacePanel />
+           </div>
          </div>
 
          <TrialInitializer enabled={!!user} />

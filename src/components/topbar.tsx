@@ -1,33 +1,43 @@
-import { LanguageSwitcher } from './language-switcher';
-import { SignOutButton } from './sign-out-button';
+import { getTranslations } from 'next-intl/server';
+import { TopbarTabs } from './topbar-tabs';
+import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
-import { getTranslations } from 'next-intl/server';
 
-// PR-D5: 노랑 banner + 검정 3px 하단 border + Outfit display logo.
-// 사이드바와 시각 일관 (캔버스의 노랑/검정/Memphis 톤). 본 컴포넌트
-// 는 일부 비-사이드바 라우트 (canvas-mock 등) 에서 사용.
+// PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
+// + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
 export async function Topbar({
   credits,
   userEmail,
   isAuthed,
+  isSuperAdmin = false,
 }: {
   credits: number | null;
   userEmail: string | null;
   isAuthed: boolean;
+  isSuperAdmin?: boolean;
 }) {
-  const t = await getTranslations('Common');
   const tBrand = await getTranslations('Brand');
+  const tTabs = await getTranslations('Topbar.tabs');
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
+
+  const tabs = [
+    { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
+    { key: 'projects', href: '/projects', label: tTabs('projects') },
+    { key: 'members', href: '/members', label: tTabs('members') },
+    { key: 'settings', href: '/settings', label: tTabs('settings') },
+  ];
+
   return (
     <header
-      className="flex h-14 items-center justify-between px-8"
+      data-coachmark-id="topbar"
+      className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
       style={{
         background: 'var(--sidebar-bg-strong)',
         borderBottom: 'var(--sidebar-border-width) solid var(--sidebar-border)',
       }}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-4">
         <div
           style={{
             fontFamily: outfitStack,
@@ -39,35 +49,21 @@ export async function Topbar({
         >
           {tBrand('name')}
         </div>
-        {isAuthed && credits !== null && (
-          <span
-            className="text-md tabular-nums"
-            style={{
-              fontFamily: outfitStack,
-              fontWeight: 700,
-              color: 'var(--sidebar-border)',
-            }}
-          >
-            {t('creditsRemaining', { count: credits })}
-          </span>
-        )}
         <BackgroundJobPill />
       </div>
-      <div className="flex items-center gap-4">
-        {isAuthed && (
-          <span
-            className="hidden text-sm sm:inline"
-            style={{
-              fontFamily: outfitStack,
-              fontWeight: 600,
-              color: 'var(--sidebar-border)',
-            }}
-          >
-            {userEmail}
-          </span>
+
+      {isAuthed && <TopbarTabs tabs={tabs} />}
+
+      <div className="flex shrink-0 items-center gap-3">
+        {isAuthed ? (
+          <TopbarAccount
+            email={userEmail}
+            credits={credits}
+            isSuperAdmin={isSuperAdmin}
+          />
+        ) : (
+          <SignInButton />
         )}
-        <LanguageSwitcher />
-        {isAuthed ? <SignOutButton /> : <SignInButton />}
       </div>
     </header>
   );

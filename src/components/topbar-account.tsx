@@ -13,14 +13,13 @@ import { IconButton } from '@/components/ui/icon-button';
 type Props = {
   email: string | null;
   credits: number | null;
-  isAuthed: boolean;
   isSuperAdmin?: boolean;
 };
 
-// The footer block of the sidebar. Shows account name + credits, and a
-// gear button that opens a popover with language / members / credits /
-// sign-out — all the things that used to live in the topbar.
-export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props) {
+// PR-D7: 사이드바 → 헤더 탭 전환 후, 우측 끝의 account trigger. 기존
+// SidebarAccount 의 popover 동작을 가로 헤더용으로 정렬 — 트리거 = 아바타
+// + 이름 + 크레딧 + gear 한 줄, dropdown 은 트리거 아래로 펼침.
+export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
   const tAuth = useTranslations('Auth');
@@ -44,19 +43,11 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
   function changeLocale(next: 'ko' | 'en') {
     if (next === locale) return;
     track('settings_locale_change_click', { from: locale, to: next });
-    // Persist preference for logged-in users so future logins from new
-    // devices skip Accept-Language detection. Fire-and-forget — the URL
-    // change below is what the user actually waits for.
-    if (isAuthed) {
-      const supabase = createClient();
-      void supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) return;
-        void supabase
-          .from('profiles')
-          .update({ locale: next })
-          .eq('id', user.id);
-      });
-    }
+    const supabase = createClient();
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      void supabase.from('profiles').update({ locale: next }).eq('id', user.id);
+    });
     startTransition(() => {
       router.replace(pathname, { locale: next });
     });
@@ -71,47 +62,17 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
     router.refresh();
   }
 
-  // PR-D5: 캔버스와 같은 시각 — Memphis 카드 (노랑 bg + 검정 3px
-   // border + offset shadow). Outfit 폰트.
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
-
-  if (!isAuthed) {
-    return (
-      <div className="px-3 pb-4 pt-3">
-        <Link
-          href="/login"
-          onClick={() => track('sidebar_signin_link_click')}
-          className="block px-3 py-2 text-center text-sm uppercase tracking-[0.18em] transition-transform duration-[120ms] hover:-translate-y-0.5"
-          style={{
-            background: 'var(--sidebar-border)',
-            color: '#fff',
-            border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
-            borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-sm)',
-            fontFamily: outfitStack,
-            fontWeight: 700,
-          }}
-        >
-          {tAuth('signIn')}
-        </Link>
-      </div>
-    );
-  }
-
-  // The visible name in the row — the local-part of the email reads more
-  // like a display name when no separate display field exists.
   const displayName = email ? email.split('@')[0] : '';
   const avatarLetter = (displayName.charAt(0) || '?').toUpperCase();
 
   return (
-    <div className="relative px-3 pb-4 pt-3" ref={popRef}>
+    <div className="relative" ref={popRef}>
       <div
-        className="flex items-center gap-2 px-2.5 py-2.5"
+        className="flex items-center gap-2 px-2 py-1.5"
         style={{
           background: 'var(--sidebar-bg-strong)',
-          border:
-            'var(--sidebar-border-width) solid var(--sidebar-border)',
+          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
           borderRadius: 'var(--sidebar-nav-radius)',
           boxShadow: 'var(--memphis-shadow-sm)',
         }}
@@ -119,8 +80,8 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
         <div
           className="flex shrink-0 items-center justify-center"
           style={{
-            width: 30,
-            height: 30,
+            width: 26,
+            height: 26,
             background: '#fff',
             color: '#000',
             border:
@@ -129,26 +90,27 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             boxShadow: 'var(--memphis-shadow-xs)',
             fontFamily: outfitStack,
             fontWeight: 800,
-            fontSize: 13,
+            fontSize: 12,
             letterSpacing: '-0.02em',
           }}
         >
           {avatarLetter}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="hidden min-w-0 max-w-[160px] sm:block">
           <div
-            className="truncate text-md"
+            className="truncate text-sm"
             style={{
               fontFamily: outfitStack,
               fontWeight: 700,
               color: 'var(--sidebar-border)',
+              lineHeight: 1.1,
             }}
           >
             {displayName}
           </div>
           {status?.isUnlimited ? (
             <div
-              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              className="truncate text-xs-soft tabular-nums"
               style={{
                 fontFamily: outfitStack,
                 fontWeight: 600,
@@ -159,7 +121,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </div>
           ) : status?.isTrialActive && status.trialEndsAt ? (
             <div
-              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              className="truncate text-xs-soft tabular-nums"
               style={{
                 fontFamily: outfitStack,
                 fontWeight: 600,
@@ -172,7 +134,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </div>
           ) : credits !== null ? (
             <div
-              className="mt-0.5 truncate text-xs-soft tabular-nums"
+              className="truncate text-xs-soft tabular-nums"
               style={{
                 fontFamily: outfitStack,
                 fontWeight: 600,
@@ -203,7 +165,7 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
 
       {open && (
         <div
-          className="absolute bottom-full left-3 right-3 z-modal mb-2 py-1 text-sm"
+          className="absolute right-0 top-full z-modal mt-2 w-60 py-1 text-sm"
           style={{
             background: 'var(--sidebar-nav-bg)',
             border:
@@ -212,7 +174,6 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             boxShadow: 'var(--memphis-shadow-sm)',
           }}
         >
-          {/* Language toggle */}
           <div className="px-3 py-2">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
               {tCommon('language')}
@@ -236,15 +197,6 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
             </div>
           </div>
           <div className="my-1 h-px bg-line-soft" />
-          <PopoverLink
-            href="/members"
-            onClick={() => {
-              track('settings_members_click');
-              setOpen(false);
-            }}
-          >
-            {t('members')}
-          </PopoverLink>
           <PopoverLink
             href="/credits"
             onClick={() => {

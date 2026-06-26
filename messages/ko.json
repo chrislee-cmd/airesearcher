@@ -216,6 +216,14 @@
     "rejectAll": "전체 거부",
     "savePreferences": "선택 저장"
   },
+  "Topbar": {
+    "tabs": {
+      "canvas": "캔버스",
+      "projects": "프로젝트",
+      "members": "멤버",
+      "settings": "설정"
+    }
+  },
   "Sidebar": {
     "dashboard": "대시보드",
     "quotes": "전사록 생성기",
