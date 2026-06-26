@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '../llm/config';
 import {
   SPEAKER_ROLES_SYSTEM,
@@ -161,7 +162,7 @@ async function classifyFromTurns(
   filename: string,
   language: TranscriptLanguage,
 ): Promise<SpeakerRolesResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return { roles: null, audit: { skipped: true, reason: 'missing_api_key' } };
   }

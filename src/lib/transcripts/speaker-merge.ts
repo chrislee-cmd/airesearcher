@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '../llm/config';
 import {
   SPEAKER_MERGE_SYSTEM,
@@ -75,7 +76,7 @@ export async function mergeSpeakers(
   words: ElevenLabsWord[],
   filename: string,
 ): Promise<{ words: ElevenLabsWord[]; decision: SpeakerMergeDecision | null }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return { words, decision: null };
 
   const turns = buildTurns(words);

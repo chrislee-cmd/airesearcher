@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -15,7 +16,7 @@ import {
   type TaxInvoiceRequest,
 } from '@/lib/billing';
 
-const BANK_TO_EMAIL = process.env.QUOTE_TO_EMAIL || 'chris.lee@meteor-research.com';
+const BANK_TO_EMAIL = env.QUOTE_TO_EMAIL;
 
 function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
@@ -38,8 +39,8 @@ async function sendBankTransferEmail(args: {
   accountHolder: string | null;
   taxInvoice: TaxInvoiceRequest | null;
 }): Promise<boolean> {
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = env.GMAIL_USER;
+  const gmailPass = env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailPass) {
     console.error('[billing/checkout] GMAIL_USER or GMAIL_APP_PASSWORD missing');
     return false;
@@ -121,7 +122,7 @@ const Body = z.object({
 });
 
 function originFromRequest(req: Request): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (env.NEXT_PUBLIC_SITE_URL) return env.NEXT_PUBLIC_SITE_URL;
   const url = new URL(req.url);
   return `${url.protocol}//${url.host}`;
 }
@@ -217,8 +218,8 @@ export async function POST(request: Request) {
   }
 
   // ── Lemon Squeezy card rail ─────────────────────────────────────────────
-  const apiKey = process.env.LEMONSQUEEZY_API_KEY;
-  const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+  const apiKey = env.LEMONSQUEEZY_API_KEY;
+  const storeId = env.LEMONSQUEEZY_STORE_ID;
   if (!apiKey || !storeId) {
     console.error('[billing/checkout] LEMONSQUEEZY_API_KEY or LEMONSQUEEZY_STORE_ID missing');
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });

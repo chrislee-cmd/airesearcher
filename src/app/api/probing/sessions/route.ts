@@ -11,6 +11,7 @@
 // shape — 다만 LiveKit / DB row 는 필요 없다 (위젯이 휘발성).
 
 import { NextResponse } from 'next/server';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 
@@ -33,13 +34,13 @@ export async function POST() {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
   }
 
   const transcriptionModel =
-    process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+    env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
 
   // turn_detection.server_vad 가 있어야 transcription session 이
   // utterance 경계마다 `*.completed` 이벤트를 emit. 없으면 delta 만

@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // Supabase exposes per-organization billing/usage via the Management
@@ -8,9 +9,9 @@ import type { ProviderUsage } from '../types';
 const ORG_LIST_URL = 'https://api.supabase.com/v1/organizations';
 
 export async function getSupabaseUsage(): Promise<ProviderUsage> {
-  const projectUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const accessToken = !!process.env.SUPABASE_ACCESS_TOKEN;
+  const projectUrl = !!env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRole = !!env.SUPABASE_SERVICE_ROLE_KEY;
+  const accessToken = !!env.SUPABASE_ACCESS_TOKEN;
   const envKeys = [
     { key: 'NEXT_PUBLIC_SUPABASE_URL', present: projectUrl },
     { key: 'SUPABASE_SERVICE_ROLE_KEY', present: serviceRole },
@@ -42,7 +43,7 @@ export async function getSupabaseUsage(): Promise<ProviderUsage> {
 
   try {
     const orgRes = await fetch(ORG_LIST_URL, {
-      headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN!}` },
+      headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN!}` },
       cache: 'no-store',
     });
     if (!orgRes.ok) throw new Error(`organizations HTTP ${orgRes.status}`);
@@ -57,7 +58,7 @@ export async function getSupabaseUsage(): Promise<ProviderUsage> {
     const usageRes = await fetch(
       `https://api.supabase.com/v1/organizations/${org.id}/daily-stats`,
       {
-        headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN!}` },
+        headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN!}` },
         cache: 'no-store',
       },
     );

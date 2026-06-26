@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from './llm/config';
 import {
   INSIGHTS_CLUSTERS_SYSTEM,
@@ -24,7 +25,7 @@ type QuoteRow = {
 export async function extractClusters(
   quotes: QuoteRow[],
 ): Promise<InsightsCluster[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
   if (quotes.length === 0) return [];
 

@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // Anthropic exposes per-organization usage and cost reports only via an
@@ -10,8 +11,8 @@ import type { ProviderUsage } from '../types';
 const COST_REPORT_URL = 'https://api.anthropic.com/v1/organizations/cost_report';
 
 function envFlags() {
-  const apiKey = !!process.env.ANTHROPIC_API_KEY;
-  const adminKey = !!process.env.ANTHROPIC_ADMIN_KEY;
+  const apiKey = !!env.ANTHROPIC_API_KEY;
+  const adminKey = !!env.ANTHROPIC_ADMIN_KEY;
   return { apiKey, adminKey };
 }
 
@@ -54,7 +55,7 @@ export async function getAnthropicUsage(): Promise<ProviderUsage> {
     url.searchParams.set('starting_at', startOfMonthIso());
     const res = await fetch(url, {
       headers: {
-        'x-api-key': process.env.ANTHROPIC_ADMIN_KEY!,
+        'x-api-key': env.ANTHROPIC_ADMIN_KEY!,
         'anthropic-version': '2023-06-01',
       },
       cache: 'no-store',

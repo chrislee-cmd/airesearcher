@@ -1,5 +1,6 @@
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { env } from '@/env';
 import { ZERO_RETENTION } from '../llm/config';
 import {
   TERM_NORMALIZE_SYSTEM,
@@ -104,7 +105,7 @@ const emptyAudit = (reason: string): TermNormalizeAudit => ({
 export async function normalizeTermsInTranscript(
   markdown: string,
 ): Promise<TermNormalizeResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return { normalized: null, audit: emptyAudit('missing_api_key') };
   if (!markdown || markdown.length < MIN_DOC_LENGTH) {
     return { normalized: null, audit: emptyAudit('document_too_short') };

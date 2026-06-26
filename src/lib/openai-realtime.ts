@@ -21,6 +21,8 @@
 //
 // Reference: https://developers.openai.com/api/docs/guides/realtime-translation
 
+import { env } from '@/env';
+
 const TRANSLATIONS_CLIENT_SECRETS_URL =
   'https://api.openai.com/v1/realtime/translations/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
@@ -36,7 +38,7 @@ export type OpenAIRealtimeSession = {
 };
 
 export function realtimeModel(): string {
-  return process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
+  return env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
 export async function issueRealtimeSession(opts: {
@@ -46,7 +48,7 @@ export async function issueRealtimeSession(opts: {
   // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
 }): Promise<OpenAIRealtimeSession> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
 
   const model = realtimeModel();

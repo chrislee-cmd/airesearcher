@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  if (!process.env.TWELVELABS_API_KEY || !process.env.TWELVELABS_ANALYZE_INDEX_ID) {
+  if (!env.TWELVELABS_API_KEY || !env.TWELVELABS_ANALYZE_INDEX_ID) {
     return NextResponse.json({ error: 'missing_twelvelabs_config' }, { status: 500 });
   }
 

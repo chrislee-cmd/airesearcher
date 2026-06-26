@@ -7,13 +7,14 @@
 // public share link.
 
 import { AccessToken } from 'livekit-server-sdk';
+import { env } from '@/env';
 
 const DEFAULT_TTL_SECONDS = 4 * 3600;
 
 function requireEnv(): { apiKey: string; apiSecret: string; url: string } {
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const url = process.env.LIVEKIT_URL;
+  const apiKey = env.LIVEKIT_API_KEY;
+  const apiSecret = env.LIVEKIT_API_SECRET;
+  const url = env.LIVEKIT_URL;
   if (!apiKey || !apiSecret || !url) {
     throw new Error('missing_livekit_config');
   }

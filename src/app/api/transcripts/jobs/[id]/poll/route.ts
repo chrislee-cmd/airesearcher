@@ -1,4 +1,5 @@
 import { NextResponse, after } from 'next/server';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
@@ -55,7 +56,7 @@ export async function POST(
     return NextResponse.json({ status: job.status });
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const apiKey = env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'missing_elevenlabs_key' }, { status: 500 });
   }

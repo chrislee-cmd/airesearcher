@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { CREDIT_BUNDLES, type CreditBundleId } from '@/lib/features';
 
@@ -17,7 +18,7 @@ const Body = z.object({
   taxInvoice: TaxSchema.optional(),
 });
 
-const TO_EMAIL = process.env.QUOTE_TO_EMAIL || 'chris.lee@meteor-research.com';
+const TO_EMAIL = env.QUOTE_TO_EMAIL;
 
 function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
@@ -43,8 +44,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
   }
 
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = env.GMAIL_USER;
+  const gmailPass = env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailPass) {
     console.error('[billing/quote] GMAIL_USER or GMAIL_APP_PASSWORD missing');
     return NextResponse.json({ error: 'email_not_configured' }, { status: 500 });

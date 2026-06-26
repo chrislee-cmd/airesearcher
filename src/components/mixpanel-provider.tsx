@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import mixpanel from 'mixpanel-browser';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/client';
 import { useConsent } from '@/hooks/use-consent';
 
@@ -116,7 +117,7 @@ export function MixpanelProvider({ children }: { children: React.ReactNode }) {
   const { analytics } = useConsent();
 
   useEffect(() => {
-    const token = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
+    const token = env.NEXT_PUBLIC_MIXPANEL_TOKEN;
     if (!token) return;
 
     if (!analytics) {

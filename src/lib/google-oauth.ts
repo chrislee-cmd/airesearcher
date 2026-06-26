@@ -3,6 +3,8 @@
 // only need authorize URL, code → token exchange, refresh, and a single
 // `forms.create` + `batchUpdate` call.
 
+import { env } from '@/env';
+
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -72,9 +74,9 @@ export function buildShareAuthorizeUrl(state: string): string {
 }
 
 export function getGoogleEnv() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  const clientId = env.GOOGLE_CLIENT_ID;
+  const clientSecret = env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = env.GOOGLE_REDIRECT_URI;
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('missing_google_oauth_env');
   }

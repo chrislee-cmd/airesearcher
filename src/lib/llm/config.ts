@@ -28,7 +28,9 @@
 //     providerOptions: ZERO_RETENTION,
 //   });
 
-export const LLM_ZERO_RETENTION_ENABLED = process.env.LLM_ZERO_RETENTION !== 'false';
+import { env } from '@/env';
+
+export const LLM_ZERO_RETENTION_ENABLED = env.LLM_ZERO_RETENTION !== 'false';
 
 // AI SDK `providerOptions` shape. Anthropic has no per-call ZDR flag, so the
 // Anthropic key is intentionally absent — the provider is ZDR by default.

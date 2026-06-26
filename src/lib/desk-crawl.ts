@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { DeskArticle, DeskRegion, DeskSourceId } from './desk-sources';
 import { classifyTier } from './desk-source-tiers';
 
@@ -340,8 +341,8 @@ async function fetchNaver(
   range: DeskDateRange,
   limit: number,
 ): Promise<DeskArticle[]> {
-  const id = process.env.NAVER_CLIENT_ID;
-  const secret = process.env.NAVER_CLIENT_SECRET;
+  const id = env.NAVER_CLIENT_ID;
+  const secret = env.NAVER_CLIENT_SECRET;
   if (!id || !secret) return [];
   // Use `sort=date` whenever a range is set so we get the recent slice first
   // before post-filtering. KIN doesn't support date sort.
@@ -408,7 +409,7 @@ async function fetchKakao(
   range: DeskDateRange,
   limit: number,
 ): Promise<DeskArticle[]> {
-  const key = process.env.KAKAO_REST_API_KEY;
+  const key = env.KAKAO_REST_API_KEY;
   if (!key) return [];
   const sort = range.from || range.to ? 'recency' : 'accuracy';
   // Kakao: max size=50, page up to 50. Loop until is_end or limit hit.
@@ -466,7 +467,7 @@ async function fetchYouTube(
   range: DeskDateRange,
   limit: number,
 ): Promise<DeskArticle[]> {
-  const key = process.env.YOUTUBE_API_KEY;
+  const key = env.YOUTUBE_API_KEY;
   if (!key) return [];
   const { after, before } = rangeToRfc3339(range);
   const yt = YOUTUBE_BY_REGION[region];
@@ -511,15 +512,15 @@ async function fetchYouTube(
 // ─── Dispatch + missing-key detection ───────────────────────────────────────
 export function sourceMissingKey(source: DeskSourceId): string | null {
   if (source.startsWith('naver_')) {
-    if (!process.env.NAVER_CLIENT_ID || !process.env.NAVER_CLIENT_SECRET) {
+    if (!env.NAVER_CLIENT_ID || !env.NAVER_CLIENT_SECRET) {
       return 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET';
     }
   }
   if (source.startsWith('kakao_')) {
-    if (!process.env.KAKAO_REST_API_KEY) return 'KAKAO_REST_API_KEY';
+    if (!env.KAKAO_REST_API_KEY) return 'KAKAO_REST_API_KEY';
   }
   if (source === 'youtube') {
-    if (!process.env.YOUTUBE_API_KEY) return 'YOUTUBE_API_KEY';
+    if (!env.YOUTUBE_API_KEY) return 'YOUTUBE_API_KEY';
   }
   return null;
 }

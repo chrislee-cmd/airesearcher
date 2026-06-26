@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -25,8 +26,8 @@ const Body = z.object({
 
 function getDeploymentBaseUrl(): string {
   // Prefer the deployment-specific URL so previews route to themselves.
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
+  if (env.NEXT_PUBLIC_SITE_URL) return env.NEXT_PUBLIC_SITE_URL;
   return 'http://localhost:3000';
 }
 
@@ -133,8 +134,8 @@ async function dispatchDeepgram(args: {
 }) {
   const { supabase, jobId, signedUrl, langEntry } = args;
 
-  const dgKey = process.env.DEEPGRAM_API_KEY;
-  const webhookSecret = process.env.DEEPGRAM_WEBHOOK_SECRET;
+  const dgKey = env.DEEPGRAM_API_KEY;
+  const webhookSecret = env.DEEPGRAM_WEBHOOK_SECRET;
   if (!dgKey) {
     return NextResponse.json({ error: 'missing_deepgram_key' }, { status: 500 });
   }
@@ -223,7 +224,7 @@ async function dispatchElevenLabs(args: {
 }) {
   const { supabase, jobId, signedUrl, apiModel, languageCode } = args;
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const apiKey = env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     await supabase
       .from('transcript_jobs')

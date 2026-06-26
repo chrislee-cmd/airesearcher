@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // ElevenLabs subscription endpoint returns the character quota used vs
@@ -9,7 +10,7 @@ import type { ProviderUsage } from '../types';
 const SUBSCRIPTION_URL = 'https://api.elevenlabs.io/v1/user/subscription';
 
 export async function getElevenLabsUsage(): Promise<ProviderUsage> {
-  const present = !!process.env.ELEVENLABS_API_KEY;
+  const present = !!env.ELEVENLABS_API_KEY;
   const envKeys = [{ key: 'ELEVENLABS_API_KEY', present }];
   const dashboardUrl = 'https://elevenlabs.io/app/usage';
 
@@ -25,7 +26,7 @@ export async function getElevenLabsUsage(): Promise<ProviderUsage> {
 
   try {
     const res = await fetch(SUBSCRIPTION_URL, {
-      headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY! },
+      headers: { 'xi-api-key': env.ELEVENLABS_API_KEY! },
       cache: 'no-store',
     });
     if (!res.ok) {

@@ -1,5 +1,6 @@
 import { embedMany } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { env } from '@/env';
 import type { DeskArticle } from './desk-sources';
 import { getCacheMany, hashString, setCacheMany } from './cache';
 
@@ -139,7 +140,7 @@ export async function pickRepresentativeArticles(
 ): Promise<DeskArticle[]> {
   if (articles.length <= k) return articles;
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return stratifiedFallback(articles, k);
   }

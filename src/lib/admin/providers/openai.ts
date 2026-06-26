@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // OpenAI exposes per-org cost/usage via the Organization Costs API
@@ -8,8 +9,8 @@ import type { ProviderUsage } from '../types';
 const COSTS_URL = 'https://api.openai.com/v1/organization/costs';
 
 function envFlags() {
-  const apiKey = !!process.env.OPENAI_API_KEY;
-  const adminKey = !!process.env.OPENAI_ADMIN_KEY;
+  const apiKey = !!env.OPENAI_API_KEY;
+  const adminKey = !!env.OPENAI_ADMIN_KEY;
   return { apiKey, adminKey };
 }
 
@@ -51,7 +52,7 @@ export async function getOpenAiUsage(): Promise<ProviderUsage> {
     const url = new URL(COSTS_URL);
     url.searchParams.set('start_time', String(unixStartOfMonth()));
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${process.env.OPENAI_ADMIN_KEY!}` },
+      headers: { Authorization: `Bearer ${env.OPENAI_ADMIN_KEY!}` },
       cache: 'no-store',
     });
     if (!res.ok) {

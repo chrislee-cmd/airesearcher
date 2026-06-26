@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 
 const Body = z.object({
   service: z.string().min(1).max(80),
 });
 
-const TO_EMAIL = process.env.INQUIRY_TO_EMAIL || 'chris.lee@meteor-research.com';
+const TO_EMAIL = env.INQUIRY_TO_EMAIL;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -24,8 +25,8 @@ export async function POST(req: Request) {
   }
   const { service } = parsed.data;
 
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = env.GMAIL_USER;
+  const gmailPass = env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailPass) {
     console.error('[moderator/inquiry] GMAIL_USER or GMAIL_APP_PASSWORD missing');
     return NextResponse.json({ error: 'email_not_configured' }, { status: 500 });

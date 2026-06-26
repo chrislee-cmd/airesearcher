@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // Providers we use but whose usage/cost is not exposed via a programmatic
@@ -69,7 +70,7 @@ export function getConfiguredOnlyProviders(): ProviderUsage[] {
   return SPECS.map((spec) => {
     const envKeys = spec.envKeys.map((key) => ({
       key,
-      present: !!process.env[key],
+      present: !!(env as Record<string, string | undefined>)[key],
     }));
     const anyPresent = envKeys.some((k) => k.present);
     const allPresent = envKeys.every((k) => k.present);

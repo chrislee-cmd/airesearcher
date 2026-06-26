@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyLemonSqueezySignature } from '@/lib/billing';
 
@@ -9,7 +10,7 @@ export const maxDuration = 60;
 // set when creating the webhook. We must read the body as bytes-exact
 // text — JSON parsing first would change formatting and break the HMAC.
 export async function POST(request: Request) {
-  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: 'webhook_not_configured' }, { status: 503 });
   }

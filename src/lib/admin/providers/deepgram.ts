@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import type { ProviderUsage } from '../types';
 
 // Deepgram exposes balance + usage per project. We pick the first
@@ -8,7 +9,7 @@ import type { ProviderUsage } from '../types';
 const BASE = 'https://api.deepgram.com/v1';
 
 function authHeaders() {
-  return { Authorization: `Token ${process.env.DEEPGRAM_API_KEY!}` };
+  return { Authorization: `Token ${env.DEEPGRAM_API_KEY}` };
 }
 
 function todayIso(): string {
@@ -22,7 +23,7 @@ function startOfMonthIsoDate(): string {
 }
 
 export async function getDeepgramUsage(): Promise<ProviderUsage> {
-  const present = !!process.env.DEEPGRAM_API_KEY;
+  const present = !!env.DEEPGRAM_API_KEY;
   const envKeys = [{ key: 'DEEPGRAM_API_KEY', present }];
   const dashboardUrl = 'https://console.deepgram.com/usage';
 
