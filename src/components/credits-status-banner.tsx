@@ -30,21 +30,28 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
 
   const isSuccess = status === 'success';
 
+  // PR-D17 pop 톤: 3px black border + 4px offset shadow. 성공=노랑 wash,
+  // 취소=흰 paper. Outfit display 로 한 줄 강조.
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`mb-4 flex items-center justify-between gap-4 border px-4 py-3 text-md rounded-xs ${
-        isSuccess
-          ? 'border-amore/30 bg-amore/5 text-amore'
-          : 'border-line bg-paper text-mute'
-      }`}
+      style={{
+        background: isSuccess ? 'var(--canvas-bg)' : '#fff',
+        border: '3px solid var(--canvas-card-border)',
+        borderRadius: 'var(--canvas-card-radius)',
+        boxShadow: '4px 4px 0 var(--canvas-card-border)',
+        fontFamily: 'var(--font-outfit), var(--font-sans)',
+      }}
+      className="mb-4 flex items-center justify-between gap-4 px-4 py-3 text-md rounded-sm"
     >
-      <span>{isSuccess ? t('paymentSuccess') : t('paymentCancelled')}</span>
+      <span className="font-bold text-ink-2">
+        {isSuccess ? t('paymentSuccess') : t('paymentCancelled')}
+      </span>
       <IconButton
         variant="ghost"
         onClick={() => setVisible(false)}
-        className="shrink-0 !border-0 text-2xl leading-none opacity-50 hover:opacity-100"
+        className="shrink-0 !border-0 text-2xl leading-none text-ink-2 opacity-70 hover:opacity-100"
         aria-label="dismiss"
       >
         ×
