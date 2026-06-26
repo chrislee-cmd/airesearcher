@@ -375,16 +375,26 @@ export function Sidebar({
   }
 
   return (
-    // PR-D3 — chrome pop 적용: 우측 2.5px 검은 hard frame.
-    // 본문 (nav 메뉴 list / sidebar-account) 시각은 그대로.
+    // PR-D5 — 전체 노랑 bg + 우측 3px 검은 hard frame. D4 의 subtle 톤
+    // (흰 bg + 2.5px border + 좌측 핑크 wash) 을 캔버스와 같은 시각
+    // 언어로 통일 — 노랑 + 검정 hard + Memphis 카드 메뉴.
     <aside
       data-coachmark-id="sidebar"
-      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r-[2.5px] bg-paper md:flex"
-      style={{ borderColor: 'var(--color-pop-border)' }}
+      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r-[3px] md:flex"
+      style={{
+        borderColor: 'var(--color-pop-border)',
+        background: 'var(--sidebar-bg)',
+      }}
     >
-      {/* 브랜드 / 로고 영역 — pop 액센트 (Outfit + 검정 hard rule).
-          메뉴 항목 list 와 분리된 frame 영역. */}
-      <div className="px-7 pb-6 pt-7">
+      {/* 브랜드 / 로고 영역 — 진한 노랑 banner + 검정 3px 하단 hard
+          border. 사이드바 본문 (메뉴 list) 와 분리된 frame. */}
+      <div
+        className="border-b-[3px] px-6 pb-5 pt-6"
+        style={{
+          borderColor: 'var(--color-pop-border)',
+          background: 'var(--color-pop-banner)',
+        }}
+      >
         <Link
           href="/dashboard"
           className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
@@ -405,20 +415,21 @@ export function Sidebar({
               {tBrand('name')}
             </div>
             <div
-              className="mt-0.5 h-px w-5"
-              style={{ background: 'var(--color-pop-pink)' }}
+              className="mt-0.5 h-[2px] w-6"
+              style={{ background: 'var(--color-pop-border)' }}
             />
           </div>
         </Link>
       </div>
 
       {/* Projects entry */}
-      {/* PR-D4: nav item pop 톤 — data-shell-nav rule (globals.css) 가
-          hover / active 시 핑크 wash + 검정 좌측 thick bar 적용. */}
-      <div className="px-3 pb-2">
+      {/* PR-D5: nav item = Memphis 카드 (data-shell-nav CSS rule —
+          흰 bg + 검정 2.5px border + offset shadow, hover = 노랑,
+          active = 핑크 + 흰 텍스트). */}
+      <div className="px-3 pb-1 pt-3">
         <div
           ref={dropdownRef}
-          className="relative flex items-stretch"
+          className="relative flex items-stretch gap-1.5"
         >
           <Link
             href="/projects"
@@ -426,7 +437,7 @@ export function Sidebar({
             onClick={() => track('sidebar_projects_click')}
             data-shell-nav
             data-active={projectsActive || undefined}
-            className="flex-1 px-4 py-2 text-md text-mute"
+            className="flex-1 px-4 py-2 text-md"
           >
             {t('viewProjects')}
           </Link>
@@ -469,27 +480,25 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Canvas entry — production /canvas (도구 6장 카드 board).
-          PR1 에서는 사이드바 도구 항목들과 공존; PR3 에서 사이드바
-          재구성 (quotes/desk 개별 항목 → canvas 단일 entry) 검토. */}
-      <div className="px-3 pb-2">
+      {/* Canvas entry — production /canvas (도구 6장 카드 board). */}
+      <div className="px-3 pb-1 pt-1">
         <Link
           href="/canvas"
           prefetch
           onClick={() => track('sidebar_canvas_click')}
           data-shell-nav
           data-active={pathname === '/canvas' || undefined}
-          className="block px-4 py-2 text-md text-mute"
+          className="block px-4 py-2 text-md"
         >
           {t('canvas')}
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-4">
+      <nav className="flex-1 overflow-y-auto px-3 pb-4 pt-2">
         {FEATURE_GROUPS.map((g) => {
           const isCollapsed = collapsed.has(g.key);
           return (
-            <section key={g.key} className="mt-3 first:mt-2">
+            <section key={g.key} className="mt-4 first:mt-2">
               <Button
                 variant="link"
                 size="xs"
@@ -503,7 +512,7 @@ export function Sidebar({
                 {tGroups(g.key)}
               </Button>
               {!isCollapsed && (
-                <ul className="mt-0.5">
+                <ul className="mt-2 space-y-2">
                   {g.features
                     .filter(
                       (key) =>
@@ -584,7 +593,7 @@ export function Sidebar({
                           data-drag-over={isDragOver || undefined}
                           data-compatible={isCompatible || undefined}
                           data-dimmed={isDimmed || undefined}
-                          className="flex items-center justify-between gap-2 px-4 py-1.5 text-md text-mute"
+                          className="flex items-center justify-between gap-2 px-4 py-2 text-md"
                         >
                           <span className="truncate">{t(f.key)}</span>
                           {busy ? (() => {

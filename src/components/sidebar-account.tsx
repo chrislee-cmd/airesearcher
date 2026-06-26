@@ -99,9 +99,11 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
   const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
 
   return (
-    // PR-D4: Memphis 카드 (2.5px 검은 border + offset shadow + Outfit).
-    // 사이드바 footer 영역 — D3 의 chrome 안 content pop 톤 통일.
-    <div className="px-3 pb-3 pt-3" ref={popRef}>
+    // PR-D5: Memphis 카드 강화 — 노랑 banner bg + 검정 3px border +
+    // 6px offset shadow (캔버스 카드와 동일 톤). 아바타 = 핑크 (active
+    // nav item 톤). 본문 텍스트 = ink (노랑 banner 위 검정 — 캔버스 카드
+    // 헤더 톤과 일관).
+    <div className="px-3 pb-4 pt-3" ref={popRef}>
       <div className="relative" data-shell-account-card>
         <div className="flex items-center gap-2 px-3 py-2">
           <span data-shell-avatar aria-hidden>{initial}</span>
@@ -110,17 +112,17 @@ export function SidebarAccount({ email, credits, isAuthed, isSuperAdmin }: Props
               {displayName}
             </div>
             {status?.isUnlimited ? (
-              <div className="mt-0.5 text-xs-soft tabular-nums" style={{ color: 'var(--color-pop-pink)' }}>
+              <div className="mt-0.5 text-xs-soft tabular-nums text-ink">
                 {tCommon('unlimitedAccess')}
               </div>
             ) : status?.isTrialActive && status.trialEndsAt ? (
-              <div className="mt-0.5 text-xs-soft tabular-nums" style={{ color: 'var(--color-pop-pink)' }}>
+              <div className="mt-0.5 text-xs-soft tabular-nums text-ink">
                 {tCommon('trialRemaining', {
                   remaining: formatTrialRemaining(status.trialEndsAt),
                 })}
               </div>
             ) : credits !== null ? (
-              <div className="mt-0.5 text-xs-soft tabular-nums text-mute">
+              <div className="mt-0.5 text-xs-soft tabular-nums text-ink">
                 {tCommon('creditsRemaining', { count: credits })}
               </div>
             ) : null}
