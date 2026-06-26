@@ -40,44 +40,59 @@ export const PROBING_TECHNIQUE_LABEL: Record<ProbingTechnique, string> = {
   timeline: '시점',
 };
 
-// 매 호출에서 강제할 질문 갯수 — 정의된 모든 기법 각 1개씩.
+// 기법 풀 크기 — 정의된 모든 기법 각 1개씩이 default 호출의 상한.
 export const PROBING_QUESTION_COUNT = PROBING_TECHNIQUES.length;
 
-// schema 의 key 순서가 LLM 출력 순서를 결정한다. questions 의 핵심 (text +
-// technique) 을 먼저 모두 emit 한 다음 intents 가 뒤따라옴 — 클라이언트가
-// partial JSON parse 하면서 카드의 질문 본문은 빠르게 채우고 "의도" 는
-// 사후 입력되는 UX 를 만든다. 같은 인덱스가 questions[i] ↔ intents[i] 대응.
-export const probingSuggestionSchema = z.object({
-  questions: z
-    .array(
-      z.object({
-        text: z
-          .string()
-          .describe('인터뷰어가 그대로 던질 수 있는 한 문장 질문.'),
-        technique: z
-          .enum(PROBING_TECHNIQUES)
-          .describe(
-            'probing 기법 분류. 매 호출에서 정의된 모든 기법이 정확히 한 번씩 등장 — questions 배열의 technique 값 집합은 PROBING_TECHNIQUES 와 동일.',
-          ),
-        guide_reference: z
-          .string()
-          .optional()
-          .describe(
-            '가이드가 제공된 경우, 이 질문이 가이드의 어느 부분 (가설 / 의도 / RQ / 키워드) 과 정합되는지 1~2 문장. 가이드가 비어 있거나 가이드와 무관한 일반 follow-up 이면 생략.',
-          ),
-      }),
-    )
-    .length(PROBING_QUESTION_COUNT)
-    .describe(
-      `probing 질문 ${PROBING_QUESTION_COUNT}개 (핵심) — 정의된 모든 기법 각 1개씩.`,
-    ),
-  intents: z
-    .array(z.string())
-    .length(PROBING_QUESTION_COUNT)
-    .describe(
-      `각 질문의 의도. questions 와 같은 인덱스 순서. 1~2문장. **questions ${PROBING_QUESTION_COUNT}개를 모두 emit 한 뒤 한꺼번에 작성** (클라이언트 UX 요구사항 — 핵심 질문이 먼저 보이고 의도가 사후 입력되어야 함).`,
-    ),
-});
+// PR-13: 한 호출당 질문 갯수 동적화. 위젯이 5초 주기로 1 질문씩 받도록
+// max_questions=1 을 보내고, 기존 batch 호출이 필요한 경우엔 그대로 N 을
+// 보낸다. count 가 PROBING_TECHNIQUES 길이 초과면 안전하게 clamp.
+//
+// 같은 schema key 순서 (questions 먼저, intents 나중) 는 partial JSON parse
+// 의 UX (질문 본문이 먼저 채워지고 의도가 사후) 라 그대로 유지.
+export function buildProbingSuggestionSchema(count: number) {
+  const n = Math.max(1, Math.min(PROBING_QUESTION_COUNT, Math.floor(count)));
+  return z.object({
+    questions: z
+      .array(
+        z.object({
+          text: z
+            .string()
+            .describe('인터뷰어가 그대로 던질 수 있는 한 문장 질문.'),
+          technique: z
+            .enum(PROBING_TECHNIQUES)
+            .describe(
+              n === PROBING_QUESTION_COUNT
+                ? 'probing 기법 분류. 매 호출에서 정의된 모든 기법이 정확히 한 번씩 등장 — questions 배열의 technique 값 집합은 PROBING_TECHNIQUES 와 동일.'
+                : 'probing 기법 분류. 정의된 기법 중 transcript / 가이드 와 가장 정합되는 기법을 선택.',
+            ),
+          guide_reference: z
+            .string()
+            .optional()
+            .describe(
+              '가이드가 제공된 경우, 이 질문이 가이드의 어느 부분 (가설 / 의도 / RQ / 키워드) 과 정합되는지 1~2 문장. 가이드가 비어 있거나 가이드와 무관한 일반 follow-up 이면 생략.',
+            ),
+        }),
+      )
+      .length(n)
+      .describe(
+        n === PROBING_QUESTION_COUNT
+          ? `probing 질문 ${n}개 (핵심) — 정의된 모든 기법 각 1개씩.`
+          : `probing 질문 ${n}개 — transcript / 가이드 에 가장 정합되는 기법을 선택해 생성.`,
+      ),
+    intents: z
+      .array(z.string())
+      .length(n)
+      .describe(
+        `각 질문의 의도. questions 와 같은 인덱스 순서. 1~2문장. **questions ${n}개를 모두 emit 한 뒤 한꺼번에 작성** (클라이언트 UX 요구사항 — 핵심 질문이 먼저 보이고 의도가 사후 입력되어야 함).`,
+      ),
+  });
+}
+
+// 기존 호출자 호환 — default 풀-기법 호출용. 새 코드는 buildProbingSuggestionSchema
+// 를 직접 호출해 count 를 명시.
+export const probingSuggestionSchema = buildProbingSuggestionSchema(
+  PROBING_QUESTION_COUNT,
+);
 
 export type ProbingSuggestion = z.infer<typeof probingSuggestionSchema>;
 

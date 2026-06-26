@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       transcript_cutoff: transcript_cutoff ?? null,
     })
     .select(
-      'id, text, technique, why, guide_reference, transcript_cutoff, created_at',
+      'id, text, technique, why, guide_reference, transcript_cutoff, is_core, created_at',
     )
     .single();
   if (error || !data) {
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabase
     .from('probing_questions')
     .select(
-      'id, text, technique, why, guide_reference, transcript_cutoff, created_at',
+      'id, text, technique, why, guide_reference, transcript_cutoff, is_core, created_at',
     )
     .order('created_at', { ascending: false })
     .limit(limit);
