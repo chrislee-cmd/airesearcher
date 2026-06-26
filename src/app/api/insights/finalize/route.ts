@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { refundCredits } from '@/lib/credits';
 import { extractClusters } from '@/lib/insights-clusters-extract';
 import { extractQualitative } from '@/lib/insights-qualitative-extract';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 // Bumped to 90s for the qualitative pass on top of clusters. Both
 // extractions are best-effort and round trips compound: clusters
@@ -58,6 +59,13 @@ export async function POST(request: Request) {
       idempotent: true,
     });
   }
+
+  // /finalize runs LLM extraction passes (clusters + qualitative). Rate
+  // limit only fires on jobs we're about to actively process, after the
+  // idempotency short-circuit above. Org comes from the job row since
+  // long-running jobs can outlive the active session.
+  const limited = await checkLlmRateLimit(user.id, job.org_id ?? null);
+  if (limited) return limited;
 
   const admin = createAdminClient();
 

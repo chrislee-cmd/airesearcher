@@ -12,6 +12,7 @@ import {
   tryMarkdownPassthrough,
 } from '@/lib/markdown-format';
 import { hashBytes, getCache, setCache } from '@/lib/cache';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 300;
 
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const formData = await request.formData();
   const file = formData.get('file');

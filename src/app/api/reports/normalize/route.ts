@@ -6,6 +6,7 @@ import { getActiveOrg } from '@/lib/org';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { coerceReportType } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 // Pro plan allows up to 800s for Serverless Functions; pair with a
 // matching maxOutputTokens below so very long reports don't truncate.
@@ -34,6 +35,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const formData = await request.formData();
   const reportType = coerceReportType(formData.get('reportType'));

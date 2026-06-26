@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
+import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 300;
 
@@ -85,6 +87,10 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const org = await getActiveOrg();
+  const limited = await checkLlmRateLimit(user.id, org?.org_id);
+  if (limited) return limited;
 
   const parsed = Body.safeParse(await request.json());
   if (!parsed.success) {

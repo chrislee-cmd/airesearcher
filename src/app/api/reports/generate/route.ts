@@ -8,6 +8,7 @@ import { spendCredits, getCreditsStatus } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { REPORT_TYPES, DEFAULT_REPORT_TYPE } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 800;
 
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const parsed = Body.safeParse(await request.json());
   if (!parsed.success) {
