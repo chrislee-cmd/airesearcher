@@ -35,6 +35,20 @@ import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
 } from './realtime-transcript-provider';
+import {
+  FIDELITY_LOSS_THRESHOLD,
+  decodeDataChannelMessage,
+  lossRatio,
+  summarizeFidelity,
+} from '@/lib/translate-fidelity';
+
+// Dev-mode trace gate. Enabled in non-prod builds so a designer running
+// `pnpm dev` can step through the pipeline and confirm Korean / Thai /
+// Chinese deltas land intact at every stage (datachannel → state →
+// /messages POST → DB). Disabled in production so a 30 min session
+// doesn't flood the browser console.
+const TRACE_ENCODING =
+  typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -450,6 +464,19 @@ export function TranslateConsole() {
   const sampleCountRef = useRef<Map<string, number>>(new Map());
   const EVENT_SAMPLE_CAP = 8;
 
+  // Fidelity counters — chars surfaced by the data-channel deltas vs chars
+  // that actually reached the /messages POST. Drift means dedup or
+  // sentence-boundary slicing dropped real content; we surface it on
+  // stop() and (server-side) audit it when the loss crosses the
+  // FIDELITY_LOSS_THRESHOLD. Counters are per-kind because input and
+  // output have separate dedup state.
+  const fidelityCountersRef = useRef<
+    Record<'input' | 'output', { deltaChars: number; commitChars: number; persistOk: number; persistFail: number }>
+  >({
+    input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+    output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+  });
+
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
   // the host's source stream (mic/tab) and one for the translated TTS.
   // We do NOT reuse `audioDestRef` (which feeds LiveKit publish):
@@ -632,13 +659,25 @@ export function TranslateConsole() {
     async (kind: 'input' | 'output', text: string, lang: string) => {
       const id = sessionIdRef.current;
       if (!id) return;
+      const counters = fidelityCountersRef.current[kind];
+      counters.commitChars += text.length;
+      if (TRACE_ENCODING) {
+        console.info('[translate] persist →', {
+          kind,
+          ...summarizeFidelity(text),
+          preview: text.slice(0, 24),
+        });
+      }
       try {
-        await fetch(`/api/translate/sessions/${id}/messages`, {
+        const res = await fetch(`/api/translate/sessions/${id}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kind, text, lang }),
         });
+        if (res.ok) counters.persistOk++;
+        else counters.persistFail++;
       } catch {
+        counters.persistFail++;
         // Best-effort. Caption is already on the broadcast channel.
       }
     },
@@ -794,12 +833,34 @@ export function TranslateConsole() {
       // Source-language transcript — emitted by gpt-realtime-translate
       // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
-        appendStreaming('input', String(msg.delta ?? ''), sourceLang);
+        const delta = String(msg.delta ?? '');
+        fidelityCountersRef.current.input.deltaChars += delta.length;
+        if (TRACE_ENCODING && delta) {
+          const summary = summarizeFidelity(delta);
+          if (summary.replacementChars > 0 || summary.mojibake) {
+            console.warn('[translate] delta encoding suspect (input)', {
+              ...summary,
+              preview: delta.slice(0, 32),
+            });
+          }
+        }
+        appendStreaming('input', delta, sourceLang);
         return;
       }
       // Translated text — streams continuously.
       if (type === 'session.output_transcript.delta') {
-        appendStreaming('output', String(msg.delta ?? ''), targetLang);
+        const delta = String(msg.delta ?? '');
+        fidelityCountersRef.current.output.deltaChars += delta.length;
+        if (TRACE_ENCODING && delta) {
+          const summary = summarizeFidelity(delta);
+          if (summary.replacementChars > 0 || summary.mojibake) {
+            console.warn('[translate] delta encoding suspect (output)', {
+              ...summary,
+              preview: delta.slice(0, 32),
+            });
+          }
+        }
+        appendStreaming('output', delta, targetLang);
         return;
       }
       // Note: `session.output_audio.delta` is delivered via the WebRTC
@@ -840,6 +901,12 @@ export function TranslateConsole() {
     // Reset event sampler too — each session gets a fresh budget so we
     // see the protocol shape from t=0 of every recording.
     sampleCountRef.current.clear();
+    // Reset fidelity counters — same rationale as the dedup memory reset
+    // above, plus the loss-ratio comparison wants per-session totals.
+    fidelityCountersRef.current = {
+      input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+      output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+    };
     setError(null);
     setInputLines([]);
     setOutputLines([]);
@@ -1327,7 +1394,21 @@ export function TranslateConsole() {
     };
     const dc = pc.createDataChannel('oai-events');
     dcRef.current = dc;
-    dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+    dc.onmessage = (ev) => {
+      // OpenAI Realtime sends text frames (JSON events) over the data
+      // channel, but `binaryType` can default to "arraybuffer" on some
+      // browsers — `String(ArrayBuffer)` would collapse the payload to
+      // "[object ArrayBuffer]" and silently lose every transcript event.
+      // Route through TextDecoder (utf-8, non-fatal) so the multi-byte
+      // boundary stays intact and any genuinely invalid bytes surface as
+      // U+FFFD for the encoding-suspect warner above.
+      const text = decodeDataChannelMessage(ev.data);
+      if (text === null) {
+        console.warn('[translate] dc payload dropped — unsupported type');
+        return;
+      }
+      handleOaiEvent(text);
+    };
     dc.onopen = () => console.info('[translate] dc open');
     dc.onclose = () => console.info('[translate] dc close');
     dc.onerror = (ev) => console.warn('[translate] dc error', ev);
@@ -1590,6 +1671,39 @@ export function TranslateConsole() {
         await fetch(`/api/translate/sessions/${id}/end`, { method: 'POST' });
       } catch {}
     }
+
+    // Fidelity report. Compare delta chars surfaced by the data channel
+    // against the chars we POSTed to /messages. A drift above the
+    // threshold means dedup or sentence-boundary slicing dropped real
+    // content — the host's transcript will be missing words. We always
+    // log a one-line summary so prod sessions leave a paper trail, and
+    // POST a `__loss_report__` payload to the same /messages endpoint so
+    // the server can audit the loss without a second route.
+    for (const channel of ['input', 'output'] as const) {
+      const c = fidelityCountersRef.current[channel];
+      const ratio = lossRatio(c.deltaChars, c.commitChars);
+      const summary = {
+        channel,
+        deltaChars: c.deltaChars,
+        commitChars: c.commitChars,
+        persistOk: c.persistOk,
+        persistFail: c.persistFail,
+        lossRatio: ratio,
+      };
+      if (ratio > FIDELITY_LOSS_THRESHOLD || c.persistFail > 0) {
+        console.warn('[translate] fidelity loss', summary);
+        if (id) {
+          void fetch(`/api/translate/sessions/${id}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind: '__loss_report__', ...summary }),
+          }).catch(() => {});
+        }
+      } else if (TRACE_ENCODING) {
+        console.info('[translate] fidelity ok', summary);
+      }
+    }
+
     setShareToken(null);
     setShareCopied(false);
     setStatus('ended');
