@@ -12,20 +12,24 @@ export type ProbingQuestion = {
   why: string;
 };
 
+// stream 진행 중인 transient 묶음. 완료 직후 각 질문이 ProbingQuestionRow 로
+// 영속화되고 current 는 다시 null.
 export type ProbingSuggestionSet = {
-  // session-local id. UUID 까지 갈 필요 없음 — stream 진행 중에만 사용,
-  // POST 응답 받으면 ProbingSuggestionRow 로 승격.
   id: string;
   // ms epoch — 생성 시각.
   created_at: number;
   questions: ProbingQuestion[];
 };
 
-// DB row — probing_suggestions 테이블 한 행. 위젯 mount 시 GET 으로 가져오고
-// 새 stream 완료 → POST 응답으로도 같은 모양을 받는다. created_at 은 ISO
-// 8601 (timestamptz) — 표시할 때 Date.parse 로 ms 로 변환.
-export type ProbingSuggestionRow = {
+// PR-12: 개별 질문 단위 row. probing_questions 테이블 한 행 = 한 질문.
+// 위젯 mount 시 GET 으로 가져오고 stream 완료 시 N 번 POST → N row prepend.
+// id 는 server UUID 또는 POST 실패 시 in-memory fallback 의 'local-' prefix.
+// created_at 은 ISO 8601 (timestamptz) — 표시할 때 Date.parse 로 ms 변환.
+export type ProbingQuestionRow = {
   id: string;
   created_at: string;
-  questions: ProbingQuestion[];
+  text: string;
+  technique: ProbingQuestion['technique'];
+  why: string;
+  guide_reference?: string | null;
 };
