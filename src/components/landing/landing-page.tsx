@@ -1,3 +1,4 @@
+import { Outfit } from 'next/font/google';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { Showcase } from './showcase';
@@ -6,6 +7,14 @@ import { panelsEn } from './panels.en';
 import type { PanelKey } from './panels';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 import './landing.css';
+
+// Outfit display 폰트 — PR-D8 pop 톤 정렬. canvas 와 같은 weight 세트.
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export async function LandingPage({ locale }: { locale: string }) {
   const t = await getTranslations('Landing');
@@ -43,7 +52,7 @@ export async function LandingPage({ locale }: { locale: string }) {
   const ctaCredits = '/login?next=/credits';
 
   return (
-    <div className="landing-root">
+    <div className={`${outfit.variable} landing-root`}>
       <nav className="top">
         <div className="container row">
           <div className="brand">
@@ -143,8 +152,8 @@ export async function LandingPage({ locale }: { locale: string }) {
             <div className="price featured">
               <span className="badge">{t('pricing.tiers.team.badge')}</span>
               <span className="meta">{t('pricing.tiers.team.meta')}</span>
-              <h4 style={{ color: '#fff' }}>{t('pricing.tiers.team.name')}</h4>
-              <div className="num" style={{ color: '#fff' }}>{t('pricing.tiers.team.price')}<small>{t('pricing.tiers.team.priceNote')}</small></div>
+              <h4>{t('pricing.tiers.team.name')}</h4>
+              <div className="num">{t('pricing.tiers.team.price')}<small>{t('pricing.tiers.team.priceNote')}</small></div>
               <ul>
                 <li>{t('pricing.tiers.team.f1')}</li>
                 <li>{t('pricing.tiers.team.f2')}</li>
@@ -224,8 +233,8 @@ export async function LandingPage({ locale }: { locale: string }) {
             <h2>{t.rich('ctaFinal.title', richTags)}</h2>
             <p>{t('ctaFinal.subtitle')}</p>
             <div className="row">
-              <Link className="btn primary" href={ctaStart} style={{ height: '46px', padding: '0 22px', fontSize: '14px' }}>{t('ctaFinal.ctaPrimary')}</Link>
-              <a className="btn" href="#showcase" style={{ height: '46px', padding: '0 22px', fontSize: '14px' }}>{t('ctaFinal.ctaSecondary')}</a>
+              <Link className="btn primary btn-lg" href={ctaStart}>{t('ctaFinal.ctaPrimary')}</Link>
+              <a className="btn btn-lg" href="#showcase">{t('ctaFinal.ctaSecondary')}</a>
             </div>
           </div>
         </div>
