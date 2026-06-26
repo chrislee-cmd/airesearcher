@@ -940,6 +940,22 @@ function SuggestionList({
   nowMs: number;
 }) {
   const rel = formatRelativeKo(createdAtMs, nowMs);
+  // PR-11: focus interaction — 한 set 안에서 한 카드만 강조 (set scoped).
+  // null = 모두 정상. 같은 카드 재클릭 → toggle off, 다른 카드 → switch.
+  // 누적 list 의 다른 set 들은 자기 selectedIndex 만 가져 서로 영향 X.
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // esc → reset. selected 상태일 때만 listener 활성화해서 idle set 이
+  // window keydown 을 무겁게 점유하지 않게.
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelectedIndex(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedIndex]);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -957,13 +973,23 @@ function SuggestionList({
             q.technique && q.technique in PROBING_TECHNIQUE_LABEL
               ? PROBING_TECHNIQUE_LABEL[q.technique as ProbingTechnique]
               : q.technique || '제안';
+          const isSelected = selectedIndex === i;
+          const isDimmed = selectedIndex !== null && !isSelected;
           return (
             <li key={i}>
               {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
               <button
                 type="button"
-                onClick={() => onCopy(q.text)}
-                className="w-full px-1 py-1.5 text-left text-md leading-[1.55] text-ink-2 transition-colors duration-[120ms] hover:text-amore"
+                aria-pressed={isSelected}
+                onClick={() => {
+                  // 기존 복사 동작 유지 + 카드 focus toggle (같은 카드 →
+                  // 해제, 다른 카드 → switch).
+                  onCopy(q.text);
+                  setSelectedIndex((prev) => (prev === i ? null : i));
+                }}
+                className={`w-full px-1 py-1.5 text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore ${
+                  isDimmed ? 'opacity-40' : ''
+                }`}
               >
                 <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
                   {label}
