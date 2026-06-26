@@ -451,7 +451,8 @@ export function CanvasBoard({
   return (
     <div
       ref={containerRef}
-      className="relative h-[calc(100vh-3rem)] overflow-hidden bg-paper"
+      data-canvas
+      className="relative h-[calc(100vh-3rem)] overflow-hidden"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
@@ -495,13 +496,13 @@ export function CanvasBoard({
                     top: r * (CELL_H + GAP),
                     width: CELL_W,
                     height: CELL_H,
-                    // 평소엔 완전 투명 (그리드 비가시).
-                    // 드래그 중일 때만 옅은 dashed border 로 drop 가능 영역 hint.
+                    // 평소엔 완전 투명 (점 grid 가 그대로 보임).
+                    // 드래그 중에만 dashed border 로 drop 가능 영역 hint.
                     border: showHint
-                      ? '1px dashed var(--color-line-soft)'
+                      ? '1.5px dashed rgba(0, 0, 0, 0.35)'
                       : '1px solid transparent',
                     boxShadow: isHover
-                      ? 'inset 0 0 0 2px var(--color-amore)'
+                      ? 'inset 0 0 0 3px var(--canvas-accent)'
                       : 'none',
                     transition: 'box-shadow 0.12s ease-out',
                   }}
@@ -522,7 +523,7 @@ export function CanvasBoard({
                 key={w.key}
                 data-canvas-card
                 data-widget-key={w.key}
-                className="absolute rounded-md"
+                className="absolute"
                 onDragOver={onCellDragOver(pos.col, pos.row)}
                 onDragLeave={onCellDragLeave(pos.col, pos.row)}
                 onDrop={onCellDrop(pos.col, pos.row)}

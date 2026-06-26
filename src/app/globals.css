@@ -74,6 +74,37 @@
 
   /* Single shadow token */
   --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+
+  /* =======================================================================
+     Canvas pop tokens (잠금 조합 — /canvas 한정).
+     PR-D2 (재정의) — pop·outfit·banner-top·framed·bold·display 6 dimension
+     잠금 조합을 production main 에 적용. switcher/다른 variant 없음.
+     적용 범위: /canvas 라우트 전용 (data-canvas / data-canvas-body 로 scope).
+     다른 라우트 (dashboard, quotes 등) 는 위 bento 토큰만 사용 — 영향 0.
+     ======================================================================= */
+  --canvas-bg: #fffce1;
+  --canvas-bg-image: radial-gradient(circle, rgba(0, 0, 0, 0.18) 2px, transparent 2px);
+  --canvas-bg-size: 32px 32px;
+  --canvas-card-bg: #ffffff;
+  --canvas-card-border: #000000;
+  --canvas-card-border-width: 3px;
+  --canvas-card-radius: 14px;
+  --canvas-card-shadow: 6px 6px 0 #000000;
+  --canvas-card-header-bg: #ffd53d;
+  --canvas-card-header-divider: #000000;
+  --canvas-card-header-text: #000000;
+  --canvas-card-mute: #555555;
+  --canvas-accent: #ff5c8a;
+  --canvas-edge: #000000;
+  --canvas-edge-live: #ff5c8a;
+  --canvas-edge-width: 3px;
+  --canvas-chrome-bg: #ffffff;
+  --canvas-chrome-border: #000000;
+  --canvas-chrome-text: #000000;
+  --canvas-chrome-shadow: 4px 4px 0 #000000;
+  --canvas-chrome-radius: 12px;
+  --canvas-selection-border: #ff5c8a;
+  --canvas-selection-width: 3px;
 }
 
 /* =========================================================================
@@ -226,3 +257,59 @@ html, body {
 .docx-preview em { font-style: italic; color: var(--color-mute); }
 
 ::selection { background: var(--color-ink); color: var(--color-paper); }
+
+/* =========================================================================
+   Canvas pop scoped rules — /canvas 라우트 한정 (data-canvas / data-canvas-body).
+   다른 라우트 영향 0 — selector 가 attribute 매칭이라 그 attribute 가 없는
+   페이지에선 자동 미적용.
+   ========================================================================= */
+
+/* canvas 배경 — 노랑 #fffce1 + 32px 점 grid. canvas-board 의 outer
+   container 에 data-canvas 부착. */
+[data-canvas] {
+  background-color: var(--canvas-bg);
+  background-image: var(--canvas-bg-image);
+  background-size: var(--canvas-bg-size);
+}
+
+/* widget body (panel 안 ExpandedBody) — Memphis bold + display typography.
+   widget-shell 의 framed panel 안쪽 wrapper 에 data-canvas-body 부착. */
+[data-canvas-body] button {
+  border: 2.5px solid #000;
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 #000;
+  padding: 0.4rem 0.85rem;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+[data-canvas-body] button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #000;
+}
+[data-canvas-body] button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #000;
+}
+[data-canvas-body] :is(input, textarea, select) {
+  border: 2px solid #000;
+  border-radius: 6px;
+  background: #fff;
+  color: #000;
+  padding: 0.5rem 0.75rem;
+}
+[data-canvas-body] :is(input, textarea, select):focus {
+  outline: 3px solid var(--canvas-accent);
+  outline-offset: 2px;
+}
+/* display typography — 큰 헤딩 + 굵게 + tight tracking */
+[data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+[data-canvas-body] :is(h1, .text-3xl, .text-display) {
+  font-size: 32px;
+}
