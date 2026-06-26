@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import * as XLSX from 'xlsx';
 import { Button } from './ui/button';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
@@ -31,6 +30,60 @@ import { FileDropZone } from './ui/file-drop-zone';
 const ACCEPT = '.csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 type Mode = 'count' | 'colpct' | 'rowpct';
+
+// Unwrap an exceljs cell value into a primitive so cross-tab logic (which
+// expects strings/numbers/null) treats rich-text and formula cells the
+// same as plain ones.
+function unwrapCellValue(v: unknown): unknown {
+  if (v == null) return null;
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString();
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (Array.isArray((o as { richText?: unknown }).richText)) {
+      return ((o as { richText: { text?: string }[] }).richText)
+        .map((r) => r.text ?? '')
+        .join('');
+    }
+    if ('text' in o) return unwrapCellValue((o as { text: unknown }).text);
+    if ('result' in o) return unwrapCellValue((o as { result: unknown }).result);
+    if ('hyperlink' in o) return String((o as { hyperlink: unknown }).hyperlink);
+    if ('error' in o) return String((o as { error: unknown }).error);
+  }
+  return String(v);
+}
+
+// Reproduces the shape of `XLSX.utils.sheet_to_json({ defval: null })` for
+// an exceljs worksheet: first non-empty row is treated as headers, every
+// subsequent row becomes a `{ header: value | null }` object.
+function sheetToJson(sheet: import('exceljs').Worksheet): Row[] {
+  let headerRowNumber: number | null = null;
+  const headers: string[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (headerRowNumber != null) return;
+    headerRowNumber = rowNumber;
+    const max = row.cellCount;
+    for (let c = 1; c <= max; c++) {
+      const raw = unwrapCellValue(row.getCell(c).value);
+      headers.push(raw == null ? '' : String(raw));
+    }
+  });
+  if (headerRowNumber == null) return [];
+
+  const out: Row[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber <= headerRowNumber!) return;
+    const obj: Row = {};
+    let hasAny = false;
+    for (let i = 0; i < headers.length; i++) {
+      const v = unwrapCellValue(row.getCell(i + 1).value);
+      obj[headers[i] ?? `_col${i}`] = v == null ? null : v;
+      if (v != null && v !== '') hasAny = true;
+    }
+    if (hasAny) out.push(obj);
+  });
+  return out;
+}
 
 function fmtPct(n: number, denom: number): string {
   if (!denom) return '—';
@@ -78,11 +131,23 @@ export function QuantAnalyzer() {
     setRows(null);
     setFilename(null);
     try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      if (!sheet) throw new Error('empty_workbook');
-      const parsed = XLSX.utils.sheet_to_json<Row>(sheet, { defval: null });
+      const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+      let parsed: Row[];
+      if (isCsv) {
+        const text = await file.text();
+        const { parseCsvString } = await import('@/lib/csv-parse');
+        parsed = parseCsvString(text).rows as Row[];
+      } else {
+        const buf = await file.arrayBuffer();
+        // exceljs is heavy (~1MB) — load only when the user actually uploads
+        // a spreadsheet so it doesn't ship in the main page bundle.
+        const ExcelJS = (await import('exceljs')).default;
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buf);
+        const sheet = wb.worksheets[0];
+        if (!sheet) throw new Error('empty_workbook');
+        parsed = sheetToJson(sheet);
+      }
       if (parsed.length === 0) throw new Error('empty_sheet');
       setRows(parsed);
       setFilename(file.name);
