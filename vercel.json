@@ -3,6 +3,10 @@
     {
       "path": "/api/translate/cleanup",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "0 3 * * *"
     }
   ]
 }
