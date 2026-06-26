@@ -2372,9 +2372,11 @@ function SpeakerOffIcon() {
 }
 
 // Prompter pane — a single centred column that auto-scrolls as new
-// translated lines arrive. Visually the chrome is the surrounding
-// page; this component renders no border or box. A soft mask at the
-// top edge fades older lines as they age out of the 30-second window.
+// translated lines arrive. PR-D15: Memphis container (3px black border
+// + 6px radius + offset shadow + white bg + Outfit body) — 옛 borderless
+// 흐름을 pop 톤 카드로 승격. A soft mask at the top edge fades older
+// lines as they age out of the 30-second window; mask 는 텍스트 컨텐츠
+// 만 fade 하고 chrome 은 그대로 유지된다.
 function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Pin to bottom on every new line so the latest text stays in the
@@ -2384,27 +2386,40 @@ function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string })
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [lines]);
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
   return (
     <div
-      className="relative min-h-[360px]"
+      className="relative min-h-[360px] bg-paper"
       style={{
-        WebkitMaskImage:
-          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
-        maskImage:
-          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+        border: '3px solid var(--canvas-card-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
       }}
     >
       <div
         ref={scrollRef}
         className="mx-auto flex max-h-[60vh] min-h-[360px] w-full max-w-[760px] flex-col gap-3 overflow-y-auto px-4 py-8 text-2xl leading-[1.7] tracking-[-0.005em] text-ink"
+        style={{
+          fontFamily: outfitStack,
+          fontWeight: 600,
+          WebkitMaskImage:
+            'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+          maskImage:
+            'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
+        }}
       >
         {lines.length === 0 ? (
-          <div className="m-auto text-center text-xl text-mute-soft">{empty}</div>
+          <div
+            className="m-auto text-center text-xl text-mute"
+            style={{ fontFamily: outfitStack, fontWeight: 500 }}
+          >
+            {empty}
+          </div>
         ) : (
           lines.map((l) => (
             <p
               key={l.id}
-              className={l.final ? 'text-center' : 'text-center text-mute'}
+              className={l.final ? 'text-center text-ink' : 'text-center text-mute'}
             >
               {l.text}
               {l.final ? '' : '…'}
