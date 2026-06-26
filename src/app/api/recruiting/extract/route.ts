@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
+import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 300;
 
@@ -27,7 +28,7 @@ const SYSTEM = `당신은 정성/정량 리서치 모집 전문가입니다. 업
    - 단일일은 startDate=endDate.
    - 일정이 자료에 전혀 없으면 빈 배열.
 
-한국어로 작성. 결과는 JSON 스키마만, 그 외 텍스트 금지.`;
+한국어로 작성. 결과는 JSON 스키마만, 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -100,11 +101,19 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
+  const corpusSan = await sanitizeUserInput(corpus, 'recruiting_corpus', {
+    endpoint: '/api/recruiting/extract',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+    input_length: corpus.length,
+    input_label: 'recruiting_corpus',
+  });
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: recruitingBriefSchema,
     system: SYSTEM,
-    prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 모집 조건과 일정을 추출하세요.\n\n${corpus}`,
+    prompt: `다음은 업로드된 ${sources.length}개 자료입니다. 모집 조건과 일정을 추출하세요.\n\n${corpusSan.wrapped}`,
     temperature: 0.1,
     providerOptions: ZERO_RETENTION,
   });

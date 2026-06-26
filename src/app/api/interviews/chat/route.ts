@@ -13,6 +13,11 @@ import {
   type ChatCitation,
   type InterviewSearchHit,
 } from '@/lib/interview-search';
+import {
+  ISOLATION_NOTICE,
+  detectInjection,
+  logSuspectedInjection,
+} from '@/lib/llm/sanitize';
 
 // PR-2 — interview corpus chat.
 //
@@ -63,7 +68,7 @@ const INTERVIEW_CHAT_SYSTEM = `당신은 인터뷰 코퍼스 분석가입니다.
   - [2] filename § heading_path
 - heading_path 는 청크 메타데이터의 heading 경로를 " > " 로 이어 표시합니다 (없으면 "(루트)").
 - 인용하지 않은 청크는 근거 섹션에서 빼세요. 한 청크를 여러 번 인용해도 근거 목록에는 한 번만 적습니다.
-- 간결한 표·불릿이 도움이 되면 사용하되, 사실 없이 형식만 채우지 마세요.`;
+- 간결한 표·불릿이 도움이 되면 사용하되, 사실 없이 형식만 채우지 마세요.${ISOLATION_NOTICE}`;
 
 function formatEvidence(hits: InterviewSearchHit[]): string {
   if (hits.length === 0) {
@@ -112,6 +117,22 @@ export async function POST(req: Request) {
       { error: 'last_message_must_be_user' },
       { status: 400 },
     );
+  }
+
+  // PR-SEC9: injection 의심 패턴 detect → audit_log. 차단은 안 함
+  // (chat UX 회귀 회피). 사용자 메시지는 messages API 의 user role 로
+  // 들어가 system prompt 와 자연 격리되지만, 격리 instruction (ISOLATION_NOTICE)
+  // 가 system 에 있어 박스 안 지시는 무시하도록 모델에 안내.
+  const injectionMatches = detectInjection(last.content);
+  if (injectionMatches.length > 0) {
+    void logSuspectedInjection(injectionMatches, {
+      endpoint: '/api/interviews/chat',
+      user_id: user.id,
+      org_id: org.org_id,
+      actor_email: user.email ?? null,
+      input_length: last.content.length,
+      input_label: 'chat_user_message',
+    }).catch(() => {});
   }
 
   // Verify the job belongs to the requester's org before doing any

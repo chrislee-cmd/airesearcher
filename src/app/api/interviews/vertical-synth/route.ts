@@ -6,6 +6,7 @@ import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 300;
 
@@ -158,7 +159,7 @@ VOC는 filename도 발화도 입력에 있는 문자열 그대로 — 절대 변
 # 출력 규칙
 - 모든 입력 인덱스는 정확히 한 번씩만 sourceIndices에 등장 (누락 금지, 중복 금지).
 - insights 배열의 순서는 인터뷰 흐름을 반영해서 자연스럽게 (앞쪽 인덱스를 다루는 그룹이 대체로 앞쪽).
-- 정의된 JSON 스키마(insights)만 반환, 그 외 텍스트 금지.`;
+- 정의된 JSON 스키마(insights)만 반환, 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
 
   // Stream the response. The point isn't to render partials on the client
   // (we only render once the array is complete) — it's to keep the HTTP
@@ -166,11 +167,20 @@ VOC는 filename도 발화도 입력에 있는 문자열 그대로 — 절대 변
   // Sonnet is still composing 30+ wordy summaries.
   try {
     const anthropic = createAnthropic({ apiKey });
+    const blockCorpus = blocks.join('\n\n');
+    const corpusSan = await sanitizeUserInput(blockCorpus, 'interview_synthesis', {
+      endpoint: '/api/interviews/vertical-synth',
+      user_id: user.id,
+      org_id: org?.org_id ?? null,
+      actor_email: user.email ?? null,
+      input_length: blockCorpus.length,
+      input_label: 'interview_synthesis',
+    });
     const result = streamObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: responseSchema,
       system: SYSTEM,
-      prompt: `총 ${rows.length}개 문항입니다. 단계 1(주제 그룹핑) → 단계 2(융합 인사이트 작성) 순으로 작업해주세요. 결과 row 개수는 입력보다 줄어들어도 좋습니다 — 의미적으로 묶이는 문항은 반드시 묶어서 하나의 인사이트로 통합하세요. 단, 각 인사이트 안에서 대표 경향성과 소수 케이스는 끝까지 분리해서 적습니다.\n\n${blocks.join('\n\n')}`,
+      prompt: `총 ${rows.length}개 문항입니다. 단계 1(주제 그룹핑) → 단계 2(융합 인사이트 작성) 순으로 작업해주세요. 결과 row 개수는 입력보다 줄어들어도 좋습니다 — 의미적으로 묶이는 문항은 반드시 묶어서 하나의 인사이트로 통합하세요. 단, 각 인사이트 안에서 대표 경향성과 소수 케이스는 끝까지 분리해서 적습니다.\n\n${corpusSan.wrapped}`,
       temperature: 0.3,
       providerOptions: ZERO_RETENTION,
     });

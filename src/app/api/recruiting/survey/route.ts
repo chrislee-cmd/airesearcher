@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
 import { surveySchema } from '@/lib/survey-schema';
+import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 300;
 
@@ -43,7 +44,7 @@ const SYSTEM = `당신은 리서치 모집 **스크리너 설문(Screening Surve
 - 전체 질문 수는 criteria 수에 비례. 일반적으로 5~12개 (인적사항 6개 포함하면 11~18). 절대 padding으로 늘리지 마세요.
 - 설문 \`title\`은 "[프로젝트명] 사전 검토 설문" 형식으로 — "본 조사", "메인 설문" 같은 단어 금지.
 - 설문 \`description\`은 모집 안내 + 1~2분 안내 + "적격자에게만 별도로 본 인터뷰 안내가 갑니다" 한 줄. 본 조사 내용 미리보기 X.
-- 한국어로 작성.`;
+- 한국어로 작성.${ISOLATION_NOTICE}`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -63,11 +64,20 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
+  const briefJson = JSON.stringify(brief, null, 2);
+  const briefSan = await sanitizeUserInput(briefJson, 'recruiting_brief', {
+    endpoint: '/api/recruiting/survey',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+    input_length: briefJson.length,
+    input_label: 'recruiting_brief',
+  });
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: surveySchema,
     system: SYSTEM,
-    prompt: `다음 모집 브리프로 설문을 설계하세요.\n\n${JSON.stringify(brief, null, 2)}`,
+    prompt: `다음 모집 브리프로 설문을 설계하세요.\n\n${briefSan.wrapped}`,
     temperature: 0.3,
     providerOptions: ZERO_RETENTION,
   });

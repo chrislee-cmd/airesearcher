@@ -2,6 +2,8 @@
 // that is identical between design / marketing / strategy / findings
 // lives here so a token rename or output-rule tweak hits all variants.
 
+import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
+
 // Voice rules. Injected into every system prompt (both normalize and
 // generate, plus enhance) so the report reads like an editorial story a
 // non-specialist can follow, not a bureaucratic memo. Three pillars:
@@ -49,12 +51,12 @@ export const STRICT_MD_OUTPUT = `엄격한 출력 규칙:
 - 입력 자료에 명시적으로 없는 사실/숫자/인용을 만들지 말 것. 자료가 부족한 섹션은 \`(자료 미흡)\` 한 줄로 표기.
 - 모든 정성 인용은 \`> "원문 그대로"\` blockquote + 다음 줄에 \`— 화자/세그먼트 (출처파일명)\` 표기.
 
-${WRITING_TONE_BLOCK}`;
+${WRITING_TONE_BLOCK}${ISOLATION_NOTICE}`;
 
 // Strict output rules every generate (HTML) stage must obey.
 export const STRICT_HTML_OUTPUT = `**출력은 순수 HTML 한 개만.** 코드펜스(\`\`\`)·설명·머리말 없이 곧바로 \`<!doctype html>\`로 시작하세요. 외부 CSS/JS/이미지/폰트 참조 금지 — 모든 스타일은 \`<head>\` 안 \`<style>\`에 인라인. **\`<script>\` 태그·인라인 이벤트 핸들러(onclick 등)·SVG 안의 \`<script>\` 모두 금지** — 페이지는 정적이어야 합니다. 막대 차트는 \`<div>\` + CSS \`width:%%\`로만 표현하세요.
 
-${WRITING_TONE_BLOCK}`;
+${WRITING_TONE_BLOCK}${ISOLATION_NOTICE}`;
 
 // Editorial design tokens + base typography. Every generate variant
 // concatenates this so the four report types share an instantly

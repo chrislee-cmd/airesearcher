@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
 
 // Qualitative viz-schema extraction for insights_analyzer (PR 5b).
 //
@@ -100,4 +101,4 @@ export const INSIGHTS_QUALITATIVE_SYSTEM = `당신은 정성 분석가입니다.
 ## 공통
 
 - 출력은 입력 언어를 따릅니다 (한국어 데이터면 axis/label/insight 도 한국어).
-- 응답자가 적거나 데이터가 빈약해서 의미 있는 긴장/모순을 찾을 수 없다면 빈 배열을 돌려도 됩니다. **억지로 만들지 마세요.**`;
+- 응답자가 적거나 데이터가 빈약해서 의미 있는 긴장/모순을 찾을 수 없다면 빈 배열을 돌려도 됩니다. **억지로 만들지 마세요.**${ISOLATION_NOTICE}`;

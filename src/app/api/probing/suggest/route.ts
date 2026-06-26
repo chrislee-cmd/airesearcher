@@ -11,6 +11,7 @@ import {
   PROBING_SYSTEM,
   buildProbingSuggestionSchema,
 } from '@/lib/probing-prompts';
+import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
 // 위젯 trigger 는 PR-13 부터 5초 주기 × 1 질문. 단일 호출이 5초 안에 끝날
 // 필요는 없음 — client 의 inFlightRef 가드가 중복 호출 방지. Sonnet 4.6 의
@@ -64,10 +65,31 @@ export async function POST(request: Request) {
   // 가이드는 transcript 보다 먼저 배치 — LLM 이 가이드의 가설 / 의도를
   // 1순위 기준으로 잡고 transcript 의 직전 발화를 그 의도에 대한 답변
   // 신호로 해석하도록. PROBING_SYSTEM 의 "가이드 활용" 섹션과 짝.
+  //
+  // PR-SEC9: 사용자 입력 (transcript / guide) 는 XML delimiter 로 격리하고
+  // 의심 패턴은 audit_log 에 기록. 차단은 안 함 (false positive 회피).
   const guideText = interview_guide.trim();
   const hasGuide = guideText.length > 0;
-  const guideBlock = hasGuide
-    ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideText}\n\n위 가이드가 모든 제안의 1순위 기준입니다. 각 질문이 가이드의 어느 부분과 정합되는지 \`guide_reference\` 에 명시하세요.\n\n`
+  const sanitizeCtx = {
+    endpoint: '/api/probing/suggest',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+  };
+  const transcriptSan = await sanitizeUserInput(transcript_window, 'transcript', {
+    ...sanitizeCtx,
+    input_length: transcript_window.length,
+    input_label: 'transcript',
+  });
+  const guideSan = hasGuide
+    ? await sanitizeUserInput(guideText, 'interview_guide', {
+        ...sanitizeCtx,
+        input_length: guideText.length,
+        input_label: 'interview_guide',
+      })
+    : null;
+  const guideBlock = guideSan
+    ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideSan.wrapped}\n\n위 가이드가 모든 제안의 1순위 기준입니다. 각 질문이 가이드의 어느 부분과 정합되는지 \`guide_reference\` 에 명시하세요.\n\n`
     : '';
 
   // PR-13: count 가 1 이면 "모든 기법 각 1개씩" 룰을 한 호출에 적용할 수
@@ -86,7 +108,7 @@ export async function POST(request: Request) {
     schema,
     system: PROBING_SYSTEM,
     prompt: `${guideBlock}## Transcript (최근 ~90초)
-${transcript_window}
+${transcriptSan.wrapped}
 
 ---
 ${closingInstruction} \`questions\` 의 ${count}개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,

@@ -12,6 +12,7 @@ import {
   type InsightsQuote,
 } from '@/lib/insights-schema';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
 // Batch size for incremental INSERTs into insights_quotes while the LLM
 // streams. Small enough that the client's 2s poll picks up movement, large
@@ -149,6 +150,15 @@ export async function POST(request: Request) {
 
   try {
     const anthropic = createAnthropic({ apiKey: anthropicKey });
+    const markdownSlice = markdown.slice(0, 200_000);
+    const markdownSan = await sanitizeUserInput(markdownSlice, 'insights_markdown', {
+      endpoint: '/api/insights/files',
+      user_id: user.id,
+      org_id: job.org_id ?? null,
+      actor_email: user.email ?? null,
+      input_length: markdownSlice.length,
+      input_label: 'insights_markdown',
+    });
     const { elementStream } = streamObject({
       model: anthropic('claude-sonnet-4-6'),
       output: 'array',
@@ -156,7 +166,7 @@ export async function POST(request: Request) {
       system: INSIGHTS_EXTRACTION_SYSTEM,
       // 200k char cap matches the legacy extract route — within Sonnet's
       // input window and avoids paying for prompt tokens on outlier inputs.
-      prompt: `파일명: ${file.name}\n\n마크다운:\n\n${markdown.slice(0, 200_000)}`,
+      prompt: `파일명: ${file.name}\n\n마크다운:\n\n${markdownSan.wrapped}`,
       temperature: 0.1,
       providerOptions: ZERO_RETENTION,
     });
