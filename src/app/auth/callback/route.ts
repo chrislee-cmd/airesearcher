@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { routing } from '@/i18n/routing';
+import { validateNext } from '@/lib/auth/validate-next';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const explicitNext = url.searchParams.get('next');
+  const explicitNext = validateNext(url.searchParams.get('next'));
 
   let locale: string = routing.defaultLocale;
 
