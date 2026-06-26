@@ -1784,7 +1784,7 @@ export function TranslateConsole() {
             value={sourceLang}
             onChange={(e) => setSourceLang(e.target.value)}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -1799,7 +1799,7 @@ export function TranslateConsole() {
             value={targetLang}
             onChange={(e) => setTargetLang(e.target.value)}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -1825,7 +1825,7 @@ export function TranslateConsole() {
             value={inputSource}
             onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
             disabled={live || busy}
-            className="h-8 rounded-[4px] border border-line bg-paper px-2 text-md text-ink"
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             <option value="mic">{t('inputSource.mic')}</option>
             <option value="tab">{t('inputSource.tab')}</option>
@@ -1854,7 +1854,7 @@ export function TranslateConsole() {
             {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
           </IconButton>
           <span
-            className={`rounded-[4px] border px-2 py-0.5 text-sm ${
+            className={`rounded-xs border px-2 py-0.5 text-sm ${
               live
                 ? 'border-amore text-amore'
                 : status === 'error'
@@ -1866,7 +1866,7 @@ export function TranslateConsole() {
           </span>
           {live && recordEnabled && recorderActive ? (
             <span
-              className="inline-flex items-center gap-1 rounded-[4px] border border-amore px-2 py-0.5 text-sm text-amore"
+              className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
               aria-label={t('recording.indicatorAria')}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
@@ -1905,7 +1905,7 @@ export function TranslateConsole() {
       </div>
 
       {shareToken && shareUrl ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-ink">
+        <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">
           <span className="text-mute-soft">{t('share.label')}</span>
           <ChromeInput
             readOnly
@@ -1932,7 +1932,7 @@ export function TranslateConsole() {
       ) : null}
 
       {error ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
+        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
           {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
         </div>
       ) : null}
@@ -1986,12 +1986,12 @@ function RecordingDownloadPanel({
   const unlocked = recording?.status === 'unlocked';
 
   return (
-    <section className="rounded-[4px] border border-line bg-paper p-4 text-md text-ink">
+    <section className="rounded-xs border border-line bg-paper p-4 text-md text-ink">
       <div className="mb-2 text-sm uppercase tracking-[0.08em] text-mute-soft">
         {t('download.eyebrow')}
       </div>
       {recordingError ? (
-        <div className="mb-3 rounded-[4px] border border-line-soft px-3 py-2 text-md text-mute">
+        <div className="mb-3 rounded-xs border border-line-soft px-3 py-2 text-md text-mute">
           {t.has(`download.errors.${recordingError}`)
             ? t(`download.errors.${recordingError}`)
             : recordingError}
@@ -2022,7 +2022,7 @@ function RecordingDownloadPanel({
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-[4px] border border-amore px-2 py-0.5 text-sm text-amore">
+          <span className="rounded-xs border border-amore px-2 py-0.5 text-sm text-amore">
             {t('download.unlockedPill')}
           </span>
           <ChromeButton

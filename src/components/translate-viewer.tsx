@@ -420,7 +420,7 @@ export function TranslateViewer({
           </p>
         </div>
         <span
-          className={`rounded-[4px] border px-2 py-0.5 text-sm ${
+          className={`rounded-xs border px-2 py-0.5 text-sm ${
             status === 'live'
               ? 'border-amore text-amore'
               : status === 'ended'
@@ -452,7 +452,7 @@ export function TranslateViewer({
       ) : null}
 
       <fieldset
-        className="flex flex-wrap items-center gap-4 rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-ink"
+        className="flex flex-wrap items-center gap-4 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink"
         role="radiogroup"
         aria-label="Audio"
       >
@@ -496,13 +496,13 @@ export function TranslateViewer({
       </fieldset>
 
       {error ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
+        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
           {error}
         </div>
       ) : null}
 
       {status === 'ended' ? (
-        <div className="rounded-[4px] border border-line bg-paper px-3 py-2 text-md text-mute">
+        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
           {COPY.hostOnlyDownload}
         </div>
       ) : null}

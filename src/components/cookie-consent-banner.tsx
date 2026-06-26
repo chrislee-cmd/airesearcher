@@ -153,7 +153,7 @@ export function CookieConsentBanner() {
       aria-labelledby="cookie-consent-title"
       className="fixed inset-x-0 bottom-0 z-toast px-4 pb-4 sm:px-6 sm:pb-6"
     >
-      <div className="mx-auto w-full max-w-[640px] border border-line bg-paper p-5 rounded-md [box-shadow:0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.08)]">
+      <div className="mx-auto w-full max-w-[640px] border border-line bg-paper p-5 rounded-md [box-shadow:var(--shadow-bento)]">
         <h2
           id="cookie-consent-title"
           className="text-md font-semibold text-ink-2"
