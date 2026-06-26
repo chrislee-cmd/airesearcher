@@ -1,0 +1,24 @@
+# gitleaks config — ai-researcher
+#
+# Used by:
+#   - local pre-commit hook (staged-only scan, PROJECT.md §3.8)
+#   - CI .github/workflows/ci.yml `secrets-scan` job (full history)
+#
+# Inherit the default ruleset and layer repo-specific allowlists.
+
+title = "ai-researcher gitleaks config"
+
+[extend]
+useDefault = true
+
+# localStorage / sessionStorage key constants flagged as generic-api-key.
+# The values are namespaced UI state keys (e.g. "enko.assignments.v1"), not
+# credentials. Surgical allowlist on the literal token rather than the
+# surrounding identifier so we don't hide real secrets that happen to live
+# near a similarly-named const.
+[[allowlists]]
+description = "localStorage namespace tokens — enko.<scope>.<version>"
+regexTarget = "match"
+regexes = [
+  '''enko\.[a-zA-Z]+\.v\d+''',
+]
