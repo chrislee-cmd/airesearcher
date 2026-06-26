@@ -188,6 +188,34 @@
     "errorLinkExpired": "This link has expired or already been used. Please request a new one.",
     "errorGeneric": "Something went wrong. Please try again."
   },
+  "Consent": {
+    "legend": "Account consents",
+    "agreeAll": "Agree to all",
+    "privacy": "I agree to the Privacy Policy",
+    "terms": "I agree to the Terms of Service",
+    "marketing": "Send me product news and event updates",
+    "required": "(required)",
+    "optional": "(optional)",
+    "errorRequired": "Please accept the required items to create an account."
+  },
+  "CookieBanner": {
+    "title": "We use cookies",
+    "body": "We use cookies for authentication, product improvement analytics, and (when you opt in) marketing.",
+    "learnMore": "Learn more",
+    "preferencesLegend": "Cookie preferences",
+    "essential": "Essential",
+    "alwaysOn": "(always on)",
+    "essentialDescription": "Required for sign-in and core product features.",
+    "analytics": "Analytics",
+    "analyticsDescription": "Anonymized usage to help us improve the product.",
+    "marketing": "Marketing",
+    "marketingDescription": "Relevant campaigns and event updates.",
+    "customize": "Customize",
+    "hideDetails": "Hide details",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "savePreferences": "Save preferences"
+  },
   "Sidebar": {
     "dashboard": "Dashboard",
     "quotes": "Transcript Generator",

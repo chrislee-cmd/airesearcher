@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { MixpanelProvider } from '@/components/mixpanel-provider';
 import { AuthProvider } from '@/components/auth-provider';
+import { CookieConsentBanner } from '@/components/cookie-consent-banner';
 import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
 
@@ -49,6 +50,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <MixpanelProvider>
             <AuthProvider initialUser={user}>{children}</AuthProvider>
+            <CookieConsentBanner />
           </MixpanelProvider>
         </NextIntlClientProvider>
       </body>
