@@ -105,6 +105,26 @@
   --canvas-chrome-radius: 12px;
   --canvas-selection-border: #ff5c8a;
   --canvas-selection-width: 3px;
+
+  /* =======================================================================
+     Shell pop tokens (PR-D5 — 사이드바 + 헤더 강한 pop 통일).
+     캔버스의 노랑/검정/Memphis 시각 언어를 app shell 전반으로 확장.
+     ======================================================================= */
+  --sidebar-bg: #fffce1;                /* yellow — 캔버스 톤과 정합 */
+  --sidebar-bg-strong: #ffeb70;         /* 더 진한 노랑 — 로고 헤더 banner */
+  --sidebar-border: #000000;
+  --sidebar-border-width: 3px;
+  --sidebar-nav-bg: #ffffff;
+  --sidebar-nav-bg-hover: #fff5b8;
+  --sidebar-nav-border: #000000;
+  --sidebar-nav-border-width: 2.5px;
+  --sidebar-nav-radius: 6px;
+  --sidebar-active-bg: #ff5c8a;         /* 핑크 */
+  --sidebar-active-text: #ffffff;
+  --sidebar-active-border: #000000;
+  --sidebar-group-heading: #000000;
+  --memphis-shadow-sm: 3px 3px 0 #000000;
+  --memphis-shadow-xs: 2px 2px 0 #000000;
 }
 
 /* =========================================================================

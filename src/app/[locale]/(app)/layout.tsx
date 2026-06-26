@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
+import { Outfit } from 'next/font/google';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
@@ -17,6 +18,17 @@ import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
 import { VoiceConciergeProvider } from '@/components/voice-concierge';
+
+// Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
+// 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
+// 하므로 canvas 라우트는 자체 layout 가 덮어쓰고 다른 라우트는 이
+// 정의가 살아남는다.
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export default async function AppLayout({
   children,
@@ -54,7 +66,7 @@ export default async function AppLayout({
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
          <WorkspaceProvider>
-         <div className="flex flex-1 overflow-hidden">
+         <div className={`${outfit.variable} flex flex-1 overflow-hidden`}>
            <Sidebar
              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
              email={user?.email ?? null}

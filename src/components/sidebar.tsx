@@ -374,49 +374,70 @@ export function Sidebar({
     });
   }
 
+  // PR-D5 shell pop — 캔버스와 같은 시각 언어 (노랑 bg + 검정 hard
+  // border + Memphis 메뉴 카드 + Outfit). 색/border/shadow 는
+  // globals.css 의 --sidebar-* / --canvas-* 토큰에서 끌어온다.
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
   return (
     <aside
       data-coachmark-id="sidebar"
-      className="sticky top-0 hidden h-screen w-[224px] shrink-0 flex-col border-r border-line bg-paper md:flex"
+      className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col md:flex"
+      style={{
+        background: 'var(--sidebar-bg)',
+        borderRight: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+      }}
     >
-      <div className="px-7 pb-6 pt-7">
+      {/* 로고 헤더 — 더 진한 노랑 banner + 하단 검정 3px border + Outfit display */}
+      <div
+        className="px-6 pb-5 pt-6"
+        style={{
+          background: 'var(--sidebar-bg-strong)',
+          borderBottom: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        }}
+      >
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5 transition-opacity duration-[120ms] hover:opacity-80"
+          className="flex items-center gap-2.5 transition-transform duration-[120ms] hover:-translate-y-0.5"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/landing/logo.png"
             alt=""
-            width={28}
-            height={28}
-            style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 7 }}
+            width={32}
+            height={32}
+            style={{
+              width: 32,
+              height: 32,
+              objectFit: 'contain',
+              borderRadius: 8,
+              border: '2px solid var(--sidebar-border)',
+              background: '#fff',
+            }}
           />
-          <div>
-            <div className="text-xl font-bold tracking-[-0.01em] text-ink">
-              {tBrand('name')}
-            </div>
-            <div className="mt-0.5 h-px w-5 bg-amore" />
+          <div
+            style={{
+              fontFamily: outfitStack,
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              color: 'var(--sidebar-border)',
+              lineHeight: 1,
+            }}
+          >
+            {tBrand('name')}
           </div>
         </Link>
       </div>
 
-      {/* Projects entry */}
-      <div className="px-3 pb-2">
-        <div
-          ref={dropdownRef}
-          className="relative flex items-stretch border-l-2 border-transparent"
-          style={projectsActive ? { borderColor: 'var(--color-amore)' } : undefined}
-        >
+      {/* Projects entry — Memphis 카드 nav */}
+      <div className="px-3 pt-4 pb-2">
+        <div ref={dropdownRef} className="relative flex items-stretch gap-1">
           <Link
             href="/projects"
             prefetch
             onClick={() => track('sidebar_projects_click')}
-            className={`flex-1 px-4 py-2 text-md transition-colors duration-[120ms] ${
-              projectsActive
-                ? 'font-semibold text-ink-2'
-                : 'text-mute hover:text-ink-2'
-            }`}
+            className="flex-1 truncate px-3 py-2 text-md transition-transform duration-[120ms]"
+            style={navCardStyle({ active: projectsActive })}
           >
             {t('viewProjects')}
           </Link>
@@ -425,17 +446,28 @@ export function Sidebar({
             onClick={() => setDropdownOpen((v) => !v)}
             aria-label={tProjects('navigate')}
             aria-expanded={dropdownOpen}
-            className={`flex w-9 items-center justify-center ${
-              dropdownOpen ? '!text-ink-2' : ''
-            }`}
+            className="flex w-9 items-center justify-center !rounded-xs"
+            style={{
+              ...navCardStyle({ active: dropdownOpen }),
+              padding: 0,
+            }}
           >
             <Chevron open={dropdownOpen} />
           </IconButton>
 
           {dropdownOpen && (
-            <div className="absolute left-2 right-0 top-full z-30 mt-1 max-h-[280px] overflow-y-auto border border-line bg-paper py-1 rounded-sm">
+            <div
+              className="absolute left-0 right-0 top-full z-modal mt-1 max-h-[280px] overflow-y-auto py-1"
+              style={{
+                background: 'var(--sidebar-nav-bg)',
+                border:
+                  'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+                borderRadius: 'var(--sidebar-nav-radius)',
+                boxShadow: 'var(--memphis-shadow-sm)',
+              }}
+            >
               {projects.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-mute-soft">
+                <div className="px-3 py-2 text-sm" style={{ color: '#555' }}>
                   {tProjects('noProjects')}
                 </div>
               ) : (
@@ -444,7 +476,8 @@ export function Sidebar({
                     key={p.id}
                     href={`/projects/${p.id}`}
                     onClick={() => setDropdownOpen(false)}
-                    className="block truncate px-3 py-1.5 text-md text-mute transition-colors duration-[120ms] hover:bg-paper-soft hover:text-ink-2"
+                    className="block truncate px-3 py-1.5 text-md font-medium transition-colors duration-[120ms] hover:text-amore"
+                    style={{ color: '#000' }}
                   >
                     {p.name}
                   </Link>
@@ -455,19 +488,14 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Canvas entry — production /canvas (도구 6장 카드 board).
-          PR1 에서는 사이드바 도구 항목들과 공존; PR3 에서 사이드바
-          재구성 (quotes/desk 개별 항목 → canvas 단일 entry) 검토. */}
+      {/* Canvas entry — Memphis 카드 nav */}
       <div className="px-3 pb-2">
         <Link
           href="/canvas"
           prefetch
           onClick={() => track('sidebar_canvas_click')}
-          className={`block border-l-2 px-4 py-2 text-md transition-colors duration-[120ms] ${
-            pathname === '/canvas'
-              ? 'border-amore font-semibold text-ink-2'
-              : 'border-transparent text-mute hover:text-ink-2'
-          }`}
+          className="block truncate px-3 py-2 text-md transition-transform duration-[120ms]"
+          style={navCardStyle({ active: pathname === '/canvas' })}
         >
           {t('canvas')}
         </Link>
@@ -477,7 +505,7 @@ export function Sidebar({
         {FEATURE_GROUPS.map((g) => {
           const isCollapsed = collapsed.has(g.key);
           return (
-            <section key={g.key} className="mt-3 first:mt-2">
+            <section key={g.key} className="mt-4 first:mt-2">
               <Button
                 variant="link"
                 size="xs"
@@ -485,12 +513,18 @@ export function Sidebar({
                 onClick={() => toggleGroup(g.key)}
                 aria-expanded={!isCollapsed}
                 rightIcon={<Chevron open={!isCollapsed} small />}
-                className="!justify-between !gap-2 !px-4 !py-1.5 !text-xs uppercase tracking-[0.22em] !text-mute-soft hover:!text-ink-2 !rounded-none"
+                className="!justify-between !gap-2 !px-2 !py-1.5 !text-xs uppercase !rounded-none"
+                style={{
+                  fontFamily: outfitStack,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  color: 'var(--sidebar-group-heading)',
+                }}
               >
                 {tGroups(g.key)}
               </Button>
               {!isCollapsed && (
-                <ul className="mt-0.5">
+                <ul className="mt-2 flex flex-col gap-1.5">
                   {g.features
                     .filter(
                       (key) =>
@@ -566,17 +600,13 @@ export function Sidebar({
                               if (path) router.push(path);
                             });
                           }}
-                          className={`flex items-center justify-between gap-2 px-4 py-1.5 text-md transition-colors duration-[120ms] border-l-2 ${
-                            active
-                              ? 'border-amore text-ink-2 font-semibold'
-                              : isDragOver
-                              ? 'border-amore bg-paper-soft text-ink-2'
-                              : isCompatible
-                              ? 'border-amore text-ink-2'
-                              : isDimmed
-                              ? 'border-transparent text-mute-soft'
-                              : 'border-transparent text-mute hover:text-ink-2'
-                          }`}
+                          className="flex items-center justify-between gap-2 px-3 py-2 text-md transition-transform duration-[120ms]"
+                          style={navCardStyle({
+                            active,
+                            dragOver: isDragOver,
+                            compatible: isCompatible,
+                            dimmed: isDimmed,
+                          })}
                         >
                           <span className="truncate">{t(f.key)}</span>
                           {busy ? (() => {
@@ -590,7 +620,12 @@ export function Sidebar({
                             return (
                               <span
                                 title={t('working')}
-                                className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-[0.18em] text-amore"
+                                className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-[0.18em]"
+                                style={{
+                                  color: active ? '#fff' : 'var(--canvas-accent)',
+                                  fontFamily: outfitStack,
+                                  fontWeight: 700,
+                                }}
                               >
                                 <Spinner />
                                 {text}
@@ -599,11 +634,19 @@ export function Sidebar({
                           })() : isRecentlyDone(f.key) ? (
                             <span
                               className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-[0.18em]"
-                              style={{ color: 'var(--color-success, #16a34a)' }}
+                              style={{
+                                color: active ? '#fff' : 'var(--color-success, #16a34a)',
+                                fontFamily: outfitStack,
+                                fontWeight: 700,
+                              }}
                             >
                               <span
                                 className="inline-block h-1.5 w-1.5 rounded-full"
-                                style={{ background: 'var(--color-success, #16a34a)' }}
+                                style={{
+                                  background: active
+                                    ? '#fff'
+                                    : 'var(--color-success, #16a34a)',
+                                }}
                               />
                               {t('done')}
                             </span>
@@ -627,6 +670,73 @@ export function Sidebar({
       />
     </aside>
   );
+}
+
+// Memphis 카드 nav 스타일 — 흰 bg + 검정 hard border + 작은 offset
+// shadow. active = 핑크 wash + 흰 텍스트. dragOver / compatible / dimmed
+// 는 드래그 중 시각 신호.
+function navCardStyle({
+  active,
+  dragOver,
+  compatible,
+  dimmed,
+}: {
+  active?: boolean;
+  dragOver?: boolean;
+  compatible?: boolean;
+  dimmed?: boolean;
+}): React.CSSProperties {
+  if (active) {
+    return {
+      background: 'var(--sidebar-active-bg)',
+      color: 'var(--sidebar-active-text)',
+      border:
+        'var(--sidebar-nav-border-width) solid var(--sidebar-active-border)',
+      borderRadius: 'var(--sidebar-nav-radius)',
+      boxShadow: 'var(--memphis-shadow-xs)',
+      fontWeight: 700,
+    };
+  }
+  if (dragOver) {
+    return {
+      background: 'var(--sidebar-active-bg)',
+      color: 'var(--sidebar-active-text)',
+      border:
+        'var(--sidebar-nav-border-width) solid var(--sidebar-active-border)',
+      borderRadius: 'var(--sidebar-nav-radius)',
+      boxShadow: 'var(--memphis-shadow-sm)',
+      fontWeight: 700,
+    };
+  }
+  if (compatible) {
+    return {
+      background: 'var(--sidebar-bg-strong)',
+      color: 'var(--sidebar-border)',
+      border:
+        'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+      borderRadius: 'var(--sidebar-nav-radius)',
+      boxShadow: 'var(--memphis-shadow-xs)',
+      fontWeight: 600,
+    };
+  }
+  if (dimmed) {
+    return {
+      background: 'var(--sidebar-nav-bg)',
+      color: '#999',
+      border:
+        'var(--sidebar-nav-border-width) solid color-mix(in srgb, var(--sidebar-nav-border) 30%, transparent)',
+      borderRadius: 'var(--sidebar-nav-radius)',
+      fontWeight: 500,
+    };
+  }
+  return {
+    background: 'var(--sidebar-nav-bg)',
+    color: 'var(--sidebar-border)',
+    border:
+      'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+    borderRadius: 'var(--sidebar-nav-radius)',
+    fontWeight: 600,
+  };
 }
 
 function Chevron({ open, small }: { open: boolean; small?: boolean }) {
