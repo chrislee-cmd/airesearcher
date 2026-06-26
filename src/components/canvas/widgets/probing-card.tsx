@@ -1111,10 +1111,13 @@ function formatRelativeKo(epochMs: number, nowMs: number): string {
   return `${Math.floor(diff / 86_400_000)}일 전`;
 }
 
-// PR-12/13: 개별 질문 한 줄 — 평면 list 의 한 row.
+// PR-12/13/15: 개별 질문 한 줄 — 평면 list 의 한 row.
 // - 클릭: 복사 + selection toggle (PR-11 dim 효과).
-// - hover 우측: ★ (핵심 토글) + ✕ (삭제). 둘 다 transient stream row 에는
+// - 우측: ★ (핵심 토글) + ✕ (삭제) 묶음. 둘 다 transient stream row 에는
 //   미노출 (id 미정).
+// - PR-15: 두 버튼은 한 flex 컨테이너 안 묶음 + Memphis 톤 (32px · 검정 border
+//   2px · offset shadow · hover translate). 항상 visible — 헤더 가이드 텍스트
+//   "★ → 핵심 · ✕ → 삭제" 가 의미를 고정하므로 hover-only 가 오히려 혼란.
 // - isCore = true 면 행 전체에 rose wash + thicker rose border. dim 상태에서
 //   다른 row 가 어두워질 때도 핵심 표시는 유지된다 (시각 우선순위: 핵심 > dim).
 function QuestionRow({
@@ -1153,17 +1156,22 @@ function QuestionRow({
   const coreClasses = isCore
     ? 'bg-rose/30 border-l-2 border-rose'
     : 'border-l-2 border-transparent';
-  const reserveRight = onDelete && onToggleCore ? 'pr-14' : onDelete ? 'pr-8' : '';
+  const hasActions = Boolean(onToggleCore || onDelete);
+  // Memphis 액션 버튼 — D5 카드 톤 정합. 32×32 · 검정 2px border · 2px offset
+  // shadow · 호버 시 translate+shadow 축소, active 시 shadow 사라짐. 토큰화된
+  // canvas-card-border 변수를 직접 참조해 D5 와 변경이 묶이도록.
+  const actionButtonBase =
+    'flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-[2px] border-[var(--canvas-card-border)] shadow-[2px_2px_0_var(--canvas-card-border)] transition-[transform,box-shadow,background-color,color] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--canvas-card-border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--canvas-accent)]';
   return (
     <li
-      className={`group relative rounded-xs transition duration-200 ${coreClasses} ${wrapperOpacity}`}
+      className={`group flex items-start gap-3 rounded-xs px-2 py-2 transition duration-200 ${coreClasses} ${wrapperOpacity}`}
     >
       {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
       <button
         type="button"
         aria-pressed={isSelected}
         onClick={onClick}
-        className={`w-full px-2 py-1.5 ${reserveRight} text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore`}
+        className="min-w-0 flex-1 text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore"
       >
         <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
           {label}
@@ -1173,64 +1181,67 @@ function QuestionRow({
           <span className="ml-2 text-xs text-mute-soft">· {rel}</span>
         )}
       </button>
-      {onToggleCore && (
-        // eslint-disable-next-line react/forbid-elements -- micro icon-button overlaid inside list row; <IconButton> primitive enforces 28px+ chrome which crowds the inline text layout.
-        <button
-          type="button"
-          aria-label={isCore ? '핵심 표시 해제' : '핵심으로 표시'}
-          aria-pressed={isCore}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleCore();
-          }}
-          className={`absolute ${onDelete ? 'right-7' : 'right-1'} top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-xs transition duration-150 hover:bg-paper ${
-            isCore
-              ? 'text-amore'
-              : 'text-mute-soft opacity-0 hover:text-ink-2 group-hover:opacity-100 focus-visible:opacity-100'
-          }`}
-        >
-          {/* 빈 별(☆) / 채워진 별(★) — fill 만 토글, stroke 는 동일. */}
-          <svg
-            viewBox="0 0 24 24"
-            width="13"
-            height="13"
-            fill={isCore ? 'currentColor' : 'none'}
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-        </button>
-      )}
-      {onDelete && (
-        // eslint-disable-next-line react/forbid-elements -- micro icon-button overlaid inside list row; <IconButton> primitive enforces 28px+ chrome which crowds the inline text layout.
-        <button
-          type="button"
-          aria-label="이 제안 삭제"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="absolute right-1 top-1/2 -translate-y-1/2 hidden h-5 w-5 items-center justify-center rounded-xs text-mute-soft transition duration-150 hover:bg-paper hover:text-ink-2 group-hover:flex focus-visible:flex"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="11"
-            height="11"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <line x1="6" y1="6" x2="18" y2="18" />
-            <line x1="18" y1="6" x2="6" y2="18" />
-          </svg>
-        </button>
+      {hasActions && (
+        <div className="flex shrink-0 items-center gap-1.5 pr-1 pt-0.5">
+          {onToggleCore && (
+            // eslint-disable-next-line react/forbid-elements -- Memphis-styled action button group inside list row; <IconButton> primitive doesn't expose the canvas-card Memphis chrome (offset shadow + translate-on-press) needed for D5 톤 정합.
+            <button
+              type="button"
+              aria-label={isCore ? '핵심 표시 해제' : '핵심으로 표시'}
+              aria-pressed={isCore}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCore();
+              }}
+              className={`${actionButtonBase} ${
+                isCore
+                  ? 'bg-[var(--canvas-accent)] text-white'
+                  : 'bg-white text-ink'
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill={isCore ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          )}
+          {onDelete && (
+            // eslint-disable-next-line react/forbid-elements -- Memphis-styled action button group inside list row; <IconButton> primitive doesn't expose the canvas-card Memphis chrome (offset shadow + translate-on-press) needed for D5 톤 정합.
+            <button
+              type="button"
+              aria-label="이 제안 삭제"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className={`${actionButtonBase} bg-white text-ink`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
       )}
     </li>
   );
