@@ -4,7 +4,8 @@ import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MemberRow } from '@/components/member-row';
-import { ChapterHeader } from '@/components/editorial';
+
+const OUTFIT_STACK = 'var(--font-outfit), var(--font-sans)';
 
 export default async function MembersPage({
   params,
@@ -17,30 +18,100 @@ export default async function MembersPage({
 
   const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
+  const canManage = !!org && (org.role === 'owner' || org.role === 'admin');
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
-      <ChapterHeader
-        title={t('title')}
-        description="조직 멤버를 초대하고 권한을 관리합니다. 모든 산출물은 조직 단위로 공유되며, 역할에 따라 접근 범위가 달라집니다."
-      />
+      <MembersHeader title={t('title')} />
 
       {!org ? (
-        <div className="border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
-          로그인 후 조직 정보가 표시됩니다.
-        </div>
+        <EmptyAuthCard />
       ) : (
         <>
-          {(org.role === 'owner' || org.role === 'admin') && (
-            <div className="mb-8 border border-line bg-paper p-5 rounded-sm">
-              <div className="eyebrow-mute mb-3">Invite</div>
+          {canManage && (
+            <section
+              className="mb-8 p-5"
+              style={{
+                background: 'var(--sidebar-bg)',
+                border:
+                  'var(--sidebar-border-width) solid var(--sidebar-border)',
+                borderRadius: 'var(--sidebar-nav-radius)',
+                boxShadow: 'var(--memphis-shadow-sm)',
+              }}
+            >
+              <div
+                className="mb-3 text-xs uppercase tracking-[0.22em]"
+                style={{
+                  fontFamily: OUTFIT_STACK,
+                  fontWeight: 800,
+                  color: 'var(--sidebar-border)',
+                }}
+              >
+                {t('invite')}
+              </div>
               <InviteMemberForm orgId={org.org_id} />
-            </div>
+            </section>
           )}
 
-          <MembersTable orgId={org.org_id} canManage={org.role === 'owner' || org.role === 'admin'} />
+          <MembersTable orgId={org.org_id} canManage={canManage} />
         </>
       )}
+    </div>
+  );
+}
+
+function MembersHeader({ title }: { title: string }) {
+  return (
+    <div
+      className="mb-6 flex items-end justify-between gap-4 px-5 py-4"
+      style={{
+        background: 'var(--sidebar-bg-strong)',
+        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
+      }}
+    >
+      <h1
+        className="text-display"
+        style={{
+          fontFamily: OUTFIT_STACK,
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          color: 'var(--sidebar-border)',
+          lineHeight: 1,
+        }}
+      >
+        {title}
+      </h1>
+      <span
+        aria-hidden
+        className="hidden h-5 w-5 sm:inline-block"
+        style={{
+          background: 'var(--sidebar-active-bg)',
+          border: '2px solid var(--sidebar-border)',
+          borderRadius: 999,
+          boxShadow: 'var(--memphis-shadow-xs)',
+        }}
+      />
+    </div>
+  );
+}
+
+function EmptyAuthCard() {
+  return (
+    <div
+      className="p-6 text-md"
+      style={{
+        background: 'var(--sidebar-nav-bg)',
+        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
+        color: 'var(--sidebar-border)',
+        fontFamily: OUTFIT_STACK,
+        fontWeight: 600,
+      }}
+    >
+      로그인 후 조직 정보가 표시됩니다.
     </div>
   );
 }
@@ -80,15 +151,47 @@ async function MembersTable({
     : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+  if (memberRows.length === 0) {
+    return <EmptyMembersCard canManage={canManage} />;
+  }
+
   return (
-    <div className="border border-line bg-paper rounded-sm">
+    <div
+      className="overflow-hidden"
+      style={{
+        background: 'var(--sidebar-nav-bg)',
+        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
+      }}
+    >
       <table className="w-full text-md">
-        <thead className="border-b border-line">
+        <thead
+          style={{
+            background: 'var(--sidebar-bg)',
+            borderBottom:
+              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+          }}
+        >
           <tr>
-            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th
+              className="px-5 py-3 text-left text-xs uppercase tracking-[0.22em]"
+              style={{
+                fontFamily: OUTFIT_STACK,
+                fontWeight: 800,
+                color: 'var(--sidebar-border)',
+              }}
+            >
               {t('email')}
             </th>
-            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
+            <th
+              className="px-5 py-3 text-left text-xs uppercase tracking-[0.22em]"
+              style={{
+                fontFamily: OUTFIT_STACK,
+                fontWeight: 800,
+                color: 'var(--sidebar-border)',
+              }}
+            >
               {t('role')}
             </th>
             <th className="px-5 py-3"></th>
@@ -110,6 +213,47 @@ async function MembersTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function EmptyMembersCard({ canManage }: { canManage: boolean }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center"
+      style={{
+        background: 'var(--sidebar-nav-bg)',
+        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="inline-block h-10 w-10"
+        style={{
+          background: 'var(--sidebar-active-bg)',
+          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          borderRadius: 999,
+          boxShadow: 'var(--memphis-shadow-xs)',
+        }}
+      />
+      <div
+        className="text-2xl"
+        style={{
+          fontFamily: OUTFIT_STACK,
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          color: 'var(--sidebar-border)',
+        }}
+      >
+        아직 멤버가 없습니다
+      </div>
+      <p className="max-w-[420px] text-md text-mute">
+        {canManage
+          ? '위 초대 폼에서 이메일을 입력하면 멤버로 합류시킬 수 있습니다.'
+          : '오너 또는 관리자가 멤버를 초대하면 이곳에 표시됩니다.'}
+      </p>
     </div>
   );
 }
