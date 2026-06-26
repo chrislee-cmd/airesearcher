@@ -21,8 +21,8 @@
   /* Surfaces / lines */
   --color-line: rgba(29, 27, 32, 0.10);
   --color-line-soft: rgba(29, 27, 32, 0.06);
-  --color-paper: #fbf7f2;          /* warm cream (page bg) */
-  --color-paper-soft: #fefaf5;     /* card surface — warm white, reads elevated above cream */
+  --color-paper: #ffffff;          /* white (page bg) */
+  --color-paper-soft: #f7f7f5;     /* card surface — neutral light grey, reads elevated above white */
 
   /* Bento pastel palette */
   --color-lav: #e7defe;
