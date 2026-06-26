@@ -35,8 +35,6 @@ export const env = createEnv({
 
     // ── Required in production (build fails if missing) ──────────────
     CRON_SECRET: z.string().min(16),
-    UPSTASH_REDIS_REST_URL: z.string().url(),
-    UPSTASH_REDIS_REST_TOKEN: z.string().min(20),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(40),
     ANTHROPIC_API_KEY: z.string().startsWith('sk-'),
     OPENAI_API_KEY: z.string().startsWith('sk-'),
@@ -46,6 +44,13 @@ export const env = createEnv({
     GMAIL_APP_PASSWORD: z.string().min(8),
 
     // ── Optional providers (graceful degradation at call site) ───────
+    // PR-SEC4b — Upstash is optional until the Vercel Marketplace
+    // integration is added. When missing, rate-limit.ts fails open with
+    // a one-shot warning. Restore to required (`z.string().url()` /
+    // `.min(20)`) once Upstash is provisioned in prod.
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(20).optional(),
+
     ELEVENLABS_API_KEY: z.string().min(20).optional(),
     ELEVENLABS_WEBHOOK_SECRET: z.string().min(16).optional(),
     TWELVELABS_API_KEY: z.string().min(20).optional(),
