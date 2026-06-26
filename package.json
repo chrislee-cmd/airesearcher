@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "prepare": "husky",
     "migration:new": "supabase migration new"
   },
