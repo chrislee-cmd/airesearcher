@@ -137,12 +137,12 @@ function DeskMarkdown({ source }: { source: string }) {
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-lg italic text-ink-2">
+          <blockquote className="my-3 border-l-2 border-amore bg-white px-4 py-2 text-lg italic text-ink-2">
             {children}
           </blockquote>
         ),
         code: ({ children }) => (
-          <code className="border border-line bg-paper-soft px-1.5 py-0.5 font-mono text-md text-ink-2 [border-radius:3px]">
+          <code className="border border-line bg-white px-1.5 py-0.5 font-mono text-md text-ink-2 [border-radius:3px]">
             {children}
           </code>
         ),
@@ -486,7 +486,7 @@ export function DeskCardBody() {
               {keywords.map((k, idx) => (
                 <span
                   key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-amore bg-amore-bg px-2.5 py-0.5 text-xs text-amore"
+                  className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
                 >
                   {k}
                   <IconButton
@@ -583,7 +583,7 @@ export function DeskCardBody() {
             )}
             <div
               ref={thoughtsScroller}
-              className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-paper-soft px-4 py-3 text-md leading-[1.7]"
+              className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-white px-4 py-3 text-md leading-[1.7]"
             >
               {events.map((line, i) => (
                 <div key={i} className="py-0.5 text-ink-2">
@@ -731,7 +731,7 @@ export function DeskCardBody() {
                   {job.similar_keywords.map((k) => (
                     <span
                       key={k}
-                      className="rounded-sm border border-line bg-paper-soft px-2.5 py-1 text-sm text-mute"
+                      className="rounded-sm border border-line bg-white px-2.5 py-1 text-sm text-mute"
                     >
                       {k}
                     </span>
@@ -850,7 +850,7 @@ function RqFindingsSection({
                   {tDesk('importance')} {rq.importance}/5
                 </span>
                 {a && (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft px-2 py-0.5 normal-case tracking-normal text-mute">
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-pill border border-line bg-white px-2 py-0.5 normal-case tracking-normal text-mute">
                     <span aria-hidden>{CONFIDENCE_ICON[a.confidence]}</span>
                     <span>
                       {tDesk('confidenceLabel')} · {a.confidence}
@@ -865,7 +865,7 @@ function RqFindingsSection({
                     {a.answer_md}
                   </div>
                   {a.missing_data.length > 0 && (
-                    <div className="mt-3 rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
+                    <div className="mt-3 rounded-xs border border-line-soft bg-white px-3 py-2 text-sm text-mute">
                       <div className="text-xs uppercase tracking-[.18em] text-mute-soft">
                         {tDesk('missingDataLabel')}
                       </div>
@@ -902,13 +902,13 @@ function QuantSnapshotsSection({
         {tDesk('quantSnapshotsTitle')} ({quant.length})
       </h2>
       {quant.length === 0 ? (
-        <p className="mt-3 rounded-sm border border-line-soft bg-paper-soft px-4 py-3 text-md text-mute">
+        <p className="mt-3 rounded-sm border border-line-soft bg-white px-4 py-3 text-md text-mute">
           {tDesk('quantSnapshotsEmpty')}
         </p>
       ) : (
         <div className="mt-3 overflow-x-auto rounded-sm border border-line">
           <table className="w-full border-collapse text-md">
-            <thead className="bg-paper-soft text-xs uppercase tracking-[.16em] text-mute-soft">
+            <thead className="bg-white text-xs uppercase tracking-[.16em] text-mute-soft">
               <tr>
                 <th className="border-b border-line px-3 py-2 text-left font-medium">
                   {tDesk('cols.subject')}
@@ -995,7 +995,7 @@ function TierDistributionSection({
               <span className="w-16 shrink-0 text-xs uppercase tracking-[.18em] text-mute">
                 {r.label}
               </span>
-              <div className="h-2 flex-1 overflow-hidden rounded-pill bg-paper-soft">
+              <div className="h-2 flex-1 overflow-hidden rounded-pill border border-line bg-white">
                 <div
                   className="h-full bg-amore"
                   style={{ width: `${pct}%` }}

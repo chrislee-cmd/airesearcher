@@ -452,7 +452,7 @@ export function CanvasBoard({
     <div
       ref={containerRef}
       data-canvas
-      className="relative h-[calc(100vh-3rem)] overflow-hidden"
+      className="relative h-full overflow-hidden"
       onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
