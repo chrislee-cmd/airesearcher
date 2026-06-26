@@ -725,6 +725,7 @@
       "audioOutput": "Translated audio (.m4a)",
       "zipInput": "Download source (.zip)",
       "zipOutput": "Download translation (.zip)",
+      "zipRevised": "Download revised (.zip)",
       "preparingFile": "Preparing file…",
       "errors": {
         "recorder_failed": "Couldn't start the recorder. Check microphone or tab-audio permissions.",
@@ -736,7 +737,27 @@
         "insufficient": "Not enough credits. Top up and try again.",
         "object_missing": "The source file is gone. Your credits have been refunded.",
         "input_audio_unavailable": "This session was recorded before split capture was available, so there is no separate source audio file. The translated audio and transcripts are still ready.",
-        "locked": "Not unlocked yet."
+        "locked": "Not unlocked yet.",
+        "revision_unavailable": "Run the revision first — click \"Revise translation\" in the panel below; results take 1–5 minutes."
+      }
+    },
+    "revise": {
+      "eyebrow": "Meaning restoration (revised translation)",
+      "title": "Re-translate from the source transcript",
+      "hint": "The realtime interpreter compresses or fuses sentences under load. Re-run the translation on the preserved source transcript with a high-fidelity model. The result is available via \"Download revised (.zip)\" above. Costs {credits} credits.",
+      "doneHint": "Revision complete. Use \"Download revised (.zip)\" above to grab the result.",
+      "trigger": "Revise translation ({credits} credits)",
+      "running": "Revising… (1–5 min)",
+      "donePill": "Revision complete",
+      "errors": {
+        "revision_trigger_failed": "Revision request failed. Please try again.",
+        "revision_failed": "Revision LLM call failed. Your credits were refunded. Please try again.",
+        "revision_in_progress": "A revision is already running. Please wait.",
+        "session_not_ended": "Session is still live. End it first and try again.",
+        "transcript_unavailable": "Source transcript wasn't preserved for this session. \"Save audio + transcript\" must be on before you start.",
+        "transcript_empty": "Source transcript is empty — nothing to revise.",
+        "insufficient": "Not enough credits. Top up and try again.",
+        "forbidden": "Only the host of this session can run revision."
       }
     },
     "errorPrefix": "Error:",

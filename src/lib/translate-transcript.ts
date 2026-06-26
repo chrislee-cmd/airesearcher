@@ -40,6 +40,10 @@ export type TranscriptMessage = {
   // PR-T2 turn detection. NULL on legacy rows (pre-migration) — falls
   // back to the "unknown" label in the renderer.
   speaker?: 'host' | 'guest' | null;
+  // PR-T3: post-hoc batch re-translation. Populated only on input rows
+  // and only after the host triggers /revise; the renderer in the
+  // 'revised' code path substitutes this for the row's `text`.
+  revised_text?: string | null;
   ts: string; // ISO timestamp
 };
 
