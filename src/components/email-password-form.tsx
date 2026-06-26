@@ -3,11 +3,12 @@
 import { useState, useTransition } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -21,8 +22,47 @@ function safeNext(raw: string | null): string {
 const linkCls =
   'text-sm text-mute transition-colors duration-[120ms] hover:text-ink-2';
 
+// Fire-and-forget: a failed audit log must not block the redirect.
+function reportLoginEvent(payload: {
+  event_type: 'login_success' | 'login_failure';
+  email?: string;
+  reason?: string;
+}) {
+  try {
+    void fetch('/api/audit/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // ignore — audit best-effort
+  }
+}
+
+function persistSignupConsents(marketing: boolean) {
+  try {
+    void fetch('/api/consent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        source: 'signup_email',
+        consents: [
+          { type: 'privacy_policy', granted: true },
+          { type: 'terms_of_service', granted: true },
+          { type: 'marketing', granted: marketing },
+        ],
+      }),
+    }).catch(() => {});
+  } catch {
+    // ignore — consent insert best-effort, surfaced in audit logs
+  }
+}
+
 export function EmailPasswordForm() {
   const t = useTranslations('Auth');
+  const tConsent = useTranslations('Consent');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get('next'));
@@ -31,12 +71,17 @@ export function EmailPasswordForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   // After a signup that requires email confirmation, remember the address so
   // the user can resend the confirmation without retyping.
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const consentsOk = mode === 'signIn' || (agreePrivacy && agreeTerms);
 
   function clearStatus() {
     setError(null);
@@ -50,6 +95,10 @@ export function EmailPasswordForm() {
       setError(t('passwordMismatch'));
       return;
     }
+    if (mode === 'signUp' && !consentsOk) {
+      setError(tConsent('errorRequired'));
+      return;
+    }
     track(mode === 'signIn' ? 'auth_signin_click' : 'auth_signup_click');
     startTransition(async () => {
       const supabase = createClient();
@@ -59,6 +108,11 @@ export function EmailPasswordForm() {
           password,
         });
         if (error) {
+          reportLoginEvent({
+            event_type: 'login_failure',
+            email,
+            reason: error.message,
+          });
           setError(t(mapAuthError(error.message, 'signIn')));
           return;
         }
@@ -71,6 +125,7 @@ export function EmailPasswordForm() {
         // feature, not a security gate (the auth server still enforces
         // the revocation when it lands), so silent best-effort is fine.
         void supabase.auth.signOut({ scope: 'others' }).catch(() => {});
+        reportLoginEvent({ event_type: 'login_success' });
         track('auth_signin_success');
         router.replace(next);
         router.refresh();
@@ -92,10 +147,15 @@ export function EmailPasswordForm() {
           return;
         }
         if (data.session) {
+          // Session lands immediately (confirmations disabled or already
+          // confirmed) — record consents now while the cookie is fresh.
+          persistSignupConsents(agreeMarketing);
           track('auth_signup_success');
           router.replace(next);
           router.refresh();
         } else {
+          // Pending email confirmation — defer consent insert to
+          // /auth/callback once exchangeCodeForSession lands the cookie.
           track('auth_signup_email_pending');
           setPendingEmail(email);
           setInfo(t('checkEmail'));
@@ -187,6 +247,18 @@ export function EmailPasswordForm() {
         />
       )}
 
+      {mode === 'signUp' && (
+        <ConsentChecklist
+          locale={locale}
+          agreePrivacy={agreePrivacy}
+          setAgreePrivacy={setAgreePrivacy}
+          agreeTerms={agreeTerms}
+          setAgreeTerms={setAgreeTerms}
+          agreeMarketing={agreeMarketing}
+          setAgreeMarketing={setAgreeMarketing}
+        />
+      )}
+
       {error && <p className="text-sm text-warning">{error}</p>}
       {info && (
         <div className="space-y-1.5">
@@ -213,7 +285,7 @@ export function EmailPasswordForm() {
         variant="primary"
         size="cta"
         fullWidth
-        disabled={pending}
+        disabled={pending || (mode === 'signUp' && !consentsOk)}
       >
         {pending ? '…' : t(mode)}
       </Button>
@@ -231,5 +303,97 @@ export function EmailPasswordForm() {
         {mode === 'signIn' ? t('switchToSignUp') : t('switchToSignIn')}
       </Button>
     </form>
+  );
+}
+
+function ConsentChecklist({
+  locale,
+  agreePrivacy,
+  setAgreePrivacy,
+  agreeTerms,
+  setAgreeTerms,
+  agreeMarketing,
+  setAgreeMarketing,
+}: {
+  locale: string;
+  agreePrivacy: boolean;
+  setAgreePrivacy: (v: boolean) => void;
+  agreeTerms: boolean;
+  setAgreeTerms: (v: boolean) => void;
+  agreeMarketing: boolean;
+  setAgreeMarketing: (v: boolean) => void;
+}) {
+  const tConsent = useTranslations('Consent');
+  const allRequired = agreePrivacy && agreeTerms;
+  const allToggle = (next: boolean) => {
+    setAgreePrivacy(next);
+    setAgreeTerms(next);
+    setAgreeMarketing(next);
+  };
+
+  return (
+    <fieldset className="space-y-2 border-t border-line-soft pt-4">
+      <legend className="sr-only">{tConsent('legend')}</legend>
+      <label className="flex items-center gap-2 text-sm text-ink-2">
+        <Checkbox
+          checked={allRequired && agreeMarketing}
+          onChange={(e) => allToggle(e.target.checked)}
+          aria-label={tConsent('agreeAll')}
+        />
+        <span className="font-semibold">{tConsent('agreeAll')}</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm text-mute">
+        <Checkbox
+          checked={agreePrivacy}
+          onChange={(e) => setAgreePrivacy(e.target.checked)}
+          className="mt-[3px]"
+          aria-label={tConsent('privacy')}
+        />
+        <span>
+          <span className="text-warning">*</span>{' '}
+          <a
+            href={`/${locale}/privacy`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink-2 underline-offset-2 hover:underline"
+          >
+            {tConsent('privacy')}
+          </a>{' '}
+          <span className="text-mute-soft">{tConsent('required')}</span>
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-sm text-mute">
+        <Checkbox
+          checked={agreeTerms}
+          onChange={(e) => setAgreeTerms(e.target.checked)}
+          className="mt-[3px]"
+          aria-label={tConsent('terms')}
+        />
+        <span>
+          <span className="text-warning">*</span>{' '}
+          <a
+            href={`/${locale}/terms`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink-2 underline-offset-2 hover:underline"
+          >
+            {tConsent('terms')}
+          </a>{' '}
+          <span className="text-mute-soft">{tConsent('required')}</span>
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-sm text-mute">
+        <Checkbox
+          checked={agreeMarketing}
+          onChange={(e) => setAgreeMarketing(e.target.checked)}
+          className="mt-[3px]"
+          aria-label={tConsent('marketing')}
+        />
+        <span>
+          {tConsent('marketing')}{' '}
+          <span className="text-mute-soft">{tConsent('optional')}</span>
+        </span>
+      </label>
+    </fieldset>
   );
 }

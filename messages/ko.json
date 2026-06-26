@@ -188,6 +188,34 @@
     "errorLinkExpired": "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해주세요.",
     "errorGeneric": "오류가 발생했습니다. 다시 시도해주세요."
   },
+  "Consent": {
+    "legend": "이용 동의",
+    "agreeAll": "전체 동의",
+    "privacy": "개인정보처리방침에 동의합니다",
+    "terms": "이용약관에 동의합니다",
+    "marketing": "마케팅·이벤트 정보 수신에 동의합니다",
+    "required": "(필수)",
+    "optional": "(선택)",
+    "errorRequired": "필수 항목에 동의해야 가입할 수 있습니다."
+  },
+  "CookieBanner": {
+    "title": "쿠키 사용 안내",
+    "body": "본 서비스는 인증 유지, 서비스 개선을 위한 분석, 그리고 (선택 시) 마케팅 목적의 쿠키를 사용합니다.",
+    "learnMore": "자세히 보기",
+    "preferencesLegend": "쿠키 환경설정",
+    "essential": "필수",
+    "alwaysOn": "(항상 활성)",
+    "essentialDescription": "로그인 세션 유지 등 서비스 동작에 반드시 필요한 항목입니다.",
+    "analytics": "분석",
+    "analyticsDescription": "익명화된 사용 패턴을 측정해 제품을 개선하는 데 사용됩니다.",
+    "marketing": "마케팅",
+    "marketingDescription": "관련 캠페인·이벤트 정보 전달을 위해 사용됩니다.",
+    "customize": "상세 설정",
+    "hideDetails": "상세 설정 닫기",
+    "acceptAll": "전체 허용",
+    "rejectAll": "전체 거부",
+    "savePreferences": "선택 저장"
+  },
   "Sidebar": {
     "dashboard": "대시보드",
     "quotes": "전사록 생성기",

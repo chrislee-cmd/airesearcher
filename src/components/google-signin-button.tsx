@@ -5,6 +5,11 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { track } from '@/components/mixpanel-provider';
+import {
+  CONSENT_VERSION,
+  OAUTH_CONSENT_COOKIE,
+  OAUTH_CONSENT_COOKIE_MAX_AGE_S,
+} from '@/lib/consent';
 import { Button } from './ui/button';
 
 // Only allow same-origin app paths to prevent open-redirect via ?next=.
@@ -12,6 +17,26 @@ function safeNext(raw: string | null): string | null {
   if (!raw) return null;
   if (!raw.startsWith('/') || raw.startsWith('//')) return null;
   return raw;
+}
+
+// Stamps a short-lived consent cookie so /auth/callback can record the
+// signup consents once the OAuth round-trip lands. Set just before the
+// redirect — the cookie has to exist before the user leaves the page,
+// since the callback runs on the redirect back.
+function setOauthConsentCookie(payload: {
+  privacy: true;
+  terms: true;
+  marketing: boolean;
+}) {
+  const value = encodeURIComponent(
+    JSON.stringify({ version: CONSENT_VERSION, ...payload }),
+  );
+  // Lax + secure (when https). path=/ so callback (under /auth) can read.
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+    ? '; Secure'
+    : '';
+  document.cookie =
+    `${OAUTH_CONSENT_COOKIE}=${value}; Max-Age=${OAUTH_CONSENT_COOKIE_MAX_AGE_S}; Path=/; SameSite=Lax${secure}`;
 }
 
 export function GoogleSignInButton({ label }: { label: string }) {
@@ -22,6 +47,11 @@ export function GoogleSignInButton({ label }: { label: string }) {
   async function signIn() {
     track('auth_google_signin_click');
     setLoading(true);
+    // Google OAuth doubles as signup for new users — stamp consents
+    // before the redirect so the callback can persist them with a real
+    // user_id. For existing users, /auth/callback skips the insert when
+    // a current-version row already exists.
+    setOauthConsentCookie({ privacy: true, terms: true, marketing: false });
     const supabase = createClient();
     const origin = window.location.origin;
     const nextPath = safeNext(searchParams.get('next')) ?? '/canvas';
