@@ -227,7 +227,7 @@ export function RecruitingFormsModal({
       title={`리크루팅 산출물 (${forms.length})`}
     >
       {linkError && (
-        <div className="mb-3 border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
+        <div className="mb-3 border border-amore bg-white p-3 text-md text-amore rounded-sm">
           시트 연결 오류: {linkError}
         </div>
       )}

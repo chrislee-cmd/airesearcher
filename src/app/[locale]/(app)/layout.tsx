@@ -71,7 +71,10 @@ export default async function AppLayout({
              isSuperAdmin={isSuperAdminEmail(user?.email)}
            />
            <div className="flex flex-1 overflow-hidden">
-             <main className="flex-1 overflow-auto p-6">{children}</main>
+             {/* /canvas 는 노랑 bg + 점 grid 가 topbar 바로 아래 edge-to-edge 로
+                 붙어야 pop 톤이 유지된다. main 의 p-6 이 cream 패딩 잔재로 보여서
+                 has-[[data-canvas]] 일 때만 0 으로. 다른 라우트는 p-6 그대로. */}
+             <main className="flex-1 overflow-auto p-6 has-[[data-canvas]]:p-0">{children}</main>
              <WorkspacePanel />
            </div>
          </div>
