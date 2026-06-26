@@ -80,6 +80,17 @@ type RecordingRow = {
 const RECORDING_UNLOCK_CREDITS = 25;
 const RECORDING_CHUNK_MS = 5000; // 5s timeslice — modest memory use, good resilience
 
+// PR-T3: post-hoc batch re-translation cost. Surfaced in the
+// "재번역" CTA so the host knows the LLM charge before clicking. Must
+// match REVISE_CREDITS in /api/translate/sessions/[id]/revise/route.ts;
+// the server is the actual gate, this is just for display.
+const REVISE_CREDITS = 10;
+
+// Poll cadence while a revision job is `pending` server-side. Sonnet
+// chunks finish in ~5s each; 4s keeps the spinner feeling responsive
+// without flooding the API for long sessions.
+const REVISE_POLL_MS = 4000;
+
 type CaptionLine = {
   id: string;
   text: string;
@@ -400,13 +411,36 @@ export function TranslateConsole() {
   const [recording, setRecording] = useState<RecordingRow | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
-  // Four downloadable formats now: two audio tracks (source-only,
-  // translated-only) + two transcript zips (source-only "원문" and
-  // translation-only "통역본", each bundling .txt + .docx). One unlock
-  // covers all four — pricing didn't change.
+  // Five downloadable formats now: two audio tracks (source-only,
+  // translated-only) + three transcript zips (source "원문", realtime
+  // translation "통역본", and post-hoc batch re-translation "재번역",
+  // each bundling .txt + .docx). One unlock covers all five — the
+  // revised zip needs a separate /revise trigger (handled below)
+  // before it can be downloaded.
   const [downloadingFormat, setDownloadingFormat] = useState<
-    'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output' | null
+    | 'm4a-input'
+    | 'm4a-output'
+    | 'zip-input'
+    | 'zip-output'
+    | 'zip-revised'
+    | null
   >(null);
+
+  // PR-T3 post-hoc batch re-translation state. `revisionStatus` mirrors
+  // the server-side `translate_sessions.revision_status` enum so the
+  // panel can render the right CTA / spinner / download button. We
+  // start at null instead of 'idle' so the panel doesn't flash a
+  // "재번역" button before we know the actual state — the first poll
+  // (kicked off on `session ended`) hydrates this.
+  type RevisionStatus = 'idle' | 'pending' | 'done' | 'failed';
+  const [revisionStatus, setRevisionStatus] = useState<RevisionStatus | null>(
+    null,
+  );
+  const [revisionError, setRevisionError] = useState<string | null>(null);
+  // Local pressed flag — true while the POST is in flight, before the
+  // first GET poll comes back. Without it, two rapid clicks on the
+  // revise button each fire a POST before the server status flips.
+  const [revisionTriggering, setRevisionTriggering] = useState(false);
   // Whether the MediaRecorder is actively capturing. Driven from the
   // recorder's onstart/onstop events so the indicator pill renders
   // without needing to read the ref during render.
@@ -1068,6 +1102,11 @@ export function TranslateConsole() {
     setRecordingError(null);
     setUnlocking(false);
     setDownloadingFormat(null);
+    // Same for the post-hoc revision UI — last session's "done" pill
+    // shouldn't carry over and tempt the host into a stale download.
+    setRevisionStatus(null);
+    setRevisionError(null);
+    setRevisionTriggering(false);
     setStatus('starting');
 
     // Arm the connect watchdog. Any path that succeeds clears it (live
@@ -1945,13 +1984,20 @@ export function TranslateConsole() {
     }
   }, [recording, unlocking]);
 
-  // Trigger a download for one of the four formats. All stream directly
+  // Trigger a download for one of the five formats. All stream directly
   // from the API route — m4a-input/m4a-output are transcoded on demand
-  // from the per-track persisted webms; zip-input/zip-output bundle a
-  // kind-filtered transcript (.txt + .docx) rendered from
+  // from the per-track persisted webms; zip-input/zip-output/zip-revised
+  // bundle a kind-filtered transcript (.txt + .docx) rendered from
   // translate_messages.
   const downloadFormat = useCallback(
-    async (format: 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output') => {
+    async (
+      format:
+        | 'm4a-input'
+        | 'm4a-output'
+        | 'zip-input'
+        | 'zip-output'
+        | 'zip-revised',
+    ) => {
       if (!recording || downloadingFormat) return;
       if (recording.status !== 'unlocked') return;
       setDownloadingFormat(format);
@@ -1989,7 +2035,9 @@ export function TranslateConsole() {
               ? `translate-${recording.id}-output.m4a`
               : format === 'zip-input'
                 ? `translate-${recording.id}-input.zip`
-                : `translate-${recording.id}-output.zip`;
+                : format === 'zip-output'
+                  ? `translate-${recording.id}-output.zip`
+                  : `translate-${recording.id}-revised.zip`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -2002,6 +2050,110 @@ export function TranslateConsole() {
     },
     [downloadingFormat, locale, recording],
   );
+
+  // PR-T3 — trigger a post-hoc batch re-translation of the source
+  // transcript. Server charges REVISE_CREDITS and flips the session's
+  // revision_status to 'pending'; we then poll the GET endpoint until
+  // it reaches 'done' or 'failed'. The button is hidden until the
+  // session has 'ended' AND the host enabled recording (no input rows
+  // exist otherwise).
+  const triggerRevision = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id || revisionTriggering) return;
+    if (revisionStatus === 'pending' || revisionStatus === 'done') return;
+    setRevisionTriggering(true);
+    setRevisionError(null);
+    try {
+      const res = await fetch(`/api/translate/sessions/${id}/revise`, {
+        method: 'POST',
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        already_revised?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setRevisionError(json.error ?? 'revision_trigger_failed');
+        return;
+      }
+      // The POST is synchronous server-side (blocks until 'done' or
+      // 'failed'), so we can flip the local status straight to the
+      // final state. The polling effect still picks up failed runs
+      // because we set 'pending' below as a defense-in-depth — if the
+      // POST surface ever becomes async, the panel keeps working.
+      if (json.already_revised) {
+        setRevisionStatus('done');
+      } else {
+        setRevisionStatus('done');
+      }
+    } catch {
+      setRevisionError('revision_trigger_failed');
+    } finally {
+      setRevisionTriggering(false);
+    }
+  }, [revisionStatus, revisionTriggering]);
+
+  // Hydrate revision status from the server once the session ends. This
+  // covers the rare race where /revise was triggered by another tab /
+  // request and the local state didn't see it. Also picks up the
+  // server-side 'failed' status if the LLM call errors out after we
+  // set 'pending' optimistically.
+  useEffect(() => {
+    if (status !== 'ended') return;
+    const id = sessionIdRef.current;
+    if (!id) return;
+    let cancelled = false;
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`/api/translate/sessions/${id}/revise`);
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          revision_status: RevisionStatus;
+          revision_error: string | null;
+        };
+        if (cancelled) return;
+        setRevisionStatus(j.revision_status);
+        if (j.revision_error) setRevisionError(j.revision_error);
+      } catch {
+        // best-effort — the button still works
+      }
+    };
+    void fetchStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  // While the server reports 'pending', re-poll on a short cadence so
+  // the spinner flips to "done" within REVISE_POLL_MS of the LLM
+  // finishing. We only poll in this narrow window — once 'done' or
+  // 'failed', the status is terminal.
+  useEffect(() => {
+    if (revisionStatus !== 'pending') return;
+    const id = sessionIdRef.current;
+    if (!id) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/translate/sessions/${id}/revise`);
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          revision_status: RevisionStatus;
+          revision_error: string | null;
+        };
+        if (cancelled) return;
+        setRevisionStatus(j.revision_status);
+        if (j.revision_error) setRevisionError(j.revision_error);
+      } catch {
+        // best-effort
+      }
+    };
+    const handle = setInterval(() => void tick(), REVISE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
+  }, [revisionStatus]);
 
   // Build the viewer URL the host shows / copies. When a viewer subdomain
   // is configured (e.g. `live.researchmochi.com`) we use it; otherwise we
@@ -2211,6 +2363,10 @@ export function TranslateConsole() {
           downloadingFormat={downloadingFormat}
           onUnlock={() => void unlockRecording()}
           onDownload={(f) => void downloadFormat(f)}
+          revisionStatus={revisionStatus}
+          revisionError={revisionError}
+          revisionTriggering={revisionTriggering}
+          onRevise={() => void triggerRevision()}
         />
       ) : null}
 
@@ -2226,6 +2382,10 @@ function RecordingDownloadPanel({
   downloadingFormat,
   onUnlock,
   onDownload,
+  revisionStatus,
+  revisionError,
+  revisionTriggering,
+  onRevise,
 }: {
   recording: RecordingRow | null;
   recordingError: string | null;
@@ -2235,11 +2395,21 @@ function RecordingDownloadPanel({
     | 'm4a-output'
     | 'zip-input'
     | 'zip-output'
+    | 'zip-revised'
     | null;
   onUnlock: () => void;
   onDownload: (
-    f: 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output',
+    f:
+      | 'm4a-input'
+      | 'm4a-output'
+      | 'zip-input'
+      | 'zip-output'
+      | 'zip-revised',
   ) => void;
+  revisionStatus: 'idle' | 'pending' | 'done' | 'failed' | null;
+  revisionError: string | null;
+  revisionTriggering: boolean;
+  onRevise: () => void;
 }) {
   const t = useTranslations('TranslateConsole');
   // While the recording is still finalizing (upload in-flight) the row
@@ -2248,6 +2418,16 @@ function RecordingDownloadPanel({
   const ready =
     recording && (recording.status === 'uploaded' || recording.status === 'unlocked');
   const unlocked = recording?.status === 'unlocked';
+  // PR-T3 — revise button visibility. The post-hoc batch translation
+  // needs the source transcript (kind='input' rows), which are only
+  // persisted when the host enabled recording for the session. The
+  // panel only mounts after `status === 'ended'`, so as soon as we
+  // have a recording row at all, /revise can be triggered. Hide the
+  // section entirely while the first hydration poll is still in
+  // flight so a stale "재번역" CTA doesn't flicker.
+  const showRevise = recording !== null && revisionStatus !== null;
+  const revisionPending = revisionStatus === 'pending' || revisionTriggering;
+  const revisionDone = revisionStatus === 'done';
 
   return (
     <section className="rounded-xs border border-line bg-paper p-4 text-md text-ink">
@@ -2325,8 +2505,60 @@ function RecordingDownloadPanel({
               ? t('download.preparingFile')
               : t('download.zipOutput')}
           </ChromeButton>
+          {revisionDone ? (
+            <ChromeButton
+              size="lg"
+              onClick={() => onDownload('zip-revised')}
+              disabled={downloadingFormat !== null}
+            >
+              {downloadingFormat === 'zip-revised'
+                ? t('download.preparingFile')
+                : t('download.zipRevised')}
+            </ChromeButton>
+          ) : null}
         </div>
       )}
+
+      {showRevise ? (
+        <div className="mt-4 border-t border-line-soft pt-4">
+          <div className="mb-2 text-sm uppercase tracking-[0.08em] text-mute-soft">
+            {t('revise.eyebrow')}
+          </div>
+          {revisionError ? (
+            <div className="mb-3 rounded-xs border border-line-soft px-3 py-2 text-md text-mute">
+              {t.has(`revise.errors.${revisionError}`)
+                ? t(`revise.errors.${revisionError}`)
+                : revisionError}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[220px]">
+              <div className="text-lg text-ink">{t('revise.title')}</div>
+              <div className="mt-1 text-md text-mute">
+                {revisionDone
+                  ? t('revise.doneHint')
+                  : t('revise.hint', { credits: REVISE_CREDITS })}
+              </div>
+            </div>
+            {revisionDone ? (
+              <span className="rounded-xs border border-amore px-2 py-0.5 text-sm text-amore">
+                {t('revise.donePill')}
+              </span>
+            ) : (
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={onRevise}
+                disabled={revisionPending || !unlocked}
+              >
+                {revisionPending
+                  ? t('revise.running')
+                  : t('revise.trigger', { credits: REVISE_CREDITS })}
+              </ChromeButton>
+            )}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

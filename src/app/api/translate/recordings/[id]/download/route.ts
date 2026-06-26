@@ -1,6 +1,6 @@
 // AI 동시통역 — issue a download for an unlocked session recording.
 //
-// One unlock charge unlocks all four formats keyed off the recording
+// One unlock charge unlocks all five formats keyed off the recording
 // row:
 //   - format=m4a-input   → AAC/MP4 audio of the host's SOURCE stream
 //                          (mic or tab audio, no translated TTS),
@@ -11,7 +11,12 @@
 //   - format=zip-input   → ZIP containing source-language transcript
 //                          (.txt + .docx, "원문" only — input rows)
 //   - format=zip-output  → ZIP containing translated transcript
-//                          (.txt + .docx, "통역본" only — output rows)
+//                          (.txt + .docx, "통역본" only — realtime
+//                          interpreter's output rows)
+//   - format=zip-revised → ZIP containing post-hoc batch re-translation
+//                          (.txt + .docx, "재번역" only — input rows'
+//                          revised_text column populated by /revise).
+//                          409 if the host hasn't triggered revision yet.
 //
 // The transcript zips are generated on-the-fly from `translate_messages`
 // (no storage). The original webms are what we persist in
@@ -54,21 +59,27 @@ const FORMATS = new Set([
   'm4a-output',
   'zip-input',
   'zip-output',
+  'zip-revised',
 ]);
 
-type Format = 'm4a-input' | 'm4a-output' | 'zip-input' | 'zip-output';
+type Format =
+  | 'm4a-input'
+  | 'm4a-output'
+  | 'zip-input'
+  | 'zip-output'
+  | 'zip-revised';
 
 // Filename stems for the kind-filtered transcript zips. Localized per
 // host UI locale so the file the user sees on disk matches the button
 // they clicked.
 const ZIP_STEMS: Record<
   'ko' | 'en' | 'ja' | 'th',
-  { input: string; output: string }
+  { input: string; output: string; revised: string }
 > = {
-  ko: { input: '원문', output: '통역본' },
-  en: { input: 'source', output: 'translation' },
-  ja: { input: '原文', output: '通訳' },
-  th: { input: 'source', output: 'translation' },
+  ko: { input: '원문', output: '통역본', revised: '재번역' },
+  en: { input: 'source', output: 'translation', revised: 'revised' },
+  ja: { input: '原文', output: '通訳', revised: '再翻訳' },
+  th: { input: 'source', output: 'translation', revised: 'revised' },
 };
 
 // Legacy alias: pre-split clients (and any direct-link old URLs) request
@@ -93,18 +104,21 @@ async function loadTranscript(
   admin: ReturnType<typeof createAdminClient>,
   sessionId: string,
 ): Promise<{
-  meta: Pick<TranscriptMeta, 'sourceLang' | 'targetLang' | 'startedAt'>;
+  meta: Pick<TranscriptMeta, 'sourceLang' | 'targetLang' | 'startedAt'> & {
+    revisionStatus: 'idle' | 'pending' | 'done' | 'failed';
+  };
   messages: TranscriptMessage[];
 } | null> {
   const session = await admin
     .from('translate_sessions')
-    .select('id, source_lang, target_lang, started_at')
+    .select('id, source_lang, target_lang, started_at, revision_status')
     .eq('id', sessionId)
     .maybeSingle<{
       id: string;
       source_lang: string;
       target_lang: string;
       started_at: string | null;
+      revision_status: 'idle' | 'pending' | 'done' | 'failed';
     }>();
   if (!session.data) return null;
 
@@ -122,7 +136,7 @@ async function loadTranscript(
   for (let i = 0; i < 50; i++) {
     let q = admin
       .from('translate_messages')
-      .select('kind, text, lang, speaker, ts')
+      .select('kind, text, lang, speaker, revised_text, ts')
       .eq('session_id', sessionId)
       .order('ts', { ascending: true })
       .order('id', { ascending: true })
@@ -140,6 +154,7 @@ async function loadTranscript(
       sourceLang: session.data.source_lang,
       targetLang: session.data.target_lang,
       startedAt: session.data.started_at,
+      revisionStatus: session.data.revision_status,
     },
     messages,
   };
@@ -264,10 +279,14 @@ export async function GET(
     }
   }
 
-  // ── zip-input / zip-output: kind-filtered transcript zips generated
-  // from translate_messages on the fly. Each zip bundles the txt + docx
-  // render of just that kind ("원문" or "통역본") so the host can pick a
-  // side instead of always getting the interleaved bilingual file.
+  // ── zip-input / zip-output / zip-revised: kind-filtered transcript
+  // zips generated from translate_messages on the fly. Each zip bundles
+  // the txt + docx render of one variant:
+  //   zip-input   → source language rows verbatim ("원문")
+  //   zip-output  → realtime interpreter's output rows ("통역본")
+  //   zip-revised → input rows projected to virtual output rows whose
+  //                 text is revised_text (the post-hoc batch translation
+  //                 from /revise). 409 if revision never ran.
   const transcript = await loadTranscript(admin, row.session_id);
   if (!transcript) {
     return NextResponse.json({ error: 'session_not_found' }, { status: 404 });
@@ -282,9 +301,39 @@ export async function GET(
     locale,
   };
 
-  const kind: 'input' | 'output' = format === 'zip-input' ? 'input' : 'output';
-  const filtered = transcript.messages.filter((m) => m.kind === kind);
-  const stem = ZIP_STEMS[locale][kind];
+  let filtered: TranscriptMessage[];
+  let stem: string;
+  let labelSuffix: string;
+
+  if (format === 'zip-revised') {
+    if (transcript.meta.revisionStatus !== 'done') {
+      return NextResponse.json(
+        {
+          error: 'revision_unavailable',
+          revision_status: transcript.meta.revisionStatus,
+        },
+        { status: 409 },
+      );
+    }
+    // Project input rows to virtual output rows whose text is the
+    // revised translation. Skip rows where revised_text is missing
+    // (the model declined or the row was added after revision ran).
+    filtered = transcript.messages
+      .filter((m) => m.kind === 'input' && (m.revised_text ?? '').trim().length > 0)
+      .map((m) => ({
+        ...m,
+        kind: 'output' as const,
+        text: m.revised_text ?? '',
+        lang: meta.targetLang,
+      }));
+    stem = ZIP_STEMS[locale].revised;
+    labelSuffix = 'revised';
+  } else {
+    const kind: 'input' | 'output' = format === 'zip-input' ? 'input' : 'output';
+    filtered = transcript.messages.filter((m) => m.kind === kind);
+    stem = ZIP_STEMS[locale][kind];
+    labelSuffix = kind;
+  }
 
   const txt = renderTranslateTranscriptText(meta, filtered);
   const docx = await renderTranslateTranscriptDocx(meta, filtered);
@@ -307,7 +356,7 @@ export async function GET(
     status: 200,
     headers: {
       'Content-Type': 'application/zip',
-      'Content-Disposition': `attachment; filename="translate-${row.session_id}-${kind}.zip"`,
+      'Content-Disposition': `attachment; filename="translate-${row.session_id}-${labelSuffix}.zip"`,
       'Cache-Control': 'private, no-store',
     },
   });
