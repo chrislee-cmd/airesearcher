@@ -8,10 +8,11 @@
    - 'live' 인 동안: 5초 자동 + 수동 "지금 제안" 트리거.
    - "정지" 버튼 → hook.stop() → 상태 'idle', capture 해제.
 
-   영속화 (PR-8): suggest stream 완료 직후 POST /api/probing/suggestions
-   로 한 row 저장. mount 시 GET 으로 최근 N개 로드. 새로고침 / 다른
-   디바이스에서도 같은 user 면 동일 list. 정렬은 created_at DESC — 최신
-   상단.
+   영속화 (PR-8 → PR-12): suggest stream 완료 직후 응답의 각 질문을
+   POST /api/probing/questions 로 개별 row 저장 (Promise.all). mount 시
+   GET 으로 최근 N개 로드. 새로고침 / 다른 디바이스에서도 같은 user 면
+   동일 list. 정렬은 created_at DESC — 최신 상단. 각 질문 옆 ✕ 로 즉시
+   삭제 (confirm X — 사용자 명시).
 
    pause (PR-8): ⏸/▶ 토글로 자동 트리거만 skip. transcript 수집은 계속
    되며 "지금 제안" 수동 버튼은 paused 와 무관 (강제 트리거 가능). 토글
@@ -44,7 +45,7 @@ import {
 } from '@/lib/probing-guide-import';
 import type {
   ProbingQuestion,
-  ProbingSuggestionRow,
+  ProbingQuestionRow,
   ProbingSuggestionSet,
 } from './probing-types';
 
@@ -57,9 +58,10 @@ const GUIDE_SAVE_DEBOUNCE_MS = 500;
 const AUTO_INTERVAL_MS = 5_000;
 // transcript 가 의미 있게 모인 뒤에야 호출. 30자 미만이면 skip.
 const MIN_TRANSCRIPT_CHARS = 30;
-// 위젯에 표시할 / fetch 할 최근 제안 set 갯수. 무한 스크롤 / "더 불러오기"
-// 는 후속 PR (스펙 §F 범위 밖) — 단순 상한으로 시작.
-const DISPLAY_LIMIT = 10;
+// 위젯에 표시할 / fetch 할 최근 질문 갯수. PR-12 에서 set 묶음 → 개별 질문
+// 단위로 전환했으므로 (이전 10 set ≈ 100 질문이 가능했음) 50 으로 상향.
+// 무한 스크롤 / "더 불러오기" 는 후속 PR.
+const DISPLAY_LIMIT = 50;
 
 // transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
@@ -272,11 +274,15 @@ function ExpandedBody() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // DB 영속화된 누적 list (sort DESC). mount 시 GET 으로 채우고 새 stream
-  // 완료 후 prepend. 표시 상한 DISPLAY_LIMIT.
-  const [suggestions, setSuggestions] = useState<ProbingSuggestionRow[]>([]);
+  // PR-12: DB 영속화된 누적 list — 개별 질문 단위 (한 row = 한 질문).
+  // mount 시 GET 으로 채우고 새 stream 완료 후 prepend (N 질문 → N row).
+  // 표시 상한 DISPLAY_LIMIT.
+  const [questions, setQuestions] = useState<ProbingQuestionRow[]>([]);
   // 첫 GET 응답을 기다리는 동안엔 빈 empty state 대신 hydrating 힌트.
   const [hydrating, setHydrating] = useState(true);
+  // PR-11/12: 전체 list 단일 selection. id 가 선택되면 다른 row 들이 dim.
+  // null = 모두 정상. 같은 row 재클릭 → toggle off, 다른 row → switch.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // 자동 트리거 일시 정지 토글. in-memory only (세션 단위) — 새로고침 시
   // false default. setInterval 안에서 stale closure 없이 보도록 ref 동기화.
@@ -308,26 +314,32 @@ function ExpandedBody() {
     void (async () => {
       try {
         const res = await fetch(
-          `/api/probing/suggestions?limit=${DISPLAY_LIMIT}`,
+          `/api/probing/questions?limit=${DISPLAY_LIMIT}`,
           { cache: 'no-store' },
         );
         if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
         const j = (await res.json()) as {
           rows?: Array<{
             id: string;
-            suggestion_set: { questions?: ProbingQuestion[] } | null;
+            text: string;
+            technique: string;
+            why: string | null;
+            guide_reference: string | null;
             created_at: string;
           }>;
         };
         if (cancelled) return;
-        const rows: ProbingSuggestionRow[] = (j.rows ?? [])
+        const rows: ProbingQuestionRow[] = (j.rows ?? [])
           .map((r) => ({
             id: r.id,
             created_at: r.created_at,
-            questions: r.suggestion_set?.questions ?? [],
+            text: r.text ?? '',
+            technique: r.technique ?? 'tell_more',
+            why: r.why ?? '',
+            guide_reference: r.guide_reference ?? null,
           }))
-          .filter((r) => r.questions.length > 0);
-        setSuggestions(rows);
+          .filter((r) => r.text.trim().length > 0);
+        setQuestions(rows);
       } catch {
         // 영속화는 best-effort. fetch 실패 = 새 세션처럼 빈 list 에서 시작.
       } finally {
@@ -339,54 +351,81 @@ function ExpandedBody() {
     };
   }, []);
 
-  // stream 완료된 set 을 DB 로 보내고 응답을 받으면 suggestions 의 맨 앞에
-  // 꽂는다. POST 실패 시에도 사용자가 결과를 잃지 않도록 in-memory row 로
-  // fallback prepend — 다음 새로고침 때 사라지는 게 유일한 차이.
-  const persistSet = useCallback(
+  // PR-12: stream 완료된 N 질문을 개별 row 로 DB 영속화. 응답을 받으면
+  // questions 의 맨 앞에 prepend. POST 실패 시에도 사용자가 결과를 잃지
+  // 않도록 in-memory row 로 fallback prepend — 다음 새로고침 때 사라지는
+  // 게 유일한 차이.
+  //
+  // N 호출은 Promise.allSettled — 일부 실패해도 성공한 row 는 보존하고
+  // 실패분만 fallback in-memory row 로 채운다. created_at 은 같은 stream
+  // 안의 순서를 보존하기 위해 idx ms offset 적용.
+  const persistQuestions = useCallback(
     async (
       streamingId: string,
-      questions: ProbingQuestion[],
+      stream: ProbingQuestion[],
       cutoff: string,
     ) => {
-      let row: ProbingSuggestionRow | null = null;
-      try {
-        const res = await fetch('/api/probing/suggestions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            suggestion_set: { questions },
-            transcript_cutoff: cutoff,
-          }),
-        });
-        if (res.ok) {
-          const j = (await res.json()) as {
-            row?: {
-              id: string;
-              suggestion_set: { questions?: ProbingQuestion[] } | null;
-              created_at: string;
-            };
-          };
-          if (j.row) {
-            row = {
-              id: j.row.id,
-              created_at: j.row.created_at,
-              questions: j.row.suggestion_set?.questions ?? questions,
-            };
+      const startedAt = Date.now();
+      const tasks = stream.map((q, idx) =>
+        (async (): Promise<ProbingQuestionRow> => {
+          try {
+            const res = await fetch('/api/probing/questions', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                text: q.text,
+                technique: q.technique,
+                why: q.why,
+                transcript_cutoff: cutoff,
+              }),
+            });
+            if (res.ok) {
+              const j = (await res.json()) as {
+                row?: {
+                  id: string;
+                  text: string;
+                  technique: string;
+                  why: string | null;
+                  guide_reference: string | null;
+                  created_at: string;
+                };
+              };
+              if (j.row) {
+                return {
+                  id: j.row.id,
+                  created_at: j.row.created_at,
+                  text: j.row.text,
+                  technique: j.row.technique,
+                  why: j.row.why ?? '',
+                  guide_reference: j.row.guide_reference ?? null,
+                };
+              }
+            }
+          } catch {
+            // fall through — fallback row 으로 떨어짐
           }
-        }
-      } catch {
-        // fall through — fallback row 으로 떨어짐
+          // 1ms 씩 offset 으로 stream 안 순서 보존 (정렬 desc 시 위에서 i=0).
+          // 'local-' prefix 라 server UUID 와 겹치지 않음.
+          const localCreated = new Date(startedAt - idx).toISOString();
+          return {
+            id: `local-${startedAt}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            created_at: localCreated,
+            text: q.text,
+            technique: q.technique,
+            why: q.why,
+            guide_reference: null,
+          };
+        })(),
+      );
+      const settled = await Promise.allSettled(tasks);
+      const rows: ProbingQuestionRow[] = settled
+        .map((s) => (s.status === 'fulfilled' ? s.value : null))
+        .filter((r): r is ProbingQuestionRow => r !== null);
+      if (rows.length > 0) {
+        setQuestions((prev) =>
+          [...rows, ...prev].slice(0, DISPLAY_LIMIT),
+        );
       }
-      if (!row) {
-        // synthetic id 로 in-memory fallback. 'local-' prefix 라 실제
-        // UUID 와 겹치지 않으며 react key 충돌도 없음.
-        row = {
-          id: `local-${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          created_at: new Date().toISOString(),
-          questions,
-        };
-      }
-      setSuggestions((prev) => [row!, ...prev].slice(0, DISPLAY_LIMIT));
       // 같은 stream 이 여전히 current 일 때만 비운다 — 사용자가 그 사이에
       // 또 트리거 했으면 새 stream 을 가리키므로 건드리면 안 됨.
       setCurrent((cur) => (cur?.id === streamingId ? null : cur));
@@ -485,11 +524,11 @@ function ExpandedBody() {
     }
 
     // stream 정상 종료 + 질문이 1개 이상 잡혔으면 DB 영속화. fire-and-
-    // forget — persistSet 가 fallback in-memory row 까지 처리한다.
+    // forget — persistQuestions 가 fallback in-memory row 까지 처리한다.
     if (succeeded && finalQuestions.length > 0) {
-      void persistSet(setId, finalQuestions, text);
+      void persistQuestions(setId, finalQuestions, text);
     }
-  }, [persistSet, toast]);
+  }, [persistQuestions, toast]);
 
   // 자동 타이머. isLive 가 true → AUTO_INTERVAL_MS 후 첫 호출, 이후 같은 주기.
   // isLive 가 false 가 되면 타이머 stop + nextCallAt 초기화.
@@ -542,6 +581,56 @@ function ExpandedBody() {
       toast.push('복사 실패 — 직접 선택해서 복사해 주세요', { tone: 'warn' });
     }
   }
+
+  // PR-12: ✕ 클릭 → 즉시 UI 제거 (optimistic) + DELETE 호출. 사용자 명시로
+  // confirm / undo 모두 없음. DB 삭제 실패 시 토스트 + 같은 위치 복구.
+  // 'local-' prefix 는 in-memory fallback row 라 server 에 없으므로 DELETE
+  // 호출 skip — 그냥 state 에서 제거.
+  const handleDelete = useCallback(
+    async (id: string) => {
+      let removed: ProbingQuestionRow | null = null;
+      let removedIndex = -1;
+      setQuestions((prev) => {
+        const idx = prev.findIndex((q) => q.id === id);
+        if (idx === -1) return prev;
+        removed = prev[idx]!;
+        removedIndex = idx;
+        return prev.filter((_, i) => i !== idx);
+      });
+      // selection 이 삭제된 row 였다면 해제.
+      setSelectedId((cur) => (cur === id ? null : cur));
+      if (!removed) return;
+      if (id.startsWith('local-')) return;
+      try {
+        const res = await fetch(
+          `/api/probing/questions/${encodeURIComponent(id)}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) throw new Error(`delete_failed_${res.status}`);
+      } catch {
+        // 실패 — 같은 위치로 복구.
+        const restored = removed;
+        const idx = removedIndex;
+        setQuestions((prev) => {
+          const next = [...prev];
+          next.splice(Math.min(idx, next.length), 0, restored);
+          return next.slice(0, DISPLAY_LIMIT);
+        });
+        toast.push('삭제 실패 — 잠시 후 다시 시도해 주세요', { tone: 'warn' });
+      }
+    },
+    [toast],
+  );
+
+  // selectedId 가 있을 때만 esc 리스너 — list 전체에 한 번만 붙임.
+  useEffect(() => {
+    if (selectedId === null) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelectedId(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId]);
 
   // 파일 import 실제 파싱 — confirm 통과 후 또는 기존 가이드가 비어있을 때.
   const runImport = useCallback(
@@ -802,40 +891,75 @@ function ExpandedBody() {
           />
         </div>
 
-        {/* 중간 — 제안 카드 영역. 위에서부터 (1) stream 진행 중 set,
-            (2) DB 영속화된 누적 list (sort DESC). 둘 다 비어 있고
-            hydrate 도 끝났으면 컨텍스트별 placeholder. flex-1 로 위젯
-            height 800px 안을 채운다. */}
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        {/* 중간 — PR-12: 개별 질문 단위 평면 list (set 묶음 표시 폐기).
+            위에서부터 (1) stream 진행 중 transient 질문들 (아직 DB 미반영),
+            (2) DB 영속화된 누적 list (sort DESC). 비어 있으면 컨텍스트별
+            placeholder. flex-1 로 위젯 height 800px 안을 채운다. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {/* stream 중 인디케이터 — 이미 history 가 있어 empty placeholder
               로 떨어지지 않을 때만 list 맨 위에 짧게 표시. */}
-          {streaming && !current && suggestions.length > 0 && (
-            <div className="rounded-xs border border-dashed border-line-soft bg-paper px-3 py-2 text-center text-sm text-mute-soft">
+          {streaming && !current && questions.length > 0 && (
+            <div className="mb-3 rounded-xs border border-dashed border-line-soft bg-paper px-3 py-2 text-center text-sm text-mute-soft">
               제안 생성 중…
             </div>
           )}
 
-          {current && current.questions.length > 0 && (
-            <SuggestionList
-              questions={current.questions}
-              createdAtMs={current.created_at}
-              onCopy={handleCopy}
-              nowMs={now}
-            />
-          )}
+          {(current && current.questions.length > 0) || questions.length > 0 ? (
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+                제안 질문 {(current?.questions.length ?? 0) + questions.length}개
+              </span>
+              <span className="text-xs text-mute-soft">
+                항목 클릭 → 복사 · ✕ → 삭제
+              </span>
+            </div>
+          ) : null}
 
-          {suggestions.map((row) => (
-            <SuggestionList
-              key={row.id}
-              questions={row.questions}
-              createdAtMs={Date.parse(row.created_at)}
-              onCopy={handleCopy}
-              nowMs={now}
-            />
-          ))}
+          <ul className="divide-y divide-line-soft">
+            {/* 진행 중 stream 의 질문들 — 아직 DB 미반영이라 ✕ 미노출
+                (id 가 아직 없음). */}
+            {current?.questions.map((q, i) => (
+              <QuestionRow
+                key={`stream-${current.id}-${i}`}
+                text={q.text}
+                technique={q.technique}
+                createdAtMs={current.created_at}
+                nowMs={now}
+                isSelected={false}
+                isDimmed={selectedId !== null}
+                onClick={() => {
+                  void handleCopy(q.text);
+                }}
+                onDelete={null}
+              />
+            ))}
+
+            {questions.map((row) => {
+              const isSelected = selectedId === row.id;
+              const isDimmed = selectedId !== null && !isSelected;
+              return (
+                <QuestionRow
+                  key={row.id}
+                  text={row.text}
+                  technique={row.technique}
+                  createdAtMs={Date.parse(row.created_at)}
+                  nowMs={now}
+                  isSelected={isSelected}
+                  isDimmed={isDimmed}
+                  onClick={() => {
+                    void handleCopy(row.text);
+                    setSelectedId((prev) => (prev === row.id ? null : row.id));
+                  }}
+                  onDelete={() => {
+                    void handleDelete(row.id);
+                  }}
+                />
+              );
+            })}
+          </ul>
 
           {/* placeholder — 영속화 list 도 비어 있고 stream 도 없을 때만. */}
-          {!current && suggestions.length === 0 && (
+          {!current && questions.length === 0 && (
             hydrating ? (
               <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
                 저장된 제안 불러오는 중…
@@ -870,7 +994,7 @@ function ExpandedBody() {
           )}
 
           {error && (
-            <div className="rounded-xs border border-warning bg-paper px-3 py-2 text-sm text-warning">
+            <div className="mt-3 rounded-xs border border-warning bg-paper px-3 py-2 text-sm text-warning">
               제안 생성 실패: {error}
             </div>
           )}
@@ -928,79 +1052,80 @@ function formatRelativeKo(epochMs: number, nowMs: number): string {
   return `${Math.floor(diff / 86_400_000)}일 전`;
 }
 
-function SuggestionList({
-  questions,
+// PR-12: 개별 질문 한 줄 — 평면 list 의 한 row. 클릭 시 복사 + selection
+// toggle. hover 시 우측에 ✕ 버튼 (onDelete null 이면 미노출 — stream 중 transient
+// row 용). dim 상태는 부모가 전달.
+function QuestionRow({
+  text,
+  technique,
   createdAtMs,
-  onCopy,
   nowMs,
+  isSelected,
+  isDimmed,
+  onClick,
+  onDelete,
 }: {
-  questions: ProbingQuestion[];
+  text: string;
+  technique: string;
   createdAtMs: number;
-  onCopy: (text: string) => void;
   nowMs: number;
+  isSelected: boolean;
+  isDimmed: boolean;
+  onClick: () => void;
+  onDelete: (() => void) | null;
 }) {
+  const label =
+    technique && technique in PROBING_TECHNIQUE_LABEL
+      ? PROBING_TECHNIQUE_LABEL[technique as ProbingTechnique]
+      : technique || '제안';
   const rel = formatRelativeKo(createdAtMs, nowMs);
-  // PR-11: focus interaction — 한 set 안에서 한 카드만 강조 (set scoped).
-  // null = 모두 정상. 같은 카드 재클릭 → toggle off, 다른 카드 → switch.
-  // 누적 list 의 다른 set 들은 자기 selectedIndex 만 가져 서로 영향 X.
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
-  // esc → reset. selected 상태일 때만 listener 활성화해서 idle set 이
-  // window keydown 을 무겁게 점유하지 않게.
-  useEffect(() => {
-    if (selectedIndex === null) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setSelectedIndex(null);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [selectedIndex]);
-
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-          제안 질문 {questions.length}개{rel ? ` · ${rel}` : ''}
+    <li className="group relative">
+      {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        onClick={onClick}
+        className={`w-full px-1 py-1.5 pr-8 text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore ${
+          isDimmed ? 'opacity-40' : ''
+        }`}
+      >
+        <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
+          {label}
         </span>
-        <span className="text-xs text-mute-soft">항목 클릭 → 복사</span>
-      </div>
-      {/* PR-10: 한 set 가 10 항목 (기법 각 1개). 컨테이너 / border 없이
-          단순 1열 텍스트 리스트 — 위젯 안 공간 차지 최소화. 기법 라벨을
-          텍스트 앞에 inline prefix 로 노출 (chip / box X). */}
-      <ul className="divide-y divide-line-soft">
-        {questions.map((q, i) => {
-          const label =
-            q.technique && q.technique in PROBING_TECHNIQUE_LABEL
-              ? PROBING_TECHNIQUE_LABEL[q.technique as ProbingTechnique]
-              : q.technique || '제안';
-          const isSelected = selectedIndex === i;
-          const isDimmed = selectedIndex !== null && !isSelected;
-          return (
-            <li key={i}>
-              {/* eslint-disable-next-line react/forbid-elements -- inline-text clickable row. <Button> primitive enforces capsule shape incompatible with full-width left-aligned text row. */}
-              <button
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => {
-                  // 기존 복사 동작 유지 + 카드 focus toggle (같은 카드 →
-                  // 해제, 다른 카드 → switch).
-                  onCopy(q.text);
-                  setSelectedIndex((prev) => (prev === i ? null : i));
-                }}
-                className={`w-full px-1 py-1.5 text-left text-md leading-[1.55] text-ink-2 transition duration-200 hover:text-amore ${
-                  isDimmed ? 'opacity-40' : ''
-                }`}
-              >
-                <span className="mr-2 text-xs uppercase tracking-[0.18em] text-mute-soft">
-                  {label}
-                </span>
-                {q.text}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+        {text}
+        {rel && (
+          <span className="ml-2 text-xs text-mute-soft">· {rel}</span>
+        )}
+      </button>
+      {onDelete && (
+        // eslint-disable-next-line react/forbid-elements -- micro icon-button overlaid inside list row; <IconButton> primitive enforces 28px+ chrome which crowds the inline text layout.
+        <button
+          type="button"
+          aria-label="이 제안 삭제"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute right-1 top-1/2 -translate-y-1/2 hidden h-5 w-5 items-center justify-center rounded-xs text-mute-soft transition duration-150 hover:bg-paper hover:text-ink-2 group-hover:flex focus-visible:flex"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="11"
+            height="11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
+        </button>
+      )}
+    </li>
   );
 }
 
