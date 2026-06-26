@@ -5,6 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import {
+  PROBING_QUESTION_COUNT,
   PROBING_SYSTEM,
   probingSuggestionSchema,
 } from '@/lib/probing-prompts';
@@ -21,9 +22,9 @@ const Body = z.object({
   // PR-2 범위 밖. client 는 빈 문자열로 보냄. 후속 PR 에서 interview_jobs
   // template 를 묶을 자리.
   interview_guide: z.string().max(20_000).optional().default(''),
-  // 현재 스키마는 정확히 3개로 고정 (questions[3] + intents[3]). 호환을 위해
-  // 인자는 받지만 서버에선 무시.
-  max_questions: z.union([z.literal(3), z.literal(4), z.literal(5)]).default(3),
+  // PR-10: 스키마가 PROBING_QUESTION_COUNT 로 고정. 이전 클라이언트가 보낼
+  // 수 있는 max_questions 파라미터는 호환을 위해 받지만 서버에선 무시.
+  max_questions: z.number().int().min(1).max(20).optional(),
 });
 
 export async function POST(request: Request) {
@@ -55,10 +56,11 @@ export async function POST(request: Request) {
     ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideText}\n\n위 가이드가 모든 제안의 1순위 기준입니다. 각 질문이 가이드의 어느 부분과 정합되는지 \`guide_reference\` 에 명시하세요.\n\n`
     : '';
   const closingInstruction = hasGuide
-    ? '위 가이드와 transcript 를 기반으로 **3개의 probing 질문** 을 제안하세요. 응답자의 직전 발화에서 출발하되, 가이드의 가설 / 의도 검증을 우선합니다.'
-    : '위 transcript 를 기반으로 **3개의 probing 질문** 을 제안하세요. 응답자의 직전 발화에서 출발하세요.';
+    ? `위 가이드와 transcript 를 기반으로 **${PROBING_QUESTION_COUNT}개의 probing 질문 — 정의된 모든 기법 각 1개씩** 을 제안하세요. 응답자의 직전 발화에서 출발하되, 가이드의 가설 / 의도 검증을 우선합니다. technique 값이 중복되거나 빠지면 안 됩니다.`
+    : `위 transcript 를 기반으로 **${PROBING_QUESTION_COUNT}개의 probing 질문 — 정의된 모든 기법 각 1개씩** 을 제안하세요. 응답자의 직전 발화에서 출발하세요. technique 값이 중복되거나 빠지면 안 됩니다.`;
 
-  // max_questions 은 호환을 위해 받지만 현재 스키마는 정확히 3 으로 고정.
+  // max_questions 은 PR-10 이전 클라이언트 호환을 위해 받지만 서버에선 무시 —
+  // 스키마는 PROBING_QUESTION_COUNT 로 고정.
   void max_questions;
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
@@ -68,13 +70,14 @@ export async function POST(request: Request) {
 ${transcript_window}
 
 ---
-${closingInstruction} \`questions\` 의 3개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,
+${closingInstruction} \`questions\` 의 ${PROBING_QUESTION_COUNT}개 핵심을 먼저 emit 한 뒤 \`intents\` 를 같은 순서로 emit 해주세요.`,
     // 0.4 — 같은 transcript 에서도 매 호출마다 약간 다른 각도가 제안되도록.
-    // 0 에 두면 5초마다 거의 동일한 질문이 반복돼 위젯 가치가 떨어짐.
+    // 0 에 두면 거의 동일한 질문이 반복돼 위젯 가치가 떨어짐.
     temperature: 0.4,
-    // guide_reference 필드 추가로 응답 길이가 조금 늘어남 (1~2 문장 × 3).
-    // 600 → 800 으로 여유 확보.
-    maxOutputTokens: 800,
+    // PR-10: 질문 3 → 10 개, 각 question 의 text + technique + 선택적 guide_reference
+    // + intents 10개. 800 → 2000 으로 상향 (보수적으로 ~6배 여유). 60초 자동
+    // 사이클에 stream 시간 마진 충분 (LLM throughput 기준 10초 미만 예상).
+    maxOutputTokens: 2000,
   });
 
   // 디버그 헤더 — preview / 운영에서 가이드가 실제로 전송됐는지 빠르게
