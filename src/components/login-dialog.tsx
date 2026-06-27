@@ -32,14 +32,14 @@ export function LoginDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[420px] border border-line bg-paper p-9 rounded-sm"
+        className="w-full max-w-[420px] border-[3px] border-ink bg-paper p-9 rounded-sm shadow-[6px_6px_0_black]"
       >
         <div className="flex items-start justify-between">
           <div>
