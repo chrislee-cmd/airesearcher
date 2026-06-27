@@ -78,7 +78,7 @@
      적용 범위: /canvas 라우트 전용 (data-canvas / data-canvas-body 로 scope).
      다른 라우트 (dashboard, quotes 등) 는 위 bento 토큰만 사용 — 영향 0.
      ======================================================================= */
-  --canvas-bg: #fffce1;
+  --canvas-bg: #ffffff;
   --canvas-bg-image: radial-gradient(circle, rgba(0, 0, 0, 0.18) 2px, transparent 2px);
   --canvas-bg-size: 32px 32px;
   --canvas-card-bg: #ffffff;
