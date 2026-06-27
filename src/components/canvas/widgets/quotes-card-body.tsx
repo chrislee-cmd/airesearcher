@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/components/auth-provider';
 import { track } from '@/components/mixpanel-provider';
@@ -481,9 +482,15 @@ function LanguageConfirmDialog({
     };
   }, [onCancel]);
 
-  return (
+  // Portal to document.body so the modal's `fixed` positioning resolves
+  // against the viewport, not the canvas surface (which has a `transform`
+  // that would otherwise become the containing block for fixed children —
+  // see CSS Transforms §6).
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-ink/30 p-4"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
@@ -546,7 +553,8 @@ function LanguageConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
