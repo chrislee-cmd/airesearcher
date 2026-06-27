@@ -15,7 +15,14 @@
    같은 위젯은 어디서 보든 같은 색.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 
@@ -74,6 +81,8 @@ export function useWidgetHeaderColor(widgetKey: string) {
   return [color, update] as const;
 }
 
+const POPOVER_WIDTH = 220;
+
 export function WidgetHeaderColorPicker({
   value,
   onChange,
@@ -82,16 +91,42 @@ export function WidgetHeaderColorPicker({
   onChange: (color: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
+  // popover 위치 계산 — trigger 의 viewport rect 기준 fixed positioning.
+  // scroll/resize 시 따라가도록 capture-phase scroll 리스너 + resize.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function updatePos() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 8,
+        left: rect.right - POPOVER_WIDTH,
+      });
+    }
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [open]);
+
+  // 바깥 mousedown — trigger 와 popover (portal) 둘 다 별도 ref 로 검사.
   useEffect(() => {
     if (!open) return;
     function onDocDown(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener('mousedown', onDocDown);
     return () => document.removeEventListener('mousedown', onDocDown);
@@ -109,105 +144,119 @@ export function WidgetHeaderColorPicker({
   const currentHue = parseHue(value);
 
   return (
-    <div
-      ref={rootRef}
-      className="relative"
-      // 드래그 핸들(=헤더) 이벤트 차단 — 위젯 dnd 가 picker 클릭에 안 따라옴.
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <>
       <IconButton
+        ref={triggerRef}
         aria-label="헤더 색 선택"
         variant="ghost"
         size="sm"
-        onClick={() => setOpen((o) => !o)}
+        // 트리거 자체가 dnd 핸들 안에 있어 mousedown 이 헤더 drag 를 시작
+        // 시킬 수 있음 — stopPropagation 으로 차단 (popover 는 portal 이라
+        // DOM 상 헤더 밖이라 별도 보호 불필요).
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
       >
         <PaletteGlyph />
       </IconButton>
-      {open && (
-        <div
-          className="absolute right-0 top-full z-fab mt-2 p-3"
-          style={{
-            background: 'var(--canvas-card-bg)',
-            border: '2.5px solid var(--canvas-card-border)',
-            borderRadius: 6,
-            boxShadow: '4px 4px 0 var(--canvas-card-border)',
-            width: 220,
-          }}
-          role="dialog"
-          aria-label="헤더 색 팔레트"
-        >
+      {open &&
+        pos &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
-            ref={barRef}
-            className="cursor-crosshair touch-none"
+            ref={popoverRef}
+            className="z-overlay p-3"
             style={{
-              height: 28,
-              border: '2px solid var(--canvas-card-border)',
-              borderRadius: 4,
-              background:
-                'linear-gradient(to right,' +
-                'hsl(0 85% 82%),' +
-                'hsl(60 85% 82%),' +
-                'hsl(120 85% 82%),' +
-                'hsl(180 85% 82%),' +
-                'hsl(240 85% 82%),' +
-                'hsl(300 85% 82%),' +
-                'hsl(360 85% 82%))',
-              position: 'relative',
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              width: POPOVER_WIDTH,
+              background: 'var(--canvas-card-bg)',
+              border: '2.5px solid var(--canvas-card-border)',
+              borderRadius: 6,
+              boxShadow: '4px 4px 0 var(--canvas-card-border)',
             }}
-            role="slider"
-            aria-label="색상 (hue) 선택"
-            aria-valuemin={0}
-            aria-valuemax={360}
-            aria-valuenow={currentHue ?? 0}
-            tabIndex={0}
-            onPointerDown={(e) => {
-              draggingRef.current = true;
-              e.currentTarget.setPointerCapture(e.pointerId);
-              pickAt(e.clientX);
-            }}
-            onPointerMove={(e) => {
-              if (draggingRef.current) pickAt(e.clientX);
-            }}
-            onPointerUp={(e) => {
-              draggingRef.current = false;
-              try {
-                e.currentTarget.releasePointerCapture(e.pointerId);
-              } catch {
-                // pointer 가 이미 release 됨 — 무시.
-              }
-            }}
+            role="dialog"
+            aria-label="헤더 색 팔레트"
+            // body 직속이라 헤더 drag 와 무관하지만, popover 안에서 native
+            // HTML5 drag 가 우연히 시작되지 않도록 한 번 더 차단.
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
           >
-            {currentHue !== null && <PickerIndicator hue={currentHue} />}
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-xs uppercase tracking-wider opacity-70">
-              {value ? '사용자' : '기본'}
-            </span>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => onChange(null)}
-              leftIcon={
-                <span
-                  aria-hidden
-                  style={{
-                    display: 'inline-block',
-                    width: 12,
-                    height: 12,
-                    background: '#ffd53d',
-                    border: '1.5px solid var(--canvas-card-border)',
-                    borderRadius: 3,
-                  }}
-                />
-              }
+            <div
+              ref={barRef}
+              className="cursor-crosshair touch-none"
+              style={{
+                height: 28,
+                border: '2px solid var(--canvas-card-border)',
+                borderRadius: 4,
+                background:
+                  'linear-gradient(to right,' +
+                  'hsl(0 85% 82%),' +
+                  'hsl(60 85% 82%),' +
+                  'hsl(120 85% 82%),' +
+                  'hsl(180 85% 82%),' +
+                  'hsl(240 85% 82%),' +
+                  'hsl(300 85% 82%),' +
+                  'hsl(360 85% 82%))',
+                position: 'relative',
+              }}
+              role="slider"
+              aria-label="색상 (hue) 선택"
+              aria-valuemin={0}
+              aria-valuemax={360}
+              aria-valuenow={currentHue ?? 0}
+              tabIndex={0}
+              onPointerDown={(e) => {
+                draggingRef.current = true;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                pickAt(e.clientX);
+              }}
+              onPointerMove={(e) => {
+                if (draggingRef.current) pickAt(e.clientX);
+              }}
+              onPointerUp={(e) => {
+                draggingRef.current = false;
+                try {
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                } catch {
+                  // pointer 가 이미 release 됨 — 무시.
+                }
+              }}
             >
-              기본 노랑
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+              {currentHue !== null && <PickerIndicator hue={currentHue} />}
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs uppercase tracking-wider opacity-70">
+                {value ? '사용자' : '기본'}
+              </span>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => onChange(null)}
+                leftIcon={
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'inline-block',
+                      width: 12,
+                      height: 12,
+                      background: '#ffd53d',
+                      border: '1.5px solid var(--canvas-card-border)',
+                      borderRadius: 3,
+                    }}
+                  />
+                }
+              >
+                기본 노랑
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
