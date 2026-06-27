@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 
+import { Button } from '@/components/ui/button';
+
 type Tone = 'default' | 'error';
 
 type Props = {
@@ -23,17 +25,20 @@ export function JobProgress({
 }: Props) {
   const determinate = typeof value === 'number';
   const pct = determinate ? Math.max(0, Math.min(100, value)) : 0;
-  const fillTone = tone === 'error' ? 'bg-warning' : 'bg-amore';
-  const labelTone = tone === 'error' ? 'text-warning' : 'text-amore';
+  const isError = tone === 'error';
+  const fillTone = isError ? 'bg-warning' : 'bg-ink';
+  const labelTone = isError ? 'text-warning' : 'text-ink';
+  const dotTone = isError ? 'bg-warning' : 'bg-ink';
+  const containerTone = isError
+    ? 'border-warning shadow-[3px_3px_0_var(--color-warning)]'
+    : 'border-ink shadow-[3px_3px_0_black]';
 
   return (
-    <div className="border border-line bg-paper-soft px-4 py-3 rounded-sm">
+    <div className={`border-[2px] bg-paper px-4 py-3 rounded-sm ${containerTone}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`inline-block h-1.5 w-1.5 animate-pulse rounded-full ${
-              tone === 'error' ? 'bg-warning' : 'bg-amore'
-            }`}
+            className={`inline-block h-1.5 w-1.5 animate-pulse rounded-full ${dotTone}`}
           />
           <span
             className={`truncate text-xs-soft font-semibold uppercase tracking-[0.22em] ${labelTone}`}
@@ -53,13 +58,9 @@ export function JobProgress({
             </span>
           )}
           {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="border border-line bg-paper px-2.5 py-1 text-xs-soft font-semibold uppercase tracking-[.18em] text-mute hover:border-warning hover:text-warning rounded-sm"
-            >
+            <Button variant="destructive" size="xs" onClick={onCancel}>
               {cancelLabel}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -68,7 +69,7 @@ export function JobProgress({
         aria-valuemin={determinate ? 0 : undefined}
         aria-valuemax={determinate ? 100 : undefined}
         aria-valuenow={determinate ? Math.round(pct) : undefined}
-        className="mt-2 h-1 w-full overflow-hidden bg-line-soft rounded-full"
+        className="mt-2 h-1 w-full overflow-hidden bg-paper-soft rounded-full"
       >
         {determinate ? (
           <div
