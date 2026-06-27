@@ -20,6 +20,10 @@ import type {
   MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { WidgetContent, WidgetState } from '../widget-types';
+import {
+  WidgetHeaderColorPicker,
+  useWidgetHeaderColor,
+} from './widget-header-color';
 
 export type DragHandleProps = {
   draggable: boolean;
@@ -71,6 +75,7 @@ export function WidgetShell({
 }) {
   const { ExpandedBody } = content;
   const isDraggable = !!dragHandleProps?.draggable;
+  const [headerColor, setHeaderColor] = useWidgetHeaderColor(content.key);
 
   return (
     <div
@@ -92,7 +97,7 @@ export function WidgetShell({
           height: 140,
           paddingTop: 16,
           paddingBottom: 16,
-          background: 'var(--canvas-card-header-bg)',
+          background: headerColor ?? 'var(--canvas-card-header-bg)',
           color: 'var(--canvas-card-header-text)',
           fontFamily: 'var(--font-outfit), var(--font-sans)',
           borderBottom: '3px solid var(--canvas-card-header-divider)',
@@ -107,6 +112,10 @@ export function WidgetShell({
               : ''}
           </span>
           <span className="ml-auto flex items-center gap-2">
+            <WidgetHeaderColorPicker
+              value={headerColor}
+              onChange={setHeaderColor}
+            />
             <PopStatePill state={content.state} />
           </span>
         </div>
