@@ -4,9 +4,11 @@
    CanvasBoard — production /canvas. 대시보드 + pan + zoom-out + 자유 reposition.
 
    - 모든 위젯 항상 펼친 상태 (collapse 없음).
-   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 480, CELL_H 800,
-     GAP 48). 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는
-     1×1 로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
+   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 528, CELL_H 800,
+     GAP 48). SURFACE_W 1680 고정 — 6×5 시절 surface width 유지 위해
+     CELL_W = (1680 - 2*GAP) / 3 = 528. viewport 따라 reactive 하게 변하지
+     않음. 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는 1×1
+     로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
    - 디폴트 배치는 row-major — 6 위젯이면 1·2행에 3+3, 3행은 비움.
    - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
      다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
@@ -27,12 +29,15 @@ import {
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
-const CELL_W = 480;
-const CELL_H = 800;
 const GAP = 48;
 const GRID_COLS = 3;
 const GRID_ROWS = 3;
-const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
+// SURFACE_W 1680 고정 — 6×5 시절 (CELL_W 240 × 6 + GAP 48 × 5) 과 동일.
+// viewport / zoom 과 무관하게 grid 자체 width 는 고정값. CELL_W 는 그에
+// 맞춰 도출 (3 슬롯 + GAP 2 = 528 × 3 + 48 × 2 = 1680).
+const SURFACE_W = 1680;
+const CELL_W = (SURFACE_W - (GRID_COLS - 1) * GAP) / GRID_COLS;
+const CELL_H = 800;
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.0;
