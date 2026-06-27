@@ -58,6 +58,31 @@ function expandedHeightOf(rows: number): number {
   return rows * CELL_H + (rows - 1) * GAP;
 }
 
+// wheel target 의 가장 가까운 scrollable parent 를 찾는다. `data-canvas-surface`
+// marker 에 도달하면 위젯 밖 (= 캔버스 surface) 으로 간주하고 null 반환 — 캔버스
+// 자체 pan/zoom 처리. 위젯 안에서 overflow auto/scroll + 실제 스크롤 여유가 있는
+// element 를 만나면 그것을 반환 — native browser scroll 양보.
+function findScrollableParent(
+  target: EventTarget | null,
+  boundary: HTMLElement,
+): HTMLElement | null {
+  let el = target instanceof HTMLElement ? target : null;
+  while (el && el !== boundary) {
+    if (el.dataset.canvasSurface !== undefined) return null;
+    const style = getComputedStyle(el);
+    const oy = style.overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+      return el;
+    }
+    const ox = style.overflowX;
+    if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
 function spanOf(_w: WidgetContent | undefined): Span {
   // canvas 3×3 그리드에서는 한 슬롯 = 한 위젯. 위젯 메타의
   // expandedCols/expandedRows 는 다른 컨텍스트 (모달, focus mode) 용으로
@@ -298,6 +323,10 @@ export function CanvasBoard({
     const container = containerRef.current;
     if (!container) return;
     const handler = (e: WheelEvent) => {
+      // 위젯 안 scrollable 영역의 wheel 이면 native browser scroll 양보 —
+      // preventDefault / pan / zoom 모두 skip. shift+wheel · cmd+wheel 도
+      // 위젯 안에선 native 동작 (위젯 안 수평 scroll 등) 으로 위임.
+      if (findScrollableParent(e.target, container)) return;
       // ctrlKey: 명시적 Ctrl 또는 trackpad pinch (브라우저가 ctrlKey=true 로
       // emit). metaKey: Cmd (macOS).
       const isZoomGesture = e.ctrlKey || e.metaKey;
@@ -498,6 +527,7 @@ export function CanvasBoard({
           중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
+          data-canvas-surface
           className="relative"
           style={{
             width: SURFACE_W,
