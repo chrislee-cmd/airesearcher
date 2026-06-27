@@ -4,11 +4,13 @@
    CanvasBoard — production /canvas. 대시보드 + pan + zoom-out + 자유 reposition.
 
    - 모든 위젯 항상 펼친 상태 (collapse 없음).
-   - 너비 위젯별 (meta.expandedCols 1/2/3 → 240 / 528 / 816 px).
-   - 높이 위젯별 (meta.expandedRows 1/2/3 → 800 / 1648 / 2496 px,
-     default 1). 본문 길면 widget-shell 의 overflow-y-auto.
-   - 6×5 그리드 절대 좌표 (CELL_W 240, CELL_H 800, GAP 48). 각 위젯이
-     (col, row) anchor 를 가지고 expandedCols × expandedRows 만큼 span.
+   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 816, CELL_H 800,
+     GAP 48). CELL_W 816 = 6×5 시절 expandedCols=3 위젯 한 장의 visual
+     width (3 × 240 + 2 × 48). 즉 위젯 크기 자체는 그대로 유지. SURFACE_W
+     2544 = 3 × 816 + 2 × 48 (고정값, viewport 따라 reactive 하게 변하지
+     않음). 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는 1×1
+     로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
+   - 디폴트 배치는 row-major — 6 위젯이면 1·2행에 3+3, 3행은 비움.
    - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
      다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
    - 빈 영역 drag = pan, 휠 = zoom-out (1.0 ~ 0.4, cursor focal point).
@@ -28,17 +30,21 @@ import {
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
-const CELL_W = 240;
-const CELL_H = 800;
 const GAP = 48;
-const GRID_COLS = 6;
-const GRID_ROWS = 5;
-const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
+const GRID_COLS = 3;
+const GRID_ROWS = 3;
+// CELL_W 816 — 6×5 시절 expandedCols=3 위젯 한 장의 visual width
+// (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
+// 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
+const CELL_W = 816;
+const CELL_H = 800;
+const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2544
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.05;
-const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v1';
+// v1 좌표는 6×5 기준 — v2 bump 로 한 번 reset (디폴트 1·2행 3+3 배치).
+const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v2';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -53,11 +59,11 @@ function expandedHeightOf(rows: number): number {
   return rows * CELL_H + (rows - 1) * GAP;
 }
 
-function spanOf(w: WidgetContent | undefined): Span {
-  return {
-    cols: w?.meta.expandedCols ?? 2,
-    rows: w?.meta.expandedRows ?? 1,
-  };
+function spanOf(_w: WidgetContent | undefined): Span {
+  // canvas 3×3 그리드에서는 한 슬롯 = 한 위젯. 위젯 메타의
+  // expandedCols/expandedRows 는 다른 컨텍스트 (모달, focus mode) 용으로
+  // 남겨두고 여기선 항상 1×1 로 강제.
+  return { cols: 1, rows: 1 };
 }
 
 // 좌측 상단부터 row-major 로 위젯을 채움 — 점유 셀을 추적해 multi-row
