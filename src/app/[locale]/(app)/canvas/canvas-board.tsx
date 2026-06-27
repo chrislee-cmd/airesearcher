@@ -25,7 +25,6 @@ import {
   useState,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
-  type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
@@ -42,7 +41,7 @@ const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2544
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.0;
-const ZOOM_FACTOR = 1.05;
+const ZOOM_FACTOR = 1.03;
 // v1 좌표는 6×5 기준 — v2 bump 로 한 번 reset (디폴트 1·2행 3+3 배치).
 const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v2';
 const TRANSPARENT_GHOST_SRC =
@@ -282,25 +281,55 @@ export function CanvasBoard({
     };
   }, []);
 
-  const onWheel = useCallback(
-    (e: ReactWheelEvent<HTMLDivElement>) => {
-      const container = containerRef.current;
-      if (!container) return;
-      const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
-      if (nextZoom === zoom) return;
-      const rect = container.getBoundingClientRect();
-      const cx = e.clientX - rect.left - rect.width / 2;
-      const cy = e.clientY - rect.top - rect.height / 2;
-      const ratio = nextZoom / zoom;
-      setPan({
-        x: cx * (1 - ratio) + pan.x * ratio,
-        y: cy * (1 - ratio) + pan.y * ratio,
-      });
-      setZoom(nextZoom);
-    },
-    [zoom, pan],
-  );
+  // Figma/Miro 표준 wheel 분기. React 의 synthetic onWheel 은 환경에 따라
+  // passive 로 등록될 수 있어 preventDefault() 가 무시되므로 — trackpad
+  // pinch (ctrlKey=true) 와 Cmd+wheel 의 browser-level page zoom 을 확실히
+  // 막으려면 native 리스너를 { passive: false } 로 직접 부착한다. 핸들러는
+  // 한 번만 부착하고 최신 zoom/pan 은 ref 로 읽어와 stale closure 회피.
+  const zoomRef = useRef(zoom);
+  const panRefValue = useRef(pan);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    panRefValue.current = pan;
+  }, [pan]);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const handler = (e: WheelEvent) => {
+      // ctrlKey: 명시적 Ctrl 또는 trackpad pinch (브라우저가 ctrlKey=true 로
+      // emit). metaKey: Cmd (macOS).
+      const isZoomGesture = e.ctrlKey || e.metaKey;
+      e.preventDefault();
+      if (isZoomGesture) {
+        const currZoom = zoomRef.current;
+        const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+        const nextZoom = Math.max(
+          MIN_ZOOM,
+          Math.min(MAX_ZOOM, currZoom * factor),
+        );
+        if (nextZoom === currZoom) return;
+        const rect = container.getBoundingClientRect();
+        const cx = e.clientX - rect.left - rect.width / 2;
+        const cy = e.clientY - rect.top - rect.height / 2;
+        const ratio = nextZoom / currZoom;
+        const currPan = panRefValue.current;
+        setPan({
+          x: cx * (1 - ratio) + currPan.x * ratio,
+          y: cy * (1 - ratio) + currPan.y * ratio,
+        });
+        setZoom(nextZoom);
+        return;
+      }
+      setPan((p) => ({
+        x: p.x - (e.shiftKey ? e.deltaY : e.deltaX),
+        y: p.y - (e.shiftKey ? 0 : e.deltaY),
+      }));
+    };
+    container.addEventListener('wheel', handler, { passive: false });
+    return () => container.removeEventListener('wheel', handler);
+  }, []);
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -459,7 +488,6 @@ export function CanvasBoard({
       ref={containerRef}
       data-canvas
       className="relative h-full overflow-hidden"
-      onWheel={onWheel}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
