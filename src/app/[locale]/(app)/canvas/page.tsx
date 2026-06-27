@@ -16,7 +16,6 @@ import { translateCard } from '@/components/canvas/widgets/translate-card';
 import { probingCard } from '@/components/canvas/widgets/probing-card';
 import { toplineCard } from '@/components/canvas/widgets/topline-card';
 import { slidegenCard } from '@/components/canvas/widgets/slidegen-card';
-import { autocontentsCard } from '@/components/canvas/widgets/autocontents-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
@@ -32,7 +31,6 @@ const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   probing: probingCard,
   topline: toplineCard,
   slidegen: slidegenCard,
-  autocontents: autocontentsCard,
 };
 
 // preview-gated widgets — 일반 유저에게는 숨김, is_unlimited org 만 노출.
