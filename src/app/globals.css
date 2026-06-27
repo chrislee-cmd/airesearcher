@@ -241,8 +241,12 @@ html, body {
 }
 
 /* widget body (panel 안 ExpandedBody) — Memphis bold + display typography.
-   widget-shell 의 framed panel 안쪽 wrapper 에 data-canvas-body 부착. */
-[data-canvas-body] button {
+   widget-shell 의 framed panel 안쪽 wrapper 에 data-canvas-body 부착.
+   `:not([data-canvas-action])` 로 자체 chrome 을 가진 버튼 (IconButton
+   primitive, probing-card 의 fixed-size action 버튼) 은 제외 — globals
+   의 padding 0.4rem 0.85rem 가 28×28/32×32 박스의 content area 를 음수로
+   만들어 SVG 글리프가 사라지는 회귀 (PR #466 후) 발생. */
+[data-canvas-body] button:not([data-canvas-action]) {
   border: 2.5px solid #000;
   border-radius: 8px;
   background: #fff;
@@ -252,11 +256,11 @@ html, body {
   padding: 0.4rem 0.85rem;
   transition: transform 0.12s, box-shadow 0.12s;
 }
-[data-canvas-body] button:hover {
+[data-canvas-body] button:not([data-canvas-action]):hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 #000;
 }
-[data-canvas-body] button:active {
+[data-canvas-body] button:not([data-canvas-action]):active {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 #000;
 }

@@ -1238,6 +1238,7 @@ function QuestionRow({
             // eslint-disable-next-line react/forbid-elements -- Memphis-styled action button group inside list row; <IconButton> primitive doesn't expose the canvas-card Memphis chrome (offset shadow + translate-on-press) needed for D5 톤 정합.
             <button
               type="button"
+              data-canvas-action
               aria-label={isCore ? '핵심 표시 해제' : '핵심으로 표시'}
               aria-pressed={isCore}
               onClick={(e) => {
@@ -1269,6 +1270,7 @@ function QuestionRow({
             // eslint-disable-next-line react/forbid-elements -- Memphis-styled action button group inside list row; <IconButton> primitive doesn't expose the canvas-card Memphis chrome (offset shadow + translate-on-press) needed for D5 톤 정합.
             <button
               type="button"
+              data-canvas-action
               aria-label="이 제안 삭제"
               onClick={(e) => {
                 e.stopPropagation();
