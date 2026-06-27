@@ -18,8 +18,15 @@ import './loading.css';
 // localized text without touching server request scope.
 export default function Loading() {
   const t = useTranslations('Common');
+  // data-loading: layout 의 main 이 has-[[data-loading]]:p-0 으로 패딩을
+  // 죽여 pop bg (노랑 + dot grid) 가 topbar 바로 아래 edge-to-edge 로
+  // 깔린다. min-h-full 로 main 영역 전체를 채워 캔버스 등 직전 페이지의
+  // 톤이 모서리에 비치는 것을 막는다.
   return (
-    <div className="loading-pop flex min-h-[60vh] flex-col items-center justify-center">
+    <div
+      data-loading
+      className="loading-pop flex min-h-full flex-col items-center justify-center"
+    >
       <div className="loading-pop-card">
         <MochiLoader size={56} />
         <span className="loading-pop-label">{t('loading')}</span>
