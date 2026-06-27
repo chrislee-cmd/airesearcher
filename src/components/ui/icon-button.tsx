@@ -42,14 +42,32 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
   children: ReactNode;
 };
 
-const BASE = 'transition-colors duration-[120ms] focus:outline-none focus-visible:text-amore';
+// transition-all so Memphis translate + shadow morphs animate alongside
+// color changes. disabled neutralizes transform/shadow so hover lift
+// doesn't fight the disabled-state read.
+const BASE =
+  'transition-all duration-[120ms] focus:outline-none focus-visible:text-amore ' +
+  'disabled:transform-none disabled:shadow-none';
 
+// Memphis pop tone — boxed icon with 2px border + small hard shadow.
+// ghost / ghost-danger / ghost-brand share the same chrome; only hover
+// border / text / shadow tint changes per intent. `bordered` lands the
+// loudest treatment (filled ink border + black shadow).
 const VARIANT: Record<IconButtonVariant, string> = {
-  ghost: 'text-mute-soft hover:text-ink-2',
-  'ghost-danger': 'text-mute-soft hover:text-warning',
-  'ghost-brand': 'text-mute hover:text-amore',
+  ghost:
+    'border-[2px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-[3px_3px_0_black]',
+  'ghost-danger':
+    'border-[2px] border-line bg-paper text-mute shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-warning hover:text-warning ' +
+    'hover:shadow-[3px_3px_0_var(--color-warning)]',
+  'ghost-brand':
+    'border-[2px] border-line bg-paper text-mute shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-amore hover:text-amore ' +
+    'hover:shadow-[3px_3px_0_var(--color-amore)]',
   bordered:
-    'border border-line bg-paper text-ink hover:border-amore rounded-xs',
+    'border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_black] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_black] rounded-xs',
 };
 
 const SIZE: Record<IconButtonSize, string> = {
