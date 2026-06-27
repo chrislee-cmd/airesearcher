@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useToast } from '@/components/toast-provider';
+import { Button } from './button';
 import { DropdownMenu, type DropdownItem } from './dropdown-menu';
 
 export type ShareDestination = 'google-docs' | 'google-sheets' | 'notion';
@@ -179,15 +180,15 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
   if (items.length === 1) {
     const only = items[0];
     return (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         disabled={disabled || busy !== null}
         onClick={() => handleSelect(only)}
-        className={triggerClass(false)}
+        leftIcon={DEST_ICON[only.destination]}
       >
-        {DEST_ICON[only.destination]}
-        <span>{busy ? '공유 중…' : '공유'}</span>
-      </button>
+        {busy ? '공유 중…' : '공유'}
+      </Button>
     );
   }
 
@@ -198,23 +199,19 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
       minWidth={180}
       items={dropdownItems}
       trigger={({ open, onClick, ...aria }) => (
-        <button
-          type="button"
-          {...aria}
+        <Button
+          variant="ghost"
+          size="sm"
           disabled={disabled || busy !== null}
           onClick={onClick}
-          className={triggerClass(open)}
+          rightIcon={<Caret open={open} />}
+          {...aria}
         >
-          <span>{busy ? '공유 중…' : '공유'}</span>
-          <Caret open={open} />
-        </button>
+          {busy ? '공유 중…' : '공유'}
+        </Button>
       )}
     />
   );
-}
-
-function triggerClass(open: boolean): string {
-  return `inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] rounded-sm border border-line text-ink-2 hover:border-ink-2 disabled:cursor-not-allowed disabled:opacity-50 ${open ? 'border-ink-2' : ''}`;
 }
 
 function Caret({ open }: { open: boolean }) {
