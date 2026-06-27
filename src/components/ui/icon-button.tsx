@@ -71,7 +71,11 @@ const VARIANT: Record<IconButtonVariant, string> = {
 };
 
 const SIZE: Record<IconButtonSize, string> = {
-  compact: '',
+  // inline-flex + centering + leading-none so callers that pass no padding
+  // still render the glyph centered inside the Memphis bordered chrome
+  // (PR #466 added border-2 + shadow to every variant; compact size had
+  // no inline placement so the glyph sat off-box or clipped).
+  compact: 'inline-flex items-center justify-center leading-none',
   sm: 'inline-flex h-6 w-6 items-center justify-center',
   md: 'inline-flex h-7 w-7 items-center justify-center',
   lg: 'inline-flex h-8 w-8 items-center justify-center',
