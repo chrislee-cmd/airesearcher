@@ -283,7 +283,11 @@
 .auth-pop a:hover { color: var(--pop-pink); }
 
 /* ── status text ──────────────────────────────────────────── */
-.auth-pop .text-warning {
+/* Tag <p> only so the same `text-warning` utility used on the inline
+   required-marker `*` span inside <Label> does not pick up the boxed
+   alert chrome (PR #466 regression — login form labels rendered the
+   * inside a pink/black box). */
+.auth-pop p.text-warning {
   color: #000;
   background: var(--pop-pink-soft);
   border: 2px solid #000;

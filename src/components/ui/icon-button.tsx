@@ -71,7 +71,11 @@ const VARIANT: Record<IconButtonVariant, string> = {
 };
 
 const SIZE: Record<IconButtonSize, string> = {
-  compact: '',
+  // inline-flex + centering + leading-none so callers that pass no padding
+  // still render the glyph centered inside the Memphis bordered chrome
+  // (PR #466 added border-2 + shadow to every variant; compact size had
+  // no inline placement so the glyph sat off-box or clipped).
+  compact: 'inline-flex items-center justify-center leading-none',
   sm: 'inline-flex h-6 w-6 items-center justify-center',
   md: 'inline-flex h-7 w-7 items-center justify-center',
   lg: 'inline-flex h-8 w-8 items-center justify-center',
@@ -93,7 +97,12 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
     .join(' ');
 
   return (
-    <button ref={ref} type={type} className={cls} {...rest}>
+    // data-canvas-action: globals.css 의 [data-canvas-body] button cascade
+    // (padding 0.4rem 0.85rem · border 2.5px · radius 8px) 에서 opt-out.
+    // canvas widget 안에서 IconButton 의 28×28 박스가 globals padding 으로
+    // content area 가 음수가 돼 svg 글리프 vanish 했던 회귀 (translate
+    // SpeakerMute 등) 해소.
+    <button ref={ref} type={type} className={cls} data-canvas-action {...rest}>
       {children}
     </button>
   );
