@@ -148,7 +148,7 @@ export function WidgetShell({
             background: 'var(--canvas-card-bg)',
           }}
         >
-          <div data-canvas-body>
+          <div data-canvas-body className="h-full">
             <ExpandedBody />
           </div>
         </div>
