@@ -81,14 +81,12 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
 // with `is_unlimited = true`). Move a key out of this list to GA the
 // feature for all users.
 export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
-  'recruiting',
   'transcripts',  // 스크립트 생성기 (audio→script). The 전사록 path is `quotes`.
   'survey',
   'analyzer',
   'scheduler',
   'quant',
   'video',
-  'translate',
   'insights_analyzer',
   'slidegen',
   'autocontents',
