@@ -7,6 +7,7 @@ import {
   triggerUrlDownload,
 } from '@/lib/export/download';
 import { FORMAT_META, type ExportFormat } from '@/lib/export/formats';
+import { Button } from './button';
 import { DropdownMenu, type DropdownItem } from './dropdown-menu';
 
 type ItemUrl = {
@@ -96,21 +97,21 @@ export function DownloadMenu({
   });
 
   const triggerLabel = label ?? (t('download') as string);
+  const variant = tone === 'primary' ? 'primary' : 'ghost';
 
   // Single-item fallback: render a plain button instead of a dropdown,
   // so trivial cases don't force users through an extra click.
   if (items.length === 1) {
     const only = items[0];
     return (
-      <button
-        type="button"
+      <Button
+        variant={variant}
+        size="sm"
         disabled={disabled || busy !== null}
         onClick={() => handleSelect(only)}
-        className={triggerClass(tone, false)}
       >
-        <Caret className="hidden" />
-        <span>{triggerLabel}</span>
-      </button>
+        {triggerLabel}
+      </Button>
     );
   }
 
@@ -121,35 +122,22 @@ export function DownloadMenu({
       minWidth={180}
       items={dropdownItems}
       trigger={({ open, onClick, ...aria }) => (
-        <button
-          type="button"
-          {...aria}
+        <Button
+          variant={variant}
+          size="sm"
           disabled={disabled}
           onClick={onClick}
-          className={triggerClass(tone, open)}
+          rightIcon={<Caret open={open} />}
+          {...aria}
         >
-          <span>{triggerLabel}</span>
-          <Caret open={open} />
-        </button>
+          {triggerLabel}
+        </Button>
       )}
     />
   );
 }
 
-function triggerClass(tone: 'ghost' | 'primary', open: boolean): string {
-  const base =
-    'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.18em] transition-colors duration-[120ms] rounded-sm disabled:cursor-not-allowed disabled:opacity-50';
-  if (tone === 'primary') {
-    return `${base} border border-ink bg-ink text-paper hover:bg-ink-2 ${
-      open ? 'bg-ink-2' : ''
-    }`;
-  }
-  return `${base} border border-line text-ink-2 hover:border-ink-2 ${
-    open ? 'border-ink-2' : ''
-  }`;
-}
-
-function Caret({ open, className }: { open?: boolean; className?: string }) {
+function Caret({ open }: { open: boolean }) {
   return (
     <svg
       width="8"
@@ -158,7 +146,7 @@ function Caret({ open, className }: { open?: boolean; className?: string }) {
       aria-hidden="true"
       className={`transition-transform duration-[120ms] ${
         open ? 'rotate-180' : ''
-      } ${className ?? ''}`}
+      }`}
     >
       <path d="M1 2.5 L4 5.5 L7 2.5" stroke="currentColor" strokeWidth="1" fill="none" />
     </svg>
