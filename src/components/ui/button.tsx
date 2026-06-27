@@ -31,42 +31,56 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   rightIcon?: ReactNode;
 };
 
+// transition-all (not just transition-colors) so Memphis hover/active
+// translate + shadow morphs animate alongside color changes.
+// disabled:{transform-none,shadow-none} neutralizes hover lift when disabled
+// so opacity-40 read stays flat.
 const BASE =
   'inline-flex items-center justify-center gap-1.5 border font-semibold ' +
+  'transition-all duration-[120ms] ' +
   'disabled:cursor-not-allowed disabled:opacity-40 ' +
+  'disabled:transform-none disabled:shadow-none ' +
   // Border-driven focus matches existing app pattern; loud ring left to
   // app-wide a11y pass (P0 in audit) so this primitive stays drop-in.
   'focus:outline-none focus-visible:border-amore';
 
+// Memphis pop tone — 2.5px border + 3px hard shadow, lifts on hover, sinks
+// on active. link/destructive-link stay flat (text-only identity).
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    'border-ink bg-ink text-paper hover:bg-ink-2',
+    'border-[2.5px] border-ink bg-ink text-paper shadow-[3px_3px_0_black] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black] ' +
+    'active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]',
   secondary:
-    'border-ink bg-paper text-ink hover:bg-ink hover:text-paper',
+    'border-[2.5px] border-ink bg-paper text-ink shadow-[3px_3px_0_black] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black] hover:bg-paper-soft ' +
+    'active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]',
   ghost:
-    'border-line bg-paper text-mute hover:border-mute-soft hover:text-ink-2',
+    'border-[2.5px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-[3px_3px_0_black]',
   destructive:
-    'border-line bg-paper text-mute hover:border-warning hover:text-warning',
+    'border-[2.5px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-warning hover:text-warning ' +
+    'hover:shadow-[3px_3px_0_var(--color-warning)]',
   // Text-only neutral action (e.g. "switch to sign up", inline cancels).
   link:
-    'border-transparent bg-transparent text-mute hover:text-ink-2',
+    'border-transparent bg-transparent text-mute hover:text-ink-2 ' +
+    'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-ink',
   // Text-only delete action (8 sites: row deletes, panel removes).
   'destructive-link':
-    'border-transparent bg-transparent text-mute hover:text-warning',
+    'border-transparent bg-transparent text-mute hover:text-warning ' +
+    'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-warning',
 };
 
-// Each size carries its own radius + transition so `cta` (pill, transition-all)
-// fully overrides the default capsule (14px, transition-colors) regardless of
-// CSS source order.
+// SIZE owns padding/font/radius only — transition lives on BASE so the
+// Memphis hover lift animates uniformly across sizes. `cta` drops its
+// legacy soft-shadow hover; variant supplies the Memphis hard shadow.
 const SIZE: Record<ButtonSize, string> = {
-  xs: 'px-2.5 py-1 text-xs-soft rounded-sm transition-colors duration-[120ms]',
-  sm: 'px-4 py-1.5 text-sm rounded-sm transition-colors duration-[120ms]',
-  md: 'px-5 py-2 text-md rounded-sm transition-colors duration-[120ms]',
-  lg: 'px-5 py-2.5 text-lg rounded-sm transition-colors duration-[120ms]',
-  cta:
-    'px-4 py-3 text-sm uppercase tracking-[0.22em] rounded-full ' +
-    'transition-all duration-[120ms] hover:-translate-y-px ' +
-    'hover:shadow-[0_1px_2px_rgba(29,27,32,.04),0_8px_24px_rgba(29,27,32,.06)]',
+  xs: 'px-2.5 py-1 text-xs-soft rounded-sm',
+  sm: 'px-4 py-1.5 text-sm rounded-sm',
+  md: 'px-5 py-2 text-md rounded-sm',
+  lg: 'px-5 py-2.5 text-lg rounded-sm',
+  cta: 'px-4 py-3 text-sm uppercase tracking-[0.22em] rounded-full',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
