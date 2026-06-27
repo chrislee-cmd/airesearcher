@@ -57,7 +57,7 @@ export function WidgetOutputs<T>({
         <span className="text-xs text-mute-soft">총 {items.length}건</span>
       </div>
       {isEmpty ? (
-        <div className="rounded-xs border border-dashed border-line-soft bg-paper px-4 py-6 text-center text-md text-mute-soft">
+        <div className="rounded-xs border-[2px] border-dashed border-ink bg-paper px-4 py-6 text-center text-md text-mute-soft">
           {emptyText}
         </div>
       ) : (
@@ -104,7 +104,7 @@ export function WidgetOutputRow({
   children,
 }: WidgetOutputRowProps) {
   return (
-    <li className="border border-line bg-paper rounded-sm">
+    <li className="border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm transition-all duration-[120ms] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black]">
       <div className="flex items-start gap-4 px-5 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-lg text-ink-2">{title}</div>
