@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +9,30 @@ import {
   COOKIE_CONSENT_STORAGE_KEY,
 } from '@/lib/consent';
 import { CONSENT_CHANGED_EVENT } from '@/hooks/use-consent';
+
+// Memphis pop tone — mirrors /credits + shell pop language (3px ink border
+// + offset shadow). Consent logic is untouched; only the visual layer
+// changes so Accept/Reject/Customize still wire to the same handlers.
+const memphisCard: CSSProperties = {
+  background: '#fff',
+  border: '3px solid var(--canvas-card-border)',
+  borderRadius: 'var(--canvas-card-radius)',
+  boxShadow: 'var(--canvas-card-shadow)',
+};
+
+function memphisAction(tone: 'ink' | 'paper'): CSSProperties {
+  const isInk = tone === 'ink';
+  return {
+    background: isInk ? '#000' : '#fff',
+    color: isInk ? '#fff' : '#000',
+    border: '2.5px solid var(--canvas-card-border)',
+    borderRadius: '10px',
+    boxShadow: isInk
+      ? '3px 3px 0 var(--canvas-accent)'
+      : '3px 3px 0 var(--canvas-card-border)',
+    fontWeight: 700,
+  };
+}
 
 // CookieConsentBanner — mounted in the locale-layout, shown once per
 // browser. The user picks essential/analytics/marketing and the choice
@@ -153,10 +177,13 @@ export function CookieConsentBanner() {
       aria-labelledby="cookie-consent-title"
       className="fixed inset-x-0 bottom-0 z-toast px-4 pb-4 sm:px-6 sm:pb-6"
     >
-      <div className="mx-auto w-full max-w-[640px] border border-line bg-paper p-5 rounded-md [box-shadow:var(--shadow-bento)]">
+      <div
+        className="mx-auto w-full max-w-[640px] p-5"
+        style={memphisCard}
+      >
         <h2
           id="cookie-consent-title"
-          className="text-md font-semibold text-ink-2"
+          className="text-lg font-bold tracking-tight text-ink-2"
         >
           {t('title')}
         </h2>
@@ -248,15 +275,30 @@ export function CookieConsentBanner() {
               {t('hideDetails')}
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={onRejectAll}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRejectAll}
+            style={memphisAction('paper')}
+          >
             {t('rejectAll')}
           </Button>
           {showDetails ? (
-            <Button variant="primary" size="sm" onClick={onSavePreferences}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onSavePreferences}
+              style={memphisAction('ink')}
+            >
               {t('savePreferences')}
             </Button>
           ) : (
-            <Button variant="primary" size="sm" onClick={onAcceptAll}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onAcceptAll}
+              style={memphisAction('ink')}
+            >
               {t('acceptAll')}
             </Button>
           )}
