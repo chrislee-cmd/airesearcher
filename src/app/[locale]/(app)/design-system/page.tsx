@@ -239,74 +239,109 @@ function HeaderSubtleCandidatesSection() {
     note: string;
     button: ButtonVariant;
     icon: IconButtonVariant;
+    // Per-candidate active-tab override (variant-specific so the active state
+    // reads correctly in each form — e.g. pill = solid fill, ring = thicker
+    // ring, underline = decoration solidified).
+    activeTab: string;
   }> = [
     {
       label: 'A. subtle (current — thin border + transparent)',
-      note: '1px border-ink/30, hover bg-ink/5. 같은 capsule 골격, 굵기만 약화.',
+      note: '1px border-ink/30. 활성 = 같은 capsule, border 진해지고 bg-ink/8 채움.',
       button: 'subtle',
       icon: 'subtle',
+      activeTab: '!border-ink !bg-ink/8 !text-ink',
     },
     {
       label: 'B. subtle-pill (rounded-full chip with soft fill)',
-      note: 'border 없음, bg-ink/10 + rounded-full. TopbarTabs pill form 과 통일.',
+      note: 'border 없음, rounded-full + bg-ink/10. 활성 = 검정 채움 chip.',
       button: 'subtle-pill',
       icon: 'subtle-pill',
+      activeTab: '!bg-ink !text-paper',
     },
     {
       label: 'C. subtle-underline (no chrome, text + hover underline)',
-      note: 'box 자체 제거. 메뉴 링크처럼 가장 mute. (icon 은 분석 불가 → subtle-flat: 글리프만)',
+      note: 'box 자체 제거, 텍스트만. 활성 = 진한 underline + text-ink.',
       button: 'subtle-underline',
       icon: 'subtle-flat',
+      activeTab: '!text-ink !decoration-ink',
     },
     {
       label: 'D. subtle-soft (filled, no border, square)',
-      note: 'border 제거, bg-ink/5 fill. box 모양이 흐려져 banner 와 융화.',
+      note: 'border 제거, bg-ink/5 square fill. 활성 = 더 진한 bg-ink/20 fill.',
       button: 'subtle-soft',
       icon: 'subtle-soft',
+      activeTab: '!bg-ink/20 !text-ink',
     },
     {
       label: 'E. subtle-ring (pill with 1px outline ring)',
-      note: 'border 대신 ring-1 ring-ink/40 + rounded-full. "그려진 듯" 가는 outline.',
+      note: 'border 대신 ring-1 ring-ink/40 + rounded-full. 활성 = ring-2 ring-ink.',
       button: 'subtle-ring',
       icon: 'subtle-ring',
+      activeTab: '!ring-2 !ring-ink !text-ink',
     },
+  ];
+  const tabs: Array<{ key: string; label: string }> = [
+    { key: 'canvas', label: '캔버스' },
+    { key: 'projects', label: '프로젝트' },
+    { key: 'members', label: '멤버' },
+    { key: 'settings', label: '설정' },
   ];
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
   return (
     <Section
       title="Header subtle candidates (decision)"
-      hint="노란 Topbar banner 위에서 어느 form 이 어울리는지 비교용. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
+      hint="실제 Topbar 와 동일한 풀 레이아웃 — Brand · 4탭 (캔버스 활성) · gear · SignIn. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
     >
       <div className="flex flex-col gap-3">
         {candidates.map((c) => (
-          <div key={c.button} className="border border-line-soft rounded-sm overflow-hidden">
-            <div
-              className="flex h-14 items-center justify-between gap-4 px-8"
+          <div
+            key={c.button}
+            className="border border-line-soft rounded-sm overflow-hidden"
+          >
+            <header
+              className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
               style={{
                 background: 'var(--sidebar-bg-strong)',
                 borderBottom:
                   'var(--sidebar-border-width) solid var(--sidebar-border)',
               }}
             >
-              <div
-                style={{
-                  fontFamily: outfitStack,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--sidebar-border)',
-                }}
-              >
-                AI Researcher
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant={c.button}
-                  size="sm"
-                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
+              <div className="flex shrink-0 items-center gap-4">
+                <div
+                  style={{
+                    fontFamily: outfitStack,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                    color: 'var(--sidebar-border)',
+                  }}
                 >
-                  Sign in
-                </Button>
+                  AI Researcher
+                </div>
+              </div>
+
+              <nav
+                aria-label={`${c.button} preview tabs`}
+                className="flex min-w-0 flex-1 items-center justify-center gap-2"
+              >
+                {tabs.map((tab, i) => {
+                  const isActive = i === 0;
+                  return (
+                    <Button
+                      key={tab.key}
+                      variant={c.button}
+                      size="sm"
+                      className={`!px-3.5 !text-sm uppercase tracking-[0.18em] ${isActive ? c.activeTab : ''}`}
+                      style={{ fontFamily: outfitStack }}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {tab.label}
+                    </Button>
+                  );
+                })}
+              </nav>
+
+              <div className="flex shrink-0 items-center gap-3">
                 <IconButton
                   variant={c.icon}
                   size="md"
@@ -315,8 +350,15 @@ function HeaderSubtleCandidatesSection() {
                 >
                   <GearGlyph />
                 </IconButton>
+                <Button
+                  variant={c.button}
+                  size="sm"
+                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
+                >
+                  Sign in
+                </Button>
               </div>
-            </div>
+            </header>
             <div className="bg-paper px-4 py-2">
               <div className="text-sm font-semibold text-ink">{c.label}</div>
               <p className="text-xs-soft text-mute mt-0.5">{c.note}</p>
