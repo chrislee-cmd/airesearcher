@@ -149,7 +149,12 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
     try {
       const result = await callShareApi(item);
       if ('error' in result) {
-        if (result.error === 'not_connected' || result.error === 'missing_docs_scope' || result.error === 'missing_sheets_scope') {
+        if (
+          result.error === 'not_connected'
+          || result.error === 'missing_docs_scope'
+          || result.error === 'missing_sheets_scope'
+          || result.error === 'token_refresh_failed'
+        ) {
           window.location.assign(connectUrl(item.destination, pathname));
           return;
         }

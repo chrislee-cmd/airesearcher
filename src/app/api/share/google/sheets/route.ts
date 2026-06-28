@@ -34,7 +34,11 @@ export async function POST(request: Request) {
     const refreshed = await refreshAccessToken(oauth.refresh_token);
     accessToken = refreshed.access_token;
   } catch {
-    return NextResponse.json({ error: 'token_refresh_failed' }, { status: 500 });
+    // Refresh token revoked/expired — same reconnect path as docs route.
+    return NextResponse.json(
+      { error: 'token_refresh_failed', requireReconnect: true },
+      { status: 401 },
+    );
   }
 
   try {

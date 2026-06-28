@@ -29,7 +29,12 @@ export async function POST(request: Request) {
     const refreshed = await refreshAccessToken(oauth.refresh_token);
     accessToken = refreshed.access_token;
   } catch {
-    return NextResponse.json({ error: 'token_refresh_failed' }, { status: 500 });
+    // Refresh token revoked/expired — Google needs the user to consent
+    // again. 401 lets the ShareMenu trigger the existing reconnect flow.
+    return NextResponse.json(
+      { error: 'token_refresh_failed', requireReconnect: true },
+      { status: 401 },
+    );
   }
 
   const contentType = request.headers.get('content-type') ?? '';

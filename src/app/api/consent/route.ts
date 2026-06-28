@@ -72,54 +72,77 @@ export async function POST(request: Request) {
 
   const { error } = await supabase.from('user_consents').insert(rows);
   if (error) {
+    // Structured log so the actual Postgres reason (RLS / FK / schema)
+    // shows up in Vercel function logs — previous version surfaced the
+    // bare message only to the client, leaving prod 500s opaque.
+    console.error('[consent] insert failed', {
+      user_id: user.id,
+      source: body.source ?? 'unspecified',
+      types: rows.map((r) => r.consent_type),
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: error.message, code: error.code },
       { status: 500 },
     );
   }
 
+  // Audit + version-update detection are non-critical bookkeeping. Don't
+  // 500 the whole consent record because an audit row failed to write —
+  // the user's consent is already persisted at this point.
   for (const row of rows) {
-    await logAudit({
-      event_type: row.granted ? 'consent_granted' : 'consent_revoked',
-      user_id: user.id,
-      actor_email: user.email ?? null,
-      resource_type: 'user_consent',
-      metadata: {
-        consent_type: row.consent_type,
-        version: row.version,
-        source: body.source ?? 'unspecified',
-      },
-      request,
-    });
+    try {
+      await logAudit({
+        event_type: row.granted ? 'consent_granted' : 'consent_revoked',
+        user_id: user.id,
+        actor_email: user.email ?? null,
+        resource_type: 'user_consent',
+        metadata: {
+          consent_type: row.consent_type,
+          version: row.version,
+          source: body.source ?? 'unspecified',
+        },
+        request,
+      });
 
-    // PR-SEC12: detect re-consent on a policy version bump. If the user
-    // had a prior consent of the same type at a different version, this
-    // insert is the demonstrable acceptance of the new policy text —
-    // emit a dedicated event so legal can prove version coverage
-    // (GDPR Art. 7(1) "demonstrate consent").
-    if (row.granted) {
-      const { data: prior } = await supabase
-        .from('user_consents')
-        .select('version')
-        .eq('user_id', user.id)
-        .eq('consent_type', row.consent_type)
-        .neq('version', row.version)
-        .limit(1);
-      if (prior && prior.length > 0) {
-        await logAudit({
-          event_type: 'consent_version_updated',
-          user_id: user.id,
-          actor_email: user.email ?? null,
-          resource_type: 'user_consent',
-          metadata: {
-            consent_type: row.consent_type,
-            from_version: prior[0]!.version,
-            to_version: row.version,
-            source: body.source ?? 'unspecified',
-          },
-          request,
-        });
+      // PR-SEC12: detect re-consent on a policy version bump. If the user
+      // had a prior consent of the same type at a different version, this
+      // insert is the demonstrable acceptance of the new policy text —
+      // emit a dedicated event so legal can prove version coverage
+      // (GDPR Art. 7(1) "demonstrate consent").
+      if (row.granted) {
+        const { data: prior } = await supabase
+          .from('user_consents')
+          .select('version')
+          .eq('user_id', user.id)
+          .eq('consent_type', row.consent_type)
+          .neq('version', row.version)
+          .limit(1);
+        if (prior && prior.length > 0) {
+          await logAudit({
+            event_type: 'consent_version_updated',
+            user_id: user.id,
+            actor_email: user.email ?? null,
+            resource_type: 'user_consent',
+            metadata: {
+              consent_type: row.consent_type,
+              from_version: prior[0]!.version,
+              to_version: row.version,
+              source: body.source ?? 'unspecified',
+            },
+            request,
+          });
+        }
       }
+    } catch (auditError) {
+      console.error('[consent] audit log failed', {
+        user_id: user.id,
+        consent_type: row.consent_type,
+        error: auditError instanceof Error ? auditError.message : String(auditError),
+      });
     }
   }
 
