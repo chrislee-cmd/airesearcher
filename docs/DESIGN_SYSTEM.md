@@ -19,6 +19,40 @@
 
 ---
 
+## 0.5 이 문서는 어떻게 갱신되나 (inbox 패턴)
+
+**원칙**: 이 SSOT 문서는 코드가 바뀔 때마다 같이 바뀌어야 한다. 안 챙기면
+"라벨이 실제 옷장과 다른" 상태 (stale) 가 되고, 미래 합류자가 잘못된 가정
+하에 작업한다 (중복 primitive 생성 / 새 톤 swap 시 raw 키 누락 등).
+
+**갱신 메커니즘**: `docs/DESIGN_SYSTEM_PENDING.md` inbox.
+PROJECT.md §5.4 의 `docs/PROJECT_PENDING.md` 와 동일 패턴.
+
+```
+PR 머지 → self-check → DESIGN_SYSTEM 갱신감? → 인박스에 한 줄 append
+                                        ↓
+                              5건 누적 또는 시급 트리거
+                                        ↓
+                       묶음 PR 로 DESIGN_SYSTEM.md 갱신
+```
+
+**self-check 트리거** (이 중 하나라도 해당 → 인박스 한 줄):
+| 트리거 | 갱신 위치 |
+|---|---|
+| 새 primitive 추가 (`src/components/ui/` 안 새 파일) | §3 Primitive 카탈로그 |
+| 새 raw 토큰 키 추가 (`--raw-*`) | §1.2 + 모든 `[data-theme]` 동기화 |
+| 새 semantic / component 토큰 | §1.3 / §1.4 |
+| 새 톤 추가 (`[data-theme="<new>"]`) | §2 등록 theme |
+| Hardcoded hex sweep PR 머지 | §4.2 카운트 |
+| primitive variant / size 변경 | §3 해당 항목 |
+| 톤 swap 시 알게 된 함정 / 회귀 | §5.3 디버그 표 |
+
+자세한 룰·기록 포맷은 `docs/DESIGN_SYSTEM_PENDING.md` 상단 참고.
+
+> **왜 codegen 이 아니라 inbox 인가**: 카탈로그 중 자동 추출 가능한 부분 (variant/size, hex 카운트) 은 30% 정도. 컨셉·의도·함정·왜 (Memphis 톤 / 옷장 비유 / 회귀 패턴) 는 사람이 써야 함. codegen 도구의 유지보수 부담 + 잘못된 자동 정보 위험까지 감안하면 ROI 가 inbox 대비 1.5배 효과 / 20~30배 작업. 카탈로그가 50+ primitive 로 커지면 그때 codegen 재검토.
+
+---
+
 ## 1. 토큰 계층 (3-layer)
 
 ### 1.1 왜 3-layer 인가
@@ -422,3 +456,4 @@ export function ThemeSwitcher() {
 ## 7. 변경 이력
 
 - **2026-06-28** — 첫 작성. globals.css 3-layer 토큰 + `data-theme="pop"` / `editorial` 두 preset + `<html data-theme>` 게이트 + Primitive 카탈로그 + Hardcoded 색 audit + 톤 swap 가이드. PR `feat/design-system-comprehensive-ssot`.
+- **2026-06-28** — inbox 갱신 패턴 도입 (`docs/DESIGN_SYSTEM_PENDING.md`). §0.5 갱신 룰 + self-check 트리거 표. 같은 PR 안에서 함께 머지 (SSOT 도입과 갱신 메커니즘은 한 쌍).
