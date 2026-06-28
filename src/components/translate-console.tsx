@@ -780,7 +780,11 @@ export function TranslateConsole() {
       try {
         const res = await fetch(`/api/translate/sessions/${id}/messages`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // charset=utf-8 explicit — some intermediaries default to
+          // latin-1 when no charset is set, mangling multi-byte CJK on
+          // re-encode. The request body is always UTF-8 (JSON.stringify
+          // on a JS string), so we just have to declare it.
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
           body: JSON.stringify({ kind, text, lang, speaker }),
         });
         if (res.ok) counters.persistOk++;
@@ -1909,7 +1913,7 @@ export function TranslateConsole() {
         if (id) {
           void fetch(`/api/translate/sessions/${id}/messages`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
             body: JSON.stringify({ kind: '__loss_report__', ...summary }),
           }).catch(() => {});
         }
