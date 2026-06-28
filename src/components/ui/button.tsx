@@ -18,7 +18,8 @@ export type ButtonVariant =
   | 'ghost'
   | 'destructive'
   | 'link'
-  | 'destructive-link';
+  | 'destructive-link'
+  | 'subtle';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'cta';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -70,6 +71,13 @@ const VARIANT: Record<ButtonVariant, string> = {
   'destructive-link':
     'border-transparent bg-transparent text-mute hover:text-warning ' +
     'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-warning',
+  // Subtle tone for header bands (yellow Topbar banner) — pill chip with
+  // soft ink fill, no border/shadow. Form-language matches TopbarTabs so
+  // the whole topbar reads as one family; hover deepens the fill instead
+  // of the Memphis translate/shadow lift used by primary/secondary.
+  subtle:
+    'border-transparent rounded-full bg-ink/10 text-ink-2 shadow-none ' +
+    'hover:bg-ink/15',
 };
 
 // SIZE owns padding/font/radius only — transition lives on BASE so the

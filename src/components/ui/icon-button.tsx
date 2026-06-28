@@ -32,7 +32,8 @@ export type IconButtonVariant =
   | 'ghost'
   | 'ghost-danger'
   | 'ghost-brand'
-  | 'bordered';
+  | 'bordered'
+  | 'subtle';
 export type IconButtonSize = 'compact' | 'sm' | 'md' | 'lg';
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
@@ -68,6 +69,13 @@ const VARIANT: Record<IconButtonVariant, string> = {
   bordered:
     'border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_black] ' +
     'hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_black] rounded-xs',
+  // Subtle tone for header bands (yellow Topbar banner) — circular chip
+  // with soft ink fill, no border/shadow. Pairs with Button `subtle` (pill
+  // form) so the gear inside the account pill or alongside SignIn reads as
+  // one family.
+  subtle:
+    'border-transparent rounded-full bg-ink/10 text-ink shadow-none ' +
+    'hover:bg-ink/15',
 };
 
 const SIZE: Record<IconButtonSize, string> = {
