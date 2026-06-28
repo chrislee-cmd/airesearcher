@@ -1,63 +1,343 @@
 @import "tailwindcss";
 
 /* =========================================================================
-   Bento Design System tokens (전역 SSOT).
-   /Users/churryboy/AI-researcher/design-system-bento.md 참고.
-   기존 토큰 이름(amore / ink / mute / paper / line …) 은 보존하고
-   값만 bento 로 교체 → 앱 전체 (58 곳에서 참조) 가 자동으로 새 톤을 입음.
+   Design System SSOT — 3-layer 토큰 계층
+   docs/DESIGN_SYSTEM.md 참고. 톤 swap 메커니즘:
+     <html data-theme="pop">      → 현재 default (Memphis pop)
+     <html data-theme="editorial"> → 옛 톤 reference (1px line / soft shadow / mono)
+     <html data-theme="<new>">     → Layer 1 [data-theme="<new>"] 블록만 추가하면 swap
+
+   Layer 1 (Raw)       — theme 별 hex/rgba/shadow/radius 등 원자값 [data-theme]
+   Layer 2 (Semantic)  — 의미 토큰 (--surface-*, --text-*, --border-*, --accent-*)
+   Layer 3 (Component) — 컴포넌트 매핑 (--canvas-*, --sidebar-* 등) — 호출처 보존
+
+   기존 globals.css 의 모든 토큰 이름은 그대로 살아 있음 (호출처 변경 0).
+   값은 raw layer 를 참조하므로 [data-theme] swap 시 전 앱이 자동 따라감.
+   ========================================================================= */
+
+/* =========================================================================
+   Layer 1 — Raw Value Tokens (theme presets)
+   ========================================================================= */
+
+/* Default theme — Pop (Memphis pop: 검정 굵은 border + offset hard shadow +
+   노란 banner + 핑크 accent + 32px dot grid) */
+:root,
+[data-theme="pop"] {
+  /* surface */
+  --raw-surface-page: #ffffff;
+  --raw-surface-card: #ffffff;
+  --raw-surface-elevated: #f7f7f5;
+  --raw-surface-accent-yellow: #fffce1;
+  --raw-surface-accent-yellow-strong: #ffeb70;
+  --raw-surface-banner-yellow: #ffd53d;
+  --raw-surface-nav-hover: #fff5b8;
+
+  /* ink (foreground scale) */
+  --raw-ink-100: #1d1b20;
+  --raw-ink-80: #2a262f;
+  --raw-ink-60: #5b5965;
+  --raw-ink-40: #8a8693;
+  --raw-ink-mid: #555555;
+
+  /* border color */
+  --raw-border-strong: #000000;
+  --raw-border-medium: rgba(29, 27, 32, 0.10);
+  --raw-border-subtle: rgba(29, 27, 32, 0.06);
+
+  /* border width */
+  --raw-border-width-hairline: 1px;
+  --raw-border-width-medium: 2px;
+  --raw-border-width-strong: 2.5px;
+  --raw-border-width-heavy: 3px;
+
+  /* shadow — pop 톤은 hard offset shadow */
+  --raw-shadow-hard-md: 6px 6px 0 #000000;
+  --raw-shadow-hard-sm: 3px 3px 0 #000000;
+  --raw-shadow-hard-xs: 2px 2px 0 #000000;
+  --raw-shadow-chrome: 4px 4px 0 #000000;
+  --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+
+  /* accent */
+  --raw-accent-pink: #ff5c8a;
+  --raw-accent-purple: #a06fda;
+  --raw-accent-purple-soft: #b690e2;
+  --raw-accent-purple-bg: #e7defe;
+
+  /* pastel palette (bento + widget headers) */
+  --raw-pastel-lav: #e7defe;
+  --raw-pastel-peach: #ffd9c9;
+  --raw-pastel-mint: #cdebd9;
+  --raw-pastel-sun: #fff1b6;
+  --raw-pastel-sky: #cfe6ff;
+  --raw-pastel-rose: #ffd0e2;
+
+  /* signal */
+  --raw-signal-success: #16a34a;
+  --raw-signal-warning: #fb923c;
+  --raw-signal-warning-bg: #fff1e6;
+  --raw-signal-warning-line: #ffd9bf;
+  --raw-signal-am: #fb923c;
+  --raw-signal-pm: #6c7aff;
+
+  /* radius scale */
+  --raw-radius-2xs: 2px;
+  --raw-radius-xs: 4px;
+  --raw-radius-sm: 14px;
+  --raw-radius-md: 24px;
+  --raw-radius-pill: 999px;
+  --raw-radius-chrome: 12px;
+  --raw-radius-nav: 6px;
+  --raw-radius-canvas-button: 8px;
+  --raw-radius-canvas-input: 6px;
+
+  /* pattern */
+  --raw-pattern-dot: radial-gradient(circle, rgba(0, 0, 0, 0.18) 2px, transparent 2px);
+  --raw-pattern-dot-size: 32px 32px;
+
+  /* fonts */
+  --raw-font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --raw-font-hand: "Caveat", cursive;
+}
+
+/* Reference theme — Editorial (옛 톤: 1px line + warm cream + soft shadow + mono)
+   사용자 명시 — 다음 톤 swap reference. <html data-theme="editorial"> 로 즉시 전환. */
+[data-theme="editorial"] {
+  /* surface — warm cream */
+  --raw-surface-page: #fbf7f2;
+  --raw-surface-card: #fefaf5;
+  --raw-surface-elevated: #f5efe6;
+  --raw-surface-accent-yellow: #fbf7f2;       /* 없음 — page 와 동일 */
+  --raw-surface-accent-yellow-strong: #f5efe6;
+  --raw-surface-banner-yellow: #f5efe6;       /* 약한 톤 — 강한 banner 없음 */
+  --raw-surface-nav-hover: #f5efe6;
+
+  /* ink (동일) */
+  --raw-ink-100: #1d1b20;
+  --raw-ink-80: #2a262f;
+  --raw-ink-60: #5b5965;
+  --raw-ink-40: #8a8693;
+  --raw-ink-mid: #5b5965;
+
+  /* border — 굵은 검정 → 얇은 line */
+  --raw-border-strong: rgba(29, 27, 32, 0.10);
+  --raw-border-medium: rgba(29, 27, 32, 0.10);
+  --raw-border-subtle: rgba(29, 27, 32, 0.06);
+
+  /* border width — 모두 1px */
+  --raw-border-width-hairline: 1px;
+  --raw-border-width-medium: 1px;
+  --raw-border-width-strong: 1px;
+  --raw-border-width-heavy: 1px;
+
+  /* shadow — hard offset → soft only */
+  --raw-shadow-hard-md: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+  --raw-shadow-hard-sm: 0 1px 2px rgba(29, 27, 32, 0.04), 0 4px 12px rgba(29, 27, 32, 0.04);
+  --raw-shadow-hard-xs: 0 1px 2px rgba(29, 27, 32, 0.04);
+  --raw-shadow-chrome: 0 1px 2px rgba(29, 27, 32, 0.04), 0 4px 12px rgba(29, 27, 32, 0.04);
+  --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+
+  /* accent — mono (액센트 제거) */
+  --raw-accent-pink: #1d1b20;
+  --raw-accent-purple: #1d1b20;
+  --raw-accent-purple-soft: #5b5965;
+  --raw-accent-purple-bg: #f5efe6;
+
+  /* pastel palette — muted (data viz/highlight 용으로만 유지) */
+  --raw-pastel-lav: #efe9f8;
+  --raw-pastel-peach: #f5e6dc;
+  --raw-pastel-mint: #e3eee7;
+  --raw-pastel-sun: #f8f1d4;
+  --raw-pastel-sky: #e0eaf3;
+  --raw-pastel-rose: #f5e6ec;
+
+  /* signal (동일) */
+  --raw-signal-success: #16a34a;
+  --raw-signal-warning: #fb923c;
+  --raw-signal-warning-bg: #fff1e6;
+  --raw-signal-warning-line: #ffd9bf;
+  --raw-signal-am: #fb923c;
+  --raw-signal-pm: #6c7aff;
+
+  /* radius (동일 스케일) */
+  --raw-radius-2xs: 2px;
+  --raw-radius-xs: 4px;
+  --raw-radius-sm: 14px;
+  --raw-radius-md: 24px;
+  --raw-radius-pill: 999px;
+  --raw-radius-chrome: 12px;
+  --raw-radius-nav: 6px;
+  --raw-radius-canvas-button: 8px;
+  --raw-radius-canvas-input: 6px;
+
+  /* pattern — clean editorial 톤 (dot grid 없음) */
+  --raw-pattern-dot: none;
+  --raw-pattern-dot-size: 0 0;
+
+  /* fonts (동일) */
+  --raw-font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --raw-font-hand: "Caveat", cursive;
+}
+
+/* =========================================================================
+   Layer 2 — Semantic Tokens (의미 → raw)
+   컴포넌트가 이 토큰을 직접 참조. theme-agnostic.
+   ========================================================================= */
+:root {
+  /* surface */
+  --surface-page: var(--raw-surface-page);
+  --surface-card: var(--raw-surface-card);
+  --surface-elevated: var(--raw-surface-elevated);
+  --surface-accent-bg: var(--raw-surface-accent-yellow);
+  --surface-accent-bg-strong: var(--raw-surface-accent-yellow-strong);
+  --surface-banner: var(--raw-surface-banner-yellow);
+
+  /* foreground (text) */
+  --fg-primary: var(--raw-ink-100);
+  --fg-secondary: var(--raw-ink-80);
+  --fg-mute: var(--raw-ink-60);
+  --fg-mute-soft: var(--raw-ink-40);
+  --fg-inverse: var(--raw-surface-card);
+
+  /* border */
+  --border-strong: var(--raw-border-strong);
+  --border-medium: var(--raw-border-medium);
+  --border-subtle: var(--raw-border-subtle);
+
+  /* accent */
+  --accent-action: var(--raw-accent-pink);
+  --accent-brand: var(--raw-accent-purple);
+
+  /* signal */
+  --signal-success: var(--raw-signal-success);
+  --signal-warning: var(--raw-signal-warning);
+  --signal-warning-bg: var(--raw-signal-warning-bg);
+  --signal-warning-line: var(--raw-signal-warning-line);
+
+  /* component foundations — primitive 가 이 값들을 참조 */
+  --component-card-border-width: var(--raw-border-width-heavy);
+  --component-card-radius: var(--raw-radius-sm);
+  --component-card-shadow: var(--raw-shadow-hard-md);
+  --component-button-border-width: var(--raw-border-width-medium);
+  --component-button-shadow: var(--raw-shadow-hard-sm);
+}
+
+/* =========================================================================
+   Layer 3 — Component Tokens (특정 컴포넌트 매핑)
+   기존 토큰 이름 보존 — 호출처 변경 0.
+   ========================================================================= */
+:root {
+  /* canvas — /canvas 라우트 */
+  --canvas-bg: var(--surface-page);
+  --canvas-bg-image: var(--raw-pattern-dot);
+  --canvas-bg-size: var(--raw-pattern-dot-size);
+  --canvas-card-bg: var(--surface-card);
+  --canvas-card-border: var(--border-strong);
+  --canvas-card-border-width: var(--component-card-border-width);
+  --canvas-card-radius: var(--component-card-radius);
+  --canvas-card-shadow: var(--component-card-shadow);
+  --canvas-card-header-bg: var(--surface-banner);
+  --canvas-card-header-divider: var(--border-strong);
+  --canvas-card-header-text: var(--fg-primary);
+  --canvas-card-mute: var(--raw-ink-mid);
+  --canvas-accent: var(--accent-action);
+  --canvas-edge: var(--border-strong);
+  --canvas-edge-live: var(--accent-action);
+  --canvas-edge-width: var(--component-card-border-width);
+  --canvas-chrome-bg: var(--surface-card);
+  --canvas-chrome-border: var(--border-strong);
+  --canvas-chrome-text: var(--fg-primary);
+  --canvas-chrome-shadow: var(--raw-shadow-chrome);
+  --canvas-chrome-radius: var(--raw-radius-chrome);
+  --canvas-selection-border: var(--accent-action);
+  --canvas-selection-width: var(--component-card-border-width);
+
+  /* sidebar */
+  --sidebar-bg: var(--surface-accent-bg);
+  --sidebar-bg-strong: var(--surface-accent-bg-strong);
+  --sidebar-border: var(--border-strong);
+  --sidebar-border-width: var(--component-card-border-width);
+  --sidebar-nav-bg: var(--surface-card);
+  --sidebar-nav-bg-hover: var(--raw-surface-nav-hover);
+  --sidebar-nav-border: var(--border-strong);
+  --sidebar-nav-border-width: var(--raw-border-width-strong);
+  --sidebar-nav-radius: var(--raw-radius-nav);
+  --sidebar-active-bg: var(--accent-action);
+  --sidebar-active-text: var(--fg-inverse);
+  --sidebar-active-border: var(--border-strong);
+  --sidebar-group-heading: var(--fg-primary);
+
+  /* memphis hard shadows — 기존 이름 보존 */
+  --memphis-shadow-sm: var(--raw-shadow-hard-sm);
+  --memphis-shadow-xs: var(--raw-shadow-hard-xs);
+
+  /* widget header — 기본값. per-widget 액센트는 별 spec (D-widget-header-color). */
+  --widget-header-bg-default: var(--surface-banner);
+  --widget-header-bg-sky: var(--raw-pastel-sky);
+  --widget-header-bg-peach: var(--raw-pastel-peach);
+  --widget-header-bg-mint: var(--raw-pastel-mint);
+  --widget-header-bg-lav: var(--raw-pastel-lav);
+  --widget-header-bg-sun: var(--raw-pastel-sun);
+  --widget-header-bg-rose: var(--raw-pastel-rose);
+}
+
+/* =========================================================================
+   Tailwind v4 @theme — utility 생성 source.
+   기존 토큰 이름·utility (bg-amore, text-ink, border-line ...) 보존.
+   값은 raw layer 참조 → [data-theme] swap 시 자동 따라감.
    ========================================================================= */
 @theme {
-  /* Brand accent — bento purple (formerly amore navy) */
-  --color-amore: #a06fda;
-  --color-amore-soft: #b690e2;
-  --color-amore-bg: #e7defe;
+  /* Brand accent — bento purple */
+  --color-amore: var(--raw-accent-purple);
+  --color-amore-soft: var(--raw-accent-purple-soft);
+  --color-amore-bg: var(--raw-accent-purple-bg);
 
   /* Text */
-  --color-ink: #1d1b20;
-  --color-ink-2: #2a262f;
-  --color-mute: #5b5965;
-  --color-mute-soft: #8a8693;
+  --color-ink: var(--raw-ink-100);
+  --color-ink-2: var(--raw-ink-80);
+  --color-mute: var(--raw-ink-60);
+  --color-mute-soft: var(--raw-ink-40);
 
   /* Surfaces / lines */
-  --color-line: rgba(29, 27, 32, 0.10);
-  --color-line-soft: rgba(29, 27, 32, 0.06);
-  --color-paper: #ffffff;          /* white (page bg) */
-  --color-paper-soft: #f7f7f5;     /* card surface — neutral light grey, reads elevated above white */
+  --color-line: var(--raw-border-medium);
+  --color-line-soft: var(--raw-border-subtle);
+  --color-paper: var(--raw-surface-card);
+  --color-paper-soft: var(--raw-surface-elevated);
 
   /* Bento pastel palette */
-  --color-lav: #e7defe;
-  --color-peach: #ffd9c9;
-  --color-mint: #cdebd9;
-  --color-sun: #fff1b6;
-  --color-sky: #cfe6ff;
-  --color-rose: #ffd0e2;
+  --color-lav: var(--raw-pastel-lav);
+  --color-peach: var(--raw-pastel-peach);
+  --color-mint: var(--raw-pastel-mint);
+  --color-sun: var(--raw-pastel-sun);
+  --color-sky: var(--raw-pastel-sky);
+  --color-rose: var(--raw-pastel-rose);
 
   /* AM / PM chart accents (data visualisation only) */
-  --color-am-accent: #fb923c;
-  --color-pm-accent: #6c7aff;
+  --color-am-accent: var(--raw-signal-am);
+  --color-pm-accent: var(--raw-signal-pm);
 
   /* Signal */
-  --color-success: #16a34a;
-  --color-warning: #fb923c;
-  --color-warning-bg: #fff1e6;
-  --color-warning-line: #ffd9bf;
+  --color-success: var(--raw-signal-success);
+  --color-warning: var(--raw-signal-warning);
+  --color-warning-bg: var(--raw-signal-warning-bg);
+  --color-warning-line: var(--raw-signal-warning-line);
 
   /* Typography */
-  --font-sans: "Pretendard Variable", Pretendard, "Inter", "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-hand: "Caveat", cursive;
+  --font-sans: var(--raw-font-sans);
+  --font-hand: var(--raw-font-hand);
 
   /* Radius scale */
-  --radius-2xs: 2px;
-  --radius-xs: 4px;
-  --radius-sm: 14px;
-  --radius-md: 24px;
-  --radius-pill: 999px;
+  --radius-2xs: var(--raw-radius-2xs);
+  --radius-xs: var(--raw-radius-xs);
+  --radius-sm: var(--raw-radius-sm);
+  --radius-md: var(--raw-radius-md);
+  --radius-pill: var(--raw-radius-pill);
 
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]
      literals. Each token absorbs adjacent half-px sizes that pair to
      the same visual role; the 11/11.5 and 12/12.5 splits stay separated
-     because the editorial tone uses both deliberately. */
+     because the editorial tone uses both deliberately.
+     Theme-agnostic — type scale 는 톤 swap 영향 받지 않음. */
   --text-xs: 10px;         /* absorbs 9, 9.5, 10 — extra-small caps/labels */
   --text-xs-soft: 10.5px;  /* boundary: amore-soft eyebrow labels */
   --text-sm: 11.5px;       /* absorbs 11, 11.5 — small UI text */
@@ -68,59 +348,8 @@
   --text-3xl: 22px;        /* absorbs 20, 22, 24 — large heading */
   --text-display: 32px;    /* absorbs 26, 28, 42 — hero/display */
 
-  /* Single shadow token */
-  --shadow-bento: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
-
-  /* =======================================================================
-     Canvas pop tokens (잠금 조합 — /canvas 한정).
-     PR-D2 (재정의) — pop·outfit·banner-top·framed·bold·display 6 dimension
-     잠금 조합을 production main 에 적용. switcher/다른 variant 없음.
-     적용 범위: /canvas 라우트 전용 (data-canvas / data-canvas-body 로 scope).
-     다른 라우트 (dashboard, quotes 등) 는 위 bento 토큰만 사용 — 영향 0.
-     ======================================================================= */
-  --canvas-bg: #ffffff;
-  --canvas-bg-image: radial-gradient(circle, rgba(0, 0, 0, 0.18) 2px, transparent 2px);
-  --canvas-bg-size: 32px 32px;
-  --canvas-card-bg: #ffffff;
-  --canvas-card-border: #000000;
-  --canvas-card-border-width: 3px;
-  --canvas-card-radius: 14px;
-  --canvas-card-shadow: 6px 6px 0 #000000;
-  --canvas-card-header-bg: #ffd53d;
-  --canvas-card-header-divider: #000000;
-  --canvas-card-header-text: #000000;
-  --canvas-card-mute: #555555;
-  --canvas-accent: #ff5c8a;
-  --canvas-edge: #000000;
-  --canvas-edge-live: #ff5c8a;
-  --canvas-edge-width: 3px;
-  --canvas-chrome-bg: #ffffff;
-  --canvas-chrome-border: #000000;
-  --canvas-chrome-text: #000000;
-  --canvas-chrome-shadow: 4px 4px 0 #000000;
-  --canvas-chrome-radius: 12px;
-  --canvas-selection-border: #ff5c8a;
-  --canvas-selection-width: 3px;
-
-  /* =======================================================================
-     Shell pop tokens (PR-D5 — 사이드바 + 헤더 강한 pop 통일).
-     캔버스의 노랑/검정/Memphis 시각 언어를 app shell 전반으로 확장.
-     ======================================================================= */
-  --sidebar-bg: #fffce1;                /* yellow — 캔버스 톤과 정합 */
-  --sidebar-bg-strong: #ffeb70;         /* 더 진한 노랑 — 로고 헤더 banner */
-  --sidebar-border: #000000;
-  --sidebar-border-width: 3px;
-  --sidebar-nav-bg: #ffffff;
-  --sidebar-nav-bg-hover: #fff5b8;
-  --sidebar-nav-border: #000000;
-  --sidebar-nav-border-width: 2.5px;
-  --sidebar-nav-radius: 6px;
-  --sidebar-active-bg: #ff5c8a;         /* 핑크 */
-  --sidebar-active-text: #ffffff;
-  --sidebar-active-border: #000000;
-  --sidebar-group-heading: #000000;
-  --memphis-shadow-sm: 3px 3px 0 #000000;
-  --memphis-shadow-xs: 2px 2px 0 #000000;
+  /* Single shadow token (bento soft elevation) */
+  --shadow-bento: var(--raw-shadow-soft);
 }
 
 /* =========================================================================
