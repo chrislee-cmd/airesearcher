@@ -101,6 +101,11 @@ type CaptionLine = {
   // lines fade out at the top edge but remain in state so PR-B can
   // download the full transcript.
   ts: number;
+  // PR-T2 inputSource → speaker mapping captured at pushLine time so a
+  // mid-session mic↔tab switch labels old lines with the source they
+  // were captured under (new lines carry the new source). Null only for
+  // legacy state from before this field existed.
+  speaker?: 'host' | 'guest' | null;
 };
 
 // Display-only rolling window. Older lines are still in state (and on
@@ -847,6 +852,7 @@ export function TranslateConsole() {
             text: turnText,
             final: true,
             ts: wall,
+            speaker: speakerForSession,
           };
           pushLine(kind, finalLine);
           broadcastCaption(kind, finalLine, lang);
@@ -945,7 +951,13 @@ export function TranslateConsole() {
           } else {
             fresh.push({ key: dedupKey, ts: wall });
             recentFinalsRef.current.set(kind, fresh);
-            const finalLine: CaptionLine = { id: current.id, text: finalText, final: true, ts: wall };
+            const finalLine: CaptionLine = {
+              id: current.id,
+              text: finalText,
+              final: true,
+              ts: wall,
+              speaker: speakerForSession,
+            };
             pushLine(kind, finalLine);
             broadcastCaption(kind, finalLine, lang);
             void persistMessage(kind, finalText, lang, speakerForSession);
@@ -955,7 +967,13 @@ export function TranslateConsole() {
         if (remainder) {
           const nextId = `${kind}-${wall}`;
           partial.current.set('current', { id: nextId, text: remainder });
-          const partialLine: CaptionLine = { id: nextId, text: remainder, final: false, ts: wall };
+          const partialLine: CaptionLine = {
+            id: nextId,
+            text: remainder,
+            final: false,
+            ts: wall,
+            speaker: speakerForSession,
+          };
           pushLine(kind, partialLine);
           broadcastCaption(kind, partialLine, lang);
           if (kind === 'input') {
@@ -974,7 +992,13 @@ export function TranslateConsole() {
         }
       } else {
         partial.current.set('current', { id: current.id, text: next });
-        const partialLine: CaptionLine = { id: current.id, text: next, final: false, ts: wall };
+        const partialLine: CaptionLine = {
+          id: current.id,
+          text: next,
+          final: false,
+          ts: wall,
+          speaker: speakerForSession,
+        };
         pushLine(kind, partialLine);
         broadcastCaption(kind, partialLine, lang);
         publishInput(next, undefined);
@@ -1828,6 +1852,7 @@ export function TranslateConsole() {
           text: current.text.trim(),
           final: true,
           ts: Date.now(),
+          speaker: speakerForSession,
         };
         pushLine(kind, finalLine);
         broadcastCaption(kind, finalLine, lang);
@@ -2621,6 +2646,7 @@ function SpeakerOffIcon() {
 // lines as they age out of the 30-second window; mask 는 텍스트 컨텐츠
 // 만 fade 하고 chrome 은 그대로 유지된다.
 function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
+  const t = useTranslations('TranslateConsole');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Pin to bottom on every new line so the latest text stays in the
   // active reading position.
@@ -2630,6 +2656,8 @@ function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string })
     el.scrollTop = el.scrollHeight;
   }, [lines]);
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
+  const speakerLabel = (s: 'host' | 'guest') =>
+    s === 'host' ? t('speaker.host') : t('speaker.guest');
   return (
     <div
       className="relative min-h-[360px] bg-paper"
@@ -2664,6 +2692,15 @@ function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string })
               key={l.id}
               className={l.final ? 'text-center text-ink' : 'text-center text-mute'}
             >
+              {l.speaker ? (
+                <span
+                  className={`mr-2 align-middle text-xs font-semibold uppercase tracking-[0.18em] ${
+                    l.speaker === 'host' ? 'text-ink' : 'text-amore'
+                  }`}
+                >
+                  {speakerLabel(l.speaker)}
+                </span>
+              ) : null}
               {l.text}
               {l.final ? '' : '…'}
             </p>

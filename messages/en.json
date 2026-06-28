@@ -708,6 +708,10 @@
     "prompter": {
       "empty": "Translated text will stream here once interpreting starts."
     },
+    "speaker": {
+      "host": "Host",
+      "guest": "Guest"
+    },
     "recording": {
       "indicator": "Recording",
       "indicatorAria": "Session is being recorded"
