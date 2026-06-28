@@ -2017,11 +2017,21 @@ export function TranslateConsole() {
           // Surface the specific server-side error code so the panel
           // can render `input_audio_unavailable` distinctly from a
           // generic network failure (legacy rows have no input track).
-          let code = 'download_failed';
+          // When the body is HTML (e.g. a platform-level 404 page from
+          // a misrouted CDN edge) we fall back to a status-derived
+          // code so the toast still localizes to a useful sentence.
+          let code: string | null = null;
           try {
             const j = (await res.json()) as { error?: string };
             if (j.error) code = j.error;
           } catch {}
+          if (!code) {
+            if (res.status === 402) code = 'locked';
+            else if (res.status === 403) code = 'forbidden';
+            else if (res.status === 404) code = 'not_found';
+            else if (res.status === 410) code = 'object_missing';
+            else code = 'download_failed';
+          }
           setRecordingError(code);
           return;
         }

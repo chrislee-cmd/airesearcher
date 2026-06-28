@@ -100,26 +100,37 @@ function pickLocale(req: Request): TranscriptMeta['locale'] {
   return 'ko';
 }
 
+// We split session lookup from revision_status lookup so the common
+// path (zip-input / zip-output) keeps working even if the
+// `revision_status` column hasn't been applied to prod yet (migration
+// 20260627000000). Without this split, a missing column made the
+// session select fail silently and the route returned a generic
+// `session_not_found` 404 — which is exactly the symptom the host
+// reported. See task pr-fix-translate-recordings-410-404.
 async function loadTranscript(
   admin: ReturnType<typeof createAdminClient>,
   sessionId: string,
 ): Promise<{
-  meta: Pick<TranscriptMeta, 'sourceLang' | 'targetLang' | 'startedAt'> & {
-    revisionStatus: 'idle' | 'pending' | 'done' | 'failed';
-  };
+  meta: Pick<TranscriptMeta, 'sourceLang' | 'targetLang' | 'startedAt'>;
   messages: TranscriptMessage[];
 } | null> {
   const session = await admin
     .from('translate_sessions')
-    .select('id, source_lang, target_lang, started_at, revision_status')
+    .select('id, source_lang, target_lang, started_at')
     .eq('id', sessionId)
     .maybeSingle<{
       id: string;
       source_lang: string;
       target_lang: string;
       started_at: string | null;
-      revision_status: 'idle' | 'pending' | 'done' | 'failed';
     }>();
+  if (session.error) {
+    console.error('[translate-download] session lookup failed', {
+      session_id: sessionId,
+      error: session.error.message,
+    });
+    return null;
+  }
   if (!session.data) return null;
 
   // Read in batches in case the session is very long. RPC isn't needed
@@ -154,10 +165,30 @@ async function loadTranscript(
       sourceLang: session.data.source_lang,
       targetLang: session.data.target_lang,
       startedAt: session.data.started_at,
-      revisionStatus: session.data.revision_status,
     },
     messages,
   };
+}
+
+// Read `revision_status` separately so the column-not-found case only
+// affects the zip-revised path (the only branch that needs it).
+async function loadRevisionStatus(
+  admin: ReturnType<typeof createAdminClient>,
+  sessionId: string,
+): Promise<'idle' | 'pending' | 'done' | 'failed' | null> {
+  const { data, error } = await admin
+    .from('translate_sessions')
+    .select('revision_status')
+    .eq('id', sessionId)
+    .maybeSingle<{ revision_status: 'idle' | 'pending' | 'done' | 'failed' | null }>();
+  if (error) {
+    console.error('[translate-download] revision_status lookup failed', {
+      session_id: sessionId,
+      error: error.message,
+    });
+    return null;
+  }
+  return data?.revision_status ?? 'idle';
 }
 
 export async function GET(
@@ -306,11 +337,12 @@ export async function GET(
   let labelSuffix: string;
 
   if (format === 'zip-revised') {
-    if (transcript.meta.revisionStatus !== 'done') {
+    const revisionStatus = await loadRevisionStatus(admin, row.session_id);
+    if (revisionStatus !== 'done') {
       return NextResponse.json(
         {
           error: 'revision_unavailable',
-          revision_status: transcript.meta.revisionStatus,
+          revision_status: revisionStatus,
         },
         { status: 409 },
       );
