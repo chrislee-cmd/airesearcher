@@ -146,13 +146,31 @@ export async function POST(
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from('translate_messages').insert({
+  const baseRow = {
     session_id: id,
     kind: parsed.data.kind,
     text: parsed.data.text,
     lang: parsed.data.lang ?? null,
-    speaker: parsed.data.speaker ?? null,
-  });
+  };
+  let { error } = await admin
+    .from('translate_messages')
+    .insert({ ...baseRow, speaker: parsed.data.speaker ?? null });
+
+  // Resilience for the PROJECT.md §7.5 drift class — migrations don't
+  // auto-apply. PR-T2 added `speaker` (20260626160814); if the file is
+  // merged but not pushed to this environment, PostgREST returns
+  // PGRST204 and every transcript line is silently lost until ops runs
+  // `supabase db push`. Retry without the new column so the row at
+  // least lands, and log once per call so the Vercel function log
+  // surfaces the missing-migration signal.
+  if (error?.code === 'PGRST204' && /speaker/.test(error.message)) {
+    console.warn('[translate/messages] speaker column missing — apply migration 20260626160814_translate_messages_speaker.sql', {
+      session_id: id,
+    });
+    const retry = await admin.from('translate_messages').insert(baseRow);
+    error = retry.error;
+  }
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, recorded: true });
 }

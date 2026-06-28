@@ -138,6 +138,12 @@ async function loadTranscript(
   const PAGE = 1000;
   const messages: TranscriptMessage[] = [];
   let cursor: string | null = null;
+  // PROJECT.md §7.5 resilience. PR-T2 (`speaker`) and PR-T3
+  // (`revised_text`) added new columns; if those migrations haven't
+  // been pushed to this environment, Postgres returns 42703 and we'd
+  // silently return an empty transcript. Fall back to the base columns
+  // so the host at least gets the source/target text.
+  let useBaseCols = false;
   // Use ts-based cursor pagination to stay deterministic even when many
   // rows share the same second.
   // Most translate sessions stay under a few hundred lines; this loop is
@@ -147,17 +153,41 @@ async function loadTranscript(
   for (let i = 0; i < 50; i++) {
     let q = admin
       .from('translate_messages')
-      .select('kind, text, lang, speaker, revised_text, ts')
+      .select(
+        useBaseCols
+          ? 'kind, text, lang, ts'
+          : 'kind, text, lang, speaker, revised_text, ts',
+      )
       .eq('session_id', sessionId)
       .order('ts', { ascending: true })
       .order('id', { ascending: true })
       .limit(PAGE);
     if (cursor) q = q.gt('ts', cursor);
     const { data, error } = await q;
-    if (error || !data || data.length === 0) break;
-    for (const row of data as TranscriptMessage[]) messages.push(row);
-    if (data.length < PAGE) break;
-    cursor = data[data.length - 1].ts;
+    if (error) {
+      if (
+        !useBaseCols &&
+        error.code === '42703' &&
+        /speaker|revised_text/.test(error.message)
+      ) {
+        console.warn('[translate-download] new columns missing — falling back to base SELECT', {
+          session_id: sessionId,
+          error: error.message,
+        });
+        useBaseCols = true;
+        continue;
+      }
+      console.error('[translate-download] messages select failed', {
+        session_id: sessionId,
+        error: error.message,
+      });
+      break;
+    }
+    if (!data || data.length === 0) break;
+    const rows = data as unknown as TranscriptMessage[];
+    for (const row of rows) messages.push(row);
+    if (rows.length < PAGE) break;
+    cursor = rows[rows.length - 1].ts;
   }
 
   return {
