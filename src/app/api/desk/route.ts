@@ -47,11 +47,16 @@ const SOURCE_IDS = [
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const REGION_ENUM = z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']);
+
 const Body = z.object({
   keywords: z.array(z.string().min(1).max(120)).min(1).max(10),
   sources: z.array(z.enum(SOURCE_IDS)).min(1),
   locale: z.enum(['ko', 'en']).optional(),
-  region: z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']).optional(),
+  // 멀티 region 우선. 단일 `region` 도 backward-compat 으로 유지 — 누락 시
+  // locale 로 기본값 결정 (기존 동작과 동일).
+  regions: z.array(REGION_ENUM).min(1).max(7).optional(),
+  region: REGION_ENUM.optional(),
   dateFrom: z.string().regex(ISO_DATE).optional(),
   dateTo: z.string().regex(ISO_DATE).optional(),
   project_id: z.string().uuid().nullable().optional(),
@@ -377,10 +382,18 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { keywords, sources, locale = 'ko', region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
+  const { keywords, sources, locale = 'ko', regions: regionsInput, region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
   // Default region from locale: Korean researchers default to KR sources,
   // English researchers default to GLOBAL (Google News will use US/en).
-  const region = regionInput ?? (locale === 'ko' ? 'KR' : 'GLOBAL');
+  // 멀티 region 입력이 있으면 그대로, 아니면 단일 region (legacy) 또는 locale
+  // 기본값. 중복은 Set 으로 정리.
+  const regions: DeskRegion[] = Array.from(
+    new Set<DeskRegion>(
+      regionsInput && regionsInput.length > 0
+        ? regionsInput
+        : [regionInput ?? (locale === 'ko' ? 'KR' : 'GLOBAL')],
+    ),
+  );
   if (dateFrom && dateTo && dateFrom > dateTo) {
     return NextResponse.json({ error: 'invalid_date_range' }, { status: 400 });
   }
@@ -476,7 +489,7 @@ export async function POST(request: Request) {
       keywords: cleanKeywords,
       usable,
       locale,
-      region,
+      regions,
       range: { from: dateFrom, to: dateTo },
       initialEvents,
     }),
@@ -484,6 +497,16 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ job_id: job.id });
 }
+
+// Sources that take a region parameter (Google News / GDELT / YouTube). For
+// these we crawl once per selected region. Naver/Kakao/Daum are KR-only and
+// Reddit/HackerNews are region-agnostic — both are crawled once regardless of
+// how many regions the user picked.
+const REGION_AWARE_SOURCES = new Set<DeskSourceId>([
+  'google_news',
+  'gdelt_news',
+  'youtube',
+]);
 
 // ─── Background runner ───────────────────────────────────────────────────────
 async function runJob(args: {
@@ -493,11 +516,15 @@ async function runJob(args: {
   keywords: string[];
   usable: DeskSourceId[];
   locale: 'ko' | 'en';
-  region: DeskRegion;
+  regions: DeskRegion[];
   range: DeskDateRange;
   initialEvents: string[];
 }) {
-  const { jobId, orgId, userId, keywords, usable, locale, region, range, initialEvents } = args;
+  const { jobId, orgId, userId, keywords, usable, locale, regions, range, initialEvents } = args;
+  // 단일 region 만 받는 다운스트림 (보고서 prompt 메타데이터) 용 representative.
+  // 멀티 region 일 때 첫 region 을 대표값으로 — 보고서 본문은 regions 전체
+  // 목록을 별도로 받음.
+  const primaryRegion: DeskRegion = regions[0] ?? 'KR';
   const admin = createAdminClient();
   const events: string[] = [...initialEvents];
   let crawlDone = 0;
@@ -645,7 +672,7 @@ async function runJob(args: {
       const rqPrompt = [
         `메인 키워드: ${keywords.join(', ')}`,
         `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-        `검색 지역: ${region}`,
+        `검색 지역: ${regions.join(', ')}`,
         `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
         '',
         `위 정보를 바탕으로 데스크 리서치에 필요한 RQ 5~8개를 JSON 으로 분해해주세요. 모든 키워드(${allKw.join(', ')})를 통합적으로 다루는 질문이어야 합니다.`,
@@ -679,7 +706,21 @@ async function runJob(args: {
     await checkCancel();
 
     const allKeywords = [...keywords, ...similar];
-    crawlTotal = allKeywords.length * usable.length;
+    // 멀티 region 시 region-aware source (google_news/gdelt/youtube) 는 region
+    // 마다 별도 crawl, 나머지 (naver/kakao/reddit/hn) 는 한 번만. 사용자가
+    // KR + JP 를 고르면 Google News 가 둘 다 검색됩니다.
+    type CrawlTarget = { src: DeskSourceId; region: DeskRegion };
+    const targets: CrawlTarget[] = [];
+    for (const src of usable) {
+      if (REGION_AWARE_SOURCES.has(src)) {
+        for (const r of regions) targets.push({ src, region: r });
+      } else {
+        // primaryRegion 으로 한 번만 — 어차피 source 자체가 region 무관.
+        targets.push({ src, region: primaryRegion });
+      }
+    }
+
+    crawlTotal = allKeywords.length * targets.length;
     await patch({ status: 'crawling' });
     // Split each source's budget evenly across keywords. Without this, the
     // first keyword's pull races to the source's full 500 cap and rate-limits
@@ -690,27 +731,28 @@ async function runJob(args: {
       Math.ceil(SOURCE_BUDGET / Math.max(allKeywords.length, 1)),
     );
     const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
+    const regionLabel = regions.join(', ');
     await pushAndPatch(
-      `이제 ${allKeywords.length}개 키워드 × ${usable.length}개 소스 = ${crawlTotal}회 검색을 동시에 돌릴게요. 키워드당 소스별 ${perKwLimit}건씩 균등 분배합니다. (${sourceList})`,
+      `이제 ${allKeywords.length}개 키워드 × ${targets.length}개 (소스 × 지역) = ${crawlTotal}회 검색을 동시에 돌릴게요. 키워드당 소스별 ${perKwLimit}건씩 균등 분배합니다. 지역: ${regionLabel}. 소스: ${sourceList}.`,
       'crawling',
     );
 
     const collected: DeskArticle[] = [];
     const tasks = allKeywords.flatMap((kw) =>
-      usable.map((src) =>
+      targets.map(({ src, region }) =>
         crawlSource(src, kw, region, range, perKwLimit)
           .then(async (items) => {
             crawlDone += 1;
             collected.push(...items);
             await pushAndPatch(
-              `${sourceLabelKo(src)} · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
+              `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
               'crawling',
             );
           })
           .catch(async (err) => {
             crawlDone += 1;
             await pushAndPatch(
-              `${sourceLabelKo(src)} · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
+              `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
               'crawling',
             );
           }),
@@ -1221,7 +1263,7 @@ async function runJob(args: {
       `요청 언어: ${locale === 'ko' ? '한국어' : 'English'}`,
       `메인 키워드: ${keywords.join(', ')}`,
       `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-      `검색 지역: ${region}`,
+      `검색 지역: ${regions.join(', ')}`,
       `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
       `전체 수집: ${articles.length}건 (이 중 의미가 다양한 ${articlesForLLM.length}건을 본문에 첨부)`,
       `소스 tier 분포 (claims 기준): ${tierLine}`,

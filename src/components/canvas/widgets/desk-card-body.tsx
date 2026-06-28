@@ -81,12 +81,15 @@ function splitKeywords(raw: string): string[] {
     .filter(Boolean);
 }
 
-// 수집 소스는 항상 전체 (단 region 변경 시 KR-only 그룹 자동 제외).
-// 디자인에서 사용자 노출 제거 — selected 는 region 에 의존적으로 자동 관리.
-function sourcesForRegion(region: DeskRegion): Set<DeskSourceId> {
+// 수집 소스는 항상 전체. KR-only 그룹 (네이버/카카오) 은 selected regions 에
+// KR 이 포함될 때만 union 으로 추가 — 그 외 region 만 선택하면 결과가 거의 없어
+// API quota 낭비. 디자인에서 사용자 노출 제거 — selected 는 regions 에 의존적으로
+// 자동 관리.
+function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
+  const includeKrOnly = regions.has('KR');
   const out = new Set<DeskSourceId>();
   for (const s of DESK_SOURCES) {
-    if (region !== 'KR' && KR_ONLY_GROUPS.includes(s.group)) continue;
+    if (!includeKrOnly && KR_ONLY_GROUPS.includes(s.group)) continue;
     out.add(s.id);
   }
   return out;
@@ -174,15 +177,27 @@ export function DeskCardBody() {
   const [preset, setPreset] = useState<RangePreset>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const [region, setRegion] = useState<DeskRegion>('KR');
-  // selected 는 region 에 의존적으로 자동 관리 — UI 미노출.
+  // 멀티 region 선택 — 최소 1개 보장 (모두 해제 X, API 가 region 을 필요로 함).
+  const [regions, setRegions] = useState<Set<DeskRegion>>(
+    () => new Set(['KR']),
+  );
+  // selected 는 regions union 에 의존적으로 자동 관리 — UI 미노출.
   const [selected, setSelected] = useState<Set<DeskSourceId>>(() =>
-    sourcesForRegion('KR'),
+    sourcesForRegions(new Set(['KR'])),
   );
 
-  function changeRegion(next: DeskRegion) {
-    setRegion(next);
-    setSelected(sourcesForRegion(next));
+  function toggleRegion(r: DeskRegion) {
+    setRegions((prev) => {
+      const next = new Set(prev);
+      if (next.has(r)) {
+        if (next.size <= 1) return prev; // 최소 1개 보장
+        next.delete(r);
+      } else {
+        next.add(r);
+      }
+      setSelected(sourcesForRegions(next));
+      return next;
+    });
   }
 
   const [submitting, setSubmitting] = useState(false);
@@ -298,7 +313,7 @@ export function DeskCardBody() {
           keywords: finalKeywords,
           sources: Array.from(selected),
           locale: locale === 'ko' ? 'ko' : 'en',
-          region,
+          regions: Array.from(regions),
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
           project_id: readActiveProjectId(),
@@ -423,16 +438,20 @@ export function DeskCardBody() {
         <div className="space-y-5 px-5 py-5">
           <Field label={tDesk('regionLabel')}>
             <div className="flex flex-wrap gap-1.5">
-              {DESK_REGIONS.map((r) => (
-                <Button
-                  key={r}
-                  variant={region === r ? 'primary' : 'ghost'}
-                  size="xs"
-                  onClick={() => changeRegion(r)}
-                >
-                  {tDesk(`region.${r}`)}
-                </Button>
-              ))}
+              {DESK_REGIONS.map((r) => {
+                const isSelected = regions.has(r);
+                return (
+                  <Button
+                    key={r}
+                    variant={isSelected ? 'primary' : 'ghost'}
+                    size="xs"
+                    onClick={() => toggleRegion(r)}
+                    aria-pressed={isSelected}
+                  >
+                    {tDesk(`region.${r}`)}
+                  </Button>
+                );
+              })}
             </div>
           </Field>
 

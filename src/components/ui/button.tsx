@@ -111,12 +111,21 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     .join(' ');
 
   return (
+    // data-canvas-action: globals.css 의 [data-canvas-body] button cascade
+    // (background:#fff · color:#000 · border 2.5px) 에서 opt-out.
+    // 위 cascade 는 attribute selector specificity (0,2,1) 가 Tailwind utility
+    // (0,1,0) 를 이겨 variant primary 의 bg-ink 까지 흰색으로 덮어쓰는 회귀가
+    // 있어, canvas widget 안 region/preset toggle 의 선택 시각이 사라졌습니다.
+    // Button primitive 는 자체 chrome 을 가지므로 항상 opt-out 이 맞음
+    // (IconButton 과 동일 패턴). canvas 외부에서는 cascade 자체가 적용 안 돼
+    // 부작용 0.
     <button
       ref={ref}
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cls}
+      data-canvas-action
       {...rest}
     >
       {leftIcon ? <span className="shrink-0">{leftIcon}</span> : null}
