@@ -234,16 +234,7 @@ function ZIndexTokens() {
 }
 
 function HeaderSubtleCandidatesSection() {
-  const candidates: Array<{
-    label: string;
-    note: string;
-    button: ButtonVariant;
-    icon: IconButtonVariant;
-    // Per-candidate active-tab override (variant-specific so the active state
-    // reads correctly in each form — e.g. pill = solid fill, ring = thicker
-    // ring, underline = decoration solidified).
-    activeTab: string;
-  }> = headerSubtleCandidates;
+  const candidates = headerSubtleCandidates;
   const tabs: Array<{ key: string; label: string }> = [
     { key: 'canvas', label: '캔버스' },
     { key: 'projects', label: '프로젝트' },
@@ -346,7 +337,11 @@ function HeaderSubtleCandidatesSection() {
               </nav>
 
               <div className="flex shrink-0 items-center gap-3">
-                <AccountPillMock iconVariant={c.icon} />
+                <AccountPillMock
+                  outerClassName={c.pillOuter}
+                  avatarClassName={c.pillAvatar}
+                  iconVariant={c.icon}
+                />
               </div>
             </header>
           </div>
@@ -362,6 +357,13 @@ const headerSubtleCandidates: Array<{
   button: ButtonVariant;
   icon: IconButtonVariant;
   activeTab: string;
+  // outer account-pill chrome — adapts to the candidate's form so the
+  // logged-in chrome reads as one family with the tabs/buttons rather than
+  // the Memphis-bordered pill that wraps everything today.
+  pillOuter: string;
+  // avatar 26×26 chip chrome inside the pill — mirrors the candidate form
+  // so the avatar's box doesn't fight the outer chrome's shape.
+  pillAvatar: string;
 }> = [
   {
     label: 'A. subtle (current — thin border + transparent)',
@@ -369,6 +371,10 @@ const headerSubtleCandidates: Array<{
     button: 'subtle',
     icon: 'subtle',
     activeTab: '!border-ink !bg-ink/8 !text-ink',
+    pillOuter:
+      'flex items-center gap-2 px-2 py-1.5 rounded-sm border border-ink/30 bg-transparent',
+    pillAvatar:
+      'flex shrink-0 items-center justify-center rounded-sm border border-ink/30 bg-transparent',
   },
   {
     label: 'B. subtle-pill (rounded-full chip with soft fill)',
@@ -376,6 +382,10 @@ const headerSubtleCandidates: Array<{
     button: 'subtle-pill',
     icon: 'subtle-pill',
     activeTab: '!bg-ink !text-paper',
+    pillOuter:
+      'flex items-center gap-2 px-2 py-1.5 rounded-full bg-ink/10 border border-transparent',
+    pillAvatar:
+      'flex shrink-0 items-center justify-center rounded-full bg-paper border border-transparent',
   },
   {
     label: 'C. subtle-underline (no chrome, text + hover underline)',
@@ -383,6 +393,10 @@ const headerSubtleCandidates: Array<{
     button: 'subtle-underline',
     icon: 'subtle-flat',
     activeTab: '!text-ink !decoration-ink',
+    pillOuter:
+      'flex items-center gap-3 px-1 py-0 bg-transparent border border-transparent',
+    pillAvatar:
+      'flex shrink-0 items-center justify-center rounded-full bg-transparent border border-transparent',
   },
   {
     label: 'D. subtle-soft (filled, no border, square)',
@@ -390,6 +404,10 @@ const headerSubtleCandidates: Array<{
     button: 'subtle-soft',
     icon: 'subtle-soft',
     activeTab: '!bg-ink/20 !text-ink',
+    pillOuter:
+      'flex items-center gap-2 px-2 py-1.5 rounded-xs bg-ink/5 border border-transparent',
+    pillAvatar:
+      'flex shrink-0 items-center justify-center rounded-xs bg-ink/10 border border-transparent',
   },
   {
     label: 'E. subtle-ring (pill with 1px outline ring)',
@@ -397,41 +415,39 @@ const headerSubtleCandidates: Array<{
     button: 'subtle-ring',
     icon: 'subtle-ring',
     activeTab: '!ring-2 !ring-ink !text-ink',
+    pillOuter:
+      'flex items-center gap-2 px-2 py-1.5 rounded-full ring-1 ring-ink/40 bg-transparent border border-transparent',
+    pillAvatar:
+      'flex shrink-0 items-center justify-center rounded-full ring-1 ring-ink/40 bg-transparent border border-transparent',
   },
 ];
 
-// Recreates the TopbarAccount pill chrome (avatar + name + credits + gear)
-// inline so each candidate row can show a faithful authenticated-state mock.
-// Only the gear IconButton swaps per candidate; the outer pill keeps the
-// existing Memphis chrome so the gear's subtle form reads against the same
-// nested-chrome context as production.
-function AccountPillMock({ iconVariant }: { iconVariant: IconButtonVariant }) {
+// Recreates the TopbarAccount pill (avatar + name + credits + gear) but
+// swaps the outer / avatar chrome to match the candidate form (passed in
+// via outerClassName / avatarClassName). Only typography + text color stay
+// constant so each row is comparable.
+function AccountPillMock({
+  outerClassName,
+  avatarClassName,
+  iconVariant,
+}: {
+  outerClassName: string;
+  avatarClassName: string;
+  iconVariant: IconButtonVariant;
+}) {
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
   return (
-    <div
-      className="flex items-center gap-2 px-2 py-1.5"
-      style={{
-        background: 'var(--sidebar-bg-strong)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
-        borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
-      }}
-    >
+    <div className={outerClassName}>
       <div
-        className="flex shrink-0 items-center justify-center"
+        className={avatarClassName}
         style={{
           width: 26,
           height: 26,
-          background: '#fff',
-          color: '#000',
-          border:
-            'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
-          borderRadius: 'var(--sidebar-nav-radius)',
-          boxShadow: 'var(--memphis-shadow-xs)',
           fontFamily: outfitStack,
           fontWeight: 800,
           fontSize: 12,
           letterSpacing: '-0.02em',
+          color: 'var(--sidebar-border)',
         }}
       >
         C
