@@ -9,7 +9,7 @@ export function SignInButton() {
   const t = useTranslations('Auth');
   return (
     <Button
-      variant="primary"
+      variant="subtle"
       size="sm"
       onClick={() => openLogin()}
       className="!px-3 !text-sm uppercase tracking-[0.18em]"

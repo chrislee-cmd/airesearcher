@@ -18,7 +18,8 @@ export type ButtonVariant =
   | 'ghost'
   | 'destructive'
   | 'link'
-  | 'destructive-link';
+  | 'destructive-link'
+  | 'subtle';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'cta';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -70,6 +71,12 @@ const VARIANT: Record<ButtonVariant, string> = {
   'destructive-link':
     'border-transparent bg-transparent text-mute hover:text-warning ' +
     'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-warning',
+  // Subtle tone for header bands (yellow Topbar banner) — 1px translucent
+  // ink border + transparent bg lets the banner color read through, with a
+  // gentle hover tint instead of the Memphis translate/shadow lift.
+  subtle:
+    'border border-ink/30 bg-transparent text-ink shadow-none ' +
+    'hover:bg-ink/5 hover:border-ink/60',
 };
 
 // SIZE owns padding/font/radius only — transition lives on BASE so the

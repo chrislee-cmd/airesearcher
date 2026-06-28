@@ -240,12 +240,13 @@ function ButtonSection() {
     'destructive',
     'link',
     'destructive-link',
+    'subtle',
   ];
   const sizes: ButtonSize[] = ['xs', 'sm', 'md', 'lg', 'cta'];
   return (
     <Section
       title="Button"
-      hint="src/components/ui/button.tsx · 6 variants × 5 sizes · loading / fullWidth / left|rightIcon"
+      hint="src/components/ui/button.tsx · 7 variants × 5 sizes · loading / fullWidth / left|rightIcon · subtle = 헤더 banner 위 사용"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap gap-2">
@@ -285,12 +286,12 @@ function ButtonSection() {
 }
 
 function IconButtonSection() {
-  const variants: IconButtonVariant[] = ['ghost', 'ghost-danger', 'ghost-brand', 'bordered'];
+  const variants: IconButtonVariant[] = ['ghost', 'ghost-danger', 'ghost-brand', 'bordered', 'subtle'];
   const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
   return (
     <Section
       title="IconButton"
-      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · variants for hover treatment · sizes are shape"
+      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · variants for hover treatment · subtle = 헤더 banner 위 사용 · sizes are shape"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap items-center gap-3">

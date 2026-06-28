@@ -146,7 +146,7 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
           ) : null}
         </div>
         <IconButton
-          variant="ghost"
+          variant="subtle"
           size="md"
           onClick={() => {
             setOpen((v) => {
