@@ -319,6 +319,13 @@ export function CanvasBoard({
   useEffect(() => {
     panRefValue.current = pan;
   }, [pan]);
+  // 위젯 헤더 mouseDown/dragStart 안에서 최신 isSpaceHeld 를 읽기 위한 ref.
+  // dragHandleProps 는 widget 별로 spread 되므로 state 직접 참조 시 stale
+  // closure 위험 — ref 로 우회.
+  const isSpaceHeldRef = useRef(isSpaceHeld);
+  useEffect(() => {
+    isSpaceHeldRef.current = isSpaceHeld;
+  }, [isSpaceHeld]);
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -605,9 +612,23 @@ export function CanvasBoard({
                   dashboardMode
                   dragHandleProps={{
                     draggable: true,
-                    onDragStart: onHandleDragStart(w.key),
+                    onDragStart: (e) => {
+                      // 스페이스바 hold 면 헤더 drag 중단 → 캔버스 pan 우선
+                      // (Figma/Miro 표준). HTML5 dragstart 는 mouseDown 과
+                      // 별개 fire 가능하므로 preventDefault 로 차단.
+                      if (isSpaceHeldRef.current) {
+                        e.preventDefault();
+                        return;
+                      }
+                      onHandleDragStart(w.key)(e);
+                    },
                     onDragEnd: onHandleDragEnd,
-                    onMouseDown: (e) => e.stopPropagation(),
+                    onMouseDown: (e) => {
+                      // 스페이스바 hold 면 stopPropagation 생략 → 이벤트가
+                      // 상위 캔버스로 버블링되어 pan 이 시작.
+                      if (isSpaceHeldRef.current) return;
+                      e.stopPropagation();
+                    },
                   }}
                 />
               </div>
