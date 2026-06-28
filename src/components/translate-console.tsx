@@ -101,9 +101,9 @@ type CaptionLine = {
   // lines fade out at the top edge but remain in state so PR-B can
   // download the full transcript.
   ts: number;
-  // PR-T2 inputSource → speaker mapping captured at pushLine time so a
-  // mid-session mic↔tab switch labels old lines with the source they
-  // were captured under (new lines carry the new source). Null only for
+  // Speaker is captured per line at commit time. With dual-source
+  // capture each slot's pipeline tags its own lines (mic → host,
+  // tab → guest); single-source modes tag uniformly. Null only for
   // legacy state from before this field existed.
   speaker?: 'host' | 'guest' | null;
 };
@@ -305,6 +305,42 @@ type SessionBundle = {
   livekit: { url: string; token: string; room: string };
 };
 
+// Capture mode chosen by the host before Start.
+//   'both'      — mic (host) + tab (guest) captured in parallel via two
+//                 OpenAI Realtime sessions. Each side's transcript carries
+//                 the corresponding speaker label so the prompter and the
+//                 download zip render both voices time-interleaved.
+//   'mic-only'  — host's mic only. Single OpenAI session. No speaker
+//                 label disambiguation possible (mic carries whoever is
+//                 in the room), so lines tag as 'host'.
+//   'tab-only'  — tab audio only. Single OpenAI session. Lines tag as
+//                 'guest' (the captured tab is assumed to be the
+//                 interviewee on the call).
+type CaptureMode = 'both' | 'mic-only' | 'tab-only';
+
+// The two source slots a session can run. The slot name doubles as the
+// kind of capture (mic vs tab) AND the speaker role (host vs guest) —
+// see `slotSpeaker` below.
+type SourceSlot = 'mic' | 'tab';
+
+const SLOT_SPEAKER: Record<SourceSlot, 'host' | 'guest'> = {
+  mic: 'host',
+  tab: 'guest',
+};
+
+function activeSlots(mode: CaptureMode): SourceSlot[] {
+  if (mode === 'both') return ['mic', 'tab'];
+  if (mode === 'mic-only') return ['mic'];
+  return ['tab'];
+}
+
+// Empty-record factories. Keeping this as a function (not a const) so
+// every consumer gets its own object — Records are mutable refs and we
+// don't want two refs to alias the same instance.
+function emptySlotRecord<T>(value: T): Record<SourceSlot, T> {
+  return { mic: value, tab: value };
+}
+
 const LANGS: { value: string; label: string }[] = [
   { value: 'ko', label: '한국어' },
   { value: 'en', label: 'English' },
@@ -386,12 +422,28 @@ export function TranslateConsole() {
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
   const [recordEnabled, setRecordEnabled] = useState(true);
-  // 'mic' = host's microphone; 'tab' = a browser tab's audio
-  // (e.g. a Zoom/Meet/Teams call running in another tab). Tab capture
-  // goes through getDisplayMedia, which on every supported browser
-  // requires a user gesture and a tab-picker UI, so we lock this to
-  // the host's choice and only acquire when the host clicks Start.
-  const [inputSource, setInputSource] = useState<'mic' | 'tab'>('mic');
+  // Capture mode picker. Default 'both' — the common online-interview
+  // shape (host on mic + interviewee on tab). 'mic-only' is the
+  // face-to-face fallback when no tab audio is involved. 'tab-only'
+  // keeps the legacy single-source tab path for solo-listening flows.
+  // Both 'both' and 'tab-only' rely on getDisplayMedia which requires
+  // a user gesture, so the picker only writes state until Start fires.
+  const [captureMode, setCaptureMode] = useState<CaptureMode>('both');
+  // Per-slot live indicator. Flips true once the slot's RTCPeerConnection
+  // reaches `connected` (or the slot's recorder starts, whichever first)
+  // so the topbar can show "🎤 진행자 · 📺 응답자" with active dots.
+  // Stays false for inactive slots so single-mode sessions render only
+  // the engaged badge.
+  const [slotActive, setSlotActive] = useState<Record<SourceSlot, boolean>>(
+    () => emptySlotRecord(false),
+  );
+  // Per-slot non-fatal error (one slot failed but the other is still
+  // alive — graceful degradation). Cleared on each Start. Surfaced as a
+  // single inline notice; the main `error` state stays reserved for
+  // fatal failures that tear the whole session down.
+  const [slotError, setSlotError] = useState<Record<SourceSlot, string | null>>(
+    () => emptySlotRecord(null),
+  );
 
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
@@ -453,19 +505,59 @@ export function TranslateConsole() {
   const [recorderActive, setRecorderActive] = useState(false);
 
   // Mutable refs held only for the duration of a live session.
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const ttsStreamRef = useRef<MediaStream | null>(null);
+  //
+  // Per-slot refs (Record<SourceSlot, …>): each captured source — mic
+  // and/or tab — runs an independent pipeline (its own OpenAI Realtime
+  // session, RTCPeerConnection, dataChannel, source MediaStream). Slots
+  // that aren't active for the chosen captureMode stay null and the
+  // cleanup loops just skip them.
+  const pcRef = useRef<Record<SourceSlot, RTCPeerConnection | null>>(
+    emptySlotRecord<RTCPeerConnection | null>(null),
+  );
+  const dcRef = useRef<Record<SourceSlot, RTCDataChannel | null>>(
+    emptySlotRecord<RTCDataChannel | null>(null),
+  );
+  // Raw captured stream per slot. `mic` slot = getUserMedia,
+  // `tab` slot = getDisplayMedia audio. Cleanup stops the tracks (which
+  // also dismisses Chrome's "Sharing this tab's audio" banner).
+  const srcStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
+    emptySlotRecord<MediaStream | null>(null),
+  );
+  // Stream actually handed to the RTCPeerConnection. For mic this is the
+  // raw capture; for tab this is the 24 kHz mono WebAudio resample.
+  const publishStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
+    emptySlotRecord<MediaStream | null>(null),
+  );
+  // Per-slot TTS stream emitted by OpenAI.
+  const ttsStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
+    emptySlotRecord<MediaStream | null>(null),
+  );
+  // Single LiveKit `output` publish covers both slots — once one slot's
+  // ontrack lands and we wire its TTS into the shared output mixer,
+  // we publish the mixer destination's track. Later slots just add into
+  // the same mixer. Guarded so we publish exactly once per session.
   const outputPublishedRef = useRef(false);
-  // Web Audio graph used to re-emit the OpenAI translation track as a
-  // local MediaStream that LiveKit can publish. A remote track received
-  // via pc.ontrack from one peer connection cannot be republished into
-  // another peer connection directly — Web Audio "lifts" the audio data
-  // through an AudioContext so the track LiveKit sees is local.
+  // Single LiveKit `input` publish — same idea but for the (possibly
+  // mixed) source audio. The 'input' track in `both` mode carries
+  // mic+tab mixed via WebAudio; in single-mode it's the slot's own
+  // publishStream. Guarded so multi-slot wiring publishes once.
+  const inputPublishedRef = useRef(false);
+  // Shared output mixer: ONE AudioContext + ONE MediaStreamAudioDestination
+  // that both slots' TTS sources feed into. We re-emit the mixed
+  // destination as a local MediaStreamTrack so LiveKit can publish it
+  // (browsers refuse to republish a remote PeerConnection track
+  // directly).
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioSourceRef = useRef<Record<SourceSlot, MediaStreamAudioSourceNode | null>>(
+    emptySlotRecord<MediaStreamAudioSourceNode | null>(null),
+  );
   const audioDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  // Mirror for the input publish path. Created in the shared
+  // `audioCtxRef` so source + dest live on the same graph.
+  const inputMixDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const inputMixSrcRef = useRef<Record<SourceSlot, MediaStreamAudioSourceNode | null>>(
+    emptySlotRecord<MediaStreamAudioSourceNode | null>(null),
+  );
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -480,7 +572,8 @@ export function TranslateConsole() {
   // `enabled` flag off briefly on a 3 s cadence, which emits silence
   // frames the server VAD treats as the speaker stopping, lets it
   // commit the current turn, and breaks the otherwise-infinite loop.
-  // Mic mode doesn't need this — speakers pause naturally.
+  // Mic mode doesn't need this — speakers pause naturally. Tracked only
+  // for the tab slot.
   const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
@@ -508,21 +601,29 @@ export function TranslateConsole() {
   const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const CONNECT_TIMEOUT_MS = 10_000;
 
-  // Rolling buffer for the currently-streaming caption line per side.
-  // The translation API has no explicit completion event, so we keep one
-  // mutable "current" entry per side and flush it whenever sentence-ending
-  // punctuation arrives in the delta stream.
-  const partialInputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
-  const partialOutputRef = useRef<Map<string, { id: string; text: string }>>(new Map());
+  // Rolling buffer for the currently-streaming caption line per side
+  // PER SLOT. Each OpenAI Realtime session has its own delta stream
+  // that finalizes independently, so a single shared partial would
+  // smash host + guest text together. Outer map keyed by slot, inner
+  // value is the slot's current rolling partial.
+  const partialInputRef = useRef<Record<SourceSlot, { id: string; text: string } | null>>(
+    emptySlotRecord<{ id: string; text: string } | null>(null),
+  );
+  const partialOutputRef = useRef<Record<SourceSlot, { id: string; text: string } | null>>(
+    emptySlotRecord<{ id: string; text: string } | null>(null),
+  );
 
-  // PR-T2: wall-clock of the most recent delta per kind. A gap larger
-  // than TURN_SILENCE_MS between two deltas of the same kind is treated
-  // as a turn boundary — we commit the current partial before appending
-  // the new delta. The translations API has no native turn marker
-  // (see src/lib/openai-realtime.ts) so this silence-gap signal is the
-  // only thing that distinguishes a real turn break from a within-turn
-  // pause for breath.
-  const lastDeltaAtRef = useRef<Map<'input' | 'output', number>>(new Map());
+  // PR-T2: wall-clock of the most recent delta per kind PER SLOT. A gap
+  // larger than TURN_SILENCE_MS between two deltas of the same (slot,
+  // kind) is treated as a turn boundary — we commit the current partial
+  // before appending the new delta. Keyed per-slot so the host pausing
+  // doesn't force-commit the guest's mid-sentence pause.
+  const lastDeltaAtRef = useRef<
+    Record<SourceSlot, Record<'input' | 'output', number | null>>
+  >({
+    mic: { input: null, output: null },
+    tab: { input: null, output: null },
+  });
 
   // Shared transcript publisher — provider 가 mount 되어 있을 때 (예: /canvas)
   // 다른 위젯이 input transcript 를 구독할 수 있게 함. /live 페이지처럼
@@ -541,15 +642,17 @@ export function TranslateConsole() {
   // start() entering before the first awaits cannot get past it.
   const startInFlightRef = useRef(false);
 
-  // Dedup keys for finalized lines per kind. Sliding window — entries
-  // older than DEDUP_WINDOW_MS are dropped on each insert so the map
-  // never grows unbounded across a long session.
-  const recentFinalsRef = useRef<Map<'input' | 'output', Array<{ key: string; ts: number }>>>(
-    new Map([
-      ['input', []],
-      ['output', []],
-    ]),
-  );
+  // Dedup keys for finalized lines per kind PER SLOT. Sliding window —
+  // entries older than DEDUP_WINDOW_MS are dropped on each insert so the
+  // map never grows unbounded across a long session. Keyed per-slot so
+  // the guest saying "네." doesn't suppress the host's later "네." (and
+  // vice versa) just because both normalize to the same dedup key.
+  const recentFinalsRef = useRef<
+    Record<SourceSlot, Record<'input' | 'output', Array<{ key: string; ts: number }>>>
+  >({
+    mic: { input: [], output: [] },
+    tab: { input: [], output: [] },
+  });
 
   // PR #223 caught the prompter duplication symptom but the prod logs
   // showed `kind: 'input'` getting deduped 5+ times per utterance —
@@ -566,8 +669,9 @@ export function TranslateConsole() {
   // that actually reached the /messages POST. Drift means dedup or
   // sentence-boundary slicing dropped real content; we surface it on
   // stop() and (server-side) audit it when the loss crosses the
-  // FIDELITY_LOSS_THRESHOLD. Counters are per-kind because input and
-  // output have separate dedup state.
+  // FIDELITY_LOSS_THRESHOLD. Counters are aggregated across both slots
+  // per-kind — the loss report is for the session as a whole and the
+  // server-side audit doesn't need per-speaker breakdowns yet.
   const fidelityCountersRef = useRef<
     Record<'input' | 'output', { deltaChars: number; commitChars: number; persistOk: number; persistFail: number }>
   >({
@@ -576,24 +680,30 @@ export function TranslateConsole() {
   });
 
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
-  // the host's source stream (mic/tab) and one for the translated TTS.
+  // the host's source stream (mic/tab — mixed when `both` mode) and one
+  // for the translated TTS (mixed across both slots when `both` mode).
   // We do NOT reuse `audioDestRef` (which feeds LiveKit publish):
   // MediaRecorder reading the same destination as a simultaneous
   // LiveKit publish has produced silent/glitchy webm files in testing.
   //
   // Wiring:
-  //   hostSrc (mic OR tab) → recordInputDestRef → MediaRecorder(input)
-  //   ttsSrc (translated)  → recordOutputDestRef → MediaRecorder(output)
+  //   slot.src (mic+tab)   → recordInputSrcRef[slot] → recordInputDest → MediaRecorder(input)
+  //   slot.tts (translated) → recordOutputSrcRef[slot] → recordOutputDest → MediaRecorder(output)
   //
-  // Both destinations live on the SAME AudioContext as the
-  // LiveKit-publish graph so the source MediaStreamSourceNodes are
-  // single-context and don't need cross-context re-emission. Two
-  // recorders are started in the same microtask after the graph is
-  // wired so their timelines stay aligned within ~1 audio frame.
+  // In `both` mode, both slots' source nodes connect to the same
+  // recordInputDest (mixing them into a single mic+tab input.webm), and
+  // both slots' TTS nodes connect to the same recordOutputDest. The
+  // session-end zip-input download then renders the speaker-tagged
+  // transcript so the two voices stay distinguishable in text even
+  // though the audio file is mixed.
   const recordInputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordOutputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const recordInputSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const recordOutputSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recordInputSrcRef = useRef<Record<SourceSlot, MediaStreamAudioSourceNode | null>>(
+    emptySlotRecord<MediaStreamAudioSourceNode | null>(null),
+  );
+  const recordOutputSrcRef = useRef<Record<SourceSlot, MediaStreamAudioSourceNode | null>>(
+    emptySlotRecord<MediaStreamAudioSourceNode | null>(null),
+  );
   const mediaRecorderInputRef = useRef<MediaRecorder | null>(null);
   const mediaRecorderOutputRef = useRef<MediaRecorder | null>(null);
   const recordedInputChunksRef = useRef<Blob[]>([]);
@@ -644,20 +754,45 @@ export function TranslateConsole() {
       caller,
       sessionId: sessionIdRef.current,
       hasRoom: !!roomRef.current,
-      hasPc: !!pcRef.current,
+      hasPc: !!(pcRef.current.mic || pcRef.current.tab),
     });
     try {
       channelRef.current?.unsubscribe();
     } catch {}
     channelRef.current = null;
-    try {
-      dcRef.current?.close();
-    } catch {}
-    dcRef.current = null;
-    try {
-      pcRef.current?.close();
-    } catch {}
-    pcRef.current = null;
+    for (const slot of ['mic', 'tab'] as const) {
+      try {
+        dcRef.current[slot]?.close();
+      } catch {}
+      dcRef.current[slot] = null;
+      try {
+        pcRef.current[slot]?.close();
+      } catch {}
+      pcRef.current[slot] = null;
+      srcStreamRef.current[slot]?.getTracks().forEach((tr) => tr.stop());
+      srcStreamRef.current[slot] = null;
+      publishStreamRef.current[slot] = null;
+      ttsStreamRef.current[slot] = null;
+      try {
+        audioSourceRef.current[slot]?.disconnect();
+      } catch {}
+      audioSourceRef.current[slot] = null;
+      try {
+        inputMixSrcRef.current[slot]?.disconnect();
+      } catch {}
+      inputMixSrcRef.current[slot] = null;
+      try {
+        recordInputSrcRef.current[slot]?.disconnect();
+      } catch {}
+      recordInputSrcRef.current[slot] = null;
+      try {
+        recordOutputSrcRef.current[slot]?.disconnect();
+      } catch {}
+      recordOutputSrcRef.current[slot] = null;
+      partialInputRef.current[slot] = null;
+      partialOutputRef.current[slot] = null;
+      lastDeltaAtRef.current[slot] = { input: null, output: null };
+    }
     if (tabSilenceTimerRef.current) {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
@@ -670,23 +805,10 @@ export function TranslateConsole() {
       void tabResampleCtxRef.current?.close();
     } catch {}
     tabResampleCtxRef.current = null;
-    micStreamRef.current?.getTracks().forEach((tr) => tr.stop());
-    micStreamRef.current = null;
-    ttsStreamRef.current = null;
     outputPublishedRef.current = false;
-    try {
-      audioSourceRef.current?.disconnect();
-    } catch {}
-    audioSourceRef.current = null;
+    inputPublishedRef.current = false;
     audioDestRef.current = null;
-    try {
-      recordInputSrcRef.current?.disconnect();
-    } catch {}
-    recordInputSrcRef.current = null;
-    try {
-      recordOutputSrcRef.current?.disconnect();
-    } catch {}
-    recordOutputSrcRef.current = null;
+    inputMixDestRef.current = null;
     recordInputDestRef.current = null;
     recordOutputDestRef.current = null;
     try {
@@ -710,6 +832,7 @@ export function TranslateConsole() {
     recordingOutputUploadUrlRef.current = null;
     recordingStartedAtRef.current = null;
     setRecorderActive(false);
+    setSlotActive(emptySlotRecord(false));
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -717,8 +840,6 @@ export function TranslateConsole() {
     if (monitorAudioRef.current) {
       monitorAudioRef.current.srcObject = null;
     }
-    partialInputRef.current.clear();
-    partialOutputRef.current.clear();
   }, []);
 
   const pushLine = useCallback(
@@ -797,50 +918,41 @@ export function TranslateConsole() {
     [],
   );
 
-  // PR-T2 speaker mapping. The inputSource picker is the SSOT:
-  //   - 'mic' = the host's microphone (interviewer) → 'host' label
-  //   - 'tab' = a tab-captured audio source (online meeting). Both the
-  //     interviewer's and the interviewee's voices arrive on the same
-  //     audio track, so we CANNOT label the session as 'guest' without
-  //     mis-tagging every host utterance. Until we wire up per-track
-  //     diarization (follow-up: capture mic + tab as two streams), we
-  //     leave the speaker NULL in tab mode so the UI prompter renders
-  //     without a label rather than falsely tagging every line as
-  //     "응답자". Export render still falls back to the locale's
-  //     "미지정" — that's accurate (we genuinely don't know) and matches
-  //     legacy pre-PR-T2 rows.
-  // Computed inline so the callback closure carries the current value at
-  // commit time.
-  const speakerForSession: 'host' | 'guest' | null =
-    inputSource === 'mic' ? 'host' : null;
+  // Speaker mapping is now slot-driven (mic → host, tab → guest). For
+  // single-mode sessions the slot is fixed by captureMode; for `both`
+  // mode each delta routes through the slot that emitted it. The
+  // mapping is a pure lookup (`SLOT_SPEAKER[slot]`) so each callback
+  // can derive its speaker from the slot it's bound to without
+  // capturing a stale closure value.
 
   const appendStreaming = useCallback(
-    (kind: 'input' | 'output', delta: string, lang: string) => {
+    (slot: SourceSlot, kind: 'input' | 'output', delta: string, lang: string) => {
       if (!delta) return;
-      const partial = kind === 'input' ? partialInputRef : partialOutputRef;
+      const speaker = SLOT_SPEAKER[slot];
+      const partialBag = kind === 'input' ? partialInputRef : partialOutputRef;
       const wall = Date.now();
 
-      // PR-T2 silence-based turn detection. If a long enough gap has
-      // elapsed since the previous delta of the same kind, the prior
-      // partial line represents a finished turn — commit it (and start
-      // a fresh partial for the new delta) BEFORE appending. Without
-      // this the "Yes." acknowledgement gets stitched onto the end of
-      // the prior speaker's sentence with no punctuation between them,
-      // producing the "... for that person, Yes." line in the user's
-      // report. The translations API has no native turn marker, so
-      // silence is the only signal we have.
-      const lastAt = lastDeltaAtRef.current.get(kind);
-      lastDeltaAtRef.current.set(kind, wall);
-      const existing = partial.current.get('current');
+      // PR-T2 silence-based turn detection (per slot). If a long enough
+      // gap has elapsed since the previous delta of the same (slot,
+      // kind), the prior partial line represents a finished turn —
+      // commit it (and start a fresh partial for the new delta) BEFORE
+      // appending. Without this the "Yes." acknowledgement gets
+      // stitched onto the end of the prior speaker's sentence with no
+      // punctuation between them, producing the "... for that person,
+      // Yes." line in the user's report. Tracked per-slot so the host
+      // pausing doesn't force-commit the guest's mid-sentence pause.
+      const lastAt = lastDeltaAtRef.current[slot][kind];
+      lastDeltaAtRef.current[slot][kind] = wall;
+      const existing = partialBag.current[slot];
       if (
         existing &&
         existing.text.trim() &&
-        lastAt !== undefined &&
+        lastAt !== null &&
         wall - lastAt >= TURN_SILENCE_MS
       ) {
         const turnText = existing.text.trim();
         const turnKey = normalizeForDedup(turnText);
-        const bucket = recentFinalsRef.current.get(kind) ?? [];
+        const bucket = recentFinalsRef.current[slot][kind];
         const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
         const isDup =
           turnKey.length > 0 &&
@@ -852,6 +964,7 @@ export function TranslateConsole() {
           );
         if (isDup) {
           console.info('[translate] dedup (turn-silence)', {
+            slot,
             kind,
             preview: turnText.slice(0, 40),
           });
@@ -859,17 +972,17 @@ export function TranslateConsole() {
           setter((prev) => prev.filter((l) => l.id !== existing.id));
         } else {
           fresh.push({ key: turnKey, ts: wall });
-          recentFinalsRef.current.set(kind, fresh);
+          recentFinalsRef.current[slot][kind] = fresh;
           const finalLine: CaptionLine = {
             id: existing.id,
             text: turnText,
             final: true,
             ts: wall,
-            speaker: speakerForSession,
+            speaker,
           };
           pushLine(kind, finalLine);
           broadcastCaption(kind, finalLine, lang);
-          void persistMessage(kind, turnText, lang, speakerForSession);
+          void persistMessage(kind, turnText, lang, speaker);
           if (kind === 'input') {
             const startedAt =
               inputLineStartedAtRef.current.get(existing.id) ?? wall;
@@ -882,12 +995,13 @@ export function TranslateConsole() {
             });
           }
         }
-        partial.current.delete('current');
+        partialBag.current[slot] = null;
       }
 
-      // Reuse a single rolling line id per kind, replaced when a sentence
-      // boundary commits.
-      const current = partial.current.get('current') ?? { id: `${kind}-${wall}`, text: '' };
+      // Reuse a single rolling line id per (slot, kind), replaced when
+      // a sentence boundary commits. Slot is encoded in the id so the
+      // partial/finalized lines from the two slots never collide.
+      const current = partialBag.current[slot] ?? { id: `${slot}-${kind}-${wall}`, text: '' };
       // PR-T2 chunk-boundary join — see joinDelta comment. Plain `+`
       // produced the "alsoOnce" / "serviceWe" word-fusion the user
       // reported.
@@ -926,7 +1040,7 @@ export function TranslateConsole() {
           // diff). The DISPLAY text stays original — only the lookup key
           // is normalized.
           const dedupKey = normalizeForDedup(finalText);
-          const bucket = recentFinalsRef.current.get(kind) ?? [];
+          const bucket = recentFinalsRef.current[slot][kind];
           const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
           // PR #224 dedup stack — applied in order:
           //   1. Fuzzy (Levenshtein ratio ≤ 20%) — catches single-char
@@ -947,6 +1061,7 @@ export function TranslateConsole() {
             );
           if (isDup) {
             console.info('[translate] dedup', {
+              slot,
               kind,
               preview: finalText.slice(0, 40),
             });
@@ -963,29 +1078,29 @@ export function TranslateConsole() {
             setter((prev) => prev.filter((l) => l.id !== current.id));
           } else {
             fresh.push({ key: dedupKey, ts: wall });
-            recentFinalsRef.current.set(kind, fresh);
+            recentFinalsRef.current[slot][kind] = fresh;
             const finalLine: CaptionLine = {
               id: current.id,
               text: finalText,
               final: true,
               ts: wall,
-              speaker: speakerForSession,
+              speaker,
             };
             pushLine(kind, finalLine);
             broadcastCaption(kind, finalLine, lang);
-            void persistMessage(kind, finalText, lang, speakerForSession);
+            void persistMessage(kind, finalText, lang, speaker);
             publishInput(finalText, wall);
           }
         }
         if (remainder) {
-          const nextId = `${kind}-${wall}`;
-          partial.current.set('current', { id: nextId, text: remainder });
+          const nextId = `${slot}-${kind}-${wall}`;
+          partialBag.current[slot] = { id: nextId, text: remainder };
           const partialLine: CaptionLine = {
             id: nextId,
             text: remainder,
             final: false,
             ts: wall,
-            speaker: speakerForSession,
+            speaker,
           };
           pushLine(kind, partialLine);
           broadcastCaption(kind, partialLine, lang);
@@ -1001,27 +1116,27 @@ export function TranslateConsole() {
             });
           }
         } else {
-          partial.current.delete('current');
+          partialBag.current[slot] = null;
         }
       } else {
-        partial.current.set('current', { id: current.id, text: next });
+        partialBag.current[slot] = { id: current.id, text: next };
         const partialLine: CaptionLine = {
           id: current.id,
           text: next,
           final: false,
           ts: wall,
-          speaker: speakerForSession,
+          speaker,
         };
         pushLine(kind, partialLine);
         broadcastCaption(kind, partialLine, lang);
         publishInput(next, undefined);
       }
     },
-    [broadcastCaption, persistMessage, pushLine, speakerForSession, transcriptPublisher],
+    [broadcastCaption, persistMessage, pushLine, transcriptPublisher],
   );
 
   const handleOaiEvent = useCallback(
-    (raw: string) => {
+    (slot: SourceSlot, raw: string) => {
       let msg: { type?: string; [k: string]: unknown };
       try {
         msg = JSON.parse(raw) as { type?: string };
@@ -1035,14 +1150,16 @@ export function TranslateConsole() {
       // lines. We log the whole payload because the field we need
       // (whether `delta` is incremental or cumulative, whether a
       // `completed` carries the canonical final text, etc.) may not
-      // be `delta` itself.
-      const sampleKey = type || '<no-type>';
+      // be `delta` itself. Per-slot sampling key so each session's
+      // protocol shape is captured independently.
+      const sampleKey = `${slot}:${type || '<no-type>'}`;
       const seen = sampleCountRef.current.get(sampleKey) ?? 0;
       if (seen < EVENT_SAMPLE_CAP) {
         sampleCountRef.current.set(sampleKey, seen + 1);
         console.info('[translate] oai-event', {
           n: seen + 1,
-          type: sampleKey,
+          slot,
+          type,
           payload: msg,
         });
       }
@@ -1056,12 +1173,13 @@ export function TranslateConsole() {
           const summary = summarizeFidelity(delta);
           if (summary.replacementChars > 0 || summary.mojibake) {
             console.warn('[translate] delta encoding suspect (input)', {
+              slot,
               ...summary,
               preview: delta.slice(0, 32),
             });
           }
         }
-        appendStreaming('input', delta, sourceLang);
+        appendStreaming(slot, 'input', delta, sourceLang);
         return;
       }
       // Translated text — streams continuously.
@@ -1072,12 +1190,13 @@ export function TranslateConsole() {
           const summary = summarizeFidelity(delta);
           if (summary.replacementChars > 0 || summary.mojibake) {
             console.warn('[translate] delta encoding suspect (output)', {
+              slot,
               ...summary,
               preview: delta.slice(0, 32),
             });
           }
         }
-        appendStreaming('output', delta, targetLang);
+        appendStreaming(slot, 'output', delta, targetLang);
         return;
       }
       // Note: `session.output_audio.delta` is delivered via the WebRTC
@@ -1099,23 +1218,23 @@ export function TranslateConsole() {
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
-    // RESET dedup memory on every Start. We tried persisting across
-    // Stop+Start (commit bc07d6b) to suppress duplicate commits when
-    // the user re-transcribed the tail of the previous session, but
-    // that backfired in practice: a heavy testing loop pollutes the
-    // memory with phrases from prior sessions, and the next session's
-    // legitimate first commit gets caught against those stale entries.
-    // Net effect was a black-hole prompter — every utterance matched
-    // something old, nothing landed. The cross-session dedup case is
-    // rare in production (users don't stop+start within seconds), so
-    // we revert to the simpler "fresh memory per session" semantics.
-    recentFinalsRef.current.set('input', []);
-    recentFinalsRef.current.set('output', []);
+    // RESET dedup memory on every Start (per-slot per-kind buckets).
+    // Cross-session dedup proved too brittle — see the original PR
+    // comment kept below for context.
+    recentFinalsRef.current = {
+      mic: { input: [], output: [] },
+      tab: { input: [], output: [] },
+    };
     inputLineStartedAtRef.current.clear();
     // PR-T2: fresh silence tracker each session — a stale `lastAt`
     // from a prior session would force-commit the first delta of the
     // new one as a turn boundary against empty state.
-    lastDeltaAtRef.current.clear();
+    lastDeltaAtRef.current = {
+      mic: { input: null, output: null },
+      tab: { input: null, output: null },
+    };
+    partialInputRef.current = emptySlotRecord(null);
+    partialOutputRef.current = emptySlotRecord(null);
     // Shared transcript provider — 새 세션이 시작되면 이전 세그먼트는 무효.
     // provider 가 없는 컨텍스트 (/live) 에서는 no-op.
     transcriptPublisher.clear();
@@ -1129,6 +1248,8 @@ export function TranslateConsole() {
       output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
     };
     setError(null);
+    setSlotError(emptySlotRecord(null));
+    setSlotActive(emptySlotRecord(false));
     setInputLines([]);
     setOutputLines([]);
     setElapsed(0);
@@ -1147,6 +1268,9 @@ export function TranslateConsole() {
     setRevisionTriggering(false);
     setStatus('starting');
 
+    const slotsToStart = activeSlots(captureMode);
+    const captureModeAtStart = captureMode;
+
     // Arm the connect watchdog. Any path that succeeds clears it (live
     // reached). Any path that fails has already called cleanup(), which
     // also clears it. The fallback fires only when start() makes no
@@ -1157,14 +1281,17 @@ export function TranslateConsole() {
     if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
     connectWatchdogRef.current = setTimeout(() => {
       connectWatchdogRef.current = null;
-      const pc = pcRef.current;
-      const dc = dcRef.current;
       console.warn('[translate] connect timeout', {
-        pcConnection: pc?.connectionState ?? null,
-        pcIce: pc?.iceConnectionState ?? null,
-        pcSignaling: pc?.signalingState ?? null,
-        pcGathering: pc?.iceGatheringState ?? null,
-        dcReadyState: dc?.readyState ?? null,
+        mic: {
+          pc: pcRef.current.mic?.connectionState ?? null,
+          ice: pcRef.current.mic?.iceConnectionState ?? null,
+          dc: dcRef.current.mic?.readyState ?? null,
+        },
+        tab: {
+          pc: pcRef.current.tab?.connectionState ?? null,
+          ice: pcRef.current.tab?.iceConnectionState ?? null,
+          dc: dcRef.current.tab?.readyState ?? null,
+        },
         hasRoom: !!roomRef.current,
       });
       setError('translate_timeout');
@@ -1173,6 +1300,8 @@ export function TranslateConsole() {
       startInFlightRef.current = false;
     }, CONNECT_TIMEOUT_MS);
 
+    // 1) Create the translate_sessions row + grab the first OpenAI
+    //    ephemeral + LiveKit token bundle in one call.
     let bundle: SessionBundle;
     try {
       const res = await fetch('/api/translate/sessions', {
@@ -1192,43 +1321,48 @@ export function TranslateConsole() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'session_failed');
       setStatus('error');
+      if (connectWatchdogRef.current) {
+        clearTimeout(connectWatchdogRef.current);
+        connectWatchdogRef.current = null;
+      }
       startInFlightRef.current = false;
       return;
     }
 
     sessionIdRef.current = bundle.session.id;
-    console.info('[translate] session ok — acquiring source', {
-      inputSource,
+    console.info('[translate] session ok — acquiring sources', {
+      captureMode: captureModeAtStart,
       sessionId: bundle.session.id,
+      slots: slotsToStart,
     });
 
-    // Source stream — either the host's microphone or a captured
-    // browser tab's audio (Zoom/Meet/Teams running in another tab).
-    // `mic` keeps the variable name because the rest of the pipeline
-    // (LiveKit "input" publish, OpenAI WebRTC addTrack, cleanup via
-    // micStreamRef) doesn't care which kind of capture it is.
-    // `mic` = the original capture (mic OR raw tab). Lives on
-    // micStreamRef so cleanup can stop the underlying track (which is
-    // also what makes the Chrome "Sharing this tab's audio" banner
-    // disappear). `publishStream` = what we actually hand to LiveKit
-    // and the OpenAI RTCPeerConnection — for mic mode it's the same
-    // object; for tab mode it's a 24 kHz mono MediaStream emitted by
-    // a WebAudio resampling graph (see below).
-    let mic: MediaStream;
-    let publishStream: MediaStream;
-    try {
-      if (inputSource === 'tab') {
-        // getDisplayMedia requires a video constraint on every browser
-        // that supports tab-audio capture; we ask for the cheapest
-        // surface (browser tab) and immediately stop the video track
-        // since we never render or upload it.
-        //
-        // `ideal` (not `exact`) constraints — Chrome's getDisplayMedia
-        // audio pipeline ignores most constraints and we don't want to
-        // trip OverconstrainedError if it can't honor them. The hint
-        // helps when Chrome can downmix stereo→mono at capture time,
-        // which matches what the OpenAI Realtime translations endpoint
-        // expects (mono PCM).
+    // 2) Acquire media per slot. Tab-mode slots run getDisplayMedia +
+    //    24 kHz mono WebAudio resample (see prior comment block). Mic
+    //    slots run getUserMedia. In `both` mode both prompts fire in
+    //    sequence within the original Start gesture — Chrome will pop
+    //    them one after the other.
+    type WebkitWindow = Window &
+      typeof globalThis & {
+        webkitAudioContext?: typeof AudioContext;
+      };
+    const w = window as WebkitWindow;
+    const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
+
+    const acquireMicSlot = async (): Promise<boolean> => {
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        srcStreamRef.current.mic = mic;
+        publishStreamRef.current.mic = mic;
+        return true;
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : '';
+        console.warn('[translate] mic capture failed', { name, error: e });
+        return false;
+      }
+    };
+
+    const acquireTabSlot = async (): Promise<boolean> => {
+      try {
         console.info('[translate] requesting getDisplayMedia');
         const display = await navigator.mediaDevices.getDisplayMedia({
           audio: {
@@ -1247,46 +1381,15 @@ export function TranslateConsole() {
           settings: audioTracks.map((tr) => tr.getSettings()),
         });
         if (audioTracks.length === 0) {
-          // The host picked a surface but didn't enable "Share tab
-          // audio" in the picker — or the platform doesn't support
-          // it (Safari, most mobile browsers). Without an audio
-          // track there's nothing to translate, so surface a
-          // dedicated error instead of silently going live.
           display.getTracks().forEach((tr) => tr.stop());
-          setError('tab_audio_unavailable');
-          setStatus('error');
-          startInFlightRef.current = false;
-          return;
+          throw new DOMException('tab_audio_unavailable', 'NoAudioError');
         }
-        mic = new MediaStream(audioTracks);
-
-        // Resample to 24 kHz mono via WebAudio. Why this exists:
-        //
-        // 1. Chrome's getDisplayMedia ignores `sampleRate`/`channelCount`
-        //    constraint hints (PR #393 set them; capture-time downmix
-        //    didn't actually happen on at least some Chrome builds).
-        // 2. The OpenAI Realtime translations model expects 24 kHz
-        //    mono PCM; sending the raw 48 kHz stereo capture from a
-        //    YouTube tab forces a server-side resample that sometimes
-        //    silently fails the negotiation (one of the two stall
-        //    hypotheses behind PR #393's follow-up).
-        // 3. WebAudio "lifting" the raw display track into a fresh
-        //    MediaStreamTrack is a known workaround for stale-clock
-        //    quirks on the display-capture pipeline that intermittently
-        //    confuse the WebRTC engine.
-        //
-        // If AudioContext construction at the requested sample rate
-        // fails (very old Chrome, exotic OS audio config), we fall
-        // back to the original capture stream — no resample, but the
-        // session still starts. The watchdog above catches any
-        // resulting hang.
+        const tabStream = new MediaStream(audioTracks);
+        srcStreamRef.current.tab = tabStream;
+        // Resample to 24 kHz mono — see prior comment block for the
+        // three reasons (Chrome ignores constraints, OpenAI expects
+        // 24 kHz mono, WebAudio clock normalisation).
         try {
-          type WebkitWindow = Window &
-            typeof globalThis & {
-              webkitAudioContext?: typeof AudioContext;
-            };
-          const w = window as WebkitWindow;
-          const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
           if (!AudioCtx) throw new Error('no AudioContext');
           const ctx = new AudioCtx({ sampleRate: 24000 });
           tabResampleCtxRef.current = ctx;
@@ -1295,78 +1398,254 @@ export function TranslateConsole() {
               console.warn('[translate] tab resample ctx.resume failed', err);
             });
           }
-          const src = ctx.createMediaStreamSource(mic);
+          const src = ctx.createMediaStreamSource(tabStream);
           const dst = ctx.createMediaStreamDestination();
           src.connect(dst);
-          publishStream = dst.stream;
+          publishStreamRef.current.tab = dst.stream;
           console.info('[translate] tab resample graph wired', {
             ctxSampleRate: ctx.sampleRate,
-            publishTracks: publishStream.getAudioTracks().length,
+            publishTracks: dst.stream.getAudioTracks().length,
           });
         } catch (err) {
           console.warn('[translate] tab resample failed, passing raw stream', err);
-          publishStream = mic;
+          publishStreamRef.current.tab = tabStream;
         }
-      } else {
-        mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-        publishStream = mic;
+
+        // Silence pulse — same rationale as before (tab audio has no
+        // natural pauses; force VAD to commit turns).
+        const track = tabStream.getAudioTracks()[0];
+        if (track) {
+          tabSilenceTimerRef.current = setInterval(() => {
+            if (track.readyState !== 'live') return;
+            track.enabled = false;
+            setTimeout(() => {
+              if (track.readyState === 'live') track.enabled = true;
+            }, TAB_SILENCE_DURATION_MS);
+          }, TAB_SILENCE_INTERVAL_MS);
+        }
+        return true;
+      } catch (e) {
+        const name = e instanceof DOMException ? e.name : '';
+        console.warn('[translate] tab capture failed', { name, error: e });
+        if (name === 'NoAudioError') {
+          setSlotError((prev) => ({ ...prev, tab: 'tab_audio_unavailable' }));
+        } else if (name === 'NotAllowedError') {
+          setSlotError((prev) => ({ ...prev, tab: 'tab_audio_denied' }));
+        } else {
+          setSlotError((prev) => ({ ...prev, tab: 'tab_audio_failed' }));
+        }
+        return false;
       }
-    } catch (e) {
-      // NotAllowedError → the user explicitly dismissed the picker /
-      // permission prompt. Any other DOMException (NotFoundError,
-      // NotReadableError, OverconstrainedError, AbortError, …) means
-      // capture is broken at the OS / browser level, which surfaces
-      // differently in the UI so the host knows it's not just a
-      // cancellation.
-      const name = e instanceof DOMException ? e.name : '';
-      console.warn('[translate] capture failed', { inputSource, name, error: e });
-      if (inputSource === 'tab') {
-        setError(name === 'NotAllowedError' ? 'tab_audio_denied' : 'tab_audio_failed');
+    };
+
+    // Order: tab first so the picker pops before any silent
+    // mic permission prompt the browser may queue. For `both` mode
+    // both prompts must succeed (one auto-grant + one tab picker).
+    let micAcquired = false;
+    let tabAcquired = false;
+    if (slotsToStart.includes('tab')) {
+      tabAcquired = await acquireTabSlot();
+    }
+    if (slotsToStart.includes('mic')) {
+      micAcquired = await acquireMicSlot();
+    }
+
+    // Determine which slots actually have audio. If ALL acquisitions
+    // failed we abort with the most useful error per requested mode;
+    // partial failure in `both` mode degrades gracefully to whichever
+    // side succeeded.
+    const liveSlots: SourceSlot[] = [];
+    if (slotsToStart.includes('mic') && micAcquired) liveSlots.push('mic');
+    if (slotsToStart.includes('tab') && tabAcquired) liveSlots.push('tab');
+    if (liveSlots.length === 0) {
+      if (captureModeAtStart === 'tab-only') {
+        // setSlotError already pinned the precise failure; promote the
+        // tab slot's error to the top-level error so the user sees it.
+        setError('tab_audio_failed');
+      } else if (captureModeAtStart === 'mic-only') {
+        setError('microphone_denied');
       } else {
         setError('microphone_denied');
       }
       setStatus('error');
+      cleanup('start_error_mic');
       startInFlightRef.current = false;
       return;
     }
-    micStreamRef.current = mic;
 
-    // Tab audio: start the periodic silence pulse — see
-    // tabSilenceTimerRef comment. Mic mode skips this.
-    if (inputSource === 'tab') {
-      const track = mic.getAudioTracks()[0];
-      if (track) {
-        tabSilenceTimerRef.current = setInterval(() => {
-          if (track.readyState !== 'live') return;
-          track.enabled = false;
-          setTimeout(() => {
-            // Guard: the track may have ended between the dip and the
-            // restore (cleanup, hot-reload, share-stop in the picker).
-            if (track.readyState === 'live') track.enabled = true;
-          }, TAB_SILENCE_DURATION_MS);
-        }, TAB_SILENCE_INTERVAL_MS);
+    // 3) Shared output AudioContext (a single context for both slots'
+    //    output mixing + the recording graph). Created up front so the
+    //    LiveKit publish + recorder wiring can happen before either
+    //    OpenAI session lands its first TTS track.
+    let ctx: AudioContext | null = null;
+    try {
+      if (!AudioCtx) throw new Error('no AudioContext');
+      ctx = new AudioCtx();
+      audioCtxRef.current = ctx;
+      if (ctx.state === 'suspended') {
+        void ctx.resume().catch((err) => {
+          console.warn('[translate] audioCtx.resume failed', err);
+        });
+      }
+    } catch (err) {
+      console.warn('[translate] audioCtx construction failed', err);
+      setError('webrtc_failed');
+      setStatus('error');
+      cleanup('start_error_webrtc');
+      startInFlightRef.current = false;
+      return;
+    }
+
+    // 4) Build the shared OUTPUT mixer destination (LiveKit publish)
+    //    and the recording destinations. Both slots' TTS sources will
+    //    plug in here as their ontrack events fire.
+    audioDestRef.current = ctx.createMediaStreamDestination();
+    inputMixDestRef.current = ctx.createMediaStreamDestination();
+
+    let mimeType: string | null = null;
+    if (recordEnabled && typeof MediaRecorder !== 'undefined') {
+      mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = null;
+    }
+    if (recordEnabled && mimeType) {
+      try {
+        recordInputDestRef.current = ctx.createMediaStreamDestination();
+        recordOutputDestRef.current = ctx.createMediaStreamDestination();
+
+        // Wire each live slot's source into the input mixer + the
+        // input recorder destination.
+        for (const slot of liveSlots) {
+          const slotSrc = srcStreamRef.current[slot];
+          if (!slotSrc) continue;
+          const mixNode = ctx.createMediaStreamSource(slotSrc);
+          inputMixSrcRef.current[slot] = mixNode;
+          mixNode.connect(inputMixDestRef.current);
+          const recNode = ctx.createMediaStreamSource(slotSrc);
+          recordInputSrcRef.current[slot] = recNode;
+          recNode.connect(recordInputDestRef.current);
+        }
+
+        const recIn = new MediaRecorder(recordInputDestRef.current.stream, { mimeType });
+        const recOut = new MediaRecorder(recordOutputDestRef.current.stream, { mimeType });
+        mediaRecorderInputRef.current = recIn;
+        mediaRecorderOutputRef.current = recOut;
+        recordedInputChunksRef.current = [];
+        recordedOutputChunksRef.current = [];
+
+        recIn.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) {
+            recordedInputChunksRef.current.push(ev.data);
+          }
+        };
+        recOut.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) {
+            recordedOutputChunksRef.current.push(ev.data);
+          }
+        };
+        const fail = () => {
+          setRecordingError('recorder_failed');
+          setRecorderActive(false);
+        };
+        recIn.onerror = fail;
+        recOut.onerror = fail;
+        recIn.onstart = () => setRecorderActive(true);
+        recOut.onstart = () => setRecorderActive(true);
+        const maybeIdle = () => {
+          const a = mediaRecorderInputRef.current;
+          const b = mediaRecorderOutputRef.current;
+          if ((!a || a.state === 'inactive') && (!b || b.state === 'inactive')) {
+            setRecorderActive(false);
+          }
+        };
+        recIn.onstop = maybeIdle;
+        recOut.onstop = maybeIdle;
+        recIn.start(RECORDING_CHUNK_MS);
+        recOut.start(RECORDING_CHUNK_MS);
+        recordingStartedAtRef.current = Date.now();
+
+        const sid = sessionIdRef.current;
+        if (sid) {
+          (async () => {
+            try {
+              const r1 = await fetch(
+                `/api/translate/sessions/${sid}/recording`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ kind: 'output' }),
+                },
+              );
+              if (!r1.ok) throw new Error('reserve_failed');
+              const j1 = (await r1.json()) as {
+                recording_id: string;
+                upload_url: string;
+              };
+              recordingIdRef.current = j1.recording_id;
+              recordingOutputUploadUrlRef.current = j1.upload_url;
+
+              const r2 = await fetch(
+                `/api/translate/sessions/${sid}/recording`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ kind: 'input' }),
+                },
+              );
+              if (!r2.ok) throw new Error('reserve_failed');
+              const j2 = (await r2.json()) as {
+                recording_id: string;
+                upload_url: string;
+              };
+              recordingIdRef.current = j2.recording_id;
+              recordingInputUploadUrlRef.current = j2.upload_url;
+            } catch {
+              setRecordingError('reserve_failed');
+            }
+          })();
+        }
+      } catch {
+        setRecordingError('recorder_failed');
       }
     }
 
-    // LiveKit FIRST — connect and publish the mic so viewers have something
-    // to subscribe to right away. The translated output track gets
-    // published from inside `pc.ontrack` below, the moment OpenAI starts
-    // sending us translated audio (which only happens once the host
-    // actually speaks). Publishing the output here too early — before
-    // the audio track exists — would silently no-op and viewers who
-    // toggle "Translation" later would hear nothing.
+    // 5) LiveKit connect + publish ONE 'input' track (mixed across
+    //    live slots). The translated 'output' publish lands later when
+    //    the first slot's ontrack fires — same as the legacy single
+    //    pipeline, just gated against the shared mixer.
     outputPublishedRef.current = false;
+    inputPublishedRef.current = false;
     console.info('[translate] connecting livekit');
     try {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       await room.connect(bundle.livekit.url, bundle.livekit.token);
       roomRef.current = room;
-      // Publish the (possibly resampled) publishStream — for tab mode
-      // this is the 24 kHz WebAudio output; for mic mode it's the raw
-      // capture (same object as `mic`).
-      const inputTrack = new LocalAudioTrack(publishStream.getAudioTracks()[0]);
-      await room.localParticipant.publishTrack(inputTrack, { name: 'input' });
-      console.info('[translate] livekit input published');
+      const inputDest = inputMixDestRef.current;
+      // In single-mode the input mixer has the one slot wired below by
+      // the per-slot setup loop. We may have already wired the recorder
+      // graph; the LiveKit publish mirror happens here.
+      if (inputDest) {
+        for (const slot of liveSlots) {
+          // Avoid duplicate mixer wiring: if the recorder loop already
+          // attached an inputMixSrc for this slot we skip; otherwise
+          // (e.g. recording off) attach now.
+          if (inputMixSrcRef.current[slot]) continue;
+          const slotSrc = srcStreamRef.current[slot];
+          if (!slotSrc) continue;
+          const node = ctx.createMediaStreamSource(slotSrc);
+          inputMixSrcRef.current[slot] = node;
+          node.connect(inputDest);
+        }
+        const mixedInputTrack = inputDest.stream.getAudioTracks()[0];
+        if (mixedInputTrack) {
+          const lkTrack = new LocalAudioTrack(mixedInputTrack);
+          await room.localParticipant.publishTrack(lkTrack, { name: 'input' });
+          inputPublishedRef.current = true;
+          console.info('[translate] livekit input published (mixed)', {
+            liveSlots,
+          });
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'livekit_failed');
       setStatus('error');
@@ -1375,299 +1654,221 @@ export function TranslateConsole() {
       return;
     }
 
-    // OpenAI WebRTC.
-    // Two public STUN servers (one is enough for most networks; the
-    // second is a cheap redundancy in case Google rotates a host or
-    // it's reachable from one resolver but not the other). For corp
-    // networks that block UDP STUN entirely we'd need a TURN server,
-    // which is a separate piece of infra and not in scope here — the
-    // watchdog above is the user-visible fallback for that case.
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ],
-    });
-    pc.onsignalingstatechange = () => {
-      console.info('[translate] pc.signalingState', pc.signalingState);
-    };
-    pc.onconnectionstatechange = () => {
-      console.info('[translate] pc.connectionState', pc.connectionState);
-    };
-    pc.oniceconnectionstatechange = () => {
-      console.info('[translate] pc.iceConnectionState', pc.iceConnectionState);
-    };
-    pc.onicegatheringstatechange = () => {
-      console.info('[translate] pc.iceGatheringState', pc.iceGatheringState);
-    };
-    pc.onicecandidate = (e) => {
-      // Candidate spam can be heavy — log only the type+protocol so
-      // the diagnostic window stays readable. `null` candidate signals
-      // gathering complete.
-      console.info('[translate] ice-candidate', {
-        type: e.candidate?.type ?? 'end-of-candidates',
-        protocol: e.candidate?.protocol ?? null,
-      });
-    };
-    pcRef.current = pc;
-    publishStream.getAudioTracks().forEach((tr) => pc.addTrack(tr, publishStream));
-    pc.ontrack = (e) => {
-      const stream = e.streams[0];
-      ttsStreamRef.current = stream;
-      if (monitorAudioRef.current) {
-        monitorAudioRef.current.srcObject = stream;
-        monitorAudioRef.current.muted = !outputAudible;
-        monitorAudioRef.current.play().catch(() => {});
-      }
-      // Publish the translated TTS track into LiveKit. ontrack can fire
-      // multiple times across renegotiations; guard with
-      // outputPublishedRef so we only publish once per session.
-      if (outputPublishedRef.current) return;
-      const room = roomRef.current;
-      if (!stream || !room) return;
+    // 6) Per-slot OpenAI Realtime pipeline. Each slot gets its own
+    //    RTCPeerConnection + data channel + ephemeral client_secret.
+    //    The FIRST slot reuses `bundle.openai.client_secret`; the
+    //    SECOND (in `both` mode) hits POST /sessions/[id]/ephemeral to
+    //    issue a fresh one.
+    const startSlot = async (
+      slot: SourceSlot,
+      clientSecret: string,
+    ): Promise<boolean> => {
+      const publishStream = publishStreamRef.current[slot];
+      if (!publishStream) return false;
       try {
-        // Browsers refuse to publish a track from one RTCPeerConnection
-        // (OpenAI) into another (LiveKit) directly. Web Audio routing
-        // re-emits the audio as a fresh local MediaStreamTrack we can
-        // attach to LocalAudioTrack.
-        type WebkitWindow = Window &
-          typeof globalThis & {
-            webkitAudioContext?: typeof AudioContext;
-          };
-        const w = window as WebkitWindow;
-        const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        audioCtxRef.current = ctx;
-        // pc.ontrack fires from a WebRTC event, not the original click
-        // gesture, so the AudioContext can start suspended on stricter
-        // engines. A suspended ctx means the destination MediaStream
-        // carries silence — viewers would join, see the "output" track,
-        // and hear nothing. resume() is best-effort: if it rejects we
-        // still publish, just log it.
-        if (ctx.state === 'suspended') {
-          void ctx.resume().catch((err) => {
-            console.warn('[translate] audioCtx.resume failed', err);
-          });
-        }
-        const src = ctx.createMediaStreamSource(stream);
-        audioSourceRef.current = src;
-        const dst = ctx.createMediaStreamDestination();
-        audioDestRef.current = dst;
-        src.connect(dst);
-
-        // ── Recording graph (PR #183: split source vs. translated) ──
-        // Two dedicated destination nodes on the same AudioContext:
-        //   recordInputDest  ← host source (mic or tab)
-        //   recordOutputDest ← translated TTS
-        // Each feeds its own MediaRecorder so the unlocked UI can offer
-        // 원문 오디오 + 통역 오디오 as separate downloads. We do NOT mix
-        // them and we do NOT share `dst` (the LiveKit publish dest) —
-        // MediaRecorder reading the same dest as a live publish has
-        // produced silent/glitchy webm output in testing.
-        const mic = micStreamRef.current;
-        if (recordEnabled && mic) {
-          try {
-            // Pick a MIME the browser actually supports. Chrome desktop
-            // (our only supported recording surface) ships
-            // `audio/webm;codecs=opus`. Fall back to plain webm if the
-            // codec-tagged form is rejected; if both fail, recording
-            // silently skips and the UI stays in the "no recording
-            // available" branch.
-            let mimeType = 'audio/webm;codecs=opus';
-            if (typeof MediaRecorder !== 'undefined') {
-              if (!MediaRecorder.isTypeSupported(mimeType)) {
-                mimeType = 'audio/webm';
-              }
-              if (MediaRecorder.isTypeSupported(mimeType)) {
-                // Build the input (source) track graph + recorder.
-                const inputDest = ctx.createMediaStreamDestination();
-                recordInputDestRef.current = inputDest;
-                const hostRecSrc = ctx.createMediaStreamSource(mic);
-                recordInputSrcRef.current = hostRecSrc;
-                hostRecSrc.connect(inputDest);
-
-                // Build the output (translated TTS) track graph + recorder.
-                const outputDest = ctx.createMediaStreamDestination();
-                recordOutputDestRef.current = outputDest;
-                const ttsRecSrc = ctx.createMediaStreamSource(stream);
-                recordOutputSrcRef.current = ttsRecSrc;
-                ttsRecSrc.connect(outputDest);
-
-                const recIn = new MediaRecorder(inputDest.stream, { mimeType });
-                const recOut = new MediaRecorder(outputDest.stream, { mimeType });
-                mediaRecorderInputRef.current = recIn;
-                mediaRecorderOutputRef.current = recOut;
-                recordedInputChunksRef.current = [];
-                recordedOutputChunksRef.current = [];
-
-                recIn.ondataavailable = (ev) => {
-                  if (ev.data && ev.data.size > 0) {
-                    recordedInputChunksRef.current.push(ev.data);
-                  }
-                };
-                recOut.ondataavailable = (ev) => {
-                  if (ev.data && ev.data.size > 0) {
-                    recordedOutputChunksRef.current.push(ev.data);
-                  }
-                };
-                const fail = () => {
-                  // Best-effort: ditch the recording. UI stays in the
-                  // post-stop "no download available" branch.
-                  setRecordingError('recorder_failed');
-                  setRecorderActive(false);
-                };
-                recIn.onerror = fail;
-                recOut.onerror = fail;
-                // The indicator pill flips on once EITHER recorder is
-                // active, and only flips off once BOTH have stopped.
-                recIn.onstart = () => setRecorderActive(true);
-                recOut.onstart = () => setRecorderActive(true);
-                const maybeIdle = () => {
-                  const a = mediaRecorderInputRef.current;
-                  const b = mediaRecorderOutputRef.current;
-                  if ((!a || a.state === 'inactive') && (!b || b.state === 'inactive')) {
-                    setRecorderActive(false);
-                  }
-                };
-                recIn.onstop = maybeIdle;
-                recOut.onstop = maybeIdle;
-                // Start both in the same tick so the two webm timelines
-                // align within an audio frame.
-                recIn.start(RECORDING_CHUNK_MS);
-                recOut.start(RECORDING_CHUNK_MS);
-                recordingStartedAtRef.current = Date.now();
-
-                // Reserve metadata + signed upload URLs for BOTH tracks
-                // now so each stop() turns into a single PUT. We POST
-                // output first (default kind) to create the row, then
-                // POST input — the server attaches it to the same row.
-                const sid = sessionIdRef.current;
-                if (sid) {
-                  (async () => {
-                    try {
-                      const r1 = await fetch(
-                        `/api/translate/sessions/${sid}/recording`,
-                        {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kind: 'output' }),
-                        },
-                      );
-                      if (!r1.ok) throw new Error('reserve_failed');
-                      const j1 = (await r1.json()) as {
-                        recording_id: string;
-                        upload_url: string;
-                      };
-                      recordingIdRef.current = j1.recording_id;
-                      recordingOutputUploadUrlRef.current = j1.upload_url;
-
-                      const r2 = await fetch(
-                        `/api/translate/sessions/${sid}/recording`,
-                        {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kind: 'input' }),
-                        },
-                      );
-                      if (!r2.ok) throw new Error('reserve_failed');
-                      const j2 = (await r2.json()) as {
-                        recording_id: string;
-                        upload_url: string;
-                      };
-                      // r2 should attach to the same row r1 created.
-                      recordingIdRef.current = j2.recording_id;
-                      recordingInputUploadUrlRef.current = j2.upload_url;
-                    } catch {
-                      setRecordingError('reserve_failed');
-                    }
-                  })();
-                }
-              }
-            }
-          } catch {
-            setRecordingError('recorder_failed');
+        const pc = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ],
+        });
+        pc.onsignalingstatechange = () => {
+          console.info(`[translate:${slot}] pc.signalingState`, pc.signalingState);
+        };
+        pc.onconnectionstatechange = () => {
+          console.info(`[translate:${slot}] pc.connectionState`, pc.connectionState);
+          if (pc.connectionState === 'connected') {
+            setSlotActive((prev) => ({ ...prev, [slot]: true }));
+          } else if (
+            pc.connectionState === 'failed' ||
+            pc.connectionState === 'disconnected' ||
+            pc.connectionState === 'closed'
+          ) {
+            setSlotActive((prev) => ({ ...prev, [slot]: false }));
           }
-        }
-
-        const localTtsTrack = dst.stream.getAudioTracks()[0];
-        if (!localTtsTrack) return;
-        outputPublishedRef.current = true;
-        const outputTrack = new LocalAudioTrack(localTtsTrack);
-        console.info(
-          `[translate] publishing output — ctxState=${ctx.state}, ` +
-          `localTrackEnabled=${localTtsTrack.enabled}, ` +
-          `localTrackReadyState=${localTtsTrack.readyState}, ` +
-          `localTrackMuted=${localTtsTrack.muted}`,
-        );
-        room.localParticipant
-          .publishTrack(outputTrack, { name: 'output' })
-          .then(() => {
-            console.info(
-              `[translate] output PUBLISHED — ctxState=${ctx.state}, ` +
-              `localTrackMuted=${localTtsTrack.muted}`,
-            );
-          })
-          .catch((err) => {
-            console.warn('[translate] output publish FAILED', err);
-            // Allow a retry on the next ontrack if this one races with
-            // disconnect.
-            outputPublishedRef.current = false;
+        };
+        pc.oniceconnectionstatechange = () => {
+          console.info(`[translate:${slot}] pc.iceConnectionState`, pc.iceConnectionState);
+        };
+        pc.onicegatheringstatechange = () => {
+          console.info(`[translate:${slot}] pc.iceGatheringState`, pc.iceGatheringState);
+        };
+        pc.onicecandidate = (e) => {
+          console.info(`[translate:${slot}] ice-candidate`, {
+            type: e.candidate?.type ?? 'end-of-candidates',
+            protocol: e.candidate?.protocol ?? null,
           });
-      } catch {
-        outputPublishedRef.current = false;
-      }
-    };
-    const dc = pc.createDataChannel('oai-events');
-    dcRef.current = dc;
-    dc.onmessage = (ev) => {
-      // OpenAI Realtime sends text frames (JSON events) over the data
-      // channel, but `binaryType` can default to "arraybuffer" on some
-      // browsers — `String(ArrayBuffer)` would collapse the payload to
-      // "[object ArrayBuffer]" and silently lose every transcript event.
-      // Route through TextDecoder (utf-8, non-fatal) so the multi-byte
-      // boundary stays intact and any genuinely invalid bytes surface as
-      // U+FFFD for the encoding-suspect warner above.
-      const text = decodeDataChannelMessage(ev.data);
-      if (text === null) {
-        console.warn('[translate] dc payload dropped — unsupported type');
-        return;
-      }
-      handleOaiEvent(text);
-    };
-    dc.onopen = () => console.info('[translate] dc open');
-    dc.onclose = () => console.info('[translate] dc close');
-    dc.onerror = (ev) => console.warn('[translate] dc error', ev);
+        };
+        pcRef.current[slot] = pc;
+        publishStream.getAudioTracks().forEach((tr) => pc.addTrack(tr, publishStream));
+        pc.ontrack = (e) => {
+          const stream = e.streams[0];
+          if (!stream) return;
+          ttsStreamRef.current[slot] = stream;
+          // First slot to deliver a TTS stream attaches it to the
+          // local monitor; later slots also mix into the monitor via
+          // the shared audioDest (which both feed). Keeping the
+          // monitor's <audio> srcObject pinned to the LATEST TTS is
+          // fine — the audible mix users hear comes from the
+          // monitor's audio sink, which is driven by the shared
+          // output mixer below.
+          if (monitorAudioRef.current && !monitorAudioRef.current.srcObject) {
+            // Use the shared mixed output (audioDestRef.stream) as the
+            // monitor source so the host hears BOTH slots' translations
+            // through one element.
+            const mixed = audioDestRef.current?.stream;
+            if (mixed) {
+              monitorAudioRef.current.srcObject = mixed;
+              monitorAudioRef.current.muted = !outputAudible;
+              monitorAudioRef.current.play().catch(() => {});
+            }
+          }
+          // Wire the slot's TTS into the shared mixers (output publish
+          // dest + recording dest). Guard against double-wiring on
+          // renegotiation.
+          if (!ctx) return;
+          const mix = audioDestRef.current;
+          if (mix && !audioSourceRef.current[slot]) {
+            try {
+              const node = ctx.createMediaStreamSource(stream);
+              audioSourceRef.current[slot] = node;
+              node.connect(mix);
+            } catch (err) {
+              console.warn(`[translate:${slot}] output mix wire failed`, err);
+            }
+          }
+          const recOutDest = recordOutputDestRef.current;
+          if (recOutDest && !recordOutputSrcRef.current[slot]) {
+            try {
+              const node = ctx.createMediaStreamSource(stream);
+              recordOutputSrcRef.current[slot] = node;
+              node.connect(recOutDest);
+            } catch (err) {
+              console.warn(`[translate:${slot}] output rec wire failed`, err);
+            }
+          }
+          // First successful TTS publishes the LiveKit 'output' track.
+          if (outputPublishedRef.current) return;
+          const room = roomRef.current;
+          const mixedTrack = mix?.stream.getAudioTracks()[0];
+          if (!room || !mixedTrack) return;
+          try {
+            outputPublishedRef.current = true;
+            const outputTrack = new LocalAudioTrack(mixedTrack);
+            console.info(`[translate:${slot}] publishing mixed output`, {
+              ctxState: ctx.state,
+              trackEnabled: mixedTrack.enabled,
+              trackReadyState: mixedTrack.readyState,
+              trackMuted: mixedTrack.muted,
+            });
+            room.localParticipant
+              .publishTrack(outputTrack, { name: 'output' })
+              .then(() => {
+                console.info(`[translate:${slot}] mixed output PUBLISHED`);
+              })
+              .catch((err) => {
+                console.warn(`[translate:${slot}] output publish FAILED`, err);
+                outputPublishedRef.current = false;
+              });
+          } catch {
+            outputPublishedRef.current = false;
+          }
+        };
+        const dc = pc.createDataChannel('oai-events');
+        dcRef.current[slot] = dc;
+        dc.onmessage = (ev) => {
+          const text = decodeDataChannelMessage(ev.data);
+          if (text === null) {
+            console.warn(`[translate:${slot}] dc payload dropped — unsupported type`);
+            return;
+          }
+          handleOaiEvent(slot, text);
+        };
+        dc.onopen = () => console.info(`[translate:${slot}] dc open`);
+        dc.onclose = () => console.info(`[translate:${slot}] dc close`);
+        dc.onerror = (ev) => console.warn(`[translate:${slot}] dc error`, ev);
 
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      console.info('[translate] sdp offer ready, posting to openai');
-      // The translation-model SDP exchange has its own endpoint family.
-      const sdpRes = await fetch(
-        'https://api.openai.com/v1/realtime/translations/calls',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${bundle.openai.client_secret.value}`,
-            'Content-Type': 'application/sdp',
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        console.info(`[translate:${slot}] sdp offer ready, posting to openai`);
+        const sdpRes = await fetch(
+          'https://api.openai.com/v1/realtime/translations/calls',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${clientSecret}`,
+              'Content-Type': 'application/sdp',
+            },
+            body: offer.sdp ?? '',
           },
-          body: offer.sdp ?? '',
-        },
-      );
-      console.info('[translate] sdp response', { status: sdpRes.status });
-      if (!sdpRes.ok) {
-        // Log the failure body for the diagnostic window. Truncated to
-        // 500 chars — OpenAI sometimes returns multi-KB error pages.
-        const body = await sdpRes.text().catch(() => '');
-        console.warn('[translate] sdp error body', body.slice(0, 500));
-        throw new Error(`openai_sdp_${sdpRes.status}`);
+        );
+        console.info(`[translate:${slot}] sdp response`, { status: sdpRes.status });
+        if (!sdpRes.ok) {
+          const body = await sdpRes.text().catch(() => '');
+          console.warn(`[translate:${slot}] sdp error body`, body.slice(0, 500));
+          throw new Error(`openai_sdp_${sdpRes.status}`);
+        }
+        const answerSdp = await sdpRes.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+        console.info(`[translate:${slot}] sdp answer applied`);
+        return true;
+      } catch (e) {
+        console.warn(`[translate:${slot}] slot start failed`, e);
+        setSlotError((prev) => ({
+          ...prev,
+          [slot]: e instanceof Error ? e.message : 'slot_failed',
+        }));
+        // Best-effort tear down for just this slot.
+        try {
+          dcRef.current[slot]?.close();
+        } catch {}
+        dcRef.current[slot] = null;
+        try {
+          pcRef.current[slot]?.close();
+        } catch {}
+        pcRef.current[slot] = null;
+        return false;
       }
-      const answerSdp = await sdpRes.text();
-      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-      console.info('[translate] sdp answer applied');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'webrtc_failed');
+    };
+
+    // Hand out the ephemerals. liveSlots[0] reuses the bundle's
+    // ephemeral; liveSlots[1] (if present) issues a fresh one via the
+    // re-issue endpoint.
+    const ephemeralForSlot: Record<SourceSlot, string | null> = emptySlotRecord(null);
+    ephemeralForSlot[liveSlots[0]] = bundle.openai.client_secret.value;
+    if (liveSlots.length > 1) {
+      try {
+        const second = await fetch(
+          `/api/translate/sessions/${bundle.session.id}/ephemeral`,
+          { method: 'POST' },
+        );
+        if (!second.ok) throw new Error('ephemeral_failed');
+        const sj = (await second.json()) as {
+          openai: { client_secret: { value: string } };
+        };
+        ephemeralForSlot[liveSlots[1]] = sj.openai.client_secret.value;
+      } catch (e) {
+        console.warn('[translate] second ephemeral failed — degrading to single slot', e);
+        setSlotError((prev) => ({
+          ...prev,
+          [liveSlots[1]]: 'ephemeral_failed',
+        }));
+      }
+    }
+
+    // Fire per-slot pipelines in parallel. Each Promise resolves a
+    // boolean (true = up, false = failed). At least one must succeed
+    // for the session to flip to 'live'.
+    const slotResults = await Promise.all(
+      liveSlots.map(async (slot) => {
+        const cs = ephemeralForSlot[slot];
+        if (!cs) return false;
+        return startSlot(slot, cs);
+      }),
+    );
+    const anySlotUp = slotResults.some((ok) => ok);
+    if (!anySlotUp) {
+      setError('webrtc_failed');
       setStatus('error');
       cleanup('start_error_webrtc');
       startInFlightRef.current = false;
@@ -1697,9 +1898,9 @@ export function TranslateConsole() {
     setStatus('live');
     startInFlightRef.current = false;
   }, [
+    captureMode,
     cleanup,
     handleOaiEvent,
-    inputSource,
     outputAudible,
     recordEnabled,
     sourceLang,
@@ -1853,30 +2054,36 @@ export function TranslateConsole() {
     setStatus('ending');
 
     // Flush any in-flight rolling chunks so the recorded transcript
-    // doesn't lose the tail of the conversation.
-    for (const [kind, ref, lang] of [
-      ['input', partialInputRef, sourceLang] as const,
-      ['output', partialOutputRef, targetLang] as const,
-    ]) {
-      const current = ref.current.get('current');
-      if (current && current.text.trim()) {
-        const finalLine: CaptionLine = {
-          id: current.id,
-          text: current.text.trim(),
-          final: true,
-          ts: Date.now(),
-          speaker: speakerForSession,
-        };
-        pushLine(kind, finalLine);
-        broadcastCaption(kind, finalLine, lang);
-        void persistMessage(kind, current.text.trim(), lang, speakerForSession);
+    // doesn't lose the tail of the conversation. Flush per slot —
+    // each side carries its own partial.
+    for (const slot of ['mic', 'tab'] as const) {
+      const speaker = SLOT_SPEAKER[slot];
+      for (const [kind, bag, lang] of [
+        ['input', partialInputRef, sourceLang] as const,
+        ['output', partialOutputRef, targetLang] as const,
+      ]) {
+        const current = bag.current[slot];
+        if (current && current.text.trim()) {
+          const finalLine: CaptionLine = {
+            id: current.id,
+            text: current.text.trim(),
+            final: true,
+            ts: Date.now(),
+            speaker,
+          };
+          pushLine(kind, finalLine);
+          broadcastCaption(kind, finalLine, lang);
+          void persistMessage(kind, current.text.trim(), lang, speaker);
+        }
       }
     }
 
-    // Ask OpenAI to close the translation session gracefully.
-    try {
-      dcRef.current?.send(JSON.stringify({ type: 'session.close' }));
-    } catch {}
+    // Ask each OpenAI session to close the translation gracefully.
+    for (const slot of ['mic', 'tab'] as const) {
+      try {
+        dcRef.current[slot]?.send(JSON.stringify({ type: 'session.close' }));
+      } catch {}
+    }
 
     const id = sessionIdRef.current;
 
@@ -1940,7 +2147,6 @@ export function TranslateConsole() {
     persistMessage,
     pushLine,
     sourceLang,
-    speakerForSession,
     status,
     targetLang,
     uploadAndFinalizeRecording,
@@ -2236,7 +2442,18 @@ export function TranslateConsole() {
   // but only render the last 30 seconds on the prompter so the screen
   // stays light and the active line stays in the visual center.
   const promptedLines = useMemo(
-    () => outputLines.filter((l) => now - l.ts <= PROMPTER_WINDOW_MS),
+    () =>
+      outputLines
+        .filter((l) => now - l.ts <= PROMPTER_WINDOW_MS)
+        // Both source slots push to the same outputLines array, but
+        // async commit order can scramble two near-simultaneous turns
+        // (host(ts=1500) lands before guest(ts=1000) just because
+        // host's pipeline raced first). Sort by ts so the prompter
+        // reads in actual wall-clock speaking order in `both` mode.
+        // A tie-breaker on id keeps the order deterministic within
+        // the same millisecond.
+        .slice()
+        .sort((a, b) => (a.ts === b.ts ? a.id.localeCompare(b.id) : a.ts - b.ts)),
     [outputLines, now],
   );
 
@@ -2275,11 +2492,11 @@ export function TranslateConsole() {
         </label>
         <label className="flex flex-col gap-1 text-sm text-mute">
           <span className="flex items-center gap-1">
-            {t('inputSource.label')}
-            {inputSource === 'tab' ? (
+            {t('captureMode.label')}
+            {captureMode !== 'mic-only' ? (
               <span
-                aria-label={t('inputSource.tabHint')}
-                title={t('inputSource.tabHint')}
+                aria-label={t('captureMode.tabHint')}
+                title={t('captureMode.tabHint')}
                 className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-xs leading-none text-mute-soft"
               >
                 ?
@@ -2287,14 +2504,20 @@ export function TranslateConsole() {
             ) : null}
           </span>
           <select
-            value={inputSource}
-            onChange={(e) => setInputSource(e.target.value as 'mic' | 'tab')}
+            value={captureMode}
+            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
             disabled={live || busy}
             className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
-            <option value="mic">{t('inputSource.mic')}</option>
-            <option value="tab">{t('inputSource.tab')}</option>
+            <option value="both">{t('captureMode.both')}</option>
+            <option value="mic-only">{t('captureMode.micOnly')}</option>
+            <option value="tab-only">{t('captureMode.tabOnly')}</option>
           </select>
+          {captureMode === 'both' ? (
+            <span className="text-xs text-mute-soft">
+              {t('captureMode.bothCostHint')}
+            </span>
+          ) : null}
         </label>
         <label className="flex items-center gap-2 text-md text-mute">
           <Checkbox
@@ -2329,6 +2552,44 @@ export function TranslateConsole() {
           >
             {t(`status.${status}`)}
           </span>
+          {live && (captureMode === 'both' || captureMode === 'mic-only') ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
+                slotActive.mic
+                  ? 'border-ink text-ink'
+                  : 'border-line text-mute-soft'
+              }`}
+              aria-label={t('slotIndicator.hostAria')}
+              title={t('slotIndicator.hostAria')}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  slotActive.mic ? 'bg-ink' : 'bg-mute-soft'
+                }`}
+                aria-hidden="true"
+              />
+              {t('speaker.host')}
+            </span>
+          ) : null}
+          {live && (captureMode === 'both' || captureMode === 'tab-only') ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
+                slotActive.tab
+                  ? 'border-amore text-amore'
+                  : 'border-line text-mute-soft'
+              }`}
+              aria-label={t('slotIndicator.guestAria')}
+              title={t('slotIndicator.guestAria')}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  slotActive.tab ? 'bg-amore' : 'bg-mute-soft'
+                }`}
+                aria-hidden="true"
+              />
+              {t('speaker.guest')}
+            </span>
+          ) : null}
           {live && recordEnabled && recorderActive ? (
             <span
               className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
@@ -2399,6 +2660,27 @@ export function TranslateConsole() {
       {error ? (
         <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
           {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
+        </div>
+      ) : null}
+
+      {live && (slotError.mic || slotError.tab) ? (
+        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-sm text-mute">
+          {slotError.mic ? (
+            <div>
+              {t('slotIndicator.degradedHost')} {' '}
+              {t.has(`errors.${slotError.mic}`)
+                ? t(`errors.${slotError.mic}`)
+                : slotError.mic}
+            </div>
+          ) : null}
+          {slotError.tab ? (
+            <div>
+              {t('slotIndicator.degradedGuest')} {' '}
+              {t.has(`errors.${slotError.tab}`)
+                ? t(`errors.${slotError.tab}`)
+                : slotError.tab}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

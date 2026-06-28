@@ -697,6 +697,20 @@
       "tab": "Online meeting (tab audio)",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
+    "captureMode": {
+      "label": "Capture",
+      "both": "Mic + tab (online meeting)",
+      "micOnly": "Mic only (in-person)",
+      "tabOnly": "Tab only (playback)",
+      "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
+      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)"
+    },
+    "slotIndicator": {
+      "hostAria": "Host (mic) capture status",
+      "guestAria": "Guest (tab) capture status",
+      "degradedHost": "Host capture paused —",
+      "degradedGuest": "Guest capture paused —"
+    },
     "recordEnabled": "Save audio + transcript (+25 credits to download)",
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
