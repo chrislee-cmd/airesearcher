@@ -708,6 +708,10 @@
     "prompter": {
       "empty": "통역을 시작하면 번역 결과가 여기에 스트림됩니다."
     },
+    "speaker": {
+      "host": "진행자",
+      "guest": "응답자"
+    },
     "recording": {
       "indicator": "녹음 중",
       "indicatorAria": "세션 녹음이 진행 중입니다"
