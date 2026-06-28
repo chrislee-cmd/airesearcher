@@ -68,8 +68,16 @@ export async function POST(
   if (session.host_user_id !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
+  // Late finalize after the host pressed stop. Realtime sometimes emits
+  // a residual `completed` event after we sent `session.close`, and the
+  // fidelity-loss report POSTs after `/end` flipped status to 'ended'.
+  // Both are best-effort signals, not authoritative transcript content
+  // — drop them server-side with 200 + `silently_dropped` so the client
+  // doesn't surface a generic error toast. We keep the body shape
+  // distinct from the recorded-200 path so callers can tell them apart
+  // if they ever want to count drops.
   if (session.status === 'ended') {
-    return NextResponse.json({ error: 'session_ended' }, { status: 410 });
+    return NextResponse.json({ ok: true, silently_dropped: true });
   }
 
   // Loss-report branch — host console posts this at session end with the

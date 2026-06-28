@@ -77,9 +77,13 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  // GET is widget-hydration only — when the user has no active org
+  // (translate flow can be reached before org selection completes) we
+  // return an empty list rather than 403. The widget renders as a fresh
+  // session in that case, no toast.
   const org = await getActiveOrg();
   if (!org?.org_id) {
-    return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+    return NextResponse.json({ rows: [] });
   }
 
   const url = new URL(req.url);
@@ -96,8 +100,13 @@ export async function GET(req: Request) {
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) {
-    console.error('[probing/questions] list failed', error);
-    return NextResponse.json({ error: 'fetch_failed' }, { status: 500 });
+    // Treat as graceful empty so the probing widget renders normally on
+    // pages that mount it as a side-effect (e.g. translate). The most
+    // common cause in prod is the `probing_questions` migration not yet
+    // applied, which would otherwise turn every page mount into a noisy
+    // 500 in the console.
+    console.error('[probing/questions] list failed (graceful empty)', error);
+    return NextResponse.json({ rows: [] });
   }
   return NextResponse.json({ rows: data ?? [] });
 }

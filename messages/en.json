@@ -738,7 +738,13 @@
         "object_missing": "The source file is gone. Your credits have been refunded.",
         "input_audio_unavailable": "This session was recorded before split capture was available, so there is no separate source audio file. The translated audio and transcripts are still ready.",
         "locked": "Not unlocked yet.",
-        "revision_unavailable": "Run the revision first — click \"Revise translation\" in the panel below; results take 1–5 minutes."
+        "revision_unavailable": "Run the revision first — click \"Revise translation\" in the panel below; results take 1–5 minutes.",
+        "not_found": "Recording not found. Refresh the page and try again.",
+        "session_not_found": "Couldn't reload this session. Refresh and try again.",
+        "forbidden": "Only the session host can download this recording.",
+        "unauthorized": "Your login expired. Sign in again and retry.",
+        "transcode_failed": "Audio conversion failed. Please try again in a moment.",
+        "invalid_format": "Unknown download format requested."
       }
     },
     "revise": {
