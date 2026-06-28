@@ -430,7 +430,12 @@ export function QuotesCardBody() {
       >
         <ul className="space-y-3">
           {doneJobs.map((j) => (
-            <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+            <JobRow
+              key={j.id}
+              job={j}
+              onDelete={() => deleteJob(j.id)}
+              previewMode="inline"
+            />
           ))}
         </ul>
       </Modal>
@@ -572,9 +577,13 @@ type TranscriptSource = 'clean' | 'raw';
 function JobRow({
   job,
   onDelete,
+  previewMode = 'modal',
 }: {
   job: TranscriptJob;
   onDelete: () => void;
+  // 'modal' = 카드 안 (default) — 미리보기 클릭 시 Modal 팝업.
+  // 'inline' = "더보기" 모달 안 — 기존 expand 동작 유지 (nested modal 회피).
+  previewMode?: 'modal' | 'inline';
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   // Default to the cleaned version — preview/download routes also default to
@@ -677,7 +686,7 @@ function JobRow({
                 onClick={() => setPreviewOpen((v) => !v)}
                 className="uppercase tracking-[0.18em]"
               >
-                {previewOpen ? '접기' : '미리보기'}
+                {previewMode === 'inline' && previewOpen ? '접기' : '미리보기'}
               </Button>
             </div>
           )}
@@ -692,7 +701,7 @@ function JobRow({
         </>
       }
     >
-      {previewOpen && job.status === 'done' && (
+      {previewMode === 'inline' && previewOpen && job.status === 'done' && (
         <JobPreview
           id={job.id}
           source={source}
@@ -700,6 +709,22 @@ function JobRow({
           onMeta={setPreviewMeta}
           initialMeta={previewMeta}
         />
+      )}
+      {previewMode === 'modal' && job.status === 'done' && (
+        <Modal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          title={job.filename}
+          size="lg"
+        >
+          <JobPreview
+            id={job.id}
+            source={source}
+            setSource={setSource}
+            onMeta={setPreviewMeta}
+            initialMeta={previewMeta}
+          />
+        </Modal>
       )}
     </WidgetOutputRow>
   );
