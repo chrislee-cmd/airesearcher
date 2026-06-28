@@ -36,7 +36,7 @@ const GRID_ROWS = 3;
 // (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
 // 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
 const CELL_W = 816;
-const CELL_H = 800;
+const CELL_H = 950;
 const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2544
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.4;
