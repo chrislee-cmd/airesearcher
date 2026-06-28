@@ -10,6 +10,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { Button } from '@/components/ui/button';
+import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 
 export type ProbingReflectionData = {
   respondent: string;
@@ -38,9 +39,7 @@ function Section({ title, body }: { title: string; body: string }) {
   const trimmed = body.trim();
   return (
     <section className="flex flex-col gap-1.5">
-      <h4 className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-        {title}
-      </h4>
+      <SectionLabel>{title}</SectionLabel>
       <div className="whitespace-pre-wrap text-md leading-[1.6] text-ink-2">
         {trimmed.length > 0 ? trimmed : '단서 부족'}
       </div>
@@ -79,9 +78,7 @@ export function ReflectionPane({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-            응답자 성찰
-          </span>
+          <SectionLabel>응답자 성찰</SectionLabel>
           <span className="text-xs text-mute-soft">· {headerLabel}</span>
         </div>
         <Button

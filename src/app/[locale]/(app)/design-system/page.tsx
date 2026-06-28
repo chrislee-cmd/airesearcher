@@ -13,6 +13,9 @@ import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import { Field } from '@/components/canvas/shell/field';
+import { Banner } from '@/components/canvas/shell/banner';
+import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { ModalDemo, FileDropZoneDemo, DropdownMenuDemo, SliderDemo, ChipInputDemo } from './demos';
 
 export default async function DesignSystemPage({
@@ -52,7 +55,61 @@ export default async function DesignSystemPage({
       <FileDropZoneSection />
       <SliderSection />
       <MenuSection />
+      <CanvasWidgetPrimitivesSection />
     </div>
+  );
+}
+
+function CanvasWidgetPrimitivesSection() {
+  return (
+    <Section
+      title="Canvas Widget Primitives"
+      hint="src/components/canvas/shell/* · canvas 위젯 5종 (quotes/desk/interviews/recruiting/probing) 본문에서 공통으로 쓰는 라벨/필드/배너 SSOT. 인라인 className 재현 금지 — 새 위젯도 여기에서 import."
+    >
+      <Subsection label="SectionLabel — UPPERCASE 라벨 SSOT (widget-outputs.tsx)">
+        <div className="border border-line bg-paper p-6 rounded-sm">
+          <SectionLabel>최근 산출물</SectionLabel>
+          <div className="mt-2 text-md text-mute">
+            text-xs uppercase tracking-[0.22em] text-mute-soft — 위젯 본문 헤더 / 영역 구분 라벨에 사용
+          </div>
+        </div>
+      </Subsection>
+
+      <Subsection label="Field — label + children + 선택적 description (field.tsx)">
+        <div className="space-y-5 border border-line bg-paper p-6 rounded-sm">
+          <Field label="기본 (label only)">
+            <div className="text-md text-ink-2">자식 영역 — 입력/버튼/칩 등</div>
+          </Field>
+          <Field label="required + description" required description=".md / .txt / .docx 지원">
+            <div className="text-md text-ink-2">required=true 시 라벨 옆 amore *</div>
+          </Field>
+          <Field label="htmlFor 로 native control 연결" htmlFor="ds-demo-field">
+            <Input
+              id="ds-demo-field"
+              defaultValue="htmlFor 시 SectionLabel 대신 진짜 <label>"
+            />
+          </Field>
+        </div>
+      </Subsection>
+
+      <Subsection label="Banner — 위젯 본문 full-bleed 알림 strip (banner.tsx)">
+        <div className="border border-line bg-paper rounded-sm overflow-hidden">
+          <div className="px-5 py-4 text-md text-mute">
+            위쪽 콘텐츠 영역 (예: 입력/스트리밍)
+          </div>
+          <Banner tone="warning" title="오류">
+            <span className="font-mono">network_timeout</span>
+          </Banner>
+          <Banner tone="info" title="안내">
+            처리에는 5–10분이 소요될 수 있습니다.
+          </Banner>
+          <Banner tone="subtle">취소되었습니다.</Banner>
+        </div>
+        <div className="mt-2 text-sm text-mute-soft">
+          tones: warning (기본) · info · subtle. divider=&apos;top&apos; (기본) 은 위쪽과 시각 분리, &apos;none&apos; 은 border 없이 color 만으로 구분.
+        </div>
+      </Subsection>
+    </Section>
   );
 }
 
