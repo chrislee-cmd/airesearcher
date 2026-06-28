@@ -16,12 +16,21 @@ import { forwardRef, type InputHTMLAttributes } from 'react';
 // Layout: doesn't bake `flex-1` or min-width. Caller passes layout
 // classes via className since the right values depend on the parent
 // container.
+//
+// Cascade override: `[data-canvas-body] :is(input, ...)` in globals.css
+// paints a 2px ink border + white bg + 6px radius + focus outline onto
+// every bare <input> inside the canvas widget body. Without
+// !important neutralization, the cascade wins over Tailwind utilities
+// (attr+tag selector specificity beats class), drawing a second box
+// stacked inside the parent's container frame. The `!*` prefixes below
+// reclaim the bare-input contract.
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>;
 
 const BASE =
-  'bg-transparent py-0.5 text-lg text-ink-2 placeholder:text-mute-soft ' +
-  'focus:outline-none ' +
+  '!border-0 !bg-transparent !rounded-none !shadow-none ' +
+  '!px-0 !py-0.5 text-lg text-ink-2 placeholder:text-mute-soft ' +
+  'focus:!outline-none ' +
   'disabled:opacity-40 disabled:cursor-not-allowed';
 
 export const ChipInput = forwardRef<HTMLInputElement, Props>(function ChipInput(
