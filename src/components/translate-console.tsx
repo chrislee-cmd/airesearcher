@@ -780,7 +780,11 @@ export function TranslateConsole() {
       try {
         const res = await fetch(`/api/translate/sessions/${id}/messages`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // charset=utf-8 explicit — some intermediaries default to
+          // latin-1 when no charset is set, mangling multi-byte CJK on
+          // re-encode. The request body is always UTF-8 (JSON.stringify
+          // on a JS string), so we just have to declare it.
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
           body: JSON.stringify({ kind, text, lang, speaker }),
         });
         if (res.ok) counters.persistOk++;
@@ -794,12 +798,21 @@ export function TranslateConsole() {
   );
 
   // PR-T2 speaker mapping. The inputSource picker is the SSOT:
-  //   - 'mic' = the host's microphone (interviewer)
-  //   - 'tab' = a tab-captured audio source (interviewee on Zoom/Meet)
-  // Output rows get the same tag — the translated TTS is just the same
-  // speaker's words rendered in the target language. Computed inline so
-  // the callback closure carries the current value at commit time.
-  const speakerForSession: 'host' | 'guest' = inputSource === 'mic' ? 'host' : 'guest';
+  //   - 'mic' = the host's microphone (interviewer) → 'host' label
+  //   - 'tab' = a tab-captured audio source (online meeting). Both the
+  //     interviewer's and the interviewee's voices arrive on the same
+  //     audio track, so we CANNOT label the session as 'guest' without
+  //     mis-tagging every host utterance. Until we wire up per-track
+  //     diarization (follow-up: capture mic + tab as two streams), we
+  //     leave the speaker NULL in tab mode so the UI prompter renders
+  //     without a label rather than falsely tagging every line as
+  //     "응답자". Export render still falls back to the locale's
+  //     "미지정" — that's accurate (we genuinely don't know) and matches
+  //     legacy pre-PR-T2 rows.
+  // Computed inline so the callback closure carries the current value at
+  // commit time.
+  const speakerForSession: 'host' | 'guest' | null =
+    inputSource === 'mic' ? 'host' : null;
 
   const appendStreaming = useCallback(
     (kind: 'input' | 'output', delta: string, lang: string) => {
@@ -1909,7 +1922,7 @@ export function TranslateConsole() {
         if (id) {
           void fetch(`/api/translate/sessions/${id}/messages`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
             body: JSON.stringify({ kind: '__loss_report__', ...summary }),
           }).catch(() => {});
         }

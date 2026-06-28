@@ -117,6 +117,22 @@ const FILE_HEADERS: Record<
   },
 };
 
+// Defensive cleanup before a row's text is emitted into the file. Two
+// failure modes we've seen in the wild:
+//   - Lone `\r` from upstream delta accumulators. In a text viewer a CR
+//     can move the cursor to column 0 without a line break, visually
+//     overwriting the next row's `[timestamp]` prefix — that's exactly
+//     the "00:00:57] [원문]   00:01:45] [원문]" line-concat regression
+//     the host reported.
+//   - Embedded `\n` inside a single message. We want to keep the line
+//     break (don't lose content) but indent the continuation so the
+//     reader can still tell where one timestamp row ends and the next
+//     begins.
+// CRLF is normalized to a single LF before the rest of the helpers run.
+function normalizeRowText(text: string): string {
+  return text.replace(/\r\n?/g, '\n');
+}
+
 function offsetFromStart(
   rowTs: string,
   startMs: number,
@@ -186,7 +202,16 @@ export function renderTranslateTranscriptText(
     // the kind tag — Korean / Japanese labels can be wider.
     const speaker = speakerLabel(meta.locale, m.speaker);
     const speakerPad = `[${speaker}]`.padEnd(10, ' ');
-    lines.push(`[${stamp}] ${speakerPad}${padded} ${m.text}`);
+    const safe = normalizeRowText(m.text);
+    if (safe.includes('\n')) {
+      // Indent continuation lines so multi-line content doesn't look like
+      // a new timestamped row when the reader scans.
+      const [head, ...rest] = safe.split('\n');
+      lines.push(`[${stamp}] ${speakerPad}${padded} ${head}`);
+      for (const cont of rest) lines.push(`                            ${cont}`);
+    } else {
+      lines.push(`[${stamp}] ${speakerPad}${padded} ${safe}`);
+    }
   }
 
   if (messages.length === 0) {
@@ -410,12 +435,16 @@ export async function renderTranslateTranscriptDocx(
         ],
       }),
     );
+    // Strip lone `\r` before docx render — TextRun ignores raw \n in
+    // body content anyway, but lone CRs from upstream deltas leak into
+    // the paragraph and surface as a control character in Word.
+    const safe = normalizeRowText(m.text);
     children.push(
       new Paragraph({
         spacing: { line: 360, lineRule: 'auto', after: 80 },
         children: [
           new TextRun({
-            text: m.text,
+            text: safe,
             size: SIZE.body,
             color: m.kind === 'input' ? AP.ink2 : AP.ink,
           }),
