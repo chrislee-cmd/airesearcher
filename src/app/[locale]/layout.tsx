@@ -33,7 +33,7 @@ export default async function LocaleLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <html lang={locale} className="h-full">
+    <html lang={locale} className="h-full" data-theme="pop">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
