@@ -10,6 +10,7 @@ PROJECT.md §3.4 형식. 한 줄 bullet, 짧게.
 
 ## Test plan
 - [ ] 
+- [ ] supabase migration 적용 (있을 시 — `sync.sh` 가 알림)
 
 ## Out of scope
 - 
