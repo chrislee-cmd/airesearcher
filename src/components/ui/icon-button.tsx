@@ -33,7 +33,11 @@ export type IconButtonVariant =
   | 'ghost-danger'
   | 'ghost-brand'
   | 'bordered'
-  | 'subtle';
+  | 'subtle'
+  | 'subtle-pill'
+  | 'subtle-flat'
+  | 'subtle-soft'
+  | 'subtle-ring';
 export type IconButtonSize = 'compact' | 'sm' | 'md' | 'lg';
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
@@ -72,9 +76,29 @@ const VARIANT: Record<IconButtonVariant, string> = {
   // Subtle tone for header bands (yellow Topbar banner) — 1px translucent
   // ink border + transparent bg keeps the banner color visible, hover tints
   // the fill instead of lifting/shadow.
+  // Candidates A–D below mirror the Button subtle exploration so the gear
+  // and SignIn buttons can be evaluated together; design-system page mocks
+  // all five on a yellow banner.
   subtle:
     'border border-ink/30 bg-transparent text-ink shadow-none rounded-xs ' +
     'hover:bg-ink/5 hover:border-ink/60',
+  // A. Pill chip — circular with soft ink fill, no border.
+  'subtle-pill':
+    'border-transparent rounded-full bg-ink/10 text-ink shadow-none ' +
+    'hover:bg-ink/15',
+  // B. Flat (icon analog of Button's `subtle-underline`) — no chrome,
+  // glyph only; muted resting → ink on hover.
+  'subtle-flat':
+    'border-transparent bg-transparent text-mute shadow-none ' +
+    'hover:text-ink',
+  // C. Soft filled — square corners, bg-ink/5 fill with no border.
+  'subtle-soft':
+    'border-transparent rounded-xs bg-ink/5 text-ink shadow-none ' +
+    'hover:bg-ink/10',
+  // D. Outline ring — circular with thin 1px ring instead of border.
+  'subtle-ring':
+    'border-transparent rounded-full bg-transparent text-ink ring-1 ring-ink/40 shadow-none ' +
+    'hover:ring-ink/70 hover:bg-ink/5',
 };
 
 const SIZE: Record<IconButtonSize, string> = {

@@ -37,6 +37,7 @@ export default async function DesignSystemPage({
       <FontSizeTokens />
       <ColorTokens />
       <ZIndexTokens />
+      <HeaderSubtleCandidatesSection />
       <ButtonSection />
       <IconButtonSection />
       <ChromeButtonSection />
@@ -232,6 +233,120 @@ function ZIndexTokens() {
   );
 }
 
+function HeaderSubtleCandidatesSection() {
+  const candidates: Array<{
+    label: string;
+    note: string;
+    button: ButtonVariant;
+    icon: IconButtonVariant;
+  }> = [
+    {
+      label: 'A. subtle (current — thin border + transparent)',
+      note: '1px border-ink/30, hover bg-ink/5. 같은 capsule 골격, 굵기만 약화.',
+      button: 'subtle',
+      icon: 'subtle',
+    },
+    {
+      label: 'B. subtle-pill (rounded-full chip with soft fill)',
+      note: 'border 없음, bg-ink/10 + rounded-full. TopbarTabs pill form 과 통일.',
+      button: 'subtle-pill',
+      icon: 'subtle-pill',
+    },
+    {
+      label: 'C. subtle-underline (no chrome, text + hover underline)',
+      note: 'box 자체 제거. 메뉴 링크처럼 가장 mute. (icon 은 분석 불가 → subtle-flat: 글리프만)',
+      button: 'subtle-underline',
+      icon: 'subtle-flat',
+    },
+    {
+      label: 'D. subtle-soft (filled, no border, square)',
+      note: 'border 제거, bg-ink/5 fill. box 모양이 흐려져 banner 와 융화.',
+      button: 'subtle-soft',
+      icon: 'subtle-soft',
+    },
+    {
+      label: 'E. subtle-ring (pill with 1px outline ring)',
+      note: 'border 대신 ring-1 ring-ink/40 + rounded-full. "그려진 듯" 가는 outline.',
+      button: 'subtle-ring',
+      icon: 'subtle-ring',
+    },
+  ];
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
+  return (
+    <Section
+      title="Header subtle candidates (decision)"
+      hint="노란 Topbar banner 위에서 어느 form 이 어울리는지 비교용. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
+    >
+      <div className="flex flex-col gap-3">
+        {candidates.map((c) => (
+          <div key={c.button} className="border border-line-soft rounded-sm overflow-hidden">
+            <div
+              className="flex h-14 items-center justify-between gap-4 px-8"
+              style={{
+                background: 'var(--sidebar-bg-strong)',
+                borderBottom:
+                  'var(--sidebar-border-width) solid var(--sidebar-border)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: outfitStack,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--sidebar-border)',
+                }}
+              >
+                AI Researcher
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant={c.button}
+                  size="sm"
+                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
+                >
+                  Sign in
+                </Button>
+                <IconButton
+                  variant={c.icon}
+                  size="md"
+                  aria-label="settings"
+                  style={{ color: 'var(--sidebar-border)' }}
+                >
+                  <GearGlyph />
+                </IconButton>
+              </div>
+            </div>
+            <div className="bg-paper px-4 py-2">
+              <div className="text-sm font-semibold text-ink">{c.label}</div>
+              <p className="text-xs-soft text-mute mt-0.5">{c.note}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function GearGlyph() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 function ButtonSection() {
   const variants: ButtonVariant[] = [
     'primary',
@@ -241,12 +356,16 @@ function ButtonSection() {
     'link',
     'destructive-link',
     'subtle',
+    'subtle-pill',
+    'subtle-underline',
+    'subtle-soft',
+    'subtle-ring',
   ];
   const sizes: ButtonSize[] = ['xs', 'sm', 'md', 'lg', 'cta'];
   return (
     <Section
       title="Button"
-      hint="src/components/ui/button.tsx · 7 variants × 5 sizes · loading / fullWidth / left|rightIcon · subtle = 헤더 banner 위 사용"
+      hint="src/components/ui/button.tsx · variants × 5 sizes · loading / fullWidth / left|rightIcon · subtle* = 헤더 banner 위 후보 (위의 Header subtle candidates 섹션에서 비교)"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap gap-2">
@@ -286,12 +405,22 @@ function ButtonSection() {
 }
 
 function IconButtonSection() {
-  const variants: IconButtonVariant[] = ['ghost', 'ghost-danger', 'ghost-brand', 'bordered', 'subtle'];
+  const variants: IconButtonVariant[] = [
+    'ghost',
+    'ghost-danger',
+    'ghost-brand',
+    'bordered',
+    'subtle',
+    'subtle-pill',
+    'subtle-flat',
+    'subtle-soft',
+    'subtle-ring',
+  ];
   const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
   return (
     <Section
       title="IconButton"
-      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · variants for hover treatment · subtle = 헤더 banner 위 사용 · sizes are shape"
+      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · subtle* = 헤더 banner 위 후보 (위의 Header subtle candidates 섹션에서 비교) · sizes are shape"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap items-center gap-3">

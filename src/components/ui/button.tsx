@@ -19,7 +19,11 @@ export type ButtonVariant =
   | 'destructive'
   | 'link'
   | 'destructive-link'
-  | 'subtle';
+  | 'subtle'
+  | 'subtle-pill'
+  | 'subtle-underline'
+  | 'subtle-soft'
+  | 'subtle-ring';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'cta';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -74,9 +78,33 @@ const VARIANT: Record<ButtonVariant, string> = {
   // Subtle tone for header bands (yellow Topbar banner) — 1px translucent
   // ink border + transparent bg lets the banner color read through, with a
   // gentle hover tint instead of the Memphis translate/shadow lift.
+  // Candidates A–D below explore alternative forms (chip / underline /
+  // filled-no-border / outline-ring); the design-system page mocks all five
+  // on a yellow banner for visual decision. Winner will be renamed `subtle`
+  // and losers removed in a follow-up.
   subtle:
     'border border-ink/30 bg-transparent text-ink shadow-none ' +
     'hover:bg-ink/5 hover:border-ink/60',
+  // A. Pill chip — rounded-full + soft ink fill, no border. Form-language
+  // matches TopbarTabs (pill banner buttons).
+  'subtle-pill':
+    'border-transparent rounded-full bg-ink/10 text-ink-2 shadow-none ' +
+    'hover:bg-ink/15',
+  // B. Underline only — no chrome at all, gentle text + hover underline.
+  // Lightest possible footprint, reads as a link.
+  'subtle-underline':
+    'border-transparent bg-transparent text-ink-2 shadow-none ' +
+    'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-ink',
+  // C. Soft filled — bg-ink/5 fill with no border, square corners. Box
+  // shape dissolves into the banner more than current `subtle`.
+  'subtle-soft':
+    'border-transparent bg-ink/5 text-ink-2 shadow-none ' +
+    'hover:bg-ink/10',
+  // D. Outline ring — pill shape with thin 1px ring instead of border.
+  // Reads as "drawn outline" rather than Memphis stroke.
+  'subtle-ring':
+    'border-transparent rounded-full bg-transparent text-ink ring-1 ring-ink/40 shadow-none ' +
+    'hover:ring-ink/70 hover:bg-ink/5',
 };
 
 // SIZE owns padding/font/radius only — transition lives on BASE so the
