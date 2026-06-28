@@ -243,43 +243,7 @@ function HeaderSubtleCandidatesSection() {
     // reads correctly in each form — e.g. pill = solid fill, ring = thicker
     // ring, underline = decoration solidified).
     activeTab: string;
-  }> = [
-    {
-      label: 'A. subtle (current — thin border + transparent)',
-      note: '1px border-ink/30. 활성 = 같은 capsule, border 진해지고 bg-ink/8 채움.',
-      button: 'subtle',
-      icon: 'subtle',
-      activeTab: '!border-ink !bg-ink/8 !text-ink',
-    },
-    {
-      label: 'B. subtle-pill (rounded-full chip with soft fill)',
-      note: 'border 없음, rounded-full + bg-ink/10. 활성 = 검정 채움 chip.',
-      button: 'subtle-pill',
-      icon: 'subtle-pill',
-      activeTab: '!bg-ink !text-paper',
-    },
-    {
-      label: 'C. subtle-underline (no chrome, text + hover underline)',
-      note: 'box 자체 제거, 텍스트만. 활성 = 진한 underline + text-ink.',
-      button: 'subtle-underline',
-      icon: 'subtle-flat',
-      activeTab: '!text-ink !decoration-ink',
-    },
-    {
-      label: 'D. subtle-soft (filled, no border, square)',
-      note: 'border 제거, bg-ink/5 square fill. 활성 = 더 진한 bg-ink/20 fill.',
-      button: 'subtle-soft',
-      icon: 'subtle-soft',
-      activeTab: '!bg-ink/20 !text-ink',
-    },
-    {
-      label: 'E. subtle-ring (pill with 1px outline ring)',
-      note: 'border 대신 ring-1 ring-ink/40 + rounded-full. 활성 = ring-2 ring-ink.',
-      button: 'subtle-ring',
-      icon: 'subtle-ring',
-      activeTab: '!ring-2 !ring-ink !text-ink',
-    },
-  ];
+  }> = headerSubtleCandidates;
   const tabs: Array<{ key: string; label: string }> = [
     { key: 'canvas', label: '캔버스' },
     { key: 'projects', label: '프로젝트' },
@@ -290,14 +254,22 @@ function HeaderSubtleCandidatesSection() {
   return (
     <Section
       title="Header subtle candidates (decision)"
-      hint="실제 Topbar 와 동일한 풀 레이아웃 — Brand · 4탭 (캔버스 활성) · gear · SignIn. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
+      hint="실제 Topbar 와 동일한 풀 레이아웃 — 각 candidate 마다 로그아웃 / 로그인 두 상태 모두 노출. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-6">
         {candidates.map((c) => (
           <div
             key={c.button}
             className="border border-line-soft rounded-sm overflow-hidden"
           >
+            <div className="bg-paper px-4 py-2 border-b border-line-soft">
+              <div className="text-sm font-semibold text-ink">{c.label}</div>
+              <p className="text-xs-soft text-mute mt-0.5">{c.note}</p>
+            </div>
+
+            <div className="bg-paper-soft px-4 py-1 border-b border-line-soft">
+              <div className="eyebrow-mute">로그아웃 상태</div>
+            </div>
             <header
               className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
               style={{
@@ -306,18 +278,50 @@ function HeaderSubtleCandidatesSection() {
                   'var(--sidebar-border-width) solid var(--sidebar-border)',
               }}
             >
-              <div className="flex shrink-0 items-center gap-4">
-                <div
-                  style={{
-                    fontFamily: outfitStack,
-                    fontSize: 20,
-                    fontWeight: 800,
-                    letterSpacing: '-0.02em',
-                    color: 'var(--sidebar-border)',
-                  }}
+              <div
+                style={{
+                  fontFamily: outfitStack,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--sidebar-border)',
+                }}
+              >
+                AI Researcher
+              </div>
+              <div className="flex-1" />
+              <div className="flex shrink-0 items-center gap-3">
+                <Button
+                  variant={c.button}
+                  size="sm"
+                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
                 >
-                  AI Researcher
-                </div>
+                  Sign in
+                </Button>
+              </div>
+            </header>
+
+            <div className="bg-paper-soft px-4 py-1 border-b border-line-soft">
+              <div className="eyebrow-mute">로그인 상태 (캔버스 탭 활성)</div>
+            </div>
+            <header
+              className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
+              style={{
+                background: 'var(--sidebar-bg-strong)',
+                borderBottom:
+                  'var(--sidebar-border-width) solid var(--sidebar-border)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: outfitStack,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--sidebar-border)',
+                }}
+              >
+                AI Researcher
               </div>
 
               <nav
@@ -342,31 +346,129 @@ function HeaderSubtleCandidatesSection() {
               </nav>
 
               <div className="flex shrink-0 items-center gap-3">
-                <IconButton
-                  variant={c.icon}
-                  size="md"
-                  aria-label="settings"
-                  style={{ color: 'var(--sidebar-border)' }}
-                >
-                  <GearGlyph />
-                </IconButton>
-                <Button
-                  variant={c.button}
-                  size="sm"
-                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
-                >
-                  Sign in
-                </Button>
+                <AccountPillMock iconVariant={c.icon} />
               </div>
             </header>
-            <div className="bg-paper px-4 py-2">
-              <div className="text-sm font-semibold text-ink">{c.label}</div>
-              <p className="text-xs-soft text-mute mt-0.5">{c.note}</p>
-            </div>
           </div>
         ))}
       </div>
     </Section>
+  );
+}
+
+const headerSubtleCandidates: Array<{
+  label: string;
+  note: string;
+  button: ButtonVariant;
+  icon: IconButtonVariant;
+  activeTab: string;
+}> = [
+  {
+    label: 'A. subtle (current — thin border + transparent)',
+    note: '1px border-ink/30. 활성 = 같은 capsule, border 진해지고 bg-ink/8 채움.',
+    button: 'subtle',
+    icon: 'subtle',
+    activeTab: '!border-ink !bg-ink/8 !text-ink',
+  },
+  {
+    label: 'B. subtle-pill (rounded-full chip with soft fill)',
+    note: 'border 없음, rounded-full + bg-ink/10. 활성 = 검정 채움 chip.',
+    button: 'subtle-pill',
+    icon: 'subtle-pill',
+    activeTab: '!bg-ink !text-paper',
+  },
+  {
+    label: 'C. subtle-underline (no chrome, text + hover underline)',
+    note: 'box 자체 제거, 텍스트만. 활성 = 진한 underline + text-ink.',
+    button: 'subtle-underline',
+    icon: 'subtle-flat',
+    activeTab: '!text-ink !decoration-ink',
+  },
+  {
+    label: 'D. subtle-soft (filled, no border, square)',
+    note: 'border 제거, bg-ink/5 square fill. 활성 = 더 진한 bg-ink/20 fill.',
+    button: 'subtle-soft',
+    icon: 'subtle-soft',
+    activeTab: '!bg-ink/20 !text-ink',
+  },
+  {
+    label: 'E. subtle-ring (pill with 1px outline ring)',
+    note: 'border 대신 ring-1 ring-ink/40 + rounded-full. 활성 = ring-2 ring-ink.',
+    button: 'subtle-ring',
+    icon: 'subtle-ring',
+    activeTab: '!ring-2 !ring-ink !text-ink',
+  },
+];
+
+// Recreates the TopbarAccount pill chrome (avatar + name + credits + gear)
+// inline so each candidate row can show a faithful authenticated-state mock.
+// Only the gear IconButton swaps per candidate; the outer pill keeps the
+// existing Memphis chrome so the gear's subtle form reads against the same
+// nested-chrome context as production.
+function AccountPillMock({ iconVariant }: { iconVariant: IconButtonVariant }) {
+  const outfitStack = 'var(--font-outfit), var(--font-sans)';
+  return (
+    <div
+      className="flex items-center gap-2 px-2 py-1.5"
+      style={{
+        background: 'var(--sidebar-bg-strong)',
+        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        borderRadius: 'var(--sidebar-nav-radius)',
+        boxShadow: 'var(--memphis-shadow-sm)',
+      }}
+    >
+      <div
+        className="flex shrink-0 items-center justify-center"
+        style={{
+          width: 26,
+          height: 26,
+          background: '#fff',
+          color: '#000',
+          border:
+            'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+          borderRadius: 'var(--sidebar-nav-radius)',
+          boxShadow: 'var(--memphis-shadow-xs)',
+          fontFamily: outfitStack,
+          fontWeight: 800,
+          fontSize: 12,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        C
+      </div>
+      <div className="hidden min-w-0 max-w-[160px] sm:block">
+        <div
+          className="truncate text-sm"
+          style={{
+            fontFamily: outfitStack,
+            fontWeight: 700,
+            color: 'var(--sidebar-border)',
+            lineHeight: 1.1,
+          }}
+        >
+          chris.lee
+        </div>
+        <div
+          className="truncate text-xs-soft tabular-nums"
+          style={{
+            fontFamily: outfitStack,
+            fontWeight: 600,
+            color: 'var(--sidebar-border)',
+          }}
+        >
+          100크레딧
+        </div>
+      </div>
+      <IconButton
+        variant={iconVariant}
+        size="md"
+        aria-label="settings"
+        className="shrink-0"
+        style={{ color: 'var(--sidebar-border)' }}
+      >
+        <GearGlyph />
+      </IconButton>
+    </div>
   );
 }
 
