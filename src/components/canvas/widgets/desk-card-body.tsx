@@ -501,7 +501,7 @@ export function DeskCardBody() {
           </Field>
 
           <Field label={tDesk('keywordLabel')}>
-            <div className="flex flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
               {keywords.map((k, idx) => (
                 <span
                   key={`${k}-${idx}`}
