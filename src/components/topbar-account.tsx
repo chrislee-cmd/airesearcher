@@ -68,26 +68,12 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
 
   return (
     <div className="relative" ref={popRef}>
-      <div
-        className="flex items-center gap-2 px-2 py-1.5"
-        style={{
-          background: 'var(--sidebar-bg-strong)',
-          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
-          borderRadius: 'var(--sidebar-nav-radius)',
-          boxShadow: 'var(--memphis-shadow-sm)',
-        }}
-      >
+      <div className="flex items-center gap-2 rounded-full bg-ink/10 px-2 py-1.5">
         <div
-          className="flex shrink-0 items-center justify-center"
+          className="flex shrink-0 items-center justify-center rounded-full bg-paper text-ink"
           style={{
             width: 26,
             height: 26,
-            background: '#fff',
-            color: '#000',
-            border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
-            borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-xs)',
             fontFamily: outfitStack,
             fontWeight: 800,
             fontSize: 12,

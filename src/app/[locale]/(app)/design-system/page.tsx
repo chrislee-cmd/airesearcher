@@ -37,7 +37,6 @@ export default async function DesignSystemPage({
       <FontSizeTokens />
       <ColorTokens />
       <ZIndexTokens />
-      <HeaderSubtleCandidatesSection />
       <ButtonSection />
       <IconButtonSection />
       <ChromeButtonSection />
@@ -233,280 +232,6 @@ function ZIndexTokens() {
   );
 }
 
-function HeaderSubtleCandidatesSection() {
-  const candidates = headerSubtleCandidates;
-  const tabs: Array<{ key: string; label: string }> = [
-    { key: 'canvas', label: '캔버스' },
-    { key: 'projects', label: '프로젝트' },
-    { key: 'members', label: '멤버' },
-    { key: 'settings', label: '설정' },
-  ];
-  const outfitStack = 'var(--font-outfit), var(--font-sans)';
-  return (
-    <Section
-      title="Header subtle candidates (decision)"
-      hint="실제 Topbar 와 동일한 풀 레이아웃 — 각 candidate 마다 로그아웃 / 로그인 두 상태 모두 노출. 결정 후 winner 를 `subtle` 로 합치고 나머지 제거 예정."
-    >
-      <div className="flex flex-col gap-6">
-        {candidates.map((c) => (
-          <div
-            key={c.button}
-            className="border border-line-soft rounded-sm overflow-hidden"
-          >
-            <div className="bg-paper px-4 py-2 border-b border-line-soft">
-              <div className="text-sm font-semibold text-ink">{c.label}</div>
-              <p className="text-xs-soft text-mute mt-0.5">{c.note}</p>
-            </div>
-
-            <div className="bg-paper-soft px-4 py-1 border-b border-line-soft">
-              <div className="eyebrow-mute">로그아웃 상태</div>
-            </div>
-            <header
-              className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
-              style={{
-                background: 'var(--sidebar-bg-strong)',
-                borderBottom:
-                  'var(--sidebar-border-width) solid var(--sidebar-border)',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: outfitStack,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--sidebar-border)',
-                }}
-              >
-                AI Researcher
-              </div>
-              <div className="flex-1" />
-              <div className="flex shrink-0 items-center gap-3">
-                <Button
-                  variant={c.button}
-                  size="sm"
-                  className="!px-3 !text-sm uppercase tracking-[0.18em]"
-                >
-                  Sign in
-                </Button>
-              </div>
-            </header>
-
-            <div className="bg-paper-soft px-4 py-1 border-b border-line-soft">
-              <div className="eyebrow-mute">로그인 상태 (캔버스 탭 활성)</div>
-            </div>
-            <header
-              className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
-              style={{
-                background: 'var(--sidebar-bg-strong)',
-                borderBottom:
-                  'var(--sidebar-border-width) solid var(--sidebar-border)',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: outfitStack,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--sidebar-border)',
-                }}
-              >
-                AI Researcher
-              </div>
-
-              <nav
-                aria-label={`${c.button} preview tabs`}
-                className="flex min-w-0 flex-1 items-center justify-center gap-2"
-              >
-                {tabs.map((tab, i) => {
-                  const isActive = i === 0;
-                  return (
-                    <Button
-                      key={tab.key}
-                      variant={c.button}
-                      size="sm"
-                      className={`!px-3.5 !text-sm uppercase tracking-[0.18em] ${isActive ? c.activeTab : ''}`}
-                      style={{ fontFamily: outfitStack }}
-                      aria-current={isActive ? 'page' : undefined}
-                    >
-                      {tab.label}
-                    </Button>
-                  );
-                })}
-              </nav>
-
-              <div className="flex shrink-0 items-center gap-3">
-                <AccountPillMock
-                  outerClassName={c.pillOuter}
-                  avatarClassName={c.pillAvatar}
-                  iconVariant={c.icon}
-                />
-              </div>
-            </header>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-const headerSubtleCandidates: Array<{
-  label: string;
-  note: string;
-  button: ButtonVariant;
-  icon: IconButtonVariant;
-  activeTab: string;
-  // outer account-pill chrome — adapts to the candidate's form so the
-  // logged-in chrome reads as one family with the tabs/buttons rather than
-  // the Memphis-bordered pill that wraps everything today.
-  pillOuter: string;
-  // avatar 26×26 chip chrome inside the pill — mirrors the candidate form
-  // so the avatar's box doesn't fight the outer chrome's shape.
-  pillAvatar: string;
-}> = [
-  {
-    label: 'A. subtle (current — thin border + transparent)',
-    note: '1px border-ink/30. 활성 = 같은 capsule, border 진해지고 bg-ink/8 채움.',
-    button: 'subtle',
-    icon: 'subtle',
-    activeTab: '!border-ink !bg-ink/8 !text-ink',
-    pillOuter:
-      'flex items-center gap-2 px-2 py-1.5 rounded-sm border border-ink/30 bg-transparent',
-    pillAvatar:
-      'flex shrink-0 items-center justify-center rounded-sm border border-ink/30 bg-transparent',
-  },
-  {
-    label: 'B. subtle-pill (rounded-full chip with soft fill)',
-    note: 'border 없음, rounded-full + bg-ink/10. 활성 = 검정 채움 chip.',
-    button: 'subtle-pill',
-    icon: 'subtle-pill',
-    activeTab: '!bg-ink !text-paper',
-    pillOuter:
-      'flex items-center gap-2 px-2 py-1.5 rounded-full bg-ink/10 border border-transparent',
-    pillAvatar:
-      'flex shrink-0 items-center justify-center rounded-full bg-paper border border-transparent',
-  },
-  {
-    label: 'C. subtle-underline (no chrome, text + hover underline)',
-    note: 'box 자체 제거, 텍스트만. 활성 = 진한 underline + text-ink.',
-    button: 'subtle-underline',
-    icon: 'subtle-flat',
-    activeTab: '!text-ink !decoration-ink',
-    pillOuter:
-      'flex items-center gap-3 px-1 py-0 bg-transparent border border-transparent',
-    pillAvatar:
-      'flex shrink-0 items-center justify-center rounded-full bg-transparent border border-transparent',
-  },
-  {
-    label: 'D. subtle-soft (filled, no border, square)',
-    note: 'border 제거, bg-ink/5 square fill. 활성 = 더 진한 bg-ink/20 fill.',
-    button: 'subtle-soft',
-    icon: 'subtle-soft',
-    activeTab: '!bg-ink/20 !text-ink',
-    pillOuter:
-      'flex items-center gap-2 px-2 py-1.5 rounded-xs bg-ink/5 border border-transparent',
-    pillAvatar:
-      'flex shrink-0 items-center justify-center rounded-xs bg-ink/10 border border-transparent',
-  },
-  {
-    label: 'E. subtle-ring (pill with 1px outline ring)',
-    note: 'border 대신 ring-1 ring-ink/40 + rounded-full. 활성 = ring-2 ring-ink.',
-    button: 'subtle-ring',
-    icon: 'subtle-ring',
-    activeTab: '!ring-2 !ring-ink !text-ink',
-    pillOuter:
-      'flex items-center gap-2 px-2 py-1.5 rounded-full ring-1 ring-ink/40 bg-transparent border border-transparent',
-    pillAvatar:
-      'flex shrink-0 items-center justify-center rounded-full ring-1 ring-ink/40 bg-transparent border border-transparent',
-  },
-];
-
-// Recreates the TopbarAccount pill (avatar + name + credits + gear) but
-// swaps the outer / avatar chrome to match the candidate form (passed in
-// via outerClassName / avatarClassName). Only typography + text color stay
-// constant so each row is comparable.
-function AccountPillMock({
-  outerClassName,
-  avatarClassName,
-  iconVariant,
-}: {
-  outerClassName: string;
-  avatarClassName: string;
-  iconVariant: IconButtonVariant;
-}) {
-  const outfitStack = 'var(--font-outfit), var(--font-sans)';
-  return (
-    <div className={outerClassName}>
-      <div
-        className={avatarClassName}
-        style={{
-          width: 26,
-          height: 26,
-          fontFamily: outfitStack,
-          fontWeight: 800,
-          fontSize: 12,
-          letterSpacing: '-0.02em',
-          color: 'var(--sidebar-border)',
-        }}
-      >
-        C
-      </div>
-      <div className="hidden min-w-0 max-w-[160px] sm:block">
-        <div
-          className="truncate text-sm"
-          style={{
-            fontFamily: outfitStack,
-            fontWeight: 700,
-            color: 'var(--sidebar-border)',
-            lineHeight: 1.1,
-          }}
-        >
-          chris.lee
-        </div>
-        <div
-          className="truncate text-xs-soft tabular-nums"
-          style={{
-            fontFamily: outfitStack,
-            fontWeight: 600,
-            color: 'var(--sidebar-border)',
-          }}
-        >
-          100크레딧
-        </div>
-      </div>
-      <IconButton
-        variant={iconVariant}
-        size="md"
-        aria-label="settings"
-        className="shrink-0"
-        style={{ color: 'var(--sidebar-border)' }}
-      >
-        <GearGlyph />
-      </IconButton>
-    </div>
-  );
-}
-
-function GearGlyph() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
 function ButtonSection() {
   const variants: ButtonVariant[] = [
     'primary',
@@ -516,16 +241,12 @@ function ButtonSection() {
     'link',
     'destructive-link',
     'subtle',
-    'subtle-pill',
-    'subtle-underline',
-    'subtle-soft',
-    'subtle-ring',
   ];
   const sizes: ButtonSize[] = ['xs', 'sm', 'md', 'lg', 'cta'];
   return (
     <Section
       title="Button"
-      hint="src/components/ui/button.tsx · variants × 5 sizes · loading / fullWidth / left|rightIcon · subtle* = 헤더 banner 위 후보 (위의 Header subtle candidates 섹션에서 비교)"
+      hint="src/components/ui/button.tsx · 7 variants × 5 sizes · loading / fullWidth / left|rightIcon · subtle = 헤더 banner 위 pill chip (Topbar SignIn / 탭 / account pill 가족)"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap gap-2">
@@ -571,16 +292,12 @@ function IconButtonSection() {
     'ghost-brand',
     'bordered',
     'subtle',
-    'subtle-pill',
-    'subtle-flat',
-    'subtle-soft',
-    'subtle-ring',
   ];
   const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
   return (
     <Section
       title="IconButton"
-      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · subtle* = 헤더 banner 위 후보 (위의 Header subtle candidates 섹션에서 비교) · sizes are shape"
+      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · subtle = 헤더 banner 위 circular pill (Topbar account pill 안의 gear) · sizes are shape"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap items-center gap-3">
