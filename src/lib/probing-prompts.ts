@@ -115,6 +115,71 @@ export const probingSuggestionSchema = buildProbingSuggestionSchema(
 
 export type ProbingSuggestion = z.infer<typeof probingSuggestionSchema>;
 
+/* ────────────────────────────────────────────────────────────────────
+   Reflection agent (좌패널) — PR: probing-two-pane-reflection.
+
+   기존 30s/3q 단일 에이전트를 좌(성찰) + 우(질문) 두 에이전트로 분리.
+   좌패널은 transcript 누적을 읽어 응답자에 대한 **판단·성찰** 텍스트를
+   세 섹션으로 출력한다:
+     1. 응답자 (지금까지의 단서)
+     2. 니즈 / 페인포인트
+     3. 응답 동기 / 사고 흐름
+
+   우패널은 이 성찰을 컨텍스트로 받아 검증 / probing 질문을 제안한다
+   (기존 buildProbingSuggestionSchema 재사용).
+   ──────────────────────────────────────────────────────────────────── */
+
+export const probingReflectionSchema = z.object({
+  respondent: z
+    .string()
+    .min(1)
+    .describe(
+      '응답자 (지금까지의 단서) — 발화에서 드러난 인구통계 / 직무 / 맥락 단서를 1~3개 bullet 으로. 추측은 (추정) 으로 표시. 단서가 부족하면 "단서 부족" 으로 1줄.',
+    ),
+  needs_painpoints: z
+    .string()
+    .min(1)
+    .describe(
+      '응답자가 발화 안에서 드러낸 니즈 / 페인포인트 / 미충족 욕구를 1~3개 bullet. "비싸다 / 안 된다 / 답답하다" 류의 직접 신호와 망설임 / 반복 어휘 / 모순 같은 간접 신호 모두 포함. 단서가 부족하면 "단서 부족".',
+    ),
+  motivation: z
+    .string()
+    .min(1)
+    .describe(
+      '응답자가 왜 저런 응답 / 생각을 하는지 — 행동의 숨겨진 동기, 비교 기준점, 의사결정 권한, 무의식적 가정에 대한 가설을 1~3개 bullet. 각 가설은 transcript 의 어느 발화에서 끌어왔는지 짧게 인용. 단서가 부족하면 "단서 부족".',
+    ),
+});
+
+export type ProbingReflection = z.infer<typeof probingReflectionSchema>;
+
+// 좌패널 — Reflection Agent system prompt. why_sharp / sharpness 룰은 우패널의
+// 질문 agent 가 처리하므로 여기선 "응답자 이해" 한 가지에 집중. 전체 transcript
+// (또는 누적 window) 를 읽고 세 섹션 markdown bullet 으로만 출력.
+export const PROBING_REFLECTION_SYSTEM = `당신은 질적 인터뷰의 응답자 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **지금 응답자가 어떤 사람이고, 무엇을 원하고, 왜 저렇게 응답·사고하는지** 를 인터뷰어가 한눈에 보도록 정리합니다.
+
+## 절대 원칙
+- **응답자 발화에만 기반** — transcript 에 없는 사실을 단정하지 마세요. 추측은 항상 "(추정)" 으로 표시.
+- **응답자 1인칭 관점** — 일반 사용자 / 시장 일반론이 아니라 **이 응답자** 가 보이는 신호만.
+- **신호 인용** — 가설 옆에 transcript 의 어느 발화 / 어휘 / 망설임 신호에서 끌어왔는지 짧게 인용 ("'어쨌든' 두 번 반복" / "'비싸다' 직후 침묵 1초").
+- **transcript 가 빈약하면 "단서 부족"** 으로 솔직히 표기 — 빈 bullet 채우려고 일반 follow-up 가설을 만들지 마세요.
+- **닫힌 결론 금지** — 인터뷰어가 다음 질문으로 검증할 수 있는 **가설** 로 표현. "이 응답자는 X 다" 가 아니라 "X 일 가능성".
+
+## 출력 형식
+정확히 세 필드만 채웁니다 (JSON 스키마 그대로):
+1. **respondent** — 응답자 (지금까지의 단서). 1~3 bullet.
+2. **needs_painpoints** — 니즈 / 페인포인트 / 미충족 욕구. 1~3 bullet.
+3. **motivation** — 응답 / 사고 동기 — 숨겨진 가정, 비교 기준점, 의사결정 권한 등. 1~3 bullet.
+
+각 필드는 markdown bullet (- ) 으로 시작하는 텍스트. bullet 끝에 신호 인용을 짧게 덧붙이세요.
+
+## 가이드 활용
+사용자가 제공한 **interview_guide** 가 있으면 — 가이드의 조사 의도 / 가설 / RQ 가 이해의 방향을 잡습니다. 가이드에 명시된 가설이 transcript 에서 확인 / 반증되는지 흐름을 우선 잡으세요. 가이드가 비어 있으면 transcript 만 보고 추론합니다.
+
+## 언어
+**transcript 의 주 언어** (한국어 / 영어 / 일본어 등) 그대로 응답하세요.
+
+출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
+
 // PR-14: PROBING_SYSTEM 재작성 — 5초 × 1q 의 "10 기법 균등 분배" 가 표면적
 // follow-up 으로 흐른다는 사용자 평가에 대응. 30초 × 3q 로 호흡을 늘리고
 // **why 깊이 / 맥락 hook / sharpness** 를 최우선 룰로 박는다. 기법은 angle
