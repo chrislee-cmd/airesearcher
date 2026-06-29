@@ -602,12 +602,14 @@ export function DeskCardBody() {
           </ControlBoard.Input>
 
           <ControlBoard.Action>
+            <span className="text-sm tabular-nums text-mute-soft">
+              {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
+            </span>
             <ChromeButton
               variant="primary"
               size="lg"
               onClick={onClickRun}
               disabled={!canRun}
-              fullWidth
             >
               {submitting || pendingJobId || isWorking
                 ? tCommon('loading')

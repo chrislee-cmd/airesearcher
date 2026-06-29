@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
 import {
@@ -704,10 +705,7 @@ function CriteriaInputArea({
           안에서 widget 별 element 가 자유롭게 들어옴. */}
       <ControlBoard.Input divider="none">
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="flex flex-col">
-            <label className="mb-2 block text-sm font-semibold text-ink-2">
-              텍스트 붙여넣기
-            </label>
+          <Field label="텍스트 붙여넣기">
             <Textarea
               value={pasted}
               onChange={(e) => onPasteChange(e.target.value)}
@@ -715,11 +713,8 @@ function CriteriaInputArea({
               placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
               className="h-[60px] resize-none text-md text-ink-2"
             />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 block text-sm font-semibold text-ink-2">
-              파일 업로드
-            </label>
+          </Field>
+          <Field label="파일 업로드">
             <FileDropZone
               accept={ACCEPT}
               multiple
@@ -728,7 +723,7 @@ function CriteriaInputArea({
               helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
               className="h-[60px] gap-2 px-6"
             />
-          </div>
+          </Field>
         </div>
 
         {rejected.length > 0 && (

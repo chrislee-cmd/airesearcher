@@ -33,6 +33,7 @@ import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
 import { ControlBoard } from './canvas/shell/control-board';
+import { Field } from './canvas/shell/field';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
@@ -2482,20 +2483,17 @@ export function TranslateConsole() {
       <ControlBoard className="-mx-5 -mt-5">
         <ControlBoard.SettingsRow>
         {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker 와
-            동일 위치 — 위젯 간 settings 영역 디자인 통일. */}
-        <label className="flex flex-col gap-1 text-sm text-mute">
-          <span className="flex items-center gap-1">
-            {t('captureMode.label')}
-            {captureMode !== 'mic-only' ? (
-              <span
-                aria-label={t('captureMode.tabHint')}
-                title={t('captureMode.tabHint')}
-                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-xs leading-none text-mute-soft"
-              >
-                ?
-              </span>
-            ) : null}
-          </span>
+            동일 위치 — Field 라벨로 UPPERCASE eyebrow 통일. */}
+        <Field
+          label={t('captureMode.label')}
+          description={
+            captureMode === 'both'
+              ? t('captureMode.bothCostHint')
+              : captureMode !== 'mic-only'
+                ? t('captureMode.tabHint')
+                : undefined
+          }
+        >
           <select
             value={captureMode}
             onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
@@ -2506,16 +2504,10 @@ export function TranslateConsole() {
             <option value="mic-only">{t('captureMode.micOnly')}</option>
             <option value="tab-only">{t('captureMode.tabOnly')}</option>
           </select>
-          {captureMode === 'both' ? (
-            <span className="text-xs text-mute-soft">
-              {t('captureMode.bothCostHint')}
-            </span>
-          ) : null}
-        </label>
+        </Field>
         {/* 2번 = 언어 (translate 전용). source / target 두 dropdown. */}
-        <label className="flex flex-col gap-1 text-sm text-mute">
-          <span>{t('sourceLang')}</span>
-          <select
+        <Field label={t('sourceLang')}>
+            <select
             value={sourceLang}
             onChange={(e) => setSourceLang(e.target.value)}
             disabled={live || busy}
@@ -2527,10 +2519,9 @@ export function TranslateConsole() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-mute">
-          <span>{t('targetLang')}</span>
-          <select
+        </Field>
+        <Field label={t('targetLang')}>
+            <select
             value={targetLang}
             onChange={(e) => setTargetLang(e.target.value)}
             disabled={live || busy}
@@ -2542,8 +2533,8 @@ export function TranslateConsole() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex items-center gap-2 text-md text-mute">
+        </Field>
+        <label className="flex items-center gap-2 self-end pb-1 text-md text-mute">
           <Checkbox
             checked={recordEnabled}
             onChange={(e) => setRecordEnabled(e.target.checked)}
