@@ -374,6 +374,82 @@ export function DeskCardBody() {
     }
   }, [events.length]);
 
+  // ─── stuck watchdog ──────────────────────────────────────────────────────
+  // "한없이 기다리는" 상황 차단 — events 가 STUCK_THRESHOLD_MS 동안 늘지
+  // 않으면 "응답 없음" banner 노출. 사용자가 cancel 로 환불 회수 가능.
+  const STUCK_THRESHOLD_MS = 45_000;
+  const [now, setNow] = useState(() => Date.now());
+  const eventCountRef = useRef<number>(0);
+  const lastEventAtRef = useRef<number>(Date.now());
+  const watchedJobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Reset the watchdog timer whenever the watched job changes (new run)
+    // or a new event arrives on the same job.
+    if (watchedJobIdRef.current !== (job?.id ?? null)) {
+      watchedJobIdRef.current = job?.id ?? null;
+      eventCountRef.current = events.length;
+      lastEventAtRef.current = Date.now();
+      return;
+    }
+    if (events.length !== eventCountRef.current) {
+      eventCountRef.current = events.length;
+      lastEventAtRef.current = Date.now();
+    }
+  }, [job?.id, events.length]);
+  useEffect(() => {
+    if (!isWorking) return;
+    const t = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(t);
+  }, [isWorking]);
+  const stuckMs = isWorking ? now - lastEventAtRef.current : 0;
+  const isStuck = isWorking && stuckMs > STUCK_THRESHOLD_MS;
+
+  // ─── stage timing chips ──────────────────────────────────────────────────
+  // Each closed phase records elapsed ms in progress.timings — surface them
+  // as a chip row so users (and admins eyeballing screenshots) can spot the
+  // bottleneck without opening Vercel logs.
+  const PHASE_ORDER = useMemo(
+    () =>
+      [
+        ['expanding', '키워드 확장'],
+        ['scoping', 'RQ 정리'],
+        ['crawling', '자료 수집'],
+        ['extracting', '주장 추출'],
+        ['drafting', 'RQ 답변'],
+        ['synthesizing', '리포트 합성'],
+        ['analytics', '차트'],
+      ] as const,
+    [],
+  );
+  const timings = job?.progress?.timings;
+  const timingChips = timings
+    ? PHASE_ORDER.flatMap(([key, label]) => {
+        const ms = timings[`${key}_ms` as keyof typeof timings];
+        if (!ms || ms < 50) return [];
+        const sec = ms >= 10_000 ? Math.round(ms / 1000) : (ms / 1000).toFixed(1);
+        return [{ key, label, text: `${label} ${sec}s` }];
+      })
+    : [];
+  const elapsedSec = job?.progress?.elapsed_ms
+    ? Math.round(job.progress.elapsed_ms / 1000)
+    : null;
+  const skippedSteps = job?.progress?.skipped_steps ?? null;
+  // Done but the report body never arrived — a server-side write succeeded
+  // for status but synthesize quietly missed. Surface as a hard failure so
+  // the user retries instead of staring at an empty card.
+  const doneEmpty =
+    job?.status === 'done' && (!job.output || job.output.trim().length < 100);
+  // Tag for the timeout error path so the banner reads as "시간 초과
+  // (자동 환불)" instead of dumping the raw message.
+  const isTimeoutError =
+    job?.status === 'error' &&
+    (job.error_message?.startsWith('budget_exceeded') ?? false);
+
+  function onClickRetry() {
+    setError(null);
+    requireAuth(() => void doSubmit());
+  }
+
   // ─── download ──────────────────────────────────────────────────────────────
   function buildFilename(): string {
     return buildArtifactBaseName({
@@ -679,20 +755,108 @@ export function DeskCardBody() {
           </div>
         )}
 
-        {/* error / cancelled banners */}
+        {/* error / cancelled / stuck / done-empty banners — fail 표시 강제 */}
         {error && (
           <Banner tone="warning" title={tDesk('error')}>
             <span className="font-mono">{error}</span>
           </Banner>
         )}
-        {job?.status === 'error' && job.error_message && (
-          <Banner tone="warning" title={tDesk('error')}>
-            <span className="font-mono">{job.error_message}</span>
+        {/* stuck (active 인데 progress 가 45s 멈춤) — 사용자가 중단/환불
+            결정할 수 있게 즉시 노출. server-side TIMEOUT 도 따로 catch. */}
+        {isStuck && job && (
+          <Banner tone="warning" title={tDesk('stuckTitle')}>
+            <span>
+              {tDesk('stuckBody', {
+                seconds: Math.round(stuckMs / 1000),
+              })}
+            </span>
+            {!job.cancel_requested && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => void cancelJob(job.id)}
+                className="ml-2 uppercase tracking-[0.18em]"
+              >
+                {tDesk('stop')}
+              </Button>
+            )}
+          </Banner>
+        )}
+        {/* status='error' — 무조건 빨간 banner + 재시도 버튼. 사용자가 한없이
+            기다리지 않게 budget_exceeded / runtime_error / scoping_failed
+            모두 동일 패턴. */}
+        {job?.status === 'error' && (
+          <Banner
+            tone="warning"
+            title={isTimeoutError ? tDesk('timeoutTitle') : tDesk('errorTitle')}
+          >
+            <span>
+              {isTimeoutError
+                ? tDesk('timeoutBody')
+                : job.error_message ?? tDesk('errorBody')}
+            </span>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={onClickRetry}
+              disabled={!hasKeywords || submitting || !!pendingJobId}
+              className="ml-2 uppercase tracking-[0.18em]"
+            >
+              {tDesk('retry')}
+            </Button>
+          </Banner>
+        )}
+        {/* status='done' 이지만 output 이 비어있는 케이스 — server 가 catch
+            를 못 돈 silent fail. fail 표시 + 재시도 유도. */}
+        {doneEmpty && (
+          <Banner tone="warning" title={tDesk('doneEmptyTitle')}>
+            <span>{tDesk('doneEmptyBody')}</span>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={onClickRetry}
+              disabled={!hasKeywords || submitting || !!pendingJobId}
+              className="ml-2 uppercase tracking-[0.18em]"
+            >
+              {tDesk('retry')}
+            </Button>
           </Banner>
         )}
         {job?.status === 'cancelled' && (
           <div className="border-t border-line-soft px-5 py-5">
             <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
+          </div>
+        )}
+        {/* 단계별 timing chips — running 중에도 누적 표시 (완료 단계만).
+            "지금 어디서 시간 먹는지" 사용자가 알 수 있게. */}
+        {timingChips.length > 0 && (
+          <div className="border-t border-line-soft bg-paper px-5 py-3">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[.18em] text-mute-soft">
+              <span>{tDesk('timingsLabel')}</span>
+              {elapsedSec != null && (
+                <span className="tabular-nums normal-case tracking-normal">
+                  {tDesk('elapsedLabel')} {elapsedSec}s
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {timingChips.map((c) => (
+                <span
+                  key={c.key}
+                  className="inline-flex items-center rounded-pill border border-line bg-white px-2 py-0.5 text-xs text-mute"
+                >
+                  {c.text}
+                </span>
+              ))}
+              {skippedSteps?.map((s) => (
+                <span
+                  key={`skip-${s}`}
+                  className="inline-flex items-center rounded-pill border border-warning-line bg-warning-bg px-2 py-0.5 text-xs text-ink-2"
+                >
+                  {tDesk('skippedChipPrefix')} {s}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         </div>

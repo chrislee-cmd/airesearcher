@@ -34,6 +34,28 @@ export type DeskJobProgress = {
   crawl_total?: number;
   crawl_done?: number;
   events: string[];
+  // Per-phase wall-clock breakdown — server records elapsed ms when each
+  // phase closes. Used by the watchdog banner and admin diagnostics.
+  timings?: Partial<{
+    expanding_ms: number;
+    scoping_ms: number;
+    crawling_ms: number;
+    gating_ms: number;
+    sampling_ms: number;
+    extracting_ms: number;
+    drafting_ms: number;
+    critiquing_ms: number;
+    synthesizing_ms: number;
+    analytics_ms: number;
+    summarizing_ms: number;
+  }>;
+  // Cumulative wall-clock since runJob() began.
+  elapsed_ms?: number;
+  // The HARD_DEADLINE_MS the server is running against (so UI can show
+  // "X초 남음" without hard-coding the budget).
+  deadline_ms?: number;
+  // Steps the budget-skip logic intentionally bypassed.
+  skipped_steps?: string[];
 };
 
 export type DeskRqAnswer = {
