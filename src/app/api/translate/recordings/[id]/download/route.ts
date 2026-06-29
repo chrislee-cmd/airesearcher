@@ -21,9 +21,9 @@
 // The transcript zips are generated on-the-fly from `translate_messages`
 // (no storage). The original webms are what we persist in
 // `audio-uploads`; the m4a is regenerated on demand so we don't pay for
-// storage twice. 402 if the recording row isn't `unlocked`. 410 +
-// auto-refund on the m4a path when the storage object has been swept
-// (past retention).
+// storage twice. 402 if the recording row isn't downloadable yet
+// (status not `uploaded`/`unlocked`). 410 + auto-refund on the m4a path
+// when the storage object has been swept (past retention).
 //
 // Legacy back-compat: rows created BEFORE migration 0024 have
 // `input_storage_key=NULL` and a single mixed webm at `storage_key`.
@@ -262,7 +262,12 @@ export async function GET(
   if (row.host_user_id !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
-  if (row.status !== 'unlocked') {
+  // Default-save: downloads are free once the recording is finalized
+  // ('uploaded'). The 통역 시작 75-credit lump already covers save +
+  // download, so there's no separate unlock charge. 'unlocked' is still
+  // accepted for rows finalized under the old paid scheme. 'recording'
+  // (still uploading) and 'failed' stay gated.
+  if (row.status !== 'uploaded' && row.status !== 'unlocked') {
     return NextResponse.json({ error: 'locked' }, { status: 402 });
   }
 

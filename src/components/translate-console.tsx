@@ -28,7 +28,6 @@ import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
-import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
@@ -82,7 +81,6 @@ type RecordingRow = {
   created_at: string;
 };
 
-const RECORDING_UNLOCK_CREDITS = 25;
 const RECORDING_CHUNK_MS = 5000; // 5s timeslice — modest memory use, good resilience
 
 // PR-T3: post-hoc batch re-translation cost. Surfaced in the
@@ -426,7 +424,6 @@ export function TranslateConsole() {
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
-  const [recordEnabled, setRecordEnabled] = useState(true);
   // Capture mode picker. Default 'both' — the common online-interview
   // shape (host on mic + interviewee on tab). 'mic-only' is the
   // face-to-face fallback when no tab audio is involved. 'tab-only'
@@ -468,16 +465,19 @@ export function TranslateConsole() {
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
-  // Recording state — null until POST /recording succeeds. After
-  // stop(), `recording.status` flips to `uploaded` (CTA appears) and
-  // then `unlocked` after the credit charge (download buttons appear).
+  // Recording state — null until POST /recording succeeds. Recording is
+  // always on now (default save), so after stop() `recording.status`
+  // flips to `uploaded` and the download buttons appear immediately —
+  // there's no separate unlock charge (the 통역 시작 75-credit lump
+  // already covers save + download). Old `unlocked` status is still
+  // accepted for backward compat with rows charged under the old scheme.
   const [recording, setRecording] = useState<RecordingRow | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const [unlocking, setUnlocking] = useState(false);
   // Five downloadable formats now: two audio tracks (source-only,
   // translated-only) + three transcript zips (source "원문", realtime
   // translation "통역본", and post-hoc batch re-translation "재번역",
-  // each bundling .txt + .docx). One unlock covers all five — the
+  // each bundling .txt + .docx). All five become available together once
+  // the recording row reaches `uploaded` — the
   // revised zip needs a separate /revise trigger (handled below)
   // before it can be downloaded.
   const [downloadingFormat, setDownloadingFormat] = useState<
@@ -1270,11 +1270,10 @@ export function TranslateConsole() {
     setElapsed(0);
     setShareToken(null);
     setShareCopied(false);
-    // Reset recording UI for the new session — last session's locked CTA
-    // (if any) should disappear the moment the host hits Start.
+    // Reset recording UI for the new session — last session's download
+    // panel should disappear the moment the host hits Start.
     setRecording(null);
     setRecordingError(null);
-    setUnlocking(false);
     setDownloadingFormat(null);
     // Same for the post-hoc revision UI — last session's "done" pill
     // shouldn't carry over and tempt the host into a stale download.
@@ -1325,7 +1324,9 @@ export function TranslateConsole() {
         body: JSON.stringify({
           source_lang: sourceLang,
           target_lang: targetLang,
-          record_enabled: recordEnabled,
+          // Recording is always on (default save). The host no longer
+          // chooses — the 75-credit start lump already pays for it.
+          record_enabled: true,
         }),
       });
       const json = (await res.json()) as SessionBundle | { error: string };
@@ -1519,13 +1520,15 @@ export function TranslateConsole() {
     audioDestRef.current = ctx.createMediaStreamDestination();
     inputMixDestRef.current = ctx.createMediaStreamDestination();
 
+    // Recording is always on now (default save), so the only gate is
+    // MediaRecorder support + a usable mime type.
     let mimeType: string | null = null;
-    if (recordEnabled && typeof MediaRecorder !== 'undefined') {
+    if (typeof MediaRecorder !== 'undefined') {
       mimeType = 'audio/webm;codecs=opus';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = null;
     }
-    if (recordEnabled && mimeType) {
+    if (mimeType) {
       try {
         recordInputDestRef.current = ctx.createMediaStreamDestination();
         recordOutputDestRef.current = ctx.createMediaStreamDestination();
@@ -1919,7 +1922,6 @@ export function TranslateConsole() {
     cleanup,
     handleOaiEvent,
     outputAudible,
-    recordEnabled,
     sourceLang,
     targetLang,
     status,
@@ -2211,42 +2213,6 @@ export function TranslateConsole() {
     }
   }, []);
 
-  // Charge RECORDING_UNLOCK_CREDITS credits and flip the recording row to `unlocked`. The
-  // server enforces idempotency via the (org_id, generation_id) UNIQUE
-  // on credit_transactions so a double click just no-ops the second
-  // call.
-  const unlockRecording = useCallback(async () => {
-    if (!recording || unlocking) return;
-    if (recording.status === 'unlocked') return;
-    setUnlocking(true);
-    setRecordingError(null);
-    try {
-      const res = await fetch(
-        `/api/translate/recordings/${recording.id}/unlock`,
-        { method: 'POST' },
-      );
-      const json = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-      };
-      if (!res.ok) {
-        setRecordingError(json.error ?? 'unlock_failed');
-        return;
-      }
-      // Optimistic UI: server side flipped status, mirror it locally.
-      setRecording({
-        ...recording,
-        status: 'unlocked',
-        unlocked_at: new Date().toISOString(),
-        credits_spent: RECORDING_UNLOCK_CREDITS,
-      });
-    } catch {
-      setRecordingError('unlock_failed');
-    } finally {
-      setUnlocking(false);
-    }
-  }, [recording, unlocking]);
-
   // Trigger a download for one of the five formats. All stream directly
   // from the API route — m4a-input/m4a-output are transcoded on demand
   // from the per-track persisted webms; zip-input/zip-output/zip-revised
@@ -2262,7 +2228,11 @@ export function TranslateConsole() {
         | 'zip-revised',
     ) => {
       if (!recording || downloadingFormat) return;
-      if (recording.status !== 'unlocked') return;
+      // Downloadable once the recording is finalized. 'uploaded' is the
+      // normal terminal state under default-save (no separate unlock);
+      // 'unlocked' is still accepted for rows from the old paid scheme.
+      if (recording.status !== 'uploaded' && recording.status !== 'unlocked')
+        return;
       setDownloadingFormat(format);
       try {
         const res = await fetch(
@@ -2478,8 +2448,9 @@ export function TranslateConsole() {
   return (
     <div className="space-y-4">
       {/* WidgetSubHeader — settings (captureMode / sourceLang / targetLang)
-          / options (recordEnabled) / actions (timer / live indicators /
-          monitor mute / share / start-stop CTA). 3 위젯 공통 primitive. */}
+          / actions (timer / live indicators / monitor mute / share /
+          start-stop CTA). 저장은 항상 ON (default save) 이라 options 슬롯
+          (옛 저장 체크박스) 없음. 3 위젯 공통 primitive. */}
       <WidgetSubHeader
         className="-mx-5 -mt-5"
         inputs={
@@ -2537,16 +2508,6 @@ export function TranslateConsole() {
               </select>
             </Field>
           </>
-        }
-        options={
-          <label className="flex items-center gap-2 pb-1 text-md text-mute">
-            <Checkbox
-              checked={recordEnabled}
-              onChange={(e) => setRecordEnabled(e.target.checked)}
-              disabled={live || busy}
-            />
-            {t('recordEnabled')}
-          </label>
         }
         actions={
           <>
@@ -2612,7 +2573,7 @@ export function TranslateConsole() {
                 {t('speaker.guest')}
               </span>
             ) : null}
-            {live && recordEnabled && recorderActive ? (
+            {live && recorderActive ? (
               <span
                 className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
                 aria-label={t('recording.indicatorAria')}
@@ -2713,9 +2674,7 @@ export function TranslateConsole() {
         <RecordingDownloadPanel
           recording={recording}
           recordingError={recordingError}
-          unlocking={unlocking}
           downloadingFormat={downloadingFormat}
-          onUnlock={() => void unlockRecording()}
           onDownload={(f) => void downloadFormat(f)}
           revisionStatus={revisionStatus}
           revisionError={revisionError}
@@ -2732,9 +2691,7 @@ export function TranslateConsole() {
 function RecordingDownloadPanel({
   recording,
   recordingError,
-  unlocking,
   downloadingFormat,
-  onUnlock,
   onDownload,
   revisionStatus,
   revisionError,
@@ -2743,7 +2700,6 @@ function RecordingDownloadPanel({
 }: {
   recording: RecordingRow | null;
   recordingError: string | null;
-  unlocking: boolean;
   downloadingFormat:
     | 'm4a-input'
     | 'm4a-output'
@@ -2751,7 +2707,6 @@ function RecordingDownloadPanel({
     | 'zip-output'
     | 'zip-revised'
     | null;
-  onUnlock: () => void;
   onDownload: (
     f:
       | 'm4a-input'
@@ -2768,10 +2723,11 @@ function RecordingDownloadPanel({
   const t = useTranslations('TranslateConsole');
   // While the recording is still finalizing (upload in-flight) the row
   // status is 'recording'. Treat as "preparing" rather than rendering a
-  // half-broken CTA.
+  // half-broken panel. Once 'uploaded' the deliverables are downloadable
+  // for free (the 75-credit start lump already paid for save+download);
+  // 'unlocked' is still accepted for rows charged under the old scheme.
   const ready =
     recording && (recording.status === 'uploaded' || recording.status === 'unlocked');
-  const unlocked = recording?.status === 'unlocked';
   // PR-T3 — revise button visibility. The post-hoc batch translation
   // needs the source transcript (kind='input' rows), which are only
   // persisted when the host enabled recording for the session. The
@@ -2799,30 +2755,8 @@ function RecordingDownloadPanel({
         <p className="text-md text-mute">{t('download.notAvailable')}</p>
       ) : !ready ? (
         <p className="text-md text-mute">{t('download.preparing')}</p>
-      ) : !unlocked ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[220px]">
-            <div className="text-lg text-ink">{t('download.lockedTitle')}</div>
-            <div className="mt-1 text-md text-mute">
-              {t('download.lockedHint', { credits: RECORDING_UNLOCK_CREDITS })}
-            </div>
-          </div>
-          <ChromeButton
-            variant="primary"
-            size="lg"
-            onClick={onUnlock}
-            disabled={unlocking}
-          >
-            {unlocking
-              ? t('download.unlocking')
-              : t('download.unlock', { credits: RECORDING_UNLOCK_CREDITS })}
-          </ChromeButton>
-        </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-xs border border-amore px-2 py-0.5 text-sm text-amore">
-            {t('download.unlockedPill')}
-          </span>
           <ChromeButton
             size="lg"
             onClick={() => onDownload('m4a-input')}
@@ -2903,7 +2837,7 @@ function RecordingDownloadPanel({
                 variant="primary"
                 size="lg"
                 onClick={onRevise}
-                disabled={revisionPending || !unlocked}
+                disabled={revisionPending || !ready}
               >
                 {revisionPending
                   ? t('revise.running')

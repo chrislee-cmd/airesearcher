@@ -543,7 +543,7 @@
     "translate": {
       "title": "Live Interpreter",
       "description": "OpenAI Realtime translates your microphone audio on the fly. Generate a share link so remote viewers see the live captions and pick the language they listen to.",
-      "cost": "50 credits to start, then 10 credits per 10 minutes"
+      "cost": "75 credits to start (audio + transcript recording and download included), then 10 credits per 10 minutes"
     },
     "probing": {
       "title": "Probing Assistant",
@@ -779,7 +779,6 @@
       "degradedHost": "Host capture paused —",
       "degradedGuest": "Guest capture paused —"
     },
-    "recordEnabled": "Save audio + transcript (+25 credits to download)",
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
       "unmuteAria": "Unmute translated audio"
@@ -800,13 +799,8 @@
     },
     "download": {
       "eyebrow": "Session deliverables",
-      "notAvailable": "No recording for this session. The \"Save audio + transcript\" checkbox must be on before you start.",
+      "notAvailable": "No recording for this session.",
       "preparing": "Finalizing the recording…",
-      "lockedTitle": "Source + translated audio + transcript zips (.m4a · .m4a · .zip · .zip)",
-      "lockedHint": "One charge unlocks the source audio, translated audio, and the source/translation transcript zips (.txt + .docx in each). Costs {credits} credits.",
-      "unlock": "Unlock ({credits} credits)",
-      "unlocking": "Charging…",
-      "unlockedPill": "Unlocked",
       "audioInput": "Source audio (.m4a)",
       "audioOutput": "Translated audio (.m4a)",
       "zipInput": "Download source (.zip)",
