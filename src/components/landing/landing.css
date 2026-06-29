@@ -491,6 +491,163 @@
   text-align: center;
 }
 
+/* ─── Canvas widget streaming animations ──────────────────── */
+/* 각 위젯 안에서 self-loop micro-animation 으로 "live demo" 인상을
+   줍니다. CSS 만으로 동작 — JS 0. 위젯별 stagger 로 ripple 효과,
+   8s cycle 로 distract 최소화. prefers-reduced-motion 시 정적.        */
+
+.landing-root .cm-w-transcripts { --cm-base-delay: 0s; }
+.landing-root .cm-w-translate   { --cm-base-delay: .4s; }
+.landing-root .cm-w-probing     { --cm-base-delay: .8s; }
+.landing-root .cm-w-insights    { --cm-base-delay: 1.2s; }
+.landing-root .cm-w-desk        { --cm-base-delay: 1.6s; }
+.landing-root .cm-w-interviews  { --cm-base-delay: 2s; }
+
+@keyframes cm-fade-cycle {
+  0%, 100% { opacity: 0; transform: translateY(8px); }
+  12%, 88% { opacity: 1; transform: translateY(0); }
+}
+@keyframes cm-cursor-blink {
+  50% { opacity: 0; }
+}
+
+/* Transcripts — 3 lines fade-in stagger + cursor blink on last */
+.landing-root .cm-w-transcripts .cm-lines li {
+  opacity: 0;
+  animation: cm-fade-cycle 8s ease-in-out infinite;
+}
+.landing-root .cm-w-transcripts .cm-lines li:nth-child(1) { animation-delay: calc(var(--cm-base-delay) + 0s); }
+.landing-root .cm-w-transcripts .cm-lines li:nth-child(2) { animation-delay: calc(var(--cm-base-delay) + 1.2s); }
+.landing-root .cm-w-transcripts .cm-lines li:nth-child(3) { animation-delay: calc(var(--cm-base-delay) + 2.4s); }
+.landing-root .cm-w-transcripts .cm-text { display: inline; }
+.landing-root .cm-w-transcripts .cm-lines li:last-child .cm-text::after {
+  content: '▌';
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--pop-pink);
+  font-weight: 800;
+  animation: cm-cursor-blink .9s steps(2, end) infinite;
+}
+
+/* Translate — host/guest 2 rows fade-in stagger + cursor on guest */
+.landing-root .cm-w-translate .cm-tr-row {
+  opacity: 0;
+  animation: cm-fade-cycle 8s ease-in-out infinite;
+}
+.landing-root .cm-w-translate .cm-tr-row:nth-child(1) { animation-delay: calc(var(--cm-base-delay) + 0s); }
+.landing-root .cm-w-translate .cm-tr-row:nth-child(2) { animation-delay: calc(var(--cm-base-delay) + 2s); }
+.landing-root .cm-w-translate .cm-tr-row.guest p::after {
+  content: '▌';
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--pop-pink);
+  font-weight: 800;
+  animation: cm-cursor-blink .9s steps(2, end) infinite;
+}
+
+/* Probing — question card slide-in cycle + hint pulse */
+@keyframes cm-slide-up-cycle {
+  0%, 100% { opacity: 0; transform: translateY(18px) scale(.97); }
+  14%, 86% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cm-hint-pulse {
+  0%, 100% { opacity: .55; transform: translateY(0); }
+  50%      { opacity: 1;   transform: translateY(-2px); }
+}
+.landing-root .cm-w-probing .cm-probing-q {
+  opacity: 0;
+  animation: cm-slide-up-cycle 8s ease-out infinite;
+  animation-delay: calc(var(--cm-base-delay) + .6s);
+}
+.landing-root .cm-w-probing .cm-probing-hint {
+  display: inline-block;
+  animation: cm-hint-pulse 2.2s ease-in-out infinite;
+  animation-delay: var(--cm-base-delay);
+}
+
+/* Insights — 3 clusters fade-in stagger + bubble pulse */
+.landing-root .cm-w-insights .cm-clusters li {
+  opacity: 0;
+  animation: cm-fade-cycle 8s ease-in-out infinite;
+}
+.landing-root .cm-w-insights .cm-clusters li:nth-child(1) { animation-delay: calc(var(--cm-base-delay) + 0s); }
+.landing-root .cm-w-insights .cm-clusters li:nth-child(2) { animation-delay: calc(var(--cm-base-delay) + .9s); }
+.landing-root .cm-w-insights .cm-clusters li:nth-child(3) { animation-delay: calc(var(--cm-base-delay) + 1.8s); }
+@keyframes cm-bubble-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.22); }
+}
+.landing-root .cm-w-insights .cm-bubble {
+  transform-origin: center;
+  animation: cm-bubble-pulse 2s ease-in-out infinite;
+}
+.landing-root .cm-w-insights .cm-clusters li:nth-child(2) .cm-bubble { animation-delay: .35s; }
+.landing-root .cm-w-insights .cm-clusters li:nth-child(3) .cm-bubble { animation-delay: .7s; }
+
+/* Desk — progress bar 0→100% + sources fade-in stagger */
+.landing-root .cm-w-desk .cm-desk-progress {
+  position: relative;
+  height: 8px;
+  background: var(--pop-yellow);
+  border: 1.5px solid #000;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.landing-root .cm-w-desk .cm-desk-progress-bar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--pop-pink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: cm-progress-fill 8s ease-out infinite;
+  animation-delay: var(--cm-base-delay);
+}
+@keyframes cm-progress-fill {
+  0%       { transform: scaleX(0); }
+  78%, 92% { transform: scaleX(1); }
+  100%     { transform: scaleX(0); }
+}
+.landing-root .cm-w-desk .cm-sources li {
+  opacity: 0;
+  animation: cm-fade-cycle 8s ease-in-out infinite;
+}
+.landing-root .cm-w-desk .cm-sources li:nth-child(1) { animation-delay: calc(var(--cm-base-delay) + .6s); }
+.landing-root .cm-w-desk .cm-sources li:nth-child(2) { animation-delay: calc(var(--cm-base-delay) + 2s); }
+
+/* Interviews — matrix cells column-by-column fill (5 cols × 4 rows) */
+@keyframes cm-cell-fill {
+  0%, 100%  { background: #fff; }
+  18%, 92%  { background: var(--pop-pink); }
+}
+.landing-root .cm-w-interviews .cm-cell {
+  animation: cm-cell-fill 8s ease-in-out infinite;
+}
+.landing-root .cm-w-interviews .cm-cell:nth-child(5n+1) { animation-delay: calc(var(--cm-base-delay) + 0s); }
+.landing-root .cm-w-interviews .cm-cell:nth-child(5n+2) { animation-delay: calc(var(--cm-base-delay) + .35s); }
+.landing-root .cm-w-interviews .cm-cell:nth-child(5n+3) { animation-delay: calc(var(--cm-base-delay) + .7s); }
+.landing-root .cm-w-interviews .cm-cell:nth-child(5n+4) { animation-delay: calc(var(--cm-base-delay) + 1.05s); }
+.landing-root .cm-w-interviews .cm-cell:nth-child(5n+5) { animation-delay: calc(var(--cm-base-delay) + 1.4s); }
+
+/* Reduced motion — animation 0, 정적 state 보존 (접근성 + 절전) */
+@media (prefers-reduced-motion: reduce) {
+  .landing-root .cm-widget *,
+  .landing-root .cm-widget *::before,
+  .landing-root .cm-widget *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .landing-root .cm-widget li,
+  .landing-root .cm-widget .cm-tr-row,
+  .landing-root .cm-widget .cm-probing-q {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .landing-root .cm-w-desk .cm-desk-progress-bar { transform: scaleX(.6); }
+  .landing-root .cm-w-transcripts .cm-lines li:last-child .cm-text::after,
+  .landing-root .cm-w-translate .cm-tr-row.guest p::after { content: ''; }
+}
+
 /* ─── Section header ───────────────────────────────────────── */
 .landing-root .sec-head { margin-bottom: 36px; text-align: center; }
 .landing-root .sec-head .meta {
