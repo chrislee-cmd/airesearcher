@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 //
 // Status: NOT YET CONSUMED. Migrations land in follow-up PRs.
 
-type Size = 'sm' | 'md' | 'lg' | 'xl';
+type Size = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 type Props = {
   open: boolean;
@@ -40,6 +40,10 @@ const SIZE: Record<Size, string> = {
   md: 'max-w-[560px]',
   lg: 'max-w-[760px]',
   xl: 'max-w-[1100px]',
+  // Edge-to-edge fullscreen — overrides the outer padding so the panel
+  // covers the entire viewport. Used by full-view widget surfaces that
+  // want their own 2-column layout to span every available pixel.
+  full: 'w-screen h-screen max-h-screen max-w-none !rounded-none',
 };
 
 export function Modal({
@@ -101,7 +105,11 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-modal flex items-center justify-center p-4"
+      className={[
+        'fixed inset-0 z-modal flex items-center justify-center',
+        // Full-size needs zero padding so the panel covers edge-to-edge.
+        size === 'full' ? 'p-0' : 'p-4',
+      ].join(' ')}
       role="dialog"
       aria-modal="true"
       aria-labelledby={headingId}
@@ -123,7 +131,10 @@ export function Modal({
           // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
           // 없어서 화면 위아래로 spill 한 버그)
-          'relative flex w-full max-h-[calc(100vh-2rem)] flex-col overflow-hidden border border-line bg-paper-soft',
+          'relative flex w-full flex-col overflow-hidden border border-line bg-paper-soft',
+          // 일반 사이즈만 viewport 안에 맞도록 max-h; full 은 자체적으로
+          // h-screen 을 SIZE 에서 직접 잡는다.
+          size === 'full' ? '' : 'max-h-[calc(100vh-2rem)]',
           'rounded-sm [box-shadow:var(--shadow-bento)]',
           SIZE[size],
         ].join(' ')}
@@ -145,7 +156,16 @@ export function Modal({
             ) : null}
           </header>
         )}
-        <div className="flex-1 overflow-auto px-5 py-4 text-lg leading-[1.65] text-ink-2">
+        <div
+          className={[
+            'flex-1 text-lg leading-[1.65] text-ink-2',
+            // full size: 자체 layout (헤더/2-column) 을 children 에 맡긴다.
+            // 일반 size: 패널 안에서 스크롤 + padding.
+            size === 'full'
+              ? 'min-h-0 overflow-hidden'
+              : 'overflow-auto px-5 py-4',
+          ].join(' ')}
+        >
           {children}
         </div>
         {footer ? (
