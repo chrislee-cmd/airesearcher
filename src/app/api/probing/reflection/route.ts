@@ -1,9 +1,14 @@
-// probing-reflection — 좌패널 Reflection Agent.
+// probing-reflection — 좌패널 Persona Agent.
 //
-// PR (probing-two-pane-reflection): 기존 30s/3q 단일 에이전트를 좌(성찰) +
-// 우(질문) 두 에이전트로 분리. 좌패널은 transcript 누적 + (옵션) 가이드를
-// 받아 응답자에 대한 세 섹션 (respondent / needs_painpoints / motivation)
-// 의 markdown bullet 텍스트를 반환한다. 영속화 X — 위젯 in-memory only.
+// PR (probing-persona-panels): 기존 3 섹션 reflection 을 페르소나 8 패널로
+// 재편. transcript 누적 + (옵션) 가이드를 받아 8 섹션 (demographics /
+// values / preferences / needs / painpoints / brand_perception /
+// decision_drivers / behavioral_patterns) 각각의 summary + signals +
+// confidence 를 반환한다. 영속화 X — 위젯 in-memory only.
+//
+// 엔드포인트 path 는 그대로 (`/api/probing/reflection`) — 위젯 코드 한
+// 곳에서만 호출하므로 break 영향 없음. 응답 schema 가 바뀌었기에 다른
+// 호출자가 있으면 동시에 갱신 필요 (현재 없음 — 확인됨 grep 0).
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -15,8 +20,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
-  PROBING_REFLECTION_SYSTEM,
-  probingReflectionSchema,
+  PROBING_PERSONA_SYSTEM,
+  probingPersonaSchema,
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
@@ -80,18 +85,19 @@ export async function POST(request: Request) {
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
-    schema: probingReflectionSchema,
-    system: PROBING_REFLECTION_SYSTEM,
+    schema: probingPersonaSchema,
+    system: PROBING_PERSONA_SYSTEM,
     prompt: `${guideBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
 
 ---
-위 transcript 만 보고 응답자에 대한 세 섹션 (respondent / needs_painpoints / motivation) 을 markdown bullet 으로 채우세요. 단서가 부족한 섹션은 "단서 부족" 으로 표기.`,
+위 transcript 만 보고 응답자의 페르소나를 8 섹션 (demographics / values / preferences / needs / painpoints / brand_perception / decision_drivers / behavioral_patterns) 으로 채우세요. transcript 가 빈약한 섹션은 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열로 두세요. 일반론으로 빈 칸을 채우지 마세요.`,
     // 0.3 — 같은 transcript 에서 호출마다 큰 흔들림 없도록. 0 은 너무
     // 동일한 문장을 반복, 0.4 (suggest) 보다는 보수적.
     temperature: 0.3,
-    // 세 섹션 합쳐 ~600~1200 token.
-    maxOutputTokens: 1400,
+    // 8 섹션 × (summary + signals + confidence) — 풀 응답 ~2500~3500 token.
+    // 4000 으로 상향해 cap 충돌 회피.
+    maxOutputTokens: 4000,
     providerOptions: ZERO_RETENTION,
   });
 
