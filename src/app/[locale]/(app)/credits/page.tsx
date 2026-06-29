@@ -1,10 +1,15 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { headers } from 'next/headers';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
 import { CreditsBundles } from '@/components/credits-bundles';
 import { CreditsUsagePredictor } from '@/components/credits-usage-predictor';
 import { CreditsStatusBanner } from '@/components/credits-status-banner';
+import {
+  availableLemonSqueezyCurrencies,
+  determineCurrency,
+} from '@/lib/billing';
 
 // PR-D17 — pop 톤. 노랑 Memphis hero 카드 (3px border + 6px offset shadow)
 // + Outfit display 잔액 64-80px. 충전 흐름 / 잔액 데이터는 그대로 — 시각만.
@@ -29,6 +34,12 @@ export default async function CreditsPage({
   const rawStatus = sp.status;
   const status: 'success' | 'cancelled' | null =
     rawStatus === 'success' ? 'success' : rawStatus === 'cancelled' ? 'cancelled' : null;
+
+  // Dual-payout — pick the rail server-side (locale + Vercel geo header)
+  // so the toggle defaults to the user's expected currency on first paint.
+  const hdrs = await headers();
+  const available = availableLemonSqueezyCurrencies();
+  const initialCurrency = determineCurrency(hdrs, locale);
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
@@ -101,7 +112,10 @@ export default async function CreditsPage({
 
       {status && <div className="mt-5"><CreditsStatusBanner status={status} /></div>}
 
-      <CreditsBundles />
+      <CreditsBundles
+        availableCurrencies={available}
+        initialCurrency={initialCurrency}
+      />
 
       <CreditsUsagePredictor />
     </div>

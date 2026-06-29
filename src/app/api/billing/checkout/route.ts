@@ -8,11 +8,13 @@ import { getActiveOrg } from '@/lib/org';
 import { CREDIT_BUNDLES } from '@/lib/features';
 import {
   createLemonSqueezyCheckout,
+  determineCurrency,
   generateBankReference,
   getBankAccount,
-  getLemonSqueezyVariantId,
   normalizeBizNo,
+  resolveLemonSqueezyTarget,
   type LemonSqueezyLocale,
+  type PaymentCurrency,
   type TaxInvoiceRequest,
 } from '@/lib/billing';
 
@@ -118,6 +120,9 @@ const Body = z.object({
   // Locale propagated from the client (next-intl). Drives the Lemon
   // Squeezy checkout UI language. Default to 'en' for anything unknown.
   locale: z.enum(['ko', 'en']).optional(),
+  // Currency = payout rail. Optional — server falls back to locale/IP
+  // detection. Bank transfer ignores this (always KRW domestic).
+  currency: z.enum(['KRW', 'USD']).optional(),
   taxInvoice: TaxInvoiceSchema.optional(),
 });
 
@@ -139,7 +144,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input', details: parsed.error.format() }, { status: 400 });
   }
-  const { bundleId, method, locale, taxInvoice } = parsed.data;
+  const { bundleId, method, locale, currency: requestedCurrency, taxInvoice } = parsed.data;
   const bundle = CREDIT_BUNDLES.find((b) => b.id === bundleId);
   if (!bundle || bundle.priceKrw == null) {
     return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
@@ -152,6 +157,9 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // ── Bank transfer rail ──────────────────────────────────────────────────
+  // Bank transfer = 국내 KRW only (single account 하나은행). Foreign wire is
+  // a future spec — for now the UI gates this rail behind currency === KRW
+  // and we stamp the row as KRW for admin reconciliation.
   if (method === 'bank_transfer') {
     let bankReference = generateBankReference();
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -163,6 +171,7 @@ export async function POST(request: Request) {
           bundle_id: bundle.id,
           credits: bundle.credits,
           amount_krw: bundle.priceKrw,
+          currency: 'KRW',
           method: 'bank_transfer',
           status: 'pending',
           bank_reference: bankReference,
@@ -219,15 +228,25 @@ export async function POST(request: Request) {
 
   // ── Lemon Squeezy card rail ─────────────────────────────────────────────
   const apiKey = env.LEMONSQUEEZY_API_KEY;
-  const storeId = env.LEMONSQUEEZY_STORE_ID;
-  if (!apiKey || !storeId) {
-    console.error('[billing/checkout] LEMONSQUEEZY_API_KEY or LEMONSQUEEZY_STORE_ID missing');
+  if (!apiKey) {
+    console.error('[billing/checkout] LEMONSQUEEZY_API_KEY missing');
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
-  const variantId = getLemonSqueezyVariantId(bundleId);
-  if (!variantId) {
-    console.error(`[billing/checkout] LEMONSQUEEZY_VARIANT_${bundleId.toUpperCase()} missing`);
+  // Currency = payout rail. Explicit body wins; otherwise locale + geo
+  // header decide (ko/KR → KRW, else USD). The picked currency selects
+  // the Lemon Squeezy store, which in turn picks the payout account.
+  const currency: PaymentCurrency = determineCurrency(
+    request.headers,
+    locale ?? 'en',
+    requestedCurrency,
+  );
+
+  const target = resolveLemonSqueezyTarget(bundleId, currency);
+  if (!target) {
+    console.error(
+      `[billing/checkout] lemonsqueezy target missing currency=${currency} bundle=${bundleId}`,
+    );
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
@@ -235,7 +254,9 @@ export async function POST(request: Request) {
   const checkoutLocale: LemonSqueezyLocale = locale === 'ko' ? 'ko' : 'en';
 
   // Insert payment row first so the webhook can correlate via the
-  // payment_id we thread through `checkout_data.custom`.
+  // payment_id we thread through `checkout_data.custom`. `currency` and
+  // `lemonsqueezy_store_id` get stamped so admin reconciliation can group
+  // payouts per rail without re-deriving from env.
   const { data: payment, error: insertErr } = await admin
     .from('payments')
     .insert({
@@ -244,8 +265,10 @@ export async function POST(request: Request) {
       bundle_id: bundle.id,
       credits: bundle.credits,
       amount_krw: bundle.priceKrw,
+      currency,
       method: 'lemonsqueezy',
       status: 'pending',
+      lemonsqueezy_store_id: target.storeId,
       tax_invoice: taxInvoicePayload as unknown as object,
     })
     .select('id')
@@ -256,8 +279,8 @@ export async function POST(request: Request) {
 
   try {
     const checkout = await createLemonSqueezyCheckout(apiKey, {
-      storeId,
-      variantId,
+      storeId: target.storeId,
+      variantId: target.variantId,
       email: user.email ?? null,
       locale: checkoutLocale,
       custom: { payment_id: payment.id, org_id: org.org_id },
@@ -272,6 +295,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       paymentId: payment.id,
       method: 'lemonsqueezy',
+      currency,
       checkoutUrl: checkout.url,
     });
   } catch (err) {
