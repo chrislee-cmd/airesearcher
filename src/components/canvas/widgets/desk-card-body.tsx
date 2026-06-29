@@ -52,7 +52,6 @@ import {
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
-import { deskCumulativeProgress } from '@/lib/widget-progress';
 import { Banner } from '@/components/canvas/shell/banner';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
@@ -534,17 +533,7 @@ export function DeskCardBody() {
         crawlTotal > 0
           ? Math.min(99, Math.round((crawlDone / crawlTotal) * 100))
           : undefined;
-      // overallProgress: 6 단계 누적 % (Navigator 용). per-step progress 와
-      // 별도 — 위젯 헤더 pill 은 phase 안 진행도, Navigator 는 전체 완성도.
-      const overallProgress = Math.min(
-        99,
-        deskCumulativeProgress({
-          phase,
-          crawl_done: crawlDone,
-          crawl_total: crawlTotal,
-        }),
-      );
-      setWidgetState({ kind: 'running', label, progress, overallProgress });
+      setWidgetState({ kind: 'running', label, progress });
       return;
     }
     if (job?.status === 'error') {

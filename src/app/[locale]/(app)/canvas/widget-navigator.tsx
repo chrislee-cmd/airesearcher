@@ -87,19 +87,10 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
   const state = useWidgetStateOf(widgetKey);
   if (state.kind === 'idle') return null;
   if (state.kind === 'running') {
-    // overallProgress (누적 0~100, 단계 가중) 가 있으면 우선 — 위젯 헤더
-    // pill 의 per-phase progress 와 다르다. 없으면 per-phase progress 로
-    // fallback (legacy 위젯). 둘 다 없으면 진행 중 라벨만.
-    const raw =
-      typeof state.overallProgress === 'number'
-        ? state.overallProgress
-        : typeof state.progress === 'number'
-          ? state.progress
-          : null;
     const pct =
-      raw === null
-        ? t('stateRunning')
-        : `${Math.max(0, Math.min(100, Math.round(raw)))}%`;
+      typeof state.progress === 'number'
+        ? `${Math.max(0, Math.min(100, Math.round(state.progress)))}%`
+        : t('stateRunning');
     return (
       <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-amore">
         <span aria-hidden className="animate-pulse">
