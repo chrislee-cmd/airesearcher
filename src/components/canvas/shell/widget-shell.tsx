@@ -22,11 +22,15 @@ import {
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
-import type { WidgetContent, WidgetState } from '../widget-types';
+import type { WidgetContent, WidgetStateInfo } from '../widget-types';
 import {
   WidgetHeaderColorPicker,
   useWidgetHeaderColor,
 } from './widget-header-color';
+import {
+  WidgetStateProvider,
+  useWidgetState,
+} from './widget-state-context';
 import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
@@ -40,10 +44,19 @@ export type DragHandleProps = {
   onMouseDown: (e: ReactMouseEvent<HTMLElement>) => void;
 };
 
-function popStatePillLabel(state: WidgetState): string {
-  switch (state) {
-    case 'running':
-      return 'LIVE';
+// pill 의 노출 텍스트. running 일 때 body 가 progress 를 push 하면
+// "<LABEL> NN%" 로 합쳐서 보여주고, label 만 있으면 라벨, 아무것도 없으면
+// 그냥 "RUNNING" — realtime 위젯 (translate 등) 의 progress-less 경로.
+function popStatePillLabel(state: WidgetStateInfo): string {
+  switch (state.kind) {
+    case 'running': {
+      const base = (state.label ?? 'RUNNING').toUpperCase();
+      if (typeof state.progress === 'number') {
+        const pct = Math.max(0, Math.min(100, Math.round(state.progress)));
+        return `${base} ${pct}%`;
+      }
+      return base;
+    }
     case 'done':
       return 'DONE';
     case 'error':
@@ -54,18 +67,67 @@ function popStatePillLabel(state: WidgetState): string {
   }
 }
 
-function PopStatePill({ state }: { state: WidgetState }) {
-  return (
-    <span
-      className="shrink-0 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider"
-      style={{
+// state 별 시각. idle = 흰 bg + 검은 border (기본 Memphis pill).
+// running = amore 핑크 bg + 흰 텍스트 + 좌측 깜빡이는 도트.
+// done = mint bg + 검은 텍스트. error = warning bg + warning 텍스트 +
+//   warning border. 모두 design-system token 만.
+function pillVisual(kind: WidgetStateInfo['kind']): {
+  background: string;
+  color: string;
+  border: string;
+} {
+  switch (kind) {
+    case 'running':
+      return {
+        background: 'var(--color-amore)',
+        color: 'var(--canvas-card-bg)',
+        border: '2px solid var(--canvas-card-border)',
+      };
+    case 'done':
+      return {
+        background: 'var(--color-mint, var(--canvas-card-bg))',
+        color: 'var(--canvas-card-border)',
+        border: '2px solid var(--canvas-card-border)',
+      };
+    case 'error':
+      return {
+        background: 'var(--color-warning-bg)',
+        color: 'var(--color-warning)',
+        border: '2px solid var(--color-warning)',
+      };
+    case 'idle':
+    default:
+      return {
         background: 'var(--canvas-card-bg)',
         color: 'var(--canvas-card-border)',
         border: '2px solid var(--canvas-card-border)',
+      };
+  }
+}
+
+function PopStatePill() {
+  const { state } = useWidgetState();
+  const visual = pillVisual(state.kind);
+  const title =
+    state.kind === 'error' && state.message ? state.message : undefined;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+      style={{
+        background: visual.background,
+        color: visual.color,
+        border: visual.border,
         borderRadius: 4,
         boxShadow: '2px 2px 0 var(--canvas-card-border)',
       }}
+      title={title}
+      aria-live={state.kind === 'running' ? 'polite' : undefined}
     >
+      {state.kind === 'running' && (
+        <span aria-hidden className="animate-pulse">
+          ●
+        </span>
+      )}
       {popStatePillLabel(state)}
     </span>
   );
@@ -160,6 +222,24 @@ export function WidgetShell({
   // 부모가 위젯 순서 변경 dnd 를 wire-up. 헤더 영역에 spread.
   dragHandleProps?: DragHandleProps;
 }) {
+  // shell 헤더 (PopStatePill) ↔ body (job hook) 가 같은 인스턴스 안에서
+  // state 를 주고받게 1-위젯-1-Provider 로 wrap. 초기값은 widget meta 의
+  // 정적 state — 현재 모든 위젯이 'idle'. body 가 어떤 setState 도 호출
+  // 안 하면 초기값 그대로 노출.
+  return (
+    <WidgetStateProvider initialState={{ kind: content.state }}>
+      <WidgetShellInner content={content} dragHandleProps={dragHandleProps} />
+    </WidgetStateProvider>
+  );
+}
+
+function WidgetShellInner({
+  content,
+  dragHandleProps,
+}: {
+  content: WidgetContent;
+  dragHandleProps?: DragHandleProps;
+}) {
   const { ExpandedBody } = content;
   const isDraggable = !!dragHandleProps?.draggable;
   const [headerColor, setHeaderColor] = useWidgetHeaderColor(content.key);
@@ -192,12 +272,15 @@ export function WidgetShell({
       >
         <div className="relative flex items-center gap-2 text-xs uppercase">
           <CostBadge cost={content.meta.cost} costLabel={content.meta.costLabel} />
+          {/* 컬러 팔레트는 cost 옆 (좌측 고정) — 우측 pill 이 state 에 따라
+              너비가 변해도 (READY → TRANSCRIBING 72%) 팔레트 버튼 위치는
+              움직이지 않는다. */}
+          <WidgetHeaderColorPicker
+            value={headerColor}
+            onChange={setHeaderColor}
+          />
           <span className="ml-auto flex items-center gap-2">
-            <WidgetHeaderColorPicker
-              value={headerColor}
-              onChange={setHeaderColor}
-            />
-            <PopStatePill state={content.state} />
+            <PopStatePill />
           </span>
           <CostFlyUpOverlay featureKey={content.key} />
         </div>

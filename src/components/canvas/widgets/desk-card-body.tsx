@@ -49,6 +49,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
+import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Banner } from '@/components/canvas/shell/banner';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
@@ -413,6 +414,50 @@ export function DeskCardBody() {
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
   const showResult = !!(job?.status === 'done' && job.output);
+
+  // 헤더 pill 로 push 할 live state. 우선순위:
+  //   1) submitting/pendingJob → running ('SUBMITTING', progress 없음)
+  //   2) isWorking → running, label = phase, progress = crawl_done/crawl_total
+  //   3) job?.status === 'error' → error (+ message)
+  //   4) job?.status === 'done' → done
+  //   5) 그 외 → idle
+  const { setState: setWidgetState } = useWidgetState();
+  useEffect(() => {
+    if (submitting || pendingJobId) {
+      setWidgetState({ kind: 'running', label: 'SUBMITTING' });
+      return;
+    }
+    if (isWorking && job) {
+      const phase = job.progress?.phase;
+      const label = phase ? phase.toUpperCase() : 'RUNNING';
+      const crawlTotal = job.progress?.crawl_total ?? 0;
+      const crawlDone = job.progress?.crawl_done ?? 0;
+      const progress =
+        crawlTotal > 0
+          ? Math.min(99, Math.round((crawlDone / crawlTotal) * 100))
+          : undefined;
+      setWidgetState({ kind: 'running', label, progress });
+      return;
+    }
+    if (job?.status === 'error') {
+      setWidgetState({
+        kind: 'error',
+        message: job.error_message ?? undefined,
+      });
+      return;
+    }
+    if (job?.status === 'done') {
+      setWidgetState({ kind: 'done' });
+      return;
+    }
+    setWidgetState({ kind: 'idle' });
+  }, [
+    setWidgetState,
+    submitting,
+    pendingJobId,
+    isWorking,
+    job,
+  ]);
   // cardState 는 widget shell 외부에서 결정 (PR2 시점에는 widget meta.state
   // 가 'idle' 로 고정 — 후속 PR 에서 widget shell 로 live state 주입 검토).
   const showRange = preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo));
