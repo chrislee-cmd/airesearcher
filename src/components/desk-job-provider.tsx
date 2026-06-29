@@ -149,29 +149,54 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   const sessionStartRef = useRef<string>(new Date().toISOString());
   const lastUserIdRef = useRef<string | null>(null);
 
+  // Auth health gate. The realtime subscription on `desk_jobs` (below)
+  // fires `refresh()` on every row change — an active scraping job can
+  // emit dozens of progress events per minute. If the session expired
+  // we'd hammer `/api/desk/jobs` with 401s once per event. Flip true on
+  // the first 401, skip every subsequent fetch, and reset on user
+  // identity change (re-login) or the next healthy response.
+  const stopOnExpiredRef = useRef(false);
+  const warnedExpiredOnceRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!user) {
       setJobs([]);
       return;
     }
+    if (stopOnExpiredRef.current) return;
     try {
       const res = await fetch('/api/desk/jobs', { cache: 'no-store' });
+      if (res.status === 401) {
+        stopOnExpiredRef.current = true;
+        if (!warnedExpiredOnceRef.current) {
+          console.warn(
+            '[desk] session expired — polling stopped. Reload or sign in again to resume.',
+          );
+          warnedExpiredOnceRef.current = true;
+        }
+        return;
+      }
       if (!res.ok) return;
       const json = await res.json();
       const all: DeskJob[] = json.jobs ?? [];
       const cutoff = sessionStartRef.current;
       setJobs(all.filter((j) => j.created_at >= cutoff));
+      stopOnExpiredRef.current = false;
+      warnedExpiredOnceRef.current = false;
     } catch {
       // ignore — realtime or next refresh will catch up
     }
   }, [user]);
 
   // Reset the session cutoff whenever the signed-in user changes.
+  // Also re-arm the auth gate so a re-login wakes polling back up.
   useEffect(() => {
     const uid = user?.id ?? null;
     if (lastUserIdRef.current !== uid) {
       sessionStartRef.current = new Date().toISOString();
       lastUserIdRef.current = uid;
+      stopOnExpiredRef.current = false;
+      warnedExpiredOnceRef.current = false;
       setJobs([]);
     }
   }, [user]);
