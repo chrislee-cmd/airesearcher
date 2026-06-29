@@ -655,6 +655,8 @@
       "title": "Widgets",
       "expand": "Expand widget list",
       "collapse": "Collapse widget list",
+      "dragHandle": "Drag to move",
+      "resetPosition": "Reset position",
       "stateRunning": "Running",
       "stateDone": "Done",
       "stateError": "Error"
