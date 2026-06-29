@@ -41,8 +41,8 @@ const SIZE: Record<Size, string> = {
   lg: 'max-w-[760px]',
   xl: 'max-w-[1100px]',
   // Edge-to-edge fullscreen — overrides the outer padding so the panel
-  // covers the entire viewport. Used by full-view widget surfaces that
-  // want their own 2-column layout to span every available pixel.
+  // covers the entire viewport. Used by full-view widget surfaces
+  // (interviews, probing 등) that own their own layout (2-col / 3-col grid).
   full: 'w-screen h-screen max-h-screen max-w-none !rounded-none',
 };
 
@@ -159,10 +159,10 @@ export function Modal({
         <div
           className={[
             'flex-1 text-lg leading-[1.65] text-ink-2',
-            // full size: 자체 layout (헤더/2-column) 을 children 에 맡긴다.
-            // 일반 size: 패널 안에서 스크롤 + padding.
+            // full size: 자체 layout (헤더/2-column/3-column grid) 을 children
+            // 이 owning. body padding + overflow-auto 끈다 (이중 스크롤 회피).
             size === 'full'
-              ? 'min-h-0 overflow-hidden'
+              ? 'flex min-h-0 flex-col overflow-hidden'
               : 'overflow-auto px-5 py-4',
           ].join(' ')}
         >
