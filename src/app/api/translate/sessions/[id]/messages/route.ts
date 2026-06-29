@@ -25,10 +25,15 @@ const Body = z.object({
   kind: z.enum(['input', 'output']),
   text: z.string().min(1).max(8000),
   lang: z.string().min(2).max(8).optional(),
-  // PR-T2: host vs guest tag derived from the inputSource picker
-  // ('mic' → host, 'tab' → guest). Legacy clients omit it and the
-  // column stays NULL; export renderers fall back to "unknown".
-  speaker: z.enum(['host', 'guest']).optional(),
+  // PR-T2: host vs guest tag derived from the inputSource picker.
+  // Currently 'mic' → host, 'tab' → null (per-track diarization is a
+  // follow-up). `.nullable()` is load-bearing: zod's .optional() alone
+  // permits `undefined` but rejects explicit `null` over the wire,
+  // which is exactly what an omitted-but-known-unknown tab-mode client
+  // sends. Legacy clients omit the key entirely and that's still fine.
+  // Column stays NULL in either case; export renderers fall back to
+  // "unknown".
+  speaker: z.enum(['host', 'guest']).nullable().optional(),
 });
 
 // Special-case payload emitted by the host console at session end. Carries
