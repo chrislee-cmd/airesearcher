@@ -268,7 +268,8 @@
       "normalizing": "Normalizing",
       "generating": "Drafting"
     },
-    "adminPayments": "Payments (admin)"
+    "adminPayments": "Payments (admin)",
+    "adminDesignSystem": "Design system (admin)"
   },
   "SidebarGroups": {
     "design": "Research Design",
