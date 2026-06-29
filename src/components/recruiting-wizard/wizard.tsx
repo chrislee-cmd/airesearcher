@@ -18,10 +18,7 @@ import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
-import {
-  ensureMandatoryPhoneNotice,
-  ensurePrivacyConsent,
-} from '@/lib/recruiting/survey-postprocess';
+import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
 import {
   CriteriaEditor,
   CriteriaPreview,
@@ -387,13 +384,12 @@ export function RecruitingWizard() {
       }
       if (ctrl.signal.aborted) return;
       const rawSurvey = await coerceSurvey(buffer);
-      // Mandatory phone-contact notice + privacy-consent gate are
-      // enforced post-LLM so users see them in the Step 2 preview/editor
-      // before approving. The publish route re-applies the same
-      // post-process as defense in depth.
-      const finalSurvey = ensurePrivacyConsent(
-        ensureMandatoryPhoneNotice(rawSurvey),
-      );
+      // The standard template blocks (인적사항 + 전화번호 + 개인정보 동의)
+      // are injected post-LLM so users see the *complete* survey in the
+      // Step 2 preview/editor before approving. The LLM no longer generates
+      // these, so this is what materialises them; the publish route
+      // re-applies the same idempotent post-process as defense in depth.
+      const finalSurvey = applyStandardBlocks(rawSurvey);
       setSurvey(finalSurvey);
       setSurveyPhase('review');
       track('recruiting_survey_generate_success', {
