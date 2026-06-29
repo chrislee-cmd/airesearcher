@@ -7,7 +7,10 @@ import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
 import { createGoogleForm } from '@/lib/google-forms';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey, type SurveyQuestion } from '@/lib/survey-schema';
-import { ensureMandatoryPhoneNotice } from '@/lib/recruiting/survey-postprocess';
+import {
+  ensureMandatoryPhoneNotice,
+  ensurePrivacyConsent,
+} from '@/lib/recruiting/survey-postprocess';
 
 export const maxDuration = 60;
 
@@ -105,11 +108,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
-  // ensureMandatoryPhoneNotice is idempotent — the wizard runs it on the
-  // streamed survey too, but we re-apply here so any caller (or any
-  // future surface that calls /create directly) cannot publish a form
-  // without the contact-phone notice the recruiting flow promises.
-  const survey = ensureMandatoryPhoneNotice(ensurePersonalSection(parsed.data.survey));
+  // ensureMandatoryPhoneNotice + ensurePrivacyConsent are idempotent —
+  // the wizard runs both on the streamed survey too, but we re-apply
+  // here so any caller (or any future surface that calls /create
+  // directly) cannot publish a form without the contact-phone notice
+  // and the privacy-consent gate the recruiting flow promises.
+  const survey = ensurePrivacyConsent(
+    ensureMandatoryPhoneNotice(ensurePersonalSection(parsed.data.survey)),
+  );
 
   try {
     const result = await createGoogleForm(accessToken, survey);

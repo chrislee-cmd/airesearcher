@@ -18,7 +18,10 @@ import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
-import { ensureMandatoryPhoneNotice } from '@/lib/recruiting/survey-postprocess';
+import {
+  ensureMandatoryPhoneNotice,
+  ensurePrivacyConsent,
+} from '@/lib/recruiting/survey-postprocess';
 import {
   CriteriaEditor,
   CriteriaPreview,
@@ -378,10 +381,13 @@ export function RecruitingWizard() {
       }
       if (ctrl.signal.aborted) return;
       const rawSurvey = await coerceSurvey(buffer);
-      // Mandatory phone-contact notice is enforced post-LLM so users see
-      // it in the Step 2 preview/editor before approving. The publish
-      // route re-applies the same post-process as defense in depth.
-      const finalSurvey = ensureMandatoryPhoneNotice(rawSurvey);
+      // Mandatory phone-contact notice + privacy-consent gate are
+      // enforced post-LLM so users see them in the Step 2 preview/editor
+      // before approving. The publish route re-applies the same
+      // post-process as defense in depth.
+      const finalSurvey = ensurePrivacyConsent(
+        ensureMandatoryPhoneNotice(rawSurvey),
+      );
       setSurvey(finalSurvey);
       setSurveyPhase('review');
       track('recruiting_survey_generate_success', {

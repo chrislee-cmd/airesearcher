@@ -1,4 +1,5 @@
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
+import { PRIVACY_CONSENT_AGREE } from '@/lib/recruiting/survey-postprocess';
 
 // Privacy guard: contact-bearing question columns (phone number / email)
 // are stripped server-side before the responses payload reaches the
@@ -15,6 +16,31 @@ const CONTACT_TITLE_RE =
 
 export function isContactColumnTitle(title: string): boolean {
   return CONTACT_TITLE_RE.test(title);
+}
+
+// Mirrors isPrivacyConsentQuestion (survey-postprocess) but operates on
+// response-column titles. Both "개인정보" and "동의" must appear so we
+// don't false-match "동의 및 일정" scheduling questions.
+export function isPrivacyConsentColumnTitle(title: string): boolean {
+  const t = title.toLowerCase();
+  if (/privacy.{0,5}consent/.test(t)) return true;
+  return t.includes('개인정보') && t.includes('동의');
+}
+
+export function findConsentColumn(columns: FormColumn[]): FormColumn | null {
+  return columns.find((c) => isPrivacyConsentColumnTitle(c.title)) ?? null;
+}
+
+// Drops rows where the consent column is not the affirmative value. Used
+// server-side so non-consenting responses never reach the browser nor
+// the recruiter's view — defense-in-depth against accidental processing
+// of data we don't have legal grounds to use.
+export function filterConsentedRows(
+  rows: FormResponseRow[],
+  consent: FormColumn | null,
+): FormResponseRow[] {
+  if (!consent) return rows;
+  return rows.filter((r) => r.answers[consent.questionId] === PRIVACY_CONSENT_AGREE);
 }
 
 export function partitionContactColumns(columns: FormColumn[]): {
