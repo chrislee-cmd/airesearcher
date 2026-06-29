@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
@@ -422,6 +423,47 @@ export function RecruitingWizard() {
       setPublishing(false);
     }
   }
+
+  // ── Widget header state pill sync (PR #514 patch) ──────────────────
+  // PR #514 (위젯 헤더 state pill — 실시간 갱신) 가 desk/interviews/probing/
+  // quotes/translate 5 위젯만 처리해서 recruiting 카드는 헤더 pill 이
+  // 'READY' 에 멈춰 있었다. wizard 의 phase 진행 (1단계 → 2단계 → 발행)
+  // 을 헤더로 broadcast. 우선순위: error > publishing > surveyPhase
+  // generating > criteriaPhase generating > published > idle.
+  const { setState: setWidgetState } = useWidgetState();
+  useEffect(() => {
+    if (publishError || criteriaError || surveyError) {
+      const message = publishError ?? criteriaError ?? surveyError ?? undefined;
+      setWidgetState({ kind: 'error', message });
+      return;
+    }
+    if (publishing) {
+      setWidgetState({ kind: 'running', label: '발행 중' });
+      return;
+    }
+    if (surveyPhase === 'generating') {
+      setWidgetState({ kind: 'running', label: '설문 생성' });
+      return;
+    }
+    if (criteriaPhase === 'generating') {
+      setWidgetState({ kind: 'running', label: '추출 중' });
+      return;
+    }
+    if (published) {
+      setWidgetState({ kind: 'done' });
+      return;
+    }
+    setWidgetState({ kind: 'idle' });
+  }, [
+    setWidgetState,
+    publishing,
+    surveyPhase,
+    criteriaPhase,
+    publishError,
+    criteriaError,
+    surveyError,
+    published,
+  ]);
 
   // ── Derived ─────────────────────────────────────────────────────────
   const partialCriteria: Criterion[] = editedBrief
