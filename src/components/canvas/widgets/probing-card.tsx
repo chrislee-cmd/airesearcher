@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
+import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import {
   GUIDE_MAX_CHARS,
   getStoredGuide,
@@ -912,9 +913,7 @@ function ExpandedBody() {
               }`}
               aria-hidden
             />
-            <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-              {statusLabel}
-            </span>
+            <SectionLabel>{statusLabel}</SectionLabel>
           </div>
 
           <GuideSection

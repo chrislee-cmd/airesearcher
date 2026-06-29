@@ -23,6 +23,7 @@ import {
   WidgetOutputRow,
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
+import { Field } from '@/components/canvas/shell/field';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
@@ -511,26 +512,22 @@ function LanguageConfirmDialog({
           {t('body')}
         </p>
 
-        <div className="mt-6 space-y-2">
-          <label
-            htmlFor="transcript-language-confirm"
-            className="block text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft"
-          >
-            {t('languageLabel')}
-          </label>
-          <select
-            id="transcript-language-confirm"
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            autoFocus
-            className="w-full border border-line bg-paper px-3 py-2 text-lg text-ink-2 rounded-sm focus:border-ink focus:outline-none"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.flag} {l.label} ({l.code})
-              </option>
-            ))}
-          </select>
+        <div className="mt-6">
+          <Field label={t('languageLabel')} htmlFor="transcript-language-confirm">
+            <select
+              id="transcript-language-confirm"
+              value={language}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              autoFocus
+              className="w-full border border-line bg-paper px-3 py-2 text-lg text-ink-2 rounded-sm focus:border-ink focus:outline-none"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.label} ({l.code})
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
 
         <p className="mt-4 text-sm text-mute-soft">

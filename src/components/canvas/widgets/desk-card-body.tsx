@@ -42,9 +42,12 @@ import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { ChipInput } from '@/components/ui/chip-input';
 import {
+  SectionLabel,
   WidgetOutputRow,
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
+import { Field } from '@/components/canvas/shell/field';
+import { Banner } from '@/components/canvas/shell/banner';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
@@ -594,9 +597,7 @@ export function DeskCardBody() {
               />
             ) : (
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-                  {tDesk('thinkingDone')}
-                </span>
+                <SectionLabel>{tDesk('thinkingDone')}</SectionLabel>
                 <span className="text-xs text-mute-soft">{events.length} 이벤트</span>
               </div>
             )}
@@ -616,14 +617,14 @@ export function DeskCardBody() {
 
         {/* error / cancelled banners */}
         {error && (
-          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
-            {tDesk('error')}: <span className="font-mono">{error}</span>
-          </div>
+          <Banner tone="warning" title={tDesk('error')}>
+            <span className="font-mono">{error}</span>
+          </Banner>
         )}
         {job?.status === 'error' && job.error_message && (
-          <div className="border-t border-warning-line bg-warning-bg px-5 py-3 text-md text-ink-2">
-            {tDesk('error')}: <span className="font-mono">{job.error_message}</span>
-          </div>
+          <Banner tone="warning" title={tDesk('error')}>
+            <span className="font-mono">{job.error_message}</span>
+          </Banner>
         )}
         {job?.status === 'cancelled' && (
           <div className="border-t border-line-soft px-5 py-5">
@@ -817,17 +818,6 @@ export function DeskCardBody() {
         )}
       </Modal>
     </>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="mb-1.5 text-xs uppercase tracking-wider text-mute-soft">
-        {label}
-      </div>
-      {children}
-    </div>
   );
 }
 

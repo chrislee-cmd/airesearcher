@@ -13,6 +13,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { Button } from '@/components/ui/button';
+import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import {
   PROBING_TECHNIQUE_LABEL,
   type ProbingTechnique,
@@ -77,9 +78,7 @@ export function QuestionPane({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-            검증·probing 질문
-          </span>
+          <SectionLabel>검증·probing 질문</SectionLabel>
           {totalCount > 0 && (
             <span className="text-xs text-mute-soft">· {totalCount}개</span>
           )}
