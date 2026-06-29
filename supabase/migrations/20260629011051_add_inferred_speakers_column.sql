@@ -1,0 +1,33 @@
+-- 20260629011051_add_inferred_speakers_column.sql
+--
+-- Adds `inferred_speakers` jsonb to `transcript_jobs` for the LLM Q&A
+-- diarization pass that runs when speakers_count = 1.
+--
+-- Why: 동시통역사 1명이 진행자/응답자 양쪽 발화를 통역하는 인터뷰는 마이크
+-- 입력이 1명뿐이라 Deepgram/Scribe 가 speakers_count=1 로 인식 → 모든
+-- 발화가 "Speaker 1" 로 묶임 → 누가 질문/답변인지 구분 0. 일반
+-- speaker_roles 패스는 음향 화자별 라벨이라 도움이 안 됨 (모든 turn 이
+-- "응답자 1"). 이 패스는 음향이 아니라 **내용 (Q&A 구조)** 기준으로
+-- turn 별 host/guest 라벨을 재할당.
+--
+-- Shape (DiarizationResult.inferred):
+--   {
+--     "is_qa_structure": true,
+--     "roles": [
+--       { "start": 0.0, "role": "host" },
+--       { "start": 5.2, "role": "guest" },
+--       ...
+--     ],
+--     "confidence": "high" | "medium",
+--     "model": "claude-sonnet-4-6",
+--     "generated_at": "2026-06-29T...",
+--     "reasoning": "...",
+--     "truncated": false
+--   }
+--
+-- Nullable on purpose: jobs with speakers_count >= 2 (이미 음향 diarization
+-- 됨), duration < 60s, monologue 검출, low-confidence, pre-migration 잡 모두
+-- legitimately NULL — UI 가 "Speaker N" 으로 fallback.
+
+alter table public.transcript_jobs
+  add column if not exists inferred_speakers jsonb;

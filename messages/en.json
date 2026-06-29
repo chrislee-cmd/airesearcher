@@ -405,7 +405,9 @@
         "fileCountPlural": "{count} files ready",
         "proceedCta": "Start with this language",
         "cancelCta": "Cancel"
-      }
+      },
+      "inferredSpeakersBadge": "Auto-split by Q&A context — Host / Guest",
+      "inferredSpeakersHint": "Only one acoustic speaker was detected (e.g. a single interpreter handling both sides), so we used the conversation content to label each turn as host or guest. These are inferred labels — manual review is recommended."
     },
     "insights_analyzer": {
       "title": "Insights Analyzer",

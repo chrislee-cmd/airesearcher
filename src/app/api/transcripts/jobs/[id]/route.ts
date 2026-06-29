@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 export async function GET(
   _req: Request,
@@ -14,14 +15,30 @@ export async function GET(
   // term-normalize, number-normalize, speaker-roles). The full payload
   // (megabytes for long interviews) is then dropped — the UI just needs the
   // meta to render status lines.
-  const { data, error } = await supabase
-    .from('transcript_jobs')
-    .select(
-      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, clean_markdown, speaker_roles, raw_result, created_at, updated_at',
-    )
-    .eq('id', id)
-    .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  // inferred_speakers 컬럼은 마이그 (#505) prod 적용 전엔 없어서 select 실패.
+  // selectWithInferredFallback 가 try-then-fallback 으로 graceful degrade.
+  const baseColumns =
+    'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, clean_markdown, speaker_roles, raw_result, created_at, updated_at';
+  const { data, error } = await selectWithInferredFallback<Record<string, unknown>>(
+    async (cols) => {
+      const r = await supabase
+        .from('transcript_jobs')
+        .select(cols)
+        .eq('id', id)
+        .single();
+      return {
+        data: r.data as Record<string, unknown> | null,
+        error: r.error as { code?: string; message?: string } | null,
+      };
+    },
+    baseColumns,
+  );
+  if (error || !data) {
+    return NextResponse.json(
+      { error: error?.message ?? 'not_found' },
+      { status: 404 },
+    );
+  }
 
   const raw = data.raw_result as
     | {
@@ -29,6 +46,7 @@ export async function GET(
         _term_normalize?: unknown;
         _number_normalize?: unknown;
         _roles?: unknown;
+        _diarization?: unknown;
       }
     | null;
   const { raw_result: _drop, ...rest } = data;
@@ -39,6 +57,7 @@ export async function GET(
     term_normalize_audit: raw?._term_normalize ?? null,
     number_normalize_audit: raw?._number_normalize ?? null,
     roles_audit: raw?._roles ?? null,
+    diarization_audit: raw?._diarization ?? null,
   });
 }
 

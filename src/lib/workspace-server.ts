@@ -5,6 +5,11 @@ import {
   applySpeakerLabels,
   type SpeakerRolesMap,
 } from '@/lib/transcripts/speaker-roles';
+import {
+  applyInferredSpeakerLabels,
+  type InferredSpeakersPayload,
+} from '@/lib/transcripts/diarization';
+import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Server-side workspace data model. The list endpoint returns this shape;
 // content() is a separate lazy fetch keyed by (dbFeature, dbId).
@@ -405,25 +410,44 @@ export async function getArtifactContent(
   const supabase = await createClient();
 
   if (dbFeature === 'transcript') {
-    const { data } = await supabase
-      .from('transcript_jobs')
-      .select('markdown, clean_markdown, speaker_roles, provider')
-      .eq('org_id', orgId)
-      .eq('id', dbId)
-      .maybeSingle();
+    // inferred_speakers 컬럼은 마이그 (#505) prod 적용 전엔 없어서 select 실패.
+    // selectWithInferredFallback 가 try-then-fallback 으로 graceful degrade.
+    const baseColumns = 'markdown, clean_markdown, speaker_roles, provider';
+    const { data } = await selectWithInferredFallback<Record<string, unknown>>(
+      async (cols) => {
+        const r = await supabase
+          .from('transcript_jobs')
+          .select(cols)
+          .eq('org_id', orgId)
+          .eq('id', dbId)
+          .maybeSingle();
+        return {
+          data: r.data as Record<string, unknown> | null,
+          error: r.error as { code?: string; message?: string } | null,
+        };
+      },
+      baseColumns,
+    );
     if (!data?.markdown) return null;
     // Cleaned version (when the cleanup / number-normalize pass landed) is
     // what we want to feed into downstream tools — interview/insights/reports
     // should see the post-processed text. Falls back to the original on NULL.
     const base = (data.clean_markdown as string | null) ?? (data.markdown as string);
     const roles = (data.speaker_roles as SpeakerRolesMap | null) ?? null;
+    const inferred =
+      (data.inferred_speakers as InferredSpeakersPayload | null) ?? null;
     // Downstream features (interview / insights / reports) consume this
     // markdown for analysis — labelling speakers in the source language
     // (Korean 질문자/응답자 vs English Interviewer/Interviewee) lets the
     // analysis prompts treat them correctly instead of guessing from raw
     // "Speaker N" tags.
+    //
+    // inferred_speakers (Q&A 문맥 diarization, 통역사 1인 인터뷰 등) 이 있으면
+    // turn 별 host/guest 가 더 구체적이라 우선 적용.
     const labelLang = data.provider === 'deepgram' ? 'en' : 'ko';
-    const content = applySpeakerLabels(base, roles, labelLang);
+    const content = inferred
+      ? applyInferredSpeakerLabels(base, inferred, labelLang)
+      : applySpeakerLabels(base, roles, labelLang);
     return { content, kind: 'markdown' };
   }
 

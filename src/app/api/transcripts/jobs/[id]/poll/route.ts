@@ -12,6 +12,8 @@ import { cleanupTranscript } from '@/lib/transcripts/cleanup';
 import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
+import { classifyQaDiarization } from '@/lib/transcripts/diarization';
+import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped from 30s to 200s because the cleanup pass scheduled via `after()`
 // extends function lifetime — Vercel keeps the instance alive until after()
@@ -206,9 +208,10 @@ export async function POST(
   //
   // On any pass failure that column stays NULL → UI falls back to raw
   // markdown + Speaker N labels.
+  const shouldDiarize = formatted.speakers === 1 && formatted.duration >= 60;
   after(async () => {
     try {
-      const [textPipeline, rolesRes] = await Promise.all([
+      const [textPipeline, rolesRes, diarRes] = await Promise.all([
         (async () => {
           const cleanup = await cleanupTranscript(
             mergedWords,
@@ -241,6 +244,16 @@ export async function POST(
           console.warn('[transcripts/poll] roles pass failed', e);
           return null;
         }),
+        // Q&A 문맥 diarization — single-speaker + 60s+ 만 호출.
+        // 동시통역사 1인 인터뷰 시나리오 cover. monologue 면 자동 폐기.
+        shouldDiarize
+          ? classifyQaDiarization(mergedWords, job.filename, formatted.duration).catch(
+              (e) => {
+                console.warn('[transcripts/poll] diarization pass failed', e);
+                return null;
+              },
+            )
+          : Promise.resolve(null),
       ]);
       const { cleanup: cleanupRes, termNormalize: termRes, numberNormalize: numberRes } =
         textPipeline;
@@ -256,11 +269,19 @@ export async function POST(
           ...(termRes ? { _term_normalize: termRes.audit } : {}),
           ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
+          ...(diarRes ? { _diarization: diarRes.audit } : {}),
         },
       };
       if (finalCleanMarkdown) patch.clean_markdown = finalCleanMarkdown;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
-      await admin.from('transcript_jobs').update(patch).eq('id', job.id);
+      if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
+      await updateWithInferredFallback(
+        async (p) => {
+          const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);
+          return { error: r.error as { code?: string; message?: string } | null };
+        },
+        patch,
+      );
     } catch (e) {
       console.warn('[transcripts/poll] post-pass write failed', e);
     }
