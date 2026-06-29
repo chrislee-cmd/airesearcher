@@ -189,9 +189,9 @@ function ColorTokens() {
     {
       heading: 'Brand · Surfaces',
       tokens: [
-        { name: 'amore', cls: 'bg-amore', hex: '#a06fda' },
-        { name: 'amore-soft', cls: 'bg-amore-soft', hex: '#b690e2' },
-        { name: 'amore-bg', cls: 'bg-amore-bg', hex: '#e7defe' },
+        { name: 'amore', cls: 'bg-amore', hex: '#ff5c8a' },
+        { name: 'amore-soft', cls: 'bg-amore-soft', hex: '#ff96b6' },
+        { name: 'amore-bg', cls: 'bg-amore-bg', hex: '#ffe1eb' },
         { name: 'paper', cls: 'bg-paper border-line border', hex: '#fbf7f2' },
         { name: 'paper-soft', cls: 'bg-paper-soft border-line border', hex: '#fefaf5' },
       ],
