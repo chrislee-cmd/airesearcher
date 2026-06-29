@@ -2476,6 +2476,38 @@ export function TranslateConsole() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3 border-b border-line-soft pb-3">
+        {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker 와
+            동일 위치 — 위젯 간 settings 영역 디자인 통일. */}
+        <label className="flex flex-col gap-1 text-sm text-mute">
+          <span className="flex items-center gap-1">
+            {t('captureMode.label')}
+            {captureMode !== 'mic-only' ? (
+              <span
+                aria-label={t('captureMode.tabHint')}
+                title={t('captureMode.tabHint')}
+                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-xs leading-none text-mute-soft"
+              >
+                ?
+              </span>
+            ) : null}
+          </span>
+          <select
+            value={captureMode}
+            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+            disabled={live || busy}
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+          >
+            <option value="both">{t('captureMode.both')}</option>
+            <option value="mic-only">{t('captureMode.micOnly')}</option>
+            <option value="tab-only">{t('captureMode.tabOnly')}</option>
+          </select>
+          {captureMode === 'both' ? (
+            <span className="text-xs text-mute-soft">
+              {t('captureMode.bothCostHint')}
+            </span>
+          ) : null}
+        </label>
+        {/* 2번 = 언어 (translate 전용). source / target 두 dropdown. */}
         <label className="flex flex-col gap-1 text-sm text-mute">
           <span>{t('sourceLang')}</span>
           <select
@@ -2505,35 +2537,6 @@ export function TranslateConsole() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-mute">
-          <span className="flex items-center gap-1">
-            {t('captureMode.label')}
-            {captureMode !== 'mic-only' ? (
-              <span
-                aria-label={t('captureMode.tabHint')}
-                title={t('captureMode.tabHint')}
-                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-line text-xs leading-none text-mute-soft"
-              >
-                ?
-              </span>
-            ) : null}
-          </span>
-          <select
-            value={captureMode}
-            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-            disabled={live || busy}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            <option value="both">{t('captureMode.both')}</option>
-            <option value="mic-only">{t('captureMode.micOnly')}</option>
-            <option value="tab-only">{t('captureMode.tabOnly')}</option>
-          </select>
-          {captureMode === 'both' ? (
-            <span className="text-xs text-mute-soft">
-              {t('captureMode.bothCostHint')}
-            </span>
-          ) : null}
         </label>
         <label className="flex items-center gap-2 text-md text-mute">
           <Checkbox
