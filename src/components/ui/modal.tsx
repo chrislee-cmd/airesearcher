@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 //
 // Status: NOT YET CONSUMED. Migrations land in follow-up PRs.
 
-type Size = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+type Size = 'sm' | 'md' | 'lg' | 'xl' | 'wide' | 'full';
 
 type Props = {
   open: boolean;
@@ -40,9 +40,14 @@ const SIZE: Record<Size, string> = {
   md: 'max-w-[560px]',
   lg: 'max-w-[760px]',
   xl: 'max-w-[1100px]',
+  // 90% viewport with explicit margins so the panel reads as a modal,
+  // not a page replacement. Capped at 1600×900 so it doesn't grow
+  // unboundedly on ultra-wide displays. Used by full-view widget
+  // surfaces (probing 등) that own their own internal grid.
+  wide: 'w-[90vw] h-[90vh] max-w-[1600px] max-h-[900px]',
   // Edge-to-edge fullscreen — overrides the outer padding so the panel
   // covers the entire viewport. Used by full-view widget surfaces
-  // (interviews, probing 등) that own their own layout (2-col / 3-col grid).
+  // (interviews 등) that own their own layout (2-col / 3-col grid).
   full: 'w-screen h-screen max-h-screen max-w-none !rounded-none',
 };
 
@@ -132,9 +137,9 @@ export function Modal({
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
           // 없어서 화면 위아래로 spill 한 버그)
           'relative flex w-full flex-col overflow-hidden border border-line bg-paper-soft',
-          // 일반 사이즈만 viewport 안에 맞도록 max-h; full 은 자체적으로
-          // h-screen 을 SIZE 에서 직접 잡는다.
-          size === 'full' ? '' : 'max-h-[calc(100vh-2rem)]',
+          // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide 은
+          // 자체적으로 h-screen / h-[90vh] 를 SIZE 에서 직접 잡는다.
+          size === 'full' || size === 'wide' ? '' : 'max-h-[calc(100vh-2rem)]',
           'rounded-sm [box-shadow:var(--shadow-bento)]',
           SIZE[size],
         ].join(' ')}
@@ -159,9 +164,10 @@ export function Modal({
         <div
           className={[
             'flex-1 text-lg leading-[1.65] text-ink-2',
-            // full size: 자체 layout (헤더/2-column/3-column grid) 을 children
-            // 이 owning. body padding + overflow-auto 끈다 (이중 스크롤 회피).
-            size === 'full'
+            // full / wide size: 자체 layout (헤더/2-column/3-column grid) 을
+            // children 이 owning. body padding + overflow-auto 끈다
+            // (이중 스크롤 회피).
+            size === 'full' || size === 'wide'
               ? 'flex min-h-0 flex-col overflow-hidden'
               : 'overflow-auto px-5 py-4',
           ].join(' ')}
