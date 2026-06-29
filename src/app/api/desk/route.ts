@@ -150,7 +150,7 @@ const REPORT_SYSTEM_V2 = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG
 
 분량은 충실하게 작성하되 의미 있는 정보가 담길 때만 단락을 둡니다.${ISOLATION_NOTICE}`;
 
-const RQ_DECOMPOSE_SYSTEM = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG)의 시니어 리서처입니다. 사용자가 입력한 키워드, 검색 지역, 수집 기간을 보고 — 이 데스크 리서치가 답해야 할 핵심 리서치 질문(Research Questions, RQ) 5~8개를 한국어로 분해합니다.
+const RQ_DECOMPOSE_SYSTEM = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG)의 시니어 리서처입니다. 사용자가 입력한 키워드, 검색 지역, 수집 기간을 보고 — 이 데스크 리서치가 답해야 할 핵심 리서치 질문(Research Questions, RQ) 3~5개를 한국어로 분해합니다.
 
 [원칙]
 - 각 질문은 단일 주제로 분리되고, "예/아니오" 가 아닌 분석형 질문이어야 합니다 (예: "X 시장 규모는 얼마이며 최근 3년 CAGR 은?").
@@ -248,7 +248,7 @@ const ResearchQuestionSchema = z.object({
 });
 
 const RQDecomposeSchema = z.object({
-  research_questions: z.array(ResearchQuestionSchema).min(3).max(10),
+  research_questions: z.array(ResearchQuestionSchema).min(3).max(5),
 });
 
 type ResearchQuestion = z.infer<typeof ResearchQuestionSchema>;
@@ -394,21 +394,23 @@ const HARD_DEADLINE_MS = 270_000;
 // Synthesize is the irreplaceable step — refuse to start unless we have at
 // least this much budget left.
 const SYNTHESIZE_MIN_BUDGET_MS = 60_000;
-// Below this remaining budget at drafting start, we skip the revise pass.
-// Tuned 2026-06-29 after one prod timeout where a single RQ revise burned
-// ~60s on weaknesses=5 critique. Old 120s threshold let two revise passes
-// fire and starve synthesize; 200s gives 1 revise breathing room or skips
-// entirely when budget is tighter.
-const SKIP_REVISE_BELOW_MS = 200_000;
+// Mode-aware per-RQ budgets, measured on prod runs 2026-06-29:
+//   draft only: ~25s   draft+critique: ~40s   full (with revise): ~70s
+// Picking each cap with its true mode budget makes the dispatcher honest
+// instead of the old single PER_RQ_BUDGET=50 that lied in both directions
+// (let two revise RQs through, then died at synthesize).
+const PER_RQ_FULL_SEC = 70;
+const PER_RQ_CRITIQUE_SEC = 40;
+const PER_RQ_DRAFT_SEC = 25;
+// Reserve held back from RQ budgeting for synthesize + analytics + writes.
+// = SYNTHESIZE_MIN_BUDGET(60s) + analytics(~20s) + DB final patches(~10s).
+const RESERVE_AFTER_RQ_SEC = 90;
 // Below this remaining budget at analytics start, we skip charts.
 const SKIP_ANALYTICS_BELOW_MS = 20_000;
-// Conservative per-RQ budget (draft + critique + revise + patch overhead).
-// Measured ~60s/RQ when revise actually runs, ~25s when draft-only — pick
-// the higher value so the cap shrinks aggressively under load.
-const PER_RQ_BUDGET_SEC = 50;
-// Reserve held back from RQ budgeting for synthesize + analytics + writes.
-// = SYNTHESIZE_MIN_BUDGET + analytics(~20s) + DB final patches(~10s).
-const RESERVE_AFTER_RQ_SEC = 90;
+// Below this remaining budget at extracting start, we skip claim extraction.
+// Extraction is non-fatal (the report still renders from articles alone) but
+// burns ~30s — skip if budget is tight so drafting/synthesize gets the time.
+const SKIP_EXTRACTING_BELOW_MS = 220_000;
 
 class TimeoutError extends Error {
   constructor(reason: string) {
@@ -738,7 +740,7 @@ async function runJob(args: {
     let researchQuestions: ResearchQuestion[] = [];
     beginPhase('scoping');
     await pushAndPatch(
-      '먼저 이 데스크 리서치가 답해야 할 핵심 리서치 질문을 5~8개로 정리할게요…',
+      '먼저 이 데스크 리서치가 답해야 할 핵심 리서치 질문을 3~5개로 정리할게요…',
       'scoping',
     );
     try {
@@ -749,7 +751,7 @@ async function runJob(args: {
         `검색 지역: ${regions.join(', ')}`,
         `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
         '',
-        `위 정보를 바탕으로 데스크 리서치에 필요한 RQ 5~8개를 JSON 으로 분해해주세요. 모든 키워드(${allKw.join(', ')})를 통합적으로 다루는 질문이어야 합니다.`,
+        `위 정보를 바탕으로 데스크 리서치에 필요한 RQ 3~5개를 JSON 으로 분해해주세요. 모든 키워드(${allKw.join(', ')})를 통합적으로 다루는 질문이어야 합니다.`,
       ].join('\n');
       const rqResult = await generateObject({
         model,
@@ -927,10 +929,10 @@ async function runJob(args: {
     // 단일 호출에 ~300k tokens 가 필요해 즉시 429. 임베딩 클러스터링으로
     // 의미적으로 다양한 80건만 추려서 보냄. 실패 시 키워드/소스 균등 fallback.
     // UI/DB 에는 1500 풀 그대로 저장됨.
-    // Halved from 80 to keep the prompt + output well under the per-minute
-    // token budget AND finish within the function deadline. Empirically the
-    // representative-50 picks give nearly identical report quality.
-    const SUMMARIZE_SAMPLE_K = 50;
+    // Halved from 80 → 50 → 30. The 30 sample still covers the top topics
+    // (embedding clustering preserves diversity), but cuts ~40% off extracting
+    // (50 × Haiku → 30 × Haiku) and trims synthesize input by the same ratio.
+    const SUMMARIZE_SAMPLE_K = 30;
     let articlesForLLM = articles;
     beginPhase('sampling');
     if (articles.length > SUMMARIZE_SAMPLE_K) {
@@ -965,6 +967,16 @@ async function runJob(args: {
     // `claims` payload should not block the report. The report prompt below
     // just gets a richer payload when extraction succeeds.
     const persistedClaims: PersistedClaim[] = [];
+    // Extraction is non-fatal (the report renders from articles alone). Skip
+    // if the budget is tight so drafting/synthesize gets the time it needs.
+    if (timeLeft() < SKIP_EXTRACTING_BELOW_MS) {
+      skippedSteps.push('extracting');
+      await pushAndPatch(
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 정량주장 추출은 건너뛰고 곧장 답변/보고서 단계로 갈게요.`,
+        'extracting',
+      );
+      await patch({ claims: [] });
+    } else {
     beginPhase('extracting');
     await pushAndPatch(
       `대표 ${articlesForLLM.length}건에서 정량주장 + 엔티티를 추출할게요…`,
@@ -975,7 +987,7 @@ async function runJob(args: {
       const rqDigest = researchQuestions
         .map((rq) => `${rq.id}: ${rq.question}`)
         .join('\n');
-      const CLAIM_CONCURRENCY = 5;
+      const CLAIM_CONCURRENCY = 8;
       let extracted = 0;
       for (let i = 0; i < articlesForLLM.length; i += CLAIM_CONCURRENCY) {
         await checkCancel();
@@ -1066,6 +1078,7 @@ async function runJob(args: {
       );
     }
     endPhase('extracting');
+    }
 
     await checkCancel();
 
@@ -1131,18 +1144,44 @@ async function runJob(args: {
     }
 
     const rqAnswers: PersistedRqAnswer[] = [];
-    // ── RQ dynamic cap (see spec §E) ─────────────────────────────────────
-    // Crawling sometimes burns 60-180s. Recompute how many RQs we can afford
-    // before drafting starts: reserve room for synthesize + analytics + DB
-    // writes, then divide what's left by the conservative per-RQ budget.
-    // Min 1 (draft-only fallback) keeps the synthesize call alive even on
-    // very tight budgets — we'd rather ship a thin report than refund.
+    // ── Mode-aware RQ cap (see spec §E + 2026-06-29 tuning) ──────────────
+    // Pick the mode that answers ≥3 RQs if any can; fall back to whatever
+    // mode answers ≥1. Skipping levels: full(draft+critique+revise) →
+    // critique-only → draft-only. Min 1 RQ — we'd rather ship a thin
+    // report than refund. Picking critique 3-RQs over full 1-RQ trades
+    // self-review depth for coverage breadth, which is the better default
+    // when the user wants a usable report at all.
     const remainingForRqSec = Math.max(0, timeLeft() / 1000 - RESERVE_AFTER_RQ_SEC);
-    const rawCap = Math.floor(remainingForRqSec / PER_RQ_BUDGET_SEC);
-    // forceDraftOnly: budget too tight even for one critique+revise pass.
-    // Single RQ, draft only — guarantees synthesize gets a non-empty input.
-    const forceDraftOnly = rawCap < 1;
-    const budgetCap = forceDraftOnly ? 1 : Math.min(8, rawCap);
+    type RqMode = 'full' | 'critique' | 'draft';
+    const fullCap = Math.floor(remainingForRqSec / PER_RQ_FULL_SEC);
+    const critCap = Math.floor(remainingForRqSec / PER_RQ_CRITIQUE_SEC);
+    const draftCap = Math.floor(remainingForRqSec / PER_RQ_DRAFT_SEC);
+    let mode: RqMode;
+    let perRqSec: number;
+    if (fullCap >= 3) {
+      mode = 'full';
+      perRqSec = PER_RQ_FULL_SEC;
+    } else if (critCap >= 3) {
+      mode = 'critique';
+      perRqSec = PER_RQ_CRITIQUE_SEC;
+    } else if (draftCap >= 3) {
+      mode = 'draft';
+      perRqSec = PER_RQ_DRAFT_SEC;
+    } else if (fullCap >= 1) {
+      mode = 'full';
+      perRqSec = PER_RQ_FULL_SEC;
+    } else if (critCap >= 1) {
+      mode = 'critique';
+      perRqSec = PER_RQ_CRITIQUE_SEC;
+    } else {
+      mode = 'draft';
+      perRqSec = PER_RQ_DRAFT_SEC;
+    }
+    const rawCap = Math.floor(remainingForRqSec / perRqSec);
+    const budgetCap = Math.max(1, Math.min(8, rawCap));
+    const skipReviseGlobal = mode !== 'full';
+    const skipCritiqueGlobal = mode === 'draft';
+
     const originalRqCount = researchQuestions.length;
     if (originalRqCount > budgetCap) {
       researchQuestions = researchQuestions.slice(0, budgetCap);
@@ -1154,13 +1193,6 @@ async function runJob(args: {
       );
     }
 
-    // Decide once per run whether to skip revise — based on the budget at
-    // the moment drafting starts. If a single RQ is going to gobble all the
-    // time, the simpler draft-only path keeps synthesize alive. Per-RQ
-    // adaptive trim below catches the case where the first RQ blows past
-    // its budget mid-loop.
-    const skipReviseGlobal = forceDraftOnly || timeLeft() < SKIP_REVISE_BELOW_MS;
-    const skipCritiqueGlobal = forceDraftOnly;
     if (skipReviseGlobal && researchQuestions.length > 0) {
       skippedSteps.push('revise');
       await pushAndPatch(
@@ -1278,12 +1310,13 @@ async function runJob(args: {
 
         // Revise (only if critique flags weaknesses AND we still have budget).
         // skipReviseGlobal is decided once at drafting start; a tighter
-        // per-RQ check (40s left) handles cases where extracting + first few
-        // RQs ate more than expected, so later RQs gracefully degrade.
+        // per-RQ check (synthesize reserve + 1 revise call ~60s) handles
+        // cases where extracting + first few RQs ate more than expected, so
+        // later RQs gracefully degrade.
         let finalAnswer = draftAnswer;
         let finalCited = draftCited;
         const skipReviseForThisRq =
-          skipReviseGlobal || timeLeft() < SYNTHESIZE_MIN_BUDGET_MS + 40_000;
+          skipReviseGlobal || timeLeft() < SYNTHESIZE_MIN_BUDGET_MS + 60_000;
         if (critique.weaknesses.length > 0 && !skipReviseForThisRq) {
           await pushAndPatch(
             `Q. ${rq.question} — 약점 ${critique.weaknesses.length}개 보완 중…`,
@@ -1474,7 +1507,10 @@ async function runJob(args: {
         system: REPORT_SYSTEM_V2,
         prompt: userMsg,
         temperature: 0.2,
-        maxOutputTokens: 8000,
+        // Trimmed 8000→6000. The 6-section report rarely needs more than
+        // 6k completion tokens; Sonnet's larger ceiling burns extra wall
+        // time at the tail. Quality unchanged on prior test runs.
+        maxOutputTokens: 6000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
       });
