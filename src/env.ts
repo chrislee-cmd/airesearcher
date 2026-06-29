@@ -57,12 +57,30 @@ export const env = createEnv({
     TWELVELABS_ANALYZE_INDEX_ID: z.string().min(8).optional(),
 
     LEMONSQUEEZY_API_KEY: z.string().min(20).optional(),
+    // Legacy single-store env. When the dual-store vars below are unset,
+    // these still drive both rails (treated as the KRW store) so we can
+    // stage the dashboard split without a flag flip.
     LEMONSQUEEZY_STORE_ID: z.string().min(1).optional(),
     LEMONSQUEEZY_WEBHOOK_SECRET: z.string().min(16).optional(),
     LEMONSQUEEZY_VARIANT_STARTER: z.string().min(1).optional(),
     LEMONSQUEEZY_VARIANT_TEAM: z.string().min(1).optional(),
     LEMONSQUEEZY_VARIANT_STUDIO: z.string().min(1).optional(),
     LEMONSQUEEZY_VARIANT_ENTERPRISE: z.string().min(1).optional(),
+    // Dual-store split. Each Lemon Squeezy store maps to one payout
+    // account: KRW → 메테오 KRW 국내, USD → 메테오 USD 외환. Variants
+    // and webhook secret are per-store.
+    LEMONSQUEEZY_STORE_ID_KRW: z.string().min(1).optional(),
+    LEMONSQUEEZY_WEBHOOK_SECRET_KRW: z.string().min(16).optional(),
+    LEMONSQUEEZY_VARIANT_STARTER_KRW: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_TEAM_KRW: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_STUDIO_KRW: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_ENTERPRISE_KRW: z.string().min(1).optional(),
+    LEMONSQUEEZY_STORE_ID_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_WEBHOOK_SECRET_USD: z.string().min(16).optional(),
+    LEMONSQUEEZY_VARIANT_STARTER_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_TEAM_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_STUDIO_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_VARIANT_ENTERPRISE_USD: z.string().min(1).optional(),
 
     GOOGLE_CLIENT_ID: z.string().min(10).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
@@ -144,6 +162,18 @@ export const env = createEnv({
     LEMONSQUEEZY_VARIANT_TEAM: process.env.LEMONSQUEEZY_VARIANT_TEAM,
     LEMONSQUEEZY_VARIANT_STUDIO: process.env.LEMONSQUEEZY_VARIANT_STUDIO,
     LEMONSQUEEZY_VARIANT_ENTERPRISE: process.env.LEMONSQUEEZY_VARIANT_ENTERPRISE,
+    LEMONSQUEEZY_STORE_ID_KRW: process.env.LEMONSQUEEZY_STORE_ID_KRW,
+    LEMONSQUEEZY_WEBHOOK_SECRET_KRW: process.env.LEMONSQUEEZY_WEBHOOK_SECRET_KRW,
+    LEMONSQUEEZY_VARIANT_STARTER_KRW: process.env.LEMONSQUEEZY_VARIANT_STARTER_KRW,
+    LEMONSQUEEZY_VARIANT_TEAM_KRW: process.env.LEMONSQUEEZY_VARIANT_TEAM_KRW,
+    LEMONSQUEEZY_VARIANT_STUDIO_KRW: process.env.LEMONSQUEEZY_VARIANT_STUDIO_KRW,
+    LEMONSQUEEZY_VARIANT_ENTERPRISE_KRW: process.env.LEMONSQUEEZY_VARIANT_ENTERPRISE_KRW,
+    LEMONSQUEEZY_STORE_ID_USD: process.env.LEMONSQUEEZY_STORE_ID_USD,
+    LEMONSQUEEZY_WEBHOOK_SECRET_USD: process.env.LEMONSQUEEZY_WEBHOOK_SECRET_USD,
+    LEMONSQUEEZY_VARIANT_STARTER_USD: process.env.LEMONSQUEEZY_VARIANT_STARTER_USD,
+    LEMONSQUEEZY_VARIANT_TEAM_USD: process.env.LEMONSQUEEZY_VARIANT_TEAM_USD,
+    LEMONSQUEEZY_VARIANT_STUDIO_USD: process.env.LEMONSQUEEZY_VARIANT_STUDIO_USD,
+    LEMONSQUEEZY_VARIANT_ENTERPRISE_USD: process.env.LEMONSQUEEZY_VARIANT_ENTERPRISE_USD,
 
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

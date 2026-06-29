@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifyLemonSqueezySignature } from '@/lib/billing';
+import {
+  currencyForStoreId,
+  verifyLemonSqueezySignatureAny,
+} from '@/lib/billing';
 
 export const maxDuration = 60;
 
@@ -9,9 +12,17 @@ export const maxDuration = 60;
 // containing HMAC-SHA256 of that body keyed by the signing secret you
 // set when creating the webhook. We must read the body as bytes-exact
 // text — JSON parsing first would change formatting and break the HMAC.
+//
+// Dual-payout: each LS store has its own webhook + signing secret. We
+// try every configured secret (KRW / USD / legacy) and trust the first
+// match; the store_id in the payload then tells us which currency rail
+// the order belongs to.
 export async function POST(request: Request) {
-  const secret = env.LEMONSQUEEZY_WEBHOOK_SECRET;
-  if (!secret) {
+  if (
+    !env.LEMONSQUEEZY_WEBHOOK_SECRET_KRW &&
+    !env.LEMONSQUEEZY_WEBHOOK_SECRET_USD &&
+    !env.LEMONSQUEEZY_WEBHOOK_SECRET
+  ) {
     return NextResponse.json({ error: 'webhook_not_configured' }, { status: 503 });
   }
 
@@ -19,12 +30,17 @@ export async function POST(request: Request) {
   const eventName = request.headers.get('x-event-name') ?? '';
   const raw = await request.text();
 
-  if (!verifyLemonSqueezySignature(raw, sig, secret)) {
+  const verified = verifyLemonSqueezySignatureAny(raw, sig);
+  if (!verified.ok) {
     return NextResponse.json({ error: 'signature_verification_failed' }, { status: 400 });
   }
 
   let event: {
-    meta?: { event_name?: string; custom_data?: Record<string, string> };
+    meta?: {
+      event_name?: string;
+      custom_data?: Record<string, string>;
+      store_id?: number | string;
+    };
     data?: { id?: string; type?: string };
   };
   try {
@@ -38,20 +54,31 @@ export async function POST(request: Request) {
   const name = eventName || event.meta?.event_name || '';
   const admin = createAdminClient();
 
+  // Currency rail. Secret-matched currency wins when known (dedicated
+  // KRW/USD webhook secrets); otherwise derive from the payload store_id
+  // (legacy single-secret setups and defence in depth).
+  const storeIdRaw = event.meta?.store_id;
+  const storeId = storeIdRaw == null ? null : String(storeIdRaw);
+  const currency = verified.currency ?? currencyForStoreId(storeId);
+
   if (name === 'order_created') {
     const paymentId = event.meta?.custom_data?.payment_id;
     if (!paymentId) {
       return NextResponse.json({ received: true, note: 'no_payment_id' });
     }
 
-    // Stash the LS order ID for traceability before granting credits.
-    // The partial unique index on lemonsqueezy_order_id makes the second
-    // delivery a no-op on the update + idempotent on the grant RPC.
+    // Stash the LS order ID + store ID + currency for traceability
+    // before granting credits. The partial unique index on
+    // lemonsqueezy_order_id makes the second delivery a no-op on the
+    // update + idempotent on the grant RPC.
     const orderId = event.data?.id ?? null;
     if (orderId) {
+      const patch: Record<string, string> = { lemonsqueezy_order_id: orderId };
+      if (storeId) patch.lemonsqueezy_store_id = storeId;
+      if (currency) patch.currency = currency;
       await admin
         .from('payments')
-        .update({ lemonsqueezy_order_id: orderId })
+        .update(patch)
         .eq('id', paymentId)
         .is('lemonsqueezy_order_id', null);
     }
@@ -63,7 +90,7 @@ export async function POST(request: Request) {
       console.error('[lemonsqueezy webhook] grant failed', paymentId, error);
       return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
     }
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true, currency });
   }
 
   if (name === 'order_refunded') {
