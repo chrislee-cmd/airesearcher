@@ -31,6 +31,7 @@ import {
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
@@ -117,6 +118,9 @@ function reflectionToPromptContext(
 
 type SourceKind = 'mic' | 'tab';
 
+// 입력 소스 dropdown — translate-console 의 settings dropdown 과 동일 시각
+// (label 위 + h-8 rounded-xs border-line bg-paper). 위젯 간 settings 영역
+// 디자인 통일 (PR-probing-translate-settings-unify).
 function SourcePicker({
   value,
   onChange,
@@ -127,26 +131,18 @@ function SourcePicker({
   disabled: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-xs border border-line-soft bg-paper p-0.5">
-      <Button
-        variant={value === 'mic' ? 'primary' : 'ghost'}
-        size="xs"
-        onClick={() => onChange('mic')}
+    <label className="flex flex-col gap-1 text-sm text-mute">
+      <span>입력 소스</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SourceKind)}
         disabled={disabled}
-        className="uppercase tracking-[0.18em]"
+        className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
       >
-        마이크
-      </Button>
-      <Button
-        variant={value === 'tab' ? 'primary' : 'ghost'}
-        size="xs"
-        onClick={() => onChange('tab')}
-        disabled={disabled}
-        className="uppercase tracking-[0.18em]"
-      >
-        탭 오디오
-      </Button>
-    </div>
+        <option value="mic">마이크</option>
+        <option value="tab">탭 오디오</option>
+      </select>
+    </label>
   );
 }
 
@@ -941,41 +937,40 @@ function ExpandedBody() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        {/* 상단 — source picker + 세션 시작/정지 + 가이드. */}
+        {/* 상단 — source picker + 세션 시작/정지 + 가이드. settings 영역은
+            translate-console 과 동일 패턴 — items-end 정렬, dropdown 옆에
+            h-8 ChromeButton (시작/정지) + h-8 IconButton (전체보기) 라인. */}
         <div className="flex shrink-0 flex-col gap-3 border-b border-line-soft px-5 py-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <SourcePicker
               value={source}
               onChange={setSource}
               disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
             />
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               {isLive ? (
-                <Button
-                  variant="secondary"
-                  size="xs"
+                <ChromeButton
+                  size="lg"
                   onClick={handleStopSession}
                   disabled={stopDisabled}
-                  className="uppercase tracking-[0.18em]"
                 >
                   정지
-                </Button>
+                </ChromeButton>
               ) : (
-                <Button
+                <ChromeButton
                   variant="primary"
-                  size="xs"
+                  size="lg"
                   onClick={handleStartSession}
                   disabled={startDisabled}
-                  className="uppercase tracking-[0.18em]"
                 >
                   세션 시작
-                </Button>
+                </ChromeButton>
               )}
               <IconButton
                 aria-label="전체보기 열기"
                 title="전체보기"
                 variant="ghost"
-                size="md"
+                size="lg"
                 onClick={handleExpand}
               >
                 <svg
