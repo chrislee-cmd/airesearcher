@@ -3,66 +3,94 @@
     "name": "Research-mochi"
   },
   "Landing": {
-    "metaTitle": "Research-mochi — Research, but kinder.",
-    "metaDescription": "여덟 개의 작은 도구가 같은 책상 위에 모여, 서두르지 않고 친절하게 리서치를 돕습니다.",
+    "metaTitle": "Research-mochi — 리서치를 위한 캔버스",
+    "metaDescription": "한 화면에서 리서치를 처음부터 끝까지. 전사 · 동시통역 · 프로빙 · 인사이트 분석까지 캔버스 위에서 함께.",
     "nav": {
-      "demo": "데모",
-      "why": "왜 Mochi?",
+      "features": "기능",
+      "workflow": "워크플로우",
       "pricing": "가격",
-      "story": "이야기",
       "faq": "FAQ",
       "signIn": "로그인",
       "freeStart": "무료 시작 →"
     },
     "hero": {
-      "tagline": "리서처를 위한, 달콤한 자동화",
-      "headline": "반복 작업은 <hl>Mochi</hl>에게.<br></br>당신은 <hlPeach>인사이트</hlPeach>에만.",
-      "lead": "전사록 생성부터 인터뷰 분석, 데스크 리서치, 리포트 작성까지—<strong>8가지 도구</strong>가 하나의 워크스페이스에서 고달픈 작업을 대신해요. 야근 없이도, 좋은 리서치를 할 수 있어요.",
-      "ctaPrimary": "무료로 시작하기 →",
-      "ctaSecondary": "데모 보기",
-      "postscript": "<b>P.S.</b> 가입 직후 24시간은 모든 도구가 무제한이에요. 카드 등록도 필요 없어요."
+      "tagline": "리서치 캔버스, 오픈",
+      "headline": "한 화면에서,<br></br><hl>처음부터 끝까지</hl><br></br>리서치 <hlPeach>캔버스</hlPeach>.",
+      "lead": "전사 · AI 동시통역 · 프로빙 어시스턴트 · 인사이트 분석—<strong>모든 도구가 한 캔버스 위</strong>에 놓여 자유롭게 흐릅니다. 탭 전환 없이, 한 화면에서.",
+      "ctaPrimary": "캔버스 열기 →",
+      "ctaSecondary": "기능 둘러보기",
+      "postscript": "<b>P.S.</b> 가입 직후 24시간은 모든 위젯이 무제한. 카드 등록도 필요 없어요.",
+      "canvasMeta": "RESEARCH CANVAS",
+      "canvasBrand": "Researchmochi · canvas",
+      "canvasCredits": "크레딧 2,840",
+      "canvasSaved": "저장됨 · 방금 전",
+      "widgetTranscriptsTitle": "전사록",
+      "widgetTranscriptsLine1": "P1 · 첫 인터뷰 ‘구매 동기는…’",
+      "widgetTranscriptsLine2": "P2 · ‘디자인이 마음에 들었어요’",
+      "widgetTranscriptsLine3": "P3 · ‘가격이 약간 부담스러워서’",
+      "widgetTranslateTitle": "AI 동시통역",
+      "widgetTranslateHost": "진행자 · EN",
+      "widgetTranslateGuest": "응답자 · KO",
+      "widgetTranslateLine": "‘So how do you usually pick a brand?’",
+      "widgetTranslateGuestLine": "‘보통 디자인 보고 골라요’",
+      "widgetProbingTitle": "프로빙 어시스턴트",
+      "widgetProbingHint": "후속 질문 추천",
+      "widgetProbingQuestion": "‘방금 말씀하신 부담은 가격? 절차?’",
+      "widgetInsightsTitle": "인사이트 분석",
+      "widgetInsightsCluster1": "가격 민감 (12)",
+      "widgetInsightsCluster2": "브랜드 신뢰 (9)",
+      "widgetInsightsCluster3": "디자인 선호 (7)",
+      "widgetDeskTitle": "데스크 리서치",
+      "widgetDeskSource1": "Statista · K-Beauty 2026",
+      "widgetDeskSource2": "Mintel · Gen Z 화장품",
+      "widgetInterviewsTitle": "인터뷰 결과",
+      "widgetInterviewsMatrix": "응답 8 × 주제 5 매트릭스"
     },
-    "showcase": {
-      "meta": "LIVE DEMO",
-      "title": "직접 눌러보세요.<br></br><em>실제와 똑같이 작동해요.</em>",
-      "subtitle": "도구를 클릭하고, 결과가 워크스페이스에 쌓이는 걸 확인해보세요. 가입 없이 바로 체험할 수 있어요.",
-      "freeTrial": "FREE TRIAL",
-      "freeTrialTime": "23h 48m",
-      "groups": {
-        "design": "설계",
-        "conduct": "진행",
-        "analysis": "분석"
+    "features": {
+      "meta": "ON THE CANVAS",
+      "title": "캔버스 위의 <hlPeach>여섯 위젯</hlPeach>.",
+      "subtitle": "각 위젯은 독립으로도 강력하고, 결과는 캔버스 안에서 자연스럽게 연결됩니다.",
+      "translate": {
+        "title": "AI 동시통역",
+        "tag": "신규",
+        "body": "진행자/응답자 양쪽 음성을 동시에 캡처. 실시간 통역 + 자동 화자 분리로, 영어 인터뷰도 한국어 노트로 바로."
       },
-      "tools": {
-        "desk": "데스크 리서치",
-        "screener": "심사설문 생성기",
-        "guideline": "가이드라인 생성기",
-        "moderator": "AI 모더레이터",
-        "verbatim": "전사록 생성기",
-        "interview": "인터뷰 결과 생성기",
-        "report": "전체 리포트 생성기",
-        "quant": "정량조사 분석",
-        "affinity": "Affinity Bubble"
+      "probing": {
+        "title": "프로빙 어시스턴트",
+        "tag": "신규",
+        "body": "인터뷰 도중 실시간으로 검증·심화 질문을 제안. 놓치기 쉬운 답변의 모호함을 그 자리에서 짚어줍니다."
       },
-      "sideFoot": "Beauty UX 2026Q2",
-      "wsMeta": "WORKSPACE",
-      "wsEmpty": "방문한 도구의 산출물이 여기 자동으로 쌓입니다. 사이드바를 눌러보세요.",
-      "wsReset": "초기화",
-      "wsToReport": "리포트로 →",
-      "footMeta": "NEXT",
-      "tip": "← / → 키로 이동 · 사이드바 클릭으로 도구 전환 · 탭으로 단계 보기",
-      "tipMeta": "TIP",
-      "fallbackNext": "리포트로 마무리 →"
+      "insights": {
+        "title": "인사이트 분석기",
+        "tag": "신규",
+        "body": "여러 인터뷰의 발언을 자동으로 묶고, 의미 검색으로 가설을 빠르게 검증. 인용구를 그대로 끌어 쓸 수 있어요."
+      },
+      "interviews": {
+        "title": "인터뷰 결과",
+        "body": "전사·요약·테마 추출까지 자동. 응답×주제 매트릭스로 패턴을 한눈에. 캔버스 위에서 다른 위젯과 바로 연결."
+      },
+      "desk": {
+        "title": "데스크 리서치",
+        "body": "신뢰할 수 있는 소스에서 핵심만 정리. 출처 링크 포함, 캔버스 패널로 인터뷰 설계에 바로 반영."
+      },
+      "quotes": {
+        "title": "전사록",
+        "body": "오디오/영상 업로드 한 번으로 정돈된 전사록. 화자 라벨·타임스탬프·검색까지. 한 시간 분량이 분 단위로."
+      }
     },
-    "whyMochi": {
-      "tag": "WHY MOCHI?",
-      "hand": "고달픈 리서처에게,<br></br>달콤한 한 입을.",
-      "body1": "잦은 야근과 끝없는 수정, 사소한 디테일 하나도 놓칠 수 없는 고집—그 모든 고통을 감내한 끝에야 비로소 발굴되는 작고 소중한 인사이트. 오늘도 수많은 리서처들이 그 인사이트 하나를 위해 묵묵히 버티고 있습니다.",
-      "body2": "Research-Mochi는 그런 리서처분들 곁에 있고 싶습니다. 반복되는 업무를 자동화하고, 분석에만 온전히 집중할 수 있도록—마치 고된 하루 끝에 먹는 한 입의 모찌처럼, 작지만 확실한 행복을 드리고 싶습니다.",
-      "perk1": "<strong>야근 대신, 자동화.</strong> 전사록 정리, 인터뷰 요약, 데스크 리서치까지—밤새 붙잡고 있던 그 작업들을 Mochi가 대신합니다.",
-      "perk2": "<strong>디테일은 Mochi가, 인사이트는 당신이.</strong> 수백 장의 응답 속 패턴을 찾는 건 Mochi의 몫. 그 너머의 의미를 읽는 건 리서처의 몫입니다.",
-      "perk3": "<strong>수정을 줄이는 첫 번째 초안.</strong> 처음부터 정돈된 구조와 언어로. 수차례 반복되는 피드백 루프를 줄여드립니다.",
-      "coda": "오늘은 Mochi에게 맡기고, 커피 한 잔 어떠세요? ☕"
+    "workflow": {
+      "meta": "HOW IT WORKS",
+      "title": "<hl>세 걸음</hl>이면 끝.",
+      "subtitle": "캔버스 위에 위젯을 펼치고, 자동 분석이 흐르게 두고, 결과를 그대로 공유하세요.",
+      "step1Num": "01",
+      "step1Title": "캔버스에 위젯 배치",
+      "step1Body": "필요한 도구를 캔버스 위에 끌어 놓습니다. 전사·통역·분석이 한 화면에.",
+      "step2Num": "02",
+      "step2Title": "자동 분석이 흐름",
+      "step2Body": "위젯끼리 결과를 주고받으며 자동으로 다음 단계가 진행됩니다. 탭 전환 0회.",
+      "step3Num": "03",
+      "step3Title": "다운로드 또는 공유",
+      "step3Body": "리포트·인용구·매트릭스를 그대로 내보내거나, 캔버스 링크 하나로 팀과 공유."
     },
     "pricing": {
       "meta": "CREDITS · PAY AS YOU LEARN",
@@ -112,28 +140,24 @@
         }
       }
     },
-    "voice": {
-      "quote": "\"리서치를 '잡일' 처럼 느끼던 시간이 줄었어요.<br></br>하루 종일 인터뷰 정리하던 게 한 시간이면 끝나니까,<br></br>드디어 '생각하는 일' 에 시간을 쓸 수 있게 됐어요.\"",
-      "by": "— Mathpresso UX Lead"
-    },
     "faq": {
       "meta": "FAQ",
       "title": "궁금해 하실 것 같아서요.",
-      "q1": "크레딧은 만료가 있나요?",
-      "a1": "아니요. 한 번 구매하신 크레딧은 만료되지 않아요. 팀 워크스페이스 안에서 자유롭게 공유돼요.",
-      "q2": "한국어가 모자란 부분은 없나요?",
-      "a2": "기본 언어는 한국어예요. 인터페이스·문서·이메일·인보이스까지 모두 한국어 우선. 필요할 때 영어로 토글할 수 있어요.",
-      "q3": "한 도구의 결과가 다른 도구로 자동으로 흘러가나요?",
-      "a3": "네. 같은 워크스페이스 안에서 한 도구의 산출물이 다음 도구의 입력으로 바로 이어져요. 사이드바에 쌓이고 drag-drop 으로 보낼 수도 있어요.",
+      "q1": "캔버스가 정확히 뭔가요?",
+      "a1": "리서치에 필요한 모든 도구(전사·통역·프로빙·분석·데스크·인터뷰)를 한 화면 위에 위젯으로 펼치는 공간입니다. 탭 전환 없이 결과가 위젯 사이로 자연스럽게 흐릅니다.",
+      "q2": "AI 동시통역과 프로빙 어시스턴트는 어떻게 동작하나요?",
+      "a2": "동시통역은 진행자 마이크 + 응답자 탭 오디오를 동시에 캡처해 화자별로 라벨링합니다. 프로빙은 인터뷰 도중 답변의 모호함을 감지해 후속 질문을 실시간으로 제안해요.",
+      "q3": "크레딧은 만료가 있나요?",
+      "a3": "아니요. 한 번 구매한 크레딧은 만료되지 않고, 팀 워크스페이스 안에서 자유롭게 공유됩니다.",
       "q4": "가입하면 바로 결제해야 하나요?",
-      "a4": "아니요. 가입 후 24시간은 카드 없이 모든 도구를 무제한으로 써 보실 수 있어요. 마음에 드시면 그 후에 크레딧을 구매하세요."
+      "a4": "아니요. 가입 후 24시간은 카드 없이 모든 위젯을 무제한으로 써볼 수 있어요. 마음에 드시면 그 후에 크레딧을 구매하세요."
     },
     "ctaFinal": {
-      "squiggle": "come say hi ✿",
-      "title": "리서처의 손은,<br></br><hlMint>생각하는 일</hlMint> 에 써야 하니까요.",
-      "subtitle": "가입 직후 24시간 동안 모든 도구가 무제한으로 열려요. 카드 등록도 없고, 첫 산출물까지 평균 3분이에요.",
-      "ctaPrimary": "하루 무료로 만나보기 →",
-      "ctaSecondary": "한 바퀴 둘러보기"
+      "squiggle": "open the canvas ✿",
+      "title": "리서치를,<br></br><hlMint>한 화면</hlMint> 위에서.",
+      "subtitle": "가입 직후 24시간 동안 모든 위젯이 무제한으로 열려요. 카드 등록도 없고, 첫 캔버스를 열기까지 30초.",
+      "ctaPrimary": "캔버스 열기 →",
+      "ctaSecondary": "기능 다시 보기"
     },
     "footer": {
       "terms": "이용약관",
