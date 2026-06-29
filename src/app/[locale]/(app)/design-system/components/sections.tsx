@@ -539,7 +539,7 @@ function CheckboxSection() {
   return (
     <PrimitivePage
       title="Checkbox"
-      hint="src/components/ui/checkbox.tsx · accent-amore 자동 적용 · 시각만 — 텍스트는 <label> wrapper 로 직접 붙임"
+      hint="src/components/ui/checkbox.tsx · Memphis 톤 (2px ink border + 1.5px offset shadow) · checked 시 amore 채움 + ✓ SVG · sm 16px / md 20px · 텍스트는 <label> wrapper 로 직접 붙임"
     >
       <Subsection label="Sizes">
         <div className="flex items-center gap-6">
