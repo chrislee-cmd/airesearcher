@@ -767,24 +767,27 @@ export function DeskCardBody() {
           </Banner>
         )}
         {/* stuck (active 인데 progress 가 45s 멈춤) — 사용자가 중단/환불
-            결정할 수 있게 즉시 노출. server-side TIMEOUT 도 따로 catch. */}
+            결정할 수 있게 즉시 노출. cancel 버튼은 항상 표시 — 60s+ 멈춤
+            상태면 server 가 force cleanup + 즉시 환불 (cancel endpoint). */}
         {isStuck && job && (
           <Banner tone="warning" title={tDesk('stuckTitle')}>
-            <span>
-              {tDesk('stuckBody', {
-                seconds: Math.round(stuckMs / 1000),
-              })}
-            </span>
-            {!job.cancel_requested && (
+            <div className="flex flex-wrap items-center gap-3">
+              <span>
+                {tDesk('stuckBody', {
+                  seconds: Math.round(stuckMs / 1000),
+                })}
+              </span>
               <Button
-                variant="link"
+                variant="primary"
                 size="sm"
                 onClick={() => void cancelJob(job.id)}
-                className="ml-2 uppercase tracking-[0.18em]"
+                disabled={job.cancel_requested}
               >
-                {tDesk('stop')}
+                {job.cancel_requested
+                  ? tDesk('stopRequested')
+                  : tDesk('stopAndRefund')}
               </Button>
-            )}
+            </div>
           </Banner>
         )}
         {/* status='error' — 무조건 빨간 banner + 재시도 버튼. 사용자가 한없이

@@ -694,6 +694,7 @@
     "thinkingDone": "Activity",
     "stop": "Stop",
     "stopRequested": "Stopping…",
+    "stopAndRefund": "Stop and refund",
     "cancelledNotice": "Run was cancelled by the user.",
     "errorTitle": "Error — couldn't generate the report",
     "errorBody": "The run stopped due to an unexpected error. Please try again in a moment.",

@@ -405,6 +405,13 @@ const PER_RQ_DRAFT_SEC = 25;
 // Reserve held back from RQ budgeting for synthesize + analytics + writes.
 // = SYNTHESIZE_MIN_BUDGET(60s) + analytics(~20s) + DB final patches(~10s).
 const RESERVE_AFTER_RQ_SEC = 90;
+// Hard per-call LLM timeouts — without these the AI SDK can hang forever
+// on a network stall or stuck provider. Picked just above 2x of the worst
+// observed P99 for each call type so legitimate slow runs still complete.
+const LLM_TIMEOUT_RQ_MS = 90_000;
+const LLM_TIMEOUT_SYNTH_MS = 120_000;
+const LLM_TIMEOUT_CLAIM_MS = 30_000;
+const LLM_TIMEOUT_SHORT_MS = 30_000; // scoping / expanding / analytics
 // Below this remaining budget at analytics start, we skip charts.
 const SKIP_ANALYTICS_BELOW_MS = 20_000;
 // Below this remaining budget at extracting start, we skip claim extraction.
@@ -699,6 +706,7 @@ async function runJob(args: {
             prompt: keywords[0],
             temperature: 0.3,
             providerOptions: ZERO_RETENTION,
+            timeout: LLM_TIMEOUT_SHORT_MS,
           });
           similar = text
             .trim()
@@ -762,6 +770,7 @@ async function runJob(args: {
         maxOutputTokens: 2000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
+        timeout: LLM_TIMEOUT_SHORT_MS,
       });
       researchQuestions = rqResult.object.research_questions;
       await patch({ research_questions: researchQuestions });
@@ -1020,6 +1029,7 @@ async function runJob(args: {
                 maxOutputTokens: 1500,
                 maxRetries: 1,
                 providerOptions: ZERO_RETENTION,
+                timeout: LLM_TIMEOUT_CLAIM_MS,
               });
               for (const q of result.object.quant) {
                 persistedClaims.push({
@@ -1233,6 +1243,21 @@ async function runJob(args: {
       const totalRqs = researchQuestions.length;
       for (let idx = 0; idx < researchQuestions.length; idx++) {
         const rq = researchQuestions[idx];
+        // Pre-RQ budget guard — bail out BEFORE starting this RQ if we
+        // don't have enough time for it + the synthesize/analytics reserve.
+        // Critical: without this, a slow RQ blows past maxDuration and the
+        // function gets SIGKILLed before synthesize/fallback can run.
+        // idx > 0 keeps at least one RQ attempt so we don't end up empty.
+        const requiredMs = (perRqSec + RESERVE_AFTER_RQ_SEC) * 1000;
+        if (idx > 0 && timeLeft() < requiredMs) {
+          const skippedRqs = totalRqs - idx;
+          skippedSteps.push(`rq_pre_skip:${skippedRqs}skipped`);
+          await pushAndPatch(
+            `남은 시간 ${Math.round(timeLeft() / 1000)}초 — RQ ${skippedRqs}개를 건너뛰고 ${idx}개 답변으로 보고서로 갑니다.`,
+            'drafting',
+          );
+          break;
+        }
         const rqStartMs = Date.now();
         await checkCancel();
         const ctx = buildRqContext(rq);
@@ -1263,6 +1288,7 @@ async function runJob(args: {
             maxOutputTokens: 2000,
             maxRetries: 1,
             providerOptions: ZERO_RETENTION,
+            timeout: LLM_TIMEOUT_RQ_MS,
           });
           draftAnswer = draftRes.object.answer_md.trim();
           draftCited = draftRes.object.cited_article_urls;
@@ -1300,6 +1326,7 @@ async function runJob(args: {
               maxOutputTokens: 1500,
               maxRetries: 1,
               providerOptions: ZERO_RETENTION,
+              timeout: LLM_TIMEOUT_RQ_MS,
             });
             critique = critiqueRes.object;
           } catch (err) {
@@ -1346,6 +1373,7 @@ async function runJob(args: {
               maxOutputTokens: 2000,
               maxRetries: 1,
               providerOptions: ZERO_RETENTION,
+              timeout: LLM_TIMEOUT_RQ_MS,
             });
             finalAnswer = reviseRes.object.answer_md.trim();
             finalCited = reviseRes.object.cited_article_urls;
@@ -1587,6 +1615,7 @@ async function runJob(args: {
         maxOutputTokens: 6000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
+        timeout: LLM_TIMEOUT_SYNTH_MS,
       });
       output = text.trim();
     } catch (err) {
@@ -1657,6 +1686,7 @@ async function runJob(args: {
           maxOutputTokens: 4000,
           maxRetries: 1,
           providerOptions: ZERO_RETENTION,
+          timeout: LLM_TIMEOUT_SHORT_MS,
         });
         analytics = result.object;
         await pushAndPatch(

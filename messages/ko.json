@@ -694,6 +694,7 @@
     "thinkingDone": "진행 기록",
     "stop": "중지",
     "stopRequested": "중지 중…",
+    "stopAndRefund": "중지하고 환불받기",
     "cancelledNotice": "사용자 요청으로 작업이 중단되었습니다.",
     "errorTitle": "오류 — 보고서를 만들지 못했어요",
     "errorBody": "예기치 않은 오류로 작업이 중단되었습니다. 잠시 후 다시 시도해주세요.",
