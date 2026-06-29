@@ -213,6 +213,15 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
               >
                 {t('adminPayments')}
               </PopoverLink>
+              <PopoverLink
+                href="/design-system"
+                onClick={() => {
+                  track('admin_design_system_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminDesignSystem')}
+              </PopoverLink>
             </>
           )}
           <div className="my-1 h-px bg-line-soft" />
