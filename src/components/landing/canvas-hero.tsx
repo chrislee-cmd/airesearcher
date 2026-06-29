@@ -84,9 +84,9 @@ function CanvasMockup({ labels }: { labels: Labels }) {
             <h3>{labels.widgetTranscriptsTitle}</h3>
           </header>
           <ul className="cm-lines">
-            <li><span className="cm-who">P1</span>{labels.widgetTranscriptsLine1.replace(/^P1\s·\s/, '')}</li>
-            <li><span className="cm-who">P2</span>{labels.widgetTranscriptsLine2.replace(/^P2\s·\s/, '')}</li>
-            <li><span className="cm-who">P3</span>{labels.widgetTranscriptsLine3.replace(/^P3\s·\s/, '')}</li>
+            <li><span className="cm-who">P1</span><span className="cm-text">{labels.widgetTranscriptsLine1.replace(/^P1\s·\s/, '')}</span></li>
+            <li><span className="cm-who">P2</span><span className="cm-text">{labels.widgetTranscriptsLine2.replace(/^P2\s·\s/, '')}</span></li>
+            <li><span className="cm-who">P3</span><span className="cm-text">{labels.widgetTranscriptsLine3.replace(/^P3\s·\s/, '')}</span></li>
           </ul>
         </article>
 
@@ -142,6 +142,9 @@ function CanvasMockup({ labels }: { labels: Labels }) {
             <span className="cm-icon cm-icon-lav" aria-hidden="true">D</span>
             <h3>{labels.widgetDeskTitle}</h3>
           </header>
+          <div className="cm-desk-progress" aria-hidden="true">
+            <span className="cm-desk-progress-bar" />
+          </div>
           <ul className="cm-sources">
             <li>{labels.widgetDeskSource1}</li>
             <li>{labels.widgetDeskSource2}</li>
