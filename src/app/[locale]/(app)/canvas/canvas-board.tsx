@@ -560,6 +560,12 @@ export function CanvasBoard({
   // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
   // localStorage 좌표 hydration effect 가 positions 를 update 한 뒤에 정확한
   // 좌표로 jump 하도록 positions/focusWidget 를 deps 에 포함하고 ref 로 latch.
+  // probing 만 특별 — focus + 모달 자동 open + URL `focus=probing` 제거.
+  // 이유: probing 위젯의 "전체보기" 는 풀-모달 인터랙션이라 URL 에
+  // `focus=probing` 이 남아 있으면 사용자가 모달을 페이지로 오인하고
+  // 브라우저 백버튼을 누르면 canvas 밖으로 navigate 되어 컨텍스트를
+  // 잃는다. replaceState 로 즉시 정리하면 모달 닫기 = ESC/✕/backdrop,
+  // 백버튼 = canvas 진입 이전으로 깨끗하게 분리.
   const didInitialFocusRef = useRef(false);
   useEffect(() => {
     if (didInitialFocusRef.current) return;
@@ -569,7 +575,20 @@ export function CanvasBoard({
     }
     if (!widgetByKey[initialFocus] || !positions[initialFocus]) return;
     didInitialFocusRef.current = true;
-    const id = requestAnimationFrame(() => focusWidget(initialFocus));
+    const id = requestAnimationFrame(() => {
+      focusWidget(initialFocus);
+      if (initialFocus === 'probing') {
+        window.dispatchEvent(new CustomEvent('probing:open-fullview'));
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('focus');
+          const next = url.pathname + (url.search || '') + url.hash;
+          window.history.replaceState(window.history.state, '', next);
+        } catch {
+          /* URL 조작 실패 — 모달은 open, URL 만 더러운 채로 진행 */
+        }
+      }
+    });
     return () => cancelAnimationFrame(id);
   }, [initialFocus, widgetByKey, positions, focusWidget]);
 

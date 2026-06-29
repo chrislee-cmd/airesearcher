@@ -260,6 +260,16 @@ function ExpandedBody() {
   const handleExpand = useCallback(() => setExpanded(true), []);
   const handleCollapse = useCallback(() => setExpanded(false), []);
 
+  // sidebar / deep-link 진입 (`/canvas?focus=probing`) 시 canvas-board 가
+  // 이 이벤트를 dispatch 하면 모달이 자동 open. URL 변경은 canvas-board 가
+  // history.replaceState 로 처리 — 백버튼이 canvas 진입 이전으로 깨끗하게
+  // 돌아가도록.
+  useEffect(() => {
+    const onOpen = () => setExpanded(true);
+    window.addEventListener('probing:open-fullview', onOpen);
+    return () => window.removeEventListener('probing:open-fullview', onOpen);
+  }, []);
+
   const [guide, setGuide] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1051,16 +1061,16 @@ function ExpandedBody() {
         )}
       </div>
 
-      {/* 전체보기 — 풀스크린 모달. backdrop click 으로 실수 close 회피
-          (dismissOnBackdrop=false). ESC + 헤더 ✕ 만 허용. modal 안의
-          ReflectionPane / QuestionPane 은 widget 모드와 같은 React
-          state 를 read — close 시 widget 으로 돌아가도 끊김 0. */}
+      {/* 전체보기 — 90% viewport 모달 (max 1600×900). 명시적 여백으로
+          "페이지 변경" 이 아니라 "모달" 임을 시각적으로 인지 — 사용자
+          백버튼 instinct 회피. ESC / 헤더 ✕ / backdrop click 모두 close.
+          modal 안의 ReflectionPane / QuestionPane 은 widget 모드와 같은
+          React state 를 read — close 시 widget 으로 돌아가도 끊김 0. */}
       {expanded && (
         <Modal
           open
           onClose={handleCollapse}
-          size="full"
-          dismissOnBackdrop={false}
+          size="wide"
           labelledBy="probing-full-view-title"
         >
           <h2 id="probing-full-view-title" className="sr-only">
