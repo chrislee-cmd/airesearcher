@@ -226,11 +226,11 @@ export function ChipInputDemo() {
     setDraft('');
   };
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border border-line bg-paper px-3 py-2 focus-within:border-amore rounded-sm">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-2 border-ink bg-paper px-3 py-2 focus-within:border-amore">
       {chips.map((c, idx) => (
         <span
           key={`${c}-${idx}`}
-          className="inline-flex items-center gap-1 border border-amore bg-amore-bg px-2 py-0.5 text-md text-ink-2 rounded-sm"
+          className="inline-flex items-center gap-1 rounded-pill border border-amore bg-paper px-2.5 py-0.5 text-xs text-amore"
         >
           {c}
           <IconButton

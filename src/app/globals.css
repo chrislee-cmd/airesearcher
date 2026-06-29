@@ -59,6 +59,8 @@
 
   /* accent */
   --raw-accent-pink: #ff5c8a;
+  --raw-accent-pink-soft: #ff96b6;
+  --raw-accent-pink-bg: #ffe1eb;
   --raw-accent-purple: #a06fda;
   --raw-accent-purple-soft: #b690e2;
   --raw-accent-purple-bg: #e7defe;
@@ -138,6 +140,8 @@
 
   /* accent — mono (액센트 제거) */
   --raw-accent-pink: #1d1b20;
+  --raw-accent-pink-soft: #5b5965;
+  --raw-accent-pink-bg: #f5efe6;
   --raw-accent-purple: #1d1b20;
   --raw-accent-purple-soft: #5b5965;
   --raw-accent-purple-bg: #f5efe6;
@@ -205,7 +209,7 @@
 
   /* accent */
   --accent-action: var(--raw-accent-pink);
-  --accent-brand: var(--raw-accent-purple);
+  --accent-brand: var(--raw-accent-pink);
 
   /* signal */
   --signal-success: var(--raw-signal-success);
@@ -286,10 +290,11 @@
    값은 raw layer 참조 → [data-theme] swap 시 자동 따라감.
    ========================================================================= */
 @theme {
-  /* Brand accent — bento purple */
-  --color-amore: var(--raw-accent-purple);
-  --color-amore-soft: var(--raw-accent-purple-soft);
-  --color-amore-bg: var(--raw-accent-purple-bg);
+  /* Brand accent — Memphis pop pink (canvas-accent 와 통일).
+     editorial theme 은 raw-accent-pink* 을 mono 로 override 하므로 톤 swap OK. */
+  --color-amore: var(--raw-accent-pink);
+  --color-amore-soft: var(--raw-accent-pink-soft);
+  --color-amore-bg: var(--raw-accent-pink-bg);
 
   /* Text */
   --color-ink: var(--raw-ink-100);
