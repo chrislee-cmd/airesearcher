@@ -1,11 +1,12 @@
-// 프로빙 어시스턴트 — 10분 단위 추가 차감 heartbeat.
+// 프로빙 어시스턴트 — 1시간 단위 추가 차감 heartbeat.
 //
 // 세션 lifecycle:
-//   - POST /api/probing/sessions           → 시작 lump 5 credit (tick_index 0)
-//   - POST /api/probing/sessions/heartbeat → 10분 경과마다 5 credit (tick_index 1..9)
+//   - POST /api/probing/sessions           → 시작 lump 25 credit (tick_index 0, 첫 1시간)
+//   - POST /api/probing/sessions/heartbeat → 1시간 경과마다 25 credit (tick_index 1..3)
 //
-// 사용자 결정 가격: 1시간 = 25 credit (₩50,000). 2시간 = 50 credit cap.
-// → start lump 5 + 9 heartbeats × 5 = 50 credit 상한. tick_index ≥ 10 은 거부.
+// 사용자 결정 가격: 1시간 = 25 credit (₩50,000). 4시간 = 100 credit cap.
+// → start lump 25 + 3 heartbeats × 25 = 100 credit 상한. tick_index ≥ 4 는 거부
+// (사용자가 stop 안 누른 채 방치한 세션의 무한 차감 안전망).
 //
 // Idempotency: heartbeat generation_id 는 (session_id, tick_index) 로부터
 // SHA-256 으로 결정적 derive — 같은 tick 재전송 (client retry / 네트워크
@@ -26,10 +27,10 @@ export const runtime = 'nodejs';
 export const maxDuration = 15;
 
 // tick_index 0 = start lump (sessions route 가 발급). client heartbeat 은
-// 1 부터. 9 = 100분 시점 = 누적 50 credit (start 5 + 9×5). 10 이상은 2시간
+// 1 부터. 3 = 4시간 시점 = 누적 100 credit (start 25 + 3×25). 4 이상은 4시간
 // cap 초과로 거부 — client 가 stop 안 누른 경우의 안전망.
 const MIN_TICK_INDEX = 1;
-const MAX_TICK_INDEX = 9;
+const MAX_TICK_INDEX = 3;
 
 const Body = z.object({
   session_id: z.string().uuid(),

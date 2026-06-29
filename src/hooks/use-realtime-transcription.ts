@@ -103,11 +103,11 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const TAB_SILENCE_INTERVAL_MS = 3000;
 const TAB_SILENCE_DURATION_MS = 400;
 
-// 크레딧 차감 heartbeat — probing 세션 시작 시 lump 5 credit (첫 10분 포함),
-// 이후 10분마다 추가 5 credit. 서버는 tick_index ≤ 9 (= 100분 시점, 누적 50
-// credit = 2시간 cap) 까지만 받음. 사용자가 stop 안 누른 경우의 안전망.
-const HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000;
-const HEARTBEAT_MAX_TICK = 9;
+// 크레딧 차감 heartbeat — probing 세션 시작 시 lump 25 credit (첫 1시간 포함),
+// 이후 1시간마다 추가 25 credit. 서버는 tick_index ≤ 3 (= 4시간 시점, 누적 100
+// credit = 4시간 cap) 까지만 받음. 사용자가 stop 안 누른 경우의 안전망.
+const HEARTBEAT_INTERVAL_MS = 60 * 60 * 1000;
+const HEARTBEAT_MAX_TICK = 3;
 
 type OaiEvent = {
   type?: string;
@@ -581,8 +581,8 @@ export function useRealtimeTranscription(opts?: {
       setStatus('live');
       startInFlightRef.current = false;
 
-      // 10분 heartbeat 시작 — start lump 가 이미 첫 10분을 커버하므로
-      // 첫 tick (index 1) 은 10분 후 발사. cleanup() 이 interval 을 해제.
+      // 1시간 heartbeat 시작 — start lump 가 이미 첫 1시간을 커버하므로
+      // 첫 tick (index 1) 은 1시간 후 발사. cleanup() 이 interval 을 해제.
       // 서버가 402 (잔액 부족) 또는 cap 초과를 반환하면 자동 정지.
       const sid = sessionIdRef.current;
       if (sid && !heartbeatTimerRef.current) {
@@ -597,8 +597,8 @@ export function useRealtimeTranscription(opts?: {
           }
           // Fire-and-forget; failure paths log but don't tear down the live
           // session — UX choice is to keep transcription running while the
-          // user reads the paywall toast. Backend cap on tick_index ≥ 10
-          // guarantees we can't bleed past the 2-hour ceiling.
+          // user reads the paywall toast. Backend cap on tick_index ≥ 4
+          // guarantees we can't bleed past the 4-hour ceiling.
           void fetch('/api/probing/sessions/heartbeat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -607,7 +607,7 @@ export function useRealtimeTranscription(opts?: {
             .then(async (res) => {
               if (res.ok) {
                 heartbeatTickRef.current = nextTick;
-                // tick 성공 — 추가 5 credit 차감 시각화.
+                // tick 성공 — 추가 25 credit 차감 시각화.
                 notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
               } else if (res.status === 402) {
                 console.warn('[probing] heartbeat insufficient_credits — stopping ticks');
