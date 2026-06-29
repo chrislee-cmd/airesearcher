@@ -6,6 +6,10 @@ import {
   hasResponsesScope,
 } from '@/lib/google-oauth';
 import { getFormResponses } from '@/lib/google-forms';
+import {
+  partitionContactColumns,
+  stripContactAnswers,
+} from '@/lib/recruiting/contact-filter';
 
 export const maxDuration = 60;
 
@@ -13,11 +17,13 @@ export const maxDuration = 60;
 // ownership by being the user_id linked to the form row in
 // recruiting_forms; we never let one user read another's responses.
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ formId: string }> },
 ) {
   const { formId } = await params;
   if (!formId) return NextResponse.json({ error: 'missing_form_id' }, { status: 400 });
+  const url = new URL(req.url);
+  const countOnly = url.searchParams.get('count_only') === '1';
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -57,7 +63,20 @@ export async function GET(
 
   try {
     const result = await getFormResponses(accessToken, formId);
-    return NextResponse.json(result);
+    if (countOnly) {
+      return NextResponse.json({ count: result.rows.length });
+    }
+    // Privacy: strip contact columns (phone number / email) before the
+    // payload reaches the browser. The attendee-review modal also filters
+    // them visually, but the server-side strip is the authoritative cut
+    // — never trust that the client filter alone is sufficient.
+    const { visible, hiddenQuestionIds } = partitionContactColumns(result.columns);
+    const rows = stripContactAnswers(result.rows, hiddenQuestionIds);
+    return NextResponse.json({
+      ...result,
+      columns: visible,
+      rows,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'responses_failed';
     return NextResponse.json({ error: msg }, { status: 502 });
