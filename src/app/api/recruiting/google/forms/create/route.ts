@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
+import {
+  getAdminAccessToken,
+  getAdminEmail,
+  isAdminProxyConfigured,
+} from '@/lib/google-oauth-admin';
 import { createGoogleForm } from '@/lib/google-forms';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey, type SurveyQuestion } from '@/lib/survey-schema';
@@ -90,22 +95,50 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
-  const { data: row } = await admin
-    .from('user_google_oauth')
-    .select('refresh_token, scope')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!row?.refresh_token) {
-    return NextResponse.json({ error: 'google_not_connected' }, { status: 412 });
-  }
+
+  // Admin-proxy mode: every publish lands in GOOGLE_ADMIN_EMAIL's Drive
+  // regardless of who clicked "발행". The user never needs to OAuth.
+  // When the admin env is unset (local dev, untouched preview) we fall
+  // through to the legacy per-user OAuth path so old worktrees keep
+  // working without an env migration.
+  const adminProxy = isAdminProxyConfigured();
 
   let accessToken: string;
-  try {
-    const { access_token } = await refreshAccessToken(row.refresh_token);
-    accessToken = access_token;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'refresh_failed';
-    return NextResponse.json({ error: msg }, { status: 502 });
+  let ownerEmail: string | null = null;
+  // Sheets scope is implicit for the admin (consent granted up-front
+  // when the refresh token was minted with full SHARE_SCOPES). For the
+  // legacy per-user path we still gate on the stored scope string.
+  let canCreateSheet = false;
+
+  if (adminProxy) {
+    try {
+      accessToken = await getAdminAccessToken();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+    ownerEmail = getAdminEmail();
+    canCreateSheet = true;
+  } else {
+    const { data: row } = await admin
+      .from('user_google_oauth')
+      .select('refresh_token, scope')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!row?.refresh_token) {
+      return NextResponse.json(
+        { error: 'google_not_connected' },
+        { status: 412 },
+      );
+    }
+    try {
+      const { access_token } = await refreshAccessToken(row.refresh_token);
+      accessToken = access_token;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+    canCreateSheet = hasSheetsScope(row.scope);
   }
 
   // ensureMandatoryPhoneNotice + ensurePrivacyConsent are idempotent —
@@ -130,7 +163,7 @@ export async function POST(request: Request) {
     // "시트 연결" fallback button when sheet_url stays null.
     let sheetUrl: string | null = null;
     let sheetId: string | null = null;
-    if (hasSheetsScope(row.scope)) {
+    if (canCreateSheet) {
       try {
         const headers = sheetHeaders(survey);
         const sheet = await createGoogleSheet(
@@ -172,21 +205,40 @@ export async function POST(request: Request) {
       responder_uri: result.responderUri,
       edit_uri: result.editUri,
     };
-    const upsert = await admin
-      .from('recruiting_forms')
-      .upsert({ ...baseRow, sheet_url: sheetUrl, sheet_id: sheetId });
+    const fullRow = {
+      ...baseRow,
+      sheet_url: sheetUrl,
+      sheet_id: sheetId,
+      owner_email: ownerEmail,
+    };
+    const upsert = await admin.from('recruiting_forms').upsert(fullRow);
     if (upsert.error) {
       // Postgres native column-not-found is 42703, but supabase-js routes
       // through PostgREST which catches it at the schema-cache layer and
       // surfaces PGRST204 with a "Could not find the 'X' column" message
       // (observed in prod when migration 20260624032912 hadn't landed).
-      // Match either code, narrowed to the sheet columns by message so we
-      // don't swallow unrelated PGRST204s.
+      // Match either code, narrowed to the new columns by message so we
+      // don't swallow unrelated PGRST204s. owner_email is the freshest
+      // addition (this PR's migration) — preview envs may publish before
+      // db push lands, so retry without it as well.
       const errMsg = upsert.error.message ?? '';
+      const code = upsert.error.code;
+      const isMissingOwnerEmail =
+        code === '42703' ||
+        (code === 'PGRST204' && /owner_email/.test(errMsg));
       const isMissingSheetColumn =
-        upsert.error.code === '42703' ||
-        (upsert.error.code === 'PGRST204' && /sheet_(url|id)/.test(errMsg));
-      if (isMissingSheetColumn) {
+        code === '42703' ||
+        (code === 'PGRST204' && /sheet_(url|id)/.test(errMsg));
+      if (isMissingOwnerEmail && !isMissingSheetColumn) {
+        const { owner_email: _omit, ...withoutOwnerEmail } = fullRow;
+        void _omit;
+        const retry = await admin
+          .from('recruiting_forms')
+          .upsert(withoutOwnerEmail);
+        if (retry.error) {
+          console.error('forms_create_persist_failed', retry.error);
+        }
+      } else if (isMissingSheetColumn) {
         const retry = await admin.from('recruiting_forms').upsert(baseRow);
         if (retry.error) {
           console.error('forms_create_persist_failed', retry.error);

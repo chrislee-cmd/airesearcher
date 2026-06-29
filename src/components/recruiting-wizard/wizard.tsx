@@ -45,6 +45,11 @@ type GoogleStatus = {
   connected: boolean;
   email: string | null;
   hasDrive: boolean;
+  // Set when the server has the admin-proxy env populated. In that
+  // mode the user never needs to OAuth (every publish goes through
+  // chris.lee's refresh token server-side) so the wizard hides the
+  // "Google 계정 연결" CTA and the "drive 권한 부족" reconnect hint.
+  adminProxy: boolean;
 };
 
 type PublishedForm = {
@@ -144,6 +149,7 @@ export function RecruitingWizard() {
             connected: !!j.connected,
             email: j.email ?? null,
             hasDrive: !!j.hasDrive,
+            adminProxy: !!j.adminProxy,
           });
         }
       })
@@ -411,7 +417,10 @@ export function RecruitingWizard() {
     // the draft. Trigger the same effect path here by clearing any prior
     // error; the OAuth-not-connected branch still needs to redirect first.
     setPublishError(null);
-    if (google && !google.connected) {
+    // Admin proxy: status already reported connected=true and the
+    // server publishes through the admin token. Skip the OAuth detour
+    // entirely so the user lands on the spinner immediately.
+    if (google && !google.connected && !google?.adminProxy) {
       captureDraft();
       if (typeof window !== 'undefined') {
         window.location.href = '/api/recruiting/google/start';
@@ -1073,7 +1082,11 @@ function AttendeeReviewPanel({
   onClearAuthError: () => void;
   onOpenReview: () => void;
 }) {
-  const needsReauth = isReauthError(publishError);
+  // Reconnect makes no sense in admin-proxy mode: the user has no
+  // OAuth row to reconnect, and the admin token error must be fixed
+  // by an operator (rotate refresh token). Force the retry CTA in
+  // that mode so the user isn't sent into a /google/start dead-end.
+  const needsReauth = isReauthError(publishError) && !google?.adminProxy;
   const [copied, setCopied] = useState(false);
   const [responseCount, setResponseCount] = useState<number | null>(null);
 
@@ -1194,7 +1207,7 @@ function AttendeeReviewPanel({
             </div>
           </div>
         </div>
-      ) : google && !google.connected ? (
+      ) : google && !google.connected && !google.adminProxy ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-mute-soft">
             Google 계정을 연결하면 설문이 자동으로 발행됩니다.
@@ -1228,7 +1241,7 @@ function AttendeeReviewPanel({
         <GeneratingRow label="Google 연결 확인…" />
       )}
 
-      {google?.connected && !google.hasDrive && (
+      {google?.connected && !google.hasDrive && !google.adminProxy && (
         <p className="text-sm text-amore">
           공개(anyone with link) 권한 부여를 위해 Google 계정을 다시
           연결해주세요.{' '}
