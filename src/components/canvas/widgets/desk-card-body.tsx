@@ -532,8 +532,13 @@ export function DeskCardBody() {
 
   // ─── stuck watchdog ──────────────────────────────────────────────────────
   // "한없이 기다리는" 상황 차단 — events 가 STUCK_THRESHOLD_MS 동안 늘지
-  // 않으면 "응답 없음" banner 노출. 사용자가 cancel 로 환불 회수 가능.
-  const STUCK_THRESHOLD_MS = 45_000;
+  // 않으면 부드러운 info banner 노출. drafting (Sonnet 3-pass × RQ 직렬) ·
+  // synthesizing 같은 정상 LLM 호출은 자연스럽게 60~120s silent 구간이
+  // 생기므로 45s → 150s 로 상향 — 정상 작업 중 false-positive "응답 없음"
+  // 으로 cancel 을 유도하던 사고 fix. 진짜 사고는 server-side budget timeout
+  // (300s + 자동 환불) 이 자체 정리하므로 client 자동 cancel 은 제거.
+  const STUCK_THRESHOLD_MS = 150_000; // 2.5분 — drafting 한 RQ 호출 평균보다 안전
+  const STUCK_CANCEL_HINT_MS = 270_000; // 4.5분 — 명시 cancel 버튼 노출 (자동 cancel 0)
   const [now, setNow] = useState(() => Date.now());
   const eventCountRef = useRef<number>(0);
   const lastEventAtRef = useRef<number>(Date.now());
@@ -560,19 +565,30 @@ export function DeskCardBody() {
   const stuckMs = isWorking ? now - lastEventAtRef.current : 0;
   const isStuck = isWorking && stuckMs > STUCK_THRESHOLD_MS;
 
-  // Auto-cancel — 90s 동안 events 가 안 오면 사용자가 자리 비웠다 가정하고
-  // 자동으로 cancel API 호출. server 의 cancel endpoint 가 60s+ stuck row
-  // 면 force cleanup + 환불 처리. 즉 사용자 개입 없이 화면 깨끗하게 정리.
-  const AUTO_CANCEL_MS = 90_000;
-  const autoCancelTriggeredRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isStuck || !job) return;
-    if (job.cancel_requested) return;
-    if (stuckMs < AUTO_CANCEL_MS) return;
-    if (autoCancelTriggeredRef.current === job.id) return;
-    autoCancelTriggeredRef.current = job.id;
-    void cancelJob(job.id);
-  }, [isStuck, stuckMs, job, cancelJob]);
+  // 자동 cancel 제거 — 정상 LLM 호출 (drafting 등) 을 강제 종료하던 사고
+  // 방지. 진짜 사고는 server-side budget timeout (300s + 자동 환불) 이
+  // 자체 정리하고, 4.5분+ 면 아래 banner 가 명시 cancel 버튼을 노출한다.
+
+  // 부드러운 안내 문구 — 현재 phase 에 맞춰 "지금 무슨 무거운 작업을
+  // 하는 중인지" 알려 사용자 패닉을 차단. 4.5분+ 면 더 오래 걸린다는
+  // 안내 + cancel 유도 톤으로 전환.
+  const stuckBodyText = (() => {
+    if (stuckMs >= STUCK_CANCEL_HINT_MS) return tDesk('stuckBodyLong');
+    switch (job?.progress?.phase) {
+      case 'crawling':
+        return tDesk('stuckBodyCrawling');
+      case 'extracting':
+        return tDesk('stuckBodyExtracting');
+      case 'drafting':
+      case 'critiquing':
+        return tDesk('stuckBodyDrafting');
+      case 'synthesizing':
+      case 'summarizing':
+        return tDesk('stuckBodySynthesizing');
+      default:
+        return tDesk('stuckBodyDefault');
+    }
+  })();
 
   // ─── stage timing chips ──────────────────────────────────────────────────
   // Each closed phase records elapsed ms in progress.timings — surface them
@@ -958,31 +974,26 @@ export function DeskCardBody() {
             <span className="font-mono">{error}</span>
           </Banner>
         )}
-        {/* stuck (active 인데 progress 가 45s 멈춤) — 사용자가 중단/환불
-            결정할 수 있게 즉시 노출. cancel 버튼은 항상 표시. 90s+ 면
-            클라이언트가 자동으로 cancel API 호출 (사용자 개입 없이 환불). */}
+        {/* stuck (active 인데 progress 가 150s 멈춤) — 정상 LLM 호출도 이
+            구간에 들 수 있어 alarm 대신 부드러운 info 톤 + phase 별 안내.
+            자동 cancel 은 없음. 4.5분(STUCK_CANCEL_HINT_MS)+ 면 더 오래
+            걸린다는 안내와 함께 명시 cancel 버튼을 노출 — 사용자 클릭만. */}
         {isStuck && job && (
-          <Banner tone="warning" title={tDesk('stuckTitle')}>
+          <Banner tone="info" title={tDesk('stuckTitle')}>
             <div className="flex flex-wrap items-center gap-3">
-              <span>
-                {stuckMs >= AUTO_CANCEL_MS
-                  ? tDesk('stuckAutoCancelled', {
-                      seconds: Math.round(stuckMs / 1000),
-                    })
-                  : tDesk('stuckBody', {
-                      seconds: Math.round(stuckMs / 1000),
-                    })}
-              </span>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void cancelJob(job.id)}
-                disabled={job.cancel_requested}
-              >
-                {job.cancel_requested
-                  ? tDesk('stopRequested')
-                  : tDesk('stopAndRefund')}
-              </Button>
+              <span>{stuckBodyText}</span>
+              {stuckMs >= STUCK_CANCEL_HINT_MS && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void cancelJob(job.id)}
+                  disabled={job.cancel_requested}
+                >
+                  {job.cancel_requested
+                    ? tDesk('stopRequested')
+                    : tDesk('stopAndRefund')}
+                </Button>
+              )}
             </div>
           </Banner>
         )}
