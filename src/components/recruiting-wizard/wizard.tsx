@@ -18,12 +18,14 @@ import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
+import { ensureMandatoryPhoneNotice } from '@/lib/recruiting/survey-postprocess';
 import {
   CriteriaEditor,
   CriteriaPreview,
   SurveyEditor,
   SurveyPreview,
 } from './views';
+import { AttendeeReviewModal } from './attendee-review-modal';
 import {
   clearDraft,
   loadDraft,
@@ -46,7 +48,20 @@ type PublishedForm = {
   formId: string;
   responderUri: string;
   editUri: string;
+  sheetUrl: string | null;
 };
+
+// Stages we cycle through while the server-side publish chain runs.
+// They map roughly onto the three round-trips the create endpoint does
+// (form create + items batchUpdate + drive share + linked sheet) but we
+// don't have real per-stage signals — the labels are timed UX cues so
+// the user sees forward motion instead of a single multi-second spinner.
+const PUBLISH_STAGES: { label: string; afterMs: number }[] = [
+  { label: 'Google 연결 확인…', afterMs: 0 },
+  { label: '구글 설문지 생성 중…', afterMs: 1200 },
+  { label: '응답 시트 연결 중…', afterMs: 4500 },
+  { label: '발행 마무리 중…', afterMs: 8000 },
+];
 
 const ACCEPT = '.pdf,.docx,.xlsx,.xls,.csv,.txt';
 const ACCEPT_RE = /\.(pdf|docx|xlsx|xls|csv|txt)$/i;
@@ -105,6 +120,8 @@ export function RecruitingWizard() {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [published, setPublished] = useState<PublishedForm | null>(null);
+  const [publishStageIdx, setPublishStageIdx] = useState(0);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   // ── Modal state ─────────────────────────────────────────────────────
   type ModalState =
@@ -360,7 +377,11 @@ export function RecruitingWizard() {
         buffer += decoder.decode(value, { stream: true });
       }
       if (ctrl.signal.aborted) return;
-      const finalSurvey = await coerceSurvey(buffer);
+      const rawSurvey = await coerceSurvey(buffer);
+      // Mandatory phone-contact notice is enforced post-LLM so users see
+      // it in the Step 2 preview/editor before approving. The publish
+      // route re-applies the same post-process as defense in depth.
+      const finalSurvey = ensureMandatoryPhoneNotice(rawSurvey);
       setSurvey(finalSurvey);
       setSurveyPhase('review');
       track('recruiting_survey_generate_success', {
@@ -378,6 +399,18 @@ export function RecruitingWizard() {
   function approveSurvey() {
     if (!survey) return;
     setSurveyPhase('approved');
+    // The publish chain itself fires from an effect once
+    // (surveyPhase === 'approved' && google?.connected && !published) holds,
+    // so it also resumes correctly after an OAuth round-trip rehydrates
+    // the draft. Trigger the same effect path here by clearing any prior
+    // error; the OAuth-not-connected branch still needs to redirect first.
+    setPublishError(null);
+    if (google && !google.connected) {
+      captureDraft();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/api/recruiting/google/start';
+      }
+    }
   }
 
   function regenerateSurvey() {
@@ -386,9 +419,15 @@ export function RecruitingWizard() {
   }
 
   // ── Card 3 actions ──────────────────────────────────────────────────
-  async function publishToGoogle() {
+  // The publish chain (Step 2 승인 → OAuth check → Form create → linked
+  // Sheet → public link) is auto-started from the effect below once the
+  // user has approved AND Google is connected. We expose `autoPublish`
+  // as a function so the error block can re-trigger after the user fixes
+  // an OAuth issue without re-clicking "승인".
+  async function autoPublish() {
     if (!survey) return;
     setPublishing(true);
+    setPublishStageIdx(0);
     setPublishError(null);
     try {
       // Cap the round-trip at 45s — comfortably above the worst-case
@@ -410,6 +449,7 @@ export function RecruitingWizard() {
         formId: j.formId ?? j.form_id,
         responderUri: j.responderUri,
         editUri: j.editUri,
+        sheetUrl: j.sheetUrl ?? null,
       };
       setPublished(pub);
       // Refresh the bento-bottom outputs row without waiting for its
@@ -460,6 +500,42 @@ export function RecruitingWizard() {
       setPublishing(false);
     }
   }
+
+  // ── Auto-publish trigger ───────────────────────────────────────────
+  // Fires once when Step 2 is approved AND Google is connected AND we
+  // haven't published yet. Also covers the OAuth round-trip resume path:
+  // captureDraft() persists surveyPhase='approved', the callback rehydrates
+  // it, and once /status reports connected this effect kicks off the
+  // publish chain without the user re-clicking "승인".
+  const triggeredForRef = useRef<Survey | null>(null);
+  useEffect(() => {
+    if (surveyPhase !== 'approved') return;
+    if (!survey) return;
+    if (published || publishing) return;
+    if (publishError) return; // wait for explicit retry
+    if (!google) return; // status still loading
+    if (!google.connected) return; // approveSurvey already kicked off OAuth
+    if (triggeredForRef.current === survey) return;
+    triggeredForRef.current = survey;
+    void autoPublish();
+    // autoPublish reads survey/state via closure; deps deliberately
+    // omit it to avoid re-firing on every state change inside the chain.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surveyPhase, survey, published, publishing, publishError, google]);
+
+  // Drive the labeled progress stages while publishing. Cleared when the
+  // publish call resolves (publishing=false).
+  useEffect(() => {
+    if (!publishing) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    PUBLISH_STAGES.forEach((stage, idx) => {
+      if (idx === 0) return;
+      timers.push(setTimeout(() => setPublishStageIdx(idx), stage.afterMs));
+    });
+    return () => {
+      for (const t of timers) clearTimeout(t);
+    };
+  }, [publishing]);
 
   // ── Widget header state pill sync (PR #514 patch) ──────────────────
   // PR #514 (위젯 헤더 state pill — 실시간 갱신) 가 desk/interviews/probing/
@@ -617,21 +693,26 @@ export function RecruitingWizard() {
         </WizardCard>
       )}
 
-      {/* CARD 3 — Google Form 생성. Card 2 승인 전에는 렌더 X. */}
+      {/* CARD 3 — 모집 현황. Step 2 승인 직후 자동 Google 발행이 돌고,
+          끝나면 참석자 응답을 풀스크린 모달에서 확인. Card 2 승인 전에는
+          렌더 X. */}
       {surveyPhase === 'approved' && (
         <WizardCard
           index={3}
-          title="Google Form 생성"
+          title="모집 현황"
           phase={published ? 'approved' : 'review'}
           accentColor="amore"
         >
-          <FormPublishRow
+          <AttendeeReviewPanel
             google={google}
             googleAuthError={googleAuthError}
             publishing={publishing}
+            publishStageLabel={
+              PUBLISH_STAGES[publishStageIdx]?.label ?? '발행 중…'
+            }
             published={published}
             publishError={publishError}
-            onPublish={() => requireAuth(() => void publishToGoogle())}
+            onRetry={() => requireAuth(() => void autoPublish())}
             onConnect={() => {
               if (typeof window !== 'undefined') {
                 captureDraft();
@@ -643,8 +724,18 @@ export function RecruitingWizard() {
               void reconnectGoogle();
             }}
             onClearAuthError={() => setGoogleAuthError(null)}
+            onOpenReview={() => setReviewOpen(true)}
           />
         </WizardCard>
+      )}
+
+      {published && (
+        <AttendeeReviewModal
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          formId={published.formId}
+          responderUri={published.responderUri}
+        />
       )}
 
       {/* Approval modal — shared across cards 1 & 2 */}
@@ -951,29 +1042,35 @@ async function reconnectGoogle() {
   }
 }
 
-function FormPublishRow({
+function AttendeeReviewPanel({
   google,
   googleAuthError,
   publishing,
+  publishStageLabel,
   published,
   publishError,
-  onPublish,
+  onRetry,
   onConnect,
   onReconnect,
   onClearAuthError,
+  onOpenReview,
 }: {
   google: GoogleStatus | null;
   googleAuthError: string | null;
   publishing: boolean;
+  publishStageLabel: string;
   published: PublishedForm | null;
   publishError: string | null;
-  onPublish: () => void;
+  onRetry: () => void;
   onConnect: () => void;
   onReconnect: () => void;
   onClearAuthError: () => void;
+  onOpenReview: () => void;
 }) {
   const needsReauth = isReauthError(publishError);
   const [copied, setCopied] = useState(false);
+  const [responseCount, setResponseCount] = useState<number | null>(null);
+
   async function copyResponderUri() {
     if (!published?.responderUri) return;
     try {
@@ -985,11 +1082,65 @@ function FormPublishRow({
       // user can still select the input text manually.
     }
   }
+
+  // Poll the response count so the "응답 N명" stat stays roughly fresh
+  // without the user opening the modal. 5-min cadence matches the Forms
+  // API's typical propagation delay for fresh submissions; opening the
+  // modal does a forced refresh anyway.
+  useEffect(() => {
+    if (!published?.formId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch(
+          `/api/recruiting/google/forms/${encodeURIComponent(
+            published.formId,
+          )}/responses?count_only=1`,
+        );
+        if (!res.ok) return;
+        const j = (await res.json()) as { count?: number };
+        if (!cancelled && typeof j.count === 'number') {
+          setResponseCount(j.count);
+        }
+      } catch {
+        // ignore — UI keeps last known count
+      }
+    };
+    void tick();
+    const id = window.setInterval(tick, 5 * 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [published?.formId]);
+
   return (
     <div className="space-y-3">
-      {published ? (
-        <div className="space-y-2 border border-line-soft bg-paper p-3 rounded-sm">
-          <div className="font-semibold text-ink">발행 완료</div>
+      {publishing ? (
+        <GeneratingRow label={publishStageLabel} />
+      ) : published ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-4 border border-line-soft bg-paper p-3 rounded-sm">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
+                현재 응답 수
+              </div>
+              <div className="mt-0.5 flex items-baseline gap-1">
+                <span className="text-2xl font-semibold tabular-nums text-ink">
+                  {responseCount ?? '—'}
+                </span>
+                <span className="text-md text-mute">명</span>
+              </div>
+            </div>
+            <ChromeButton
+              variant="primary"
+              size="lg"
+              onClick={onOpenReview}
+            >
+              모집 현황 보기
+            </ChromeButton>
+          </div>
+
           <div className="flex flex-wrap items-center gap-3 text-md">
             <a
               href={published.editUri}
@@ -1007,6 +1158,16 @@ function FormPublishRow({
             >
               응답 폼 열기
             </a>
+            {published.sheetUrl && (
+              <a
+                href={published.sheetUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-ink-2 underline-offset-2 hover:underline"
+              >
+                응답 시트 열기
+              </a>
+            )}
             <div className="flex w-2/5 items-center gap-2">
               <span className="shrink-0 text-sm text-mute-soft">참석자용</span>
               <Input
@@ -1027,40 +1188,38 @@ function FormPublishRow({
             </div>
           </div>
         </div>
-      ) : google?.connected ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-mute-soft">
-              승인된 설문을 Google Forms로 발행합니다.
-              {google.email ? ` (${google.email})` : ''}
-            </p>
-            <Button
-              variant="link"
-              size="xs"
-              onClick={onReconnect}
-              className="px-0 py-0 font-normal text-xs-soft text-mute underline underline-offset-2 hover:text-amore"
-            >
-              다른 계정으로 재연결
-            </Button>
-          </div>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onPublish}
-            disabled={publishing}
-          >
-            {publishing ? '발행 중…' : 'Google Form 생성'}
-          </Button>
-        </div>
-      ) : (
+      ) : google && !google.connected ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-mute-soft">
-            Google 계정을 연결하면 폼을 자동으로 생성합니다.
+            Google 계정을 연결하면 설문이 자동으로 발행됩니다.
           </p>
           <Button variant="primary" size="md" onClick={onConnect}>
             Google 계정 연결
           </Button>
         </div>
+      ) : publishError ? (
+        <div className="border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
+          <div>발행 오류: {publishError}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {needsReauth ? (
+              <>
+                <span className="text-sm">
+                  Google 토큰이 만료/취소된 것 같습니다. 재연결로 복구하세요.
+                </span>
+                <Button variant="primary" size="sm" onClick={onReconnect}>
+                  Google 재연결
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" size="sm" onClick={onRetry}>
+                다시 시도
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        // google === null (status still loading) → minimal placeholder
+        <GeneratingRow label="Google 연결 확인…" />
       )}
 
       {google?.connected && !google.hasDrive && (
@@ -1089,26 +1248,6 @@ function FormPublishRow({
           >
             닫기
           </Button>
-        </div>
-      )}
-
-      {publishError && (
-        <div className="border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
-          <div>발행 오류: {publishError}</div>
-          {needsReauth && (
-            <div className="mt-2 flex items-center gap-3">
-              <span className="text-sm">
-                Google 토큰이 만료/취소된 것 같습니다. 재연결로 복구하세요.
-              </span>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onReconnect}
-              >
-                Google 재연결
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </div>
