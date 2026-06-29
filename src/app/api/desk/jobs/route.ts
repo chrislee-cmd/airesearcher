@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { cleanupStaleDeskJobs } from '@/lib/desk-cleanup';
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,6 +12,10 @@ export async function GET() {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ jobs: [] });
+
+  // Fire-and-forget: sweep jobs the function killed past maxDuration.
+  // Realtime broadcasts the cleanup state on the next tick.
+  void cleanupStaleDeskJobs(org.org_id);
 
   const { data, error } = await supabase
     .from('desk_jobs')

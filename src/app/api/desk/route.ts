@@ -150,7 +150,7 @@ const REPORT_SYSTEM_V2 = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG
 
 분량은 충실하게 작성하되 의미 있는 정보가 담길 때만 단락을 둡니다.${ISOLATION_NOTICE}`;
 
-const RQ_DECOMPOSE_SYSTEM = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG)의 시니어 리서처입니다. 사용자가 입력한 키워드, 검색 지역, 수집 기간을 보고 — 이 데스크 리서치가 답해야 할 핵심 리서치 질문(Research Questions, RQ) 5~8개를 한국어로 분해합니다.
+const RQ_DECOMPOSE_SYSTEM = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG)의 시니어 리서처입니다. 사용자가 입력한 키워드, 검색 지역, 수집 기간을 보고 — 이 데스크 리서치가 답해야 할 핵심 리서치 질문(Research Questions, RQ) 3~5개를 한국어로 분해합니다.
 
 [원칙]
 - 각 질문은 단일 주제로 분리되고, "예/아니오" 가 아닌 분석형 질문이어야 합니다 (예: "X 시장 규모는 얼마이며 최근 3년 CAGR 은?").
@@ -248,7 +248,7 @@ const ResearchQuestionSchema = z.object({
 });
 
 const RQDecomposeSchema = z.object({
-  research_questions: z.array(ResearchQuestionSchema).min(3).max(10),
+  research_questions: z.array(ResearchQuestionSchema).min(3).max(5),
 });
 
 type ResearchQuestion = z.infer<typeof ResearchQuestionSchema>;
@@ -356,20 +356,75 @@ function sourceLabelKo(id: DeskSourceId): string {
   return DESK_SOURCES.find((s) => s.id === id)?.label ?? id;
 }
 
+type PhaseName =
+  | 'expanding'
+  | 'scoping'
+  | 'crawling'
+  | 'gating'
+  | 'sampling'
+  | 'extracting'
+  | 'drafting'
+  | 'critiquing'
+  | 'synthesizing'
+  | 'analytics'
+  | 'summarizing';
+
 type ProgressShape = {
-  phase?:
-    | 'expanding'
-    | 'scoping'
-    | 'crawling'
-    | 'extracting'
-    | 'drafting'
-    | 'critiquing'
-    | 'synthesizing'
-    | 'summarizing';
+  phase?: PhaseName;
   crawl_total?: number;
   crawl_done?: number;
   events: string[];
+  // Per-phase wall-clock (ms). Populated as phases close so admins can see
+  // exactly where a stuck job was spending its budget without trawling
+  // Vercel logs. `progress.timings.drafting_ms` etc.
+  timings?: Partial<Record<`${PhaseName}_ms`, number>>;
+  // Total elapsed since runJob start (ms). Updated on every progress patch.
+  elapsed_ms?: number;
+  // HARD_DEADLINE_MS used for this run — lets UI surface "X초 남음" if needed.
+  deadline_ms?: number;
+  // Steps the budget-skip logic intentionally bypassed (revise / critique /
+  // analytics / rq_cap). Shown in the report footer so users know the run
+  // ran tight and which corner was cut.
+  skipped_steps?: string[];
 };
+
+// Server-side maxDuration is 300s — leave a margin for the final DB writes
+// (generations insert + final patch). 270s = 30s safety. See spec §D.
+const HARD_DEADLINE_MS = 270_000;
+// Synthesize is the irreplaceable step — refuse to start unless we have at
+// least this much budget left.
+const SYNTHESIZE_MIN_BUDGET_MS = 60_000;
+// Mode-aware per-RQ budgets, measured on prod runs 2026-06-29:
+//   draft only: ~25s   draft+critique: ~40s   full (with revise): ~70s
+// Picking each cap with its true mode budget makes the dispatcher honest
+// instead of the old single PER_RQ_BUDGET=50 that lied in both directions
+// (let two revise RQs through, then died at synthesize).
+const PER_RQ_FULL_SEC = 70;
+const PER_RQ_CRITIQUE_SEC = 40;
+const PER_RQ_DRAFT_SEC = 25;
+// Reserve held back from RQ budgeting for synthesize + analytics + writes.
+// = SYNTHESIZE_MIN_BUDGET(60s) + analytics(~20s) + DB final patches(~10s).
+const RESERVE_AFTER_RQ_SEC = 90;
+// Hard per-call LLM timeouts — without these the AI SDK can hang forever
+// on a network stall or stuck provider. Picked just above 2x of the worst
+// observed P99 for each call type so legitimate slow runs still complete.
+const LLM_TIMEOUT_RQ_MS = 90_000;
+const LLM_TIMEOUT_SYNTH_MS = 120_000;
+const LLM_TIMEOUT_CLAIM_MS = 30_000;
+const LLM_TIMEOUT_SHORT_MS = 30_000; // scoping / expanding / analytics
+// Below this remaining budget at analytics start, we skip charts.
+const SKIP_ANALYTICS_BELOW_MS = 20_000;
+// Below this remaining budget at extracting start, we skip claim extraction.
+// Extraction is non-fatal (the report still renders from articles alone) but
+// burns ~30s — skip if budget is tight so drafting/synthesize gets the time.
+const SKIP_EXTRACTING_BELOW_MS = 220_000;
+
+class TimeoutError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'TimeoutError';
+  }
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -530,6 +585,27 @@ async function runJob(args: {
   let crawlDone = 0;
   let crawlTotal = 0;
 
+  // ── Deadline + per-phase timing (see spec §A/D) ─────────────────────────
+  // Single source of truth for wall-clock budget. timeLeft() drives the
+  // step-skip logic so synthesize is guaranteed ≥60s; timings keeps a
+  // breakdown that survives the function exit (stored in progress JSON).
+  const startTime = Date.now();
+  const timings: Partial<Record<`${PhaseName}_ms`, number>> = {};
+  const phaseStart: Partial<Record<PhaseName, number>> = {};
+  const skippedSteps: string[] = [];
+  const timeLeft = () => HARD_DEADLINE_MS - (Date.now() - startTime);
+  const elapsedMs = () => Date.now() - startTime;
+  function beginPhase(name: PhaseName) {
+    phaseStart[name] = Date.now();
+  }
+  function endPhase(name: PhaseName) {
+    const start = phaseStart[name];
+    if (start) {
+      timings[`${name}_ms`] = Date.now() - start;
+      delete phaseStart[name];
+    }
+  }
+
   type Patch = Partial<{
     status: 'queued' | 'expanding' | 'crawling' | 'summarizing' | 'done' | 'error';
     progress: ProgressShape;
@@ -576,6 +652,10 @@ async function runJob(args: {
         crawl_total: crawlTotal,
         crawl_done: crawlDone,
         events: [...events],
+        timings: { ...timings },
+        elapsed_ms: elapsedMs(),
+        deadline_ms: HARD_DEADLINE_MS,
+        skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
       },
     });
   }
@@ -603,6 +683,7 @@ async function runJob(args: {
     await checkCancel();
 
     let similar: string[] = [];
+    beginPhase('expanding');
     if (keywords.length === 1) {
       await patch({ status: 'expanding' });
       await pushAndPatch(
@@ -625,6 +706,7 @@ async function runJob(args: {
             prompt: keywords[0],
             temperature: 0.3,
             providerOptions: ZERO_RETENTION,
+            timeout: LLM_TIMEOUT_SHORT_MS,
           });
           similar = text
             .trim()
@@ -655,6 +737,7 @@ async function runJob(args: {
         'expanding',
       );
     }
+    endPhase('expanding');
 
     await checkCancel();
 
@@ -663,8 +746,9 @@ async function runJob(args: {
     // bag of search hits. Sonnet here so we get well-formed analytical
     // questions; this is a single call so latency is bounded.
     let researchQuestions: ResearchQuestion[] = [];
+    beginPhase('scoping');
     await pushAndPatch(
-      '먼저 이 데스크 리서치가 답해야 할 핵심 리서치 질문을 5~8개로 정리할게요…',
+      '먼저 이 데스크 리서치가 답해야 할 핵심 리서치 질문을 3~5개로 정리할게요…',
       'scoping',
     );
     try {
@@ -675,7 +759,7 @@ async function runJob(args: {
         `검색 지역: ${regions.join(', ')}`,
         `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
         '',
-        `위 정보를 바탕으로 데스크 리서치에 필요한 RQ 5~8개를 JSON 으로 분해해주세요. 모든 키워드(${allKw.join(', ')})를 통합적으로 다루는 질문이어야 합니다.`,
+        `위 정보를 바탕으로 데스크 리서치에 필요한 RQ 3~5개를 JSON 으로 분해해주세요. 모든 키워드(${allKw.join(', ')})를 통합적으로 다루는 질문이어야 합니다.`,
       ].join('\n');
       const rqResult = await generateObject({
         model,
@@ -686,6 +770,7 @@ async function runJob(args: {
         maxOutputTokens: 2000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
+        timeout: LLM_TIMEOUT_SHORT_MS,
       });
       researchQuestions = rqResult.object.research_questions;
       await patch({ research_questions: researchQuestions });
@@ -694,14 +779,26 @@ async function runJob(args: {
         'scoping',
       );
     } catch (err) {
+      endPhase('scoping');
       console.error('[desk] scoping failed', err);
       await refundOnFailure('scoping_failed');
       await patch({
         status: 'error',
         error_message: err instanceof Error ? err.message : 'scoping_failed',
+        progress: {
+          phase: 'scoping',
+          crawl_total: crawlTotal,
+          crawl_done: crawlDone,
+          events: [...events],
+          timings: { ...timings },
+          elapsed_ms: elapsedMs(),
+          deadline_ms: HARD_DEADLINE_MS,
+          skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
+        },
       });
       return;
     }
+    endPhase('scoping');
 
     await checkCancel();
 
@@ -722,6 +819,7 @@ async function runJob(args: {
 
     crawlTotal = allKeywords.length * targets.length;
     await patch({ status: 'crawling' });
+    beginPhase('crawling');
     // Split each source's budget evenly across keywords. Without this, the
     // first keyword's pull races to the source's full 500 cap and rate-limits
     // / latency starve the later keywords. ceil() means small budgets still
@@ -765,8 +863,9 @@ async function runJob(args: {
     // a few thousand. Keep a generous global cap so the LLM still gets fed,
     // but bounded enough to fit the model context.
     const articles = dedupeArticles(collected).slice(0, 1500);
+    endPhase('crawling');
     await pushAndPatch(
-      `수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요.`,
+      `수집 끝났습니다. 중복 정리하고 ${articles.length}건으로 추렸어요. (수집 ${Math.round((timings.crawling_ms ?? 0) / 1000)}초)`,
       'crawling',
     );
 
@@ -808,6 +907,7 @@ async function runJob(args: {
     const MAX_WAIT_MS = 20_000;
     const POLL_MS = 3000;
     const waitStart = Date.now();
+    beginPhase('gating');
     while (true) {
       await checkCancel();
       const { count } = await admin
@@ -829,6 +929,7 @@ async function runJob(args: {
       );
       await new Promise((r) => setTimeout(r, POLL_MS));
     }
+    endPhase('gating');
 
     await patch({ status: 'summarizing' });
 
@@ -837,11 +938,12 @@ async function runJob(args: {
     // 단일 호출에 ~300k tokens 가 필요해 즉시 429. 임베딩 클러스터링으로
     // 의미적으로 다양한 80건만 추려서 보냄. 실패 시 키워드/소스 균등 fallback.
     // UI/DB 에는 1500 풀 그대로 저장됨.
-    // Halved from 80 to keep the prompt + output well under the per-minute
-    // token budget AND finish within the function deadline. Empirically the
-    // representative-50 picks give nearly identical report quality.
-    const SUMMARIZE_SAMPLE_K = 50;
+    // Halved from 80 → 50 → 30. The 30 sample still covers the top topics
+    // (embedding clustering preserves diversity), but cuts ~40% off extracting
+    // (50 × Haiku → 30 × Haiku) and trims synthesize input by the same ratio.
+    const SUMMARIZE_SAMPLE_K = 30;
     let articlesForLLM = articles;
+    beginPhase('sampling');
     if (articles.length > SUMMARIZE_SAMPLE_K) {
       await pushAndPatch(
         `${articles.length}건은 한 번에 다 못 넣어서, 임베딩으로 의미가 다양한 ${SUMMARIZE_SAMPLE_K}건을 골라낼게요…`,
@@ -865,6 +967,7 @@ async function runJob(args: {
         );
       }
     }
+    endPhase('sampling');
 
     // ── Phase: extracting (per-article claim extraction) ───────────────────
     // Haiku is cheap enough to invoke once per representative article, so we
@@ -873,6 +976,17 @@ async function runJob(args: {
     // `claims` payload should not block the report. The report prompt below
     // just gets a richer payload when extraction succeeds.
     const persistedClaims: PersistedClaim[] = [];
+    // Extraction is non-fatal (the report renders from articles alone). Skip
+    // if the budget is tight so drafting/synthesize gets the time it needs.
+    if (timeLeft() < SKIP_EXTRACTING_BELOW_MS) {
+      skippedSteps.push('extracting');
+      await pushAndPatch(
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 정량주장 추출은 건너뛰고 곧장 답변/보고서 단계로 갈게요.`,
+        'extracting',
+      );
+      await patch({ claims: [] });
+    } else {
+    beginPhase('extracting');
     await pushAndPatch(
       `대표 ${articlesForLLM.length}건에서 정량주장 + 엔티티를 추출할게요…`,
       'extracting',
@@ -882,7 +996,7 @@ async function runJob(args: {
       const rqDigest = researchQuestions
         .map((rq) => `${rq.id}: ${rq.question}`)
         .join('\n');
-      const CLAIM_CONCURRENCY = 5;
+      const CLAIM_CONCURRENCY = 8;
       let extracted = 0;
       for (let i = 0; i < articlesForLLM.length; i += CLAIM_CONCURRENCY) {
         await checkCancel();
@@ -915,6 +1029,7 @@ async function runJob(args: {
                 maxOutputTokens: 1500,
                 maxRetries: 1,
                 providerOptions: ZERO_RETENTION,
+                timeout: LLM_TIMEOUT_CLAIM_MS,
               });
               for (const q of result.object.quant) {
                 persistedClaims.push({
@@ -971,6 +1086,8 @@ async function runJob(args: {
         '주장 추출에 실패했어요. 보고서는 그대로 진행할게요.',
         'extracting',
       );
+    }
+    endPhase('extracting');
     }
 
     await checkCancel();
@@ -1037,6 +1154,71 @@ async function runJob(args: {
     }
 
     const rqAnswers: PersistedRqAnswer[] = [];
+    // ── Mode-aware RQ cap (see spec §E + 2026-06-29 tuning) ──────────────
+    // Pick the mode that answers ≥3 RQs if any can; fall back to whatever
+    // mode answers ≥1. Skipping levels: full(draft+critique+revise) →
+    // critique-only → draft-only. Min 1 RQ — we'd rather ship a thin
+    // report than refund. Picking critique 3-RQs over full 1-RQ trades
+    // self-review depth for coverage breadth, which is the better default
+    // when the user wants a usable report at all.
+    const remainingForRqSec = Math.max(0, timeLeft() / 1000 - RESERVE_AFTER_RQ_SEC);
+    type RqMode = 'full' | 'critique' | 'draft';
+    const fullCap = Math.floor(remainingForRqSec / PER_RQ_FULL_SEC);
+    const critCap = Math.floor(remainingForRqSec / PER_RQ_CRITIQUE_SEC);
+    const draftCap = Math.floor(remainingForRqSec / PER_RQ_DRAFT_SEC);
+    let mode: RqMode;
+    let perRqSec: number;
+    if (fullCap >= 3) {
+      mode = 'full';
+      perRqSec = PER_RQ_FULL_SEC;
+    } else if (critCap >= 3) {
+      mode = 'critique';
+      perRqSec = PER_RQ_CRITIQUE_SEC;
+    } else if (draftCap >= 3) {
+      mode = 'draft';
+      perRqSec = PER_RQ_DRAFT_SEC;
+    } else if (fullCap >= 1) {
+      mode = 'full';
+      perRqSec = PER_RQ_FULL_SEC;
+    } else if (critCap >= 1) {
+      mode = 'critique';
+      perRqSec = PER_RQ_CRITIQUE_SEC;
+    } else {
+      mode = 'draft';
+      perRqSec = PER_RQ_DRAFT_SEC;
+    }
+    const rawCap = Math.floor(remainingForRqSec / perRqSec);
+    const budgetCap = Math.max(1, Math.min(8, rawCap));
+    const skipReviseGlobal = mode !== 'full';
+    const skipCritiqueGlobal = mode === 'draft';
+
+    const originalRqCount = researchQuestions.length;
+    if (originalRqCount > budgetCap) {
+      researchQuestions = researchQuestions.slice(0, budgetCap);
+      skippedSteps.push(`rq_cap:${originalRqCount}→${budgetCap}`);
+      await patch({ research_questions: researchQuestions });
+      await pushAndPatch(
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — RQ ${originalRqCount}개 중 우선순위 상위 ${budgetCap}개만 답변할게요.`,
+        'drafting',
+      );
+    }
+
+    if (skipReviseGlobal && researchQuestions.length > 0) {
+      skippedSteps.push('revise');
+      await pushAndPatch(
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 시간 절약을 위해 RQ 답변 보완(revise) 단계는 생략합니다.`,
+        'drafting',
+      );
+    }
+    if (skipCritiqueGlobal && researchQuestions.length > 0) {
+      skippedSteps.push('critique');
+      await pushAndPatch(
+        `남은 시간이 매우 빠듯해서 자가검토(critique)도 건너뛰고 초안만으로 보고서로 갑니다.`,
+        'drafting',
+      );
+    }
+
+    beginPhase('drafting');
     if (researchQuestions.length === 0) {
       await pushAndPatch(
         'RQ 가 비어 있어서 답변 단계는 건너뜁니다.',
@@ -1051,7 +1233,32 @@ async function runJob(args: {
       // chaining concurrent draft+critique+revise spikes. Each RQ is bounded
       // (~3 Sonnet calls × ~2k input + ~1k output) so even 8 RQs fit the
       // 300s function budget.
-      for (const rq of researchQuestions) {
+      //
+      // Adaptive trim: the static cap above assumed PER_RQ_BUDGET_SEC. If
+      // the first RQ actually takes longer (heavy revise, slow API), we
+      // measure observed time and break out early — keeping enough budget
+      // for synthesize. rqAnswers gets whatever we've actually produced.
+      let observedAvgSec = 0;
+      let observedCount = 0;
+      const totalRqs = researchQuestions.length;
+      for (let idx = 0; idx < researchQuestions.length; idx++) {
+        const rq = researchQuestions[idx];
+        // Pre-RQ budget guard — bail out BEFORE starting this RQ if we
+        // don't have enough time for it + the synthesize/analytics reserve.
+        // Critical: without this, a slow RQ blows past maxDuration and the
+        // function gets SIGKILLed before synthesize/fallback can run.
+        // idx > 0 keeps at least one RQ attempt so we don't end up empty.
+        const requiredMs = (perRqSec + RESERVE_AFTER_RQ_SEC) * 1000;
+        if (idx > 0 && timeLeft() < requiredMs) {
+          const skippedRqs = totalRqs - idx;
+          skippedSteps.push(`rq_pre_skip:${skippedRqs}skipped`);
+          await pushAndPatch(
+            `남은 시간 ${Math.round(timeLeft() / 1000)}초 — RQ ${skippedRqs}개를 건너뛰고 ${idx}개 답변으로 보고서로 갑니다.`,
+            'drafting',
+          );
+          break;
+        }
+        const rqStartMs = Date.now();
         await checkCancel();
         const ctx = buildRqContext(rq);
         const evidenceBlock = [
@@ -1081,6 +1288,7 @@ async function runJob(args: {
             maxOutputTokens: 2000,
             maxRetries: 1,
             providerOptions: ZERO_RETENTION,
+            timeout: LLM_TIMEOUT_RQ_MS,
           });
           draftAnswer = draftRes.object.answer_md.trim();
           draftCited = draftRes.object.cited_article_urls;
@@ -1090,43 +1298,53 @@ async function runJob(args: {
           draftAnswer = '제공된 자료로는 충분히 답하기 어렵습니다. (초안 생성 실패)';
         }
 
-        // Critique
-        await pushAndPatch(`Q. ${rq.question} — 초안에 대한 자가검토 중…`, 'critiquing');
+        // Critique — skipped when forceDraftOnly. Falls back to medium
+        // confidence + no weaknesses so the report shell still renders.
         let critique = {
           weaknesses: [] as string[],
           missing_data: [] as string[],
           confidence: 'medium' as 'high' | 'medium' | 'low',
         };
-        try {
-          const critiquePrompt = [
-            `리서치 질문 (id=${rq.id}):`,
-            rq.question,
-            '',
-            '--- 답변 초안 ---',
-            draftAnswer,
-            '',
-            evidenceBlock,
-          ].join('\n');
-          const critiqueRes = await generateObject({
-            model,
-            system: RQ_CRITIQUE_SYSTEM,
-            prompt: critiquePrompt,
-            schema: RqCritiqueSchema,
-            temperature: 0.2,
-            maxOutputTokens: 1500,
-            maxRetries: 1,
-            providerOptions: ZERO_RETENTION,
-          });
-          critique = critiqueRes.object;
-        } catch (err) {
-          if (err instanceof CancelledError) throw err;
-          console.error('[desk] rq critique failed', { rq: rq.id, err });
+        if (!skipCritiqueGlobal) {
+          await pushAndPatch(`Q. ${rq.question} — 초안에 대한 자가검토 중…`, 'critiquing');
+          try {
+            const critiquePrompt = [
+              `리서치 질문 (id=${rq.id}):`,
+              rq.question,
+              '',
+              '--- 답변 초안 ---',
+              draftAnswer,
+              '',
+              evidenceBlock,
+            ].join('\n');
+            const critiqueRes = await generateObject({
+              model,
+              system: RQ_CRITIQUE_SYSTEM,
+              prompt: critiquePrompt,
+              schema: RqCritiqueSchema,
+              temperature: 0.2,
+              maxOutputTokens: 1500,
+              maxRetries: 1,
+              providerOptions: ZERO_RETENTION,
+              timeout: LLM_TIMEOUT_RQ_MS,
+            });
+            critique = critiqueRes.object;
+          } catch (err) {
+            if (err instanceof CancelledError) throw err;
+            console.error('[desk] rq critique failed', { rq: rq.id, err });
+          }
         }
 
-        // Revise (only if critique flags weaknesses)
+        // Revise (only if critique flags weaknesses AND we still have budget).
+        // skipReviseGlobal is decided once at drafting start; a tighter
+        // per-RQ check (synthesize reserve + 1 revise call ~60s) handles
+        // cases where extracting + first few RQs ate more than expected, so
+        // later RQs gracefully degrade.
         let finalAnswer = draftAnswer;
         let finalCited = draftCited;
-        if (critique.weaknesses.length > 0) {
+        const skipReviseForThisRq =
+          skipReviseGlobal || timeLeft() < SYNTHESIZE_MIN_BUDGET_MS + 60_000;
+        if (critique.weaknesses.length > 0 && !skipReviseForThisRq) {
           await pushAndPatch(
             `Q. ${rq.question} — 약점 ${critique.weaknesses.length}개 보완 중…`,
             'critiquing',
@@ -1155,6 +1373,7 @@ async function runJob(args: {
               maxOutputTokens: 2000,
               maxRetries: 1,
               providerOptions: ZERO_RETENTION,
+              timeout: LLM_TIMEOUT_RQ_MS,
             });
             finalAnswer = reviseRes.object.answer_md.trim();
             finalCited = reviseRes.object.cited_article_urls;
@@ -1178,14 +1397,45 @@ async function runJob(args: {
           `Q. ${rq.question} — 답변 정리 완료 (${critique.confidence}, 약점 ${critique.weaknesses.length}건).`,
           'critiquing',
         );
+
+        // Adaptive trim — measure observed RQ time and project remaining.
+        // If finishing the rest would push us past the synthesize budget,
+        // break out early so synthesize still runs against partial answers.
+        const rqElapsedSec = (Date.now() - rqStartMs) / 1000;
+        observedAvgSec =
+          observedCount === 0
+            ? rqElapsedSec
+            : (observedAvgSec * observedCount + rqElapsedSec) / (observedCount + 1);
+        observedCount += 1;
+        const remainingRqs = totalRqs - (idx + 1);
+        if (remainingRqs > 0) {
+          const projectedSec = remainingRqs * observedAvgSec + RESERVE_AFTER_RQ_SEC;
+          if (projectedSec > timeLeft() / 1000) {
+            skippedSteps.push(`rq_adaptive_trim:${remainingRqs}skipped`);
+            await pushAndPatch(
+              `RQ 한 개 평균 ${Math.round(observedAvgSec)}초 — 남은 ${remainingRqs}개를 마치면 보고서를 못 만들어요. ` +
+                `여기까지 ${idx + 1}개 답변으로 보고서를 만들게요.`,
+              'critiquing',
+            );
+            break;
+          }
+        }
       }
     }
+    endPhase('drafting');
 
     await checkCancel();
 
     // ── Phase: synthesizing (final 6-section pyramid report) ────────────────
+    // Budget gate — synthesize is the irreplaceable step. If we can't fit
+    // the ~60s Sonnet 6k-output call, skip the LLM and go straight to the
+    // deterministic fallback report. This guarantees the user gets an
+    // artifact (rqAnswers + claims + sources) instead of a refund-with-
+    // nothing-to-show outcome.
+    beginPhase('synthesizing');
+    const skipLlmSynthesize = timeLeft() < SYNTHESIZE_MIN_BUDGET_MS;
     await pushAndPatch(
-      '이제 모든 답변·증거를 묶어 6섹션 컨설팅 리포트로 합성할게요…',
+      `이제 모든 답변·증거를 묶어 6섹션 컨설팅 리포트로 합성할게요… (남은 시간 ${Math.round(timeLeft() / 1000)}초)`,
       'synthesizing',
     );
 
@@ -1278,27 +1528,117 @@ async function runJob(args: {
       articleSampleBlock,
     ].join('\n');
 
+    // Fallback report builder — no LLM. Used when synthesize LLM call dies
+    // (timeout, 429, network) so the user still gets a usable artifact made
+    // from rqAnswers + claims + articles instead of a blank screen.
+    function buildFallbackReport(reason: 'timeout' | 'error'): string {
+      const lines: string[] = [];
+      lines.push('# 데스크 리서치 보고서 (약식)');
+      lines.push('');
+      lines.push(
+        reason === 'timeout'
+          ? '> ⚠️ 시간 제약으로 최종 LLM 합성 단계를 못 돌렸습니다. 모은 답변·증거·출처로 약식 보고서를 구성했습니다. 차감된 크레딧은 자동으로 환불되었습니다.'
+          : '> ⚠️ 보고서 합성 단계에서 오류가 발생해 약식 보고서로 대체했습니다. 차감된 크레딧은 자동으로 환불되었습니다.',
+      );
+      lines.push('');
+      lines.push('## 🧭 개요');
+      lines.push(`- **키워드**: ${keywords.join(', ')}${similar.length ? ` (유사: ${similar.join(', ')})` : ''}`);
+      lines.push(`- **지역**: ${regions.join(', ')}`);
+      lines.push(
+        `- **수집 기간**: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
+      );
+      lines.push(`- **수집**: 전체 ${articles.length}건 / 분석 ${articlesForLLM.length}건`);
+      lines.push('');
+
+      if (rqAnswers.length > 0) {
+        lines.push(`## ❓ 리서치 질문별 답변 (${rqAnswers.length})`);
+        for (const a of rqAnswers) {
+          const rq = researchQuestions.find((r) => r.id === a.rq_id);
+          const icon = a.confidence === 'high' ? '🟢' : a.confidence === 'low' ? '🔴' : '🟡';
+          lines.push(`### ${rq?.question ?? a.rq_id}`);
+          lines.push(`**신뢰도**: ${icon} ${a.confidence}`);
+          lines.push('');
+          lines.push(a.answer_md);
+          if (a.missing_data.length > 0) {
+            lines.push('');
+            lines.push('**더 알아볼 점:**');
+            for (const m of a.missing_data) lines.push(`- ${m}`);
+          }
+          lines.push('');
+        }
+      } else {
+        lines.push('## ❓ 리서치 질문별 답변');
+        lines.push('_답변 단계에 도달하지 못했습니다._');
+        lines.push('');
+      }
+
+      const quant = persistedClaims.filter((c) => c.kind === 'quant');
+      if (quant.length > 0) {
+        lines.push(`## 📊 정량 주장 (${quant.length})`);
+        lines.push('| 주장 | 수치 | 출처 | tier | 신뢰도 |');
+        lines.push('| --- | --- | --- | --- | --- |');
+        for (const c of quant.slice(0, 15)) {
+          if (c.kind !== 'quant') continue;
+          const unit = c.unit ? ` ${c.unit}` : '';
+          lines.push(
+            `| ${c.subject} | ${c.value}${unit} | [원문](${c.article_url}) | ${c.tier} | ${c.confidence} |`,
+          );
+        }
+        if (quant.length > 15) lines.push(`_(나머지 ${quant.length - 15}개 생략)_`);
+        lines.push('');
+      }
+
+      lines.push(`## 📚 출처 (${articlesForLLM.length})`);
+      for (const a of articlesForLLM.slice(0, 50)) {
+        lines.push(`- [${a.title}](${a.url}) — ${a.source}${a.publishedAt ? ` · ${a.publishedAt}` : ''}`);
+      }
+      if (articlesForLLM.length > 50) lines.push(`_(나머지 ${articlesForLLM.length - 50}개 생략)_`);
+      return lines.join('\n');
+    }
+
     let output = '';
+    let synthesizeFailed: 'timeout' | 'error' | null = null;
     try {
+      if (skipLlmSynthesize) {
+        // Budget too tight for LLM synth — go straight to deterministic
+        // fallback. Treated identically to a timeout fail downstream.
+        throw new TimeoutError('budget_exceeded_synthesize');
+      }
       const { text } = await generateText({
         model,
         system: REPORT_SYSTEM_V2,
         prompt: userMsg,
         temperature: 0.2,
-        maxOutputTokens: 8000,
+        // Trimmed 8000→6000. The 6-section report rarely needs more than
+        // 6k completion tokens; Sonnet's larger ceiling burns extra wall
+        // time at the tail. Quality unchanged on prior test runs.
+        maxOutputTokens: 6000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
+        timeout: LLM_TIMEOUT_SYNTH_MS,
       });
       output = text.trim();
     } catch (err) {
-      console.error('[desk] synthesize failed', err);
-      await refundOnFailure('synthesize_failed');
-      await patch({
-        status: 'error',
-        error_message: err instanceof Error ? err.message : 'synthesize_failed',
+      // Synthesize LLM died (timeout / 429 / network). DON'T return error —
+      // build a deterministic markdown report from what we have so the user
+      // still gets an artifact. Refund happens below in the same path.
+      synthesizeFailed = err instanceof TimeoutError ? 'timeout' : 'error';
+      console.error('[desk] synthesize failed — falling back to deterministic report', {
+        synthesizeFailed,
+        err,
       });
-      return;
+      output = buildFallbackReport(synthesizeFailed);
+      await refundOnFailure(
+        synthesizeFailed === 'timeout' ? 'synthesize_timeout_fallback' : 'synthesize_error_fallback',
+      );
+      await pushAndPatch(
+        synthesizeFailed === 'timeout'
+          ? '⚠️ 시간 초과로 최종 합성 단계를 못 돌렸어요. 모은 답변·증거로 약식 보고서를 만들어 드렸어요. 차감된 크레딧은 돌려드렸습니다.'
+          : '⚠️ 보고서 합성 단계에서 오류가 났어요. 모은 답변·증거로 약식 보고서를 만들어 드렸어요. 차감된 크레딧은 돌려드렸습니다.',
+        'synthesizing',
+      );
     }
+    endPhase('synthesizing');
 
     await pushAndPatch('보고서 받았어요. 이제 정량 분석 차트를 짜볼게요…', 'summarizing');
 
@@ -1318,35 +1658,46 @@ async function runJob(args: {
     //     데 보통 충분합니다 (한도가 다 안 차면 무해한 sleep).
     let analytics: { charts: { type: 'bar' | 'pie'; title: string; insight: string; unit: 'percent' | 'count'; data: { label: string; value: number }[] }[] } | null = null;
     const analyticsModel = getAnalyticsModel();
-    try {
-      if (!analyticsModel) {
-        throw new Error('missing_openai_key');
-      }
-      const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
-      const result = await generateObject({
-        model: analyticsModel,
-        system: ANALYTICS_SYSTEM,
-        prompt: [
-          `메인 키워드: ${keywords.join(', ')}`,
-          `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-          '',
-          '--- 직전에 작성한 보고서 ---',
-          trimmedReport,
-        ].join('\n'),
-        schema: AnalyticsSchema,
-        temperature: 0.2,
-        maxOutputTokens: 4000,
-        maxRetries: 1,
-        providerOptions: ZERO_RETENTION,
-      });
-      analytics = result.object;
+    if (timeLeft() < SKIP_ANALYTICS_BELOW_MS) {
+      skippedSteps.push('analytics');
       await pushAndPatch(
-        `차트 ${analytics.charts.length}개 만들었어요. 화면에 띄울게요.`,
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 보고서 저장을 우선해서 차트는 생략합니다.`,
         'summarizing',
       );
-    } catch (err) {
-      console.error('[desk] analytics failed', err);
-      await pushAndPatch('정량 분석 차트는 못 만들었어요 — 보고서만 띄울게요.', 'summarizing');
+    } else {
+      beginPhase('analytics');
+      try {
+        if (!analyticsModel) {
+          throw new Error('missing_openai_key');
+        }
+        const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
+        const result = await generateObject({
+          model: analyticsModel,
+          system: ANALYTICS_SYSTEM,
+          prompt: [
+            `메인 키워드: ${keywords.join(', ')}`,
+            `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
+            '',
+            '--- 직전에 작성한 보고서 ---',
+            trimmedReport,
+          ].join('\n'),
+          schema: AnalyticsSchema,
+          temperature: 0.2,
+          maxOutputTokens: 4000,
+          maxRetries: 1,
+          providerOptions: ZERO_RETENTION,
+          timeout: LLM_TIMEOUT_SHORT_MS,
+        });
+        analytics = result.object;
+        await pushAndPatch(
+          `차트 ${analytics.charts.length}개 만들었어요. 화면에 띄울게요.`,
+          'summarizing',
+        );
+      } catch (err) {
+        console.error('[desk] analytics failed', err);
+        await pushAndPatch('정량 분석 차트는 못 만들었어요 — 보고서만 띄울게요.', 'summarizing');
+      }
+      endPhase('analytics');
     }
 
     const { data: gen } = await admin
@@ -1368,8 +1719,22 @@ async function runJob(args: {
       articles: articles as unknown as object,
       analytics: analytics as unknown as object,
       generation_id: gen?.id,
+      progress: {
+        phase: 'summarizing',
+        crawl_total: crawlTotal,
+        crawl_done: crawlDone,
+        events: [...events],
+        timings: { ...timings },
+        elapsed_ms: elapsedMs(),
+        deadline_ms: HARD_DEADLINE_MS,
+        skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
+      },
     });
   } catch (err) {
+    // Close any phase that was still open when the throw fired so the
+    // partial timing shows where we died.
+    for (const k of Object.keys(phaseStart) as PhaseName[]) endPhase(k);
+
     if (err instanceof CancelledError) {
       await refundOnFailure('cancelled');
       pushEvent('사용자 요청으로 작업을 중단했어요. 차감된 크레딧은 돌려드렸어요.');
@@ -1382,18 +1747,41 @@ async function runJob(args: {
             crawl_total: crawlTotal,
             crawl_done: crawlDone,
             events: [...events],
+            timings: { ...timings },
+            elapsed_ms: elapsedMs(),
+            deadline_ms: HARD_DEADLINE_MS,
+            skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
           },
         })
         .eq('id', jobId);
       return;
     }
-    console.error('[desk] runJob fatal', err);
-    await refundOnFailure('runtime_error');
+    // TimeoutError → budget_exceeded_*. Tagged so the UI banner can say
+    // "시간 초과로 작업 중단 (자동 환불)" instead of a generic stack trace.
+    const isTimeout = err instanceof TimeoutError;
+    const message = err instanceof Error ? err.message : 'unknown';
+    console.error('[desk] runJob fatal', { isTimeout, err });
+    await refundOnFailure(isTimeout ? 'timeout' : 'runtime_error');
+    pushEvent(
+      isTimeout
+        ? '시간 초과로 작업을 중단했어요. 차감된 크레딧은 돌려드렸어요.'
+        : `오류로 작업이 중단되었어요 (${message}). 크레딧은 돌려드렸어요.`,
+    );
     await admin
       .from('desk_jobs')
       .update({
         status: 'error',
-        error_message: err instanceof Error ? err.message : 'unknown',
+        error_message: message,
+        progress: {
+          phase: undefined,
+          crawl_total: crawlTotal,
+          crawl_done: crawlDone,
+          events: [...events],
+          timings: { ...timings },
+          elapsed_ms: elapsedMs(),
+          deadline_ms: HARD_DEADLINE_MS,
+          skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
+        },
       })
       .eq('id', jobId);
   }
