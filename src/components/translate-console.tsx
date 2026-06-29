@@ -42,6 +42,8 @@ import {
   lossRatio,
   summarizeFidelity,
 } from '@/lib/translate-fidelity';
+import { useCreditDeduction } from './credit-deduction-provider';
+import { FEATURE_COSTS } from '@/lib/features';
 
 // Dev-mode trace gate. Enabled in non-prod builds so a designer running
 // `pnpm dev` can step through the pipeline and confirm Korean / Thai /
@@ -414,6 +416,7 @@ function formatElapsed(ms: number) {
 }
 
 export function TranslateConsole() {
+  const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
   const locale = useLocale();
 
@@ -1328,6 +1331,8 @@ export function TranslateConsole() {
         throw new Error((json as { error: string }).error ?? 'session_failed');
       }
       bundle = json;
+      // 차감 broadcast — 세션 시작 시 lump 50 credit. 위젯 헤더 -N + topbar pulse.
+      notifyDeduction('translate', FEATURE_COSTS.translate);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'session_failed');
       setStatus('error');
@@ -1917,6 +1922,7 @@ export function TranslateConsole() {
     targetLang,
     status,
     transcriptPublisher,
+    notifyDeduction,
   ]);
 
   // Stop one MediaRecorder cleanly and wait for the final dataavailable

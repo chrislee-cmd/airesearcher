@@ -11,6 +11,8 @@ import {
   type ClusterWithQuotes,
 } from '@/lib/insights-clusters-load';
 import { createClient } from '@/lib/supabase/client';
+import { useCreditDeduction } from '@/components/credit-deduction-provider';
+import { FEATURE_COSTS } from '@/lib/features';
 
 // Union of the two legacy tabs' accept lists. Browsers vary on whether
 // they classify a .docx by MIME or extension — we list both forms so the
@@ -110,6 +112,7 @@ export function InsightsAnalyzer({
   initialClusters?: ClusterWithQuotes[];
 }) {
   const router = useRouter();
+  const { notify: notifyDeduction } = useCreditDeduction();
   const [files, setFiles] = useState<FileRow[]>([]);
   const [jobId, setJobId] = useState<string | null>(initialJob?.id ?? null);
   const [job, setJob] = useState<JobSnapshot | null>(
@@ -364,6 +367,8 @@ export function InsightsAnalyzer({
       } catch {}
       setJobId(jid);
       setPhase('pending');
+      // 차감 broadcast — 위젯 헤더 -N + topbar pulse.
+      notifyDeduction('insights_analyzer', FEATURE_COSTS.insights_analyzer);
 
       await runBatch(jid, filesRef.current);
 

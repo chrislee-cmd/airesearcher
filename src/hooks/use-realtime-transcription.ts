@@ -43,6 +43,8 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCreditDeduction } from '@/components/credit-deduction-provider';
+import { FEATURE_COSTS } from '@/lib/features';
 
 export type TranscriptionStatus =
   | 'idle'
@@ -183,6 +185,15 @@ export function useRealtimeTranscription(opts?: {
   const [status, setStatus] = useState<TranscriptionStatus>('idle');
   const [segments, setSegments] = useState<TranscriptionSegment[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // 차감 broadcast — start-lump + 각 heartbeat 성공 시 위젯 헤더 -N
+  // fly-up + topbar pulse 트리거. ref 로 잡아둬서 비동기 콜백 안에서
+  // stable 한 reference 유지.
+  const { notify: notifyDeduction } = useCreditDeduction();
+  const notifyDeductionRef = useRef(notifyDeduction);
+  useEffect(() => {
+    notifyDeductionRef.current = notifyDeduction;
+  });
 
   // WebRTC / capture refs — close 안전을 위해 ref 로 보관.
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -429,6 +440,8 @@ export function useRealtimeTranscription(opts?: {
         clientSecret = json.client_secret.value;
         sessionIdRef.current = json.session_id ?? null;
         heartbeatTickRef.current = 0;
+        // start-lump 차감 성공 — 위젯 헤더 -N fly-up + topbar pulse.
+        notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'session_failed');
         setStatus('error');
@@ -594,6 +607,8 @@ export function useRealtimeTranscription(opts?: {
             .then(async (res) => {
               if (res.ok) {
                 heartbeatTickRef.current = nextTick;
+                // tick 성공 — 추가 5 credit 차감 시각화.
+                notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
               } else if (res.status === 402) {
                 console.warn('[probing] heartbeat insufficient_credits — stopping ticks');
                 if (heartbeatTimerRef.current) {

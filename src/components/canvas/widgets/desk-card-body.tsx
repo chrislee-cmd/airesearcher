@@ -13,6 +13,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { track } from '@/components/mixpanel-provider';
 import { useRequireAuth } from '@/components/auth-provider';
+import { useCreditDeduction } from '@/components/credit-deduction-provider';
+import { FEATURE_COSTS } from '@/lib/features';
 
 function readActiveProjectId(): string | null {
   try {
@@ -173,6 +175,7 @@ export function DeskCardBody() {
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { latestJob, isWorking, cancelJob } = useDeskJobs();
+  const { notify: notifyDeduction } = useCreditDeduction();
 
   // ─── inputs ──────────────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -329,6 +332,8 @@ export function DeskCardBody() {
         return;
       }
       track('desk_generate_success', { feature: 'desk', job_id: json.job_id });
+      // 차감 broadcast — 위젯 헤더 -N fly-up + topbar pulse.
+      notifyDeduction('desk', FEATURE_COSTS.desk);
       if (typeof json.job_id === 'string') {
         setPendingJobId(json.job_id);
       } else {
