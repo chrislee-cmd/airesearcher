@@ -105,11 +105,13 @@ export function WidgetShell({
       >
         <div className="flex items-center gap-2 text-xs uppercase opacity-80">
           <span>
-            {typeof content.meta.cost === 'number'
-              ? content.meta.cost === 0
-                ? '무료'
-                : `${content.meta.cost} 크레딧`
-              : ''}
+            {content.meta.costLabel
+              ? content.meta.costLabel
+              : typeof content.meta.cost === 'number'
+                ? content.meta.cost === 0
+                  ? '무료'
+                  : `${content.meta.cost} 크레딧`
+                : ''}
           </span>
           <span className="ml-auto flex items-center gap-2">
             <WidgetHeaderColorPicker

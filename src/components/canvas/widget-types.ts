@@ -17,6 +17,12 @@ export type WidgetContent = {
     label: string;
     accent: AccentColor;
     cost?: number;
+    // 옵션: cost 의 1-line 표기를 통째로 override. 일반 위젯은 cost 만
+    // 두면 셸이 "N 크레딧" / "무료" 자동 그림. 라이프사이클 차감 (예:
+    // probing — 시작 5 + 10분당 5) 처럼 단일 숫자로 표현 안 되는 경우만
+    // 이 필드로 override (예: "10분당 5 크레딧"). 두 필드가 모두 있으면
+    // costLabel 우선.
+    costLabel?: string;
     // 옵션: `/public` 아래 썸네일 경로. 지정 시 widget-shell 이 accent 박스
     // 대신 next/image 로 렌더 (PR #352 의 deskresearch.png 패턴).
     thumbnail?: string;
