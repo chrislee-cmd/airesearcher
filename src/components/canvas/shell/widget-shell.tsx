@@ -272,11 +272,14 @@ function WidgetShellInner({
       >
         <div className="relative flex items-center gap-2 text-xs uppercase">
           <CostBadge cost={content.meta.cost} costLabel={content.meta.costLabel} />
+          {/* 컬러 팔레트는 cost 옆 (좌측 고정) — 우측 pill 이 state 에 따라
+              너비가 변해도 (READY → TRANSCRIBING 72%) 팔레트 버튼 위치는
+              움직이지 않는다. */}
+          <WidgetHeaderColorPicker
+            value={headerColor}
+            onChange={setHeaderColor}
+          />
           <span className="ml-auto flex items-center gap-2">
-            <WidgetHeaderColorPicker
-              value={headerColor}
-              onChange={setHeaderColor}
-            />
             <PopStatePill />
           </span>
           <CostFlyUpOverlay featureKey={content.key} />
