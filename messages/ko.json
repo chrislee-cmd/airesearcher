@@ -706,6 +706,20 @@
       "tab": "온라인 미팅 (탭 오디오)",
       "tabHint": "공유 창에서 탭을 고른 뒤 \"탭 오디오 공유\"를 체크하세요. Chrome 데스크톱만 지원합니다."
     },
+    "captureMode": {
+      "label": "캡처 방식",
+      "both": "mic + 탭 (온라인 미팅)",
+      "micOnly": "mic 만 (대면)",
+      "tabOnly": "탭 만 (재생 청취)",
+      "tabHint": "공유 창에서 탭을 고른 뒤 \"탭 오디오 공유\"를 체크하세요. Chrome 데스크톱만 지원합니다.",
+      "bothCostHint": "양쪽 캡처 = OpenAI 실시간 비용 2배 (mic + 탭 각각 1세션)"
+    },
+    "slotIndicator": {
+      "hostAria": "진행자 (mic) 캡처 상태",
+      "guestAria": "응답자 (탭) 캡처 상태",
+      "degradedHost": "진행자 캡처 일시 중단 —",
+      "degradedGuest": "응답자 캡처 일시 중단 —"
+    },
     "recordEnabled": "오디오 + 전사록 저장 (다운로드 시 +25크레딧)",
     "monitorMute": {
       "muteAria": "번역 음성 끄기 (시청자에게는 그대로 전송됩니다)",
