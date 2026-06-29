@@ -15,6 +15,8 @@ import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
 import { buildArtifactFilename } from '@/lib/filename';
 import { peekActiveProjectId } from './active-project-provider';
+import { useCreditDeduction } from './credit-deduction-provider';
+import { FEATURE_COSTS } from '@/lib/features';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 export const MAX_FILES = 25;
@@ -366,6 +368,7 @@ export function useInterviewJob() {
 export function InterviewJobProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const requireAuth = useRequireAuth();
+  const { notify: notifyDeduction } = useCreditDeduction();
 
   const [items, setItems] = useState<ConvItem[]>([]);
   const [convertingAll, setConvertingAll] = useState(false);
@@ -771,6 +774,8 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       setAnalysis(result);
       setLastRunAt(new Date());
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
+      // 차감 broadcast — 인터뷰 분석 완료 시점에 위젯 헤더 -N + topbar pulse.
+      notifyDeduction('interviews', FEATURE_COSTS.interviews);
       router.refresh();
       // Fire row-level summary as a follow-up — table renders immediately,
       // 요약 column fills in when the second LLM call returns.
