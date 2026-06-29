@@ -6,6 +6,7 @@ import { deepgramToMarkdown, type DeepgramResult } from '@/lib/transcripts/forma
 import { classifySpeakerRolesEn } from '@/lib/transcripts/speaker-roles';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 import { classifyQaDiarizationEn } from '@/lib/transcripts/diarization';
+import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped to 200s to match poll/route.ts — after() callbacks keep the function
 // alive until they resolve, capped at maxDuration. Initial response still
@@ -140,7 +141,13 @@ export async function POST(request: Request) {
       if (numberRes?.normalized) patch.clean_markdown = numberRes.normalized;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
       if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
-      await admin.from('transcript_jobs').update(patch).eq('id', job.id);
+      await updateWithInferredFallback(
+        async (p) => {
+          const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);
+          return { error: r.error as { code?: string; message?: string } | null };
+        },
+        patch,
+      );
     } catch (e) {
       console.warn('[transcripts/webhook] post-pass write failed', e);
     }

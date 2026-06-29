@@ -9,6 +9,7 @@ import {
   applyInferredSpeakerLabels,
   type InferredSpeakersPayload,
 } from '@/lib/transcripts/diarization';
+import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Server-side workspace data model. The list endpoint returns this shape;
 // content() is a separate lazy fetch keyed by (dbFeature, dbId).
@@ -409,12 +410,24 @@ export async function getArtifactContent(
   const supabase = await createClient();
 
   if (dbFeature === 'transcript') {
-    const { data } = await supabase
-      .from('transcript_jobs')
-      .select('markdown, clean_markdown, speaker_roles, inferred_speakers, provider')
-      .eq('org_id', orgId)
-      .eq('id', dbId)
-      .maybeSingle();
+    // inferred_speakers 컬럼은 마이그 (#505) prod 적용 전엔 없어서 select 실패.
+    // selectWithInferredFallback 가 try-then-fallback 으로 graceful degrade.
+    const baseColumns = 'markdown, clean_markdown, speaker_roles, provider';
+    const { data } = await selectWithInferredFallback<Record<string, unknown>>(
+      async (cols) => {
+        const r = await supabase
+          .from('transcript_jobs')
+          .select(cols)
+          .eq('org_id', orgId)
+          .eq('id', dbId)
+          .maybeSingle();
+        return {
+          data: r.data as Record<string, unknown> | null,
+          error: r.error as { code?: string; message?: string } | null,
+        };
+      },
+      baseColumns,
+    );
     if (!data?.markdown) return null;
     // Cleaned version (when the cleanup / number-normalize pass landed) is
     // what we want to feed into downstream tools — interview/insights/reports

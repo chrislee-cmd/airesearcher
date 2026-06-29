@@ -13,6 +13,7 @@ import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 import { classifyQaDiarization } from '@/lib/transcripts/diarization';
+import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped from 30s to 200s because the cleanup pass scheduled via `after()`
 // extends function lifetime — Vercel keeps the instance alive until after()
@@ -274,7 +275,13 @@ export async function POST(
       if (finalCleanMarkdown) patch.clean_markdown = finalCleanMarkdown;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
       if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
-      await admin.from('transcript_jobs').update(patch).eq('id', job.id);
+      await updateWithInferredFallback(
+        async (p) => {
+          const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);
+          return { error: r.error as { code?: string; message?: string } | null };
+        },
+        patch,
+      );
     } catch (e) {
       console.warn('[transcripts/poll] post-pass write failed', e);
     }

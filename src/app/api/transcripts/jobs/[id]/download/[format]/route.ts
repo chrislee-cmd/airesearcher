@@ -13,6 +13,7 @@ import {
   applyInferredSpeakerLabels,
   type InferredSpeakersPayload,
 } from '@/lib/transcripts/diarization';
+import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 export const maxDuration = 60;
 
@@ -71,17 +72,29 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const { data: job, error } = await supabase
-    .from('transcript_jobs')
-    .select(
-      'filename, markdown, clean_markdown, speaker_roles, inferred_speakers, provider, status, user_id, created_at',
-    )
-    .eq('id', id)
-    .single();
+  // inferred_speakers 컬럼은 마이그 (#505) prod 적용 전엔 없어서 select 자체가
+  // 깨짐. selectWithInferredFallback 가 try-then-fallback 으로 graceful degrade.
+  const baseColumns =
+    'filename, markdown, clean_markdown, speaker_roles, provider, status, user_id, created_at';
+  const { data: job, error } = await selectWithInferredFallback<Record<string, unknown>>(
+    async (cols) => {
+      const r = await supabase
+        .from('transcript_jobs')
+        .select(cols)
+        .eq('id', id)
+        .single();
+      return {
+        data: r.data as Record<string, unknown> | null,
+        error: r.error as { code?: string; message?: string } | null,
+      };
+    },
+    baseColumns,
+  );
   if (error || !job) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
-  if (job.status !== 'done' || !job.markdown) {
+  const status = job.status as string | null;
+  if (status !== 'done' || !job.markdown) {
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
   const sourceMarkdown =
@@ -105,7 +118,9 @@ export async function GET(
   // `displayBase` is the human-friendly label that lands in the doc cover and
   // front-matter; `slug` is the kebab-safe token used in the filename so we
   // don't end up with "transcript-Interview-Transcript-#3-…".
-  const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
+  const rawBase = ((job.filename as string | null) ?? '')
+    .replace(/\.[^./]+$/, '')
+    .trim();
   let displayBase: string;
   let slug: string;
   if (rawBase && !looksAnonymous(rawBase)) {
@@ -115,9 +130,9 @@ export async function GET(
     const { count } = await supabase
       .from('transcript_jobs')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', job.user_id)
+      .eq('user_id', job.user_id as string)
       .eq('status', 'done')
-      .lte('created_at', job.created_at);
+      .lte('created_at', job.created_at as string);
     const n = Math.max(1, count ?? 1);
     displayBase = `Interview Transcript #${n}`;
     slug = `session-${n}`;

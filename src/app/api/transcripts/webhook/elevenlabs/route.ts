@@ -13,6 +13,7 @@ import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 import { classifyQaDiarization } from '@/lib/transcripts/diarization';
+import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped from 60s to 200s because cleanup is scheduled via `after()` and
 // shares this route's maxDuration budget — see poll/route.ts for the mirror.
@@ -256,7 +257,13 @@ export async function POST(request: Request) {
       if (finalCleanMarkdown) patch.clean_markdown = finalCleanMarkdown;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
       if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
-      await admin.from('transcript_jobs').update(patch).eq('id', job.id);
+      await updateWithInferredFallback(
+        async (p) => {
+          const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);
+          return { error: r.error as { code?: string; message?: string } | null };
+        },
+        patch,
+      );
     } catch (e) {
       console.warn('[transcripts/webhook/elevenlabs] post-pass write failed', e);
     }
