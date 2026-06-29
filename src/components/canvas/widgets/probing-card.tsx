@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import {
   GUIDE_MAX_CHARS,
@@ -937,11 +938,10 @@ function ExpandedBody() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        {/* 상단 — source picker + 세션 시작/정지 + 가이드. settings 영역은
-            translate-console 과 동일 패턴 — items-end 정렬, dropdown 옆에
-            h-8 ChromeButton (시작/정지) + h-8 IconButton (전체보기) 라인. */}
-        <div className="flex shrink-0 flex-col gap-3 border-b border-line-soft px-5 py-3">
-          <div className="flex flex-wrap items-end gap-3">
+        {/* ControlBoard — settings (source picker + 세션 시작/정지 +
+            전체보기) / input(가이드). translate-console 과 같은 패턴. */}
+        <ControlBoard className="shrink-0">
+          <ControlBoard.SettingsRow>
             <SourcePicker
               value={source}
               onChange={setSource}
@@ -991,41 +991,45 @@ function ExpandedBody() {
                 </svg>
               </IconButton>
             </div>
-          </div>
+          </ControlBoard.SettingsRow>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isLive
-                  ? 'bg-amore'
-                  : sessionStatus === 'error'
-                    ? 'bg-warning'
-                    : 'bg-line'
-              }`}
-              aria-hidden
-            />
-            <SectionLabel>{statusLabel}</SectionLabel>
-          </div>
+          <ControlBoard.Input divider="top">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    isLive
+                      ? 'bg-amore'
+                      : sessionStatus === 'error'
+                        ? 'bg-warning'
+                        : 'bg-line'
+                  }`}
+                  aria-hidden
+                />
+                <SectionLabel>{statusLabel}</SectionLabel>
+              </div>
 
-          <GuideSection
-            value={guide}
-            onChange={setGuide}
-            open={guideOpen}
-            onToggle={() => setGuideOpen((o) => !o)}
-            onImportClick={handleImportClick}
-            importing={importing}
-          />
-          {/* eslint-disable-next-line react/forbid-elements -- hidden file picker triggered programmatically; <Input> primitive's label/helper wrapper is unnecessary chrome for an invisible element. */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className="hidden"
-            onChange={handleFileChange}
-            aria-hidden
-            tabIndex={-1}
-          />
-        </div>
+              <GuideSection
+                value={guide}
+                onChange={setGuide}
+                open={guideOpen}
+                onToggle={() => setGuideOpen((o) => !o)}
+                onImportClick={handleImportClick}
+                importing={importing}
+              />
+            </div>
+          </ControlBoard.Input>
+        </ControlBoard>
+        {/* eslint-disable-next-line react/forbid-elements -- hidden file picker triggered programmatically; <Input> primitive's label/helper wrapper is unnecessary chrome for an invisible element. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleFileChange}
+          aria-hidden
+          tabIndex={-1}
+        />
 
         {/* 본문 — 좌(성찰) / 우(질문) 2-pane. divide-x 로 vertical divider. */}
         <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] divide-x divide-line-soft overflow-hidden">

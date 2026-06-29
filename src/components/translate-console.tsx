@@ -32,6 +32,7 @@ import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
+import { ControlBoard } from './canvas/shell/control-board';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
@@ -2475,7 +2476,11 @@ export function TranslateConsole() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 border-b border-line-soft pb-3">
+      {/* ControlBoard — settings (captureMode / sourceLang / targetLang /
+          recordEnabled / timer / live indicators / share / start-stop CTA)
+          한 줄. 모든 6 위젯이 같은 layer 패턴. */}
+      <ControlBoard className="-mx-5 -mt-5">
+        <ControlBoard.SettingsRow>
         {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker 와
             동일 위치 — 위젯 간 settings 영역 디자인 통일. */}
         <label className="flex flex-col gap-1 text-sm text-mute">
@@ -2647,7 +2652,8 @@ export function TranslateConsole() {
             </ChromeButton>
           )}
         </div>
-      </div>
+        </ControlBoard.SettingsRow>
+      </ControlBoard>
 
       {shareToken && shareUrl ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">

@@ -50,6 +50,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
+import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Banner } from '@/components/canvas/shell/banner';
 import { triggerBlobDownload } from '@/lib/export/download';
@@ -488,122 +489,132 @@ export function DeskCardBody() {
         {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
             길어지면 자체적으로 스크롤. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* Inputs */}
-        <div className="space-y-5 px-5 py-5">
-          <Field label={tDesk('regionLabel')}>
-            <div className="flex flex-wrap gap-1.5">
-              {DESK_REGIONS.map((r) => {
-                const isSelected = regions.has(r);
-                return (
-                  <Button
-                    key={r}
-                    variant={isSelected ? 'primary' : 'ghost'}
-                    size="xs"
-                    onClick={() => toggleRegion(r)}
-                    aria-pressed={isSelected}
-                  >
-                    {tDesk(`region.${r}`)}
-                  </Button>
-                );
-              })}
-            </div>
-          </Field>
+        {/* ControlBoard — settings (region pill + range pill) / input
+            (keyword chip) / action (검색 ChromeButton). 같은 4-layer
+            패턴을 6 위젯이 공유. */}
+        <ControlBoard>
+          <ControlBoard.SettingsRow>
+            <div className="w-full space-y-5">
+              <Field label={tDesk('regionLabel')}>
+                <div className="flex flex-wrap gap-1.5">
+                  {DESK_REGIONS.map((r) => {
+                    const isSelected = regions.has(r);
+                    return (
+                      <Button
+                        key={r}
+                        variant={isSelected ? 'primary' : 'ghost'}
+                        size="xs"
+                        onClick={() => toggleRegion(r)}
+                        aria-pressed={isSelected}
+                      >
+                        {tDesk(`region.${r}`)}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </Field>
 
-          <Field label={tDesk('rangeLabel')}>
-            <div className="flex flex-wrap gap-1.5">
-              {RANGE_PRESETS.map((p) => (
-                <Button
-                  key={p.id}
-                  variant={preset === p.id ? 'primary' : 'ghost'}
-                  size="xs"
-                  onClick={() => applyPreset(p.id)}
-                >
-                  {tDesk(`range_${p.id}` as const)}
-                </Button>
-              ))}
+              <Field label={tDesk('rangeLabel')}>
+                <div className="flex flex-wrap gap-1.5">
+                  {RANGE_PRESETS.map((p) => (
+                    <Button
+                      key={p.id}
+                      variant={preset === p.id ? 'primary' : 'ghost'}
+                      size="xs"
+                      onClick={() => applyPreset(p.id)}
+                    >
+                      {tDesk(`range_${p.id}` as const)}
+                    </Button>
+                  ))}
+                </div>
+                {showRange && (
+                  <div className="mt-3 flex items-center gap-2 text-md text-mute">
+                    <Input
+                      type="date"
+                      size="sm"
+                      fullWidth={false}
+                      value={dateFrom}
+                      max={dateTo || todayIso()}
+                      onChange={(e) => {
+                        setDateFrom(e.target.value);
+                        setPreset('custom');
+                      }}
+                      className="px-2 py-1 text-ink-2"
+                    />
+                    <span className="text-mute-soft">→</span>
+                    <Input
+                      type="date"
+                      size="sm"
+                      fullWidth={false}
+                      value={dateTo}
+                      min={dateFrom || undefined}
+                      max={todayIso()}
+                      onChange={(e) => {
+                        setDateTo(e.target.value);
+                        setPreset('custom');
+                      }}
+                      className="px-2 py-1 text-ink-2"
+                    />
+                  </div>
+                )}
+              </Field>
             </div>
-            {showRange && (
-              <div className="mt-3 flex items-center gap-2 text-md text-mute">
-                <Input
-                  type="date"
-                  size="sm"
-                  fullWidth={false}
-                  value={dateFrom}
-                  max={dateTo || todayIso()}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setPreset('custom');
+          </ControlBoard.SettingsRow>
+
+          <ControlBoard.Input>
+            <Field label={tDesk('keywordLabel')}>
+              <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+                {keywords.map((k, idx) => (
+                  <span
+                    key={`${k}-${idx}`}
+                    className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
+                  >
+                    {k}
+                    <IconButton
+                      variant="ghost-brand"
+                      onClick={() => removeKeyword(idx)}
+                      aria-label={`remove ${k}`}
+                    >
+                      ×
+                    </IconButton>
+                  </span>
+                ))}
+                <ChipInput
+                  value={keywordDraft}
+                  onChange={(e) => setKeywordDraft(e.target.value)}
+                  onKeyDown={onKeywordKeyDown}
+                  onPaste={onKeywordPaste}
+                  onBlur={() => {
+                    if (keywordDraft.trim()) commitDraft();
                   }}
-                  className="px-2 py-1 text-ink-2"
-                />
-                <span className="text-mute-soft">→</span>
-                <Input
-                  type="date"
-                  size="sm"
-                  fullWidth={false}
-                  value={dateTo}
-                  min={dateFrom || undefined}
-                  max={todayIso()}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setPreset('custom');
-                  }}
-                  className="px-2 py-1 text-ink-2"
+                  placeholder={
+                    keywords.length === 0
+                      ? tDesk('keywordPlaceholder')
+                      : tDesk('keywordAddMore')
+                  }
+                  className="min-w-[140px] flex-1"
                 />
               </div>
-            )}
-          </Field>
+              <span className="mt-1.5 block text-xs text-mute-soft">
+                {tDesk('keywordHint')}
+              </span>
+            </Field>
+          </ControlBoard.Input>
 
-          <Field label={tDesk('keywordLabel')}>
-            <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-              {keywords.map((k, idx) => (
-                <span
-                  key={`${k}-${idx}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-                >
-                  {k}
-                  <IconButton
-                    variant="ghost-brand"
-                    onClick={() => removeKeyword(idx)}
-                    aria-label={`remove ${k}`}
-                  >
-                    ×
-                  </IconButton>
-                </span>
-              ))}
-              <ChipInput
-                value={keywordDraft}
-                onChange={(e) => setKeywordDraft(e.target.value)}
-                onKeyDown={onKeywordKeyDown}
-                onPaste={onKeywordPaste}
-                onBlur={() => {
-                  if (keywordDraft.trim()) commitDraft();
-                }}
-                placeholder={
-                  keywords.length === 0
-                    ? tDesk('keywordPlaceholder')
-                    : tDesk('keywordAddMore')
-                }
-                className="min-w-[140px] flex-1"
-              />
-            </div>
-            <span className="mt-1.5 block text-xs text-mute-soft">
-              {tDesk('keywordHint')}
-            </span>
-          </Field>
-
-          <ChromeButton
-            variant="primary"
-            size="lg"
-            onClick={onClickRun}
-            disabled={!canRun}
-            fullWidth
-          >
-            {submitting || pendingJobId || isWorking
-              ? tCommon('loading')
-              : tDesk('search')}
-          </ChromeButton>
-        </div>
+          <ControlBoard.Action>
+            <ChromeButton
+              variant="primary"
+              size="lg"
+              onClick={onClickRun}
+              disabled={!canRun}
+              fullWidth
+            >
+              {submitting || pendingJobId || isWorking
+                ? tCommon('loading')
+                : tDesk('search')}
+            </ChromeButton>
+          </ControlBoard.Action>
+        </ControlBoard>
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
