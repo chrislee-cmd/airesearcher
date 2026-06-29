@@ -654,7 +654,10 @@
     "navigator": {
       "title": "Widgets",
       "expand": "Expand widget list",
-      "collapse": "Collapse widget list"
+      "collapse": "Collapse widget list",
+      "stateRunning": "Running",
+      "stateDone": "Done",
+      "stateError": "Error"
     }
   },
   "Desk": {

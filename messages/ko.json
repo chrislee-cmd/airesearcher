@@ -654,7 +654,10 @@
     "navigator": {
       "title": "위젯",
       "expand": "위젯 목록 펼치기",
-      "collapse": "위젯 목록 접기"
+      "collapse": "위젯 목록 접기",
+      "stateRunning": "진행 중",
+      "stateDone": "완료",
+      "stateError": "오류"
     }
   },
   "Desk": {

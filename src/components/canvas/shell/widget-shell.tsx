@@ -227,7 +227,7 @@ export function WidgetShell({
   // 정적 state — 현재 모든 위젯이 'idle'. body 가 어떤 setState 도 호출
   // 안 하면 초기값 그대로 노출.
   return (
-    <WidgetStateProvider initialState={{ kind: content.state }}>
+    <WidgetStateProvider widgetKey={content.key} initialState={{ kind: content.state }}>
       <WidgetShellInner content={content} dragHandleProps={dragHandleProps} />
     </WidgetStateProvider>
   );
