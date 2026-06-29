@@ -11,8 +11,8 @@ export function DesignSystemSidebar({
   onSelect: (id: SectionId) => void;
 }) {
   return (
-    <aside className="sticky top-6 hidden w-[200px] shrink-0 self-start md:block">
-      <nav aria-label="Design system navigation" className="space-y-5">
+    <aside className="sticky top-6 hidden max-h-[calc(100vh-3rem)] w-[200px] shrink-0 self-start overflow-y-auto md:block">
+      <nav aria-label="Design system navigation" className="space-y-5 pr-1">
         {SECTION_GROUPS.map((group) => (
           <div key={group.title}>
             <div className="mb-1.5 px-2 text-xs uppercase tracking-[0.22em] text-mute-soft">
