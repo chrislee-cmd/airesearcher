@@ -251,7 +251,7 @@ the session has ended: `오디오 다운로드는 호스트만 가능` /
 ### `.txt`
 
 ```
-# Research-mochi 동시통역 전사록
+# Research-Canvas 동시통역 전사록
 세션: <session_id>
 날짜: 2026-05-30
 원어: 한국어 → 번역: English
