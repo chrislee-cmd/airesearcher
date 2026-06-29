@@ -39,6 +39,7 @@ import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { JobProgress } from '@/components/ui/job-progress';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
@@ -591,17 +592,17 @@ export function DeskCardBody() {
             </span>
           </Field>
 
-          <Button
+          <ChromeButton
             variant="primary"
-            size="md"
+            size="lg"
             onClick={onClickRun}
             disabled={!canRun}
-            className="w-full"
+            fullWidth
           >
             {submitting || pendingJobId || isWorking
               ? tCommon('loading')
               : tDesk('search')}
-          </Button>
+          </ChromeButton>
         </div>
 
         {/* Streaming panel — running 또는 events 있을 때 */}

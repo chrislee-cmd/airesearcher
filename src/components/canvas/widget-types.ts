@@ -30,9 +30,11 @@ export type WidgetContent = {
     accent: AccentColor;
     cost?: number;
     // 옵션: cost 의 1-line 표기를 통째로 override. 일반 위젯은 cost 만
-    // 두면 셸이 "N 크레딧" / "무료" 자동 그림. 라이프사이클 차감 (예:
-    // probing — 시작 5 + 10분당 5) 처럼 단일 숫자로 표현 안 되는 경우만
-    // 이 필드로 override (예: "10분당 5 크레딧"). 두 필드가 모두 있으면
+    // 두면 셸이 "N 크레딧" / "무료" 자동 그림. 단일 숫자로 표현이 어려운
+    // 라이프사이클 차감 (시간당 추가 등) 도 기본은 lump 숫자 + /credits
+    // 페이지의 Features.{key}.cost 라벨로 detail 을 전달 — 헤더는 다른
+    // 위젯과 시각 통일 위해 보통 cost 만 쓴다. 정말 헤더에 한 줄 별도
+    // 표기가 필요한 경우만 이 필드로 override. 두 필드가 모두 있으면
     // costLabel 우선.
     costLabel?: string;
     // 옵션: `/public` 아래 썸네일 경로. 지정 시 widget-shell 이 accent 박스

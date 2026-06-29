@@ -50,7 +50,7 @@ export async function POST() {
   const sessionId = randomUUID();
 
   // Charge the start lump *before* allocating the OpenAI client_secret.
-  // FEATURE_COSTS.probing = 5 — covers the first 10 minutes (one tick).
+  // FEATURE_COSTS.probing = 25 — covers the first hour (one tick).
   // On insufficient balance the OpenAI call is skipped entirely so the
   // user doesn't pay for an OpenAI session they can't actually use.
   const spend = await spendCredits(org.org_id, 'probing', sessionId);

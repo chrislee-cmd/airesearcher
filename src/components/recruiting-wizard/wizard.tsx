@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
@@ -757,14 +758,14 @@ function CriteriaInputArea({
         <span className="text-sm tabular-nums text-mute-soft">
           {files.length}개 파일 · {pasted.length}자
         </span>
-        <Button
+        <ChromeButton
           variant="primary"
-          size="md"
+          size="lg"
           onClick={onExtract}
           disabled={!canExtract}
         >
           {running ? '추출 중…' : '추출'}
-        </Button>
+        </ChromeButton>
       </div>
 
       {error && <ErrorBlock>오류: {error}</ErrorBlock>}
