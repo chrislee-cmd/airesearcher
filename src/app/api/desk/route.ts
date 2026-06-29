@@ -395,11 +395,20 @@ const HARD_DEADLINE_MS = 270_000;
 // least this much budget left.
 const SYNTHESIZE_MIN_BUDGET_MS = 60_000;
 // Below this remaining budget at drafting start, we skip the revise pass.
-const SKIP_REVISE_BELOW_MS = 120_000;
+// Tuned 2026-06-29 after one prod timeout where a single RQ revise burned
+// ~60s on weaknesses=5 critique. Old 120s threshold let two revise passes
+// fire and starve synthesize; 200s gives 1 revise breathing room or skips
+// entirely when budget is tighter.
+const SKIP_REVISE_BELOW_MS = 200_000;
 // Below this remaining budget at analytics start, we skip charts.
 const SKIP_ANALYTICS_BELOW_MS = 20_000;
 // Conservative per-RQ budget (draft + critique + revise + patch overhead).
-const PER_RQ_BUDGET_SEC = 25;
+// Measured ~60s/RQ when revise actually runs, ~25s when draft-only — pick
+// the higher value so the cap shrinks aggressively under load.
+const PER_RQ_BUDGET_SEC = 50;
+// Reserve held back from RQ budgeting for synthesize + analytics + writes.
+// = SYNTHESIZE_MIN_BUDGET + analytics(~20s) + DB final patches(~10s).
+const RESERVE_AFTER_RQ_SEC = 90;
 
 class TimeoutError extends Error {
   constructor(reason: string) {
@@ -1126,13 +1135,14 @@ async function runJob(args: {
     // Crawling sometimes burns 60-180s. Recompute how many RQs we can afford
     // before drafting starts: reserve room for synthesize + analytics + DB
     // writes, then divide what's left by the conservative per-RQ budget.
-    // Min 3 / max 8 keeps quality predictable even when budget is tight.
-    const RESERVE_AFTER_RQ_SEC = 90; // synthesize ~60s + analytics ~15s + writes ~15s
+    // Min 1 (draft-only fallback) keeps the synthesize call alive even on
+    // very tight budgets — we'd rather ship a thin report than refund.
     const remainingForRqSec = Math.max(0, timeLeft() / 1000 - RESERVE_AFTER_RQ_SEC);
-    const budgetCap = Math.max(
-      3,
-      Math.min(8, Math.floor(remainingForRqSec / PER_RQ_BUDGET_SEC)),
-    );
+    const rawCap = Math.floor(remainingForRqSec / PER_RQ_BUDGET_SEC);
+    // forceDraftOnly: budget too tight even for one critique+revise pass.
+    // Single RQ, draft only — guarantees synthesize gets a non-empty input.
+    const forceDraftOnly = rawCap < 1;
+    const budgetCap = forceDraftOnly ? 1 : Math.min(8, rawCap);
     const originalRqCount = researchQuestions.length;
     if (originalRqCount > budgetCap) {
       researchQuestions = researchQuestions.slice(0, budgetCap);
@@ -1146,12 +1156,22 @@ async function runJob(args: {
 
     // Decide once per run whether to skip revise — based on the budget at
     // the moment drafting starts. If a single RQ is going to gobble all the
-    // time, the simpler draft-only path keeps synthesize alive.
-    const skipReviseGlobal = timeLeft() < SKIP_REVISE_BELOW_MS;
+    // time, the simpler draft-only path keeps synthesize alive. Per-RQ
+    // adaptive trim below catches the case where the first RQ blows past
+    // its budget mid-loop.
+    const skipReviseGlobal = forceDraftOnly || timeLeft() < SKIP_REVISE_BELOW_MS;
+    const skipCritiqueGlobal = forceDraftOnly;
     if (skipReviseGlobal && researchQuestions.length > 0) {
       skippedSteps.push('revise');
       await pushAndPatch(
         `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 시간 절약을 위해 RQ 답변 보완(revise) 단계는 생략합니다.`,
+        'drafting',
+      );
+    }
+    if (skipCritiqueGlobal && researchQuestions.length > 0) {
+      skippedSteps.push('critique');
+      await pushAndPatch(
+        `남은 시간이 매우 빠듯해서 자가검토(critique)도 건너뛰고 초안만으로 보고서로 갑니다.`,
         'drafting',
       );
     }
@@ -1171,7 +1191,17 @@ async function runJob(args: {
       // chaining concurrent draft+critique+revise spikes. Each RQ is bounded
       // (~3 Sonnet calls × ~2k input + ~1k output) so even 8 RQs fit the
       // 300s function budget.
-      for (const rq of researchQuestions) {
+      //
+      // Adaptive trim: the static cap above assumed PER_RQ_BUDGET_SEC. If
+      // the first RQ actually takes longer (heavy revise, slow API), we
+      // measure observed time and break out early — keeping enough budget
+      // for synthesize. rqAnswers gets whatever we've actually produced.
+      let observedAvgSec = 0;
+      let observedCount = 0;
+      const totalRqs = researchQuestions.length;
+      for (let idx = 0; idx < researchQuestions.length; idx++) {
+        const rq = researchQuestions[idx];
+        const rqStartMs = Date.now();
         await checkCancel();
         const ctx = buildRqContext(rq);
         const evidenceBlock = [
@@ -1210,37 +1240,40 @@ async function runJob(args: {
           draftAnswer = '제공된 자료로는 충분히 답하기 어렵습니다. (초안 생성 실패)';
         }
 
-        // Critique
-        await pushAndPatch(`Q. ${rq.question} — 초안에 대한 자가검토 중…`, 'critiquing');
+        // Critique — skipped when forceDraftOnly. Falls back to medium
+        // confidence + no weaknesses so the report shell still renders.
         let critique = {
           weaknesses: [] as string[],
           missing_data: [] as string[],
           confidence: 'medium' as 'high' | 'medium' | 'low',
         };
-        try {
-          const critiquePrompt = [
-            `리서치 질문 (id=${rq.id}):`,
-            rq.question,
-            '',
-            '--- 답변 초안 ---',
-            draftAnswer,
-            '',
-            evidenceBlock,
-          ].join('\n');
-          const critiqueRes = await generateObject({
-            model,
-            system: RQ_CRITIQUE_SYSTEM,
-            prompt: critiquePrompt,
-            schema: RqCritiqueSchema,
-            temperature: 0.2,
-            maxOutputTokens: 1500,
-            maxRetries: 1,
-            providerOptions: ZERO_RETENTION,
-          });
-          critique = critiqueRes.object;
-        } catch (err) {
-          if (err instanceof CancelledError) throw err;
-          console.error('[desk] rq critique failed', { rq: rq.id, err });
+        if (!skipCritiqueGlobal) {
+          await pushAndPatch(`Q. ${rq.question} — 초안에 대한 자가검토 중…`, 'critiquing');
+          try {
+            const critiquePrompt = [
+              `리서치 질문 (id=${rq.id}):`,
+              rq.question,
+              '',
+              '--- 답변 초안 ---',
+              draftAnswer,
+              '',
+              evidenceBlock,
+            ].join('\n');
+            const critiqueRes = await generateObject({
+              model,
+              system: RQ_CRITIQUE_SYSTEM,
+              prompt: critiquePrompt,
+              schema: RqCritiqueSchema,
+              temperature: 0.2,
+              maxOutputTokens: 1500,
+              maxRetries: 1,
+              providerOptions: ZERO_RETENTION,
+            });
+            critique = critiqueRes.object;
+          } catch (err) {
+            if (err instanceof CancelledError) throw err;
+            console.error('[desk] rq critique failed', { rq: rq.id, err });
+          }
         }
 
         // Revise (only if critique flags weaknesses AND we still have budget).
@@ -1303,6 +1336,29 @@ async function runJob(args: {
           `Q. ${rq.question} — 답변 정리 완료 (${critique.confidence}, 약점 ${critique.weaknesses.length}건).`,
           'critiquing',
         );
+
+        // Adaptive trim — measure observed RQ time and project remaining.
+        // If finishing the rest would push us past the synthesize budget,
+        // break out early so synthesize still runs against partial answers.
+        const rqElapsedSec = (Date.now() - rqStartMs) / 1000;
+        observedAvgSec =
+          observedCount === 0
+            ? rqElapsedSec
+            : (observedAvgSec * observedCount + rqElapsedSec) / (observedCount + 1);
+        observedCount += 1;
+        const remainingRqs = totalRqs - (idx + 1);
+        if (remainingRqs > 0) {
+          const projectedSec = remainingRqs * observedAvgSec + RESERVE_AFTER_RQ_SEC;
+          if (projectedSec > timeLeft() / 1000) {
+            skippedSteps.push(`rq_adaptive_trim:${remainingRqs}skipped`);
+            await pushAndPatch(
+              `RQ 한 개 평균 ${Math.round(observedAvgSec)}초 — 남은 ${remainingRqs}개를 마치면 보고서를 못 만들어요. ` +
+                `여기까지 ${idx + 1}개 답변으로 보고서를 만들게요.`,
+              'critiquing',
+            );
+            break;
+          }
+        }
       }
     }
     endPhase('drafting');
