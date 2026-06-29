@@ -119,27 +119,40 @@ const REPORT_SYSTEM_V2 = `당신은 톱티어 컨설팅 펌(맥킨지/베인/BCG
 1. # 🧭 Executive Summary
    - **Situation** (1문단) — 키워드 / 기간 / 지역 컨텍스트를 짧게 정리합니다.
    - **Complication** (1문단) — 핵심 발견 2~3개를 한 단락으로 압축합니다.
-   - **Resolution** (1문단) — '그래서 무엇을 하면 좋은가' 권고 1~2 줄.
+   - **Resolution** (1문단) — '그래서 무엇을 하면 좋은가' 권고 1~2 줄. 권고는 사용자 질문(RQ) 에 답하는 방향으로만 작성하고, 아래 Findings(귀납) 섹션에는 권고를 절대 누설하지 않습니다.
 
-2. ## 📝 Findings — 스크랩된 내용의 중립 사실 요약
-   - **이 섹션은 사실 (facts) 만 다룹니다. 해석 / 평가 / 시사점 / 권고는 다음 RQ 섹션(3) 에서 다룹니다.**
-   - 원칙:
-     - **추론 금지** — article 에서 발견된 사실만 정리합니다. "왜" 가 아니라 "무엇" 만.
+2. ## 📝 Findings — 데이터에서 발견된 토픽/패턴 요약 (귀납적)
+   - **이 섹션은 귀납적(bottom-up) 입니다 — 데이터가 말하는 것을 그대로 보여줍니다. 사실(facts) 만 다루며, 해석 / 평가 / 시사점 / 권고는 다음 RQ 섹션(3, 연역적) 에서만 다룹니다.**
+   - **작성 방법 (반드시 이 순서로 사고)**:
+     1. 먼저 모든 claim + article 의 핵심 주장 / 신호 / 인용을 **그룹 없이** 한 번 훑습니다.
+     2. **자주 등장하는 주제 / 반복되는 패턴 / 강한 신호** 를 발견하면 그것을 토픽 헤더(### 헤더) 로 잡습니다.
+     3. 그 토픽 아래에 관련 finding 을 묶습니다.
+     4. **미리 정한 카테고리 (시장 / 플레이어 / 규제 / 기술 ...) 에 데이터를 맞추지 마세요** — 데이터가 말하는 토픽 그대로 헤더를 씁니다.
+   - **토픽 emergence 검증 룰**:
+     - 토픽이 한 article 에만 등장 = 약함 → 별도 토픽 헤더 X, 다른 토픽의 finding 으로만 흡수하거나 생략.
+     - 2개 이상 article 에서 일관된 신호 = 토픽 후보 (헤더로 가능).
+     - 3개 이상 article + 서로 다른 출처 = 강한 토픽 (반드시 헤더로).
+   - **토픽 헤더 작성 규칙**:
+     - 헤더는 **데이터에서 emerge 한 발견 신호** 를 담은 한 줄 (대략 30~60자).
+     - 좋은 예 (O): "### AI 도구 사용 시 직무 정체성 불안이 반복 등장합니다", "### 삼성·LG 외 신규 진입자 5개사가 동시 출시했습니다", "### T1 자료는 시장 규모를, T3 사용자 신호는 페인포인트를 강조합니다"
+     - 나쁜 예 (X — pre-defined 카테고리 frame): "### 주요 플레이어", "### 시장 규모", "### 규제 / 정책" — 데이터를 frame 에 끼워 맞춘 형태이므로 금지.
+     - 카테고리성 내용이 들어가야 한다면, 그것도 데이터에서 emerge 한 발견 형태로 (이름 자체가 신호가 되도록).
+   - **finding 원칙**:
+     - **추론 금지** — article 에서 발견된 사실만. "왜" 가 아니라 "무엇" 만.
      - 각 finding 은 원문의 진술을 그대로 옮기되 한국어 존댓말 어미로 마감합니다. 말바꿈은 최소화.
      - **모든 finding 에 인용 링크 필수** — [원문](URL) 마크다운 형식.
      - 한 finding = 한 markdown bullet (대략 80~200자) + 인용 링크.
-     - 해석성 표현 ('따라서', '시사하다', '~로 보입니다', '기회', '리스크', '권고') 금지.
-   - 구조 — 아래 카테고리 중 **실제 자료에 등장한 것만** 서브섹션 (### 헤더) 으로 출력합니다. 빈 카테고리는 생략합니다.
-     - ### 시장 / 거래량 — 시장 규모·거래액·성장률·MAU·DAU 등 수치성 finding
-     - ### 주요 플레이어 — 자주 거명된 회사·제품·인물 (entity 기반)
-     - ### 사용자 신호 / 반응 — 사용자/소비자 반응·여론·페인포인트
-     - ### 규제 / 정책 — 법·규제·정책 동향
-     - ### 기술 / 제품 트렌드 — 신제품·기술·R&D 동향
-   - 각 서브섹션 2~5개 finding. 전체 합 10~30개. 동일 사실의 중복 인용 피합니다.
-   - finding 이 거의 없는 경우 (수집된 자료 빈약), 발견된 사실만 짧게 정리하고 카테고리 헤더를 무리하게 채우지 않습니다.
+     - 해석성 표현 ('따라서', '시사하다', '기회', '리스크', '권고') 금지.
+   - **분량 — 데이터가 결정합니다**:
+     - 토픽 수는 데이터가 결정합니다 — 보통 3~8개. 데이터가 풍부하면 많이, 빈약하면 적게.
+     - 한 토픽 안 finding 수도 데이터가 결정 — 보통 2~8개. 동일 사실의 중복 인용은 피합니다.
+   - **fallback — 데이터 빈약 시 (article < 20 또는 claim < 10)**:
+     - 토픽 수를 1~3개로 줄이고, "다음 토픽이 가장 자주 발견되었습니다: X" 1~2문장 + bullet 2~3개로 정리합니다.
+     - 명확한 토픽이 emerge 하기 어려우면 "현 수집 데이터로는 뚜렷한 토픽이 나타나지 않았습니다 — RQ 섹션의 해석을 참고하시기 바랍니다." 한 줄로 대체하고 무리하게 헤더를 만들지 않습니다.
 
 3. ## ❓ Research Questions & Findings (해석)
-   - **이 섹션은 위 Findings (사실) 를 바탕으로 각 RQ 에 대해 무엇을 시사하는지 답하는 해석 영역입니다.**
+   - **이 섹션은 연역적(top-down) 입니다 — 사용자가 미리 정한 질문(RQ)에 데이터를 매핑해 답합니다. 위 Findings(귀납) 가 데이터에서 발견한 것을 보여줬다면, 여기는 그 데이터를 사용자 질문에 연결해 해석합니다.**
+   - **두 섹션의 분리**: 같은 사실은 여기서 짧게만 재인용해 지면을 절약하고, 해석 / 시사점 / 가설 확신도는 **오직 이 섹션에서만** 다룹니다 (Findings 는 사실만).
    - 입력으로 받은 rq_answers 의 각 항목을 ### 형식의 하위 섹션으로 펼칩니다.
    - 각 RQ 마다:
      - **### Q. <질문>**
@@ -1635,10 +1648,10 @@ async function runJob(args: {
         system: REPORT_SYSTEM_V2,
         prompt: userMsg,
         temperature: 0.2,
-        // Bumped 6000→10000. The report now has 7 sections (added 📝 Findings
-        // — neutral fact summary before RQ interpretation). Findings alone
-        // can run 10~30 bullets × ~150 chars + citation links, so the prior
-        // 6k ceiling started truncating the tail (Caveats / Appendix).
+        // Bumped 6000→10000. The report now has 7 sections (📝 Findings —
+        // inductive emergent-topic summary before RQ interpretation). Findings
+        // alone can run several topics × multiple bullets + citation links, so
+        // the prior 6k ceiling started truncating the tail (Caveats / Appendix).
         maxOutputTokens: 10000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
