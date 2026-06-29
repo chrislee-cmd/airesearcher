@@ -92,25 +92,25 @@ const FILE_HEADERS: Record<
   { title: string; session: string; date: string; langs: string }
 > = {
   ko: {
-    title: 'Research-mochi 동시통역 전사록',
+    title: 'Research-Canvas 동시통역 전사록',
     session: '세션',
     date: '날짜',
     langs: '원어 → 번역',
   },
   en: {
-    title: 'Research-mochi Translate Transcript',
+    title: 'Research-Canvas Translate Transcript',
     session: 'Session',
     date: 'Date',
     langs: 'Source → Target',
   },
   ja: {
-    title: 'Research-mochi 同時通訳 文字起こし',
+    title: 'Research-Canvas 同時通訳 文字起こし',
     session: 'セッション',
     date: '日付',
     langs: '原語 → 翻訳',
   },
   th: {
-    title: 'Research-mochi บันทึกการแปลสด',
+    title: 'Research-Canvas บันทึกการแปลสด',
     session: 'เซสชัน',
     date: 'วันที่',
     langs: 'ภาษาต้นทาง → ปลายทาง',
@@ -290,7 +290,7 @@ export async function renderTranslateTranscriptDocx(
   children.push(
     new Paragraph({
       spacing: { after: 80 },
-      children: [eyebrow('Research-mochi', AP.muteSoft)],
+      children: [eyebrow('Research-Canvas', AP.muteSoft)],
     }),
   );
   children.push(thinRule(AP.amore, 140));

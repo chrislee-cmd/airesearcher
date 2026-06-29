@@ -23,7 +23,7 @@ export function LegalShell({
           href={`/${locale}`}
           className="text-lg font-semibold tracking-[-0.01em] text-ink hover:text-amore"
         >
-          Research-mochi
+          Research-Canvas
         </Link>
         <div className="flex items-center gap-5 text-md text-mute">
           <Link href={`/${locale}/terms`} className="hover:text-ink">

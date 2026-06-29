@@ -61,7 +61,7 @@ const LOCALE_ALIASES: Record<string, string> = {
   gb: 'en', // UK → English (no separate en-GB locale)
 };
 
-// Optional dedicated subdomain (e.g. `live.researchmochi.com`) that
+// Optional dedicated subdomain (e.g. `live.research-canvas.io`) that
 // serves the public viewer. When a request lands on this host, we
 // rewrite `/` and `/<token>` to `/live/<token>` and reject everything
 // else as 404 — the marketing app, dashboard, sign-in flow, etc. all

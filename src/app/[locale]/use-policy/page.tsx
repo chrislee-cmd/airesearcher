@@ -4,8 +4,8 @@ import { LegalShell } from '@/components/legal-shell';
 import { COMPANY } from '@/lib/company';
 
 export const metadata: Metadata = {
-  title: 'Acceptable Use Policy · Research-mochi',
-  description: 'Research-mochi 이용정책 / Acceptable Use Policy',
+  title: 'Acceptable Use Policy · Research-Canvas',
+  description: 'Research-Canvas 이용정책 / Acceptable Use Policy',
 };
 
 const EFFECTIVE_DATE = '2026-05-31';

@@ -1,13 +1,13 @@
 {
   "Brand": {
-    "name": "Research-mochi"
+    "name": "Research-Canvas"
   },
   "Landing": {
-    "metaTitle": "Research-mochi — リサーチを、もっとやさしく。",
+    "metaTitle": "Research-Canvas — Research on my canvas",
     "metaDescription": "同じデスクに並ぶ8つの小さなツールが、急がないリサーチを支えます。",
     "nav": {
       "demo": "デモ",
-      "why": "Mochiの理由",
+      "why": "Canvasの理由",
       "pricing": "料金",
       "story": "ストーリー",
       "faq": "よくある質問",
@@ -15,8 +15,8 @@
       "freeStart": "無料で始める →"
     },
     "hero": {
-      "tagline": "リサーチャーのための、やさしい自動化",
-      "headline": "面倒な作業は<hl>Mochi</hl>にお任せください。<br></br>あなたは<hlPeach>インサイト</hlPeach>に集中を。",
+      "tagline": "Research on my canvas",
+      "headline": "面倒な作業は<hl>Canvas</hl>にお任せください。<br></br>あなたは<hlPeach>インサイト</hlPeach>に集中を。",
       "lead": "文字起こしからインタビュー分析、デスクリサーチ、本格的なレポートまで——<strong>8つのツール</strong>が一つのワークスペースで重労働を引き受けます。優れたリサーチを、徹夜なしで。",
       "ctaPrimary": "無料で始める →",
       "ctaSecondary": "デモを見る",
@@ -55,14 +55,14 @@
       "fallbackNext": "レポートで仕上げる →"
     },
     "whyMochi": {
-      "tag": "MOCHIの理由",
+      "tag": "CANVASの理由",
       "hand": "疲れたリサーチャーへ、<br></br>ひとくちの甘さを。",
       "body1": "深夜まで続く作業、終わらない修正、細部へのこだわり——そのすべての先にようやく見えてくる、小さくも確かなインサイト。多くのリサーチャーが、たった一つの気づきのために、その重みを毎日静かに背負っています。",
-      "body2": "Research-Mochiは、そんなリサーチャーのそばに寄り添いたい。繰り返しの作業を自動化することで、本当に大切なことに集中できるように。長い一日の終わりに、ひとくちのお餅のような、小さく確かな喜びを。",
-      "perk1": "<strong>残業の代わりに自動化を。</strong> 文字起こし、インタビューのまとめ、デスクリサーチ——これまで深夜まで残っていた作業は、Mochiが引き受けます。",
-      "perk2": "<strong>細部はMochiに、インサイトはあなたに。</strong> 数百件の回答からパターンを見つけるのはMochiの仕事。その意味を読み解くのはあなたの仕事です。",
+      "body2": "Research-Canvasは、そんなリサーチャーのそばに寄り添いたい。繰り返しの作業を自動化することで、本当に大切なことに集中できるように。長い一日の終わりに、一枚のキャンバスのような、小さく確かな喜びを。",
+      "perk1": "<strong>残業の代わりに自動化を。</strong> 文字起こし、インタビューのまとめ、デスクリサーチ——これまで深夜まで残っていた作業は、Canvasが引き受けます。",
+      "perk2": "<strong>細部はCanvasに、インサイトはあなたに。</strong> 数百件の回答からパターンを見つけるのはCanvasの仕事。その意味を読み解くのはあなたの仕事です。",
       "perk3": "<strong>修正の少ないドラフトを最初から。</strong> 構造も言葉も整った状態でお届けします。フィードバックの往復は減り、納品はより早く。",
-      "coda": "今日はMochiに任せて、コーヒーでも淹れませんか？☕"
+      "coda": "今日はCanvasに任せて、コーヒーでも淹れませんか？☕"
     },
     "pricing": {
       "meta": "クレジット · 使った分だけお支払い",
@@ -143,9 +143,9 @@
     }
   },
   "Auth": {
-    "signInTitle": "Research-mochiにサインイン",
+    "signInTitle": "Research-Canvasにサインイン",
     "signInSubtitle": "マーケティング・UXリサーチのためのAIツール",
-    "signUpTitle": "Research-mochiのアカウントを作成",
+    "signUpTitle": "Research-Canvasのアカウントを作成",
     "signUpSubtitle": "すべてのツールを24時間無料でお試しください。",
     "google": "Googleで続ける",
     "signOut": "サインアウト",
@@ -265,7 +265,7 @@
     "firstProjectTitle": "最初のプロジェクトを作成",
     "firstProjectBody": "リサーチの成果物をプロジェクトごとにまとめて、進捗と次のステップを一か所で管理しましょう。",
     "firstProjectCta": "プロジェクトを作成",
-    "signedOutTitle": "Research-mochiへようこそ",
+    "signedOutTitle": "Research-Canvasへようこそ",
     "signedOutBody": "定性・定量のインタビューデータを、引用、スクリプト、インタビュー結果、本格的なレポートへと整える、エディトリアルなトーンのリサーチコンソールです。",
     "signIn": "サインイン"
   },

@@ -2427,7 +2427,7 @@ export function TranslateConsole() {
   }, [revisionStatus]);
 
   // Build the viewer URL the host shows / copies. When a viewer subdomain
-  // is configured (e.g. `live.researchmochi.com`) we use it; otherwise we
+  // is configured (e.g. `live.research-canvas.io`) we use it; otherwise we
   // fall back to the same origin with a `/live/<token>` path.
   const shareUrl = useMemo(() => {
     if (!shareToken) return null;

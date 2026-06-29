@@ -1,9 +1,9 @@
 {
   "Brand": {
-    "name": "Research-mochi"
+    "name": "Research-Canvas"
   },
   "Landing": {
-    "metaTitle": "Research-mochi — Your research, one canvas.",
+    "metaTitle": "Research-Canvas — Research on my canvas",
     "metaDescription": "All your research, on a single canvas. Transcription, live translation, probing, and insight analysis—flowing together in one place.",
     "nav": {
       "features": "Features",
@@ -14,14 +14,14 @@
       "freeStart": "Start free →"
     },
     "hero": {
-      "tagline": "The research canvas is open",
+      "tagline": "Research on my canvas",
       "headline": "Your research,<br></br><hl>end to end</hl>,<br></br>on one <hlPeach>canvas</hlPeach>.",
       "lead": "Transcription, live translation, probing assistant, insight analysis—<strong>every tool lives on one canvas</strong> and flows together. No more tab-hopping.",
       "ctaPrimary": "Open the canvas →",
       "ctaSecondary": "See features",
       "postscript": "<b>P.S.</b> Every widget is unlimited for the first 24 hours. No card required.",
       "canvasMeta": "RESEARCH CANVAS",
-      "canvasBrand": "Researchmochi · canvas",
+      "canvasBrand": "Research-Canvas · canvas",
       "canvasCredits": "2,840 credits",
       "canvasSaved": "Saved · just now",
       "widgetTranscriptsTitle": "Transcripts",
@@ -167,9 +167,9 @@
     }
   },
   "Auth": {
-    "signInTitle": "Sign in to Research-mochi",
+    "signInTitle": "Sign in to Research-Canvas",
     "signInSubtitle": "AI tools for marketing & UX research",
-    "signUpTitle": "Create your Research-mochi account",
+    "signUpTitle": "Create your Research-Canvas account",
     "signUpSubtitle": "Try every tool free for 24 hours.",
     "google": "Continue with Google",
     "signOut": "Sign out",
@@ -331,7 +331,7 @@
     "firstProjectTitle": "Create your first project",
     "firstProjectBody": "Group research artifacts under projects to keep progress and next steps in one place.",
     "firstProjectCta": "Create project",
-    "signedOutTitle": "Welcome to Research-mochi",
+    "signedOutTitle": "Welcome to Research-Canvas",
     "signedOutBody": "An editorial-toned research console that turns qualitative and quantitative interview data into quotes, scripts, interview results, and full reports.",
     "signIn": "Sign in"
   },

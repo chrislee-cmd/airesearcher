@@ -5,8 +5,8 @@ import { LegalShell } from '@/components/legal-shell';
 import { COMPANY, companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service · Research-mochi',
-  description: 'Research-mochi 이용약관 / Terms of Service',
+  title: 'Terms of Service · Research-Canvas',
+  description: 'Research-Canvas 이용약관 / Terms of Service',
 };
 
 const EFFECTIVE_DATE = '2026-05-23';
@@ -144,7 +144,7 @@ function EnTerms() {
 
       <H2>2. Definitions</H2>
       <UL>
-        <li>&ldquo;Service&rdquo; means the Research-mochi website and all associated features.</li>
+        <li>&ldquo;Service&rdquo; means the Research-Canvas website and all associated features.</li>
         <li>&ldquo;User&rdquo; means any individual accessing or using the Service.</li>
         <li>&ldquo;Credits&rdquo; are virtual units used to access paid features of the Service.</li>
       </UL>

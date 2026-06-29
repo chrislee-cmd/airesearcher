@@ -8,7 +8,7 @@ import '../globals.css';
 // inside the viewer component if needed.
 
 export const metadata: Metadata = {
-  title: 'Research-mochi — Live',
+  title: 'Research-Canvas — Live',
   description: 'AI simultaneous interpretation, live.',
   robots: { index: false, follow: false, nocache: true },
 };

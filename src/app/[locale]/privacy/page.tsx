@@ -4,8 +4,8 @@ import { LegalShell } from '@/components/legal-shell';
 import { COMPANY, companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy · Research-mochi',
-  description: 'Research-mochi 개인정보처리방침 / Privacy Policy',
+  title: 'Privacy Policy · Research-Canvas',
+  description: 'Research-Canvas 개인정보처리방침 / Privacy Policy',
 };
 
 const EFFECTIVE_DATE = '2026-05-23';

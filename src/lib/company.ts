@@ -13,7 +13,7 @@ export const COMPANY = {
   email: 'chris.lee@meteor-research.com',
   phone: '010-4057-0872',
   privacyOfficer: '이철희 (대표)',
-  serviceName: 'Research-mochi',
+  serviceName: 'Research-Canvas',
 } as const;
 
 export function companyInfoLinesKo(): string[] {

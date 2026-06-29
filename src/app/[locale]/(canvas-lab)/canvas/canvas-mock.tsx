@@ -60,7 +60,7 @@ export function CanvasMock() {
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-paper/80 px-6 py-3 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="h-6 w-6 rounded-xs bg-amore" />
-            <span className="text-md font-medium text-ink">Researchmochi</span>
+            <span className="text-md font-medium text-ink">Research-Canvas</span>
             <span className="text-xs text-mute-soft">· canvas (lab)</span>
           </div>
           <div className="flex items-center gap-2">
