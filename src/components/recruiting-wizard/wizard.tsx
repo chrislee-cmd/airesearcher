@@ -13,6 +13,8 @@ import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { MochiLoader } from '@/components/ui/mochi-loader';
+import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
 import {
@@ -693,68 +695,70 @@ function CriteriaInputArea({
   canExtract: boolean;
   error: CardError;
 }) {
+  // WizardCard 안쪽은 이미 px-4 py-4 — ControlBoard 의 layer padding 을
+  // 호출부가 흡수하도록 `-mx-4 -my-4` 로 가장자리까지 펼치고 안쪽 layer 가
+  // 표준 `px-5 py-4` 로 다시 그린다. 6 위젯 control board 가 모두 같은
+  // padding 리듬을 갖도록.
   return (
-    <div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="flex flex-col">
-          <label className="mb-2 block text-sm font-semibold text-ink-2">
-            텍스트 붙여넣기
-          </label>
-          <Textarea
-            value={pasted}
-            onChange={(e) => onPasteChange(e.target.value)}
-            disabled={running}
-            placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="h-[60px] resize-none text-md text-ink-2"
-          />
+    <ControlBoard className="-mx-4 -my-4">
+      {/* Input — textarea (paste) + dropzone (file). 한 ControlBoard.Input
+          안에서 widget 별 element 가 자유롭게 들어옴. */}
+      <ControlBoard.Input divider="none">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="텍스트 붙여넣기">
+            <Textarea
+              value={pasted}
+              onChange={(e) => onPasteChange(e.target.value)}
+              disabled={running}
+              placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
+              className="h-[60px] resize-none text-md text-ink-2"
+            />
+          </Field>
+          <Field label="파일 업로드">
+            <FileDropZone
+              accept={ACCEPT}
+              multiple
+              onFiles={(f) => onAddFiles(f)}
+              label="파일을 끌어다 놓거나 클릭"
+              helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
+              className="h-[60px] gap-2 px-6"
+            />
+          </Field>
         </div>
-        <div className="flex flex-col">
-          <label className="mb-2 block text-sm font-semibold text-ink-2">
-            파일 업로드
-          </label>
-          <FileDropZone
-            accept={ACCEPT}
-            multiple
-            onFiles={(f) => onAddFiles(f)}
-            label="파일을 끌어다 놓거나 클릭"
-            helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
-            className="h-[60px] gap-2 px-6"
-          />
-        </div>
-      </div>
 
-      {rejected.length > 0 && (
-        <div className="mt-3 text-sm text-warning">
-          허용되지 않은 형식: {rejected.join(', ')}
-        </div>
-      )}
+        {rejected.length > 0 && (
+          <div className="mt-3 text-sm text-warning">
+            허용되지 않은 형식: {rejected.join(', ')}
+          </div>
+        )}
 
-      {files.length > 0 && (
-        <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
-          {files.map((f, i) => (
-            <li
-              key={`${f.name}-${f.size}-${i}`}
-              className="flex items-center justify-between gap-3 px-3 py-2 text-md"
-            >
-              <span className="truncate text-ink-2">{f.name}</span>
-              <span className="shrink-0 tabular-nums text-mute-soft">
-                {formatBytes(f.size)}
-              </span>
-              <Button
-                variant="destructive-link"
-                size="xs"
-                onClick={() => onRemoveFile(i)}
-                disabled={running}
-                className="shrink-0 text-sm"
+        {files.length > 0 && (
+          <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
+            {files.map((f, i) => (
+              <li
+                key={`${f.name}-${f.size}-${i}`}
+                className="flex items-center justify-between gap-3 px-3 py-2 text-md"
               >
-                제거
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <span className="truncate text-ink-2">{f.name}</span>
+                <span className="shrink-0 tabular-nums text-mute-soft">
+                  {formatBytes(f.size)}
+                </span>
+                <Button
+                  variant="destructive-link"
+                  size="xs"
+                  onClick={() => onRemoveFile(i)}
+                  disabled={running}
+                  className="shrink-0 text-sm"
+                >
+                  제거
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ControlBoard.Input>
 
-      <div className="mt-4 flex items-center justify-end gap-3">
+      <ControlBoard.Action>
         <span className="text-sm tabular-nums text-mute-soft">
           {files.length}개 파일 · {pasted.length}자
         </span>
@@ -766,10 +770,14 @@ function CriteriaInputArea({
         >
           {running ? '추출 중…' : '추출'}
         </ChromeButton>
-      </div>
+      </ControlBoard.Action>
 
-      {error && <ErrorBlock>오류: {error}</ErrorBlock>}
-    </div>
+      {error && (
+        <div className="px-5 pb-4">
+          <ErrorBlock>오류: {error}</ErrorBlock>
+        </div>
+      )}
+    </ControlBoard>
   );
 }
 

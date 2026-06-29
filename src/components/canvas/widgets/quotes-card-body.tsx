@@ -24,6 +24,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
+import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
@@ -412,15 +413,25 @@ export function QuotesCardBody() {
           흡수. cardState / headerProgress / isRunning 은 현재 body 안에서
           는 미사용 — 후속 PR 에서 widget-shell 로 주입 검토. */}
       <div className="flex h-full flex-col">
-        {/* 3 stat 타일 — 누적 메트릭 (top, fixed) */}
-        <div className="grid shrink-0 grid-cols-3 divide-x divide-line-soft border-b border-line-soft">
-            <StatTile label="처리한 시간" value={formatDuration(totalDurationSec) || '0m'} />
-            <StatTile
+        {/* ControlBoard — stats / input(dropzone) / progress·queue.
+            quotes 의 action 은 dropzone 안 click upload 패턴이라 별도
+            Action layer 없음. */}
+        <ControlBoard className="shrink-0">
+          <ControlBoard.StatsRow>
+            <ControlBoard.StatTile
+              label="처리한 시간"
+              value={formatDuration(totalDurationSec) || '0m'}
+            />
+            <ControlBoard.StatTile
               label="전사록 평균 시간"
               value={avgDurationSec ? formatDuration(avgDurationSec) : '—'}
             />
-            <StatTile label="라이브러리" value={`${doneJobs.length}건`} />
-          </div>
+            <ControlBoard.StatTile
+              label="라이브러리"
+              value={`${doneJobs.length}건`}
+            />
+          </ControlBoard.StatsRow>
+        </ControlBoard>
 
           {/* 중간 영역 — 드롭존 + 업로드 진행 + 큐. flex-1 로 산출물을
               바닥으로 밀어내고, 내용이 길어지면 자체적으로 스크롤. */}
@@ -511,16 +522,6 @@ export function QuotesCardBody() {
         </ul>
       </Modal>
     </>
-  );
-}
-
-// stat 행의 단일 타일
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="px-5 py-3">
-      <div className="text-xs text-mute-soft">{label}</div>
-      <div className="mt-0.5 text-2xl font-medium text-ink">{value}</div>
-    </div>
   );
 }
 

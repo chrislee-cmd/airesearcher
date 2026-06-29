@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/components/canvas/shell/field';
 import { Banner } from '@/components/canvas/shell/banner';
+import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { PrimitivePage, Subsection } from './primitive-page';
 import {
@@ -742,6 +743,61 @@ function CanvasWidgetPrimitivesSection() {
               defaultValue="htmlFor 시 SectionLabel 대신 진짜 <label>"
             />
           </Field>
+        </div>
+      </Subsection>
+
+      <Subsection label="ControlBoard — 6 위젯 상단 main control 영역 SSOT (control-board.tsx)">
+        <div className="space-y-3">
+          <p className="text-md text-mute">
+            4-layer compound: <code className="font-mono text-ink-2">StatsRow</code> /{' '}
+            <code className="font-mono text-ink-2">SettingsRow</code> /{' '}
+            <code className="font-mono text-ink-2">Input</code> /{' '}
+            <code className="font-mono text-ink-2">Action</code>. 각 layer 는 모두
+            optional — 위젯 별 ordering 자유. 공통 padding{' '}
+            <code className="font-mono">px-5 py-4</code> + layer 간{' '}
+            <code className="font-mono">border-line-soft</code> separator.
+          </p>
+          <ControlBoard framed>
+            <ControlBoard.StatsRow>
+              <ControlBoard.StatTile label="처리한 시간" value="3h 42m" />
+              <ControlBoard.StatTile label="평균 시간" value="14m" />
+              <ControlBoard.StatTile label="라이브러리" value="6건" />
+            </ControlBoard.StatsRow>
+            <ControlBoard.SettingsRow>
+              <Field label="검색 지역">
+                <div className="flex flex-wrap gap-1.5">
+                  <Button size="xs" variant="primary">KR</Button>
+                  <Button size="xs" variant="ghost">US</Button>
+                  <Button size="xs" variant="ghost">JP</Button>
+                </div>
+              </Field>
+              <Field label="수집 기간">
+                <div className="flex flex-wrap gap-1.5">
+                  <Button size="xs" variant="primary">전체</Button>
+                  <Button size="xs" variant="ghost">1주</Button>
+                  <Button size="xs" variant="ghost">1개월</Button>
+                </div>
+              </Field>
+            </ControlBoard.SettingsRow>
+            <ControlBoard.Input>
+              <Field label="키워드">
+                <Input placeholder="예: 광고, 재구매, 가격" />
+              </Field>
+            </ControlBoard.Input>
+            <ControlBoard.Action>
+              <span className="text-sm tabular-nums text-mute-soft">
+                3개 키워드 · 25 크레딧
+              </span>
+              <ChromeButton variant="primary" size="lg">
+                검색
+              </ChromeButton>
+            </ControlBoard.Action>
+          </ControlBoard>
+          <p className="text-sm text-mute-soft">
+            적용 위젯: Desk / Recruiting / Quotes / Probing / Translate. 위젯 별
+            element 종류는 자유 — outer layout 만 통일. Field / SectionLabel /
+            Banner 와 함께 사용.
+          </p>
         </div>
       </Subsection>
 
