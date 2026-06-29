@@ -28,6 +28,7 @@ import {
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import type { WidgetContent } from '@/components/canvas/widget-types';
+import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
 const GRID_COLS = 3;
@@ -128,6 +129,7 @@ function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
 
 export function CanvasBoard({
   widgets,
+  initialFocus,
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
@@ -499,6 +501,102 @@ export function CanvasBoard({
     setHoverCell(null);
   }, []);
 
+  // ── focus (Navigator click / ?focus= query / 자동 갱신) ─────────────
+  // focusedKey: 현재 시각적 중심에 있는 위젯 (Navigator highlight 용).
+  // wheel pan/zoom 시 자동 갱신 — 클릭이 아니라 단순 derived state.
+  const [focusedKey, setFocusedKey] = useState<string | null>(
+    initialFocus && widgetByKey[initialFocus] ? initialFocus : null,
+  );
+
+  // 위젯 키 → 위젯이 surface 안에서 차지하는 center (x, y). pan/zoom 무관한
+  // 순수 좌표 — 자동 갱신과 click focus 양쪽에서 공유.
+  const widgetCenter = useCallback(
+    (key: string) => {
+      const pos = positions[key];
+      if (!pos) return null;
+      const span = spanOf(widgetByKey[key]);
+      return {
+        x:
+          pos.col * (CELL_W + GAP) +
+          (span.cols * CELL_W + (span.cols - 1) * GAP) / 2,
+        y:
+          pos.row * (CELL_H + GAP) +
+          (span.rows * CELL_H + (span.rows - 1) * GAP) / 2,
+      };
+    },
+    [positions, widgetByKey],
+  );
+
+  // 클릭 jump — target pan 계산 + zoom 1.0 으로 reset.
+  // 좌표계: surface 는 flex 로 컨테이너 가로 중앙에 배치되고 transformOrigin
+  // 은 'center top'. 따라서 widget 중심을 컨테이너 중심으로 끌어오는 pan 은
+  //   pan.x = (SURFACE_W/2 - widgetX) * targetZoom
+  //   pan.y = containerHeight/2 - SURFACE_PT - widgetY * targetZoom
+  // (transformOrigin 미적용 시 식이 다른 함정 — §7 의 transformOrigin 함정).
+  const focusWidget = useCallback(
+    (key: string) => {
+      const center = widgetCenter(key);
+      const container = containerRef.current;
+      if (!center || !container) return;
+      const targetZoom = 1.0;
+      const rect = container.getBoundingClientRect();
+      const SURFACE_PT = 32; // pt-8 = 32px (surface 컨테이너의 top offset)
+      const targetPan = {
+        x: (SURFACE_W / 2 - center.x) * targetZoom,
+        y: rect.height / 2 - SURFACE_PT - center.y * targetZoom,
+      };
+      setZoom(targetZoom);
+      setPan(targetPan);
+      setFocusedKey(key);
+    },
+    [widgetCenter],
+  );
+
+  // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
+  // localStorage 좌표 hydration effect 가 positions 를 update 한 뒤에 정확한
+  // 좌표로 jump 하도록 positions/focusWidget 를 deps 에 포함하고 ref 로 latch.
+  const didInitialFocusRef = useRef(false);
+  useEffect(() => {
+    if (didInitialFocusRef.current) return;
+    if (!initialFocus) {
+      didInitialFocusRef.current = true;
+      return;
+    }
+    if (!widgetByKey[initialFocus] || !positions[initialFocus]) return;
+    didInitialFocusRef.current = true;
+    const id = requestAnimationFrame(() => focusWidget(initialFocus));
+    return () => cancelAnimationFrame(id);
+  }, [initialFocus, widgetByKey, positions, focusWidget]);
+
+  // 자동 갱신 — pan/zoom 가 바뀔 때마다 컨테이너 중심에 가장 가까운 위젯을
+  // focusedKey 로 설정. 사용자가 wheel pan/zoom 으로 다른 위젯에 가면
+  // Navigator highlight 가 따라옴.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const SURFACE_PT = 32;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    let bestKey: string | null = null;
+    let bestDist = Infinity;
+    widgets.forEach((w) => {
+      const c = widgetCenter(w.key);
+      if (!c) return;
+      // widget 의 화면상 중심 좌표 (transformOrigin: 'center top' 보정)
+      const sx = centerX + (c.x - SURFACE_W / 2) * zoom + pan.x;
+      const sy = SURFACE_PT + c.y * zoom + pan.y;
+      const dist = Math.hypot(sx - centerX, sy - centerY);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestKey = w.key;
+      }
+    });
+    if (bestKey && bestKey !== focusedKey) {
+      setFocusedKey(bestKey);
+    }
+  }, [pan, zoom, widgets, widgetCenter, focusedKey]);
+
   // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
   // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker
   // 가 발생 (PR #391 회귀). 대신 useEffect 로 document.head 에 <style> 을
@@ -532,6 +630,11 @@ export function CanvasBoard({
       {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
           않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
           중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
+      <WidgetNavigator
+        widgets={widgets}
+        focusedKey={focusedKey}
+        onFocus={focusWidget}
+      />
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
           data-canvas-surface

@@ -623,6 +623,13 @@
     "paymentCancelled": "결제가 취소되었습니다.",
     "errorServiceUnavailable": "결제 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."
   },
+  "Canvas": {
+    "navigator": {
+      "title": "위젯",
+      "expand": "위젯 목록 펼치기",
+      "collapse": "위젯 목록 접기"
+    }
+  },
   "Desk": {
     "keywordLabel": "키워드",
     "keywordPlaceholder": "키워드 입력 후 Enter",
