@@ -634,8 +634,20 @@ function ExpandedBody() {
         // partial parse 단계는 schema 미준수가 가능하므로 untyped 로 받아 직접 정규화.
         const obj = (parsed.value ?? null) as Record<string, unknown> | null;
         if (obj && typeof obj === 'object') {
-          const next: ProbingReflectionData = {};
-          let anyFilled = false;
+          // 섹션 단위 merge — 한번 채워진 패널이 다음 호출에서 LLM 이 그 섹션을
+          // 빈약하게 판정 (insufficient / empty summary / 빈 signals) 했다고
+          // 해서 placeholder 로 회귀시키지 않는다. 사용자가 보기에 패널이
+          // "채워졌다 → 다시 empty" 로 사라지는 건 정보 손실로 인지되기 때문.
+          // 룰:
+          //   - 새 섹션이 의미 있는 데이터 (summary 비어있지 않음 OR
+          //     signals 1개 이상) → 새 데이터로 교체 (변형 / confidence 변동
+          //     OK). 인터뷰 누적에 따라 가설이 정교화되는 자연 흐름.
+          //   - 새 섹션이 빈 데이터 → 이전 값 유지. 처음부터 없었다면
+          //     insufficient placeholder 로 표시되지만, 한번 채워진 칸은
+          //     덮어쓰지 않음.
+          const prev = reflectionRef.current;
+          const merged: ProbingReflectionData = { ...(prev ?? {}) };
+          let anyChange = false;
           for (const key of PROBING_PERSONA_SECTION_KEYS) {
             const sec = obj[key] as Record<string, unknown> | undefined;
             if (!sec || typeof sec !== 'object') continue;
@@ -659,13 +671,28 @@ function ExpandedBody() {
               confidenceRaw === 'low'
                 ? confidenceRaw
                 : 'insufficient';
-            next[key] = { summary, signals, confidence };
-            if (summary.trim().length > 0 || signals.length > 0) {
-              anyFilled = true;
+            const hasContent =
+              summary.trim().length > 0 || signals.length > 0;
+            if (hasContent) {
+              merged[key] = { summary, signals, confidence };
+              anyChange = true;
+            } else if (!merged[key]) {
+              // 첫 노출 — 아직 한번도 채워진 적 없는 섹션은 insufficient
+              // placeholder 로 표시 (그래야 그리드가 8 패널 모양을 유지).
+              merged[key] = { summary, signals, confidence };
+              anyChange = true;
             }
+            // else: 이전에 채워진 섹션을 빈 응답으로 덮어쓰지 않음.
           }
-          if (anyFilled) {
-            setReflection(next);
+          // 한 번도 reflection 이 없었던 첫 호출에서 모든 섹션이 빈 응답
+          // (LLM 이 transcript 부실로 전체 insufficient) 이면 anyChange 가
+          // true 이지만 merged 도 비어 있을 수 있다. UI 가 8 패널을 표시할
+          // 수 있도록 prev 가 null 이면 merged 를 그대로 set — 빈 placeholder
+          // 그리드라도 띄운다.
+          const hasAnyKey = (Object.keys(merged) as ProbingPersonaSectionKey[])
+            .some((k) => merged[k] !== undefined);
+          if (anyChange || (prev === null && hasAnyKey)) {
+            setReflection(merged);
             setReflectionLastUpdatedAt(Date.now());
             setReflectionStatus('ready');
             if (opts.triggerQuestionsOnSuccess) {

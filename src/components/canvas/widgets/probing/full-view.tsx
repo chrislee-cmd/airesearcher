@@ -9,13 +9,10 @@
    (probing-card.tsx ExpandedBody) 가 단일 소유. 모달 close 시 state
    유실 없음.
 
-   우측 세 번째 column 은 placeholder — "추가 기능 영역 (기획 중)".
-   후속 PR 에서 페르소나 그래프 / hypothesis tracker 등이 들어올
-   자리. border-dashed + amore-soft 안내문으로 의도된 빈자리임을
-   사용자에게 알린다.
-
-   lg 이하 width 에서는 1-column stack 으로 떨어진다 (성찰 → 질문 →
-   placeholder).
+   PR (probing-persona-panels): 페르소나 8 패널 그리드를 더 넓게 보여주기
+   위해 좌패널 (페르소나) 에 공간을 더 할당 — lg 이상에서 5:3 비율.
+   기존 3-column placeholder 컬럼은 제거 (사용자 요청: "응답자 페르소나
+   + probing 질문 두 패널만"). lg 이하 width 에서는 1-column stack.
    ──────────────────────────────────────────────────────────────────── */
 
 import { IconButton } from '@/components/ui/icon-button';
@@ -70,45 +67,18 @@ export function ProbingFullView({
         </IconButton>
       </div>
 
-      {/* 본문 — lg 이상 3-column, 미만 1-column stack. divide-x 로 세로
-          divider, gap 0 (각 pane 이 자기 padding 소유). 각 column 은
-          h-full + min-h-0 로 자기 영역만 스크롤 (widget scroll isolation
-          패턴 동일). */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-line-soft overflow-hidden lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+      {/* 본문 — lg 이상에서 페르소나 (5fr) / 질문 (3fr) 2-column. 페르소나
+          8 패널을 더 넓게 표시. 미만에서는 1-column stack (페르소나 → 질문).
+          각 column 은 h-full + min-h-0 로 자기 영역만 스크롤 (widget scroll
+          isolation 패턴 동일). */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-line-soft overflow-hidden lg:grid-cols-[5fr_3fr] lg:divide-x lg:divide-y-0">
         <div className="flex min-h-0 flex-col overflow-hidden">
           <ReflectionPane {...reflectionProps} />
         </div>
         <div className="flex min-h-0 flex-col overflow-hidden">
           <QuestionPane {...questionProps} />
         </div>
-        <div className="flex min-h-0 flex-col overflow-hidden bg-paper-soft px-6 py-5">
-          <PlaceholderColumn />
-        </div>
       </div>
     </div>
-  );
-}
-
-function PlaceholderColumn() {
-  return (
-    <section
-      className="flex h-full min-h-0 flex-col rounded-sm border-2 border-dashed border-line bg-paper px-6 py-6"
-      aria-label="추가 기능 영역 — 기획 중"
-    >
-      <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-        추가 기능 영역
-      </div>
-      <p className="mt-3 text-md leading-[1.7] text-mute">
-        추후 추가될 기능이 들어갈 자리입니다 (기획 중).
-      </p>
-      <ul className="mt-4 space-y-1.5 text-sm leading-[1.6] text-mute-soft">
-        <li>· (예시) 응답자 페르소나 그래프</li>
-        <li>· (예시) 인터뷰 진행률</li>
-        <li>· (예시) hypothesis tracker</li>
-      </ul>
-      <div className="mt-auto pt-4 text-xs text-mute-soft">
-        지금은 빈 영역입니다. 의견은 팀 채널로 알려주세요.
-      </div>
-    </section>
   );
 }
