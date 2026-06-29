@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
+import {
+  getAdminAccessToken,
+  getAdminEmail,
+  isAdminProxyConfigured,
+} from '@/lib/google-oauth-admin';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { getFormResponses } from '@/lib/google-forms';
 
@@ -28,12 +33,48 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: form } = await admin
+  // owner_email may be missing pre-migration. Try wide select then fall
+  // back so the link-sheet button stays functional through the deploy
+  // window where the new column hasn't propagated yet.
+  let form: { form_id: string; title: string | null; sheet_url: string | null } | null = null;
+  let ownerEmail: string | null = null;
+  const wide = await admin
     .from('recruiting_forms')
-    .select('form_id, title, sheet_url')
+    .select('form_id, title, sheet_url, owner_email')
     .eq('form_id', formId)
     .eq('user_id', user.id)
     .maybeSingle();
+  if (wide.data) {
+    form = {
+      form_id: wide.data.form_id,
+      title: wide.data.title ?? null,
+      sheet_url: wide.data.sheet_url ?? null,
+    };
+    ownerEmail =
+      (wide.data as { owner_email?: string | null }).owner_email ?? null;
+  } else if (wide.error) {
+    const code = wide.error.code;
+    const msg = wide.error.message ?? '';
+    const isMissingOwnerEmail =
+      code === '42703' ||
+      (code === 'PGRST204' && /owner_email/.test(msg));
+    if (!isMissingOwnerEmail) {
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
+    const narrow = await admin
+      .from('recruiting_forms')
+      .select('form_id, title, sheet_url')
+      .eq('form_id', formId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (narrow.data) {
+      form = {
+        form_id: narrow.data.form_id,
+        title: narrow.data.title ?? null,
+        sheet_url: narrow.data.sheet_url ?? null,
+      };
+    }
+  }
   if (!form) {
     return NextResponse.json({ error: 'not_owner' }, { status: 403 });
   }
@@ -42,25 +83,49 @@ export async function POST(
     return NextResponse.json({ sheetUrl: form.sheet_url });
   }
 
-  const { data: oauth } = await admin
-    .from('user_google_oauth')
-    .select('refresh_token, scope')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!oauth?.refresh_token) {
-    return NextResponse.json({ error: 'google_not_connected' }, { status: 412 });
-  }
-  if (!hasSheetsScope(oauth.scope)) {
-    return NextResponse.json({ error: 'reconsent_required' }, { status: 412 });
-  }
+  // Mirror the create endpoint's routing: admin-proxy forms get linked
+  // sheets in the admin Drive; legacy per-user publishes keep using
+  // the requesting user's OAuth token.
+  const adminEmail = getAdminEmail();
+  const useAdminToken =
+    isAdminProxyConfigured() &&
+    ownerEmail !== null &&
+    adminEmail !== null &&
+    ownerEmail === adminEmail;
 
   let accessToken: string;
-  try {
-    const { access_token } = await refreshAccessToken(oauth.refresh_token);
-    accessToken = access_token;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'refresh_failed';
-    return NextResponse.json({ error: msg }, { status: 502 });
+  if (useAdminToken) {
+    try {
+      accessToken = await getAdminAccessToken();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+  } else {
+    const { data: oauth } = await admin
+      .from('user_google_oauth')
+      .select('refresh_token, scope')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!oauth?.refresh_token) {
+      return NextResponse.json(
+        { error: 'google_not_connected' },
+        { status: 412 },
+      );
+    }
+    if (!hasSheetsScope(oauth.scope)) {
+      return NextResponse.json(
+        { error: 'reconsent_required' },
+        { status: 412 },
+      );
+    }
+    try {
+      const { access_token } = await refreshAccessToken(oauth.refresh_token);
+      accessToken = access_token;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
   }
 
   try {

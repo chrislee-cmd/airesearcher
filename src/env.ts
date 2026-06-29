@@ -86,6 +86,13 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
     GOOGLE_REDIRECT_URI: z.string().url().optional(),
 
+    // Admin proxy — every recruiting publish lands in this account's
+    // Drive instead of the requesting user's. Optional so local dev / PR
+    // previews without the env keep working through the legacy per-user
+    // OAuth path; production sets both keys to flip to proxy mode.
+    GOOGLE_ADMIN_REFRESH_TOKEN: z.string().min(20).optional(),
+    GOOGLE_ADMIN_EMAIL: z.string().email().optional(),
+
     LIVEKIT_API_KEY: z.string().min(8).optional(),
     LIVEKIT_API_SECRET: z.string().min(8).optional(),
     LIVEKIT_URL: z.string().url().optional(),
@@ -178,6 +185,8 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+    GOOGLE_ADMIN_REFRESH_TOKEN: process.env.GOOGLE_ADMIN_REFRESH_TOKEN,
+    GOOGLE_ADMIN_EMAIL: process.env.GOOGLE_ADMIN_EMAIL,
 
     LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY,
     LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,

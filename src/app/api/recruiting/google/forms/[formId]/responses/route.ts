@@ -5,6 +5,11 @@ import {
   refreshAccessToken,
   hasResponsesScope,
 } from '@/lib/google-oauth';
+import {
+  getAdminAccessToken,
+  getAdminEmail,
+  isAdminProxyConfigured,
+} from '@/lib/google-oauth-admin';
 import { getFormResponses } from '@/lib/google-forms';
 import {
   filterConsentedRows,
@@ -32,35 +37,94 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: ownership } = await admin
+  // Pull owner_email alongside ownership so we can decide between the
+  // admin token (forms published under chris.lee) and the requesting
+  // user's OAuth token (legacy per-user publishes). Both paths still
+  // enforce user_id ownership — admin proxy never lets one user see
+  // another user's recruit responses just because chris.lee technically
+  // owns every sheet.
+  // owner_email may not exist yet in older environments (schema-cache
+  // PGRST204). Try the wide select first; on a column-missing error,
+  // fall back to the legacy lookup so the page doesn't 500.
+  let ownerEmail: string | null = null;
+  let ownershipFound = false;
+  const wide = await admin
     .from('recruiting_forms')
-    .select('form_id')
+    .select('form_id, owner_email')
     .eq('form_id', formId)
     .eq('user_id', user.id)
     .maybeSingle();
-  if (!ownership) {
+  if (wide.data) {
+    ownershipFound = true;
+    ownerEmail =
+      (wide.data as { owner_email?: string | null }).owner_email ?? null;
+  } else if (wide.error) {
+    const code = wide.error.code;
+    const msg = wide.error.message ?? '';
+    const isMissingOwnerEmail =
+      code === '42703' ||
+      (code === 'PGRST204' && /owner_email/.test(msg));
+    if (!isMissingOwnerEmail) {
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
+    const narrow = await admin
+      .from('recruiting_forms')
+      .select('form_id')
+      .eq('form_id', formId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    ownershipFound = !!narrow.data;
+  }
+  if (!ownershipFound) {
     return NextResponse.json({ error: 'not_owner' }, { status: 403 });
   }
 
-  const { data: oauth } = await admin
-    .from('user_google_oauth')
-    .select('refresh_token,scope')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!oauth?.refresh_token) {
-    return NextResponse.json({ error: 'google_not_connected' }, { status: 412 });
-  }
-  if (!hasResponsesScope(oauth.scope)) {
-    return NextResponse.json({ error: 'reconsent_required' }, { status: 412 });
-  }
+  // owner_email is the routing key: when it matches the configured
+  // admin email we know the form lives in the admin Drive, so we must
+  // fetch with the admin token (the user has no OAuth row at all in
+  // admin-proxy mode). Older rows have owner_email=null and were
+  // published by the requesting user's own OAuth — fall back to the
+  // per-user token so legacy responses keep loading.
+  const adminEmail = getAdminEmail();
+  const useAdminToken =
+    isAdminProxyConfigured() &&
+    ownerEmail !== null &&
+    adminEmail !== null &&
+    ownerEmail === adminEmail;
 
   let accessToken: string;
-  try {
-    const { access_token } = await refreshAccessToken(oauth.refresh_token);
-    accessToken = access_token;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'refresh_failed';
-    return NextResponse.json({ error: msg }, { status: 502 });
+  if (useAdminToken) {
+    try {
+      accessToken = await getAdminAccessToken();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+  } else {
+    const { data: oauth } = await admin
+      .from('user_google_oauth')
+      .select('refresh_token,scope')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!oauth?.refresh_token) {
+      return NextResponse.json(
+        { error: 'google_not_connected' },
+        { status: 412 },
+      );
+    }
+    if (!hasResponsesScope(oauth.scope)) {
+      return NextResponse.json(
+        { error: 'reconsent_required' },
+        { status: 412 },
+      );
+    }
+    try {
+      const { access_token } = await refreshAccessToken(oauth.refresh_token);
+      accessToken = access_token;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'refresh_failed';
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
   }
 
   try {
