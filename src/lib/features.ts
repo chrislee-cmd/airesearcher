@@ -62,11 +62,15 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // video is priced dynamically by duration (2 credits per started 10min);
   // the value here is the minimum charge surfaced in sidebar / cost pills.
   { key: 'video', href: '/video', cost: 2 },
-  // AI 동시통역. Lump 50 credits (₩100k) covers the first 10 minutes; each
+  // AI 동시통역. Lump 75 credits (₩150k) covers the first 10 minutes; each
   // additional 10-minute window adds 10 credits (₩20k). Sidebar shows the
   // lump as the headline number; the per-10-minute surcharge lives in the
   // locale `Features.translate.cost` string.
-  { key: 'translate', href: '/live', cost: 50 },
+  //
+  // 75 = 통역 시작(50) + 녹음 저장·다운로드(25) 통합 단일가. 저장은 항상 ON
+  // (체크박스 제거) 이고 다운로드는 무료라, 옛 다운로드 잠금해제 +25 를 시작
+  // 비용에 흡수했다 (PR translate-row-layout-default-save).
+  { key: 'translate', href: '/live', cost: 75 },
   // probing — canvas widget (no dedicated page route). cost 25 is the
   // *per-hour* unit price (₩50,000/hr); the session start charges one
   // lump (25 = first hour), then a client heartbeat charges 25 every

@@ -543,7 +543,7 @@
     "translate": {
       "title": "AI 동시통역",
       "description": "마이크로 말한 내용을 OpenAI Realtime이 실시간으로 통역합니다. 공유 링크를 만들어 외부 청취자에게도 자막과 오디오를 그대로 전달합니다.",
-      "cost": "시작 시 50크레딧, 이후 10분당 10크레딧"
+      "cost": "시작 시 75크레딧 (오디오·전사록 저장 + 다운로드 포함), 이후 10분당 10크레딧"
     },
     "probing": {
       "title": "프로빙 어시스턴트",
@@ -775,7 +775,6 @@
       "degradedHost": "진행자 캡처 일시 중단 —",
       "degradedGuest": "응답자 캡처 일시 중단 —"
     },
-    "recordEnabled": "오디오 + 전사록 저장 (다운로드 시 +25크레딧)",
     "monitorMute": {
       "muteAria": "번역 음성 끄기 (시청자에게는 그대로 전송됩니다)",
       "unmuteAria": "번역 음성 켜기"
@@ -796,13 +795,8 @@
     },
     "download": {
       "eyebrow": "세션 산출물",
-      "notAvailable": "이 세션에는 녹음이 없습니다. 시작 전에 \"오디오 + 전사록 저장\" 체크박스가 켜져 있어야 합니다.",
+      "notAvailable": "이 세션에는 녹음이 없습니다.",
       "preparing": "녹음을 마무리하고 있어요…",
-      "lockedTitle": "원문/통역 오디오 + 전사록 zip 다운로드 (.m4a · .m4a · .zip · .zip)",
-      "lockedHint": "한 번 결제하면 원문 오디오, 통역 오디오, 그리고 원문·통역본 전사록 zip(각각 .txt + .docx)을 모두 받을 수 있어요. 결제 시 {credits}크레딧이 차감됩니다.",
-      "unlock": "잠금 해제 ({credits}크레딧)",
-      "unlocking": "결제 중…",
-      "unlockedPill": "잠금 해제됨",
       "audioInput": "원문 오디오 (.m4a)",
       "audioOutput": "통역 오디오 (.m4a)",
       "zipInput": "원문 다운받기 (.zip)",
