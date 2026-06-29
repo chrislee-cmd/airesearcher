@@ -7,7 +7,19 @@
 
 import type { FC } from 'react';
 
-export type WidgetState = 'idle' | 'running' | 'done' | 'error';
+// Live state pushed by widget bodies through WidgetStateContext. `running`
+// optionally carries a 0-100 progress and a short uppercase label that the
+// header pill renders inline (e.g. "TRANSCRIBING 72%"). Realtime widgets
+// (no measurable progress) omit `progress` and the pill shows the label
+// alone. Frontend-only widgets never push state and stay at the initial
+// `idle` value derived from `content.state`.
+export type WidgetStateInfo =
+  | { kind: 'idle' }
+  | { kind: 'running'; progress?: number; label?: string }
+  | { kind: 'done' }
+  | { kind: 'error'; message?: string };
+
+export type WidgetState = WidgetStateInfo['kind'];
 
 export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
 

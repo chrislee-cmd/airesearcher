@@ -24,6 +24,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
+import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
@@ -315,8 +316,77 @@ export function QuotesCardBody() {
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const hasUploads = Object.keys(job.localUploads).length > 0;
-  // cardState / headerProgress / isRunning 은 widget-shell 의 헤더로 옮겨지면서
-  // body 안에서 미사용 — 후속 PR 에서 shell 로 live state 주입할 때 복구 검토.
+
+  // 헤더 pill 로 push 할 live state. 우선순위:
+  //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
+  //   2) 전사 잡 inflight (submitting/transcribing/queued) → 가장 최근
+  //      잡의 ETA 추정 진행률 + 라벨
+  //   3) 가장 최근 잡이 error → 'error'
+  //   4) 그 외 + done 잡 있음 → 'done'
+  //   5) 그 외 → 'idle'
+  const { setState } = useWidgetState();
+  const uploadValues = Object.values(job.localUploads);
+  const uploadingAvgPct =
+    uploadValues.length > 0
+      ? Math.round(
+          uploadValues.reduce((s, v) => s + v, 0) / uploadValues.length,
+        )
+      : null;
+  const inflightJob = queueJobs[0] ?? null;
+  const errorJob = job.jobs.find((j) => j.status === 'error') ?? null;
+  // 1초마다 강제 tick — ETA 가 시간 기반이라 잡이 그대로여도 헤더 진행률이
+  // 올라가야 한다. ProgressEstimate 와 동일 패턴 (별도 hook 으로 분리하면
+  // 의존성 늘어 복잡 — 같은 컴포넌트 안에서 두 번 사용도 안전).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!inflightJob) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [inflightJob]);
+  useEffect(() => {
+    if (uploadingAvgPct !== null) {
+      setState({
+        kind: 'running',
+        label: 'UPLOADING',
+        progress: uploadingAvgPct,
+      });
+      return;
+    }
+    if (inflightJob) {
+      const label =
+        inflightJob.status === 'queued'
+          ? 'QUEUED'
+          : inflightJob.status === 'submitting'
+            ? 'SUBMITTING'
+            : 'TRANSCRIBING';
+      const progress = estimateTranscribeProgress(
+        inflightJob.created_at,
+        inflightJob.size_bytes,
+        nowTick,
+      );
+      setState({ kind: 'running', label, progress });
+      return;
+    }
+    if (errorJob) {
+      setState({
+        kind: 'error',
+        message: errorJob.error_message ?? undefined,
+      });
+      return;
+    }
+    if (doneJobs.length > 0) {
+      setState({ kind: 'done' });
+      return;
+    }
+    setState({ kind: 'idle' });
+  }, [
+    setState,
+    uploadingAvgPct,
+    inflightJob,
+    errorJob,
+    doneJobs.length,
+    nowTick,
+  ]);
 
   // 처리한 시간 = done 잡들의 duration_seconds 합.
   // 전사록 평균 시간 = duration_seconds 평균 (오디오 길이 평균).
@@ -870,6 +940,22 @@ function JobPreview({
   );
 }
 
+// 헤더 pill 과 ProgressEstimate row 가 공유하는 ETA 계산. Deepgram async
+// API 가 progress 를 안 줘서 file-size 기반 heuristic — 1.5s / MB, 30s
+// floor, 30min ceiling. 95% 에서 cap 해서 webhook 도착 전에 100% 라고
+// 거짓말 안 함.
+function estimateTranscribeProgress(
+  startedAt: string,
+  sizeBytes: number | null,
+  nowMs: number,
+): number {
+  const startMs = new Date(startedAt).getTime();
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+  const sizeMb = sizeBytes ? sizeBytes / (1024 * 1024) : 0;
+  const etaSec = Math.max(30, Math.min(30 * 60, Math.round(sizeMb * 1.5)));
+  return Math.min(95, Math.round((elapsedSec / etaSec) * 100));
+}
+
 /**
  * Deepgram async API doesn't expose progress, so this is a heuristic ETA bar.
  * We show elapsed time honestly and a *推定* fill driven by file size, capped
@@ -893,13 +979,10 @@ function ProgressEstimate({
   const startMs = new Date(startedAt).getTime();
   const elapsedSec = Math.max(0, Math.floor((now - startMs) / 1000));
 
-  // ETA heuristic: ~1.5s per MB of source file. Floor at 30s, ceiling at 30min.
-  // Video files have much less audio per byte, so this overestimates a bit
-  // for video — fine, better than under-promising.
   const sizeMb = sizeBytes ? sizeBytes / (1024 * 1024) : 0;
   const etaSec = Math.max(30, Math.min(30 * 60, Math.round(sizeMb * 1.5)));
   const remainSec = Math.max(0, etaSec - elapsedSec);
-  const pct = Math.min(95, Math.round((elapsedSec / etaSec) * 100));
+  const pct = estimateTranscribeProgress(startedAt, sizeBytes, now);
 
   return (
     <div className="mt-2">

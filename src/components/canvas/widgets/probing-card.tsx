@@ -36,6 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import {
   GUIDE_MAX_CHARS,
   getStoredGuide,
@@ -281,6 +282,30 @@ function ExpandedBody() {
   }, [guide]);
 
   const isLive = sessionStatus === 'live';
+
+  // 헤더 pill 로 push 할 live state. progress 없는 realtime 위젯 — label 만.
+  //   starting → CONNECTING / live → LIVE / stopping → STOPPING
+  //   error → error (+ message) / idle → idle
+  const { setState: setWidgetState } = useWidgetState();
+  useEffect(() => {
+    if (sessionStatus === 'starting') {
+      setWidgetState({ kind: 'running', label: 'CONNECTING' });
+      return;
+    }
+    if (sessionStatus === 'live') {
+      setWidgetState({ kind: 'running', label: 'LIVE' });
+      return;
+    }
+    if (sessionStatus === 'stopping') {
+      setWidgetState({ kind: 'running', label: 'STOPPING' });
+      return;
+    }
+    if (sessionStatus === 'error') {
+      setWidgetState({ kind: 'error', message: sessionError ?? undefined });
+      return;
+    }
+    setWidgetState({ kind: 'idle' });
+  }, [setWidgetState, sessionStatus, sessionError]);
 
   // 좌패널 — Reflection state. 위젯 in-memory only.
   const [reflection, setReflection] = useState<ProbingReflectionData | null>(null);
