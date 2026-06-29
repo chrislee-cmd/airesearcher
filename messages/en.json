@@ -623,6 +623,13 @@
     "paymentCancelled": "Payment was cancelled.",
     "errorServiceUnavailable": "Payment service is temporarily unavailable. Please try again later."
   },
+  "Canvas": {
+    "navigator": {
+      "title": "Widgets",
+      "expand": "Expand widget list",
+      "collapse": "Collapse widget list"
+    }
+  },
   "Desk": {
     "keywordLabel": "Keywords",
     "keywordPlaceholder": "Type a keyword and press Enter",
