@@ -2,7 +2,10 @@
    probing-types — probing-card 가 현재 제안 세트의 모양을 표기하는 타입.
    ──────────────────────────────────────────────────────────────────── */
 
-import type { ProbingTechnique } from '@/lib/probing-prompts';
+import type {
+  ProbingTechnique,
+  ProbingThinkImportance,
+} from '@/lib/probing-prompts';
 
 // 표시용 단일 질문. server schema 와 모양이 같지만 partial 스트림 동안에는
 // technique 이 invalid string 일 수 있으므로 string 으로 완화.
@@ -40,4 +43,50 @@ export type ProbingQuestionRow = {
   why: string;
   guide_reference?: string | null;
   is_core: boolean;
+};
+
+/* ────────────────────────────────────────────────────────────────────
+   PR (probing-question-thinking-flow) — 우패널 4-layer 신규 타입.
+   ──────────────────────────────────────────────────────────────────── */
+
+// A. 입력 패널이 다루는 사용자 입력. 영속화 row 와 1:1.
+export type ResearchContext = {
+  research_goal: string;
+  hypotheses: string[];
+  key_research_question: string;
+};
+
+// B. AI 사고 흐름 라인 — `THINK: ...` 의 본문.
+export type ThinkingEvent = {
+  id: string;
+  // ms epoch 도착 시각.
+  at: number;
+  text: string;
+};
+
+// C. popup queue 의 개별 항목. EMIT 의 JSON payload 와 1:1 + 표시용 메타.
+//
+// importance 는 신호 강도 visual cue 의 분기점. high → 빨강 + 두꺼운 그림자,
+// medium → 표준, low → 톤 다운. 자세한 매핑은 question-popup.tsx 에.
+//
+// dismissed_reason — popup → history 로 옮길 때 같이 기록. 'pin' / 'auto'
+// (15s timeout) / 'manual' (✕) / 'replaced' (다중 emit 큐) / 'esc'. UI 가
+// history 안에서 미세 표시 (현재는 사용 안 함 — 향후 확장 여지).
+export type PopupQuestion = {
+  id: string;
+  text: string;
+  technique: ProbingTechnique | string;
+  rationale: string;
+  importance: ProbingThinkImportance;
+  // ms epoch — emit 도착 시각 (popup 표시 시작).
+  emitted_at: number;
+};
+
+// D. history row — popup 이 사라진 뒤 누적되는 항목. popup 의 메타에 핀 /
+// dismiss 정보가 추가됨.
+export type HistoryQuestion = PopupQuestion & {
+  is_starred: boolean;
+  dismissed_reason: 'pin' | 'auto' | 'manual' | 'replaced' | 'esc';
+  // ms epoch — history 로 들어온 시각.
+  dismissed_at: number;
 };

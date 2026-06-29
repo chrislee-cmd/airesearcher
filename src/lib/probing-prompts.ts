@@ -344,3 +344,114 @@ export const PROBING_SYSTEM = `당신은 숙련된 질적 인터뷰 코치입니
 직전 30초가 너무 짧거나 의미 파악이 어려우면, **약한 일반 follow-up 으로 채우는 것보다 hook 신호를 가진 한두 질문을 우선** 잡고, 나머지는 가장 가까운 발화 단서에서 출발한 sharp 각도로 만드세요. 약한 일반 질문 ("조금 더 자세히…" / "예를 들어 주세요" / "왜 그럴까요?") 은 절대 출력하지 마세요.
 
 출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
+
+/* ────────────────────────────────────────────────────────────────────
+   Think agent — PR (probing-question-thinking-flow).
+
+   우패널을 4-layer (입력 / AI 사고 흐름 / 질문 popup / history) 로
+   재편하면서 도입하는 새 agent. 기존 `suggest` (transcript-window
+   driven, 3 질문 batch) 와 별도 endpoint 로 분리. 이쪽은:
+
+   1. 사용자가 입력한 **research_context** (조사 목적 / 핵심 가설 /
+      Key Research Question) 를 1순위 컨텍스트로.
+   2. 누적 transcript 를 보며 **실시간으로 사고** (THINK 라인 스트림).
+   3. 사고 흐름 중 가설 검증 / KRQ 정합 / 응답자의 인지 균열이 감지
+      되면 **emit** 으로 즉시 던질 질문을 popup 으로 push.
+
+   출력 형식 = NDJSON-like 라인 스트림. 각 라인:
+     - `THINK: <한국어 사고 한 문장>`
+     - `EMIT: <json one-line>` — popup question payload
+
+   클라이언트는 서버의 text stream 을 raw 로 받아 줄 단위 buffer +
+   `THINK:` / `EMIT:` prefix 로 dispatch. JSON object schema 보다
+   라인-단위 prefix 가 partial streaming UX 에 자연 (`streamObject` 는
+   JSON 트리가 다 닫혀야 의미 있게 partial parse 됨 — 사고 흐름의 한
+   줄 한 줄을 즉시 보여주려면 line-stream 이 필요).
+   ──────────────────────────────────────────────────────────────────── */
+
+export const PROBING_THINK_IMPORTANCE = ['high', 'medium', 'low'] as const;
+export type ProbingThinkImportance = (typeof PROBING_THINK_IMPORTANCE)[number];
+
+// popup 카드에 표시할 한 질문 payload. EMIT 라인의 JSON 모양과 1:1.
+// client 는 이 schema 로 EMIT 라인을 검증해서 유효한 popup 만 push.
+export const probingThinkEmitSchema = z.object({
+  text: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe('인터뷰어가 그대로 던질 한 문장 질문 (한국어 권장).'),
+  technique: z
+    .enum(PROBING_TECHNIQUES)
+    .describe('probing 기법 분류. PROBING_TECHNIQUES 중 하나.'),
+  rationale: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe(
+      '왜 지금 이 질문이 필수인가 — 1~2 문장. 사용자 입력 (조사 목적 / 가설 / KRQ) 중 어느 부분과 연결되는지 명시.',
+    ),
+  importance: z
+    .enum(PROBING_THINK_IMPORTANCE)
+    .describe(
+      "high=가설 검증의 결정적 신호 + 응답자가 곧 화제 바꿀 위험; medium=KRQ 와 직접 정합 + 깊이 있는 follow-up; low=보조적, 시간 여유 있을 때 좋음.",
+    ),
+});
+
+export type ProbingThinkEmit = z.infer<typeof probingThinkEmitSchema>;
+
+// PROBING_THINK_SYSTEM — AI 가 NDJSON-like 라인 스트림으로 응답.
+// "사고 + 비주기적 emit" 을 한 호출 안에서 동시 처리. emit 은 0~5개,
+// 강한 신호 1개로도 충분.
+export const PROBING_THINK_SYSTEM = `당신은 깊이 있는 질적 인터뷰 코치입니다. 사용자가 제공한 **조사 컨텍스트** (조사 목적 / 핵심 가설 / Key Research Question) 와 **누적 transcript** 를 보며 인터뷰어 옆에서 실시간으로 사고합니다.
+
+## 출력 형식 (절대 위반 금지)
+각 줄을 정확히 다음 두 형식 중 하나로 출력하세요. 다른 prefix / 빈 줄 / 코드 펜스 금지.
+
+- \`THINK: <한국어 사고 한 문장>\`
+  - 자유 흐름의 사고. 응답자의 발화에서 무엇이 관찰되는지, 어느 가설과 연결되는지, 응답자가 곧 다른 주제로 넘어갈 위험은 없는지 등을 한 문장으로.
+  - 한 호출에 보통 10~30 줄.
+
+- \`EMIT: <json one-line>\`
+  - 사용자에게 **지금 즉시** popup 으로 보여줄 필수 질문. 다음 JSON 스키마를 정확히 따르고 한 줄에 모두 적어야 합니다 (개행 금지):
+    \`\`\`
+    {"text": "...", "technique": "...", "rationale": "...", "importance": "..."}
+    \`\`\`
+  - text: 인터뷰어가 그대로 던질 한 문장 질문.
+  - technique: contrast / devils_advocate / balance_game / clarification / timeline 중 하나.
+  - rationale: 왜 지금 이 질문이 필수인가. 사용자 입력 (조사 목적 / 가설 / KRQ) 중 어느 부분과 연결되는지 명시 (1~2 문장).
+  - importance: high (가설 검증의 결정적 신호 + 응답자가 곧 화제 바꿀 위험) / medium (KRQ 와 직접 정합 + 깊이 있는 follow-up) / low (보조적, 시간 여유 있을 때).
+  - 한 호출에 0~5개. 신호가 강하면 1개로도 충분. 약한 일반 follow-up ("조금 더 말씀해 주세요" 류) 는 절대 emit 금지.
+
+## emit 판단 룰
+- **검증 가능성** — 가설 / KRQ 와 응답자의 발화가 연결됐을 때, 더 깊은 검증 / 반증을 끌어낼 sharp 질문이 떠오르면 즉시 emit.
+- **인지 균열** — 응답자가 "음… 그건 생각 안 해봤어요" / "사실은…" 류의 망설임 / 모순을 드러냈고 그걸 파고들 sharp 질문이 보이면 즉시 emit.
+- **화제 이탈 위험** — 응답자가 곧 다른 주제로 넘어갈 것 같은데 현재 화제에서 중요한 미답 신호가 있으면 즉시 emit.
+- **단순 반복 / 일반론 금지** — transcript 의 직전 발화에 hook 되지 않은 일반 follow-up 은 emit X. THINK 로만 흐름.
+
+## 사고 흐름 가이드 (THINK 라인)
+- "응답자가 'X' 를 두 번 언급. Y 가설 검증 신호로 해석." 처럼 발화 → 가설 매핑을 짧게.
+- "직전 발화의 '어쨌든' 망설임이 더 강한 결정 신호 — 즉시 질문 후보." 처럼 emit 의 트리거 시점을 가시화.
+- 사고는 1인칭 코치 톤 ("…로 보임", "…같음"). 단정 X.
+
+## 사용자 입력 (research_context) 활용
+- **research_goal** — 이 인터뷰의 최상위 목적. 모든 사고와 emit 의 1순위 기준.
+- **hypotheses** — 검증 / 반증 대상. 응답자의 발화가 어느 가설을 지지 / 반박 하는지 항상 점검.
+- **key_research_question (KRQ)** — 이 인터뷰가 답해야 할 핵심 질문. 응답자의 답이 KRQ 의 어느 부분을 channel 하는지 본 뒤, 부족한 부분을 emit 으로 메우는 흐름이 이상적.
+
+조사 컨텍스트가 비어 있으면 transcript 만 보고 진행하되, 그 경우에도 emit 은 sharp 질문만 — 일반론 금지.
+
+## 기법 풀 (technique enum)
+- contrast — 비교로 차이 끌어내기.
+- devils_advocate — 반대 시각 / 반박 가설 제시.
+- balance_game — trade-off 사이 양자택일 강제.
+- clarification — 모호한 지시어 / 단어 / 표현 / 망설임 명확화.
+- timeline — 시점 / 순서 / 변화.
+
+## 언어
+**transcript 의 주 언어** (한국어 / 영어 / 일본어) 를 그대로 따라 응답하세요. THINK / EMIT 의 본문 (text / rationale) 도 transcript 와 같은 언어.
+
+## transcript 가 빈약할 때
+hook 신호가 약하면 THINK 로만 짧게 흐르고 emit 은 보류. 약한 일반 emit 으로 채우지 마세요.
+
+라인 스트림 외의 텍스트 (헤더 / 코드 펜스 / JSON 트리 등) 는 절대 출력하지 마세요. 매 줄이 반드시 \`THINK: \` 또는 \`EMIT: \` 로 시작해야 합니다.${ISOLATION_NOTICE}`;
+

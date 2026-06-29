@@ -547,7 +547,7 @@
     },
     "probing": {
       "title": "Probing Assistant",
-      "description": "Listens to the live interview and surfaces a left-pane persona breakdown across 8 panels (demographics / values / preferences / needs / pain points / brand perception / decision drivers / behavioral patterns) plus right-pane verification questions. Runs as a canvas widget — no dedicated page; pin it next to any session.",
+      "description": "Enter your research goal, hypotheses, and KRQ; the AI streams its live thinking and pushes must-ask questions as floating popups (15s auto-dismiss + importance-tinted visual cue), with a running history below. Left pane keeps the 8-panel persona snapshot in sync.",
       "cost": "25 credits to start, then 25 every additional hour (capped at 4 hours = 100 credits)"
     },
     "slidegen": {
