@@ -26,10 +26,17 @@ import {
   useRealtimeTranscription,
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
+import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
+import { triggerBlobDownload } from '@/lib/export/download';
+import {
+  generatePersonaDocx,
+  buildPersonaFilename,
+  collectTranscriptQuotes,
+} from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -281,6 +288,13 @@ function ExpandedBody() {
 
   const [activePopup, setActivePopup] = useState<PopupQuestion | null>(null);
   const [history, setHistory] = useState<HistoryQuestion[]>([]);
+
+  // ─── 페르소나 export — 세션 시작 시점 추적 + confirm modal + busy flag ───
+  // sessionStartedAt: 라이브 진입 시 한 번 set, 종료 시 docx 메타 (인터뷰 일시 /
+  // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
+  const sessionStartedAtRef = useRef<Date | null>(null);
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
   // 만 옮긴다. dismissed_reason 으로 origin 분류.
@@ -556,6 +570,7 @@ function ExpandedBody() {
   useEffect(() => {
     const prev = prevLiveRef.current;
     if (!prev && isLive) {
+      sessionStartedAtRef.current = new Date();
       setReflection(null);
       setReflectionStatus('idle');
       setReflectionLastUpdatedAt(null);
@@ -641,6 +656,90 @@ function ExpandedBody() {
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
+
+  // ─── 페르소나 export ──────────────────────────────────────────────
+  // 진입 정책: 라이브 중이면 confirm modal 띄움 (종료 + 내보내기 = 비가역).
+  // 비라이브 (페르소나 분석만 남은 상태) 면 confirm 없이 즉시 docx 생성.
+  const hasPersonaContent = reflection !== null || history.length > 0;
+  const canExport = (isLive || hasPersonaContent) && !exporting;
+
+  const runExport = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      if (isLive) {
+        try {
+          await stopSession();
+        } catch {
+          // 정지 실패해도 export 자체는 진행 — 사용자 산출물 보존 우선.
+        }
+      }
+      const starred = history.filter((h) => h.is_starred);
+      const personaSnapshot = reflectionRef.current;
+      const quotes = collectTranscriptQuotes(personaSnapshot);
+      const endedAt = new Date();
+      const startedAt = sessionStartedAtRef.current;
+
+      const blob = await generatePersonaDocx({
+        persona: personaSnapshot,
+        starredQuestions: starred,
+        transcriptQuotes: quotes,
+        sessionMeta: {
+          startedAt,
+          endedAt,
+          researchGoal: contextRef.current.research_goal,
+          keyResearchQuestion: contextRef.current.key_research_question,
+        },
+      });
+      const filename = buildPersonaFilename({
+        persona: personaSnapshot,
+        endedAt,
+      });
+      triggerBlobDownload(blob, filename);
+
+      const hasAnyPanel =
+        personaSnapshot !== null &&
+        PROBING_PERSONA_SECTION_KEYS.some((k) => {
+          const s = personaSnapshot[k];
+          return (
+            !!s &&
+            ((typeof s.summary === 'string' && s.summary.trim().length > 0) ||
+              (Array.isArray(s.signals) && s.signals.length > 0))
+          );
+        });
+      if (!hasAnyPanel) {
+        toast.push(
+          '페르소나가 빈약한 상태로 내보냈어요 — 발화가 더 모이면 다시 시도해 보세요',
+          { tone: 'warn' },
+        );
+      } else {
+        toast.push('페르소나 docx 다운로드됨', { tone: 'info', ttlMs: 2200 });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'export_failed';
+      toast.push(`내보내기 실패 — ${msg}`, { tone: 'warn' });
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, history, isLive, stopSession, toast]);
+
+  const handleExportClick = useCallback(() => {
+    if (!canExport) return;
+    if (isLive) {
+      setExportConfirmOpen(true);
+      return;
+    }
+    void runExport();
+  }, [canExport, isLive, runExport]);
+
+  const handleExportConfirm = useCallback(() => {
+    setExportConfirmOpen(false);
+    void runExport();
+  }, [runExport]);
+
+  const handleExportCancel = useCallback(() => {
+    setExportConfirmOpen(false);
+  }, []);
 
   // 세션 에러 토스트.
   const lastSessionErrorRef = useRef<string | null>(null);
@@ -749,6 +848,22 @@ function ExpandedBody() {
               disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
             />
             <div className="ml-auto flex items-center gap-2">
+              {canExport && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleExportClick}
+                  loading={exporting}
+                  loadingLabel="내보내는 중…"
+                  title={
+                    isLive
+                      ? '인터뷰 종료 + 페르소나 docx 다운로드'
+                      : '페르소나 docx 다운로드'
+                  }
+                >
+                  {isLive ? '📥 종료 + 내보내기' : '📥 내보내기'}
+                </Button>
+              )}
               {isLive ? (
                 <ChromeButton
                   size="lg"
@@ -846,6 +961,48 @@ function ExpandedBody() {
             questionProps={questionPaneProps}
             onClose={handleCollapse}
           />
+        </Modal>
+      )}
+
+      {exportConfirmOpen && (
+        <Modal
+          open
+          onClose={handleExportCancel}
+          size="sm"
+          labelledBy="probing-export-confirm-title"
+        >
+          <div className="flex flex-col gap-4 p-6">
+            <h2
+              id="probing-export-confirm-title"
+              className="text-lg font-semibold tracking-[-0.01em] text-ink-2"
+            >
+              인터뷰를 종료하고 페르소나를 내보낼까요?
+            </h2>
+            <p className="text-sm leading-snug text-mute">
+              현재 세션을 정지하고, 지금까지 누적된 페르소나 8 패널과 ★ 핵심
+              질문, 인용된 transcript 발화를 docx 파일로 다운로드합니다. 정지
+              후에는 이 세션을 다시 이어 받을 수 없습니다.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleExportCancel}
+                disabled={exporting}
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleExportConfirm}
+                loading={exporting}
+                loadingLabel="내보내는 중…"
+              >
+                종료 + 내보내기
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </>
