@@ -10,10 +10,12 @@
 // 으로 SDP 교환만 수행. translate sessions/route 와 의도적으로 같은
 // shape — 다만 LiveKit / DB row 는 필요 없다 (위젯이 휘발성).
 
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { spendCredits } from '@/lib/credits';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -37,6 +39,26 @@ export async function POST() {
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
+  }
+
+  // Probing session id is server-generated; doubles as the `generation_id`
+  // for the start-lump credit charge so retries (network re-POST) collapse
+  // to a single billed start via the partial UNIQUE on
+  // credit_transactions(generation_id) WHERE reason='feature_use'. The
+  // heartbeat route derives subsequent tick generation_ids deterministically
+  // from this same session_id so a session never double-charges itself.
+  const sessionId = randomUUID();
+
+  // Charge the start lump *before* allocating the OpenAI client_secret.
+  // FEATURE_COSTS.probing = 5 — covers the first 10 minutes (one tick).
+  // On insufficient balance the OpenAI call is skipped entirely so the
+  // user doesn't pay for an OpenAI session they can't actually use.
+  const spend = await spendCredits(org.org_id, 'probing', sessionId);
+  if (!spend.ok) {
+    return NextResponse.json(
+      { error: spend.reason === 'insufficient' ? 'insufficient_credits' : 'forbidden' },
+      { status: 402 },
+    );
   }
 
   const transcriptionModel =
@@ -115,6 +137,7 @@ export async function POST() {
   }
 
   return NextResponse.json({
+    session_id: sessionId,
     model: transcriptionModel,
     client_secret: {
       value,

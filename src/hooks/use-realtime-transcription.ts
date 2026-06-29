@@ -101,6 +101,12 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const TAB_SILENCE_INTERVAL_MS = 3000;
 const TAB_SILENCE_DURATION_MS = 400;
 
+// 크레딧 차감 heartbeat — probing 세션 시작 시 lump 5 credit (첫 10분 포함),
+// 이후 10분마다 추가 5 credit. 서버는 tick_index ≤ 9 (= 100분 시점, 누적 50
+// credit = 2시간 cap) 까지만 받음. 사용자가 stop 안 누른 경우의 안전망.
+const HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000;
+const HEARTBEAT_MAX_TICK = 9;
+
 type OaiEvent = {
   type?: string;
   item_id?: string;
@@ -190,6 +196,15 @@ export function useRealtimeTranscription(opts?: {
   );
   // 10s connect watchdog.
   const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Server-issued probing session id — also the start-lump generation_id.
+  // Reused by the heartbeat ticker to derive subsequent tick generation_ids.
+  const sessionIdRef = useRef<string | null>(null);
+  // 10-min heartbeat ticker for incremental credit charges.
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Last successfully charged tick_index (0 = start lump). The ticker fires
+  // tick_index+1 each interval. Stops sending once we hit HEARTBEAT_MAX_TICK
+  // or the server returns 402 (insufficient credits).
+  const heartbeatTickRef = useRef<number>(0);
   // start() 중복 방지. setStatus('starting') 는 batched 라 같은 microtask
   // 안 두 번째 클릭은 closure 로 idle 을 본다 — ref 가 진짜 가드.
   const startInFlightRef = useRef(false);
@@ -208,6 +223,12 @@ export function useRealtimeTranscription(opts?: {
       clearTimeout(connectWatchdogRef.current);
       connectWatchdogRef.current = null;
     }
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+    sessionIdRef.current = null;
+    heartbeatTickRef.current = 0;
     if (tabSilenceTimerRef.current) {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
@@ -384,7 +405,10 @@ export function useRealtimeTranscription(opts?: {
         startInFlightRef.current = false;
       }, CONNECT_TIMEOUT_MS);
 
-      // 1) 서버 세션 — client_secret 발급
+      // 1) 서버 세션 — client_secret 발급 + start-lump credit 차감.
+      // 서버가 반환하는 session_id 는 (a) start-lump 차감의 generation_id
+      // 이자 (b) 10분 heartbeat 의 session 핸들. cleanup() 에서 ref 가
+      // 초기화되므로 여기서만 set.
       let clientSecret: string;
       try {
         const res = await fetch('/api/probing/sessions', {
@@ -393,13 +417,18 @@ export function useRealtimeTranscription(opts?: {
           body: JSON.stringify({}),
         });
         const json = (await res.json().catch(() => ({}))) as {
+          session_id?: string;
           client_secret?: { value?: string };
           error?: string;
         };
         if (!res.ok || !json.client_secret?.value) {
+          // 402 = insufficient_credits — 사용자 잔액 부족. 위젯이 별 paywall
+          // 토스트를 띄울 수 있게 명시적 error code 전달.
           throw new Error(json.error ?? `session_failed_${res.status}`);
         }
         clientSecret = json.client_secret.value;
+        sessionIdRef.current = json.session_id ?? null;
+        heartbeatTickRef.current = 0;
       } catch (e) {
         setError(e instanceof Error ? e.message : 'session_failed');
         setStatus('error');
@@ -538,6 +567,46 @@ export function useRealtimeTranscription(opts?: {
       }
       setStatus('live');
       startInFlightRef.current = false;
+
+      // 10분 heartbeat 시작 — start lump 가 이미 첫 10분을 커버하므로
+      // 첫 tick (index 1) 은 10분 후 발사. cleanup() 이 interval 을 해제.
+      // 서버가 402 (잔액 부족) 또는 cap 초과를 반환하면 자동 정지.
+      const sid = sessionIdRef.current;
+      if (sid && !heartbeatTimerRef.current) {
+        heartbeatTimerRef.current = setInterval(() => {
+          const nextTick = heartbeatTickRef.current + 1;
+          if (nextTick > HEARTBEAT_MAX_TICK) {
+            if (heartbeatTimerRef.current) {
+              clearInterval(heartbeatTimerRef.current);
+              heartbeatTimerRef.current = null;
+            }
+            return;
+          }
+          // Fire-and-forget; failure paths log but don't tear down the live
+          // session — UX choice is to keep transcription running while the
+          // user reads the paywall toast. Backend cap on tick_index ≥ 10
+          // guarantees we can't bleed past the 2-hour ceiling.
+          void fetch('/api/probing/sessions/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sid, tick_index: nextTick }),
+          })
+            .then(async (res) => {
+              if (res.ok) {
+                heartbeatTickRef.current = nextTick;
+              } else if (res.status === 402) {
+                console.warn('[probing] heartbeat insufficient_credits — stopping ticks');
+                if (heartbeatTimerRef.current) {
+                  clearInterval(heartbeatTimerRef.current);
+                  heartbeatTimerRef.current = null;
+                }
+              }
+            })
+            .catch((err) => {
+              console.warn('[probing] heartbeat network error', err);
+            });
+        }, HEARTBEAT_INTERVAL_MS);
+      }
     },
     [cleanup, handleOaiEvent, status],
   );

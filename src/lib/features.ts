@@ -14,6 +14,12 @@ export type FeatureKey =
   | 'affinity_bubble'
   | 'video'
   | 'translate'
+  // 프로빙 어시스턴트 — 인터뷰 진행 중 응답자 성찰 + 검증 질문 제안 위젯.
+  // 세션 lifecycle 기반 차감: 시작 lump 5 credit (첫 10분 포함) + 10분
+  // 단위 heartbeat 5 credit. 1 시간 = 25 credit (₩50,000). 2시간 = 50
+  // credit cap (server-side tick_index ≤ 9 강제). canvas widget 으로
+  // entry, 별도 페이지 라우트 없음 — href 는 canvas focus 쿼리.
+  | 'probing'
   // PPT 생성기 (SlideGen) — 보고서 텍스트를 도식 슬라이드 덱으로 변환. PR1 은
   // 결정론적 뼈대(`##` 헤딩 분할 + bullet_body 폴백)만. LLM 분류기 / 편집기 /
   // PptxGenJS export 는 후속 PR. PREVIEW 게이트로 super-admin 만 노출.
@@ -61,6 +67,13 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // lump as the headline number; the per-10-minute surcharge lives in the
   // locale `Features.translate.cost` string.
   { key: 'translate', href: '/live', cost: 50 },
+  // probing — canvas widget (no dedicated page route). cost 5 is the
+  // *per-10-minute* tick price; the session start charges one lump (5),
+  // then a client heartbeat charges 5 every 10 minutes up to a 9-tick
+  // cap (50 credit / 2 hour total). `cost` here is what the sidebar /
+  // cost pill / paywall use as the headline number; the per-hour total
+  // is conveyed via the locale `Features.probing.cost` string.
+  { key: 'probing', href: '/canvas?focus=probing', cost: 5 },
   // SlideGen — PR1 skeleton; cost is a placeholder until the LLM-backed
   // classifier/storyline PRs land. Free during PREVIEW (super-admin only).
   { key: 'slidegen', href: '/slidegen', cost: 0 },

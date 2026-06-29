@@ -1031,7 +1031,12 @@ export const probingCard: WidgetContent = {
   meta: {
     label: '프로빙 어시스턴트',
     accent: 'sky',
-    cost: 0,
+    // ledger cost — 1 tick (10분) 당 5 크레딧. 단일 숫자로 라이프사이클
+    // (시작 lump + 10분 추가) 을 표현 못 하므로 costLabel 로 헤더 1줄 표기
+    // override. 1시간 25 / 2시간 50 cap 상세는 /credits 페이지의
+    // Features.probing.cost 라벨이 책임.
+    cost: 5,
+    costLabel: '10분당 5 크레딧',
     thumbnail: '/thumbnail/probing.png',
     description:
       '좌측은 응답자에 대한 성찰, 우측은 그 성찰을 검증·심화하는 probing 질문을 자동 갱신합니다',

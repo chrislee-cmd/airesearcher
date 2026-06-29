@@ -242,6 +242,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "Video Analyzer",
     "translate": "Live Interpreter",
+    "probing": "Probing Assistant",
     "slidegen": "Slide Generator",
     "members": "Members",
     "organizations": "Organizations",
@@ -517,6 +518,11 @@
       "title": "Live Interpreter",
       "description": "OpenAI Realtime translates your microphone audio on the fly. Generate a share link so remote viewers see the live captions and pick the language they listen to.",
       "cost": "50 credits to start, then 10 credits per 10 minutes"
+    },
+    "probing": {
+      "title": "Probing Assistant",
+      "description": "Listens to the live interview and surfaces a left-pane reflection (respondent hypotheses) plus right-pane verification questions. Runs as a canvas widget — no dedicated page; you can pin it next to any session.",
+      "cost": "5 credits per 10 minutes (1 hour = 25 credits, capped at 2 hours = 50 credits)"
     },
     "slidegen": {
       "title": "Slide Generator",

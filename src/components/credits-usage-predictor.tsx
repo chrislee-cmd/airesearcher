@@ -30,13 +30,21 @@ const PREDICTOR_FEATURE_KEYS: FeatureKey[] = [
   'reports',
   'desk',
   'quotes',
+  'probing',
   'quant',
   'recruiting',
   'interviews',
 ];
+// Per-row display cost overrides. probing 의 ledger cost (FEATURE_COSTS.probing)
+// 는 10분 tick 단위 5 credit 이지만, predictor 슬라이더는 사용량 직관을 위해
+// "1 시간 세션" = 25 credit (= 5 ticks 한 번에 사용) 으로 보여준다. 다른 피처는
+// per-use cost 가 그대로 직관과 일치 → override 없음.
+const PREDICTOR_COST_OVERRIDES: Partial<Record<FeatureKey, number>> = {
+  probing: 25,
+};
 const PREDICTOR_FEATURES = PREDICTOR_FEATURE_KEYS.map((key) => ({
   key,
-  cost: FEATURE_COSTS[key],
+  cost: PREDICTOR_COST_OVERRIDES[key] ?? FEATURE_COSTS[key],
 })).sort((a, b) => b.cost - a.cost);
 
 // "Enterprise" is contact-sales (priceKrw=null) and bundle-size 5,000 dwarfs the
