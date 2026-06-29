@@ -11,18 +11,70 @@
    - collapsible: 헤더 클릭 → list 숨김 / 펼침
    - 현재 focus 표시: border-amore + amore-bg highlight
    - 키보드 단축키 1~9 — list 순서대로 jump (input/textarea 안에서는 무시)
+   - 각 row 우측에 위젯 상태 badge (running/done/error). idle 은 미표시.
+     running 일 때 progress 가 있으면 "%" 같이 표기 — body 의 PopStatePill
+     과 동일 정보, 위젯 카드 밖에서도 진행률 확인 가능.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { ACCENT_BG } from '@/components/canvas/shell/tokens';
+import { useWidgetStateOf } from '@/components/canvas/shell/widget-state-context';
 
 type Props = {
   widgets: WidgetContent[];
   focusedKey: string | null;
   onFocus: (key: string) => void;
 };
+
+// list row 우측에 상태/progress 표시. idle 이면 null (단축키 hint 만).
+// running: amore 점 + progress % 또는 "진행 중"
+// done: mint 톤 체크
+// error: warning 톤 느낌표 (message 가 있으면 tooltip)
+function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
+  const t = useTranslations('Canvas.navigator');
+  const state = useWidgetStateOf(widgetKey);
+  if (state.kind === 'idle') return null;
+  if (state.kind === 'running') {
+    const pct =
+      typeof state.progress === 'number'
+        ? `${Math.max(0, Math.min(100, Math.round(state.progress)))}%`
+        : t('stateRunning');
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-amore">
+        <span aria-hidden className="animate-pulse">
+          ●
+        </span>
+        {pct}
+      </span>
+    );
+  }
+  if (state.kind === 'done') {
+    return (
+      <span
+        aria-label={t('stateDone')}
+        className="inline-flex shrink-0 items-center text-xs font-bold"
+        style={{ color: 'var(--color-success)' }}
+      >
+        ✓
+      </span>
+    );
+  }
+  if (state.kind === 'error') {
+    return (
+      <span
+        aria-label={t('stateError')}
+        title={state.message ?? undefined}
+        className="inline-flex shrink-0 items-center text-xs font-bold"
+        style={{ color: 'var(--color-warning)' }}
+      >
+        !
+      </span>
+    );
+  }
+  return null;
+}
 
 export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
   const t = useTranslations('Canvas.navigator');
@@ -55,7 +107,7 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
     <div
       // z-fab — surface 위, modal/toast 아래. transform 안 받음 (canvas 의
       // 자체 컨테이너 좌표계).
-      className="absolute left-4 top-4 z-fab w-52 overflow-hidden border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm select-none"
+      className="absolute left-4 top-4 z-fab w-56 overflow-hidden border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm select-none"
       data-canvas-action
     >
       {/* eslint-disable-next-line react/forbid-elements -- full-width text-row collapse toggle; <Button> primitive enforces capsule/border-shadow chrome incompatible with the borderless header row. Same row-button pattern as src/components/ui/dropdown-menu.tsx. */}
@@ -78,7 +130,7 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
             const accentCls = ACCENT_BG[w.meta.accent];
             return (
               <li key={w.key}>
-                {/* eslint-disable-next-line react/forbid-elements -- menu-row item (dot + label + shortcut hint), identical pattern to src/components/ui/dropdown-menu.tsx; <Button> capsule chrome would break the list row read. */}
+                {/* eslint-disable-next-line react/forbid-elements -- menu-row item (dot + label + state badge + shortcut hint), identical pattern to src/components/ui/dropdown-menu.tsx; <Button> capsule chrome would break the list row read. */}
                 <button
                   type="button"
                   onClick={() => onFocus(w.key)}
@@ -97,9 +149,10 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
                       accentCls
                     }
                   />
-                  <span className="flex-1 truncate">{w.meta.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{w.meta.label}</span>
+                  <WidgetStateBadge widgetKey={w.key} />
                   {idx < 9 ? (
-                    <span className="text-mute text-xs tabular-nums">
+                    <span className="text-mute-soft text-xs tabular-nums">
                       {idx + 1}
                     </span>
                   ) : null}

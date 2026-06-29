@@ -27,6 +27,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
+import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { WidgetNavigator } from './widget-navigator';
 
@@ -40,7 +41,11 @@ const CELL_W = 816;
 const CELL_H = 950;
 const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2544
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
-const MIN_ZOOM = 0.4;
+// MIN_ZOOM 0.3 — fit-to-view (6 위젯 한눈) 가 작은 viewport (1440×900 +
+// 사이드바 280px → 본문 1160×800) 에서도 clamp 없이 안착하려면 0.3 까지
+// 허용해야 함. 이전 0.4 였으나 height 축에서 ~14% 잘렸음. 위젯 안 텍스트는
+// 0.3 에서도 줌-아웃 미니맵 톤으로 판독 가능.
+const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.03;
 // v1 좌표는 6×5 기준 — v2 bump 로 한 번 reset (디폴트 1·2행 3+3 배치).
@@ -568,6 +573,74 @@ export function CanvasBoard({
     return () => cancelAnimationFrame(id);
   }, [initialFocus, widgetByKey, positions, focusWidget]);
 
+  // ── fit-to-view default zoom ─────────────────────────────────────────
+  // 로그인 후 /canvas 진입 시 surface 부분만 보이던 zoom=1.0 default 를
+  // 위젯 bounding box 가 한 화면에 들어가는 scale 로 자동 조정. 한 mount =
+  // 한 번만 fire (ref latch). `?focus=` query 가 있으면 fit 생략 — 위 effect
+  // 의 focusWidget 가 pan/zoom 직접 세팅. localStorage 좌표 hydration 이
+  // setPositions 로 positions 를 갱신하면 rAF 콜백이 그 시점 positions 를
+  // 읽도록 effect 가 positions 변화에 재실행되지만 latch 로 단발 보장.
+  const didInitialFitRef = useRef(false);
+  useEffect(() => {
+    if (didInitialFitRef.current) return;
+    if (initialFocus) {
+      didInitialFitRef.current = true;
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+    const id = requestAnimationFrame(() => {
+      if (didInitialFitRef.current) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      // 현재 positions 의 widget bounding box. 6 위젯 3+3 default 면
+      // 0..2 col × 0..1 row = 2544 × 1948 (3행은 비어 있어 height 절약).
+      let minCol = GRID_COLS;
+      let maxCol = -1;
+      let minRow = GRID_ROWS;
+      let maxRow = -1;
+      widgets.forEach((w) => {
+        const pos = positions[w.key];
+        if (!pos) return;
+        const { cols, rows } = spanOf(w);
+        if (pos.col < minCol) minCol = pos.col;
+        if (pos.col + cols - 1 > maxCol) maxCol = pos.col + cols - 1;
+        if (pos.row < minRow) minRow = pos.row;
+        if (pos.row + rows - 1 > maxRow) maxRow = pos.row + rows - 1;
+      });
+      if (maxCol < 0 || maxRow < 0) return; // 위젯 0개 → skip
+
+      const colSpan = maxCol - minCol + 1;
+      const rowSpan = maxRow - minRow + 1;
+      const boxWidth = colSpan * CELL_W + (colSpan - 1) * GAP;
+      const boxHeight = rowSpan * CELL_H + (rowSpan - 1) * GAP;
+      const boxCenterX = minCol * (CELL_W + GAP) + boxWidth / 2;
+      const boxCenterY = minRow * (CELL_H + GAP) + boxHeight / 2;
+
+      const PADDING = 64; // 양옆/위아래 여백
+      const SURFACE_PT = 32; // pt-8 (surface 컨테이너 top offset)
+      const scaleX = (rect.width - PADDING * 2) / boxWidth;
+      const scaleY = (rect.height - PADDING * 2) / boxHeight;
+      const fitZoom = Math.max(
+        MIN_ZOOM,
+        Math.min(scaleX, scaleY, MAX_ZOOM),
+      );
+
+      // surface 는 flex 로 컨테이너 가로 중앙 배치 + transformOrigin
+      // 'center top'. focusWidget 와 동일 좌표식 — bounding box 중심을
+      // 컨테이너 중심으로 끌어옴.
+      const targetPan = {
+        x: (SURFACE_W / 2 - boxCenterX) * fitZoom,
+        y: rect.height / 2 - SURFACE_PT - boxCenterY * fitZoom,
+      };
+      setZoom(fitZoom);
+      setPan(targetPan);
+      didInitialFitRef.current = true;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [initialFocus, widgets, positions]);
+
   // 자동 갱신 — pan/zoom 가 바뀔 때마다 컨테이너 중심에 가장 가까운 위젯을
   // focusedKey 로 설정. 사용자가 wheel pan/zoom 으로 다른 위젯에 가면
   // Navigator highlight 가 따라옴.
@@ -618,6 +691,7 @@ export function CanvasBoard({
   }, [isPanning, isSpaceHeld]);
 
   return (
+    <WidgetStatesMapProvider>
     <div
       ref={containerRef}
       data-canvas
@@ -740,5 +814,6 @@ export function CanvasBoard({
         </div>
       </div>
     </div>
+    </WidgetStatesMapProvider>
   );
 }
