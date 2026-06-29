@@ -121,6 +121,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     new Map(),
   );
 
+  // Auth health gate for the background poll. Set true the moment any
+  // /api/workspace/* fetch returns 401 (session expired, cookie cleared,
+  // RLS denied). The polling loop honors it as a hard stop so we don't
+  // fan-out hundreds of failing requests into the console — the original
+  // symptom this hotfix targets. Cleared on the first successful refresh
+  // after the user re-authenticates (caught via visibility refocus, since
+  // we kick a single recovery probe there even when stopped).
+  const stopPollingRef = useRef(false);
+  // Rate-limit the console.warn so a long-idle tab doesn't spam logs.
+  // Resets together with stopPollingRef on the next healthy response.
+  const warnedExpiredOnceRef = useRef(false);
+
   // Resolve scope → server query param.
   const { resolvedProjectId, resolvedKind, queryParam } = useMemo(() => {
     if (scope === 'all') {
@@ -163,6 +175,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           ? `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}&folder=${encodeURIComponent(folderQueryParam)}`
           : `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}`;
       const res = await fetch(url, { cache: 'no-store' });
+      if (res.status === 401) {
+        // Session expired / cookie cleared / RLS denied. Silently halt the
+        // background poll — without this guard `setInterval` keeps firing
+        // and we hit the API hundreds of times per minute (the bug this
+        // hotfix fixes). Recovery happens on the next visibilitychange
+        // probe after the user re-authenticates.
+        stopPollingRef.current = true;
+        if (!warnedExpiredOnceRef.current) {
+          console.warn(
+            '[workspace] session expired — polling stopped. Reload or sign in again to resume.',
+          );
+          warnedExpiredOnceRef.current = true;
+        }
+        setError('unauthorized');
+        return;
+      }
       if (!res.ok) {
         setError('list_failed');
         return;
@@ -170,6 +198,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const json = await res.json();
       const list = (json.artifacts ?? []) as WorkspaceArtifact[];
       setArtifacts(list);
+      // Healthy response — clear the stop flag so polling resumes after
+      // a successful re-auth probe, and re-arm the one-shot warning so a
+      // future expiry still surfaces in the console.
+      stopPollingRef.current = false;
+      warnedExpiredOnceRef.current = false;
     } catch {
       setError('network_error');
     } finally {
@@ -244,8 +277,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let id: number | undefined;
     const start = () => {
-      if (id !== undefined) return;
+      // Don't (re)start the interval if a 401 already silenced us — we
+      // rely on visibilitychange to probe once and resume on success.
+      if (id !== undefined || stopPollingRef.current) return;
       id = window.setInterval(() => {
+        // Double-check: a fetch that started before the stop flag flipped
+        // could still set it. Drop the timer the moment we notice.
+        if (stopPollingRef.current) {
+          stop();
+          return;
+        }
         void refreshRef.current();
       }, POLL_INTERVAL_MS);
     };
@@ -256,8 +297,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     };
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void refreshRef.current();
-        start();
+        // Always send one probe on focus. If we're in the stopped state
+        // and the user has re-authenticated since, refresh() will see a
+        // 200, clear stopPollingRef, and start() will arm the interval.
+        // If still 401, the stop flag survives and start() bails out.
+        void refreshRef.current().finally(() => start());
       } else {
         stop();
       }
