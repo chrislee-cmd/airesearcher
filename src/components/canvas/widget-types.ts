@@ -13,9 +13,20 @@ import type { FC } from 'react';
 // (no measurable progress) omit `progress` and the pill shows the label
 // alone. Frontend-only widgets never push state and stay at the initial
 // `idle` value derived from `content.state`.
+//
+// `progress` is the *per-phase* number that the widget's own header pill
+// renders (e.g. crawl 47/240 → 19% inside the crawling phase). `overallProgress`
+// is the optional *cumulative* number (0~100 across all phases) that the
+// Canvas Navigator shows next to the widget row. Producers fill both when
+// they can map phases to a global timeline (see `src/lib/widget-progress.ts`).
 export type WidgetStateInfo =
   | { kind: 'idle' }
-  | { kind: 'running'; progress?: number; label?: string }
+  | {
+      kind: 'running';
+      progress?: number;
+      label?: string;
+      overallProgress?: number;
+    }
   | { kind: 'done' }
   | { kind: 'error'; message?: string };
 
