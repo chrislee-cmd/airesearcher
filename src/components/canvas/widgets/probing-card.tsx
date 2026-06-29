@@ -3,13 +3,14 @@
 /* ────────────────────────────────────────────────────────────────────
    프로빙 어시스턴트 — canvas widget.
 
-   PR (probing-two-pane-reflection): 단일 30s/3q 에이전트를 **좌(성찰) +
-   우(질문) 두 에이전트** 로 분리.
-   - 좌패널 (ReflectionPane): 누적 transcript 를 읽고 응답자에 대한 세
-     섹션 가설 (respondent / needs_painpoints / motivation) 을 출력.
+   PR (probing-persona-panels): 좌패널을 **페르소나 한판 8 패널** 그리드로
+   재편. 좌(페르소나) / 우(질문) 2-에이전트 분리는 그대로.
+   - 좌패널 (ReflectionPane): 누적 transcript 를 읽고 응답자의 페르소나
+     8 패널 (demographics / values / preferences / needs / painpoints /
+     brand_perception / decision_drivers / behavioral_patterns) 을 생성.
      transcript 변경 5초 debounce + 누적 60자 이상에서 자동 호출.
-   - 우패널 (QuestionPane): 좌패널 성찰을 컨텍스트로 검증·심화 질문 제안.
-     좌 reflection 완료 시 자동 1회 trigger + 사용자 "지금 제안" 수동.
+   - 우패널 (QuestionPane): 좌패널 페르소나를 컨텍스트로 검증·심화 질문 제안.
+     좌 페르소나 완료 시 자동 1회 trigger + 사용자 "지금 제안" 수동.
 
    기존 30s/3q 자동 타이머, paused 토글, "자동 정지" 버튼은 폐기. 호출
    주기가 transcript-driven (debounce) 으로 변경되며 사용자 노이즈가
@@ -60,6 +61,11 @@ import {
 } from './probing/reflection-pane';
 import { QuestionPane } from './probing/question-pane';
 import { ProbingFullView } from './probing/full-view';
+import {
+  PROBING_PERSONA_SECTION_KEYS,
+  type ProbingPersonaSection,
+  type ProbingPersonaSectionKey,
+} from '@/lib/probing-prompts';
 
 // transcript window — 우패널 (suggest) 가 받는 최근 발화 윈도우. 좌패널
 // reflection 은 누적 전체 (cap 만 적용).
@@ -99,21 +105,44 @@ function segmentsText(segments: TranscriptionSegment[]): string {
     .join('\n');
 }
 
-// 좌패널 reflection 텍스트 → 우패널 prompt 에 넣을 합본. 빈 섹션은 skip.
+// 좌패널 페르소나 → 우패널 prompt 에 넣을 합본. confidence=insufficient 또는
+// summary/signals 둘 다 비어 있는 섹션은 skip. 우패널 (질문 agent) 가 받는
+// 컨텍스트는 가능한 한 짧게 유지해 token 소비 ↓.
+const PERSONA_PROMPT_LABELS: Record<
+  ProbingPersonaSectionKey,
+  string
+> = {
+  demographics: '데모그래픽',
+  values: '가치관',
+  preferences: '선호',
+  needs: '니즈',
+  painpoints: '페인포인트',
+  brand_perception: '브랜드 인식',
+  decision_drivers: '의사결정 요인',
+  behavioral_patterns: '행동 패턴',
+};
+
 function reflectionToPromptContext(
   data: ProbingReflectionData | null,
 ): string {
   if (!data) return '';
   const blocks: string[] = [];
-  const push = (title: string, body: string) => {
-    const trimmed = body?.trim();
-    if (trimmed && trimmed !== '단서 부족') {
-      blocks.push(`### ${title}\n${trimmed}`);
-    }
-  };
-  push('응답자 (지금까지의 단서)', data.respondent);
-  push('니즈 / 페인포인트', data.needs_painpoints);
-  push('응답 동기 / 사고 흐름', data.motivation);
+  (Object.keys(PERSONA_PROMPT_LABELS) as ProbingPersonaSectionKey[]).forEach(
+    (key) => {
+      const section = data[key];
+      if (!section) return;
+      if (section.confidence === 'insufficient') return;
+      const summary = section.summary?.trim() ?? '';
+      const signals = (section.signals ?? [])
+        .map((s) => s?.bullet?.trim())
+        .filter((b): b is string => !!b && b.length > 0);
+      if (!summary && signals.length === 0) return;
+      const lines: string[] = [`### ${PERSONA_PROMPT_LABELS[key]}`];
+      if (summary) lines.push(summary);
+      signals.forEach((b) => lines.push(`- ${b}`));
+      blocks.push(lines.join('\n'));
+    },
+  );
   return blocks.join('\n\n');
 }
 
@@ -602,41 +631,59 @@ function ExpandedBody() {
           buffer += decoder.decode(value, { stream: true });
         }
         const parsed = await parsePartialJson(buffer);
-        const obj = parsed.value as
-          | {
-              respondent?: string;
-              needs_painpoints?: string;
-              motivation?: string;
+        // partial parse 단계는 schema 미준수가 가능하므로 untyped 로 받아 직접 정규화.
+        const obj = (parsed.value ?? null) as Record<string, unknown> | null;
+        if (obj && typeof obj === 'object') {
+          const next: ProbingReflectionData = {};
+          let anyFilled = false;
+          for (const key of PROBING_PERSONA_SECTION_KEYS) {
+            const sec = obj[key] as Record<string, unknown> | undefined;
+            if (!sec || typeof sec !== 'object') continue;
+            const summary =
+              typeof sec.summary === 'string' ? sec.summary : '';
+            const signalsRaw = Array.isArray(sec.signals) ? sec.signals : [];
+            const signals = signalsRaw
+              .filter(
+                (s): s is Record<string, unknown> =>
+                  !!s && typeof s === 'object',
+              )
+              .map((s) => ({
+                bullet: typeof s.bullet === 'string' ? s.bullet : '',
+                quote: typeof s.quote === 'string' ? s.quote : undefined,
+              }))
+              .filter((s) => s.bullet.trim().length > 0);
+            const confidenceRaw = sec.confidence;
+            const confidence: ProbingPersonaSection['confidence'] =
+              confidenceRaw === 'high' ||
+              confidenceRaw === 'medium' ||
+              confidenceRaw === 'low'
+                ? confidenceRaw
+                : 'insufficient';
+            next[key] = { summary, signals, confidence };
+            if (summary.trim().length > 0 || signals.length > 0) {
+              anyFilled = true;
             }
-          | null;
-        if (
-          obj &&
-          (obj.respondent || obj.needs_painpoints || obj.motivation)
-        ) {
-          const next: ProbingReflectionData = {
-            respondent: typeof obj.respondent === 'string' ? obj.respondent : '',
-            needs_painpoints:
-              typeof obj.needs_painpoints === 'string' ? obj.needs_painpoints : '',
-            motivation: typeof obj.motivation === 'string' ? obj.motivation : '',
-          };
-          setReflection(next);
-          setReflectionLastUpdatedAt(Date.now());
-          setReflectionStatus('ready');
-          if (opts.triggerQuestionsOnSuccess) {
-            // 좌 갱신 → 우 자동 trigger (1회). reflection ref 가 위에서 set
-            // 됐으므로 다음 tick 에 runSuggest 가 최신 reflection 을 본다.
-            queueMicrotask(() => {
-              void runSuggestRef.current();
-            });
           }
-          return;
+          if (anyFilled) {
+            setReflection(next);
+            setReflectionLastUpdatedAt(Date.now());
+            setReflectionStatus('ready');
+            if (opts.triggerQuestionsOnSuccess) {
+              // 좌 갱신 → 우 자동 trigger (1회). reflection ref 가 위에서 set
+              // 됐으므로 다음 tick 에 runSuggest 가 최신 reflection 을 본다.
+              queueMicrotask(() => {
+                void runSuggestRef.current();
+              });
+            }
+            return;
+          }
         }
         throw new Error('empty_reflection');
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'reflection_failed';
         setReflectionError(msg);
         setReflectionStatus('error');
-        toast.push('성찰 생성 실패 — 잠시 후 다시 시도해 주세요', {
+        toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
           tone: 'warn',
         });
       } finally {
@@ -881,7 +928,7 @@ function ExpandedBody() {
     if (sessionStatus === 'stopping') return '세션 종료 중…';
     if (sessionStatus === 'error') return '세션 오류';
     if (!isLive) return '세션 대기';
-    if (reflectionStatus === 'streaming') return '응답자 성찰 갱신 중…';
+    if (reflectionStatus === 'streaming') return '응답자 페르소나 갱신 중…';
     if (suggestStreaming) return '질문 제안 생성 중…';
     return '대기 중';
   })();
@@ -1133,7 +1180,7 @@ export const probingCard: WidgetContent = {
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
     description:
-      '좌측은 응답자에 대한 성찰, 우측은 그 성찰을 검증·심화하는 probing 질문을 자동 갱신합니다',
+      '좌측은 응답자 페르소나 8 패널 (데모/가치관/선호/니즈/페인포인트/브랜드 인식/의사결정/행동), 우측은 그 페르소나를 검증·심화하는 probing 질문을 자동 갱신합니다',
     expandedCols: 3,
   },
   state: 'idle',

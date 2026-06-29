@@ -1,24 +1,50 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   ReflectionPane — probing 위젯 좌패널 (PR: probing-two-pane-reflection).
+   ReflectionPane — probing 위젯 좌패널 (PR: probing-persona-panels).
 
-   누적 transcript 를 보고 응답자에 대한 세 섹션 (respondent /
-   needs_painpoints / motivation) 의 markdown bullet 텍스트를 표시.
-   생성 / 갱신 트리거 / 데이터는 부모 (probing-card.tsx) 가 소유 — 이
+   초기 PR (probing-two-pane-reflection) 의 3 섹션 markdown bullet 표시
+   를 **페르소나 한판 8 패널 그리드** 로 재편. 각 패널 = PersonaPanel
+   primitive. transcript 가 빈약한 섹션은 confidence='insufficient' 의
+   placeholder 톤으로 의도된 빈 칸임을 시각화.
+
+   생성 / 갱신 트리거 / 데이터는 부모 (probing-card.tsx) 가 소유. 이
    컴포넌트는 순수 표시 + "지금 갱신" 액션만 노출.
    ──────────────────────────────────────────────────────────────────── */
 
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import type {
+  ProbingPersona,
+  ProbingPersonaSection,
+  ProbingPersonaSectionKey,
+} from '@/lib/probing-prompts';
+import { PersonaPanel } from './persona-panel';
 
-export type ProbingReflectionData = {
-  respondent: string;
-  needs_painpoints: string;
-  motivation: string;
-};
+// 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
+export type ProbingReflectionData = Partial<ProbingPersona>;
 
 export type ReflectionStatus = 'idle' | 'streaming' | 'ready' | 'error';
+
+type PanelConfig = {
+  key: ProbingPersonaSectionKey;
+  icon: string;
+  title: string;
+};
+
+// 그리드 순서 — 사용자 인지 흐름 (정체성 → 가치관 → 선호 → 욕구 → 행동) 에
+// 맞춰 demographics 부터 시작하고 behavioral_patterns 로 마무리. 8 패널이라
+// 2×4 (lg) / 1×8 (좁을 때) 자동 wrap.
+const PANELS: PanelConfig[] = [
+  { key: 'demographics', icon: '👤', title: '데모그래픽' },
+  { key: 'values', icon: '🌱', title: '가치관' },
+  { key: 'preferences', icon: '💎', title: '선호' },
+  { key: 'needs', icon: '🎯', title: '니즈' },
+  { key: 'painpoints', icon: '⚠️', title: '페인포인트' },
+  { key: 'brand_perception', icon: '🏷️', title: '브랜드 인식' },
+  { key: 'decision_drivers', icon: '🧭', title: '의사결정 요인' },
+  { key: 'behavioral_patterns', icon: '🔁', title: '행동 패턴' },
+];
 
 const memphisPlaceholderStyle = {
   border: '2px solid var(--canvas-card-border)',
@@ -35,16 +61,14 @@ function formatRelativeKo(epochMs: number | null, nowMs: number): string {
   return `${Math.floor(diff / 86_400_000)}일 전 갱신`;
 }
 
-function Section({ title, body }: { title: string; body: string }) {
-  const trimmed = body.trim();
-  return (
-    <section className="flex flex-col gap-1.5">
-      <SectionLabel>{title}</SectionLabel>
-      <div className="whitespace-pre-wrap text-md leading-[1.6] text-ink-2">
-        {trimmed.length > 0 ? trimmed : '단서 부족'}
-      </div>
-    </section>
-  );
+function sectionOrNull(
+  data: ProbingReflectionData | null,
+  key: ProbingPersonaSectionKey,
+): ProbingPersonaSection | null {
+  if (!data) return null;
+  const v = data[key];
+  if (!v || typeof v !== 'object') return null;
+  return v as ProbingPersonaSection;
 }
 
 export function ReflectionPane({
@@ -74,11 +98,15 @@ export function ReflectionPane({
       ? '갱신 중…'
       : stamp || (status === 'error' ? '갱신 실패' : '대기 중');
 
+  // data 가 있으면 그리드 표시. partial 스트림 동안에는 일부 섹션이 아직 빈
+  // 객체일 수 있는데 sectionOrNull 가 그 경우 insufficient placeholder 로 떨군다.
+  const hasAnyPanelData = data !== null;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <SectionLabel>응답자 성찰</SectionLabel>
+          <SectionLabel>응답자 페르소나</SectionLabel>
           <span className="text-xs text-mute-soft">· {headerLabel}</span>
         </div>
         <Button
@@ -95,39 +123,44 @@ export function ReflectionPane({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        {data ? (
-          <div className="flex flex-col gap-4">
-            <Section title="응답자 (지금까지의 단서)" body={data.respondent} />
-            <Section title="니즈 / 페인포인트" body={data.needs_painpoints} />
-            <Section title="응답 동기 / 사고 흐름" body={data.motivation} />
+        {hasAnyPanelData ? (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {PANELS.map((p) => (
+              <PersonaPanel
+                key={p.key}
+                icon={p.icon}
+                title={p.title}
+                section={sectionOrNull(data, p.key)}
+              />
+            ))}
           </div>
         ) : status === 'streaming' ? (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            응답자 성찰 생성 중…
+            페르소나 분석 생성 중…
           </div>
         ) : !isLive ? (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            세션을 시작하면 발화에서 응답자에 대한 가설이 정리됩니다.
+            세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
           </div>
         ) : !hasTranscript ? (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            transcript 가 들어오면 첫 성찰이 표시됩니다.
+            transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
           </div>
         ) : (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            발화가 더 모이면 자동으로 성찰이 갱신됩니다.
+            발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
             <br />
             &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
           </div>
@@ -142,7 +175,7 @@ export function ReflectionPane({
               boxShadow: '2px 2px 0 var(--color-warning)',
             }}
           >
-            성찰 생성 실패: {error}
+            페르소나 생성 실패: {error}
           </div>
         )}
       </div>
