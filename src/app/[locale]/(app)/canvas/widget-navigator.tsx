@@ -55,7 +55,7 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
     <div
       // z-fab — surface 위, modal/toast 아래. transform 안 받음 (canvas 의
       // 자체 컨테이너 좌표계).
-      className="absolute left-4 top-4 z-fab w-52 border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm select-none"
+      className="absolute left-4 top-4 z-fab w-52 overflow-hidden border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm select-none"
       data-canvas-action
     >
       {/* eslint-disable-next-line react/forbid-elements -- full-width text-row collapse toggle; <Button> primitive enforces capsule/border-shadow chrome incompatible with the borderless header row. Same row-button pattern as src/components/ui/dropdown-menu.tsx. */}
