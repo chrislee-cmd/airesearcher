@@ -5,9 +5,12 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { FeatureKey } from '@/lib/features';
+import { FEATURE_COSTS } from '@/lib/features';
+import { useCreditDeduction } from '@/components/credit-deduction-provider';
 
 // A lightweight client-side job tracker for feature generators that talk
 // to one-shot APIs (POST → wait → JSON). Lives at the layout level so an
@@ -84,6 +87,13 @@ export function GenerationJobProvider({
   const [jobs, setJobs] = useState<Partial<Record<FeatureKey, GenerationJob>>>(
     {},
   );
+  // 차감 broadcast — start() 가 성공으로 resolve 될 때 한 번 자동 emit.
+  // 서버 응답이 deducted/balance 를 돌려주지 않는 endpoint 도 카탈로그
+  // cost 로 fly-up 을 띄울 수 있게 한다. 응답 body 형식 통일 후엔 그 값으로
+  // override 가능 (별 spec).
+  const { notify } = useCreditDeduction();
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
 
   const get = useCallback<Ctx['get']>(
     (key) => jobs[key] ?? IDLE,
@@ -133,6 +143,14 @@ export function GenerationJobProvider({
           },
         };
       });
+      // 성공 차감 신호 — 위젯 헤더 fly-up + topbar pulse 트리거.
+      // amount 는 카탈로그 cost (FEATURE_COSTS) — 동적 가격 feature 는
+      // 호출처에서 별도 notify(feature, actualAmount) 로 정확 amount 를
+      // 다시 emit 할 수 있음.
+      const flat = FEATURE_COSTS[key];
+      if (typeof flat === 'number' && flat > 0) {
+        notifyRef.current(key, flat);
+      }
       return result;
     } catch (e) {
       setJobs((prev) => {

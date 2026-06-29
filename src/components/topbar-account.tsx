@@ -9,6 +9,7 @@ import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider'
 import { track } from '@/components/mixpanel-provider';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
+import { useCreditDeductionEvent } from '@/components/credit-deduction-provider';
 
 type Props = {
   email: string | null;
@@ -39,6 +40,65 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
+
+  // 차감 시 잔액 optimistic count-down + pulse.
+  // 서버 prop `credits` 는 layout 가 SSR 로 한 번 주는 초기값. 차감 신호가
+  // 오면 client state 가 새 값을 그리고, 다음 navigation/refresh 에서
+  // 서버가 다시 동기화된다. displayCredits = clientCredits ?? credits.
+  const [clientCredits, setClientCredits] = useState<number | null>(null);
+  const [pulseTick, setPulseTick] = useState(0);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isUnlimited = !!status?.isUnlimited;
+
+  useCreditDeductionEvent((event) => {
+    // unlimited / trial 사용자는 실제 잔액이 줄지 않으므로 카운트 다운 생략.
+    if (isUnlimited) return;
+    const base = clientCredits ?? credits ?? 0;
+    const target =
+      typeof event.balance === 'number' ? event.balance : Math.max(0, base - event.amount);
+    setPulseTick((t) => t + 1);
+
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    // 0.5s 동안 base → target 으로 카운트 다운 (12 frame). |delta| 가 작으면
+    // 한 step 으로 끝나도록 round-up.
+    const STEPS = 12;
+    const start = base;
+    const delta = target - start;
+    if (delta === 0) {
+      setClientCredits(target);
+      return;
+    }
+    let i = 0;
+    countdownRef.current = setInterval(() => {
+      i += 1;
+      if (i >= STEPS) {
+        setClientCredits(target);
+        if (countdownRef.current) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+        }
+        return;
+      }
+      setClientCredits(Math.round(start + (delta * i) / STEPS));
+    }, 40);
+  });
+
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  // 서버 prop 이 새로 들어오면 (라우트 전환으로 layout re-render) 클라이언트
+  // optimistic 값은 무효 — server truth 로 재정렬. React 19 권장 render-phase
+  // 동기화 패턴 (Effect 안의 setState 가 cascading render 를 만드는 것을 회피).
+  const [prevServerCredits, setPrevServerCredits] = useState(credits);
+  if (credits !== prevServerCredits) {
+    setPrevServerCredits(credits);
+    setClientCredits(null);
+  }
+
+  const displayCredits = clientCredits ?? credits;
 
   function changeLocale(next: 'ko' | 'en') {
     if (next === locale) return;
@@ -118,7 +178,7 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
                 remaining: formatTrialRemaining(status.trialEndsAt),
               })}
             </div>
-          ) : credits !== null ? (
+          ) : displayCredits !== null ? (
             <div
               className="truncate text-xs-soft tabular-nums"
               style={{
@@ -127,7 +187,12 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
                 color: 'var(--sidebar-border)',
               }}
             >
-              {tCommon('creditsRemaining', { count: credits })}
+              <span
+                key={pulseTick}
+                className={pulseTick > 0 ? 'credit-balance-pulse' : undefined}
+              >
+                {tCommon('creditsRemaining', { count: displayCredits })}
+              </span>
             </div>
           ) : null}
         </div>

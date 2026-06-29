@@ -15,15 +15,23 @@
    - 헤더 영역 = drag handle (parent 가 dragHandleProps wire).
    ──────────────────────────────────────────────────────────────────── */
 
-import type {
-  DragEvent as ReactDragEvent,
-  MouseEvent as ReactMouseEvent,
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { WidgetContent, WidgetState } from '../widget-types';
 import {
   WidgetHeaderColorPicker,
   useWidgetHeaderColor,
 } from './widget-header-color';
+import {
+  useCreditDeductionEvent,
+  type CreditDeductionEvent,
+} from '@/components/credit-deduction-provider';
+import type { FeatureKey } from '@/lib/features';
 
 export type DragHandleProps = {
   draggable: boolean;
@@ -59,6 +67,85 @@ function PopStatePill({ state }: { state: WidgetState }) {
       }}
     >
       {popStatePillLabel(state)}
+    </span>
+  );
+}
+
+// 헤더 좌측에 박는 cost 표시.
+// - cost === 0     → "무료" 소형 텍스트
+// - cost > 0       → 💎 + 숫자 Memphis pill (검정 border + offset shadow +
+//                    흰 bg) — 배너 노랑 / pastel 위에서도 또렷.
+// - costLabel 있음 → 그 문자열 그대로 (probing 처럼 lifecycle 차감 도구).
+function CostBadge({
+  cost,
+  costLabel,
+}: {
+  cost: number | undefined;
+  costLabel: string | undefined;
+}) {
+  if (costLabel) {
+    return (
+      <span className="text-xs font-bold uppercase opacity-80">{costLabel}</span>
+    );
+  }
+  if (typeof cost !== 'number') return null;
+  if (cost === 0) {
+    return <span className="text-xs font-bold uppercase opacity-80">무료</span>;
+  }
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-bold tabular-nums"
+      style={{
+        background: 'var(--canvas-card-bg)',
+        color: 'var(--canvas-card-border)',
+        border: '2px solid var(--canvas-card-border)',
+        borderRadius: 4,
+        boxShadow: '2px 2px 0 var(--canvas-card-border)',
+      }}
+      aria-label={`${cost} 크레딧`}
+    >
+      <span aria-hidden>💎</span>
+      <span>{cost}</span>
+    </span>
+  );
+}
+
+// 차감 신호 받으면 헤더 위쪽으로 -N 텍스트가 떠올라 사라진다.
+// CSS keyframe `creditFlyUp` 가 1.6s ease-out forwards — 끝나면 자동 unmount
+// 해야 다음 차감 때 다시 재생된다. event.tick 을 React key 로 써서 같은
+// 컴포넌트가 강제 remount → animation 재시작.
+function CostFlyUpOverlay({ featureKey }: { featureKey: string }) {
+  const [event, setEvent] = useState<CreditDeductionEvent | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useCreditDeductionEvent(
+    (e) => {
+      setEvent(e);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setEvent(null), 1800);
+    },
+    featureKey as FeatureKey,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  if (!event) return null;
+  return (
+    <span
+      key={event.tick}
+      aria-hidden
+      className="pointer-events-none absolute right-4 top-3 text-sm font-bold tabular-nums"
+      style={{
+        color: 'var(--color-warning)',
+        animation: 'creditFlyUp 1.6s ease-out forwards',
+        textShadow: '0 1px 0 rgba(255,255,255,0.7)',
+      }}
+    >
+      −{event.amount}
     </span>
   );
 }
@@ -103,16 +190,8 @@ export function WidgetShell({
           borderBottom: '3px solid var(--canvas-card-header-divider)',
         }}
       >
-        <div className="flex items-center gap-2 text-xs uppercase opacity-80">
-          <span>
-            {content.meta.costLabel
-              ? content.meta.costLabel
-              : typeof content.meta.cost === 'number'
-                ? content.meta.cost === 0
-                  ? '무료'
-                  : `${content.meta.cost} 크레딧`
-                : ''}
-          </span>
+        <div className="relative flex items-center gap-2 text-xs uppercase">
+          <CostBadge cost={content.meta.cost} costLabel={content.meta.costLabel} />
           <span className="ml-auto flex items-center gap-2">
             <WidgetHeaderColorPicker
               value={headerColor}
@@ -120,6 +199,7 @@ export function WidgetShell({
             />
             <PopStatePill state={content.state} />
           </span>
+          <CostFlyUpOverlay featureKey={content.key} />
         </div>
         <div
           className="truncate"

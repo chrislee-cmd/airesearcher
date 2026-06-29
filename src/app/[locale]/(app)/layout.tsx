@@ -12,6 +12,7 @@ import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
 import { WorkspacePanel } from '@/components/workspace-panel';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
+import { CreditDeductionProvider } from '@/components/credit-deduction-provider';
 import { ActiveProjectProvider } from '@/components/active-project-provider';
 import { VideoJobProvider } from '@/components/video-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
@@ -56,6 +57,7 @@ export default async function AppLayout({
   return (
     <PaywallProvider>
      <ToastProvider>
+     <CreditDeductionProvider>
      <VideoJobProvider>
      <InterviewJobProvider>
       <TranscriptJobProvider>
@@ -88,6 +90,7 @@ export default async function AppLayout({
       </TranscriptJobProvider>
      </InterviewJobProvider>
      </VideoJobProvider>
+     </CreditDeductionProvider>
      </ToastProvider>
     </PaywallProvider>
   );
