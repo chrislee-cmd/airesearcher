@@ -24,18 +24,16 @@ import {
   SurveyEditor,
   SurveyPreview,
 } from './views';
+import {
+  clearDraft,
+  loadDraft,
+  persistDraft,
+  settleStreamingPhase,
+  type EditableBrief,
+  type Phase,
+} from './draft-storage';
 
 type Criterion = RecruitingBrief['criteria'][number];
-
-type EditableBrief = {
-  summary: string;
-  criteria: Criterion[];
-  // Schedule is extracted server-side and forwarded to the survey-gen
-  // prompt for context, but it's intentionally not edited in the wizard.
-  schedule: RecruitingBrief['schedule'];
-};
-
-type Phase = 'idle' | 'generating' | 'review' | 'approved';
 type CardError = string | null;
 
 type GoogleStatus = {
@@ -65,20 +63,35 @@ export function RecruitingWizard() {
   const jobs = useGenerationJobs();
   const workspace = useWorkspace();
 
+  // ── Draft rehydration ───────────────────────────────────────────────
+  // Load any sessionStorage draft once on first render so each state
+  // slot below can seed from the same snapshot. Cleared in an effect
+  // below to keep this read single-use. See draft-storage.ts.
+  const [hydrationDraft] = useState(() => loadDraft());
+
   // ── Card 1: criteria ────────────────────────────────────────────────
   const [files, setFiles] = useState<File[]>([]);
-  const [pasted, setPasted] = useState('');
+  const [pasted, setPasted] = useState(() => hydrationDraft?.pasted ?? '');
   const [rejected, setRejected] = useState<string[]>([]);
-  const [criteriaPhase, setCriteriaPhase] = useState<Phase>('idle');
+  const [criteriaPhase, setCriteriaPhase] = useState<Phase>(() =>
+    hydrationDraft ? settleStreamingPhase(hydrationDraft.criteriaPhase) : 'idle',
+  );
   const [criteriaError, setCriteriaError] = useState<CardError>(null);
-  const [partialBrief, setPartialBrief] =
-    useState<Partial<RecruitingBrief> | null>(null);
-  const [editedBrief, setEditedBrief] = useState<EditableBrief | null>(null);
+  const [partialBrief, setPartialBrief] = useState<
+    Partial<RecruitingBrief> | null
+  >(() => hydrationDraft?.partialBrief ?? null);
+  const [editedBrief, setEditedBrief] = useState<EditableBrief | null>(
+    () => hydrationDraft?.editedBrief ?? null,
+  );
 
   // ── Card 2: survey ──────────────────────────────────────────────────
-  const [surveyPhase, setSurveyPhase] = useState<Phase>('idle');
+  const [surveyPhase, setSurveyPhase] = useState<Phase>(() =>
+    hydrationDraft ? settleStreamingPhase(hydrationDraft.surveyPhase) : 'idle',
+  );
   const [surveyError, setSurveyError] = useState<CardError>(null);
-  const [survey, setSurvey] = useState<Survey | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(
+    () => hydrationDraft?.survey ?? null,
+  );
 
   // ── Card 3: Google Form ─────────────────────────────────────────────
   const [google, setGoogle] = useState<GoogleStatus | null>(null);
@@ -131,6 +144,30 @@ export function RecruitingWizard() {
       cancelled = true;
     };
   }, []);
+
+  // Drop the persisted draft once its state has been seeded into the
+  // wizard above. Idempotent so React 19 strict-mode double-mount is a
+  // no-op on the second pass.
+  useEffect(() => {
+    if (hydrationDraft) clearDraft();
+    // hydrationDraft is read once on first render; intentionally
+    // omitted from deps so this fires exactly once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Snapshot the wizard before any OAuth-driven full-page navigation.
+  // Anything not serialisable (uploaded `File[]`) is intentionally
+  // omitted — the analysed brief is what matters for resuming work.
+  function captureDraft() {
+    persistDraft({
+      pasted,
+      partialBrief,
+      editedBrief,
+      survey,
+      criteriaPhase,
+      surveyPhase,
+    });
+  }
 
   // Once jobs() reports the extract is done, seed the editable brief.
   // We track the source result identity to avoid re-seeding after user
@@ -597,8 +634,13 @@ export function RecruitingWizard() {
             onPublish={() => requireAuth(() => void publishToGoogle())}
             onConnect={() => {
               if (typeof window !== 'undefined') {
+                captureDraft();
                 window.location.href = '/api/recruiting/google/start';
               }
+            }}
+            onReconnect={() => {
+              captureDraft();
+              void reconnectGoogle();
             }}
             onClearAuthError={() => setGoogleAuthError(null)}
           />
@@ -917,6 +959,7 @@ function FormPublishRow({
   publishError,
   onPublish,
   onConnect,
+  onReconnect,
   onClearAuthError,
 }: {
   google: GoogleStatus | null;
@@ -926,6 +969,7 @@ function FormPublishRow({
   publishError: string | null;
   onPublish: () => void;
   onConnect: () => void;
+  onReconnect: () => void;
   onClearAuthError: () => void;
 }) {
   const needsReauth = isReauthError(publishError);
@@ -993,7 +1037,7 @@ function FormPublishRow({
             <Button
               variant="link"
               size="xs"
-              onClick={() => void reconnectGoogle()}
+              onClick={onReconnect}
               className="px-0 py-0 font-normal text-xs-soft text-mute underline underline-offset-2 hover:text-amore"
             >
               다른 계정으로 재연결
@@ -1026,7 +1070,7 @@ function FormPublishRow({
           <Button
             variant="link"
             size="xs"
-            onClick={() => void reconnectGoogle()}
+            onClick={onReconnect}
             className="px-0 py-0 font-normal text-sm text-amore underline underline-offset-2 hover:text-amore"
           >
             재연결
@@ -1059,7 +1103,7 @@ function FormPublishRow({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => void reconnectGoogle()}
+                onClick={onReconnect}
               >
                 Google 재연결
               </Button>
