@@ -249,6 +249,16 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
           </div>
           <div className="my-1 h-px bg-line-soft" />
           <PopoverLink
+            href="/settings"
+            onClick={() => {
+              track('settings_open_click');
+              setOpen(false);
+            }}
+          >
+            {t('settings')}
+          </PopoverLink>
+          <div className="my-1 h-px bg-line-soft" />
+          <PopoverLink
             href="/credits"
             onClick={() => {
               track('settings_buy_credits_click');
