@@ -444,6 +444,11 @@ export function DeskCardBody() {
   const isTimeoutError =
     job?.status === 'error' &&
     (job.error_message?.startsWith('budget_exceeded') ?? false);
+  // Server fell back to deterministic markdown (synthesize timeout/fail).
+  // Detect via the marker the fallback builder writes at the top of output.
+  const isFallbackReport =
+    job?.status === 'done' &&
+    (job.output?.startsWith('# 데스크 리서치 보고서 (약식)') ?? false);
 
   function onClickRetry() {
     setError(null);
@@ -795,6 +800,23 @@ export function DeskCardBody() {
                 ? tDesk('timeoutBody')
                 : job.error_message ?? tDesk('errorBody')}
             </span>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={onClickRetry}
+              disabled={!hasKeywords || submitting || !!pendingJobId}
+              className="ml-2 uppercase tracking-[0.18em]"
+            >
+              {tDesk('retry')}
+            </Button>
+          </Banner>
+        )}
+        {/* fallback report — server 가 LLM 합성 실패 후 deterministic
+            markdown 으로 약식 보고서를 만든 케이스. 사용자가 결과는 받지만
+            한 줄 안내로 "약식이라는 사실" 을 명시. */}
+        {isFallbackReport && (
+          <Banner tone="info" title={tDesk('fallbackTitle')}>
+            <span>{tDesk('fallbackBody')}</span>
             <Button
               variant="link"
               size="sm"

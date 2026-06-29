@@ -1400,12 +1400,12 @@ async function runJob(args: {
 
     // ── Phase: synthesizing (final 6-section pyramid report) ────────────────
     // Budget gate — synthesize is the irreplaceable step. If we can't fit
-    // the ~60s Sonnet 8k-output call, fail loudly with refund instead of
-    // letting the function quietly exceed maxDuration and freeze the row.
-    if (timeLeft() < SYNTHESIZE_MIN_BUDGET_MS) {
-      throw new TimeoutError('budget_exceeded_synthesize');
-    }
+    // the ~60s Sonnet 6k-output call, skip the LLM and go straight to the
+    // deterministic fallback report. This guarantees the user gets an
+    // artifact (rqAnswers + claims + sources) instead of a refund-with-
+    // nothing-to-show outcome.
     beginPhase('synthesizing');
+    const skipLlmSynthesize = timeLeft() < SYNTHESIZE_MIN_BUDGET_MS;
     await pushAndPatch(
       `이제 모든 답변·증거를 묶어 6섹션 컨설팅 리포트로 합성할게요… (남은 시간 ${Math.round(timeLeft() / 1000)}초)`,
       'synthesizing',
@@ -1500,8 +1500,82 @@ async function runJob(args: {
       articleSampleBlock,
     ].join('\n');
 
+    // Fallback report builder — no LLM. Used when synthesize LLM call dies
+    // (timeout, 429, network) so the user still gets a usable artifact made
+    // from rqAnswers + claims + articles instead of a blank screen.
+    function buildFallbackReport(reason: 'timeout' | 'error'): string {
+      const lines: string[] = [];
+      lines.push('# 데스크 리서치 보고서 (약식)');
+      lines.push('');
+      lines.push(
+        reason === 'timeout'
+          ? '> ⚠️ 시간 제약으로 최종 LLM 합성 단계를 못 돌렸습니다. 모은 답변·증거·출처로 약식 보고서를 구성했습니다. 차감된 크레딧은 자동으로 환불되었습니다.'
+          : '> ⚠️ 보고서 합성 단계에서 오류가 발생해 약식 보고서로 대체했습니다. 차감된 크레딧은 자동으로 환불되었습니다.',
+      );
+      lines.push('');
+      lines.push('## 🧭 개요');
+      lines.push(`- **키워드**: ${keywords.join(', ')}${similar.length ? ` (유사: ${similar.join(', ')})` : ''}`);
+      lines.push(`- **지역**: ${regions.join(', ')}`);
+      lines.push(
+        `- **수집 기간**: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
+      );
+      lines.push(`- **수집**: 전체 ${articles.length}건 / 분석 ${articlesForLLM.length}건`);
+      lines.push('');
+
+      if (rqAnswers.length > 0) {
+        lines.push(`## ❓ 리서치 질문별 답변 (${rqAnswers.length})`);
+        for (const a of rqAnswers) {
+          const rq = researchQuestions.find((r) => r.id === a.rq_id);
+          const icon = a.confidence === 'high' ? '🟢' : a.confidence === 'low' ? '🔴' : '🟡';
+          lines.push(`### ${rq?.question ?? a.rq_id}`);
+          lines.push(`**신뢰도**: ${icon} ${a.confidence}`);
+          lines.push('');
+          lines.push(a.answer_md);
+          if (a.missing_data.length > 0) {
+            lines.push('');
+            lines.push('**더 알아볼 점:**');
+            for (const m of a.missing_data) lines.push(`- ${m}`);
+          }
+          lines.push('');
+        }
+      } else {
+        lines.push('## ❓ 리서치 질문별 답변');
+        lines.push('_답변 단계에 도달하지 못했습니다._');
+        lines.push('');
+      }
+
+      const quant = persistedClaims.filter((c) => c.kind === 'quant');
+      if (quant.length > 0) {
+        lines.push(`## 📊 정량 주장 (${quant.length})`);
+        lines.push('| 주장 | 수치 | 출처 | tier | 신뢰도 |');
+        lines.push('| --- | --- | --- | --- | --- |');
+        for (const c of quant.slice(0, 15)) {
+          if (c.kind !== 'quant') continue;
+          const unit = c.unit ? ` ${c.unit}` : '';
+          lines.push(
+            `| ${c.subject} | ${c.value}${unit} | [원문](${c.article_url}) | ${c.tier} | ${c.confidence} |`,
+          );
+        }
+        if (quant.length > 15) lines.push(`_(나머지 ${quant.length - 15}개 생략)_`);
+        lines.push('');
+      }
+
+      lines.push(`## 📚 출처 (${articlesForLLM.length})`);
+      for (const a of articlesForLLM.slice(0, 50)) {
+        lines.push(`- [${a.title}](${a.url}) — ${a.source}${a.publishedAt ? ` · ${a.publishedAt}` : ''}`);
+      }
+      if (articlesForLLM.length > 50) lines.push(`_(나머지 ${articlesForLLM.length - 50}개 생략)_`);
+      return lines.join('\n');
+    }
+
     let output = '';
+    let synthesizeFailed: 'timeout' | 'error' | null = null;
     try {
+      if (skipLlmSynthesize) {
+        // Budget too tight for LLM synth — go straight to deterministic
+        // fallback. Treated identically to a timeout fail downstream.
+        throw new TimeoutError('budget_exceeded_synthesize');
+      }
       const { text } = await generateText({
         model,
         system: REPORT_SYSTEM_V2,
@@ -1516,24 +1590,24 @@ async function runJob(args: {
       });
       output = text.trim();
     } catch (err) {
-      endPhase('synthesizing');
-      console.error('[desk] synthesize failed', err);
-      await refundOnFailure('synthesize_failed');
-      await patch({
-        status: 'error',
-        error_message: err instanceof Error ? err.message : 'synthesize_failed',
-        progress: {
-          phase: 'synthesizing',
-          crawl_total: crawlTotal,
-          crawl_done: crawlDone,
-          events: [...events],
-          timings: { ...timings },
-          elapsed_ms: elapsedMs(),
-          deadline_ms: HARD_DEADLINE_MS,
-          skipped_steps: skippedSteps.length ? [...skippedSteps] : undefined,
-        },
+      // Synthesize LLM died (timeout / 429 / network). DON'T return error —
+      // build a deterministic markdown report from what we have so the user
+      // still gets an artifact. Refund happens below in the same path.
+      synthesizeFailed = err instanceof TimeoutError ? 'timeout' : 'error';
+      console.error('[desk] synthesize failed — falling back to deterministic report', {
+        synthesizeFailed,
+        err,
       });
-      return;
+      output = buildFallbackReport(synthesizeFailed);
+      await refundOnFailure(
+        synthesizeFailed === 'timeout' ? 'synthesize_timeout_fallback' : 'synthesize_error_fallback',
+      );
+      await pushAndPatch(
+        synthesizeFailed === 'timeout'
+          ? '⚠️ 시간 초과로 최종 합성 단계를 못 돌렸어요. 모은 답변·증거로 약식 보고서를 만들어 드렸어요. 차감된 크레딧은 돌려드렸습니다.'
+          : '⚠️ 보고서 합성 단계에서 오류가 났어요. 모은 답변·증거로 약식 보고서를 만들어 드렸어요. 차감된 크레딧은 돌려드렸습니다.',
+        'synthesizing',
+      );
     }
     endPhase('synthesizing');
 
