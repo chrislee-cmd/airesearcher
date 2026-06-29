@@ -32,8 +32,8 @@ import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
-import { ControlBoard } from './canvas/shell/control-board';
 import { Field } from './canvas/shell/field';
+import { WidgetSubHeader } from './canvas/shell/widget-subheader';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
@@ -2477,174 +2477,181 @@ export function TranslateConsole() {
 
   return (
     <div className="space-y-4">
-      {/* ControlBoard — settings (captureMode / sourceLang / targetLang /
-          recordEnabled / timer / live indicators / share / start-stop CTA)
-          한 줄. 모든 6 위젯이 같은 layer 패턴. */}
-      <ControlBoard className="-mx-5 -mt-5">
-        <ControlBoard.SettingsRow>
-        {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker 와
-            동일 위치 — Field 라벨로 UPPERCASE eyebrow 통일. */}
-        <Field
-          label={t('captureMode.label')}
-          description={
-            captureMode === 'both'
-              ? t('captureMode.bothCostHint')
-              : captureMode !== 'mic-only'
-                ? t('captureMode.tabHint')
-                : undefined
-          }
-        >
-          <select
-            value={captureMode}
-            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-            disabled={live || busy}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            <option value="both">{t('captureMode.both')}</option>
-            <option value="mic-only">{t('captureMode.micOnly')}</option>
-            <option value="tab-only">{t('captureMode.tabOnly')}</option>
-          </select>
-        </Field>
-        {/* 2번 = 언어 (translate 전용). source / target 두 dropdown. */}
-        <Field label={t('sourceLang')}>
-            <select
-            value={sourceLang}
-            onChange={(e) => setSourceLang(e.target.value)}
-            disabled={live || busy}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            {langOptions.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={t('targetLang')}>
-            <select
-            value={targetLang}
-            onChange={(e) => setTargetLang(e.target.value)}
-            disabled={live || busy}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            {langOptions.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <label className="flex items-center gap-2 self-end pb-1 text-md text-mute">
-          <Checkbox
-            checked={recordEnabled}
-            onChange={(e) => setRecordEnabled(e.target.checked)}
-            disabled={live || busy}
-          />
-          {t('recordEnabled')}
-        </label>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-md tabular-nums text-mute">
-            {live ? formatElapsed(elapsed) : '00:00'}
-          </span>
-          <IconButton
-            variant="bordered"
-            size="md"
-            onClick={() => setOutputAudible((v) => !v)}
-            aria-pressed={outputAudible}
-            aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-            title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-          >
-            {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-          </IconButton>
-          <span
-            className={`rounded-xs border px-2 py-0.5 text-sm ${
-              live
-                ? 'border-amore text-amore'
-                : status === 'error'
-                  ? 'border-line text-mute'
-                  : 'border-line text-mute-soft'
-            }`}
-          >
-            {t(`status.${status}`)}
-          </span>
-          {live && (captureMode === 'both' || captureMode === 'mic-only') ? (
-            <span
-              className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
-                slotActive.mic
-                  ? 'border-ink text-ink'
-                  : 'border-line text-mute-soft'
-              }`}
-              aria-label={t('slotIndicator.hostAria')}
-              title={t('slotIndicator.hostAria')}
+      {/* WidgetSubHeader — settings (captureMode / sourceLang / targetLang)
+          / options (recordEnabled) / actions (timer / live indicators /
+          monitor mute / share / start-stop CTA). 3 위젯 공통 primitive. */}
+      <WidgetSubHeader
+        className="-mx-5 -mt-5"
+        inputs={
+          <>
+            {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker
+                와 동일 위치 — Field 라벨로 UPPERCASE eyebrow 통일. */}
+            <Field
+              label={t('captureMode.label')}
+              description={
+                captureMode === 'both'
+                  ? t('captureMode.bothCostHint')
+                  : captureMode !== 'mic-only'
+                    ? t('captureMode.tabHint')
+                    : undefined
+              }
             >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  slotActive.mic ? 'bg-ink' : 'bg-mute-soft'
-                }`}
-                aria-hidden="true"
-              />
-              {t('speaker.host')}
+              <select
+                value={captureMode}
+                onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+                disabled={live || busy}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                <option value="both">{t('captureMode.both')}</option>
+                <option value="mic-only">{t('captureMode.micOnly')}</option>
+                <option value="tab-only">{t('captureMode.tabOnly')}</option>
+              </select>
+            </Field>
+            {/* 2번 = 언어 (translate 전용). source / target 두 dropdown. */}
+            <Field label={t('sourceLang')}>
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                disabled={live || busy}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={t('targetLang')}>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                disabled={live || busy}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        }
+        options={
+          <label className="flex items-center gap-2 pb-1 text-md text-mute">
+            <Checkbox
+              checked={recordEnabled}
+              onChange={(e) => setRecordEnabled(e.target.checked)}
+              disabled={live || busy}
+            />
+            {t('recordEnabled')}
+          </label>
+        }
+        actions={
+          <>
+            <span className="text-md tabular-nums text-mute">
+              {live ? formatElapsed(elapsed) : '00:00'}
             </span>
-          ) : null}
-          {live && (captureMode === 'both' || captureMode === 'tab-only') ? (
+            <IconButton
+              variant="bordered"
+              size="md"
+              onClick={() => setOutputAudible((v) => !v)}
+              aria-pressed={outputAudible}
+              aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+              title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+            >
+              {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+            </IconButton>
             <span
-              className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
-                slotActive.tab
+              className={`rounded-xs border px-2 py-0.5 text-sm ${
+                live
                   ? 'border-amore text-amore'
-                  : 'border-line text-mute-soft'
+                  : status === 'error'
+                    ? 'border-line text-mute'
+                    : 'border-line text-mute-soft'
               }`}
-              aria-label={t('slotIndicator.guestAria')}
-              title={t('slotIndicator.guestAria')}
             >
+              {t(`status.${status}`)}
+            </span>
+            {live && (captureMode === 'both' || captureMode === 'mic-only') ? (
               <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  slotActive.tab ? 'bg-amore' : 'bg-mute-soft'
+                className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
+                  slotActive.mic
+                    ? 'border-ink text-ink'
+                    : 'border-line text-mute-soft'
                 }`}
-                aria-hidden="true"
-              />
-              {t('speaker.guest')}
-            </span>
-          ) : null}
-          {live && recordEnabled && recorderActive ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
-              aria-label={t('recording.indicatorAria')}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
-              {t('recording.indicator')}
-            </span>
-          ) : null}
-          {live ? (
-            <>
-              {!shareToken ? (
+                aria-label={t('slotIndicator.hostAria')}
+                title={t('slotIndicator.hostAria')}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    slotActive.mic ? 'bg-ink' : 'bg-mute-soft'
+                  }`}
+                  aria-hidden="true"
+                />
+                {t('speaker.host')}
+              </span>
+            ) : null}
+            {live && (captureMode === 'both' || captureMode === 'tab-only') ? (
+              <span
+                className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
+                  slotActive.tab
+                    ? 'border-amore text-amore'
+                    : 'border-line text-mute-soft'
+                }`}
+                aria-label={t('slotIndicator.guestAria')}
+                title={t('slotIndicator.guestAria')}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    slotActive.tab ? 'bg-amore' : 'bg-mute-soft'
+                  }`}
+                  aria-hidden="true"
+                />
+                {t('speaker.guest')}
+              </span>
+            ) : null}
+            {live && recordEnabled && recorderActive ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
+                aria-label={t('recording.indicatorAria')}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
+                {t('recording.indicator')}
+              </span>
+            ) : null}
+            {live ? (
+              <>
+                {!shareToken ? (
+                  <ChromeButton
+                    size="lg"
+                    onClick={() => void generateShare()}
+                    disabled={sharing}
+                  >
+                    {sharing ? t('share.creating') : t('share.create')}
+                  </ChromeButton>
+                ) : null}
                 <ChromeButton
                   size="lg"
-                  onClick={() => void generateShare()}
-                  disabled={sharing}
+                  onClick={() => void stop()}
                 >
-                  {sharing ? t('share.creating') : t('share.create')}
+                  {t('stop')}
                 </ChromeButton>
-              ) : null}
+              </>
+            ) : (
               <ChromeButton
+                variant="primary"
                 size="lg"
-                onClick={() => void stop()}
+                onClick={() => void start()}
+                disabled={busy}
               >
-                {t('stop')}
+                {busy ? t('starting') : t('start')}
               </ChromeButton>
-            </>
-          ) : (
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={() => void start()}
-              disabled={busy}
-            >
-              {busy ? t('starting') : t('start')}
-            </ChromeButton>
-          )}
-        </div>
-        </ControlBoard.SettingsRow>
-      </ControlBoard>
+            )}
+          </>
+        }
+      />
 
       {shareToken && shareUrl ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">

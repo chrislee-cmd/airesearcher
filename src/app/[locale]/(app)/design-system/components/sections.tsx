@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Field } from '@/components/canvas/shell/field';
 import { Banner } from '@/components/canvas/shell/banner';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { PrimitivePage, Subsection } from './primitive-page';
 import {
@@ -797,6 +798,146 @@ function CanvasWidgetPrimitivesSection() {
             적용 위젯: Desk / Recruiting / Quotes / Probing / Translate. 위젯 별
             element 종류는 자유 — outer layout 만 통일. Field / SectionLabel /
             Banner 와 함께 사용.
+          </p>
+        </div>
+      </Subsection>
+
+      <Subsection label="WidgetSubHeader — 캡처/언어/세션 CTA 등 설정 영역 SSOT (widget-subheader.tsx)">
+        <div className="space-y-3">
+          <p className="text-md text-mute">
+            3-slot compound: <code className="font-mono text-ink-2">inputs</code>{' '}
+            (좌) / <code className="font-mono text-ink-2">options</code> (중) /{' '}
+            <code className="font-mono text-ink-2">actions</code> (우) + 선택적{' '}
+            <code className="font-mono text-ink-2">hint</code> 줄. 외곽{' '}
+            <code className="font-mono">border-b-[2px] border-ink</code> +{' '}
+            <code className="font-mono">bg-paper-soft</code> +{' '}
+            <code className="font-mono">px-5 py-3</code> 표준. translate /
+            probing / desk 3 위젯이 같은 시각 룰.
+          </p>
+
+          <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+            Translate — capture + langs + record + CTA + timer
+          </div>
+          <div className="border border-line bg-paper rounded-sm overflow-hidden">
+            <WidgetSubHeader
+              inputs={
+                <>
+                  <Field label="캡처 방식">
+                    <select className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink">
+                      <option>마이크 + 탭 오디오</option>
+                    </select>
+                  </Field>
+                  <Field label="원어">
+                    <select className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink">
+                      <option>한국어</option>
+                    </select>
+                  </Field>
+                  <Field label="번역 언어">
+                    <select className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink">
+                      <option>영어</option>
+                    </select>
+                  </Field>
+                </>
+              }
+              options={
+                <label className="flex items-center gap-2 pb-1 text-md text-mute">
+                  <Checkbox defaultChecked readOnly />
+                  오디오 + 전사록 저장
+                </label>
+              }
+              actions={
+                <>
+                  <span className="text-md tabular-nums text-mute">00:00</span>
+                  <ChromeButton variant="primary" size="lg">
+                    통역 시작
+                  </ChromeButton>
+                </>
+              }
+              hint="공유 창에서 탭을 고른 뒤 '탭 오디오 공유' 를 체크하세요. Chrome 데스크톱만 지원합니다."
+            />
+          </div>
+
+          <div className="mt-4 text-xs uppercase tracking-[0.22em] text-mute-soft">
+            Probing — capture + fullview + session CTA + status hint
+          </div>
+          <div className="border border-line bg-paper rounded-sm overflow-hidden">
+            <WidgetSubHeader
+              inputs={
+                <Field label="입력 소스">
+                  <select className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink">
+                    <option>마이크</option>
+                  </select>
+                </Field>
+              }
+              options={
+                <IconButton variant="ghost" size="lg" aria-label="전체보기">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                </IconButton>
+              }
+              actions={
+                <ChromeButton variant="primary" size="lg">
+                  세션 시작
+                </ChromeButton>
+              }
+              hint={
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-line" aria-hidden />
+                  <SectionLabel>세션 대기</SectionLabel>
+                </div>
+              }
+            />
+          </div>
+
+          <div className="mt-4 text-xs uppercase tracking-[0.22em] text-mute-soft">
+            Desk — regions + range + keywords + 검색 CTA
+          </div>
+          <div className="border border-line bg-paper rounded-sm overflow-hidden">
+            <WidgetSubHeader
+              inputs={
+                <div className="w-full space-y-4">
+                  <Field label="검색 지역">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="xs" variant="primary">KR</Button>
+                      <Button size="xs" variant="ghost">US</Button>
+                      <Button size="xs" variant="ghost">JP</Button>
+                    </div>
+                  </Field>
+                  <Field label="기간">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="xs" variant="primary">전체</Button>
+                      <Button size="xs" variant="ghost">1주</Button>
+                      <Button size="xs" variant="ghost">1개월</Button>
+                    </div>
+                  </Field>
+                  <Field label="키워드">
+                    <Input placeholder="예: 광고, 재구매, 가격" />
+                  </Field>
+                </div>
+              }
+              actions={
+                <>
+                  <span className="text-sm tabular-nums text-mute-soft">
+                    3개 키워드 · 25 크레딧
+                  </span>
+                  <ChromeButton variant="primary" size="lg">
+                    검색 시작
+                  </ChromeButton>
+                </>
+              }
+            />
+          </div>
+
+          <p className="text-sm text-mute-soft">
+            적용 위젯: Translate / Probing / Desk. 다른 위젯
+            (Interviews / Quotes / Recruiting 등) 은 후속 spec 으로 확장.
+            Layout 흐름: <code className="font-mono">WidgetShell header</code>{' '}
+            → <code className="font-mono">WidgetSubHeader</code> →{' '}
+            <code className="font-mono">위젯 본문</code>.
           </p>
         </div>
       </Subsection>

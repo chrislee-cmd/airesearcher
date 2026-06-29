@@ -50,7 +50,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
-import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { deskCumulativeProgress } from '@/lib/widget-progress';
 import { Banner } from '@/components/canvas/shell/banner';
@@ -595,11 +595,10 @@ export function DeskCardBody() {
         {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
             길어지면 자체적으로 스크롤. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* ControlBoard — settings (region pill + range pill) / input
-            (keyword chip) / action (검색 ChromeButton). 같은 4-layer
-            패턴을 6 위젯이 공유. */}
-        <ControlBoard>
-          <ControlBoard.SettingsRow>
+        {/* WidgetSubHeader — inputs (regions + range + keywords) / actions
+            (검색 CTA). 3 위젯 공통 primitive — translate / probing / desk. */}
+        <WidgetSubHeader
+          inputs={
             <div className="w-full space-y-5">
               <Field label={tDesk('regionLabel')}>
                 <div className="flex flex-wrap gap-1.5">
@@ -664,65 +663,64 @@ export function DeskCardBody() {
                   </div>
                 )}
               </Field>
-            </div>
-          </ControlBoard.SettingsRow>
 
-          <ControlBoard.Input>
-            <Field label={tDesk('keywordLabel')}>
-              <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-                {keywords.map((k, idx) => (
-                  <span
-                    key={`${k}-${idx}`}
-                    className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-                  >
-                    {k}
-                    <IconButton
-                      variant="ghost-brand"
-                      onClick={() => removeKeyword(idx)}
-                      aria-label={`remove ${k}`}
+              <Field label={tDesk('keywordLabel')}>
+                <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+                  {keywords.map((k, idx) => (
+                    <span
+                      key={`${k}-${idx}`}
+                      className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
                     >
-                      ×
-                    </IconButton>
-                  </span>
-                ))}
-                <ChipInput
-                  value={keywordDraft}
-                  onChange={(e) => setKeywordDraft(e.target.value)}
-                  onKeyDown={onKeywordKeyDown}
-                  onPaste={onKeywordPaste}
-                  onBlur={() => {
-                    if (keywordDraft.trim()) commitDraft();
-                  }}
-                  placeholder={
-                    keywords.length === 0
-                      ? tDesk('keywordPlaceholder')
-                      : tDesk('keywordAddMore')
-                  }
-                  className="min-w-[140px] flex-1"
-                />
-              </div>
-              <span className="mt-1.5 block text-xs text-mute-soft">
-                {tDesk('keywordHint')}
+                      {k}
+                      <IconButton
+                        variant="ghost-brand"
+                        onClick={() => removeKeyword(idx)}
+                        aria-label={`remove ${k}`}
+                      >
+                        ×
+                      </IconButton>
+                    </span>
+                  ))}
+                  <ChipInput
+                    value={keywordDraft}
+                    onChange={(e) => setKeywordDraft(e.target.value)}
+                    onKeyDown={onKeywordKeyDown}
+                    onPaste={onKeywordPaste}
+                    onBlur={() => {
+                      if (keywordDraft.trim()) commitDraft();
+                    }}
+                    placeholder={
+                      keywords.length === 0
+                        ? tDesk('keywordPlaceholder')
+                        : tDesk('keywordAddMore')
+                    }
+                    className="min-w-[140px] flex-1"
+                  />
+                </div>
+                <span className="mt-1.5 block text-xs text-mute-soft">
+                  {tDesk('keywordHint')}
+                </span>
+              </Field>
+            </div>
+          }
+          actions={
+            <>
+              <span className="text-sm tabular-nums text-mute-soft">
+                {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
               </span>
-            </Field>
-          </ControlBoard.Input>
-
-          <ControlBoard.Action>
-            <span className="text-sm tabular-nums text-mute-soft">
-              {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
-            </span>
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={onClickRun}
-              disabled={!canRun}
-            >
-              {submitting || pendingJobId || isWorking
-                ? tCommon('loading')
-                : tDesk('search')}
-            </ChromeButton>
-          </ControlBoard.Action>
-        </ControlBoard>
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={onClickRun}
+                disabled={!canRun}
+              >
+                {submitting || pendingJobId || isWorking
+                  ? tCommon('loading')
+                  : tDesk('search')}
+              </ChromeButton>
+            </>
+          }
+        />
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (

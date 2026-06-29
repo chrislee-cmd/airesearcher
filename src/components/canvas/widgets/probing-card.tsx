@@ -38,7 +38,7 @@ import {
   collectTranscriptQuotes,
 } from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
-import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
   HistoryQuestion,
@@ -840,14 +840,43 @@ function ExpandedBody() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <ControlBoard className="shrink-0">
-          <ControlBoard.SettingsRow>
+        <WidgetSubHeader
+          className="shrink-0"
+          inputs={
             <SourcePicker
               value={source}
               onChange={setSource}
               disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
             />
-            <div className="ml-auto flex items-center gap-2">
+          }
+          options={
+            <IconButton
+              aria-label="전체보기 열기"
+              title="전체보기"
+              variant="ghost"
+              size="lg"
+              onClick={handleExpand}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            </IconButton>
+          }
+          actions={
+            <>
               {canExport && (
                 <Button
                   variant="secondary"
@@ -882,34 +911,9 @@ function ExpandedBody() {
                   세션 시작
                 </ChromeButton>
               )}
-              <IconButton
-                aria-label="전체보기 열기"
-                title="전체보기"
-                variant="ghost"
-                size="lg"
-                onClick={handleExpand}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="14"
-                  height="14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <polyline points="15 3 21 3 21 9" />
-                  <polyline points="9 21 3 21 3 15" />
-                  <line x1="21" y1="3" x2="14" y2="10" />
-                  <line x1="3" y1="21" x2="10" y2="14" />
-                </svg>
-              </IconButton>
-            </div>
-          </ControlBoard.SettingsRow>
-
-          <ControlBoard.Input divider="top">
+            </>
+          }
+          hint={
             <div className="flex items-center gap-2">
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -923,8 +927,8 @@ function ExpandedBody() {
               />
               <SectionLabel>{statusLabel}</SectionLabel>
             </div>
-          </ControlBoard.Input>
-        </ControlBoard>
+          }
+        />
 
         {/* 본문 — 좌(페르소나) / 우(4-layer 입력+사고+popup+history). */}
         <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] divide-x divide-line-soft overflow-hidden">
