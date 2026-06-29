@@ -24,7 +24,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
-import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
@@ -389,53 +389,17 @@ export function QuotesCardBody() {
     nowTick,
   ]);
 
-  // 처리한 시간 = done 잡들의 duration_seconds 합.
-  // 전사록 평균 시간 = duration_seconds 평균 (오디오 길이 평균).
-  const totalDurationSec = doneJobs.reduce(
-    (sum, j) => sum + (j.duration_seconds ?? 0),
-    0,
-  );
-  const avgDurationSec = (() => {
-    const durations = doneJobs
-      .map((j) => j.duration_seconds ?? 0)
-      .filter((d) => d > 0);
-    return durations.length === 0
-      ? null
-      : durations.reduce((s, d) => s + d, 0) / durations.length;
-  })();
-  // headerProgress 도 동일 — shell 로 옮겨질 예정.
-
   return (
     <>
       {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
-          으로 stats (top) / 중간 영역 (flex-1) / 최근 산출물 (bottom) 3단
-          으로 나뉘어 — 산출물이 카드 바닥에 고정되고 빈 공간은 중간이
-          흡수. cardState / headerProgress / isRunning 은 현재 body 안에서
-          는 미사용 — 후속 PR 에서 widget-shell 로 주입 검토. */}
+          으로 sub-header (upload dropzone) / 중간 영역 (flex-1, 큐) /
+          최근 산출물 (bottom) 3단으로 나뉘어 — 산출물이 카드 바닥에
+          고정되고 빈 공간은 중간이 흡수. */}
       <div className="flex h-full flex-col">
-        {/* ControlBoard — stats / input(dropzone) / progress·queue.
-            quotes 의 action 은 dropzone 안 click upload 패턴이라 별도
-            Action layer 없음. */}
-        <ControlBoard className="shrink-0">
-          <ControlBoard.StatsRow>
-            <ControlBoard.StatTile
-              label="처리한 시간"
-              value={formatDuration(totalDurationSec) || '0m'}
-            />
-            <ControlBoard.StatTile
-              label="전사록 평균 시간"
-              value={avgDurationSec ? formatDuration(avgDurationSec) : '—'}
-            />
-            <ControlBoard.StatTile
-              label="라이브러리"
-              value={`${doneJobs.length}건`}
-            />
-          </ControlBoard.StatsRow>
-        </ControlBoard>
-
-          {/* 중간 영역 — 드롭존 + 업로드 진행 + 큐. flex-1 로 산출물을
-              바닥으로 밀어내고, 내용이 길어지면 자체적으로 스크롤. */}
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        {/* WidgetSubHeader — 업로드 드롭존 (inputs). 사용자 요청으로
+            스탯바 (처리한 시간 / 평균 / 라이브러리) 는 제거. */}
+        <WidgetSubHeader
+          inputs={
             <FileDropZone
               accept={ACCEPT}
               multiple
@@ -444,13 +408,19 @@ export function QuotesCardBody() {
               onDropRaw={handleArtifactDrop}
               label={tUp('dropHere')}
               helperText={tUp('supported')}
-              className="py-10"
+              className="w-full py-6"
             >
               {uploadError && (
                 <div className="mt-3 text-sm text-warning">{uploadError}</div>
               )}
             </FileDropZone>
+          }
+        />
 
+          {/* 중간 영역 — 업로드 진행 + 큐. flex-1 로 산출물을 바닥으로
+              밀어내고, 내용이 길어지면 자체적으로 스크롤. 업로드 드롭존은
+              위 WidgetSubHeader 의 inputs 슬롯으로 이전. */}
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
             {hasUploads && (
               <div>
                 <SectionLabel>{tCommon('uploading')}</SectionLabel>

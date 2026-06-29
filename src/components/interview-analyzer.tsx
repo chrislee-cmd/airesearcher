@@ -21,7 +21,6 @@ import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { Button } from './ui/button';
 import { IconButton } from './ui/icon-button';
-import { Input } from './ui/input';
 import { InterviewChat } from './interview-chat';
 import { prefillKey } from '@/lib/workspace';
 
@@ -44,7 +43,11 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function InterviewAnalyzer() {
+// 업로드 영역 — FileDropZone + 변환 큐 + clear/convertAll CTAs. canvas
+// widget 에서는 WidgetSubHeader 의 inputs 슬롯으로, /interviews 페이지
+// 에서는 그냥 위에서 렌더. 사용자 요청으로 "1단계 — 파일을 .md로 변환"
+// 타이틀 / help / pipelineHint 는 제거됨.
+export function InterviewUploadArea() {
   const t = useTranslations('Features.interviewsView');
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
@@ -108,6 +111,78 @@ export function InterviewAnalyzer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  return (
+    <div className="w-full">
+      <FileDropZone
+        accept={ACCEPT}
+        multiple
+        disabled={job.items.length >= MAX_FILES}
+        onFiles={(files) => job.addFiles(files)}
+        onDropRaw={handleArtifactDrop}
+        label={tUp('dropHere')}
+        helperText={
+          job.items.length >= MAX_FILES
+            ? tUp('tooManyFiles', { max: MAX_FILES })
+            : tUp('supported')
+        }
+        className="py-6"
+      />
+
+      {job.items.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between border-b border-line-soft pb-2 text-sm text-mute">
+            <span className="tabular-nums">
+              {tUp('filesDone', {
+                done: job.doneCount,
+                total: job.items.length,
+              })}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={job.clear}
+                disabled={job.convertingAll || job.analyzing}
+                className="!text-sm uppercase tracking-[0.18em]"
+              >
+                {tUp('clear')}
+              </Button>
+              <Button
+                variant="primary"
+                size="xs"
+                onClick={job.startConvertAll}
+                disabled={job.queuedCount === 0 || job.convertingAll}
+                className="!text-sm uppercase tracking-[0.18em]"
+              >
+                {job.convertingAll ? tCommon('loading') : t('convertAll')}
+              </Button>
+            </div>
+          </div>
+
+          <ul className="mt-3 border border-line bg-paper rounded-sm">
+            {job.items.map((item) => (
+              <ConvRow
+                key={item.id}
+                item={item}
+                onRemove={() => job.remove(item.id)}
+                onToggle={() => job.toggleExpand(item.id)}
+                t={t}
+                tUp={tUp}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 분석 영역 — 변환 완료 후 자동 실행. Stage 2 (스트리밍 → 결과 표 / 채팅).
+export function InterviewAnalysisArea() {
+  const t = useTranslations('Features.interviewsView');
+
+  const job = useInterviewJob();
+
   // Export helpers live in the provider so the auto-download chain after
   // streaming finishes can reuse them. The component just passes through.
   const exportCsv = job.exportCsv;
@@ -120,181 +195,120 @@ export function InterviewAnalyzer() {
   const [resultTab, setResultTab] = useState<ResultTab>('report');
 
   return (
-    <div className="space-y-10">
-      {/* Stage 1 */}
-      <section>
-        <h2 className="text-xl font-semibold tracking-[-0.005em] text-ink-2">
-          {t('stage1Title')}
-        </h2>
-        <p className="mt-1 text-md text-mute">{t('stage1Help')}</p>
-        <p className="mt-1 text-sm text-mute-soft">{t('pipelineHint')}</p>
-
-        <FileDropZone
-          accept={ACCEPT}
-          multiple
-          disabled={job.items.length >= MAX_FILES}
-          onFiles={(files) => job.addFiles(files)}
-          onDropRaw={handleArtifactDrop}
-          label={tUp('dropHere')}
-          helperText={
-            job.items.length >= MAX_FILES
-              ? tUp('tooManyFiles', { max: MAX_FILES })
-              : tUp('supported')
-          }
-          className="mt-4 py-10"
-        />
-
-        {job.items.length > 0 && (
-          <div className="mt-5">
-            <div className="flex items-center justify-between border-b border-line-soft pb-2 text-sm text-mute">
-              <span className="tabular-nums">
-                {tUp('filesDone', {
-                  done: job.doneCount,
-                  total: job.items.length,
-                })}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={job.clear}
-                  disabled={job.convertingAll || job.analyzing}
-                  className="!text-sm uppercase tracking-[0.18em]"
-                >
-                  {tUp('clear')}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="xs"
-                  onClick={job.startConvertAll}
-                  disabled={job.queuedCount === 0 || job.convertingAll}
-                  className="!text-sm uppercase tracking-[0.18em]"
-                >
-                  {job.convertingAll ? tCommon('loading') : t('convertAll')}
-                </Button>
-              </div>
+    <section>
+      {(job.analyzing || job.analyzeError) && (
+        <div className="flex items-center gap-3">
+          {job.analyzing && (
+            <div className="flex-1">
+              <JobProgress
+                label="STREAMING"
+                hint={
+                  job.analysis ? `${job.analysis.rows.length} rows` : undefined
+                }
+                onCancel={() => job.stopAnalyze()}
+                cancelLabel="STOP"
+              />
             </div>
+          )}
+          {job.analyzeError && (
+            <span className="text-sm text-warning">{job.analyzeError}</span>
+          )}
+        </div>
+      )}
 
-            <ul className="mt-3 border border-line bg-paper rounded-sm">
-              {job.items.map((item) => (
-                <ConvRow
-                  key={item.id}
-                  item={item}
-                  onRemove={() => job.remove(item.id)}
-                  onToggle={() => job.toggleExpand(item.id)}
+      <ThinkingPanel />
+
+      {job.analysis && job.analysis.rows.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <ResultTabs
+              value={resultTab}
+              onChange={setResultTab}
+              indexStatus={job.indexStatus}
+            />
+            <div className="flex items-center gap-2">
+              {job.summarizing && (
+                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                  요약 생성 중
+                </span>
+              )}
+              {job.verticallySynthesizing && (
+                <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                  전체 흐름 분석 중
+                </span>
+              )}
+              {(job.summarizeError || job.verticalSynthError) && (
+                <span className="text-sm text-warning">
+                  {job.summarizeError ?? job.verticalSynthError}
+                </span>
+              )}
+              {/* Download / share belong to the table view only — the
+                  chat surface has no per-message export today. */}
+              {resultTab === 'report' && (
+                <>
+                  <DownloadMenu
+                    tone="primary"
+                    align="end"
+                    items={[
+                      { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
+                      { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
+                      { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
+                    ]}
+                  />
+                  <ShareMenu
+                    align="end"
+                    items={[
+                      {
+                        destination: 'google-sheets',
+                        title: '인터뷰 분석',
+                        getRows: () => job.getMatrixRows(),
+                      },
+                    ]}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          {resultTab === 'report' ? (
+            <>
+              {job.verticalDone && job.analysis.consolidated ? (
+                <FinalSummaryTable
+                  insights={job.analysis.consolidated}
+                  rows={job.analysis.rows}
                   t={t}
-                  tUp={tUp}
                 />
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      {/* Stage 2 — runs automatically after Stage 1 conversion finishes. */}
-      <section>
-        {(job.analyzing || job.analyzeError) && (
-          <div className="flex items-center gap-3">
-            {job.analyzing && (
-              <div className="flex-1">
-                <JobProgress
-                  label="STREAMING"
-                  hint={
-                    job.analysis ? `${job.analysis.rows.length} rows` : undefined
-                  }
-                  onCancel={() => job.stopAnalyze()}
-                  cancelLabel="STOP"
+              ) : (
+                <ResultTable
+                  filenames={job.filenameOrder}
+                  rows={job.analysis.rows}
+                  summarizing={job.summarizing}
+                  t={t}
                 />
-              </div>
-            )}
-            {job.analyzeError && (
-              <span className="text-sm text-warning">{job.analyzeError}</span>
-            )}
-          </div>
-        )}
+              )}
+              <CorpusIndexingStatus status={job.indexStatus} />
+            </>
+          ) : (
+            <InterviewChat
+              jobId={job.lastSnapshotJobId}
+              indexStatus={job.indexStatus}
+            />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 
-        <ThinkingPanel />
-
-        {job.analysis && job.analysis.rows.length > 0 && (
-          <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <ResultTabs
-                value={resultTab}
-                onChange={setResultTab}
-                indexStatus={job.indexStatus}
-              />
-              <div className="flex items-center gap-2">
-                {job.summarizing && (
-                  <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                    요약 생성 중
-                  </span>
-                )}
-                {job.verticallySynthesizing && (
-                  <span className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                    전체 흐름 분석 중
-                  </span>
-                )}
-                {(job.summarizeError || job.verticalSynthError) && (
-                  <span className="text-sm text-warning">
-                    {job.summarizeError ?? job.verticalSynthError}
-                  </span>
-                )}
-                {/* Download / share belong to the table view only — the
-                    chat surface has no per-message export today. */}
-                {resultTab === 'report' && (
-                  <>
-                    <DownloadMenu
-                      tone="primary"
-                      align="end"
-                      items={[
-                        { format: 'csv', kind: 'action', onSelect: () => exportCsv() },
-                        { format: 'xlsx', kind: 'action', onSelect: () => exportXlsx() },
-                        { format: 'docx', kind: 'action', onSelect: () => exportDocx() },
-                      ]}
-                    />
-                    <ShareMenu
-                      align="end"
-                      items={[
-                        {
-                          destination: 'google-sheets',
-                          title: '인터뷰 분석',
-                          getRows: () => job.getMatrixRows(),
-                        },
-                      ]}
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-            {resultTab === 'report' ? (
-              <>
-                {job.verticalDone && job.analysis.consolidated ? (
-                  <FinalSummaryTable
-                    insights={job.analysis.consolidated}
-                    rows={job.analysis.rows}
-                    t={t}
-                  />
-                ) : (
-                  <ResultTable
-                    filenames={job.filenameOrder}
-                    rows={job.analysis.rows}
-                    summarizing={job.summarizing}
-                    t={t}
-                  />
-                )}
-                <CorpusIndexingStatus status={job.indexStatus} />
-              </>
-            ) : (
-              <InterviewChat
-                jobId={job.lastSnapshotJobId}
-                indexStatus={job.indexStatus}
-              />
-            )}
-          </div>
-        )}
-      </section>
+// Backward-compat composition. canvas widget body 는 두 영역을 따로
+// 마운트 (WidgetSubHeader + scroll area), /interviews 페이지는 이
+// composition 으로 한 번에 렌더.
+export function InterviewAnalyzer() {
+  return (
+    <div className="space-y-10">
+      <InterviewUploadArea />
+      <InterviewAnalysisArea />
     </div>
   );
 }
