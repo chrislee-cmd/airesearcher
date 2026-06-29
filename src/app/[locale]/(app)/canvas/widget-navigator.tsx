@@ -336,12 +336,12 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
       </div>
       {open ? (
         <ul className="border-t-[2px] border-ink/15 py-1">
-          {widgets.map((w, idx) => {
+          {widgets.map((w) => {
             const isFocused = focusedKey === w.key;
             const accentCls = ACCENT_BG[w.meta.accent];
             return (
               <li key={w.key}>
-                {/* eslint-disable-next-line react/forbid-elements -- menu-row item (dot + label + state badge + shortcut hint), identical pattern to src/components/ui/dropdown-menu.tsx; <Button> capsule chrome would break the list row read. */}
+                {/* eslint-disable-next-line react/forbid-elements -- menu-row item (dot + label + state badge), identical pattern to src/components/ui/dropdown-menu.tsx; <Button> capsule chrome would break the list row read. */}
                 <button
                   type="button"
                   onClick={() => onFocus(w.key)}
@@ -362,11 +362,6 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
                   />
                   <span className="min-w-0 flex-1 truncate">{w.meta.label}</span>
                   <WidgetStateBadge widgetKey={w.key} />
-                  {idx < 9 ? (
-                    <span className="text-mute-soft text-xs tabular-nums">
-                      {idx + 1}
-                    </span>
-                  ) : null}
                 </button>
               </li>
             );
