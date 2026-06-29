@@ -136,16 +136,20 @@ export function Modal({
           // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
           // 없어서 화면 위아래로 spill 한 버그)
-          'relative flex w-full flex-col overflow-hidden border border-line bg-paper-soft',
+          'relative flex w-full flex-col overflow-hidden border-[3px] border-ink bg-paper',
           // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide 은
           // 자체적으로 h-screen / h-[90vh] 를 SIZE 에서 직접 잡는다.
           size === 'full' || size === 'wide' ? '' : 'max-h-[calc(100vh-2rem)]',
-          'rounded-sm [box-shadow:var(--shadow-bento)]',
+          // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full
+          // size 는 edge-to-edge 라 그림자/모서리 잘림 회피 위해 둘 다 끈다.
+          size === 'full'
+            ? 'rounded-none'
+            : 'rounded-sm shadow-[8px_8px_0_var(--color-ink)]',
           SIZE[size],
         ].join(' ')}
       >
         {(title || description) && (
-          <header className="shrink-0 border-b border-line-soft px-5 pb-3 pt-4">
+          <header className="shrink-0 border-b-[2px] border-ink px-5 pb-3 pt-4">
             {title ? (
               <h2
                 id={headingId}
@@ -175,7 +179,7 @@ export function Modal({
           {children}
         </div>
         {footer ? (
-          <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
+          <footer className="flex shrink-0 items-center justify-end gap-2 border-t-[2px] border-ink px-5 py-3">
             {footer}
           </footer>
         ) : null}
