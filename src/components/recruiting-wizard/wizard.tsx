@@ -228,7 +228,12 @@ export function RecruitingWizard() {
           }
         }
 
-        const finalParsed = JSON.parse(buffer) as RecruitingBrief;
+        // Stream can end on a partial JSON (LLM token cutoff, upstream
+        // abort, empty response). Try strict parse first; on failure fall
+        // back to the partial parser, which repairs truncated structures
+        // — accept it only if the required arrays are present so we don't
+        // hand the UI an empty brief silently.
+        const finalParsed = await coerceBrief(buffer);
         setPartialBrief(finalParsed);
         track('recruiting_extract_success', { feature: 'recruiting' });
         return finalParsed;
@@ -314,7 +319,7 @@ export function RecruitingWizard() {
         buffer += decoder.decode(value, { stream: true });
       }
       if (ctrl.signal.aborted) return;
-      const finalSurvey = JSON.parse(buffer) as Survey;
+      const finalSurvey = await coerceSurvey(buffer);
       setSurvey(finalSurvey);
       setSurveyPhase('review');
       track('recruiting_survey_generate_success', {
@@ -1013,6 +1018,62 @@ function FormPublishRow({
       )}
     </div>
   );
+}
+
+// When the LLM stream ends with a truncated or empty buffer (token cutoff,
+// upstream abort, schema-refusal), strict JSON.parse explodes with
+// "Unexpected end of JSON input" — which the user sees as a raw error
+// string. Try strict parse, then fall back to the ai SDK's repair-tolerant
+// partial parser. Only accept the partial if the shape we need is present.
+const STREAM_TRUNCATED_MSG =
+  'LLM 응답이 끊겼어요. 입력을 조금 더 구체적으로 넣고 다시 시도해 주세요.';
+
+async function coerceBrief(buffer: string): Promise<RecruitingBrief> {
+  if (!buffer.trim()) throw new Error(STREAM_TRUNCATED_MSG);
+  try {
+    return JSON.parse(buffer) as RecruitingBrief;
+  } catch {
+    // fall through to partial-parse
+  }
+  const parsed = await parsePartialJson(buffer);
+  const obj =
+    parsed.value && typeof parsed.value === 'object'
+      ? (parsed.value as Record<string, unknown>)
+      : null;
+  if (
+    obj &&
+    Array.isArray(obj.criteria) &&
+    Array.isArray(obj.schedule)
+  ) {
+    return {
+      summary: typeof obj.summary === 'string' ? obj.summary : '',
+      criteria: obj.criteria as RecruitingBrief['criteria'],
+      schedule: obj.schedule as RecruitingBrief['schedule'],
+    };
+  }
+  throw new Error(STREAM_TRUNCATED_MSG);
+}
+
+async function coerceSurvey(buffer: string): Promise<Survey> {
+  if (!buffer.trim()) throw new Error(STREAM_TRUNCATED_MSG);
+  try {
+    return JSON.parse(buffer) as Survey;
+  } catch {
+    // fall through
+  }
+  const parsed = await parsePartialJson(buffer);
+  const obj =
+    parsed.value && typeof parsed.value === 'object'
+      ? (parsed.value as Record<string, unknown>)
+      : null;
+  if (obj && Array.isArray(obj.sections)) {
+    return {
+      title: typeof obj.title === 'string' ? obj.title : '',
+      description: typeof obj.description === 'string' ? obj.description : '',
+      sections: obj.sections as Survey['sections'],
+    };
+  }
+  throw new Error(STREAM_TRUNCATED_MSG);
 }
 
 function ErrorBlock({ children }: { children: ReactNode }) {
