@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
 
 export const metadata: Metadata = {
-  title: 'Research-mochi',
+  title: 'Research-Canvas',
   description: 'AI tools for marketing & UX research',
 };
 

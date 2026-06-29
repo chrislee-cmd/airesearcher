@@ -411,7 +411,7 @@ export function TranslateViewer({
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-3">
         <div>
           <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
-            Research-mochi · Live
+            Research-Canvas · Live
           </h1>
           <p className="mt-1 text-md text-mute">
             {COPY.hostLabel}: <span className="text-ink">{langName(sourceLang)}</span>

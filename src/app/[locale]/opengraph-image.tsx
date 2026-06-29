@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getTranslations } from 'next-intl/server';
 
-export const alt = 'Research-mochi — 리서치를 위한 캔버스';
+export const alt = 'Research-Canvas — Research on my canvas';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -138,7 +138,7 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
               boxShadow: '4px 4px 0 #000',
             }}
           />
-          Research-mochi
+          Research-Canvas
         </div>
       </div>
     ),

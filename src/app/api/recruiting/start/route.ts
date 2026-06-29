@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, '') },
   });
 
-  const finalSubject = subject || '[Research-mochi] 리크루팅 안내';
+  const finalSubject = subject || '[Research-Canvas] 리크루팅 안내';
   const text = body;
 
   try {

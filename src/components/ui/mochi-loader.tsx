@@ -8,7 +8,7 @@ export function MochiLoader({ size = 56, label }: Props) {
     <div className="flex flex-col items-center gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/landing/logo.png"
+        src="/landing/logo.svg"
         alt=""
         width={size}
         height={size}

@@ -54,7 +54,7 @@ async function sendBankTransferEmail(args: {
   });
 
   const lines: string[] = [
-    'Research-mochi 계좌이체 신청이 접수되었습니다.',
+    'Research-Canvas 계좌이체 신청이 접수되었습니다.',
     '',
     `• 신청자 이메일: ${args.userEmail}`,
     `• 신청자 ID: ${args.userId}`,
@@ -83,11 +83,11 @@ async function sendBankTransferEmail(args: {
   }
   lines.push('', `• 접수 시각: ${new Date().toISOString()}`);
 
-  const subject = `[Research-mochi] 계좌이체 신청 — ${args.credits.toLocaleString()} 크레딧 (${args.userEmail})`;
+  const subject = `[Research-Canvas] 계좌이체 신청 — ${args.credits.toLocaleString()} 크레딧 (${args.userEmail})`;
 
   try {
     await transporter.sendMail({
-      from: `Research-mochi <${gmailUser}>`,
+      from: `Research-Canvas <${gmailUser}>`,
       to: BANK_TO_EMAIL,
       cc: args.userEmail,
       replyTo: args.userEmail,

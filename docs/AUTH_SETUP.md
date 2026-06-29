@@ -11,9 +11,9 @@ to continue to qdhfbvppeilzyihzlusj.supabase.co
 You're signing back in to qdhfbvppeilzyihzlusj.supabase.co
 ```
 
-이렇게 Supabase project URL 이 그대로 노출됨 → 사용자 신뢰성 ↓, "Research-mochi" 브랜드 인지 0.
+이렇게 Supabase project URL 이 그대로 노출됨 → 사용자 신뢰성 ↓, "Research-Canvas" 브랜드 인지 0.
 
-**해결**: 자체 OAuth client 를 Google 에 등록 → Supabase Auth Google provider 에 client_id / secret 등록. consent screen 이 `Research-mochi` (앱 이름) + 로고 + privacy/terms 링크를 보여줍니다.
+**해결**: 자체 OAuth client 를 Google 에 등록 → Supabase Auth Google provider 에 client_id / secret 등록. consent screen 이 `Research-Canvas` (앱 이름) + 로고 + privacy/terms 링크를 보여줍니다.
 
 ## 2. Drive / Docs 통합 OAuth client 와 분리
 
@@ -23,17 +23,17 @@ You're signing back in to qdhfbvppeilzyihzlusj.supabase.co
 ## 3. Google Cloud Console 설정
 
 ### 3.1 OAuth consent screen
-`https://console.cloud.google.com/` → 프로젝트 선택 (없으면 `Research Mochi` 신규) → **APIs & Services → OAuth consent screen**.
+`https://console.cloud.google.com/` → 프로젝트 선택 (없으면 `Research Canvas` 신규) → **APIs & Services → OAuth consent screen**.
 
 | 항목 | 값 |
 |---|---|
-| App name | `Research-mochi` |
+| App name | `Research-Canvas` |
 | User support email | `chris.lee@meteor-research.com` (또는 `support@meteor-research.com`) |
-| App logo | Research-mochi 로고 240×240 권장 (선택) |
-| Application home page | `https://<prod-domain>` |
-| Privacy policy | `https://<prod-domain>/privacy` |
-| Terms of service | `https://<prod-domain>/terms` |
-| Authorized domains | `<prod-domain>`, `supabase.co` |
+| App logo | Research-Canvas 로고 240×240 권장 (선택) |
+| Application home page | `https://research-canvas.io` |
+| Privacy policy | `https://research-canvas.io/privacy` |
+| Terms of service | `https://research-canvas.io/terms` |
+| Authorized domains | `research-canvas.io`, `supabase.co` |
 | Developer contact | `chris.lee@meteor-research.com` |
 
 **Scopes**: `openid`, `email`, `profile` (기본).
@@ -48,8 +48,8 @@ You're signing back in to qdhfbvppeilzyihzlusj.supabase.co
 | 항목 | 값 |
 |---|---|
 | Application type | Web application |
-| Name | `Research-mochi Supabase Auth` |
-| Authorized JavaScript origins | `https://<prod-domain>`, `https://qdhfbvppeilzyihzlusj.supabase.co`, `http://localhost:3000` |
+| Name | `Research-Canvas Supabase Auth` |
+| Authorized JavaScript origins | `https://research-canvas.io`, `https://qdhfbvppeilzyihzlusj.supabase.co`, `http://localhost:3000` |
 | Authorized redirect URIs | `https://qdhfbvppeilzyihzlusj.supabase.co/auth/v1/callback` |
 
 `Create` → **Client ID + Client Secret** 발급. 둘 다 다음 단계용으로 안전한 곳에 보관 (1Password 등).
@@ -68,10 +68,10 @@ Supabase Dashboard → **Authentication → Providers → Google**.
 ## 5. 검증 체크포인트
 
 ### 필수 (production 적용 직후)
-- [ ] **시크릿 창** 에서 `https://<prod-domain>` 접속
-- [ ] `Sign in with Google` 클릭 → consent screen 에 **`to continue to Research-mochi`** 표시 (project URL 안 보임)
+- [ ] **시크릿 창** 에서 `https://research-canvas.io` 접속
+- [ ] `Sign in with Google` 클릭 → consent screen 에 **`to continue to Research-Canvas`** 표시 (project URL 안 보임)
 - [ ] (로고 등록 시) consent screen 에 로고 표시
-- [ ] `Privacy policy` / `Terms of service` 링크 정상 — 클릭 시 `<prod-domain>/privacy`, `/terms` 도착
+- [ ] `Privacy policy` / `Terms of service` 링크 정상 — 클릭 시 `research-canvas.io/privacy`, `/terms` 도착
 - [ ] 로그인 완료 → `/auth/callback` → `/[locale]/canvas` redirect → session 정상
 - [ ] Application → Cookies 에 `sb-*` 쿠키 존재 (PROJECT.md §7.12 회귀 점검)
 
@@ -93,7 +93,7 @@ Supabase Dashboard → **Authentication → Providers → Google**.
 
 | 항목 | 옵션 | 메모 |
 |---|---|---|
-| `<prod-domain>` | `research-mochi.com` 등 확정 | 현재 Vercel 자동 도메인 가능 |
+| `<prod-domain>` | `research-canvas.io` (확정) | Vercel 에 새 도메인 bind |
 | 로고 | 업로드 / 미업로드 | 미업로드 시 default Google 아이콘 |
 | Support email | `chris.lee@meteor-research.com` / `support@…` | consent screen 표시용 |
 | Publish status | Testing (100 users) / Production | 100명+ 예상 시 verification 필수 |

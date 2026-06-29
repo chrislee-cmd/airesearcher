@@ -31,7 +31,7 @@ export default async function LoginPage({
       </div>
       <div className="w-full max-w-[440px]">
         <header className="pop-hero">
-          <span className="pop-eyebrow">Research-mochi</span>
+          <span className="pop-eyebrow">Research-Canvas</span>
           <h1 className="pop-display">{t('signInTitle')}</h1>
           <p className="pop-subtitle">{t('signInSubtitle')}</p>
         </header>
