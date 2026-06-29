@@ -3,25 +3,20 @@
 /* ────────────────────────────────────────────────────────────────────
    프로빙 어시스턴트 — canvas widget.
 
-   PR (probing-persona-panels): 좌패널을 **페르소나 한판 8 패널** 그리드로
-   재편. 좌(페르소나) / 우(질문) 2-에이전트 분리는 그대로.
-   - 좌패널 (ReflectionPane): 누적 transcript 를 읽고 응답자의 페르소나
-     8 패널 (demographics / values / preferences / needs / painpoints /
-     brand_perception / decision_drivers / behavioral_patterns) 을 생성.
-     transcript 변경 5초 debounce + 누적 60자 이상에서 자동 호출.
-   - 우패널 (QuestionPane): 좌패널 페르소나를 컨텍스트로 검증·심화 질문 제안.
-     좌 페르소나 완료 시 자동 1회 trigger + 사용자 "지금 제안" 수동.
+   PR (probing-question-thinking-flow): 우패널을 4-layer 로 재편 —
+     A. 사용자 입력 (조사 목적 / 핵심 가설 / KRQ) — DB 영속화
+     B. AI self-thinking 스트리밍 — `/api/probing/think` 의 NDJSON 라인
+     C. 비주기적 질문 popup (15s 자동 dismiss + importance visual)
+     D. 누적 history 패널 (핀 / 복사 / 삭제)
 
-   기존 30s/3q 자동 타이머, paused 토글, "자동 정지" 버튼은 폐기. 호출
-   주기가 transcript-driven (debounce) 으로 변경되며 사용자 노이즈가
-   훨씬 줄어든다.
+   좌패널 (페르소나 8 패널) 은 그대로. 좌/우는 독립 agent — transcript
+   변경 → debounce 5초 → 좌·우 호출. 좌패널은 응답자 페르소나, 우패널은
+   THINK + EMIT 라인 스트림 + popup queue.
 
-   세션 lifecycle / source picker / guide / 파일 import 흐름은 그대로
-   재사용. transcript 수집 hook (useRealtimeTranscription) 도 동일.
-
-   영속화: 우패널 질문은 기존 probing_questions 테이블 재사용 (POST/
-   PATCH/DELETE 그대로). 좌패널 reflection 은 in-memory only — 세션
-   생존, 새로고침 시 비움. DB schema 추가는 후속 PR.
+   기존 단일 질문 list UI / `/api/probing/suggest` 호출 / "지금 제안"
+   수동 trigger 는 폐기. emit 한 질문은 DB (`probing_questions`) 에
+   계속 기록되어 account-export 가 그대로 동작 — 단 위젯 UI 는 in-memory
+   history 만 표시 (페르소나처럼 휘발).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,28 +26,17 @@ import {
   useRealtimeTranscription,
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
-import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
-import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
-import {
-  GUIDE_MAX_CHARS,
-  getStoredGuide,
-  saveGuide,
-} from '@/lib/probing-guide-storage';
-import {
-  GuideImportError,
-  importGuideFile,
-} from '@/lib/probing-guide-import';
 import type {
-  ProbingQuestion,
-  ProbingQuestionRow,
-  ProbingSuggestionSet,
+  HistoryQuestion,
+  PopupQuestion,
+  ResearchContext,
 } from './probing-types';
 import {
   ReflectionPane,
@@ -63,32 +47,26 @@ import { QuestionPane } from './probing/question-pane';
 import { ProbingFullView } from './probing/full-view';
 import {
   PROBING_PERSONA_SECTION_KEYS,
+  PROBING_TECHNIQUES,
+  PROBING_THINK_IMPORTANCE,
+  probingThinkEmitSchema,
   type ProbingPersonaSection,
   type ProbingPersonaSectionKey,
 } from '@/lib/probing-prompts';
 
-// transcript window — 우패널 (suggest) 가 받는 최근 발화 윈도우. 좌패널
-// reflection 은 누적 전체 (cap 만 적용).
-const SUGGEST_WINDOW_MS = 30_000;
-// 좌패널이 모델에 보낼 누적 transcript 의 최대 길이 — 시간이 길수록 chars
-// 가 누적되니 60_000 자에서 잘라낸다 (suggest 와 동일 cap).
+// 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
-// 가이드 textarea localStorage 저장 debounce.
-const GUIDE_SAVE_DEBOUNCE_MS = 500;
-// transcript 가 의미 있게 모인 뒤에야 좌/우 모두 호출. 60자 미만이면 skip.
-// (suggest 의 server min 은 30 자, 좌 reflection 도 30 자에서 통과되지만
-//  너무 짧은 발화로 가설을 만들면 hallucination 가능성 ↑ → 클라이언트는
-//  60자에서부터 호출.)
+// 우패널 think 가 보낼 transcript 상한.
+const THINK_MAX_CHARS = 60_000;
+// transcript 60자 미만이면 좌/우 자동 호출 모두 skip.
 const MIN_TRANSCRIPT_CHARS = 60;
-// transcript 변경 → reflection 호출까지의 debounce. 발화가 흐르는 중엔
-// 자꾸 재호출하지 않고, 침묵 5초가 흐른 시점에 한 번 갱신.
-const REFLECTION_DEBOUNCE_MS = 5_000;
-// 위젯에 표시할 / fetch 할 최근 질문 갯수.
-const DISPLAY_LIMIT = 50;
-// 우패널 한 호출당 질문 수.
-const QUESTIONS_PER_CALL = 3;
+// transcript 변경 → 자동 호출 debounce.
+const DEBOUNCE_MS = 5_000;
+// history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
+const HISTORY_MAX = 100;
 
-// transcript 가 멈춰 있을 때도 cutoff 가 흐르도록 1초마다 강제 리렌더.
+// transcript 가 멈춰 있을 때도 popup 카운트다운 / history 시간 표시가 흐르도록
+// 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -105,52 +83,11 @@ function segmentsText(segments: TranscriptionSegment[]): string {
     .join('\n');
 }
 
-// 좌패널 페르소나 → 우패널 prompt 에 넣을 합본. confidence=insufficient 또는
-// summary/signals 둘 다 비어 있는 섹션은 skip. 우패널 (질문 agent) 가 받는
-// 컨텍스트는 가능한 한 짧게 유지해 token 소비 ↓.
-const PERSONA_PROMPT_LABELS: Record<
-  ProbingPersonaSectionKey,
-  string
-> = {
-  demographics: '데모그래픽',
-  values: '가치관',
-  preferences: '선호',
-  needs: '니즈',
-  painpoints: '페인포인트',
-  brand_perception: '브랜드 인식',
-  decision_drivers: '의사결정 요인',
-  behavioral_patterns: '행동 패턴',
-};
-
-function reflectionToPromptContext(
-  data: ProbingReflectionData | null,
-): string {
-  if (!data) return '';
-  const blocks: string[] = [];
-  (Object.keys(PERSONA_PROMPT_LABELS) as ProbingPersonaSectionKey[]).forEach(
-    (key) => {
-      const section = data[key];
-      if (!section) return;
-      if (section.confidence === 'insufficient') return;
-      const summary = section.summary?.trim() ?? '';
-      const signals = (section.signals ?? [])
-        .map((s) => s?.bullet?.trim())
-        .filter((b): b is string => !!b && b.length > 0);
-      if (!summary && signals.length === 0) return;
-      const lines: string[] = [`### ${PERSONA_PROMPT_LABELS[key]}`];
-      if (summary) lines.push(summary);
-      signals.forEach((b) => lines.push(`- ${b}`));
-      blocks.push(lines.join('\n'));
-    },
-  );
-  return blocks.join('\n\n');
-}
+// 좌패널 페르소나 → 우패널 think prompt 에 직접 안 들어감 (think 는 사용자
+// 입력 + transcript 만 보고 사고). 별 helper 불필요.
 
 type SourceKind = 'mic' | 'tab';
 
-// 입력 소스 dropdown — translate-console 의 settings dropdown 과 동일 시각
-// (label 위 + h-8 rounded-xs border-line bg-paper). 위젯 간 settings 영역
-// 디자인 통일 (PR-probing-translate-settings-unify).
 function SourcePicker({
   value,
   onChange,
@@ -176,96 +113,25 @@ function SourcePicker({
   );
 }
 
-function GuideSection({
-  value,
-  onChange,
-  open,
-  onToggle,
-  onImportClick,
-  importing,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  open: boolean;
-  onToggle: () => void;
-  onImportClick: () => void;
-  importing: boolean;
-}) {
-  const count = value.length;
-  const label = count === 0 ? '가이드 추가' : `가이드 (${count.toLocaleString()}자)`;
-  return (
-    <div className="flex flex-col gap-2">
-      <Button
-        variant="link"
-        size="xs"
-        onClick={onToggle}
-        aria-expanded={open}
-        leftIcon={
-          <svg
-            viewBox="0 0 24 24"
-            width="10"
-            height="10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className={`transition-transform duration-[120ms] ${open ? 'rotate-90' : ''}`}
-          >
-            <polyline points="9 6 15 12 9 18" />
-          </svg>
-        }
-        className="self-start uppercase tracking-[0.18em]"
-      >
-        {label}
-      </Button>
-      {open && (
-        <>
-          <div className="flex items-center justify-end">
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={onImportClick}
-              disabled={importing}
-              loading={importing}
-              loadingLabel="가져오는 중…"
-              leftIcon={
-                <svg
-                  viewBox="0 0 24 24"
-                  width="11"
-                  height="11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 3 14 8 19 8" />
-                  <line x1="12" y1="18" x2="12" y2="12" />
-                  <polyline points="9 15 12 12 15 15" />
-                </svg>
-              }
-              className="uppercase tracking-[0.18em]"
-            >
-              파일 가져오기
-            </Button>
-          </div>
-          <Textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value.slice(0, GUIDE_MAX_CHARS))}
-            rows={3}
-            maxLength={GUIDE_MAX_CHARS}
-            placeholder="조사 목적 / 핵심 가설 / 질문 의도 등을 자유롭게 입력하세요. 비워두면 transcript 만 보고 제안합니다."
-            helper={`${count.toLocaleString()} / ${GUIDE_MAX_CHARS.toLocaleString()}자  ·  .md / .txt / .docx 가져오기 지원`}
-            className="max-h-28 text-md resize-none"
-          />
-        </>
-      )}
-    </div>
-  );
+// 검증 helper — think route 의 EMIT 라인 JSON 을 schema 로 통과시킨다.
+function parseEmit(raw: string): PopupQuestion | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const result = probingThinkEmitSchema.safeParse(parsed);
+    if (!result.success) return null;
+    const { text, technique, rationale, importance } = result.data;
+    const id = `popup_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    return {
+      id,
+      text,
+      technique,
+      rationale,
+      importance,
+      emitted_at: Date.now(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function ExpandedBody() {
@@ -282,46 +148,18 @@ function ExpandedBody() {
 
   const [source, setSource] = useState<SourceKind>('mic');
 
-  // 전체보기 모달 toggle. 같은 컴포넌트 tree 안에서 모달 mount/unmount —
-  // reflection / question state 는 부모 (이 함수) 가 single source 라
-  // close 시 widget 모드로 복귀해도 state 유실 0.
   const [expanded, setExpanded] = useState(false);
   const handleExpand = useCallback(() => setExpanded(true), []);
   const handleCollapse = useCallback(() => setExpanded(false), []);
 
-  // sidebar / deep-link 진입 (`/canvas?focus=probing`) 시 canvas-board 가
-  // 이 이벤트를 dispatch 하면 모달이 자동 open. URL 변경은 canvas-board 가
-  // history.replaceState 로 처리 — 백버튼이 canvas 진입 이전으로 깨끗하게
-  // 돌아가도록.
   useEffect(() => {
     const onOpen = () => setExpanded(true);
     window.addEventListener('probing:open-fullview', onOpen);
     return () => window.removeEventListener('probing:open-fullview', onOpen);
   }, []);
 
-  const [guide, setGuide] = useState('');
-  const [guideOpen, setGuideOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time localStorage hydration; useState(() => getStoredGuide()) would cause SSR/client mismatch when localStorage has content.
-    setGuide(getStoredGuide());
-  }, []);
-  useEffect(() => {
-    const id = setTimeout(() => saveGuide(guide), GUIDE_SAVE_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [guide]);
-  const guideRef = useRef(guide);
-  useEffect(() => {
-    guideRef.current = guide;
-  }, [guide]);
-
   const isLive = sessionStatus === 'live';
 
-  // 헤더 pill 로 push 할 live state. progress 없는 realtime 위젯 — label 만.
-  //   starting → CONNECTING / live → LIVE / stopping → STOPPING
-  //   error → error (+ message) / idle → idle
   const { setState: setWidgetState } = useWidgetState();
   useEffect(() => {
     if (sessionStatus === 'starting') {
@@ -343,77 +181,48 @@ function ExpandedBody() {
     setWidgetState({ kind: 'idle' });
   }, [setWidgetState, sessionStatus, sessionError]);
 
-  // 좌패널 — Reflection state. 위젯 in-memory only.
-  const [reflection, setReflection] = useState<ProbingReflectionData | null>(null);
-  const [reflectionStatus, setReflectionStatus] = useState<ReflectionStatus>('idle');
-  const [reflectionLastUpdatedAt, setReflectionLastUpdatedAt] = useState<number | null>(null);
-  const [reflectionError, setReflectionError] = useState<string | null>(null);
-  const reflectionInFlightRef = useRef(false);
-  const reflectionRef = useRef<ProbingReflectionData | null>(null);
+  // ─── 우패널 입력 — research_context (DB upsert) ───
+  const [context, setContext] = useState<ResearchContext>({
+    research_goal: '',
+    hypotheses: [],
+    key_research_question: '',
+  });
+  const [contextHydrated, setContextHydrated] = useState(false);
+  const contextRef = useRef(context);
   useEffect(() => {
-    reflectionRef.current = reflection;
-  }, [reflection]);
+    contextRef.current = context;
+  }, [context]);
 
-  // 우패널 — 질문 list.
-  const [current, setCurrent] = useState<ProbingSuggestionSet | null>(null);
-  const [suggestStreaming, setSuggestStreaming] = useState(false);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<ProbingQuestionRow[]>([]);
-  const [hydrating, setHydrating] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const suggestInFlightRef = useRef(false);
-
-  // 누적 segments — 좌패널이 전체 transcript 를 본다. 우패널은 별도 30s window.
-  const hasTranscript = rawSegments.length > 0;
-  const rawSegmentsRef = useRef(rawSegments);
-  useEffect(() => {
-    rawSegmentsRef.current = rawSegments;
-  }, [rawSegments]);
-
-  // 누적 transcript 의 length (좌패널 트리거 threshold 점검용).
-  const cumulativeChars = useMemo(
-    () => rawSegments.reduce((sum, s) => sum + s.text.trim().length, 0),
-    [rawSegments],
-  );
-
-  // mount 시 1회 — 최근 N개 DB row 를 가져와 list 초기화.
+  // mount 시 1회 — 마지막으로 저장한 컨텍스트 hydrate.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(
-          `/api/probing/questions?limit=${DISPLAY_LIMIT}`,
-          { cache: 'no-store' },
-        );
+        const res = await fetch('/api/probing/research-context', {
+          cache: 'no-store',
+        });
         if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
         const j = (await res.json()) as {
-          rows?: Array<{
-            id: string;
-            text: string;
-            technique: string;
-            why: string | null;
-            guide_reference: string | null;
-            is_core: boolean | null;
-            created_at: string;
-          }>;
+          row?: {
+            research_goal?: string;
+            hypotheses?: string[];
+            key_research_question?: string;
+          };
         };
         if (cancelled) return;
-        const rows: ProbingQuestionRow[] = (j.rows ?? [])
-          .map((r) => ({
-            id: r.id,
-            created_at: r.created_at,
-            text: r.text ?? '',
-            technique: r.technique ?? 'tell_more',
-            why: r.why ?? '',
-            guide_reference: r.guide_reference ?? null,
-            is_core: r.is_core === true,
-          }))
-          .filter((r) => r.text.trim().length > 0);
-        setQuestions(rows);
+        if (j.row) {
+          setContext({
+            research_goal: j.row.research_goal ?? '',
+            hypotheses: Array.isArray(j.row.hypotheses)
+              ? j.row.hypotheses.filter((h) => typeof h === 'string')
+              : [],
+            key_research_question: j.row.key_research_question ?? '',
+          });
+        }
       } catch {
-        // 영속화는 best-effort. fetch 실패 = 새 세션처럼 빈 list 에서 시작.
+        // hydration 실패 — 빈 컨텍스트로 시작.
       } finally {
-        if (!cancelled) setHydrating(false);
+        if (!cancelled) setContextHydrated(true);
       }
     })();
     return () => {
@@ -421,115 +230,243 @@ function ExpandedBody() {
     };
   }, []);
 
-  // ─── 우패널 persist (POST per question, 기존 PR-12 흐름 그대로) ───
-  const persistQuestions = useCallback(
-    async (
-      streamingId: string,
-      stream: ProbingQuestion[],
-      cutoff: string,
-    ) => {
-      const startedAt = Date.now();
-      const tasks = stream.map((q, idx) =>
-        (async (): Promise<ProbingQuestionRow> => {
-          try {
-            const res = await fetch('/api/probing/questions', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                text: q.text,
-                technique: q.technique,
-                why: q.why,
-                transcript_cutoff: cutoff,
-              }),
-            });
-            if (res.ok) {
-              const j = (await res.json()) as {
-                row?: {
-                  id: string;
-                  text: string;
-                  technique: string;
-                  why: string | null;
-                  guide_reference: string | null;
-                  is_core: boolean | null;
-                  created_at: string;
-                };
-              };
-              if (j.row) {
-                return {
-                  id: j.row.id,
-                  created_at: j.row.created_at,
-                  text: j.row.text,
-                  technique: j.row.technique,
-                  why: j.row.why ?? '',
-                  guide_reference: j.row.guide_reference ?? null,
-                  is_core: j.row.is_core === true,
-                };
-              }
-            }
-          } catch {
-            // fall through — fallback row 으로 떨어짐
-          }
-          const localCreated = new Date(startedAt - idx).toISOString();
-          return {
-            id: `local-${startedAt}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-            created_at: localCreated,
-            text: q.text,
-            technique: q.technique,
-            why: q.why,
-            guide_reference: null,
-            is_core: false,
-          };
-        })(),
-      );
-      const settled = await Promise.allSettled(tasks);
-      const rows: ProbingQuestionRow[] = settled
-        .map((s) => (s.status === 'fulfilled' ? s.value : null))
-        .filter((r): r is ProbingQuestionRow => r !== null);
-      if (rows.length > 0) {
-        setQuestions((prev) =>
-          [...rows, ...prev].slice(0, DISPLAY_LIMIT),
-        );
-      }
-      setCurrent((cur) => (cur?.id === streamingId ? null : cur));
+  // context 변경 시 debounced PUT.
+  useEffect(() => {
+    if (!contextHydrated) return;
+    const handle = setTimeout(() => {
+      void (async () => {
+        try {
+          await fetch('/api/probing/research-context', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              research_goal: contextRef.current.research_goal,
+              hypotheses: contextRef.current.hypotheses,
+              key_research_question:
+                contextRef.current.key_research_question,
+            }),
+          });
+        } catch {
+          // best-effort. 사용자에게 토스트는 부담스러우니 silent.
+        }
+      })();
+    }, 800);
+    return () => clearTimeout(handle);
+  }, [context, contextHydrated]);
+
+  // ─── 좌패널 — Reflection state ───
+  const [reflection, setReflection] = useState<ProbingReflectionData | null>(
+    null,
+  );
+  const [reflectionStatus, setReflectionStatus] =
+    useState<ReflectionStatus>('idle');
+  const [reflectionLastUpdatedAt, setReflectionLastUpdatedAt] = useState<
+    number | null
+  >(null);
+  const [reflectionError, setReflectionError] = useState<string | null>(null);
+  const reflectionInFlightRef = useRef(false);
+  const reflectionRef = useRef<ProbingReflectionData | null>(null);
+  useEffect(() => {
+    reflectionRef.current = reflection;
+  }, [reflection]);
+
+  // ─── 우패널 — think stream + popup queue + history ───
+  const [thinkingEvents, setThinkingEvents] = useState<
+    Array<{ id: string; at: number; text: string }>
+  >([]);
+  const [thinkingStreaming, setThinkingStreaming] = useState(false);
+  const [thinkingError, setThinkingError] = useState<string | null>(null);
+  const thinkInFlightRef = useRef(false);
+  const thinkAbortRef = useRef<AbortController | null>(null);
+
+  const [activePopup, setActivePopup] = useState<PopupQuestion | null>(null);
+  const [history, setHistory] = useState<HistoryQuestion[]>([]);
+
+  // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
+  // 만 옮긴다. dismissed_reason 으로 origin 분류.
+  const pushHistoryFromPopup = useCallback(
+    (popup: PopupQuestion, reason: HistoryQuestion['dismissed_reason']) => {
+      setHistory((prev) => {
+        if (prev.some((p) => p.id === popup.id)) return prev;
+        const next: HistoryQuestion = {
+          ...popup,
+          is_starred: reason === 'pin',
+          dismissed_reason: reason,
+          dismissed_at: Date.now(),
+        };
+        return [next, ...prev].slice(0, HISTORY_MAX);
+      });
     },
     [],
   );
 
-  // ─── 우패널 — Question Agent 호출 ───
-  const runSuggest = useCallback(async () => {
-    if (suggestInFlightRef.current) return;
-    const cutoff = Date.now() - SUGGEST_WINDOW_MS;
-    const segs = rawSegmentsRef.current.filter((s) => s.started_at >= cutoff);
-    const text = segmentsText(segs);
-    if (text.length < 30) {
-      // suggest 의 server min 은 30. 그 미만은 skip.
-      return;
-    }
+  const persistEmittedQuestion = useCallback(
+    async (popup: PopupQuestion) => {
+      // probing_questions DB 에 백그라운드 기록 — account-export 가 그대로
+      // 동작하도록. 실패는 무시 (위젯 UX 에 영향 X).
+      try {
+        await fetch('/api/probing/questions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            text: popup.text,
+            technique: popup.technique,
+            why: popup.rationale,
+          }),
+        });
+      } catch {
+        // silent
+      }
+    },
+    [],
+  );
 
-    suggestInFlightRef.current = true;
-    setSuggestStreaming(true);
-    setSuggestError(null);
+  // 새 emit 도착 → popup 큐 처리. 기존 popup 살아 있으면 즉시 history 로 push
+  // ('replaced') + 새 popup 표시. 스펙 명시: "새거 즉시 표시 + 옛것 history".
+  const handleEmit = useCallback(
+    (popup: PopupQuestion) => {
+      setActivePopup((current) => {
+        if (current) {
+          pushHistoryFromPopup(current, 'replaced');
+        }
+        return popup;
+      });
+      void persistEmittedQuestion(popup);
+    },
+    [pushHistoryFromPopup, persistEmittedQuestion],
+  );
 
-    const setId = `probing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const started_at = Date.now();
+  // 누적 segments — 좌/우 모두 누적 transcript 를 본다.
+  const hasTranscript = rawSegments.length > 0;
+  const rawSegmentsRef = useRef(rawSegments);
+  useEffect(() => {
+    rawSegmentsRef.current = rawSegments;
+  }, [rawSegments]);
 
-    let finalQuestions: ProbingQuestion[] = [];
-    let succeeded = false;
+  const cumulativeChars = useMemo(
+    () => rawSegments.reduce((sum, s) => sum + s.text.trim().length, 0),
+    [rawSegments],
+  );
+
+  // ─── think route SSE consumer ───
+  const runThink = useCallback(async () => {
+    if (thinkInFlightRef.current) return;
+    const segs = rawSegmentsRef.current;
+    const fullText = segmentsText(segs);
+    if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
+    const transcript =
+      fullText.length > THINK_MAX_CHARS
+        ? fullText.slice(fullText.length - THINK_MAX_CHARS)
+        : fullText;
+
+    thinkInFlightRef.current = true;
+    setThinkingStreaming(true);
+    setThinkingError(null);
+    const controller = new AbortController();
+    thinkAbortRef.current = controller;
 
     try {
-      const res = await fetch('/api/probing/suggest', {
+      const res = await fetch('/api/probing/think', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          transcript_window: text,
-          interview_guide: guideRef.current,
-          reflection_context: reflectionToPromptContext(reflectionRef.current),
-          max_questions: QUESTIONS_PER_CALL,
+          transcript_window: transcript,
+          research_goal: contextRef.current.research_goal,
+          hypotheses: contextRef.current.hypotheses,
+          key_research_question: contextRef.current.key_research_question,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `think_failed_${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      // 줄 단위 dispatch. THINK / EMIT prefix 외 라인은 무시 (LLM 이 룰 위반
+      // 시 silent drop — UX 영향 0).
+      const dispatchLine = (line: string) => {
+        if (line.startsWith('THINK:')) {
+          const text = line.slice('THINK:'.length).trim();
+          if (text.length === 0) return;
+          setThinkingEvents((prev) => [
+            ...prev,
+            {
+              id: `think_${Date.now()}_${prev.length}_${Math.random().toString(36).slice(2, 6)}`,
+              at: Date.now(),
+              text,
+            },
+          ]);
+        } else if (line.startsWith('EMIT:')) {
+          const raw = line.slice('EMIT:'.length).trim();
+          const popup = parseEmit(raw);
+          if (popup) handleEmit(popup);
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nlIdx = buffer.indexOf('\n');
+        while (nlIdx !== -1) {
+          const line = buffer.slice(0, nlIdx).trimEnd();
+          buffer = buffer.slice(nlIdx + 1);
+          if (line.length > 0) dispatchLine(line);
+          nlIdx = buffer.indexOf('\n');
+        }
+      }
+      // 마지막 잔여 라인.
+      const tail = buffer.trim();
+      if (tail.length > 0) dispatchLine(tail);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      const msg = e instanceof Error ? e.message : 'think_failed';
+      setThinkingError(msg);
+      toast.push('AI 사고 흐름 실패 — 잠시 후 다시 시도해 주세요', {
+        tone: 'warn',
+      });
+    } finally {
+      thinkInFlightRef.current = false;
+      thinkAbortRef.current = null;
+      setThinkingStreaming(false);
+    }
+  }, [toast, handleEmit]);
+
+  const runThinkRef = useRef(runThink);
+  useEffect(() => {
+    runThinkRef.current = runThink;
+  }, [runThink]);
+
+  // ─── 좌패널 — Reflection Agent (응답자 페르소나) ───
+  const runReflection = useCallback(async () => {
+    if (reflectionInFlightRef.current) return;
+    const segs = rawSegmentsRef.current;
+    const fullText = segmentsText(segs);
+    if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
+    const trimmed =
+      fullText.length > REFLECTION_MAX_CHARS
+        ? fullText.slice(fullText.length - REFLECTION_MAX_CHARS)
+        : fullText;
+
+    reflectionInFlightRef.current = true;
+    setReflectionStatus('streaming');
+    setReflectionError(null);
+
+    try {
+      const res = await fetch('/api/probing/reflection', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          transcript_window: trimmed,
+          interview_guide: '',
         }),
       });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `suggest_failed_${res.status}`);
+        throw new Error(j.error ?? `reflection_failed_${res.status}`);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -540,202 +477,81 @@ function ExpandedBody() {
         buffer += decoder.decode(value, { stream: true });
       }
       const parsed = await parsePartialJson(buffer);
-      const obj = parsed.value as
-        | {
-            questions?: Array<{
-              text?: string;
-              technique?: string;
-              why_sharp?: string;
-            }>;
-            intents?: string[];
+      const obj = (parsed.value ?? null) as Record<string, unknown> | null;
+      if (obj && typeof obj === 'object') {
+        const prev = reflectionRef.current;
+        const merged: ProbingReflectionData = { ...(prev ?? {}) };
+        let anyChange = false;
+        for (const key of PROBING_PERSONA_SECTION_KEYS) {
+          const sec = obj[key] as Record<string, unknown> | undefined;
+          if (!sec || typeof sec !== 'object') continue;
+          const summary = typeof sec.summary === 'string' ? sec.summary : '';
+          const signalsRaw = Array.isArray(sec.signals) ? sec.signals : [];
+          const signals = signalsRaw
+            .filter(
+              (s): s is Record<string, unknown> =>
+                !!s && typeof s === 'object',
+            )
+            .map((s) => ({
+              bullet: typeof s.bullet === 'string' ? s.bullet : '',
+              quote: typeof s.quote === 'string' ? s.quote : undefined,
+            }))
+            .filter((s) => s.bullet.trim().length > 0);
+          const confidenceRaw = sec.confidence;
+          const confidence: ProbingPersonaSection['confidence'] =
+            confidenceRaw === 'high' ||
+            confidenceRaw === 'medium' ||
+            confidenceRaw === 'low'
+              ? confidenceRaw
+              : 'insufficient';
+          const hasContent = summary.trim().length > 0 || signals.length > 0;
+          if (hasContent) {
+            merged[key] = { summary, signals, confidence };
+            anyChange = true;
+          } else if (!merged[key]) {
+            merged[key] = { summary, signals, confidence };
+            anyChange = true;
           }
-        | null;
-      if (obj && Array.isArray(obj.questions)) {
-        const clean: ProbingQuestion[] = obj.questions
-          .filter(
-            (q): q is { text?: string; technique?: string; why_sharp?: string } =>
-              !!q,
-          )
-          .map((q) => ({
-            text: typeof q.text === 'string' ? q.text : '',
-            technique:
-              typeof q.technique === 'string' ? q.technique : 'tell_more',
-            why: typeof q.why_sharp === 'string' ? q.why_sharp : '',
-            why_sharp:
-              typeof q.why_sharp === 'string' ? q.why_sharp : undefined,
-          }))
-          .filter((q) => q.text.trim().length > 0);
-        if (clean.length > 0) {
-          setCurrent({ id: setId, created_at: started_at, questions: clean });
-          finalQuestions = clean;
+        }
+        const hasAnyKey = (Object.keys(merged) as ProbingPersonaSectionKey[])
+          .some((k) => merged[k] !== undefined);
+        if (anyChange || (prev === null && hasAnyKey)) {
+          setReflection(merged);
+          setReflectionLastUpdatedAt(Date.now());
+          setReflectionStatus('ready');
+          return;
         }
       }
-      succeeded = true;
+      throw new Error('empty_reflection');
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'suggest_failed';
-      setSuggestError(msg);
-      toast.push('제안 생성 실패 — 잠시 후 다시 시도해 주세요', {
+      const msg = e instanceof Error ? e.message : 'reflection_failed';
+      setReflectionError(msg);
+      setReflectionStatus('error');
+      toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
         tone: 'warn',
       });
-      setCurrent(null);
     } finally {
-      suggestInFlightRef.current = false;
-      setSuggestStreaming(false);
+      reflectionInFlightRef.current = false;
     }
-
-    if (succeeded && finalQuestions.length > 0) {
-      void persistQuestions(setId, finalQuestions, text);
-    }
-  }, [persistQuestions, toast]);
-
-  const runSuggestRef = useRef(runSuggest);
-  useEffect(() => {
-    runSuggestRef.current = runSuggest;
-  }, [runSuggest]);
-
-  // ─── 좌패널 — Reflection Agent 호출 ───
-  const runReflection = useCallback(
-    async (opts: { triggerQuestionsOnSuccess: boolean }) => {
-      if (reflectionInFlightRef.current) return;
-      const segs = rawSegmentsRef.current;
-      const fullText = segmentsText(segs);
-      if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
-      const trimmed =
-        fullText.length > REFLECTION_MAX_CHARS
-          ? fullText.slice(fullText.length - REFLECTION_MAX_CHARS)
-          : fullText;
-
-      reflectionInFlightRef.current = true;
-      setReflectionStatus('streaming');
-      setReflectionError(null);
-
-      try {
-        const res = await fetch('/api/probing/reflection', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            transcript_window: trimmed,
-            interview_guide: guideRef.current,
-          }),
-        });
-        if (!res.ok || !res.body) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error ?? `reflection_failed_${res.status}`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-        }
-        const parsed = await parsePartialJson(buffer);
-        // partial parse 단계는 schema 미준수가 가능하므로 untyped 로 받아 직접 정규화.
-        const obj = (parsed.value ?? null) as Record<string, unknown> | null;
-        if (obj && typeof obj === 'object') {
-          // 섹션 단위 merge — 한번 채워진 패널이 다음 호출에서 LLM 이 그 섹션을
-          // 빈약하게 판정 (insufficient / empty summary / 빈 signals) 했다고
-          // 해서 placeholder 로 회귀시키지 않는다. 사용자가 보기에 패널이
-          // "채워졌다 → 다시 empty" 로 사라지는 건 정보 손실로 인지되기 때문.
-          // 룰:
-          //   - 새 섹션이 의미 있는 데이터 (summary 비어있지 않음 OR
-          //     signals 1개 이상) → 새 데이터로 교체 (변형 / confidence 변동
-          //     OK). 인터뷰 누적에 따라 가설이 정교화되는 자연 흐름.
-          //   - 새 섹션이 빈 데이터 → 이전 값 유지. 처음부터 없었다면
-          //     insufficient placeholder 로 표시되지만, 한번 채워진 칸은
-          //     덮어쓰지 않음.
-          const prev = reflectionRef.current;
-          const merged: ProbingReflectionData = { ...(prev ?? {}) };
-          let anyChange = false;
-          for (const key of PROBING_PERSONA_SECTION_KEYS) {
-            const sec = obj[key] as Record<string, unknown> | undefined;
-            if (!sec || typeof sec !== 'object') continue;
-            const summary =
-              typeof sec.summary === 'string' ? sec.summary : '';
-            const signalsRaw = Array.isArray(sec.signals) ? sec.signals : [];
-            const signals = signalsRaw
-              .filter(
-                (s): s is Record<string, unknown> =>
-                  !!s && typeof s === 'object',
-              )
-              .map((s) => ({
-                bullet: typeof s.bullet === 'string' ? s.bullet : '',
-                quote: typeof s.quote === 'string' ? s.quote : undefined,
-              }))
-              .filter((s) => s.bullet.trim().length > 0);
-            const confidenceRaw = sec.confidence;
-            const confidence: ProbingPersonaSection['confidence'] =
-              confidenceRaw === 'high' ||
-              confidenceRaw === 'medium' ||
-              confidenceRaw === 'low'
-                ? confidenceRaw
-                : 'insufficient';
-            const hasContent =
-              summary.trim().length > 0 || signals.length > 0;
-            if (hasContent) {
-              merged[key] = { summary, signals, confidence };
-              anyChange = true;
-            } else if (!merged[key]) {
-              // 첫 노출 — 아직 한번도 채워진 적 없는 섹션은 insufficient
-              // placeholder 로 표시 (그래야 그리드가 8 패널 모양을 유지).
-              merged[key] = { summary, signals, confidence };
-              anyChange = true;
-            }
-            // else: 이전에 채워진 섹션을 빈 응답으로 덮어쓰지 않음.
-          }
-          // 한 번도 reflection 이 없었던 첫 호출에서 모든 섹션이 빈 응답
-          // (LLM 이 transcript 부실로 전체 insufficient) 이면 anyChange 가
-          // true 이지만 merged 도 비어 있을 수 있다. UI 가 8 패널을 표시할
-          // 수 있도록 prev 가 null 이면 merged 를 그대로 set — 빈 placeholder
-          // 그리드라도 띄운다.
-          const hasAnyKey = (Object.keys(merged) as ProbingPersonaSectionKey[])
-            .some((k) => merged[k] !== undefined);
-          if (anyChange || (prev === null && hasAnyKey)) {
-            setReflection(merged);
-            setReflectionLastUpdatedAt(Date.now());
-            setReflectionStatus('ready');
-            if (opts.triggerQuestionsOnSuccess) {
-              // 좌 갱신 → 우 자동 trigger (1회). reflection ref 가 위에서 set
-              // 됐으므로 다음 tick 에 runSuggest 가 최신 reflection 을 본다.
-              queueMicrotask(() => {
-                void runSuggestRef.current();
-              });
-            }
-            return;
-          }
-        }
-        throw new Error('empty_reflection');
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'reflection_failed';
-        setReflectionError(msg);
-        setReflectionStatus('error');
-        toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
-          tone: 'warn',
-        });
-      } finally {
-        reflectionInFlightRef.current = false;
-      }
-    },
-    [toast],
-  );
+  }, [toast]);
 
   const runReflectionRef = useRef(runReflection);
   useEffect(() => {
     runReflectionRef.current = runReflection;
   }, [runReflection]);
 
-  // ─── 자동 트리거: transcript 변경 → 5초 debounce → reflection ───
+  // ─── 자동 트리거: transcript 변경 → 5초 debounce → 좌·우 호출 ───
   useEffect(() => {
     if (!isLive) return;
     if (cumulativeChars < MIN_TRANSCRIPT_CHARS) return;
     const id = setTimeout(() => {
-      void runReflectionRef.current({ triggerQuestionsOnSuccess: true });
-    }, REFLECTION_DEBOUNCE_MS);
+      void runReflectionRef.current();
+      void runThinkRef.current();
+    }, DEBOUNCE_MS);
     return () => clearTimeout(id);
   }, [rawSegments, cumulativeChars, isLive]);
 
-  // 새 세션 시작 시 in-memory 상태 리셋.
+  // 새 세션 시작 → in-memory 상태 리셋 (research_context 는 DB 라 유지).
   const prevLiveRef = useRef(false);
   useEffect(() => {
     const prev = prevLiveRef.current;
@@ -744,20 +560,27 @@ function ExpandedBody() {
       setReflectionStatus('idle');
       setReflectionLastUpdatedAt(null);
       setReflectionError(null);
-      setCurrent(null);
-      setSuggestError(null);
+      setThinkingEvents([]);
+      setThinkingError(null);
+      setActivePopup(null);
+      setHistory([]);
     }
     prevLiveRef.current = isLive;
   }, [isLive]);
 
-  // 수동 트리거 — 좌 갱신.
-  const handleManualReflection = useCallback(() => {
-    void runReflectionRef.current({ triggerQuestionsOnSuccess: true });
-  }, []);
+  // 세션 stop 시 진행 중 think SSE abort.
+  useEffect(() => {
+    if (sessionStatus === 'idle' || sessionStatus === 'stopping') {
+      thinkAbortRef.current?.abort();
+    }
+  }, [sessionStatus]);
 
-  // 수동 트리거 — 우 제안.
-  const handleManualSuggest = useCallback(() => {
-    void runSuggestRef.current();
+  // 수동 좌패널 갱신 / 우패널 think.
+  const handleManualReflection = useCallback(() => {
+    void runReflectionRef.current();
+  }, []);
+  const handleManualThink = useCallback(() => {
+    void runThinkRef.current();
   }, []);
 
   async function handleCopy(text: string) {
@@ -769,153 +592,52 @@ function ExpandedBody() {
     }
   }
 
-  const handleToggleCore = useCallback(
-    async (id: string) => {
-      let prevValue: boolean | null = null;
-      let nextValue: boolean | null = null;
-      setQuestions((prev) =>
-        prev.map((q) => {
-          if (q.id !== id) return q;
-          prevValue = q.is_core;
-          nextValue = !q.is_core;
-          return { ...q, is_core: nextValue };
-        }),
-      );
-      if (prevValue === null || nextValue === null) return;
-      if (id.startsWith('local-')) return;
-      try {
-        const res = await fetch(
-          `/api/probing/questions/${encodeURIComponent(id)}`,
-          {
-            method: 'PATCH',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ is_core: nextValue }),
-          },
-        );
-        if (!res.ok) throw new Error(`patch_failed_${res.status}`);
-      } catch {
-        const restored = prevValue;
-        setQuestions((prev) =>
-          prev.map((q) => (q.id === id ? { ...q, is_core: restored } : q)),
-        );
-        toast.push('핵심 표시 저장 실패 — 잠시 후 다시 시도해 주세요', {
-          tone: 'warn',
-        });
-      }
-    },
-    [toast],
-  );
+  // popup 액션.
+  const handlePopupAutoDismiss = useCallback(() => {
+    setActivePopup((cur) => {
+      if (cur) pushHistoryFromPopup(cur, 'auto');
+      return null;
+    });
+  }, [pushHistoryFromPopup]);
+  const handlePopupManualDismiss = useCallback(() => {
+    setActivePopup((cur) => {
+      if (cur) pushHistoryFromPopup(cur, 'manual');
+      return null;
+    });
+  }, [pushHistoryFromPopup]);
+  const handlePopupPin = useCallback(() => {
+    setActivePopup((cur) => {
+      if (cur) pushHistoryFromPopup(cur, 'pin');
+      return null;
+    });
+    toast.push('★ history 에 핀했어요', { tone: 'info', ttlMs: 1500 });
+  }, [pushHistoryFromPopup, toast]);
+  const handlePopupCopy = useCallback(() => {
+    if (!activePopup) return;
+    void handleCopy(activePopup.text);
+    // copy 는 popup 을 dismiss 하지 않음 — 사용자가 던질 시간 보존.
+  }, [activePopup, toast]); // eslint-disable-line react-hooks/exhaustive-deps -- handleCopy 는 매 렌더 재생성되지만 본문이 stable 한 함수라 OK.
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      let removed: ProbingQuestionRow | null = null;
-      let removedIndex = -1;
-      setQuestions((prev) => {
-        const idx = prev.findIndex((q) => q.id === id);
-        if (idx === -1) return prev;
-        removed = prev[idx]!;
-        removedIndex = idx;
-        return prev.filter((_, i) => i !== idx);
-      });
-      setSelectedId((cur) => (cur === id ? null : cur));
-      if (!removed) return;
-      if (id.startsWith('local-')) return;
-      try {
-        const res = await fetch(
-          `/api/probing/questions/${encodeURIComponent(id)}`,
-          { method: 'DELETE' },
-        );
-        if (!res.ok) throw new Error(`delete_failed_${res.status}`);
-      } catch {
-        const restored = removed;
-        const idx = removedIndex;
-        setQuestions((prev) => {
-          const next = [...prev];
-          next.splice(Math.min(idx, next.length), 0, restored);
-          return next.slice(0, DISPLAY_LIMIT);
-        });
-        toast.push('삭제 실패 — 잠시 후 다시 시도해 주세요', { tone: 'warn' });
-      }
+  // history 액션.
+  const handleHistoryCopy = useCallback(
+    (text: string) => {
+      void handleCopy(text);
     },
-    [toast],
+    [toast], // eslint-disable-line react-hooks/exhaustive-deps
   );
-
-  const handleSelect = useCallback((id: string) => {
-    setSelectedId((prev) => (prev === id ? null : id));
+  const handleHistoryToggleStar = useCallback((id: string) => {
+    setHistory((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, is_starred: !q.is_starred } : q)),
+    );
   }, []);
-
-  // selectedId 가 있을 때만 esc 리스너.
-  useEffect(() => {
-    if (selectedId === null) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setSelectedId(null);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [selectedId]);
-
-  // 파일 import — 기존 흐름 그대로.
-  const runImport = useCallback(
-    async (file: File) => {
-      setImporting(true);
-      try {
-        const { text, truncated } = await importGuideFile(file);
-        setGuide(text);
-        setGuideOpen(true);
-        if (truncated) {
-          toast.push(
-            `가이드 최대 ${GUIDE_MAX_CHARS.toLocaleString()}자까지 — 이후 부분 잘림`,
-            { tone: 'warn' },
-          );
-        } else {
-          toast.push(`가이드 가져옴 — ${text.length.toLocaleString()}자`, {
-            tone: 'info',
-            ttlMs: 2000,
-          });
-        }
-      } catch (e) {
-        const code = e instanceof GuideImportError ? e.code : 'parse_failed';
-        const msg =
-          code === 'unsupported_type'
-            ? '지원하지 않는 파일 형식입니다 (.md, .txt, .docx 만 가능)'
-            : code === 'too_large'
-              ? '파일이 너무 큽니다 — 5MB 이하만 가져올 수 있습니다'
-              : '파일을 읽을 수 없습니다 — 확인 후 다시 시도해 주세요';
-        toast.push(msg, { tone: 'warn' });
-      } finally {
-        setImporting(false);
-      }
-    },
-    [toast],
-  );
-
-  function handleImportClick() {
-    if (importing) return;
-    fileInputRef.current?.click();
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (guide.trim().length > 0) {
-      setPendingFile(file);
-      return;
-    }
-    void runImport(file);
-  }
-
-  function handleConfirmReplace() {
-    const file = pendingFile;
-    setPendingFile(null);
-    if (file) void runImport(file);
-  }
+  const handleHistoryDelete = useCallback((id: string) => {
+    setHistory((prev) => prev.filter((q) => q.id !== id));
+  }, []);
 
   // 세션 시작 / 정지.
   const handleStartSession = useCallback(async () => {
     await startSession({ source });
   }, [startSession, source]);
-
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
@@ -949,14 +671,13 @@ function ExpandedBody() {
     }
   }, [sessionStatus]);
 
-  // 상태 라벨 — 자동 호출 카운트다운이 사라졌으므로 단순화.
   const statusLabel = (() => {
     if (sessionStatus === 'starting') return '세션 연결 중…';
     if (sessionStatus === 'stopping') return '세션 종료 중…';
     if (sessionStatus === 'error') return '세션 오류';
     if (!isLive) return '세션 대기';
     if (reflectionStatus === 'streaming') return '응답자 페르소나 갱신 중…';
-    if (suggestStreaming) return '질문 제안 생성 중…';
+    if (thinkingStreaming) return 'AI 사고 흐름 진행 중…';
     return '대기 중';
   })();
 
@@ -976,13 +697,13 @@ function ExpandedBody() {
     cumulativeChars >= MIN_TRANSCRIPT_CHARS &&
     reflectionStatus !== 'streaming';
 
-  const canSuggest =
-    isLive && hasTranscript && !suggestStreaming;
+  const thinkCanRun =
+    isLive &&
+    hasTranscript &&
+    cumulativeChars >= MIN_TRANSCRIPT_CHARS &&
+    !thinkingStreaming;
 
-  const hasReflection = reflection !== null;
-
-  // 좌/우 패널 props — widget 모드와 전체보기 모달 양쪽에 동일 인스턴스로
-  // 전달. 같은 React state 를 read 하므로 모드 토글 시 데이터 끊김 0.
+  // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
     status: reflectionStatus,
@@ -996,34 +717,30 @@ function ExpandedBody() {
   };
 
   const questionPaneProps = {
-    current,
-    questions,
-    streaming: suggestStreaming,
-    hydrating,
-    selectedId,
+    context,
+    onContextChange: setContext,
+    contextDisabled: !contextHydrated,
+    thinkingEvents,
+    thinkingStreaming,
+    thinkCanRun,
+    onManualThink: handleManualThink,
+    activePopup,
+    onPopupPin: handlePopupPin,
+    onPopupCopy: handlePopupCopy,
+    onPopupDismiss: handlePopupManualDismiss,
+    onPopupAutoDismiss: handlePopupAutoDismiss,
+    history,
     nowMs: now,
+    onHistoryCopy: handleHistoryCopy,
+    onHistoryToggleStar: handleHistoryToggleStar,
+    onHistoryDelete: handleHistoryDelete,
     isLive,
     hasTranscript,
-    hasReflection,
-    canSuggest,
-    onSuggest: handleManualSuggest,
-    onSelect: handleSelect,
-    onCopy: (t: string) => {
-      void handleCopy(t);
-    },
-    onToggleCore: (id: string) => {
-      void handleToggleCore(id);
-    },
-    onDelete: (id: string) => {
-      void handleDelete(id);
-    },
   };
 
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        {/* ControlBoard — settings (source picker + 세션 시작/정지 +
-            전체보기) / input(가이드). translate-console 과 같은 패턴. */}
         <ControlBoard className="shrink-0">
           <ControlBoard.SettingsRow>
             <SourcePicker
@@ -1078,50 +795,29 @@ function ExpandedBody() {
           </ControlBoard.SettingsRow>
 
           <ControlBoard.Input divider="top">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    isLive
-                      ? 'bg-amore'
-                      : sessionStatus === 'error'
-                        ? 'bg-warning'
-                        : 'bg-line'
-                  }`}
-                  aria-hidden
-                />
-                <SectionLabel>{statusLabel}</SectionLabel>
-              </div>
-
-              <GuideSection
-                value={guide}
-                onChange={setGuide}
-                open={guideOpen}
-                onToggle={() => setGuideOpen((o) => !o)}
-                onImportClick={handleImportClick}
-                importing={importing}
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isLive
+                    ? 'bg-amore'
+                    : sessionStatus === 'error'
+                      ? 'bg-warning'
+                      : 'bg-line'
+                }`}
+                aria-hidden
               />
+              <SectionLabel>{statusLabel}</SectionLabel>
             </div>
           </ControlBoard.Input>
         </ControlBoard>
-        {/* eslint-disable-next-line react/forbid-elements -- hidden file picker triggered programmatically; <Input> primitive's label/helper wrapper is unnecessary chrome for an invisible element. */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="hidden"
-          onChange={handleFileChange}
-          aria-hidden
-          tabIndex={-1}
-        />
 
-        {/* 본문 — 좌(성찰) / 우(질문) 2-pane. divide-x 로 vertical divider. */}
+        {/* 본문 — 좌(페르소나) / 우(4-layer 입력+사고+popup+history). */}
         <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] divide-x divide-line-soft overflow-hidden">
           <ReflectionPane {...reflectionPaneProps} />
           <QuestionPane {...questionPaneProps} />
         </div>
 
-        {suggestError && (
+        {thinkingError && (
           <div
             className="m-3 bg-paper px-3 py-2 text-sm text-warning"
             style={{
@@ -1130,16 +826,11 @@ function ExpandedBody() {
               boxShadow: '2px 2px 0 var(--color-warning)',
             }}
           >
-            제안 생성 실패: {suggestError}
+            AI 사고 흐름 실패: {thinkingError}
           </div>
         )}
       </div>
 
-      {/* 전체보기 — 90% viewport 모달 (max 1600×900). 명시적 여백으로
-          "페이지 변경" 이 아니라 "모달" 임을 시각적으로 인지 — 사용자
-          백버튼 instinct 회피. ESC / 헤더 ✕ / backdrop click 모두 close.
-          modal 안의 ReflectionPane / QuestionPane 은 widget 모드와 같은
-          React state 를 read — close 시 widget 으로 돌아가도 끊김 0. */}
       {expanded && (
         <Modal
           open
@@ -1157,57 +848,25 @@ function ExpandedBody() {
           />
         </Modal>
       )}
-
-      {pendingFile && (
-        <Modal
-          open
-          onClose={() => setPendingFile(null)}
-          size="sm"
-          title="가이드를 교체할까요?"
-          description={`현재 가이드 (${guide.length.toLocaleString()}자) 가 가져온 파일 내용으로 교체됩니다. 되돌릴 수 없습니다.`}
-          footer={
-            <>
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setPendingFile(null)}
-                className="uppercase tracking-[0.18em]"
-              >
-                취소
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleConfirmReplace}
-                className="uppercase tracking-[0.18em]"
-              >
-                교체
-              </Button>
-            </>
-          }
-        >
-          <p className="text-md leading-[1.6] text-mute">
-            파일: <span className="text-ink-2">{pendingFile.name}</span>
-          </p>
-        </Modal>
-      )}
     </>
   );
 }
+
+// PROBING_TECHNIQUES / PROBING_THINK_IMPORTANCE re-import 차단 회피 —
+// types 가 ProbingTechnique union 을 사용하므로 schema 모듈이 tree-shake
+// 됐을 때 enum 누락 방지용 reference. (런타임 영향 X)
+void PROBING_TECHNIQUES;
+void PROBING_THINK_IMPORTANCE;
 
 export const probingCard: WidgetContent = {
   key: 'probing',
   meta: {
     label: '프로빙 어시스턴트',
     accent: 'sky',
-    // ledger cost — 1 tick (1시간) 당 25 크레딧. translate 와 동일 lifecycle
-    // 패턴 (시작 lump + 시간당 추가) 이라 헤더는 표준 💎25 pill 만 — 다른
-    // 위젯과 시각 통일. 라이프사이클 (4시간 cap = 100 credit) 상세는
-    // /credits 페이지의 Features.probing.cost 라벨이 책임.
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
     description:
-      '좌측은 응답자 페르소나 8 패널 (데모/가치관/선호/니즈/페인포인트/브랜드 인식/의사결정/행동), 우측은 그 페르소나를 검증·심화하는 probing 질문을 자동 갱신합니다',
+      '좌측은 응답자 페르소나 8 패널, 우측은 사용자가 입력한 조사 목적·핵심 가설·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
     expandedCols: 3,
   },
   state: 'idle',

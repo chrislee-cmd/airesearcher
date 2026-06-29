@@ -368,6 +368,9 @@
 @utility z-modal { z-index: 50; }
 @utility z-toast { z-index: 60; }
 @utility z-overlay { z-index: 70; }
+/* z-popup — modal 안에서 absolute 로 떠 있는 probing question popup. modal
+   본문 (~0~1) 위에 명확히 떠 있으면서 toast / overlay 보다는 낮은 단계. */
+@utility z-popup { z-index: 20; }
 
 html, body {
   background: var(--color-paper);
@@ -470,6 +473,28 @@ html, body {
 .credit-balance-pulse {
   animation: creditBalancePulse 0.9s ease-out forwards;
   display: inline-block;
+}
+
+/* probing-thinking-pulse — thinking-stream 헤더의 amore dot 가 stream 진행
+   중 잔잔히 깜빡이도록. workspace-trigger-pulse 보다 부드럽고 infinite. */
+@keyframes probingThinkingPulse {
+  0%   { opacity: 0.35; transform: scale(0.85); }
+  50%  { opacity: 1;    transform: scale(1); }
+  100% { opacity: 0.35; transform: scale(0.85); }
+}
+.probing-thinking-pulse {
+  animation: probingThinkingPulse 1.4s ease-in-out infinite;
+}
+
+/* probing-popup-pulse — high importance popup 카드 등장 시 1회 짧은 pulse.
+   사용자 시선을 끌어당기는 시각만 — 사운드 X. */
+@keyframes probingPopupPulse {
+  0%   { box-shadow: 0 0 0 0 var(--color-warning), 8px 8px 0 var(--color-warning); }
+  60%  { box-shadow: 0 0 0 14px transparent, 8px 8px 0 var(--color-warning); }
+  100% { box-shadow: 0 0 0 0 transparent, 8px 8px 0 var(--color-warning); }
+}
+.probing-popup-pulse {
+  animation: probingPopupPulse 1.2s ease-out 1;
 }
 
 /* Docx-derived preview */
