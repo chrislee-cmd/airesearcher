@@ -1,10 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { refundCredits } from '@/lib/credits';
 
-// Stale = an active status row that hasn't been touched in this long. Set
-// to HARD_DEADLINE_MS (270s) + 90s safety margin so we don't pre-empt jobs
-// that are still inside their function deadline but haven't patched yet.
-const STALE_THRESHOLD_MS = 6 * 60 * 1000;
+// Stale = an active status row that hasn't been touched in this long.
+// Tightened 6min→3min: LLM hard timeout is 90s/call so any honest live
+// runner patches within ~2min between phase transitions. 3min leaves
+// breathing room for the slowest synth call (120s) while still freeing
+// stuck rows quickly for the next sweep.
+const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 
 const ACTIVE_STATUSES = ['queued', 'expanding', 'crawling', 'summarizing'] as const;
 

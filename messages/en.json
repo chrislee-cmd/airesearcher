@@ -702,6 +702,7 @@
     "timeoutBody": "The report couldn't finish within the 300s limit, so the run was stopped. Your credits were automatically refunded. Try narrowing keywords or the date range.",
     "stuckTitle": "No response",
     "stuckBody": "No progress signal for {seconds}s. You can keep waiting or stop the run to recover credits.",
+    "stuckAutoCancelled": "No progress for {seconds}s — automatically stopped the run and refunded credits. The screen will clear shortly.",
     "doneEmptyTitle": "Report is empty",
     "doneEmptyBody": "The run finished but no report body was saved. Please try again.",
     "fallbackTitle": "Finished with a short-form report",

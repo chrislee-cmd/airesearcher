@@ -404,6 +404,20 @@ export function DeskCardBody() {
   const stuckMs = isWorking ? now - lastEventAtRef.current : 0;
   const isStuck = isWorking && stuckMs > STUCK_THRESHOLD_MS;
 
+  // Auto-cancel — 90s 동안 events 가 안 오면 사용자가 자리 비웠다 가정하고
+  // 자동으로 cancel API 호출. server 의 cancel endpoint 가 60s+ stuck row
+  // 면 force cleanup + 환불 처리. 즉 사용자 개입 없이 화면 깨끗하게 정리.
+  const AUTO_CANCEL_MS = 90_000;
+  const autoCancelTriggeredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isStuck || !job) return;
+    if (job.cancel_requested) return;
+    if (stuckMs < AUTO_CANCEL_MS) return;
+    if (autoCancelTriggeredRef.current === job.id) return;
+    autoCancelTriggeredRef.current = job.id;
+    void cancelJob(job.id);
+  }, [isStuck, stuckMs, job, cancelJob]);
+
   // ─── stage timing chips ──────────────────────────────────────────────────
   // Each closed phase records elapsed ms in progress.timings — surface them
   // as a chip row so users (and admins eyeballing screenshots) can spot the
@@ -767,15 +781,19 @@ export function DeskCardBody() {
           </Banner>
         )}
         {/* stuck (active 인데 progress 가 45s 멈춤) — 사용자가 중단/환불
-            결정할 수 있게 즉시 노출. cancel 버튼은 항상 표시 — 60s+ 멈춤
-            상태면 server 가 force cleanup + 즉시 환불 (cancel endpoint). */}
+            결정할 수 있게 즉시 노출. cancel 버튼은 항상 표시. 90s+ 면
+            클라이언트가 자동으로 cancel API 호출 (사용자 개입 없이 환불). */}
         {isStuck && job && (
           <Banner tone="warning" title={tDesk('stuckTitle')}>
             <div className="flex flex-wrap items-center gap-3">
               <span>
-                {tDesk('stuckBody', {
-                  seconds: Math.round(stuckMs / 1000),
-                })}
+                {stuckMs >= AUTO_CANCEL_MS
+                  ? tDesk('stuckAutoCancelled', {
+                      seconds: Math.round(stuckMs / 1000),
+                    })
+                  : tDesk('stuckBody', {
+                      seconds: Math.round(stuckMs / 1000),
+                    })}
               </span>
               <Button
                 variant="primary"
