@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import type { WidgetContent } from '../widget-types';
-import { InterviewAnalyzer } from '@/components/interview-analyzer';
+import {
+  InterviewAnalysisArea,
+  InterviewUploadArea,
+} from '@/components/interview-analyzer';
 import { useInterviewJob } from '@/components/interview-job-provider';
 import { WidgetOutputs } from '../shell/widget-outputs';
+import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
 import { Button } from '@/components/ui/button';
 import { InterviewFullView } from './interviews/full-view';
@@ -98,18 +102,23 @@ function ExpandedBody() {
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
-      <div className="flex shrink-0 items-center justify-end gap-2 border-b border-line-soft px-5 py-2">
-        <Button
-          variant="link"
-          size="xs"
-          onClick={() => setFullViewOpen(true)}
-          className="!text-sm uppercase tracking-[0.18em]"
-        >
-          ⤢ 전체 보기
-        </Button>
-      </div>
+      {/* WidgetSubHeader — 업로드 영역 (inputs) + 전체보기 버튼 (actions).
+          사용자 요청으로 "1단계 — 파일을 .md로 변환" 타이틀은 제거됨. */}
+      <WidgetSubHeader
+        inputs={<InterviewUploadArea />}
+        actions={
+          <Button
+            variant="link"
+            size="xs"
+            onClick={() => setFullViewOpen(true)}
+            className="!text-sm uppercase tracking-[0.18em]"
+          >
+            ⤢ 전체 보기
+          </Button>
+        }
+      />
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-        <InterviewAnalyzer />
+        <InterviewAnalysisArea />
       </div>
       <WidgetOutputs label="최근 산출물" items={[]} renderItem={() => null} />
       <InterviewFullView

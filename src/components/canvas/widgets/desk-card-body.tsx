@@ -2,12 +2,15 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ClipboardEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -43,6 +46,7 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import {
   SectionLabel,
@@ -50,7 +54,7 @@ import {
   WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
-import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { deskCumulativeProgress } from '@/lib/widget-progress';
 import { Banner } from '@/components/canvas/shell/banner';
@@ -88,6 +92,164 @@ function splitKeywords(raw: string): string[] {
     .split(/[,\n\t、·]+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+// ─── SelectMenu — desk SubHeader 전용 dropdown primitive ───────────────────
+// region / period 가 dropdown 형태로 통일되도록 portal-based 패널을 제공.
+// `multi` 면 체크박스 토글, 아니면 선택 시 즉시 닫는 radio-like 동작.
+// widget-shell 의 `overflow:hidden` 안에 있어 absolute 가 잘리므로 portal +
+// position:fixed 로 escape. 이건 desk widget local helper — 다른 위젯에서
+// 같은 패턴 필요해지면 별 spec 으로 src/components/ui 로 승격.
+
+type SelectChoice = { value: string; label: ReactNode };
+
+function SelectMenu({
+  options,
+  values,
+  onChange,
+  placeholder,
+  disabled,
+  multi,
+  buttonClassName,
+  renderSummary,
+}: {
+  options: SelectChoice[];
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  disabled?: boolean;
+  multi?: boolean;
+  buttonClassName?: string;
+  renderSummary?: (values: string[]) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !wrapRef.current) return;
+    const update = () =>
+      setRect(wrapRef.current!.getBoundingClientRect());
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function down(e: MouseEvent) {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
+      setOpen(false);
+    }
+    function esc(e: KeyboardEvent | globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', down);
+    document.addEventListener('keydown', esc as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', down);
+      document.removeEventListener('keydown', esc as EventListener);
+    };
+  }, [open]);
+
+  function toggle(v: string) {
+    if (multi) {
+      onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+    } else {
+      onChange([v]);
+      setOpen(false);
+    }
+  }
+
+  const summaryNode = renderSummary
+    ? renderSummary(values)
+    : values.length === 0
+      ? placeholder
+      : values.length <= 2
+        ? values.map((v) => options.find((o) => o.value === v)?.label ?? v).join(', ')
+        : `${values.length}개 선택`;
+
+  return (
+    <div ref={wrapRef} className="relative">
+      {/* eslint-disable-next-line react/forbid-elements -- dropdown trigger:
+          listbox semantics + native form-control border/chevron shape outside
+          Button primitive variants */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className={
+          buttonClassName ??
+          'flex h-8 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50'
+        }
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="truncate">{summaryNode}</span>
+        <span aria-hidden className="text-mute-soft">▾</span>
+      </button>
+      {open && rect && typeof window !== 'undefined' &&
+        createPortal(
+          <div
+            ref={panelRef}
+            role="listbox"
+            aria-multiselectable={multi}
+            className="fixed z-overlay max-h-72 overflow-y-auto rounded-xs border-[2px] border-ink bg-paper shadow-[3px_3px_0_var(--canvas-card-border)]"
+            style={{
+              left: rect.left,
+              top: rect.bottom + 4,
+              minWidth: rect.width,
+            }}
+          >
+            {options.map((opt) => {
+              const checked = values.includes(opt.value);
+              return (
+                /* eslint-disable-next-line react/forbid-elements -- dropdown
+                   option: needs role="option" + aria-selected for listbox
+                   ARIA semantics outside Button primitive */
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={checked}
+                  onClick={() => toggle(opt.value)}
+                  className={
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-md ' +
+                    (checked ? 'bg-amore-bg text-ink' : 'text-ink hover:bg-paper-soft')
+                  }
+                >
+                  {multi ? (
+                    <Checkbox
+                      checked={checked}
+                      readOnly
+                      tabIndex={-1}
+                      onChange={() => {}}
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={
+                        'inline-block h-3 w-3 rounded-full border-[1.5px] ' +
+                        (checked ? 'border-amore bg-amore' : 'border-line')
+                      }
+                    />
+                  )}
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
 }
 
 // 수집 소스는 항상 전체. KR-only 그룹 (네이버/카카오) 은 selected regions 에
@@ -187,6 +349,10 @@ export function DeskCardBody() {
   const [preset, setPreset] = useState<RangePreset>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  // 사용자 자유 텍스트 — LLM 분석 시 어떤 관점으로 정리할지 hint. 현재
+  // 백엔드 wiring 없음 (zod schema / DB column 미존재) — 후속 PR 에서
+  // /api/desk POST body 에 `user_intent` 로 추가 + prompts 에 inject 예정.
+  const [analysisDirection, setAnalysisDirection] = useState<string>('');
   // 멀티 region 선택 — 최소 1개 보장 (모두 해제 X, API 가 region 을 필요로 함).
   const [regions, setRegions] = useState<Set<DeskRegion>>(
     () => new Set(['KR']),
@@ -196,19 +362,8 @@ export function DeskCardBody() {
     sourcesForRegions(new Set(['KR'])),
   );
 
-  function toggleRegion(r: DeskRegion) {
-    setRegions((prev) => {
-      const next = new Set(prev);
-      if (next.has(r)) {
-        if (next.size <= 1) return prev; // 최소 1개 보장
-        next.delete(r);
-      } else {
-        next.add(r);
-      }
-      setSelected(sourcesForRegions(next));
-      return next;
-    });
-  }
+  // regions/selected 갱신은 SelectMenu onChange 콜백에서 직접 처리 —
+  // 별도 toggle 헬퍼 미사용 (다중 선택 + 최소 1개 보장 inline).
 
   const [submitting, setSubmitting] = useState(false);
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
@@ -595,134 +750,146 @@ export function DeskCardBody() {
         {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
             길어지면 자체적으로 스크롤. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* ControlBoard — settings (region pill + range pill) / input
-            (keyword chip) / action (검색 ChromeButton). 같은 4-layer
-            패턴을 6 위젯이 공유. */}
-        <ControlBoard>
-          <ControlBoard.SettingsRow>
-            <div className="w-full space-y-5">
-              <Field label={tDesk('regionLabel')}>
-                <div className="flex flex-wrap gap-1.5">
-                  {DESK_REGIONS.map((r) => {
-                    const isSelected = regions.has(r);
-                    return (
-                      <Button
-                        key={r}
-                        variant={isSelected ? 'primary' : 'ghost'}
-                        size="xs"
-                        onClick={() => toggleRegion(r)}
-                        aria-pressed={isSelected}
-                      >
-                        {tDesk(`region.${r}`)}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </Field>
+        {/* WidgetSubHeader — 2-row 컴팩트 레이아웃:
+            row 1 = 검색 지역 (multi-select dropdown) / 수집 기간
+              (single-select dropdown + custom 시 date pickers) / 분석 방향성 (text)
+            row 2 = 검색 키워드 (ChipInput, full-width)
+            "enter / 쉼표 /tab으로 추가" 헬퍼 텍스트 제거 (placeholder 에 흡수).
+            기존 버튼 그리드는 dropdown 으로 압축 — 서브헤더 height 절감. */}
+        <WidgetSubHeader
+          inputs={
+            <div className="w-full space-y-3">
+              {/* Row 1: 지역 / 기간 / 분석 방향성 */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field label={tDesk('regionLabel')}>
+                  <SelectMenu
+                    multi
+                    options={DESK_REGIONS.map((r) => ({
+                      value: r,
+                      label: tDesk(`region.${r}`),
+                    }))}
+                    values={Array.from(regions)}
+                    onChange={(next) => {
+                      if (next.length === 0) return; // 최소 1개 보장
+                      const set = new Set(next as DeskRegion[]);
+                      setRegions(set);
+                      setSelected(sourcesForRegions(set));
+                    }}
+                    placeholder={tDesk('regionLabel')}
+                  />
+                </Field>
 
-              <Field label={tDesk('rangeLabel')}>
-                <div className="flex flex-wrap gap-1.5">
-                  {RANGE_PRESETS.map((p) => (
-                    <Button
-                      key={p.id}
-                      variant={preset === p.id ? 'primary' : 'ghost'}
-                      size="xs"
-                      onClick={() => applyPreset(p.id)}
+                <Field label={tDesk('rangeLabel')}>
+                  <SelectMenu
+                    options={RANGE_PRESETS.map((p) => ({
+                      value: p.id,
+                      label: tDesk(`range_${p.id}` as const),
+                    }))}
+                    values={[preset]}
+                    onChange={(next) => {
+                      const v = (next[0] ?? 'all') as RangePreset;
+                      applyPreset(v);
+                    }}
+                    placeholder={tDesk('rangeLabel')}
+                  />
+                  {showRange && (
+                    <div className="mt-2 flex items-center gap-2 text-md text-mute">
+                      <Input
+                        type="date"
+                        size="sm"
+                        fullWidth={false}
+                        value={dateFrom}
+                        max={dateTo || todayIso()}
+                        onChange={(e) => {
+                          setDateFrom(e.target.value);
+                          setPreset('custom');
+                        }}
+                        className="px-2 py-1 text-ink-2"
+                      />
+                      <span className="text-mute-soft">→</span>
+                      <Input
+                        type="date"
+                        size="sm"
+                        fullWidth={false}
+                        value={dateTo}
+                        min={dateFrom || undefined}
+                        max={todayIso()}
+                        onChange={(e) => {
+                          setDateTo(e.target.value);
+                          setPreset('custom');
+                        }}
+                        className="px-2 py-1 text-ink-2"
+                      />
+                    </div>
+                  )}
+                </Field>
+
+                <Field label="분석 방향성">
+                  <Input
+                    size="sm"
+                    fullWidth
+                    value={analysisDirection}
+                    onChange={(e) => setAnalysisDirection(e.target.value)}
+                    placeholder="예: 시장 성장률 + 주요 플레이어 위주"
+                  />
+                </Field>
+              </div>
+
+              {/* Row 2: 검색 키워드 */}
+              <Field label={tDesk('keywordLabel')}>
+                <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+                  {keywords.map((k, idx) => (
+                    <span
+                      key={`${k}-${idx}`}
+                      className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
                     >
-                      {tDesk(`range_${p.id}` as const)}
-                    </Button>
+                      {k}
+                      <IconButton
+                        variant="ghost-brand"
+                        onClick={() => removeKeyword(idx)}
+                        aria-label={`remove ${k}`}
+                      >
+                        ×
+                      </IconButton>
+                    </span>
                   ))}
+                  <ChipInput
+                    value={keywordDraft}
+                    onChange={(e) => setKeywordDraft(e.target.value)}
+                    onKeyDown={onKeywordKeyDown}
+                    onPaste={onKeywordPaste}
+                    onBlur={() => {
+                      if (keywordDraft.trim()) commitDraft();
+                    }}
+                    placeholder={
+                      keywords.length === 0
+                        ? tDesk('keywordPlaceholder')
+                        : tDesk('keywordAddMore')
+                    }
+                    className="min-w-[140px] flex-1"
+                  />
                 </div>
-                {showRange && (
-                  <div className="mt-3 flex items-center gap-2 text-md text-mute">
-                    <Input
-                      type="date"
-                      size="sm"
-                      fullWidth={false}
-                      value={dateFrom}
-                      max={dateTo || todayIso()}
-                      onChange={(e) => {
-                        setDateFrom(e.target.value);
-                        setPreset('custom');
-                      }}
-                      className="px-2 py-1 text-ink-2"
-                    />
-                    <span className="text-mute-soft">→</span>
-                    <Input
-                      type="date"
-                      size="sm"
-                      fullWidth={false}
-                      value={dateTo}
-                      min={dateFrom || undefined}
-                      max={todayIso()}
-                      onChange={(e) => {
-                        setDateTo(e.target.value);
-                        setPreset('custom');
-                      }}
-                      className="px-2 py-1 text-ink-2"
-                    />
-                  </div>
-                )}
               </Field>
             </div>
-          </ControlBoard.SettingsRow>
-
-          <ControlBoard.Input>
-            <Field label={tDesk('keywordLabel')}>
-              <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-                {keywords.map((k, idx) => (
-                  <span
-                    key={`${k}-${idx}`}
-                    className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-                  >
-                    {k}
-                    <IconButton
-                      variant="ghost-brand"
-                      onClick={() => removeKeyword(idx)}
-                      aria-label={`remove ${k}`}
-                    >
-                      ×
-                    </IconButton>
-                  </span>
-                ))}
-                <ChipInput
-                  value={keywordDraft}
-                  onChange={(e) => setKeywordDraft(e.target.value)}
-                  onKeyDown={onKeywordKeyDown}
-                  onPaste={onKeywordPaste}
-                  onBlur={() => {
-                    if (keywordDraft.trim()) commitDraft();
-                  }}
-                  placeholder={
-                    keywords.length === 0
-                      ? tDesk('keywordPlaceholder')
-                      : tDesk('keywordAddMore')
-                  }
-                  className="min-w-[140px] flex-1"
-                />
-              </div>
-              <span className="mt-1.5 block text-xs text-mute-soft">
-                {tDesk('keywordHint')}
+          }
+          actions={
+            <>
+              <span className="text-sm tabular-nums text-mute-soft">
+                {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
               </span>
-            </Field>
-          </ControlBoard.Input>
-
-          <ControlBoard.Action>
-            <span className="text-sm tabular-nums text-mute-soft">
-              {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
-            </span>
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={onClickRun}
-              disabled={!canRun}
-            >
-              {submitting || pendingJobId || isWorking
-                ? tCommon('loading')
-                : tDesk('search')}
-            </ChromeButton>
-          </ControlBoard.Action>
-        </ControlBoard>
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={onClickRun}
+                disabled={!canRun}
+              >
+                {submitting || pendingJobId || isWorking
+                  ? tCommon('loading')
+                  : tDesk('search')}
+              </ChromeButton>
+            </>
+          }
+        />
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
