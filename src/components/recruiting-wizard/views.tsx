@@ -8,6 +8,7 @@ import { ChromeInput } from '@/components/ui/chrome-input';
 import { Textarea } from '@/components/ui/textarea';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
+import { isStandardSectionTitle } from '@/lib/recruiting/standard-blocks';
 
 type Criterion = RecruitingBrief['criteria'][number];
 
@@ -229,6 +230,75 @@ export function SurveyPreview({ survey }: { survey: Survey }) {
   );
 }
 
+// Standard template sections (개인정보 수집 동의 / 인적사항) are byte-identical
+// across every published survey — the consent copy is a legal artifact and the
+// 인적사항 block feeds downstream contact/attendee logic by exact title. The
+// editor renders them locked (read-only) so the recruiter edits only the
+// domain screening questions in between.
+function StandardLockBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 border border-line-soft bg-paper px-1.5 py-px text-xs-soft text-mute-soft [border-radius:3px]">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="size-3 stroke-current"
+        fill="none"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+      표준 · 편집 잠금
+    </span>
+  );
+}
+
+function LockedStandardSection({ section }: { section: Survey['sections'][number] }) {
+  return (
+    <section className="border-[2px] border-line bg-paper/60 p-4 rounded-sm">
+      <header className="mb-3 flex items-center gap-2">
+        <span className="text-md font-semibold text-ink-2">
+          {section.title || '제목 없는 섹션'}
+        </span>
+        <StandardLockBadge />
+      </header>
+      <ol className="space-y-3">
+        {section.questions.map((q, qi) => (
+          <li key={qi} className="text-md">
+            <div className="flex items-baseline gap-2">
+              <span className="tabular-nums text-mute-soft">{qi + 1}.</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-ink-2">{q.title}</div>
+                {q.description && (
+                  <div className="mt-0.5 whitespace-pre-line text-sm text-mute">
+                    {q.description}
+                  </div>
+                )}
+                <div className="mt-1 text-xs-soft text-mute-soft">
+                  {QUESTION_KIND_LABEL[q.kind] ?? q.kind} ·{' '}
+                  {q.required ? '필수' : '선택'}
+                </div>
+                {q.options.length > 0 && (
+                  <ul className="mt-1 ml-3 list-disc text-md text-mute">
+                    {q.options.map((opt, oi) => (
+                      <li key={oi}>{opt}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-xs-soft text-mute-soft">
+        모든 설문에 동일하게 들어가는 표준 항목입니다. 도메인 질문만 편집할 수 있어요.
+      </p>
+    </section>
+  );
+}
+
 export function SurveyEditor({
   survey,
   onChange,
@@ -286,7 +356,10 @@ export function SurveyEditor({
       </Field>
       <Field label={`섹션 (${survey.sections.length})`}>
         <div className="space-y-4">
-          {survey.sections.map((section, si) => (
+          {survey.sections.map((section, si) =>
+            isStandardSectionTitle(section.title) ? (
+              <LockedStandardSection key={si} section={section} />
+            ) : (
             <section
               key={si}
               className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] p-4 rounded-sm"
@@ -387,7 +460,8 @@ export function SurveyEditor({
                 ))}
               </ol>
             </section>
-          ))}
+            ),
+          )}
         </div>
       </Field>
     </div>

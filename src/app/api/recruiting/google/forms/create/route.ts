@@ -11,78 +11,12 @@ import {
 } from '@/lib/google-oauth-admin';
 import { createGoogleForm } from '@/lib/google-forms';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
-import { surveySchema, type Survey, type SurveyQuestion } from '@/lib/survey-schema';
-import {
-  ensureMandatoryPhoneNotice,
-  ensurePrivacyConsent,
-} from '@/lib/recruiting/survey-postprocess';
+import { surveySchema, type Survey } from '@/lib/survey-schema';
+import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
 
 export const maxDuration = 60;
 
 const Body = z.object({ survey: surveySchema });
-
-const PERSONAL_SECTION_TITLE = '인적사항';
-
-function makeQuestion(
-  partial: Partial<SurveyQuestion> & Pick<SurveyQuestion, 'kind' | 'title'>,
-): SurveyQuestion {
-  return {
-    kind: partial.kind,
-    title: partial.title,
-    description: partial.description ?? '',
-    required: partial.required ?? true,
-    options: partial.options ?? [],
-    scaleMin: partial.scaleMin ?? 0,
-    scaleMax: partial.scaleMax ?? 0,
-    scaleMinLabel: partial.scaleMinLabel ?? '',
-    scaleMaxLabel: partial.scaleMaxLabel ?? '',
-  };
-}
-
-const PERSONAL_QUESTIONS: SurveyQuestion[] = [
-  makeQuestion({ kind: 'short_answer', title: '이름' }),
-  makeQuestion({ kind: 'short_answer', title: '출생년도 (4자리)', description: '예: 1990' }),
-  makeQuestion({
-    kind: 'single_choice',
-    title: '성별',
-    options: ['여성', '남성', '응답하지 않음'],
-  }),
-  makeQuestion({
-    kind: 'single_choice',
-    title: '사용 중인 핸드폰 브랜드',
-    options: ['삼성', '애플', '기타'],
-  }),
-  makeQuestion({
-    kind: 'short_answer',
-    title: '핸드폰 기기 모델명',
-    description: '예: 아이폰 16, 갤럭시 S21',
-  }),
-  makeQuestion({
-    kind: 'long_answer',
-    title:
-      '만약 본인에게 자유롭게 사용할 수 있는 돈 100만원이 생긴다면, 어떻게 그 돈을 사용하고 싶으신가요? 저축은 할 수 없고 반드시 소비를 하셔야 합니다.',
-  }),
-];
-
-function normalizeTitle(s: string) {
-  return s.replace(/\s+/g, '').toLowerCase();
-}
-
-function ensurePersonalSection(survey: Survey): Survey {
-  const sections = [...survey.sections];
-  const lastIdx = sections.length - 1;
-  const last = lastIdx >= 0 ? sections[lastIdx] : null;
-  const isPersonal = !!last && last.title.includes(PERSONAL_SECTION_TITLE);
-  if (isPersonal) {
-    const have = new Set(last.questions.map((q) => normalizeTitle(q.title)));
-    const missing = PERSONAL_QUESTIONS.filter((q) => !have.has(normalizeTitle(q.title)));
-    if (missing.length === 0) return survey;
-    sections[lastIdx] = { ...last, questions: [...last.questions, ...missing] };
-    return { ...survey, sections };
-  }
-  sections.push({ title: PERSONAL_SECTION_TITLE, questions: PERSONAL_QUESTIONS });
-  return { ...survey, sections };
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -141,14 +75,12 @@ export async function POST(request: Request) {
     canCreateSheet = hasSheetsScope(row.scope);
   }
 
-  // ensureMandatoryPhoneNotice + ensurePrivacyConsent are idempotent —
-  // the wizard runs both on the streamed survey too, but we re-apply
-  // here so any caller (or any future surface that calls /create
-  // directly) cannot publish a form without the contact-phone notice
-  // and the privacy-consent gate the recruiting flow promises.
-  const survey = ensurePrivacyConsent(
-    ensureMandatoryPhoneNotice(ensurePersonalSection(parsed.data.survey)),
-  );
+  // applyStandardBlocks is idempotent — the wizard runs it on the streamed
+  // survey too, but we re-apply here so any caller (or any future surface
+  // that calls /create directly) cannot publish a form without the standard
+  // 인적사항 section, the contact-phone notice, and the privacy-consent gate
+  // the recruiting flow promises.
+  const survey = applyStandardBlocks(parsed.data.survey);
 
   try {
     const result = await createGoogleForm(accessToken, survey);

@@ -1,40 +1,27 @@
 import type { Survey, SurveyQuestion } from '@/lib/survey-schema';
+import {
+  PERSONAL_SECTION_TITLE,
+  PRIVACY_CONSENT_SECTION_TITLE,
+  MANDATORY_PHONE_NOTICE,
+  buildPersonalQuestions,
+  buildPhoneQuestion,
+  buildPrivacyConsentQuestion,
+} from './standard-blocks';
 
-// Mandatory phone-contact notice required on every survey we publish.
-// The LLM that generates the survey is constrained but not perfect, so we
-// enforce this post-process step (idempotent) on the client + the publish
-// route as a defense-in-depth check.
-export const MANDATORY_PHONE_NOTICE =
-  '인터뷰 대상자로 선정되셨을 때 연락을 드릴 수 있도록 전화번호를 정확히 적어주세요';
-
-// 개인정보 보호법 §15 — 정보주체 동의 없이 개인정보 수집 불가. 모든
-// 스크리닝 설문은 응답자가 명시적으로 동의해야 진행할 수 있도록 첫
-// 섹션에 동의 질문을 자동 삽입한다. LLM 프롬프트도 동의 항목을
-// 권장하지만, 누락 시 post-process 가 보장한다 (idempotent).
-export const PRIVACY_CONSENT_SECTION_TITLE = '개인정보 수집 동의';
-export const PRIVACY_CONSENT_TITLE = '개인정보 수집 및 이용 동의';
-export const PRIVACY_CONSENT_AGREE = '동의합니다';
-export const PRIVACY_CONSENT_DENY = '동의하지 않습니다';
-export const PRIVACY_CONSENT_DESCRIPTION = [
-  '[수집 항목]',
-  '- 응답자가 입력한 모든 응답 내용',
-  '- 이름, 출생년도, 성별',
-  '- 연락처 (전화번호)',
-  '- 사용 기기 정보 (핸드폰 브랜드 / 모델명)',
-  '',
-  '[수집 목적]',
-  '- 인터뷰 대상자 선정 심사',
-  '- 선정된 응답자에게 인터뷰 일정 안내 및 연락',
-  '- 인터뷰 결과 데이터의 익명화 분석',
-  '',
-  '[보유 기간]',
-  '- 선정 대상자: 인터뷰 종료 후 30일 보관 후 자동 폐기',
-  '- 미선정 대상자: 심사 완료 후 7일 보관 후 자동 폐기',
-  '',
-  '[동의 거부 권리]',
-  '- 동의를 거부하실 권리가 있으며, 거부 시 인터뷰 참여가 불가합니다.',
-  '- 동의 후에도 언제든지 요청을 통해 데이터 삭제가 가능합니다.',
-].join('\n');
+// The standard-block constants live in ./standard-blocks (the cached
+// template SSOT). They are re-exported here because contact-filter.ts and a
+// few callers historically imported them from this module — keep the surface
+// stable rather than churn every import site.
+export {
+  PERSONAL_SECTION_TITLE,
+  PRIVACY_CONSENT_SECTION_TITLE,
+  PRIVACY_CONSENT_TITLE,
+  PRIVACY_CONSENT_AGREE,
+  PRIVACY_CONSENT_DENY,
+  PRIVACY_CONSENT_DESCRIPTION,
+  MANDATORY_PHONE_NOTICE,
+  isStandardSectionTitle,
+} from './standard-blocks';
 
 // Match the contact-phone question explicitly — '핸드폰 브랜드' / '핸드폰
 // 기기 모델명' are device questions and must NOT match. We key on a
@@ -57,18 +44,31 @@ function withNoticeDescription(desc: string | undefined | null): string {
     : MANDATORY_PHONE_NOTICE;
 }
 
-function makePhoneQuestion(): SurveyQuestion {
-  return {
-    kind: 'short_answer',
-    title: '연락 가능한 전화번호',
-    description: MANDATORY_PHONE_NOTICE,
-    required: true,
-    options: [],
-    scaleMin: 0,
-    scaleMax: 0,
-    scaleMinLabel: '',
-    scaleMaxLabel: '',
-  };
+function normalizeTitle(s: string) {
+  return s.replace(/\s+/g, '').toLowerCase();
+}
+
+// Idempotent: guarantees the published survey carries the standard 인적사항
+// section as its last section. If the last section already is 인적사항 we
+// top it up with any missing standard questions (the LLM may have produced a
+// partial one); otherwise we append a fresh standard section. The LLM is now
+// told not to generate this section at all, so the common path is a clean
+// append — but defense-in-depth keeps old behaviour working if it does.
+export function ensurePersonalSection(survey: Survey): Survey {
+  const standard = buildPersonalQuestions();
+  const sections = [...survey.sections];
+  const lastIdx = sections.length - 1;
+  const last = lastIdx >= 0 ? sections[lastIdx] : null;
+  const isPersonal = !!last && last.title.includes(PERSONAL_SECTION_TITLE);
+  if (isPersonal) {
+    const have = new Set(last.questions.map((q) => normalizeTitle(q.title)));
+    const missing = standard.filter((q) => !have.has(normalizeTitle(q.title)));
+    if (missing.length === 0) return survey;
+    sections[lastIdx] = { ...last, questions: [...last.questions, ...missing] };
+    return { ...survey, sections };
+  }
+  sections.push({ title: PERSONAL_SECTION_TITLE, questions: standard });
+  return { ...survey, sections };
 }
 
 // Idempotent: guarantees the published survey carries a contact-phone
@@ -100,7 +100,7 @@ export function ensureMandatoryPhoneNotice(survey: Survey): Survey {
   if (sections.length === 0) {
     return {
       ...survey,
-      sections: [{ title: '인적사항', questions: [makePhoneQuestion()] }],
+      sections: [{ title: PERSONAL_SECTION_TITLE, questions: [buildPhoneQuestion()] }],
     };
   }
 
@@ -109,7 +109,7 @@ export function ensureMandatoryPhoneNotice(survey: Survey): Survey {
     (q) => q.kind === 'long_answer' && q.title.includes('100만원'),
   );
   const insertAt = beforeIdx >= 0 ? beforeIdx : last.questions.length;
-  last.questions.splice(insertAt, 0, makePhoneQuestion());
+  last.questions.splice(insertAt, 0, buildPhoneQuestion());
   return { ...survey, sections };
 }
 
@@ -120,20 +120,6 @@ export function isPrivacyConsentQuestion(q: SurveyQuestion): boolean {
   const t = q.title.toLowerCase();
   if (/privacy.{0,5}consent/.test(t)) return true;
   return t.includes('개인정보') && t.includes('동의');
-}
-
-function makePrivacyConsentQuestion(): SurveyQuestion {
-  return {
-    kind: 'single_choice',
-    title: PRIVACY_CONSENT_TITLE,
-    description: PRIVACY_CONSENT_DESCRIPTION,
-    required: true,
-    options: [PRIVACY_CONSENT_AGREE, PRIVACY_CONSENT_DENY],
-    scaleMin: 0,
-    scaleMax: 0,
-    scaleMinLabel: '',
-    scaleMaxLabel: '',
-  };
 }
 
 // Idempotent: guarantees the published survey carries a privacy-consent
@@ -159,7 +145,7 @@ export function ensurePrivacyConsent(survey: Survey): Survey {
     for (let i = 0; i < section.questions.length; i++) {
       const q = section.questions[i];
       if (isPrivacyConsentQuestion(q)) {
-        section.questions[i] = makePrivacyConsentQuestion();
+        section.questions[i] = buildPrivacyConsentQuestion();
         return { ...survey, sections };
       }
     }
@@ -167,7 +153,22 @@ export function ensurePrivacyConsent(survey: Survey): Survey {
 
   sections.unshift({
     title: PRIVACY_CONSENT_SECTION_TITLE,
-    questions: [makePrivacyConsentQuestion()],
+    questions: [buildPrivacyConsentQuestion()],
   });
   return { ...survey, sections };
+}
+
+// Single entry point: injects every standard template block in canonical
+// order so the LLM only ever produces the domain screening sections in
+// between. Order matters and mirrors the original publish-route chain:
+//   1. ensurePersonalSection  → append 인적사항 as the last section
+//   2. ensureMandatoryPhoneNotice → slot 전화번호 before the 100만원 probe
+//   3. ensurePrivacyConsent   → unshift the consent gate as section 0
+// All three are idempotent, so calling this on a survey that already has the
+// blocks (e.g. an old draft, or the publish route re-applying after the
+// wizard) is a no-op beyond normalisation.
+export function applyStandardBlocks(survey: Survey): Survey {
+  return ensurePrivacyConsent(
+    ensureMandatoryPhoneNotice(ensurePersonalSection(survey)),
+  );
 }
