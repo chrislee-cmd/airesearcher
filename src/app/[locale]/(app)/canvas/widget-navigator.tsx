@@ -1,22 +1,32 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   Canvas Widget Navigator — 좌측 상단 floating list.
+   Canvas Widget Navigator — viewport-floating list.
 
    현재 위젯 탐색 = wheel zoom + space-hold pan 만 → 위젯 많아지면 답답.
    이 panel 은 위젯 목록을 보여주고 클릭 시 캔버스를 해당 위젯에 자동
    focus (pan + zoom 1.0) — Figma/Miro 의 "Pages" panel 류.
 
    - Memphis 톤 외곽 (border-2 ink + 3px ink shadow + rounded-sm)
-   - collapsible: 헤더 클릭 → list 숨김 / 펼침
+   - 헤더 grip 영역 = drag handle (pointer capture, viewport clamp,
+     localStorage 영속화). 위치는 다음 진입에도 보존.
+   - collapsible: 헤더의 ▾ 클릭 → list 숨김 / 펼침
    - 현재 focus 표시: border-amore + amore-bg highlight
    - 키보드 단축키 1~9 — list 순서대로 jump (input/textarea 안에서는 무시)
    - 각 row 우측에 위젯 상태 badge (running/done/error). idle 은 미표시.
-     running 일 때 progress 가 있으면 "%" 같이 표기 — body 의 PopStatePill
-     과 동일 정보, 위젯 카드 밖에서도 진행률 확인 가능.
+
+   position: fixed 로 viewport 좌표계 — canvas pan/zoom 와 무관하게
+   화면 고정 위치. canvas pan 은 space-hold 가 필요해 Navigator drag 와
+   자연스럽게 분리되지만, 추가로 pointer capture 가 drag 중 다른 영역
+   pointer 이벤트도 점유.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { ACCENT_BG } from '@/components/canvas/shell/tokens';
@@ -27,6 +37,46 @@ type Props = {
   focusedKey: string | null;
   onFocus: (key: string) => void;
 };
+
+type Pos = { x: number; y: number };
+
+const NAV_POS_KEY = 'canvas-navigator-position';
+const DEFAULT_POS: Pos = { x: 24, y: 24 };
+const FALLBACK_W = 224;
+const FALLBACK_H = 320;
+// 드래그 임계치 — 이만큼 움직여야 실제 drag 로 인정 (의도치 않은 미세 떨림 무시).
+const DRAG_THRESHOLD = 3;
+
+function clampToViewport(p: Pos, w: number, h: number): Pos {
+  if (typeof window === 'undefined') return p;
+  const maxX = Math.max(0, window.innerWidth - w);
+  const maxY = Math.max(0, window.innerHeight - h);
+  return {
+    x: Math.max(0, Math.min(maxX, p.x)),
+    y: Math.max(0, Math.min(maxY, p.y)),
+  };
+}
+
+function readStoredPos(): Pos {
+  if (typeof window === 'undefined') return DEFAULT_POS;
+  try {
+    const raw = window.localStorage.getItem(NAV_POS_KEY);
+    if (!raw) return DEFAULT_POS;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed.x === 'number' &&
+      typeof parsed.y === 'number' &&
+      Number.isFinite(parsed.x) &&
+      Number.isFinite(parsed.y)
+    ) {
+      return { x: parsed.x, y: parsed.y };
+    }
+  } catch {
+    /* corrupted — fall through to default */
+  }
+  return DEFAULT_POS;
+}
 
 // list row 우측에 상태/progress 표시. idle 이면 null (단축키 hint 만).
 // running: amore 점 + progress % 또는 "진행 중"
@@ -82,6 +132,42 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
   // 시각적으로 보이는 list 자체. collapse 는 작은 viewport 배려용 옵션.
   const [open, setOpen] = useState(true);
 
+  // 위치 — SSR 동안 default 로 시작 후 mount 시 localStorage 에서 hydrate.
+  // hydrated 전엔 visibility:hidden 으로 초기 위치 "점프" 가림.
+  const [pos, setPos] = useState<Pos>(DEFAULT_POS);
+  const [hydrated, setHydrated] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // mount 시 localStorage 위치 hydrate + viewport clamp
+  useEffect(() => {
+    const stored = readStoredPos();
+    const rect = containerRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? FALLBACK_W;
+    const h = rect?.height ?? FALLBACK_H;
+    setPos(clampToViewport(stored, w, h));
+    setHydrated(true);
+  }, []);
+
+  // viewport resize → 현재 pos 가 밖이면 clamp. rAF debounce.
+  useEffect(() => {
+    let frame = 0;
+    const onResize = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        const w = rect?.width ?? FALLBACK_W;
+        const h = rect?.height ?? FALLBACK_H;
+        setPos((p) => clampToViewport(p, w, h));
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
   // 1~9 단축키. input/textarea/contenteditable 안에서는 무시.
   useEffect(() => {
     const isEditableTarget = (el: EventTarget | null) => {
@@ -103,26 +189,142 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [widgets, onFocus]);
 
+  // pointer drag — header 의 grip 영역에서 시작.
+  // pointer capture 로 drag 중 화면 어디로 가도 이벤트 점유 → canvas pan
+  // (어차피 space-hold 필요) 과 충돌 0, 다른 위젯 hover 회귀도 0.
+  // 매 render 마다 새 함수가 생성되지만 React event prop 이라 cost 0.
+  // 핵심: pointerdown 시점의 pos 를 closure 로 capture → 이후 setPos 가
+  // 다시 render 를 일으켜도 이 drag session 의 startPos 는 그대로.
+  const onDragPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // 좌클릭 / 터치만. 우클릭·중간버튼은 무시.
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    const target = e.currentTarget;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startPos = pos;
+    const rect = containerRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? FALLBACK_W;
+    const h = rect?.height ?? FALLBACK_H;
+    let moved = false;
+    let latest = startPos;
+
+    try {
+      target.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture 실패해도 listener 만으로 동작 */
+    }
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!moved) {
+        if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
+          return;
+        }
+        moved = true;
+        setIsDragging(true);
+      }
+      const next = clampToViewport(
+        { x: startPos.x + dx, y: startPos.y + dy },
+        w,
+        h,
+      );
+      latest = next;
+      setPos(next);
+    };
+    const onUp = () => {
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      target.removeEventListener('pointercancel', onUp);
+      try {
+        target.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      if (moved) {
+        setIsDragging(false);
+        try {
+          window.localStorage.setItem(NAV_POS_KEY, JSON.stringify(latest));
+        } catch {
+          /* quota / private mode — 다음 진입엔 default 로 떨어짐 */
+        }
+      }
+    };
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+    target.addEventListener('pointercancel', onUp);
+  };
+
+  const onResetPosition = () => {
+    setPos(DEFAULT_POS);
+    try {
+      window.localStorage.removeItem(NAV_POS_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const movedFromDefault =
+    pos.x !== DEFAULT_POS.x || pos.y !== DEFAULT_POS.y;
+
   return (
     <div
-      // z-fab — surface 위, modal/toast 아래. transform 안 받음 (canvas 의
-      // 자체 컨테이너 좌표계).
-      className="absolute left-4 top-4 z-fab w-56 overflow-hidden border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm select-none"
+      ref={containerRef}
+      style={{
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        visibility: hydrated ? 'visible' : 'hidden',
+      }}
+      // z-fab — surface 위, modal/toast 아래. fixed positioning 으로
+      // canvas transform 영향 0.
+      className={
+        'w-56 overflow-hidden border-[2px] border-ink bg-paper rounded-sm select-none z-fab ' +
+        (isDragging
+          ? 'shadow-[4px_4px_0_black]'
+          : 'shadow-[3px_3px_0_black]')
+      }
       data-canvas-action
     >
-      {/* eslint-disable-next-line react/forbid-elements -- full-width text-row collapse toggle; <Button> primitive enforces capsule/border-shadow chrome incompatible with the borderless header row. Same row-button pattern as src/components/ui/dropdown-menu.tsx. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-ink hover:bg-paper-soft"
-        aria-expanded={open}
-        aria-label={open ? t('collapse') : t('expand')}
-      >
-        <span className="tracking-wide uppercase">{t('title')}</span>
-        <span aria-hidden className="text-mute text-xs leading-none">
+      <div className="flex items-stretch">
+        <div
+          role="presentation"
+          onPointerDown={onDragPointerDown}
+          className={
+            'flex flex-1 items-center gap-1.5 px-3 py-2 text-xs font-semibold text-ink touch-none ' +
+            (isDragging ? 'cursor-grabbing' : 'cursor-move')
+          }
+          aria-label={t('dragHandle')}
+        >
+          <span aria-hidden className="text-mute leading-none">
+            ⠿
+          </span>
+          <span className="tracking-wide uppercase">{t('title')}</span>
+        </div>
+        {movedFromDefault ? (
+          /* eslint-disable-next-line react/forbid-elements -- inline header chrome row; <Button> primitive enforces capsule chrome incompatible with this borderless header. */
+          <button
+            type="button"
+            onClick={onResetPosition}
+            className="px-2 text-xs text-mute hover:text-ink hover:bg-paper-soft"
+            aria-label={t('resetPosition')}
+            title={t('resetPosition')}
+          >
+            ↺
+          </button>
+        ) : null}
+        {/* eslint-disable-next-line react/forbid-elements -- collapse toggle; <Button> primitive enforces capsule/border-shadow chrome incompatible with the borderless header row. Same row-button pattern as src/components/ui/dropdown-menu.tsx. */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="px-3 text-xs text-mute hover:text-ink hover:bg-paper-soft"
+          aria-expanded={open}
+          aria-label={open ? t('collapse') : t('expand')}
+        >
           {open ? '▾' : '▸'}
-        </span>
-      </button>
+        </button>
+      </div>
       {open ? (
         <ul className="border-t-[2px] border-ink/15 py-1">
           {widgets.map((w, idx) => {

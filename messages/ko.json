@@ -655,6 +655,8 @@
       "title": "위젯",
       "expand": "위젯 목록 펼치기",
       "collapse": "위젯 목록 접기",
+      "dragHandle": "드래그해서 이동",
+      "resetPosition": "위치 초기화",
       "stateRunning": "진행 중",
       "stateDone": "완료",
       "stateError": "오류"
