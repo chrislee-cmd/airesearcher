@@ -28,11 +28,12 @@
 
 import type { ReactNode } from 'react';
 
-// 5 위젯 서브헤더 통일 height (px). 가장 height 가 큰 desk widget
-// (3 stacked Field — region + range + keyword) 의 자연 height 가
-// 기준. 짧은 위젯도 동일 min-h 로 grow, 더 긴 위젯은 자연스럽게 확장
+// 5 위젯 서브헤더 통일 height (px). desk widget 이 2-row 컴팩트 layout
+// (row1: region / range / direction dropdowns + row2: keyword chip) 으로
+// 축소돼서 새 기준 자연 height ≈ 180~210px (custom date pickers 펼쳐졌을
+// 때 최대). 짧은 위젯도 동일 min-h 로 grow, 더 긴 위젯은 자연스럽게 확장
 // (overflow visible — 스크롤 없음).
-export const WIDGET_SUBHEADER_MIN_HEIGHT = 280;
+export const WIDGET_SUBHEADER_MIN_HEIGHT = 200;
 
 export type WidgetSubHeaderProps = {
   // 좌 — 핵심 입력 (캡처/언어/키워드/지역/기간/업로드 등). Field 묶음 권장.
