@@ -31,6 +31,7 @@ import {
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
@@ -55,6 +56,7 @@ import {
   type ReflectionStatus,
 } from './probing/reflection-pane';
 import { QuestionPane } from './probing/question-pane';
+import { ProbingFullView } from './probing/full-view';
 
 // transcript window — 우패널 (suggest) 가 받는 최근 발화 윈도우. 좌패널
 // reflection 은 누적 전체 (cap 만 적용).
@@ -252,6 +254,13 @@ function ExpandedBody() {
   } = useRealtimeTranscription({ locale: 'ko' });
 
   const [source, setSource] = useState<SourceKind>('mic');
+
+  // 전체보기 모달 toggle. 같은 컴포넌트 tree 안에서 모달 mount/unmount —
+  // reflection / question state 는 부모 (이 함수) 가 single source 라
+  // close 시 widget 모드로 복귀해도 state 유실 0.
+  const [expanded, setExpanded] = useState(false);
+  const handleExpand = useCallback(() => setExpanded(true), []);
+  const handleCollapse = useCallback(() => setExpanded(false), []);
 
   const [guide, setGuide] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
@@ -866,6 +875,44 @@ function ExpandedBody() {
 
   const hasReflection = reflection !== null;
 
+  // 좌/우 패널 props — widget 모드와 전체보기 모달 양쪽에 동일 인스턴스로
+  // 전달. 같은 React state 를 read 하므로 모드 토글 시 데이터 끊김 0.
+  const reflectionPaneProps = {
+    data: reflection,
+    status: reflectionStatus,
+    lastUpdatedAt: reflectionLastUpdatedAt,
+    nowMs: now,
+    error: reflectionError,
+    canRefresh: canRefreshReflection,
+    onRefresh: handleManualReflection,
+    isLive,
+    hasTranscript,
+  };
+
+  const questionPaneProps = {
+    current,
+    questions,
+    streaming: suggestStreaming,
+    hydrating,
+    selectedId,
+    nowMs: now,
+    isLive,
+    hasTranscript,
+    hasReflection,
+    canSuggest,
+    onSuggest: handleManualSuggest,
+    onSelect: handleSelect,
+    onCopy: (t: string) => {
+      void handleCopy(t);
+    },
+    onToggleCore: (id: string) => {
+      void handleToggleCore(id);
+    },
+    onDelete: (id: string) => {
+      void handleDelete(id);
+    },
+  };
+
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
@@ -899,6 +946,30 @@ function ExpandedBody() {
                   세션 시작
                 </Button>
               )}
+              <IconButton
+                aria-label="전체보기 열기"
+                title="전체보기"
+                variant="ghost"
+                size="md"
+                onClick={handleExpand}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </IconButton>
             </div>
           </div>
 
@@ -938,40 +1009,8 @@ function ExpandedBody() {
 
         {/* 본문 — 좌(성찰) / 우(질문) 2-pane. divide-x 로 vertical divider. */}
         <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] divide-x divide-line-soft overflow-hidden">
-          <ReflectionPane
-            data={reflection}
-            status={reflectionStatus}
-            lastUpdatedAt={reflectionLastUpdatedAt}
-            nowMs={now}
-            error={reflectionError}
-            canRefresh={canRefreshReflection}
-            onRefresh={handleManualReflection}
-            isLive={isLive}
-            hasTranscript={hasTranscript}
-          />
-          <QuestionPane
-            current={current}
-            questions={questions}
-            streaming={suggestStreaming}
-            hydrating={hydrating}
-            selectedId={selectedId}
-            nowMs={now}
-            isLive={isLive}
-            hasTranscript={hasTranscript}
-            hasReflection={hasReflection}
-            canSuggest={canSuggest}
-            onSuggest={handleManualSuggest}
-            onSelect={handleSelect}
-            onCopy={(t) => {
-              void handleCopy(t);
-            }}
-            onToggleCore={(id) => {
-              void handleToggleCore(id);
-            }}
-            onDelete={(id) => {
-              void handleDelete(id);
-            }}
-          />
+          <ReflectionPane {...reflectionPaneProps} />
+          <QuestionPane {...questionPaneProps} />
         </div>
 
         {suggestError && (
@@ -987,6 +1026,29 @@ function ExpandedBody() {
           </div>
         )}
       </div>
+
+      {/* 전체보기 — 풀스크린 모달. backdrop click 으로 실수 close 회피
+          (dismissOnBackdrop=false). ESC + 헤더 ✕ 만 허용. modal 안의
+          ReflectionPane / QuestionPane 은 widget 모드와 같은 React
+          state 를 read — close 시 widget 으로 돌아가도 끊김 0. */}
+      {expanded && (
+        <Modal
+          open
+          onClose={handleCollapse}
+          size="full"
+          dismissOnBackdrop={false}
+          labelledBy="probing-full-view-title"
+        >
+          <h2 id="probing-full-view-title" className="sr-only">
+            프로빙 어시스턴트 — 전체보기
+          </h2>
+          <ProbingFullView
+            reflectionProps={reflectionPaneProps}
+            questionProps={questionPaneProps}
+            onClose={handleCollapse}
+          />
+        </Modal>
+      )}
 
       {pendingFile && (
         <Modal
