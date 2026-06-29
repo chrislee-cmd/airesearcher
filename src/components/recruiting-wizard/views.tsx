@@ -38,9 +38,9 @@ export function CriteriaPreview({
         </Field>
       )}
       <Field label={`대상자 조건 (${criteria.length})`}>
-        <ul className="divide-y divide-line-soft border border-line bg-paper rounded-sm">
+        <ul className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] rounded-sm overflow-hidden">
           {criteria.map((c, i) => (
-            <li key={i} className="px-3 py-2 text-md">
+            <li key={i} className="px-3 py-2 text-md border-b-[1.5px] border-ink/15 last:border-b-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
                   {c.category}
@@ -103,7 +103,7 @@ export function CriteriaEditor({
           value={summary}
           onChange={(e) => onSummaryChange(e.target.value)}
           rows={2}
-          className="border-line-soft text-md text-ink-2"
+          className="text-md text-ink-2"
         />
       </Field>
       <Field
@@ -117,16 +117,16 @@ export function CriteriaEditor({
         {criteria.length === 0 ? (
           <EmptyState tone="subtle" title="조건이 없습니다." />
         ) : (
-          <ul className="divide-y divide-line-soft border border-line bg-paper rounded-sm">
+          <ul className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] rounded-sm overflow-hidden">
             {criteria.map((c, i) => (
-              <li key={i} className="space-y-1 px-3 py-2 text-md">
+              <li key={i} className="space-y-1 px-3 py-2 text-md border-b-[1.5px] border-ink/15 last:border-b-0">
                 <div className="flex items-center gap-2">
                   <ChromeInput
                     type="text"
                     value={c.category}
                     onChange={(e) => update(i, 'category', e.target.value)}
                     placeholder="카테고리"
-                    className="w-[140px] border-line-soft text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
+                    className="w-[140px] text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
                   />
                   <label className="flex items-center gap-1 text-xs-soft text-mute">
                     <Checkbox
@@ -149,14 +149,14 @@ export function CriteriaEditor({
                   value={c.label}
                   onChange={(e) => update(i, 'label', e.target.value)}
                   placeholder="라벨"
-                  className="w-full border-line-soft font-semibold text-ink"
+                  className="w-full font-semibold text-ink"
                 />
                 <Textarea
                   value={c.detail}
                   onChange={(e) => update(i, 'detail', e.target.value)}
                   placeholder="세부 설명"
                   rows={2}
-                  className="resize-none border-line-soft px-2 py-1 text-md leading-[1.5] text-mute rounded-xs"
+                  className="resize-none px-2 py-1 text-md leading-[1.5] text-mute rounded-xs"
                 />
               </li>
             ))}
@@ -186,7 +186,7 @@ export function SurveyPreview({ survey }: { survey: Survey }) {
           {survey.sections.map((section, si) => (
             <section
               key={si}
-              className="border border-line bg-paper p-4 rounded-sm"
+              className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] p-4 rounded-sm"
             >
               <header className="mb-3 text-md font-semibold text-ink-2">
                 {section.title || '제목 없는 섹션'}
@@ -273,7 +273,7 @@ export function SurveyEditor({
           type="text"
           value={survey.title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full border-line-soft text-lg font-semibold text-ink"
+          className="w-full text-lg font-semibold text-ink"
         />
       </Field>
       <Field label="안내문">
@@ -281,7 +281,7 @@ export function SurveyEditor({
           value={survey.description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="border-line-soft text-md text-mute"
+          className="text-md text-mute"
         />
       </Field>
       <Field label={`섹션 (${survey.sections.length})`}>
@@ -289,17 +289,17 @@ export function SurveyEditor({
           {survey.sections.map((section, si) => (
             <section
               key={si}
-              className="border border-line bg-paper p-4 rounded-sm"
+              className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] p-4 rounded-sm"
             >
               <ChromeInput
                 type="text"
                 value={section.title}
                 onChange={(e) => updateSection(si, { title: e.target.value })}
-                className="mb-3 w-full border-line-soft text-md font-semibold text-ink-2"
+                className="mb-3 w-full text-md font-semibold text-ink-2"
               />
               <ol className="space-y-3">
                 {section.questions.map((q, qi) => (
-                  <li key={qi} className="border border-line-soft p-3 text-md rounded-xs">
+                  <li key={qi} className="border-[1.5px] border-ink/30 p-3 text-md rounded-xs">
                     <div className="flex items-baseline gap-2">
                       <span className="shrink-0 tabular-nums text-mute-soft">
                         {qi + 1}.
@@ -312,7 +312,7 @@ export function SurveyEditor({
                             updateQuestion(si, qi, { title: e.target.value })
                           }
                           placeholder="질문"
-                          className="w-full border-line-soft font-semibold text-ink"
+                          className="w-full font-semibold text-ink"
                         />
                         <ChromeInput
                           type="text"
@@ -323,7 +323,7 @@ export function SurveyEditor({
                             })
                           }
                           placeholder="보충 설명 (선택)"
-                          className="w-full border-line-soft text-sm text-mute"
+                          className="w-full text-sm text-mute"
                         />
                         <div className="flex flex-wrap items-center gap-3 text-xs-soft text-mute">
                           <span className="uppercase tracking-[0.04em] text-mute-soft">
@@ -363,7 +363,7 @@ export function SurveyEditor({
                                     );
                                     updateQuestion(si, qi, { options });
                                   }}
-                                  className="flex-1 border-line-soft text-md text-ink-2"
+                                  className="flex-1 text-md text-ink-2"
                                 />
                                 <Button
                                   variant="destructive-link"

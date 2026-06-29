@@ -723,7 +723,7 @@ function CriteriaInputArea({
       </div>
 
       {rejected.length > 0 && (
-        <div className="mt-3 text-sm text-amore">
+        <div className="mt-3 text-sm text-warning">
           허용되지 않은 형식: {rejected.join(', ')}
         </div>
       )}
@@ -984,13 +984,13 @@ function FormPublishRow({
       )}
 
       {googleAuthError && (
-        <div className="flex items-start justify-between gap-3 border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
+        <div className="flex items-start justify-between gap-3 border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
           <span>Google 연결 오류: {googleAuthError}</span>
           <Button
             variant="link"
             size="xs"
             onClick={onClearAuthError}
-            className="text-amore"
+            className="text-warning"
           >
             닫기
           </Button>
@@ -998,7 +998,7 @@ function FormPublishRow({
       )}
 
       {publishError && (
-        <div className="border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
+        <div className="border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
           <div>발행 오류: {publishError}</div>
           {needsReauth && (
             <div className="mt-2 flex items-center gap-3">
@@ -1078,7 +1078,7 @@ async function coerceSurvey(buffer: string): Promise<Survey> {
 
 function ErrorBlock({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-3 border border-amore bg-amore-bg p-3 text-md text-amore rounded-sm">
+    <div className="mt-3 border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
       {children}
     </div>
   );
