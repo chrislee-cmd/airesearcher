@@ -25,7 +25,6 @@ export async function Topbar({
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
     { key: 'projects', href: '/projects', label: tTabs('projects') },
     { key: 'members', href: '/members', label: tTabs('members') },
-    { key: 'settings', href: '/settings', label: tTabs('settings') },
   ];
 
   return (
