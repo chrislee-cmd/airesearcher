@@ -572,6 +572,12 @@ type PreviewCleanupAudit = {
   turns_touched?: number;
 };
 
+// Audit slice for the Q&A diarization pass (raw_result._diarization).
+type PreviewDiarizationAudit = {
+  confidence?: 'high' | 'medium' | 'low';
+  turns?: number;
+};
+
 type TranscriptSource = 'clean' | 'raw';
 
 function JobRow({
@@ -595,6 +601,8 @@ function JobRow({
   const [previewMeta, setPreviewMeta] = useState<{
     hasCleanVersion: boolean;
     cleanupAudit: PreviewCleanupAudit | null;
+    hasInferredSpeakers: boolean;
+    diarizationAudit: PreviewDiarizationAudit | null;
   } | null>(null);
   const pill = pillFor(job.status);
   const inFlight = job.status === 'submitting' || job.status === 'transcribing';
@@ -743,12 +751,17 @@ function JobPreview({
   onMeta: (m: {
     hasCleanVersion: boolean;
     cleanupAudit: PreviewCleanupAudit | null;
+    hasInferredSpeakers: boolean;
+    diarizationAudit: PreviewDiarizationAudit | null;
   }) => void;
   initialMeta: {
     hasCleanVersion: boolean;
     cleanupAudit: PreviewCleanupAudit | null;
+    hasInferredSpeakers: boolean;
+    diarizationAudit: PreviewDiarizationAudit | null;
   } | null;
 }) {
+  const tView = useTranslations('Features.transcriptsView');
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Until the first fetch lands, we can still render the toggle if the
@@ -757,6 +770,8 @@ function JobPreview({
   const [meta, setMeta] = useState<{
     hasCleanVersion: boolean;
     cleanupAudit: PreviewCleanupAudit | null;
+    hasInferredSpeakers: boolean;
+    diarizationAudit: PreviewDiarizationAudit | null;
   } | null>(initialMeta);
 
   useEffect(() => {
@@ -777,12 +792,16 @@ function JobPreview({
           html: string;
           hasCleanVersion?: boolean;
           cleanupAudit?: PreviewCleanupAudit | null;
+          hasInferredSpeakers?: boolean;
+          diarizationAudit?: PreviewDiarizationAudit | null;
         }) => {
           if (cancelled) return;
           setHtml(j.html ?? '');
           const next = {
             hasCleanVersion: !!j.hasCleanVersion,
             cleanupAudit: j.cleanupAudit ?? null,
+            hasInferredSpeakers: !!j.hasInferredSpeakers,
+            diarizationAudit: j.diarizationAudit ?? null,
           };
           setMeta(next);
           onMeta(next);
@@ -800,9 +819,19 @@ function JobPreview({
   const showToggle = meta?.hasCleanVersion === true;
   const touched = meta?.cleanupAudit?.turns_touched;
   const total = meta?.cleanupAudit?.turns_total;
+  const showInferredBadge = meta?.hasInferredSpeakers === true;
 
   return (
     <div className="border-t border-line-soft px-5 pb-4 pt-3">
+      {showInferredBadge && (
+        <div
+          className="mb-3 flex items-start gap-2 border border-line-soft bg-paper-soft px-3 py-2 text-xs text-mute rounded-sm"
+          title={tView('inferredSpeakersHint')}
+        >
+          <span aria-hidden>✨</span>
+          <span>{tView('inferredSpeakersBadge')}</span>
+        </div>
+      )}
       {showToggle && (
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">

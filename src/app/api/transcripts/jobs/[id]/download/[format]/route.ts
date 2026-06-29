@@ -9,6 +9,10 @@ import {
   applySpeakerLabels,
   type SpeakerRolesMap,
 } from '@/lib/transcripts/speaker-roles';
+import {
+  applyInferredSpeakerLabels,
+  type InferredSpeakersPayload,
+} from '@/lib/transcripts/diarization';
 
 export const maxDuration = 60;
 
@@ -70,7 +74,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, speaker_roles, provider, status, user_id, created_at',
+      'filename, markdown, clean_markdown, speaker_roles, inferred_speakers, provider, status, user_id, created_at',
     )
     .eq('id', id)
     .single();
@@ -85,10 +89,15 @@ export async function GET(
       ? (job.markdown as string)
       : ((job.clean_markdown as string | null) ?? (job.markdown as string));
   const speakerRoles = (job.speaker_roles as SpeakerRolesMap | null) ?? null;
+  const inferredSpeakers =
+    (job.inferred_speakers as InferredSpeakersPayload | null) ?? null;
   // 라벨 언어는 잡의 provider 에서 추론 — deepgram=영어, elevenlabs=한국어.
   // 영어 잡은 "Interviewer 1/Interviewee 1", 한국어 잡은 "질문자 1/응답자 1".
+  // inferred_speakers (Q&A 문맥 diarization) 있으면 turn 별 host/guest 우선.
   const labelLang = job.provider === 'deepgram' ? 'en' : 'ko';
-  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
+  const labeledMarkdown = inferredSpeakers
+    ? applyInferredSpeakerLabels(sourceMarkdown, inferredSpeakers, labelLang)
+    : applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
 
   // 1) Try the original filename. If it looks like a person/identifier, keep it.
   // 2) Otherwise fall back to a stable per-user index: "Interview Transcript #N",

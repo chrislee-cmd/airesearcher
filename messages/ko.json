@@ -403,7 +403,9 @@
         "fileCountPlural": "파일 {count}개",
         "proceedCta": "이 언어로 시작",
         "cancelCta": "취소"
-      }
+      },
+      "inferredSpeakersBadge": "문맥 기반 자동 분리됨 — 진행자 / 응답자",
+      "inferredSpeakersHint": "음향상 화자가 1명으로 인식됐지만 (예: 동시통역사 1인 인터뷰) 발화 내용 (Q&A 구조) 을 기반으로 진행자·응답자를 자동 분리했습니다. 추정값이라 수동 확인을 권장합니다."
     },
     "insights_analyzer": {
       "title": "인사이트 분석기",

@@ -6,6 +6,10 @@ import {
   applySpeakerLabels,
   type SpeakerRolesMap,
 } from '@/lib/transcripts/speaker-roles';
+import {
+  applyInferredSpeakerLabels,
+  type InferredSpeakersPayload,
+} from '@/lib/transcripts/diarization';
 
 export const maxDuration = 60;
 
@@ -43,7 +47,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'filename, markdown, clean_markdown, speaker_roles, raw_result, status, user_id, created_at, provider',
+      'filename, markdown, clean_markdown, speaker_roles, inferred_speakers, raw_result, status, user_id, created_at, provider',
     )
     .eq('id', id)
     .single();
@@ -64,8 +68,12 @@ export async function GET(
   const cleanupAudit =
     (job.raw_result as { _cleanup?: unknown } | null)?._cleanup ?? null;
   const speakerRoles = (job.speaker_roles as SpeakerRolesMap | null) ?? null;
+  const inferredSpeakers =
+    (job.inferred_speakers as InferredSpeakersPayload | null) ?? null;
   const rolesAudit =
     (job.raw_result as { _roles?: unknown } | null)?._roles ?? null;
+  const diarizationAudit =
+    (job.raw_result as { _diarization?: unknown } | null)?._diarization ?? null;
 
   const rawBase = (job.filename ?? '').replace(/\.[^./]+$/, '').trim();
   let base: string;
@@ -87,8 +95,14 @@ export async function GET(
   // Done at render-time so the persisted markdown stays in the canonical
   // Speaker N format — keeps re-classification cheap if we ever rerun the
   // LLM pass.
+  //
+  // inferred_speakers (Q&A 문맥 diarization, speakers_count=1 잡) 가 있으면
+  // turn 별 host/guest 가 더 구체적이라 우선 적용. 그 외 잡은 speaker_roles
+  // (음향 화자별 분류) fallback.
   const labelLang = job.provider === 'deepgram' ? 'en' : 'ko';
-  const labeledMarkdown = applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
+  const labeledMarkdown = inferredSpeakers
+    ? applyInferredSpeakerLabels(sourceMarkdown, inferredSpeakers, labelLang)
+    : applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
   const displayMarkdown = labeledMarkdown.replace(
     /^(file:\s*).*$/m,
     `$1${base}`,
@@ -107,5 +121,7 @@ export async function GET(
     cleanupAudit,
     hasSpeakerRoles: !!speakerRoles,
     rolesAudit,
+    hasInferredSpeakers: !!inferredSpeakers,
+    diarizationAudit,
   });
 }

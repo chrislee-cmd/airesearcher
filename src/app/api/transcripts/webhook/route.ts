@@ -5,6 +5,7 @@ import { spendCreditsAdmin } from '@/lib/credits';
 import { deepgramToMarkdown, type DeepgramResult } from '@/lib/transcripts/format';
 import { classifySpeakerRolesEn } from '@/lib/transcripts/speaker-roles';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
+import { classifyQaDiarizationEn } from '@/lib/transcripts/diarization';
 
 // Bumped to 200s to match poll/route.ts — after() callbacks keep the function
 // alive until they resolve, capped at maxDuration. Initial response still
@@ -104,10 +105,15 @@ export async function POST(request: Request) {
   // for Deepgram (cleanup/term-normalize are Korean-prompted; English
   // variants land in a follow-up). On any pass failure that column stays
   // NULL → preview/download fall back to raw markdown + Speaker N labels.
+  //
+  // Q&A diarization (speakers_count===1 only) runs in parallel — covers the
+  // 동시통역사 시나리오 where mic = 1명 but content = host/guest 교대.
+  // Skips automatically on multi-speaker / monologue / low-confidence.
+  const shouldDiarize = formatted.speakers === 1 && formatted.duration >= 60;
   after(async () => {
     try {
       const rawMd = formatted.markdown;
-      const [rolesRes, numberRes] = await Promise.all([
+      const [rolesRes, numberRes, diarRes] = await Promise.all([
         classifySpeakerRolesEn(body, job.filename).catch((e) => {
           console.warn('[transcripts/webhook] roles pass failed', e);
           return null;
@@ -116,16 +122,24 @@ export async function POST(request: Request) {
           console.warn('[transcripts/webhook] number-normalize pass failed', e);
           return null;
         }),
+        shouldDiarize
+          ? classifyQaDiarizationEn(body, job.filename, formatted.duration).catch((e) => {
+              console.warn('[transcripts/webhook] diarization pass failed', e);
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       const patch: Record<string, unknown> = {
         raw_result: {
           ...(body as unknown as Record<string, unknown>),
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
           ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
+          ...(diarRes ? { _diarization: diarRes.audit } : {}),
         },
       };
       if (numberRes?.normalized) patch.clean_markdown = numberRes.normalized;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
+      if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
       await admin.from('transcript_jobs').update(patch).eq('id', job.id);
     } catch (e) {
       console.warn('[transcripts/webhook] post-pass write failed', e);

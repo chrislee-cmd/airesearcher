@@ -17,7 +17,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('transcript_jobs')
     .select(
-      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, clean_markdown, speaker_roles, raw_result, created_at, updated_at',
+      'id, filename, mime_type, size_bytes, duration_seconds, speakers_count, status, error_message, markdown, clean_markdown, speaker_roles, inferred_speakers, raw_result, created_at, updated_at',
     )
     .eq('id', id)
     .single();
@@ -29,6 +29,7 @@ export async function GET(
         _term_normalize?: unknown;
         _number_normalize?: unknown;
         _roles?: unknown;
+        _diarization?: unknown;
       }
     | null;
   const { raw_result: _drop, ...rest } = data;
@@ -39,6 +40,7 @@ export async function GET(
     term_normalize_audit: raw?._term_normalize ?? null,
     number_normalize_audit: raw?._number_normalize ?? null,
     roles_audit: raw?._roles ?? null,
+    diarization_audit: raw?._diarization ?? null,
   });
 }
 
