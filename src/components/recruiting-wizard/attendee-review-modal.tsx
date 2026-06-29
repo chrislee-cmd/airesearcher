@@ -6,7 +6,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { MochiLoader } from '@/components/ui/mochi-loader';
-import { isContactColumnTitle } from '@/lib/recruiting/contact-filter';
+import {
+  isContactColumnTitle,
+  isPrivacyConsentColumnTitle,
+} from '@/lib/recruiting/contact-filter';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 
 type ResponsesPayload = {
@@ -16,11 +19,13 @@ type ResponsesPayload = {
   rows: FormResponseRow[];
 };
 
-// Privacy: the server already strips contact columns before sending,
-// but we re-apply the same predicate on the client so the table is safe
-// even if a future server change misses a column.
+// Privacy: the server already strips contact columns + the consent
+// column before sending, but we re-apply the same predicates on the
+// client so the table stays safe if a future server change misses one.
 function visibleColumns(columns: FormColumn[]): FormColumn[] {
-  return columns.filter((c) => !isContactColumnTitle(c.title));
+  return columns.filter(
+    (c) => !isContactColumnTitle(c.title) && !isPrivacyConsentColumnTitle(c.title),
+  );
 }
 
 function formatSubmittedAt(iso: string): string {

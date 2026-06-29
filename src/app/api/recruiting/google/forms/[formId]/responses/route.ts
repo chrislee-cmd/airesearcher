@@ -7,6 +7,8 @@ import {
 } from '@/lib/google-oauth';
 import { getFormResponses } from '@/lib/google-forms';
 import {
+  filterConsentedRows,
+  findConsentColumn,
   partitionContactColumns,
   stripContactAnswers,
 } from '@/lib/recruiting/contact-filter';
@@ -63,19 +65,36 @@ export async function GET(
 
   try {
     const result = await getFormResponses(accessToken, formId);
+    // Compliance gate: drop rows where the respondent did not consent
+    // (or where the form lacks a consent column — legacy forms published
+    // before the consent gate landed will return null here and pass
+    // through unchanged so old data stays visible).
+    const consentColumn = findConsentColumn(result.columns);
+    const consentedRows = filterConsentedRows(result.rows, consentColumn);
     if (countOnly) {
-      return NextResponse.json({ count: result.rows.length });
+      return NextResponse.json({
+        count: consentedRows.length,
+        total: result.rows.length,
+      });
     }
     // Privacy: strip contact columns (phone number / email) before the
     // payload reaches the browser. The attendee-review modal also filters
     // them visually, but the server-side strip is the authoritative cut
-    // — never trust that the client filter alone is sufficient.
+    // — never trust that the client filter alone is sufficient. Also
+    // hide the consent column itself — every visible row is "동의합니다"
+    // by construction so the column carries no recruiter-useful signal.
     const { visible, hiddenQuestionIds } = partitionContactColumns(result.columns);
-    const rows = stripContactAnswers(result.rows, hiddenQuestionIds);
+    if (consentColumn) hiddenQuestionIds.add(consentColumn.questionId);
+    const visibleColumns = consentColumn
+      ? visible.filter((c) => c.questionId !== consentColumn.questionId)
+      : visible;
+    const rows = stripContactAnswers(consentedRows, hiddenQuestionIds);
     return NextResponse.json({
       ...result,
-      columns: visible,
+      columns: visibleColumns,
       rows,
+      total: result.rows.length,
+      consented: consentedRows.length,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'responses_failed';
