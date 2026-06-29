@@ -3,66 +3,94 @@
     "name": "Research-mochi"
   },
   "Landing": {
-    "metaTitle": "Research-mochi — Research, but kinder.",
-    "metaDescription": "Eight small tools sitting on the same desk, helping you research without the rush.",
+    "metaTitle": "Research-mochi — Your research, one canvas.",
+    "metaDescription": "All your research, on a single canvas. Transcription, live translation, probing, and insight analysis—flowing together in one place.",
     "nav": {
-      "demo": "Demo",
-      "why": "Why Mochi?",
+      "features": "Features",
+      "workflow": "How it works",
       "pricing": "Pricing",
-      "story": "Story",
       "faq": "FAQ",
       "signIn": "Sign in",
       "freeStart": "Start free →"
     },
     "hero": {
-      "tagline": "Sweet automation for researchers",
-      "headline": "Leave the busywork to <hl>Mochi</hl>.<br></br>You focus on <hlPeach>insight</hlPeach>.",
-      "lead": "From transcripts to interview analysis, desk research to full reports—<strong>eight tools</strong> in one workspace handle the heavy lifting. Great research, without the late nights.",
-      "ctaPrimary": "Start for free →",
-      "ctaSecondary": "See the demo",
-      "postscript": "<b>P.S.</b> Every tool is unlimited for the first 24 hours. No card required."
+      "tagline": "The research canvas is open",
+      "headline": "Your research,<br></br><hl>end to end</hl>,<br></br>on one <hlPeach>canvas</hlPeach>.",
+      "lead": "Transcription, live translation, probing assistant, insight analysis—<strong>every tool lives on one canvas</strong> and flows together. No more tab-hopping.",
+      "ctaPrimary": "Open the canvas →",
+      "ctaSecondary": "See features",
+      "postscript": "<b>P.S.</b> Every widget is unlimited for the first 24 hours. No card required.",
+      "canvasMeta": "RESEARCH CANVAS",
+      "canvasBrand": "Researchmochi · canvas",
+      "canvasCredits": "2,840 credits",
+      "canvasSaved": "Saved · just now",
+      "widgetTranscriptsTitle": "Transcripts",
+      "widgetTranscriptsLine1": "P1 · ‘What drew me to it was…’",
+      "widgetTranscriptsLine2": "P2 · ‘The design really stood out’",
+      "widgetTranscriptsLine3": "P3 · ‘The price felt a bit steep’",
+      "widgetTranslateTitle": "Live translation",
+      "widgetTranslateHost": "Host · EN",
+      "widgetTranslateGuest": "Guest · KO",
+      "widgetTranslateLine": "‘So how do you usually pick a brand?’",
+      "widgetTranslateGuestLine": "‘I usually go by the design.’",
+      "widgetProbingTitle": "Probing assistant",
+      "widgetProbingHint": "Follow-up suggested",
+      "widgetProbingQuestion": "‘When you say steep—price, or process?’",
+      "widgetInsightsTitle": "Insight analysis",
+      "widgetInsightsCluster1": "Price-sensitive (12)",
+      "widgetInsightsCluster2": "Brand trust (9)",
+      "widgetInsightsCluster3": "Design-led (7)",
+      "widgetDeskTitle": "Desk research",
+      "widgetDeskSource1": "Statista · K-Beauty 2026",
+      "widgetDeskSource2": "Mintel · Gen Z cosmetics",
+      "widgetInterviewsTitle": "Interview results",
+      "widgetInterviewsMatrix": "8 responses × 5 themes matrix"
     },
-    "showcase": {
-      "meta": "LIVE DEMO",
-      "title": "Try it yourself.<br></br><em>It works just like the real thing.</em>",
-      "subtitle": "Click through the tools and watch results pile up in your workspace. No sign-up needed.",
-      "freeTrial": "FREE TRIAL",
-      "freeTrialTime": "23h 48m",
-      "groups": {
-        "design": "Design",
-        "conduct": "Conduct",
-        "analysis": "Analyze"
+    "features": {
+      "meta": "ON THE CANVAS",
+      "title": "<hlPeach>Six widgets</hlPeach> on one canvas.",
+      "subtitle": "Each widget is powerful on its own. Together on the canvas, their results flow without effort.",
+      "translate": {
+        "title": "Live translation",
+        "tag": "New",
+        "body": "Capture host and guest audio simultaneously. Live translation with automatic speaker labels—turn English interviews into Korean notes in real time."
       },
-      "tools": {
-        "desk": "Desk Research",
-        "screener": "Screener Builder",
-        "guideline": "Guideline Builder",
-        "moderator": "AI Moderator",
-        "verbatim": "Transcript Generator",
-        "interview": "Interview Analyzer",
-        "report": "Full Report Generator",
-        "quant": "Quant Analyzer",
-        "affinity": "Affinity Bubble"
+      "probing": {
+        "title": "Probing assistant",
+        "tag": "New",
+        "body": "Suggests verification and depth questions during the interview. Catch the ambiguity in an answer the moment it happens."
       },
-      "sideFoot": "Beauty UX 2026Q2",
-      "wsMeta": "WORKSPACE",
-      "wsEmpty": "Outputs from the tools you visit show up here. Click the sidebar to start.",
-      "wsReset": "Reset",
-      "wsToReport": "To report →",
-      "footMeta": "NEXT",
-      "tip": "← / → to navigate · Click the sidebar to switch tools · Use tabs for stages",
-      "tipMeta": "TIP",
-      "fallbackNext": "Wrap up in the report →"
+      "insights": {
+        "title": "Insight analyzer",
+        "tag": "New",
+        "body": "Auto-clusters utterances across interviews. Semantic search lets you test hypotheses fast and pull quotes straight into your report."
+      },
+      "interviews": {
+        "title": "Interview results",
+        "body": "Transcribe, summarize, extract themes—automatically. A response × theme matrix surfaces patterns at a glance, ready to connect with neighbour widgets."
+      },
+      "desk": {
+        "title": "Desk research",
+        "body": "Distilled findings from credible sources, with citations attached. Drop the result panel straight into your interview design."
+      },
+      "quotes": {
+        "title": "Transcripts",
+        "body": "Upload audio or video once and get a clean transcript with speaker labels, timestamps, and search. An hour of audio becomes minutes of work."
+      }
     },
-    "whyMochi": {
-      "tag": "WHY MOCHI?",
-      "hand": "A sweet bite,<br></br>for the weary researcher.",
-      "body1": "Late nights, endless edits, an obsession with the smallest details—the tiny, hard-won insight that only surfaces after all of it. Countless researchers carry that weight quietly, every day, for that one insight.",
-      "body2": "Research-Mochi wants to sit beside those researchers. To automate the repetition so you can focus on what matters—a small, certain joy at the end of a long day, like one bite of mochi.",
-      "perk1": "<strong>Automation instead of overtime.</strong> Transcripts, interview summaries, desk research—the work that used to keep you up, Mochi handles it.",
-      "perk2": "<strong>Mochi does the detail, you do the insight.</strong> Finding patterns in hundreds of responses is Mochi's job. Reading what they mean is yours.",
-      "perk3": "<strong>A first draft that needs less revising.</strong> Clean structure and language from the start. Fewer feedback loops, faster turn-around.",
-      "coda": "Why not let Mochi handle today, and pour yourself a coffee? ☕"
+    "workflow": {
+      "meta": "HOW IT WORKS",
+      "title": "<hl>Three steps</hl>, that's it.",
+      "subtitle": "Drop the widgets you need, let analysis flow between them, and ship the results.",
+      "step1Num": "01",
+      "step1Title": "Drop widgets on the canvas",
+      "step1Body": "Pull the tools you need onto the canvas. Transcription, translation, analysis—side by side.",
+      "step2Num": "02",
+      "step2Title": "Analysis flows",
+      "step2Body": "Widgets pass results to each other and the next step runs itself. Zero tab switches.",
+      "step3Num": "03",
+      "step3Title": "Export or share",
+      "step3Body": "Download reports, quotes, and matrices—or share the whole canvas with one link."
     },
     "pricing": {
       "meta": "CREDITS · PAY AS YOU LEARN",
@@ -112,28 +140,24 @@
         }
       }
     },
-    "voice": {
-      "quote": "\"Research used to feel like chores.<br></br>Now what took a whole day of writing up interviews takes an hour,<br></br>and I finally have time for the actual thinking.\"",
-      "by": "— Mathpresso UX Lead"
-    },
     "faq": {
       "meta": "FAQ",
       "title": "Things you might be wondering.",
-      "q1": "Do credits expire?",
-      "a1": "No. Once you buy credits they don't expire, and they're freely shared inside your team workspace.",
-      "q2": "Is Korean fully supported?",
-      "a2": "Korean is the default. Interface, docs, emails, even invoices—Korean first. Toggle to English whenever you need it.",
-      "q3": "Do outputs flow automatically between tools?",
-      "a3": "Yes. Inside one workspace, the output of one tool becomes the input of the next. Drag-drop from the sidebar or use the send-to menu.",
+      "q1": "What exactly is the canvas?",
+      "a1": "A single screen where every research tool—transcription, translation, probing, analysis, desk research, interview results—sits as a widget. No tab switching: results flow between widgets naturally.",
+      "q2": "How do live translation and the probing assistant work?",
+      "a2": "Live translation captures host-mic and guest-tab audio together and labels each speaker. Probing watches the conversation for ambiguity and suggests follow-up questions on the spot.",
+      "q3": "Do credits expire?",
+      "a3": "No. Credits never expire, and they're freely shared inside your team workspace.",
       "q4": "Do I have to pay right after sign-up?",
-      "a4": "No. The first 24 hours give you unlimited access to every tool, no card needed. Buy credits later if you like what you see."
+      "a4": "No. The first 24 hours give you unlimited access to every widget, no card required. Buy credits later if you like what you see."
     },
     "ctaFinal": {
-      "squiggle": "come say hi ✿",
-      "title": "A researcher's hands belong<br></br>on the <hlMint>thinking</hlMint> work.",
-      "subtitle": "Every tool is unlimited for the first 24 hours after sign-up. No card required, and your first output averages three minutes.",
-      "ctaPrimary": "Try free for a day →",
-      "ctaSecondary": "Take a quick tour"
+      "squiggle": "open the canvas ✿",
+      "title": "Your research,<br></br>on one <hlMint>canvas</hlMint>.",
+      "subtitle": "Every widget is unlimited for the first 24 hours after sign-up. No card required, and your first canvas opens in 30 seconds.",
+      "ctaPrimary": "Open the canvas →",
+      "ctaSecondary": "See features again"
     },
     "footer": {
       "terms": "Terms",

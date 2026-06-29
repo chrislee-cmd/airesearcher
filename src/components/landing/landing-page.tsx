@@ -1,14 +1,12 @@
 import { Outfit } from 'next/font/google';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { Showcase } from './showcase';
-import { panelsKo } from './panels.ko';
-import { panelsEn } from './panels.en';
-import type { PanelKey } from './panels';
+import { CanvasHero } from './canvas-hero';
+import { FeatureGrid } from './feature-grid';
+import { WorkflowSection } from './workflow-section';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 import './landing.css';
 
-// Outfit display 폰트 — PR-D8 pop 톤 정렬. canvas 와 같은 weight 세트.
 const outfit = Outfit({
   subsets: ['latin'],
   weight: ['600', '700', '800'],
@@ -18,23 +16,6 @@ const outfit = Outfit({
 
 export async function LandingPage({ locale }: { locale: string }) {
   const t = await getTranslations('Landing');
-  // Landing copy only exists in `ko` and `en`. Korean users see the
-  // Korean panels; every other locale (ja, plus any future addition that
-  // doesn't ship a panels.<lang>.tsx) falls through to the English ones.
-  const panels = locale === 'ko' ? panelsKo : panelsEn;
-  const generatingText = locale === 'ko' ? '생성 중...' : 'Generating…';
-
-  const tools: Record<PanelKey, string> = {
-    desk: t('showcase.tools.desk'),
-    screener: t('showcase.tools.screener'),
-    guideline: t('showcase.tools.guideline'),
-    moderator: t('showcase.tools.moderator'),
-    verbatim: t('showcase.tools.verbatim'),
-    interview: t('showcase.tools.interview'),
-    report: t('showcase.tools.report'),
-    quant: t('showcase.tools.quant'),
-    affinity: t('showcase.tools.affinity'),
-  };
 
   const richTags = {
     hl: (chunks: React.ReactNode) => <span className="hl">{chunks}</span>,
@@ -47,9 +28,57 @@ export async function LandingPage({ locale }: { locale: string }) {
     br: () => <br />,
   };
 
-  // Hero CTAs
   const ctaStart = '/login?next=/canvas';
   const ctaCredits = '/login?next=/credits';
+
+  const heroLabels = {
+    tagline: t('hero.tagline'),
+    headline: t.rich('hero.headline', richTags),
+    lead: t.rich('hero.lead', richTags),
+    ctaPrimary: t('hero.ctaPrimary'),
+    ctaSecondary: t('hero.ctaSecondary'),
+    postscript: t.rich('hero.postscript', richTags),
+    canvasMeta: t('hero.canvasMeta'),
+    canvasBrand: t('hero.canvasBrand'),
+    canvasCredits: t('hero.canvasCredits'),
+    canvasSaved: t('hero.canvasSaved'),
+    widgetTranscriptsTitle: t('hero.widgetTranscriptsTitle'),
+    widgetTranscriptsLine1: t('hero.widgetTranscriptsLine1'),
+    widgetTranscriptsLine2: t('hero.widgetTranscriptsLine2'),
+    widgetTranscriptsLine3: t('hero.widgetTranscriptsLine3'),
+    widgetTranslateTitle: t('hero.widgetTranslateTitle'),
+    widgetTranslateHost: t('hero.widgetTranslateHost'),
+    widgetTranslateGuest: t('hero.widgetTranslateGuest'),
+    widgetTranslateLine: t('hero.widgetTranslateLine'),
+    widgetTranslateGuestLine: t('hero.widgetTranslateGuestLine'),
+    widgetProbingTitle: t('hero.widgetProbingTitle'),
+    widgetProbingHint: t('hero.widgetProbingHint'),
+    widgetProbingQuestion: t('hero.widgetProbingQuestion'),
+    widgetInsightsTitle: t('hero.widgetInsightsTitle'),
+    widgetInsightsCluster1: t('hero.widgetInsightsCluster1'),
+    widgetInsightsCluster2: t('hero.widgetInsightsCluster2'),
+    widgetInsightsCluster3: t('hero.widgetInsightsCluster3'),
+    widgetDeskTitle: t('hero.widgetDeskTitle'),
+    widgetDeskSource1: t('hero.widgetDeskSource1'),
+    widgetDeskSource2: t('hero.widgetDeskSource2'),
+    widgetInterviewsTitle: t('hero.widgetInterviewsTitle'),
+    widgetInterviewsMatrix: t('hero.widgetInterviewsMatrix'),
+  };
+
+  const featureCards = [
+    { key: 'translate' as const, title: t('features.translate.title'), body: t('features.translate.body'), tag: t('features.translate.tag') },
+    { key: 'probing' as const, title: t('features.probing.title'), body: t('features.probing.body'), tag: t('features.probing.tag') },
+    { key: 'insights' as const, title: t('features.insights.title'), body: t('features.insights.body'), tag: t('features.insights.tag') },
+    { key: 'interviews' as const, title: t('features.interviews.title'), body: t('features.interviews.body') },
+    { key: 'desk' as const, title: t('features.desk.title'), body: t('features.desk.body') },
+    { key: 'quotes' as const, title: t('features.quotes.title'), body: t('features.quotes.body') },
+  ];
+
+  const workflowSteps = [
+    { num: t('workflow.step1Num'), title: t('workflow.step1Title'), body: t('workflow.step1Body') },
+    { num: t('workflow.step2Num'), title: t('workflow.step2Title'), body: t('workflow.step2Body') },
+    { num: t('workflow.step3Num'), title: t('workflow.step3Title'), body: t('workflow.step3Body') },
+  ] as const;
 
   return (
     <div className={`${outfit.variable} landing-root`}>
@@ -59,10 +88,9 @@ export async function LandingPage({ locale }: { locale: string }) {
             <img className="logo" src="/landing/logo.png" alt="Research-mochi" /> Research-mochi
           </div>
           <div className="links">
-            <a href="#showcase">{t('nav.demo')}</a>
-            <a href="#why-mochi">{t('nav.why')}</a>
+            <a href="#features">{t('nav.features')}</a>
+            <a href="#workflow">{t('nav.workflow')}</a>
             <a href="#pricing">{t('nav.pricing')}</a>
-            <a href="#voice">{t('nav.story')}</a>
             <a href="#faq">{t('nav.faq')}</a>
           </div>
           <div className="cta">
@@ -72,62 +100,21 @@ export async function LandingPage({ locale }: { locale: string }) {
         </div>
       </nav>
 
-      <header className="hero">
-        <div className="container">
-          <span className="squiggle">{t('hero.tagline')}</span>
-          <h1>{t.rich('hero.headline', richTags)}</h1>
-          <p>{t.rich('hero.lead', richTags)}</p>
-          <div className="ctarow">
-            <Link className="btn primary btn-lg" href={ctaStart}>{t('hero.ctaPrimary')}</Link>
-            <a className="btn btn-lg" href="#showcase">{t('hero.ctaSecondary')}</a>
-          </div>
-          <div className="below">{t.rich('hero.postscript', richTags)}</div>
-        </div>
-      </header>
+      <CanvasHero labels={heroLabels} ctaStartHref={ctaStart} ctaFeaturesHref="#features" />
 
-      <Showcase
-        panels={panels}
-        generatingText={generatingText}
-        labels={{
-          meta: t('showcase.meta'),
-          title: t.rich('showcase.title', richTags),
-          subtitle: t('showcase.subtitle'),
-          freeTrial: t('showcase.freeTrial'),
-          freeTrialTime: t('showcase.freeTrialTime'),
-          groups: {
-            design: t('showcase.groups.design'),
-            conduct: t('showcase.groups.conduct'),
-            analysis: t('showcase.groups.analysis'),
-          },
-          tools,
-          sideFoot: t('showcase.sideFoot'),
-          wsMeta: t('showcase.wsMeta'),
-          wsEmpty: t('showcase.wsEmpty'),
-          wsReset: t('showcase.wsReset'),
-          wsToReport: t('showcase.wsToReport'),
-          footMeta: t('showcase.footMeta'),
-          tip: t('showcase.tip'),
-          tipMeta: t('showcase.tipMeta'),
-          fallbackNext: t('showcase.fallbackNext'),
-        }}
+      <FeatureGrid
+        meta={t('features.meta')}
+        title={t.rich('features.title', richTags)}
+        subtitle={t('features.subtitle')}
+        cards={featureCards}
       />
 
-      <section className="why-mochi" id="why-mochi">
-        <img className="wm-bg sharp" src="/landing/mochi-bg.jpg" alt="" aria-hidden="true" />
-        <div className="container">
-          <span className="wm-tag">{t('whyMochi.tag')}</span>
-          <span className="wm-hand">{t.rich('whyMochi.hand', richTags)}</span>
-          <p className="wm-body">{t('whyMochi.body1')}</p>
-          <p className="wm-body">{t('whyMochi.body2')}</p>
-          <div className="wm-rule"></div>
-          <div className="wm-perks">
-            <div className="wm-perk"><p>{t.rich('whyMochi.perk1', richTags)}</p></div>
-            <div className="wm-perk"><p>{t.rich('whyMochi.perk2', richTags)}</p></div>
-            <div className="wm-perk"><p>{t.rich('whyMochi.perk3', richTags)}</p></div>
-          </div>
-          <span className="wm-coda">{t('whyMochi.coda')}</span>
-        </div>
-      </section>
+      <WorkflowSection
+        meta={t('workflow.meta')}
+        title={t.rich('workflow.title', richTags)}
+        subtitle={t('workflow.subtitle')}
+        steps={[workflowSteps[0], workflowSteps[1], workflowSteps[2]]}
+      />
 
       <section className="pricing" id="pricing">
         <div className="container">
@@ -189,16 +176,6 @@ export async function LandingPage({ locale }: { locale: string }) {
         </div>
       </section>
 
-      <section className="voice" id="voice">
-        <div className="container">
-          <div className="voice-card">
-            <div className="av"><span>🌷</span><span>🍵</span><span>🌿</span><span>🍑</span></div>
-            <div className="quote">{t.rich('voice.quote', richTags)}</div>
-            <div className="by">{t('voice.by')}</div>
-          </div>
-        </div>
-      </section>
-
       <section className="faq" id="faq">
         <div className="container">
           <div className="sec-head">
@@ -234,7 +211,7 @@ export async function LandingPage({ locale }: { locale: string }) {
             <p>{t('ctaFinal.subtitle')}</p>
             <div className="row">
               <Link className="btn primary btn-lg" href={ctaStart}>{t('ctaFinal.ctaPrimary')}</Link>
-              <a className="btn btn-lg" href="#showcase">{t('ctaFinal.ctaSecondary')}</a>
+              <a className="btn btn-lg" href="#features">{t('ctaFinal.ctaSecondary')}</a>
             </div>
           </div>
         </div>
