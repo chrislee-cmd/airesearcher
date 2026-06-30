@@ -44,8 +44,15 @@
       "widgetDeskTitle": "데스크 리서치",
       "widgetDeskSource1": "Statista · K-Beauty 2026",
       "widgetDeskSource2": "Mintel · Gen Z 화장품",
-      "widgetInterviewsTitle": "인터뷰 결과",
-      "widgetInterviewsMatrix": "응답 8 × 주제 5 매트릭스"
+      "widgetRecruitingTitle": "리크루팅",
+      "widgetRecruitingSubtitle": "응답자 모집",
+      "widgetRecruitingP1": "30대 워킹맘",
+      "widgetRecruitingP1Status": "채택",
+      "widgetRecruitingP2": "20대 학생",
+      "widgetRecruitingP2Status": "보류",
+      "widgetRecruitingP3": "40대 자영업",
+      "widgetRecruitingP3Status": "채택",
+      "widgetRecruitingCount": "선정 7 / 응답 24"
     },
     "features": {
       "meta": "ON THE CANVAS",

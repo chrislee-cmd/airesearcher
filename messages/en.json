@@ -44,8 +44,15 @@
       "widgetDeskTitle": "Desk research",
       "widgetDeskSource1": "Statista · K-Beauty 2026",
       "widgetDeskSource2": "Mintel · Gen Z cosmetics",
-      "widgetInterviewsTitle": "Interview results",
-      "widgetInterviewsMatrix": "8 responses × 5 themes matrix"
+      "widgetRecruitingTitle": "Recruiting",
+      "widgetRecruitingSubtitle": "Respondent screening",
+      "widgetRecruitingP1": "30s working mom",
+      "widgetRecruitingP1Status": "selected",
+      "widgetRecruitingP2": "20s student",
+      "widgetRecruitingP2Status": "pending",
+      "widgetRecruitingP3": "40s freelance",
+      "widgetRecruitingP3Status": "selected",
+      "widgetRecruitingCount": "Selected 7 / Responses 24"
     },
     "features": {
       "meta": "ON THE CANVAS",

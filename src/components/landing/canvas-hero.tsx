@@ -31,8 +31,15 @@ type Labels = {
   widgetDeskTitle: string;
   widgetDeskSource1: string;
   widgetDeskSource2: string;
-  widgetInterviewsTitle: string;
-  widgetInterviewsMatrix: string;
+  widgetRecruitingTitle: string;
+  widgetRecruitingSubtitle: string;
+  widgetRecruitingP1: string;
+  widgetRecruitingP1Status: string;
+  widgetRecruitingP2: string;
+  widgetRecruitingP2Status: string;
+  widgetRecruitingP3: string;
+  widgetRecruitingP3Status: string;
+  widgetRecruitingCount: string;
 };
 
 export function CanvasHero({
@@ -151,19 +158,32 @@ function CanvasMockup({ labels }: { labels: Labels }) {
           </ul>
         </article>
 
-        {/* Interviews */}
-        <article className="cm-widget cm-w-interviews">
+        {/* Recruiting */}
+        <article className="cm-widget cm-w-recruiting">
           <header>
-            <span className="cm-icon cm-icon-sun" aria-hidden="true">I</span>
-            <h3>{labels.widgetInterviewsTitle}</h3>
+            <span className="cm-icon cm-icon-recruiting" aria-hidden="true">R</span>
+            <h3>{labels.widgetRecruitingTitle}</h3>
           </header>
-          <div className="cm-matrix">
-            <div className="cm-matrix-grid" aria-hidden="true">
-              {Array.from({ length: 20 }).map((_, i) => (
-                <span key={i} className={`cm-cell ${[2, 5, 7, 11, 14, 18].includes(i) ? 'on' : ''}`} />
-              ))}
-            </div>
-            <span className="cm-matrix-label">{labels.widgetInterviewsMatrix}</span>
+          <div className="cm-recruiting">
+            <span className="cm-recruiting-sub">{labels.widgetRecruitingSubtitle}</span>
+            <ul className="cm-recruiting-list">
+              <li>
+                <span className="cm-rec-who">P1</span>
+                <span className="cm-rec-text">{labels.widgetRecruitingP1}</span>
+                <span className="cm-rec-status cm-rec-ok">{labels.widgetRecruitingP1Status}</span>
+              </li>
+              <li>
+                <span className="cm-rec-who">P2</span>
+                <span className="cm-rec-text">{labels.widgetRecruitingP2}</span>
+                <span className="cm-rec-status cm-rec-pending">{labels.widgetRecruitingP2Status}</span>
+              </li>
+              <li>
+                <span className="cm-rec-who">P3</span>
+                <span className="cm-rec-text">{labels.widgetRecruitingP3}</span>
+                <span className="cm-rec-status cm-rec-ok">{labels.widgetRecruitingP3Status}</span>
+              </li>
+            </ul>
+            <div className="cm-rec-count">{labels.widgetRecruitingCount}</div>
           </div>
         </article>
       </div>

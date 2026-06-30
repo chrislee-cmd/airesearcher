@@ -62,8 +62,15 @@ export async function LandingPage({ locale }: { locale: string }) {
     widgetDeskTitle: t('hero.widgetDeskTitle'),
     widgetDeskSource1: t('hero.widgetDeskSource1'),
     widgetDeskSource2: t('hero.widgetDeskSource2'),
-    widgetInterviewsTitle: t('hero.widgetInterviewsTitle'),
-    widgetInterviewsMatrix: t('hero.widgetInterviewsMatrix'),
+    widgetRecruitingTitle: t('hero.widgetRecruitingTitle'),
+    widgetRecruitingSubtitle: t('hero.widgetRecruitingSubtitle'),
+    widgetRecruitingP1: t('hero.widgetRecruitingP1'),
+    widgetRecruitingP1Status: t('hero.widgetRecruitingP1Status'),
+    widgetRecruitingP2: t('hero.widgetRecruitingP2'),
+    widgetRecruitingP2Status: t('hero.widgetRecruitingP2Status'),
+    widgetRecruitingP3: t('hero.widgetRecruitingP3'),
+    widgetRecruitingP3Status: t('hero.widgetRecruitingP3Status'),
+    widgetRecruitingCount: t('hero.widgetRecruitingCount'),
   };
 
   type FeatureBullet = { highlight: string; rest: string };
