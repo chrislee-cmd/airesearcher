@@ -15,7 +15,7 @@
     },
     "hero": {
       "tagline": "Research on my canvas",
-      "headline": "한 화면에서,<br></br><hl>처음부터 끝까지</hl><br></br>리서치 <hlPeach>캔버스</hlPeach>.",
+      "headline": "한 화면에서,<br></br><hlPeach>리서치</hlPeach>의<br></br><hl>처음부터 끝까지</hl>.",
       "lead": "",
       "ctaPrimary": "캔버스 열기 →",
       "ctaSecondary": "기능 둘러보기",
