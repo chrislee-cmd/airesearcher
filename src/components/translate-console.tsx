@@ -40,6 +40,7 @@ import {
 import {
   FIDELITY_LOSS_THRESHOLD,
   decodeDataChannelMessage,
+  looksJapaneseFallback,
   lossRatio,
   summarizeFidelity,
 } from '@/lib/translate-fidelity';
@@ -1188,6 +1189,22 @@ export function TranslateConsole() {
       // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
         const delta = String(msg.delta ?? '');
+        // Script-guard (audit #1) — last-resort drop for the Japanese
+        // fallback. A ko-source session should never produce a kana-only
+        // fragment; gpt-4o-transcribe makes it rare but not impossible,
+        // so we drop the fragment here before it pollutes the caption /
+        // transcript instead of relying on the model alone. Counted as
+        // delta chars first so the fidelity loss ratio reflects the drop
+        // rather than silently masking it. Only ko sessions are guarded —
+        // a ja-source session legitimately emits kana.
+        if (sourceLang === 'ko' && looksJapaneseFallback(delta)) {
+          fidelityCountersRef.current.input.deltaChars += delta.length;
+          console.warn('[translate] japanese-fallback drop (ko source)', {
+            slot,
+            preview: delta.slice(0, 32),
+          });
+          return;
+        }
         fidelityCountersRef.current.input.deltaChars += delta.length;
         if (TRACE_ENCODING && delta) {
           const summary = summarizeFidelity(delta);

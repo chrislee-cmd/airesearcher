@@ -58,6 +58,29 @@ export function looksMojibake(text: string): boolean {
   return false;
 }
 
+// Script-guard for the "Korean interview transcribed as Japanese" audit
+// finding (#1). When the source language is Korean but the STT model is
+// uncertain, it sometimes emits Japanese kana phonetics for the source
+// transcript instead of Hangul — a fragment like `ありがとう` where the
+// speaker actually said Korean. Real Korean transcription is Hangul +
+// Latin (loanwords, acronyms) + digits and never contains kana, so a
+// fragment that carries kana and zero Hangul is almost certainly that
+// fallback artifact. The full transcription model (gpt-4o-transcribe)
+// makes this rare, but it can still slip through on very low-confidence
+// audio, so the host drops these fragments before they reach the
+// caption / persistence path. Returns `true` only when the text has at
+// least one kana char AND no Hangul — a mixed `안녕は` fragment is kept
+// (it has Hangul) so a genuine loanword inside Korean speech survives.
+//
+// Hiragana U+3040–U+309F, Katakana U+30A0–U+30FF, half-width katakana
+// U+FF66–U+FF9D. Hangul syllables U+AC00–U+D7A3, Jamo U+1100–U+11FF /
+// U+3130–U+318F.
+export function looksJapaneseFallback(text: string): boolean {
+  const kana = /[぀-ヿｦ-ﾝ]/;
+  const hangul = /[가-힣ᄀ-ᇿ㄰-㆏]/;
+  return kana.test(text) && !hangul.test(text);
+}
+
 // Returns the UTF-8 byte length of `text`. Used by the loss-detection path
 // so logs / audit metadata carry a stable byte count comparable across
 // browser, server, and DB.
