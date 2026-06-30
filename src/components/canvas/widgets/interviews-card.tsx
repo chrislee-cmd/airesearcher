@@ -7,7 +7,6 @@ import {
   InterviewUploadArea,
 } from '@/components/interview-analyzer';
 import { useInterviewJob } from '@/components/interview-job-provider';
-import { WidgetOutputs } from '../shell/widget-outputs';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -91,9 +90,8 @@ function InterviewStatePush() {
 }
 
 function ExpandedBody() {
-  // body 는 flex column — 분석 UI 는 중간 (flex-1, 자체 스크롤), 산출물
-  // 영역은 카드 바닥에 고정 (quotes / desk 와 시각 통일). 인터뷰는 아직
-  // 결과 history 가 없어서 items=[] 로 항상 빈 상태 placeholder 노출.
+  // body 는 flex column — 분석 UI 는 중간 (flex-1, 자체 스크롤). 산출물
+  // 목록은 "전체 보기" modal 로 일원화 (하단 "최근 산출물" 푸터 제거).
   //
   // "전체 보기" → InterviewFullView (풀스크린 2-column — 좌: 파일 list,
   // 우: 검색/채팅). 위젯이 좁아서 search query / chat 이 어색하다는 사용자
@@ -110,7 +108,6 @@ function ExpandedBody() {
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
       </div>
-      <WidgetOutputs label="최근 산출물" items={[]} renderItem={() => null} />
       {renderInSlot(<InterviewFullView onClose={close} />)}
     </div>
   );

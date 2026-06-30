@@ -22,7 +22,6 @@ import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
   WidgetOutputRow,
-  WidgetOutputs,
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
@@ -81,7 +80,6 @@ export function QuotesCardBody() {
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
-  const [showAllRecents, setShowAllRecents] = useState(false);
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
   // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
   // 때만 본문을 모달 slot 으로 portal. useTranscriptJobs provider 기반이라
@@ -459,18 +457,6 @@ export function QuotesCardBody() {
               </div>
             )}
           </div>
-
-          {/* 최근 산출물 — 카드 바닥에 고정 (flex column 의 마지막 자식).
-              primitive 가 "최근 2건만" 강제, 초과 시 더보기 모달. JobRow
-              (= WidgetOutputRow) 가 단일 row 시각/액션을 책임. */}
-          <WidgetOutputs
-            label="최근 산출물"
-            items={doneJobs}
-            onMoreClick={() => setShowAllRecents(true)}
-            renderItem={(j) => (
-              <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
-            )}
-          />
       </div>
 
       {pendingFiles && (
@@ -482,26 +468,6 @@ export function QuotesCardBody() {
           onCancel={cancelPendingUpload}
         />
       )}
-
-      {/* 전체 산출물 — 카드 밖에서 풀 리스트로 열람. JobRow 그대로라
-          모달 안에서도 다운로드/공유/미리보기/삭제 모두 동작. */}
-      <Modal
-        open={showAllRecents}
-        onClose={() => setShowAllRecents(false)}
-        title={`최근 산출물 (${doneJobs.length})`}
-        size="lg"
-      >
-        <ul className="space-y-3">
-          {doneJobs.map((j) => (
-            <JobRow
-              key={j.id}
-              job={j}
-              onDelete={() => deleteJob(j.id)}
-              previewMode="inline"
-            />
-          ))}
-        </ul>
-      </Modal>
 
       {/* 통일 "전체 보기" — 전사 작업 전체(진행 중 + 완료)를 풀스크린 list +
           파일명 검색으로. JobRow previewMode="inline" 이라 모달 안에서도
