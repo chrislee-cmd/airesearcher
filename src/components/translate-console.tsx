@@ -305,6 +305,30 @@ function isLcsChunkDup(candidate: string, prior: string): boolean {
   return longestCommonSubstring(candidate, prior) >= minLen;
 }
 
+// 🚨 truncation investigation (pr-translate-truncation-investigation).
+// Attribute a dedup match to the specific rule that fired, scanning the
+// recent-finals bucket in the same fuzzy → containment → lcs precedence
+// the live `.some(... || ... || ...)` check used. Returns the first match
+// (rule + the prior key it collided with) or null. The DROP DECISION IS
+// UNCHANGED — a line is dropped iff some rule matches some entry, exactly
+// as before; this only surfaces WHICH heuristic dropped it (and against
+// what) so a single live session shows whether dedup over-application is
+// eating real, distinct speech (candidate 1).
+type DedupRule = 'fuzzy' | 'containment' | 'lcs';
+
+function matchDedupRule(
+  candidate: string,
+  fresh: ReadonlyArray<{ key: string; ts: number }>,
+): { rule: DedupRule; matched: string } | null {
+  for (const e of fresh) {
+    if (isFuzzyDup(candidate, e.key)) return { rule: 'fuzzy', matched: e.key };
+    if (isContainmentDup(candidate, e.key))
+      return { rule: 'containment', matched: e.key };
+    if (isLcsChunkDup(candidate, e.key)) return { rule: 'lcs', matched: e.key };
+  }
+  return null;
+}
+
 type SessionBundle = {
   session: {
     id: string;
@@ -372,6 +396,15 @@ const LANGS: { value: string; label: string }[] = [
 // in-flight line.
 const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 
+// 🚨 truncation investigation. A committed turn whose tail is NOT sentence-
+// final punctuation is a *mid-sentence early commit* — the turn-silence
+// timer fired during a word-search pause and chopped one utterance in two.
+// Counting these (vs. all turn-silence commits) is the primary signal for
+// candidate 2 (TURN_SILENCE_MS too low): a high mid/total ratio means the
+// 1400 ms gate is splitting real sentences. Tail-anchored, allows a closing
+// quote/bracket after the punctuation.
+const SENTENCE_TAIL = /[.!?。！？…]+["')\]」』]?\s*$/u;
+
 // PR-T2 turn detection. The translations API has no `speech_started` /
 // `speech_stopped` events (see src/lib/openai-realtime.ts) — to spot a
 // turn boundary we watch the gap between successive deltas of the same
@@ -391,6 +424,42 @@ const TURN_SILENCE_MS = 1400;
 // src/lib/translate-stream-join.ts so the heuristics are unit-testable
 // in isolation and reusable by the persist / export path. `joinDelta` is
 // imported at the top of this file.
+
+// Per-channel fidelity counters (one bag for `input`, one for `output`),
+// reset on every Start. Factored out of the ref init + the start() reset so
+// the two stay in lockstep when fields are added — the 🚨 truncation
+// investigation appended six diagnostic fields and a drifted literal in
+// either place would silently zero them.
+type FidelityChannelCounters = {
+  deltaChars: number;
+  commitChars: number;
+  persistOk: number;
+  persistFail: number;
+  droppedFffd: number;
+  fuzzyDrops: number;
+  containmentDrops: number;
+  lcsDrops: number;
+  droppedChars: number;
+  turnSilenceCommits: number;
+  midSentenceCommits: number;
+};
+
+function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCounters> {
+  const channel = (): FidelityChannelCounters => ({
+    deltaChars: 0,
+    commitChars: 0,
+    persistOk: 0,
+    persistFail: 0,
+    droppedFffd: 0,
+    fuzzyDrops: 0,
+    containmentDrops: 0,
+    lcsDrops: 0,
+    droppedChars: 0,
+    turnSilenceCommits: 0,
+    midSentenceCommits: 0,
+  });
+  return { input: channel(), output: channel() };
+}
 
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
@@ -688,15 +757,16 @@ export function TranslateConsole() {
   // byte-split mojibake collapse in joinDelta (see translate-stream-join).
   // It's a lossy-but-intended cleanup, surfaced in the stop() report so a
   // spike is visible without masking it as silent drift.
+  //
+  // 🚨 truncation investigation fields (`*Drops` / `*Commits` /
+  // `droppedChars`): per-reason dedup-drop attribution + turn-silence
+  // early-commit signals. They let one live session distinguish the two
+  // truncation candidates — dedup over-application (high `droppedChars` +
+  // `fuzzy/containment/lcsDrops`) vs. turn-silence mid-sentence chopping
+  // (high `midSentenceCommits` / `turnSilenceCommits`).
   const fidelityCountersRef = useRef<
-    Record<
-      'input' | 'output',
-      { deltaChars: number; commitChars: number; persistOk: number; persistFail: number; droppedFffd: number }
-    >
-  >({
-    input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
-    output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
-  });
+    Record<'input' | 'output', FidelityChannelCounters>
+  >(freshFidelityCounters());
 
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
   // the host's source stream (mic/tab — mixed when `both` mode) and one
@@ -983,23 +1053,40 @@ export function TranslateConsole() {
         const turnKey = normalizeForDedup(turnText);
         const bucket = recentFinalsRef.current[slot][kind];
         const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
-        const isDup =
-          turnKey.length > 0 &&
-          fresh.some(
-            (e) =>
-              isFuzzyDup(turnKey, e.key) ||
-              isContainmentDup(turnKey, e.key) ||
-              isLcsChunkDup(turnKey, e.key),
-          );
-        if (isDup) {
+        const ctr = fidelityCountersRef.current[kind];
+        const dup = turnKey.length > 0 ? matchDedupRule(turnKey, fresh) : null;
+        if (dup) {
+          // 🚨 truncation investigation: attribute the drop + log the FULL
+          // text that was dropped (not a 40-char preview) so the host can
+          // diff it against the audio. A turn-silence commit that then gets
+          // deduped is the highest-risk path — the partial was already a
+          // full turn when the timer fired.
+          if (dup.rule === 'fuzzy') ctr.fuzzyDrops++;
+          else if (dup.rule === 'containment') ctr.containmentDrops++;
+          else ctr.lcsDrops++;
+          ctr.droppedChars += turnText.length;
           console.info('[translate] dedup (turn-silence)', {
             slot,
             kind,
-            preview: turnText.slice(0, 40),
+            rule: dup.rule,
+            dropped: turnText,
+            matched: dup.matched,
           });
           const setter = kind === 'input' ? setInputLines : setOutputLines;
           setter((prev) => prev.filter((l) => l.id !== existing.id));
         } else {
+          // Kept commit triggered by the turn-silence gate. If it doesn't
+          // end on sentence punctuation it's a mid-sentence early commit —
+          // candidate 2's smoking gun.
+          ctr.turnSilenceCommits++;
+          if (!SENTENCE_TAIL.test(turnText)) {
+            ctr.midSentenceCommits++;
+            console.info('[translate] turn-silence mid-sentence commit', {
+              slot,
+              kind,
+              text: turnText,
+            });
+          }
           fresh.push({ key: turnKey, ts: wall });
           recentFinalsRef.current[slot][kind] = fresh;
           const finalLine: CaptionLine = {
@@ -1114,19 +1201,23 @@ export function TranslateConsole() {
           //      side must clear CONTAINMENT_MIN_LEN to avoid common
           //      short phrases ("네.") wrongly matching against any
           //      longer line that contains them.
-          const isDup =
-            dedupKey.length > 0 &&
-            fresh.some(
-              (e) =>
-                isFuzzyDup(dedupKey, e.key) ||
-                isContainmentDup(dedupKey, e.key) ||
-                isLcsChunkDup(dedupKey, e.key),
-            );
-          if (isDup) {
+          const dup =
+            dedupKey.length > 0 ? matchDedupRule(dedupKey, fresh) : null;
+          if (dup) {
+            // 🚨 truncation investigation: per-reason attribution + full
+            // dropped text so a live session quantifies how much real
+            // speech each heuristic eats (candidate 1).
+            const ctr = fidelityCountersRef.current[kind];
+            if (dup.rule === 'fuzzy') ctr.fuzzyDrops++;
+            else if (dup.rule === 'containment') ctr.containmentDrops++;
+            else ctr.lcsDrops++;
+            ctr.droppedChars += finalText.length;
             console.info('[translate] dedup', {
               slot,
               kind,
-              preview: finalText.slice(0, 40),
+              rule: dup.rule,
+              dropped: finalText,
+              matched: dup.matched,
             });
             // The partial that was about to be finalized lives in
             // {input,output}Lines as a non-final preview row (rendered
@@ -1322,10 +1413,7 @@ export function TranslateConsole() {
     sampleCountRef.current.clear();
     // Reset fidelity counters — same rationale as the dedup memory reset
     // above, plus the loss-ratio comparison wants per-session totals.
-    fidelityCountersRef.current = {
-      input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
-      output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
-    };
+    fidelityCountersRef.current = freshFidelityCounters();
     fusionSampleRef.current.clear();
     setError(null);
     setSlotError(emptySlotRecord(null));
@@ -2221,9 +2309,28 @@ export function TranslateConsole() {
         persistOk: c.persistOk,
         persistFail: c.persistFail,
         droppedFffd: c.droppedFffd,
+        // 🚨 truncation investigation — per-reason drop attribution +
+        // turn-silence early-commit signals. Stored in the loss report so
+        // root cause can be read off audit_log without a live console.
+        fuzzyDrops: c.fuzzyDrops,
+        containmentDrops: c.containmentDrops,
+        lcsDrops: c.lcsDrops,
+        droppedChars: c.droppedChars,
+        turnSilenceCommits: c.turnSilenceCommits,
+        midSentenceCommits: c.midSentenceCommits,
         lossRatio: ratio,
       };
-      if (ratio > FIDELITY_LOSS_THRESHOLD || c.persistFail > 0 || c.droppedFffd > 0) {
+      // Report on any diagnostic signal, not just threshold breach — a
+      // session under the 5% loss bar can still reveal which heuristic is
+      // dropping content or whether turn-silence is chopping sentences.
+      const hasDiagnosticSignal =
+        c.droppedChars > 0 || c.midSentenceCommits > 0;
+      if (
+        ratio > FIDELITY_LOSS_THRESHOLD ||
+        c.persistFail > 0 ||
+        c.droppedFffd > 0 ||
+        hasDiagnosticSignal
+      ) {
         console.warn('[translate] fidelity loss', summary);
         if (id) {
           void fetch(`/api/translate/sessions/${id}/messages`, {

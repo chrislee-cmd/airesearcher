@@ -54,6 +54,20 @@ const LossReportBody = z.object({
   persistOk: z.number().int().min(0),
   persistFail: z.number().int().min(0),
   lossRatio: z.number().min(0).max(1),
+  // 🚨 truncation investigation (pr-translate-truncation-investigation).
+  // All optional so an older host build (which omits them) still validates
+  // and audits. `droppedFffd` was already SENT by the client but never in
+  // this schema, so zod silently stripped it from the audit metadata — now
+  // captured. The per-reason drop counters + turn-silence signals let the
+  // root cause (dedup over-application vs. turn-silence mid-sentence
+  // chopping) be read straight off audit_log.
+  droppedFffd: z.number().int().min(0).optional(),
+  fuzzyDrops: z.number().int().min(0).optional(),
+  containmentDrops: z.number().int().min(0).optional(),
+  lcsDrops: z.number().int().min(0).optional(),
+  droppedChars: z.number().int().min(0).optional(),
+  turnSilenceCommits: z.number().int().min(0).optional(),
+  midSentenceCommits: z.number().int().min(0).optional(),
 });
 
 export async function POST(
@@ -106,7 +120,17 @@ export async function POST(
       return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
     }
     const report = lossParsed.data;
-    if (report.lossRatio > FIDELITY_LOSS_THRESHOLD || report.persistFail > 0) {
+    // 🚨 truncation investigation: audit on any diagnostic signal — a drop
+    // attributed to a dedup rule or a turn-silence mid-sentence commit is
+    // worth a paper trail even below the loss-ratio threshold, so the
+    // per-session root-cause breakdown is queryable from audit_log.
+    const hasDiagnosticSignal =
+      (report.droppedChars ?? 0) > 0 || (report.midSentenceCommits ?? 0) > 0;
+    if (
+      report.lossRatio > FIDELITY_LOSS_THRESHOLD ||
+      report.persistFail > 0 ||
+      hasDiagnosticSignal
+    ) {
       await logAudit({
         event_type: 'transcript_loss_detected',
         user_id: user.id,
@@ -122,6 +146,14 @@ export async function POST(
           persist_fail: report.persistFail,
           loss_ratio: report.lossRatio,
           threshold: FIDELITY_LOSS_THRESHOLD,
+          // 🚨 truncation diagnostics (default 0 for legacy clients).
+          dropped_fffd: report.droppedFffd ?? 0,
+          fuzzy_drops: report.fuzzyDrops ?? 0,
+          containment_drops: report.containmentDrops ?? 0,
+          lcs_drops: report.lcsDrops ?? 0,
+          dropped_chars: report.droppedChars ?? 0,
+          turn_silence_commits: report.turnSilenceCommits ?? 0,
+          mid_sentence_commits: report.midSentenceCommits ?? 0,
         },
         request,
       });
