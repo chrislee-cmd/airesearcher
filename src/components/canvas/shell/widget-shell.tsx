@@ -286,7 +286,7 @@ function WidgetShellInner({
       }}
     >
       <div
-        className={`flex shrink-0 flex-col justify-end gap-1 px-5 ${
+        className={`flex shrink-0 flex-col justify-center gap-1 px-5 ${
           isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
         }`}
         {...dragHandleProps}
