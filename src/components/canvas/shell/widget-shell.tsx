@@ -300,7 +300,7 @@ function WidgetShellInner({
           borderBottom: '3px solid var(--canvas-card-header-divider)',
         }}
       >
-        <div className="relative flex items-start gap-2 text-xs uppercase">
+        <div className="relative flex items-center gap-2 text-xs uppercase">
           <CostBadge cost={content.meta.cost} costLabel={content.meta.costLabel} />
           {/* 컬러 팔레트는 cost 옆 (좌측 고정) — 우측 pill 이 state 에 따라
               너비가 변해도 (READY → TRANSCRIBING 72%) 팔레트 버튼 위치는
@@ -309,21 +309,21 @@ function WidgetShellInner({
             value={headerColor}
             onChange={setHeaderColor}
           />
-          {/* 우측 상단 = state pill, 그 바로 아래 = "전체 보기" 진입 (노란 메인
-              헤더 안, READY 값 하단). onFullview 넘긴 위젯만 노출 → 미전달이면
-              버튼 0 (회귀 0). 노란 배경 위에서 또렷하도록 Memphis chip
-              (secondary: 흰 bg + 검은 border + offset shadow) — 옛 link 톤 대비
-              훨씬 눈에 띔. */}
-          <span className="ml-auto flex flex-col items-end gap-1.5">
+          {/* 우측 = state pill + "전체 보기" 진입을 한 줄(인라인)로. pill 우측에
+              나란히 둬서 첫 row 가 단일 라인 높이로 유지 → 대형 32px 타이틀이
+              아래 row 때문에 밀려 윗부분이 잘리던 회귀 해소. onFullview 넘긴
+              위젯만 버튼 노출 → 미전달이면 버튼 0 (회귀 0). 노란 헤더 위 link
+              톤 text-only 진입점. */}
+          <span className="ml-auto flex items-center gap-2">
             <PopStatePill />
             {onFullview && (
               <Button
-                variant="secondary"
-                size="sm"
+                variant="link"
+                size="xs"
                 onClick={onFullview}
                 aria-label={tWidgets('fullview')}
-                leftIcon={<FullviewIcon className="h-3.5 w-3.5" />}
-                className="uppercase tracking-[0.16em]"
+                leftIcon={<FullviewIcon className="h-3 w-3" />}
+                className="uppercase tracking-[0.18em]"
               >
                 {tWidgets('fullview')}
               </Button>
