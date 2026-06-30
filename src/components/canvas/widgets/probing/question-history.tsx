@@ -73,6 +73,7 @@ export function ProbingQuestionHistory({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
+        data-canvas-action
         className="flex w-full items-center justify-between gap-2 bg-paper px-4 py-2.5 text-left hover:bg-paper-soft"
       >
         <span className="text-sm font-medium text-ink-2">
@@ -229,12 +230,17 @@ function HistoryActionButton({
   children: React.ReactNode;
 }) {
   return (
+    // data-canvas-action: globals.css 의 [data-canvas-body] button cascade
+    // 에서 opt-out. 이 24×24 고정 박스에 globals padding (0.4rem 0.85rem) 이
+    // 얹히면 content area 가 음수가 돼 12×12 SVG 글리프가 vanish — popup 과
+    // 동일한 PR #552 회귀 패턴 (question history 가 canvas-body 안에 mount).
     // eslint-disable-next-line react/forbid-elements -- compact 24px row action; IconButton primitive minimum size (32) breaks the history row scale. Tokens / tokens-soft chrome preserved.
     <button
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
+      data-canvas-action
       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-xs border ${active ? 'border-amore bg-amore-bg text-amore' : 'border-line-soft bg-paper text-ink-2 hover:border-ink'}`}
     >
       {children}

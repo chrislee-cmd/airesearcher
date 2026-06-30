@@ -364,12 +364,20 @@ function ActionButton({
   children: React.ReactNode;
 }) {
   return (
+    // data-canvas-action: globals.css 의 [data-canvas-body] button cascade
+    // (padding 0.4rem 0.85rem · border 2.5px) 에서 opt-out. placement="center"
+    // popup 은 canvas card 의 data-canvas-body 안에 mount 되는데, 이 32×32
+    // 고정 박스에 globals padding 이 얹히면 content area 가 음수가 돼 14×14 SVG
+    // 글리프가 vanish (PR #552 머지 후 우하단 pin/copy/close 빈 박스 회귀의
+    // root cause — globals.css 주석이 "probing-card fixed-size action 버튼" 을
+    // 명시적으로 제외 대상이라 적어둔 그 케이스).
     // eslint-disable-next-line react/forbid-elements -- Memphis-styled compact action; IconButton primitive doesn't expose the offset shadow + label badge composition we need inline.
     <button
       type="button"
       aria-label={ariaLabel}
       title={label}
       onClick={onClick}
+      data-canvas-action
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore"
     >
       {children}
