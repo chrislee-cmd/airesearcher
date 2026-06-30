@@ -790,9 +790,7 @@
     "timeoutBody": "The report couldn't finish within the 300s limit, so the run was stopped. Your credits were automatically refunded. Try narrowing keywords or the date range.",
     "stuckTitle": "AI is analyzing deeply",
     "stuckBodyCrawling": "Gathering sources — this can take a little longer depending on how much there is.",
-    "stuckBodyExtracting": "Extracting key claims — timing varies with the amount of data.",
-    "stuckBodyDrafting": "Drafting answers for each research question — many keywords can take 2–3 minutes.",
-    "stuckBodySynthesizing": "Synthesizing the final report — usually wraps up within 1–2 minutes.",
+    "stuckBodySynthesizing": "Writing the report — usually wraps up within 1–2 minutes.",
     "stuckBodyDefault": "The AI is analyzing in depth — please hold on a moment longer.",
     "stuckBodyLong": "This is taking longer than expected. You can keep waiting, or stop the run to recover your credits.",
     "doneEmptyTitle": "Report is empty",
@@ -829,12 +827,7 @@
     },
     "phaseLabel": {
       "expanding": "Expanding keywords",
-      "scoping": "Scoping research questions",
       "crawling": "Crawling sources",
-      "extracting": "Extracting claims",
-      "drafting": "Drafting RQ answers",
-      "critiquing": "Self-critique + revise",
-      "synthesizing": "Synthesizing final report",
       "summarizing": "Summarizing"
     },
     "region": {
