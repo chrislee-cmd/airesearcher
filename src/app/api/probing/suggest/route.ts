@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
+  PROBING_OUTPUT_LANGS,
   PROBING_QUESTION_COUNT,
-  PROBING_SYSTEM,
   buildProbingSuggestionSchema,
+  buildProbingSystem,
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
@@ -41,6 +42,9 @@ const Body = z.object({
     .max(PROBING_QUESTION_COUNT)
     .optional()
     .default(3),
+  // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
+  // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
+  output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
 });
 
 export async function POST(request: Request) {
@@ -133,7 +137,7 @@ export async function POST(request: Request) {
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema,
-    system: PROBING_SYSTEM,
+    system: buildProbingSystem(parsed.data.output_lang),
     prompt: `${guideBlock}${reflectionBlock}## Transcript (최근 ~30초)
 ${transcriptSan.wrapped}
 

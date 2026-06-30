@@ -21,7 +21,10 @@ import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
-import { PROBING_THINK_SYSTEM } from '@/lib/probing-prompts';
+import {
+  PROBING_OUTPUT_LANGS,
+  buildProbingThinkSystem,
+} from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 60;
@@ -39,6 +42,9 @@ const Body = z.object({
   // 기존 자유 가이드 텍스트도 같이 받아 호환성 유지 (사용자가 옛 가이드를
   // 그대로 두고 새 3 필드만 채우는 마이그 경로).
   interview_guide: z.string().max(20_000).optional().default(''),
+  // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
+  // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
+  output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
 });
 
 export async function POST(request: Request) {
@@ -148,7 +154,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
-    system: PROBING_THINK_SYSTEM,
+    system: buildProbingThinkSystem(parsed.data.output_lang),
     prompt: `${contextBlock}## 누적 transcript
 ${transcriptSan.wrapped}
 

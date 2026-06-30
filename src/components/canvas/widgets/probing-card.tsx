@@ -57,6 +57,7 @@ import {
   PROBING_TECHNIQUES,
   PROBING_THINK_IMPORTANCE,
   probingThinkEmitSchema,
+  type ProbingOutputLang,
   type ProbingPersonaSection,
   type ProbingPersonaSectionKey,
 } from '@/lib/probing-prompts';
@@ -120,6 +121,45 @@ function SourcePicker({
   );
 }
 
+// 분석 출력 언어 옵션 — translate 의 LANGS 6종과 동일. 입력 (STT) 언어와
+// 독립적으로 분석 결과 언어를 선택 (예: 한국어 인터뷰 → 영어 분석).
+const OUTPUT_LANG_OPTIONS: { value: ProbingOutputLang; label: string }[] = [
+  { value: 'ko', label: '한국어' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'zh', label: '中文' },
+  { value: 'es', label: 'Español' },
+  { value: 'th', label: 'ไทย' },
+];
+
+function OutputLangPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ProbingOutputLang;
+  onChange: (next: ProbingOutputLang) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 text-sm text-mute">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as ProbingOutputLang)}
+        disabled={disabled}
+        aria-label="분석 출력 언어"
+        className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+      >
+        {OUTPUT_LANG_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // 검증 helper — think route 의 EMIT 라인 JSON 을 schema 로 통과시킨다.
 function parseEmit(raw: string): PopupQuestion | null {
   try {
@@ -154,6 +194,15 @@ function ExpandedBody() {
   } = useRealtimeTranscription({ locale: 'ko' });
 
   const [source, setSource] = useState<SourceKind>('mic');
+
+  // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
+  // (영속화 X). default ko = 옛 동작 (한국어 분석). think / reflection 자동
+  // 호출은 useCallback 안에서 ref 로 최신 값을 읽는다 (deps 재생성 회피).
+  const [outputLang, setOutputLang] = useState<ProbingOutputLang>('ko');
+  const outputLangRef = useRef(outputLang);
+  useEffect(() => {
+    outputLangRef.current = outputLang;
+  }, [outputLang]);
 
   // 전체보기 — 공유 모달(CanvasBoard FullviewShell)이 소유. probing 이
   // currentKey 일 때만 본문(ProbingFullView)을 모달 slot 으로 portal 한다.
@@ -385,6 +434,7 @@ function ExpandedBody() {
           research_goal: contextRef.current.research_goal,
           hypotheses: contextRef.current.hypotheses,
           key_research_question: contextRef.current.key_research_question,
+          output_lang: outputLangRef.current,
         }),
         signal: controller.signal,
       });
@@ -473,6 +523,7 @@ function ExpandedBody() {
         body: JSON.stringify({
           transcript_window: trimmed,
           interview_guide: '',
+          output_lang: outputLangRef.current,
         }),
       });
       if (!res.ok || !res.body) {
@@ -840,11 +891,18 @@ function ExpandedBody() {
         <WidgetSubHeader
           className="shrink-0"
           inputs={
-            <SourcePicker
-              value={source}
-              onChange={setSource}
-              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
-            />
+            <div className="flex items-center gap-2">
+              <SourcePicker
+                value={source}
+                onChange={setSource}
+                disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
+              />
+              <OutputLangPicker
+                value={outputLang}
+                onChange={setOutputLang}
+                disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
+              />
+            </div>
           }
           actions={
             <>
