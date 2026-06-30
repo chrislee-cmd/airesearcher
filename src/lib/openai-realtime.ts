@@ -41,9 +41,25 @@ export function realtimeModel(): string {
   return env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
+// Normalize a UI language value ("ko", "en", "ko-KR") to the ISO-639-1
+// base code the transcription model expects. The picker only ever emits
+// bare 2-letter codes today, but a region subtag ("ko-KR") would make
+// `gpt-4o-mini-transcribe` reject the hint and silently fall back to
+// autodetect — defeating the whole point of pinning the language. Strip
+// any subtag and lowercase so the hint is always valid.
+function iso639(lang: string): string {
+  return lang.trim().toLowerCase().split(/[-_]/)[0];
+}
+
 export async function issueRealtimeSession(opts: {
-  // `sourceLang` is purely UI metadata — the translation model autodetects
-  // the input language and does not accept a source-language hint.
+  // `sourceLang` pins the INPUT transcription language. The translation
+  // model autodetects on its own, but `gpt-4o-mini-transcribe` (the
+  // separate input-transcription model) accepts a `language` hint — and
+  // without it, low-confidence Korean audio (filler words "어"/"음",
+  // short utterances) gets decoded as Japanese phonetics, which is the
+  // root cause of the "한국어 인터뷰인데 일본어 transcribe" audit finding.
+  // Pinning the source language forces Korean decoding for a ko→en
+  // session.
   sourceLang: string;
   // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
@@ -58,9 +74,14 @@ export async function issueRealtimeSession(opts: {
       model,
       audio: {
         input: {
-          transcription: { model: 'gpt-4o-mini-transcribe' },
+          transcription: {
+            model: 'gpt-4o-mini-transcribe',
+            // ★ Strict source-language transcription — blocks the
+            // Japanese-fallback mojibake the audit flagged.
+            language: iso639(opts.sourceLang),
+          },
         },
-        output: { language: opts.targetLang },
+        output: { language: iso639(opts.targetLang) },
       },
     },
   };
