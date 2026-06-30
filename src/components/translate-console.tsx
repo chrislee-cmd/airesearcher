@@ -985,6 +985,19 @@ export function TranslateConsole() {
     const el = monitorAudioRef.current;
     if (!el) return;
     try {
+      // Resume the mixer's AudioContext FIRST, inside this button's user
+      // gesture. The monitor plays the WebAudio mixer output
+      // (audioDestRef.stream), which emits NO frames while its context is
+      // suspended — and the context lands suspended because it's created
+      // several awaits past the Start gesture (tab picker + mic), so the
+      // autoplay policy never let the fire-and-forget resume() at start
+      // take. That's the "버튼 눌러도 무음" case: play() resolves but the
+      // mixer is silent. Awaited so the graph is running before play().
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'suspended') await ctx.resume();
+      console.info('[translate] enableTtsPlayback', {
+        ctxState: audioCtxRef.current?.state ?? null,
+      });
       const mixed = audioDestRef.current?.stream;
       if (mixed && el.srcObject !== mixed) el.srcObject = mixed;
       el.muted = !outputAudible;
@@ -2011,6 +2024,13 @@ export function TranslateConsole() {
           if (el && mixed) {
             if (el.srcObject !== mixed) el.srcObject = mixed;
             el.muted = !outputAudible;
+            // The mixer only emits frames while its AudioContext is running.
+            // It can land suspended (created several awaits past the Start
+            // gesture), which makes the monitor play silence even though
+            // play() resolves. Best-effort resume here; the "음성 켜기"
+            // button does the reliable gesture-backed resume.
+            const mixCtx = audioCtxRef.current;
+            if (mixCtx && mixCtx.state === 'suspended') void mixCtx.resume();
             // Layer A: surface autoplay rejection instead of swallowing it.
             el.play()
               .then(() => setTtsBlocked(false))
