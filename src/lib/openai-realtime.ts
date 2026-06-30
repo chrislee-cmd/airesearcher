@@ -84,6 +84,14 @@ export async function issueRealtimeSession(opts: {
         input: {
           transcription: { model: 'gpt-4o-transcribe' },
         },
+        // Audio output is automatic on `gpt-realtime-translate` and uses
+        // dynamic voice adaptation (translated speech follows the source
+        // speaker's tone) — there is NO output voice selector. Passing
+        // `output.voice` is rejected with a 400 `unknown_parameter`, which
+        // fails session creation outright. `language` is the only field
+        // this endpoint accepts here. The "발화 0" symptom is therefore a
+        // client-side playback issue (autoplay / track attach), not a
+        // session-config one — tracked in pr-translate-tts-playback-hardening.
         output: { language: iso639(opts.targetLang) },
       },
     },
