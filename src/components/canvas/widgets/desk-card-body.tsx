@@ -44,11 +44,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
-import {
-  SectionLabel,
-  WidgetOutputRow,
-  WidgetOutputs,
-} from '@/components/canvas/shell/widget-outputs';
+import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -678,27 +674,11 @@ export function DeskCardBody() {
     }),
   );
 
-  // 결과 row 메타: 출처 수 / 처리 시간 (wall-clock)
-  const sourcesCount = job?.articles?.length ?? 0;
-  const wallSec = job
-    ? Math.max(
-        0,
-        Math.round(
-          (new Date(job.updated_at).getTime() - new Date(job.created_at).getTime()) /
-            1000,
-        ),
-      )
-    : 0;
-  const wallLabel =
-    wallSec >= 60
-      ? `${Math.floor(wallSec / 60)}분 ${wallSec % 60}초`
-      : `${wallSec}초`;
-
   return (
     <>
       {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
-          으로 중간 영역 (flex-1, inputs + streaming + 에러 배너) / 최근
-          산출물 (bottom) 로 나뉘어 — 산출물이 카드 바닥에 고정. */}
+          으로 중간 영역 (flex-1, inputs + streaming + 에러 배너). 산출물
+          노출은 "전체 보기" modal 로 일원화 (하단 "최근 산출물" 푸터 제거). */}
       <div className="flex h-full flex-col">
         {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
             길어지면 자체적으로 스크롤. */}
@@ -1031,37 +1011,6 @@ export function DeskCardBody() {
           </div>
         )}
         </div>
-
-        {/* 최근 산출물 — 카드 바닥에 고정 (flex column 의 마지막 자식).
-            primitive 가 빈 상태 placeholder 도 책임 — done 잡 없으면
-            "아직 없습니다" 안내. quotes 와 시각 통일. Download / Share 는
-            row 가 아닌 모달 footer 에 — 기존 동작 유지. */}
-        <WidgetOutputs
-          label="최근 산출물"
-          items={showResult && job ? [job] : []}
-          renderItem={(j) => (
-            <WidgetOutputRow
-              key={j.id}
-              title={`${j.keywords.join(', ')} · ${tDesk('reportTitle')}`}
-              meta={
-                <>
-                  <span>{sourcesCount} sources</span>
-                  <span>{wallLabel}</span>
-                </>
-              }
-              actions={
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => setPreviewOpen(true)}
-                  className="uppercase tracking-[0.18em]"
-                >
-                  미리보기
-                </Button>
-              }
-            />
-          )}
-        />
       </div>
 
       <Modal
