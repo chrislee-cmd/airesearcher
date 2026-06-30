@@ -19,7 +19,13 @@ import {
 } from '@/lib/translate-fidelity';
 
 export const runtime = 'nodejs';
-export const maxDuration = 15;
+// Bumped 15 → 60: the host console POSTs one finalized caption per
+// realtime `completed` event, so under a busy session many of these land
+// concurrently. At 15s a cold-started function under load tipped into
+// gateway 504s, and the client retried, compounding the pile-up. 60s
+// gives headroom for the auth + session lookup + single insert without
+// changing the steady-state latency.
+export const maxDuration = 60;
 
 const Body = z.object({
   kind: z.enum(['input', 'output']),
