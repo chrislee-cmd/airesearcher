@@ -43,6 +43,7 @@ import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
+import { DateRangePopover } from '@/components/ui/date-range-popover';
 import {
   SectionLabel,
   WidgetOutputRow,
@@ -74,14 +75,6 @@ const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
   { id: 'custom', days: null },
 ];
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-function daysAgoIso(n: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - n);
-  return d.toISOString().slice(0, 10);
-}
 function splitKeywords(raw: string): string[] {
   return raw
     .split(/[,\n\t、·]+/)
@@ -273,7 +266,6 @@ export function DeskCardBody() {
   // ─── inputs ──────────────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordDraft, setKeywordDraft] = useState('');
-  const [preset, setPreset] = useState<RangePreset>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   // 사용자 자유 텍스트 — LLM 분석 시 어떤 관점으로 정리할지 hint. 현재
@@ -366,21 +358,6 @@ export function DeskCardBody() {
       const parts = splitKeywords(merged);
       pushKeywords(parts);
       setKeywordDraft('');
-    }
-  }
-
-  // ─── date range ──────────────────────────────────────────────────────────
-  function applyPreset(p: RangePreset) {
-    setPreset(p);
-    if (p === 'all') {
-      setDateFrom('');
-      setDateTo('');
-    } else if (p !== 'custom') {
-      const days = RANGE_PRESETS.find((x) => x.id === p)?.days ?? null;
-      if (days != null) {
-        setDateFrom(daysAgoIso(days));
-        setDateTo(todayIso());
-      }
     }
   }
 
@@ -683,7 +660,16 @@ export function DeskCardBody() {
   ]);
   // cardState 는 widget shell 외부에서 결정 (PR2 시점에는 widget meta.state
   // 가 'idle' 로 고정 — 후속 PR 에서 widget shell 로 live state 주입 검토).
-  const showRange = preset === 'custom' || (preset !== 'all' && (dateFrom || dateTo));
+
+  // 수집 기간 quick-pick — RANGE_PRESETS 를 popover preset 형태로 매핑.
+  // 'custom' 은 캘린더 직접 선택이라 quick-pick 에서 제외. 'all' 은 days=null
+  // (범위 해제) 로.
+  const rangePresets = RANGE_PRESETS.filter((p) => p.id !== 'custom').map(
+    (p) => ({
+      label: tDesk(`range_${p.id}` as const),
+      days: p.id === 'all' ? null : p.days,
+    }),
+  );
 
   // 결과 row 메타: 출처 수 / 처리 시간 (wall-clock)
   const sourcesCount = job?.articles?.length ?? 0;
@@ -740,48 +726,16 @@ export function DeskCardBody() {
                 </Field>
 
                 <Field label={tDesk('rangeLabel')}>
-                  <SelectMenu
-                    options={RANGE_PRESETS.map((p) => ({
-                      value: p.id,
-                      label: tDesk(`range_${p.id}` as const),
-                    }))}
-                    values={[preset]}
+                  <DateRangePopover
+                    value={{ from: dateFrom, to: dateTo }}
                     onChange={(next) => {
-                      const v = (next[0] ?? 'all') as RangePreset;
-                      applyPreset(v);
+                      setDateFrom(next.from);
+                      setDateTo(next.to);
                     }}
-                    placeholder={tDesk('rangeLabel')}
+                    presets={rangePresets}
+                    placeholder={tDesk('range_all')}
+                    locale={locale}
                   />
-                  {showRange && (
-                    <div className="mt-2 flex items-center gap-2 text-md text-mute">
-                      <Input
-                        type="date"
-                        size="sm"
-                        fullWidth={false}
-                        value={dateFrom}
-                        max={dateTo || todayIso()}
-                        onChange={(e) => {
-                          setDateFrom(e.target.value);
-                          setPreset('custom');
-                        }}
-                        className="px-2 py-1 text-ink-2"
-                      />
-                      <span className="text-mute-soft">→</span>
-                      <Input
-                        type="date"
-                        size="sm"
-                        fullWidth={false}
-                        value={dateTo}
-                        min={dateFrom || undefined}
-                        max={todayIso()}
-                        onChange={(e) => {
-                          setDateTo(e.target.value);
-                          setPreset('custom');
-                        }}
-                        className="px-2 py-1 text-ink-2"
-                      />
-                    </div>
-                  )}
                 </Field>
 
                 <Field label="분석 방향성">
@@ -854,9 +808,6 @@ export function DeskCardBody() {
           }
           actions={
             <>
-              <span className="text-sm tabular-nums text-mute-soft">
-                {keywords.length}개 키워드 · {FEATURE_COSTS.desk} 크레딧
-              </span>
               <ChromeButton
                 variant="primary"
                 size="lg"
