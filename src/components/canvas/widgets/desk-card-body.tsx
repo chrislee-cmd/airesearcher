@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { track } from '@/components/mixpanel-provider';
 import { useRequireAuth } from '@/components/auth-provider';
@@ -266,68 +266,172 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
-function DeskMarkdown({ source }: { source: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1: ({ children }) => (
-          <h1 className="mb-4 mt-2 border-b border-line pb-2 text-3xl font-bold tracking-[-0.02em] text-ink first:mt-0">
-            {children}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="mb-3 mt-8 text-2xl font-bold tracking-[-0.018em] text-ink-2 first:mt-0">
-            {children}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="mb-2 mt-5 text-xl font-semibold tracking-[-0.005em] text-ink-2">
-            {children}
-          </h3>
-        ),
-        p: ({ children }) => (
-          <p className="my-2.5 text-lg leading-[1.8] text-ink-2">{children}</p>
-        ),
-        ul: ({ children }) => (
-          <ul className="my-2.5 list-disc space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="my-2.5 list-decimal space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
-            {children}
-          </ol>
-        ),
-        li: ({ children }) => <li className="text-ink-2">{children}</li>,
-        a: ({ href, children }) => (
-          <a
-            href={href ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-words text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
-          >
-            {children}
-          </a>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="my-3 border-l-2 border-amore bg-white px-4 py-2 text-lg italic text-ink-2">
-            {children}
-          </blockquote>
-        ),
-        code: ({ children }) => (
-          <code className="border border-line bg-white px-1.5 py-0.5 font-mono text-md text-ink-2 [border-radius:3px]">
-            {children}
-          </code>
-        ),
-        hr: () => <hr className="my-6 border-line-soft" />,
-        strong: ({ children }) => (
-          <strong className="font-semibold text-ink">{children}</strong>
-        ),
-      }}
+const DESK_MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => (
+    <h1 className="mb-4 mt-2 border-b border-line pb-2 text-3xl font-bold tracking-[-0.02em] text-ink first:mt-0">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mb-3 mt-8 text-2xl font-bold tracking-[-0.018em] text-ink-2 first:mt-0">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mb-2 mt-5 text-xl font-semibold tracking-[-0.005em] text-ink-2">
+      {children}
+    </h3>
+  ),
+  p: ({ children }) => (
+    <p className="my-2.5 text-lg leading-[1.8] text-ink-2">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-2.5 list-disc space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-2.5 list-decimal space-y-1 pl-5 text-lg leading-[1.8] marker:text-mute-soft">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => <li className="text-ink-2">{children}</li>,
+  a: ({ href, children }) => (
+    <a
+      href={href ?? '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="break-words text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
     >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-3 border-l-2 border-amore bg-white px-4 py-2 text-lg italic text-ink-2">
+      {children}
+    </blockquote>
+  ),
+  code: ({ children }) => (
+    <code className="border border-line bg-white px-1.5 py-0.5 font-mono text-md text-ink-2 [border-radius:3px]">
+      {children}
+    </code>
+  ),
+  hr: () => <hr className="my-6 border-line-soft" />,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-ink">{children}</strong>
+  ),
+};
+
+function MarkdownBody({ source }: { source: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={DESK_MARKDOWN_COMPONENTS}>
       {source}
     </ReactMarkdown>
+  );
+}
+
+// 결과 보고서 markdown 을 top-level `## 섹션` 단위로 분리. 첫 `## ` 앞의
+// 내용 (보통 `# 제목`) 은 preamble 로 따로 보존. `### ` 이하는 부모 섹션
+// body 안에 그대로 남는다 (`^##\s+` 는 `###` 에 매칭 안 됨).
+type DeskMdSection = { headingLine: string; title: string; body: string };
+
+function splitDeskSections(source: string): {
+  preamble: string;
+  sections: DeskMdSection[];
+} {
+  const lines = source.split('\n');
+  const preamble: string[] = [];
+  const sections: DeskMdSection[] = [];
+  let heading: { line: string; title: string } | null = null;
+  let body: string[] = [];
+  const flush = () => {
+    if (heading) {
+      sections.push({
+        headingLine: heading.line,
+        title: heading.title,
+        body: body.join('\n'),
+      });
+      body = [];
+    }
+  };
+  for (const line of lines) {
+    const m = /^##\s+(.+?)\s*$/.exec(line);
+    if (m) {
+      flush();
+      heading = { line, title: m[1].trim() };
+    } else if (heading) {
+      body.push(line);
+    } else {
+      preamble.push(line);
+    }
+  }
+  flush();
+  return { preamble: preamble.join('\n'), sections };
+}
+
+// Appendix — Sources (수집 기사 목록) 섹션 감지. LLM 리포트는
+// `## 📚 Appendix — Sources`, deterministic fallback 은 `## 📚 출처 (N)`.
+function isAppendixSection(title: string): boolean {
+  return /appendix|sources|출처/i.test(title);
+}
+
+// 본문 안 markdown link bullet (`- [제목](url)`) 개수 — summary 의 N건 표시용.
+function countSourceLinks(body: string): number {
+  return (body.match(/^\s*[-*]\s+\[/gm) ?? []).length;
+}
+
+// 데스크 리서치 결과 보고서 렌더러. Appendix — Sources 섹션은 reference
+// 성격이라 default collapsed `<details>` 로 감싸 본문 (Findings / RQ /
+// Quant) 에 초점. Appendix 가 없으면 기존 단일 렌더 그대로 (회귀 0).
+// docx export 는 raw markdown (`job.output`) 을 그대로 보내므로 이 wrap 의
+// 영향을 받지 않는다 (모든 섹션 expand).
+function DeskMarkdown({ source }: { source: string }) {
+  const { preamble, sections } = useMemo(
+    () => splitDeskSections(source),
+    [source],
+  );
+  const hasAppendix = sections.some((s) => isAppendixSection(s.title));
+  if (!hasAppendix) {
+    return <MarkdownBody source={source} />;
+  }
+  return (
+    <>
+      {preamble.trim() && <MarkdownBody source={preamble} />}
+      {sections.map((sec, i) => {
+        if (!isAppendixSection(sec.title)) {
+          return (
+            <MarkdownBody key={i} source={`${sec.headingLine}\n${sec.body}`} />
+          );
+        }
+        const count = countSourceLinks(sec.body);
+        return (
+          <details
+            key={i}
+            className="my-6 rounded-sm border-[2px] border-ink bg-paper-soft p-4 shadow-[2px_2px_0_var(--canvas-card-border)]"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-2xl font-bold tracking-[-0.018em] text-ink-2 [&::-webkit-details-marker]:hidden">
+              <span>
+                {sec.title}
+                {count > 0 && (
+                  <span className="ml-2 text-sm font-normal text-mute-soft">
+                    {count}건
+                  </span>
+                )}
+              </span>
+              <span
+                aria-hidden
+                className="shrink-0 text-sm font-normal text-mute-soft transition-transform [details[open]_&]:rotate-180"
+              >
+                ▼
+              </span>
+            </summary>
+            <div className="mt-4 border-t border-line-soft pt-4">
+              <MarkdownBody source={sec.body} />
+            </div>
+          </details>
+        );
+      })}
+    </>
   );
 }
 
