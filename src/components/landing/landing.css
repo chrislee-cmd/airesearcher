@@ -856,6 +856,99 @@
   z-index: 2;
 }
 
+/* ─── Security section (Memphis cards, feature-grid 정합) ───── */
+.landing-root .security { padding: 96px 0; background: var(--paper); border-bottom: var(--mem-border); }
+.landing-root .security-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  margin-top: 40px;
+}
+.landing-root .security-card {
+  position: relative;
+  padding: 26px 24px;
+  background: #fff;
+  border: var(--mem-border);
+  border-radius: var(--mem-radius);
+  box-shadow: var(--mem-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.landing-root .security-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 #000; }
+.landing-root .sc-head { display: flex; align-items: center; gap: 10px; }
+.landing-root .sc-icon {
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--pop-pink);
+  border: 2.5px solid #000;
+  border-radius: 10px;
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: 3px 3px 0 #000;
+}
+.landing-root .sc-ai .sc-icon { background: var(--pop-mint); }
+.landing-root .sc-auth .sc-icon { background: var(--pop-sky); }
+.landing-root .sc-encryption .sc-icon { background: var(--pop-lav); }
+.landing-root .sc-payment .sc-icon { background: var(--pop-peach); }
+.landing-root .security-card h3 {
+  font-family: var(--outfit);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.018em;
+  color: #000;
+}
+.landing-root .security-card .sc-lead {
+  font-size: 14px;
+  color: var(--mute);
+  line-height: 1.55;
+  margin: 2px 0 4px;
+}
+.landing-root .security-card .sc-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.landing-root .security-card .sc-bullets li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  position: relative;
+  padding-left: 15px;
+}
+.landing-root .security-card .sc-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: -.02em;
+  color: var(--accent);
+  font-weight: 800;
+}
+.landing-root .security-card .sc-highlight { font-weight: 800; color: #000; }
+.landing-root .security-card .sc-rest { color: var(--mute); }
+.landing-root .security-footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--mute);
+}
+.landing-root .security-link {
+  color: #000;
+  font-weight: 700;
+  background: var(--pop-pink);
+  padding: 2px 10px;
+  border: 2px solid #000;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #000;
+  white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.landing-root .security-link:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #000; }
+
 /* ─── Pricing (Memphis cards) ──────────────────────────────── */
 .landing-root .pricing { padding: 80px 0; background: var(--paper); border-bottom: var(--mem-border); }
 .landing-root .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
@@ -1070,6 +1163,9 @@
   .landing-root .feature-card { box-shadow: var(--mem-shadow-sm); min-height: 0; }
   .landing-root .workflow { padding: 64px 0; }
   .landing-root .workflow-step { box-shadow: var(--mem-shadow-sm); }
+  .landing-root .security { padding: 64px 0; }
+  .landing-root .security-grid { grid-template-columns: 1fr; }
+  .landing-root .security-card { box-shadow: var(--mem-shadow-sm); }
   .landing-root .pricing { padding: 64px 0; }
   .landing-root .price-grid { grid-template-columns: 1fr; }
   .landing-root .price { box-shadow: var(--mem-shadow-sm); border-width: 2.5px; }
