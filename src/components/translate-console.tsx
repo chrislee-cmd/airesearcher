@@ -546,17 +546,22 @@ export function TranslateConsole() {
   // Surfaced beside the localized headline so a host can report the
   // actual cause instead of a generic "잠시 후 다시 시도" message.
   const [recordingErrorDetail, setRecordingErrorDetail] = useState<string | null>(null);
-  // Five downloadable formats now: two audio tracks (source-only,
-  // translated-only) + three transcript zips (source "원문", realtime
-  // translation "통역본", and post-hoc batch re-translation "재번역",
-  // each bundling .txt + .docx). All five become available together once
-  // the recording row reaches `uploaded` — the
-  // revised zip needs a separate /revise trigger (handled below)
-  // before it can be downloaded.
+  // Translation-only deliverables: the translated audio track + two
+  // transcript zips (realtime translation "통역본" and post-hoc batch
+  // re-translation "재번역", each bundling .txt + .docx). They become
+  // available once the recording row reaches `uploaded` — the revised
+  // zip needs a separate /revise trigger (handled below) before it can
+  // be downloaded.
+  //
+  // Source-side artifacts (원문 audio + 원문 transcript) are intentionally
+  // NOT offered: the source ASR (gpt-4o-transcribe via the translations
+  // endpoint, no Korean language hint possible — see openai-realtime.ts)
+  // produces unreliable Korean (replacement chars, foreign-script
+  // intrusions, dropped syllables), so surfacing it as a "기록물" misleads.
+  // Deliverables are the translation; the source rows still persist for
+  // the live caption / probing / revise paths.
   const [downloadingFormat, setDownloadingFormat] = useState<
-    | 'm4a-input'
     | 'm4a-output'
-    | 'zip-input'
     | 'zip-output'
     | 'zip-revised'
     | null
@@ -790,10 +795,10 @@ export function TranslateConsole() {
   //
   // In `both` mode, both slots' source nodes connect to the same
   // recordInputDest (mixing them into a single mic+tab input.webm), and
-  // both slots' TTS nodes connect to the same recordOutputDest. The
-  // session-end zip-input download then renders the speaker-tagged
-  // transcript so the two voices stay distinguishable in text even
-  // though the audio file is mixed.
+  // both slots' TTS nodes connect to the same recordOutputDest. The input
+  // track is still recorded (it backs the translation pipeline) but is no
+  // longer offered as a download — only the translated audio + transcript
+  // ship as deliverables (see the downloadingFormat comment).
   const recordInputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordOutputDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordInputSrcRef = useRef<Record<SourceSlot, MediaStreamAudioSourceNode | null>>(
@@ -2409,16 +2414,15 @@ export function TranslateConsole() {
   }, []);
 
   // Trigger a download for one of the five formats. All stream directly
-  // from the API route — m4a-input/m4a-output are transcoded on demand
-  // from the per-track persisted webms; zip-input/zip-output/zip-revised
-  // bundle a kind-filtered transcript (.txt + .docx) rendered from
-  // translate_messages.
+  // from the API route — m4a-output is transcoded on demand from the
+  // persisted webm; zip-output/zip-revised bundle a kind-filtered
+  // transcript (.txt + .docx) rendered from translate_messages. Source
+  // formats (m4a-input/zip-input) are no longer offered (see the
+  // downloadingFormat comment) so they're absent from this union.
   const downloadFormat = useCallback(
     async (
       format:
-        | 'm4a-input'
         | 'm4a-output'
-        | 'zip-input'
         | 'zip-output'
         | 'zip-revised',
     ) => {
@@ -2467,15 +2471,11 @@ export function TranslateConsole() {
         const a = document.createElement('a');
         a.href = url;
         a.download =
-          format === 'm4a-input'
-            ? `translate-${recording.id}-input.m4a`
-            : format === 'm4a-output'
-              ? `translate-${recording.id}-output.m4a`
-              : format === 'zip-input'
-                ? `translate-${recording.id}-input.zip`
-                : format === 'zip-output'
-                  ? `translate-${recording.id}-output.zip`
-                  : `translate-${recording.id}-revised.zip`;
+          format === 'm4a-output'
+            ? `translate-${recording.id}-output.m4a`
+            : format === 'zip-output'
+              ? `translate-${recording.id}-output.zip`
+              : `translate-${recording.id}-revised.zip`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -2917,17 +2917,13 @@ function RecordingDownloadPanel({
   recordingError: string | null;
   recordingErrorDetail: string | null;
   downloadingFormat:
-    | 'm4a-input'
     | 'm4a-output'
-    | 'zip-input'
     | 'zip-output'
     | 'zip-revised'
     | null;
   onDownload: (
     f:
-      | 'm4a-input'
       | 'm4a-output'
-      | 'zip-input'
       | 'zip-output'
       | 'zip-revised',
   ) => void;
@@ -2983,30 +2979,12 @@ function RecordingDownloadPanel({
         <div className="flex flex-wrap items-center gap-2">
           <ChromeButton
             size="lg"
-            onClick={() => onDownload('m4a-input')}
-            disabled={downloadingFormat !== null}
-          >
-            {downloadingFormat === 'm4a-input'
-              ? t('download.preparingFile')
-              : t('download.audioInput')}
-          </ChromeButton>
-          <ChromeButton
-            size="lg"
             onClick={() => onDownload('m4a-output')}
             disabled={downloadingFormat !== null}
           >
             {downloadingFormat === 'm4a-output'
               ? t('download.preparingFile')
               : t('download.audioOutput')}
-          </ChromeButton>
-          <ChromeButton
-            size="lg"
-            onClick={() => onDownload('zip-input')}
-            disabled={downloadingFormat !== null}
-          >
-            {downloadingFormat === 'zip-input'
-              ? t('download.preparingFile')
-              : t('download.zipInput')}
           </ChromeButton>
           <ChromeButton
             size="lg"
