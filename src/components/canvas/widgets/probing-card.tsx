@@ -105,18 +105,18 @@ function SourcePicker({
   disabled: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm text-mute">
-      <span>입력 소스</span>
+    <div className="flex flex-col gap-1 text-sm text-mute">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as SourceKind)}
         disabled={disabled}
+        aria-label="입력 소스"
         className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
       >
         <option value="mic">마이크</option>
         <option value="tab">탭 오디오</option>
       </select>
-    </label>
+    </div>
   );
 }
 
