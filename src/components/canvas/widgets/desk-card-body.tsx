@@ -635,6 +635,11 @@ export function DeskCardBody() {
   const isFallbackReport =
     job?.status === 'done' &&
     (job.output?.startsWith('# 데스크 리서치 보고서 (약식)') ?? false);
+  // Server ran out of budget after crawl and emitted a deterministic raw-data
+  // dump (0 LLM). Detected via the marker the dump builder writes at the top.
+  const isRawDump =
+    job?.status === 'done' &&
+    (job.output?.startsWith('# 📊 데스크 리서치 결과 — Raw Data') ?? false);
 
   function onClickRetry() {
     setError(null);
@@ -682,6 +687,18 @@ export function DeskCardBody() {
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
+  // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
+  // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
+  // would only yield a raw-data dump. A single keyword expands to +4 similar
+  // server-side, so treat 1 keyword as 5. The product (kw × sources × regions)
+  // is an upper bound — region-only-aware sources don't truly multiply by
+  // regions — but it tracks the crawl cap math closely enough for guidance.
+  const kwCountForEstimate = keywords.length + (keywordDraft.trim() ? 1 : 0);
+  const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
+  const estimatedSearches = hasKeywords
+    ? effectiveKwForEstimate * Math.max(selected.size, 1) * Math.max(regions.size, 1)
+    : 0;
+  const estimateHeavy = estimatedSearches >= 60;
   const showResult = !!(job?.status === 'done' && job.output);
 
   // 헤더 pill 로 push 할 live state. 우선순위:
@@ -886,6 +903,26 @@ export function DeskCardBody() {
                   />
                 </div>
               </Field>
+
+              {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
+              {hasKeywords && (
+                <p
+                  className={`text-xs leading-[1.6] ${
+                    estimateHeavy ? 'text-amore' : 'text-mute-soft'
+                  }`}
+                >
+                  {tDesk('estimateLabel', {
+                    kw: effectiveKwForEstimate,
+                    src: Math.max(selected.size, 1),
+                    region: Math.max(regions.size, 1),
+                    count: estimatedSearches,
+                  })}
+                  {' · '}
+                  {estimateHeavy
+                    ? tDesk('estimateHeavy')
+                    : tDesk('estimateOk')}
+                </p>
+              )}
             </div>
           }
           actions={
@@ -1027,6 +1064,23 @@ export function DeskCardBody() {
         {isFallbackReport && (
           <Banner tone="info" title={tDesk('fallbackTitle')}>
             <span>{tDesk('fallbackBody')}</span>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={onClickRetry}
+              disabled={!hasKeywords || submitting || !!pendingJobId}
+              className="ml-2 uppercase tracking-[0.18em]"
+            >
+              {tDesk('retry')}
+            </Button>
+          </Banner>
+        )}
+        {/* raw-data dump — 시간 제약으로 AI 분석을 못 돌리고 수집 원자료만
+            보고서로 받은 케이스. 결과(기사 목록)는 있으니 warning 이 아닌
+            info 톤 + "범위 줄여 재시도" 유도. */}
+        {isRawDump && (
+          <Banner tone="info" title={tDesk('rawDumpTitle')}>
+            <span>{tDesk('rawDumpBody')}</span>
             <Button
               variant="link"
               size="sm"

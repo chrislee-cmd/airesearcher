@@ -568,6 +568,43 @@ export async function crawlSource(
   return [];
 }
 
+// Per-task hard wall-clock cap. A single (keyword × source × region) pull can
+// balloon when a paginating source (Naver/Kakao loop pages of 50–100, each
+// safeFetch up to 10s) keeps fetching to fill `limit` for a sparse keyword —
+// up to ~10 sequential fetches ≈ 100s for ONE task. That single slow task was
+// the dominant cause of the 211s crawl in the 2026-06-30 timeout incident.
+// 15s lets a normal multi-page pull finish while capping the pathological case.
+export const CRAWL_TASK_TIMEOUT_MS = 15_000;
+
+// Race a single crawlSource against a hard timeout. crawlSource never rejects
+// (it catches internally and returns []), so a timeout simply resolves to []
+// — graceful "0 results for this task". Because the route fires all tasks via
+// Promise.all (fully concurrent), this bounds the whole crawl phase's
+// wall-clock to ≈ CRAWL_TASK_TIMEOUT_MS regardless of task count. The orphaned
+// underlying fetch is still aborted by safeFetch's own 10s timer, so nothing
+// leaks past the function's lifetime.
+export async function crawlSourceWithTimeout(
+  source: DeskSourceId,
+  keyword: string,
+  region: DeskRegion = 'KR',
+  range: DeskDateRange = {},
+  limit: number = SOURCE_BUDGET,
+  timeoutMs: number = CRAWL_TASK_TIMEOUT_MS,
+): Promise<DeskArticle[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<DeskArticle[]>((resolve) => {
+    timer = setTimeout(() => resolve([]), timeoutMs);
+  });
+  try {
+    return await Promise.race([
+      crawlSource(source, keyword, region, range, limit),
+      timeout,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function dedupeArticles(articles: DeskArticle[]): DeskArticle[] {
   const seen = new Set<string>();
   const out: DeskArticle[] = [];
