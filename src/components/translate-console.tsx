@@ -2891,19 +2891,18 @@ export function TranslateConsole({
             </div>
 
             {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
-                live/busy 시 잠금. 라벨 "고유 용어/맥락 주입" 만 노출, hint
-                제거. 인명/도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
+                live/busy 시 잠금. 가시 라벨 제거 — placeholder "고유 용어/
+                맥락 주입" 로 대체 (a11y 는 input aria-label 이 보장). 인명/
+                도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
             <div className="flex min-w-0 flex-col">
-              <Field label={t('glossary.label')}>
-                <GlossaryField
-                  values={glossary}
-                  onChange={setGlossary}
-                  disabled={live || busy}
-                  placeholderEmpty={t('glossary.placeholderEmpty')}
-                  placeholderAdd={t('glossary.placeholderAdd')}
-                  removeAria={t('glossary.removeAria')}
-                />
-              </Field>
+              <GlossaryField
+                values={glossary}
+                onChange={setGlossary}
+                disabled={live || busy}
+                placeholderEmpty={t('glossary.placeholderEmpty')}
+                placeholderAdd={t('glossary.placeholderAdd')}
+                removeAria={t('glossary.removeAria')}
+              />
             </div>
           </div>
         }
@@ -3305,6 +3304,7 @@ function GlossaryField({
         </span>
       ))}
       <ChipInput
+        aria-label={placeholderEmpty}
         className="min-w-[120px] flex-1 text-md"
         value={draft}
         onChange={(e) => setDraft(e.target.value.slice(0, MAX_LEN))}
