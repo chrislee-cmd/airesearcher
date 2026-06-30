@@ -851,6 +851,48 @@
         "forbidden": "Only the host of this session can run revision."
       }
     },
+    "glossary": {
+      "label": "Glossary (optional)",
+      "hint": "Canonical spellings of names, tools, and acronyms. Keeps proper nouns consistent (applied in post-process / revise).",
+      "placeholderEmpty": "e.g. Seonmyeong, Notion (Enter)",
+      "placeholderAdd": "+ Add term",
+      "removeAria": "Remove term"
+    },
+    "postProcess": {
+      "eyebrow": "Output quality fix (post-process LLM)",
+      "title": "Batch-correct the translation",
+      "hint": "Reviews the whole translation once more to fix word fusion (\"hubthe\"), name spellings, proper nouns, and meaning compression. Uncertain spans are flagged with ⟦?⟧ rather than guessed. Costs {credits} credits.",
+      "doneHint": "Correction complete. {flags} spans flagged for review. Use \"Download corrected\" to grab the result with the correction log.",
+      "trigger": "Correction options ({credits} credits)",
+      "running": "Correcting… (1–2 min)",
+      "donePill": "Correction complete",
+      "download": "Download corrected (.md)",
+      "downloading": "Preparing…",
+      "modal": {
+        "title": "LLM correction options",
+        "smoothLabel": "Fluency smoothing (smooth)",
+        "smoothHint": "Off keeps it verbatim (recommended). On smooths awkward translationese with no meaning change.",
+        "smoothOn": "Smooth awkward translationese (no meaning change)",
+        "canonicalLabel": "Canonical name (optional)",
+        "canonicalHint": "If you know the main speaker's canonical English spelling, enter it — takes priority over the glossary.",
+        "canonicalPlaceholder": "e.g. Seonmyeong",
+        "referenceLabel": "Secondary transcript (optional)",
+        "referenceHint": "Attach a separate transcript with native speaker labels if you have one (.txt / .md). Used to cross-check boundaries and spellings.",
+        "referenceRemove": "Remove attachment",
+        "run": "Run correction (1–2 min)",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "postprocess_trigger_failed": "Correction request failed. Please try again.",
+        "postprocess_failed": "Correction LLM call failed. Your credits were refunded. Please try again.",
+        "postprocess_in_progress": "A correction is already running. Please wait.",
+        "session_not_ended": "Session is still live. End it first and try again.",
+        "transcript_unavailable": "The translation wasn't preserved for this session. Saving must be on before you start.",
+        "transcript_empty": "The translation is empty — nothing to correct.",
+        "insufficient": "Not enough credits. Top up and try again.",
+        "forbidden": "Only the host of this session can run correction."
+      }
+    },
     "errorPrefix": "Error:",
     "errors": {
       "microphone_denied": "Microphone access was denied. Click the lock icon next to the URL to allow it.",

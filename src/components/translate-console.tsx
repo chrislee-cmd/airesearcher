@@ -31,8 +31,13 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
+import { ChipInput } from './ui/chip-input';
+import { Checkbox } from './ui/checkbox';
+import { Modal } from './ui/modal';
+import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
+import { joinDelta } from '@/lib/translate-stream-join';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
@@ -94,6 +99,12 @@ const REVISE_CREDITS = 10;
 // chunks finish in ~5s each; 4s keeps the spinner feeling responsive
 // without flooding the API for long sessions.
 const REVISE_POLL_MS = 4000;
+
+// Layer D: post-process 보정 cost. Surfaced on the trigger CTA so the
+// host knows the LLM charge before clicking. Must match POSTPROCESS_CREDITS
+// in /api/translate/sessions/[id]/postprocess/route.ts; the server is the
+// actual gate, this is just for display.
+const POSTPROCESS_CREDITS = 10;
 
 type CaptionLine = {
   id: string;
@@ -375,39 +386,10 @@ const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 //     the user reported.
 const TURN_SILENCE_MS = 1400;
 
-// Join two delta fragments while inserting a space at chunk boundaries
-// that look like word-fusion. The translations API streams deltas
-// without consistent surrounding whitespace; in prod we've observed
-// pairs like "There's also" + "Once you submit" arriving back-to-back
-// without a separator, producing "alsoOnce" in the persisted line.
-// The model never emits a lowercase→Uppercase or punctuation→letter
-// transition mid-word, so each pattern below is a structural signal
-// that the chunk boundary swallowed a space.
-function joinDelta(prev: string, delta: string): string {
-  if (!prev) return delta;
-  if (!delta) return prev;
-  const lastChar = prev[prev.length - 1];
-  const firstChar = delta[0];
-  // Already separated by whitespace at the join — nothing to do.
-  if (/\s/.test(lastChar) || /\s/.test(firstChar)) return prev + delta;
-  // "alsoOnce" / "serviceWe" pattern — lowercase letter or digit
-  // running directly into a capital letter.
-  if (/[\p{Ll}\p{Nd}]/u.test(lastChar) && /\p{Lu}/u.test(firstChar)) {
-    return prev + ' ' + delta;
-  }
-  // Sentence-end punctuation flowing into a letter without a space —
-  // ".../for that person,Yes." rather than ".../for that person, Yes."
-  // ASCII covers the prod cases; CJK punctuation visually carries its
-  // own space and doesn't need patching.
-  if (/[.!?,;:]/.test(lastChar) && /\p{L}/u.test(firstChar)) {
-    return prev + ' ' + delta;
-  }
-  // Closing quote / bracket running into a letter without a space.
-  if (/['")\]}]/.test(lastChar) && /\p{L}/u.test(firstChar)) {
-    return prev + ' ' + delta;
-  }
-  return prev + delta;
-}
+// Chunk/word-boundary join (Layer A) now lives in
+// src/lib/translate-stream-join.ts so the heuristics are unit-testable
+// in isolation and reusable by the persist / export path. `joinDelta` is
+// imported at the top of this file.
 
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
@@ -425,6 +407,12 @@ export function TranslateConsole() {
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
+  // Glossary (Layer B) — host-entered canonical spellings of names /
+  // proper nouns / acronyms, captured before the session starts. Sent to
+  // the create route and stored on the session; the realtime translations
+  // endpoint can't take a hint (openai-realtime.ts), so glossary only
+  // feeds the post-process (Layer D) and revise (Layer C) LLM passes.
+  const [glossary, setGlossary] = useState<string[]>([]);
   // Capture mode picker. Default 'both' — the common online-interview
   // shape (host on mic + interviewee on tab). 'mic-only' is the
   // face-to-face fallback when no tab audio is involved. 'tab-only'
@@ -1350,6 +1338,9 @@ export function TranslateConsole() {
           // Recording is always on (default save). The host no longer
           // chooses — the 75-credit start lump already pays for it.
           record_enabled: true,
+          // Layer B — canonical spellings for the post-process / revise
+          // passes. Empty array is the default (old behaviour).
+          glossary,
         }),
       });
       const json = (await res.json()) as SessionBundle | { error: string };
@@ -1955,6 +1946,7 @@ export function TranslateConsole() {
     outputAudible,
     sourceLang,
     targetLang,
+    glossary,
     status,
     transcriptPublisher,
     notifyDeduction,
@@ -2538,6 +2530,21 @@ export function TranslateConsole() {
                 ))}
               </select>
             </Field>
+            {/* 3번 = glossary (Layer B). 세션 시작 전에만 입력 — live/busy 시
+                잠금. 인명/도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
+            <Field
+              label={t('glossary.label')}
+              description={t('glossary.hint')}
+            >
+              <GlossaryField
+                values={glossary}
+                onChange={setGlossary}
+                disabled={live || busy}
+                placeholderEmpty={t('glossary.placeholderEmpty')}
+                placeholderAdd={t('glossary.placeholderAdd')}
+                removeAria={t('glossary.removeAria')}
+              />
+            </Field>
           </>
         }
         actions={
@@ -2703,6 +2710,7 @@ export function TranslateConsole() {
 
       {status === 'ended' || (recording && status !== 'live') ? (
         <RecordingDownloadPanel
+          sessionId={sessionIdRef.current}
           recording={recording}
           recordingError={recordingError}
           recordingErrorDetail={recordingErrorDetail}
@@ -2721,6 +2729,7 @@ export function TranslateConsole() {
 }
 
 function RecordingDownloadPanel({
+  sessionId,
   recording,
   recordingError,
   recordingErrorDetail,
@@ -2731,6 +2740,7 @@ function RecordingDownloadPanel({
   revisionTriggering,
   onRevise,
 }: {
+  sessionId: string | null;
   recording: RecordingRow | null;
   recordingError: string | null;
   recordingErrorDetail: string | null;
@@ -2889,7 +2899,397 @@ function RecordingDownloadPanel({
           </div>
         </div>
       ) : null}
+
+      {/* Layer D — 사후 LLM 보정. revise 와 별개 pass: 실시간 OUTPUT
+          전사록 전체를 한 번에 검토해 단어 융합 / 인명 표기 / soundalike /
+          의미 압축을 교정하고 불확실 구간은 플래그(⟦?⟧)로 남긴다. */}
+      {recording !== null && sessionId ? (
+        <PostProcessPanel sessionId={sessionId} ready={!!ready} />
+      ) : null}
     </section>
+  );
+}
+
+// ── Layer B: glossary chip editor ──
+// Bare chip container + ChipInput extender (research-context.tsx 패턴).
+// Enter / blur 로 chip 추가, Backspace (빈 draft) 로 마지막 chip 제거.
+function GlossaryField({
+  values,
+  onChange,
+  disabled,
+  placeholderEmpty,
+  placeholderAdd,
+  removeAria,
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+  placeholderEmpty: string;
+  placeholderAdd: string;
+  removeAria: string;
+}) {
+  const [draft, setDraft] = useState('');
+  const MAX_TERMS = 200;
+  const MAX_LEN = 200;
+
+  function commitDraft() {
+    const trimmed = draft.trim();
+    setDraft('');
+    if (!trimmed) return;
+    if (values.length >= MAX_TERMS) return;
+    if (values.includes(trimmed)) return;
+    onChange([...values, trimmed.slice(0, MAX_LEN)]);
+  }
+
+  return (
+    <div
+      className={`flex min-h-8 flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-2 py-1 focus-within:border-amore ${
+        disabled ? 'opacity-50' : ''
+      }`}
+    >
+      {values.map((v, idx) => (
+        <span
+          key={`${idx}-${v}`}
+          className="inline-flex items-center gap-1 rounded-full border border-amore bg-paper px-2 py-0.5 text-sm text-amore"
+        >
+          {v}
+          <IconButton
+            variant="ghost-brand"
+            onClick={() => onChange(values.filter((_, i) => i !== idx))}
+            aria-label={`${removeAria}: ${v}`}
+            disabled={disabled}
+          >
+            ×
+          </IconButton>
+        </span>
+      ))}
+      <ChipInput
+        className="min-w-[120px] flex-1 text-md"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, MAX_LEN))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commitDraft();
+          } else if (
+            e.key === 'Backspace' &&
+            draft.length === 0 &&
+            values.length > 0
+          ) {
+            e.preventDefault();
+            onChange(values.slice(0, -1));
+          }
+        }}
+        onBlur={() => {
+          if (draft.trim()) commitDraft();
+        }}
+        disabled={disabled || values.length >= MAX_TERMS}
+        placeholder={values.length === 0 ? placeholderEmpty : placeholderAdd}
+      />
+    </div>
+  );
+}
+
+// ── Layer D: post-process panel ──
+// Self-contained: hydrates + polls /postprocess status, owns the options
+// modal (smooth / canonical_name / reference), triggers the LLM pass, and
+// downloads the corrected markdown artifact. Kept out of the parent so
+// the big console component doesn't grow another 6 state hooks.
+type PostProcessStatus = 'idle' | 'pending' | 'done' | 'failed';
+
+function PostProcessPanel({
+  sessionId,
+  ready,
+}: {
+  sessionId: string;
+  ready: boolean;
+}) {
+  const t = useTranslations('TranslateConsole');
+  const [ppStatus, setPpStatus] = useState<PostProcessStatus | null>(null);
+  const [ppError, setPpError] = useState<string | null>(null);
+  const [ppFlags, setPpFlags] = useState<number | null>(null);
+  const [triggering, setTriggering] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [smooth, setSmooth] = useState(false);
+  const [canonicalName, setCanonicalName] = useState('');
+  const [reference, setReference] = useState('');
+  const [referenceName, setReferenceName] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const pending = ppStatus === 'pending' || triggering;
+  const done = ppStatus === 'done';
+
+  // Hydrate once the panel mounts (session has ended). Picks up a run
+  // triggered from another tab + the server-side terminal state.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/translate/sessions/${sessionId}/postprocess`);
+        if (!res.ok) {
+          if (!cancelled) setPpStatus('idle');
+          return;
+        }
+        const j = (await res.json()) as {
+          post_process_status: PostProcessStatus;
+          post_process_error: string | null;
+          post_process_flags: number | null;
+        };
+        if (cancelled) return;
+        setPpStatus(j.post_process_status);
+        setPpFlags(j.post_process_flags);
+        if (j.post_process_error) setPpError(j.post_process_error);
+      } catch {
+        if (!cancelled) setPpStatus('idle');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  // Poll while pending so the spinner flips to done/failed promptly.
+  useEffect(() => {
+    if (ppStatus !== 'pending') return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/translate/sessions/${sessionId}/postprocess`);
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          post_process_status: PostProcessStatus;
+          post_process_error: string | null;
+          post_process_flags: number | null;
+        };
+        if (cancelled) return;
+        setPpStatus(j.post_process_status);
+        setPpFlags(j.post_process_flags);
+        if (j.post_process_error) setPpError(j.post_process_error);
+      } catch {
+        // best-effort
+      }
+    };
+    const handle = setInterval(() => void tick(), 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
+  }, [ppStatus, sessionId]);
+
+  const runPostProcess = useCallback(async () => {
+    if (triggering || pending || done) return;
+    setTriggering(true);
+    setPpError(null);
+    try {
+      const res = await fetch(`/api/translate/sessions/${sessionId}/postprocess`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smooth: smooth ? 'on' : 'off',
+          canonical_name: canonicalName.trim() || undefined,
+          reference: reference.trim() || undefined,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        flags_count?: number;
+        error?: string;
+      };
+      if (!res.ok) {
+        setPpError(json.error ?? 'postprocess_trigger_failed');
+        setPpStatus((s) => (s === 'pending' ? 'failed' : s));
+        return;
+      }
+      setPpStatus('done');
+      if (typeof json.flags_count === 'number') setPpFlags(json.flags_count);
+      setModalOpen(false);
+    } catch {
+      setPpError('postprocess_trigger_failed');
+    } finally {
+      setTriggering(false);
+    }
+  }, [
+    triggering,
+    pending,
+    done,
+    sessionId,
+    smooth,
+    canonicalName,
+    reference,
+  ]);
+
+  const downloadCorrected = useCallback(async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/translate/sessions/${sessionId}/postprocess`);
+      if (!res.ok) return;
+      const j = (await res.json()) as { post_process_md: string | null };
+      if (!j.post_process_md) return;
+      // BOM keeps Korean / CJK legible in editors that guess the codec.
+      const blob = new Blob(['﻿', j.post_process_md], {
+        type: 'text/markdown;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `translate-${sessionId}-corrected.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // best-effort
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading, sessionId]);
+
+  // Hide entirely until the first hydration poll resolves so a stale CTA
+  // doesn't flicker.
+  if (ppStatus === null) return null;
+
+  return (
+    <div className="mt-4 border-t border-line-soft pt-4">
+      <div className="mb-2 text-sm uppercase tracking-[0.08em] text-mute-soft">
+        {t('postProcess.eyebrow')}
+      </div>
+      {ppError ? (
+        <div className="mb-3 rounded-xs border border-line-soft px-3 py-2 text-md text-mute">
+          {t.has(`postProcess.errors.${ppError}`)
+            ? t(`postProcess.errors.${ppError}`)
+            : ppError}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-[220px] flex-1">
+          <div className="text-lg text-ink">{t('postProcess.title')}</div>
+          <div className="mt-1 text-md text-mute">
+            {done
+              ? t('postProcess.doneHint', { flags: ppFlags ?? 0 })
+              : t('postProcess.hint', { credits: POSTPROCESS_CREDITS })}
+          </div>
+        </div>
+        {done ? (
+          <div className="flex items-center gap-2">
+            <span className="rounded-xs border border-amore px-2 py-0.5 text-sm text-amore">
+              {t('postProcess.donePill')}
+            </span>
+            <ChromeButton
+              size="lg"
+              onClick={() => void downloadCorrected()}
+              disabled={downloading}
+            >
+              {downloading
+                ? t('postProcess.downloading')
+                : t('postProcess.download')}
+            </ChromeButton>
+          </div>
+        ) : (
+          <ChromeButton
+            variant="primary"
+            size="lg"
+            onClick={() => setModalOpen(true)}
+            disabled={pending || !ready}
+          >
+            {pending
+              ? t('postProcess.running')
+              : t('postProcess.trigger', { credits: POSTPROCESS_CREDITS })}
+          </ChromeButton>
+        )}
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => {
+          if (!pending) setModalOpen(false);
+        }}
+        title={t('postProcess.modal.title')}
+      >
+        <div className="space-y-4">
+          <Field
+            label={t('postProcess.modal.smoothLabel')}
+            description={t('postProcess.modal.smoothHint')}
+          >
+            <label className="flex cursor-pointer items-center gap-2 text-md text-ink">
+              <Checkbox
+                checked={smooth}
+                onChange={(e) => setSmooth(e.target.checked)}
+                disabled={pending}
+              />
+              {t('postProcess.modal.smoothOn')}
+            </label>
+          </Field>
+
+          <Field
+            label={t('postProcess.modal.canonicalLabel')}
+            description={t('postProcess.modal.canonicalHint')}
+          >
+            <ChromeInput
+              value={canonicalName}
+              onChange={(e) => setCanonicalName(e.target.value.slice(0, 200))}
+              placeholder={t('postProcess.modal.canonicalPlaceholder')}
+              disabled={pending}
+            />
+          </Field>
+
+          <Field
+            label={t('postProcess.modal.referenceLabel')}
+            description={t('postProcess.modal.referenceHint')}
+          >
+            {referenceName ? (
+              <div className="flex items-center gap-2 text-md text-ink">
+                <span className="truncate">{referenceName}</span>
+                <IconButton
+                  variant="ghost-brand"
+                  onClick={() => {
+                    setReference('');
+                    setReferenceName(null);
+                  }}
+                  aria-label={t('postProcess.modal.referenceRemove')}
+                  disabled={pending}
+                >
+                  ×
+                </IconButton>
+              </div>
+            ) : (
+              <FileDropZone
+                accept=".txt,.md,.markdown"
+                onFiles={(files) => {
+                  const f = files[0];
+                  if (!f) return;
+                  void f.text().then((txt) => {
+                    setReference(txt.slice(0, 100_000));
+                    setReferenceName(f.name);
+                  });
+                }}
+              />
+            )}
+          </Field>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <ChromeButton
+              variant="mute"
+              size="lg"
+              onClick={() => setModalOpen(false)}
+              disabled={pending}
+            >
+              {t('postProcess.modal.cancel')}
+            </ChromeButton>
+            <ChromeButton
+              variant="primary"
+              size="lg"
+              onClick={() => void runPostProcess()}
+              disabled={pending}
+            >
+              {pending
+                ? t('postProcess.running')
+                : t('postProcess.modal.run')}
+            </ChromeButton>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 }
 

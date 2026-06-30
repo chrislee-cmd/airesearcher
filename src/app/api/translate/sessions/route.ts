@@ -23,6 +23,11 @@ const Body = z.object({
   source_lang: z.string().min(2).max(8).default('ko'),
   target_lang: z.string().min(2).max(8).default('en'),
   record_enabled: z.boolean().default(true),
+  // 인명/고유명사/약어의 정규 표기 list (선택). 실시간 translations
+  // 엔드포인트는 hint 를 거부하므로 (openai-realtime.ts) 여기 저장된
+  // glossary 는 사후 보정(post-process) / 재번역(revise) LLM pass 에서
+  // 음차 흔들림을 정규 표기로 통일하는 hint 로 쓰인다. 빈 배열이 기본.
+  glossary: z.array(z.string().trim().min(1).max(200)).max(200).default([]),
 });
 
 export async function POST(request: Request) {
@@ -39,7 +44,11 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { source_lang, target_lang, record_enabled } = parsed.data;
+  const { source_lang, target_lang, record_enabled, glossary } = parsed.data;
+  // Dedup + cap defensively — the client may submit near-duplicate chips.
+  const normalizedGlossary = Array.from(
+    new Set(glossary.map((g) => g.trim()).filter(Boolean)),
+  ).slice(0, 200);
 
   // 1) insert session row
   const insert = await supabase
@@ -50,6 +59,7 @@ export async function POST(request: Request) {
       source_lang,
       target_lang,
       record_enabled,
+      glossary: normalizedGlossary,
       status: 'idle',
     })
     .select('id, source_lang, target_lang, status, record_enabled')
