@@ -41,9 +41,24 @@ export function realtimeModel(): string {
   return env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
+// Normalize a UI language value ("ko", "en", "ko-KR") to the ISO-639-1
+// base code the translations API expects for `output.language`. The
+// picker only emits bare 2-letter codes today, but a region subtag
+// ("ko-KR") would be rejected — strip any subtag and lowercase.
+function iso639(lang: string): string {
+  return lang.trim().toLowerCase().split(/[-_]/)[0];
+}
+
 export async function issueRealtimeSession(opts: {
-  // `sourceLang` is purely UI metadata — the translation model autodetects
-  // the input language and does not accept a source-language hint.
+  // `sourceLang` is purely UI metadata. We attempted to pin the input
+  // transcription language to block the "한국어 인터뷰인데 일본어
+  // transcribe" audit finding (low-confidence Korean → Japanese
+  // phonetics), but the /realtime/translations endpoint rejects
+  // `session.audio.input.transcription.language` with a 400
+  // ("Unknown parameter") — the translations transcription config only
+  // accepts `model`. The model autodetects the input language and there
+  // is no supported source-language hint on this endpoint, so the
+  // Japanese-fallback fix needs a different mechanism (see PR #556).
   sourceLang: string;
   // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
@@ -60,7 +75,7 @@ export async function issueRealtimeSession(opts: {
         input: {
           transcription: { model: 'gpt-4o-mini-transcribe' },
         },
-        output: { language: opts.targetLang },
+        output: { language: iso639(opts.targetLang) },
       },
     },
   };
