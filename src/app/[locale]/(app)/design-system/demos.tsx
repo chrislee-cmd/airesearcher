@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Modal } from '@/components/ui/modal';
+import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
@@ -74,6 +75,84 @@ export function ModalDemo() {
       >
         큰 컨텐츠 영역. 워크스페이스 패널 confirm, 결제 모달 등 정보량 많은 케이스.
       </Modal>
+    </div>
+  );
+}
+
+export function WidgetFullviewModalDemo() {
+  const [openWide, setOpenWide] = useState(false);
+  const [openWideNoFooter, setOpenWideNoFooter] = useState(false);
+  const [openFull, setOpenFull] = useState(false);
+
+  // Placeholder body — real consumers (probing 등) drop their own dense
+  // grid here. The grey block just shows the scrollable body slot filling
+  // the panel between header and footer.
+  const body = (
+    <div className="space-y-3 p-6">
+      <p className="text-md text-mute">
+        본문 slot — 소비 위젯이 자체 grid / 표 / 스트리밍 영역을 여기에 채웁니다.
+        header(제목·부제·닫기) 와 footer 사이를 채우며, 길어지면 이 영역만
+        스크롤됩니다 (헤더/푸터 고정).
+      </p>
+      <div className="space-y-2">
+        {Array.from({ length: 12 }, (_, i) => (
+          <div
+            key={i}
+            className="rounded-xs border border-line bg-paper-soft px-4 py-3 text-md text-ink-2"
+          >
+            본문 row {i + 1}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button onClick={() => setOpenWide(true)}>Open wide + footer</Button>
+      <Button onClick={() => setOpenWideNoFooter(true)}>Open wide (no footer)</Button>
+      <Button onClick={() => setOpenFull(true)}>Open full</Button>
+
+      <WidgetFullviewModal
+        open={openWide}
+        onClose={() => setOpenWide(false)}
+        title="프로빙 전체보기"
+        subtitle="size=wide · 90vw × 90vh (기본). 제목 + 부제 + 닫기 chrome."
+        footer={
+          <>
+            <Button variant="link" onClick={() => setOpenWide(false)}>
+              취소
+            </Button>
+            <Button onClick={() => setOpenWide(false)}>적용</Button>
+          </>
+        }
+      >
+        {body}
+      </WidgetFullviewModal>
+
+      <WidgetFullviewModal
+        open={openWideNoFooter}
+        onClose={() => setOpenWideNoFooter(false)}
+        title="부제 없는 변형"
+        size="wide"
+      >
+        {body}
+      </WidgetFullviewModal>
+
+      <WidgetFullviewModal
+        open={openFull}
+        onClose={() => setOpenFull(false)}
+        title="전체화면 변형"
+        subtitle="size=full · edge-to-edge. 다단 layout 을 끝까지 owning 하는 표면."
+        size="full"
+        footer={
+          <Button variant="link" onClick={() => setOpenFull(false)}>
+            닫기
+          </Button>
+        }
+      >
+        {body}
+      </WidgetFullviewModal>
     </div>
   );
 }
