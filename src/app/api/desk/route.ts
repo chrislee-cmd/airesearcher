@@ -12,7 +12,7 @@ import { spendCredits, refundCredits } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
-  crawlSource,
+  crawlSourceWithTimeout,
   dedupeArticles,
   sourceMissingKey,
   SOURCE_BUDGET,
@@ -49,13 +49,23 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const REGION_ENUM = z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']);
 
+// ── Crawl scope hard caps (spec-down — 2026-06-30 timeout incident) ──────────
+// The crawl phase cost scales with keywords × sources × regions. Unbounded it
+// reached 211s (70% of the 300s budget) and the report never got generated.
+// These caps bound the worst case so the LLM report phases always get budget.
+// Mirrored in the client UI (desk-card-body) for an estimate/warning at input
+// time. Keep the three in sync if you change them.
+const MAX_KEYWORDS = 5;
+const MAX_SOURCES = 8;
+const MAX_REGIONS = 3;
+
 const Body = z.object({
-  keywords: z.array(z.string().min(1).max(120)).min(1).max(10),
-  sources: z.array(z.enum(SOURCE_IDS)).min(1),
+  keywords: z.array(z.string().min(1).max(120)).min(1).max(MAX_KEYWORDS),
+  sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES),
   locale: z.enum(['ko', 'en']).optional(),
   // 멀티 region 우선. 단일 `region` 도 backward-compat 으로 유지 — 누락 시
   // locale 로 기본값 결정 (기존 동작과 동일).
-  regions: z.array(REGION_ENUM).min(1).max(7).optional(),
+  regions: z.array(REGION_ENUM).min(1).max(MAX_REGIONS).optional(),
   region: REGION_ENUM.optional(),
   dateFrom: z.string().regex(ISO_DATE).optional(),
   dateTo: z.string().regex(ISO_DATE).optional(),
@@ -457,6 +467,14 @@ const SKIP_ANALYTICS_BELOW_MS = 20_000;
 // Extraction is non-fatal (the report still renders from articles alone) but
 // burns ~30s — skip if budget is tight so drafting/synthesize gets the time.
 const SKIP_EXTRACTING_BELOW_MS = 220_000;
+// Hard guarantee against a 0-output run (the 2026-06-30 incident). If crawl
+// ate so much budget that we can't even afford one LLM round-trip + the
+// synthesize reserve, skip ALL LLM phases and emit a deterministic raw-data
+// dump (collected articles + RQs, 0 LLM calls, written in <1s). The user gets
+// a usable artifact instead of `function_timeout_autocleanup`. With the new
+// crawl caps + per-task timeout this branch should almost never fire, but it
+// is the last safety net. ~110s = one minimal draft (25s) + reserve (90s).
+const RAW_DUMP_AFTER_CRAWL_MS = 110_000;
 
 class TimeoutError extends Error {
   constructor(reason: string) {
@@ -494,7 +512,7 @@ export async function POST(request: Request) {
 
   const cleanKeywords = Array.from(
     new Set(keywords.map((k) => k.trim()).filter(Boolean)),
-  ).slice(0, 10);
+  ).slice(0, MAX_KEYWORDS);
   if (cleanKeywords.length === 0) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
@@ -877,7 +895,9 @@ async function runJob(args: {
     const collected: DeskArticle[] = [];
     const tasks = allKeywords.flatMap((kw) =>
       targets.map(({ src, region }) =>
-        crawlSource(src, kw, region, range, perKwLimit)
+        // Per-task hard timeout — a single hung/deep-paginating source can no
+        // longer balloon the whole crawl phase (2026-06-30 incident root cause).
+        crawlSourceWithTimeout(src, kw, region, range, perKwLimit)
           .then(async (items) => {
             crawlDone += 1;
             collected.push(...items);
@@ -927,6 +947,88 @@ async function runJob(args: {
         output,
         articles: [] as unknown as object,
         generation_id: gen?.id,
+      });
+      return;
+    }
+
+    // ── Emergency raw-data dump (산출물 100% 보장) ─────────────────────────
+    // Deterministic markdown built from collected articles + RQs only — zero
+    // LLM calls, so it writes in <1s no matter how little budget is left. This
+    // is the floor that makes a 0-output run impossible: if the crawl ate the
+    // budget (the incident scenario), we hand back the raw sources instead of
+    // dying mid-LLM-call. The report opens with a marker the client detects to
+    // show the "AI 분석 미완료 — 재시도" banner.
+    // Claim extraction hasn't run at this point, so the dump is articles + RQs
+    // + metadata only. That is still a usable artifact (titles + source links).
+    function buildRawDumpReport(): string {
+      const lines: string[] = [];
+      lines.push('# 📊 데스크 리서치 결과 — Raw Data');
+      lines.push('');
+      lines.push(
+        '> ⚠️ 시간 제약으로 AI 분석을 완료하지 못했습니다. 수집된 원자료를 그대로 제공합니다. 차감된 크레딧은 자동으로 환불되었습니다.',
+      );
+      lines.push('');
+      lines.push('## 메타데이터');
+      lines.push(`- **키워드**: ${keywords.join(', ')}${similar.length ? ` (유사: ${similar.join(', ')})` : ''}`);
+      lines.push(`- **지역**: ${regions.join(', ')}`);
+      lines.push(
+        `- **기간**: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
+      );
+      lines.push(`- **수집**: ${articles.length}건`);
+      lines.push('');
+      if (researchQuestions.length > 0) {
+        lines.push('## 리서치 질문 (AI 분해)');
+        for (const rq of researchQuestions) lines.push(`- ${rq.question}`);
+        lines.push('');
+      }
+      lines.push(`## 수집된 원자료 (${articles.length})`);
+      for (const a of articles.slice(0, 300)) {
+        lines.push(`- [${a.title}](${a.url}) — ${a.source}${a.publishedAt ? ` · ${a.publishedAt}` : ''}`);
+      }
+      if (articles.length > 300) lines.push(`_(나머지 ${articles.length - 300}건 생략)_`);
+      lines.push('');
+      lines.push(
+        '---',
+        '**보완 안내**: AI 분석(Findings / RQ 답변 / 정량 스냅샷)이 미완료입니다. 더 나은 결과를 원하시면 키워드를 좁히거나(예: 3개 이하) 지역/소스 수를 줄여 재실행하세요.',
+      );
+      return lines.join('\n');
+    }
+
+    if (timeLeft() < RAW_DUMP_AFTER_CRAWL_MS) {
+      skippedSteps.push('raw_dump');
+      const output = buildRawDumpReport();
+      await refundOnFailure('raw_dump_budget');
+      await pushAndPatch(
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — AI 분석 단계를 돌리기에 부족해, 수집한 원자료를 그대로 보고서로 드릴게요. 차감된 크레딧은 돌려드렸습니다.`,
+        'summarizing',
+      );
+      const { data: gen } = await admin
+        .from('generations')
+        .insert({
+          org_id: orgId,
+          user_id: userId,
+          feature: 'desk',
+          input: JSON.stringify({ keywords, sources: usable, locale, range }),
+          output,
+          credits_spent: FEATURE_COSTS.desk,
+        })
+        .select('id')
+        .single();
+      await patch({
+        status: 'done',
+        output,
+        articles: articles as unknown as object,
+        generation_id: gen?.id,
+        progress: {
+          phase: 'summarizing',
+          crawl_total: crawlTotal,
+          crawl_done: crawlDone,
+          events: [...events],
+          timings: { ...timings },
+          elapsed_ms: elapsedMs(),
+          deadline_ms: HARD_DEADLINE_MS,
+          skipped_steps: [...skippedSteps],
+        },
       });
       return;
     }
