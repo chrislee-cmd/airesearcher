@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { WidgetContent } from '../widget-types';
 import {
   InterviewAnalysisArea,
@@ -10,6 +10,7 @@ import { useInterviewJob } from '@/components/interview-job-provider';
 import { WidgetOutputs } from '../shell/widget-outputs';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
+import { useFullview } from '../shell/fullview-shell-context';
 import { InterviewFullView } from './interviews/full-view';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
@@ -94,18 +95,12 @@ function ExpandedBody() {
   // 영역은 카드 바닥에 고정 (quotes / desk 와 시각 통일). 인터뷰는 아직
   // 결과 history 가 없어서 items=[] 로 항상 빈 상태 placeholder 노출.
   //
-  // "전체 보기" → InterviewFullView 모달 (풀스크린 2-column — 좌: 파일 list,
+  // "전체 보기" → InterviewFullView (풀스크린 2-column — 좌: 파일 list,
   // 우: 검색/채팅). 위젯이 좁아서 search query / chat 이 어색하다는 사용자
-  // 피드백 대응. 진입은 WidgetShell 의 통일 "전체 보기" 버튼이 dispatch 하는
-  // `interviews:open-fullview` window 이벤트 — 옛 서브헤더 ⤢ 버튼은 제거
-  // (진입점 통일, PR-C). provider(useInterviewJob) 기반이라 모달 close 후
-  // 파일/인덱스 상태 보존.
-  const [fullViewOpen, setFullViewOpen] = useState(false);
-  useEffect(() => {
-    const onOpen = () => setFullViewOpen(true);
-    window.addEventListener('interviews:open-fullview', onOpen);
-    return () => window.removeEventListener('interviews:open-fullview', onOpen);
-  }, []);
+  // 피드백 대응. 공유 모달(CanvasBoard FullviewShell)이 소유하고 interviews
+  // 가 currentKey 일 때만 본문을 모달 slot 으로 portal. provider
+  // (useInterviewJob) 기반이라 모달 close 후 파일/인덱스 상태 보존.
+  const { renderInSlot, close } = useFullview('interviews');
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
@@ -116,10 +111,7 @@ function ExpandedBody() {
         <InterviewAnalysisArea />
       </div>
       <WidgetOutputs label="최근 산출물" items={[]} renderItem={() => null} />
-      <InterviewFullView
-        open={fullViewOpen}
-        onClose={() => setFullViewOpen(false)}
-      />
+      {renderInSlot(<InterviewFullView onClose={close} />)}
     </div>
   );
 }

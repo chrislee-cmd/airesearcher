@@ -22,7 +22,7 @@ import type { ComponentProps } from 'react';
 type ReflectionProps = ComponentProps<typeof ReflectionPane>;
 type QuestionProps = ComponentProps<typeof QuestionPane>;
 
-// 헤더 (제목 + 닫기) 는 WidgetFullviewModal 이 소유 (chrome 통일, PR-C) —
+// 헤더 (제목 + 닫기) 는 WidgetFullviewPanel 이 소유 (공유 모달 chrome) —
 // 이 컴포넌트는 2-column 본문만 렌더한다.
 export function ProbingFullView({
   reflectionProps,

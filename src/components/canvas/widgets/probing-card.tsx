@@ -38,7 +38,8 @@ import {
 } from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
+import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
+import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
   HistoryQuestion,
@@ -154,18 +155,12 @@ function ExpandedBody() {
 
   const [source, setSource] = useState<SourceKind>('mic');
 
-  // 전체보기 모달 open 상태. 진입은 WidgetShell 의 "전체 보기" 버튼이
-  // dispatch 하는 `probing:open-fullview` window 이벤트 단일 경로 (canvas-board
-  // 의 deep-link `?focus=probing` 도 같은 이벤트를 쏜다). 옛 서브헤더 ⤢
-  // 아이콘 버튼은 제거 (진입점 통일, PR-C).
-  const [expanded, setExpanded] = useState(false);
-  const handleCollapse = useCallback(() => setExpanded(false), []);
-
-  useEffect(() => {
-    const onOpen = () => setExpanded(true);
-    window.addEventListener('probing:open-fullview', onOpen);
-    return () => window.removeEventListener('probing:open-fullview', onOpen);
-  }, []);
+  // 전체보기 — 공유 모달(CanvasBoard FullviewShell)이 소유. probing 이
+  // currentKey 일 때만 본문(ProbingFullView)을 모달 slot 으로 portal 한다.
+  // 카드(ExpandedBody)는 모달이 열려 있어도 항상 마운트되므로
+  // useRealtimeTranscription 세션이 위젯 swap·모달 close 후에도 보존된다
+  // (옛 위젯별 모달 + provider hoist 불필요).
+  const { isCurrent, renderInSlot, close } = useFullview('probing');
 
   const isLive = sessionStatus === 'live';
 
@@ -912,7 +907,7 @@ function ExpandedBody() {
             모달 open 시 카드 본문은 placeholder 로 교체 — 같은 hook(state)
             인스턴스를 모달과 공유하므로 데이터는 보존되고, 시각적으로 두
             곳에 동시에 그려지지 않는다 (spec: 두 instance 시각 0). */}
-        {expanded ? (
+        {isCurrent ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
             전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
           </div>
@@ -948,23 +943,24 @@ function ExpandedBody() {
         )}
       </div>
 
-      <WidgetFullviewModal
-        open={expanded}
-        onClose={handleCollapse}
-        title="프로빙 어시스턴트"
-        subtitle={
-          context.research_goal?.trim()
-            ? context.research_goal
-            : isLive
-              ? '인터뷰 진행 중'
-              : '응답자 페르소나 + 프로빙 질문'
-        }
-      >
-        <ProbingFullView
-          reflectionProps={reflectionPaneProps}
-          questionProps={questionPaneProps}
-        />
-      </WidgetFullviewModal>
+      {renderInSlot(
+        <WidgetFullviewPanel
+          title="프로빙 어시스턴트"
+          subtitle={
+            context.research_goal?.trim()
+              ? context.research_goal
+              : isLive
+                ? '인터뷰 진행 중'
+                : '응답자 페르소나 + 프로빙 질문'
+          }
+          onClose={close}
+        >
+          <ProbingFullView
+            reflectionProps={reflectionPaneProps}
+            questionProps={questionPaneProps}
+          />
+        </WidgetFullviewPanel>,
+      )}
 
       {exportConfirmOpen && (
         <Modal
