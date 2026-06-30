@@ -94,6 +94,11 @@
   line-height: 1.04;
   color: #000;
   margin: 0;
+  /* 한국어 headline "Research-Canvas로 로그인" 이 "로" / "그인" 사이에서
+     쪼개지지 않도록 단어 단위 보존. globals.css 전역 룰의 명시 fallback —
+     전역 룰이 의도치 않게 override 되더라도 큰 headline 은 안전. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .auth-pop .pop-subtitle {
   margin-top: 14px;

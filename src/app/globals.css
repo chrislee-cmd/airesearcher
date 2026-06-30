@@ -379,6 +379,13 @@ html, body {
   font-feature-settings: 'ss01', 'ss02';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 한국어 / CJK 단어 중간 line break 차단 — Latin word 처럼 단어 단위로 보존.
+     브라우저 default `word-break: normal` 은 CJK 를 글자마다 break 하므로
+     "로그인" 이 "로" / "그인" 으로 쪼개지는 부자연스러운 줄바꿈 발생.
+     Latin 텍스트는 영향 0 (이미 공백/hyphen 에서만 break).
+     `overflow-wrap: anywhere` — 긴 URL / token 은 break 허용해 overflow 회피. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 /* =========================================================================
