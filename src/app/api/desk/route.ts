@@ -56,7 +56,7 @@ const REGION_ENUM = z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']);
 // Mirrored in the client UI (desk-card-body) for an estimate/warning at input
 // time. Keep the three in sync if you change them.
 const MAX_KEYWORDS = 5;
-const MAX_SOURCES = 8;
+const MAX_SOURCES = 12;
 const MAX_REGIONS = 3;
 
 const Body = z.object({
