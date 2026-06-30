@@ -8,6 +8,7 @@
     "nav": {
       "features": "기능",
       "workflow": "워크플로우",
+      "security": "보안",
       "pricing": "가격",
       "faq": "FAQ",
       "signIn": "로그인",
@@ -121,6 +122,54 @@
       "step3Num": "03",
       "step3Title": "다운로드 또는 공유",
       "step3Body": "리포트·인용구·매트릭스를 그대로 내보내거나, 캔버스 링크 하나로 팀과 공유."
+    },
+    "security": {
+      "meta": "SAFE BY DESIGN",
+      "title": "당신의 데이터, <hlPeach>안전합니다</hlPeach>.",
+      "subtitle": "AI 도구를 쓸 때 가장 걱정하는 부분을 먼저 막아두었어요.",
+      "cards": {
+        "ai": {
+          "title": "AI 학습에 쓰지 않아요",
+          "lead": "인터뷰 transcript, 통역 음성, 페르소나 분석 — 모두 OpenAI 의 API 데이터 정책에 따라 처리됩니다.",
+          "bullets": [
+            { "highlight": "모델 학습 사용 X", "rest": "API 데이터는 모델 훈련 데이터로 사용되지 않아요" },
+            { "highlight": "30일 자동 삭제", "rest": "OpenAI 측 보관 기간 — 그 후 흔적 0" },
+            { "highlight": "Research-Canvas 도 학습 X", "rest": "저희 시스템도 사용자 데이터로 모델 개선 안 합니다" }
+          ]
+        },
+        "auth": {
+          "title": "내 데이터는 나만",
+          "lead": "Supabase 의 Row Level Security 가 모든 DB 쿼리에 적용 — 다른 사용자가 내 인터뷰를 볼 수 없어요.",
+          "bullets": [
+            { "highlight": "Row Level Security", "rest": "DB 단에서 본인 데이터만 조회 가능 — 코드 사고로도 노출 0" },
+            { "highlight": "팀 워크스페이스 분리", "rest": "조직 별 권한 — 초대받은 멤버만 접근" },
+            { "highlight": "Google OAuth + 이메일", "rest": "비밀번호는 Supabase Auth 가 해싱·관리" }
+          ]
+        },
+        "encryption": {
+          "title": "전송도 저장도 암호화",
+          "lead": "데이터가 브라우저를 떠나는 순간부터 디스크에 저장될 때까지 모두 암호화 처리.",
+          "bullets": [
+            { "highlight": "전송 — TLS 1.3", "rest": "HTTPS 표준, 모든 페이지·API" },
+            { "highlight": "저장 — AES-256", "rest": "Supabase managed Postgres 의 disk encryption" },
+            { "highlight": "백업도 암호화", "rest": "Supabase 인프라 백업 동일 키 정책" }
+          ]
+        },
+        "payment": {
+          "title": "카드 정보는 저장 안 해요",
+          "lead": "결제는 PCI-DSS 인증을 받은 외부 결제 vendor (Lemonsqueezy) 가 처리. Research-Canvas DB 에 카드번호 0.",
+          "bullets": [
+            { "highlight": "카드번호 비저장", "rest": "Research-Canvas 시스템엔 카드 정보 자체가 없음" },
+            { "highlight": "PCI-DSS 인증 vendor", "rest": "Lemonsqueezy 가 카드 처리 — 금융업 표준" },
+            { "highlight": "결제 이력만 보관", "rest": "크레딧 잔액·인보이스만 — 카드 정보는 vendor 측" }
+          ]
+        }
+      },
+      "footer": {
+        "text": "법적 약관 / 한국 개인정보보호법 (PIPA) 준수 / 데이터 다운로드·삭제권 보장.",
+        "linkText": "Privacy Policy + Terms 자세히 →",
+        "linkHref": "/privacy"
+      }
     },
     "pricing": {
       "meta": "CREDITS · PAY AS YOU LEARN",

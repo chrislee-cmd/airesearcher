@@ -8,6 +8,7 @@
     "nav": {
       "features": "Features",
       "workflow": "How it works",
+      "security": "Security",
       "pricing": "Pricing",
       "faq": "FAQ",
       "signIn": "Sign in",
@@ -121,6 +122,54 @@
       "step3Num": "03",
       "step3Title": "Export or share",
       "step3Body": "Download reports, quotes, and matrices—or share the whole canvas with one link."
+    },
+    "security": {
+      "meta": "SAFE BY DESIGN",
+      "title": "Your data, <hlPeach>safe</hlPeach>.",
+      "subtitle": "We've blocked the things people worry about most when using AI tools — first.",
+      "cards": {
+        "ai": {
+          "title": "Not used for AI training",
+          "lead": "Interview transcripts, interpretation audio, persona analysis — all handled under OpenAI's API data policy.",
+          "bullets": [
+            { "highlight": "No model training", "rest": "API data is not used to train models" },
+            { "highlight": "30-day auto-delete", "rest": "OpenAI's retention window — gone after that" },
+            { "highlight": "We don't train on it either", "rest": "Your data doesn't improve our models" }
+          ]
+        },
+        "auth": {
+          "title": "Your data, only yours",
+          "lead": "Supabase Row Level Security applies to every DB query — no other user can see your interviews.",
+          "bullets": [
+            { "highlight": "Row Level Security", "rest": "Enforced at the DB layer — zero exposure even on code mistakes" },
+            { "highlight": "Team workspaces isolated", "rest": "Org-level permissions — only invited members can access" },
+            { "highlight": "Google OAuth + email", "rest": "Passwords hashed and managed by Supabase Auth" }
+          ]
+        },
+        "encryption": {
+          "title": "Encrypted in transit and at rest",
+          "lead": "From the moment data leaves your browser until it's written to disk — encrypted throughout.",
+          "bullets": [
+            { "highlight": "Transit — TLS 1.3", "rest": "HTTPS everywhere, every page and API" },
+            { "highlight": "At rest — AES-256", "rest": "Supabase managed Postgres disk encryption" },
+            { "highlight": "Backups encrypted too", "rest": "Same key policy across infrastructure backups" }
+          ]
+        },
+        "payment": {
+          "title": "We don't store your card",
+          "lead": "Payments handled by a PCI-DSS certified vendor (Lemonsqueezy). Zero card numbers in our DB.",
+          "bullets": [
+            { "highlight": "No card storage", "rest": "Card data simply never enters our system" },
+            { "highlight": "PCI-DSS certified vendor", "rest": "Lemonsqueezy handles cards — financial-industry standard" },
+            { "highlight": "Only billing history", "rest": "Credit balance and invoices — card data stays with the vendor" }
+          ]
+        }
+      },
+      "footer": {
+        "text": "Legal terms / Korean PIPA compliance / Data export and deletion rights guaranteed.",
+        "linkText": "Privacy Policy + Terms →",
+        "linkHref": "/privacy"
+      }
     },
     "pricing": {
       "meta": "CREDITS · PAY AS YOU LEARN",

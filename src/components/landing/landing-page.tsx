@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { CanvasHero } from './canvas-hero';
 import { FeatureGrid } from './feature-grid';
 import { WorkflowSection } from './workflow-section';
+import { SecuritySection } from './security-section';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 import './landing.css';
 
@@ -81,6 +82,13 @@ export async function LandingPage({ locale }: { locale: string }) {
     { num: t('workflow.step3Num'), title: t('workflow.step3Title'), body: t('workflow.step3Body') },
   ] as const;
 
+  const securityCards = (['ai', 'auth', 'encryption', 'payment'] as const).map((key) => ({
+    key,
+    title: t(`security.cards.${key}.title`),
+    lead: t(`security.cards.${key}.lead`),
+    bullets: t.raw(`security.cards.${key}.bullets`) as Array<{ highlight: string; rest: string }>,
+  }));
+
   return (
     <div className={`${outfit.variable} landing-root`}>
       <nav className="top">
@@ -91,6 +99,7 @@ export async function LandingPage({ locale }: { locale: string }) {
           <div className="links">
             <a href="#features">{t('nav.features')}</a>
             <a href="#workflow">{t('nav.workflow')}</a>
+            <a href="#security">{t('nav.security')}</a>
             <a href="#pricing">{t('nav.pricing')}</a>
             <a href="#faq">{t('nav.faq')}</a>
           </div>
@@ -115,6 +124,18 @@ export async function LandingPage({ locale }: { locale: string }) {
         title={t.rich('workflow.title', richTags)}
         subtitle={t('workflow.subtitle')}
         steps={[workflowSteps[0], workflowSteps[1], workflowSteps[2]]}
+      />
+
+      <SecuritySection
+        meta={t('security.meta')}
+        title={t.rich('security.title', richTags)}
+        subtitle={t('security.subtitle')}
+        cards={securityCards}
+        footer={{
+          text: t('security.footer.text'),
+          linkText: t('security.footer.linkText'),
+          linkHref: t('security.footer.linkHref'),
+        }}
       />
 
       <section className="pricing" id="pricing">
