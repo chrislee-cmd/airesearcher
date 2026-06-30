@@ -1,12 +1,14 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   SidebarNav — 공유 전체보기 모달의 좌측 위젯 네비게이션 (200px).
+   SidebarNav — 공유 전체보기 모달의 좌측 위젯 네비게이션 (240px).
 
    - canvas 순서(CANVAS_ORDER 필터)대로 위젯을 세로 나열.
    - 활성 항목 = Memphis 박스 (border + offset shadow).
    - 각 항목: accent 도트 + 라벨 + 실시간 state badge (running/done/error).
-   - 1~6 단축키 힌트 (kbd). 단축키 자체는 CanvasBoard 가 처리.
+     라벨은 flex-1 로 남는 폭을 차지하고 badge 는 shrink-0 우측 고정 —
+     라벨이 badge 에 가려지지 않게.
+   - 1~6 단축키 자체는 CanvasBoard 가 처리 (시각 kbd 힌트는 noise 라 제거).
    ──────────────────────────────────────────────────────────────────── */
 
 import type { WidgetContent, WidgetStateInfo } from '../widget-types';
@@ -85,9 +87,9 @@ export function SidebarNav({
   return (
     <nav
       aria-label="위젯 전체보기 네비게이션"
-      className="flex w-[200px] shrink-0 flex-col gap-1.5 overflow-y-auto border-r-[2px] border-ink bg-paper-soft p-3"
+      className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto border-r-[2px] border-ink bg-paper-soft p-3"
     >
-      {widgets.map((w, idx) => {
+      {widgets.map((w) => {
         const active = w.key === current;
         return (
           // eslint-disable-next-line react/forbid-elements -- 좌측 nav 항목은 Button primitive 의 어떤 variant 와도 맞지 않는 rich 레이아웃(accent 도트 + 라벨 + state badge + Memphis 활성 박스)이라 native <button> 사용. 전용 nav primitive 는 별 PR.
@@ -102,24 +104,14 @@ export function SidebarNav({
                 : 'border-transparent text-mute-soft hover:bg-paper hover:text-ink'
             }`}
           >
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 flex-1 items-center gap-2">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[w.meta.accent]}`}
                 aria-hidden
               />
               <span className="truncate">{w.meta.label}</span>
             </span>
-            <span className="flex shrink-0 items-center gap-1.5">
-              <WidgetStateBadge widgetKey={w.key} />
-              {idx < 9 ? (
-                <kbd
-                  aria-hidden
-                  className="hidden shrink-0 rounded-xs border border-line px-1 text-xs tabular-nums text-mute-soft sm:inline"
-                >
-                  {idx + 1}
-                </kbd>
-              ) : null}
-            </span>
+            <WidgetStateBadge widgetKey={w.key} />
           </button>
         );
       })}
