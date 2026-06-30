@@ -42,24 +42,23 @@ export function realtimeModel(): string {
 }
 
 // Normalize a UI language value ("ko", "en", "ko-KR") to the ISO-639-1
-// base code the transcription model expects. The picker only ever emits
-// bare 2-letter codes today, but a region subtag ("ko-KR") would make
-// `gpt-4o-mini-transcribe` reject the hint and silently fall back to
-// autodetect — defeating the whole point of pinning the language. Strip
-// any subtag and lowercase so the hint is always valid.
+// base code the translations API expects for `output.language`. The
+// picker only emits bare 2-letter codes today, but a region subtag
+// ("ko-KR") would be rejected — strip any subtag and lowercase.
 function iso639(lang: string): string {
   return lang.trim().toLowerCase().split(/[-_]/)[0];
 }
 
 export async function issueRealtimeSession(opts: {
-  // `sourceLang` pins the INPUT transcription language. The translation
-  // model autodetects on its own, but `gpt-4o-mini-transcribe` (the
-  // separate input-transcription model) accepts a `language` hint — and
-  // without it, low-confidence Korean audio (filler words "어"/"음",
-  // short utterances) gets decoded as Japanese phonetics, which is the
-  // root cause of the "한국어 인터뷰인데 일본어 transcribe" audit finding.
-  // Pinning the source language forces Korean decoding for a ko→en
-  // session.
+  // `sourceLang` is purely UI metadata. We attempted to pin the input
+  // transcription language to block the "한국어 인터뷰인데 일본어
+  // transcribe" audit finding (low-confidence Korean → Japanese
+  // phonetics), but the /realtime/translations endpoint rejects
+  // `session.audio.input.transcription.language` with a 400
+  // ("Unknown parameter") — the translations transcription config only
+  // accepts `model`. The model autodetects the input language and there
+  // is no supported source-language hint on this endpoint, so the
+  // Japanese-fallback fix needs a different mechanism (see PR #556).
   sourceLang: string;
   // `targetLang` is required: BCP-47 code like "en", "ko", "ja".
   targetLang: string;
@@ -74,12 +73,7 @@ export async function issueRealtimeSession(opts: {
       model,
       audio: {
         input: {
-          transcription: {
-            model: 'gpt-4o-mini-transcribe',
-            // ★ Strict source-language transcription — blocks the
-            // Japanese-fallback mojibake the audit flagged.
-            language: iso639(opts.sourceLang),
-          },
+          transcription: { model: 'gpt-4o-mini-transcribe' },
         },
         output: { language: iso639(opts.targetLang) },
       },
