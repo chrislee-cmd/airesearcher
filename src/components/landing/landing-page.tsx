@@ -65,13 +65,14 @@ export async function LandingPage({ locale }: { locale: string }) {
     widgetInterviewsMatrix: t('hero.widgetInterviewsMatrix'),
   };
 
+  type FeatureBullet = { highlight: string; rest: string };
   const featureCards = [
-    { key: 'translate' as const, title: t('features.translate.title'), body: t('features.translate.body'), tag: t('features.translate.tag') },
-    { key: 'probing' as const, title: t('features.probing.title'), body: t('features.probing.body'), tag: t('features.probing.tag') },
-    { key: 'insights' as const, title: t('features.insights.title'), body: t('features.insights.body'), tag: t('features.insights.tag') },
-    { key: 'interviews' as const, title: t('features.interviews.title'), body: t('features.interviews.body') },
-    { key: 'desk' as const, title: t('features.desk.title'), body: t('features.desk.body') },
-    { key: 'quotes' as const, title: t('features.quotes.title'), body: t('features.quotes.body') },
+    { key: 'translate' as const, title: t('features.translate.title'), lead: t('features.translate.lead'), bullets: t.raw('features.translate.bullets') as FeatureBullet[], tag: t('features.translate.tag') },
+    { key: 'probing' as const, title: t('features.probing.title'), lead: t('features.probing.lead'), bullets: t.raw('features.probing.bullets') as FeatureBullet[], tag: t('features.probing.tag') },
+    { key: 'insights' as const, title: t('features.insights.title'), lead: t('features.insights.lead'), bullets: t.raw('features.insights.bullets') as FeatureBullet[], tag: t('features.insights.tag') },
+    { key: 'interviews' as const, title: t('features.interviews.title'), lead: t('features.interviews.lead'), bullets: t.raw('features.interviews.bullets') as FeatureBullet[] },
+    { key: 'desk' as const, title: t('features.desk.title'), lead: t('features.desk.lead'), bullets: t.raw('features.desk.bullets') as FeatureBullet[] },
+    { key: 'quotes' as const, title: t('features.quotes.title'), lead: t('features.quotes.lead'), bullets: t.raw('features.quotes.bullets') as FeatureBullet[] },
   ];
 
   const workflowSteps = [

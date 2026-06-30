@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 type FeatureCard = {
   key: 'translate' | 'probing' | 'insights' | 'interviews' | 'desk' | 'quotes';
   title: string;
-  body: string;
+  lead: string;
+  bullets: Array<{ highlight: string; rest: string }>;
   tag?: string;
 };
 
@@ -35,7 +36,15 @@ export function FeatureGrid({
                 {card.tag ? <span className="fc-tag">{card.tag}</span> : null}
               </div>
               <h3>{card.title}</h3>
-              <p>{card.body}</p>
+              <p className="fc-lead">{card.lead}</p>
+              <ul className="fc-bullets">
+                {card.bullets.map((b, i) => (
+                  <li key={i}>
+                    <strong className="fc-highlight">{b.highlight}</strong>
+                    <span className="fc-rest"> — {b.rest}</span>
+                  </li>
+                ))}
+              </ul>
             </article>
           ))}
         </div>

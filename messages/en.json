@@ -53,29 +53,59 @@
       "translate": {
         "title": "Live translation",
         "tag": "New",
-        "body": "Plenty of AI interpreters out there — but you finish the session and find names spelled differently every time, or company names completely wrong. Just hand over names and key terms before starting, and they stay consistent the whole way through. One more pass at the end too. English interviews become Korean notes, right there."
+        "lead": "Plenty of AI interpreters out there — but you finish the session and find names spelled differently every time, or company names completely wrong.",
+        "bullets": [
+          { "highlight": "Pre-load context", "rest": "Hand over names and key terms once before starting — stays consistent throughout" },
+          { "highlight": "Dual verification", "rest": "Real-time + post-processing pass — zero hallucination" },
+          { "highlight": "Auto speaker separation", "rest": "Interviewer / respondent labels, automatic" }
+        ]
       },
       "probing": {
         "title": "Probing assistant",
         "tag": "New",
-        "body": "You know that moment after an interview — \"I should've asked one more about that\"? AI listens alongside you, picking up the respondent's hesitation and contradictions. At the decisive moment, it slides a card in front of you: \"Ask this now.\" When the interview ends, the respondent profile is already laid out for you."
+        "lead": "You know that moment after an interview — \"I should've asked one more about that\"?",
+        "bullets": [
+          { "highlight": "AI co-pilot", "rest": "Real-time detection of hesitation, contradictions, cognitive gaps" },
+          { "highlight": "Decisive-moment popup", "rest": "Sharp question slid in front of you — \"Ask this now\"" },
+          { "highlight": "Persona auto-built", "rest": "Interview ends = respondent profile across 8 panels, ready" }
+        ]
       },
       "insights": {
         "title": "Insight analyzer",
         "tag": "New",
-        "body": "Sorting through 10 interviews by hand eats up days. The AI groups responses by topic automatically. Type \"광고\" and it catches \"광고는·광고를·광고에서\" too. Quotes come with the surrounding conversation — context preserved, ready to paste."
+        "lead": "Sorting through 10 interviews by hand eats up days.",
+        "bullets": [
+          { "highlight": "Auto-grouped by topic", "rest": "Participant × topic cross-tab" },
+          { "highlight": "Korean particle-aware search", "rest": "Type \"광고\" — catches \"광고는·광고를·광고에서\" too" },
+          { "highlight": "Quotes with context", "rest": "Surrounding utterances — paste with meaning intact" }
+        ]
       },
       "interviews": {
         "title": "Interview results",
-        "body": "Transcript in, matrix out — patterns found, report written, all in one click. See at a glance who said what about which topic. Connects right to other widgets on the canvas, so you don't have to re-organize the same material twice."
+        "lead": "Transcript in, matrix out — patterns found, report written, all in one click.",
+        "bullets": [
+          { "highlight": "Response × question matrix", "rest": "See at a glance who said what about which topic" },
+          { "highlight": "Pattern extraction", "rest": "Commonality, divergence, surprise signals — automatic" },
+          { "highlight": "One-click docx", "rest": "Instant link with other widgets on the canvas" }
+        ]
       },
       "desk": {
         "title": "Desk research",
-        "body": "Ask ChatGPT to \"search this\" and you'll get a plausible summary — but where did it come from? Here, multiple sources get combed through together, the question gets broken into smaller ones, answers gathered, and the AI reviews its own work once more. Every citation comes with a source link — check the origin instantly."
+        "lead": "Ask ChatGPT to \"search this\" and you'll get a plausible summary — but where did it come from?",
+        "bullets": [
+          { "highlight": "Parallel multi-source", "rest": "Multiple sources combed through together" },
+          { "highlight": "Question decomposition + multi-pass", "rest": "AI reviews and refines its own work" },
+          { "highlight": "Source link + tier", "rest": "Every citation traceable — verifiable evidence" }
+        ]
       },
       "quotes": {
         "title": "Transcripts",
-        "body": "A one-hour interview becomes a tidy transcript in minutes. Speaker labels and timestamps included. Search is smarter than Cmd+F — type \"광고\" once and \"광고는·광고를·광고에서\" all come up. Cross-search through multiple interviews at once."
+        "lead": "A one-hour interview becomes a tidy transcript in minutes.",
+        "bullets": [
+          { "highlight": "Korean particle-combined matching", "rest": "Type \"광고\" once — catches \"광고는·광고를·광고에서\" too. Smarter than Cmd+F" },
+          { "highlight": "Cross-transcript search", "rest": "Many interviews searched at once" },
+          { "highlight": "Speaker + timestamp + context", "rest": "Labels and surrounding utterances, automatic" }
+        ]
       }
     },
     "workflow": {
