@@ -670,7 +670,19 @@ export function TranslateConsole() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const monitorAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Per-slot monitor <audio> elements. We attach each slot's RAW remote TTS
+  // stream directly (the OpenAI guide pattern) instead of routing the
+  // monitor through the WebAudio mixer: a remote WebRTC track fed ONLY into
+  // a WebAudio MediaStreamAudioSourceNode plays silent on Chrome (the
+  // long-standing crbug/121673), and the mixer's AudioContext can also land
+  // suspended — both made the monitor "play" while emitting no sound.
+  // Attaching the raw stream to a media element sidesteps the AudioContext
+  // entirely AND "pumps" the remote track so the mixer (still used for the
+  // LiveKit publish + recording) actually receives audio. Two elements so
+  // `both` mode plays host + guest simultaneously.
+  const monitorAudioRefs = useRef<Record<SourceSlot, HTMLAudioElement | null>>(
+    emptySlotRecord<HTMLAudioElement | null>(null),
+  );
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Tab-audio mode only: periodic silence injection. Continuous tab
   // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
@@ -869,8 +881,10 @@ export function TranslateConsole() {
   // it. We do NOT stop the publish — the gain node / track on the
   // outbound side stays untouched.
   useEffect(() => {
-    if (!monitorAudioRef.current) return;
-    monitorAudioRef.current.muted = !outputAudible;
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (el) el.muted = !outputAudible;
+    }
   }, [outputAudible]);
 
   // Layer D: monitor <audio> lifecycle diagnostics. The element is mounted
@@ -880,20 +894,26 @@ export function TranslateConsole() {
   // the pc.ontrack diagnostic below, the two pin the failure to either the
   // server (no track) or the client (track present but element never plays).
   useEffect(() => {
-    const el = monitorAudioRef.current;
-    if (!el) return;
-    const onPlay = () => console.info('[translate] TTS monitor playing');
-    const onPause = () => console.info('[translate] TTS monitor paused');
-    const onError = () =>
-      console.error('[translate] TTS monitor error', el.error);
-    el.addEventListener('play', onPlay);
-    el.addEventListener('pause', onPause);
-    el.addEventListener('error', onError);
-    return () => {
-      el.removeEventListener('play', onPlay);
-      el.removeEventListener('pause', onPause);
-      el.removeEventListener('error', onError);
-    };
+    const cleanups: Array<() => void> = [];
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (!el) continue;
+      const onPlay = () =>
+        console.info(`[translate:${slot}] TTS monitor playing`);
+      const onPause = () =>
+        console.info(`[translate:${slot}] TTS monitor paused`);
+      const onError = () =>
+        console.error(`[translate:${slot}] TTS monitor error`, el.error);
+      el.addEventListener('play', onPlay);
+      el.addEventListener('pause', onPause);
+      el.addEventListener('error', onError);
+      cleanups.push(() => {
+        el.removeEventListener('play', onPlay);
+        el.removeEventListener('pause', onPause);
+        el.removeEventListener('error', onError);
+      });
+    }
+    return () => cleanups.forEach((fn) => fn());
   }, []);
 
   // `caller` is purely diagnostic — surfaces in the production log so we
@@ -988,8 +1008,9 @@ export function TranslateConsole() {
       void roomRef.current.disconnect();
       roomRef.current = null;
     }
-    if (monitorAudioRef.current) {
-      monitorAudioRef.current.srcObject = null;
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (el) el.srcObject = null;
     }
   }, []);
 
@@ -999,27 +1020,30 @@ export function TranslateConsole() {
   // cleared) and respects the current mute toggle before playing; success
   // clears the blocked banner.
   const enableTtsPlayback = useCallback(async () => {
-    const el = monitorAudioRef.current;
-    if (!el) return;
     try {
-      // Resume the mixer's AudioContext FIRST, inside this button's user
-      // gesture. The monitor plays the WebAudio mixer output
-      // (audioDestRef.stream), which emits NO frames while its context is
-      // suspended — and the context lands suspended because it's created
-      // several awaits past the Start gesture (tab picker + mic), so the
-      // autoplay policy never let the fire-and-forget resume() at start
-      // take. That's the "버튼 눌러도 무음" case: play() resolves but the
-      // mixer is silent. Awaited so the graph is running before play().
+      // Best-effort resume of the mixer's AudioContext so the LiveKit
+      // publish / recording graph runs. The host monitor itself plays the
+      // RAW stream (below) and does NOT depend on the context, so this is
+      // only for the viewer/recording path.
       const ctx = audioCtxRef.current;
       if (ctx && ctx.state === 'suspended') await ctx.resume();
       console.info('[translate] enableTtsPlayback', {
         ctxState: audioCtxRef.current?.state ?? null,
       });
-      const mixed = audioDestRef.current?.stream;
-      if (mixed && el.srcObject !== mixed) el.srcObject = mixed;
-      el.muted = !outputAudible;
-      await el.play();
-      setTtsBlocked(false);
+      // Replay each slot's monitor element from its raw TTS stream, inside
+      // this button's user gesture (so the autoplay policy lets play()
+      // succeed). Covers both single-slot and `both` mode.
+      let played = false;
+      for (const slot of ['mic', 'tab'] as const) {
+        const el = monitorAudioRefs.current[slot];
+        const raw = ttsStreamRef.current[slot];
+        if (!el || !raw) continue;
+        if (el.srcObject !== raw) el.srcObject = raw;
+        el.muted = !outputAudible;
+        await el.play();
+        played = true;
+      }
+      if (played) setTtsBlocked(false);
     } catch (err) {
       console.warn('[translate] TTS manual play failed', err);
       setTtsBlocked(true);
@@ -2036,30 +2060,24 @@ export function TranslateConsole() {
           // fine — the audible mix users hear comes from the
           // monitor's audio sink, which is driven by the shared
           // output mixer below.
-          // Layer C: re-attach on EVERY TTS stream arrival, not just the
-          // first. The old `!srcObject` guard meant a renegotiation (slot
-          // reconnect, or the second slot in `both` mode landing after the
-          // element's srcObject was cleared on cleanup) left the host
-          // silent. Pin to the shared mixed output (audioDestRef.stream) so
-          // both slots play through one element; re-set only when it
-          // actually drifted to avoid restarting playback needlessly.
-          const el = monitorAudioRef.current;
-          const mixed = audioDestRef.current?.stream;
-          if (el && mixed) {
-            if (el.srcObject !== mixed) el.srcObject = mixed;
+          // Attach the RAW remote TTS stream to THIS slot's monitor element
+          // (the OpenAI guide pattern: `audioEl.srcObject = e.streams[0]`).
+          // It plays through the browser's native pipeline regardless of
+          // AudioContext state — fixing the "monitor playing but silent"
+          // case. Pumping the remote track via a media element is ALSO what
+          // makes the WebAudio mixer below (LiveKit publish + recording)
+          // carry audio on Chrome: a remote track fed only into
+          // createMediaStreamSource yields silence (crbug/121673).
+          // Re-attach on every arrival (renegotiation / re-entry safe).
+          const el = monitorAudioRefs.current[slot];
+          if (el) {
+            if (el.srcObject !== stream) el.srcObject = stream;
             el.muted = !outputAudible;
-            // The mixer only emits frames while its AudioContext is running.
-            // It can land suspended (created several awaits past the Start
-            // gesture), which makes the monitor play silence even though
-            // play() resolves. Best-effort resume here; the "음성 켜기"
-            // button does the reliable gesture-backed resume.
-            const mixCtx = audioCtxRef.current;
-            if (mixCtx && mixCtx.state === 'suspended') void mixCtx.resume();
             // Layer A: surface autoplay rejection instead of swallowing it.
             el.play()
               .then(() => setTtsBlocked(false))
               .catch((err) => {
-                console.warn('[translate] TTS autoplay rejected', err);
+                console.warn(`[translate:${slot}] TTS autoplay rejected`, err);
                 setTtsBlocked(true);
               });
           }
@@ -3066,7 +3084,26 @@ export function TranslateConsole() {
         />
       ) : null}
 
-      <audio ref={monitorAudioRef} autoPlay playsInline className="hidden" />
+      {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
+          directly (see monitorAudioRefs). Hidden; audible unless the host
+          mutes via the toggle. Two elements so `both` mode plays host +
+          guest at once. */}
+      <audio
+        ref={(el) => {
+          monitorAudioRefs.current.mic = el;
+        }}
+        autoPlay
+        playsInline
+        className="hidden"
+      />
+      <audio
+        ref={(el) => {
+          monitorAudioRefs.current.tab = el;
+        }}
+        autoPlay
+        playsInline
+        className="hidden"
+      />
     </div>
   );
 }
