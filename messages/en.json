@@ -16,7 +16,7 @@
     "hero": {
       "tagline": "Research on my canvas",
       "headline": "Your research,<br></br><hl>end to end</hl>,<br></br>on one <hlPeach>canvas</hlPeach>.",
-      "lead": "Transcription, live translation, probing assistant, insight analysis—<strong>every tool lives on one canvas</strong> and flows together. No more tab-hopping.",
+      "lead": "",
       "ctaPrimary": "Open the canvas →",
       "ctaSecondary": "See features",
       "postscript": "<b>P.S.</b> Every widget is unlimited for the first 24 hours. No card required.",
@@ -53,29 +53,29 @@
       "translate": {
         "title": "Live translation",
         "tag": "New",
-        "body": "Not just an OpenAI Realtime API wrapper. Pre-load attendee names and key terms before the session — consistent throughout, real-time + post-processing dual verification (zero hallucination), automatic speaker separation. English interviews become Korean notes instantly."
+        "body": "Plenty of AI interpreters out there — but you finish the session and find names spelled differently every time, or company names completely wrong. Just hand over names and key terms before starting, and they stay consistent the whole way through. One more pass at the end too. English interviews become Korean notes, right there."
       },
       "probing": {
         "title": "Probing assistant",
         "tag": "New",
-        "body": "Interviewer alone vs. AI co-pilot beside you — different depth. Real-time detection of hesitation, contradiction, cognitive gaps. \"Ask this now\" popup at decisive moments. Respondent persona across 8 panels ready the moment the interview ends."
+        "body": "You know that moment after an interview — \"I should've asked one more about that\"? AI listens alongside you, picking up the respondent's hesitation and contradictions. At the decisive moment, it slides a card in front of you: \"Ask this now.\" When the interview ends, the respondent profile is already laid out for you."
       },
       "insights": {
         "title": "Insight analyzer",
         "tag": "New",
-        "body": "Manual analysis: 2–3 hours per interview. Automated: 5 minutes. Cross-tab multiple interviews by participant × topic, Korean particle-aware search (catches \"광고/광고는/광고를\" together), quotes preserved with conversational context."
+        "body": "Sorting through 10 interviews by hand eats up days. The AI groups responses by topic automatically. Type \"광고\" and it catches \"광고는·광고를·광고에서\" too. Quotes come with the surrounding conversation — context preserved, ready to paste."
       },
       "interviews": {
         "title": "Interview results",
-        "body": "More than auto-cleanup of transcripts. Automatic response × question matrix + pattern/commonality/divergence/surprise signal extraction. One-click docx for reporting, instant link with other widgets on the canvas."
+        "body": "Transcript in, matrix out — patterns found, report written, all in one click. See at a glance who said what about which topic. Connects right to other widgets on the canvas, so you don't have to re-organize the same material twice."
       },
       "desk": {
         "title": "Desk research",
-        "body": "Not just \"ask ChatGPT to search\". Parallel collection across multiple sources + automatic research question decomposition + inductive topic emergence + multi-pass self-review. Every citation tracked with source link + tier classification — verifiable evidence."
+        "body": "Ask ChatGPT to \"search this\" and you'll get a plausible summary — but where did it come from? Here, multiple sources get combed through together, the question gets broken into smaller ones, answers gathered, and the AI reviews its own work once more. Every citation comes with a source link — check the origin instantly."
       },
       "quotes": {
         "title": "Transcripts",
-        "body": "One hour of audio/video in minutes. Deeper than Cmd+F: Korean particle-combined matching (catches 광고/광고는/광고를 together), cross-transcript search, surrounding utterances shown together. Automatic speaker labels and timestamps."
+        "body": "A one-hour interview becomes a tidy transcript in minutes. Speaker labels and timestamps included. Search is smarter than Cmd+F — type \"광고\" once and \"광고는·광고를·광고에서\" all come up. Cross-search through multiple interviews at once."
       }
     },
     "workflow": {
