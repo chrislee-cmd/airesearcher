@@ -53,29 +53,29 @@
       "translate": {
         "title": "Live translation",
         "tag": "New",
-        "body": "Capture host and guest audio simultaneously. Live translation with automatic speaker labels—turn English interviews into Korean notes in real time."
+        "body": "Not just an OpenAI Realtime API wrapper. Pre-load attendee names and key terms before the session — consistent throughout, real-time + post-processing dual verification (zero hallucination), automatic speaker separation. English interviews become Korean notes instantly."
       },
       "probing": {
         "title": "Probing assistant",
         "tag": "New",
-        "body": "Suggests verification and depth questions during the interview. Catch the ambiguity in an answer the moment it happens."
+        "body": "Interviewer alone vs. AI co-pilot beside you — different depth. Real-time detection of hesitation, contradiction, cognitive gaps. \"Ask this now\" popup at decisive moments. Respondent persona across 8 panels ready the moment the interview ends."
       },
       "insights": {
         "title": "Insight analyzer",
         "tag": "New",
-        "body": "Auto-clusters utterances across interviews. Semantic search lets you test hypotheses fast and pull quotes straight into your report."
+        "body": "Manual analysis: 2–3 hours per interview. Automated: 5 minutes. Cross-tab multiple interviews by participant × topic, Korean particle-aware search (catches \"광고/광고는/광고를\" together), quotes preserved with conversational context."
       },
       "interviews": {
         "title": "Interview results",
-        "body": "Transcribe, summarize, extract themes—automatically. A response × theme matrix surfaces patterns at a glance, ready to connect with neighbour widgets."
+        "body": "More than auto-cleanup of transcripts. Automatic response × question matrix + pattern/commonality/divergence/surprise signal extraction. One-click docx for reporting, instant link with other widgets on the canvas."
       },
       "desk": {
         "title": "Desk research",
-        "body": "Distilled findings from credible sources, with citations attached. Drop the result panel straight into your interview design."
+        "body": "Not just \"ask ChatGPT to search\". Parallel collection across multiple sources + automatic research question decomposition + inductive topic emergence + multi-pass self-review. Every citation tracked with source link + tier classification — verifiable evidence."
       },
       "quotes": {
         "title": "Transcripts",
-        "body": "Upload audio or video once and get a clean transcript with speaker labels, timestamps, and search. An hour of audio becomes minutes of work."
+        "body": "One hour of audio/video in minutes. Deeper than Cmd+F: Korean particle-combined matching (catches 광고/광고는/광고를 together), cross-transcript search, surrounding utterances shown together. Automatic speaker labels and timestamps."
       }
     },
     "workflow": {
