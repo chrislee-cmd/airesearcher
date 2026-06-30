@@ -605,18 +605,26 @@ function WidgetFullviewModalSection() {
       title="WidgetFullviewModal"
       hint="src/components/canvas/shell/widget-fullview-modal.tsx · Modal(wide|full) wrap + 프로빙 chrome 일반화 · 제목 + 부제 + 닫기(×) header / 본문 slot / 옵션 footer · Esc·backdrop 닫기 + focus restore 는 Modal 에서 상속 · 소비처: probing / interviews / desk / quotes (PR-C wire)"
     >
-      <Subsection label="진입 버튼 — WidgetShell state pill 하단 '전체 보기'">
+      <Subsection label="진입 버튼 — 노란 메인 헤더, READY 상태 pill 바로 아래">
         <div className="space-y-3">
-          <div className="inline-flex border border-line bg-paper px-4 py-3 rounded-sm">
-            {/* widget-shell.tsx 의 onFullview 진입 버튼과 동일한 시각 —
-                Button variant=link + arrows-out 아이콘 + UPPERCASE 트래킹. */}
+          {/* widget-shell.tsx 의 onFullview 진입 버튼과 동일한 시각 + 위치 —
+              노란 카드 헤더 안 우측, state pill 아래에 Memphis chip
+              (secondary: 흰 bg + 검은 border + offset shadow + arrows-out
+              아이콘). 노란 배경 위에서 또렷하게 보이도록. */}
+          <div
+            className="inline-flex flex-col items-end gap-1.5 px-4 py-3 rounded-sm border-[2px] border-ink"
+            style={{ background: 'var(--canvas-card-header-bg)' }}
+          >
+            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider bg-paper border-[2px] border-ink rounded-[4px] shadow-[2px_2px_0_var(--canvas-card-border)]">
+              READY
+            </span>
             <Button
-              variant="link"
-              size="xs"
-              className="uppercase tracking-[0.18em]"
+              variant="secondary"
+              size="sm"
+              className="uppercase tracking-[0.16em]"
               leftIcon={
                 <svg
-                  className="h-3 w-3"
+                  className="h-3.5 w-3.5"
                   viewBox="0 0 16 16"
                   fill="none"
                   aria-hidden="true"
