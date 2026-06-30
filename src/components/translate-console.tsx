@@ -411,14 +411,23 @@ const SENTENCE_TAIL = /[.!?。！？…]+["')\]」』]?\s*$/u;
 // kind. A silence longer than this means the speaker actually stopped
 // talking and the next delta begins a fresh turn.
 //
-// 1400 ms reads as the sweet spot in prod traces:
-//   - shorter (~800 ms) catches mid-sentence word-search pauses and
-//     splits a single utterance across multiple "turns" — the prompter
-//     loses the visual flow.
-//   - longer (~2500 ms) merges short-acknowledgement turns ("Yes.",
-//     "맞아요.") into the prior speaker's line — exactly the failure
-//     the user reported.
-const TURN_SILENCE_MS = 1400;
+// 🚨 truncation investigation (2026-06-30): raised 1400 → 2400 on REAL
+// prod transcript evidence. A live ko session came back chopped into
+// sub-phrase fragments — most committed lines carried NO sentence-ending
+// punctuation ("일단 저희가 그 속성을", "그 포들", "기본적으로 저희가"),
+// meaning the 1400 ms gate was firing on mid-sentence word-search pauses
+// and word-final fillers ("어떤…", "그…") that pervade conversational
+// Korean. 2400 ms requires a genuine ~2.4 s stop before a turn commits,
+// keeping a single utterance intact across natural thinking pauses.
+//
+// Tradeoff (kept from the original 1400 tuning note): a longer gate can
+// merge a short acknowledgement ("네.", "맞아요.") spoken <2.4 s after the
+// prior turn into that turn's line. We accept this — the current failure
+// (over-fragmentation) is the louder one, and the sentence-boundary commit
+// still splits acks that carry their own punctuation. If ack-merging
+// resurfaces, 1800 is the conservative fallback. The `midSentenceCommits`
+// counter (this PR) measures the effect: it should drop sharply at 2400.
+const TURN_SILENCE_MS = 2400;
 
 // Chunk/word-boundary join (Layer A) now lives in
 // src/lib/translate-stream-join.ts so the heuristics are unit-testable
