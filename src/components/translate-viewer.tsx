@@ -26,6 +26,7 @@ import {
 } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { getTranslateAnonId } from '@/lib/translate-anon-id';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 
@@ -223,7 +224,20 @@ export function TranslateViewer({
       if (p.kind !== 'output') return;
       pushLine({ id: p.id, text: p.text, final: p.final, ts: Date.now() });
     });
-    ch.subscribe();
+    // Presence: announce this viewer so the host's listener panel can show
+    // who is currently tuned in. We track only once the channel is
+    // SUBSCRIBED; untrack is implicit on unsubscribe (tab close / unmount),
+    // which is what drives the host list to drop us within ~1s. This is
+    // best-effort presence metadata — no extra fetch, no DB write.
+    ch.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') return;
+      void ch.track({
+        anon_id: getTranslateAnonId(),
+        joined_at: new Date().toISOString(),
+        user_agent:
+          typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      });
+    });
     channelRef.current = ch;
     return () => {
       try {

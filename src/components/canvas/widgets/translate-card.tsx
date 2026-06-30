@@ -55,7 +55,7 @@ function ExpandedBody() {
           onClose={close}
         >
           <div className="space-y-5 px-6 py-6">
-            <TranslateConsole />
+            <TranslateConsole showListeners />
           </div>
         </WidgetFullviewPanel>,
       )}

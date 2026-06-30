@@ -37,6 +37,8 @@ import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
+import { ListenerPanel } from './translate/listener-panel';
+import { useTranslateListeners } from '@/hooks/use-translate-listeners';
 import { isHangulFusionBoundary, joinDelta } from '@/lib/translate-stream-join';
 import {
   useRealtimeTranscriptLiveBinding,
@@ -494,7 +496,13 @@ function formatElapsed(ms: number) {
   return `${mm}:${ss}`;
 }
 
-export function TranslateConsole() {
+export function TranslateConsole({
+  // Listener panel is only meaningful in the wide fullview layout — the
+  // small card has no room. The fullview slot opts in via this flag.
+  showListeners = false,
+}: {
+  showListeners?: boolean;
+} = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
   const locale = useLocale();
@@ -557,6 +565,11 @@ export function TranslateConsole() {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  // Reactive mirror of sessionIdRef for the listener presence hook (refs
+  // don't trigger re-render). Set when a session goes live, cleared on
+  // teardown. Drives the fullview listener panel; harmless when
+  // showListeners is false (hook short-circuits on a null/unused id).
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
 
   // Recording state — null until POST /recording succeeds. Recording is
   // always on now (default save), so after stop() `recording.status`
@@ -931,6 +944,10 @@ export function TranslateConsole() {
       channelRef.current?.unsubscribe();
     } catch {}
     channelRef.current = null;
+    // Drop the listener-presence subscription with the session — viewers
+    // tear down on their own end, but clearing here stops the host panel
+    // from showing stale listeners after a stop/error.
+    setLiveSessionId(null);
     for (const slot of ['mic', 'tab'] as const) {
       try {
         dcRef.current[slot]?.close();
@@ -1625,6 +1642,7 @@ export function TranslateConsole() {
     }
 
     sessionIdRef.current = bundle.session.id;
+    setLiveSessionId(bundle.session.id);
     console.info('[translate] session ok — acquiring sources', {
       captureMode: captureModeAtStart,
       sessionId: bundle.session.id,
@@ -2808,6 +2826,11 @@ export function TranslateConsole() {
     [outputLines, now],
   );
 
+  // Current listeners on the share link. Only subscribed in fullview
+  // (where the panel renders) — the card passes a null id so the hook
+  // stays dormant and adds no realtime channel.
+  const listeners = useTranslateListeners(showListeners ? liveSessionId : null);
+
   return (
     <div className="space-y-4">
       {/* WidgetSubHeader — settings (captureMode / sourceLang / targetLang)
@@ -3013,7 +3036,21 @@ export function TranslateConsole() {
         </div>
       ) : null}
 
-      <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+      {showListeners ? (
+        // Fullview: prompter + a right listener column. The prompter keeps
+        // the flexible main width; the panel is a fixed ~300px rail.
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+          </div>
+          <ListenerPanel
+            listeners={listeners}
+            className="w-[300px] shrink-0 self-start"
+          />
+        </div>
+      ) : (
+        <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+      )}
 
       {status === 'ended' || (recording && status !== 'live') ? (
         <RecordingDownloadPanel
