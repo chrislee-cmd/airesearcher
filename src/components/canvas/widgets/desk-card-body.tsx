@@ -45,7 +45,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
-import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -692,85 +691,78 @@ export function DeskCardBody() {
         <WidgetSubHeader
           inputs={
             <div className="w-full space-y-3">
-              {/* Row 1: 지역 / 기간 / 분석 방향성 */}
+              {/* Row 1: 지역 / 기간 / 분석 방향성 — 서브헤더 라벨 제거,
+                  placeholder 로 용도 안내 (사용자 요청 2026-06-30). */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Field label={tDesk('regionLabel')}>
-                  <SelectMenu
-                    multi
-                    options={DESK_REGIONS.map((r) => ({
-                      value: r,
-                      label: tDesk(`region.${r}`),
-                    }))}
-                    values={Array.from(regions)}
-                    onChange={(next) => {
-                      if (next.length === 0) return; // 최소 1개 보장
-                      const set = new Set(next as DeskRegion[]);
-                      setRegions(set);
-                      setSelected(sourcesForRegions(set));
-                    }}
-                    placeholder={tDesk('regionLabel')}
-                  />
-                </Field>
+                <SelectMenu
+                  multi
+                  options={DESK_REGIONS.map((r) => ({
+                    value: r,
+                    label: tDesk(`region.${r}`),
+                  }))}
+                  values={Array.from(regions)}
+                  onChange={(next) => {
+                    if (next.length === 0) return; // 최소 1개 보장
+                    const set = new Set(next as DeskRegion[]);
+                    setRegions(set);
+                    setSelected(sourcesForRegions(set));
+                  }}
+                  placeholder={tDesk('regionLabel')}
+                />
 
-                <Field label={tDesk('rangeLabel')}>
-                  <DateRangePopover
-                    value={{ from: dateFrom, to: dateTo }}
-                    onChange={(next) => {
-                      setDateFrom(next.from);
-                      setDateTo(next.to);
-                    }}
-                    presets={rangePresets}
-                    placeholder={tDesk('range_all')}
-                    locale={locale}
-                  />
-                </Field>
+                <DateRangePopover
+                  value={{ from: dateFrom, to: dateTo }}
+                  onChange={(next) => {
+                    setDateFrom(next.from);
+                    setDateTo(next.to);
+                  }}
+                  presets={rangePresets}
+                  placeholder={tDesk('range_all')}
+                  locale={locale}
+                />
 
-                <Field label="분석 방향성">
-                  <Input
-                    size="sm"
-                    fullWidth
-                    value={analysisDirection}
-                    onChange={(e) => setAnalysisDirection(e.target.value)}
-                    placeholder="예: 시장 성장률 + 주요 플레이어 위주"
-                  />
-                </Field>
+                <Input
+                  size="sm"
+                  fullWidth
+                  value={analysisDirection}
+                  onChange={(e) => setAnalysisDirection(e.target.value)}
+                  placeholder="예: 시장 성장률 + 주요 플레이어 위주"
+                />
               </div>
 
-              {/* Row 2: 검색 키워드 */}
-              <Field label={tDesk('keywordLabel')}>
-                <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-                  {keywords.map((k, idx) => (
-                    <span
-                      key={`${k}-${idx}`}
-                      className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
+              {/* Row 2: 검색 키워드 — 서브헤더 라벨 제거, placeholder 안내 */}
+              <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+                {keywords.map((k, idx) => (
+                  <span
+                    key={`${k}-${idx}`}
+                    className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
+                  >
+                    {k}
+                    <IconButton
+                      variant="ghost-brand"
+                      onClick={() => removeKeyword(idx)}
+                      aria-label={`remove ${k}`}
                     >
-                      {k}
-                      <IconButton
-                        variant="ghost-brand"
-                        onClick={() => removeKeyword(idx)}
-                        aria-label={`remove ${k}`}
-                      >
-                        ×
-                      </IconButton>
-                    </span>
-                  ))}
-                  <ChipInput
-                    value={keywordDraft}
-                    onChange={(e) => setKeywordDraft(e.target.value)}
-                    onKeyDown={onKeywordKeyDown}
-                    onPaste={onKeywordPaste}
-                    onBlur={() => {
-                      if (keywordDraft.trim()) commitDraft();
-                    }}
-                    placeholder={
-                      keywords.length === 0
-                        ? tDesk('keywordPlaceholder')
-                        : tDesk('keywordAddMore')
-                    }
-                    className="min-w-[140px] flex-1"
-                  />
-                </div>
-              </Field>
+                      ×
+                    </IconButton>
+                  </span>
+                ))}
+                <ChipInput
+                  value={keywordDraft}
+                  onChange={(e) => setKeywordDraft(e.target.value)}
+                  onKeyDown={onKeywordKeyDown}
+                  onPaste={onKeywordPaste}
+                  onBlur={() => {
+                    if (keywordDraft.trim()) commitDraft();
+                  }}
+                  placeholder={
+                    keywords.length === 0
+                      ? tDesk('keywordPlaceholder')
+                      : tDesk('keywordAddMore')
+                  }
+                  className="min-w-[140px] flex-1"
+                />
+              </div>
 
               {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
               {hasKeywords && (
