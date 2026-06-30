@@ -1,6 +1,6 @@
 'use client';
 
-import { Modal } from '@/components/ui/modal';
+import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { IconButton } from '@/components/ui/icon-button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import {
@@ -152,46 +152,28 @@ export function InterviewFullView({
 }) {
   const job = useInterviewJob();
 
+  // 헤더(제목 + 닫기 ×) 는 WidgetFullviewModal 이 소유 (chrome 통일, PR-C).
   return (
-    <Modal open={open} onClose={onClose} size="full" labelledBy="iv-full-title">
-      <div className="flex h-full min-h-0 flex-col">
-        {/* 상단 헤더 — 타이틀 + 닫기. */}
-        <header className="flex shrink-0 items-center justify-between border-b border-line-soft px-6 py-3">
-          <div>
-            <h2
-              id="iv-full-title"
-              className="text-2xl font-semibold tracking-[-0.01em] text-ink-2"
-            >
-              인터뷰 결과 — 전체 보기
-            </h2>
-            <p className="mt-0.5 text-sm text-mute">
-              파일을 추가하고 코퍼스 안에서 검색·질문하세요.
-            </p>
-          </div>
-          <IconButton
-            variant="ghost"
-            aria-label="전체 보기 닫기"
-            onClick={onClose}
-            className="text-lg"
-          >
-            ✕
-          </IconButton>
-        </header>
-
-        {/* 본문 — 좌(파일 list) 5/12 + 우(검색/채팅) 7/12. 작은 화면에서는
-            세로 스택. */}
-        <div className="min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-12">
-          <aside className="lg:col-span-5 lg:border-r border-line-soft min-h-0 max-h-[40vh] lg:max-h-none overflow-hidden border-b lg:border-b-0">
-            <FileListPane />
-          </aside>
-          <section className="lg:col-span-7 min-h-0 overflow-hidden">
-            <InterviewSearchPanel
-              jobId={job.lastSnapshotJobId}
-              indexStatus={job.indexStatus}
-            />
-          </section>
-        </div>
+    <WidgetFullviewModal
+      open={open}
+      onClose={onClose}
+      size="full"
+      title="인터뷰 결과 — 전체 보기"
+      subtitle="파일을 추가하고 코퍼스 안에서 검색·질문하세요."
+    >
+      {/* 본문 — 좌(파일 list) 5/12 + 우(검색/채팅) 7/12. 작은 화면에서는
+          세로 스택. */}
+      <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-12">
+        <aside className="lg:col-span-5 lg:border-r border-line-soft min-h-0 max-h-[40vh] lg:max-h-none overflow-hidden border-b lg:border-b-0">
+          <FileListPane />
+        </aside>
+        <section className="lg:col-span-7 min-h-0 overflow-hidden">
+          <InterviewSearchPanel
+            jobId={job.lastSnapshotJobId}
+            indexStatus={job.indexStatus}
+          />
+        </section>
       </div>
-    </Modal>
+    </WidgetFullviewModal>
   );
 }

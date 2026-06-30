@@ -51,6 +51,7 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { deskCumulativeProgress } from '@/lib/widget-progress';
 import { Banner } from '@/components/canvas/shell/banner';
@@ -289,6 +290,16 @@ export function DeskCardBody() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // 통일 "전체 보기" — 가장 최근 완료 리포트를 풀스크린으로. 진입은 WidgetShell
+  // 의 버튼이 dispatch 하는 `desk:open-fullview` window 이벤트. 결과는
+  // useDeskJobs provider 기반이라 모달 close 후에도 보존. 행별 "미리보기"
+  // 모달(previewOpen) 과는 별개 — 그건 그대로 유지.
+  const [fullviewOpen, setFullviewOpen] = useState(false);
+  useEffect(() => {
+    const onOpen = () => setFullviewOpen(true);
+    window.addEventListener('desk:open-fullview', onOpen);
+    return () => window.removeEventListener('desk:open-fullview', onOpen);
+  }, []);
 
   // Receive workspace "send to" prefills — splits the artifact text the
   // same way the paste/keydown handlers do so a list of keywords (or a
@@ -1120,6 +1131,35 @@ export function DeskCardBody() {
       >
         {job && <DeskReportView job={job} tDesk={tDesk} />}
       </Modal>
+
+      {/* 통일 "전체 보기" 모달 — 가장 최근 완료 리포트를 풀스크린으로.
+          완료 리포트가 없으면 안내 EmptyState. chrome 은 WidgetFullviewModal
+          (title/subtitle/닫기×) 가 소유. */}
+      <WidgetFullviewModal
+        open={fullviewOpen}
+        onClose={() => setFullviewOpen(false)}
+        size="full"
+        title="데스크 리서치 — 전체 보기"
+        subtitle={
+          showResult && job
+            ? `${job.keywords.join(', ')} · ${tDesk('reportTitle')}`
+            : '완료된 리포트를 풀스크린으로 봅니다'
+        }
+      >
+        {showResult && job ? (
+          <div className="px-6 py-6">
+            <DeskReportView job={job} tDesk={tDesk} />
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center p-10">
+            <EmptyState
+              tone="subtle"
+              title="아직 완료된 리포트가 없습니다"
+              description="검색을 실행하면 결과 리포트를 여기서 풀스크린으로 볼 수 있어요."
+            />
+          </div>
+        )}
+      </WidgetFullviewModal>
     </>
   );
 }

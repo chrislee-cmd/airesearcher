@@ -53,6 +53,20 @@ const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v2';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+// "전체 보기" 진입을 통일한 위젯 키들. WidgetShell 의 state pill 하단
+// "전체 보기" 버튼은 onFullview 를 넘긴 위젯에만 노출되며, 클릭 시
+// `<key>:open-fullview` window 이벤트를 dispatch 한다. 각 위젯 본문이 그
+// 이벤트를 listen 해 자기 WidgetFullviewModal 을 연다 (probing 이 쓰던 기존
+// 패턴을 일반화 — 위젯별 모달이라 provider hoist 없이 세션 보존). translate/
+// recruiting 은 본문 state 가 component-local 이라 두 instance 위험이 있어
+// PR-D (provider hoist) 로 미룸 — 여기 집합에서 제외하면 버튼 0 → 회귀 0.
+const FULLVIEW_ENTRY_KEYS = new Set([
+  'probing',
+  'interviews',
+  'desk',
+  'quotes',
+]);
+
 type Coords = { col: number; row: number };
 type Span = { cols: number; rows: number };
 
@@ -806,6 +820,14 @@ export function CanvasBoard({
                 <WidgetShell
                   content={w}
                   dashboardMode
+                  onFullview={
+                    FULLVIEW_ENTRY_KEYS.has(w.key)
+                      ? () =>
+                          window.dispatchEvent(
+                            new CustomEvent(`${w.key}:open-fullview`),
+                          )
+                      : undefined
+                  }
                   dragHandleProps={{
                     draggable: true,
                     onDragStart: (e) => {

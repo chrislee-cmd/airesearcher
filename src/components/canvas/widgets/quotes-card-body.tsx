@@ -17,6 +17,7 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { JobProgress } from '@/components/ui/job-progress';
+import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
@@ -25,6 +26,7 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
@@ -79,6 +81,17 @@ export function QuotesCardBody() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
   const [showAllRecents, setShowAllRecents] = useState(false);
+  // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
+  // 진입은 WidgetShell 의 버튼이 dispatch 하는 `quotes:open-fullview` window
+  // 이벤트. useTranscriptJobs provider 기반이라 close 후 보존. 카드 바닥의
+  // "더보기"(overflow) 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
+  const [fullviewOpen, setFullviewOpen] = useState(false);
+  const [fullviewQuery, setFullviewQuery] = useState('');
+  useEffect(() => {
+    const onOpen = () => setFullviewOpen(true);
+    window.addEventListener('quotes:open-fullview', onOpen);
+    return () => window.removeEventListener('quotes:open-fullview', onOpen);
+  }, []);
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -491,6 +504,61 @@ export function QuotesCardBody() {
           ))}
         </ul>
       </Modal>
+
+      {/* 통일 "전체 보기" — 전사 작업 전체(진행 중 + 완료)를 풀스크린 list +
+          파일명 검색으로. JobRow previewMode="inline" 이라 모달 안에서도
+          다운로드/공유/미리보기/삭제 모두 동작. */}
+      <WidgetFullviewModal
+        open={fullviewOpen}
+        onClose={() => setFullviewOpen(false)}
+        size="full"
+        title="전사록 — 전체 보기"
+        subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
+      >
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
+          <div className="mb-4 shrink-0">
+            <Input
+              fullWidth
+              value={fullviewQuery}
+              onChange={(e) => setFullviewQuery(e.target.value)}
+              placeholder="파일명으로 검색…"
+              aria-label="전사록 파일명 검색"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {(() => {
+              const q = fullviewQuery.trim().toLowerCase();
+              const list = (q
+                ? job.jobs.filter((j) =>
+                    (j.filename ?? '').toLowerCase().includes(q),
+                  )
+                : job.jobs
+              ).slice();
+              if (list.length === 0) {
+                return (
+                  <p className="py-10 text-center text-md text-mute-soft">
+                    {q
+                      ? '검색 결과가 없습니다.'
+                      : '아직 전사 작업이 없습니다.'}
+                  </p>
+                );
+              }
+              return (
+                <ul className="space-y-3">
+                  {list.map((j) => (
+                    <JobRow
+                      key={j.id}
+                      job={j}
+                      onDelete={() => deleteJob(j.id)}
+                      previewMode="inline"
+                    />
+                  ))}
+                </ul>
+              );
+            })()}
+          </div>
+        </div>
+      </WidgetFullviewModal>
     </>
   );
 }

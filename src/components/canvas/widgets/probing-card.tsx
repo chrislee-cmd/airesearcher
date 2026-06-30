@@ -28,7 +28,6 @@ import {
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
-import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { triggerBlobDownload } from '@/lib/export/download';
@@ -39,6 +38,7 @@ import {
 } from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
   HistoryQuestion,
@@ -154,8 +154,11 @@ function ExpandedBody() {
 
   const [source, setSource] = useState<SourceKind>('mic');
 
+  // 전체보기 모달 open 상태. 진입은 WidgetShell 의 "전체 보기" 버튼이
+  // dispatch 하는 `probing:open-fullview` window 이벤트 단일 경로 (canvas-board
+  // 의 deep-link `?focus=probing` 도 같은 이벤트를 쏜다). 옛 서브헤더 ⤢
+  // 아이콘 버튼은 제거 (진입점 통일, PR-C).
   const [expanded, setExpanded] = useState(false);
-  const handleExpand = useCallback(() => setExpanded(true), []);
   const handleCollapse = useCallback(() => setExpanded(false), []);
 
   useEffect(() => {
@@ -848,32 +851,6 @@ function ExpandedBody() {
               disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
             />
           }
-          options={
-            <IconButton
-              aria-label="전체보기 열기"
-              title="전체보기"
-              variant="ghost"
-              size="lg"
-              onClick={handleExpand}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <polyline points="15 3 21 3 21 9" />
-                <polyline points="9 21 3 21 3 15" />
-                <line x1="21" y1="3" x2="14" y2="10" />
-                <line x1="3" y1="21" x2="10" y2="14" />
-              </svg>
-            </IconButton>
-          }
           actions={
             <>
               {canExport && (
@@ -931,22 +908,31 @@ function ExpandedBody() {
 
         {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
             popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal
-            (ProbingFullView) 에만 노출. */}
-        <ProbingCanvasCardBody
-          thinkingEvents={thinkingEvents}
-          thinkingStreaming={thinkingStreaming}
-          activePopup={activePopup}
-          onPopupPin={handlePopupPin}
-          onPopupCopy={handlePopupCopy}
-          onPopupDismiss={handlePopupManualDismiss}
-          onPopupAutoDismiss={handlePopupAutoDismiss}
-          history={history}
-          nowMs={now}
-          onHistoryCopy={handleHistoryCopy}
-          onHistoryToggleStar={handleHistoryToggleStar}
-          onHistoryDelete={handleHistoryDelete}
-          isLive={isLive}
-        />
+            (ProbingFullView) 에만 노출.
+            모달 open 시 카드 본문은 placeholder 로 교체 — 같은 hook(state)
+            인스턴스를 모달과 공유하므로 데이터는 보존되고, 시각적으로 두
+            곳에 동시에 그려지지 않는다 (spec: 두 instance 시각 0). */}
+        {expanded ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+            전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
+          </div>
+        ) : (
+          <ProbingCanvasCardBody
+            thinkingEvents={thinkingEvents}
+            thinkingStreaming={thinkingStreaming}
+            activePopup={activePopup}
+            onPopupPin={handlePopupPin}
+            onPopupCopy={handlePopupCopy}
+            onPopupDismiss={handlePopupManualDismiss}
+            onPopupAutoDismiss={handlePopupAutoDismiss}
+            history={history}
+            nowMs={now}
+            onHistoryCopy={handleHistoryCopy}
+            onHistoryToggleStar={handleHistoryToggleStar}
+            onHistoryDelete={handleHistoryDelete}
+            isLive={isLive}
+          />
+        )}
 
         {thinkingError && (
           <div
@@ -962,23 +948,23 @@ function ExpandedBody() {
         )}
       </div>
 
-      {expanded && (
-        <Modal
-          open
-          onClose={handleCollapse}
-          size="wide"
-          labelledBy="probing-full-view-title"
-        >
-          <h2 id="probing-full-view-title" className="sr-only">
-            프로빙 어시스턴트 — 전체보기
-          </h2>
-          <ProbingFullView
-            reflectionProps={reflectionPaneProps}
-            questionProps={questionPaneProps}
-            onClose={handleCollapse}
-          />
-        </Modal>
-      )}
+      <WidgetFullviewModal
+        open={expanded}
+        onClose={handleCollapse}
+        title="프로빙 어시스턴트"
+        subtitle={
+          context.research_goal?.trim()
+            ? context.research_goal
+            : isLive
+              ? '인터뷰 진행 중'
+              : '응답자 페르소나 + 프로빙 질문'
+        }
+      >
+        <ProbingFullView
+          reflectionProps={reflectionPaneProps}
+          questionProps={questionPaneProps}
+        />
+      </WidgetFullviewModal>
 
       {exportConfirmOpen && (
         <Modal
