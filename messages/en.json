@@ -16,7 +16,7 @@
     "hero": {
       "tagline": "Research on my canvas",
       "headline": "Your research,<br></br><hl>end to end</hl>,<br></br>on one <hlPeach>canvas</hlPeach>.",
-      "lead": "Transcription, live translation, probing assistant, insight analysis—<strong>every tool lives on one canvas</strong> and flows together. No more tab-hopping.",
+      "lead": "",
       "ctaPrimary": "Open the canvas →",
       "ctaSecondary": "See features",
       "postscript": "<b>P.S.</b> Every widget is unlimited for the first 24 hours. No card required.",
@@ -53,29 +53,59 @@
       "translate": {
         "title": "Live translation",
         "tag": "New",
-        "body": "Not just an OpenAI Realtime API wrapper. Pre-load attendee names and key terms before the session — consistent throughout, real-time + post-processing dual verification (zero hallucination), automatic speaker separation. English interviews become Korean notes instantly."
+        "lead": "Plenty of AI interpreters out there — but you finish the session and find names spelled differently every time, or company names completely wrong.",
+        "bullets": [
+          { "highlight": "Pre-load context", "rest": "Hand over names and key terms once before starting — stays consistent throughout" },
+          { "highlight": "Dual verification", "rest": "Real-time + post-processing pass — zero hallucination" },
+          { "highlight": "Auto speaker separation", "rest": "Interviewer / respondent labels, automatic" }
+        ]
       },
       "probing": {
         "title": "Probing assistant",
         "tag": "New",
-        "body": "Interviewer alone vs. AI co-pilot beside you — different depth. Real-time detection of hesitation, contradiction, cognitive gaps. \"Ask this now\" popup at decisive moments. Respondent persona across 8 panels ready the moment the interview ends."
+        "lead": "You know that moment after an interview — \"I should've asked one more about that\"?",
+        "bullets": [
+          { "highlight": "AI co-pilot", "rest": "Real-time detection of hesitation, contradictions, cognitive gaps" },
+          { "highlight": "Decisive-moment popup", "rest": "Sharp question slid in front of you — \"Ask this now\"" },
+          { "highlight": "Persona auto-built", "rest": "Interview ends = respondent profile across 8 panels, ready" }
+        ]
       },
       "insights": {
         "title": "Insight analyzer",
         "tag": "New",
-        "body": "Manual analysis: 2–3 hours per interview. Automated: 5 minutes. Cross-tab multiple interviews by participant × topic, Korean particle-aware search (catches \"광고/광고는/광고를\" together), quotes preserved with conversational context."
+        "lead": "Sorting through 10 interviews by hand eats up days.",
+        "bullets": [
+          { "highlight": "Auto-grouped by topic", "rest": "Participant × topic cross-tab" },
+          { "highlight": "Korean particle-aware search", "rest": "Type \"광고\" — catches \"광고는·광고를·광고에서\" too" },
+          { "highlight": "Quotes with context", "rest": "Surrounding utterances — paste with meaning intact" }
+        ]
       },
       "interviews": {
         "title": "Interview results",
-        "body": "More than auto-cleanup of transcripts. Automatic response × question matrix + pattern/commonality/divergence/surprise signal extraction. One-click docx for reporting, instant link with other widgets on the canvas."
+        "lead": "Transcript in, matrix out — patterns found, report written, all in one click.",
+        "bullets": [
+          { "highlight": "Response × question matrix", "rest": "See at a glance who said what about which topic" },
+          { "highlight": "Pattern extraction", "rest": "Commonality, divergence, surprise signals — automatic" },
+          { "highlight": "One-click docx", "rest": "Instant link with other widgets on the canvas" }
+        ]
       },
       "desk": {
         "title": "Desk research",
-        "body": "Not just \"ask ChatGPT to search\". Parallel collection across multiple sources + automatic research question decomposition + inductive topic emergence + multi-pass self-review. Every citation tracked with source link + tier classification — verifiable evidence."
+        "lead": "Ask ChatGPT to \"search this\" and you'll get a plausible summary — but where did it come from?",
+        "bullets": [
+          { "highlight": "Parallel multi-source", "rest": "Multiple sources combed through together" },
+          { "highlight": "Question decomposition + multi-pass", "rest": "AI reviews and refines its own work" },
+          { "highlight": "Source link + tier", "rest": "Every citation traceable — verifiable evidence" }
+        ]
       },
       "quotes": {
         "title": "Transcripts",
-        "body": "One hour of audio/video in minutes. Deeper than Cmd+F: Korean particle-combined matching (catches 광고/광고는/광고를 together), cross-transcript search, surrounding utterances shown together. Automatic speaker labels and timestamps."
+        "lead": "A one-hour interview becomes a tidy transcript in minutes.",
+        "bullets": [
+          { "highlight": "Korean particle-combined matching", "rest": "Type \"광고\" once — catches \"광고는·광고를·광고에서\" too. Smarter than Cmd+F" },
+          { "highlight": "Cross-transcript search", "rest": "Many interviews searched at once" },
+          { "highlight": "Speaker + timestamp + context", "rest": "Labels and surrounding utterances, automatic" }
+        ]
       }
     },
     "workflow": {

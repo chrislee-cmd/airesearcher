@@ -49,7 +49,7 @@ export function CanvasHero({
       <div className="container">
         <span className="squiggle">{labels.tagline}</span>
         <h1>{labels.headline}</h1>
-        <p>{labels.lead}</p>
+        {labels.lead ? <p>{labels.lead}</p> : null}
         <div className="ctarow">
           <Link className="btn primary btn-lg" href={ctaStartHref}>{labels.ctaPrimary}</Link>
           <a className="btn btn-lg" href={ctaFeaturesHref}>{labels.ctaSecondary}</a>
