@@ -54,10 +54,17 @@ export const runtime = 'nodejs';
 // paths too.
 export const maxDuration = 120;
 
+// Allowed download formats. Source-side artifacts (m4a-input 원문 audio,
+// zip-input 원문 transcript) are intentionally NOT allowed: the source ASR
+// is unreliable Korean (replacement chars / foreign-script intrusions /
+// dropped syllables — no source-language hint is possible on the
+// translations endpoint, see src/lib/openai-realtime.ts), so we don't ship
+// it as a deliverable. The host console dropped the buttons; rejecting the
+// formats here also closes direct-URL access. The downstream m4a-input /
+// zip-input handler branches below are now unreachable (kept inert rather
+// than risk-editing the transcode/zip paths the output formats share).
 const FORMATS = new Set([
-  'm4a-input',
   'm4a-output',
-  'zip-input',
   'zip-output',
   'zip-revised',
 ]);
