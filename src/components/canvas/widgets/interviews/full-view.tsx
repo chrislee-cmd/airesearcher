@@ -1,6 +1,6 @@
 'use client';
 
-import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
+import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { IconButton } from '@/components/ui/icon-button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import {
@@ -143,23 +143,16 @@ function FileListPane() {
   );
 }
 
-export function InterviewFullView({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function InterviewFullView({ onClose }: { onClose: () => void }) {
   const job = useInterviewJob();
 
-  // 헤더(제목 + 닫기 ×) 는 WidgetFullviewModal 이 소유 (chrome 통일, PR-C).
+  // 헤더(제목 + 닫기 ×) 는 WidgetFullviewPanel 이 소유. 이 패널은 공유 모달
+  // (CanvasBoard FullviewShell) slot 으로 portal 된다 (interviews-card).
   return (
-    <WidgetFullviewModal
-      open={open}
-      onClose={onClose}
-      size="full"
+    <WidgetFullviewPanel
       title="인터뷰 결과 — 전체 보기"
       subtitle="파일을 추가하고 코퍼스 안에서 검색·질문하세요."
+      onClose={onClose}
     >
       {/* 본문 — 좌(파일 list) 5/12 + 우(검색/채팅) 7/12. 작은 화면에서는
           세로 스택. */}
@@ -174,6 +167,6 @@ export function InterviewFullView({
           />
         </section>
       </div>
-    </WidgetFullviewModal>
+    </WidgetFullviewPanel>
   );
 }

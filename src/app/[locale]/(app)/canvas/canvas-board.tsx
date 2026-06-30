@@ -28,6 +28,9 @@ import {
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
+import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
+import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
+import { Modal } from '@/components/ui/modal';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { WidgetNavigator } from './widget-navigator';
 
@@ -53,19 +56,12 @@ const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v2';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-// "전체 보기" 진입을 통일한 위젯 키들. WidgetShell 의 state pill 하단
-// "전체 보기" 버튼은 onFullview 를 넘긴 위젯에만 노출되며, 클릭 시
-// `<key>:open-fullview` window 이벤트를 dispatch 한다. 각 위젯 본문이 그
-// 이벤트를 listen 해 자기 WidgetFullviewModal 을 연다 (probing 이 쓰던 기존
-// 패턴을 일반화 — 위젯별 모달이라 provider hoist 없이 세션 보존). translate/
-// recruiting 은 본문 state 가 component-local 이라 두 instance 위험이 있어
-// PR-D (provider hoist) 로 미룸 — 여기 집합에서 제외하면 버튼 0 → 회귀 0.
-const FULLVIEW_ENTRY_KEYS = new Set([
-  'probing',
-  'interviews',
-  'desk',
-  'quotes',
-]);
+// "전체 보기" 진입은 이제 모든 위젯이 공유 모달(아래 FullviewShell)을 연다.
+// WidgetShell 의 "전체 보기" 버튼 → onFullview → openFullview(key) → 공유
+// 모달이 그 위젯의 본문을 slot 으로 받는다. 각 위젯 본문은 자기가 currentKey
+// 일 때만 본문을 portal 하므로 단일 인스턴스가 유지되고, 카드는 모달이 열려도
+// unmount 되지 않아 실시간 세션(probing/translate)이 swap·close 후에도 보존된다
+// (옛 위젯별 `<key>:open-fullview` 이벤트 + provider hoist 불필요).
 
 type Coords = { col: number; row: number };
 type Span = { cols: number; rows: number };
@@ -255,6 +251,75 @@ export function CanvasBoard({
     () => Object.fromEntries(widgets.map((w) => [w.key, w])),
     [widgets],
   );
+
+  // ── 공유 전체보기 모달 (shared fullview shell) ──────────────────────
+  // 단일 <Modal> + 좌측 SidebarNav + 우측 본문 slot. 각 위젯 ExpandedBody
+  // 가 자기가 currentKey 일 때만 본문을 slot 으로 portal (fullview-shell-
+  // context). 카드는 모달이 열려도 unmount 되지 않으므로 실시간 세션
+  // (probing / translate) 이 위젯 swap·모달 close 후에도 보존된다. close
+  // 시 currentKey 는 보존 → 다음 open 때 마지막 본 위젯으로 복귀.
+  const [fullviewOpen, setFullviewOpen] = useState(false);
+  const [currentWidgetKey, setCurrentWidgetKey] = useState<string | null>(null);
+  const [fullviewSlotEl, setFullviewSlotEl] = useState<HTMLElement | null>(
+    null,
+  );
+
+  const openFullview = useCallback((key: string) => {
+    setCurrentWidgetKey(key);
+    setFullviewOpen(true);
+  }, []);
+  const switchFullview = useCallback((key: string) => {
+    setCurrentWidgetKey(key);
+  }, []);
+  const closeFullview = useCallback(() => {
+    setFullviewOpen(false);
+  }, []);
+
+  const fullviewValue = useMemo(
+    () => ({
+      currentKey: currentWidgetKey,
+      open: fullviewOpen,
+      slotEl: fullviewSlotEl,
+      openFullview,
+      switchTo: switchFullview,
+      close: closeFullview,
+    }),
+    [
+      currentWidgetKey,
+      fullviewOpen,
+      fullviewSlotEl,
+      openFullview,
+      switchFullview,
+      closeFullview,
+    ],
+  );
+
+  // 사이드바 단축키 1-N — 모달 open 시에만 (canvas pan/zoom 단축키와 충돌
+  // 회피). 모달 안 input / textarea / contenteditable 입력 중에는 무시.
+  useEffect(() => {
+    if (!fullviewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key >= '1' && e.key <= '9') {
+        const idx = Number.parseInt(e.key, 10) - 1;
+        const target = widgets[idx];
+        if (target) {
+          e.preventDefault();
+          setCurrentWidgetKey(target.key);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullviewOpen, widgets]);
 
   // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용. multi-row 위젯은
   // cols × rows footprint 의 모든 셀이 점유로 표시됨.
@@ -592,7 +657,7 @@ export function CanvasBoard({
     const id = requestAnimationFrame(() => {
       focusWidget(initialFocus);
       if (initialFocus === 'probing') {
-        window.dispatchEvent(new CustomEvent('probing:open-fullview'));
+        openFullview('probing');
         try {
           const url = new URL(window.location.href);
           url.searchParams.delete('focus');
@@ -604,7 +669,7 @@ export function CanvasBoard({
       }
     });
     return () => cancelAnimationFrame(id);
-  }, [initialFocus, widgetByKey, positions, focusWidget]);
+  }, [initialFocus, widgetByKey, positions, focusWidget, openFullview]);
 
   // ── fit-to-view default zoom ─────────────────────────────────────────
   // 로그인 후 /canvas 진입 시 surface 부분만 보이던 zoom=1.0 default 를
@@ -725,6 +790,7 @@ export function CanvasBoard({
 
   return (
     <WidgetStatesMapProvider>
+    <FullviewShellProvider value={fullviewValue}>
     <div
       ref={containerRef}
       data-canvas
@@ -820,14 +886,7 @@ export function CanvasBoard({
                 <WidgetShell
                   content={w}
                   dashboardMode
-                  onFullview={
-                    FULLVIEW_ENTRY_KEYS.has(w.key)
-                      ? () =>
-                          window.dispatchEvent(
-                            new CustomEvent(`${w.key}:open-fullview`),
-                          )
-                      : undefined
-                  }
+                  onFullview={() => openFullview(w.key)}
                   dragHandleProps={{
                     draggable: true,
                     onDragStart: (e) => {
@@ -855,6 +914,31 @@ export function CanvasBoard({
         </div>
       </div>
     </div>
+
+    {/* ── 공유 전체보기 모달 ─────────────────────────────────────────
+        단일 Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재 위젯 본문이
+        portal 됨). 헤더(제목/닫기×)는 각 위젯의 WidgetFullviewPanel 이
+        소유 → 동적 subtitle 유지. size="wide" — 90vw×90vh, Memphis 팝업
+        (backdrop 보이는 모달, 프로빙 어시스턴트 원래 톤). backdrop /
+        Esc 닫기는 Modal 이 처리. */}
+    <Modal
+      open={fullviewOpen && !!currentWidgetKey}
+      onClose={closeFullview}
+      size="wide"
+    >
+      <div className="flex h-full min-h-0 flex-1 overflow-hidden">
+        <SidebarNav
+          widgets={widgets}
+          current={currentWidgetKey}
+          onSwitch={switchFullview}
+        />
+        <div
+          ref={setFullviewSlotEl}
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+        />
+      </div>
+    </Modal>
+    </FullviewShellProvider>
     </WidgetStatesMapProvider>
   );
 }

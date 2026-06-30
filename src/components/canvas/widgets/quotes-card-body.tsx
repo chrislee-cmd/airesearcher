@@ -26,7 +26,8 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
+import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
+import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
@@ -82,16 +83,13 @@ export function QuotesCardBody() {
   const [language, setLanguage] = useState<string>('multi');
   const [showAllRecents, setShowAllRecents] = useState(false);
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
-  // 진입은 WidgetShell 의 버튼이 dispatch 하는 `quotes:open-fullview` window
-  // 이벤트. useTranscriptJobs provider 기반이라 close 후 보존. 카드 바닥의
-  // "더보기"(overflow) 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const [fullviewOpen, setFullviewOpen] = useState(false);
+  // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
+  // 때만 본문을 모달 slot 으로 portal. useTranscriptJobs provider 기반이라
+  // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
+  // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
+  // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
+  const { renderInSlot, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
-  useEffect(() => {
-    const onOpen = () => setFullviewOpen(true);
-    window.addEventListener('quotes:open-fullview', onOpen);
-    return () => window.removeEventListener('quotes:open-fullview', onOpen);
-  }, []);
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -507,14 +505,13 @@ export function QuotesCardBody() {
 
       {/* 통일 "전체 보기" — 전사 작업 전체(진행 중 + 완료)를 풀스크린 list +
           파일명 검색으로. JobRow previewMode="inline" 이라 모달 안에서도
-          다운로드/공유/미리보기/삭제 모두 동작. */}
-      <WidgetFullviewModal
-        open={fullviewOpen}
-        onClose={() => setFullviewOpen(false)}
-        size="full"
-        title="전사록 — 전체 보기"
-        subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
-      >
+          다운로드/공유/미리보기/삭제 모두 동작. 공유 모달 slot 으로 portal. */}
+      {renderInSlot(
+        <WidgetFullviewPanel
+          title="전사록 — 전체 보기"
+          subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
+          onClose={closeFullview}
+        >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
           <div className="mb-4 shrink-0">
             <Input
@@ -558,7 +555,8 @@ export function QuotesCardBody() {
             })()}
           </div>
         </div>
-      </WidgetFullviewModal>
+        </WidgetFullviewPanel>,
+      )}
     </>
   );
 }

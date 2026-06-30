@@ -2,20 +2,46 @@
 
 import type { WidgetContent } from '../widget-types';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
+import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
+import { useFullview } from '../shell/fullview-shell-context';
 
 // 본문 = RecruitingWizard (3-step 카드) 만. 이전엔 위젯 바닥에 발행된
 // 폼 목록 "최근 산출물" 영역이 있었지만, prod 마이그 lag 로 인한
 // forms/list 500/401 폭주 + UX 정리 차원에서 제거. 발행 결과 링크는
 // wizard 의 Card 3 발행 완료 패널에서 바로 노출되므로 위젯 바닥의
 // 중복 노출이 필요 없음.
+//
+// 전체보기 — 공유 모달이 소유. recruiting 이 currentKey 일 때만 wizard 를
+// 모달 slot 으로 portal (단일 인스턴스 유지). ⚠️ wizard state 는 아직
+// component-local 이라 전체보기 토글/전환 시 remount → wizard 진행이
+// 초기화된다 (recruiting wizard state hoist 는 별 spec, 후속). 발행된 폼은
+// 서버 영속이라 손실 없음.
 function ExpandedBody() {
+  const { isCurrent, renderInSlot, close } = useFullview('recruiting');
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-5 px-5 py-5">
-          <RecruitingWizard />
+      {isCurrent ? (
+        <div className="flex h-full items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+          전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
         </div>
-      </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="space-y-5 px-5 py-5">
+            <RecruitingWizard />
+          </div>
+        </div>
+      )}
+      {renderInSlot(
+        <WidgetFullviewPanel
+          title="리크루팅"
+          subtitle="조건 → 설문 → Google Form"
+          onClose={close}
+        >
+          <div className="mx-auto w-full max-w-[1100px] space-y-5 px-6 py-6">
+            <RecruitingWizard />
+          </div>
+        </WidgetFullviewPanel>,
+      )}
     </div>
   );
 }
