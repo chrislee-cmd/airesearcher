@@ -343,14 +343,6 @@ function WidgetShellInner({
         >
           {content.meta.label}
         </div>
-        {content.meta.description && (
-          <div
-            className="truncate text-sm opacity-80"
-            style={{ color: 'var(--canvas-card-header-text)' }}
-          >
-            {content.meta.description}
-          </div>
-        )}
       </div>
       {/* framed body — 2.5px 검은 inner frame + inset shadow. 그 안쪽
           wrapper 가 data-canvas-body — globals.css 의 Memphis bold +
