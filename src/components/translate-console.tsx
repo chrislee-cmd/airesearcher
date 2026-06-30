@@ -470,6 +470,23 @@ function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCoun
   return { input: channel(), output: channel() };
 }
 
+// 🚨 Phase 1 diagnostic helper. Returns a compact per-m=audio-section
+// direction summary like "sendrecv" or "sendrecv,recvonly" so the console
+// shows the negotiated audio lanes inline. An answer that lacks a recv lane
+// (sendonly / no audio section) explains why pc.ontrack never fires while
+// translated TEXT still streams over the data channel.
+function summarizeAudioMlines(sdp: string): string {
+  const sections = sdp.match(/m=audio[\s\S]*?(?=\r?\nm=|$)/g) ?? [];
+  if (sections.length === 0) return 'no-audio-mline';
+  return sections
+    .map(
+      (sec) =>
+        sec.match(/a=(sendrecv|sendonly|recvonly|inactive)/)?.[1] ??
+        'unspecified',
+    )
+    .join(',');
+}
+
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -1977,29 +1994,36 @@ export function TranslateConsole() {
         // track (SDP / session-config issue, not fixable client-side); if it
         // logs `kind: 'audio'` but the host still hears nothing, the failure
         // is client-side attach / autoplay (Layers A / C).
+        let trackEverFired = false;
         pc.addEventListener('track', (e) => {
-          console.info(`[translate:${slot}] pc.ontrack fired`, {
-            kind: e.track?.kind,
-            streamId: e.streams[0]?.id,
-            trackId: e.track?.id,
-            readyState: e.track?.readyState,
-          });
+          trackEverFired = true;
+          // Inline string (not an object) so it's readable in the console
+          // without expanding — the collapsed Object logs hid this.
+          console.info(
+            `[translate:${slot}] pc.ontrack fired — kind=${e.track?.kind} stream=${e.streams[0]?.id ?? 'none'} readyState=${e.track?.readyState}`,
+          );
         });
         // 🚨 Phase 1 diagnostic: 5 s after setup, dump each transceiver's
-        // negotiated direction. `pc.ontrack` never firing combined with a
-        // 'sendonly' / 'inactive' currentDirection means OpenAI negotiated
-        // no receive path server-side — distinguishing that from a
-        // client-side attach bug. Skips if the slot was torn down meanwhile.
+        // negotiated direction as an INLINE STRING + an explicit "no track"
+        // warning. `pc.ontrack` never firing combined with a 'sendonly' /
+        // 'inactive' currentDirection means OpenAI negotiated no receive
+        // path server-side (translation TEXT still flows over the data
+        // channel) — distinguishing that from a client-side attach bug.
         setTimeout(() => {
           if (pcRef.current[slot] !== pc) return;
-          pc.getTransceivers().forEach((tr, i) => {
-            console.info(`[translate:${slot}] transceiver[${i}]`, {
-              direction: tr.direction,
-              currentDirection: tr.currentDirection,
-              mid: tr.mid,
-              receiver: tr.receiver?.track?.kind,
-            });
-          });
+          const dirs = pc
+            .getTransceivers()
+            .map(
+              (tr, i) =>
+                `[${i}] dir=${tr.direction} cur=${tr.currentDirection ?? 'null'} recv=${tr.receiver?.track?.kind ?? 'none'}`,
+            )
+            .join(' | ');
+          console.info(`[translate:${slot}] transceivers @5s: ${dirs || 'none'}`);
+          if (!trackEverFired) {
+            console.warn(
+              `[translate:${slot}] ⚠ NO TTS track after 5s — OpenAI returned no return-audio. Translation TEXT works (datachannel) but no audio m-line was negotiated for translated speech.`,
+            );
+          }
         }, 5000);
         pc.ontrack = (e) => {
           const stream = e.streams[0];
@@ -2125,6 +2149,15 @@ export function TranslateConsole() {
           throw new Error(`openai_sdp_${sdpRes.status}`);
         }
         const answerSdp = await sdpRes.text();
+        // 🚨 Phase 1 diagnostic: summarize the negotiated audio direction(s)
+        // inline. `summarizeAudioMlines` extracts each m=audio section's
+        // a=sendrecv/sendonly/recvonly/inactive. If the OFFER has a recv
+        // lane (sendrecv) but the ANSWER comes back sendonly / has no second
+        // audio m-line, OpenAI declined to return translated speech — the
+        // root cause of "발화 0" with working captions.
+        console.info(
+          `[translate:${slot}] sdp audio dirs — offer=[${summarizeAudioMlines(offer.sdp ?? '')}] answer=[${summarizeAudioMlines(answerSdp)}]`,
+        );
         await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
         console.info(`[translate:${slot}] sdp answer applied`);
         return true;
