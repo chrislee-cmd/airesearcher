@@ -877,6 +877,9 @@
       "expiresIn4h": "Auto-expires in 4 hours"
     }
   },
+  "Widgets": {
+    "fullview": "Open Fullview"
+  },
   "Workspace": {
     "eyebrow": "Workspace",
     "expand": "Open workspace",

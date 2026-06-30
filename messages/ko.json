@@ -877,6 +877,9 @@
       "expiresIn4h": "4시간 후 자동 만료"
     }
   },
+  "Widgets": {
+    "fullview": "전체 보기"
+  },
   "Workspace": {
     "eyebrow": "워크스페이스",
     "expand": "워크스페이스 열기",
