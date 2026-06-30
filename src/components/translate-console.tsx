@@ -37,13 +37,14 @@ import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
-import { joinDelta } from '@/lib/translate-stream-join';
+import { isHangulFusionBoundary, joinDelta } from '@/lib/translate-stream-join';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
 } from './realtime-transcript-provider';
 import {
   FIDELITY_LOSS_THRESHOLD,
+  countReplacementChars,
   decodeDataChannelMessage,
   looksJapaneseFallback,
   lossRatio,
@@ -664,6 +665,18 @@ export function TranslateConsole() {
   const sampleCountRef = useRef<Map<string, number>>(new Map());
   const EVENT_SAMPLE_CAP = 8;
 
+  // Bounded sampler for the Korean word-fusion investigation (audit #3).
+  // Korean has no case transitions, so the Latin-only join heuristics can't
+  // insert a space between two Hangul tokens — if OpenAI drops the
+  // inter-word space the boundary fuses ("소재들을분석하고"). We log a few
+  // samples per (slot,kind) per session recording whether the incoming
+  // delta carried any leading/trailing whitespace, so prod logs can settle
+  // whether the space was sent-and-dropped (a join bug we can fix) or never
+  // sent (needs the post-process LLM, not a stream-time fix). Runs in prod
+  // (not gated on TRACE_ENCODING) but capped so it can't flood the console.
+  const fusionSampleRef = useRef<Map<string, number>>(new Map());
+  const FUSION_SAMPLE_CAP = 6;
+
   // Fidelity counters — chars surfaced by the data-channel deltas vs chars
   // that actually reached the /messages POST. Drift means dedup or
   // sentence-boundary slicing dropped real content; we surface it on
@@ -671,11 +684,18 @@ export function TranslateConsole() {
   // FIDELITY_LOSS_THRESHOLD. Counters are aggregated across both slots
   // per-kind — the loss report is for the session as a whole and the
   // server-side audit doesn't need per-speaker breakdowns yet.
+  // `droppedFffd` counts U+FFFD replacement chars discarded by the
+  // byte-split mojibake collapse in joinDelta (see translate-stream-join).
+  // It's a lossy-but-intended cleanup, surfaced in the stop() report so a
+  // spike is visible without masking it as silent drift.
   const fidelityCountersRef = useRef<
-    Record<'input' | 'output', { deltaChars: number; commitChars: number; persistOk: number; persistFail: number }>
+    Record<
+      'input' | 'output',
+      { deltaChars: number; commitChars: number; persistOk: number; persistFail: number; droppedFffd: number }
+    >
   >({
-    input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
-    output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+    input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
+    output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
   });
 
   // Recording graph — TWO dedicated MediaStreamDestinationNodes, one for
@@ -1011,10 +1031,44 @@ export function TranslateConsole() {
       // a sentence boundary commits. Slot is encoded in the id so the
       // partial/finalized lines from the two slots never collide.
       const current = partialBag.current[slot] ?? { id: `${slot}-${kind}-${wall}`, text: '' };
+      // Korean word-fusion diagnostic (audit #3) — sample whether the
+      // upstream delta carried a space the join could preserve. Logged
+      // BEFORE joinDelta so we see the raw boundary. See fusionSampleRef.
+      if (isHangulFusionBoundary(current.text, delta)) {
+        const fusionKey = `${slot}:${kind}`;
+        const fusionSeen = fusionSampleRef.current.get(fusionKey) ?? 0;
+        if (fusionSeen < FUSION_SAMPLE_CAP) {
+          fusionSampleRef.current.set(fusionKey, fusionSeen + 1);
+          console.info('[translate] hangul-fusion boundary', {
+            n: fusionSeen + 1,
+            slot,
+            kind,
+            prevTail: current.text.slice(-12),
+            deltaHead: delta.slice(0, 12),
+            deltaLeadsSpace: /^\s/.test(delta),
+            prevTrailsSpace: /\s$/.test(current.text),
+          });
+        }
+      }
       // PR-T2 chunk-boundary join — see joinDelta comment. Plain `+`
       // produced the "alsoOnce" / "serviceWe" word-fusion the user
-      // reported.
+      // reported. joinDelta also collapses byte-split mojibake `��` pairs
+      // straddling the boundary; count the dropped U+FFFD so the fidelity
+      // report reflects the lossy cleanup instead of hiding it.
       const next = joinDelta(current.text, delta);
+      const fffdDropped =
+        countReplacementChars(current.text) +
+        countReplacementChars(delta) -
+        countReplacementChars(next);
+      if (fffdDropped > 0) {
+        fidelityCountersRef.current[kind].droppedFffd += fffdDropped;
+        console.warn('[translate] mojibake collapse', {
+          slot,
+          kind,
+          dropped: fffdDropped,
+          preview: next.slice(-16),
+        });
+      }
       // Shared transcript publisher 는 input (source) 만 노출 — probing
       // 같은 위젯은 인터뷰이의 발화 (= mic input) 만 보면 된다. publishInput
       // 헬퍼 안에서 started_at lookup/seed + provider 호출 처리.
@@ -1269,9 +1323,10 @@ export function TranslateConsole() {
     // Reset fidelity counters — same rationale as the dedup memory reset
     // above, plus the loss-ratio comparison wants per-session totals.
     fidelityCountersRef.current = {
-      input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
-      output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0 },
+      input: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
+      output: { deltaChars: 0, commitChars: 0, persistOk: 0, persistFail: 0, droppedFffd: 0 },
     };
+    fusionSampleRef.current.clear();
     setError(null);
     setSlotError(emptySlotRecord(null));
     setSlotActive(emptySlotRecord(false));
@@ -2165,9 +2220,10 @@ export function TranslateConsole() {
         commitChars: c.commitChars,
         persistOk: c.persistOk,
         persistFail: c.persistFail,
+        droppedFffd: c.droppedFffd,
         lossRatio: ratio,
       };
-      if (ratio > FIDELITY_LOSS_THRESHOLD || c.persistFail > 0) {
+      if (ratio > FIDELITY_LOSS_THRESHOLD || c.persistFail > 0 || c.droppedFffd > 0) {
         console.warn('[translate] fidelity loss', summary);
         if (id) {
           void fetch(`/api/translate/sessions/${id}/messages`, {
