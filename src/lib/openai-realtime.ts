@@ -15,9 +15,18 @@
 // Source-language transcript: the WebRTC variant of the translations
 // API does not auto-emit `session.input_transcript.delta` events.
 // They only appear when input transcription is explicitly enabled via
-// `audio.input.transcription`, with `gpt-4o-mini-transcribe` as the
-// model (chosen over `gpt-4o-transcribe` because it produced cleaner
-// captions in side-by-side testing).
+// `audio.input.transcription`.
+//
+// Input transcription model: `gpt-4o-transcribe` (the full model). An
+// earlier side-by-side test preferred `gpt-4o-mini-transcribe` for
+// slightly cleaner captions, but mini fell back to Japanese phonetics
+// on low-confidence Korean audio — the audit's #1 finding: a Korean
+// interview transcribed as Japanese kana (PR #556). The full model has
+// stronger Korean acoustic modelling and falls into that failure mode
+// far less often. The residual Japanese-only lines that still slip
+// through are caught downstream by the script-guard in
+// translate-console.tsx (`looksJapaneseFallback`), so the worst case is
+// a marginally noisier caption — never a Japanese line in a ko session.
 //
 // Reference: https://developers.openai.com/api/docs/guides/realtime-translation
 
@@ -73,7 +82,7 @@ export async function issueRealtimeSession(opts: {
       model,
       audio: {
         input: {
-          transcription: { model: 'gpt-4o-mini-transcribe' },
+          transcription: { model: 'gpt-4o-transcribe' },
         },
         output: { language: iso639(opts.targetLang) },
       },
