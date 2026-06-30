@@ -2885,11 +2885,46 @@ export function TranslateConsole() {
           </div>
         }
         actions={
-          <>
-            <span className="text-md tabular-nums text-mute">
-              {live ? formatElapsed(elapsed) : '00:00'}
-            </span>
-            {/* Layer B: explicit ON/OFF label, not an icon alone — the
+          <div className="flex flex-col items-end gap-2">
+            {/* Row 1: elapsed clock + share + start/stop. The status /
+                slot-indicator / recording pills were removed here as visual
+                noise — the underlying live/status/slotActive/recorderActive
+                state still drives behavior, just no longer rendered inline. */}
+            <div className="flex items-center gap-2">
+              <span className="text-md tabular-nums text-mute">
+                {live ? formatElapsed(elapsed) : '00:00'}
+              </span>
+              {live ? (
+                <>
+                  {!shareToken ? (
+                    <ChromeButton
+                      size="lg"
+                      onClick={() => void generateShare()}
+                      disabled={sharing}
+                    >
+                      {sharing ? t('share.creating') : t('share.create')}
+                    </ChromeButton>
+                  ) : null}
+                  <ChromeButton
+                    size="lg"
+                    onClick={() => void stop()}
+                  >
+                    {t('stop')}
+                  </ChromeButton>
+                </>
+              ) : (
+                <ChromeButton
+                  variant="primary"
+                  size="lg"
+                  onClick={() => void start()}
+                  disabled={busy}
+                >
+                  {busy ? t('starting') : t('start')}
+                </ChromeButton>
+              )}
+            </div>
+            {/* Row 2: voice on/off, moved below the start/stop button.
+                Layer B: explicit ON/OFF label, not an icon alone — the
                 icon-only toggle gave no hint that OFF was a click away from
                 restoring sound, so a host who'd toggled it off read the
                 silence as the TTS being broken. */}
@@ -2903,93 +2938,7 @@ export function TranslateConsole() {
             >
               {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
             </ChromeButton>
-            <span
-              className={`rounded-xs border px-2 py-0.5 text-sm ${
-                live
-                  ? 'border-amore text-amore'
-                  : status === 'error'
-                    ? 'border-line text-mute'
-                    : 'border-line text-mute-soft'
-              }`}
-            >
-              {t(`status.${status}`)}
-            </span>
-            {live && (captureMode === 'both' || captureMode === 'mic-only') ? (
-              <span
-                className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
-                  slotActive.mic
-                    ? 'border-ink text-ink'
-                    : 'border-line text-mute-soft'
-                }`}
-                aria-label={t('slotIndicator.hostAria')}
-                title={t('slotIndicator.hostAria')}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    slotActive.mic ? 'bg-ink' : 'bg-mute-soft'
-                  }`}
-                  aria-hidden="true"
-                />
-                {t('speaker.host')}
-              </span>
-            ) : null}
-            {live && (captureMode === 'both' || captureMode === 'tab-only') ? (
-              <span
-                className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-sm ${
-                  slotActive.tab
-                    ? 'border-amore text-amore'
-                    : 'border-line text-mute-soft'
-                }`}
-                aria-label={t('slotIndicator.guestAria')}
-                title={t('slotIndicator.guestAria')}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    slotActive.tab ? 'bg-amore' : 'bg-mute-soft'
-                  }`}
-                  aria-hidden="true"
-                />
-                {t('speaker.guest')}
-              </span>
-            ) : null}
-            {live && recorderActive ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-xs border border-amore px-2 py-0.5 text-sm text-amore"
-                aria-label={t('recording.indicatorAria')}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-amore" aria-hidden="true" />
-                {t('recording.indicator')}
-              </span>
-            ) : null}
-            {live ? (
-              <>
-                {!shareToken ? (
-                  <ChromeButton
-                    size="lg"
-                    onClick={() => void generateShare()}
-                    disabled={sharing}
-                  >
-                    {sharing ? t('share.creating') : t('share.create')}
-                  </ChromeButton>
-                ) : null}
-                <ChromeButton
-                  size="lg"
-                  onClick={() => void stop()}
-                >
-                  {t('stop')}
-                </ChromeButton>
-              </>
-            ) : (
-              <ChromeButton
-                variant="primary"
-                size="lg"
-                onClick={() => void start()}
-                disabled={busy}
-              >
-                {busy ? t('starting') : t('start')}
-              </ChromeButton>
-            )}
-          </>
+          </div>
         }
       />
 
