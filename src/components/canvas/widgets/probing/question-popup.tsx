@@ -83,14 +83,23 @@ const IMPORTANCE_DOT_COLOR: Record<ProbingThinkImportance, string> = {
 // 외부에서 popup.id 가 바뀔 때마다 React 가 본 컴포넌트를 새 인스턴스로
 // mount 하도록 부모가 key={popup.id} 를 줘야 한다. 본 wrapper 는 그
 // 합의를 강제 — 새 popup 마다 카운트다운이 깨끗하게 리셋된다.
+// placement — popup 가 부모 영역 어디에 붙는지.
+//   'bottom-right' (default) — fullview 우패널 우하단 floating (좌패널 페르소나
+//      시선 안 가림). 기존 동작 보존.
+//   'center' — canvas card 중앙 절대 위치. preview 카드는 영역이 좁고 사용자
+//      시선이 중앙에 머무므로 가운데에 띄운다.
+export type ProbingPopupPlacement = 'bottom-right' | 'center';
+
 export function ProbingQuestionPopup({
   popup,
+  placement = 'bottom-right',
   onPin,
   onCopy,
   onDismiss,
   onAutoDismiss,
 }: {
   popup: PopupQuestion;
+  placement?: ProbingPopupPlacement;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -100,6 +109,7 @@ export function ProbingQuestionPopup({
     <ProbingQuestionPopupInner
       key={popup.id}
       popup={popup}
+      placement={placement}
       onPin={onPin}
       onCopy={onCopy}
       onDismiss={onDismiss}
@@ -110,12 +120,14 @@ export function ProbingQuestionPopup({
 
 function ProbingQuestionPopupInner({
   popup,
+  placement,
   onPin,
   onCopy,
   onDismiss,
   onAutoDismiss,
 }: {
   popup: PopupQuestion;
+  placement: ProbingPopupPlacement;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -169,6 +181,13 @@ function ProbingQuestionPopupInner({
 
   const progress = secondsLeft / COUNTDOWN_SECONDS;
 
+  // center: 카드 중앙 (inset-x-4 로 좌우 여백 + mx-auto 로 max-w 중앙 정렬,
+  // top-1/2 -translate-y-1/2 로 수직 중앙). bottom-right: 기존 우하단 floating.
+  const placementClass =
+    placement === 'center'
+      ? 'inset-x-4 top-1/2 -translate-y-1/2 mx-auto'
+      : 'bottom-6 right-6 w-full';
+
   return (
     <div
       role="dialog"
@@ -176,7 +195,7 @@ function ProbingQuestionPopupInner({
       aria-label="AI 가 제안한 즉시 질문"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`pointer-events-auto absolute bottom-6 right-6 z-popup w-full ${visual.container} rounded-sm bg-paper p-4 ${visual.pulse ? 'probing-popup-pulse' : ''}`}
+      className={`pointer-events-auto absolute z-popup ${placementClass} ${visual.container} rounded-sm bg-paper p-4 ${visual.pulse ? 'probing-popup-pulse' : ''}`}
     >
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
