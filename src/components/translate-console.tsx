@@ -2817,75 +2817,72 @@ export function TranslateConsole() {
       <WidgetSubHeader
         className="-mx-5 -mt-5"
         inputs={
-          <>
-            {/* 1번 = 입력 소스 (captureMode). probing-card 의 SourcePicker
-                와 동일 위치 — Field 라벨로 UPPERCASE eyebrow 통일. */}
-            <Field
-              label={t('captureMode.label')}
-              description={
-                captureMode === 'both'
-                  ? t('captureMode.bothCostHint')
-                  : captureMode !== 'mic-only'
-                    ? t('captureMode.tabHint')
-                    : undefined
-              }
-            >
+          /* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
+             수평) stack, 우 = glossary chips. 사용자 요청 (2026-06-30) 으로
+             캡처방식/원어/번역언어 라벨·안내문 전부 제거 — visual label 0,
+             a11y 는 select 의 aria-label 로 보장. glossary 라벨만 유지. */
+          <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+            {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
+            <div className="flex min-w-0 flex-col gap-3">
+              {/* 1번 = 입력 소스 (captureMode). 라벨/안내문 제거. */}
               <select
                 value={captureMode}
                 onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
                 disabled={live || busy}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                aria-label={t('captureMode.label')}
+                className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
               >
                 <option value="both">{t('captureMode.both')}</option>
                 <option value="mic-only">{t('captureMode.micOnly')}</option>
                 <option value="tab-only">{t('captureMode.tabOnly')}</option>
               </select>
-            </Field>
-            {/* 2번 = 언어 (translate 전용). source / target 두 dropdown. */}
-            <Field label={t('sourceLang')}>
-              <select
-                value={sourceLang}
-                onChange={(e) => setSourceLang(e.target.value)}
-                disabled={live || busy}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                {langOptions.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t('targetLang')}>
-              <select
-                value={targetLang}
-                onChange={(e) => setTargetLang(e.target.value)}
-                disabled={live || busy}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                {langOptions.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {/* 3번 = glossary (Layer B). 세션 시작 전에만 입력 — live/busy 시
-                잠금. 인명/도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
-            <Field
-              label={t('glossary.label')}
-              description={t('glossary.hint')}
-            >
-              <GlossaryField
-                values={glossary}
-                onChange={setGlossary}
-                disabled={live || busy}
-                placeholderEmpty={t('glossary.placeholderEmpty')}
-                placeholderAdd={t('glossary.placeholderAdd')}
-                removeAria={t('glossary.removeAria')}
-              />
-            </Field>
-          </>
+              {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={sourceLang}
+                  onChange={(e) => setSourceLang(e.target.value)}
+                  disabled={live || busy}
+                  aria-label={t('sourceLang')}
+                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                >
+                  {langOptions.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={targetLang}
+                  onChange={(e) => setTargetLang(e.target.value)}
+                  disabled={live || busy}
+                  aria-label={t('targetLang')}
+                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                >
+                  {langOptions.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
+                live/busy 시 잠금. 라벨 "고유 용어/맥락 주입" 만 노출, hint
+                제거. 인명/도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
+            <div className="flex min-w-0 flex-col">
+              <Field label={t('glossary.label')}>
+                <GlossaryField
+                  values={glossary}
+                  onChange={setGlossary}
+                  disabled={live || busy}
+                  placeholderEmpty={t('glossary.placeholderEmpty')}
+                  placeholderAdd={t('glossary.placeholderAdd')}
+                  removeAria={t('glossary.removeAria')}
+                />
+              </Field>
+            </div>
+          </div>
         }
         actions={
           <>
