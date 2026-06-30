@@ -916,14 +916,15 @@ export function CanvasBoard({
     </div>
 
     {/* ── 공유 전체보기 모달 ─────────────────────────────────────────
-        단일 fullscreen Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재
-        위젯 본문이 portal 됨). 헤더(제목/닫기×)는 각 위젯의
-        WidgetFullviewPanel 이 소유 → 동적 subtitle 유지. backdrop /
+        단일 Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재 위젯 본문이
+        portal 됨). 헤더(제목/닫기×)는 각 위젯의 WidgetFullviewPanel 이
+        소유 → 동적 subtitle 유지. size="wide" — 90vw×90vh, Memphis 팝업
+        (backdrop 보이는 모달, 프로빙 어시스턴트 원래 톤). backdrop /
         Esc 닫기는 Modal 이 처리. */}
     <Modal
       open={fullviewOpen && !!currentWidgetKey}
       onClose={closeFullview}
-      size="full"
+      size="wide"
     >
       <div className="flex h-full min-h-0 flex-1 overflow-hidden">
         <SidebarNav
