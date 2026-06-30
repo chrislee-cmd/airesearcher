@@ -22,7 +22,9 @@ import {
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WidgetContent, WidgetStateInfo } from '../widget-types';
+import { Button } from '@/components/ui/button';
 import {
   WidgetHeaderColorPicker,
   useWidgetHeaderColor,
@@ -212,15 +214,36 @@ function CostFlyUpOverlay({ featureKey }: { featureKey: string }) {
   );
 }
 
+// Inline expand-corners glyph (arrows-out). Explicit size className +
+// aria-hidden satisfies the a11y QA rules (the button is labelled via its
+// own aria-label / visible text; the SVG itself is decorative + sized).
+function FullviewIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function WidgetShell({
   content,
   dragHandleProps,
+  onFullview,
 }: {
   content: WidgetContent;
   // 호출부 의도 표식 (현재는 default 동작).
   dashboardMode?: boolean;
   // 부모가 위젯 순서 변경 dnd 를 wire-up. 헤더 영역에 spread.
   dragHandleProps?: DragHandleProps;
+  // state pill 하단 "전체 보기" 진입점. 넘기는 위젯이 있을 때만 버튼 노출 —
+  // 미전달이면 버튼 0 → 회귀 0 (PR-C 가 위젯별 wire).
+  onFullview?: () => void;
 }) {
   // shell 헤더 (PopStatePill) ↔ body (job hook) 가 같은 인스턴스 안에서
   // state 를 주고받게 1-위젯-1-Provider 로 wrap. 초기값은 widget meta 의
@@ -228,7 +251,11 @@ export function WidgetShell({
   // 안 하면 초기값 그대로 노출.
   return (
     <WidgetStateProvider widgetKey={content.key} initialState={{ kind: content.state }}>
-      <WidgetShellInner content={content} dragHandleProps={dragHandleProps} />
+      <WidgetShellInner
+        content={content}
+        dragHandleProps={dragHandleProps}
+        onFullview={onFullview}
+      />
     </WidgetStateProvider>
   );
 }
@@ -236,13 +263,16 @@ export function WidgetShell({
 function WidgetShellInner({
   content,
   dragHandleProps,
+  onFullview,
 }: {
   content: WidgetContent;
   dragHandleProps?: DragHandleProps;
+  onFullview?: () => void;
 }) {
   const { ExpandedBody } = content;
   const isDraggable = !!dragHandleProps?.draggable;
   const [headerColor, setHeaderColor] = useWidgetHeaderColor(content.key);
+  const tWidgets = useTranslations('Widgets');
 
   return (
     <div
@@ -305,6 +335,22 @@ function WidgetShellInner({
           </div>
         )}
       </div>
+      {/* state pill 하단 "전체 보기" link — onFullview 넘긴 위젯만 노출.
+          미전달이면 렌더 0 → 회귀 0. link 톤 (text + 아이콘, Memphis chip 아님). */}
+      {onFullview && (
+        <div className="flex shrink-0 justify-end px-3 pt-2">
+          <Button
+            variant="link"
+            size="xs"
+            onClick={onFullview}
+            aria-label={tWidgets('fullview')}
+            leftIcon={<FullviewIcon className="h-3 w-3" />}
+            className="uppercase tracking-[0.18em]"
+          >
+            {tWidgets('fullview')}
+          </Button>
+        </div>
+      )}
       {/* framed body — 2.5px 검은 inner frame + inset shadow. 그 안쪽
           wrapper 가 data-canvas-body — globals.css 의 Memphis bold +
           display typography scoped rule 이 button / input / 헤딩에 적용. */}
