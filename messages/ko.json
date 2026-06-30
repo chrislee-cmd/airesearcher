@@ -786,7 +786,13 @@
     },
     "monitorMute": {
       "muteAria": "번역 음성 끄기 (시청자에게는 그대로 전송됩니다)",
-      "unmuteAria": "번역 음성 켜기"
+      "unmuteAria": "번역 음성 켜기",
+      "on": "음성 ON",
+      "off": "음성 OFF (탭하면 켜짐)"
+    },
+    "ttsBlocked": {
+      "notice": "통역 음성이 브라우저에 의해 차단됐습니다",
+      "enable": "음성 켜기"
     },
     "start": "통역 시작",
     "stop": "종료",
