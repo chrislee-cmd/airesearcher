@@ -1007,6 +1007,14 @@
       "copied": "Copied",
       "revoke": "Revoke",
       "expiresIn4h": "Auto-expires in 4 hours"
+    },
+    "listeners": {
+      "title": "{count, plural, =0 {No listeners} one {# listener} other {# listeners}}",
+      "empty": "No listeners yet",
+      "unknownAgent": "Unknown device",
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago"
     }
   },
   "Widgets": {
