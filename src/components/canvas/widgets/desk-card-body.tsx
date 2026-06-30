@@ -69,6 +69,11 @@ import {
   type DeskSourceId,
 } from '@/lib/desk-sources';
 
+// Keyword count cap — MUST match the server Body schema (`keywords.max()` in
+// src/app/api/desk/route.ts). Mismatched caps mean the client lets the user add
+// chips the server then rejects with 400 (spec-down 2026-06-30).
+const MAX_KEYWORDS = 5;
+
 type RangePreset = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
   { id: 'all', days: null },
@@ -393,7 +398,7 @@ export function DeskCardBody() {
       const out = [...prev];
       for (const p of parts) {
         if (!p || seen.has(p)) continue;
-        if (out.length >= 10) break;
+        if (out.length >= MAX_KEYWORDS) break;
         out.push(p);
         seen.add(p);
       }
@@ -412,7 +417,7 @@ export function DeskCardBody() {
     const merged = [...keywords];
     for (const p of parts) {
       if (!p || seen.has(p)) continue;
-      if (merged.length >= 10) break;
+      if (merged.length >= MAX_KEYWORDS) break;
       merged.push(p);
       seen.add(p);
     }

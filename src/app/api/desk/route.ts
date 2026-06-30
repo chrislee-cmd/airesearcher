@@ -52,16 +52,20 @@ const REGION_ENUM = z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']);
 // ── Crawl scope hard caps (spec-down — 2026-06-30 timeout incident) ──────────
 // The crawl phase cost scales with keywords × sources × regions. Unbounded it
 // reached 211s (70% of the 300s budget) and the report never got generated.
-// These caps bound the worst case so the LLM report phases always get budget.
+// We cap the two scope axes the user actually controls — keywords and regions.
+// Sources are NOT capped: the client auto-derives the source set from the
+// chosen regions (sourcesForRegions → up to all 12 when KR is selected), so a
+// server-side `sources.max(N)` would 400 every default submission. The keyword
+// + region caps plus the per-task crawl timeout already bound the worst case
+// (≤5 kw × ≤3 regions × ≤12 sources, each task ≤15s, fully concurrent ≈ 15s).
 // Mirrored in the client UI (desk-card-body) for an estimate/warning at input
-// time. Keep the three in sync if you change them.
+// time. Keep the two in sync if you change them.
 const MAX_KEYWORDS = 5;
-const MAX_SOURCES = 8;
 const MAX_REGIONS = 3;
 
 const Body = z.object({
   keywords: z.array(z.string().min(1).max(120)).min(1).max(MAX_KEYWORDS),
-  sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES),
+  sources: z.array(z.enum(SOURCE_IDS)).min(1),
   locale: z.enum(['ko', 'en']).optional(),
   // 멀티 region 우선. 단일 `region` 도 backward-compat 으로 유지 — 누락 시
   // locale 로 기본값 결정 (기존 동작과 동일).
