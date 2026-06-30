@@ -816,7 +816,13 @@
     },
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
-      "unmuteAria": "Unmute translated audio"
+      "unmuteAria": "Unmute translated audio",
+      "on": "Audio on",
+      "off": "Audio off (tap to enable)"
+    },
+    "ttsBlocked": {
+      "notice": "Interpreted audio was blocked by the browser",
+      "enable": "Enable audio"
     },
     "start": "Start interpreting",
     "stop": "Stop",

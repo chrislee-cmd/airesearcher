@@ -470,6 +470,23 @@ function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCoun
   return { input: channel(), output: channel() };
 }
 
+// 🚨 Phase 1 diagnostic helper. Returns a compact per-m=audio-section
+// direction summary like "sendrecv" or "sendrecv,recvonly" so the console
+// shows the negotiated audio lanes inline. An answer that lacks a recv lane
+// (sendonly / no audio section) explains why pc.ontrack never fires while
+// translated TEXT still streams over the data channel.
+function summarizeAudioMlines(sdp: string): string {
+  const sections = sdp.match(/m=audio[\s\S]*?(?=\r?\nm=|$)/g) ?? [];
+  if (sections.length === 0) return 'no-audio-mline';
+  return sections
+    .map(
+      (sec) =>
+        sec.match(/a=(sendrecv|sendonly|recvonly|inactive)/)?.[1] ??
+        'unspecified',
+    )
+    .join(',');
+}
+
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -523,6 +540,14 @@ export function TranslateConsole() {
   // just doesn't get the echo into their own room. Default ON because
   // the host typically wants to verify the translation in real time.
   const [outputAudible, setOutputAudible] = useState(true);
+  // Layer A: autoplay-reject guard. Browsers block `<audio>.play()` unless
+  // it follows a user gesture (incognito / fresh tab is the common trip),
+  // and the monitor's silent `.play().catch(() => {})` swallowed it — the
+  // host heard nothing with no signal. When the monitor's play() rejects we
+  // flip this so the widget surfaces a "음성 켜기" CTA that retries play()
+  // from a real click. It's a local-monitor concern only; viewers still get
+  // the LiveKit publish regardless.
+  const [ttsBlocked, setTtsBlocked] = useState(false);
   // `now` ticks once per second while live so the 30-second prompter
   // window slides forward continuously even when the OpenAI deltas
   // pause (e.g. the speaker takes a breath). Without this the screen
@@ -645,7 +670,19 @@ export function TranslateConsole() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const monitorAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Per-slot monitor <audio> elements. We attach each slot's RAW remote TTS
+  // stream directly (the OpenAI guide pattern) instead of routing the
+  // monitor through the WebAudio mixer: a remote WebRTC track fed ONLY into
+  // a WebAudio MediaStreamAudioSourceNode plays silent on Chrome (the
+  // long-standing crbug/121673), and the mixer's AudioContext can also land
+  // suspended — both made the monitor "play" while emitting no sound.
+  // Attaching the raw stream to a media element sidesteps the AudioContext
+  // entirely AND "pumps" the remote track so the mixer (still used for the
+  // LiveKit publish + recording) actually receives audio. Two elements so
+  // `both` mode plays host + guest simultaneously.
+  const monitorAudioRefs = useRef<Record<SourceSlot, HTMLAudioElement | null>>(
+    emptySlotRecord<HTMLAudioElement | null>(null),
+  );
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Tab-audio mode only: periodic silence injection. Continuous tab
   // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
@@ -844,9 +881,40 @@ export function TranslateConsole() {
   // it. We do NOT stop the publish — the gain node / track on the
   // outbound side stays untouched.
   useEffect(() => {
-    if (!monitorAudioRef.current) return;
-    monitorAudioRef.current.muted = !outputAudible;
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (el) el.muted = !outputAudible;
+    }
   }, [outputAudible]);
+
+  // Layer D: monitor <audio> lifecycle diagnostics. The element is mounted
+  // for the component's whole life, so a `[]`-dep effect binds the
+  // listeners once. They make a "no sound" report attributable to a
+  // concrete play / pause / error event instead of guesswork — paired with
+  // the pc.ontrack diagnostic below, the two pin the failure to either the
+  // server (no track) or the client (track present but element never plays).
+  useEffect(() => {
+    const cleanups: Array<() => void> = [];
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (!el) continue;
+      const onPlay = () =>
+        console.info(`[translate:${slot}] TTS monitor playing`);
+      const onPause = () =>
+        console.info(`[translate:${slot}] TTS monitor paused`);
+      const onError = () =>
+        console.error(`[translate:${slot}] TTS monitor error`, el.error);
+      el.addEventListener('play', onPlay);
+      el.addEventListener('pause', onPause);
+      el.addEventListener('error', onError);
+      cleanups.push(() => {
+        el.removeEventListener('play', onPlay);
+        el.removeEventListener('pause', onPause);
+        el.removeEventListener('error', onError);
+      });
+    }
+    return () => cleanups.forEach((fn) => fn());
+  }, []);
 
   // `caller` is purely diagnostic — surfaces in the production log so we
   // can match a stray `disconnect from room` cycle back to whichever
@@ -940,10 +1008,47 @@ export function TranslateConsole() {
       void roomRef.current.disconnect();
       roomRef.current = null;
     }
-    if (monitorAudioRef.current) {
-      monitorAudioRef.current.srcObject = null;
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = monitorAudioRefs.current[slot];
+      if (el) el.srcObject = null;
     }
   }, []);
+
+  // Layer A: retry monitor playback from a real user gesture. The autoplay
+  // policy only grants playback after a click/tap, so the "음성 켜기" CTA
+  // routes here. Re-pins srcObject to the live mixer (it may have been
+  // cleared) and respects the current mute toggle before playing; success
+  // clears the blocked banner.
+  const enableTtsPlayback = useCallback(async () => {
+    try {
+      // Best-effort resume of the mixer's AudioContext so the LiveKit
+      // publish / recording graph runs. The host monitor itself plays the
+      // RAW stream (below) and does NOT depend on the context, so this is
+      // only for the viewer/recording path.
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'suspended') await ctx.resume();
+      console.info('[translate] enableTtsPlayback', {
+        ctxState: audioCtxRef.current?.state ?? null,
+      });
+      // Replay each slot's monitor element from its raw TTS stream, inside
+      // this button's user gesture (so the autoplay policy lets play()
+      // succeed). Covers both single-slot and `both` mode.
+      let played = false;
+      for (const slot of ['mic', 'tab'] as const) {
+        const el = monitorAudioRefs.current[slot];
+        const raw = ttsStreamRef.current[slot];
+        if (!el || !raw) continue;
+        if (el.srcObject !== raw) el.srcObject = raw;
+        el.muted = !outputAudible;
+        await el.play();
+        played = true;
+      }
+      if (played) setTtsBlocked(false);
+    } catch (err) {
+      console.warn('[translate] TTS manual play failed', err);
+      setTtsBlocked(true);
+    }
+  }, [outputAudible]);
 
   const pushLine = useCallback(
     (kind: 'input' | 'output', line: CaptionLine) => {
@@ -1432,6 +1537,7 @@ export function TranslateConsole() {
     setError(null);
     setSlotError(emptySlotRecord(null));
     setSlotActive(emptySlotRecord(false));
+    setTtsBlocked(false);
     setInputLines([]);
     setOutputLines([]);
     setElapsed(0);
@@ -1875,7 +1981,12 @@ export function TranslateConsole() {
           console.info(`[translate:${slot}] pc.signalingState`, pc.signalingState);
         };
         pc.onconnectionstatechange = () => {
-          console.info(`[translate:${slot}] pc.connectionState`, pc.connectionState);
+          console.info(
+            `[translate:${slot}] pc.connectionState`,
+            pc.connectionState,
+            'at',
+            Math.round(performance.now()),
+          );
           if (pc.connectionState === 'connected') {
             setSlotActive((prev) => ({ ...prev, [slot]: true }));
           } else if (
@@ -1900,6 +2011,44 @@ export function TranslateConsole() {
         };
         pcRef.current[slot] = pc;
         publishStream.getAudioTracks().forEach((tr) => pc.addTrack(tr, publishStream));
+        // 🚨 Phase 1 diagnostic (pr-translate-tts-playback-hardening):
+        // confirm whether OpenAI publishes a TTS audio track at all. This is
+        // a SEPARATE listener that coexists with the `pc.ontrack =` handler
+        // below — both fire. If this never logs, the server isn't sending a
+        // track (SDP / session-config issue, not fixable client-side); if it
+        // logs `kind: 'audio'` but the host still hears nothing, the failure
+        // is client-side attach / autoplay (Layers A / C).
+        let trackEverFired = false;
+        pc.addEventListener('track', (e) => {
+          trackEverFired = true;
+          // Inline string (not an object) so it's readable in the console
+          // without expanding — the collapsed Object logs hid this.
+          console.info(
+            `[translate:${slot}] pc.ontrack fired — kind=${e.track?.kind} stream=${e.streams[0]?.id ?? 'none'} readyState=${e.track?.readyState}`,
+          );
+        });
+        // 🚨 Phase 1 diagnostic: 5 s after setup, dump each transceiver's
+        // negotiated direction as an INLINE STRING + an explicit "no track"
+        // warning. `pc.ontrack` never firing combined with a 'sendonly' /
+        // 'inactive' currentDirection means OpenAI negotiated no receive
+        // path server-side (translation TEXT still flows over the data
+        // channel) — distinguishing that from a client-side attach bug.
+        setTimeout(() => {
+          if (pcRef.current[slot] !== pc) return;
+          const dirs = pc
+            .getTransceivers()
+            .map(
+              (tr, i) =>
+                `[${i}] dir=${tr.direction} cur=${tr.currentDirection ?? 'null'} recv=${tr.receiver?.track?.kind ?? 'none'}`,
+            )
+            .join(' | ');
+          console.info(`[translate:${slot}] transceivers @5s: ${dirs || 'none'}`);
+          if (!trackEverFired) {
+            console.warn(
+              `[translate:${slot}] ⚠ NO TTS track after 5s — OpenAI returned no return-audio. Translation TEXT works (datachannel) but no audio m-line was negotiated for translated speech.`,
+            );
+          }
+        }, 5000);
         pc.ontrack = (e) => {
           const stream = e.streams[0];
           if (!stream) return;
@@ -1911,16 +2060,26 @@ export function TranslateConsole() {
           // fine — the audible mix users hear comes from the
           // monitor's audio sink, which is driven by the shared
           // output mixer below.
-          if (monitorAudioRef.current && !monitorAudioRef.current.srcObject) {
-            // Use the shared mixed output (audioDestRef.stream) as the
-            // monitor source so the host hears BOTH slots' translations
-            // through one element.
-            const mixed = audioDestRef.current?.stream;
-            if (mixed) {
-              monitorAudioRef.current.srcObject = mixed;
-              monitorAudioRef.current.muted = !outputAudible;
-              monitorAudioRef.current.play().catch(() => {});
-            }
+          // Attach the RAW remote TTS stream to THIS slot's monitor element
+          // (the OpenAI guide pattern: `audioEl.srcObject = e.streams[0]`).
+          // It plays through the browser's native pipeline regardless of
+          // AudioContext state — fixing the "monitor playing but silent"
+          // case. Pumping the remote track via a media element is ALSO what
+          // makes the WebAudio mixer below (LiveKit publish + recording)
+          // carry audio on Chrome: a remote track fed only into
+          // createMediaStreamSource yields silence (crbug/121673).
+          // Re-attach on every arrival (renegotiation / re-entry safe).
+          const el = monitorAudioRefs.current[slot];
+          if (el) {
+            if (el.srcObject !== stream) el.srcObject = stream;
+            el.muted = !outputAudible;
+            // Layer A: surface autoplay rejection instead of swallowing it.
+            el.play()
+              .then(() => setTtsBlocked(false))
+              .catch((err) => {
+                console.warn(`[translate:${slot}] TTS autoplay rejected`, err);
+                setTtsBlocked(true);
+              });
           }
           // Wire the slot's TTS into the shared mixers (output publish
           // dest + recording dest). Guard against double-wiring on
@@ -2008,6 +2167,15 @@ export function TranslateConsole() {
           throw new Error(`openai_sdp_${sdpRes.status}`);
         }
         const answerSdp = await sdpRes.text();
+        // 🚨 Phase 1 diagnostic: summarize the negotiated audio direction(s)
+        // inline. `summarizeAudioMlines` extracts each m=audio section's
+        // a=sendrecv/sendonly/recvonly/inactive. If the OFFER has a recv
+        // lane (sendrecv) but the ANSWER comes back sendonly / has no second
+        // audio m-line, OpenAI declined to return translated speech — the
+        // root cause of "발화 0" with working captions.
+        console.info(
+          `[translate:${slot}] sdp audio dirs — offer=[${summarizeAudioMlines(offer.sdp ?? '')}] answer=[${summarizeAudioMlines(answerSdp)}]`,
+        );
         await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
         console.info(`[translate:${slot}] sdp answer applied`);
         return true;
@@ -2724,16 +2892,20 @@ export function TranslateConsole() {
             <span className="text-md tabular-nums text-mute">
               {live ? formatElapsed(elapsed) : '00:00'}
             </span>
-            <IconButton
-              variant="bordered"
-              size="md"
+            {/* Layer B: explicit ON/OFF label, not an icon alone — the
+                icon-only toggle gave no hint that OFF was a click away from
+                restoring sound, so a host who'd toggled it off read the
+                silence as the TTS being broken. */}
+            <ChromeButton
+              size="lg"
               onClick={() => setOutputAudible((v) => !v)}
               aria-pressed={outputAudible}
+              leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
               aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
               title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
             >
-              {outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-            </IconButton>
+              {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
+            </ChromeButton>
             <span
               className={`rounded-xs border px-2 py-0.5 text-sm ${
                 live
@@ -2824,6 +2996,23 @@ export function TranslateConsole() {
         }
       />
 
+      {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
+          (most visible spot) so the host immediately sees why the monitor
+          is silent and can restore it with one click. Viewers are
+          unaffected — this is the host's local monitor only. */}
+      {ttsBlocked ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xs border border-amore bg-paper px-3 py-2 text-md text-ink">
+          <span className="text-amore">{t('ttsBlocked.notice')}</span>
+          <ChromeButton
+            variant="primary"
+            size="md"
+            onClick={() => void enableTtsPlayback()}
+          >
+            {t('ttsBlocked.enable')}
+          </ChromeButton>
+        </div>
+      ) : null}
+
       {shareToken && shareUrl ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">
           <span className="text-mute-soft">{t('share.label')}</span>
@@ -2895,7 +3084,26 @@ export function TranslateConsole() {
         />
       ) : null}
 
-      <audio ref={monitorAudioRef} autoPlay playsInline className="hidden" />
+      {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
+          directly (see monitorAudioRefs). Hidden; audible unless the host
+          mutes via the toggle. Two elements so `both` mode plays host +
+          guest at once. */}
+      <audio
+        ref={(el) => {
+          monitorAudioRefs.current.mic = el;
+        }}
+        autoPlay
+        playsInline
+        className="hidden"
+      />
+      <audio
+        ref={(el) => {
+          monitorAudioRefs.current.tab = el;
+        }}
+        autoPlay
+        playsInline
+        className="hidden"
+      />
     </div>
   );
 }
