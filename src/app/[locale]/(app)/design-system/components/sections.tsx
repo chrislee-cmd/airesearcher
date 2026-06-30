@@ -19,6 +19,7 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { PrimitivePage, Subsection } from './primitive-page';
 import {
   ModalDemo,
+  WidgetFullviewModalDemo,
   FileDropZoneDemo,
   DropdownMenuDemo,
   SliderDemo,
@@ -41,6 +42,7 @@ export type SectionId =
   | 'checkbox'
   | 'slider'
   | 'modal'
+  | 'widget-fullview-modal'
   | 'file-drop-zone'
   | 'dropdown-menu'
   | 'label'
@@ -87,6 +89,11 @@ export const SECTION_GROUPS: SectionGroup[] = [
     title: 'Layout primitives',
     sections: [
       { id: 'modal', label: 'Modal', render: () => <ModalSection /> },
+      {
+        id: 'widget-fullview-modal',
+        label: 'WidgetFullviewModal',
+        render: () => <WidgetFullviewModalSection />,
+      },
       { id: 'file-drop-zone', label: 'FileDropZone', render: () => <FileDropZoneSection /> },
       { id: 'dropdown-menu', label: 'DropdownMenu', render: () => <MenuSection /> },
       { id: 'label', label: 'Label', render: () => <LabelSection /> },
@@ -587,6 +594,19 @@ function ModalSection() {
     >
       <Subsection label="Sizes (interactive)">
         <ModalDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function WidgetFullviewModalSection() {
+  return (
+    <PrimitivePage
+      title="WidgetFullviewModal"
+      hint="src/components/canvas/shell/widget-fullview-modal.tsx · Modal(wide|full) wrap + 프로빙 chrome 일반화 · 제목 + 부제 + 닫기(×) header / 본문 slot / 옵션 footer · Esc·backdrop 닫기 + focus restore 는 Modal 에서 상속 · 소비처는 후속 PR 에서 wire"
+    >
+      <Subsection label="Interactive (wide + footer / wide no-footer / full)">
+        <WidgetFullviewModalDemo />
       </Subsection>
     </PrimitivePage>
   );
