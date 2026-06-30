@@ -358,6 +358,361 @@
 }
 
 /* =========================================================================
+   Airbnb design tokens — opt-in via `data-design="airbnb"` on a wrapper.
+   Source: jarvis/design-system/DESIGN-airbnb.md frontmatter.
+   Bento tokens that share a name (amore, ink, line, paper, mute…) are
+   overridden so the same component classes (text-ink, border-line, bg-amore…)
+   render in Airbnb tone inside the wrapper. Airbnb-specific tokens (rausch,
+   luxe, plus, cereal font, pill radius) are added as new variables for use
+   within the comparison sample-cluster.
+   ========================================================================= */
+[data-design="airbnb"] {
+  /* Brand voltage (Rausch carries every primary CTA) */
+  --color-amore: #ff385c;          /* rausch */
+  --color-amore-soft: #ff6480;     /* lighter rausch tint for hover/secondary */
+  --color-amore-bg: #ffd1da;       /* rausch-disabled — pale pink wash */
+  --color-amore-tint: #ffe4ea;     /* even softer wash for hover surfaces */
+
+  /* Surfaces */
+  --color-paper: #ffffff;          /* canvas — pure white */
+  --color-paper-soft: #f7f7f7;     /* surface-soft */
+  --color-pacific: #222222;        /* ink */
+  --color-pacific-bg: #f2f2f2;     /* surface-strong */
+
+  /* Text */
+  --color-ink: #222222;
+  --color-ink-2: #3f3f3f;          /* body — secondary running text */
+  --color-mute: #6a6a6a;
+  --color-mute-soft: #929292;
+  --color-gray-warm: #6a6a6a;
+
+  /* Lines (hairlines run at solid hex in airbnb, not rgba) */
+  --color-line: #dddddd;
+  --color-line-soft: #ebebeb;
+
+  /* Airbnb-specific brand tokens (sub-brands + state colors) */
+  --color-airbnb-rausch: #ff385c;
+  --color-airbnb-rausch-active: #e00b41;
+  --color-airbnb-rausch-disabled: #ffd1da;
+  --color-airbnb-luxe: #460479;
+  --color-airbnb-plus: #92174d;
+  --color-airbnb-error: #c13515;
+  --color-airbnb-border-strong: #c1c1c1;
+
+  /* Typography — Cereal VF is licensed; fall back to system stack. */
+  --font-sans: "Airbnb Cereal VF", Circular, -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+  --font-airbnb-display: "Airbnb Cereal VF", Circular, -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+
+  /* Radius scale — airbnb is softer + adds a pill (full) and a hard 0 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;                /* button radius — was 14px in bento */
+  --radius-md: 14px;               /* card radius */
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+  --radius-airbnb-card: 14px;
+  --radius-airbnb-pill: 9999px;
+  --radius-airbnb-button: 8px;
+
+  /* Shadow — single tier in airbnb */
+  --shadow-bento: rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+}
+
+/* =========================================================================
+   Additional reference brands — opt-in via `data-design="<key>"` wrappers.
+   Each block overrides the same bento token surface so the SampleCluster
+   (src/app/[locale]/(app)/design/_components/sample-cluster.tsx) re-tones
+   without JSX changes. Source specs live in ~/jarvis/design-system/.
+   Registry: src/lib/design-brands.ts (SSOT for valid wrapper keys).
+   ========================================================================= */
+
+/* Apple — museum gallery, white canvas, Action Blue */
+[data-design="apple"] {
+  --color-amore: #0066cc;
+  --color-amore-soft: #0071e3;
+  --color-amore-bg: #e6f0ff;
+  --color-amore-tint: #f0f5ff;
+  --color-paper: #ffffff;
+  --color-paper-soft: #f5f5f7;
+  --color-pacific: #1d1d1f;
+  --color-pacific-bg: #fafafc;
+  --color-ink: #1d1d1f;
+  --color-ink-2: #333333;
+  --color-mute: #7a7a7a;
+  --color-mute-soft: #cccccc;
+  --color-gray-warm: #7a7a7a;
+  --color-line: #e0e0e0;
+  --color-line-soft: #f0f0f0;
+  --font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+  --shadow-bento: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* BMW M — motorsport black canvas, white type, M-blue voltage */
+[data-design="bmw-m"] {
+  --color-amore: #1c69d4;
+  --color-amore-soft: #0066b1;
+  --color-amore-bg: #0d2a4d;
+  --color-amore-tint: #1a3a66;
+  --color-paper: #000000;
+  --color-paper-soft: #1a1a1a;
+  --color-pacific: #ffffff;
+  --color-pacific-bg: #262626;
+  --color-ink: #ffffff;
+  --color-ink-2: #e6e6e6;
+  --color-mute: #bbbbbb;
+  --color-mute-soft: #7e7e7e;
+  --color-gray-warm: #bbbbbb;
+  --color-line: #3c3c3c;
+  --color-line-soft: #262626;
+  --font-sans: "BMWTypeNextLatin", Helvetica, Arial, sans-serif;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 0px;
+  --radius-pill: 9999px;
+  --shadow-bento: none;
+}
+
+/* Claude — cream canvas, serif headlines, coral CTA */
+[data-design="claude"] {
+  --color-amore: #cc785c;
+  --color-amore-soft: #d68d70;
+  --color-amore-bg: #f3e2d5;
+  --color-amore-tint: #f8eee5;
+  --color-paper: #faf9f5;
+  --color-paper-soft: #f5f0e8;
+  --color-pacific: #141413;
+  --color-pacific-bg: #efe9de;
+  --color-ink: #141413;
+  --color-ink-2: #252523;
+  --color-mute: #6c6a64;
+  --color-mute-soft: #8e8b82;
+  --color-gray-warm: #6c6a64;
+  --color-line: #e6dfd8;
+  --color-line-soft: #ebe6df;
+  --font-sans: Copernicus, "Tiempos Headline", "StyreneB", Inter, serif;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+  --shadow-bento: 0 1px 2px rgba(20, 20, 19, 0.04), 0 8px 24px rgba(20, 20, 19, 0.06);
+}
+
+/* Cursor — warm cream IDE canvas, Cursor Orange CTA */
+[data-design="cursor"] {
+  --color-amore: #f54e00;
+  --color-amore-soft: #f97742;
+  --color-amore-bg: #fdd9c5;
+  --color-amore-tint: #fde9d8;
+  --color-paper: #f7f7f4;
+  --color-paper-soft: #fafaf7;
+  --color-pacific: #26251e;
+  --color-pacific-bg: #ffffff;
+  --color-ink: #26251e;
+  --color-ink-2: #5a5852;
+  --color-mute: #807d72;
+  --color-mute-soft: #a09c92;
+  --color-gray-warm: #807d72;
+  --color-line: #e6e5e0;
+  --color-line-soft: #efeee8;
+  --font-sans: "CursorGothic", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+  --shadow-bento: none;
+}
+
+/* Dell (1996) — catalog-era literal black frame, ribbon tints, zero radius */
+[data-design="dell-1996"] {
+  --color-amore: #e91d2a;
+  --color-amore-soft: #ff3d4a;
+  --color-amore-bg: #fcc20f;
+  --color-amore-tint: #fce39a;
+  --color-paper: #ffffff;
+  --color-paper-soft: #b3bd95;
+  --color-pacific: #000000;
+  --color-pacific-bg: #c0d4a7;
+  --color-ink: #000000;
+  --color-ink-2: #000000;
+  --color-mute: #6a26a4;
+  --color-mute-soft: #8c9ae0;
+  --color-gray-warm: #6a26a4;
+  --color-line: #000000;
+  --color-line-soft: #000000;
+  --font-sans: "Times New Roman", Times, serif;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 9999px;
+  --shadow-bento: 4px 4px 0 0 rgba(0, 0, 0, 1);
+}
+
+/* ElevenLabs — off-white editorial, Waldenburg light, near-black CTA */
+[data-design="elevenlabs"] {
+  --color-amore: #292524;
+  --color-amore-soft: #4e4e4e;
+  --color-amore-bg: #f0efed;
+  --color-amore-tint: #fafafa;
+  --color-paper: #f5f5f5;
+  --color-paper-soft: #ffffff;
+  --color-pacific: #0c0a09;
+  --color-pacific-bg: #f0efed;
+  --color-ink: #0c0a09;
+  --color-ink-2: #292524;
+  --color-mute: #777169;
+  --color-mute-soft: #a8a29e;
+  --color-gray-warm: #777169;
+  --color-line: #e7e5e4;
+  --color-line-soft: #f0efed;
+  --font-sans: "Waldenburg", "Inter", "Times New Roman", Times, serif;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+  --shadow-bento: 0 1px 2px rgba(12, 10, 9, 0.04), 0 4px 12px rgba(12, 10, 9, 0.05);
+}
+
+/* Lamborghini — pure black canvas, Lamborghini Gold accent, zero radius */
+[data-design="lamborghini"] {
+  --color-amore: #ffc000;
+  --color-amore-soft: #ffce3e;
+  --color-amore-bg: #4d3a00;
+  --color-amore-tint: #2a2000;
+  --color-paper: #000000;
+  --color-paper-soft: #202020;
+  --color-pacific: #ffffff;
+  --color-pacific-bg: #313131;
+  --color-ink: #ffffff;
+  --color-ink-2: #f5f5f5;
+  --color-mute: #969696;
+  --color-mute-soft: #7d7d7d;
+  --color-gray-warm: #969696;
+  --color-line: #313131;
+  --color-line-soft: #181818;
+  --font-sans: "LamboType", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 9999px;
+  --shadow-bento: none;
+}
+
+/* Meta — white canvas, pill buttons, Cobalt buy CTA */
+[data-design="meta"] {
+  --color-amore: #0064e0;
+  --color-amore-soft: #0091ff;
+  --color-amore-bg: #e1eeff;
+  --color-amore-tint: #f0f7ff;
+  --color-paper: #ffffff;
+  --color-paper-soft: #f1f4f7;
+  --color-pacific: #000000;
+  --color-pacific-bg: #f1f4f7;
+  --color-ink: #1c1e21;
+  --color-ink-2: #444950;
+  --color-mute: #4b4c4f;
+  --color-mute-soft: #8595a4;
+  --color-gray-warm: #5d6c7b;
+  --color-line: #ced0d4;
+  --color-line-soft: #dee3e9;
+  --font-sans: "Optimistic VF", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 100px;
+  --shadow-bento: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Nintendo (2001) — periwinkle metallic chrome, amber utilities, Y2K hardware */
+[data-design="nintendo-2001"] {
+  --color-amore: #e60012;
+  --color-amore-soft: #f68d1f;
+  --color-amore-bg: #ecab37;
+  --color-amore-tint: #e48600;
+  --color-paper: #7a8aba;
+  --color-paper-soft: #9fbee7;
+  --color-pacific: #21242e;
+  --color-pacific-bg: #dedede;
+  --color-ink: #21242e;
+  --color-ink-2: #3d4f97;
+  --color-mute: #3d4f97;
+  --color-mute-soft: #60619c;
+  --color-gray-warm: #3d4f97;
+  --color-line: #3d4f97;
+  --color-line-soft: #5a5f8c;
+  --font-sans: Arial, Helvetica, sans-serif;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+  --shadow-bento: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 1px 0 #21242e;
+}
+
+/* Notion — paper-calm productivity, single confident blue */
+[data-design="notion"] {
+  --color-amore: #0075de;
+  --color-amore-soft: #62aef0;
+  --color-amore-bg: #d6e9fa;
+  --color-amore-tint: #eaf4ff;
+  --color-paper: #ffffff;
+  --color-paper-soft: #f6f5f4;
+  --color-pacific: #000000;
+  --color-pacific-bg: #f6f5f4;
+  --color-ink: #000000;
+  --color-ink-2: #31302e;
+  --color-mute: #615d59;
+  --color-mute-soft: #a39e98;
+  --color-gray-warm: #615d59;
+  --color-line: #e6e6e6;
+  --color-line-soft: #f0efee;
+  --font-sans: "NotionInter", Inter, -apple-system, system-ui, sans-serif;
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+  --shadow-bento: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Tesla — white showroom canvas, single Electric Blue */
+[data-design="tesla"] {
+  --color-amore: #3e6ae1;
+  --color-amore-soft: #5e85e8;
+  --color-amore-bg: #d9e4fa;
+  --color-amore-tint: #eef2fb;
+  --color-paper: #ffffff;
+  --color-paper-soft: #f4f4f4;
+  --color-pacific: #171a20;
+  --color-pacific-bg: #f4f4f4;
+  --color-ink: #171a20;
+  --color-ink-2: #393c41;
+  --color-mute: #5c5e62;
+  --color-mute-soft: #8e8e8e;
+  --color-gray-warm: #5c5e62;
+  --color-line: #eeeeee;
+  --color-line-soft: #d0d1d2;
+  --font-sans: "Universal Sans Text", "Universal Sans Display", -apple-system, Arial, sans-serif;
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+  --shadow-bento: none;
+}
+
+/* =========================================================================
    z-index 스케일 — 산발한 z-[NN] 하드코드 정리.
    레이어 순서는 의도된 stacking: table 로컬 < FAB < modal < toast < overlay.
    ========================================================================= */
