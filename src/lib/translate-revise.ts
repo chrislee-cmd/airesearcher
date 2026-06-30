@@ -51,14 +51,18 @@ const responseSchema = z.object({
   ),
 });
 
-function buildSystem(sourceLang: string, targetLang: string): string {
+function buildSystem(
+  sourceLang: string,
+  targetLang: string,
+  glossary: string[] = [],
+): string {
   const src = languageLabel(sourceLang);
   const tgt = languageLabel(targetLang);
   // The system prompt restates the realtime prompt's fidelity rules
   // (no compression, preserve every clause / connective / subject)
   // but in a batch context — no latency budget, full sentence visible
   // before commit, so the model can render the full meaning.
-  return [
+  const lines = [
     `You are a high-fidelity post-hoc interpreter restoring a transcript that was first translated live by a simultaneous interpreter LLM under tight latency constraints.`,
     `The realtime interpreter compresses long utterances, drops subordinate clauses, runs sentences together without whitespace, and elides subjects/verbs/connectives. Your job is to undo that damage.`,
     `Source language: ${src}. Target language: ${tgt}. Output every translation in ${tgt} only.`,
@@ -69,8 +73,20 @@ function buildSystem(sourceLang: string, targetLang: string): string {
     `4) Drops only pure verbal tics ("uh", "um", "어", "음") that carry no meaning.`,
     `5) If a source line is genuinely empty or unintelligible, return an empty string for that id — do not invent content.`,
     `6) NEVER editorialize, summarize, label, or add commentary. Return only the translated text per id.`,
+  ];
+  // Glossary hint (PR — translate output quality). The host-provided
+  // canonical spellings keep proper nouns / names consistent across the
+  // whole session, fixing the "same person, three transliterations" and
+  // soundalike drift the user reported. Empty glossary → no extra rule.
+  if (glossary.length > 0) {
+    lines.push(
+      `7) Glossary — use these EXACT canonical spellings for the named people / organizations / tools / acronyms whenever the spoken audio refers to them (match by sound, not just spelling); never re-transliterate them: ${glossary.join('; ')}.`,
+    );
+  }
+  lines.push(
     `Return a JSON object { translations: [{id, revised}] } where every input id appears exactly once. Do not invent ids; do not drop ids.`,
-  ].join(' ');
+  );
+  return lines.join(' ');
 }
 
 function buildPrompt(rows: ReviseInputRow[]): string {
@@ -97,6 +113,7 @@ export async function reviseBatch(
   rows: ReviseInputRow[],
   sourceLang: string,
   targetLang: string,
+  glossary: string[] = [],
 ): Promise<RevisedRow[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
@@ -106,7 +123,7 @@ export async function reviseBatch(
   const result = await generateObject({
     model: anthropic(MODEL),
     schema: responseSchema,
-    system: buildSystem(sourceLang, targetLang),
+    system: buildSystem(sourceLang, targetLang, glossary),
     prompt: buildPrompt(rows),
     // 0.2 — same as clustering. Low enough that two runs converge,
     // high enough that idioms don't get rendered word-for-word.

@@ -50,8 +50,19 @@ type SessionRow = {
   source_lang: string;
   target_lang: string;
   record_enabled: boolean;
+  glossary: unknown;
   revision_status: 'idle' | 'pending' | 'done' | 'failed';
 };
+
+// Coerce the JSONB glossary column into a clean string[] for the prompt.
+function normalizeGlossary(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((g): g is string => typeof g === 'string')
+    .map((g) => g.trim())
+    .filter((g) => g.length > 0)
+    .slice(0, 200);
+}
 
 export async function POST(
   _req: Request,
@@ -69,7 +80,7 @@ export async function POST(
   const { data: rawSession, error: readErr } = await admin
     .from('translate_sessions')
     .select(
-      'id, org_id, host_user_id, status, source_lang, target_lang, record_enabled, revision_status',
+      'id, org_id, host_user_id, status, source_lang, target_lang, record_enabled, glossary, revision_status',
     )
     .eq('id', id)
     .maybeSingle();
@@ -168,6 +179,7 @@ export async function POST(
   // bite hard on bursts, and a 30-min session's 8 batches in serial
   // still finishes well within `maxDuration`. Sequential also keeps
   // memory bounded (only one batch's response in flight at once).
+  const glossary = normalizeGlossary(session.glossary);
   try {
     for (let i = 0; i < inputRows.length; i += REVISE_BATCH_SIZE) {
       const chunk = inputRows.slice(i, i + REVISE_BATCH_SIZE);
@@ -175,6 +187,7 @@ export async function POST(
         chunk,
         session.source_lang,
         session.target_lang,
+        glossary,
       );
       // Bulk-update per row. We don't have a multi-row UPDATE primitive
       // on the JS client; the per-row update is fine at this volume
