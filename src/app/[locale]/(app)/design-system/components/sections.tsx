@@ -603,8 +603,44 @@ function WidgetFullviewModalSection() {
   return (
     <PrimitivePage
       title="WidgetFullviewModal"
-      hint="src/components/canvas/shell/widget-fullview-modal.tsx · Modal(wide|full) wrap + 프로빙 chrome 일반화 · 제목 + 부제 + 닫기(×) header / 본문 slot / 옵션 footer · Esc·backdrop 닫기 + focus restore 는 Modal 에서 상속 · 소비처는 후속 PR 에서 wire"
+      hint="src/components/canvas/shell/widget-fullview-modal.tsx · Modal(wide|full) wrap + 프로빙 chrome 일반화 · 제목 + 부제 + 닫기(×) header / 본문 slot / 옵션 footer · Esc·backdrop 닫기 + focus restore 는 Modal 에서 상속 · 소비처: probing / interviews / desk / quotes (PR-C wire)"
     >
+      <Subsection label="진입 버튼 — WidgetShell state pill 하단 '전체 보기'">
+        <div className="space-y-3">
+          <div className="inline-flex border border-line bg-paper px-4 py-3 rounded-sm">
+            {/* widget-shell.tsx 의 onFullview 진입 버튼과 동일한 시각 —
+                Button variant=link + arrows-out 아이콘 + UPPERCASE 트래킹. */}
+            <Button
+              variant="link"
+              size="xs"
+              className="uppercase tracking-[0.18em]"
+              leftIcon={
+                <svg
+                  className="h-3 w-3"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              }
+            >
+              전체 보기
+            </Button>
+          </div>
+          <p className="text-sm text-mute-soft">
+            onFullview 를 넘긴 위젯에만 노출 — 클릭 시{' '}
+            <code className="font-mono">{'<key>:open-fullview'}</code> window
+            이벤트를 dispatch, 각 위젯 본문이 자기 WidgetFullviewModal 을 연다.
+          </p>
+        </div>
+      </Subsection>
       <Subsection label="Interactive (wide + footer / wide no-footer / full)">
         <WidgetFullviewModalDemo />
       </Subsection>
