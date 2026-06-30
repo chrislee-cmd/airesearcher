@@ -473,6 +473,11 @@ export function TranslateConsole() {
   // accepted for backward compat with rows charged under the old scheme.
   const [recording, setRecording] = useState<RecordingRow | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  // Server-supplied root-cause string for the recording error banner
+  // (e.g. the storage / row-insert failure detail from POST /recording).
+  // Surfaced beside the localized headline so a host can report the
+  // actual cause instead of a generic "잠시 후 다시 시도" message.
+  const [recordingErrorDetail, setRecordingErrorDetail] = useState<string | null>(null);
   // Five downloadable formats now: two audio tracks (source-only,
   // translated-only) + three transcript zips (source "원문", realtime
   // translation "통역본", and post-hoc batch re-translation "재번역",
@@ -1274,6 +1279,7 @@ export function TranslateConsole() {
     // panel should disappear the moment the host hits Start.
     setRecording(null);
     setRecordingError(null);
+    setRecordingErrorDetail(null);
     setDownloadingFormat(null);
     // Same for the post-hoc revision UI — last session's "done" pill
     // shouldn't carry over and tempt the host into a stale download.
@@ -1587,40 +1593,48 @@ export function TranslateConsole() {
         const sid = sessionIdRef.current;
         if (sid) {
           (async () => {
-            try {
-              const r1 = await fetch(
+            // Pull the server's explicit error code + root-cause detail
+            // out of a failed reserve so the banner can name the actual
+            // cause (storage_unavailable / recording_create_failed / …)
+            // instead of the generic "잠시 후 다시 시도" headline.
+            const reserve = async (kind: 'output' | 'input') => {
+              const res = await fetch(
                 `/api/translate/sessions/${sid}/recording`,
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ kind: 'output' }),
+                  body: JSON.stringify({ kind }),
                 },
               );
-              if (!r1.ok) throw new Error('reserve_failed');
-              const j1 = (await r1.json()) as {
+              if (!res.ok) {
+                const body = (await res.json().catch(() => ({}))) as {
+                  error?: string;
+                  detail?: string;
+                };
+                setRecordingError('reserve_failed');
+                setRecordingErrorDetail(
+                  [body.error, body.detail].filter(Boolean).join(': ') || null,
+                );
+                throw new Error(body.error ?? 'reserve_failed');
+              }
+              return (await res.json()) as {
                 recording_id: string;
                 upload_url: string;
               };
+            };
+            try {
+              const j1 = await reserve('output');
               recordingIdRef.current = j1.recording_id;
               recordingOutputUploadUrlRef.current = j1.upload_url;
 
-              const r2 = await fetch(
-                `/api/translate/sessions/${sid}/recording`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ kind: 'input' }),
-                },
-              );
-              if (!r2.ok) throw new Error('reserve_failed');
-              const j2 = (await r2.json()) as {
-                recording_id: string;
-                upload_url: string;
-              };
+              const j2 = await reserve('input');
               recordingIdRef.current = j2.recording_id;
               recordingInputUploadUrlRef.current = j2.upload_url;
             } catch {
-              setRecordingError('reserve_failed');
+              // Banner state already set inside reserve() on a non-OK
+              // response. A network throw (fetch rejected) lands here with
+              // no server detail — fall back to the generic headline.
+              setRecordingError((prev) => prev ?? 'reserve_failed');
             }
           })();
         }
@@ -2674,6 +2688,7 @@ export function TranslateConsole() {
         <RecordingDownloadPanel
           recording={recording}
           recordingError={recordingError}
+          recordingErrorDetail={recordingErrorDetail}
           downloadingFormat={downloadingFormat}
           onDownload={(f) => void downloadFormat(f)}
           revisionStatus={revisionStatus}
@@ -2691,6 +2706,7 @@ export function TranslateConsole() {
 function RecordingDownloadPanel({
   recording,
   recordingError,
+  recordingErrorDetail,
   downloadingFormat,
   onDownload,
   revisionStatus,
@@ -2700,6 +2716,7 @@ function RecordingDownloadPanel({
 }: {
   recording: RecordingRow | null;
   recordingError: string | null;
+  recordingErrorDetail: string | null;
   downloadingFormat:
     | 'm4a-input'
     | 'm4a-output'
@@ -2749,6 +2766,14 @@ function RecordingDownloadPanel({
           {t.has(`download.errors.${recordingError}`)
             ? t(`download.errors.${recordingError}`)
             : recordingError}
+          {/* Server root-cause detail (storage_unavailable / row insert
+              failure / …). Only the reserve path carries one; rendered in
+              a muted monospace tail so a host can copy it into a report. */}
+          {recordingError === 'reserve_failed' && recordingErrorDetail ? (
+            <span className="ml-1 break-all font-mono text-sm text-mute-soft">
+              ({recordingErrorDetail})
+            </span>
+          ) : null}
         </div>
       ) : null}
       {!recording ? (

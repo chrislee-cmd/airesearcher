@@ -20,6 +20,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 
 export const runtime = 'nodejs';
@@ -92,12 +93,21 @@ export async function POST(
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
-  const { supabase, user, session } = gate;
+  const { user, session } = gate;
 
   const org = await getActiveOrg();
   if (!org || org.org_id !== session.org_id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
+
+  // The host ownership + org gates above (loadHostSession + getActiveOrg)
+  // are the authorization boundary. The actual row write + signed-URL
+  // mint go through the service role so a prod RLS drift on
+  // translate_recordings (PROJECT.md §7.5 — migrations don't auto-apply)
+  // can't silently turn every reserve into `reserve_failed`. This mirrors
+  // the /messages + /download routes, which already write via admin for
+  // exactly this resilience reason.
+  const admin = createAdminClient();
 
   // Storage path under the host's prefix so the existing per-user RLS on
   // storage.objects (audio-uploads bucket) covers the upload + read. We
@@ -109,7 +119,7 @@ export async function POST(
   // Look for an existing in-flight or finalized row for this session.
   // If one exists, we attach this second track to it rather than
   // creating a parallel row.
-  const existing = await supabase
+  const existing = await admin
     .from('translate_recordings')
     .select('id, status, storage_key, input_storage_key')
     .eq('session_id', sessionId)
@@ -117,7 +127,14 @@ export async function POST(
     .limit(1)
     .maybeSingle();
   if (existing.error) {
-    return NextResponse.json({ error: existing.error.message }, { status: 500 });
+    console.error('[translate/recording] existing-row lookup failed', {
+      session_id: sessionId,
+      error: existing.error.message,
+    });
+    return NextResponse.json(
+      { error: 'recording_lookup_failed', detail: existing.error.message },
+      { status: 500 },
+    );
   }
 
   // Only attach to a row that's still mid-flight (status='recording').
@@ -128,15 +145,23 @@ export async function POST(
     const patch: Record<string, string> = {};
     if (kind === 'output') patch.storage_key = storageKey;
     else patch.input_storage_key = storageKey;
-    const upd = await supabase
+    const upd = await admin
       .from('translate_recordings')
       .update(patch)
       .eq('id', existing.data.id)
       .select('id')
       .single();
     if (upd.error || !upd.data) {
+      console.error('[translate/recording] row update failed', {
+        session_id: sessionId,
+        kind,
+        error: upd.error?.message,
+      });
       return NextResponse.json(
-        { error: upd.error?.message ?? 'recording_update_failed' },
+        {
+          error: 'recording_update_failed',
+          detail: upd.error?.message ?? 'no row returned',
+        },
         { status: 500 },
       );
     }
@@ -159,26 +184,43 @@ export async function POST(
     };
     if (kind === 'input') insertPayload.input_storage_key = storageKey;
 
-    const insert = await supabase
+    const insert = await admin
       .from('translate_recordings')
       .insert(insertPayload)
       .select('id')
       .single();
     if (insert.error || !insert.data) {
+      console.error('[translate/recording] row insert failed', {
+        session_id: sessionId,
+        kind,
+        error: insert.error?.message,
+      });
       return NextResponse.json(
-        { error: insert.error?.message ?? 'recording_create_failed' },
+        {
+          error: 'recording_create_failed',
+          detail: insert.error?.message ?? 'no row returned',
+        },
         { status: 500 },
       );
     }
     recordingId = insert.data.id;
   }
 
-  const { data: signed, error: signedErr } = await supabase.storage
+  const { data: signed, error: signedErr } = await admin.storage
     .from('audio-uploads')
     .createSignedUploadUrl(storageKey);
   if (signedErr || !signed) {
+    console.error('[translate/recording] signed upload URL mint failed', {
+      session_id: sessionId,
+      kind,
+      bucket: 'audio-uploads',
+      error: signedErr?.message,
+    });
     return NextResponse.json(
-      { error: signedErr?.message ?? 'signed_url_failed' },
+      {
+        error: 'storage_unavailable',
+        detail: signedErr?.message ?? 'no signed url returned',
+      },
       { status: 500 },
     );
   }
@@ -207,11 +249,15 @@ export async function PATCH(
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
-  const { supabase, user } = gate;
+  const { user } = gate;
+  // Service-role finalize for the same §7.5 RLS-drift resilience as POST.
+  // The host ownership check below (row.host_user_id === user.id) is the
+  // authorization boundary, not the table RLS.
+  const admin = createAdminClient();
 
   // Defensive: only allow finalize on the host's own row, attached to
   // this session.
-  const { data: row, error: readErr } = await supabase
+  const { data: row, error: readErr } = await admin
     .from('translate_recordings')
     .select('id, status, host_user_id, session_id')
     .eq('id', recording_id)
@@ -231,7 +277,7 @@ export async function PATCH(
   // SUM of sizes and the MAX (longest) of durations so the row is
   // self-describing without joining a per-track table.
   // Fetch current values to merge.
-  const current = await supabase
+  const current = await admin
     .from('translate_recordings')
     .select('size_bytes, duration_sec')
     .eq('id', recording_id)
@@ -241,7 +287,7 @@ export async function PATCH(
   const nextSize = prevSize + size_bytes;
   const nextDur = Math.max(prevDur, duration_sec);
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('translate_recordings')
     .update({
       size_bytes: nextSize,
@@ -264,9 +310,12 @@ export async function GET(
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
-  const { supabase } = gate;
+  // Read via service role so a translate_recordings RLS drift can't make
+  // a real recording read back as "이 세션에는 녹음이 없습니다". The gate
+  // above already verified the caller hosts this session.
+  const admin = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from('translate_recordings')
     .select('id, status, size_bytes, duration_sec, credits_spent, unlocked_at, created_at')
     .eq('session_id', sessionId)
