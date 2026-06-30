@@ -46,11 +46,10 @@ import type {
   ResearchContext,
 } from './probing-types';
 import {
-  ReflectionPane,
   type ProbingReflectionData,
   type ReflectionStatus,
 } from './probing/reflection-pane';
-import { QuestionPane } from './probing/question-pane';
+import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
 import {
   PROBING_PERSONA_SECTION_KEYS,
@@ -930,11 +929,24 @@ function ExpandedBody() {
           }
         />
 
-        {/* 본문 — 좌(페르소나) / 우(4-layer 입력+사고+popup+history). */}
-        <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] divide-x divide-line-soft overflow-hidden">
-          <ReflectionPane {...reflectionPaneProps} />
-          <QuestionPane {...questionPaneProps} />
-        </div>
+        {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
+            popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal
+            (ProbingFullView) 에만 노출. */}
+        <ProbingCanvasCardBody
+          thinkingEvents={thinkingEvents}
+          thinkingStreaming={thinkingStreaming}
+          activePopup={activePopup}
+          onPopupPin={handlePopupPin}
+          onPopupCopy={handlePopupCopy}
+          onPopupDismiss={handlePopupManualDismiss}
+          onPopupAutoDismiss={handlePopupAutoDismiss}
+          history={history}
+          nowMs={now}
+          onHistoryCopy={handleHistoryCopy}
+          onHistoryToggleStar={handleHistoryToggleStar}
+          onHistoryDelete={handleHistoryDelete}
+          isLive={isLive}
+        />
 
         {thinkingError && (
           <div
