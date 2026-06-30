@@ -172,8 +172,11 @@ type ProgressShape = {
 };
 
 // Server-side maxDuration is 300s — leave a margin for the final DB writes
-// (generations insert + final patch). 270s = 30s safety.
-const HARD_DEADLINE_MS = 270_000;
+// (generations insert + final patch, ~3s). 285s = 15s safety. The report phase
+// is the long pole, so a tighter safety margin buys it more budget; the
+// analytics skip (< 20s left) guarantees we never start a chart call we can't
+// afford, and the final writes always fit the remaining 15s.
+const HARD_DEADLINE_MS = 285_000;
 // Hard guarantee against a 0-output run (the 2026-06-30 incident). If crawl
 // ate so much budget that we can't even afford the report round-trip, skip the
 // LLM phases and emit a deterministic raw-data dump (collected articles +
@@ -184,7 +187,18 @@ const RAW_DUMP_AFTER_CRAWL_MS = 110_000;
 // Hard per-call LLM timeouts — without these the AI SDK can hang forever on a
 // network stall or stuck provider (2026-06-30 incident hardening).
 const LLM_TIMEOUT_SHORT_MS = 30_000; // expanding / analytics
-const LLM_TIMEOUT_SUMMARIZE_MS = 120_000; // report synthesis
+// Report synthesis floor. The actual cap is deadline-aware (timeLeft minus a
+// small reserve for analytics + DB writes) so a legit 6000-token report — which
+// can run 100~140s — gets the remaining function budget instead of a fixed cap
+// cutting it off mid-stream (the pre-#380 pipeline relied on the 300s ceiling
+// with no per-call cap). A genuinely hung provider still aborts + refunds.
+const LLM_TIMEOUT_SUMMARIZE_FLOOR_MS = 90_000;
+// Reserve held back from the report's budget for DB writes (analytics is
+// best-effort and self-skips below SKIP_ANALYTICS_BELOW_MS).
+const SUMMARIZE_RESERVE_MS = 15_000;
+// Below this remaining budget after the report, skip charts so the report
+// itself always gets saved (charts are a visual nice-to-have, not the artifact).
+const SKIP_ANALYTICS_BELOW_MS = 20_000;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -761,13 +775,21 @@ async function runJob(args: {
         .join('\n\n'),
     ].join('\n');
 
+    // Deadline-aware cap: give the report nearly all remaining function budget
+    // (reserve ~15s for the chart call + DB writes) instead of a fixed ceiling.
+    // Floors at 90s so a tight-but-viable run still attempts a report.
+    const summarizeTimeoutMs = Math.max(
+      LLM_TIMEOUT_SUMMARIZE_FLOOR_MS,
+      timeLeft() - SUMMARIZE_RESERVE_MS,
+    );
+
     let output = '';
     try {
       // Cap output + retries so this call has a bounded ceiling and the
       // function doesn't get killed mid-stream. Default SDK retries can
       // double the wall time on flaky 429s; we'd rather fail fast and
-      // surface an actionable error. Hard timeout guards against a hung
-      // provider (2026-06-30 incident).
+      // surface an actionable error. Deadline-aware timeout guards against a
+      // hung provider while letting a full-length report finish.
       const { text } = await generateText({
         model,
         system: REPORT_SYSTEM,
@@ -776,16 +798,26 @@ async function runJob(args: {
         maxOutputTokens: 6000,
         maxRetries: 1,
         providerOptions: ZERO_RETENTION,
-        timeout: LLM_TIMEOUT_SUMMARIZE_MS,
+        timeout: summarizeTimeoutMs,
       });
       output = text.trim();
     } catch (err) {
       endPhase('summarizing');
       console.error('[desk] summarize failed', err);
       await refundOnFailure('summarize_failed');
+      // A timed-out abort (heavy crawl ate the budget) surfaces as a friendly
+      // "시간 초과 — 범위를 좁혀 재시도" banner client-side (budget_exceeded_*),
+      // not the raw English AbortSignal message.
+      const isTimeout =
+        err instanceof Error &&
+        (err.name === 'TimeoutError' || /timeout|aborted/i.test(err.message));
       await patch({
         status: 'error',
-        error_message: err instanceof Error ? err.message : 'summarize_failed',
+        error_message: isTimeout
+          ? 'budget_exceeded_summarize'
+          : err instanceof Error
+            ? err.message
+            : 'summarize_failed',
       });
       return;
     }
@@ -801,39 +833,49 @@ async function runJob(args: {
     // 본문은 12k자로 잘라 입력으로 넣고, 출력 토큰도 4k 로 제한합니다.
     let analytics: { charts: { type: 'bar' | 'pie'; title: string; insight: string; unit: 'percent' | 'count'; data: { label: string; value: number }[] }[] } | null = null;
     const analyticsModel = getAnalyticsModel();
-    beginPhase('analytics');
-    try {
-      if (!analyticsModel) {
-        throw new Error('missing_openai_key');
-      }
-      const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
-      const result = await generateObject({
-        model: analyticsModel,
-        system: ANALYTICS_SYSTEM,
-        prompt: [
-          `메인 키워드: ${keywords.join(', ')}`,
-          `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-          '',
-          '--- 직전에 작성한 보고서 ---',
-          trimmedReport,
-        ].join('\n'),
-        schema: AnalyticsSchema,
-        temperature: 0.2,
-        maxOutputTokens: 4000,
-        maxRetries: 1,
-        providerOptions: ZERO_RETENTION,
-        timeout: LLM_TIMEOUT_SHORT_MS,
-      });
-      analytics = result.object;
+    if (timeLeft() < SKIP_ANALYTICS_BELOW_MS) {
+      // Report is already written + about to be saved — don't risk the function
+      // deadline on charts. They're a visual aid, not the deliverable.
+      skippedSteps.push('analytics');
       await pushAndPatch(
-        `차트 ${analytics.charts.length}개 만들었어요. 화면에 띄울게요.`,
+        `남은 시간 ${Math.round(timeLeft() / 1000)}초 — 보고서 저장을 우선해서 차트는 생략할게요.`,
         'summarizing',
       );
-    } catch (err) {
-      console.error('[desk] analytics failed', err);
-      await pushAndPatch('정량 분석 차트는 못 만들었어요 — 보고서만 띄울게요.', 'summarizing');
+    } else {
+      beginPhase('analytics');
+      try {
+        if (!analyticsModel) {
+          throw new Error('missing_openai_key');
+        }
+        const trimmedReport = output.length > 12_000 ? `${output.slice(0, 12_000)}\n…(생략)` : output;
+        const result = await generateObject({
+          model: analyticsModel,
+          system: ANALYTICS_SYSTEM,
+          prompt: [
+            `메인 키워드: ${keywords.join(', ')}`,
+            `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
+            '',
+            '--- 직전에 작성한 보고서 ---',
+            trimmedReport,
+          ].join('\n'),
+          schema: AnalyticsSchema,
+          temperature: 0.2,
+          maxOutputTokens: 4000,
+          maxRetries: 1,
+          providerOptions: ZERO_RETENTION,
+          timeout: LLM_TIMEOUT_SHORT_MS,
+        });
+        analytics = result.object;
+        await pushAndPatch(
+          `차트 ${analytics.charts.length}개 만들었어요. 화면에 띄울게요.`,
+          'summarizing',
+        );
+      } catch (err) {
+        console.error('[desk] analytics failed', err);
+        await pushAndPatch('정량 분석 차트는 못 만들었어요 — 보고서만 띄울게요.', 'summarizing');
+      }
+      endPhase('analytics');
     }
-    endPhase('analytics');
 
     const { data: gen } = await admin
       .from('generations')
