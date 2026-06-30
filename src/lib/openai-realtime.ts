@@ -84,7 +84,14 @@ export async function issueRealtimeSession(opts: {
         input: {
           transcription: { model: 'gpt-4o-transcribe' },
         },
-        output: { language: iso639(opts.targetLang) },
+        output: {
+          language: iso639(opts.targetLang),
+          // Without an explicit `voice`, the /realtime/translations
+          // endpoint emits the text modality only — no TTS audio track is
+          // published, so `pc.ontrack` never fires and the speaker stays
+          // silent (P0: 통역 발화 0). `voice` switches on audio output.
+          voice: 'alloy',
+        },
       },
     },
   };
