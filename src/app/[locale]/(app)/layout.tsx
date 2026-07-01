@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 import { Outfit } from 'next/font/google';
 import { getCurrentUser } from '@/lib/supabase/user';
@@ -18,6 +19,7 @@ import { VideoJobProvider } from '@/components/video-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
+import { AuthStateListener } from '@/components/auth-state-listener';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -42,7 +44,18 @@ export default async function AppLayout({
 
   const user = await getCurrentUser();
 
-  const org = user ? await getActiveOrg() : null;
+  // Layer 1 (SSR gate): every route in the (app) group requires auth. On a
+  // fresh load / RSC render with no session — including the "ghost session"
+  // case where the client still shows the app after a sign-out — send the
+  // user to /login instead of rendering a dead app shell. Public routes
+  // (landing, pricing, privacy, ...) live outside this group and are
+  // unaffected. The client-side <AuthStateListener /> below covers live
+  // session loss without a reload; the proxy adds a third pre-render gate.
+  if (!user) {
+    redirect(`/${locale}/login`);
+  }
+
+  const org = await getActiveOrg();
   // Once we have org, the follow-up reads are independent — fan them out
   // so the slowest one bounds total latency, not their sum. (Each is
   // also cache()d so duplicate reads from page.tsx in the same request
@@ -83,6 +96,9 @@ export default async function AppLayout({
          </div>
 
          <TrialInitializer enabled={!!user} />
+         {/* Layer 2 (live gate): redirect to /login the moment the session
+             ends without a reload — sign-out here or in another tab. */}
+         <AuthStateListener />
          </WorkspaceProvider>
          </ActiveProjectProvider>
         </GenerationJobProvider>
