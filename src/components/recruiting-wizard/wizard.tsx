@@ -53,7 +53,6 @@ type GoogleStatus = {
 type PublishedForm = {
   formId: string;
   responderUri: string;
-  editUri: string;
   sheetUrl: string | null;
 };
 
@@ -460,7 +459,6 @@ export function RecruitingWizard() {
       const pub: PublishedForm = {
         formId: j.formId ?? j.form_id,
         responderUri: j.responderUri,
-        editUri: j.editUri,
         sheetUrl: j.sheetUrl ?? null,
       };
       setPublished(pub);
@@ -476,7 +474,6 @@ export function RecruitingWizard() {
           `# ${survey.title || 'Recruiting form'}`,
           '',
           `- 응답 링크: ${pub.responderUri ?? ''}`,
-          `- 편집 링크: ${pub.editUri ?? ''}`,
           '',
           ...survey.sections.flatMap((s) => [
             `## ${s.title || ''}`,
@@ -1214,14 +1211,6 @@ function AttendeeReviewPanel({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-md">
-            <a
-              href={published.editUri}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-amore underline-offset-2 hover:underline"
-            >
-              편집 화면 열기
-            </a>
             <a
               href={published.responderUri}
               target="_blank"
