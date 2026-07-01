@@ -738,7 +738,7 @@
   },
   "Canvas": {
     "navigator": {
-      "title": "위젯",
+      "title": "작업 상태",
       "expand": "위젯 목록 펼치기",
       "collapse": "위젯 목록 접기",
       "dragHandle": "드래그해서 이동",
