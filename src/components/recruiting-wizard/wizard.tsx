@@ -8,6 +8,7 @@ import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
@@ -1025,6 +1026,29 @@ function ReviewRow({
   );
 }
 
+// Reload glyph for the manual response-count refresh trigger. Stroke
+// style matches the app's other inline icons (Gear etc.); spins via a
+// caller-passed `animate-spin` while a refresh is in flight.
+function RefreshIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
+
 // Google revokes the refresh token if the user changed password, hit
 // the 6-month inactivity window, or the OAuth client rotated. The
 // server surfaces these as `google_token_refresh_failed` / `invalid_grant`
@@ -1085,6 +1109,7 @@ function AttendeeReviewPanel({
   const needsReauth = isReauthError(publishError) && !google?.adminProxy;
   const [copied, setCopied] = useState(false);
   const [responseCount, setResponseCount] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function copyResponderUri() {
     if (!published?.responderUri) return;
@@ -1098,14 +1123,37 @@ function AttendeeReviewPanel({
     }
   }
 
-  // Poll the response count so the "응답 N명" stat stays roughly fresh
-  // without the user opening the modal. 5-min cadence matches the Forms
-  // API's typical propagation delay for fresh submissions; opening the
-  // modal does a forced refresh anyway.
+  // Fetch the response count on demand. No auto-polling: a manual
+  // "새로고침" button drives every refresh so we never hammer the
+  // admin-proxy Google API quota when nobody is looking at the stat.
+  async function refreshCount() {
+    if (!published?.formId) return;
+    setRefreshing(true);
+    try {
+      const res = await fetch(
+        `/api/recruiting/google/forms/${encodeURIComponent(
+          published.formId,
+        )}/responses?count_only=1`,
+      );
+      if (!res.ok) return;
+      const j = (await res.json()) as { count?: number };
+      if (typeof j.count === 'number') {
+        setResponseCount(j.count);
+      }
+    } catch {
+      // ignore — UI keeps last known count
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // One silent fetch on mount / when a new form is published, so the
+  // initial count shows without a manual click. Subsequent updates are
+  // manual via the refresh button — no interval, no polling.
   useEffect(() => {
     if (!published?.formId) return;
     let cancelled = false;
-    const tick = async () => {
+    void (async () => {
       try {
         const res = await fetch(
           `/api/recruiting/google/forms/${encodeURIComponent(
@@ -1120,12 +1168,9 @@ function AttendeeReviewPanel({
       } catch {
         // ignore — UI keeps last known count
       }
-    };
-    void tick();
-    const id = window.setInterval(tick, 5 * 60_000);
+    })();
     return () => {
       cancelled = true;
-      window.clearInterval(id);
     };
   }, [published?.formId]);
 
@@ -1140,11 +1185,23 @@ function AttendeeReviewPanel({
               <div className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
                 현재 응답 수
               </div>
-              <div className="mt-0.5 flex items-baseline gap-1">
-                <span className="text-2xl font-semibold tabular-nums text-ink">
-                  {responseCount ?? '—'}
-                </span>
-                <span className="text-md text-mute">명</span>
+              <div className="mt-0.5 flex items-center gap-2">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-semibold tabular-nums text-ink">
+                    {responseCount ?? '—'}
+                  </span>
+                  <span className="text-md text-mute">명</span>
+                </div>
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void refreshCount()}
+                  disabled={refreshing}
+                  aria-label="새로고침"
+                  title="새로고침"
+                >
+                  <RefreshIcon className={refreshing ? 'animate-spin' : ''} />
+                </IconButton>
               </div>
             </div>
             <ChromeButton
