@@ -5,23 +5,20 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { Select } from '@/components/ui/select';
-import {
-  isContactColumnTitle,
-  isPrivacyConsentColumnTitle,
-} from '@/lib/recruiting/contact-filter';
+import { usePaywall } from '@/components/paywall-provider';
+import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 
 // fullview 응답 spreadsheet — 발행된 리크루팅 폼들의 응답을 인앱 표로
 // 렌더한다. 데이터는 기존 Forms-API 기반 엔드포인트를 그대로 재사용:
 //   GET /api/recruiting/google/forms/list           → 발행 폼 목록
 //   GET /api/recruiting/google/forms/[id]/responses → 컬럼 + 행
-// (별도 Sheets-API pull 을 새로 만들지 않는 이유: 위 responses 엔드포인트가
-//  이미 소유권 검증 + admin-proxy 토큰 라우팅 + 연락처/동의 컬럼 server-side
-//  strip 을 수행한다. Sheets values.get 으로 raw 시트를 직접 읽으면 그
-//  개인정보 필터를 우회하게 됨 — privacy 회귀.)
-
-// row 가 매우 많을 때 (1000+) 가상화 없이 전부 그리면 fullview 가 버벅인다.
-// 이번 PR scope 는 첫 200 행으로 cap — 가상화는 후속 spec.
+//
+// 개인정보(PII) 컬럼(이름/전화/이메일/주소/생년월일/나이)은 좌측으로 일괄
+// 정렬되고 기본적으로 마스킹된다. responses 엔드포인트는 PII 컬럼의 *값*을
+// 서버에서 blank 처리해 보내므로, 실제 값은 오직 크레딧 잠금 해제
+// (POST /api/recruiting/fullview/unlock, 5💎/row) 를 통해서만 서버에서
+// 내려온다 — 브라우저 payload 로는 마스킹 전 원본 PII 가 흐르지 않는다.
 const ROW_CAP = 200;
 
 type FormSummary = {
@@ -38,19 +35,10 @@ type ResponsesPayload = {
   title: string;
   columns: FormColumn[];
   rows: FormResponseRow[];
+  piiQuestionIds?: string[];
   total?: number;
   consented?: number;
 };
-
-// 서버가 이미 연락처/동의 컬럼을 strip 하지만, 미래 서버 변경이 하나라도
-// 놓쳤을 때를 대비해 동일 술어를 client 에서도 재적용한다 (attendee-review
-// 모달과 같은 방어).
-function visibleColumns(columns: FormColumn[]): FormColumn[] {
-  return columns.filter(
-    (c) =>
-      !isContactColumnTitle(c.title) && !isPrivacyConsentColumnTitle(c.title),
-  );
-}
 
 function formatPublishedAt(iso: string): string {
   if (!iso) return '';
@@ -84,6 +72,7 @@ function selectorLabel(f: FormSummary): string {
 }
 
 export function ResponsesSpreadsheet() {
+  const { refresh: refreshCredits } = usePaywall();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
@@ -91,6 +80,15 @@ export function ResponsesSpreadsheet() {
   const [data, setData] = useState<ResponsesPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Unlock state is intentionally in-memory (not localStorage): closing the
+  // tab or navigating away re-locks every row, minimising PII leak surface
+  // and re-triggering the paywall on revisit (spec: 세션 종료 시 리셋).
+  const [unlockedRows, setUnlockedRows] = useState<Set<string>>(new Set());
+  const [unlockingRows, setUnlockingRows] = useState<Set<string>>(new Set());
+  const [unlockedAnswers, setUnlockedAnswers] = useState<
+    Record<string, Record<string, string>>
+  >({});
 
   // 1) 발행 폼 목록 로드 — 가장 최근 발행 폼을 default 선택.
   const loadForms = useCallback(async () => {
@@ -120,10 +118,13 @@ export function ResponsesSpreadsheet() {
     })();
   }, [loadForms]);
 
-  // 2) 선택된 폼의 응답 로드.
+  // 2) 선택된 폼의 응답 로드. 폼을 바꾸면 잠금 상태도 리셋.
   const loadResponses = useCallback(async (formId: string) => {
     setLoading(true);
     setError(null);
+    setUnlockedRows(new Set());
+    setUnlockingRows(new Set());
+    setUnlockedAnswers({});
     try {
       const res = await fetch(
         `/api/recruiting/google/forms/${encodeURIComponent(formId)}/responses`,
@@ -152,15 +153,51 @@ export function ResponsesSpreadsheet() {
     })();
   }, [selectedFormId, loadResponses]);
 
+  const unlockRow = useCallback(
+    async (rowId: string) => {
+      if (!selectedFormId) return;
+      if (unlockedRows.has(rowId) || unlockingRows.has(rowId)) return;
+      setUnlockingRows((prev) => new Set(prev).add(rowId));
+      try {
+        // 402 → PaywallProvider 의 전역 fetch interceptor 가 결제 modal 을
+        // 자동으로 연다. 여기선 성공 시 값 반영 + 잔액 갱신만.
+        const res = await fetch('/api/recruiting/fullview/unlock', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ formId: selectedFormId, rowId }),
+        });
+        if (!res.ok) return;
+        const j = (await res.json().catch(() => ({}))) as {
+          answers?: Record<string, string>;
+        };
+        setUnlockedAnswers((prev) => ({ ...prev, [rowId]: j.answers ?? {} }));
+        setUnlockedRows((prev) => new Set(prev).add(rowId));
+        void refreshCredits();
+      } finally {
+        setUnlockingRows((prev) => {
+          const next = new Set(prev);
+          next.delete(rowId);
+          return next;
+        });
+      }
+    },
+    [selectedFormId, unlockedRows, unlockingRows, refreshCredits],
+  );
+
   const selectedForm = useMemo(
     () => forms?.find((f) => f.formId === selectedFormId) ?? null,
     [forms, selectedFormId],
   );
 
-  const columns = useMemo(
-    () => (data ? visibleColumns(data.columns) : []),
-    [data],
-  );
+  const columns = useMemo(() => (data ? data.columns : []), [data]);
+  const piiQids = useMemo(() => {
+    const fromServer = data?.piiQuestionIds ?? [];
+    const set = new Set(fromServer);
+    // 서버 목록을 신뢰하되, title 기반으로도 한 번 더 판정(방어).
+    for (const c of columns) if (isPiiColumn(c.title)) set.add(c.questionId);
+    return set;
+  }, [data, columns]);
+
   const totalRows = data?.rows.length ?? 0;
   const cappedRows = useMemo(
     () => (data ? data.rows.slice(0, ROW_CAP) : []),
@@ -270,11 +307,19 @@ export function ResponsesSpreadsheet() {
             <EmptyState
               tone="subtle"
               title="아직 응답이 없습니다"
-              description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 전화번호·이메일은 표시되지 않습니다."
+              description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 개인정보는 기본 잠금 상태로 표시됩니다."
             />
           </div>
         ) : (
-          <ResponseTable columns={columns} rows={cappedRows} />
+          <ResponseTable
+            columns={columns}
+            piiQids={piiQids}
+            rows={cappedRows}
+            unlockedRows={unlockedRows}
+            unlockingRows={unlockingRows}
+            unlockedAnswers={unlockedAnswers}
+            onUnlock={(rowId) => void unlockRow(rowId)}
+          />
         )}
       </div>
 
@@ -285,7 +330,7 @@ export function ResponsesSpreadsheet() {
             ? totalRows > ROW_CAP
               ? `총 ${totalRows} 응답 · 처음 ${ROW_CAP}개 표시`
               : `총 ${totalRows} 응답`
-            : '개인정보 보호를 위해 전화번호·이메일은 표에서 제외됩니다.'}
+            : '개인정보는 기본 잠금 상태이며, 해제 시 5크레딧이 차감됩니다.'}
         </span>
         {selectedForm?.sheetUrl ? (
           <a
@@ -319,48 +364,135 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+// 렌더 컬럼 모델 — PII 를 좌측으로 몰고, 그 다음 '응답 시각', 그 다음 나머지.
+// PII 가 하나라도 있으면 맨 앞에 잠금 해제 액션 열을 둔다.
+type RenderCol =
+  | { kind: 'action' }
+  | { kind: 'time' }
+  | { kind: 'field'; col: FormColumn; pii: boolean };
+
 function ResponseTable({
   columns,
+  piiQids,
   rows,
+  unlockedRows,
+  unlockingRows,
+  unlockedAnswers,
+  onUnlock,
 }: {
   columns: FormColumn[];
+  piiQids: Set<string>;
   rows: FormResponseRow[];
+  unlockedRows: Set<string>;
+  unlockingRows: Set<string>;
+  unlockedAnswers: Record<string, Record<string, string>>;
+  onUnlock: (rowId: string) => void;
 }) {
+  const piiCols = columns.filter((c) => piiQids.has(c.questionId));
+  const nonPiiCols = columns.filter((c) => !piiQids.has(c.questionId));
+  const hasPii = piiCols.length > 0;
+
+  const renderCols: RenderCol[] = [
+    ...(hasPii ? [{ kind: 'action' } as const] : []),
+    ...piiCols.map((col) => ({ kind: 'field', col, pii: true }) as const),
+    { kind: 'time' } as const,
+    ...nonPiiCols.map((col) => ({ kind: 'field', col, pii: false }) as const),
+  ];
+
   return (
     <table className="w-full border-collapse text-md">
       <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
         <tr>
-          <th className="border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
-            응답 시각
-          </th>
-          {columns.map((c) => (
+          {renderCols.map((rc, i) => (
             <th
-              key={c.questionId}
+              key={
+                rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
+              }
               className="border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
             >
-              {c.title}
+              {rc.kind === 'action'
+                ? '개인정보'
+                : rc.kind === 'time'
+                  ? '응답 시각'
+                  : rc.col.title}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
-          <tr
-            key={r.responseId}
-            className="border-b border-line-soft last:border-b-0"
-          >
-            <td className="px-3 py-2 align-top tabular-nums text-mute">
-              {formatSubmittedAt(r.lastSubmittedTime || r.createTime)}
-            </td>
-            {columns.map((c) => (
-              <td key={c.questionId} className="px-3 py-2 align-top text-ink-2">
-                {r.answers[c.questionId] || (
-                  <span className="text-mute-soft">—</span>
-                )}
-              </td>
-            ))}
-          </tr>
-        ))}
+        {rows.map((r) => {
+          const unlocked = unlockedRows.has(r.responseId);
+          const unlocking = unlockingRows.has(r.responseId);
+          const revealed = unlockedAnswers[r.responseId];
+          return (
+            <tr
+              key={r.responseId}
+              className="border-b border-line-soft last:border-b-0"
+            >
+              {renderCols.map((rc, i) => {
+                if (rc.kind === 'action') {
+                  return (
+                    <td key={`action-${i}`} className="px-3 py-2 align-top">
+                      {unlocked ? (
+                        <span className="whitespace-nowrap text-xs-soft text-mute-soft">
+                          ✓ 해제됨
+                        </span>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          disabled={unlocking}
+                          onClick={() => onUnlock(r.responseId)}
+                        >
+                          {unlocking ? '해제 중…' : '🔒 해제 (5💎)'}
+                        </Button>
+                      )}
+                    </td>
+                  );
+                }
+                if (rc.kind === 'time') {
+                  return (
+                    <td
+                      key={`time-${i}`}
+                      className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-mute"
+                    >
+                      {formatSubmittedAt(r.lastSubmittedTime || r.createTime)}
+                    </td>
+                  );
+                }
+                const qid = rc.col.questionId;
+                if (rc.pii) {
+                  if (unlocked) {
+                    const val = revealed?.[qid];
+                    return (
+                      <td
+                        key={qid}
+                        className="px-3 py-2 align-top text-ink-2"
+                      >
+                        {val || <span className="text-mute-soft">—</span>}
+                      </td>
+                    );
+                  }
+                  return (
+                    <td
+                      key={qid}
+                      className="px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
+                    >
+                      {PII_MASK}
+                    </td>
+                  );
+                }
+                return (
+                  <td key={qid} className="px-3 py-2 align-top text-ink-2">
+                    {r.answers[qid] || (
+                      <span className="text-mute-soft">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

@@ -33,7 +33,12 @@ export type FeatureKey =
   // PR-1 ships the placeholder widget + API shells; PR-2 ports the UI;
   // PR-3 wires real generation/deploy. Stays in PREVIEW_FEATURES across
   // the whole 3-PR sequence; credit cost finalized in PR-3.
-  | 'autocontents';
+  | 'autocontents'
+  // Recruiting fullview PII unlock — not a page/generator; a per-respondent
+  // credit action (5💎/row) that reveals masked personal-info cells in the
+  // recruiting responses spreadsheet. Registered here only so the flat cost
+  // flows through FEATURE_COSTS → spendCredits. No sidebar / route.
+  | 'recruiting_pii_unlock';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -91,6 +96,11 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // image cost models). href points back to canvas so any sidebar/dialog
   // fallback resolves cleanly.
   { key: 'autocontents', href: '/canvas', cost: 0 },
+  // Recruiting PII unlock — 5 credits to de-anonymise one respondent row in
+  // the recruiting fullview. Not in FEATURE_GROUPS (no sidebar) nor
+  // PREVIEW_FEATURES (not route-gated); href points at /recruiting so any
+  // generic lookup resolves. Only FEATURE_COSTS.recruiting_pii_unlock is used.
+  { key: 'recruiting_pii_unlock', href: '/recruiting', cost: 5 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at
