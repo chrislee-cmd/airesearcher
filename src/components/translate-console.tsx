@@ -3062,17 +3062,20 @@ export function TranslateConsole({
           생성돼 음성 버튼 오른쪽 같은 라인에 URL 이 바로 노출된다. */}
       <div className="flex flex-wrap items-center gap-2">
         {/* 음성 on/off — explicit ON/OFF 라벨 (icon-only 로 하면 OFF 가
-            클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해). */}
-        <ChromeButton
-          size="lg"
-          onClick={() => setOutputAudible((v) => !v)}
-          aria-pressed={outputAudible}
-          leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-          aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-          title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-        >
-          {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
-        </ChromeButton>
+            클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해).
+            idle 에서는 재생할 통역 오디오가 없어 노출 X — live 진입 시에만. */}
+        {live && (
+          <ChromeButton
+            size="lg"
+            onClick={() => setOutputAudible((v) => !v)}
+            aria-pressed={outputAudible}
+            leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+            aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+            title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+          >
+            {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
+          </ChromeButton>
+        )}
         {/* 공유 URL — live 진입 시 자동 생성. 생성 중이면 안내, 생성되면
             URL + 복사 + 해제 + 만료안내 인라인. */}
         {shareUrl ? (
@@ -3103,21 +3106,24 @@ export function TranslateConsole({
         ) : null}
       </div>
 
-      {showListeners ? (
-        // Fullview: prompter + a right listener column. The prompter keeps
-        // the flexible main width; the panel is a fixed ~300px rail.
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+      {/* 스트리밍(프롬프터) 패널 — idle 에는 표시할 통역 라인이 없어 노출 X.
+          통역 시작(live) 후에만 렌더. */}
+      {live &&
+        (showListeners ? (
+          // Fullview: prompter + a right listener column. The prompter keeps
+          // the flexible main width; the panel is a fixed ~300px rail.
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+            </div>
+            <ListenerPanel
+              listeners={listeners}
+              className="w-[300px] shrink-0 self-start"
+            />
           </div>
-          <ListenerPanel
-            listeners={listeners}
-            className="w-[300px] shrink-0 self-start"
-          />
-        </div>
-      ) : (
-        <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
-      )}
+        ) : (
+          <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
+        ))}
 
       {status === 'ended' || (recording && status !== 'live') ? (
         <RecordingDownloadPanel
