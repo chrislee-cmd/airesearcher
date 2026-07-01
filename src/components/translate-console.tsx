@@ -2626,6 +2626,22 @@ export function TranslateConsole({
     }
   }, []);
 
+  // 통역 시작 (live 진입) 순간 공유 링크 자동 생성 — 별도 "생성" 버튼 없이
+  // 프롬프터 상단 음성 버튼 오른쪽에 URL 을 바로 노출. live 세션당 1회만
+  // 발동하도록 ref 로 가드 (host 가 revoke 하면 재생성 안 함), 세션이
+  // idle/ended/error 로 내려가면 다음 세션을 위해 플래그 리셋.
+  const autoSharedRef = useRef(false);
+  useEffect(() => {
+    if (status === 'live') {
+      if (!autoSharedRef.current) {
+        autoSharedRef.current = true;
+        void generateShare();
+      }
+    } else if (status === 'idle' || status === 'ended' || status === 'error') {
+      autoSharedRef.current = false;
+    }
+  }, [status, generateShare]);
+
   // Trigger a download for one of the five formats. All stream directly
   // from the API route — m4a-output is transcoded on demand from the
   // persisted webm; zip-output/zip-revised bundle a kind-filtered
@@ -3014,33 +3030,6 @@ export function TranslateConsole({
         </div>
       ) : null}
 
-      {shareToken && shareUrl ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">
-          <span className="text-mute-soft">{t('share.label')}</span>
-          <ChromeInput
-            readOnly
-            value={shareUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-w-[260px] flex-1 !border-line-soft !text-ink font-mono"
-          />
-          <ChromeButton
-            size="md"
-            onClick={() => void copyShareUrl()}
-          >
-            {shareCopied ? t('share.copied') : t('share.copy')}
-          </ChromeButton>
-          <ChromeButton
-            variant="mute"
-            size="md"
-            onClick={() => void revokeShare()}
-            disabled={sharing}
-          >
-            {t('share.revoke')}
-          </ChromeButton>
-          <span className="text-sm text-mute-soft">{t('share.expiresIn4h')}</span>
-        </div>
-      ) : null}
-
       {error ? (
         <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
           {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
@@ -3068,9 +3057,9 @@ export function TranslateConsole({
         </div>
       ) : null}
 
-      {/* 보조 컨트롤 — 음성 on/off + 공유 링크 생성. 서브헤더 우측에서
-          메인 패널 상단 (프롬프터 바로 위) 으로 이동. 공유 생성 버튼은
-          live 이고 아직 링크가 없을 때만 노출 (기존 조건 유지). */}
+      {/* 보조 컨트롤 — 음성 on/off + 공유 URL. 서브헤더 우측에서 메인 패널
+          상단 (프롬프터 바로 위) 으로 이동. 공유 링크는 통역 시작 시 자동
+          생성돼 음성 버튼 오른쪽 같은 라인에 URL 이 바로 노출된다. */}
       <div className="flex flex-wrap items-center gap-2">
         {/* 음성 on/off — explicit ON/OFF 라벨 (icon-only 로 하면 OFF 가
             클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해). */}
@@ -3084,14 +3073,33 @@ export function TranslateConsole({
         >
           {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
         </ChromeButton>
-        {live && !shareToken ? (
-          <ChromeButton
-            size="lg"
-            onClick={() => void generateShare()}
-            disabled={sharing}
-          >
-            {sharing ? t('share.creating') : t('share.create')}
-          </ChromeButton>
+        {/* 공유 URL — live 진입 시 자동 생성. 생성 중이면 안내, 생성되면
+            URL + 복사 + 해제 + 만료안내 인라인. */}
+        {shareUrl ? (
+          <>
+            <ChromeInput
+              readOnly
+              value={shareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="min-w-[220px] max-w-[360px] flex-1 !border-line-soft !text-ink font-mono"
+            />
+            <ChromeButton size="md" onClick={() => void copyShareUrl()}>
+              {shareCopied ? t('share.copied') : t('share.copy')}
+            </ChromeButton>
+            <ChromeButton
+              variant="mute"
+              size="md"
+              onClick={() => void revokeShare()}
+              disabled={sharing}
+            >
+              {t('share.revoke')}
+            </ChromeButton>
+            <span className="text-sm text-mute-soft">
+              {t('share.expiresIn4h')}
+            </span>
+          </>
+        ) : live && sharing ? (
+          <span className="text-sm text-mute-soft">{t('share.creating')}</span>
         ) : null}
       </div>
 
