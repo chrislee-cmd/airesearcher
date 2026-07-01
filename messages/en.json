@@ -879,6 +879,10 @@
     "prompter": {
       "empty": "Translated text will stream here once interpreting starts."
     },
+    "fullview": {
+      "controlHint": "Start, stop, and sharing are controlled from the widget card.",
+      "backToWidget": "Back to widget"
+    },
     "speaker": {
       "host": "Host",
       "guest": "Guest"

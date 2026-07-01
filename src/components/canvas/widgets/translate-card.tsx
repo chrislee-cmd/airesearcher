@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import type { WidgetContent } from '../widget-types';
 import { TranslateConsole } from '@/components/translate-console';
+import { TranslateSessionProvider } from '@/components/translate/translate-session-context';
+import { TranslateFullviewView } from '@/components/translate/fullview-view';
 import { useRealtimeTranscript } from '@/components/realtime-transcript-provider';
 import { useWidgetState } from '../shell/widget-state-context';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
@@ -29,37 +31,38 @@ function TranslateStatePush() {
 // AI 동시통역 canvas widget — 기존 /live 페이지의 TranslateConsole 을 그대로
 // widget body 로 마운트 (lightweight wrapper). desk/quotes 와 동일 패턴.
 //
-// 전체보기 — 공유 모달이 소유. translate 가 currentKey 일 때만 TranslateConsole
-// 을 모달 slot 으로 portal 한다. isCurrent 분기로 카드/모달 중 한 곳에서만
-// 렌더하므로 console 은 항상 단일 인스턴스 (두 instance → 두 세션 위험 회피).
-// 세션/transcript 는 page-level RealtimeTranscriptProvider 가 보유하므로
-// console 이 remount 돼도 보존된다 (provider hoist 불필요).
+// 전체보기 — 세션 보존이 최우선. <TranslateConsole> 이 WebRTC / LiveKit /
+// OpenAI Realtime 세션을 소유하는데, 예전 코드는 isCurrent 일 때 console 을
+// 모달 slot 으로 "이동" 시켰다. React 는 tree 위치가 다르면 새 instance →
+// 카드의 console 이 unmount → cleanup('unmount') 가 세션을 전부 종료해서,
+// 사용자가 전체 보기를 여는 순간 통역이 죽었다.
+//
+// Fix: console 은 항상 카드에 mount 유지 (unmount 안 됨 → 세션 생존). 모달
+// slot 에는 세션을 소유하지 않는 read-only <TranslateFullviewView> 를 넣고,
+// console 이 TranslateSessionProvider 로 publish 한 스냅샷 (prompter 라인 /
+// 청취자용 session id / share url) 을 미러링한다. provider 는 console 과
+// 모달 portal 을 둘 다 감싸야 하므로 (둘은 형제) 여기서 wrap 한다.
 function ExpandedBody() {
-  const { isCurrent, renderInSlot, close } = useFullview('translate');
+  const { renderInSlot, close } = useFullview('translate');
   return (
-    <>
+    <TranslateSessionProvider>
       <TranslateStatePush />
-      {isCurrent ? (
-        <div className="flex h-full items-center justify-center px-4 text-center text-sm italic text-mute-soft">
-          전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
-        </div>
-      ) : (
-        <div className="space-y-5 px-5 py-5">
-          <TranslateConsole />
-        </div>
-      )}
+      {/* 카드에 항상 mount 유지 — 세션 소유. 모달이 열려도 unmount 되지
+          않으므로 통역이 끊기지 않는다. 모달이 열린 동안은 backdrop 뒤로
+          가려질 뿐이다. */}
+      <div className="space-y-5 px-5 py-5">
+        <TranslateConsole />
+      </div>
       {renderInSlot(
         <WidgetFullviewPanel
           title="AI 동시통역"
           subtitle="마이크 음성을 실시간 STT + 동시통역"
           onClose={close}
         >
-          <div className="space-y-5 px-6 py-6">
-            <TranslateConsole showListeners />
-          </div>
+          <TranslateFullviewView onGoToCard={close} />
         </WidgetFullviewPanel>,
       )}
-    </>
+    </TranslateSessionProvider>
   );
 }
 

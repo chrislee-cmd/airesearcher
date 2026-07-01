@@ -38,6 +38,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
 import { ListenerPanel } from './translate/listener-panel';
+import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import { useTranslateListeners } from '@/hooks/use-translate-listeners';
 import { isHangulFusionBoundary, joinDelta } from '@/lib/translate-stream-join';
 import {
@@ -109,7 +110,7 @@ const REVISE_POLL_MS = 4000;
 // actual gate, this is just for display.
 const POSTPROCESS_CREDITS = 10;
 
-type CaptionLine = {
+export type CaptionLine = {
   id: string;
   text: string;
   final: boolean;
@@ -2831,6 +2832,22 @@ export function TranslateConsole({
   // stays dormant and adds no realtime channel.
   const listeners = useTranslateListeners(showListeners ? liveSessionId : null);
 
+  // Publish a read-only snapshot up to TranslateSessionProvider (mounted by
+  // the canvas card) so the fullview modal can mirror the live session
+  // WITHOUT hosting the session itself. No-op when no provider is mounted
+  // (standalone /live). This only reads state the console already computes —
+  // it never touches the session lifecycle, which is the whole point of the
+  // fullview-session-preserve fix.
+  const publishSession = useTranslateSessionPublisher();
+  useEffect(() => {
+    publishSession({
+      sessionId: liveSessionId,
+      shareUrl,
+      isLive: status === 'live',
+      promptedLines,
+    });
+  }, [publishSession, liveSessionId, shareUrl, status, promptedLines]);
+
   return (
     <div className="space-y-4">
       {/* WidgetSubHeader — settings (captureMode / sourceLang / targetLang)
@@ -3680,7 +3697,7 @@ function SpeakerOffIcon() {
 // 흐름을 pop 톤 카드로 승격. A soft mask at the top edge fades older
 // lines as they age out of the 30-second window; mask 는 텍스트 컨텐츠
 // 만 fade 하고 chrome 은 그대로 유지된다.
-function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
+export function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
   const t = useTranslations('TranslateConsole');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Pin to bottom on every new line so the latest text stays in the
