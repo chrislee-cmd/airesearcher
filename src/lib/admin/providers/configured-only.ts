@@ -64,6 +64,52 @@ const SPECS: Spec[] = [
     envKeys: ['GMAIL_USER', 'GMAIL_APP_PASSWORD'],
     dashboardUrl: 'https://myaccount.google.com/security',
   },
+  {
+    id: 'twelvelabs',
+    name: 'TwelveLabs',
+    envKeys: ['TWELVELABS_API_KEY', 'TWELVELABS_ANALYZE_INDEX_ID'],
+    dashboardUrl: 'https://playground.twelvelabs.io/billing',
+    note: '비디오 분석 / 인덱스 — 사용량 = video minute',
+  },
+  {
+    id: 'livekit',
+    name: 'LiveKit',
+    envKeys: ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'LIVEKIT_URL'],
+    dashboardUrl: 'https://cloud.livekit.io/projects',
+    note: '동시통역 viewer / publisher 연결 — 사용량 = connection minute',
+  },
+  {
+    id: 'lemonsqueezy',
+    name: 'Lemonsqueezy',
+    envKeys: [
+      'LEMONSQUEEZY_API_KEY',
+      'LEMONSQUEEZY_STORE_ID_KRW',
+      'LEMONSQUEEZY_STORE_ID_USD',
+    ],
+    dashboardUrl: 'https://app.lemonsqueezy.com/dashboard',
+    note: '결제 처리 — 수익은 Dashboard 에서 확인',
+  },
+  {
+    id: 'upstash',
+    name: 'Upstash Redis',
+    envKeys: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+    dashboardUrl: 'https://console.upstash.com/redis',
+    note: 'rate limit (application-rate-limit, #422) — 사용량 = req / 10k',
+  },
+  {
+    id: 'notion',
+    name: 'Notion',
+    envKeys: ['NOTION_API_TOKEN', 'NOTION_CLIENT_ID', 'NOTION_CLIENT_SECRET'],
+    dashboardUrl: 'https://www.notion.so/my-integrations',
+    note: 'share-to-Notion 통합 — API 무료',
+  },
+  {
+    id: 'wordpress',
+    name: 'WordPress',
+    envKeys: ['WORDPRESS_API_URL'],
+    dashboardUrl: '',
+    note: '자체 호스팅 instance — API 키 / 비용 별도',
+  },
 ];
 
 export function getConfiguredOnlyProviders(): ProviderUsage[] {
