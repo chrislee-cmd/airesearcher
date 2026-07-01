@@ -37,7 +37,10 @@ import {
   collectTranscriptQuotes,
 } from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
+import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -194,6 +197,9 @@ function ExpandedBody() {
   } = useRealtimeTranscription({ locale: 'ko' });
 
   const [source, setSource] = useState<SourceKind>('mic');
+  // 서브헤더 "설정" 모달 — 옛 필드 (입력 소스 / 분석 출력 언어) 를 담는다.
+  // 값 변경은 즉시 반영, 닫기 = 확정.
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
   // (영속화 X). default ko = 옛 동작 (한국어 분석). think / reflection 자동
@@ -890,19 +896,12 @@ function ExpandedBody() {
       <div className="flex h-full min-h-0 flex-col">
         <WidgetSubHeader
           className="shrink-0"
+          compact
           inputs={
-            <div className="flex items-center gap-2">
-              <SourcePicker
-                value={source}
-                onChange={setSource}
-                disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
-              />
-              <OutputLangPicker
-                value={outputLang}
-                onChange={setOutputLang}
-                disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
-              />
-            </div>
+            <WidgetSettingsButton
+              onClick={() => setSettingsOpen(true)}
+              hasChanges={source !== 'mic' || outputLang !== 'ko'}
+            />
           }
           actions={
             <>
@@ -958,6 +957,29 @@ function ExpandedBody() {
             </div>
           }
         />
+
+        {/* 설정 모달 — 옛 서브헤더 필드 (입력 소스 / 분석 출력 언어).
+            값 변경은 즉시 반영, 닫기 = 확정. 세션 진행 중 (idle/error 외)
+            에는 필드 disabled 유지 (옛 동작 그대로). */}
+        <WidgetSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+        >
+          <Field label="입력 소스">
+            <SourcePicker
+              value={source}
+              onChange={setSource}
+              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
+            />
+          </Field>
+          <Field label="분석 출력 언어">
+            <OutputLangPicker
+              value={outputLang}
+              onChange={setOutputLang}
+              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
+            />
+          </Field>
+        </WidgetSettingsModal>
 
         {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
             popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal

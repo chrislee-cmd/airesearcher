@@ -37,6 +37,8 @@ import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
+import { WidgetSettingsButton } from './canvas/shell/widget-settings-button';
+import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
@@ -510,9 +512,13 @@ export function TranslateConsole({
 } = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
+  const tWidgets = useTranslations('Widgets');
   const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
+  // 서브헤더 "설정" 모달 — 옛 필드 (캡처방식 / 원어·번역언어 / 용어집) 를
+  // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -2620,6 +2626,22 @@ export function TranslateConsole({
     }
   }, []);
 
+  // 통역 시작 (live 진입) 순간 공유 링크 자동 생성 — 별도 "생성" 버튼 없이
+  // 프롬프터 상단 음성 버튼 오른쪽에 URL 을 바로 노출. live 세션당 1회만
+  // 발동하도록 ref 로 가드 (host 가 revoke 하면 재생성 안 함), 세션이
+  // idle/ended/error 로 내려가면 다음 세션을 위해 플래그 리셋.
+  const autoSharedRef = useRef(false);
+  useEffect(() => {
+    if (status === 'live') {
+      if (!autoSharedRef.current) {
+        autoSharedRef.current = true;
+        void generateShare();
+      }
+    } else if (status === 'idle' || status === 'ended' || status === 'error') {
+      autoSharedRef.current = false;
+    }
+  }, [status, generateShare]);
+
   // Trigger a download for one of the five formats. All stream directly
   // from the API route — m4a-output is transcoded on demand from the
   // persisted webm; zip-output/zip-revised bundle a kind-filtered
@@ -2827,6 +2849,13 @@ export function TranslateConsole({
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
   const langOptions = useMemo(() => LANGS, []);
+  // 서브헤더 설정 dot — default (both / ko → en / 용어집 없음) 와 다른 값이
+  // 하나라도 있으면 "설정됨" 을 amore dot 으로 표시.
+  const hasNonDefaultSettings =
+    captureMode !== 'both' ||
+    sourceLang !== 'ko' ||
+    targetLang !== 'en' ||
+    glossary.length > 0;
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
@@ -2872,130 +2901,117 @@ export function TranslateConsole({
           (옛 저장 체크박스) 없음. 3 위젯 공통 primitive. */}
       <WidgetSubHeader
         className="-mx-5 -mt-5"
+        compact
         inputs={
-          /* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
-             수평) stack, 우 = glossary chips. 사용자 요청 (2026-06-30) 으로
-             캡처방식/원어/번역언어 라벨·안내문 전부 제거 — visual label 0,
-             a11y 는 select 의 aria-label 로 보장. glossary 라벨만 유지. */
-          <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
-            {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
-            <div className="flex min-w-0 flex-col gap-3">
-              {/* 1번 = 입력 소스 (captureMode). 라벨/안내문 제거. */}
-              <select
-                value={captureMode}
-                onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-                disabled={live || busy}
-                aria-label={t('captureMode.label')}
-                className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                <option value="both">{t('captureMode.both')}</option>
-                <option value="mic-only">{t('captureMode.micOnly')}</option>
-                <option value="tab-only">{t('captureMode.tabOnly')}</option>
-              </select>
-              {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
-              <div className="flex flex-wrap gap-3">
-                <select
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
-                  disabled={live || busy}
-                  aria-label={t('sourceLang')}
-                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                >
-                  {langOptions.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value)}
-                  disabled={live || busy}
-                  aria-label={t('targetLang')}
-                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                >
-                  {langOptions.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
-                live/busy 시 잠금. 가시 라벨 제거 — placeholder "고유 용어/
-                맥락 주입" 로 대체 (a11y 는 input aria-label 이 보장). 인명/
-                도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
-            <div className="flex min-w-0 flex-col">
-              <GlossaryField
-                values={glossary}
-                onChange={setGlossary}
-                disabled={live || busy}
-                placeholderEmpty={t('glossary.placeholderEmpty')}
-                placeholderAdd={t('glossary.placeholderAdd')}
-                removeAria={t('glossary.removeAria')}
-              />
-            </div>
-          </div>
+          <WidgetSettingsButton
+            onClick={() => setSettingsOpen(true)}
+            label={tWidgets('settings')}
+            hasChanges={hasNonDefaultSettings}
+          />
         }
         actions={
-          <div className="flex flex-col items-end gap-2">
-            {/* Row 1: elapsed clock + share + start/stop. The status /
-                slot-indicator / recording pills were removed here as visual
-                noise — the underlying live/status/slotActive/recorderActive
-                state still drives behavior, just no longer rendered inline. */}
-            <div className="flex items-center gap-2">
-              <span className="text-md tabular-nums text-mute">
-                {live ? formatElapsed(elapsed) : '00:00'}
-              </span>
-              {live ? (
-                <>
-                  {!shareToken ? (
-                    <ChromeButton
-                      size="lg"
-                      onClick={() => void generateShare()}
-                      disabled={sharing}
-                    >
-                      {sharing ? t('share.creating') : t('share.create')}
-                    </ChromeButton>
-                  ) : null}
-                  <ChromeButton
-                    size="lg"
-                    onClick={() => void stop()}
-                  >
-                    {t('stop')}
-                  </ChromeButton>
-                </>
-              ) : (
-                <ChromeButton
-                  variant="primary"
-                  size="lg"
-                  onClick={() => void start()}
-                  disabled={busy}
-                >
-                  {busy ? t('starting') : t('start')}
-                </ChromeButton>
-              )}
-            </div>
-            {/* Row 2: voice on/off, moved below the start/stop button.
-                Layer B: explicit ON/OFF label, not an icon alone — the
-                icon-only toggle gave no hint that OFF was a click away from
-                restoring sound, so a host who'd toggled it off read the
-                silence as the TTS being broken. */}
-            <ChromeButton
-              size="lg"
-              onClick={() => setOutputAudible((v) => !v)}
-              aria-pressed={outputAudible}
-              leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-              aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-              title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-            >
-              {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
-            </ChromeButton>
+          /* 시계 + 시작/중지 CTA 만. 음성 on/off · 공유 링크 생성 버튼은
+             메인 패널 상단 (프롬프터 바로 위) 으로 이동 — 서브헤더는 설정 +
+             핵심 CTA 만. status / slot-indicator / recording pills 는 이전
+             PR 에서 visual noise 로 제거 (state 는 그대로 behavior 구동). */
+          <div className="flex items-center gap-2">
+            <span className="text-md tabular-nums text-mute">
+              {live ? formatElapsed(elapsed) : '00:00'}
+            </span>
+            {live ? (
+              <ChromeButton
+                size="lg"
+                onClick={() => void stop()}
+              >
+                {t('stop')}
+              </ChromeButton>
+            ) : (
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={() => void start()}
+                disabled={busy}
+              >
+                {busy ? t('starting') : t('start')}
+              </ChromeButton>
+            )}
           </div>
         }
       />
+
+      {/* 설정 모달 — 옛 서브헤더 필드 (캡처방식 / 원어·번역언어 / 용어집).
+          값 변경은 즉시 반영, 닫기 = 확정. 세션 시작 전에만 편집 가능 —
+          live/busy 시 필드 disabled 유지 (옛 동작 그대로). */}
+      <WidgetSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={tWidgets('settings')}
+        closeLabel={tWidgets('settingsClose')}
+      >
+        {/* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
+            수평) stack, 우 = glossary chips. 가시 라벨 제거 — a11y 는 select /
+            input 의 aria-label 로 보장. */}
+        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+          {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
+          <div className="flex min-w-0 flex-col gap-3">
+            {/* 1번 = 입력 소스 (captureMode). */}
+            <select
+              value={captureMode}
+              onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+              disabled={live || busy}
+              aria-label={t('captureMode.label')}
+              className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            >
+              <option value="both">{t('captureMode.both')}</option>
+              <option value="mic-only">{t('captureMode.micOnly')}</option>
+              <option value="tab-only">{t('captureMode.tabOnly')}</option>
+            </select>
+            {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                disabled={live || busy}
+                aria-label={t('sourceLang')}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                disabled={live || busy}
+                aria-label={t('targetLang')}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
+              live/busy 시 잠금. 인명/도구명/약어의 정규 표기를 Enter 로
+              chip 추가. */}
+          <div className="flex min-w-0 flex-col">
+            <GlossaryField
+              values={glossary}
+              onChange={setGlossary}
+              disabled={live || busy}
+              placeholderEmpty={t('glossary.placeholderEmpty')}
+              placeholderAdd={t('glossary.placeholderAdd')}
+              removeAria={t('glossary.removeAria')}
+            />
+          </div>
+        </div>
+      </WidgetSettingsModal>
 
       {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
           (most visible spot) so the host immediately sees why the monitor
@@ -3011,33 +3027,6 @@ export function TranslateConsole({
           >
             {t('ttsBlocked.enable')}
           </ChromeButton>
-        </div>
-      ) : null}
-
-      {shareToken && shareUrl ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink">
-          <span className="text-mute-soft">{t('share.label')}</span>
-          <ChromeInput
-            readOnly
-            value={shareUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-w-[260px] flex-1 !border-line-soft !text-ink font-mono"
-          />
-          <ChromeButton
-            size="md"
-            onClick={() => void copyShareUrl()}
-          >
-            {shareCopied ? t('share.copied') : t('share.copy')}
-          </ChromeButton>
-          <ChromeButton
-            variant="mute"
-            size="md"
-            onClick={() => void revokeShare()}
-            disabled={sharing}
-          >
-            {t('share.revoke')}
-          </ChromeButton>
-          <span className="text-sm text-mute-soft">{t('share.expiresIn4h')}</span>
         </div>
       ) : null}
 
@@ -3067,6 +3056,52 @@ export function TranslateConsole({
           ) : null}
         </div>
       ) : null}
+
+      {/* 보조 컨트롤 — 음성 on/off + 공유 URL. 서브헤더 우측에서 메인 패널
+          상단 (프롬프터 바로 위) 으로 이동. 공유 링크는 통역 시작 시 자동
+          생성돼 음성 버튼 오른쪽 같은 라인에 URL 이 바로 노출된다. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 음성 on/off — explicit ON/OFF 라벨 (icon-only 로 하면 OFF 가
+            클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해). */}
+        <ChromeButton
+          size="lg"
+          onClick={() => setOutputAudible((v) => !v)}
+          aria-pressed={outputAudible}
+          leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+          aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+          title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+        >
+          {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
+        </ChromeButton>
+        {/* 공유 URL — live 진입 시 자동 생성. 생성 중이면 안내, 생성되면
+            URL + 복사 + 해제 + 만료안내 인라인. */}
+        {shareUrl ? (
+          <>
+            <ChromeInput
+              readOnly
+              value={shareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="min-w-[220px] max-w-[360px] flex-1 !border-line-soft !text-ink font-mono"
+            />
+            <ChromeButton size="md" onClick={() => void copyShareUrl()}>
+              {shareCopied ? t('share.copied') : t('share.copy')}
+            </ChromeButton>
+            <ChromeButton
+              variant="mute"
+              size="md"
+              onClick={() => void revokeShare()}
+              disabled={sharing}
+            >
+              {t('share.revoke')}
+            </ChromeButton>
+            <span className="text-sm text-mute-soft">
+              {t('share.expiresIn4h')}
+            </span>
+          </>
+        ) : live && sharing ? (
+          <span className="text-sm text-mute-soft">{t('share.creating')}</span>
+        ) : null}
+      </div>
 
       {showListeners ? (
         // Fullview: prompter + a right listener column. The prompter keeps

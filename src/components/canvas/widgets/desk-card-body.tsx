@@ -47,6 +47,8 @@ import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
+import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -288,6 +290,9 @@ export function DeskCardBody() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // 서브헤더 "설정" 모달 — 옛 서브헤더 필드 (지역/기간/분석방향성/키워드) 를
+  // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // 통일 "전체 보기" — 가장 최근 완료 리포트를 풀스크린으로. 공유 모달
   // (CanvasBoard FullviewShell)이 소유하고, desk 가 currentKey 일 때만 본문을
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
@@ -584,6 +589,14 @@ export function DeskCardBody() {
   }
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
+  // 서브헤더 설정 dot — default (지역 KR 만 / 기간·분석방향성·키워드 비어있음)
+  // 와 다른 값이 하나라도 있으면 "설정됨" 을 amore dot 으로 표시.
+  const hasNonDefaultSettings =
+    !(regions.size === 1 && regions.has('KR')) ||
+    dateFrom !== '' ||
+    dateTo !== '' ||
+    analysisDirection.trim() !== '' ||
+    hasKeywords;
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
   // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
@@ -675,17 +688,47 @@ export function DeskCardBody() {
         {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
             길어지면 자체적으로 스크롤. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* WidgetSubHeader — 2-row 컴팩트 레이아웃:
+        {/* WidgetSubHeader — 통일 컴팩트 레이아웃: 좌 = ⚙ 설정 버튼 하나
+            (옛 지역/기간/분석방향성/키워드 필드는 모두 설정 모달로 이동),
+            우 = 검색 CTA 하나. */}
+        <WidgetSubHeader
+          compact
+          inputs={
+            <WidgetSettingsButton
+              onClick={() => setSettingsOpen(true)}
+              label={tWidgets('settings')}
+              hasChanges={hasNonDefaultSettings}
+            />
+          }
+          actions={
+            <>
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={onClickRun}
+                disabled={!canRun}
+              >
+                {submitting || pendingJobId || isWorking
+                  ? tCommon('loading')
+                  : tDesk('search')}
+              </ChromeButton>
+            </>
+          }
+        />
+
+        {/* 설정 모달 — 옛 서브헤더 필드 (지역 / 기간 / 분석 방향성 / 키워드).
+            값 변경은 즉시 반영, 닫기 = 확정.
             row 1 = 검색 지역 (multi-select dropdown) / 수집 기간
               (single-select dropdown + custom 시 date pickers) / 분석 방향성 (text)
-            row 2 = 검색 키워드 (ChipInput, full-width)
-            "enter / 쉼표 /tab으로 추가" 헬퍼 텍스트 제거 (placeholder 에 흡수).
-            기존 버튼 그리드는 dropdown 으로 압축 — 서브헤더 height 절감. */}
-        <WidgetSubHeader
-          inputs={
-            <div className="w-full space-y-3">
-              {/* Row 1: 지역 / 기간 / 분석 방향성 — 서브헤더 라벨 제거,
-                  placeholder 로 용도 안내 (사용자 요청 2026-06-30). */}
+            row 2 = 검색 키워드 (ChipInput, full-width) */}
+        <WidgetSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          title={tWidgets('settings')}
+          closeLabel={tWidgets('settingsClose')}
+        >
+          <div className="w-full space-y-3">
+            {/* Row 1: 지역 / 기간 / 분석 방향성 — placeholder 로 용도 안내. */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <SelectMenu
                   multi
@@ -776,23 +819,8 @@ export function DeskCardBody() {
                     : tDesk('estimateOk')}
                 </p>
               )}
-            </div>
-          }
-          actions={
-            <>
-              <ChromeButton
-                variant="primary"
-                size="lg"
-                onClick={onClickRun}
-                disabled={!canRun}
-              >
-                {submitting || pendingJobId || isWorking
-                  ? tCommon('loading')
-                  : tDesk('search')}
-              </ChromeButton>
-            </>
-          }
-        />
+          </div>
+        </WidgetSettingsModal>
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (

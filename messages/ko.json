@@ -1022,7 +1022,9 @@
     "deskRunning": "리서치가 진행중입니다",
     "deskDone": "리서치가 완료되었습니다",
     "interviewRunning": "분석이 진행중입니다",
-    "interviewDone": "분석이 완료되었습니다"
+    "interviewDone": "분석이 완료되었습니다",
+    "settings": "설정",
+    "settingsClose": "닫기"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
