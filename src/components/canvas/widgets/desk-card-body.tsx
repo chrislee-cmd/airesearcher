@@ -483,12 +483,6 @@ export function DeskCardBody() {
     switch (job?.progress?.phase) {
       case 'crawling':
         return tDesk('stuckBodyCrawling');
-      case 'extracting':
-        return tDesk('stuckBodyExtracting');
-      case 'drafting':
-      case 'critiquing':
-        return tDesk('stuckBodyDrafting');
-      case 'synthesizing':
       case 'summarizing':
         return tDesk('stuckBodySynthesizing');
       default:
@@ -504,11 +498,8 @@ export function DeskCardBody() {
     () =>
       [
         ['expanding', '키워드 확장'],
-        ['scoping', 'RQ 정리'],
-        ['crawling', '자료 수집'],
-        ['extracting', '주장 추출'],
-        ['drafting', 'RQ 답변'],
-        ['synthesizing', '리포트 합성'],
+        ['crawling', '크롤'],
+        ['summarizing', '요약'],
         ['analytics', '차트'],
       ] as const,
     [],
