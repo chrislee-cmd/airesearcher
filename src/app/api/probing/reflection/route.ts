@@ -20,7 +20,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
-  PROBING_PERSONA_SYSTEM,
+  PROBING_OUTPUT_LANGS,
+  buildProbingPersonaSystem,
   probingPersonaSchema,
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
@@ -32,6 +33,9 @@ const Body = z.object({
   // 전체 그림을 그린다. cap 은 suggest 와 동일 60_000 자.
   transcript_window: z.string().min(30).max(60_000),
   interview_guide: z.string().max(20_000).optional().default(''),
+  // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
+  // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
+  output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
 });
 
 export async function POST(request: Request) {
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: probingPersonaSchema,
-    system: PROBING_PERSONA_SYSTEM,
+    system: buildProbingPersonaSystem(parsed.data.output_lang),
     prompt: `${guideBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
 
