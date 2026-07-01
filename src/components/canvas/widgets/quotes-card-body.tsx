@@ -23,6 +23,7 @@ import {
   SectionLabel,
   WidgetOutputRow,
 } from '@/components/canvas/shell/widget-outputs';
+import { CompletedCTA } from '@/components/canvas/shell/completed-cta';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -73,6 +74,7 @@ function formatDuration(seconds: number | null) {
 export function QuotesCardBody() {
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
+  const tWidgets = useTranslations('Widgets');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
@@ -86,7 +88,7 @@ export function QuotesCardBody() {
   // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
   // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const { renderInSlot, close: closeFullview } = useFullview('quotes');
+  const { renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
@@ -457,6 +459,17 @@ export function QuotesCardBody() {
               </div>
             )}
           </div>
+
+          {/* 완료 CTA 푸터 — 완료된 전사(done) 1건 이상이면 노출. 클릭 시
+              전사록 fullview modal 진입 → 그 안에서 산출물 확인. */}
+          {doneJobs.length > 0 && (
+            <CompletedCTA
+              label={tWidgets('completed')}
+              viewAllLabel={tWidgets('viewAll')}
+              count={doneJobs.length}
+              onClick={openFullview}
+            />
+          )}
       </div>
 
       {pendingFiles && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import {
   InterviewAnalysisArea,
@@ -10,6 +11,7 @@ import { useInterviewJob } from '@/components/interview-job-provider';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
+import { CompletedCTA } from '../shell/completed-cta';
 import { InterviewFullView } from './interviews/full-view';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
@@ -98,7 +100,12 @@ function ExpandedBody() {
   // 피드백 대응. 공유 모달(CanvasBoard FullviewShell)이 소유하고 interviews
   // 가 currentKey 일 때만 본문을 모달 slot 으로 portal. provider
   // (useInterviewJob) 기반이라 모달 close 후 파일/인덱스 상태 보존.
-  const { renderInSlot, close } = useFullview('interviews');
+  const { renderInSlot, openFullview, close } = useFullview('interviews');
+  const tWidgets = useTranslations('Widgets');
+  const job = useInterviewJob();
+  // 완료 조건 = 분석 결과 존재 또는 변환 완료 파일 1건 이상 (헤더 done
+  // pill 과 동일 판정 — InterviewStatePush 참고). count 는 변환 완료 파일 수.
+  const isComplete = !!job.analysis || job.doneCount > 0;
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
@@ -108,6 +115,16 @@ function ExpandedBody() {
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
       </div>
+      {/* 완료 CTA 푸터 — 분석/변환 완료 시 노출. 클릭 시 인터뷰 fullview
+          (2-column list + 검색/채팅) 진입 → 산출물 확인. */}
+      {isComplete && (
+        <CompletedCTA
+          label={tWidgets('completed')}
+          viewAllLabel={tWidgets('viewAll')}
+          count={job.doneCount}
+          onClick={openFullview}
+        />
+      )}
       {renderInSlot(<InterviewFullView onClose={close} />)}
     </div>
   );

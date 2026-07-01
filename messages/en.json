@@ -1011,7 +1011,9 @@
     }
   },
   "Widgets": {
-    "fullview": "Open Fullview"
+    "fullview": "Open Fullview",
+    "completed": "Job completed",
+    "viewAll": "View all →"
   },
   "Workspace": {
     "eyebrow": "Workspace",

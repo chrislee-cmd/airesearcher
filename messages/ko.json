@@ -1011,7 +1011,9 @@
     }
   },
   "Widgets": {
-    "fullview": "전체 보기"
+    "fullview": "전체 보기",
+    "completed": "작업이 완료되었습니다",
+    "viewAll": "전체 보기 →"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

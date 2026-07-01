@@ -504,6 +504,20 @@ html, body {
   animation: probingPopupPulse 1.2s ease-out 1;
 }
 
+/* completed-cta-pulse — 위젯 완료 CTA 가 처음 노출되는 순간(마운트) 3초간
+   mint outline 이 은은히 맥동. 버튼 자체 offset box-shadow 와 충돌하지
+   않도록 outline 만 애니메이션 (box-shadow 는 그대로 유지). 3회 반복 =
+   약 3초 후 자동 종료. */
+@keyframes completedCtaPulse {
+  0%, 100% { outline-color: transparent; }
+  50%      { outline-color: var(--color-mint); }
+}
+.completed-cta-pulse {
+  outline: 3px solid transparent;
+  outline-offset: 3px;
+  animation: completedCtaPulse 1s ease-in-out 3;
+}
+
 /* Docx-derived preview */
 .docx-preview h1 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--color-ink); }
 .docx-preview h2 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--color-ink); }

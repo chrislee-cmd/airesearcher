@@ -45,6 +45,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { CompletedCTA } from '@/components/canvas/shell/completed-cta';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -255,6 +256,7 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
 export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
   const tCommon = useTranslations('Common');
+  const tWidgets = useTranslations('Widgets');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { latestJob, isWorking, cancelJob } = useDeskJobs();
@@ -290,7 +292,7 @@ export function DeskCardBody() {
   // (CanvasBoard FullviewShell)이 소유하고, desk 가 currentKey 일 때만 본문을
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
   // 에도 보존. 행별 "미리보기" 모달(previewOpen) 과는 별개 — 그건 그대로 유지.
-  const { renderInSlot, close: closeFullview } = useFullview('desk');
+  const { renderInSlot, openFullview, close: closeFullview } = useFullview('desk');
 
   // Receive workspace "send to" prefills — splits the artifact text the
   // same way the paste/keydown handlers do so a list of keywords (or a
@@ -994,6 +996,17 @@ export function DeskCardBody() {
           </div>
         )}
         </div>
+
+        {/* 완료 CTA 푸터 — 완료된 리포트(done + output)가 있으면 노출.
+            클릭 시 데스크 fullview modal 진입 → 리포트 풀스크린 확인.
+            리포트는 단건이라 count 배지 없음. */}
+        {showResult && (
+          <CompletedCTA
+            label={tWidgets('completed')}
+            viewAllLabel={tWidgets('viewAll')}
+            onClick={openFullview}
+          />
+        )}
       </div>
 
       <Modal
