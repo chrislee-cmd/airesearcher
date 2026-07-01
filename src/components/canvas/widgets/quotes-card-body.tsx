@@ -436,7 +436,7 @@ export function QuotesCardBody() {
                 <ul className="mt-2 space-y-2">
                   {Object.entries(job.localUploads).map(([id, pct]) => (
                     <li key={id}>
-                      <JobProgress value={pct} label={tCommon('uploadingFiles')} />
+                      <JobProgress value={pct} label={tCommon('uploadingFiles')} variant="inline" />
                     </li>
                   ))}
                 </ul>
@@ -996,6 +996,7 @@ function ProgressEstimate({
           elapsed: formatClock(elapsedSec),
           remain: formatClock(remainSec),
         })}
+        variant="inline"
       />
     </div>
   );

@@ -13,6 +13,7 @@ type Props = {
   onCancel?: () => void;
   cancelLabel?: string;
   tone?: Tone;
+  variant?: 'card' | 'inline';
 };
 
 export function JobProgress({
@@ -22,6 +23,7 @@ export function JobProgress({
   onCancel,
   cancelLabel = 'STOP',
   tone = 'default',
+  variant = 'card',
 }: Props) {
   const determinate = typeof value === 'number';
   const pct = determinate ? Math.max(0, Math.min(100, value)) : 0;
@@ -33,8 +35,15 @@ export function JobProgress({
     ? 'border-warning shadow-[3px_3px_0_var(--color-warning)]'
     : 'border-ink shadow-[3px_3px_0_black]';
 
+  // inline: outer border/shadow/bg 제거 — 이미 border 컨테이너 (예:
+  // WidgetOutputRow) 안에서 mount 될 때 이중 컨테이너 시각을 피함. padding 만 최소.
+  const containerCls =
+    variant === 'inline'
+      ? 'px-1 py-2'
+      : `border-[2px] bg-paper px-4 py-3 rounded-sm ${containerTone}`;
+
   return (
-    <div className={`border-[2px] bg-paper px-4 py-3 rounded-sm ${containerTone}`}>
+    <div className={containerCls}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
