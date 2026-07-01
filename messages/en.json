@@ -1178,12 +1178,25 @@
       "connected": "Connected services",
       "cost": "Month-to-date cost",
       "costHint": "Live-fetched providers only",
+      "estimated": "Estimated invoice total",
+      "estimatedHint": "Accrued since baseline (current − baseline)",
       "balance": "Remaining balance (USD)",
       "balanceHint": "Only providers that expose USD balance"
     },
     "row": {
       "cost": "Cost",
-      "balance": "Balance"
+      "balance": "Balance",
+      "current": "Current",
+      "baseline": "Baseline",
+      "estimated": "Est. invoice"
+    },
+    "snapshot": {
+      "save": "Save (set baseline)",
+      "saving": "Saving…",
+      "reset": "Reset (back to zero)",
+      "resetting": "Resetting…",
+      "noBaseline": "No baseline — click “Save” to start",
+      "baselineAt": "Baseline saved at: {time}"
     },
     "env": {
       "present": "Set",

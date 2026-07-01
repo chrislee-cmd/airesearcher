@@ -1178,12 +1178,25 @@
       "connected": "연결된 서비스",
       "cost": "이번 달 비용 합계",
       "costHint": "라이브 조회된 항목만 합산",
+      "estimated": "예상 청구액 합계",
+      "estimatedHint": "baseline 저장 이후 누적분 (current − baseline)",
       "balance": "남은 잔액 합계 (USD)",
       "balanceHint": "프로바이더가 USD 잔액을 노출하는 경우만"
     },
     "row": {
       "cost": "비용",
-      "balance": "잔액"
+      "balance": "잔액",
+      "current": "현재 누적",
+      "baseline": "baseline",
+      "estimated": "예상 청구액"
+    },
+    "snapshot": {
+      "save": "저장 (baseline 갱신)",
+      "saving": "저장 중…",
+      "reset": "리셋 (0으로 초기화)",
+      "resetting": "리셋 중…",
+      "noBaseline": "baseline 없음 — '저장'을 눌러 시작하세요",
+      "baselineAt": "baseline 저장 시각: {time}"
     },
     "env": {
       "present": "설정됨",
