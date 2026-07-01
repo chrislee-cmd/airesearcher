@@ -26,6 +26,8 @@ import {
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
+import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -81,6 +83,9 @@ export function QuotesCardBody() {
 
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // 업로드 모달 open state. 옛 서브헤더 상시 dropzone 을 📤 업로드 버튼 +
+  // 모달 안 dropzone 으로 이동 — 서브헤더 height ↓.
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [language, setLanguage] = useState<string>('multi');
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
   // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
@@ -162,6 +167,9 @@ export function QuotesCardBody() {
       requireAuth(() => {
         // Don't start runUploads yet — open the language-confirm modal
         // and let the user verify. runUploads fires only after confirm.
+        // Close the upload modal so the language-confirm dialog shows alone
+        // (both are z-modal portals — avoid stacking two modals).
+        setUploadOpen(false);
         setPendingFiles(Array.from(files));
       });
     },
@@ -407,26 +415,52 @@ export function QuotesCardBody() {
           최근 산출물 (bottom) 3단으로 나뉘어 — 산출물이 카드 바닥에
           고정되고 빈 공간은 중간이 흡수. */}
       <div className="flex h-full flex-col">
-        {/* WidgetSubHeader — 업로드 드롭존 (inputs). 사용자 요청으로
-            스탯바 (처리한 시간 / 평균 / 라이브러리) 는 제거. */}
+        {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼 하나 (옛 상시
+            dropzone 은 업로드 모달로 이동). 대기 중(진행 중/큐) 전사 작업
+            count 를 배지로. 전사록은 파일 드롭 시 자동 시작이라 우측 CTA
+            없음. 업로드 오류는 hint 로 항상 노출 (모달이 자동 닫혀도 확인
+            가능). */}
         <WidgetSubHeader
+          compact
           inputs={
-            <FileDropZone
-              accept={ACCEPT}
-              multiple
+            <WidgetUploadButton
+              onClick={() => setUploadOpen(true)}
+              label={tWidgets('upload')}
+              count={queueJobs.length}
               disabled={busyUpload}
-              onFiles={(files) => startUploads(files)}
-              onDropRaw={handleArtifactDrop}
-              label={tUp('dropHere')}
-              helperText={tUp('supported')}
-              className="w-full py-6"
-            >
-              {uploadError && (
-                <div className="mt-3 text-sm text-warning">{uploadError}</div>
-              )}
-            </FileDropZone>
+            />
+          }
+          hint={
+            uploadError ? (
+              <span className="text-warning">{uploadError}</span>
+            ) : undefined
           }
         />
+
+        {/* 업로드 모달 — 옛 서브헤더 dropzone (파일 드래그드롭 / 클릭 선택).
+            파일 수신 → startUploads → language-confirm 다이얼로그 (모달은
+            자동 닫힘). 큐 진행 중에도 재열림 → 파일 추가 정상. */}
+        <WidgetUploadModal
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          title={tWidgets('upload')}
+          closeLabel={tWidgets('settingsClose')}
+        >
+          <FileDropZone
+            accept={ACCEPT}
+            multiple
+            disabled={busyUpload}
+            onFiles={(files) => startUploads(files)}
+            onDropRaw={handleArtifactDrop}
+            label={tUp('dropHere')}
+            helperText={tUp('supported')}
+            className="w-full py-6"
+          >
+            {uploadError && (
+              <div className="mt-3 text-sm text-warning">{uploadError}</div>
+            )}
+          </FileDropZone>
+        </WidgetUploadModal>
 
           {/* 중간 영역 — 업로드 진행 + 큐. flex-1 로 산출물을 바닥으로
               밀어내고, 내용이 길어지면 자체적으로 스크롤. 업로드 드롭존은
