@@ -738,7 +738,7 @@
   },
   "Canvas": {
     "navigator": {
-      "title": "Widgets",
+      "title": "Status",
       "expand": "Expand widget list",
       "collapse": "Collapse widget list",
       "dragHandle": "Drag to move",
