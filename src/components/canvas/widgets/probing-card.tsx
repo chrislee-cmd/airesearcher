@@ -824,11 +824,13 @@ function ExpandedBody() {
     }
   }, [sessionStatus]);
 
-  const statusLabel = (() => {
+  // idle (!isLive) 상태는 status 텍스트를 노출하지 않는다 (null → hint gate).
+  // 다른 status (연결/종료/오류/페르소나/사고 흐름/대기 중) 는 유지.
+  const statusLabel: string | null = (() => {
     if (sessionStatus === 'starting') return '세션 연결 중…';
     if (sessionStatus === 'stopping') return '세션 종료 중…';
     if (sessionStatus === 'error') return '세션 오류';
-    if (!isLive) return '세션 대기';
+    if (!isLive) return null;
     if (reflectionStatus === 'streaming') return '응답자 페르소나 갱신 중…';
     if (thinkingStreaming) return 'AI 사고 흐름 진행 중…';
     return '대기 중';
@@ -953,7 +955,7 @@ function ExpandedBody() {
                 }`}
                 aria-hidden
               />
-              <SectionLabel>{statusLabel}</SectionLabel>
+              {statusLabel && <SectionLabel>{statusLabel}</SectionLabel>}
             </div>
           }
         />
