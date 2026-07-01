@@ -651,52 +651,45 @@ export function RecruitingWizard({
       />
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
-      {/* CARD 1 — 대상자 조건 */}
-      <WizardCard
-        index={1}
-        title="대상자 조건"
-        phase={criteriaPhase}
-        accentColor="amore"
-        collapseOnApprove
-      >
-        {criteriaPhase === 'idle' && (
-          <p className="text-md leading-[1.7] text-mute">
-            상단{' '}
-            <span className="font-semibold text-ink-2">대상자 조건 입력</span>{' '}
-            버튼으로 텍스트·파일을 넣고,{' '}
-            <span className="font-semibold text-ink-2">조건 검토</span> 를 눌러
-            조건을 추출하세요.
-          </p>
-        )}
-
-        {criteriaPhase === 'generating' && (
-          <GeneratingRow
-            label={
-              partialCriteria.length > 0
-                ? `${partialCriteria.length}개 조건 추출 중…`
-                : '조건 추출 중…'
-            }
-          />
-        )}
-
-        {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
-          editedBrief && (
-            <ReviewRow
-              title={summaryForCard || '추출 완료'}
-              meta={`${editedBrief.criteria.length}개 조건`}
-              phase={criteriaPhase}
-              onPreview={() =>
-                setModal({ open: true, card: 'criteria', mode: 'preview' })
+      {/* CARD 1 — 대상자 조건. idle 에는 렌더 X — 우측 "조건 검토" 를 눌러
+          추출이 시작(generating)된 뒤에야 노출. 입력 전엔 서브헤더만 보임. */}
+      {criteriaPhase !== 'idle' && (
+        <WizardCard
+          index={1}
+          title="대상자 조건"
+          phase={criteriaPhase}
+          accentColor="amore"
+          collapseOnApprove
+        >
+          {criteriaPhase === 'generating' && (
+            <GeneratingRow
+              label={
+                partialCriteria.length > 0
+                  ? `${partialCriteria.length}개 조건 추출 중…`
+                  : '조건 추출 중…'
               }
-              onEdit={() =>
-                setModal({ open: true, card: 'criteria', mode: 'editor' })
-              }
-              onApprove={approveCriteria}
-              onRestart={restartCriteria}
-              restartLabel="처음부터 다시"
             />
           )}
-      </WizardCard>
+
+          {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
+            editedBrief && (
+              <ReviewRow
+                title={summaryForCard || '추출 완료'}
+                meta={`${editedBrief.criteria.length}개 조건`}
+                phase={criteriaPhase}
+                onPreview={() =>
+                  setModal({ open: true, card: 'criteria', mode: 'preview' })
+                }
+                onEdit={() =>
+                  setModal({ open: true, card: 'criteria', mode: 'editor' })
+                }
+                onApprove={approveCriteria}
+                onRestart={restartCriteria}
+                restartLabel="처음부터 다시"
+              />
+            )}
+        </WizardCard>
+      )}
 
       {/* CARD 2 — 심사 설문. Card 1 승인 전에는 아예 렌더하지 않음 — 단계가
           진행되면서 카드가 하나씩 순차로 나타나도록. restartCriteria 가
