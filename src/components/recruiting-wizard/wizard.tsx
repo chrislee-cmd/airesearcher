@@ -8,7 +8,6 @@ import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
-import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,7 +25,6 @@ import {
   SurveyEditor,
   SurveyPreview,
 } from './views';
-import { AttendeeReviewModal } from './attendee-review-modal';
 import {
   clearDraft,
   loadDraft,
@@ -78,7 +76,14 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-export function RecruitingWizard() {
+export function RecruitingWizard({
+  onPublishedChange,
+}: {
+  // Emitted whenever the wizard enters/leaves the published state so the
+  // canvas card can mount the shared WidgetStatusFooter ("신청서 제작이
+  // 완료되었습니다" → fullview) without prop-drilling internal wizard state.
+  onPublishedChange?: (published: boolean) => void;
+} = {}) {
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
   const workspace = useWorkspace();
@@ -126,7 +131,12 @@ export function RecruitingWizard() {
   const [publishError, setPublishError] = useState<string | null>(null);
   const [published, setPublished] = useState<PublishedForm | null>(null);
   const [publishStageIdx, setPublishStageIdx] = useState(0);
-  const [reviewOpen, setReviewOpen] = useState(false);
+
+  // Surface published ↔ unpublished transitions to the host card so it can
+  // render the shared completion footer (fullview entry point).
+  useEffect(() => {
+    onPublishedChange?.(!!published);
+  }, [published, onPublishedChange]);
 
   // ── Modal state ─────────────────────────────────────────────────────
   type ModalState =
@@ -733,18 +743,8 @@ export function RecruitingWizard() {
               void reconnectGoogle();
             }}
             onClearAuthError={() => setGoogleAuthError(null)}
-            onOpenReview={() => setReviewOpen(true)}
           />
         </WizardCard>
-      )}
-
-      {published && (
-        <AttendeeReviewModal
-          open={reviewOpen}
-          onClose={() => setReviewOpen(false)}
-          formId={published.formId}
-          responderUri={published.responderUri}
-        />
       )}
 
       {/* Approval modal — shared across cards 1 & 2 */}
@@ -1026,26 +1026,6 @@ function ReviewRow({
 // Reload glyph for the manual response-count refresh trigger. Stroke
 // style matches the app's other inline icons (Gear etc.); spins via a
 // caller-passed `animate-spin` while a refresh is in flight.
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={className}
-    >
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-      <path d="M21 3v6h-6" />
-    </svg>
-  );
-}
-
 // Google revokes the refresh token if the user changed password, hit
 // the 6-month inactivity window, or the OAuth client rotated. The
 // server surfaces these as `google_token_refresh_failed` / `invalid_grant`
@@ -1085,7 +1065,6 @@ function AttendeeReviewPanel({
   onConnect,
   onReconnect,
   onClearAuthError,
-  onOpenReview,
 }: {
   google: GoogleStatus | null;
   googleAuthError: string | null;
@@ -1097,7 +1076,6 @@ function AttendeeReviewPanel({
   onConnect: () => void;
   onReconnect: () => void;
   onClearAuthError: () => void;
-  onOpenReview: () => void;
 }) {
   // Reconnect makes no sense in admin-proxy mode: the user has no
   // OAuth row to reconnect, and the admin token error must be fixed
@@ -1105,8 +1083,6 @@ function AttendeeReviewPanel({
   // that mode so the user isn't sent into a /google/start dead-end.
   const needsReauth = isReauthError(publishError) && !google?.adminProxy;
   const [copied, setCopied] = useState(false);
-  const [responseCount, setResponseCount] = useState<number | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   async function copyResponderUri() {
     if (!published?.responderUri) return;
@@ -1120,134 +1096,33 @@ function AttendeeReviewPanel({
     }
   }
 
-  // Fetch the response count on demand. No auto-polling: a manual
-  // "새로고침" button drives every refresh so we never hammer the
-  // admin-proxy Google API quota when nobody is looking at the stat.
-  async function refreshCount() {
-    if (!published?.formId) return;
-    setRefreshing(true);
-    try {
-      const res = await fetch(
-        `/api/recruiting/google/forms/${encodeURIComponent(
-          published.formId,
-        )}/responses?count_only=1`,
-      );
-      if (!res.ok) return;
-      const j = (await res.json()) as { count?: number };
-      if (typeof j.count === 'number') {
-        setResponseCount(j.count);
-      }
-    } catch {
-      // ignore — UI keeps last known count
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  // One silent fetch on mount / when a new form is published, so the
-  // initial count shows without a manual click. Subsequent updates are
-  // manual via the refresh button — no interval, no polling.
-  useEffect(() => {
-    if (!published?.formId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/recruiting/google/forms/${encodeURIComponent(
-            published.formId,
-          )}/responses?count_only=1`,
-        );
-        if (!res.ok) return;
-        const j = (await res.json()) as { count?: number };
-        if (!cancelled && typeof j.count === 'number') {
-          setResponseCount(j.count);
-        }
-      } catch {
-        // ignore — UI keeps last known count
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [published?.formId]);
-
   return (
     <div className="space-y-3">
       {publishing ? (
         <GeneratingRow label={publishStageLabel} />
       ) : published ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end gap-4 border border-line-soft bg-paper p-3 rounded-sm">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
-                현재 응답 수
-              </div>
-              <div className="mt-0.5 flex items-center gap-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-semibold tabular-nums text-ink">
-                    {responseCount ?? '—'}
-                  </span>
-                  <span className="text-md text-mute">명</span>
-                </div>
-                <IconButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void refreshCount()}
-                  disabled={refreshing}
-                  aria-label="새로고침"
-                  title="새로고침"
-                >
-                  <RefreshIcon className={refreshing ? 'animate-spin' : ''} />
-                </IconButton>
-              </div>
-            </div>
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={onOpenReview}
-            >
-              모집 현황 보기
-            </ChromeButton>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-md">
-            <a
-              href={published.responderUri}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-ink-2 underline-offset-2 hover:underline"
-            >
-              응답 폼 열기
-            </a>
-            {published.sheetUrl && (
-              <a
-                href={published.sheetUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-ink-2 underline-offset-2 hover:underline"
-              >
-                응답 시트 열기
-              </a>
-            )}
-            <div className="flex w-2/5 items-center gap-2">
-              <span className="shrink-0 text-sm text-mute-soft">참석자용</span>
-              <Input
-                value={published.responderUri}
-                readOnly
-                size="sm"
-                onFocus={(e) => e.currentTarget.select()}
-                className="flex-1 font-mono text-sm"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void copyResponderUri()}
-                className="shrink-0"
-              >
-                {copied ? '복사됨' : '복사'}
-              </Button>
-            </div>
-          </div>
+        // Published panel reduced to the attendee link only. Response count /
+        // refresh / "모집 현황 보기" / "응답 폼 열기" / "응답 시트 열기" all
+        // moved into the card's fullview modal (spec 2026-07-01). The
+        // completion signal + fullview entry point is the card-level
+        // WidgetStatusFooter, so this panel just hands off the shareable URL.
+        <div className="flex flex-wrap items-center gap-2 text-md">
+          <span className="shrink-0 text-sm text-mute-soft">참석자용</span>
+          <Input
+            value={published.responderUri}
+            readOnly
+            size="sm"
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 font-mono text-sm"
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void copyResponderUri()}
+            className="shrink-0"
+          >
+            {copied ? '복사됨' : '복사'}
+          </Button>
         </div>
       ) : google && !google.connected && !google.adminProxy ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
