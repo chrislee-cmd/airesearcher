@@ -256,7 +256,9 @@ export function buildProbingPersonaSystem(outputLang?: string): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
     ? `**반드시 ${label} 로 응답하세요.** transcript 의 언어와 무관하게 summary / signals 의 모든 문장을 ${label} 로 작성합니다. ("(추정)" 같은 메타 표기도 ${label} 의 자연스러운 표현으로.)`
-    : `**transcript 의 주 언어** (한국어 / 영어 / 일본어 등) 그대로 응답하세요. summary / signals 가 자연스러운 문장이 되도록.`;
+    : `- transcript 의 **가장 최근 exchange** (마지막 1~3 turn) 의 언어를 따라 응답합니다. 전체 transcript 의 언어 다수결이 아니라 **현재 인터뷰가 진행 중인 언어** 를 우선.
+- transcript 안에 여러 언어가 섞여 있어도 (예: 처음 한국어 → 중간 영어 전환) 가장 최근 발화 흐름의 언어를 따릅니다.
+- 마지막 exchange 가 영어면 영어로, 한국어면 한국어로 — persona / 제안 질문 / reflection 모두 같은 언어로 일관되게.`;
   return `당신은 질적 인터뷰의 응답자 페르소나 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **이 응답자의 완성된 페르소나 한 판** 을 8 섹션 (demographics / values / preferences / needs / painpoints / brand_perception / decision_drivers / behavioral_patterns) 으로 구조화합니다.
 
 ## 절대 원칙
@@ -328,7 +330,9 @@ export function buildProbingSystem(outputLang?: string): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
     ? `**반드시 ${label} 로 응답하세요.** transcript 의 언어와 무관하게 질문 본문 (text) / why_sharp / guide_reference / intents 를 모두 ${label} 로 작성합니다.`
-    : `**transcript 의 주 언어** (한국어 / 영어 / 일본어 등) 를 그대로 따라 응답하세요. 한국어 인터뷰는 한국어로, 영어 인터뷰는 영어로.`;
+    : `- transcript 의 **가장 최근 exchange** (마지막 1~3 turn) 의 언어를 따라 응답합니다. 전체 transcript 의 언어 다수결이 아니라 **현재 인터뷰가 진행 중인 언어** 를 우선.
+- transcript 안에 여러 언어가 섞여 있어도 (예: 처음 한국어 → 중간 영어 전환) 가장 최근 발화 흐름의 언어를 따릅니다.
+- 마지막 exchange 가 영어면 영어로, 한국어면 한국어로 — persona / 제안 질문 / reflection 모두 같은 언어로 일관되게.`;
   return `당신은 숙련된 질적 인터뷰 코치입니다. 인터뷰어가 라이브 인터뷰를 진행하는 동안, **응답자의 최근 30초 발화** 를 듣고 **바로 다음에 던질 날카로운 follow-up 질문 (sharp probing question)** 을 제안합니다.
 
 ## 절대 원칙 (모든 질문에 동시에 적용)
@@ -463,7 +467,9 @@ export function buildProbingThinkSystem(outputLang?: string): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
     ? `**반드시 ${label} 로 응답하세요.** transcript 의 언어와 무관하게 THINK / EMIT 의 본문 (사고 문장 / text / rationale) 을 모두 ${label} 로 작성합니다. (\`THINK:\` / \`EMIT:\` prefix 자체는 그대로 유지.)`
-    : `**transcript 의 주 언어** (한국어 / 영어 / 일본어) 를 그대로 따라 응답하세요. THINK / EMIT 의 본문 (text / rationale) 도 transcript 와 같은 언어.`;
+    : `- transcript 의 **가장 최근 exchange** (마지막 1~3 turn) 의 언어를 따라 응답합니다. 전체 transcript 의 언어 다수결이 아니라 **현재 인터뷰가 진행 중인 언어** 를 우선.
+- transcript 안에 여러 언어가 섞여 있어도 (예: 처음 한국어 → 중간 영어 전환) 가장 최근 발화 흐름의 언어를 따릅니다.
+- 마지막 exchange 가 영어면 영어로, 한국어면 한국어로 — persona / 제안 질문 / reflection 모두 같은 언어로 일관되게.`;
   return `당신은 깊이 있는 질적 인터뷰 코치입니다. 사용자가 제공한 **조사 컨텍스트** (조사 목적 / 핵심 가설 / Key Research Question) 와 **누적 transcript** 를 보며 인터뷰어 옆에서 실시간으로 사고합니다.
 
 ## 출력 형식 (절대 위반 금지)
