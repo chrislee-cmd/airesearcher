@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import {
@@ -8,7 +8,10 @@ import {
   InterviewUploadArea,
 } from '@/components/interview-analyzer';
 import { useInterviewJob } from '@/components/interview-job-provider';
+import { prefillKey } from '@/lib/workspace';
 import { WidgetSubHeader } from '../shell/widget-subheader';
+import { WidgetUploadButton } from '../shell/widget-upload-button';
+import { WidgetUploadModal } from '../shell/widget-upload-modal';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
@@ -103,6 +106,29 @@ function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('interviews');
   const tWidgets = useTranslations('Widgets');
   const job = useInterviewJob();
+  // 업로드 모달 open state — 옛 상시 InterviewUploadArea (dropzone + 변환 큐)
+  // 를 📤 업로드 버튼 + 모달로 이동. 서브헤더 height ↓.
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  // Workspace "send to" → interviews prefill. InterviewUploadArea 도 같은
+  // 처리를 하지만, 이제 그 컴포넌트가 업로드 모달 안에서만 마운트되므로
+  // (모달 닫힘 = unmount) 위젯 마운트 시점에 바로 큐에 넣으려면 여기서도
+  // 한 번 소비한다. sessionStorage.removeItem 이 idempotent 가드라 두
+  // 곳이 동시에 큐잉하지 않는다 (먼저 마운트되는 쪽이 key 를 소비).
+  useEffect(() => {
+    try {
+      const k = prefillKey('interviews');
+      const raw = sessionStorage.getItem(k);
+      if (!raw) return;
+      sessionStorage.removeItem(k);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const f = new File([raw], `workspace_${stamp}.md`, {
+        type: 'text/markdown',
+      });
+      job.addFiles([f]);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // 진행중 = 변환/분석/인덱싱 중 하나라도 (헤더 running pill 과 동일 판정 —
   // InterviewStatePush 참고). 완료 = 분석 결과 존재 또는 변환 완료 1건+.
   const running =
@@ -116,9 +142,33 @@ function ExpandedBody() {
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
-      {/* WidgetSubHeader — 업로드 영역 (inputs).
-          사용자 요청으로 "1단계 — 파일을 .md로 변환" 타이틀은 제거됨. */}
-      <WidgetSubHeader inputs={<InterviewUploadArea />} />
+      {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼 하나 (옛 상시
+          dropzone + 변환 큐 InterviewUploadArea 는 업로드 모달로 이동).
+          대기 중(변환 전 큐) 파일 count 를 배지로. 변환 CTA (convertAll)
+          는 InterviewUploadArea 안에 그대로 유지 (자동 변환 flow 회귀 0). */}
+      <WidgetSubHeader
+        compact
+        inputs={
+          <WidgetUploadButton
+            onClick={() => setUploadOpen(true)}
+            label={tWidgets('upload')}
+            count={job.queuedCount}
+          />
+        }
+      />
+
+      {/* 업로드 모달 — 옛 서브헤더 InterviewUploadArea (dropzone + 변환 큐
+          + clear/변환 CTA) 를 그대로 담는다. 큐 진행 중에도 재열림 → 파일
+          추가 정상. */}
+      <WidgetUploadModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        title={tWidgets('upload')}
+        closeLabel={tWidgets('settingsClose')}
+      >
+        <InterviewUploadArea />
+      </WidgetUploadModal>
+
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
       </div>

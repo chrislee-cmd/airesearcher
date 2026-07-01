@@ -1025,7 +1025,8 @@
     "interviewDone": "Analysis complete",
     "recruitingDone": "Recruitment form ready",
     "settings": "Settings",
-    "settingsClose": "Close"
+    "settingsClose": "Close",
+    "upload": "Upload files"
   },
   "Workspace": {
     "eyebrow": "Workspace",
