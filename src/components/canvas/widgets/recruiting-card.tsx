@@ -28,11 +28,10 @@ function ExpandedBody() {
   const [isPublished, setIsPublished] = useState(false);
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-5 px-5 py-5">
-          <RecruitingWizard onPublishedChange={setIsPublished} />
-        </div>
-      </div>
+      {/* 통일 서브헤더(대상자 조건 입력 + 조건 검토) + 스크롤 카드 본문은
+          wizard 가 자체 관리 — subheader 가 스크롤에 딸려 올라가지 않도록
+          wizard 를 flex 컨텍스트의 직접 자식으로 둔다. */}
+      <RecruitingWizard onPublishedChange={setIsPublished} />
       {isPublished && (
         <WidgetStatusFooter
           status="done"

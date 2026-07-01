@@ -13,7 +13,8 @@ import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { MochiLoader } from '@/components/ui/mochi-loader';
-import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
+import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
@@ -143,6 +144,11 @@ export function RecruitingWizard({
     | { open: false }
     | { open: true; card: 'criteria' | 'survey'; mode: 'preview' | 'editor' };
   const [modal, setModal] = useState<ModalState>({ open: false });
+
+  // 대상자 조건 입력 모달 (옛 Card 1 입력 필드 — 붙여넣기 + 파일 dropzone).
+  // 서브헤더 좌측 "대상자 조건 입력" 버튼으로 열고, 모달 footer "입력" 으로
+  // 닫는다 (입력값은 state 에 보존, 우측 "조건 검토" 로 추출).
+  const [inputModalOpen, setInputModalOpen] = useState(false);
 
   // ── Effects ─────────────────────────────────────────────────────────
   // Google connection status — needed for Card 3 affordance.
@@ -614,7 +620,37 @@ export function RecruitingWizard({
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* 통일 서브헤더 (컴팩트) — 좌: 대상자 조건 입력 (팝업 모달 열기),
+          우: 조건 검토 (옛 "추출" — 붙여넣기/파일에서 LLM 조건 추출 트리거).
+          옛 Card 1 상시 입력 필드는 입력 모달로 이동 → 카드 본문 height ↓. */}
+      <WidgetSubHeader
+        compact
+        inputs={
+          <WidgetUploadButton
+            onClick={() => setInputModalOpen(true)}
+            label="대상자 조건 입력"
+            count={files.length}
+          />
+        }
+        actions={
+          <ChromeButton
+            variant="primary"
+            size="lg"
+            onClick={startExtract}
+            disabled={!canExtract}
+          >
+            {jobRunning ? '검토 중…' : '조건 검토'}
+          </ChromeButton>
+        }
+        hint={
+          criteriaError ? (
+            <span className="text-warning">오류: {criteriaError}</span>
+          ) : undefined
+        }
+      />
+
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
       {/* CARD 1 — 대상자 조건 */}
       <WizardCard
         index={1}
@@ -624,18 +660,13 @@ export function RecruitingWizard({
         collapseOnApprove
       >
         {criteriaPhase === 'idle' && (
-          <CriteriaInputArea
-            files={files}
-            pasted={pasted}
-            rejected={rejected}
-            running={jobRunning}
-            onPasteChange={setPasted}
-            onAddFiles={addFiles}
-            onRemoveFile={removeFile}
-            onExtract={startExtract}
-            canExtract={canExtract}
-            error={criteriaError}
-          />
+          <p className="text-md leading-[1.7] text-mute">
+            상단{' '}
+            <span className="font-semibold text-ink-2">대상자 조건 입력</span>{' '}
+            버튼으로 텍스트·파일을 넣고,{' '}
+            <span className="font-semibold text-ink-2">조건 검토</span> 를 눌러
+            조건을 추출하세요.
+          </p>
         )}
 
         {criteriaPhase === 'generating' && (
@@ -747,6 +778,37 @@ export function RecruitingWizard({
         </WizardCard>
       )}
 
+      </div>
+
+      {/* 대상자 조건 입력 모달 — 옛 Card 1 입력 필드 (붙여넣기 + 파일
+          dropzone). footer "입력" = 닫기 (입력값은 state 에 보존, 우측
+          "조건 검토" 로 추출). */}
+      <Modal
+        open={inputModalOpen}
+        onClose={() => setInputModalOpen(false)}
+        title="대상자 조건 입력"
+        size="md"
+        footer={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setInputModalOpen(false)}
+          >
+            입력
+          </Button>
+        }
+      >
+        <CriteriaInputFields
+          files={files}
+          pasted={pasted}
+          rejected={rejected}
+          running={jobRunning}
+          onPasteChange={setPasted}
+          onAddFiles={addFiles}
+          onRemoveFile={removeFile}
+        />
+      </Modal>
+
       {/* Approval modal — shared across cards 1 & 2 */}
       <ReviewModal
         state={modal}
@@ -856,7 +918,10 @@ function WizardCard({
   );
 }
 
-function CriteriaInputArea({
+// 대상자 조건 입력 필드 (붙여넣기 + 파일 dropzone). 옛 Card 1 상시 노출
+// 입력 영역을 서브헤더 "대상자 조건 입력" 버튼이 여는 모달 안으로 이동.
+// 추출 CTA (조건 검토) 와 에러는 서브헤더가 소유 — 여기는 입력 필드만.
+function CriteriaInputFields({
   files,
   pasted,
   rejected,
@@ -864,9 +929,6 @@ function CriteriaInputArea({
   onPasteChange,
   onAddFiles,
   onRemoveFile,
-  onExtract,
-  canExtract,
-  error,
 }: {
   files: File[];
   pasted: string;
@@ -875,93 +937,62 @@ function CriteriaInputArea({
   onPasteChange: (v: string) => void;
   onAddFiles: (incoming: FileList | File[]) => void;
   onRemoveFile: (idx: number) => void;
-  onExtract: () => void;
-  canExtract: boolean;
-  error: CardError;
 }) {
-  // WizardCard 안쪽은 이미 px-4 py-4 — ControlBoard 의 layer padding 을
-  // 호출부가 흡수하도록 `-mx-4 -my-4` 로 가장자리까지 펼치고 안쪽 layer 가
-  // 표준 `px-5 py-4` 로 다시 그린다. 6 위젯 control board 가 모두 같은
-  // padding 리듬을 갖도록.
   return (
-    <ControlBoard className="-mx-4 -my-4">
-      {/* Input — textarea (paste) + dropzone (file). 한 ControlBoard.Input
-          안에서 widget 별 element 가 자유롭게 들어옴. */}
-      <ControlBoard.Input divider="none">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="텍스트 붙여넣기">
-            <Textarea
-              value={pasted}
-              onChange={(e) => onPasteChange(e.target.value)}
-              disabled={running}
-              placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-              className="h-[60px] resize-none text-md text-ink-2"
-            />
-          </Field>
-          <Field label="파일 업로드">
-            <FileDropZone
-              accept={ACCEPT}
-              multiple
-              onFiles={(f) => onAddFiles(f)}
-              label="파일을 끌어다 놓거나 클릭"
-              helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
-              className="h-[60px] gap-2 px-6"
-            />
-          </Field>
-        </div>
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="텍스트 붙여넣기">
+          <Textarea
+            value={pasted}
+            onChange={(e) => onPasteChange(e.target.value)}
+            disabled={running}
+            placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
+            className="h-[120px] resize-none text-md text-ink-2"
+          />
+        </Field>
+        <Field label="파일 업로드">
+          <FileDropZone
+            accept={ACCEPT}
+            multiple
+            onFiles={(f) => onAddFiles(f)}
+            label="파일을 끌어다 놓거나 클릭"
+            helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
+            className="h-[120px] gap-2 px-6"
+          />
+        </Field>
+      </div>
 
-        {rejected.length > 0 && (
-          <div className="mt-3 text-sm text-warning">
-            허용되지 않은 형식: {rejected.join(', ')}
-          </div>
-        )}
-
-        {files.length > 0 && (
-          <ul className="mt-3 divide-y divide-line border border-line bg-paper rounded-sm">
-            {files.map((f, i) => (
-              <li
-                key={`${f.name}-${f.size}-${i}`}
-                className="flex items-center justify-between gap-3 px-3 py-2 text-md"
-              >
-                <span className="truncate text-ink-2">{f.name}</span>
-                <span className="shrink-0 tabular-nums text-mute-soft">
-                  {formatBytes(f.size)}
-                </span>
-                <Button
-                  variant="destructive-link"
-                  size="xs"
-                  onClick={() => onRemoveFile(i)}
-                  disabled={running}
-                  className="shrink-0 text-sm"
-                >
-                  제거
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </ControlBoard.Input>
-
-      <ControlBoard.Action>
-        <span className="text-sm tabular-nums text-mute-soft">
-          {files.length}개 파일 · {pasted.length}자
-        </span>
-        <ChromeButton
-          variant="primary"
-          size="lg"
-          onClick={onExtract}
-          disabled={!canExtract}
-        >
-          {running ? '추출 중…' : '추출'}
-        </ChromeButton>
-      </ControlBoard.Action>
-
-      {error && (
-        <div className="px-5 pb-4">
-          <ErrorBlock>오류: {error}</ErrorBlock>
+      {rejected.length > 0 && (
+        <div className="text-sm text-warning">
+          허용되지 않은 형식: {rejected.join(', ')}
         </div>
       )}
-    </ControlBoard>
+
+      {files.length > 0 && (
+        <ul className="divide-y divide-line border border-line bg-paper rounded-sm">
+          {files.map((f, i) => (
+            <li
+              key={`${f.name}-${f.size}-${i}`}
+              className="flex items-center justify-between gap-3 px-3 py-2 text-md"
+            >
+              <span className="truncate text-ink-2">{f.name}</span>
+              <span className="shrink-0 tabular-nums text-mute-soft">
+                {formatBytes(f.size)}
+              </span>
+              <Button
+                variant="destructive-link"
+                size="xs"
+                onClick={() => onRemoveFile(i)}
+                disabled={running}
+                className="shrink-0 text-sm"
+              >
+                제거
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
