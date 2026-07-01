@@ -18,7 +18,6 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { PrompterPane } from '@/components/translate-console';
 import { ListenerPanel } from './listener-panel';
-import { useTranslateListeners } from '@/hooks/use-translate-listeners';
 import { useTranslateSession } from './translate-session-context';
 
 export function TranslateFullviewView({
@@ -27,10 +26,11 @@ export function TranslateFullviewView({
   onGoToCard: () => void;
 }) {
   const t = useTranslations('TranslateConsole');
-  const { sessionId, promptedLines } = useTranslateSession();
-  // Same presence channel the card would use — driven by the published
-  // session id. Dormant (null id) until a session is live.
-  const listeners = useTranslateListeners(sessionId);
+  // Everything is read straight from the console's published snapshot — the
+  // fullview opens NO realtime channel of its own. Opening a second channel
+  // on the live session's `live:<sessionId>` topic threw once the card
+  // console kept its broadcast channel alive, crashing the modal.
+  const { promptedLines, listeners } = useTranslateSession();
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-6 py-6">

@@ -30,6 +30,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 // Type-only import — erased at compile, so no runtime cycle even though
 // translate-console imports this module's publisher hook.
 import type { CaptionLine } from '../translate-console';
+import type { Listener } from '@/hooks/use-translate-listeners';
 
 export type TranslateSessionSnapshot = {
   // Reactive session id (null until a session goes live). Drives the
@@ -42,6 +43,9 @@ export type TranslateSessionSnapshot = {
   // The translated prompter lines, already windowed + sorted by the
   // console. Rendered read-only in the fullview via the shared PrompterPane.
   promptedLines: CaptionLine[];
+  // Current share-link listeners, derived from presence on the console's
+  // own broadcast channel. Mirrored read-only in the fullview.
+  listeners: Listener[];
 };
 
 const EMPTY: TranslateSessionSnapshot = {
@@ -49,6 +53,7 @@ const EMPTY: TranslateSessionSnapshot = {
   shareUrl: null,
   isLive: false,
   promptedLines: [],
+  listeners: [],
 };
 
 const SnapshotCtx = createContext<TranslateSessionSnapshot>(EMPTY);
