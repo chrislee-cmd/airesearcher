@@ -38,7 +38,12 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
 import { ListenerPanel } from './translate/listener-panel';
-import { useTranslateListeners } from '@/hooks/use-translate-listeners';
+import { useTranslateSessionPublisher } from './translate/translate-session-context';
+import {
+  listenersFromPresence,
+  type Listener,
+  type ListenerPresence,
+} from '@/hooks/use-translate-listeners';
 import { isHangulFusionBoundary, joinDelta } from '@/lib/translate-stream-join';
 import {
   useRealtimeTranscriptLiveBinding,
@@ -109,7 +114,7 @@ const REVISE_POLL_MS = 4000;
 // actual gate, this is just for display.
 const POSTPROCESS_CREDITS = 10;
 
-type CaptionLine = {
+export type CaptionLine = {
   id: string;
   text: string;
   final: boolean;
@@ -565,11 +570,17 @@ export function TranslateConsole({
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  // Reactive mirror of sessionIdRef for the listener presence hook (refs
-  // don't trigger re-render). Set when a session goes live, cleared on
-  // teardown. Drives the fullview listener panel; harmless when
-  // showListeners is false (hook short-circuits on a null/unused id).
+  // Reactive mirror of sessionIdRef (refs don't trigger re-render). Set
+  // when a session goes live, cleared on teardown. Published in the
+  // fullview snapshot so the read-only view can key its own UI off the
+  // live session id.
   const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  // Current listeners on the share link, derived from presence on the
+  // session's OWN broadcast channel (below). Kept here — not via a second
+  // useTranslateListeners channel — because a duplicate channel on the same
+  // `live:<sessionId>` topic throws once the broadcast channel is
+  // subscribed (crashed the fullview). Empty until a viewer tunes in.
+  const [listeners, setListeners] = useState<Listener[]>([]);
 
   // Recording state — null until POST /recording succeeds. Recording is
   // always on now (default save), so after stop() `recording.status`
@@ -948,6 +959,7 @@ export function TranslateConsole({
     // tear down on their own end, but clearing here stops the host panel
     // from showing stale listeners after a stop/error.
     setLiveSessionId(null);
+    setListeners([]);
     for (const slot of ['mic', 'tab'] as const) {
       try {
         dcRef.current[slot]?.close();
@@ -2260,11 +2272,20 @@ export function TranslateConsole({
       return;
     }
 
-    // Supabase broadcast channel
+    // Supabase broadcast channel. Also the presence topic viewers track on
+    // (/live/<token> calls channel.track on the same `live:<sessionId>`), so
+    // the host reads the listener list straight off THIS channel — one
+    // channel per topic. Presence handlers must be attached before
+    // subscribe(); a second channel on the same topic would throw.
     const supa = createBrowserSupabase();
     const ch = supa.channel(`live:${bundle.session.id}`, {
       config: { broadcast: { self: false } },
     });
+    const syncListeners = () =>
+      setListeners(listenersFromPresence(ch.presenceState<ListenerPresence>()));
+    ch.on('presence', { event: 'sync' }, syncListeners)
+      .on('presence', { event: 'join' }, syncListeners)
+      .on('presence', { event: 'leave' }, syncListeners);
     ch.subscribe();
     channelRef.current = ch;
 
@@ -2826,10 +2847,22 @@ export function TranslateConsole({
     [outputLines, now],
   );
 
-  // Current listeners on the share link. Only subscribed in fullview
-  // (where the panel renders) — the card passes a null id so the hook
-  // stays dormant and adds no realtime channel.
-  const listeners = useTranslateListeners(showListeners ? liveSessionId : null);
+  // Publish a read-only snapshot up to TranslateSessionProvider (mounted by
+  // the canvas card) so the fullview modal can mirror the live session
+  // WITHOUT hosting the session itself. No-op when no provider is mounted
+  // (standalone /live). This only reads state the console already computes —
+  // it never touches the session lifecycle, which is the whole point of the
+  // fullview-session-preserve fix.
+  const publishSession = useTranslateSessionPublisher();
+  useEffect(() => {
+    publishSession({
+      sessionId: liveSessionId,
+      shareUrl,
+      isLive: status === 'live',
+      promptedLines,
+      listeners,
+    });
+  }, [publishSession, liveSessionId, shareUrl, status, promptedLines, listeners]);
 
   return (
     <div className="space-y-4">
@@ -3680,7 +3713,7 @@ function SpeakerOffIcon() {
 // 흐름을 pop 톤 카드로 승격. A soft mask at the top edge fades older
 // lines as they age out of the 30-second window; mask 는 텍스트 컨텐츠
 // 만 fade 하고 chrome 은 그대로 유지된다.
-function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
+export function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: string }) {
   const t = useTranslations('TranslateConsole');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Pin to bottom on every new line so the latest text stays in the

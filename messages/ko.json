@@ -879,6 +879,10 @@
     "prompter": {
       "empty": "통역을 시작하면 번역 결과가 여기에 스트림됩니다."
     },
+    "fullview": {
+      "controlHint": "통역 시작 · 중지 · 공유는 위젯 카드에서 조작하세요.",
+      "backToWidget": "위젯으로 돌아가기"
+    },
     "speaker": {
       "host": "진행자",
       "guest": "응답자"

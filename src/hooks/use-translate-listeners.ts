@@ -33,6 +33,43 @@ export type Listener = ListenerPresence & {
   key: string;
 };
 
+// Pure mapping from a channel's presence state to the host listener list.
+// Extracted so the host can derive listeners from a channel it ALREADY
+// owns (its broadcast channel) instead of opening a second channel on the
+// same topic — supabase-js dedupes channels by topic, and calling `.on()`
+// on an already-subscribed channel throws
+// ("cannot add presence callbacks ... after subscribe()"). That collision
+// crashed the 동시통역 fullview once the card console kept its broadcast
+// channel alive. See translate-console's presence wiring.
+export function listenersFromPresence(
+  state: Record<string, ListenerPresence[]>,
+): Listener[] {
+  const next: Listener[] = [];
+  for (const [presenceKey, entries] of Object.entries(state)) {
+    for (const entry of entries) {
+      // Defensive: only count entries that actually carry our viewer
+      // payload (anon_id). The host's own presence — if any — and
+      // malformed entries are skipped.
+      if (!entry || typeof entry.anon_id !== 'string') continue;
+      next.push({
+        key: `${presenceKey}:${entry.anon_id}`,
+        anon_id: entry.anon_id,
+        joined_at: entry.joined_at ?? '',
+        user_agent: entry.user_agent ?? '',
+      });
+    }
+  }
+  // Stable order: earliest joiner first.
+  next.sort((a, b) => a.joined_at.localeCompare(b.joined_at));
+  return next;
+}
+
+// Standalone presence subscriber for contexts that do NOT already hold a
+// channel on the `live:<sessionId>` topic. NOTE: do not use this when the
+// same Supabase client already has a subscribed channel for that topic
+// (e.g. the host's caption broadcast channel) — derive listeners from that
+// channel via listenersFromPresence() instead, or supabase-js throws on the
+// duplicate `.on()`.
 export function useTranslateListeners(sessionId: string | null): Listener[] {
   const [listeners, setListeners] = useState<Listener[]>([]);
 
@@ -47,25 +84,7 @@ export function useTranslateListeners(sessionId: string | null): Listener[] {
     });
 
     const sync = () => {
-      const state = channel.presenceState<ListenerPresence>();
-      const next: Listener[] = [];
-      for (const [presenceKey, entries] of Object.entries(state)) {
-        for (const entry of entries) {
-          // Defensive: only count entries that actually carry our viewer
-          // payload (anon_id). The host's own presence — if any — and
-          // malformed entries are skipped.
-          if (!entry || typeof entry.anon_id !== 'string') continue;
-          next.push({
-            key: `${presenceKey}:${entry.anon_id}`,
-            anon_id: entry.anon_id,
-            joined_at: entry.joined_at ?? '',
-            user_agent: entry.user_agent ?? '',
-          });
-        }
-      }
-      // Stable order: earliest joiner first.
-      next.sort((a, b) => a.joined_at.localeCompare(b.joined_at));
-      setListeners(next);
+      setListeners(listenersFromPresence(channel.presenceState<ListenerPresence>()));
     };
 
     channel
