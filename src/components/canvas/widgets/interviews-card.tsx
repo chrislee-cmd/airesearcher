@@ -122,6 +122,7 @@ function ExpandedBody() {
           label={tWidgets('completed')}
           viewAllLabel={tWidgets('viewAll')}
           count={job.doneCount}
+          resetKey={`${job.doneCount}-${job.analysis ? 1 : 0}`}
           onClick={openFullview}
         />
       )}

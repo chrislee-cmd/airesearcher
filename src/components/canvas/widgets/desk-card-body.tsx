@@ -1004,6 +1004,7 @@ export function DeskCardBody() {
           <CompletedCTA
             label={tWidgets('completed')}
             viewAllLabel={tWidgets('viewAll')}
+            resetKey={job?.id}
             onClick={openFullview}
           />
         )}

@@ -15,11 +15,14 @@
    - count > 1 이면 [N] 배지 (단건이면 배지 없이 문구만).
    - 최초 완료(=마운트) 순간 3초 pulse 로 attention. CTA 는 완료
      상태에서만 마운트되므로 mount = "처음 완료된 순간".
+   - 한 번 클릭(=fullview 진입)하면 사라진다 (사용자 요청 2026-07-01).
+     새 산출물이 완료되면 (`resetKey` 변화) 다시 노출 + pulse — 그래야
+     후속 완료도 신호를 잃지 않는다.
    - 프레젠테이션 전용 — i18n 문자열은 호출부가 주입 (WidgetOutputs 와
      동일 패턴).
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // 완료 ✓ glyph. 명시 size className + aria-hidden 으로 a11y 통과 (버튼은
 // 자체 텍스트로 라벨됨, SVG 는 장식).
@@ -42,6 +45,7 @@ export function CompletedCTA({
   viewAllLabel,
   count,
   onClick,
+  resetKey,
 }: {
   // "작업이 완료되었습니다" (호출부가 useTranslations('Widgets') 로 주입).
   label: string;
@@ -51,14 +55,32 @@ export function CompletedCTA({
   count?: number;
   // 클릭 시 해당 위젯 fullview modal 열기.
   onClick: () => void;
+  // 완료 산출물의 안정 식별자 (예: 완료 건수 / 최신 job id). 값이 바뀌면
+  // = 새 산출물 완료 → dismiss 해제 + pulse 재생. 미전달이면 클릭 dismiss
+  // 는 마운트 유지되는 한 영구 (desk 단건 등).
+  resetKey?: string | number;
 }) {
-  // 마운트(=최초 완료) 시 3초 pulse 후 자동 해제. 산출물 전체 삭제 →
-  // 재완료 시 CTA 가 재마운트되어 다시 pulse.
+  // 클릭(=fullview 진입)하면 사라짐. resetKey 변화(새 완료) 시 다시 노출.
+  const [dismissed, setDismissed] = useState(false);
+  // 마운트/재노출 시 3초 pulse 후 자동 해제.
   const [pulse, setPulse] = useState(true);
+
+  const prevKey = useRef(resetKey);
   useEffect(() => {
+    if (resetKey !== prevKey.current) {
+      prevKey.current = resetKey;
+      setDismissed(false);
+      setPulse(true);
+    }
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (!pulse) return;
     const id = setTimeout(() => setPulse(false), 3000);
     return () => clearTimeout(id);
-  }, []);
+  }, [pulse]);
+
+  if (dismissed) return null;
 
   const showBadge = typeof count === 'number' && count > 1;
 
@@ -70,7 +92,10 @@ export function CompletedCTA({
           canvas [data-canvas-body] cascade opt-out (Button/IconButton 과 동일). */}
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => {
+          onClick();
+          setDismissed(true);
+        }}
         data-canvas-action
         className={
           'flex w-full items-center justify-between gap-3 rounded-sm border-[2px] border-ink bg-paper px-4 py-3 text-md font-semibold text-ink shadow-[3px_3px_0_black] transition-all duration-[120ms] hover:-translate-x-px hover:-translate-y-px hover:bg-mint hover:shadow-[4px_4px_0_black] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]' +

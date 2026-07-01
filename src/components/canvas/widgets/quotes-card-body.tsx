@@ -467,6 +467,7 @@ export function QuotesCardBody() {
               label={tWidgets('completed')}
               viewAllLabel={tWidgets('viewAll')}
               count={doneJobs.length}
+              resetKey={doneJobs.length}
               onClick={openFullview}
             />
           )}
