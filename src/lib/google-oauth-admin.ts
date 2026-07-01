@@ -11,6 +11,8 @@
 // via Google's token endpoint, with a small in-memory cache so we don't
 // hit oauth2.googleapis.com on every recruiting API call.
 
+import * as Sentry from '@sentry/nextjs';
+
 import { env } from '@/env';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -69,6 +71,21 @@ export async function getAdminAccessToken(): Promise<string> {
   });
   if (!res.ok) {
     const txt = await res.text();
+    // A failed refresh means the admin proxy is dead until someone
+    // re-runs the OAuth flow and updates GOOGLE_ADMIN_REFRESH_TOKEN — so
+    // every recruiting publish silently falls back to the legacy
+    // per-user path. `invalid_grant` specifically means the token was
+    // revoked/expired (password change, Google security check, 7-day
+    // testing-mode cap). Alert loudly; the runbook in
+    // docs/GOOGLE_ADMIN_PROXY_SETUP.md has the recovery steps. The txt
+    // body carries no user PII (Google's own error JSON), but sentry-pii
+    // still scrubs token-shaped strings as defense in depth.
+    const invalidGrant = txt.includes('invalid_grant');
+    Sentry.captureMessage('google_admin_refresh_token_failed', {
+      level: 'error',
+      tags: { invalid_grant: invalidGrant },
+      extra: { email: env.GOOGLE_ADMIN_EMAIL, status: res.status, body: txt },
+    });
     throw new Error(`admin_token_refresh_failed: ${res.status} ${txt}`);
   }
   const data = (await res.json()) as {

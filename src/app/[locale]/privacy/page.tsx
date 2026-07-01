@@ -87,9 +87,15 @@ function KoPrivacy() {
         <li><strong>Supabase</strong> — 데이터베이스·인증·파일 스토리지 호스팅</li>
         <li><strong>Vercel</strong> — 웹 애플리케이션 호스팅 및 로그</li>
         <li><strong>OpenAI / Anthropic</strong> — AI 모델 추론(전사·요약·분석 입력 및 출력)</li>
+        <li><strong>Google</strong> — 리크루팅 폼 발행 및 응답 저장(Google Forms / Drive)</li>
         <li><strong>Mixpanel</strong> — 서비스 이용 통계 분석</li>
       </UL>
       <P>위 수탁사들은 회사와의 계약에 따라 개인정보의 안전한 처리 및 비밀유지 의무를 부담합니다.</P>
+      <P>
+        이용자가 서비스 내 리크루팅 기능으로 발행한 설문의 응답(전화번호·이름·기타 응답 내용)은 회사가 운영하는
+        단일 Google 계정의 Google Drive에 통합 저장되며, 서비스 운영자만 접근할 수 있습니다. 응답자는 Google Forms의
+        표준 방식으로 데이터를 제공합니다.
+      </P>
 
       <H2>5. 이용자의 권리</H2>
       <UL>
@@ -170,8 +176,14 @@ function EnPrivacy() {
         <li><strong>Supabase</strong> — database, authentication, and file storage</li>
         <li><strong>Vercel</strong> — application hosting and logs</li>
         <li><strong>OpenAI / Anthropic</strong> — AI model inference (inputs and outputs)</li>
+        <li><strong>Google</strong> — recruiting form publishing and response storage (Google Forms / Drive)</li>
         <li><strong>Mixpanel</strong> — product analytics</li>
       </UL>
+      <P>
+        Responses to recruiting surveys you publish through the Service (phone numbers, names, and other answer
+        content) are stored together in the Google Drive of a single Google account operated by us, accessible only to
+        the Service operator. Respondents submit their data through Google Forms&rsquo; standard flow.
+      </P>
 
       <H2>5. Your Rights</H2>
       <UL>
