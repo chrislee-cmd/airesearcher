@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import {
   InterviewAnalysisArea,
@@ -10,6 +11,7 @@ import { useInterviewJob } from '@/components/interview-job-provider';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
+import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { InterviewFullView } from './interviews/full-view';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
@@ -98,7 +100,19 @@ function ExpandedBody() {
   // 피드백 대응. 공유 모달(CanvasBoard FullviewShell)이 소유하고 interviews
   // 가 currentKey 일 때만 본문을 모달 slot 으로 portal. provider
   // (useInterviewJob) 기반이라 모달 close 후 파일/인덱스 상태 보존.
-  const { renderInSlot, close } = useFullview('interviews');
+  const { renderInSlot, openFullview, close } = useFullview('interviews');
+  const tWidgets = useTranslations('Widgets');
+  const job = useInterviewJob();
+  // 진행중 = 변환/분석/인덱싱 중 하나라도 (헤더 running pill 과 동일 판정 —
+  // InterviewStatePush 참고). 완료 = 분석 결과 존재 또는 변환 완료 1건+.
+  const running =
+    job.analyzing ||
+    job.summarizing ||
+    job.verticallySynthesizing ||
+    job.convertingAll ||
+    job.items.some((i) => i.status === 'converting') ||
+    job.indexStatus === 'indexing';
+  const isComplete = !!job.analysis || job.doneCount > 0;
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
@@ -108,6 +122,23 @@ function ExpandedBody() {
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
       </div>
+      {/* 상태 푸터 — 진행중이면 "분석이 진행중", 완료면 "분석이
+          완료되었습니다"(클릭 → fullview: 2-column list + 검색/채팅).
+          진행중 우선. */}
+      {(running || isComplete) && (
+        <WidgetStatusFooter
+          status={running ? 'running' : 'done'}
+          label={
+            running ? tWidgets('interviewRunning') : tWidgets('interviewDone')
+          }
+          viewAllLabel={tWidgets('viewAll')}
+          count={job.doneCount}
+          resetKey={
+            running ? 'running' : `done-${job.doneCount}-${job.analysis ? 1 : 0}`
+          }
+          onClick={openFullview}
+        />
+      )}
       {renderInSlot(<InterviewFullView onClose={close} />)}
     </div>
   );

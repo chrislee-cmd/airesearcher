@@ -23,6 +23,7 @@ import {
   SectionLabel,
   WidgetOutputRow,
 } from '@/components/canvas/shell/widget-outputs';
+import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -73,6 +74,7 @@ function formatDuration(seconds: number | null) {
 export function QuotesCardBody() {
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
+  const tWidgets = useTranslations('Widgets');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
@@ -86,7 +88,7 @@ export function QuotesCardBody() {
   // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
   // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const { renderInSlot, close: closeFullview } = useFullview('quotes');
+  const { renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
@@ -457,6 +459,35 @@ export function QuotesCardBody() {
               </div>
             )}
           </div>
+
+          {/* 상태 푸터 — 진행중(업로드/전사 inflight)이면 "전사가 진행중",
+              완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
+              진행중이 완료보다 우선 — 이전 완료본이 있어도 새 전사 중엔
+              "진행중"으로 표시. */}
+          {(() => {
+            const inflight = job.jobs.some(
+              (j) =>
+                j.status === 'submitting' ||
+                j.status === 'transcribing' ||
+                j.status === 'queued',
+            );
+            const running = hasUploads || inflight;
+            if (!running && doneJobs.length === 0) return null;
+            return (
+              <WidgetStatusFooter
+                status={running ? 'running' : 'done'}
+                label={
+                  running
+                    ? tWidgets('transcriptRunning')
+                    : tWidgets('transcriptDone')
+                }
+                viewAllLabel={tWidgets('viewAll')}
+                count={doneJobs.length}
+                resetKey={running ? 'running' : `done-${doneJobs.length}`}
+                onClick={openFullview}
+              />
+            );
+          })()}
       </div>
 
       {pendingFiles && (

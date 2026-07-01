@@ -66,6 +66,8 @@ export function FullviewShellProvider({
 export function useFullview(widgetKey: string): {
   isCurrent: boolean;
   renderInSlot: (node: ReactNode) => ReactNode;
+  /** 이 위젯의 전체보기 modal 열기 (카드 안 완료 CTA / 진입점용). */
+  openFullview: () => void;
   close: () => void;
 } {
   const ctx = useContext(FullviewShellContext);
@@ -76,6 +78,7 @@ export function useFullview(widgetKey: string): {
   return {
     isCurrent,
     renderInSlot,
+    openFullview: ctx ? () => ctx.openFullview(widgetKey) : () => {},
     close: ctx?.close ?? (() => {}),
   };
 }
