@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
+import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { ResponsesSpreadsheet } from './recruiting/responses-spreadsheet';
 
 // 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
@@ -17,14 +20,28 @@ import { ResponsesSpreadsheet } from './recruiting/responses-spreadsheet';
 // fullview 는 응답 데이터에 집중한다. wizard 는 카드 안에 항상 마운트되어
 // 있으므로 fullview 가 열려도 진행 state 가 끊기지 않는다.
 function ExpandedBody() {
-  const { renderInSlot, close } = useFullview('recruiting');
+  const { renderInSlot, openFullview, close } = useFullview('recruiting');
+  const tWidgets = useTranslations('Widgets');
+  // Published state emitted by the wizard. When true, the card shows the
+  // shared completion footer ("신청서 제작이 완료되었습니다") whose click
+  // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
+  const [isPublished, setIsPublished] = useState(false);
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-5 px-5 py-5">
-          <RecruitingWizard />
+          <RecruitingWizard onPublishedChange={setIsPublished} />
         </div>
       </div>
+      {isPublished && (
+        <WidgetStatusFooter
+          status="done"
+          label={tWidgets('recruitingDone')}
+          viewAllLabel={tWidgets('viewAll')}
+          resetKey="recruiting-published"
+          onClick={openFullview}
+        />
+      )}
       {renderInSlot(
         <WidgetFullviewPanel
           title="리크루팅 — 응답"
