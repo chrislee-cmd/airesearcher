@@ -2894,59 +2894,31 @@ export function TranslateConsole({
           />
         }
         actions={
-          <div className="flex flex-col items-end gap-2">
-            {/* Row 1: elapsed clock + share + start/stop. The status /
-                slot-indicator / recording pills were removed here as visual
-                noise — the underlying live/status/slotActive/recorderActive
-                state still drives behavior, just no longer rendered inline. */}
-            <div className="flex items-center gap-2">
-              <span className="text-md tabular-nums text-mute">
-                {live ? formatElapsed(elapsed) : '00:00'}
-              </span>
-              {live ? (
-                <>
-                  {!shareToken ? (
-                    <ChromeButton
-                      size="lg"
-                      onClick={() => void generateShare()}
-                      disabled={sharing}
-                    >
-                      {sharing ? t('share.creating') : t('share.create')}
-                    </ChromeButton>
-                  ) : null}
-                  <ChromeButton
-                    size="lg"
-                    onClick={() => void stop()}
-                  >
-                    {t('stop')}
-                  </ChromeButton>
-                </>
-              ) : (
-                <ChromeButton
-                  variant="primary"
-                  size="lg"
-                  onClick={() => void start()}
-                  disabled={busy}
-                >
-                  {busy ? t('starting') : t('start')}
-                </ChromeButton>
-              )}
-            </div>
-            {/* Row 2: voice on/off, moved below the start/stop button.
-                Layer B: explicit ON/OFF label, not an icon alone — the
-                icon-only toggle gave no hint that OFF was a click away from
-                restoring sound, so a host who'd toggled it off read the
-                silence as the TTS being broken. */}
-            <ChromeButton
-              size="lg"
-              onClick={() => setOutputAudible((v) => !v)}
-              aria-pressed={outputAudible}
-              leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-              aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-              title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-            >
-              {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
-            </ChromeButton>
+          /* 시계 + 시작/중지 CTA 만. 음성 on/off · 공유 링크 생성 버튼은
+             메인 패널 상단 (프롬프터 바로 위) 으로 이동 — 서브헤더는 설정 +
+             핵심 CTA 만. status / slot-indicator / recording pills 는 이전
+             PR 에서 visual noise 로 제거 (state 는 그대로 behavior 구동). */
+          <div className="flex items-center gap-2">
+            <span className="text-md tabular-nums text-mute">
+              {live ? formatElapsed(elapsed) : '00:00'}
+            </span>
+            {live ? (
+              <ChromeButton
+                size="lg"
+                onClick={() => void stop()}
+              >
+                {t('stop')}
+              </ChromeButton>
+            ) : (
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={() => void start()}
+                disabled={busy}
+              >
+                {busy ? t('starting') : t('start')}
+              </ChromeButton>
+            )}
           </div>
         }
       />
@@ -3095,6 +3067,33 @@ export function TranslateConsole({
           ) : null}
         </div>
       ) : null}
+
+      {/* 보조 컨트롤 — 음성 on/off + 공유 링크 생성. 서브헤더 우측에서
+          메인 패널 상단 (프롬프터 바로 위) 으로 이동. 공유 생성 버튼은
+          live 이고 아직 링크가 없을 때만 노출 (기존 조건 유지). */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 음성 on/off — explicit ON/OFF 라벨 (icon-only 로 하면 OFF 가
+            클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해). */}
+        <ChromeButton
+          size="lg"
+          onClick={() => setOutputAudible((v) => !v)}
+          aria-pressed={outputAudible}
+          leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+          aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+          title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+        >
+          {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
+        </ChromeButton>
+        {live && !shareToken ? (
+          <ChromeButton
+            size="lg"
+            onClick={() => void generateShare()}
+            disabled={sharing}
+          >
+            {sharing ? t('share.creating') : t('share.create')}
+          </ChromeButton>
+        ) : null}
+      </div>
 
       {showListeners ? (
         // Fullview: prompter + a right listener column. The prompter keeps
