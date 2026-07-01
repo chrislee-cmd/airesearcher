@@ -11,7 +11,6 @@ import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
-import { WorkspacePanel } from '@/components/workspace-panel';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
 import { CreditDeductionProvider } from '@/components/credit-deduction-provider';
 import { ActiveProjectProvider } from '@/components/active-project-provider';
@@ -91,7 +90,6 @@ export default async function AppLayout({
                  이 cream 패딩 잔재로 보이는 걸 막기 위해 has-[[data-canvas]] /
                  has-[[data-loading]] 일 때만 0 으로. 다른 라우트는 p-6 그대로. */}
              <main className="flex-1 overflow-auto p-6 has-[[data-canvas]]:p-0 has-[[data-loading]]:p-0">{children}</main>
-             <WorkspacePanel />
            </div>
          </div>
 
