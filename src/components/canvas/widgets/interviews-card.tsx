@@ -11,7 +11,7 @@ import { useInterviewJob } from '@/components/interview-job-provider';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
-import { CompletedCTA } from '../shell/completed-cta';
+import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { InterviewFullView } from './interviews/full-view';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
@@ -103,8 +103,15 @@ function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('interviews');
   const tWidgets = useTranslations('Widgets');
   const job = useInterviewJob();
-  // 완료 조건 = 분석 결과 존재 또는 변환 완료 파일 1건 이상 (헤더 done
-  // pill 과 동일 판정 — InterviewStatePush 참고). count 는 변환 완료 파일 수.
+  // 진행중 = 변환/분석/인덱싱 중 하나라도 (헤더 running pill 과 동일 판정 —
+  // InterviewStatePush 참고). 완료 = 분석 결과 존재 또는 변환 완료 1건+.
+  const running =
+    job.analyzing ||
+    job.summarizing ||
+    job.verticallySynthesizing ||
+    job.convertingAll ||
+    job.items.some((i) => i.status === 'converting') ||
+    job.indexStatus === 'indexing';
   const isComplete = !!job.analysis || job.doneCount > 0;
   return (
     <div className="flex h-full flex-col">
@@ -115,14 +122,20 @@ function ExpandedBody() {
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
       </div>
-      {/* 완료 CTA 푸터 — 분석/변환 완료 시 노출. 클릭 시 인터뷰 fullview
-          (2-column list + 검색/채팅) 진입 → 산출물 확인. */}
-      {isComplete && (
-        <CompletedCTA
-          label={tWidgets('completed')}
+      {/* 상태 푸터 — 진행중이면 "분석이 진행중", 완료면 "분석이
+          완료되었습니다"(클릭 → fullview: 2-column list + 검색/채팅).
+          진행중 우선. */}
+      {(running || isComplete) && (
+        <WidgetStatusFooter
+          status={running ? 'running' : 'done'}
+          label={
+            running ? tWidgets('interviewRunning') : tWidgets('interviewDone')
+          }
           viewAllLabel={tWidgets('viewAll')}
           count={job.doneCount}
-          resetKey={`${job.doneCount}-${job.analysis ? 1 : 0}`}
+          resetKey={
+            running ? 'running' : `done-${job.doneCount}-${job.analysis ? 1 : 0}`
+          }
           onClick={openFullview}
         />
       )}

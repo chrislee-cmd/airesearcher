@@ -45,7 +45,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
-import { CompletedCTA } from '@/components/canvas/shell/completed-cta';
+import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -997,17 +997,22 @@ export function DeskCardBody() {
         )}
         </div>
 
-        {/* 완료 CTA 푸터 — 완료된 리포트(done + output)가 있으면 노출.
-            클릭 시 데스크 fullview modal 진입 → 리포트 풀스크린 확인.
+        {/* 상태 푸터 — 리서치 진행중이면 "리서치가 진행중", 완료 리포트가
+            있으면 "리서치가 완료되었습니다"(클릭 → fullview). 진행중 우선.
             리포트는 단건이라 count 배지 없음. */}
-        {showResult && (
-          <CompletedCTA
-            label={tWidgets('completed')}
-            viewAllLabel={tWidgets('viewAll')}
-            resetKey={job?.id}
-            onClick={openFullview}
-          />
-        )}
+        {(() => {
+          const running = submitting || !!pendingJobId || isWorking;
+          if (!running && !showResult) return null;
+          return (
+            <WidgetStatusFooter
+              status={running ? 'running' : 'done'}
+              label={running ? tWidgets('deskRunning') : tWidgets('deskDone')}
+              viewAllLabel={tWidgets('viewAll')}
+              resetKey={running ? 'running' : `done-${job?.id ?? ''}`}
+              onClick={openFullview}
+            />
+          );
+        })()}
       </div>
 
       <Modal

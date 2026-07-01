@@ -1012,8 +1012,13 @@
   },
   "Widgets": {
     "fullview": "전체 보기",
-    "completed": "작업이 완료되었습니다",
-    "viewAll": "전체 보기 →"
+    "viewAll": "전체 보기 →",
+    "transcriptRunning": "전사가 진행중입니다",
+    "transcriptDone": "전사가 완료되었습니다",
+    "deskRunning": "리서치가 진행중입니다",
+    "deskDone": "리서치가 완료되었습니다",
+    "interviewRunning": "분석이 진행중입니다",
+    "interviewDone": "분석이 완료되었습니다"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

@@ -1,31 +1,28 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   CompletedCTA — 위젯 본문 하단(옛 WidgetOutputs 자리)의 "작업이
-   완료되었습니다" 완료 CTA 푸터.
+   WidgetStatusFooter — 위젯 본문 하단(옛 WidgetOutputs 자리)의 작업 상태
+   푸터. 현재 작업 lifecycle 에 따라 문구·디자인이 바뀐다.
 
-   PR #574 (하단 산출물 푸터 제거) 후 완료 시각 신호가 사라져, 산출물이
-   fullview 안에만 노출되면서 사용자가 "끝났는지" 알기 어려워진 회귀를
-   해소한다. 산출물이 1건 이상 완료되면 이 CTA 가 노출되고, 클릭하면
-   각 위젯의 공유 fullview modal 이 열려 그 안에서 산출물을 확인한다.
+   PR #574 (하단 산출물 푸터 제거) 후 완료 시각 신호가 사라진 회귀 해소.
+   단순 "완료된 산출물 존재" 신호는 이전 완료본이 남아 있으면 새 작업
+   업로드 직후에도 "완료" 로 오인되던 문제가 있어, 진행중 ↔ 완료 두
+   상태를 구분한다.
 
-   - 완료 톤 = mint(초록) — 헤더 done pill(mint)과 색 통일.
-   - ✓ 아이콘은 mint 칩 안에 담아 paper 위에서도 대비 확보 (mint stroke
-     단독은 저대비).
-   - count > 1 이면 [N] 배지 (단건이면 배지 없이 문구만).
-   - 최초 완료(=마운트) 순간 3초 pulse 로 attention. CTA 는 완료
-     상태에서만 마운트되므로 mount = "처음 완료된 순간".
-   - 한 번 클릭(=fullview 진입)하면 사라진다 (사용자 요청 2026-07-01).
-     새 산출물이 완료되면 (`resetKey` 변화) 다시 노출 + pulse — 그래야
-     후속 완료도 신호를 잃지 않는다.
-   - 프레젠테이션 전용 — i18n 문자열은 호출부가 주입 (WidgetOutputs 와
-     동일 패턴).
+   - status='running' → 진행중 톤(amore) + 맥동 도트 + 비클릭(상태 표시).
+     예: "전사가 진행중입니다".
+   - status='done'    → 완료 톤(mint) + ✓ 칩 + offset shadow 로 융기된
+     클릭 가능 버튼. 클릭 시 fullview 진입. 예: "전사가 완료되었습니다".
+   - done 을 한 번 클릭(=fullview 진입)하면 사라진다. 새 산출물 완료
+     (`resetKey` 변화) 시 다시 노출 + pulse — 후속 완료도 신호를 잃지
+     않는다.
+   - done 에서 count > 1 이면 [N] 배지.
+   - 프레젠테이션 전용 — i18n 문자열/상태는 호출부가 주입.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useRef, useState } from 'react';
 
-// 완료 ✓ glyph. 명시 size className + aria-hidden 으로 a11y 통과 (버튼은
-// 자체 텍스트로 라벨됨, SVG 는 장식).
+// 완료 ✓ glyph. 명시 size className + aria-hidden 으로 a11y 통과.
 function CheckIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -40,29 +37,34 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
-export function CompletedCTA({
+export type WidgetStatusFooterStatus = 'running' | 'done';
+
+export function WidgetStatusFooter({
+  status,
   label,
   viewAllLabel,
   count,
   onClick,
   resetKey,
 }: {
-  // "작업이 완료되었습니다" (호출부가 useTranslations('Widgets') 로 주입).
+  // 현재 작업 상태. running = 진행중(비클릭 상태 표시), done = 완료(클릭 → fullview).
+  status: WidgetStatusFooterStatus;
+  // 상태에 맞는 문구 (호출부가 useTranslations 로 주입). 예: "전사가 진행중입니다".
   label: string;
-  // "전체 보기 →".
+  // done 상태 우측 "전체 보기 →".
   viewAllLabel: string;
-  // 산출물 개수 (선택). 2건 이상일 때만 배지 노출.
+  // done 산출물 개수 (선택). 2건 이상일 때만 배지.
   count?: number;
-  // 클릭 시 해당 위젯 fullview modal 열기.
+  // done 클릭 시 해당 위젯 fullview modal 열기.
   onClick: () => void;
-  // 완료 산출물의 안정 식별자 (예: 완료 건수 / 최신 job id). 값이 바뀌면
-  // = 새 산출물 완료 → dismiss 해제 + pulse 재생. 미전달이면 클릭 dismiss
-  // 는 마운트 유지되는 한 영구 (desk 단건 등).
+  // 완료 산출물의 안정 식별자 (완료 건수 / 최신 job id 등). 값이 바뀌면
+  // = 새 산출물 완료 → dismiss 해제 + pulse 재생. running→done 전이도
+  // resetKey 로 감지되어 done 푸터가 다시 노출된다.
   resetKey?: string | number;
 }) {
-  // 클릭(=fullview 진입)하면 사라짐. resetKey 변화(새 완료) 시 다시 노출.
+  // done 을 클릭(=fullview 진입)하면 사라짐. resetKey 변화 시 다시 노출.
   const [dismissed, setDismissed] = useState(false);
-  // 마운트/재노출 시 3초 pulse 후 자동 해제.
+  // done 노출/재노출 시 3초 pulse 후 자동 해제.
   const [pulse, setPulse] = useState(true);
 
   const prevKey = useRef(resetKey);
@@ -75,11 +77,29 @@ export function CompletedCTA({
   }, [resetKey]);
 
   useEffect(() => {
-    if (!pulse) return;
+    if (status !== 'done' || !pulse) return;
     const id = setTimeout(() => setPulse(false), 3000);
     return () => clearTimeout(id);
-  }, [pulse]);
+  }, [status, pulse]);
 
+  // ── 진행중 — amore 톤 flat 상태 표시. dismiss 개념 없음(항상 노출).
+  if (status === 'running') {
+    return (
+      <div className="mt-auto shrink-0 border-t-[2px] border-ink bg-amore-bg px-5 py-3">
+        <div className="flex w-full items-center gap-2 rounded-sm border-[2px] border-amore bg-paper px-4 py-3 text-md font-semibold text-ink">
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 animate-pulse rounded-full bg-amore"
+            />
+          </span>
+          <span className="truncate">{label}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 완료 — mint 톤 융기 버튼, 클릭 → fullview + dismiss.
   if (dismissed) return null;
 
   const showBadge = typeof count === 'number' && count > 1;

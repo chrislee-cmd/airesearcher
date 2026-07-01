@@ -23,7 +23,7 @@ import {
   SectionLabel,
   WidgetOutputRow,
 } from '@/components/canvas/shell/widget-outputs';
-import { CompletedCTA } from '@/components/canvas/shell/completed-cta';
+import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -460,17 +460,34 @@ export function QuotesCardBody() {
             )}
           </div>
 
-          {/* 완료 CTA 푸터 — 완료된 전사(done) 1건 이상이면 노출. 클릭 시
-              전사록 fullview modal 진입 → 그 안에서 산출물 확인. */}
-          {doneJobs.length > 0 && (
-            <CompletedCTA
-              label={tWidgets('completed')}
-              viewAllLabel={tWidgets('viewAll')}
-              count={doneJobs.length}
-              resetKey={doneJobs.length}
-              onClick={openFullview}
-            />
-          )}
+          {/* 상태 푸터 — 진행중(업로드/전사 inflight)이면 "전사가 진행중",
+              완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
+              진행중이 완료보다 우선 — 이전 완료본이 있어도 새 전사 중엔
+              "진행중"으로 표시. */}
+          {(() => {
+            const inflight = job.jobs.some(
+              (j) =>
+                j.status === 'submitting' ||
+                j.status === 'transcribing' ||
+                j.status === 'queued',
+            );
+            const running = hasUploads || inflight;
+            if (!running && doneJobs.length === 0) return null;
+            return (
+              <WidgetStatusFooter
+                status={running ? 'running' : 'done'}
+                label={
+                  running
+                    ? tWidgets('transcriptRunning')
+                    : tWidgets('transcriptDone')
+                }
+                viewAllLabel={tWidgets('viewAll')}
+                count={doneJobs.length}
+                resetKey={running ? 'running' : `done-${doneJobs.length}`}
+                onClick={openFullview}
+              />
+            );
+          })()}
       </div>
 
       {pendingFiles && (
