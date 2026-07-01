@@ -37,6 +37,8 @@ import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
+import { WidgetSettingsButton } from './canvas/shell/widget-settings-button';
+import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
@@ -510,9 +512,13 @@ export function TranslateConsole({
 } = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
+  const tWidgets = useTranslations('Widgets');
   const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
+  // 서브헤더 "설정" 모달 — 옛 필드 (캡처방식 / 원어·번역언어 / 용어집) 를
+  // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -2827,6 +2833,13 @@ export function TranslateConsole({
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
   const langOptions = useMemo(() => LANGS, []);
+  // 서브헤더 설정 dot — default (both / ko → en / 용어집 없음) 와 다른 값이
+  // 하나라도 있으면 "설정됨" 을 amore dot 으로 표시.
+  const hasNonDefaultSettings =
+    captureMode !== 'both' ||
+    sourceLang !== 'ko' ||
+    targetLang !== 'en' ||
+    glossary.length > 0;
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
@@ -2872,72 +2885,13 @@ export function TranslateConsole({
           (옛 저장 체크박스) 없음. 3 위젯 공통 primitive. */}
       <WidgetSubHeader
         className="-mx-5 -mt-5"
+        compact
         inputs={
-          /* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
-             수평) stack, 우 = glossary chips. 사용자 요청 (2026-06-30) 으로
-             캡처방식/원어/번역언어 라벨·안내문 전부 제거 — visual label 0,
-             a11y 는 select 의 aria-label 로 보장. glossary 라벨만 유지. */
-          <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
-            {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
-            <div className="flex min-w-0 flex-col gap-3">
-              {/* 1번 = 입력 소스 (captureMode). 라벨/안내문 제거. */}
-              <select
-                value={captureMode}
-                onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-                disabled={live || busy}
-                aria-label={t('captureMode.label')}
-                className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                <option value="both">{t('captureMode.both')}</option>
-                <option value="mic-only">{t('captureMode.micOnly')}</option>
-                <option value="tab-only">{t('captureMode.tabOnly')}</option>
-              </select>
-              {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
-              <div className="flex flex-wrap gap-3">
-                <select
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
-                  disabled={live || busy}
-                  aria-label={t('sourceLang')}
-                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                >
-                  {langOptions.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value)}
-                  disabled={live || busy}
-                  aria-label={t('targetLang')}
-                  className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                >
-                  {langOptions.map((l) => (
-                    <option key={l.value} value={l.value}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
-                live/busy 시 잠금. 가시 라벨 제거 — placeholder "고유 용어/
-                맥락 주입" 로 대체 (a11y 는 input aria-label 이 보장). 인명/
-                도구명/약어의 정규 표기를 Enter 로 chip 추가. */}
-            <div className="flex min-w-0 flex-col">
-              <GlossaryField
-                values={glossary}
-                onChange={setGlossary}
-                disabled={live || busy}
-                placeholderEmpty={t('glossary.placeholderEmpty')}
-                placeholderAdd={t('glossary.placeholderAdd')}
-                removeAria={t('glossary.removeAria')}
-              />
-            </div>
-          </div>
+          <WidgetSettingsButton
+            onClick={() => setSettingsOpen(true)}
+            label={tWidgets('settings')}
+            hasChanges={hasNonDefaultSettings}
+          />
         }
         actions={
           <div className="flex flex-col items-end gap-2">
@@ -2996,6 +2950,80 @@ export function TranslateConsole({
           </div>
         }
       />
+
+      {/* 설정 모달 — 옛 서브헤더 필드 (캡처방식 / 원어·번역언어 / 용어집).
+          값 변경은 즉시 반영, 닫기 = 확정. 세션 시작 전에만 편집 가능 —
+          live/busy 시 필드 disabled 유지 (옛 동작 그대로). */}
+      <WidgetSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={tWidgets('settings')}
+        closeLabel={tWidgets('settingsClose')}
+      >
+        {/* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
+            수평) stack, 우 = glossary chips. 가시 라벨 제거 — a11y 는 select /
+            input 의 aria-label 로 보장. */}
+        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+          {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
+          <div className="flex min-w-0 flex-col gap-3">
+            {/* 1번 = 입력 소스 (captureMode). */}
+            <select
+              value={captureMode}
+              onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+              disabled={live || busy}
+              aria-label={t('captureMode.label')}
+              className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            >
+              <option value="both">{t('captureMode.both')}</option>
+              <option value="mic-only">{t('captureMode.micOnly')}</option>
+              <option value="tab-only">{t('captureMode.tabOnly')}</option>
+            </select>
+            {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                disabled={live || busy}
+                aria-label={t('sourceLang')}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                disabled={live || busy}
+                aria-label={t('targetLang')}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                {langOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
+              live/busy 시 잠금. 인명/도구명/약어의 정규 표기를 Enter 로
+              chip 추가. */}
+          <div className="flex min-w-0 flex-col">
+            <GlossaryField
+              values={glossary}
+              onChange={setGlossary}
+              disabled={live || busy}
+              placeholderEmpty={t('glossary.placeholderEmpty')}
+              placeholderAdd={t('glossary.placeholderAdd')}
+              removeAria={t('glossary.removeAria')}
+            />
+          </div>
+        </div>
+      </WidgetSettingsModal>
 
       {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
           (most visible spot) so the host immediately sees why the monitor

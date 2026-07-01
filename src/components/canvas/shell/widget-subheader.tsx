@@ -44,6 +44,12 @@ export type WidgetSubHeaderProps = {
   actions?: ReactNode;
   // 아래 줄 — 안내문 / 라이브 상태. 한 줄 짧은 텍스트 권장.
   hint?: ReactNode;
+  // compact: 서브헤더가 "설정 버튼 + CTA" 만 담는 위젯 (데스크 / 동시통역 /
+  // 프로빙) 은 stacked Field 가 모두 설정 모달로 이동해 자연 height 가 한 줄
+  // 이라 200px min-height 가 큰 여백을 남긴다. compact 면 min-height 강제를
+  // 풀어 한 줄 높이로 축소. upload/드롭존을 그대로 두는 quotes / interviews
+  // 는 default (200px) 유지 — 회귀 0.
+  compact?: boolean;
   className?: string;
 };
 
@@ -52,6 +58,7 @@ export function WidgetSubHeader({
   options,
   actions,
   hint,
+  compact,
   className,
 }: WidgetSubHeaderProps) {
   const rowClassName = [
@@ -64,12 +71,23 @@ export function WidgetSubHeader({
   return (
     <header
       className={rowClassName}
-      style={{ minHeight: WIDGET_SUBHEADER_MIN_HEIGHT }}
+      style={compact ? undefined : { minHeight: WIDGET_SUBHEADER_MIN_HEIGHT }}
     >
-      <div className="flex flex-1 flex-wrap items-start gap-x-4 gap-y-3 px-5 py-3">
+      <div
+        className={[
+          'flex flex-1 flex-wrap gap-x-4 gap-y-3 px-5 py-3',
+          // compact 는 설정 버튼 + CTA 한 줄이라 세로 중앙 정렬이 자연스럽다.
+          compact ? 'items-center' : 'items-start',
+        ].join(' ')}
+      >
         {/* 좌 — inputs (Field 묶음). 좁아지면 wrap. */}
         {inputs && (
-          <div className="flex min-w-0 flex-1 flex-wrap items-start gap-3">
+          <div
+            className={[
+              'flex min-w-0 flex-1 gap-3',
+              compact ? 'items-center' : 'flex-wrap items-start',
+            ].join(' ')}
+          >
             {inputs}
           </div>
         )}
