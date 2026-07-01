@@ -943,21 +943,6 @@ function ExpandedBody() {
               )}
             </>
           }
-          hint={
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isLive
-                    ? 'bg-amore'
-                    : sessionStatus === 'error'
-                      ? 'bg-warning'
-                      : 'bg-line'
-                }`}
-                aria-hidden
-              />
-              {statusLabel && <SectionLabel>{statusLabel}</SectionLabel>}
-            </div>
-          }
         />
 
         {/* 설정 모달 — 옛 서브헤더 필드 (입력 소스 / 분석 출력 언어).
