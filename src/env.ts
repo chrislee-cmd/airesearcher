@@ -136,6 +136,13 @@ export const env = createEnv({
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
     NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(8).optional(),
     NEXT_PUBLIC_TRANSLATE_VIEWER_HOST: z.string().min(1).optional(),
+
+    // PostHog product analytics. Optional so local dev / PR previews
+    // without the keys keep working — the client init no-ops when the key
+    // is absent (see src/lib/analytics/posthog-client.ts). Host defaults to
+    // the US cloud ingest endpoint when unset.
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().startsWith('phc_').optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   },
 
   // Full destructure so this works on every runtime (Node, Edge, build).
@@ -227,6 +234,8 @@ export const env = createEnv({
     NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_TRANSLATE_VIEWER_HOST:
       process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
 
   // Treat `FOO=` (empty string) the same as missing. Without this, a
