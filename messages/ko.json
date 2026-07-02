@@ -1029,7 +1029,13 @@
     "recruitingDone": "신청서 제작이 완료되었습니다",
     "settings": "설정",
     "settingsClose": "닫기",
-    "upload": "파일 업로드"
+    "upload": "파일 업로드",
+    "uploadHint": "📤 파일을 먼저 업로드해 주세요",
+    "transcriptStart": "시작",
+    "transcriptReadyHint": "{count}개 파일 준비됨 — 시작을 눌러 전사하세요",
+    "onboardingSettings": "여기를 눌러 시작 조건을 설정하세요",
+    "onboardingUpload": "여기를 눌러 파일을 업로드하세요",
+    "onboardingDismiss": "안내 닫기"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

@@ -37,6 +37,8 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
+import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
+import { useVisitedOnce } from '@/components/ui/use-visited-once';
 import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -197,6 +199,8 @@ function ExpandedBody() {
   // 서브헤더 "설정" 모달 — 옛 필드 (입력 소스 / 분석 출력 언어) 를 담는다.
   // 값 변경은 즉시 반영, 닫기 = 확정.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 온보딩 게이팅 — 세션 시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩).
+  const [settingsVisited, markSettingsVisited] = useVisitedOnce('widget-probing');
 
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
   // (영속화 X). default ko = 옛 동작 (한국어 분석). think / reflection 자동
@@ -833,6 +837,7 @@ function ExpandedBody() {
   })();
 
   const startDisabled =
+    !settingsVisited ||
     sessionStatus === 'starting' ||
     sessionStatus === 'live' ||
     sessionStatus === 'stopping';
@@ -904,10 +909,22 @@ function ExpandedBody() {
           className="shrink-0"
           compact
           inputs={
-            <WidgetSettingsButton
-              onClick={() => setSettingsOpen(true)}
-              hasChanges={source !== 'mic' || outputLang !== 'ko'}
-            />
+            // 세션 시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩). 설정
+            // 미방문 동안 ⚙ pulse + 첫 사용 툴팁으로 유도.
+            <OnboardingTooltip
+              id="widget-probing"
+              message="여기를 눌러 시작 조건을 설정하세요"
+              dismissLabel="안내 닫기"
+            >
+              <WidgetSettingsButton
+                onClick={() => {
+                  markSettingsVisited();
+                  setSettingsOpen(true);
+                }}
+                hasChanges={source !== 'mic' || outputLang !== 'ko'}
+                pulse={!settingsVisited}
+              />
+            </OnboardingTooltip>
           }
           actions={
             <>

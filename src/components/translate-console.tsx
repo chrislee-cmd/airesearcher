@@ -38,6 +38,8 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from './canvas/shell/widget-settings-button';
+import { OnboardingTooltip } from './ui/onboarding-tooltip';
+import { useVisitedOnce } from './ui/use-visited-once';
 import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
@@ -519,6 +521,8 @@ export function TranslateConsole({
   // 서브헤더 "설정" 모달 — 옛 필드 (캡처방식 / 원어·번역언어 / 용어집) 를
   // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 온보딩 게이팅 — 통역시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩).
+  const [settingsVisited, markSettingsVisited] = useVisitedOnce('widget-translate');
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -2920,11 +2924,23 @@ export function TranslateConsole({
         className="-mx-5 -mt-5"
         compact
         inputs={
-          <WidgetSettingsButton
-            onClick={() => setSettingsOpen(true)}
-            label={tWidgets('settings')}
-            hasChanges={hasNonDefaultSettings}
-          />
+          // 통역시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩). 설정 미방문
+          // 동안 ⚙ pulse + 첫 사용 툴팁으로 유도.
+          <OnboardingTooltip
+            id="widget-translate"
+            message={tWidgets('onboardingSettings')}
+            dismissLabel={tWidgets('onboardingDismiss')}
+          >
+            <WidgetSettingsButton
+              onClick={() => {
+                markSettingsVisited();
+                setSettingsOpen(true);
+              }}
+              label={tWidgets('settings')}
+              hasChanges={hasNonDefaultSettings}
+              pulse={!settingsVisited}
+            />
+          </OnboardingTooltip>
         }
         actions={
           /* 시계 + 시작/중지 CTA 만. 음성 on/off · 공유 링크 생성 버튼은
@@ -2947,7 +2963,7 @@ export function TranslateConsole({
                 variant="primary"
                 size="lg"
                 onClick={() => void start()}
-                disabled={busy}
+                disabled={busy || !settingsVisited}
               >
                 {busy ? t('starting') : t('start')}
               </ChromeButton>

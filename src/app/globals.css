@@ -436,6 +436,23 @@ html, body {
 }
 .workspace-trigger-pulse { animation: workspaceTriggerPulse 1.2s ease-out 2; }
 
+/* 온보딩 게이팅 — 서브헤더 설정(⚙)/업로드(📤) 버튼이 "아직 미완료" 인 동안
+   amore halo 로 사용자 눈을 유도. workspaceTriggerPulse (2회) 와 달리 미완료
+   동안 무한 반복하고, 설정/업로드가 채워지면 호출부가 class 를 떼어 정지한다.
+   버튼 자체의 Memphis hard-shadow 와 충돌하지 않도록 primitive 는 이 class 를
+   IconButton 을 감싼 wrapper span 에 얹는다 (버튼 box-shadow 를 덮지 않음). */
+@keyframes widgetGateGuidePulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-amore); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+.widget-gate-guide-pulse {
+  border-radius: var(--radius-xs);
+  animation: widgetGateGuidePulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-gate-guide-pulse { animation: none; }
+}
+
 @keyframes workspaceRowFlash {
   0%   { background-color: color-mix(in srgb, var(--color-amore) 16%, transparent); }
   100% { background-color: transparent; }
