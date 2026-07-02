@@ -16,7 +16,7 @@ import { WidgetUploadModal } from '../shell/widget-upload-modal';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
-import { InterviewFullView } from './interviews/full-view';
+import { InterviewV2Fullview } from '@/components/interviews-v2/interview-v2-fullview';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
 // (변환 / 분석 / extract 중 하나라도 진행 중) → running, label = phase.
@@ -203,7 +203,7 @@ function ExpandedBody() {
           onClick={openFullview}
         />
       )}
-      {renderInSlot(<InterviewFullView onClose={close} />)}
+      {renderInSlot(<InterviewV2Fullview onClose={close} />)}
     </div>
   );
 }
