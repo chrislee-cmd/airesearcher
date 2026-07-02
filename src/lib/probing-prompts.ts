@@ -342,12 +342,24 @@ export function buildProbingPersonaSystem(
 - 마지막 exchange 가 영어면 영어로, 한국어면 한국어로 — persona / 제안 질문 / reflection 모두 같은 언어로 일관되게.`;
   const n = sections.length;
   const keyList = sections.map((s) => s.key).join(' / ');
+  // 명시적 key 목록 (강제 응답용) — 쉼표 구분. keyList 는 사람이 읽는 슬래시
+  // 구분, keyListComma 는 "반드시 포함" 지시문의 canonical 목록.
+  const keyListComma = sections.map((s) => s.key).join(', ');
   const sectionGuide = sections
     .map((s, i) => {
       const desc = s.description?.trim();
       return `${i + 1}. **${s.key}** (${s.title})${desc ? ` — ${desc}` : ''}`;
     })
     .join('\n');
+  // 예시 JSON template — 전달된 모든 key (기본 8 + custom_N) 를 그대로 나열해
+  // LLM 이 custom key 도 응답 object 에 포함해야 함을 명시적으로 학습하게 한다.
+  // 값은 placeholder — 모델이 채워 넣는다.
+  const exampleJson = `{\n${sections
+    .map(
+      (s) =>
+        `  "${s.key}": {"summary": "...", "signals": [{"bullet": "...", "quote": "..."}], "confidence": "medium"}`,
+    )
+    .join(',\n')}\n}`;
   return `당신은 질적 인터뷰의 응답자 페르소나 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **이 응답자의 완성된 페르소나 한 판** 을 ${n} 섹션 (${keyList}) 으로 구조화합니다.
 
 ## 절대 원칙
@@ -356,6 +368,17 @@ export function buildProbingPersonaSystem(
 - **닫힌 결론 금지** — 인터뷰어가 다음 질문으로 검증할 수 있는 **가설** 로 표현 ("X 일 가능성", "X 를 중시할 수도").
 - **빈약 섹션 = insufficient** — transcript 에 그 섹션의 신호가 없으면 confidence='insufficient' + summary 비움 + signals 빈 배열. 빈 칸을 일반론으로 채우지 마세요.
 - **모든 ${n} 섹션을 반드시 출력** — insufficient 라도 객체는 채워야 합니다 (스키마 강제). 출력 JSON 의 각 섹션 key 는 위 목록의 key (${keyList}) 와 **정확히 일치**해야 합니다.
+
+## 반드시 응답에 포함할 key 목록 (누락 절대 금지)
+${keyListComma}
+
+## 응답 예시 형식 (참고 — 구조만 보고, 값은 transcript 근거로 직접 채워 넣으시오)
+${exampleJson}
+
+## 절대 룰 (key 누락 방지)
+- 위 목록의 **모든 key** 를 응답 JSON 에 반드시 포함하시오. 하나라도 빠지면 실패입니다.
+- 근거 부족 시 confidence="insufficient" 로 명시하되 **key 자체는 절대 생략 금지** (빈 summary + 빈 signals 배열이라도 key 는 출력).
+- \`custom_\` 으로 시작하는 key 들은 사용자가 직접 지정한 조사 목적 (아래 신호 가이드의 description) 을 채우기 위한 것이므로 **특히 중요** — 기본 섹션과 동일한 성실도로 채우시오.
 
 ## 섹션별 신호 가이드
 ${sectionGuide}
