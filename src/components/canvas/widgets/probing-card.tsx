@@ -342,9 +342,7 @@ function ExpandedBody() {
   // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
-  // PDF 캡쳐 대상 DOM — 카드 본문(위젯) / 전체보기 본문 두 곳. 클릭한
-  // 버튼이 자기 옆의 ref 를 export 대상으로 넘긴다.
-  const cardBodyRef = useRef<HTMLDivElement | null>(null);
+  // 전체보기 본문 (ProbingFullView 루트) DOM — PDF 캡쳐 대상.
   const fullviewBodyRef = useRef<HTMLDivElement | null>(null);
 
   // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
@@ -709,18 +707,11 @@ function ExpandedBody() {
     await stopSession();
   }, [stopSession]);
 
-  // ─── 페르소나 PDF 내보내기 ────────────────────────────────────────
-  // 위젯 카드(서브헤더 버튼)와 전체보기(헤더 버튼) 양쪽에서 동일하게
-  // 동작한다. 클릭한 버튼이 자기 옆의 DOM (카드 본문 / 전체보기 본문) 을
-  // 캡쳐 대상으로 넘기고, 그 화면을 그대로 PDF 로 저장한다.
+  // ─── 페르소나 PDF 내보내기 (전체보기 전용) ─────────────────────────
+  // 전체보기(fullview) 헤더 버튼에서만 동작한다. 전체보기 본문 DOM
+  // (페르소나 grid + 조사 입력 + 질문 기록) 을 그대로 캡쳐해 PDF 로 저장.
   // 진입 정책: 라이브 중이면 confirm modal (종료 + 내보내기 = 비가역),
   // 비라이브면 확인 없이 즉시 생성.
-  const hasPersonaContent = reflection !== null || history.length > 0;
-  const canExport = (isLive || hasPersonaContent) && !pdfExporting;
-
-  // confirm 후 캡쳐할 대상 DOM — 클릭 시점에 세팅.
-  const pendingExportElRef = useRef<HTMLElement | null>(null);
-
   const runPdfExport = useCallback(async () => {
     if (pdfExporting) return;
     setPdfExporting(true);
@@ -732,8 +723,8 @@ function ExpandedBody() {
           // 정지 실패해도 export 자체는 진행 — 사용자 산출물 보존 우선.
         }
       }
-      const el = pendingExportElRef.current;
-      if (!el) throw new Error('export_target_not_ready');
+      const el = fullviewBodyRef.current;
+      if (!el) throw new Error('fullview_not_ready');
       const endedAt = new Date();
       const filename = buildPersonaFilename({
         persona: reflectionRef.current,
@@ -749,19 +740,14 @@ function ExpandedBody() {
     }
   }, [pdfExporting, isLive, stopSession, toast]);
 
-  // 캡쳐 대상 DOM 을 받아 export 진입. 라이브면 confirm modal, 아니면 즉시.
-  const requestPdfExport = useCallback(
-    (el: HTMLElement | null) => {
-      if (pdfExporting) return;
-      pendingExportElRef.current = el;
-      if (isLive) {
-        setExportConfirmOpen(true);
-        return;
-      }
-      void runPdfExport();
-    },
-    [pdfExporting, isLive, runPdfExport],
-  );
+  const handlePdfExportClick = useCallback(() => {
+    if (pdfExporting) return;
+    if (isLive) {
+      setExportConfirmOpen(true);
+      return;
+    }
+    void runPdfExport();
+  }, [pdfExporting, isLive, runPdfExport]);
 
   const handleExportConfirm = useCallback(() => {
     setExportConfirmOpen(false);
@@ -884,22 +870,6 @@ function ExpandedBody() {
           }
           actions={
             <>
-              {canExport && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => requestPdfExport(cardBodyRef.current)}
-                  loading={pdfExporting}
-                  loadingLabel="내보내는 중…"
-                  title={
-                    isLive
-                      ? '인터뷰 종료 + 페르소나 PDF 다운로드'
-                      : '페르소나 PDF 다운로드'
-                  }
-                >
-                  {isLive ? '📥 종료 + PDF 내보내기' : '📥 PDF 내보내기'}
-                </Button>
-              )}
               {isLive ? (
                 <ChromeButton
                   size="lg"
@@ -951,30 +921,27 @@ function ExpandedBody() {
             모달 open 시 카드 본문은 placeholder 로 교체 — 같은 hook(state)
             인스턴스를 모달과 공유하므로 데이터는 보존되고, 시각적으로 두
             곳에 동시에 그려지지 않는다 (spec: 두 instance 시각 0). */}
-        {/* 카드 본문 wrapper — 위젯 PDF 내보내기의 캡쳐 대상 (cardBodyRef). */}
-        <div ref={cardBodyRef} className="flex min-h-0 flex-1 flex-col bg-paper">
-          {isCurrent ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
-              전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
-            </div>
-          ) : (
-            <ProbingCanvasCardBody
-              thinkingEvents={thinkingEvents}
-              thinkingStreaming={thinkingStreaming}
-              activePopup={activePopup}
-              onPopupPin={handlePopupPin}
-              onPopupCopy={handlePopupCopy}
-              onPopupDismiss={handlePopupManualDismiss}
-              onPopupAutoDismiss={handlePopupAutoDismiss}
-              history={history}
-              nowMs={now}
-              onHistoryCopy={handleHistoryCopy}
-              onHistoryToggleStar={handleHistoryToggleStar}
-              onHistoryDelete={handleHistoryDelete}
-              isLive={isLive}
-            />
-          )}
-        </div>
+        {isCurrent ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+            전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
+          </div>
+        ) : (
+          <ProbingCanvasCardBody
+            thinkingEvents={thinkingEvents}
+            thinkingStreaming={thinkingStreaming}
+            activePopup={activePopup}
+            onPopupPin={handlePopupPin}
+            onPopupCopy={handlePopupCopy}
+            onPopupDismiss={handlePopupManualDismiss}
+            onPopupAutoDismiss={handlePopupAutoDismiss}
+            history={history}
+            nowMs={now}
+            onHistoryCopy={handleHistoryCopy}
+            onHistoryToggleStar={handleHistoryToggleStar}
+            onHistoryDelete={handleHistoryDelete}
+            isLive={isLive}
+          />
+        )}
 
         {thinkingError && (
           <div
@@ -1005,7 +972,7 @@ function ExpandedBody() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => requestPdfExport(fullviewBodyRef.current)}
+              onClick={handlePdfExportClick}
               loading={pdfExporting}
               loadingLabel="내보내는 중…"
               title={
@@ -1041,9 +1008,9 @@ function ExpandedBody() {
               인터뷰를 종료하고 페르소나를 내보낼까요?
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 지금 보고 있는 화면(페르소나 · 조사 입력 ·
-              질문 기록)을 그대로 PDF 파일로 다운로드합니다. 정지 후에는 이
-              세션을 다시 이어 받을 수 없습니다.
+              현재 세션을 정지하고, 전체보기 화면(페르소나 · 조사 입력 · 질문
+              기록)을 그대로 PDF 파일로 다운로드합니다. 정지 후에는 이 세션을
+              다시 이어 받을 수 없습니다.
             </p>
             <div className="flex justify-end gap-2">
               <Button
