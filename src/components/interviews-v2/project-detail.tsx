@@ -10,12 +10,12 @@ import {
   useInterviewV2Documents,
   type InterviewDocumentStatus,
 } from '@/hooks/use-interview-v2-documents';
+import { SearchChat } from './search-chat';
 
-// Interview V2 — project detail view (file list + subheader shell). The
-// ⚙ 설정 / 📤 업로드 / 🔍 검색 controls and the right-hand search chat panel
-// are wired by later specs (pr-interview-v2-search-ui-chat + the upload
-// spec); this shell renders them as disabled placeholders so the layout is
-// in place without dead behaviour.
+// Interview V2 — project detail view (file list + search chat). The ⚙ 설정 /
+// 📤 업로드 controls in the subheader are wired by the upload spec (disabled
+// placeholders for now); the right-hand 60% is the ChatGPT-style search chat
+// (pr-interview-v2-search-ui-chat).
 
 function StatusPill({ status }: { status: InterviewDocumentStatus }) {
   const t = useTranslations('InterviewsV2');
@@ -110,14 +110,7 @@ export function ProjectDetail({
           )}
         </aside>
         <section className="min-h-0 lg:col-span-7">
-          <div className="flex h-full items-center justify-center px-6 py-10">
-            <EmptyState
-              tone="subtle"
-              title={t('searchComingTitle')}
-              description={t('searchComingDescription')}
-              className="max-w-[420px]"
-            />
-          </div>
+          <SearchChat projectId={projectId} />
         </section>
       </div>
     </div>
