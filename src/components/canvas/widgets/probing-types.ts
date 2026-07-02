@@ -50,10 +50,25 @@ export type ProbingQuestionRow = {
    ──────────────────────────────────────────────────────────────────── */
 
 // A. 입력 패널이 다루는 사용자 입력. 영속화 row 와 1:1.
+//
+// key_research_question 은 우패널 UI 필드 (PR: probing-custom-section-ui) 에서
+// 제거됐지만 DB row / think 프롬프트 계약을 깨지 않기 위해 타입/state 에는
+// 그대로 남긴다 (신규 세션은 빈 문자열로 흐름). custom section 위젯이 KRQ 의
+// UX 역할을 대체.
 export type ResearchContext = {
   research_goal: string;
   hypotheses: string[];
   key_research_question: string;
+};
+
+// 사용자 정의 custom 페르소나 섹션 (PR: probing-custom-section-ui).
+// 기본 8 섹션 뒤에 append 되어 persona LLM 이 함께 채운다. localStorage 에
+// 세션 단위로 영속. key 는 crypto.randomUUID() — 기본 8 key 와 충돌 방지 +
+// catchall object 응답에서 additive key 로 식별.
+export type ProbingCustomSection = {
+  key: string;
+  title: string;
+  description?: string;
 };
 
 // B. AI 사고 흐름 라인 — `THINK: ...` 의 본문.

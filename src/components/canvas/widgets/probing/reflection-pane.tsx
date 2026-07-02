@@ -19,6 +19,7 @@ import type {
   ProbingPersonaSection,
   ProbingPersonaSectionKey,
 } from '@/lib/probing-prompts';
+import type { ProbingCustomSection } from '../probing-types';
 import { PersonaPanel } from './persona-panel';
 
 // 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
@@ -63,10 +64,10 @@ function formatRelativeKo(epochMs: number | null, nowMs: number): string {
 
 function sectionOrNull(
   data: ProbingReflectionData | null,
-  key: ProbingPersonaSectionKey,
+  key: string,
 ): ProbingPersonaSection | null {
   if (!data) return null;
-  const v = data[key];
+  const v = (data as Record<string, ProbingPersonaSection | undefined>)[key];
   if (!v || typeof v !== 'object') return null;
   return v as ProbingPersonaSection;
 }
@@ -81,6 +82,8 @@ export function ReflectionPane({
   onRefresh,
   isLive,
   hasTranscript,
+  customSections,
+  onRemoveCustomSection,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -91,6 +94,9 @@ export function ReflectionPane({
   onRefresh: () => void;
   isLive: boolean;
   hasTranscript: boolean;
+  // custom 섹션 (PR: probing-custom-section-ui) — 기본 8 패널 뒤에 append.
+  customSections: ProbingCustomSection[];
+  onRemoveCustomSection: (key: string) => void;
 }) {
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
@@ -131,6 +137,15 @@ export function ReflectionPane({
                 icon={p.icon}
                 title={p.title}
                 section={sectionOrNull(data, p.key)}
+              />
+            ))}
+            {customSections.map((c) => (
+              <PersonaPanel
+                key={c.key}
+                icon="🧩"
+                title={c.title}
+                section={sectionOrNull(data, c.key)}
+                onRemove={() => onRemoveCustomSection(c.key)}
               />
             ))}
           </div>

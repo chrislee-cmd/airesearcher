@@ -16,6 +16,7 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import type {
   HistoryQuestion,
   PopupQuestion,
+  ProbingCustomSection,
   ResearchContext,
   ThinkingEvent,
 } from '../probing-types';
@@ -28,6 +29,10 @@ export function QuestionPane({
   context,
   onContextChange,
   contextDisabled,
+  customSections,
+  onAddCustomSection,
+  onRemoveCustomSection,
+  customSectionsFull,
   thinkingEvents,
   thinkingStreaming,
   thinkCanRun,
@@ -49,6 +54,10 @@ export function QuestionPane({
   context: ResearchContext;
   onContextChange: (next: ResearchContext) => void;
   contextDisabled: boolean;
+  customSections: ProbingCustomSection[];
+  onAddCustomSection: (title: string, description?: string) => void;
+  onRemoveCustomSection: (key: string) => void;
+  customSectionsFull: boolean;
   // B. 사고 흐름
   thinkingEvents: ThinkingEvent[];
   thinkingStreaming: boolean;
@@ -94,16 +103,16 @@ export function QuestionPane({
         <ProbingResearchContext
           researchGoal={context.research_goal}
           hypotheses={context.hypotheses}
-          keyResearchQuestion={context.key_research_question}
           onResearchGoalChange={(v) =>
             onContextChange({ ...context, research_goal: v })
           }
           onHypothesesChange={(v) =>
             onContextChange({ ...context, hypotheses: v })
           }
-          onKeyResearchQuestionChange={(v) =>
-            onContextChange({ ...context, key_research_question: v })
-          }
+          customSections={customSections}
+          onAddCustomSection={onAddCustomSection}
+          onRemoveCustomSection={onRemoveCustomSection}
+          customSectionsFull={customSectionsFull}
           disabled={contextDisabled}
         />
 

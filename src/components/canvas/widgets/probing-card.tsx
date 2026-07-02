@@ -51,6 +51,7 @@ import {
 } from './probing/reflection-pane';
 import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
+import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
 import {
   PROBING_PERSONA_SECTION_KEYS,
   PROBING_TECHNIQUES,
@@ -58,7 +59,6 @@ import {
   probingThinkEmitSchema,
   type ProbingOutputLang,
   type ProbingPersonaSection,
-  type ProbingPersonaSectionKey,
 } from '@/lib/probing-prompts';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
@@ -309,6 +309,19 @@ function ExpandedBody() {
     return () => clearTimeout(handle);
   }, [context, contextHydrated]);
 
+  // ─── custom 섹션 (PR: probing-custom-section-ui) — localStorage 영속 ───
+  // 우패널 "+ 위젯 추가" 로 정의, 좌패널 페르소나 grid 에 8 기본 뒤 append.
+  // reflection 자동 호출은 useCallback 안에서 ref 로 최신 값을 읽는다.
+  const {
+    sections: customSections,
+    add: addCustomSection,
+    remove: removeCustomSection,
+  } = useCustomSections();
+  const customSectionsRef = useRef(customSections);
+  useEffect(() => {
+    customSectionsRef.current = customSections;
+  }, [customSections]);
+
   // ─── 좌패널 — Reflection state ───
   const [reflection, setReflection] = useState<ProbingReflectionData | null>(
     null,
@@ -527,6 +540,13 @@ function ExpandedBody() {
           transcript_window: trimmed,
           interview_guide: '',
           output_lang: outputLangRef.current,
+          // custom 섹션을 기본 8 뒤에 append — persona LLM 이 함께 채운다.
+          // 빈 배열이면 서버는 옛 동작 (기본 8만).
+          custom_sections: customSectionsRef.current.map((c) => ({
+            key: c.key,
+            title: c.title,
+            description: c.description,
+          })),
         }),
       });
       if (!res.ok || !res.body) {
@@ -546,8 +566,19 @@ function ExpandedBody() {
       if (obj && typeof obj === 'object') {
         const prev = reflectionRef.current;
         const merged: ProbingReflectionData = { ...(prev ?? {}) };
+        const mergedRec = merged as Record<
+          string,
+          ProbingPersonaSection | undefined
+        >;
         let anyChange = false;
-        for (const key of PROBING_PERSONA_SECTION_KEYS) {
+        // 기본 8 key + custom key (catchall object 의 additive key). custom
+        // key 는 우리가 정의해 서버로 보낸 것이므로 응답 object 에서 같은 key
+        // 로 돌아온다 — 아직 안 채워졌으면 sectionOrNull 이 insufficient 로 떨굼.
+        const allKeys: string[] = [
+          ...PROBING_PERSONA_SECTION_KEYS,
+          ...customSectionsRef.current.map((c) => c.key),
+        ];
+        for (const key of allKeys) {
           const sec = obj[key] as Record<string, unknown> | undefined;
           if (!sec || typeof sec !== 'object') continue;
           const summary = typeof sec.summary === 'string' ? sec.summary : '';
@@ -571,15 +602,16 @@ function ExpandedBody() {
               : 'insufficient';
           const hasContent = summary.trim().length > 0 || signals.length > 0;
           if (hasContent) {
-            merged[key] = { summary, signals, confidence };
+            mergedRec[key] = { summary, signals, confidence };
             anyChange = true;
-          } else if (!merged[key]) {
-            merged[key] = { summary, signals, confidence };
+          } else if (!mergedRec[key]) {
+            mergedRec[key] = { summary, signals, confidence };
             anyChange = true;
           }
         }
-        const hasAnyKey = (Object.keys(merged) as ProbingPersonaSectionKey[])
-          .some((k) => merged[k] !== undefined);
+        const hasAnyKey = Object.keys(mergedRec).some(
+          (k) => mergedRec[k] !== undefined,
+        );
         if (anyChange || (prev === null && hasAnyKey)) {
           setReflection(merged);
           setReflectionLastUpdatedAt(Date.now());
@@ -821,6 +853,8 @@ function ExpandedBody() {
     cumulativeChars >= MIN_TRANSCRIPT_CHARS &&
     !thinkingStreaming;
 
+  const customSectionsFull = customSections.length >= CUSTOM_SECTION_MAX;
+
   // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
@@ -832,12 +866,18 @@ function ExpandedBody() {
     onRefresh: handleManualReflection,
     isLive,
     hasTranscript,
+    customSections,
+    onRemoveCustomSection: removeCustomSection,
   };
 
   const questionPaneProps = {
     context,
     onContextChange: setContext,
     contextDisabled: !contextHydrated,
+    customSections,
+    onAddCustomSection: addCustomSection,
+    onRemoveCustomSection: removeCustomSection,
+    customSectionsFull,
     thinkingEvents,
     thinkingStreaming,
     thinkCanRun,
