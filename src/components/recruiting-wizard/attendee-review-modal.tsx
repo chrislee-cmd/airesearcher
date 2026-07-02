@@ -195,16 +195,16 @@ function ResponseTable({
   rows: FormResponseRow[];
 }) {
   return (
-    <table className="w-full border-collapse text-md">
+    <table className="min-w-max border-collapse text-md">
       <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
         <tr>
-          <th className="border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
+          <th className="whitespace-nowrap border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
             응답 시각
           </th>
           {columns.map((c) => (
             <th
               key={c.questionId}
-              className="border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
+              className="min-w-[120px] whitespace-nowrap border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
             >
               {c.title}
             </th>
@@ -217,13 +217,13 @@ function ResponseTable({
             key={r.responseId}
             className="border-b border-line-soft last:border-b-0"
           >
-            <td className="px-3 py-2 align-top tabular-nums text-mute">
+            <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-mute">
               {formatSubmittedAt(r.lastSubmittedTime || r.createTime)}
             </td>
             {columns.map((c) => (
               <td
                 key={c.questionId}
-                className="px-3 py-2 align-top text-ink-2"
+                className="min-w-[120px] px-3 py-2 align-top text-ink-2"
               >
                 {r.answers[c.questionId] || (
                   <span className="text-mute-soft">—</span>
