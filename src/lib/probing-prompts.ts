@@ -330,6 +330,30 @@ export const probingPersonaSchema = z.object({
 export type ProbingPersona = z.infer<typeof probingPersonaSchema>;
 export type ProbingPersonaSection = z.infer<typeof personaSectionSchema>;
 
+/* ────────────────────────────────────────────────────────────────────
+   동적 persona schema — request 별 custom 섹션 key 를 **명시적 named
+   property (required)** 로 넣는다.
+
+   왜 필요한가 (custom 섹션이 응답에 안 나오던 진짜 root cause):
+   probingPersonaSchema 의 `.catchall(personaSectionSchema)` 는 JSON schema
+   의 `additionalProperties` 로 변환된다. 이건 "custom key 를 허용" 할 뿐
+   모델에게 "출력하라" 고 **강제하지 않는다**. 기본 8 key 는 named + required
+   라 항상 채워지지만, catchall key 는 optional 취급 → 모델이 그냥 생략 →
+   응답에 기본 8 key 만. prompt 로 아무리 강조해도 schema 가 required 로
+   안 잡으면 streamObject 의 structured 출력에서 누락되기 쉽다.
+
+   fix: 이 함수가 sections (기본 8 + custom_1..N alias) 전체를 explicit
+   property 로 박은 z.object 를 만든다. custom alias 도 기본 8 과 동일하게
+   required named property 가 되어 모델이 반드시 채운다. catchall 은 그대로
+   유지 — 혹시 모를 예외 key 도 관대하게 흡수 (backward-safe). */
+export function buildProbingPersonaSchema(sections: ProbingPersonaSectionDef[]) {
+  const shape: Record<string, typeof personaSectionSchema> = {};
+  for (const s of sections) {
+    shape[s.key] = personaSectionSchema;
+  }
+  return z.object(shape).catchall(personaSectionSchema);
+}
+
 export function buildProbingPersonaSystem(
   sections: ProbingPersonaSectionDef[],
   outputLang?: string,

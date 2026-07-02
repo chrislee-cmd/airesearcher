@@ -22,8 +22,8 @@ import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   DEFAULT_PERSONA_SECTIONS,
   PROBING_OUTPUT_LANGS,
+  buildProbingPersonaSchema,
   buildProbingPersonaSystem,
-  probingPersonaSchema,
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
@@ -112,7 +112,10 @@ export async function POST(request: Request) {
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
-    schema: probingPersonaSchema,
+    // 동적 schema — custom alias (custom_1..N) 를 명시적 required property 로
+    // 넣어 모델이 기본 8 과 동일하게 반드시 채우게 한다. 정적 catchall schema
+    // 는 custom key 를 optional (additionalProperties) 로만 노출해 누락됐다.
+    schema: buildProbingPersonaSchema(sections),
     system: buildProbingPersonaSystem(sections, parsed.data.output_lang),
     prompt: `${guideBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
