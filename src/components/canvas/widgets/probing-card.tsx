@@ -31,6 +31,7 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { triggerBlobDownload } from '@/lib/export/download';
+import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import {
   generatePersonaDocx,
   buildPersonaFilename,
@@ -347,6 +348,13 @@ function ExpandedBody() {
   const sessionStartedAtRef = useRef<Date | null>(null);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // fullview 전용 PDF 내보내기 — subheader docx export 와 별개 busy flag.
+  // confirmMode: 라이브 중 confirm modal 을 docx / pdf 어느 export 가
+  // 띄웠는지 구분 (같은 modal + exportConfirmOpen state 재사용).
+  const [pdfExporting, setPdfExporting] = useState(false);
+  const [confirmMode, setConfirmMode] = useState<'docx' | 'pdf'>('docx');
+  // fullview 본문 (ProbingFullView 루트) DOM — PDF 캡쳐 대상.
+  const fullviewBodyRef = useRef<HTMLDivElement | null>(null);
 
   // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
   // 만 옮긴다. dismissed_reason 으로 origin 분류.
@@ -780,16 +788,62 @@ function ExpandedBody() {
   const handleExportClick = useCallback(() => {
     if (!canExport) return;
     if (isLive) {
+      setConfirmMode('docx');
       setExportConfirmOpen(true);
       return;
     }
     void runExport();
   }, [canExport, isLive, runExport]);
 
+  // ─── fullview 전용 PDF 내보내기 ────────────────────────────────────
+  // fullview UI (페르소나 grid + 조사 입력 + 질문 기록) 를 그대로 캡쳐해
+  // PDF 로 저장. 라이브 중이면 세션 stop 먼저 (docx export 와 동일 정책).
+  const runPdfExport = useCallback(async () => {
+    if (pdfExporting) return;
+    setPdfExporting(true);
+    try {
+      if (isLive) {
+        try {
+          await stopSession();
+        } catch {
+          // 정지 실패해도 export 자체는 진행 — 사용자 산출물 보존 우선.
+        }
+      }
+      const el = fullviewBodyRef.current;
+      if (!el) throw new Error('fullview_not_ready');
+      const endedAt = new Date();
+      const filename = buildPersonaFilename({
+        persona: reflectionRef.current,
+        endedAt,
+      }).replace(/\.docx$/, '.pdf');
+      await exportDomToPdf(el, filename);
+      toast.push('페르소나 PDF 다운로드됨', { tone: 'info', ttlMs: 2200 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'export_failed';
+      toast.push(`PDF 내보내기 실패 — ${msg}`, { tone: 'warn' });
+    } finally {
+      setPdfExporting(false);
+    }
+  }, [pdfExporting, isLive, stopSession, toast]);
+
+  const handlePdfExportClick = useCallback(() => {
+    if (pdfExporting) return;
+    if (isLive) {
+      setConfirmMode('pdf');
+      setExportConfirmOpen(true);
+      return;
+    }
+    void runPdfExport();
+  }, [pdfExporting, isLive, runPdfExport]);
+
   const handleExportConfirm = useCallback(() => {
     setExportConfirmOpen(false);
-    void runExport();
-  }, [runExport]);
+    if (confirmMode === 'pdf') {
+      void runPdfExport();
+    } else {
+      void runExport();
+    }
+  }, [confirmMode, runExport, runPdfExport]);
 
   const handleExportCancel = useCallback(() => {
     setExportConfirmOpen(false);
@@ -1021,8 +1075,25 @@ function ExpandedBody() {
                 : '응답자 페르소나 + 프로빙 질문'
           }
           onClose={close}
+          headerAction={
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePdfExportClick}
+              loading={pdfExporting}
+              loadingLabel="내보내는 중…"
+              title={
+                isLive
+                  ? '인터뷰 종료 + 페르소나 PDF 다운로드'
+                  : '페르소나 PDF 다운로드'
+              }
+            >
+              {isLive ? '종료 + PDF 내보내기' : 'PDF 내보내기'}
+            </Button>
+          }
         >
           <ProbingFullView
+            bodyRef={fullviewBodyRef}
             reflectionProps={reflectionPaneProps}
             questionProps={questionPaneProps}
           />
@@ -1044,16 +1115,16 @@ function ExpandedBody() {
               인터뷰를 종료하고 페르소나를 내보낼까요?
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 지금까지 누적된 페르소나 8 패널과 ★ 핵심
-              질문, 인용된 transcript 발화를 docx 파일로 다운로드합니다. 정지
-              후에는 이 세션을 다시 이어 받을 수 없습니다.
+              {confirmMode === 'pdf'
+                ? '현재 세션을 정지하고, 전체보기 화면 (페르소나 8 패널 · 조사 입력 · 질문 기록) 을 그대로 PDF 파일로 다운로드합니다. 정지 후에는 이 세션을 다시 이어 받을 수 없습니다.'
+                : '현재 세션을 정지하고, 지금까지 누적된 페르소나 8 패널과 ★ 핵심 질문, 인용된 transcript 발화를 docx 파일로 다운로드합니다. 정지 후에는 이 세션을 다시 이어 받을 수 없습니다.'}
             </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleExportCancel}
-                disabled={exporting}
+                disabled={exporting || pdfExporting}
               >
                 취소
               </Button>
@@ -1061,10 +1132,10 @@ function ExpandedBody() {
                 variant="primary"
                 size="sm"
                 onClick={handleExportConfirm}
-                loading={exporting}
+                loading={confirmMode === 'pdf' ? pdfExporting : exporting}
                 loadingLabel="내보내는 중…"
               >
-                종료 + 내보내기
+                {confirmMode === 'pdf' ? '종료 + PDF 내보내기' : '종료 + 내보내기'}
               </Button>
             </div>
           </div>

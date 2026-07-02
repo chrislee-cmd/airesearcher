@@ -24,6 +24,9 @@ allowBuilds:
   # or running `sentry-cli sourcemaps upload` in CI.
   '@sentry/cli': false
   '@swc/core': true
+  # jspdf 가 core-js 를 transitive 로 끌어오지만 postinstall 은 펀딩 메시지
+  # 뿐이라 build script 실행 불필요 — false 로 명시해 pnpm 10/11 이 skip.
+  core-js: false
   sharp: true
   supabase: true
   unrs-resolver: true

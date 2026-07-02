@@ -20,6 +20,8 @@ type WidgetFullviewPanelProps = {
   children: ReactNode;
   /** aria-label for the close button. i18n override; defaults to 닫기. */
   closeLabel?: string;
+  /** 헤더 우측, 닫기 × 왼쪽에 놓이는 액션 (예: 내보내기 버튼). optional. */
+  headerAction?: ReactNode;
 };
 
 export function WidgetFullviewPanel({
@@ -29,6 +31,7 @@ export function WidgetFullviewPanel({
   footer,
   children,
   closeLabel = '닫기',
+  headerAction,
 }: WidgetFullviewPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-paper">
@@ -41,15 +44,17 @@ export function WidgetFullviewPanel({
             <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
           ) : null}
         </div>
-        <IconButton
-          variant="bordered"
-          size="md"
-          onClick={onClose}
-          aria-label={closeLabel}
-          className="ml-4 shrink-0"
-        >
-          <CloseIcon />
-        </IconButton>
+        <div className="ml-4 flex shrink-0 items-center gap-2">
+          {headerAction}
+          <IconButton
+            variant="bordered"
+            size="md"
+            onClick={onClose}
+            aria-label={closeLabel}
+          >
+            <CloseIcon />
+          </IconButton>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
