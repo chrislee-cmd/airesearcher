@@ -254,6 +254,54 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
+// ─── idle empty-state use cases (옵션 D pilot) ─────────────────────────────
+// 데스크 위젯이 idle (결과 없음 + job 없음) 일 때 빈 화면 대신 노출하는
+// use case 카드. 클릭 시 keywords chip + regions 를 pre-fill 해 사용자는
+// "검색" 만 누르면 되게. pilot 실험이라 label/keywords 는 우선 하드코드
+// (아직 i18n 안 함) — default 채택 시 messages/{ko,en}.json 로 이관 후속 PR.
+const DESK_USE_CASES: {
+  icon: string;
+  title: string;
+  desc: string;
+  keywords: string[];
+  regions: DeskRegion[];
+}[] = [
+  { icon: '🎯', title: '신제품 검증', desc: '새 제품 아이디어 시장 반응 조사', keywords: ['신제품', '시장 반응'], regions: ['KR'] },
+  { icon: '🏬', title: '경쟁사 스캔', desc: '3-5 개 브랜드 소셜/뉴스 비교', keywords: [], regions: ['KR', 'GLOBAL'] },
+  { icon: '📊', title: '시장 규모', desc: '통계·리포트 정량 데이터', keywords: ['시장 규모', '통계'], regions: ['KR'] },
+  { icon: '🎨', title: '트렌드 스캔', desc: '최근 3 개월 관심 급상승', keywords: ['트렌드', '2026'], regions: ['GLOBAL'] },
+];
+
+function DeskEmptyUseCases({
+  onSelectUseCase,
+}: {
+  onSelectUseCase: (uc: (typeof DESK_USE_CASES)[number]) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-6 p-8">
+      <div className="text-5xl">🔍</div>
+      <div className="text-md text-mute">키워드만 넣으면 시작합니다</div>
+      <div className="grid max-w-md grid-cols-2 gap-3">
+        {DESK_USE_CASES.map((uc, i) => (
+          /* eslint-disable-next-line react/forbid-elements -- empty-state use
+             case card: flex-column icon+title+desc layout outside Button
+             primitive variants */
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelectUseCase(uc)}
+            className="flex flex-col items-start gap-2 rounded-sm border-[2px] border-ink bg-paper p-4 text-left shadow-[3px_3px_0_var(--canvas-card-border)] transition-colors hover:bg-amore-bg"
+          >
+            <div className="text-2xl">{uc.icon}</div>
+            <div className="text-md font-semibold text-ink">{uc.title}</div>
+            <div className="text-sm text-mute-soft">{uc.desc}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
@@ -821,6 +869,20 @@ export function DeskCardBody() {
               )}
           </div>
         </WidgetSettingsModal>
+
+        {/* idle empty-state (옵션 D) — 결과도 job 도 없을 때 use case 4 카드.
+            카드 클릭 → keywords / regions pre-fill → 서브헤더 "검색" 만 누르면 됨.
+            selected(sources) 도 regions 에 맞춰 동기화 (SelectMenu onChange 미러). */}
+        {!showResult && !job && (
+          <DeskEmptyUseCases
+            onSelectUseCase={(uc) => {
+              setKeywords(uc.keywords);
+              const set = new Set(uc.regions);
+              setRegions(set);
+              setSelected(sourcesForRegions(set));
+            }}
+          />
+        )}
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
