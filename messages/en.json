@@ -1062,7 +1062,20 @@
     "noFilesTitle": "No files yet",
     "noFilesDescription": "File upload is wired in the next step.",
     "searchComingTitle": "Search coming soon",
-    "searchComingDescription": "Once files are indexed you'll be able to search and ask questions within this project."
+    "searchComingDescription": "Once files are indexed you'll be able to search and ask questions within this project.",
+    "searchIntroTitle": "Ask this project a question",
+    "searchIntroHint": "Answers are grounded in your indexed interviews. Examples:",
+    "searchExample1": "What pain points did respondents mention most?",
+    "searchExample2": "Summarize the reactions to pricing",
+    "searchExample3": "What do respondents with high repurchase intent have in common?",
+    "searchPlaceholder": "Type a question (Enter to send · Shift+Enter for a new line)",
+    "searchSend": "Send",
+    "searchGenerating": "Generating",
+    "searchError": "Search failed. Please try again in a moment.",
+    "searchSources": "Sources",
+    "searchSourcesShow": "Show sources",
+    "searchSourcesHide": "Hide sources",
+    "searchScore": "Match"
   },
   "Workspace": {
     "eyebrow": "Workspace",
