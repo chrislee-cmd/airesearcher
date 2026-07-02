@@ -16,12 +16,22 @@ import { SearchChat } from './search-chat';
 // state, so re-opening the fullview returns to the list.
 //
 // view state: 'list' (default) · a project id string (detail) · 'cross'
-// (전체 프로젝트 검색, SearchChat with projectId=null).
-type View = { kind: 'list' } | { kind: 'detail'; id: string } | { kind: 'cross' };
+// (전체 프로젝트 검색, SearchChat scoped to the picked project ids).
+type View =
+  | { kind: 'list' }
+  | { kind: 'detail'; id: string }
+  | { kind: 'cross'; projectIds: string[] };
 
 // Cross-project search — a thin shell (back header + full-width SearchChat)
-// since there's no single project's file list to show.
-function CrossSearch({ onBack }: { onBack: () => void }) {
+// since there's no single project's file list to show. The picked project
+// ids (from CrossProjectPicker) fix the search scope.
+function CrossSearch({
+  projectIds,
+  onBack,
+}: {
+  projectIds: string[];
+  onBack: () => void;
+}) {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -34,7 +44,7 @@ function CrossSearch({ onBack }: { onBack: () => void }) {
         </span>
       </div>
       <div className="min-h-0 flex-1">
-        <SearchChat projectId={null} />
+        <SearchChat projectIds={projectIds} />
       </div>
     </div>
   );
@@ -57,11 +67,16 @@ export function InterviewV2Fullview({ onClose }: { onClose: () => void }) {
           onBack={() => setView({ kind: 'list' })}
         />
       ) : view.kind === 'cross' ? (
-        <CrossSearch onBack={() => setView({ kind: 'list' })} />
+        <CrossSearch
+          projectIds={view.projectIds}
+          onBack={() => setView({ kind: 'list' })}
+        />
       ) : (
         <ProjectList
           onOpenProject={(id) => setView({ kind: 'detail', id })}
-          onOpenCrossSearch={() => setView({ kind: 'cross' })}
+          onOpenCrossSearch={(projectIds) =>
+            setView({ kind: 'cross', projectIds })
+          }
         />
       )}
     </WidgetFullviewPanel>

@@ -6,6 +6,7 @@ import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateProjectModal } from './create-project-modal';
+import { CrossProjectPicker } from './cross-project-picker';
 
 // Interview V2 — project grid (default fullview). Each card opens the
 // detail view; the trailing "+ 새 프로젝트" tile opens the create modal and,
@@ -51,12 +52,15 @@ export function ProjectList({
   onOpenCrossSearch,
 }: {
   onOpenProject: (id: string) => void;
-  onOpenCrossSearch: () => void;
+  // Selected project ids to search across (사용자 결정 2026-07-03: the entry
+  // now opens a picker first, so this always carries ≥ 1 id).
+  onOpenCrossSearch: (projectIds: string[]) => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const locale = useLocale();
   const { projects, isLoading, create } = useInterviewV2Projects();
   const [createOpen, setCreateOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleCreate = async (name: string, description?: string) => {
     const project = await create(name, description);
@@ -70,13 +74,13 @@ export function ProjectList({
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-6 py-6">
-      {/* Cross-project search entry — opens the search chat with no project
-          context (project_id: null → every project scanned). */}
+      {/* Cross-project search entry — opens the multi-select picker first;
+          the picked set is handed up to open the cross chat scoped to it. */}
       <div className="mb-4 flex justify-end">
         <Button
           variant="secondary"
           size="sm"
-          onClick={onOpenCrossSearch}
+          onClick={() => setPickerOpen(true)}
           leftIcon={<span aria-hidden>🌐</span>}
         >
           {t('crossSearch')}
@@ -136,6 +140,15 @@ export function ProjectList({
         onClose={() => setCreateOpen(false)}
         onCreate={handleCreate}
       />
+
+      {/* Mount only while open so the selection resets on every reopen. */}
+      {pickerOpen && (
+        <CrossProjectPicker
+          open
+          onClose={() => setPickerOpen(false)}
+          onConfirm={onOpenCrossSearch}
+        />
+      )}
     </div>
   );
 }

@@ -1085,7 +1085,16 @@
     "scopeAll": "전체 프로젝트",
     "crossSearch": "전체 프로젝트 검색",
     "crossIntroTitle": "전체 프로젝트에 질문해 보세요",
-    "crossIntroHint": "모든 프로젝트의 인덱싱된 인터뷰에서 근거를 찾아 답합니다. 예시:"
+    "crossIntroHint": "모든 프로젝트의 인덱싱된 인터뷰에서 근거를 찾아 답합니다. 예시:",
+    "pickerTitle": "검색할 프로젝트 선택",
+    "pickerSelectAll": "전체 선택",
+    "pickerClearAll": "모두 해제",
+    "pickerCount": "선택 {selected} / {total}",
+    "pickerConfirm": "검색 시작 ({count})",
+    "pickerEmptyTitle": "아직 프로젝트가 없습니다",
+    "pickerEmptyDescription": "먼저 프로젝트를 만들고 인터뷰 파일을 추가하세요.",
+    "scopeCurrentProject": "현재 프로젝트 ({name})",
+    "scopeSelected": "선택된 {count}개 프로젝트"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

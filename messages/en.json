@@ -1085,7 +1085,16 @@
     "scopeAll": "All projects",
     "crossSearch": "Search all projects",
     "crossIntroTitle": "Ask across all projects",
-    "crossIntroHint": "Answers are grounded in indexed interviews from every project. Examples:"
+    "crossIntroHint": "Answers are grounded in indexed interviews from every project. Examples:",
+    "pickerTitle": "Select projects to search",
+    "pickerSelectAll": "Select all",
+    "pickerClearAll": "Clear all",
+    "pickerCount": "{selected} / {total} selected",
+    "pickerConfirm": "Search ({count})",
+    "pickerEmptyTitle": "No projects yet",
+    "pickerEmptyDescription": "Create a project and add interview files first.",
+    "scopeCurrentProject": "Current project ({name})",
+    "scopeSelected": "{count} selected projects"
   },
   "Workspace": {
     "eyebrow": "Workspace",
