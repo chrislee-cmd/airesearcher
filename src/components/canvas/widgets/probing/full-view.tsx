@@ -17,25 +17,24 @@
 
 import { ReflectionPane } from './reflection-pane';
 import { QuestionPane } from './question-pane';
-import type { ComponentProps, Ref } from 'react';
+import type { ComponentProps } from 'react';
 
 type ReflectionProps = ComponentProps<typeof ReflectionPane>;
 type QuestionProps = ComponentProps<typeof QuestionPane>;
 
 // 헤더 (제목 + 닫기) 는 WidgetFullviewPanel 이 소유 (공유 모달 chrome) —
 // 이 컴포넌트는 2-column 본문만 렌더한다.
-// bodyRef: PDF 내보내기가 이 루트 엘리먼트를 캡쳐 대상으로 참조한다.
+// PDF 내보내기는 좌 페르소나 grid 만 캡쳐 (PR: probing-pdf-export-persona-only)
+// — ref 는 ReflectionPane 의 gridRef 로 직접 전달되므로 여기서 body ref 는 불필요.
 export function ProbingFullView({
   reflectionProps,
   questionProps,
-  bodyRef,
 }: {
   reflectionProps: ReflectionProps;
   questionProps: QuestionProps;
-  bodyRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div ref={bodyRef} className="flex h-full min-h-0 flex-col bg-paper">
+    <div className="flex h-full min-h-0 flex-col bg-paper">
       {/* 본문 — lg 이상에서 페르소나 (5fr) / 질문 (3fr) 2-column. 페르소나
           8 패널을 더 넓게 표시. 미만에서는 1-column stack (페르소나 → 질문).
           각 column 은 h-full + min-h-0 로 자기 영역만 스크롤 (widget scroll
