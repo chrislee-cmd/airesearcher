@@ -30,12 +30,8 @@ import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
-import { triggerBlobDownload } from '@/lib/export/download';
-import {
-  generatePersonaDocx,
-  buildPersonaFilename,
-  collectTranscriptQuotes,
-} from '@/lib/probing-persona-docx';
+import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
+import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
@@ -344,9 +340,10 @@ function ExpandedBody() {
   // ─── 페르소나 export — 세션 시작 시점 추적 + confirm modal + busy flag ───
   // sessionStartedAt: 라이브 진입 시 한 번 set, 종료 시 docx 메타 (인터뷰 일시 /
   // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
-  const sessionStartedAtRef = useRef<Date | null>(null);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
+  // 전체보기 본문 (ProbingFullView 루트) DOM — PDF 캡쳐 대상.
+  const fullviewBodyRef = useRef<HTMLDivElement | null>(null);
 
   // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
   // 만 옮긴다. dismissed_reason 으로 origin 분류.
@@ -624,7 +621,6 @@ function ExpandedBody() {
   useEffect(() => {
     const prev = prevLiveRef.current;
     if (!prev && isLive) {
-      sessionStartedAtRef.current = new Date();
       setReflection(null);
       setReflectionStatus('idle');
       setReflectionLastUpdatedAt(null);
@@ -711,15 +707,14 @@ function ExpandedBody() {
     await stopSession();
   }, [stopSession]);
 
-  // ─── 페르소나 export ──────────────────────────────────────────────
-  // 진입 정책: 라이브 중이면 confirm modal 띄움 (종료 + 내보내기 = 비가역).
-  // 비라이브 (페르소나 분석만 남은 상태) 면 confirm 없이 즉시 docx 생성.
-  const hasPersonaContent = reflection !== null || history.length > 0;
-  const canExport = (isLive || hasPersonaContent) && !exporting;
-
-  const runExport = useCallback(async () => {
-    if (exporting) return;
-    setExporting(true);
+  // ─── 페르소나 PDF 내보내기 (전체보기 전용) ─────────────────────────
+  // 전체보기(fullview) 헤더 버튼에서만 동작한다. 전체보기 본문 DOM
+  // (페르소나 grid + 조사 입력 + 질문 기록) 을 그대로 캡쳐해 PDF 로 저장.
+  // 진입 정책: 라이브 중이면 confirm modal (종료 + 내보내기 = 비가역),
+  // 비라이브면 확인 없이 즉시 생성.
+  const runPdfExport = useCallback(async () => {
+    if (pdfExporting) return;
+    setPdfExporting(true);
     try {
       if (isLive) {
         try {
@@ -728,68 +723,36 @@ function ExpandedBody() {
           // 정지 실패해도 export 자체는 진행 — 사용자 산출물 보존 우선.
         }
       }
-      const starred = history.filter((h) => h.is_starred);
-      const personaSnapshot = reflectionRef.current;
-      const quotes = collectTranscriptQuotes(personaSnapshot);
+      const el = fullviewBodyRef.current;
+      if (!el) throw new Error('fullview_not_ready');
       const endedAt = new Date();
-      const startedAt = sessionStartedAtRef.current;
-
-      const blob = await generatePersonaDocx({
-        persona: personaSnapshot,
-        starredQuestions: starred,
-        transcriptQuotes: quotes,
-        sessionMeta: {
-          startedAt,
-          endedAt,
-          researchGoal: contextRef.current.research_goal,
-          keyResearchQuestion: contextRef.current.key_research_question,
-        },
-      });
       const filename = buildPersonaFilename({
-        persona: personaSnapshot,
+        persona: reflectionRef.current,
         endedAt,
-      });
-      triggerBlobDownload(blob, filename);
-
-      const hasAnyPanel =
-        personaSnapshot !== null &&
-        PROBING_PERSONA_SECTION_KEYS.some((k) => {
-          const s = personaSnapshot[k];
-          return (
-            !!s &&
-            ((typeof s.summary === 'string' && s.summary.trim().length > 0) ||
-              (Array.isArray(s.signals) && s.signals.length > 0))
-          );
-        });
-      if (!hasAnyPanel) {
-        toast.push(
-          '페르소나가 빈약한 상태로 내보냈어요 — 발화가 더 모이면 다시 시도해 보세요',
-          { tone: 'warn' },
-        );
-      } else {
-        toast.push('페르소나 docx 다운로드됨', { tone: 'info', ttlMs: 2200 });
-      }
+      }).replace(/\.docx$/, '.pdf');
+      await exportDomToPdf(el, filename);
+      toast.push('페르소나 PDF 다운로드됨', { tone: 'info', ttlMs: 2200 });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'export_failed';
-      toast.push(`내보내기 실패 — ${msg}`, { tone: 'warn' });
+      toast.push(`PDF 내보내기 실패 — ${msg}`, { tone: 'warn' });
     } finally {
-      setExporting(false);
+      setPdfExporting(false);
     }
-  }, [exporting, history, isLive, stopSession, toast]);
+  }, [pdfExporting, isLive, stopSession, toast]);
 
-  const handleExportClick = useCallback(() => {
-    if (!canExport) return;
+  const handlePdfExportClick = useCallback(() => {
+    if (pdfExporting) return;
     if (isLive) {
       setExportConfirmOpen(true);
       return;
     }
-    void runExport();
-  }, [canExport, isLive, runExport]);
+    void runPdfExport();
+  }, [pdfExporting, isLive, runPdfExport]);
 
   const handleExportConfirm = useCallback(() => {
     setExportConfirmOpen(false);
-    void runExport();
-  }, [runExport]);
+    void runPdfExport();
+  }, [runPdfExport]);
 
   const handleExportCancel = useCallback(() => {
     setExportConfirmOpen(false);
@@ -907,22 +870,6 @@ function ExpandedBody() {
           }
           actions={
             <>
-              {canExport && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleExportClick}
-                  loading={exporting}
-                  loadingLabel="내보내는 중…"
-                  title={
-                    isLive
-                      ? '인터뷰 종료 + 페르소나 docx 다운로드'
-                      : '페르소나 docx 다운로드'
-                  }
-                >
-                  {isLive ? '📥 종료 + 내보내기' : '📥 내보내기'}
-                </Button>
-              )}
               {isLive ? (
                 <ChromeButton
                   size="lg"
@@ -1021,8 +968,25 @@ function ExpandedBody() {
                 : '응답자 페르소나 + 프로빙 질문'
           }
           onClose={close}
+          headerAction={
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePdfExportClick}
+              loading={pdfExporting}
+              loadingLabel="내보내는 중…"
+              title={
+                isLive
+                  ? '인터뷰 종료 + 페르소나 PDF 다운로드'
+                  : '페르소나 PDF 다운로드'
+              }
+            >
+              {isLive ? '종료 + PDF 내보내기' : 'PDF 내보내기'}
+            </Button>
+          }
         >
           <ProbingFullView
+            bodyRef={fullviewBodyRef}
             reflectionProps={reflectionPaneProps}
             questionProps={questionPaneProps}
           />
@@ -1044,16 +1008,16 @@ function ExpandedBody() {
               인터뷰를 종료하고 페르소나를 내보낼까요?
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 지금까지 누적된 페르소나 8 패널과 ★ 핵심
-              질문, 인용된 transcript 발화를 docx 파일로 다운로드합니다. 정지
-              후에는 이 세션을 다시 이어 받을 수 없습니다.
+              현재 세션을 정지하고, 전체보기 화면(페르소나 · 조사 입력 · 질문
+              기록)을 그대로 PDF 파일로 다운로드합니다. 정지 후에는 이 세션을
+              다시 이어 받을 수 없습니다.
             </p>
             <div className="flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleExportCancel}
-                disabled={exporting}
+                disabled={pdfExporting}
               >
                 취소
               </Button>
@@ -1061,10 +1025,10 @@ function ExpandedBody() {
                 variant="primary"
                 size="sm"
                 onClick={handleExportConfirm}
-                loading={exporting}
+                loading={pdfExporting}
                 loadingLabel="내보내는 중…"
               >
-                종료 + 내보내기
+                종료 + PDF 내보내기
               </Button>
             </div>
           </div>
