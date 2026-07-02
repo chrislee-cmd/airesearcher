@@ -642,11 +642,20 @@ function ExpandedBody() {
       throw new Error('empty_reflection');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'reflection_failed';
-      setReflectionError(msg);
-      setReflectionStatus('error');
-      toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
-        tone: 'warn',
-      });
+      // 이미 성공한 페르소나가 있으면 (reflectionRef.current), 일시적 빈 응답
+      // (empty_reflection) / 네트워크 blip / provider 과부하 를 조용히 흡수하고
+      // 기존 페르소나를 유지한다 — reflection 은 주기적으로 재호출되므로 다음
+      // tick 이 자연히 재시도한다. 첫 생성(prev 없음) 실패만 사용자에게 노출해
+      // 매 blip 마다 "생성 실패" 토스트가 뜨는 회귀를 막는다.
+      if (reflectionRef.current) {
+        setReflectionStatus('ready');
+      } else {
+        setReflectionError(msg);
+        setReflectionStatus('error');
+        toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
+          tone: 'warn',
+        });
+      }
     } finally {
       reflectionInFlightRef.current = false;
     }

@@ -129,6 +129,15 @@ ${transcriptSan.wrapped}
     // 유지, custom 섹션이 늘면 비례 상향 (cap 8000) 해 응답 절단 회피.
     maxOutputTokens: Math.min(8000, Math.max(4000, sections.length * 500)),
     providerOptions: ZERO_RETENTION,
+    // 스트리밍 중 provider 에러 (rate limit / overload / invalid schema 등) 는
+    // 기본적으로 삼켜져 빈 스트림으로 끝나고 client 는 empty_reflection 만 본다.
+    // 실제 원인을 서버 로그에 남겨 진단 가능하게 한다 (반환 문자열은 미사용).
+    onError: ({ error }) => {
+      console.error('[probing/reflection] stream error', {
+        sections: sections.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
   });
 
   return result.toTextStreamResponse({
