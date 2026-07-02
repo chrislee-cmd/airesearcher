@@ -22,8 +22,8 @@ import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   DEFAULT_PERSONA_SECTIONS,
   PROBING_OUTPUT_LANGS,
+  buildProbingPersonaSchema,
   buildProbingPersonaSystem,
-  probingPersonaSchema,
 } from '@/lib/probing-prompts';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
@@ -112,7 +112,10 @@ export async function POST(request: Request) {
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
-    schema: probingPersonaSchema,
+    // 동적 schema — custom alias (custom_1..N) 를 명시적 required property 로
+    // 넣어 모델이 기본 8 과 동일하게 반드시 채우게 한다. 정적 catchall schema
+    // 는 custom key 를 optional (additionalProperties) 로만 노출해 누락됐다.
+    schema: buildProbingPersonaSchema(sections),
     system: buildProbingPersonaSystem(sections, parsed.data.output_lang),
     prompt: `${guideBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
@@ -125,7 +128,27 @@ ${transcriptSan.wrapped}
     // 섹션당 (summary + signals + confidence) ~500 token. 기본 8 섹션은 4000
     // 유지, custom 섹션이 늘면 비례 상향 (cap 8000) 해 응답 절단 회피.
     maxOutputTokens: Math.min(8000, Math.max(4000, sections.length * 500)),
-    providerOptions: ZERO_RETENTION,
+    // structuredOutputMode: 'jsonTool' — Anthropic 의 기본 strict structured
+    // output ('outputFormat') 은 schema 를 constrained-decoding grammar 로
+    // 컴파일하는데, 섹션이 10개 (기본 8 + custom 2) 를 넘으면 "compiled grammar
+    // is too large" 로 요청이 거부돼 빈 스트림 → white screen 회귀가 났다.
+    // jsonTool 모드는 schema 를 tool input_schema 로만 넘겨 grammar 컴파일이
+    // 없다 → 섹션 수 제한 없음. custom key emit 은 required schema property +
+    // 강화된 system prompt 가 담보한다 (strict 아니어도 required 필드는 강하게
+    // 유도됨).
+    providerOptions: {
+      ...ZERO_RETENTION,
+      anthropic: { structuredOutputMode: 'jsonTool' },
+    },
+    // 스트리밍 중 provider 에러 (rate limit / overload / invalid schema 등) 는
+    // 기본적으로 삼켜져 빈 스트림으로 끝나고 client 는 empty_reflection 만 본다.
+    // 실제 원인을 서버 로그에 남겨 진단 가능하게 한다 (반환 문자열은 미사용).
+    onError: ({ error }) => {
+      console.error('[probing/reflection] stream error', {
+        sections: sections.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
   });
 
   return result.toTextStreamResponse({
