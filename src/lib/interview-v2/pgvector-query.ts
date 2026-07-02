@@ -51,7 +51,11 @@ function toVectorLiteral(v: number[]): string {
  *
  * @param orgId   Requester's active org — the isolation boundary.
  * @param projectId  Narrow to one interview_documents.project_id, or null
- *                   for a cross-project (org-wide) search.
+ *                   for a cross-project (org-wide) search. Backward-compat
+ *                   single-project path — ignored when projectIds is given.
+ * @param projectIds  Multi-select cross-project scope. When present (not
+ *                   undefined) the _multi RPC is used instead of projectId:
+ *                   [] ⇒ all projects (whole-org), [id...] ⇒ that set.
  * @param scoreThreshold  Cosine-similarity floor (default 0.7). Chunks
  *                   below this are dropped inside the RPC.
  */
@@ -59,6 +63,7 @@ export async function searchInterviewV2Chunks(opts: {
   client: RpcClient;
   orgId: string;
   projectId?: string | null;
+  projectIds?: string[] | null;
   query: string;
   k?: number;
   scoreThreshold?: number;
@@ -67,6 +72,7 @@ export async function searchInterviewV2Chunks(opts: {
     client: db,
     orgId,
     projectId = null,
+    projectIds,
     query,
     k = 12,
     scoreThreshold = 0.7,
@@ -85,19 +91,37 @@ export async function searchInterviewV2Chunks(opts: {
     throw new Error('embedding_failed');
   }
 
-  const rpcRes = await db.rpc('match_interview_chunks_v2', {
-    query_embedding: toVectorLiteral(vec),
-    p_org_id: orgId,
-    p_project_id: projectId,
-    match_count: k,
-    score_threshold: scoreThreshold,
-  });
+  // project_ids present (not undefined/null) ⇒ multi-project cross-search via
+  // the _multi RPC; otherwise fall back to the single-project signature for
+  // backward compatibility. Both RPCs return the identical row shape.
+  const useMultiProject =
+    projectIds !== undefined && projectIds !== null;
+  const rpcName = useMultiProject
+    ? 'match_interview_chunks_v2_multi'
+    : 'match_interview_chunks_v2';
+  const rpcArgs = useMultiProject
+    ? {
+        query_embedding: toVectorLiteral(vec),
+        p_org_id: orgId,
+        p_project_ids: projectIds,
+        match_count: k,
+        score_threshold: scoreThreshold,
+      }
+    : {
+        query_embedding: toVectorLiteral(vec),
+        p_org_id: orgId,
+        p_project_id: projectId,
+        match_count: k,
+        score_threshold: scoreThreshold,
+      };
+
+  const rpcRes = await db.rpc(rpcName, rpcArgs);
   if (rpcRes.error) {
     const msg =
       typeof rpcRes.error === 'object' && rpcRes.error && 'message' in rpcRes.error
         ? String((rpcRes.error as { message: unknown }).message)
         : 'rpc_error';
-    throw new Error(`match_interview_chunks_v2: ${msg}`);
+    throw new Error(`${rpcName}: ${msg}`);
   }
 
   type RpcRow = {
