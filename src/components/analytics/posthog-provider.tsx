@@ -16,6 +16,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     initPostHog();
     if (!isPostHogReady()) return; // no key (local dev / preview) — nothing to wire
 
+    captureUtmAttribution();
+
     const supabase = createClient();
     let active = true;
 
@@ -47,6 +49,33 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return <>{children}</>;
+}
+
+// UTM 파라미터를 landing 시 한 번 읽어 attribution 으로 stamp (analytics 4/6).
+// PostHog SDK 는 `$initial_utm_*` / `$utm_*` / `$referrer` 를 자동 capture 하므로
+// referrer 는 별도 코드가 필요 없다. 이 함수는 UTM 을 (1) first-touch person
+// property (set_once — 재유입 시 초기 소스 유지) 와 (2) super property (register
+// — 이 브라우저의 모든 이후 event 에 stamp) 로 추가해 attribution 을 명시적으로
+// 보존한다. person_profiles:'identified_only' 라 set_once 는 유저가 identify 된
+// 뒤에만 profile 에 반영되지만, 값은 SDK 가 안전하게 보관한다.
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
+
+function captureUtmAttribution() {
+  if (typeof window === 'undefined') return;
+
+  const params = new URL(window.location.href).searchParams;
+  // spec 예시는 null 을 포함한 utm 객체를 그대로 넘기지만, null 을 super property 로
+  // stamp 하면 모든 event 가 빈 utm 값을 달게 되므로 존재하는 키만 남긴다 (보수적 선택).
+  const utm: Record<string, string> = {};
+  for (const key of UTM_KEYS) {
+    const value = params.get(key);
+    if (value) utm[key] = value;
+  }
+
+  if (Object.keys(utm).length === 0) return; // UTM 없는 일반 방문 — no-op
+
+  posthog.setPersonProperties(undefined, utm); // set_once: first-touch 유지
+  posthog.register(utm); // 이 세션 이후 모든 event 에 super property 로 stamp
 }
 
 // user_id 를 distinct_id 로, email/created_at 을 person property 로 등록.
