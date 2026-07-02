@@ -19,6 +19,7 @@ import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
 import { AuthStateListener } from '@/components/auth-state-listener';
+import { SessionExpiredModal } from '@/components/auth/session-expired-modal';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -97,6 +98,10 @@ export default async function AppLayout({
          {/* Layer 2 (live gate): redirect to /login the moment the session
              ends without a reload — sign-out here or in another tab. */}
          <AuthStateListener />
+         {/* Silent server-side session expiry surfaces only as 401s (no
+             auth event) — this modal catches the first one and forces a
+             re-login. Complements AuthStateListener above. */}
+         <SessionExpiredModal />
          </WorkspaceProvider>
          </ActiveProjectProvider>
         </GenerationJobProvider>
