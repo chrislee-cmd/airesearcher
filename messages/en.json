@@ -383,7 +383,8 @@
       "generating": "Drafting"
     },
     "adminPayments": "Payments (admin)",
-    "adminDesignSystem": "Design system (admin)"
+    "adminDesignSystem": "Design system (admin)",
+    "adminAnalytics": "Analytics (admin)"
   },
   "SidebarGroups": {
     "design": "Research Design",
