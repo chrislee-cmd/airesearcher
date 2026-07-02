@@ -49,7 +49,12 @@ export const maxDuration = 120;
 
 const Body = z.object({
   question: z.string().trim().min(1).max(2_000),
+  // Deprecated single-project scope, kept for backward compat. Newer clients
+  // send project_ids (multi-select). When both are present project_ids wins.
   project_id: z.string().uuid().optional(),
+  // Multi-select cross-project scope. undefined/null ⇒ fall back to
+  // project_id; [] ⇒ all projects (whole-org); [id...] ⇒ that set.
+  project_ids: z.array(z.string().uuid()).max(100).optional().nullable(),
   top_k: z.number().int().min(1).max(50).optional().default(12),
   score_threshold: z.number().min(0).max(1).optional().default(0.7),
 });
@@ -106,7 +111,14 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { question, project_id, top_k, score_threshold } = parsed.data;
+  const { question, project_id, project_ids, top_k, score_threshold } =
+    parsed.data;
+
+  // project_ids present (not undefined/null) ⇒ multi-project cross-search.
+  // The audit row's single project_id column can't represent a set, so it's
+  // stored null in that mode (matches the cross-project semantics).
+  const useMultiProject = project_ids !== undefined && project_ids !== null;
+  const auditProjectId = useMultiProject ? null : project_id ?? null;
 
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -124,6 +136,9 @@ export async function POST(req: Request) {
       client: admin,
       orgId: org.org_id,
       projectId: project_id ?? null,
+      // undefined ⇒ lib stays on the single-project path; null/[]/[id...] ⇒
+      // lib switches to the _multi RPC.
+      projectIds: useMultiProject ? project_ids : undefined,
       query: question,
       k: top_k,
       scoreThreshold: score_threshold,
@@ -154,7 +169,7 @@ export async function POST(req: Request) {
       .insert({
         org_id: org.org_id,
         user_id: user.id,
-        project_id: project_id ?? null,
+        project_id: auditProjectId,
         question,
         answer_md: NO_ANSWER_MD,
         citations: [],
@@ -203,7 +218,7 @@ export async function POST(req: Request) {
         await admin.from('interview_search_queries').insert({
           org_id: org.org_id,
           user_id: user.id,
-          project_id: project_id ?? null,
+          project_id: auditProjectId,
           question,
           answer_md: object?.answer_md ?? '',
           citations,
