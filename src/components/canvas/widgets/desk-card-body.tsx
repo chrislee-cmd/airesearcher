@@ -254,6 +254,37 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
+// ─── DeskEmptyPreview — empty-state 옵션 B (블러 skeleton preview) ──────────
+// idle (job 없음) 본문을 큰 빈 흰색 대신 "완성 리포트 skeleton (블러)" +
+// 중앙 overlay CTA 로 채워, 결과물이 어떻게 생겼는지 미리 보여주고 검색을
+// 유도한다. 색은 디자인 토큰만 (bg-ink/bg-ink-2/bg-mute), 형태는 정적.
+// CTA 는 ChromeButton primary (native <button> 대신 primitive — §9 lint).
+function DeskEmptyPreview({ onStart, label }: { onStart: () => void; label: string }) {
+  return (
+    <div className="relative min-h-[420px] flex-1 overflow-hidden">
+      {/* 블러 skeleton — 완성 리포트 형태 (정적, 상호작용 없음) */}
+      <div className="pointer-events-none absolute inset-0 select-none space-y-4 p-6 opacity-50 blur-md">
+        <div className="h-8 w-2/3 rounded-xs bg-ink" /> {/* # Executive Summary */}
+        <div className="h-3 w-5/6 rounded-xs bg-mute" />
+        <div className="h-3 w-4/6 rounded-xs bg-mute" />
+        <div className="mt-6 h-8 w-2/3 rounded-xs bg-ink" /> {/* ## Findings */}
+        <div className="ml-6 space-y-2">
+          <div className="h-5 w-3/4 rounded-xs bg-ink-2" />
+          <div className="h-3 w-5/6 rounded-xs bg-mute" />
+          <div className="h-3 w-3/5 rounded-xs bg-mute" />
+          <div className="h-3 w-4/5 rounded-xs bg-mute" />
+        </div>
+      </div>
+      {/* Overlay CTA — 클릭 시 검색 준비 (설정 모달 열기) */}
+      <div className="absolute inset-0 flex items-center justify-center bg-paper/40 backdrop-blur-sm">
+        <ChromeButton variant="primary" size="lg" onClick={onStart}>
+          {label}
+        </ChromeButton>
+      </div>
+    </div>
+  );
+}
+
 
 export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
@@ -821,6 +852,18 @@ export function DeskCardBody() {
               )}
           </div>
         </WidgetSettingsModal>
+
+        {/* idle (job 없음) — empty-state 옵션 B: 블러 리포트 skeleton +
+            중앙 CTA. CTA 클릭 → 설정 모달 열기(키워드 입력 진입점).
+            서브헤더 통일(#603) 이후 키워드 입력이 설정 모달로 이동해
+            focus 대상 input 이 본문에 없으므로, spec 의 "검색창 focus" 를
+            "검색 준비(설정 모달 open)" 로 보수적 해석. */}
+        {!showResult && !job && (
+          <DeskEmptyPreview
+            onStart={() => setSettingsOpen(true)}
+            label="▶ 검색해서 이런 리포트 받기"
+          />
+        )}
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
