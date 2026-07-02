@@ -48,7 +48,6 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
-import { WidgetGatedCTA } from '@/components/canvas/shell/widget-gated-cta';
 import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
 import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -713,21 +712,16 @@ export function DeskCardBody() {
             </OnboardingTooltip>
           }
           actions={
-            <WidgetGatedCTA
-              showHint={settingsIncomplete}
-              reasonHint={tWidgets('settingsHint')}
+            <ChromeButton
+              variant="primary"
+              size="lg"
+              onClick={onClickRun}
+              disabled={!canRun}
             >
-              <ChromeButton
-                variant="primary"
-                size="lg"
-                onClick={onClickRun}
-                disabled={!canRun}
-              >
-                {submitting || pendingJobId || isWorking
-                  ? tCommon('loading')
-                  : tDesk('search')}
-              </ChromeButton>
-            </WidgetGatedCTA>
+              {submitting || pendingJobId || isWorking
+                ? tCommon('loading')
+                : tDesk('search')}
+            </ChromeButton>
           }
         />
 
