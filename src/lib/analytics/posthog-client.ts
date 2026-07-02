@@ -33,4 +33,11 @@ export function initPostHog() {
   initialized = true;
 }
 
+// Lets callers (e.g. the auth-listener provider) skip identify/capture/reset
+// when the SDK never booted — no key on local dev / previews. Mirrors the
+// module-level guard mixpanel-provider.tsx keeps for the same reason.
+export function isPostHogReady() {
+  return initialized;
+}
+
 export { posthog };
