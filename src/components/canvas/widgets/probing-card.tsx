@@ -537,6 +537,22 @@ function ExpandedBody() {
     setReflectionStatus('streaming');
     setReflectionError(null);
 
+    // custom 섹션 — 기본 8 뒤에 append 되어 persona LLM 이 함께 채운다.
+    // ⚠️ LLM 에는 반드시 **짧은 ordinal alias (custom_1..N)** 로 보낸다.
+    // localStorage 원본 key 는 crypto.randomUUID() (36자 opaque) 라 모델이
+    // 응답 JSON 의 object key 로 verbatim 재현하지 못해 (자리 뒤섞임 / 누락)
+    // custom 패널이 영구히 "단서 부족" 에 머무는 회귀의 root cause 였다
+    // (기본 8 은 semantic key 라 정상 재현 → custom 에만 증상). alias→원본
+    // key 매핑을 로컬에 들고, 응답을 원본 key 슬롯으로 되돌린다. 요청 시점
+    // 스냅샷 — 스트리밍 도중 add/remove 되어도 이번 호출의 key 집합은 고정.
+    const customSnapshot = customSectionsRef.current;
+    const aliasToKey = new Map<string, string>();
+    const requestCustomSections = customSnapshot.map((c, i) => {
+      const alias = `custom_${i + 1}`;
+      aliasToKey.set(alias, c.key);
+      return { key: alias, title: c.title, description: c.description };
+    });
+
     try {
       const res = await fetchWithAuth('/api/probing/reflection', {
         method: 'POST',
@@ -545,13 +561,8 @@ function ExpandedBody() {
           transcript_window: trimmed,
           interview_guide: '',
           output_lang: outputLangRef.current,
-          // custom 섹션을 기본 8 뒤에 append — persona LLM 이 함께 채운다.
           // 빈 배열이면 서버는 옛 동작 (기본 8만).
-          custom_sections: customSectionsRef.current.map((c) => ({
-            key: c.key,
-            title: c.title,
-            description: c.description,
-          })),
+          custom_sections: requestCustomSections,
         }),
       });
       if (!res.ok || !res.body) {
@@ -576,16 +587,20 @@ function ExpandedBody() {
           ProbingPersonaSection | undefined
         >;
         let anyChange = false;
-        // 기본 8 key + custom key (catchall object 의 additive key). custom
-        // key 는 우리가 정의해 서버로 보낸 것이므로 응답 object 에서 같은 key
-        // 로 돌아온다 — 아직 안 채워졌으면 sectionOrNull 이 insufficient 로 떨굼.
+        // 기본 8 key (semantic) + custom alias (custom_1..N). 응답 object 는
+        // 이 key 로 인덱싱된다. custom 은 alias→원본 UUID key 로 되돌려 저장
+        // 하므로 reflection state / 렌더 (reflection-pane) 는 종전대로 원본
+        // key 로 인덱싱된다. 아직 안 채워졌으면 sectionOrNull 이 insufficient
+        // 로 떨굼.
         const allKeys: string[] = [
           ...PROBING_PERSONA_SECTION_KEYS,
-          ...customSectionsRef.current.map((c) => c.key),
+          ...requestCustomSections.map((c) => c.key),
         ];
         for (const key of allKeys) {
           const sec = obj[key] as Record<string, unknown> | undefined;
           if (!sec || typeof sec !== 'object') continue;
+          // alias (custom_N) → 원본 key (UUID). 기본 8 은 alias 없음 → 그대로.
+          const canonical = aliasToKey.get(key) ?? key;
           const summary = typeof sec.summary === 'string' ? sec.summary : '';
           const signalsRaw = Array.isArray(sec.signals) ? sec.signals : [];
           const signals = signalsRaw
@@ -607,10 +622,10 @@ function ExpandedBody() {
               : 'insufficient';
           const hasContent = summary.trim().length > 0 || signals.length > 0;
           if (hasContent) {
-            mergedRec[key] = { summary, signals, confidence };
+            mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
-          } else if (!mergedRec[key]) {
-            mergedRec[key] = { summary, signals, confidence };
+          } else if (!mergedRec[canonical]) {
+            mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
           }
         }
