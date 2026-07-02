@@ -76,8 +76,10 @@ export function PersonaPanel({
   icon: string;
   title: string;
   section: ProbingPersonaSection | null;
-  // custom 섹션 (PR: probing-custom-section-ui) 일 때만 전달 — 우측 상단 ×
-  // 삭제 버튼 노출. 기본 8 섹션은 undefined (삭제 불가).
+  // 우측 상단 × 버튼 노출 콜백. custom 섹션은 정의 자체를 영구 삭제
+  // (useCustomSections.remove), 기본 8 섹션은 UI 숨김 (useHiddenDefaults.hide
+  // — PR: probing-default-persona-widgets-hide) 을 연결한다. undefined 면 ×
+  // 미노출. aria-label 은 "위젯 제거" 로 두 경우를 공통 표현.
   onRemove?: () => void;
 }) {
   const confidence: Confidence = section?.confidence ?? 'insufficient';

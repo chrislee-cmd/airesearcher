@@ -12,6 +12,7 @@
    컴포넌트는 순수 표시 + "지금 갱신" 액션만 노출.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import type {
@@ -87,6 +88,10 @@ export function ReflectionPane({
   onAddCustomSection,
   onRemoveCustomSection,
   customSectionsFull,
+  hiddenKeys,
+  onHideDefault,
+  onRestoreDefault,
+  onRestoreAllDefaults,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -104,7 +109,16 @@ export function ReflectionPane({
   onAddCustomSection: (title: string, description?: string) => void;
   onRemoveCustomSection: (key: string) => void;
   customSectionsFull: boolean;
+  // 기본 8 위젯 개별 숨김 (PR: probing-default-persona-widgets-hide) —
+  // UI-only hide. hiddenKeys 에 든 기본 key 는 grid 에서 빠지고 하단
+  // "숨긴 위젯" 복원 리스트로 이동. custom 섹션 삭제와는 별개 mechanism.
+  hiddenKeys: Set<string>;
+  onHideDefault: (key: string) => void;
+  onRestoreDefault: (key: string) => void;
+  onRestoreAllDefaults: () => void;
 }) {
+  // 하단 "숨긴 위젯 (N)" 복원 리스트 — 기본 접힘 (사용자 결정).
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
     status === 'streaming'
@@ -138,12 +152,13 @@ export function ReflectionPane({
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {hasAnyPanelData ? (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {PANELS.map((p) => (
+            {PANELS.filter((p) => !hiddenKeys.has(p.key)).map((p) => (
               <PersonaPanel
                 key={p.key}
                 icon={p.icon}
                 title={p.title}
                 section={sectionOrNull(data, p.key)}
+                onRemove={() => onHideDefault(p.key)}
               />
             ))}
             {customSections.map((c) => (
@@ -193,6 +208,51 @@ export function ReflectionPane({
             &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
           </div>
         )}
+
+        {/* 숨긴 기본 위젯 복원 리스트 (PR: probing-default-persona-widgets-hide).
+            숨김 0 이면 미표시, default 접힘. chip 클릭 → 복원, "전체 복원"
+            → 일괄. hiddenKeys 는 기본 8 key 만 담기므로 PANELS lookup 으로
+            icon/title 을 복원. */}
+        {(() => {
+          const hiddenPanels = PANELS.filter((p) => hiddenKeys.has(p.key));
+          if (hiddenPanels.length === 0) return null;
+          return (
+            <div className="mt-4 border-t border-line-soft pt-3">
+              <Button
+                variant="link"
+                size="xs"
+                onClick={() => setRestoreOpen((v) => !v)}
+                aria-expanded={restoreOpen}
+                className="!px-0"
+              >
+                숨긴 위젯 ({hiddenPanels.length}) {restoreOpen ? '▲' : '▼'}
+              </Button>
+              {restoreOpen && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {hiddenPanels.map((p) => (
+                    <Button
+                      key={p.key}
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onRestoreDefault(p.key)}
+                      aria-label={`위젯 복원: ${p.title}`}
+                    >
+                      <span aria-hidden>{p.icon}</span> {p.title}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={onRestoreAllDefaults}
+                    className="!px-0"
+                  >
+                    전체 복원
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {error && (
           <div

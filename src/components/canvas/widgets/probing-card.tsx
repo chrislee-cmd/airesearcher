@@ -55,6 +55,7 @@ import {
 import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
 import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
+import { useHiddenDefaults } from './probing/use-hidden-defaults';
 import {
   PROBING_PERSONA_SECTION_KEYS,
   PROBING_TECHNIQUES,
@@ -326,6 +327,16 @@ function ExpandedBody() {
   useEffect(() => {
     customSectionsRef.current = customSections;
   }, [customSections]);
+
+  // ─── 기본 8 위젯 개별 숨김 (PR: probing-default-persona-widgets-hide) ───
+  // UI-only hide — backend 는 여전히 기본 8 을 required 로 채우고, 여기선
+  // 렌더 필터만. localStorage 영속, restore 로 즉시 재노출.
+  const {
+    hiddenKeys: hiddenDefaultKeys,
+    hide: hideDefault,
+    restore: restoreDefault,
+    restoreAll: restoreAllDefaults,
+  } = useHiddenDefaults();
 
   // ─── 좌패널 — Reflection state ───
   const [reflection, setReflection] = useState<ProbingReflectionData | null>(
@@ -876,6 +887,10 @@ function ExpandedBody() {
     onAddCustomSection: addCustomSection,
     onRemoveCustomSection: removeCustomSection,
     customSectionsFull,
+    hiddenKeys: hiddenDefaultKeys,
+    onHideDefault: hideDefault,
+    onRestoreDefault: restoreDefault,
+    onRestoreAllDefaults: restoreAllDefaults,
   };
 
   const questionPaneProps = {
