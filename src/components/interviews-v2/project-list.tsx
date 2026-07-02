@@ -3,6 +3,7 @@
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateProjectModal } from './create-project-modal';
 
@@ -47,8 +48,10 @@ const CARD =
 
 export function ProjectList({
   onOpenProject,
+  onOpenCrossSearch,
 }: {
   onOpenProject: (id: string) => void;
+  onOpenCrossSearch: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const locale = useLocale();
@@ -67,6 +70,18 @@ export function ProjectList({
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-6 py-6">
+      {/* Cross-project search entry — opens the search chat with no project
+          context (project_id: null → every project scanned). */}
+      <div className="mb-4 flex justify-end">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onOpenCrossSearch}
+          leftIcon={<span aria-hidden>🌐</span>}
+        >
+          {t('crossSearch')}
+        </Button>
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <>

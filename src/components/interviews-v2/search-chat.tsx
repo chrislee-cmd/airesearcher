@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
 import type { Citation } from '@/lib/interview-v2/types';
 import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 import { QAPair, type QAData } from './qa-pair';
 import { QuestionInput } from './question-input';
+
+// Cross-project search is opt-in (사용자 결정 2026-07-02): a project-scoped
+// chat defaults to `project` and only queries every project when the user
+// flips the header toggle to `all`. When SearchChat is opened without a
+// projectId (from the "전체 프로젝트 검색" entry) it is inherently cross —
+// the toggle is hidden and scope is fixed to `all`.
+type Scope = 'project' | 'all';
 
 // Interview V2 search — ChatGPT-style chat surface for a project.
 //
@@ -30,7 +38,7 @@ function readCitationsHeader(res: Response): Citation[] {
   }
 }
 
-function Intro() {
+function Intro({ cross }: { cross: boolean }) {
   const t = useTranslations('InterviewsV2');
   const examples = [
     t('searchExample1'),
@@ -41,9 +49,11 @@ function Intro() {
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="max-w-[420px]">
         <h3 className="text-lg font-semibold text-ink-2">
-          {t('searchIntroTitle')}
+          {t(cross ? 'crossIntroTitle' : 'searchIntroTitle')}
         </h3>
-        <p className="mt-2 text-md text-mute">{t('searchIntroHint')}</p>
+        <p className="mt-2 text-md text-mute">
+          {t(cross ? 'crossIntroHint' : 'searchIntroHint')}
+        </p>
         <ul className="mt-3 space-y-1.5 text-md italic text-mute-soft">
           {examples.map((q) => (
             <li key={q}>· {q}</li>
@@ -59,7 +69,15 @@ export function SearchChat({ projectId }: { projectId: string | null }) {
   const [history, setHistory] = useState<QAData[]>([]);
   const [pending, setPending] = useState<QAData | null>(null);
   const [busy, setBusy] = useState(false);
+  // Opt-in cross-project scope. Only meaningful when a project context exists;
+  // without a projectId the search is always cross-project.
+  const [scope, setScope] = useState<Scope>('project');
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // The project we actually query: null (= every project) when there's no
+  // project context, or when the user opted into "전체 프로젝트".
+  const searchProjectId = projectId && scope === 'project' ? projectId : null;
+  const cross = searchProjectId === null;
 
   // Keep the tail in view as new turns land / the streamed answer grows.
   useEffect(() => {
@@ -78,7 +96,7 @@ export function SearchChat({ projectId }: { projectId: string | null }) {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             question,
-            ...(projectId ? { project_id: projectId } : {}),
+            ...(searchProjectId ? { project_id: searchProjectId } : {}),
           }),
         });
 
@@ -137,16 +155,41 @@ export function SearchChat({ projectId }: { projectId: string | null }) {
         setBusy(false);
       }
     },
-    [busy, projectId, t],
+    [busy, searchProjectId, t],
   );
 
   const empty = history.length === 0 && !pending;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Scope toggle — only when a project context exists. Flipping to
+          "전체 프로젝트" opts into cross-project search (project_id: null). */}
+      {projectId && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-5 py-2.5">
+          <span className="text-xs-soft text-mute-soft">{t('searchScope')}</span>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant={scope === 'project' ? 'secondary' : 'ghost'}
+              size="xs"
+              onClick={() => setScope('project')}
+              aria-pressed={scope === 'project'}
+            >
+              {t('scopeThisProject')}
+            </Button>
+            <Button
+              variant={scope === 'all' ? 'secondary' : 'ghost'}
+              size="xs"
+              onClick={() => setScope('all')}
+              aria-pressed={scope === 'all'}
+            >
+              {t('scopeAll')}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         {empty ? (
-          <Intro />
+          <Intro cross={cross} />
         ) : (
           <div className="space-y-6">
             {history.map((h, i) => (
