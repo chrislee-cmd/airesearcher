@@ -21,8 +21,19 @@ import { useCallback, useState } from 'react';
 // snapshot endpoint (requires inputs/extractions/matrix, returns { id }).
 // V2 upload has no matrix, so we create a minimal job row (empty
 // extractions/matrix) purely to own the index_status the file list reads
-// back via interview_jobs.index_status. project_id is threaded through all
-// three calls; omitting it keeps the legacy (project-less) path working.
+// back via interview_jobs.index_status.
+//
+// Which "project_id" goes where — this is a real footgun. There are two
+// distinct project tables:
+//   * public.projects          — legacy workspace "active project"
+//   * public.interview_projects — Interview V2 grouping (this feature)
+// generations.project_id and interview_jobs.project_id both FK the LEGACY
+// projects table, so sending a V2 (interview_projects) id there raises a
+// 23503 foreign-key violation that surfaces as a 500 from /convert and the
+// jobs insert. Only interview_documents.project_id references
+// interview_projects (see 20260702144738_interview_documents_project_fk_to_v2).
+// So the V2 projectId is passed to /index ONLY; convert and jobs stay
+// project-less (which is also the legacy behaviour they already handle).
 
 export type UploadFileStatus =
   | 'converting'
@@ -76,9 +87,10 @@ export function useInterviewV2Upload(projectId: string) {
             return null;
           }
           try {
+            // No project_id here: convert writes generations.project_id,
+            // which FKs the legacy projects table (not interview_projects).
             const fd = new FormData();
             fd.append('file', file);
-            if (projectId) fd.append('project_id', projectId);
             const res = await fetch('/api/interviews/convert', {
               method: 'POST',
               body: fd,
@@ -118,12 +130,20 @@ export function useInterviewV2Upload(projectId: string) {
 
       try {
         // 2. Create the interview_job that owns this batch's index_status.
+        //    project_id stays null — interview_jobs.project_id FKs the legacy
+        //    projects table, and this batch is scoped to a V2 project instead.
+        //    inputs.mime is omitted when the browser reports no type (empty
+        //    string): the jobs schema's mime is `z.string().optional()`, which
+        //    rejects null and would 400 the whole batch (common for .md/.txt).
         const jobRes = await fetch('/api/interviews/jobs', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            project_id: projectId || null,
-            inputs: ok.map((c) => ({ filename: c.filename, mime: c.mime })),
+            project_id: null,
+            inputs: ok.map((c) => ({
+              filename: c.filename,
+              ...(c.mime ? { mime: c.mime } : {}),
+            })),
             extractions: {},
             matrix: {},
           }),
