@@ -21,6 +21,7 @@ import type {
 } from '@/lib/probing-prompts';
 import type { ProbingCustomSection } from '../probing-types';
 import { PersonaPanel } from './persona-panel';
+import { AddCustomSectionCard } from './add-custom-section-card';
 
 // 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
 export type ProbingReflectionData = Partial<ProbingPersona>;
@@ -83,7 +84,9 @@ export function ReflectionPane({
   isLive,
   hasTranscript,
   customSections,
+  onAddCustomSection,
   onRemoveCustomSection,
+  customSectionsFull,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -95,8 +98,12 @@ export function ReflectionPane({
   isLive: boolean;
   hasTranscript: boolean;
   // custom 섹션 (PR: probing-custom-section-ui) — 기본 8 패널 뒤에 append.
+  // "위젯 추가" 블록 (PR: probing-widget-add-move-to-left-grid) 은 grid 의
+  // 마지막 칸으로 이동 — 우패널 대신 여기서 modal 을 띄운다.
   customSections: ProbingCustomSection[];
+  onAddCustomSection: (title: string, description?: string) => void;
   onRemoveCustomSection: (key: string) => void;
+  customSectionsFull: boolean;
 }) {
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
@@ -148,36 +155,53 @@ export function ReflectionPane({
                 onRemove={() => onRemoveCustomSection(c.key)}
               />
             ))}
-          </div>
-        ) : status === 'streaming' ? (
-          <div
-            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-            style={memphisPlaceholderStyle}
-          >
-            페르소나 분석 생성 중…
-          </div>
-        ) : !isLive ? (
-          <div
-            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-            style={memphisPlaceholderStyle}
-          >
-            세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
-          </div>
-        ) : !hasTranscript ? (
-          <div
-            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-            style={memphisPlaceholderStyle}
-          >
-            transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
+            {/* "위젯 추가" 블록은 항상 grid 마지막 칸 (PR: move-to-left-grid) */}
+            <AddCustomSectionCard
+              onAdd={onAddCustomSection}
+              full={customSectionsFull}
+            />
           </div>
         ) : (
-          <div
-            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-            style={memphisPlaceholderStyle}
-          >
-            발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
-            <br />
-            &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
+          // data 가 아직 없어도 "위젯 추가" 는 조사 셋업 단계에서 접근 가능해야
+          // 하므로 placeholder 아래에 add 블록을 함께 노출.
+          <div className="flex flex-col gap-3">
+            {status === 'streaming' ? (
+              <div
+                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+                style={memphisPlaceholderStyle}
+              >
+                페르소나 분석 생성 중…
+              </div>
+            ) : !isLive ? (
+              <div
+                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+                style={memphisPlaceholderStyle}
+              >
+                세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
+              </div>
+            ) : !hasTranscript ? (
+              <div
+                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+                style={memphisPlaceholderStyle}
+              >
+                transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
+              </div>
+            ) : (
+              <div
+                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+                style={memphisPlaceholderStyle}
+              >
+                발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
+                <br />
+                &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <AddCustomSectionCard
+                onAdd={onAddCustomSection}
+                full={customSectionsFull}
+              />
+            </div>
           </div>
         )}
 
