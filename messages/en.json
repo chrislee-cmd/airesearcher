@@ -1075,7 +1075,13 @@
     "searchSources": "Sources",
     "searchSourcesShow": "Show sources",
     "searchSourcesHide": "Hide sources",
-    "searchScore": "Match"
+    "searchScore": "Match",
+    "searchScope": "Search scope",
+    "scopeThisProject": "This project",
+    "scopeAll": "All projects",
+    "crossSearch": "Search all projects",
+    "crossIntroTitle": "Ask across all projects",
+    "crossIntroHint": "Answers are grounded in indexed interviews from every project. Examples:"
   },
   "Workspace": {
     "eyebrow": "Workspace",
