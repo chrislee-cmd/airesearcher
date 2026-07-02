@@ -399,8 +399,18 @@ function ResponseTable({
     ...nonPiiCols.map((col) => ({ kind: 'field', col, pii: false }) as const),
   ];
 
+  // 컬럼별 최소 폭 — 긴 질문 헤더(20+자)가 wrap 되지 않도록 field 는 180px,
+  // 액션(잠금 해제 버튼) 은 140px, 응답 시각은 nowrap 으로 자연 폭 유지.
+  // min-w-max table 과 결합해 좁은 화면에서 부모의 overflow-x 로 수평 스크롤.
+  const colWidthClass = (rc: RenderCol) =>
+    rc.kind === 'action'
+      ? 'min-w-[140px]'
+      : rc.kind === 'time'
+        ? 'whitespace-nowrap'
+        : 'min-w-[180px]';
+
   return (
-    <table className="w-full border-collapse text-md">
+    <table className="min-w-max border-collapse text-md">
       <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
         <tr>
           {renderCols.map((rc, i) => (
@@ -408,7 +418,7 @@ function ResponseTable({
               key={
                 rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
               }
-              className="border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft"
+              className={`whitespace-nowrap border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
             >
               {rc.kind === 'action'
                 ? '개인정보'
@@ -432,7 +442,10 @@ function ResponseTable({
               {renderCols.map((rc, i) => {
                 if (rc.kind === 'action') {
                   return (
-                    <td key={`action-${i}`} className="px-3 py-2 align-top">
+                    <td
+                      key={`action-${i}`}
+                      className="min-w-[140px] px-3 py-2 align-top"
+                    >
                       {unlocked ? (
                         <span className="whitespace-nowrap text-xs-soft text-mute-soft">
                           ✓ 해제됨
@@ -467,7 +480,7 @@ function ResponseTable({
                     return (
                       <td
                         key={qid}
-                        className="px-3 py-2 align-top text-ink-2"
+                        className="min-w-[180px] px-3 py-2 align-top text-ink-2"
                       >
                         {val || <span className="text-mute-soft">—</span>}
                       </td>
@@ -476,14 +489,17 @@ function ResponseTable({
                   return (
                     <td
                       key={qid}
-                      className="px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
+                      className="min-w-[180px] px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
                     >
                       {PII_MASK}
                     </td>
                   );
                 }
                 return (
-                  <td key={qid} className="px-3 py-2 align-top text-ink-2">
+                  <td
+                    key={qid}
+                    className="min-w-[180px] px-3 py-2 align-top text-ink-2"
+                  >
                     {r.answers[qid] || (
                       <span className="text-mute-soft">—</span>
                     )}
