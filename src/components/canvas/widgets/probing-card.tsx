@@ -873,17 +873,15 @@ function ExpandedBody() {
     isLive,
     hasTranscript,
     customSections,
+    onAddCustomSection: addCustomSection,
     onRemoveCustomSection: removeCustomSection,
+    customSectionsFull,
   };
 
   const questionPaneProps = {
     context,
     onContextChange: setContext,
     contextDisabled: !contextHydrated,
-    customSections,
-    onAddCustomSection: addCustomSection,
-    onRemoveCustomSection: removeCustomSection,
-    customSectionsFull,
     thinkingEvents,
     thinkingStreaming,
     thinkCanRun,

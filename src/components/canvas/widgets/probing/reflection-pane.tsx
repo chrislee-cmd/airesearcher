@@ -21,6 +21,7 @@ import type {
 } from '@/lib/probing-prompts';
 import type { ProbingCustomSection } from '../probing-types';
 import { PersonaPanel } from './persona-panel';
+import { AddCustomSectionCard } from './add-custom-section-card';
 
 // 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
 export type ProbingReflectionData = Partial<ProbingPersona>;
@@ -83,7 +84,9 @@ export function ReflectionPane({
   isLive,
   hasTranscript,
   customSections,
+  onAddCustomSection,
   onRemoveCustomSection,
+  customSectionsFull,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -95,8 +98,12 @@ export function ReflectionPane({
   isLive: boolean;
   hasTranscript: boolean;
   // custom 섹션 (PR: probing-custom-section-ui) — 기본 8 패널 뒤에 append.
+  // "위젯 추가" 블록 (PR: probing-widget-add-move-to-left-grid) 은 grid 의
+  // 마지막 칸으로 이동 — 우패널 대신 여기서 modal 을 띄운다.
   customSections: ProbingCustomSection[];
+  onAddCustomSection: (title: string, description?: string) => void;
   onRemoveCustomSection: (key: string) => void;
+  customSectionsFull: boolean;
 }) {
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
@@ -148,6 +155,12 @@ export function ReflectionPane({
                 onRemove={() => onRemoveCustomSection(c.key)}
               />
             ))}
+            {/* "위젯 추가" 블록은 최초 8 패널 생성 이후에만 grid 마지막 칸
+                으로 노출 (생성 전 무분별한 입력 부하 방지 — 사용자 결정). */}
+            <AddCustomSectionCard
+              onAdd={onAddCustomSection}
+              full={customSectionsFull}
+            />
           </div>
         ) : status === 'streaming' ? (
           <div
