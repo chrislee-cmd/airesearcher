@@ -155,53 +155,42 @@ export function ReflectionPane({
                 onRemove={() => onRemoveCustomSection(c.key)}
               />
             ))}
-            {/* "위젯 추가" 블록은 항상 grid 마지막 칸 (PR: move-to-left-grid) */}
+            {/* "위젯 추가" 블록은 최초 8 패널 생성 이후에만 grid 마지막 칸
+                으로 노출 (생성 전 무분별한 입력 부하 방지 — 사용자 결정). */}
             <AddCustomSectionCard
               onAdd={onAddCustomSection}
               full={customSectionsFull}
             />
           </div>
+        ) : status === 'streaming' ? (
+          <div
+            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+            style={memphisPlaceholderStyle}
+          >
+            페르소나 분석 생성 중…
+          </div>
+        ) : !isLive ? (
+          <div
+            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+            style={memphisPlaceholderStyle}
+          >
+            세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
+          </div>
+        ) : !hasTranscript ? (
+          <div
+            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+            style={memphisPlaceholderStyle}
+          >
+            transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
+          </div>
         ) : (
-          // data 가 아직 없어도 "위젯 추가" 는 조사 셋업 단계에서 접근 가능해야
-          // 하므로 placeholder 아래에 add 블록을 함께 노출.
-          <div className="flex flex-col gap-3">
-            {status === 'streaming' ? (
-              <div
-                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-                style={memphisPlaceholderStyle}
-              >
-                페르소나 분석 생성 중…
-              </div>
-            ) : !isLive ? (
-              <div
-                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-                style={memphisPlaceholderStyle}
-              >
-                세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
-              </div>
-            ) : !hasTranscript ? (
-              <div
-                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-                style={memphisPlaceholderStyle}
-              >
-                transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
-              </div>
-            ) : (
-              <div
-                className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-                style={memphisPlaceholderStyle}
-              >
-                발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
-                <br />
-                &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <AddCustomSectionCard
-                onAdd={onAddCustomSection}
-                full={customSectionsFull}
-              />
-            </div>
+          <div
+            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+            style={memphisPlaceholderStyle}
+          >
+            발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
+            <br />
+            &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
           </div>
         )}
 
