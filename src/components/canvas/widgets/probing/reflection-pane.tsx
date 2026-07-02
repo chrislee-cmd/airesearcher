@@ -13,6 +13,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
+import type { Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import type {
@@ -92,6 +93,7 @@ export function ReflectionPane({
   onHideDefault,
   onRestoreDefault,
   onRestoreAllDefaults,
+  gridRef,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -116,6 +118,10 @@ export function ReflectionPane({
   onHideDefault: (key: string) => void;
   onRestoreDefault: (key: string) => void;
   onRestoreAllDefaults: () => void;
+  // PDF 내보내기 (PR: probing-pdf-export-persona-only) — 페르소나 grid DOM 을
+  // 캡쳐 대상으로 노출. 부모(probing-card.tsx)가 이 ref 로 grid 만 PDF 화한다.
+  // grid 안의 "위젯 추가" 카드는 data-export-hide 로 캡쳐에서 제외.
+  gridRef?: Ref<HTMLDivElement>;
 }) {
   // 하단 "숨긴 위젯 (N)" 복원 리스트 — 기본 접힘 (사용자 결정).
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -151,7 +157,7 @@ export function ReflectionPane({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {hasAnyPanelData ? (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div ref={gridRef} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {PANELS.filter((p) => !hiddenKeys.has(p.key)).map((p) => (
               <PersonaPanel
                 key={p.key}
@@ -171,11 +177,15 @@ export function ReflectionPane({
               />
             ))}
             {/* "위젯 추가" 블록은 최초 8 패널 생성 이후에만 grid 마지막 칸
-                으로 노출 (생성 전 무분별한 입력 부하 방지 — 사용자 결정). */}
-            <AddCustomSectionCard
-              onAdd={onAddCustomSection}
-              full={customSectionsFull}
-            />
+                으로 노출 (생성 전 무분별한 입력 부하 방지 — 사용자 결정).
+                data-export-hide: 인터랙션 전용 affordance 라 PDF 캡쳐 (페르소나
+                grid) 에서는 제외 — display:contents 로 grid 레이아웃은 그대로. */}
+            <div data-export-hide className="contents">
+              <AddCustomSectionCard
+                onAdd={onAddCustomSection}
+                full={customSectionsFull}
+              />
+            </div>
           </div>
         ) : status === 'streaming' ? (
           <div

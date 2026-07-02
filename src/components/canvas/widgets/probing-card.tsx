@@ -371,8 +371,9 @@ function ExpandedBody() {
   // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
-  // 전체보기 본문 (ProbingFullView 루트) DOM — PDF 캡쳐 대상.
-  const fullviewBodyRef = useRef<HTMLDivElement | null>(null);
+  // 좌 페르소나 grid DOM — PDF 캡쳐 대상 (PR: probing-pdf-export-persona-only).
+  // 우패널 (질문 / 사고 흐름) · 서브헤더 · 모달 헤더는 캡쳐 범위 밖.
+  const personaGridRef = useRef<HTMLDivElement | null>(null);
 
   // popup → history 로 옮기는 helper. 중복 push 방지 위해 set 자리 있던 popup
   // 만 옮긴다. dismissed_reason 으로 origin 분류.
@@ -756,10 +757,11 @@ function ExpandedBody() {
   }, [stopSession]);
 
   // ─── 페르소나 PDF 내보내기 (전체보기 전용) ─────────────────────────
-  // 전체보기(fullview) 헤더 버튼에서만 동작한다. 전체보기 본문 DOM
-  // (페르소나 grid + 조사 입력 + 질문 기록) 을 그대로 캡쳐해 PDF 로 저장.
-  // 진입 정책: 라이브 중이면 confirm modal (종료 + 내보내기 = 비가역),
-  // 비라이브면 확인 없이 즉시 생성.
+  // 전체보기(fullview) 헤더 버튼에서만 동작한다. 좌 페르소나 grid (기본 8 +
+  // custom 섹션) 만 캡쳐해 PDF 로 저장 — 우패널(질문/사고 흐름) · 서브헤더 ·
+  // 모달 헤더는 제외. grid 안 "위젯 추가" affordance 는 data-export-hide 로
+  // 캡쳐에서 빠진다. 진입 정책: 라이브 중이면 confirm modal (종료 + 내보내기 =
+  // 비가역), 비라이브면 확인 없이 즉시 생성.
   const runPdfExport = useCallback(async () => {
     if (pdfExporting) return;
     setPdfExporting(true);
@@ -771,14 +773,26 @@ function ExpandedBody() {
           // 정지 실패해도 export 자체는 진행 — 사용자 산출물 보존 우선.
         }
       }
-      const el = fullviewBodyRef.current;
-      if (!el) throw new Error('fullview_not_ready');
+      const el = personaGridRef.current;
+      if (!el) throw new Error('persona_grid_not_ready');
       const endedAt = new Date();
       const filename = buildPersonaFilename({
         persona: reflectionRef.current,
         endedAt,
       }).replace(/\.docx$/, '.pdf');
-      await exportDomToPdf(el, filename);
+      const goal = context.research_goal?.trim();
+      await exportDomToPdf(el, filename, {
+        hideSelector: '[data-export-hide]',
+        columns: 2,
+        header: {
+          eyebrow: '응답자 페르소나',
+          title: goal && goal.length > 0 ? goal : '프로빙 인터뷰',
+          subtitle: endedAt.toLocaleString('ko-KR', {
+            dateStyle: 'long',
+            timeStyle: 'short',
+          }),
+        },
+      });
       toast.push('페르소나 PDF 다운로드됨', { tone: 'info', ttlMs: 2200 });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'export_failed';
@@ -786,7 +800,7 @@ function ExpandedBody() {
     } finally {
       setPdfExporting(false);
     }
-  }, [pdfExporting, isLive, stopSession, toast]);
+  }, [pdfExporting, isLive, stopSession, toast, context.research_goal]);
 
   const handlePdfExportClick = useCallback(() => {
     if (pdfExporting) return;
@@ -891,6 +905,7 @@ function ExpandedBody() {
     onHideDefault: hideDefault,
     onRestoreDefault: restoreDefault,
     onRestoreAllDefaults: restoreAllDefaults,
+    gridRef: personaGridRef,
   };
 
   const questionPaneProps = {
@@ -1057,7 +1072,6 @@ function ExpandedBody() {
           }
         >
           <ProbingFullView
-            bodyRef={fullviewBodyRef}
             reflectionProps={reflectionPaneProps}
             questionProps={questionPaneProps}
           />
@@ -1079,9 +1093,9 @@ function ExpandedBody() {
               인터뷰를 종료하고 페르소나를 내보낼까요?
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 전체보기 화면(페르소나 · 조사 입력 · 질문
-              기록)을 그대로 PDF 파일로 다운로드합니다. 정지 후에는 이 세션을
-              다시 이어 받을 수 없습니다.
+              현재 세션을 정지하고, 응답자 페르소나 그리드(기본 8 + 추가 위젯)를
+              PDF 파일로 다운로드합니다. 정지 후에는 이 세션을 다시 이어 받을 수
+              없습니다.
             </p>
             <div className="flex justify-end gap-2">
               <Button
