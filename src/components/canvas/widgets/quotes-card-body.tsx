@@ -12,6 +12,7 @@ import {
 } from '@/components/transcript-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
@@ -44,6 +45,16 @@ function readActiveProjectId(): string | null {
     return null;
   }
 }
+
+// 스토리지 업로드 완료 후 '시작' 대기 중인 파일 메타. /api/transcripts/start
+// 에 그대로 넘긴다.
+type ReadyTranscriptFile = {
+  storage_key: string;
+  filename: string;
+  mime_type?: string;
+  size_bytes: number;
+  language: string;
+};
 
 function safeFilename(title: string) {
   const cleaned = title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 120);
@@ -103,10 +114,15 @@ export function QuotesCardBody() {
   // on an explicit confirm rather than silently using whatever the
   // dropdown last had.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  // 스토리지 업로드 + 언어 확인까지 끝났지만 아직 전사를 시작하지 않은 파일들.
+  // 사용자가 서브헤더 '시작' CTA 를 눌러야 /api/transcripts/start 가 호출된다
+  // (옛 자동 시작 → 명시적 시작 게이팅, 사용자 요구 흐름:
+  //  모달 → 업로드 → 확인 → 시작).
+  const [readyFiles, setReadyFiles] = useState<ReadyTranscriptFile[]>([]);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
-  // around `runUploads` is captured once. We mirror live state into a ref so
-  // the captured runUploads still reads the current language.
+  // around `uploadToStorage` is captured once. We mirror live state into a
+  // ref so the captured uploadToStorage still reads the current language.
   const languageRef = useRef<string>(language);
   useEffect(() => {
     languageRef.current = language;
@@ -166,8 +182,8 @@ export function QuotesCardBody() {
     (files: File[]) => {
       if (files.length === 0) return;
       requireAuth(() => {
-        // Don't start runUploads yet — open the language-confirm modal
-        // and let the user verify. runUploads fires only after confirm.
+        // Don't upload yet — open the language-confirm modal and let the
+        // user verify. uploadToStorage fires only after confirm.
         // Close the upload modal so the language-confirm dialog shows alone
         // (both are z-modal portals — avoid stacking two modals).
         setUploadOpen(false);
@@ -182,7 +198,7 @@ export function QuotesCardBody() {
     const files = pendingFiles;
     setPendingFiles(null);
     if (files && files.length > 0) {
-      void runUploads(files);
+      void uploadToStorage(files);
     }
   }
 
@@ -190,10 +206,13 @@ export function QuotesCardBody() {
     setPendingFiles(null);
   }
 
-  async function runUploads(files: File[]) {
+  // 1단계: 스토리지 업로드만. 전사는 시작하지 않고 readyFiles 에 적재 —
+  // 사용자가 '시작' 을 눌러야 startTranscription 이 돈다.
+  async function uploadToStorage(files: File[]) {
     if (busyUpload) return;
     setBusyUpload(true);
     setUploadError(null);
+    const uploaded: ReadyTranscriptFile[] = [];
     try {
       for (const file of files) {
         const tempId =
@@ -250,27 +269,12 @@ export function QuotesCardBody() {
           });
           job.setUploadProgress(tempId, 100);
 
-          // 3) tell the server to kick off transcription (provider is
-          // language-driven: English → Deepgram nova-3, else → ElevenLabs).
-          const startRes = await fetch('/api/transcripts/start', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              storage_key,
-              filename: file.name,
-              mime_type: file.type || undefined,
-              size_bytes: file.size,
-              language: languageRef.current,
-              project_id: readActiveProjectId(),
-            }),
-          });
-          if (!startRes.ok) {
-            const err = await startRes.json().catch(() => ({}));
-            throw new Error(err.error ?? `start ${startRes.status}`);
-          }
-          track('transcripts_upload_start', {
-            type: file.type,
-            size: file.size,
+          // 3) 자동 전사 시작 대신 "준비됨" 목록에 적재. 언어는 확인 시점 값 고정.
+          uploaded.push({
+            storage_key,
+            filename: file.name,
+            mime_type: file.type || undefined,
+            size_bytes: file.size,
             language: languageRef.current,
           });
         } catch (e) {
@@ -280,9 +284,57 @@ export function QuotesCardBody() {
           job.clearUploadProgress(tempId);
         }
       }
-      await job.refreshJobs();
+      if (uploaded.length > 0) {
+        setReadyFiles((prev) => [...prev, ...uploaded]);
+      }
     } finally {
       setBusyUpload(false);
+    }
+  }
+
+  // 2단계: '시작' CTA. readyFiles 각각에 대해 전사를 시작 (provider 는
+  // language-driven: English → Deepgram nova-3, else → ElevenLabs). 성공한
+  // 파일은 readyFiles 에서 제거, 실패 시 나머지는 남겨 재시도 가능.
+  async function startTranscription() {
+    if (readyFiles.length === 0 || busyUpload) return;
+    setBusyUpload(true);
+    setUploadError(null);
+    const queue = [...readyFiles];
+    try {
+      while (queue.length > 0) {
+        const rf = queue[0];
+        const startRes = await fetch('/api/transcripts/start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            storage_key: rf.storage_key,
+            filename: rf.filename,
+            mime_type: rf.mime_type,
+            size_bytes: rf.size_bytes,
+            language: rf.language,
+            project_id: readActiveProjectId(),
+          }),
+        });
+        if (!startRes.ok) {
+          const err = await startRes.json().catch(() => ({}));
+          throw new Error(err.error ?? `start ${startRes.status}`);
+        }
+        track('transcripts_upload_start', {
+          type: rf.mime_type,
+          size: rf.size_bytes,
+          language: rf.language,
+        });
+        queue.shift();
+        setReadyFiles([...queue]);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'start_failed';
+      setUploadError(msg);
+      // 아직 시작 못 한 나머지는 남겨 사용자가 재시도.
+      setReadyFiles([...queue]);
+    } finally {
+      setBusyUpload(false);
+      await job.refreshJobs();
     }
   }
 
@@ -337,10 +389,12 @@ export function QuotesCardBody() {
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const hasUploads = Object.keys(job.localUploads).length > 0;
-  // 온보딩 게이팅 — 아직 아무 파일도 없음 (큐·완료·업로드 전부 0). 이 동안만
-  // 📤 pulse + "파일을 먼저 업로드" hint. 전사록은 파일 드롭 시 자동 시작이라
-  // 별도 CTA 가 없어 gated-CTA hint 대신 서브헤더 hint 슬롯을 쓴다.
-  const noFiles = job.jobs.length === 0 && !hasUploads;
+  // 온보딩 게이팅 — 아직 아무 파일도 없음 (큐·완료·업로드·준비 전부 0). 이
+  // 동안만 📤 pulse + "파일을 먼저 업로드" hint.
+  const noFiles = job.jobs.length === 0 && !hasUploads && readyFiles.length === 0;
+  // '시작' CTA — 업로드+언어확인까지 끝난 준비 파일이 있어야 활성.
+  const readyCount = readyFiles.length;
+  const canStart = readyCount > 0 && !busyUpload;
 
   // 헤더 pill 로 push 할 live state. 우선순위:
   //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
@@ -420,11 +474,10 @@ export function QuotesCardBody() {
           최근 산출물 (bottom) 3단으로 나뉘어 — 산출물이 카드 바닥에
           고정되고 빈 공간은 중간이 흡수. */}
       <div className="flex h-full flex-col">
-        {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼 하나 (옛 상시
-            dropzone 은 업로드 모달로 이동). 대기 중(진행 중/큐) 전사 작업
-            count 를 배지로. 전사록은 파일 드롭 시 자동 시작이라 우측 CTA
-            없음. 업로드 오류는 hint 로 항상 노출 (모달이 자동 닫혀도 확인
-            가능). */}
+        {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼, 우 = '시작' CTA.
+            옛 자동 시작(드롭 → 자동 전사) 대신, 모달 → 업로드 → 언어확인 →
+            '시작' 순으로 명시적 게이팅. 업로드까지 끝난 준비 파일이 있어야
+            '시작' 활성. 업로드 오류는 hint 로 항상 노출. */}
         <WidgetSubHeader
           compact
           inputs={
@@ -442,9 +495,25 @@ export function QuotesCardBody() {
               />
             </OnboardingTooltip>
           }
+          actions={
+            <ChromeButton
+              variant="primary"
+              size="lg"
+              onClick={() => void startTranscription()}
+              disabled={!canStart}
+            >
+              {busyUpload
+                ? tCommon('loading')
+                : readyCount > 0
+                  ? `${tWidgets('transcriptStart')} (${readyCount})`
+                  : tWidgets('transcriptStart')}
+            </ChromeButton>
+          }
           hint={
             uploadError ? (
               <span className="text-warning">{uploadError}</span>
+            ) : readyCount > 0 ? (
+              <span>{tWidgets('transcriptReadyHint', { count: readyCount })}</span>
             ) : noFiles ? (
               <span>{tWidgets('uploadHint')}</span>
             ) : undefined

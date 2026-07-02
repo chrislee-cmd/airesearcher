@@ -1028,6 +1028,8 @@
     "settingsClose": "Close",
     "upload": "Upload files",
     "uploadHint": "📤 Upload a file first",
+    "transcriptStart": "Start",
+    "transcriptReadyHint": "{count} file(s) ready — press Start to transcribe",
     "onboardingSettings": "Click here to set up before you start",
     "onboardingUpload": "Click here to upload your file",
     "onboardingDismiss": "Dismiss hint"
