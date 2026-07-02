@@ -724,11 +724,28 @@ export function TranslateConsole({
   // commit the current turn, and breaks the otherwise-infinite loop.
   // Mic mode doesn't need this — speakers pause naturally. Tracked only
   // for the tab slot.
+  //
+  // 🐛 tab-only stuck fix (2026-07-02): the pulse only WORKS if the
+  // injected gap is longer than the model's end-of-speech
+  // `silence_duration_ms`. OpenAI server VAD defaults to 500 ms (see the
+  // probing session config in src/app/api/probing/sessions/route.ts,
+  // which spells the same default out), so a 400 ms pulse never clears
+  // the threshold — the VAD keeps the utterance open, no
+  // `session.input_transcript.delta` / `output_transcript.delta` ever
+  // commits, and tab-only captions never stream even though translated
+  // TTS (a separate WebRTC media track) still plays. Bumped to 600 ms so
+  // the injected silence sits comfortably past the 500 ms end-of-speech
+  // window with margin for WebAudio-resample jitter. The `/realtime/
+  // translations` session cannot take a `turn_detection` override
+  // (unknown params 400 the client_secret and fail session creation
+  // outright — see src/lib/openai-realtime.ts), so tuning the injected
+  // gap is the only tab-scoped lever that carries zero regression risk
+  // to mic-only / both modes (which never run this pulse).
   const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
   const TAB_SILENCE_INTERVAL_MS = 3000;
-  const TAB_SILENCE_DURATION_MS = 400;
+  const TAB_SILENCE_DURATION_MS = 600;
 
   // Tab-mode only: a dedicated AudioContext that "lifts" the
   // getDisplayMedia track through WebAudio so the track we hand to
