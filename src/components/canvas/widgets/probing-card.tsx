@@ -780,8 +780,18 @@ function ExpandedBody() {
         persona: reflectionRef.current,
         endedAt,
       }).replace(/\.docx$/, '.pdf');
+      const goal = context.research_goal?.trim();
       await exportDomToPdf(el, filename, {
         hideSelector: '[data-export-hide]',
+        columns: 2,
+        header: {
+          eyebrow: '응답자 페르소나',
+          title: goal && goal.length > 0 ? goal : '프로빙 인터뷰',
+          subtitle: endedAt.toLocaleString('ko-KR', {
+            dateStyle: 'long',
+            timeStyle: 'short',
+          }),
+        },
       });
       toast.push('페르소나 PDF 다운로드됨', { tone: 'info', ttlMs: 2200 });
     } catch (e) {
@@ -790,7 +800,7 @@ function ExpandedBody() {
     } finally {
       setPdfExporting(false);
     }
-  }, [pdfExporting, isLive, stopSession, toast]);
+  }, [pdfExporting, isLive, stopSession, toast, context.research_goal]);
 
   const handlePdfExportClick = useCallback(() => {
     if (pdfExporting) return;

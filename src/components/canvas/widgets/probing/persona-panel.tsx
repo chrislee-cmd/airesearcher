@@ -111,6 +111,8 @@ export function PersonaPanel({
               variant="ghost-danger"
               onClick={onRemove}
               aria-label={`위젯 제거: ${title}`}
+              // 인터랙션 전용 — PDF 캡쳐 (페르소나 grid) 에서는 제외.
+              data-export-hide
             >
               ×
             </IconButton>
