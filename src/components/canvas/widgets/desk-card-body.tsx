@@ -75,6 +75,33 @@ const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
   { id: 'custom', days: null },
 ];
 
+// ─── Empty-state AI hint (mock) ───────────────────────────────────────────
+// 데스크 위젯 idle 상태의 "옵션 E" — AI 가 최근 리서치 맥락을 읽고 다음 조사를
+// 제안하는 카드 + D 옵션 축소판 quick chip. 지금은 **mock** — LLM 호출 없이
+// 하드코드 값으로 UI 만 시각 확인. 실 backend 는 별 spec 으로 교체.
+// TODO: 실 backend (LLM) 로 교체 — 별 spec pr-widget-empty-e-ai-hint-backend
+const MOCK_AI_HINT: {
+  message: string;
+  keywords: string[];
+  regions: DeskRegion[];
+} = {
+  message:
+    '지난주 인터뷰 3건에서 "온라인 결제 불편" 자주 언급됐어요. 관련 시장 조사 이어서 하실래요?',
+  keywords: ['핀테크', '간편결제', '카드사'],
+  regions: ['KR'],
+};
+
+const DESK_QUICK_CHIPS: {
+  icon: string;
+  title: string;
+  keywords: string[];
+  regions: DeskRegion[];
+}[] = [
+  { icon: '🎯', title: '신제품 검증', keywords: ['신제품'], regions: ['KR'] },
+  { icon: '🏬', title: '경쟁사 스캔', keywords: [], regions: ['KR', 'GLOBAL'] },
+  { icon: '📊', title: '시장 규모', keywords: ['시장 규모'], regions: ['KR'] },
+];
+
 function splitKeywords(raw: string): string[] {
   return raw
     .split(/[,\n\t、·]+/)
@@ -254,6 +281,76 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
+
+// ─── DeskEmptyAIHint — idle 상태 옵션 E (mock) ─────────────────────────────
+// 상단 = AI 개인화 hint 카드 (제안 메시지 + 키워드 칩 + "이 키워드로 검색"),
+// 하단 = D 옵션 축소판 quick chip. onApplyHint / onSelectChip 로 상위의
+// keywords/regions 를 채운다 (검색 자체는 상위 CTA 로 — mock 이라 자동 실행 X).
+function DeskEmptyAIHint({
+  onApplyHint,
+  onSelectChip,
+}: {
+  onApplyHint: () => void;
+  onSelectChip: (chip: (typeof DESK_QUICK_CHIPS)[number]) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-center gap-6 p-8">
+      {/* 상단 = AI hint card */}
+      <div>
+        <div className="mb-2 text-md font-semibold text-amore">
+          ✨ 이런 조사는 어떠세요?
+        </div>
+        <div className="rounded-sm border-[2px] border-ink bg-paper p-5 shadow-[3px_3px_0_var(--canvas-card-border)]">
+          <p className="text-md text-ink-2">{MOCK_AI_HINT.message}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {MOCK_AI_HINT.keywords.map((k) => (
+              <span
+                key={k}
+                className="rounded-xs border border-line bg-paper-soft px-2 py-1 text-sm text-ink"
+              >
+                {k}
+              </span>
+            ))}
+          </div>
+          {/* eslint-disable-next-line react/forbid-elements -- empty-state hint
+              CTA: brutalist card-fill button (border-ink + hover invert) outside
+              Button primitive variants; mock pilot UI */}
+          <button
+            type="button"
+            onClick={onApplyHint}
+            className="mt-4 w-full rounded-sm border-[2px] border-ink bg-amore-bg px-4 py-2 text-md font-semibold text-ink transition-colors hover:bg-amore hover:text-paper"
+          >
+            이 키워드로 검색
+          </button>
+        </div>
+      </div>
+
+      {/* 구분선 */}
+      <div className="flex items-center gap-3 text-xs-soft text-mute-soft">
+        <div className="flex-1 border-t border-line-soft" />
+        <span>또는</span>
+        <div className="flex-1 border-t border-line-soft" />
+      </div>
+
+      {/* 하단 = D 옵션 축소판 chips */}
+      <div className="flex flex-wrap justify-center gap-2">
+        {DESK_QUICK_CHIPS.map((chip, i) => (
+          /* eslint-disable-next-line react/forbid-elements -- quick chip:
+             compact pill trigger (D 옵션 축소판) outside Button primitive
+             variants; mock pilot UI */
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelectChip(chip)}
+            className="rounded-xs border border-line bg-paper px-3 py-1.5 text-sm text-ink transition-colors hover:bg-amore-bg"
+          >
+            {chip.icon} {chip.title}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
@@ -821,6 +918,28 @@ export function DeskCardBody() {
               )}
           </div>
         </WidgetSettingsModal>
+
+        {/* idle 상태 (아직 아무 job 없고 완료 리포트도 없음) — 옵션 E:
+            AI 개인화 hint 카드 (mock) + D 옵션 축소판 quick chip. hint/chip
+            선택은 상위 keywords/regions 를 채우고, 검색은 서브헤더 CTA 로.
+            spec 의 setSelectedRegions 는 이 파일에 없어 setRegions +
+            setSelected(sourcesForRegions) 로 보수적 매핑. */}
+        {!showResult && !job && !submitting && !pendingJobId && (
+          <DeskEmptyAIHint
+            onApplyHint={() => {
+              setKeywords(MOCK_AI_HINT.keywords);
+              const set = new Set(MOCK_AI_HINT.regions);
+              setRegions(set);
+              setSelected(sourcesForRegions(set));
+            }}
+            onSelectChip={(chip) => {
+              setKeywords(chip.keywords);
+              const set = new Set(chip.regions);
+              setRegions(set);
+              setSelected(sourcesForRegions(set));
+            }}
+          />
+        )}
 
         {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
