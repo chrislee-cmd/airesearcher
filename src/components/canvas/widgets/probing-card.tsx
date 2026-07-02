@@ -36,6 +36,7 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
+import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
 import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -863,10 +864,19 @@ function ExpandedBody() {
           className="shrink-0"
           compact
           inputs={
-            <WidgetSettingsButton
-              onClick={() => setSettingsOpen(true)}
-              hasChanges={source !== 'mic' || outputLang !== 'ko'}
-            />
+            // 프로빙은 입력 소스 default(mic) 로 바로 세션 시작이 가능해 "설정
+            // 미완료" 게이팅 상태가 없다 → 기존 startDisabled(세션 상태 기반)
+            // 를 그대로 두고 첫 사용 온보딩 툴팁만 얹는다. pulse/hint 없음.
+            <OnboardingTooltip
+              id="widget-probing"
+              message="여기를 눌러 시작 조건을 설정하세요"
+              dismissLabel="안내 닫기"
+            >
+              <WidgetSettingsButton
+                onClick={() => setSettingsOpen(true)}
+                hasChanges={source !== 'mic' || outputLang !== 'ko'}
+              />
+            </OnboardingTooltip>
           }
           actions={
             <>

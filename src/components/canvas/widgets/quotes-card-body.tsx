@@ -27,6 +27,7 @@ import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-foot
 import { Field } from '@/components/canvas/shell/field';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
+import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
 import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -336,6 +337,10 @@ export function QuotesCardBody() {
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const hasUploads = Object.keys(job.localUploads).length > 0;
+  // 온보딩 게이팅 — 아직 아무 파일도 없음 (큐·완료·업로드 전부 0). 이 동안만
+  // 📤 pulse + "파일을 먼저 업로드" hint. 전사록은 파일 드롭 시 자동 시작이라
+  // 별도 CTA 가 없어 gated-CTA hint 대신 서브헤더 hint 슬롯을 쓴다.
+  const noFiles = job.jobs.length === 0 && !hasUploads;
 
   // 헤더 pill 로 push 할 live state. 우선순위:
   //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
@@ -423,16 +428,25 @@ export function QuotesCardBody() {
         <WidgetSubHeader
           compact
           inputs={
-            <WidgetUploadButton
-              onClick={() => setUploadOpen(true)}
-              label={tWidgets('upload')}
-              count={queueJobs.length}
-              disabled={busyUpload}
-            />
+            <OnboardingTooltip
+              id="widget-quotes"
+              message={tWidgets('onboardingUpload')}
+              dismissLabel={tWidgets('onboardingDismiss')}
+            >
+              <WidgetUploadButton
+                onClick={() => setUploadOpen(true)}
+                label={tWidgets('upload')}
+                count={queueJobs.length}
+                disabled={busyUpload}
+                pulse={noFiles}
+              />
+            </OnboardingTooltip>
           }
           hint={
             uploadError ? (
               <span className="text-warning">{uploadError}</span>
+            ) : noFiles ? (
+              <span>{tWidgets('uploadHint')}</span>
             ) : undefined
           }
         />

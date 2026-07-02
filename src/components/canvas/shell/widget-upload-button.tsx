@@ -41,6 +41,9 @@ export type WidgetUploadButtonProps = {
   // 대기 중 (큐) 파일 count. 0 이거나 미지정이면 배지 없음.
   count?: number;
   disabled?: boolean;
+  // 아직 업로드 전 → amore halo pulse 로 "여기부터 눌러라" 유도 (§ 온보딩).
+  // 파일이 들어오면 호출부가 false 로 내려 pulse 정지.
+  pulse?: boolean;
 };
 
 export function WidgetUploadButton({
@@ -48,27 +51,32 @@ export function WidgetUploadButton({
   label = '파일 업로드',
   count,
   disabled = false,
+  pulse = false,
 }: WidgetUploadButtonProps) {
   const showBadge = typeof count === 'number' && count > 0;
   return (
-    <IconButton
-      variant="bordered"
-      size="md"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className="relative"
-    >
-      <UploadIcon className="h-4 w-4" />
-      {showBadge && (
-        <span
-          className="absolute -right-1.5 -top-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-amore px-1 text-xs font-semibold leading-none text-paper"
-          aria-hidden
-        >
-          {count}
-        </span>
-      )}
-    </IconButton>
+    // pulse halo 는 버튼 Memphis hard-shadow 를 덮지 않도록 wrapper span 에
+    // 얹는다 (globals.css .widget-gate-guide-pulse).
+    <span className={pulse ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'}>
+      <IconButton
+        variant="bordered"
+        size="md"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        title={label}
+        className="relative"
+      >
+        <UploadIcon className="h-4 w-4" />
+        {showBadge && (
+          <span
+            className="absolute -right-1.5 -top-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-amore px-1 text-xs font-semibold leading-none text-paper"
+            aria-hidden
+          >
+            {count}
+          </span>
+        )}
+      </IconButton>
+    </span>
   );
 }

@@ -11,6 +11,7 @@ import { useInterviewJob } from '@/components/interview-job-provider';
 import { prefillKey } from '@/lib/workspace';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { WidgetUploadButton } from '../shell/widget-upload-button';
+import { OnboardingTooltip } from '../../ui/onboarding-tooltip';
 import { WidgetUploadModal } from '../shell/widget-upload-modal';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -139,6 +140,11 @@ function ExpandedBody() {
     job.items.some((i) => i.status === 'converting') ||
     job.indexStatus === 'indexing';
   const isComplete = !!job.analysis || job.doneCount > 0;
+  // 온보딩 게이팅 — 아직 아무 파일도 없음 (변환 큐·업로드 항목 0, 완료·진행중
+  // 아님). 이 동안만 📤 pulse + "파일을 먼저 업로드" hint. 변환 CTA 는
+  // 업로드 모달(InterviewUploadArea) 안에 있어 gated-CTA hint 대신 서브헤더
+  // hint 슬롯을 쓴다.
+  const noFiles = job.items.length === 0 && !isComplete && !running;
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
@@ -149,12 +155,20 @@ function ExpandedBody() {
       <WidgetSubHeader
         compact
         inputs={
-          <WidgetUploadButton
-            onClick={() => setUploadOpen(true)}
-            label={tWidgets('upload')}
-            count={job.queuedCount}
-          />
+          <OnboardingTooltip
+            id="widget-interviews"
+            message={tWidgets('onboardingUpload')}
+            dismissLabel={tWidgets('onboardingDismiss')}
+          >
+            <WidgetUploadButton
+              onClick={() => setUploadOpen(true)}
+              label={tWidgets('upload')}
+              count={job.queuedCount}
+              pulse={noFiles}
+            />
+          </OnboardingTooltip>
         }
+        hint={noFiles ? <span>{tWidgets('uploadHint')}</span> : undefined}
       />
 
       {/* 업로드 모달 — 옛 서브헤더 InterviewUploadArea (dropzone + 변환 큐

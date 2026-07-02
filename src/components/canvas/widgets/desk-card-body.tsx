@@ -48,6 +48,8 @@ import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
+import { WidgetGatedCTA } from '@/components/canvas/shell/widget-gated-cta';
+import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
 import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -599,6 +601,9 @@ export function DeskCardBody() {
     hasKeywords;
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
+  // 온보딩 게이팅 — CTA 가 "설정 미완료" 로 막혀 있는 상태 (진행중/제출중과
+  // 구분). 이 동안만 ⚙ pulse + CTA 아래 hint 를 띄운다.
+  const settingsIncomplete = !hasKeywords || selected.size === 0;
   // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
   // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
   // would only yield a raw-data dump. A single keyword expands to +4 similar
@@ -694,14 +699,24 @@ export function DeskCardBody() {
         <WidgetSubHeader
           compact
           inputs={
-            <WidgetSettingsButton
-              onClick={() => setSettingsOpen(true)}
-              label={tWidgets('settings')}
-              hasChanges={hasNonDefaultSettings}
-            />
+            <OnboardingTooltip
+              id="widget-desk"
+              message={tWidgets('onboardingSettings')}
+              dismissLabel={tWidgets('onboardingDismiss')}
+            >
+              <WidgetSettingsButton
+                onClick={() => setSettingsOpen(true)}
+                label={tWidgets('settings')}
+                hasChanges={hasNonDefaultSettings}
+                pulse={settingsIncomplete}
+              />
+            </OnboardingTooltip>
           }
           actions={
-            <>
+            <WidgetGatedCTA
+              showHint={settingsIncomplete}
+              reasonHint={tWidgets('settingsHint')}
+            >
               <ChromeButton
                 variant="primary"
                 size="lg"
@@ -712,7 +727,7 @@ export function DeskCardBody() {
                   ? tCommon('loading')
                   : tDesk('search')}
               </ChromeButton>
-            </>
+            </WidgetGatedCTA>
           }
         />
 

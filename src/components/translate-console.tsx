@@ -38,6 +38,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { WidgetSubHeader } from './canvas/shell/widget-subheader';
 import { WidgetSettingsButton } from './canvas/shell/widget-settings-button';
+import { OnboardingTooltip } from './ui/onboarding-tooltip';
 import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
@@ -2920,11 +2921,21 @@ export function TranslateConsole({
         className="-mx-5 -mt-5"
         compact
         inputs={
-          <WidgetSettingsButton
-            onClick={() => setSettingsOpen(true)}
-            label={tWidgets('settings')}
-            hasChanges={hasNonDefaultSettings}
-          />
+          // 통역은 captureMode='both' + 원어/번역언어 default 가 유효해 "설정
+          // 미완료" 게이팅 상태가 없다 → 신규 강제 disable 은 회귀 위험(기존
+          // start 는 busy 만으로 gate)이라 도입하지 않고, 첫 사용 온보딩
+          // 툴팁만 얹어 설정 진입을 안내한다. pulse/hint 없음.
+          <OnboardingTooltip
+            id="widget-translate"
+            message={tWidgets('onboardingSettings')}
+            dismissLabel={tWidgets('onboardingDismiss')}
+          >
+            <WidgetSettingsButton
+              onClick={() => setSettingsOpen(true)}
+              label={tWidgets('settings')}
+              hasChanges={hasNonDefaultSettings}
+            />
+          </OnboardingTooltip>
         }
         actions={
           /* 시계 + 시작/중지 CTA 만. 음성 on/off · 공유 링크 생성 버튼은

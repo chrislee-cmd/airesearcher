@@ -40,6 +40,9 @@ export type WidgetSettingsButtonProps = {
   // default 와 다른 설정이 하나라도 있으면 우상단 amore dot 노출.
   hasChanges?: boolean;
   disabled?: boolean;
+  // 설정 미완료 → CTA disabled 인 동안 amore halo pulse 로 "여기부터 눌러라"
+  // 유도 (§ 온보딩). 설정이 채워지면 호출부가 false 로 내려 pulse 정지.
+  pulse?: boolean;
 };
 
 export function WidgetSettingsButton({
@@ -47,24 +50,30 @@ export function WidgetSettingsButton({
   label = '설정',
   hasChanges = false,
   disabled = false,
+  pulse = false,
 }: WidgetSettingsButtonProps) {
   return (
-    <IconButton
-      variant="bordered"
-      size="md"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className="relative"
-    >
-      <SettingsGearIcon className="h-4 w-4" />
-      {hasChanges && (
-        <span
-          className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amore"
-          aria-hidden
-        />
-      )}
-    </IconButton>
+    // pulse halo 는 버튼 자체 Memphis hard-shadow 를 덮지 않도록 wrapper span
+    // 에 얹는다 (globals.css .widget-gate-guide-pulse). pulse=false 여도
+    // wrapper 는 유지 — 토글 시 IconButton 리마운트 방지 (DOM 안정).
+    <span className={pulse ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'}>
+      <IconButton
+        variant="bordered"
+        size="md"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        title={label}
+        className="relative"
+      >
+        <SettingsGearIcon className="h-4 w-4" />
+        {hasChanges && (
+          <span
+            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amore"
+            aria-hidden
+          />
+        )}
+      </IconButton>
+    </span>
   );
 }
