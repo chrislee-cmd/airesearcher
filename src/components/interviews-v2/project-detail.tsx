@@ -116,7 +116,10 @@ export function ProjectDetail({
           )}
         </aside>
         <section className="min-h-0 lg:col-span-7">
-          <SearchChat projectId={projectId} />
+          <SearchChat
+            projectIds={null}
+            currentProject={{ id: projectId, name: projectName }}
+          />
         </section>
       </div>
 
