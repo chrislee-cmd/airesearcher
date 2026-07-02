@@ -2,8 +2,7 @@ import posthog from 'posthog-js';
 import { env } from '@/env';
 
 // Module-level guard so init runs at most once per page load even if the
-// provider effect re-fires (consent flips, fast refresh). Mirrors the
-// mixpanel-provider.tsx pattern.
+// provider effect re-fires (fast refresh). Mirrors mixpanel-provider.tsx.
 let initialized = false;
 
 // Lazily boots the PostHog browser SDK. No-op when:
@@ -11,6 +10,9 @@ let initialized = false;
 //   - NEXT_PUBLIC_POSTHOG_KEY is unset (local dev / previews without the env)
 //   - already initialized this page load
 // Option values come straight from the analytics-posthog-setup spec.
+//
+// NOTE: capture is unconditional — no consent gate yet (deferred, see
+// docs/DEBT.md). Revisit before EU-heavy scale.
 export function initPostHog() {
   if (initialized) return;
   if (typeof window === 'undefined') return;
@@ -29,36 +31,6 @@ export function initPostHog() {
     },
   });
   initialized = true;
-}
-
-// Consent orchestration. The cookie banner (PR-SEC8) gates every analytics
-// SDK on the user's `analytics` choice; use-consent.ts explicitly calls out
-// "future analytics SDKs" as consumers. We only send anything to PostHog
-// after an explicit grant, and stop (opt-out + reset identity) on revoke.
-export function setPostHogConsent(granted: boolean) {
-  if (typeof window === 'undefined') return;
-  if (!env.NEXT_PUBLIC_POSTHOG_KEY) return;
-
-  if (granted) {
-    initPostHog();
-    if (!initialized) return;
-    try {
-      posthog.opt_in_capturing();
-    } catch {
-      // SDK can throw when storage is unavailable; opt-in is best-effort.
-    }
-    return;
-  }
-
-  // Pre-decision or explicit revoke. Only act if we already booted this
-  // session, otherwise there is nothing to tear down.
-  if (!initialized) return;
-  try {
-    posthog.opt_out_capturing();
-    posthog.reset();
-  } catch {
-    // see note above
-  }
 }
 
 export { posthog };

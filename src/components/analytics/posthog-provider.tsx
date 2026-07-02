@@ -1,19 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { setPostHogConsent } from '@/lib/analytics/posthog-client';
-import { useConsent } from '@/hooks/use-consent';
+import { initPostHog } from '@/lib/analytics/posthog-client';
 
-// Mounts the PostHog SDK, gated on the user's analytics consent. `useConsent`
-// default-denies on SSR + first paint, so no network call to posthog.com
-// happens before an explicit grant. Re-runs on consent changes so a later
-// grant boots the SDK and a revoke opts out without a reload.
+// Boots the PostHog SDK on mount. Unconditional by design (analytics 1/6):
+// we prioritize full capture now and defer consent gating until scale makes
+// it worth wiring — tracked in docs/DEBT.md. `initPostHog` no-ops when the
+// key is unset (local dev / previews) so this stays safe there.
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  const { analytics } = useConsent();
-
   useEffect(() => {
-    setPostHogConsent(analytics);
-  }, [analytics]);
+    initPostHog();
+  }, []);
 
   return <>{children}</>;
 }
