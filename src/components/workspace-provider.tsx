@@ -18,6 +18,7 @@ import {
   SEND_TO_MAP,
 } from '@/lib/workspace';
 import { useActiveProject } from './active-project-provider';
+import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 
 export type DragInfo = {
   artifactId: string;
@@ -174,7 +175,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         resolvedKind === 'project' && folderQueryParam !== null
           ? `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}&folder=${encodeURIComponent(folderQueryParam)}`
           : `/api/workspace/artifacts?project=${encodeURIComponent(queryParam)}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      // fetchWithAuth also raises the global session-expiry signal on 401
+      // so <SessionExpiredModal /> surfaces an explicit re-login prompt.
+      // The local stop-poll handling below still runs (halts the interval).
+      const res = await fetchWithAuth(url, { cache: 'no-store' });
       if (res.status === 401) {
         // Session expired / cookie cleared / RLS denied. Silently halt the
         // background poll — without this guard `setInterval` keeps firing

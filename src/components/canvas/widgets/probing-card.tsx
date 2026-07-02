@@ -28,6 +28,7 @@ import {
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
@@ -253,7 +254,7 @@ function ExpandedBody() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/probing/research-context', {
+        const res = await fetchWithAuth('/api/probing/research-context', {
           cache: 'no-store',
         });
         if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
@@ -291,7 +292,7 @@ function ExpandedBody() {
     const handle = setTimeout(() => {
       void (async () => {
         try {
-          await fetch('/api/probing/research-context', {
+          await fetchWithAuth('/api/probing/research-context', {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
@@ -368,7 +369,7 @@ function ExpandedBody() {
       // probing_questions DB 에 백그라운드 기록 — account-export 가 그대로
       // 동작하도록. 실패는 무시 (위젯 UX 에 영향 X).
       try {
-        await fetch('/api/probing/questions', {
+        await fetchWithAuth('/api/probing/questions', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -429,7 +430,7 @@ function ExpandedBody() {
     thinkAbortRef.current = controller;
 
     try {
-      const res = await fetch('/api/probing/think', {
+      const res = await fetchWithAuth('/api/probing/think', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -520,7 +521,7 @@ function ExpandedBody() {
     setReflectionError(null);
 
     try {
-      const res = await fetch('/api/probing/reflection', {
+      const res = await fetchWithAuth('/api/probing/reflection', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

@@ -296,7 +296,10 @@
     "errorSamePassword": "이전 비밀번호와 다른 비밀번호를 입력해 주세요.",
     "errorInvalidEmail": "올바른 이메일 형식이 아닙니다.",
     "errorLinkExpired": "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해주세요.",
-    "errorGeneric": "오류가 발생했습니다. 다시 시도해주세요."
+    "errorGeneric": "오류가 발생했습니다. 다시 시도해주세요.",
+    "sessionExpiredTitle": "세션이 만료되었습니다",
+    "sessionExpiredBody": "로그인 세션이 만료되어 다시 로그인이 필요합니다. 잠시 후 로그인 화면으로 이동합니다.",
+    "sessionExpiredCta": "로그인"
   },
   "Consent": {
     "legend": "이용 동의",

@@ -296,7 +296,10 @@
     "errorSamePassword": "Please pick a password different from your previous one.",
     "errorInvalidEmail": "Please enter a valid email address.",
     "errorLinkExpired": "This link has expired or already been used. Please request a new one.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "sessionExpiredTitle": "Your session has expired",
+    "sessionExpiredBody": "Your sign-in session has expired and you need to sign in again. Redirecting you to the sign-in page shortly.",
+    "sessionExpiredCta": "Sign in"
   },
   "Consent": {
     "legend": "Account consents",
