@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
+  DEFAULT_PERSONA_SECTIONS,
   PROBING_OUTPUT_LANGS,
   buildProbingPersonaSystem,
   probingPersonaSchema,
@@ -36,6 +37,20 @@ const Body = z.object({
   // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
   // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
   output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
+  // PR (probing-persona-dynamic-sections): 사용자 정의 커스텀 섹션. 기본 8
+  // 섹션 뒤에 append 되어 persona LLM 이 함께 채운다. 미전달 시 기본 8만
+  // (옛 동작). key 는 기본 8 key 와 충돌하지 않도록 클라이언트 책임 —
+  // 충돌 시 catchall 특성상 뒤 정의가 아니라 기본 key 슬롯에 병합될 수 있음.
+  custom_sections: z
+    .array(
+      z.object({
+        key: z.string().min(1).max(64),
+        title: z.string().min(1).max(120),
+        description: z.string().max(1000).optional(),
+      }),
+    )
+    .max(16)
+    .optional(),
 });
 
 export async function POST(request: Request) {
@@ -87,21 +102,29 @@ export async function POST(request: Request) {
     ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideSan.wrapped}\n\n위 가이드의 가설 / 의도 검증 흐름이 응답자 이해의 1순위 방향입니다.\n\n`
     : '';
 
+  // 기본 8 섹션 + (옵션) 사용자 custom 섹션. custom_sections 미전달 시
+  // 기본 8만 — 옛 동작 100% 보존.
+  const sections = [
+    ...DEFAULT_PERSONA_SECTIONS,
+    ...(parsed.data.custom_sections ?? []),
+  ];
+  const sectionKeyList = sections.map((s) => s.key).join(' / ');
+
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: probingPersonaSchema,
-    system: buildProbingPersonaSystem(parsed.data.output_lang),
+    system: buildProbingPersonaSystem(sections, parsed.data.output_lang),
     prompt: `${guideBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
 
 ---
-위 transcript 만 보고 응답자의 페르소나를 8 섹션 (demographics / values / preferences / needs / painpoints / brand_perception / decision_drivers / behavioral_patterns) 으로 채우세요. transcript 가 빈약한 섹션은 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열로 두세요. 일반론으로 빈 칸을 채우지 마세요.`,
+위 transcript 만 보고 응답자의 페르소나를 ${sections.length} 섹션 (${sectionKeyList}) 으로 채우세요. 출력 JSON 의 각 섹션 key 는 이 목록과 정확히 일치해야 합니다. transcript 가 빈약한 섹션은 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열로 두세요. 일반론으로 빈 칸을 채우지 마세요.`,
     // 0.3 — 같은 transcript 에서 호출마다 큰 흔들림 없도록. 0 은 너무
     // 동일한 문장을 반복, 0.4 (suggest) 보다는 보수적.
     temperature: 0.3,
-    // 8 섹션 × (summary + signals + confidence) — 풀 응답 ~2500~3500 token.
-    // 4000 으로 상향해 cap 충돌 회피.
-    maxOutputTokens: 4000,
+    // 섹션당 (summary + signals + confidence) ~500 token. 기본 8 섹션은 4000
+    // 유지, custom 섹션이 늘면 비례 상향 (cap 8000) 해 응답 절단 회피.
+    maxOutputTokens: Math.min(8000, Math.max(4000, sections.length * 500)),
     providerOptions: ZERO_RETENTION,
   });
 

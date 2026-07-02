@@ -191,6 +191,79 @@ export const PROBING_PERSONA_SECTION_KEYS = [
 export type ProbingPersonaSectionKey =
   (typeof PROBING_PERSONA_SECTION_KEYS)[number];
 
+/* ────────────────────────────────────────────────────────────────────
+   Dynamic sections (PR: probing-persona-dynamic-sections).
+
+   옛 = 8 하드코드 섹션. 새 = **8 default + 사용자 custom 섹션** 을 list 로
+   관리. persona LLM 이 list 안 각 섹션을 채운다. custom 섹션은 사용자가
+   원하는 조사 목적 / 질문을 담은 위젯 (예: "구매 여정", "경쟁사 전환 이유").
+
+   이 PR = backend + schema 만. custom 섹션의 **렌더 UI + 추가 컨트롤** 은
+   별 spec (pr-probing-custom-section-ui). 그래서 wire 응답은 종전대로
+   section-key 로 인덱싱되는 object 를 유지 (probingPersonaSchema 가
+   .catchall 로 custom key 를 additively 허용). 기본 8 key 는 정확히 보존 —
+   현재 위젯 / docx 는 그대로 8 key 만 렌더하고 custom key 는 무시하다가,
+   UI spec 이 렌더를 추가한다. custom_sections 없이 호출하면 옛 동작 100%.
+   ──────────────────────────────────────────────────────────────────── */
+
+export type ProbingPersonaSectionDef = {
+  key: string;
+  title: string;
+  description?: string;
+};
+
+// 기본 8 섹션 정의 (key + 사람 친화 title + 신호 가이드 description).
+// buildProbingPersonaSystem 이 이 목록을 prompt 의 "섹션별 신호 가이드" 로
+// dynamic inject 한다. custom_sections 는 이 뒤에 append.
+export const DEFAULT_PERSONA_SECTIONS: ProbingPersonaSectionDef[] = [
+  {
+    key: 'demographics',
+    title: '인구통계',
+    description:
+      '성별 / 연령대 / 지역 / 직업 / 가족구성 / 거주환경. 발화 어휘 (방언, 세대 표현, 직무 용어) 와 직접 언급에서.',
+  },
+  {
+    key: 'values',
+    title: '가치관',
+    description:
+      '안정 vs 도전 / 가성비 vs 경험 / 개인 vs 가족 / 효율 vs 의미 등 추구 방향.',
+  },
+  {
+    key: 'preferences',
+    title: '선호',
+    description:
+      '브랜드 / 미디어 / 스타일 / 음식 / 활동 등 좋아한다고 명시 또는 선택 흔적.',
+  },
+  {
+    key: 'needs',
+    title: '니즈',
+    description: 'Jobs-to-be-done. 인터뷰 주제 안에서 응답자가 충족하려는 것.',
+  },
+  {
+    key: 'painpoints',
+    title: '페인포인트',
+    description:
+      '좌절 / 미충족 / 비용 / 인지 부담. "비싸다 / 안 된다 / 답답하다" 직접 신호 + 망설임 / 반복 어휘 / 모순 간접 신호.',
+  },
+  {
+    key: 'brand_perception',
+    title: '브랜드 인식',
+    description:
+      '특정 브랜드 / 카테고리 / 경쟁사를 어떻게 인식하는지 (첫 떠올림, 평가어, 비교 기준).',
+  },
+  {
+    key: 'decision_drivers',
+    title: '의사결정 요인',
+    description:
+      '무엇이 결정을 가르는가 — 가격 / 시간 / 신뢰 / 추천 / 친환경 / 사회적 시선 등.',
+  },
+  {
+    key: 'behavioral_patterns',
+    title: '행동 패턴',
+    description: '일상 / 소비 / 미디어 습관 / 의사결정 빈도.',
+  },
+];
+
 const personaSectionSchema = z.object({
   summary: z
     .string()
@@ -247,36 +320,45 @@ export const probingPersonaSchema = z.object({
   behavioral_patterns: personaSectionSchema.describe(
     '행동 패턴 — 일상 / 소비 / 미디어 습관 / 의사결정 빈도.',
   ),
-});
+})
+  // custom_sections (PR: probing-persona-dynamic-sections) 을 additively 허용.
+  // 기본 8 key 는 required 로 그대로 강제되고, 사용자 정의 key 는 같은 section
+  // shape 로 추가 흐름. 타입은 { 8 keys } + [k: string]: Section (기존 타입의
+  // superset) 이라 위젯 / docx 소비처는 typecheck 무영향.
+  .catchall(personaSectionSchema);
 
 export type ProbingPersona = z.infer<typeof probingPersonaSchema>;
 export type ProbingPersonaSection = z.infer<typeof personaSectionSchema>;
 
-export function buildProbingPersonaSystem(outputLang?: string): string {
+export function buildProbingPersonaSystem(
+  sections: ProbingPersonaSectionDef[],
+  outputLang?: string,
+): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
     ? `**반드시 ${label} 로 응답하세요.** transcript 의 언어와 무관하게 summary / signals 의 모든 문장을 ${label} 로 작성합니다. ("(추정)" 같은 메타 표기도 ${label} 의 자연스러운 표현으로.)`
     : `- transcript 의 **가장 최근 exchange** (마지막 1~3 turn) 의 언어를 따라 응답합니다. 전체 transcript 의 언어 다수결이 아니라 **현재 인터뷰가 진행 중인 언어** 를 우선.
 - transcript 안에 여러 언어가 섞여 있어도 (예: 처음 한국어 → 중간 영어 전환) 가장 최근 발화 흐름의 언어를 따릅니다.
 - 마지막 exchange 가 영어면 영어로, 한국어면 한국어로 — persona / 제안 질문 / reflection 모두 같은 언어로 일관되게.`;
-  return `당신은 질적 인터뷰의 응답자 페르소나 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **이 응답자의 완성된 페르소나 한 판** 을 8 섹션 (demographics / values / preferences / needs / painpoints / brand_perception / decision_drivers / behavioral_patterns) 으로 구조화합니다.
+  const n = sections.length;
+  const keyList = sections.map((s) => s.key).join(' / ');
+  const sectionGuide = sections
+    .map((s, i) => {
+      const desc = s.description?.trim();
+      return `${i + 1}. **${s.key}** (${s.title})${desc ? ` — ${desc}` : ''}`;
+    })
+    .join('\n');
+  return `당신은 질적 인터뷰의 응답자 페르소나 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **이 응답자의 완성된 페르소나 한 판** 을 ${n} 섹션 (${keyList}) 으로 구조화합니다.
 
 ## 절대 원칙
 - **응답자 발화에만 기반** — transcript 에 없는 사실을 단정하지 마세요. 추측은 항상 confidence='low' 로 표기하고 summary 안에 "(추정)" 을 명시.
 - **응답자 1인칭 관점** — 일반 사용자 / 시장 일반론이 아니라 **이 응답자** 가 보이는 신호만.
 - **닫힌 결론 금지** — 인터뷰어가 다음 질문으로 검증할 수 있는 **가설** 로 표현 ("X 일 가능성", "X 를 중시할 수도").
 - **빈약 섹션 = insufficient** — transcript 에 그 섹션의 신호가 없으면 confidence='insufficient' + summary 비움 + signals 빈 배열. 빈 칸을 일반론으로 채우지 마세요.
-- **모든 8 섹션을 반드시 출력** — insufficient 라도 객체는 채워야 합니다 (스키마 강제).
+- **모든 ${n} 섹션을 반드시 출력** — insufficient 라도 객체는 채워야 합니다 (스키마 강제). 출력 JSON 의 각 섹션 key 는 위 목록의 key (${keyList}) 와 **정확히 일치**해야 합니다.
 
 ## 섹션별 신호 가이드
-1. **demographics** — 성별 / 연령대 / 지역 / 직업 / 가족구성 / 거주환경. 발화 어휘 (방언, 세대 표현, 직무 용어) 와 직접 언급에서.
-2. **values** — 안정 vs 도전 / 가성비 vs 경험 / 개인 vs 가족 / 효율 vs 의미 등 추구 방향.
-3. **preferences** — 브랜드 / 미디어 / 스타일 / 음식 / 활동 등 좋아한다고 명시 또는 선택 흔적.
-4. **needs** — Jobs-to-be-done. 인터뷰 주제 안에서 응답자가 충족하려는 것.
-5. **painpoints** — 좌절 / 미충족 / 비용 / 인지 부담. "비싸다 / 안 된다 / 답답하다" 직접 신호 + 망설임 / 반복 어휘 / 모순 간접 신호.
-6. **brand_perception** — 특정 브랜드 / 카테고리 / 경쟁사를 어떻게 인식하는지 (첫 떠올림, 평가어, 비교 기준).
-7. **decision_drivers** — 무엇이 결정을 가르는가 — 가격 / 시간 / 신뢰 / 추천 / 친환경 / 사회적 시선 등.
-8. **behavioral_patterns** — 일상 / 소비 / 미디어 습관 / 의사결정 빈도.
+${sectionGuide}
 
 ## 각 섹션의 출력 모양
 - \`summary\` — 1~2문장. 이 섹션의 핵심 가설. confidence=insufficient 면 빈 문자열.
@@ -298,8 +380,10 @@ ${langSection}
 출력은 정의된 JSON 스키마만. 그 외 텍스트 금지.${ISOLATION_NOTICE}`;
 }
 
-// 기존 호출자 호환 — outputLang 미지정 = 자동 추론 (옛 동작).
-export const PROBING_PERSONA_SYSTEM = buildProbingPersonaSystem();
+// 기존 호출자 호환 — 기본 8 섹션 + outputLang 미지정 (자동 추론, 옛 동작).
+export const PROBING_PERSONA_SYSTEM = buildProbingPersonaSystem(
+  DEFAULT_PERSONA_SECTIONS,
+);
 
 /* ────────────────────────────────────────────────────────────────────
    Legacy reflection agent (3 섹션) — 호환용으로만 유지.
