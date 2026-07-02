@@ -16,6 +16,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ProbingPersonaSection } from '@/lib/probing-prompts';
+import { IconButton } from '@/components/ui/icon-button';
 
 const panelStyle = {
   border: '2px solid var(--canvas-card-border)',
@@ -70,10 +71,14 @@ export function PersonaPanel({
   icon,
   title,
   section,
+  onRemove,
 }: {
   icon: string;
   title: string;
   section: ProbingPersonaSection | null;
+  // custom 섹션 (PR: probing-custom-section-ui) 일 때만 전달 — 우측 상단 ×
+  // 삭제 버튼 노출. 기본 8 섹션은 undefined (삭제 불가).
+  onRemove?: () => void;
 }) {
   const confidence: Confidence = section?.confidence ?? 'insufficient';
   const summary = section?.summary?.trim() ?? '';
@@ -97,7 +102,18 @@ export function PersonaPanel({
             {title}
           </h4>
         </div>
-        <ConfidenceDot confidence={confidence} />
+        <div className="flex shrink-0 items-center gap-1">
+          <ConfidenceDot confidence={confidence} />
+          {onRemove && (
+            <IconButton
+              variant="ghost-danger"
+              onClick={onRemove}
+              aria-label={`위젯 제거: ${title}`}
+            >
+              ×
+            </IconButton>
+          )}
+        </div>
       </header>
 
       {isInsufficient ? (

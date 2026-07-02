@@ -16,7 +16,10 @@ import {
   type ProbingPersonaSectionKey,
   type ProbingTechnique,
 } from './probing-prompts';
-import type { HistoryQuestion } from '@/components/canvas/widgets/probing-types';
+import type {
+  HistoryQuestion,
+  ProbingCustomSection,
+} from '@/components/canvas/widgets/probing-types';
 
 // Editorial palette — mirrors interviews-docx.ts so the two exports share
 // the same look. Sizes are docx half-points; line spacing in 240ths (240 = 1.0).
@@ -213,6 +216,9 @@ function insufficientNote(): Paragraph {
 
 export type PersonaDocxInput = {
   persona: Partial<ProbingPersona> | null;
+  // custom 섹션 (PR: probing-custom-section-ui) — 기본 8 뒤에 iterate. title
+  // 은 여기(localStorage state)에서 조회. 미전달 시 기본 8만 (옛 동작).
+  customSections?: ProbingCustomSection[];
   starredQuestions: HistoryQuestion[];
   // Persona signals' transcript quotes, deduplicated by trimmed text.
   transcriptQuotes: string[];
@@ -256,8 +262,24 @@ function techniqueLabel(t: HistoryQuestion['technique']): string {
 }
 
 export async function generatePersonaDocx(input: PersonaDocxInput): Promise<Blob> {
-  const { persona, starredQuestions, transcriptQuotes, sessionMeta } = input;
+  const { persona, customSections, starredQuestions, transcriptQuotes, sessionMeta } =
+    input;
   const children: FileChild[] = [];
+
+  // 렌더 순서 = 기본 8 (PANEL_META) + custom 섹션 (title 은 localStorage
+  // state 에서 조회, icon 은 위젯 glyph 고정).
+  const panelList: { key: string; icon: string; title: string }[] = [
+    ...PROBING_PERSONA_SECTION_KEYS.map((key) => ({
+      key,
+      icon: PANEL_META[key].icon,
+      title: PANEL_META[key].title,
+    })),
+    ...(customSections ?? []).map((c) => ({
+      key: c.key,
+      icon: '🧩',
+      title: c.title,
+    })),
+  ];
 
   // ─── Title block ───────────────────────────────────────────────
   children.push(
@@ -309,10 +331,14 @@ export async function generatePersonaDocx(input: PersonaDocxInput): Promise<Blob
   // ─── 8-panel persona ──────────────────────────────────────────
   children.push(sectionHeader('응답자 페르소나'));
 
+  const personaRec = (persona ?? null) as Record<
+    string,
+    ProbingPersonaSection | undefined
+  > | null;
   const hasAnyPanel =
-    persona !== null &&
-    PROBING_PERSONA_SECTION_KEYS.some((k) => {
-      const s = persona?.[k];
+    personaRec !== null &&
+    panelList.some((p) => {
+      const s = personaRec[p.key];
       return (
         s &&
         ((typeof s.summary === 'string' && s.summary.trim().length > 0) ||
@@ -337,9 +363,8 @@ export async function generatePersonaDocx(input: PersonaDocxInput): Promise<Blob
     );
   }
 
-  for (const key of PROBING_PERSONA_SECTION_KEYS) {
-    const sec = persona?.[key] ?? null;
-    const meta = PANEL_META[key];
+  for (const panel of panelList) {
+    const sec = personaRec?.[panel.key] ?? null;
     const confidence: ProbingPersonaSection['confidence'] =
       sec?.confidence ?? 'insufficient';
     const summary = sec?.summary?.trim() ?? '';
@@ -350,7 +375,7 @@ export async function generatePersonaDocx(input: PersonaDocxInput): Promise<Blob
       confidence === 'insufficient' ||
       (summary.length === 0 && signals.length === 0);
 
-    children.push(panelHeader(meta.icon, meta.title, confidence));
+    children.push(panelHeader(panel.icon, panel.title, confidence));
     if (isInsufficient) {
       children.push(insufficientNote());
       continue;
@@ -573,12 +598,21 @@ function formatStampForFilename(d: Date): string {
 // section order then signal order. Trimmed and de-duped by canonical lowercase.
 export function collectTranscriptQuotes(
   persona: Partial<ProbingPersona> | null,
+  customSections?: ProbingCustomSection[],
 ): string[] {
   if (!persona) return [];
+  const personaRec = persona as Record<
+    string,
+    ProbingPersonaSection | undefined
+  >;
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const key of PROBING_PERSONA_SECTION_KEYS) {
-    const sec = persona[key];
+  const keys: string[] = [
+    ...PROBING_PERSONA_SECTION_KEYS,
+    ...(customSections ?? []).map((c) => c.key),
+  ];
+  for (const key of keys) {
+    const sec = personaRec[key];
     if (!sec || !Array.isArray(sec.signals)) continue;
     for (const s of sec.signals) {
       const q = typeof s?.quote === 'string' ? s.quote.trim() : '';
