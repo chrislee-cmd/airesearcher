@@ -29,6 +29,17 @@ export function initPostHog() {
     session_recording: {
       maskAllInputs: true, // 입력 필드 masking (PII 보호)
     },
+    // Surveys 활성 (feedback-posthog-surveys-setup). default 도 false 지만
+    // 명시적으로 두어 SDK 가 load 후 대시보드 survey 를 auto-fetch → target
+    // 매칭 시 popup 자동 노출하도록 보장. survey 정의/targeting/launch 는
+    // PostHog 대시보드에서 (Surveys → New Survey). NPS + 기능 피드백 수집.
+    disable_surveys: false,
+    loaded: () => {
+      // Surveys 는 loaded 직후 auto-fetch 됨. dev 에서만 활성 확인 로그.
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[posthog] surveys enabled (auto-fetch on load)');
+      }
+    },
   });
   initialized = true;
 }
