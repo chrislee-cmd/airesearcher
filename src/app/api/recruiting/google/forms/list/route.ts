@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { RecruitingBrief } from '@/lib/recruiting-schema';
+
+type Criterion = RecruitingBrief['criteria'][number];
 
 // Returns all forms this user has published from the recruiting page,
 // newest first. The UI uses the list to render one card per form with
@@ -28,37 +31,60 @@ export async function GET() {
     responder_uri: string | null;
     edit_uri: string | null;
     sheet_url?: string | null;
+    criteria?: Criterion[] | null;
+    summary?: string | null;
     created_at: string;
   };
 
-  const full = await admin
-    .from('recruiting_forms')
-    .select('form_id,title,responder_uri,edit_uri,sheet_url,created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  // Tiered select so a not-yet-applied column never blanks the whole
+  // list. `criteria`/`summary` land in migration 20260703060414 and
+  // `sheet_url` in 20260624032912; production may roll forward at
+  // different times (§7.5 migrations don't auto-apply). We try the
+  // widest set first and step down one migration at a time on 42703 so
+  // that, e.g., a stale `criteria` column doesn't also cost us the
+  // `sheet_url` CTA.
+  const order = { ascending: false } as const;
+  const byUser = (cols: string) =>
+    admin
+      .from('recruiting_forms')
+      .select(cols)
+      .eq('user_id', user.id)
+      .order('created_at', order);
 
-  let rows: FormRow[] = [];
-  if (full.error) {
-    if (full.error.code === '42703') {
-      // sheet_url column not yet migrated — degrade to the legacy
-      // column set so the widget renders existing forms with the
-      // "시트 연결" CTA disabled.
-      const legacy = await admin
-        .from('recruiting_forms')
-        .select('form_id,title,responder_uri,edit_uri,created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+  let rows: FormRow[] | null = null;
+  const full = await byUser(
+    'form_id,title,responder_uri,edit_uri,sheet_url,criteria,summary,created_at',
+  );
+  if (!full.error) {
+    rows = (full.data ?? []) as unknown as FormRow[];
+  } else if (full.error.code === '42703') {
+    // criteria/summary not yet migrated — keep sheet_url CTA working.
+    const mid = await byUser(
+      'form_id,title,responder_uri,edit_uri,sheet_url,created_at',
+    );
+    if (!mid.error) {
+      rows = (mid.data ?? []) as unknown as FormRow[];
+    } else if (mid.error.code === '42703') {
+      // sheet_url also missing — degrade to the legacy column set so the
+      // widget still renders existing forms (CTA disabled).
+      const legacy = await byUser(
+        'form_id,title,responder_uri,edit_uri,created_at',
+      );
       if (legacy.error) {
         console.error('forms_list_legacy_failed', legacy.error);
-        return NextResponse.json({ error: legacy.error.message }, { status: 500 });
+        return NextResponse.json(
+          { error: legacy.error.message },
+          { status: 500 },
+        );
       }
-      rows = (legacy.data ?? []) as FormRow[];
+      rows = (legacy.data ?? []) as unknown as FormRow[];
     } else {
-      console.error('forms_list_failed', full.error);
-      return NextResponse.json({ error: full.error.message }, { status: 500 });
+      console.error('forms_list_failed', mid.error);
+      return NextResponse.json({ error: mid.error.message }, { status: 500 });
     }
   } else {
-    rows = (full.data ?? []) as FormRow[];
+    console.error('forms_list_failed', full.error);
+    return NextResponse.json({ error: full.error.message }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -68,6 +94,8 @@ export async function GET() {
       responderUri: r.responder_uri,
       editUri: r.edit_uri,
       sheetUrl: r.sheet_url ?? null,
+      criteria: r.criteria ?? null,
+      summary: r.summary ?? null,
       createdAt: r.created_at,
     })),
   });

@@ -8,7 +8,10 @@ import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
-import { ResponsesSpreadsheet } from './recruiting/responses-spreadsheet';
+import {
+  ResponsesSpreadsheet,
+  type FormSummary,
+} from './recruiting/responses-spreadsheet';
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
@@ -30,11 +33,25 @@ function ExpandedBody() {
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
   const [isPublished, setIsPublished] = useState(false);
-  // 대상자 조건 원본은 wizard React state 에만 존재(서버 form별 미저장)하므로
-  // 콜백으로 lift 해 fullview 상단 좌 위젯(조건 요약)에 그대로 전달한다.
+  // 대상자 조건은 이제 발행 시 recruiting_forms 에 폼별로 저장된다
+  // (migration 20260703060414). 우선순위:
+  //   1) fullview 에서 *선택된 폼* 의 저장된 조건 (옛 폼·refresh 후에도 노출)
+  //   2) 없으면(옛 폼 or 마이그 미적용) wizard 의 실시간 state 로 fallback
+  // → 두 경로 모두 실패할 때만 panel 이 EmptyState 를 띄운다.
   const [conditionsBrief, setConditionsBrief] = useState<EditableBrief | null>(
     null,
   );
+  const [selectedForm, setSelectedForm] = useState<FormSummary | null>(null);
+
+  const storedBrief: EditableBrief | null =
+    selectedForm?.criteria && selectedForm.criteria.length > 0
+      ? {
+          summary: selectedForm.summary ?? '',
+          criteria: selectedForm.criteria,
+          schedule: [],
+        }
+      : null;
+  const conditionsForPanel = storedBrief ?? conditionsBrief;
 
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
@@ -79,11 +96,11 @@ function ExpandedBody() {
               공간을 flex-1 로 채우며 자체 스크롤(기존 unlock/scroll 유지). */}
           <div className="flex h-full min-h-0 flex-col">
             <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
-              <RecruitingConditionsPanel brief={conditionsBrief} />
+              <RecruitingConditionsPanel brief={conditionsForPanel} />
               <RecruitingDistributionPanel />
             </div>
             <div className="min-h-0 flex-1">
-              <ResponsesSpreadsheet />
+              <ResponsesSpreadsheet onSelectedFormChange={setSelectedForm} />
             </div>
           </div>
         </WidgetFullviewPanel>,
