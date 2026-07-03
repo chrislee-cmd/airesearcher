@@ -11,6 +11,7 @@ import {
   type InterviewDocumentStatus,
 } from '@/hooks/use-interview-v2-documents';
 import { SearchChat } from './search-chat';
+import { TrustDetailPanel } from './trust-detail-panel';
 import { UploadModal } from './upload-modal';
 
 // Interview V2 — project detail view (file list + search chat). The ⚙ 설정 /
@@ -114,6 +115,12 @@ export function ProjectDetail({
               ))}
             </ul>
           )}
+
+          {/* 신뢰도 (trust) panel — 파일 리스트 아래, default 접힘. -mx-6 로
+              aside 좌우 패딩을 상쇄해 divider/hover 배경이 폭 전체를 채운다. */}
+          <div className="-mx-6 mt-5">
+            <TrustDetailPanel projectId={projectId} />
+          </div>
         </aside>
         <section className="min-h-0 lg:col-span-7">
           <SearchChat
