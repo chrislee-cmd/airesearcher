@@ -33,6 +33,26 @@ function wordCount(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+// First / last question in the document. A "question" = a sentence ending in
+// ? / ？ (the char class stops at the previous sentence boundary so each match
+// is one sentence, not a whole paragraph). Surfacing both endpoints lets a
+// user confirm the transcript was captured from its very first to its very
+// last question — nothing truncated at either end. Null when the doc has no
+// question form.
+function extractQuestions(text: string): {
+  first: string | null;
+  last: string | null;
+} {
+  const matches = text.match(/[^.!?？。\n]*[?？]/g);
+  if (!matches) return { first: null, last: null };
+  const qs = matches
+    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .filter((s) => s.length > 1)
+    .map((s) => s.slice(0, 140));
+  if (qs.length === 0) return { first: null, last: null };
+  return { first: qs[0], last: qs[qs.length - 1] };
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -70,6 +90,7 @@ export async function GET(
 
   const documents = ((data ?? []) as unknown as DocRow[]).map((d) => {
     const md = d.markdown ?? '';
+    const q = extractQuestions(md);
     return {
       id: d.id,
       filename: d.filename,
@@ -78,6 +99,9 @@ export async function GET(
       // UTF-8 byte size of the stored text = the file's "용량".
       byte_size: Buffer.byteLength(md, 'utf8'),
       word_count: wordCount(md),
+      // Document's first / last question (or null when not Q&A shaped).
+      first_question: q.first,
+      last_question: q.last,
       created_at: d.created_at,
       index_status: d.interview_jobs?.index_status ?? 'pending',
     };

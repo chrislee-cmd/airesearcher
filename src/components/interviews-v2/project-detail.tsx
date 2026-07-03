@@ -149,6 +149,23 @@ export function ProjectDetail({
                         <div className="mt-0.5 text-xs tabular-nums text-mute-soft">
                           {formatBytes(d.byte_size)} · {d.word_count.toLocaleString()}단어
                         </div>
+                        {/* 첫/마지막 질문 — 문서 처음부터 끝까지 온전히 담겼음을 확인. */}
+                        {(d.first_question || d.last_question) && (
+                          <div className="mt-1 space-y-0.5">
+                            {d.first_question && (
+                              <div className="truncate text-xs text-mute-soft">
+                                <span className="text-mute">첫 질문</span> ·{' '}
+                                {d.first_question}
+                              </div>
+                            )}
+                            {d.last_question && (
+                              <div className="truncate text-xs text-mute-soft">
+                                <span className="text-mute">마지막 질문</span> ·{' '}
+                                {d.last_question}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {reading ? (
                         <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-amore">
