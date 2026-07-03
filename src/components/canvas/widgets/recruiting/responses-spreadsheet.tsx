@@ -10,6 +10,9 @@ import { usePaywall } from '@/components/paywall-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
+import type { RecruitingBrief } from '@/lib/recruiting-schema';
+
+type Criterion = RecruitingBrief['criteria'][number];
 
 // fullview 응답 spreadsheet — 발행된 리크루팅 폼들의 응답을 인앱 표로
 // 렌더한다. 데이터는 기존 Forms-API 기반 엔드포인트를 그대로 재사용:
@@ -23,12 +26,17 @@ import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 // 내려온다 — 브라우저 payload 로는 마스킹 전 원본 PII 가 흐르지 않는다.
 const ROW_CAP = 200;
 
-type FormSummary = {
+export type FormSummary = {
   formId: string;
   title: string | null;
   responderUri: string | null;
   editUri: string | null;
   sheetUrl: string | null;
+  // 발행 시 저장된 대상자 조건/요약 (migration 20260703060414). 옛 폼이나
+  // 마이그 미적용 환경에서는 null — 이때 호스트 카드가 wizard 의 실시간
+  // state 로 fallback 한다.
+  criteria: Criterion[] | null;
+  summary: string | null;
   createdAt: string;
 };
 
@@ -73,7 +81,14 @@ function selectorLabel(f: FormSummary): string {
   return date ? `${title} (${date})` : title;
 }
 
-export function ResponsesSpreadsheet() {
+export function ResponsesSpreadsheet({
+  onSelectedFormChange,
+}: {
+  // Surfaces the currently-selected form (with its stored 조건/요약) to the
+  // host card so the fullview 조건 panel mirrors *this* form, not just the
+  // wizard's last-analysed brief.
+  onSelectedFormChange?: (form: FormSummary | null) => void;
+} = {}) {
   const { refresh: refreshCredits } = usePaywall();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
@@ -229,6 +244,11 @@ export function ResponsesSpreadsheet() {
     () => forms?.find((f) => f.formId === selectedFormId) ?? null,
     [forms, selectedFormId],
   );
+
+  // Mirror the selected form (and its stored 조건) up to the host card.
+  useEffect(() => {
+    onSelectedFormChange?.(selectedForm);
+  }, [selectedForm, onSelectedFormChange]);
 
   const columns = useMemo(() => (data ? data.columns : []), [data]);
   const piiQids = useMemo(() => {

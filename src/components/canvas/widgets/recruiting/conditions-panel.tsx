@@ -6,10 +6,11 @@ import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage
 // 리크루팅 fullview 상단 좌 위젯 — recruiting wizard 에서 정의한 참여자
 // 조건(대상자 조건)을 chip 으로 요약 렌더한다.
 //
-// 데이터 소스: 조건은 서버에 form 별로 저장되지 않고 wizard 의 React state
-// 에만 존재하므로(§recruiting_forms 테이블에 criteria 컬럼 없음), 카드가
-// wizard 의 onConditionsChange 콜백으로 lift 한 값을 prop 으로 받는다.
-// brief 가 null 이면(아직 조건 분석 전) 안내 EmptyState 를 띄운다.
+// 데이터 소스(호스트 카드가 우선순위 결정 — recruiting-card.tsx):
+//   1) fullview 에서 선택된 폼의 저장된 조건(recruiting_forms.criteria,
+//      migration 20260703060414) — 옛 폼·refresh 후에도 노출
+//   2) 없으면 wizard 의 실시간 state(onConditionsChange 로 lift)로 fallback
+// brief 가 null 이면(둘 다 없음 — 아직 분석 전 신규 폼) 안내 EmptyState.
 export function RecruitingConditionsPanel({
   brief,
 }: {

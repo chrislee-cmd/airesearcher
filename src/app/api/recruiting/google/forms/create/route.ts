@@ -13,10 +13,19 @@ import { createGoogleForm } from '@/lib/google-forms';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey } from '@/lib/survey-schema';
 import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
+import { recruitingBriefSchema } from '@/lib/recruiting-schema';
 
 export const maxDuration = 60;
 
-const Body = z.object({ survey: surveySchema });
+// The wizard sends the analysed 대상자 조건 alongside the survey so we can
+// persist it per-form (fullview 조건 panel reads it back). Optional because
+// a survey can be published without a fresh brief (hand-edited flows) and
+// older wizard builds omit it — persistence is then skipped.
+const Body = z.object({
+  survey: surveySchema,
+  criteria: recruitingBriefSchema.shape.criteria.optional(),
+  summary: z.string().optional(),
+});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -177,6 +186,33 @@ export async function POST(request: Request) {
         }
       } else {
         console.error('forms_create_persist_failed', upsert.error);
+      }
+    }
+    // Best-effort, additive: stamp the analysed 조건/요약 onto the row so
+    // the fullview 조건 panel can render them for this form later (and
+    // across refresh / other forms). Kept as a *separate* update so the
+    // criteria columns (migration 20260703060414) never entangle with the
+    // publish upsert's own fallback — if they aren't applied yet Postgres
+    // throws 42703 / PostgREST PGRST204 and we simply skip, leaving the
+    // published form fully functional. Criteria then backfill on the next
+    // publish once the migration lands.
+    if (parsed.data.criteria && parsed.data.criteria.length > 0) {
+      const meta = await admin
+        .from('recruiting_forms')
+        .update({
+          criteria: parsed.data.criteria,
+          summary: parsed.data.summary ?? null,
+        })
+        .eq('form_id', result.formId);
+      if (meta.error) {
+        const code = meta.error.code;
+        const msg = meta.error.message ?? '';
+        const isMissingCriteria =
+          code === '42703' ||
+          (code === 'PGRST204' && /criteria|summary/.test(msg));
+        if (!isMissingCriteria) {
+          console.error('forms_create_criteria_persist_failed', meta.error);
+        }
       }
     }
     return NextResponse.json({ ...result, sheetUrl });

@@ -493,7 +493,14 @@ export function RecruitingWizard({
       const res = await fetch('/api/recruiting/google/forms/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ survey }),
+        // Persist the analysed 조건/요약 with the form so the fullview
+        // 조건 panel can render them for this form after refresh / for
+        // any older form (server-side, not just this session's state).
+        body: JSON.stringify({
+          survey,
+          criteria: editedBrief?.criteria,
+          summary: editedBrief?.summary,
+        }),
         signal: AbortSignal.timeout(45_000),
       });
       const j = await res.json().catch(() => ({}));
