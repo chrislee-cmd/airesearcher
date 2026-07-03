@@ -42,6 +42,7 @@ import { OnboardingTooltip } from './ui/onboarding-tooltip';
 import { useVisitedOnce } from './ui/use-visited-once';
 import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
+import { TranslateEmptySkeleton } from './canvas/widgets/skeletons/translate-empty-skeleton';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
   listenersFromPresence,
@@ -3175,6 +3176,11 @@ export function TranslateConsole({
           <span className="text-sm text-mute-soft">{t('share.creating')}</span>
         ) : null}
       </div>
+
+      {/* idle empty skeleton — 세션 시작 전(status==='idle') 에만, 실 자막
+          stream 이 "원문 | 번역" 2열로 뜰 형태를 흐릿하게 미리 보여준다.
+          starting/live/ended 에는 실 프롬프터·녹음 패널이 대신 렌더돼 사라진다. */}
+      {status === 'idle' ? <TranslateEmptySkeleton /> : null}
 
       {/* 스트리밍(프롬프터) 패널 — idle 에는 표시할 통역 라인이 없어 노출 X.
           통역 시작(live) 후에만 렌더. */}
