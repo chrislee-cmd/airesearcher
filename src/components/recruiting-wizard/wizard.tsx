@@ -80,11 +80,17 @@ function formatBytes(n: number): string {
 
 export function RecruitingWizard({
   onPublishedChange,
+  onConditionsChange,
 }: {
   // Emitted whenever the wizard enters/leaves the published state so the
   // canvas card can mount the shared WidgetStatusFooter ("신청서 제작이
   // 완료되었습니다" → fullview) without prop-drilling internal wizard state.
   onPublishedChange?: (published: boolean) => void;
+  // Emitted whenever the analysed 대상자 조건 change so the fullview's
+  // conditions panel can mirror them. The criteria live only in this
+  // wizard's React state (never persisted per-form server-side), so the
+  // fullview reads them by lifting this callback rather than re-fetching.
+  onConditionsChange?: (brief: EditableBrief | null) => void;
 } = {}) {
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
@@ -139,6 +145,12 @@ export function RecruitingWizard({
   useEffect(() => {
     onPublishedChange?.(!!published);
   }, [published, onPublishedChange]);
+
+  // Surface the analysed 대상자 조건 to the host card so the fullview's
+  // 조건 요약 panel can render them. null until Card 1 produces a brief.
+  useEffect(() => {
+    onConditionsChange?.(editedBrief);
+  }, [editedBrief, onConditionsChange]);
 
   // ── Modal state ─────────────────────────────────────────────────────
   type ModalState =
