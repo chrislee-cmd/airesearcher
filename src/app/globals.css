@@ -567,6 +567,48 @@ html, body {
 .docx-preview strong { font-weight: 600; color: var(--color-ink); }
 .docx-preview em { font-style: italic; color: var(--color-mute); }
 
+/* Meta stat grid — mammoth emits the front-matter block as a 4-col <table>
+   (each <td> = label <p> + value <p>). With no table CSS the browser's default
+   auto-layout squeezes the cells inside the narrow preview card, so columns
+   overlap and long values ("Interview Transcript #3") wrap mid-word. We flatten
+   the table into a responsive CSS grid — the <tr>/<tbody> boxes collapse with
+   `display: contents` so every <td> becomes a grid item — stacking label over
+   value per cell. 2 columns tight, 4 columns from 640px, matching the docx's
+   4-up layout. Body has no tables, so this only ever hits the meta block. */
+.docx-preview table {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0 0 20px;
+  border-top: 1px solid var(--color-line);
+  padding-top: 14px;
+}
+.docx-preview thead,
+.docx-preview tbody,
+.docx-preview tr { display: contents; }
+.docx-preview td {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.docx-preview td p { margin: 0; }
+.docx-preview td p:first-child strong {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-mute-soft);
+}
+.docx-preview td p:last-child strong {
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+@media (min-width: 640px) {
+  .docx-preview table { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 ::selection { background: var(--color-ink); color: var(--color-paper); }
 
 /* =========================================================================
