@@ -127,10 +127,9 @@ export function QuotesCardBody() {
   // on an explicit confirm rather than silently using whatever the
   // dropdown last had.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
-  // 스토리지 업로드 + 언어 확인까지 끝났지만 아직 전사를 시작하지 않은 파일들.
-  // 사용자가 서브헤더 '시작' CTA 를 눌러야 /api/transcripts/start 가 호출된다
-  // (옛 자동 시작 → 명시적 시작 게이팅, 사용자 요구 흐름:
-  //  모달 → 업로드 → 확인 → 시작).
+  // 자동 전사 시작에 실패한 파일들의 재시도 버킷. 정상 흐름에선 업로드 완료
+  // 즉시 startTranscriptionFor 가 돌아 비어 있고, /api/transcripts/start 가
+  // 실패한 파일만 여기 남아 서브헤더 '전사 시작(재시도)' CTA 로 다시 시작한다.
   const [readyFiles, setReadyFiles] = useState<ReadyTranscriptFile[]>([]);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
@@ -219,8 +218,9 @@ export function QuotesCardBody() {
     setPendingFiles(null);
   }
 
-  // 1단계: 스토리지 업로드만. 전사는 시작하지 않고 readyFiles 에 적재 —
-  // 사용자가 '시작' 을 눌러야 startTranscription 이 돈다.
+  // 스토리지 업로드 → 완료 즉시 자동 전사 시작 (수동 '시작' 클릭 제거).
+  // 업로드된 파일은 startTranscriptionFor 로 바로 큐에 들어가 진행중
+  // 프로그레스가 끊기지 않는다. 시작 실패분만 readyFiles 로 남는다.
   async function uploadToStorage(files: File[]) {
     if (busyUpload) return;
     setBusyUpload(true);
@@ -282,7 +282,8 @@ export function QuotesCardBody() {
           });
           job.setUploadProgress(tempId, 100);
 
-          // 3) 자동 전사 시작 대신 "준비됨" 목록에 적재. 언어는 확인 시점 값 고정.
+          // 3) 업로드 성공 — 언어는 확인 시점 값으로 고정해 적재. 루프 종료 후
+          //    한꺼번에 자동 전사 시작.
           uploaded.push({
             storage_key,
             filename: file.name,
@@ -297,22 +298,25 @@ export function QuotesCardBody() {
           job.clearUploadProgress(tempId);
         }
       }
+      // 업로드 완료 → 자동 전사 시작. 사용자 '시작' 클릭 없이 곧바로 큐로
+      // 넘어가고, 시작에 실패한 파일만 startTranscriptionFor 가 readyFiles 로
+      // 남겨 재시도할 수 있게 한다.
       if (uploaded.length > 0) {
-        setReadyFiles((prev) => [...prev, ...uploaded]);
+        await startTranscriptionFor(uploaded);
       }
     } finally {
       setBusyUpload(false);
     }
   }
 
-  // 2단계: '시작' CTA. readyFiles 각각에 대해 전사를 시작 (provider 는
-  // language-driven: English → Deepgram nova-3, else → ElevenLabs). 성공한
-  // 파일은 readyFiles 에서 제거, 실패 시 나머지는 남겨 재시도 가능.
-  async function startTranscription() {
-    if (readyFiles.length === 0 || busyUpload) return;
-    setBusyUpload(true);
+  // 전사 시작 — 주어진 파일 각각에 /api/transcripts/start 호출 (provider 는
+  // language-driven: English → Deepgram nova-3, else → ElevenLabs). 성공분은
+  // readyFiles 에서 제거, 실패분은 readyFiles 에 남겨 '재시도' 가능.
+  // busyUpload 는 호출자(uploadToStorage / startTranscription)가 관리한다.
+  async function startTranscriptionFor(files: ReadyTranscriptFile[]) {
+    if (files.length === 0) return;
     setUploadError(null);
-    const queue = [...readyFiles];
+    const queue = [...files];
     try {
       while (queue.length > 0) {
         const rf = queue[0];
@@ -339,16 +343,34 @@ export function QuotesCardBody() {
         });
         trackEvent('job_started', { widget: 'quotes', job_type: 'transcribe' });
         queue.shift();
-        setReadyFiles([...queue]);
+        // 시작 성공 — readyFiles 에 남아 있었다면 제거.
+        setReadyFiles((prev) =>
+          prev.filter((r) => r.storage_key !== rf.storage_key),
+        );
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'start_failed';
       setUploadError(msg);
-      // 아직 시작 못 한 나머지는 남겨 사용자가 재시도.
-      setReadyFiles([...queue]);
+      // 시작 못 한 나머지는 readyFiles 에 남겨 사용자가 재시도.
+      setReadyFiles((prev) => {
+        const keys = new Set(prev.map((r) => r.storage_key));
+        return [...prev, ...queue.filter((r) => !keys.has(r.storage_key))];
+      });
+    } finally {
+      await job.refreshJobs();
+    }
+  }
+
+  // 서브헤더 '전사 시작' CTA — 자동 시작이 실패해 readyFiles 에 남은 파일만
+  // 재시도한다. 정상 흐름(업로드 → 자동 시작 성공)에선 readyFiles 가 비어
+  // 이 버튼이 렌더되지 않는다.
+  async function startTranscription() {
+    if (readyFiles.length === 0 || busyUpload) return;
+    setBusyUpload(true);
+    try {
+      await startTranscriptionFor([...readyFiles]);
     } finally {
       setBusyUpload(false);
-      await job.refreshJobs();
     }
   }
 
@@ -517,10 +539,9 @@ export function QuotesCardBody() {
           최근 산출물 (bottom) 3단으로 나뉘어 — 산출물이 카드 바닥에
           고정되고 빈 공간은 중간이 흡수. */}
       <div className="flex h-full flex-col">
-        {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼, 우 = '시작' CTA.
-            옛 자동 시작(드롭 → 자동 전사) 대신, 모달 → 업로드 → 언어확인 →
-            '시작' 순으로 명시적 게이팅. 업로드까지 끝난 준비 파일이 있어야
-            '시작' 활성. 업로드 오류는 hint 로 항상 노출. */}
+        {/* WidgetSubHeader — 좌 = 📤 업로드 버튼. 업로드 완료 시 자동 전사
+            시작이라 우측 '시작' CTA 는 자동 시작이 실패해 readyFiles 에 남은
+            파일이 있을 때만 '재시도'로 노출. 업로드 오류는 hint 로 항상 노출. */}
         <WidgetSubHeader
           compact
           inputs={
@@ -539,18 +560,18 @@ export function QuotesCardBody() {
             </OnboardingTooltip>
           }
           actions={
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={() => void startTranscription()}
-              disabled={!canStart}
-            >
-              {busyUpload
-                ? tCommon('loading')
-                : readyCount > 0
-                  ? `${tWidgets('transcriptStart')} (${readyCount})`
-                  : tWidgets('transcriptStart')}
-            </ChromeButton>
+            readyCount > 0 ? (
+              <ChromeButton
+                variant="primary"
+                size="lg"
+                onClick={() => void startTranscription()}
+                disabled={!canStart}
+              >
+                {busyUpload
+                  ? tCommon('loading')
+                  : `${tWidgets('transcriptStart')} (${readyCount})`}
+              </ChromeButton>
+            ) : undefined
           }
           hint={
             uploadError ? (
@@ -618,12 +639,29 @@ export function QuotesCardBody() {
                 </ul>
               </div>
             )}
+
+            {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
+                기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
+                이 구간에도 위젯이 진행 신호를 잃지 않도록 indeterminate 바를
+                노출 (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
+            {busyUpload && !hasUploads && queueJobs.length === 0 && (
+              <div>
+                <SectionLabel>진행 중</SectionLabel>
+                <div className="mt-2">
+                  <JobProgress label={tCommon('transcribing')} variant="inline" />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 상태 푸터 — 진행중(업로드/전사 inflight)이면 "전사가 진행중",
-              완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
-              진행중이 완료보다 우선 — 이전 완료본이 있어도 새 전사 중엔
-              "진행중"으로 표시. */}
+          {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
+              진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
+              진행중이 완료보다 우선. `busyUpload` 포함이 핵심: 업로드 100% 직후
+              /api/transcripts/start 응답을 기다리는 갭(잡이 아직 job.jobs 에
+              안 뜬 구간) 동안에도 running 을 유지해, 이전 완료본이 있어도
+              "완료" 로 오표시하지 않는다. 시작 실패로 readyFiles 에 남은
+              대기분이 있으면(pending-retry) 완료로 오인시키지 않고 푸터를
+              숨긴다 — 서브헤더 재시도 CTA + 에러 hint 가 신호를 담당. */}
           {(() => {
             const inflight = job.jobs.some(
               (j) =>
@@ -631,19 +669,28 @@ export function QuotesCardBody() {
                 j.status === 'transcribing' ||
                 j.status === 'queued',
             );
-            const running = hasUploads || inflight;
-            if (!running && doneJobs.length === 0) return null;
+            const running = hasUploads || busyUpload || inflight;
+            if (running) {
+              return (
+                <WidgetStatusFooter
+                  status="running"
+                  label={tWidgets('transcriptRunning')}
+                  viewAllLabel={tWidgets('viewAll')}
+                  count={doneJobs.length}
+                  resetKey="running"
+                  onClick={handleQuotesFullview}
+                />
+              );
+            }
+            // pending-retry 중엔 완료로 오인시키지 않는다.
+            if (readyFiles.length > 0 || doneJobs.length === 0) return null;
             return (
               <WidgetStatusFooter
-                status={running ? 'running' : 'done'}
-                label={
-                  running
-                    ? tWidgets('transcriptRunning')
-                    : tWidgets('transcriptDone')
-                }
+                status="done"
+                label={tWidgets('transcriptDone')}
                 viewAllLabel={tWidgets('viewAll')}
                 count={doneJobs.length}
-                resetKey={running ? 'running' : `done-${doneJobs.length}`}
+                resetKey={`done-${doneJobs.length}`}
                 onClick={handleQuotesFullview}
               />
             );
