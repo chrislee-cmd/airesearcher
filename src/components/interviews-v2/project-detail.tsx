@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
@@ -14,6 +15,10 @@ import { useSequentialSweep } from '@/hooks/use-sequential-sweep';
 import { SearchChat } from './search-chat';
 import { TrustDetailPanel } from './trust-detail-panel';
 import { UploadModal } from './upload-modal';
+
+// Collapse choice for the left file-list panel — persisted so the wider
+// chat area a user opened stays open across refresh / navigation.
+const FILE_PANEL_COLLAPSED_KEY = 'interview-v2-file-panel-collapsed';
 
 // "용량" — UTF-8 byte size of the captured text, formatted compactly.
 function formatBytes(n: number): string {
@@ -56,6 +61,21 @@ export function ProjectDetail({
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
+  // Left panel collapse. SSR default = expanded so server/client markup
+  // match; the stored choice is restored post-hydration and written on
+  // every toggle. Mirrors the localStorage-after-hydration pattern in
+  // use-consent.ts.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration storage probe; use-consent.ts uses the same pattern
+    setCollapsed(
+      window.localStorage.getItem(FILE_PANEL_COLLAPSED_KEY) === '1',
+    );
+  }, []);
+  const setPanelCollapsed = (next: boolean) => {
+    setCollapsed(next);
+    window.localStorage.setItem(FILE_PANEL_COLLAPSED_KEY, next ? '1' : '0');
+  };
   // Bumped on every search submit; drives the file "reading" sweep — each
   // uploaded file lights up 읽는 중 → 읽음 once, showing the search scans every
   // file evenly (no single-file bias).
@@ -69,8 +89,9 @@ export function ProjectDetail({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* 서브헤더 — 좌: 뒤로 + 설정/업로드. 📤 업로드는 UploadModal wire 완료;
-          ⚙ 설정 / 🔍 검색은 아직 placeholder disabled (검색은 우측 패널 상시 노출). */}
+      {/* 서브헤더 — 좌: 뒤로 + 프로젝트명. 📤 업로드는 파일 리스트 패널
+          헤더로 이동 (아래); ⚙ 설정 / 🔍 검색은 아직 placeholder disabled
+          (검색은 우측 패널 상시 노출). */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line-soft px-6 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onBack}>
@@ -86,22 +107,49 @@ export function ProjectDetail({
           <Button variant="ghost" size="sm" disabled>
             ⚙ {t('settings')}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setUploadOpen(true)}
-          >
-            📤 {t('upload')}
-          </Button>
           <Button variant="ghost" size="sm" disabled>
             🔍 {t('search')}
           </Button>
         </div>
       </div>
 
-      {/* 본문 — 좌(파일 list) 5/12 + 우(검색 chat) 7/12. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-12">
-        <aside className="min-h-0 overflow-y-auto border-b border-line-soft px-6 py-5 lg:col-span-5 lg:border-b-0 lg:border-r">
+      {/* 본문 — 좌(파일 list, collapsible) + 우(검색 chat). 접힘 시 좌측은
+          40px rail 만 남고 우측 chat 이 확장된다. */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {collapsed ? (
+          <div className="flex w-full shrink-0 items-center justify-center border-b border-line-soft py-3 lg:w-10 lg:items-start lg:border-b-0 lg:border-r lg:py-4">
+            <IconButton
+              aria-label="파일 패널 펼치기"
+              onClick={() => setPanelCollapsed(false)}
+            >
+              ▶
+            </IconButton>
+          </div>
+        ) : (
+        <aside className="flex min-h-0 w-full flex-col border-b border-line-soft lg:shrink-0 lg:basis-5/12 lg:border-b-0 lg:border-r">
+          {/* 헤더 — 좌: 접기 + "업로드된 파일" 타이틀, 우: 파일 업로드 버튼
+              (옛 서브헤더 📤 업로드를 여기로 통합). */}
+          <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <IconButton
+                aria-label="파일 패널 접기"
+                onClick={() => setPanelCollapsed(true)}
+              >
+                ◀
+              </IconButton>
+              <h3 className="truncate text-md font-semibold text-ink">
+                {t('filesTitle')}
+              </h3>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setUploadOpen(true)}
+            >
+              📤 {t('upload')}
+            </Button>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-12 rounded-sm" />
@@ -191,12 +239,14 @@ export function ProjectDetail({
           )}
 
           {/* 신뢰도 (trust) panel — 파일 리스트 아래, default 접힘. -mx-6 로
-              aside 좌우 패딩을 상쇄해 divider/hover 배경이 폭 전체를 채운다. */}
+              스크롤 영역 좌우 패딩을 상쇄해 divider/hover 배경이 폭 전체를 채운다. */}
           <div className="-mx-6 mt-5">
             <TrustDetailPanel projectId={projectId} />
           </div>
+          </div>
         </aside>
-        <section className="min-h-0 lg:col-span-7">
+        )}
+        <section className="min-h-0 flex-1 lg:min-w-0">
           <SearchChat
             projectIds={null}
             currentProject={{ id: projectId, name: projectName }}
