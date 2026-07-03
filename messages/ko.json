@@ -1027,6 +1027,8 @@
     "deskDone": "리서치가 완료되었습니다",
     "interviewRunning": "분석이 진행중입니다",
     "interviewDone": "분석이 완료되었습니다",
+    "interviewUploadProgress": "업로드 중",
+    "interviewUploadDone": "업로드가 완료되었습니다",
     "recruitingDone": "신청서 제작이 완료되었습니다",
     "settings": "설정",
     "settingsClose": "닫기",

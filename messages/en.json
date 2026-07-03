@@ -1027,6 +1027,8 @@
     "deskDone": "Research complete",
     "interviewRunning": "Analysis in progress",
     "interviewDone": "Analysis complete",
+    "interviewUploadProgress": "Uploading",
+    "interviewUploadDone": "Upload complete",
     "recruitingDone": "Recruitment form ready",
     "settings": "Settings",
     "settingsClose": "Close",

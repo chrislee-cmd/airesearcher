@@ -62,13 +62,22 @@ export function UploadModal({
   onClose,
   projectId,
   onUploaded,
+  onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   // Preset project (project-detail entry) → Step 2 is skipped. Omitted / null
   // (project-list entry) → Step 2 is a required gate before upload.
   projectId?: string | null;
-  onUploaded: (projectId: string) => void;
+  // Internal mode (default): the modal runs the upload itself, shows per-file
+  // status pills, and calls onUploaded(id) when the batch finishes.
+  onUploaded?: (projectId: string) => void;
+  // Delegate mode: when provided, the modal only resolves the project
+  // (pick/create) then hands (files, projectId) back and closes immediately —
+  // it does NOT run the upload. The caller owns the upload lifecycle (e.g. the
+  // widget card renders its own progress bar + completion footer). Takes
+  // precedence over onUploaded.
+  onSubmit?: (files: File[], projectId: string) => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const { items, busy, uploadMany, reset } = useInterviewV2Upload();
@@ -133,8 +142,20 @@ export function UploadModal({
       }
     }
     if (!pid) return;
+
+    // Delegate mode — hand the batch to the caller and close. The caller
+    // owns the upload + progress UI (widget card). Snapshot files first
+    // since resetAll() clears staged.
+    if (onSubmit) {
+      const files = staged;
+      resetAll();
+      onClose();
+      onSubmit(files, pid);
+      return;
+    }
+
     const changed = await uploadMany(staged, pid);
-    if (changed) onUploaded(pid);
+    if (changed) onUploaded?.(pid);
   };
 
   const canUpload =
