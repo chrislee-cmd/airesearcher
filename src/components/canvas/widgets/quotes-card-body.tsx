@@ -639,12 +639,29 @@ export function QuotesCardBody() {
                 </ul>
               </div>
             )}
+
+            {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
+                기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
+                이 구간에도 위젯이 진행 신호를 잃지 않도록 indeterminate 바를
+                노출 (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
+            {busyUpload && !hasUploads && queueJobs.length === 0 && (
+              <div>
+                <SectionLabel>진행 중</SectionLabel>
+                <div className="mt-2">
+                  <JobProgress label={tCommon('transcribing')} variant="inline" />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 상태 푸터 — 진행중(업로드/전사 inflight)이면 "전사가 진행중",
-              완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
-              진행중이 완료보다 우선 — 이전 완료본이 있어도 새 전사 중엔
-              "진행중"으로 표시. */}
+          {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
+              진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
+              진행중이 완료보다 우선. `busyUpload` 포함이 핵심: 업로드 100% 직후
+              /api/transcripts/start 응답을 기다리는 갭(잡이 아직 job.jobs 에
+              안 뜬 구간) 동안에도 running 을 유지해, 이전 완료본이 있어도
+              "완료" 로 오표시하지 않는다. 시작 실패로 readyFiles 에 남은
+              대기분이 있으면(pending-retry) 완료로 오인시키지 않고 푸터를
+              숨긴다 — 서브헤더 재시도 CTA + 에러 hint 가 신호를 담당. */}
           {(() => {
             const inflight = job.jobs.some(
               (j) =>
@@ -652,19 +669,28 @@ export function QuotesCardBody() {
                 j.status === 'transcribing' ||
                 j.status === 'queued',
             );
-            const running = hasUploads || inflight;
-            if (!running && doneJobs.length === 0) return null;
+            const running = hasUploads || busyUpload || inflight;
+            if (running) {
+              return (
+                <WidgetStatusFooter
+                  status="running"
+                  label={tWidgets('transcriptRunning')}
+                  viewAllLabel={tWidgets('viewAll')}
+                  count={doneJobs.length}
+                  resetKey="running"
+                  onClick={handleQuotesFullview}
+                />
+              );
+            }
+            // pending-retry 중엔 완료로 오인시키지 않는다.
+            if (readyFiles.length > 0 || doneJobs.length === 0) return null;
             return (
               <WidgetStatusFooter
-                status={running ? 'running' : 'done'}
-                label={
-                  running
-                    ? tWidgets('transcriptRunning')
-                    : tWidgets('transcriptDone')
-                }
+                status="done"
+                label={tWidgets('transcriptDone')}
                 viewAllLabel={tWidgets('viewAll')}
                 count={doneJobs.length}
-                resetKey={running ? 'running' : `done-${doneJobs.length}`}
+                resetKey={`done-${doneJobs.length}`}
                 onClick={handleQuotesFullview}
               />
             );
