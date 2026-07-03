@@ -33,12 +33,33 @@ function wordCount(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+// Strip a leading timestamp, optionally bracketed: [00:12:34] (1:02) 00:12 …
+function stripLeadingTimestamps(s: string): string {
+  return s.replace(/^(?:[[(]?\s*\d{1,2}:\d{2}(?::\d{2})?\s*[\])]?\s*)+/, '');
+}
+
+// Drop the timestamp + speaker/moderator label so only the plain question
+// remains. Handles either order ("[00:12] AI 모더레이터: …" or
+// "AI 모더레이터: [00:12] …"). The label = a short leading token ending in a
+// colon (e.g. "AI 모더레이터:", "Moderator:", "면접관:", "Q:", "질문:").
+function cleanQuestion(s: string): string {
+  let out = s.replace(/\s+/g, ' ').trim();
+  // leading markdown / list markers
+  out = out.replace(/^[#>\-*•\s]+/, '');
+  out = stripLeadingTimestamps(out);
+  // one leading speaker / moderator label
+  out = out.replace(/^[^:：?？\n]{1,24}[:：]\s*/, '');
+  out = stripLeadingTimestamps(out);
+  return out.trim();
+}
+
 // First / last question in the document. A "question" = a sentence ending in
 // ? / ？ (the char class stops at the previous sentence boundary so each match
-// is one sentence, not a whole paragraph). Surfacing both endpoints lets a
-// user confirm the transcript was captured from its very first to its very
-// last question — nothing truncated at either end. Null when the doc has no
-// question form.
+// is one sentence, not a whole paragraph). Timestamps + moderator tags are
+// stripped so only the plain question text shows. Surfacing both endpoints
+// lets a user confirm the transcript was captured from its very first to its
+// very last question — nothing truncated at either end. Null when the doc has
+// no question form.
 function extractQuestions(text: string): {
   first: string | null;
   last: string | null;
@@ -46,7 +67,7 @@ function extractQuestions(text: string): {
   const matches = text.match(/[^.!?？。\n]*[?？]/g);
   if (!matches) return { first: null, last: null };
   const qs = matches
-    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .map((s) => cleanQuestion(s))
     .filter((s) => s.length > 1)
     .map((s) => s.slice(0, 140));
   if (qs.length === 0) return { first: null, last: null };
