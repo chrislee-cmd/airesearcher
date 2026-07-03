@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { parsePartialJson } from 'ai';
 import { track } from '@/components/mixpanel-provider';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
@@ -373,6 +374,11 @@ export function RecruitingWizard({
     track('recruiting_survey_generate_click', {
       feature: 'recruiting_survey',
     });
+    trackEvent('job_started', {
+      widget: 'recruiting',
+      job_type: 'form_generate',
+    });
+    const generateStartedAt = Date.now();
 
     try {
       const briefForApi: RecruitingBrief = {
@@ -411,8 +417,18 @@ export function RecruitingWizard({
       track('recruiting_survey_generate_success', {
         feature: 'recruiting_survey',
       });
+      trackEvent('job_completed', {
+        widget: 'recruiting',
+        job_type: 'form_generate',
+        duration_ms: Math.max(0, Date.now() - generateStartedAt),
+      });
     } catch (e) {
       if (ctrl.signal.aborted) return;
+      trackEvent('job_failed', {
+        widget: 'recruiting',
+        job_type: 'form_generate',
+        error: e instanceof Error ? e.message : 'survey_failed',
+      });
       setSurveyError(e instanceof Error ? e.message : 'survey_failed');
       setSurveyPhase('idle');
     } finally {

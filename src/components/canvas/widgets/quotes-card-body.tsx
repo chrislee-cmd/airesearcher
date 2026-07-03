@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/components/auth-provider';
 import { track } from '@/components/mixpanel-provider';
+import { track as trackEvent } from '@/lib/analytics/events';
 import {
   useTranscriptJobs,
   type TranscriptJob,
@@ -107,6 +108,18 @@ export function QuotesCardBody() {
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
   const { renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
+
+  // Analytics — 카드 body mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'quotes' });
+  }, []);
+
+  // 통일 "전체 보기" 진입 계측.
+  const handleQuotesFullview = () => {
+    trackEvent('widget_action', { widget: 'quotes', action: 'fullview_open' });
+    trackEvent('widget_viewed', { widget: 'quotes', fullview: true });
+    openFullview();
+  };
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -324,6 +337,7 @@ export function QuotesCardBody() {
           size: rf.size_bytes,
           language: rf.language,
         });
+        trackEvent('job_started', { widget: 'quotes', job_type: 'transcribe' });
         queue.shift();
         setReadyFiles([...queue]);
       }
@@ -467,6 +481,35 @@ export function QuotesCardBody() {
     nowTick,
   ]);
 
+  // Analytics — 전사 잡의 완료/실패 전이 계측. 잡별 prev status 를 추적해
+  // 실제 전이만 발화 — 마운트 시 로드되는 historical done/error 잡은 prev 가
+  // 없어 계측하지 않는다. duration_ms 는 생성→완료관측 경과 (처리시간 근사).
+  const transcribeStatusRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    for (const j of job.jobs) {
+      const prev = transcribeStatusRef.current.get(j.id);
+      transcribeStatusRef.current.set(j.id, j.status);
+      if (!prev || prev === j.status) continue;
+      if (j.status === 'done') {
+        const durationMs = Math.max(
+          0,
+          Date.now() - new Date(j.created_at).getTime(),
+        );
+        trackEvent('job_completed', {
+          widget: 'quotes',
+          job_type: 'transcribe',
+          duration_ms: durationMs,
+        });
+      } else if (j.status === 'error') {
+        trackEvent('job_failed', {
+          widget: 'quotes',
+          job_type: 'transcribe',
+          error: j.error_message ?? 'unknown_error',
+        });
+      }
+    }
+  }, [job.jobs]);
+
   return (
     <>
       {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
@@ -601,7 +644,7 @@ export function QuotesCardBody() {
                 viewAllLabel={tWidgets('viewAll')}
                 count={doneJobs.length}
                 resetKey={running ? 'running' : `done-${doneJobs.length}`}
-                onClick={openFullview}
+                onClick={handleQuotesFullview}
               />
             );
           })()}

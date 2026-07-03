@@ -13,6 +13,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import { track } from '@/components/mixpanel-provider';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { useRequireAuth } from '@/components/auth-provider';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
@@ -300,6 +301,18 @@ export function DeskCardBody() {
   // 에도 보존. 행별 "미리보기" 모달(previewOpen) 과는 별개 — 그건 그대로 유지.
   const { renderInSlot, openFullview, close: closeFullview } = useFullview('desk');
 
+  // 통일 "전체 보기" 진입 계측 — 표준 이벤트 (spec analytics 6/6).
+  const handleDeskFullview = () => {
+    trackEvent('widget_action', { widget: 'desk', action: 'fullview_open' });
+    trackEvent('widget_viewed', { widget: 'desk', fullview: true });
+    openFullview();
+  };
+
+  // Analytics — 카드 body mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'desk' });
+  }, []);
+
   // Receive workspace "send to" prefills — splits the artifact text the
   // same way the paste/keydown handlers do so a list of keywords (or a
   // comma/newline-separated blob) lands as ready-to-run keyword chips.
@@ -384,6 +397,11 @@ export function DeskCardBody() {
     setSubmitting(true);
     setError(null);
     track('desk_generate_click', { feature: 'desk', kw_count: finalKeywords.length });
+    trackEvent('job_started', {
+      widget: 'desk',
+      job_type: 'search',
+      cost_credits: FEATURE_COSTS.desk,
+    });
     try {
       const res = await fetch('/api/desk', {
         method: 'POST',
@@ -673,6 +691,32 @@ export function DeskCardBody() {
   // cardState 는 widget shell 외부에서 결정 (PR2 시점에는 widget meta.state
   // 가 'idle' 로 고정 — 후속 PR 에서 widget shell 로 live state 주입 검토).
 
+  // Analytics — job 종료(완료/실패) 시 1회 발화. prev status 를 잡별로
+  // 추적해 실제 전이만 계측 — 마운트 시점의 historical done/error 잡은
+  // prev 가 없어 발화하지 않는다 (새로고침 false-positive 방지).
+  const deskJobIdRef = useRef<string | null>(null);
+  const deskJobStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!job) return;
+    const prev = deskJobIdRef.current === job.id ? deskJobStatusRef.current : null;
+    deskJobIdRef.current = job.id;
+    deskJobStatusRef.current = job.status;
+    if (!prev || prev === job.status) return;
+    if (job.status === 'done') {
+      trackEvent('job_completed', {
+        widget: 'desk',
+        job_type: 'search',
+        duration_ms: job.progress?.elapsed_ms ?? 0,
+      });
+    } else if (job.status === 'error') {
+      trackEvent('job_failed', {
+        widget: 'desk',
+        job_type: 'search',
+        error: job.error_message ?? 'unknown_error',
+      });
+    }
+  }, [job]);
+
   // 수집 기간 quick-pick — RANGE_PRESETS 를 popover preset 형태로 매핑.
   // 'custom' 은 캘린더 직접 선택이라 quick-pick 에서 제외. 'all' 은 days=null
   // (범위 해제) 로.
@@ -704,7 +748,13 @@ export function DeskCardBody() {
               dismissLabel={tWidgets('onboardingDismiss')}
             >
               <WidgetSettingsButton
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => {
+                  trackEvent('widget_action', {
+                    widget: 'desk',
+                    action: 'settings_open',
+                  });
+                  setSettingsOpen(true);
+                }}
                 label={tWidgets('settings')}
                 hasChanges={hasNonDefaultSettings}
                 pulse={settingsIncomplete}
@@ -1046,7 +1096,7 @@ export function DeskCardBody() {
               label={running ? tWidgets('deskRunning') : tWidgets('deskDone')}
               viewAllLabel={tWidgets('viewAll')}
               resetKey={running ? 'running' : `done-${job?.id ?? ''}`}
-              onClick={openFullview}
+              onClick={handleDeskFullview}
             />
           );
         })()}

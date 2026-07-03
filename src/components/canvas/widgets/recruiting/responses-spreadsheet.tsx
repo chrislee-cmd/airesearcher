@@ -7,6 +7,7 @@ import { MochiLoader } from '@/components/ui/mochi-loader';
 import { Select } from '@/components/ui/select';
 import { usePaywall } from '@/components/paywall-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
+import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 
 // fullview 응답 spreadsheet — 발행된 리크루팅 폼들의 응답을 인앱 표로
@@ -172,6 +173,11 @@ export function ResponsesSpreadsheet() {
         };
         setUnlockedAnswers((prev) => ({ ...prev, [rowId]: j.answers ?? {} }));
         setUnlockedRows((prev) => new Set(prev).add(rowId));
+        trackEvent('widget_action', {
+          widget: 'recruiting',
+          action: 'response_unlock',
+          metadata: { row_id: rowId },
+        });
         void refreshCredits();
       } finally {
         setUnlockingRows((prev) => {

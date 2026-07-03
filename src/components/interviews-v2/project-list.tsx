@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { CreateProjectModal } from './create-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
 
@@ -65,6 +66,10 @@ export function ProjectList({
   const handleCreate = async (name: string, description?: string) => {
     const project = await create(name, description);
     if (project) {
+      trackEvent('widget_action', {
+        widget: 'interviews',
+        action: 'project_create',
+      });
       setCreateOpen(false);
       onOpenProject(project.id);
       return project.id;

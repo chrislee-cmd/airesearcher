@@ -63,6 +63,7 @@ import {
 } from '@/lib/translate-fidelity';
 import { useCreditDeduction } from './credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
+import { track as trackEvent } from '@/lib/analytics/events';
 
 // Dev-mode trace gate. Enabled in non-prod builds so a designer running
 // `pnpm dev` can step through the pipeline and confirm Korean / Thai /
@@ -805,6 +806,11 @@ export function TranslateConsole({
   // 라이브 상태를 provider 로 전달 — probing 같은 위젯이 isLive 로 헤더
   // 표시/대기 placeholder 를 판단. unmount 시 자동 false 처리.
   useRealtimeTranscriptLiveBinding(status === 'live');
+
+  // Analytics — 통역 콘솔 mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'translate' });
+  }, []);
 
   // Synchronous re-entry guard for start(). The status closure in start()
   // can be stale across rapid invocations (the captured `status` was
@@ -1669,6 +1675,22 @@ export function TranslateConsole({
       bundle = json;
       // 차감 broadcast — 세션 시작 시 lump 50 credit. 위젯 헤더 -N + topbar pulse.
       notifyDeduction('translate', FEATURE_COSTS.translate);
+      // Analytics — 통역 세션 시작. capture_mode 는 표준 job_started 스키마에
+      // metadata 필드가 없어(spec 2/6 재사용, 미수정) 동반 widget_action 으로
+      // 기록한다. 'mic-only'/'tab-only'/'both' → 'mic'/'tab'/'both' 정규화.
+      trackEvent('job_started', { widget: 'translate', job_type: 'session' });
+      trackEvent('widget_action', {
+        widget: 'translate',
+        action: 'session_start',
+        metadata: {
+          capture_mode:
+            captureModeAtStart === 'mic-only'
+              ? 'mic'
+              : captureModeAtStart === 'tab-only'
+                ? 'tab'
+                : 'both',
+        },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'session_failed');
       setStatus('error');
@@ -2485,6 +2507,11 @@ export function TranslateConsole({
 
   const stop = useCallback(async () => {
     if (status === 'idle' || status === 'ended') return;
+    // Analytics — 세션 duration 을 teardown 전에 확정 (cleanup 이
+    // startedAtRef 를 null 로 만들기 전에 계산). ref 라 closure staleness 없음.
+    const sessionDurationMs = startedAtRef.current
+      ? Math.max(0, Date.now() - startedAtRef.current)
+      : 0;
     setStatus('ending');
 
     // Flush any in-flight rolling chunks so the recorded transcript
@@ -2591,6 +2618,12 @@ export function TranslateConsole({
         console.info('[translate] fidelity ok', summary);
       }
     }
+
+    trackEvent('job_completed', {
+      widget: 'translate',
+      job_type: 'session',
+      duration_ms: sessionDurationMs,
+    });
 
     setShareToken(null);
     setShareCopied(false);
@@ -2933,6 +2966,10 @@ export function TranslateConsole({
           >
             <WidgetSettingsButton
               onClick={() => {
+                trackEvent('widget_action', {
+                  widget: 'translate',
+                  action: 'settings_open',
+                });
                 markSettingsVisited();
                 setSettingsOpen(true);
               }}
