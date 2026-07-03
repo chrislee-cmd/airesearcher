@@ -33,7 +33,33 @@ const SIZE = {
   body: 25, // 12.5pt
 } as const;
 
-const TIMESTAMP_RE = /^\[(\d{2}:\d{2}:\d{2})\]\s+([^:]+):\s*(.*)$/;
+// Speaker-turn line. Tolerates an optional `**…**` bold wrap around the
+// `[hh:mm:ss] Speaker:` prefix — the English translate pipeline emits
+// `**[00:00:00] Interviewee:** text` while the Korean ElevenLabs pipeline emits
+// the bare `[00:00:03] Speaker 1: text`. Both must render as an eyebrow line.
+const TIMESTAMP_RE = /^\*{0,2}\[(\d{2}:\d{2}:\d{2})\]\s+([^:*]+):\*{0,2}\s*(.*)$/;
+
+// Inline `**bold**` → bold runs. Everything outside the markers renders as a
+// plain run, so stray single `*` / `_` pass through untouched. Used for body
+// text (which may carry emphasis) and for any non-timestamp body line.
+function inlineRuns(text: string, size: number, color: string): TextRun[] {
+  const runs: TextRun[] = [];
+  const re = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      runs.push(new TextRun({ text: text.slice(last, m.index), size, color }));
+    }
+    runs.push(new TextRun({ text: m[1], bold: true, size, color }));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    runs.push(new TextRun({ text: text.slice(last), size, color }));
+  }
+  if (runs.length === 0) runs.push(new TextRun({ text: '', size, color }));
+  return runs;
+}
 
 function eyebrow(text: string, color: string = AP.amore): TextRun {
   return new TextRun({
@@ -97,7 +123,31 @@ function metaCell(label: string, value: string): TableCell {
   });
 }
 
+function emptyMetaCell(): TableCell {
+  return new TableCell({
+    width: { size: META_COL_DXA, type: WidthType.DXA },
+    margins: { top: 120, bottom: 120, left: 0, right: 120 },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 4, color: AP.line },
+      bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+      left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+      right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+    },
+    children: [new Paragraph({ children: [new TextRun({ text: '' })] })],
+  });
+}
+
+// Editorial 4-up stat grid. Front matter beyond the first four fields (the
+// English translate pipeline carries date / source_target / roles / note) wraps
+// into additional rows of four, padded with empty cells so the FIXED layout
+// stays column-aligned.
 function metaTable(entries: Array<[string, string]>): Table {
+  const rows: TableRow[] = [];
+  for (let i = 0; i < entries.length; i += 4) {
+    const cells = entries.slice(i, i + 4).map(([k, v]) => metaCell(k, v));
+    while (cells.length < 4) cells.push(emptyMetaCell());
+    rows.push(new TableRow({ children: cells }));
+  }
   return new Table({
     width: { size: PAGE_BODY_DXA, type: WidthType.DXA },
     columnWidths: [META_COL_DXA, META_COL_DXA, META_COL_DXA, META_COL_DXA],
@@ -110,11 +160,7 @@ function metaTable(entries: Array<[string, string]>): Table {
       insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'auto' },
       insideVertical: { style: BorderStyle.NONE, size: 0, color: 'auto' },
     },
-    rows: [
-      new TableRow({
-        children: entries.map(([k, v]) => metaCell(k, v)),
-      }),
-    ],
+    rows,
   });
 }
 
@@ -134,37 +180,51 @@ function todayISO(): string {
 export async function markdownToDocx(markdown: string): Promise<Buffer> {
   const lines = markdown.split(/\r?\n/);
 
-  // Split YAML front matter from body
+  // Split YAML front matter from body. The `---` fence isn't always on line 0:
+  // the English translate pipeline prefixes a `# <title>` heading (a duplicate
+  // of the `file:` field) and/or blank lines before the fence, which used to
+  // leak the whole front matter block into the body as raw text. Scan past a
+  // single leading heading + surrounding blanks to find the opening fence; if
+  // none is found we keep every line (including that heading) in the body.
   const front: Record<string, string> = {};
   const body: string[] = [];
-  let inFront = false;
-  let frontDone = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (i === 0 && line.trim() === '---') {
-      inFront = true;
-      continue;
+
+  let frontStart = -1;
+  {
+    let i = 0;
+    while (i < lines.length && !lines[i].trim()) i++;
+    if (i < lines.length && /^#{1,6}\s/.test(lines[i])) {
+      i++;
+      while (i < lines.length && !lines[i].trim()) i++;
     }
-    if (inFront && !frontDone && line.trim() === '---') {
-      frontDone = true;
-      inFront = false;
-      continue;
-    }
-    if (inFront) {
+    if (i < lines.length && lines[i].trim() === '---') frontStart = i;
+  }
+
+  let bodyStart = 0;
+  if (frontStart >= 0) {
+    let i = frontStart + 1;
+    for (; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim() === '---') {
+        i++;
+        break;
+      }
       const idx = line.indexOf(':');
       if (idx > 0) {
         const key = line.slice(0, idx).trim();
         const val = line.slice(idx + 1).trim();
         if (key) front[key] = val;
       }
-    } else {
-      body.push(line);
     }
+    bodyStart = i;
   }
+  for (let i = bodyStart; i < lines.length; i++) body.push(lines[i]);
 
   const fileName = front.file ?? 'Transcript';
   const duration = front.duration ?? '—';
-  const speakers = front.speakers ?? '—';
+  // English translate jobs carry `roles:` (Interviewer / Interviewee) instead
+  // of `speakers:`; fall back to it so the stat cell isn't an empty dash.
+  const speakers = front.speakers ?? front.roles ?? '—';
 
   const children: Array<Paragraph | Table> = [];
 
@@ -210,14 +270,23 @@ export async function markdownToDocx(markdown: string): Promise<Buffer> {
     }),
   );
 
-  children.push(
-    metaTable([
-      ['File', fileName],
-      ['Duration', duration],
-      ['Speakers', speakers],
-      ['Generated', todayISO()],
-    ]),
-  );
+  // Base four stats, then surface any remaining front-matter fields (date,
+  // source_target, note, …) so the English pipeline's metadata renders in the
+  // grid instead of leaking as raw YAML. Keys already shown are skipped;
+  // underscores become spaces and the label is uppercased by `eyebrow`.
+  const shownKeys = new Set(['file', 'duration', 'speakers', 'roles']);
+  const metaEntries: Array<[string, string]> = [
+    ['File', fileName],
+    ['Duration', duration],
+    ['Speakers', speakers],
+    ['Generated', todayISO()],
+  ];
+  for (const [key, val] of Object.entries(front)) {
+    if (shownKeys.has(key.toLowerCase())) continue;
+    if (!val) continue;
+    metaEntries.push([key.replace(/_/g, ' '), val]);
+  }
+  children.push(metaTable(metaEntries));
   children.push(blank(360));
 
   // ── Chapter header for the body ──────────────────────────
@@ -274,30 +343,19 @@ export async function markdownToDocx(markdown: string): Promise<Buffer> {
           ],
         }),
       );
-      // Body text — line-height ~1.75
+      // Body text — line-height ~1.75. Parse inline **bold** so emphasis in the
+      // turn text renders instead of showing literal asterisks.
       children.push(
         new Paragraph({
           spacing: { line: 420, lineRule: 'auto', after: 120 },
-          children: [
-            new TextRun({
-              text,
-              size: SIZE.body,
-              color: AP.ink2,
-            }),
-          ],
+          children: inlineRuns(text, SIZE.body, AP.ink2),
         }),
       );
     } else {
       children.push(
         new Paragraph({
           spacing: { line: 360, lineRule: 'auto', after: 120 },
-          children: [
-            new TextRun({
-              text: raw,
-              size: SIZE.body,
-              color: AP.ink2,
-            }),
-          ],
+          children: inlineRuns(raw, SIZE.body, AP.ink2),
         }),
       );
     }
