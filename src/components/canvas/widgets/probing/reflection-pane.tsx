@@ -24,6 +24,7 @@ import type {
 import type { ProbingCustomSection } from '../probing-types';
 import { PersonaPanel } from './persona-panel';
 import { AddCustomSectionCard } from './add-custom-section-card';
+import { ProbingEmptySkeleton } from '../skeletons/probing-empty-skeleton';
 
 // 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
 export type ProbingReflectionData = Partial<ProbingPersona>;
@@ -195,11 +196,16 @@ export function ReflectionPane({
             페르소나 분석 생성 중…
           </div>
         ) : !isLive ? (
-          <div
-            className="bg-paper px-4 py-6 text-center text-md text-ink-2"
-            style={memphisPlaceholderStyle}
-          >
-            세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
+          // 세션 시작 전 — 실제 페르소나 grid 의 shape 를 skeleton 으로 미리
+          // 보여주고(PR: empty-skeleton-probing), 아래에 안내 문구를 유지.
+          <div className="flex flex-col gap-4">
+            <ProbingEmptySkeleton />
+            <div
+              className="bg-paper px-4 py-6 text-center text-md text-ink-2"
+              style={memphisPlaceholderStyle}
+            >
+              세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
+            </div>
           </div>
         ) : !hasTranscript ? (
           <div
