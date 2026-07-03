@@ -3,16 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
-import {
-  InterviewAnalysisArea,
-  InterviewUploadArea,
-} from '@/components/interview-analyzer';
+import { InterviewAnalysisArea } from '@/components/interview-analyzer';
 import { useInterviewJob } from '@/components/interview-job-provider';
 import { prefillKey } from '@/lib/workspace';
 import { WidgetSubHeader } from '../shell/widget-subheader';
 import { WidgetUploadButton } from '../shell/widget-upload-button';
 import { OnboardingTooltip } from '../../ui/onboarding-tooltip';
-import { WidgetUploadModal } from '../shell/widget-upload-modal';
+import { UploadModal } from '@/components/interviews-v2/upload-modal';
 import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
@@ -108,22 +105,33 @@ function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('interviews');
   const tWidgets = useTranslations('Widgets');
   const job = useInterviewJob();
-  // 업로드 모달 open state — 옛 상시 InterviewUploadArea (dropzone + 변환 큐)
-  // 를 📤 업로드 버튼 + 모달로 이동. 서브헤더 height ↓.
+  // 업로드 모달 open state — 📤 업로드 버튼이 V2 프로젝트-설정 gate 업로드
+  // 모달(UploadModal)을 연다. 전체보기(fullview)와 완전히 동일한 flow.
   const [uploadOpen, setUploadOpen] = useState(false);
+  // 위젯 업로드 완료 후 열 전체보기의 대상 프로젝트. 일반 "전체 보기" CTA 는
+  // null 로 비워 목록부터, 업로드 직후엔 방금 저장한 프로젝트 상세로 진입.
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
 
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
     trackEvent('widget_viewed', { widget: 'interviews' });
   }, []);
 
-  // 통일 "전체 보기" 진입 계측.
+  // 통일 "전체 보기" 진입 계측. 일반 진입은 프로젝트 목록부터 (pending 비움).
   const handleInterviewsFullview = () => {
     trackEvent('widget_action', {
       widget: 'interviews',
       action: 'fullview_open',
     });
     trackEvent('widget_viewed', { widget: 'interviews', fullview: true });
+    setPendingProjectId(null);
+    openFullview();
+  };
+
+  // 위젯 업로드 완료 → fullview 와 동일하게 방금 저장한 프로젝트 상세로 이동.
+  const handleUploaded = (projectId: string) => {
+    setUploadOpen(false);
+    setPendingProjectId(projectId);
     openFullview();
   };
 
@@ -164,10 +172,8 @@ function ExpandedBody() {
   return (
     <div className="flex h-full flex-col">
       <InterviewStatePush />
-      {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼 하나 (옛 상시
-          dropzone + 변환 큐 InterviewUploadArea 는 업로드 모달로 이동).
-          대기 중(변환 전 큐) 파일 count 를 배지로. 변환 CTA (convertAll)
-          는 InterviewUploadArea 안에 그대로 유지 (자동 변환 flow 회귀 0). */}
+      {/* WidgetSubHeader — 통일 컴팩트: 좌 = 📤 업로드 버튼 하나. 클릭 시
+          V2 프로젝트-설정 gate 업로드 모달(전체보기와 동일 flow)을 연다. */}
       <WidgetSubHeader
         compact
         inputs={
@@ -187,17 +193,14 @@ function ExpandedBody() {
         hint={noFiles ? <span>{tWidgets('uploadHint')}</span> : undefined}
       />
 
-      {/* 업로드 모달 — 옛 서브헤더 InterviewUploadArea (dropzone + 변환 큐
-          + clear/변환 CTA) 를 그대로 담는다. 큐 진행 중에도 재열림 → 파일
-          추가 정상. */}
-      <WidgetUploadModal
+      {/* 업로드 모달 — V2 프로젝트-설정 gate 업로드 (전체보기와 동일 flow).
+          파일 선택 → 프로젝트 선택/생성 → 업로드 → 해당 프로젝트 전체보기로
+          이동. project 미지정으로 열어 Step 2(프로젝트 설정)를 강제. */}
+      <UploadModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
-        title={tWidgets('upload')}
-        closeLabel={tWidgets('settingsClose')}
-      >
-        <InterviewUploadArea />
-      </WidgetUploadModal>
+        onUploaded={handleUploaded}
+      />
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
         <InterviewAnalysisArea />
@@ -219,7 +222,12 @@ function ExpandedBody() {
           onClick={handleInterviewsFullview}
         />
       )}
-      {renderInSlot(<InterviewV2Fullview onClose={close} />)}
+      {renderInSlot(
+        <InterviewV2Fullview
+          onClose={close}
+          initialProjectId={pendingProjectId}
+        />,
+      )}
     </div>
   );
 }

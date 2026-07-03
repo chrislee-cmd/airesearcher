@@ -50,9 +50,23 @@ function CrossSearch({
   );
 }
 
-export function InterviewV2Fullview({ onClose }: { onClose: () => void }) {
+export function InterviewV2Fullview({
+  onClose,
+  initialProjectId,
+}: {
+  onClose: () => void;
+  // When opened straight into a project (e.g. right after a widget-view
+  // upload), land on that project's detail instead of the list. The
+  // fullview remounts on every open (portal returns null while closed), so
+  // this initial value is honoured each time it opens.
+  initialProjectId?: string | null;
+}) {
   const t = useTranslations('InterviewsV2');
-  const [view, setView] = useState<View>({ kind: 'list' });
+  const [view, setView] = useState<View>(
+    initialProjectId
+      ? { kind: 'detail', id: initialProjectId }
+      : { kind: 'list' },
+  );
 
   return (
     <WidgetFullviewPanel
