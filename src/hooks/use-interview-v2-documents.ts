@@ -19,6 +19,10 @@ export type InterviewDocument = {
   filename: string;
   mime: string | null;
   char_count: number;
+  // UTF-8 byte size of the stored text ("용량").
+  byte_size: number;
+  // Whitespace-split word count ("단어수").
+  word_count: number;
   created_at: string;
   index_status: InterviewDocumentStatus;
 };

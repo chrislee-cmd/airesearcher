@@ -19,9 +19,19 @@ type DocRow = {
   filename: string;
   mime: string | null;
   char_count: number;
+  markdown: string | null;
   created_at: string;
   interview_jobs: { index_status: string | null } | null;
 };
+
+// Whitespace-split word count. For Korean this counts 어절 (space-separated
+// tokens) — a fair, language-agnostic proxy for "단어수" that lets a user
+// confirm the whole document was captured (no truncation).
+function wordCount(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
 
 export async function GET(
   _req: Request,
@@ -40,10 +50,13 @@ export async function GET(
     return NextResponse.json({ documents: [] });
   }
 
+  // markdown is the lossless normalized text; we pull it to derive byte size
+  // + word count server-side (proving no truncation to the user) and drop it
+  // from the response so the payload stays light.
   const { data, error } = await supabase
     .from('interview_documents')
     .select(
-      'id, filename, mime, char_count, created_at, interview_jobs(index_status)',
+      'id, filename, mime, char_count, markdown, created_at, interview_jobs(index_status)',
     )
     .eq('org_id', org.org_id)
     .eq('project_id', id)
@@ -55,14 +68,20 @@ export async function GET(
     return NextResponse.json({ error: 'list_failed' }, { status: 500 });
   }
 
-  const documents = ((data ?? []) as unknown as DocRow[]).map((d) => ({
-    id: d.id,
-    filename: d.filename,
-    mime: d.mime,
-    char_count: d.char_count,
-    created_at: d.created_at,
-    index_status: d.interview_jobs?.index_status ?? 'pending',
-  }));
+  const documents = ((data ?? []) as unknown as DocRow[]).map((d) => {
+    const md = d.markdown ?? '';
+    return {
+      id: d.id,
+      filename: d.filename,
+      mime: d.mime,
+      char_count: d.char_count,
+      // UTF-8 byte size of the stored text = the file's "용량".
+      byte_size: Buffer.byteLength(md, 'utf8'),
+      word_count: wordCount(md),
+      created_at: d.created_at,
+      index_status: d.interview_jobs?.index_status ?? 'pending',
+    };
+  });
 
   return NextResponse.json({ documents });
 }

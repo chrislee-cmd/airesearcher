@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useInterviewV2TrustStats } from '@/hooks/use-interview-v2-trust-stats';
-import type { SafeguardSweep } from '@/hooks/use-safeguard-sweep';
 
 // Interview V2 — 신뢰도 (trust) panel, option B.
 //
@@ -24,8 +23,6 @@ type Layer = { id: string; title: string; detail: string };
 
 // Plain-language rewrite of the 7 hallucination guards — no jargon (청크 /
 // 임베딩 / citation / threshold / temperature 등은 쉬운 말로 풀어씀).
-export const SAFEGUARD_COUNT = 7;
-
 const LAYERS: Layer[] = [
   {
     id: 'retrieval-first',
@@ -158,33 +155,7 @@ function StatCard({
   );
 }
 
-// Small check mark for a passed safeguard.
-function CheckMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-
-export function TrustDetailPanel({
-  projectId,
-  sweep,
-}: {
-  projectId: string;
-  // Per-search safeguard sweep, driven by useSafeguardSweep in the parent so
-  // this panel and the search-panel quality band stay in sync.
-  sweep?: SafeguardSweep;
-}) {
+export function TrustDetailPanel({ projectId }: { projectId: string }) {
   const { stats } = useInterviewV2TrustStats(projectId);
 
   const fileCount = stats?.fileCount ?? 0;
@@ -192,15 +163,6 @@ export function TrustDetailPanel({
   const embedPct = Math.round((stats?.embedRate ?? 1) * 100);
   // Animations start once the stats have loaded.
   const active = !!stats;
-
-  const started = sweep?.started ?? false;
-  const checked = sweep?.checked ?? 0;
-  const sweeping = sweep?.sweeping ?? false;
-  const sweepStatus = !started
-    ? '검색을 실행하면 아래 7가지가 순서대로 자동 점검됩니다.'
-    : sweeping
-      ? `답변을 점검하는 중… (${Math.min(checked, LAYERS.length)}/${LAYERS.length})`
-      : '✓ 7가지를 모두 통과해 답변했습니다.';
 
   return (
     <section className="border-t border-line-soft bg-paper-soft px-4 py-5">
@@ -246,18 +208,12 @@ export function TrustDetailPanel({
         </p>
       </section>
 
-      {/* 지어내지 않도록 하는 7가지 안전장치 — 세로 타임라인. 검색 실행 시
-          위에서부터 하나씩 점검(✓)되는 라이브 표현. */}
+      {/* 지어내지 않도록 하는 7가지 안전장치 — 세로 타임라인. 각 항목 hover 시
+          강조 + ⓘ 로 상세. */}
       <section className="mt-5">
-        <h4 className="mb-1 text-sm font-semibold text-ink-2">
+        <h4 className="mb-3 text-sm font-semibold text-ink-2">
           🛡 지어내지 않도록 하는 7가지 안전장치
         </h4>
-        <p
-          className={`mb-3 text-xs transition-colors ${started ? 'text-amore' : 'text-mute-soft'}`}
-          aria-live="polite"
-        >
-          {sweepStatus}
-        </p>
         <ol className="relative space-y-0.5">
           {/* timeline spine — 배지 중심(li px-2 0.5rem + badge 반지름 0.75rem)에 정렬 */}
           <span
@@ -265,59 +221,29 @@ export function TrustDetailPanel({
             className="pointer-events-none absolute bottom-5 top-5 w-px bg-line-soft"
             style={{ left: '1.25rem' }}
           />
-          {LAYERS.map((l, i) => {
-            const state = !started
-              ? 'idle'
-              : i < checked
-                ? 'checked'
-                : sweeping && i === checked
-                  ? 'checking'
-                  : 'idle';
-            const badgeCls =
-              state === 'checked'
-                ? 'border-amore bg-amore text-paper'
-                : state === 'checking'
-                  ? 'border-amore bg-amore-bg text-amore'
-                  : 'border-line bg-paper-soft text-mute group-hover/row:border-amore group-hover/row:bg-amore-bg group-hover/row:text-amore';
-            return (
-              <li
-                key={l.id}
-                className={`group/row relative flex items-center gap-3 rounded-sm px-2 py-2 transition-colors ${
-                  state === 'checking' ? 'bg-paper' : 'hover:bg-paper'
-                }`}
-                style={{
-                  animation: 'trustReveal 320ms ease-out both',
-                  animationDelay: `${120 + i * 45}ms`,
-                }}
-              >
+          {LAYERS.map((l, i) => (
+            <li
+              key={l.id}
+              className="group/row relative flex items-center gap-3 rounded-sm px-2 py-2 transition-colors hover:bg-paper"
+              style={{
+                animation: 'trustReveal 320ms ease-out both',
+                animationDelay: `${120 + i * 45}ms`,
+              }}
+            >
+              <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-paper-soft text-xs font-semibold tabular-nums text-mute transition-colors duration-200 group-hover/row:border-amore group-hover/row:bg-amore-bg group-hover/row:text-amore">
+                {i + 1}
+              </span>
+              <span className="flex-1 text-sm text-ink-2">{l.title}</span>
+              <Tooltip content={l.detail}>
                 <span
-                  className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-colors duration-200 ${badgeCls}`}
-                  style={
-                    state === 'checking'
-                      ? { animation: 'trustChecking 0.9s ease-out infinite' }
-                      : undefined
-                  }
+                  className="cursor-help text-mute transition-colors group-hover/row:text-amore"
+                  aria-label={l.title}
                 >
-                  {state === 'checked' ? <CheckMark /> : i + 1}
+                  ⓘ
                 </span>
-                <span
-                  className={`flex-1 text-sm transition-colors ${
-                    state === 'idle' ? 'text-ink-2' : 'text-ink'
-                  }`}
-                >
-                  {l.title}
-                </span>
-                <Tooltip content={l.detail}>
-                  <span
-                    className="cursor-help text-mute transition-colors group-hover/row:text-amore"
-                    aria-label={l.title}
-                  >
-                    ⓘ
-                  </span>
-                </Tooltip>
-              </li>
-            );
-          })}
+              </Tooltip>
+            </li>
+          ))}
         </ol>
       </section>
     </section>
