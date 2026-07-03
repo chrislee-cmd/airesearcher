@@ -43,6 +43,9 @@ function ExpandedBody() {
     null,
   );
   const [selectedForm, setSelectedForm] = useState<FormSummary | null>(null);
+  // spreadsheet 의 발행-폼 목록이 아직 로딩 중인지. 분포 위젯이 formId===null
+  // 을 "로딩 중" vs "발행 폼 없음" 으로 구분하는 데 쓴다 (초기 flash 방지).
+  const [formsLoading, setFormsLoading] = useState(true);
 
   // 두 위젯(응답 spreadsheet + 분포 통계)이 각자의 refetch 함수를 여기로
   // 등록한다. fullview 상단 통합 "새로고침" 버튼이 둘을 함께 호출 → 사용자
@@ -128,12 +131,15 @@ function ExpandedBody() {
             <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
               <RecruitingConditionsPanel brief={conditionsForPanel} />
               <RecruitingDistributionPanel
+                formId={selectedForm?.formId ?? null}
+                formsLoading={formsLoading}
                 onRegisterRefresh={registerDistributionRefresh}
               />
             </div>
             <div className="min-h-0 flex-1">
               <ResponsesSpreadsheet
                 onSelectedFormChange={setSelectedForm}
+                onFormsLoadingChange={setFormsLoading}
                 onRegisterRefresh={registerResponsesRefresh}
               />
             </div>

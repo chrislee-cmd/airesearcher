@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { useRecruitingDistribution } from '@/hooks/use-recruiting-distribution';
@@ -10,44 +10,31 @@ import type { DistributionTable } from '@/lib/recruiting/distribution';
 //
 // 데이터는 spreadsheet 과 동일한 Google-Forms 경로를 재사용하되 집계만 받는다:
 //   GET /api/recruiting/google/forms/[id]/distribution → pivot count table.
-// 폼 선택은 이 위젯이 자체적으로 최근 발행 폼을 default 로 잡는다 (spreadsheet
-// 이 자체 selector 를 갖는 것과 동일한 최소 결합). 셀 클릭 crossfilter 는 다음
-// spec 이 wire — 여기선 hover highlight 까지만.
-
-type FormSummary = { formId: string; createdAt: string };
-
-function useLatestFormId(): string | null {
-  const [formId, setFormId] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/recruiting/google/forms/list');
-        if (!res.ok) return;
-        const j = (await res.json().catch(() => ({}))) as {
-          forms?: FormSummary[];
-        };
-        const latest = j.forms?.[0]?.formId ?? null;
-        if (!cancelled) setFormId(latest);
-      } catch {
-        // silent — panel falls back to the "발행된 설문 없음" empty state.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return formId;
-}
+//
+// 폼 선택: 이 위젯은 fullview 하단 응답 spreadsheet 의 selector 와 **동일한
+// 선택 폼**을 host 카드에서 formId prop 으로 받는다. 예전엔 이 위젯이 자체적으로
+// forms/list 를 다시 조회해 "최신 발행 폼" 만 default 로 잡았는데, 사용자가
+// spreadsheet 드롭다운에서 응답이 쌓인 옛 폼을 골라도 분포는 최신(빈) 폼을
+// 계속 봐서 240 응답 있는데도 "아직 집계할 응답이 없습니다" 로 뜨는 wire 사고가
+// 났다 (2026-07-04 P0). 이제 세 위젯(조건·분포·응답)이 하나의 선택 폼을 공유한다.
+// 셀 클릭 crossfilter 는 다음 spec 이 wire — 여기선 hover highlight 까지만.
 
 export function RecruitingDistributionPanel({
+  formId,
+  formsLoading = false,
   onRegisterRefresh,
 }: {
+  // fullview host(recruiting-card)가 spreadsheet 의 선택 폼을 그대로 내려준다.
+  //   string → 그 폼의 분포 집계
+  //   null   → 발행 폼이 없거나(로딩 끝) 아직 선택 전
+  formId: string | null;
+  // spreadsheet 이 폼 목록을 아직 로딩 중인지. formId 가 null 이어도 로딩 중이면
+  // "발행 설문 없음" empty 가 아니라 로더를 띄우기 위한 구분값.
+  formsLoading?: boolean;
   // Hands this panel's refresh (SWR-style `mutate`) up to the fullview host so
   // the shared 상단 "새로고침" 버튼이 테이블과 함께 분포도 refetch 한다.
   onRegisterRefresh?: (fn: () => void) => void;
-} = {}) {
-  const formId = useLatestFormId();
+}) {
   const { table, error, isLoading, mutate } = useRecruitingDistribution(formId);
 
   useEffect(() => {
@@ -70,6 +57,7 @@ export function RecruitingDistributionPanel({
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-4 py-3">
         <PanelBody
           formId={formId}
+          formsLoading={formsLoading}
           table={table}
           error={error}
           isLoading={isLoading}
@@ -81,11 +69,13 @@ export function RecruitingDistributionPanel({
 
 function PanelBody({
   formId,
+  formsLoading,
   table,
   error,
   isLoading,
 }: {
   formId: string | null;
+  formsLoading: boolean;
   table: DistributionTable | null | undefined;
   error: Error | null;
   isLoading: boolean;
@@ -99,16 +89,22 @@ function PanelBody({
       />
     );
   }
-  if (formId === null || (isLoading && table === undefined)) {
-    return formId === null && !isLoading ? (
+  if (formId === null) {
+    // spreadsheet 이 아직 폼 목록을 로딩 중이면 로더, 로딩이 끝났는데도 폼이
+    // 없으면(선택 폼 없음) empty. 이렇게 나눠야 초기 진입 시 "발행 설문 없음" 이
+    // 잠깐 깜빡였다가 표로 바뀌는 잘못된 flash 를 막는다.
+    return formsLoading ? (
+      <MochiLoader size={32} />
+    ) : (
       <EmptyState
         tone="subtle"
         title="발행된 설문이 없습니다"
         description="설문을 발행하면 성별 · 연령 분포가 여기에 표시됩니다."
       />
-    ) : (
-      <MochiLoader size={32} />
     );
+  }
+  if (isLoading && table === undefined) {
+    return <MochiLoader size={32} />;
   }
   if (table === null) {
     return (
