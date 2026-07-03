@@ -83,11 +83,16 @@ function selectorLabel(f: FormSummary): string {
 
 export function ResponsesSpreadsheet({
   onSelectedFormChange,
+  onRegisterRefresh,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
   // wizard's last-analysed brief.
   onSelectedFormChange?: (form: FormSummary | null) => void;
+  // Hands this table's refresh up to the fullview host so the shared 상단
+  // "새로고침" 버튼이 분포와 함께 응답 spreadsheet 도 refetch 한다. 옛
+  // spreadsheet-내부 새로고침 버튼을 대체한다 (spec B).
+  onRegisterRefresh?: (fn: () => void) => void;
 } = {}) {
   const { refresh: refreshCredits } = usePaywall();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
@@ -250,6 +255,14 @@ export function ResponsesSpreadsheet({
     onSelectedFormChange?.(selectedForm);
   }, [selectedForm, onSelectedFormChange]);
 
+  // 현재 선택 폼의 응답을 refetch — 옛 spreadsheet-내부 새로고침 버튼과 동일한
+  // 동작(폼 목록 재조회는 안 함, 최소 회귀). fullview 상단 통합 버튼이 호출.
+  useEffect(() => {
+    onRegisterRefresh?.(() => {
+      if (selectedFormId) void loadResponses(selectedFormId);
+    });
+  }, [onRegisterRefresh, selectedFormId, loadResponses]);
+
   const columns = useMemo(() => (data ? data.columns : []), [data]);
   const piiQids = useMemo(() => {
     const fromServer = data?.piiQuestionIds ?? [];
@@ -359,16 +372,8 @@ export function ResponsesSpreadsheet({
         ) : (
           <span className="text-sm text-mute-soft">발행된 설문 없음</span>
         )}
-        {selectedFormId && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadResponses(selectedFormId)}
-            disabled={loading}
-          >
-            {loading ? '갱신 중…' : '새로고침'}
-          </Button>
-        )}
+        {/* 새로고침 버튼은 fullview 상단 통합 버튼으로 이동 (spec B) — 여기서
+            누르면 테이블과 분포 통계가 함께 갱신된다. */}
         {data && hasPii && lockedIds.length > 0 && (
           <Button
             variant="primary"

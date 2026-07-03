@@ -40,9 +40,21 @@ function useLatestFormId(): string | null {
   return formId;
 }
 
-export function RecruitingDistributionPanel() {
+export function RecruitingDistributionPanel({
+  onRegisterRefresh,
+}: {
+  // Hands this panel's refresh (SWR-style `mutate`) up to the fullview host so
+  // the shared 상단 "새로고침" 버튼이 테이블과 함께 분포도 refetch 한다.
+  onRegisterRefresh?: (fn: () => void) => void;
+} = {}) {
   const formId = useLatestFormId();
-  const { table, error, isLoading } = useRecruitingDistribution(formId);
+  const { table, error, isLoading, mutate } = useRecruitingDistribution(formId);
+
+  useEffect(() => {
+    onRegisterRefresh?.(() => {
+      void mutate();
+    });
+  }, [onRegisterRefresh, mutate]);
 
   return (
     <section className="flex h-full min-h-0 flex-col rounded-sm border-[2px] border-ink bg-paper shadow-[2px_2px_0_black]">
