@@ -10,8 +10,9 @@ import {
   useInterviewV2Documents,
   type InterviewDocumentStatus,
 } from '@/hooks/use-interview-v2-documents';
+import { useSafeguardSweep } from '@/hooks/use-safeguard-sweep';
 import { SearchChat } from './search-chat';
-import { TrustDetailPanel } from './trust-detail-panel';
+import { TrustDetailPanel, SAFEGUARD_COUNT } from './trust-detail-panel';
 import { UploadModal } from './upload-modal';
 
 // Interview V2 — project detail view (file list + search chat). The ⚙ 설정 /
@@ -48,8 +49,10 @@ export function ProjectDetail({
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
-  // Bumped on every search submit; drives the trust panel's safeguard sweep.
+  // Bumped on every search submit; drives the shared safeguard sweep shown in
+  // both the trust panel (left) and the quality band above the chat (right).
   const [searchRunId, setSearchRunId] = useState(0);
+  const sweep = useSafeguardSweep(searchRunId, SAFEGUARD_COUNT);
 
   const projectName = useMemo(
     () => projects.find((p) => p.id === projectId)?.name ?? '',
@@ -121,7 +124,7 @@ export function ProjectDetail({
           {/* 신뢰도 (trust) panel — 파일 리스트 아래, default 접힘. -mx-6 로
               aside 좌우 패딩을 상쇄해 divider/hover 배경이 폭 전체를 채운다. */}
           <div className="-mx-6 mt-5">
-            <TrustDetailPanel projectId={projectId} searchRunId={searchRunId} />
+            <TrustDetailPanel projectId={projectId} sweep={sweep} />
           </div>
         </aside>
         <section className="min-h-0 lg:col-span-7">
@@ -129,6 +132,7 @@ export function ProjectDetail({
             projectIds={null}
             currentProject={{ id: projectId, name: projectName }}
             onSearchStart={() => setSearchRunId((n) => n + 1)}
+            sweep={sweep}
           />
         </section>
       </div>

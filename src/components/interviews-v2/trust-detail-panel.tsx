@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useInterviewV2TrustStats } from '@/hooks/use-interview-v2-trust-stats';
+import type { SafeguardSweep } from '@/hooks/use-safeguard-sweep';
 
 // Interview V2 — 신뢰도 (trust) panel, option B.
 //
@@ -23,6 +24,8 @@ type Layer = { id: string; title: string; detail: string };
 
 // Plain-language rewrite of the 7 hallucination guards — no jargon (청크 /
 // 임베딩 / citation / threshold / temperature 등은 쉬운 말로 풀어씀).
+export const SAFEGUARD_COUNT = 7;
+
 const LAYERS: Layer[] = [
   {
     id: 'retrieval-first',
@@ -175,11 +178,12 @@ function CheckMark() {
 
 export function TrustDetailPanel({
   projectId,
-  searchRunId = 0,
+  sweep,
 }: {
   projectId: string;
-  // Increments on each search submit; each bump runs a fresh safeguard sweep.
-  searchRunId?: number;
+  // Per-search safeguard sweep, driven by useSafeguardSweep in the parent so
+  // this panel and the search-panel quality band stay in sync.
+  sweep?: SafeguardSweep;
 }) {
   const { stats } = useInterviewV2TrustStats(projectId);
 
@@ -189,32 +193,9 @@ export function TrustDetailPanel({
   // Animations start once the stats have loaded.
   const active = !!stats;
 
-  // Per-search safeguard sweep: on each searchRunId bump, tick a check across
-  // the 7 layers one by one. `checked` = how many have passed; `sweeping` =
-  // a sweep is in flight. All setState lives inside the interval callback so
-  // nothing runs synchronously in the effect body.
-  const [checked, setChecked] = useState(0);
-  const [sweeping, setSweeping] = useState(false);
-  useEffect(() => {
-    if (searchRunId === 0) return;
-    let n = -1;
-    const id = window.setInterval(() => {
-      n += 1;
-      if (n === 0) {
-        setChecked(0);
-        setSweeping(true);
-        return;
-      }
-      setChecked(n);
-      if (n >= LAYERS.length) {
-        window.clearInterval(id);
-        setSweeping(false);
-      }
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [searchRunId]);
-
-  const started = searchRunId > 0;
+  const started = sweep?.started ?? false;
+  const checked = sweep?.checked ?? 0;
+  const sweeping = sweep?.sweeping ?? false;
   const sweepStatus = !started
     ? '검색을 실행하면 아래 7가지가 순서대로 자동 점검됩니다.'
     : sweeping

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Citation } from '@/lib/interview-v2/types';
+import type { SafeguardSweep } from '@/hooks/use-safeguard-sweep';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 import { QAPair, type QAData } from './qa-pair';
@@ -42,6 +43,47 @@ function readCitationsHeader(res: Response): Citation[] {
   }
 }
 
+// Subtle one-line quality band under the scope header. Curates the most
+// quality-relevant signal — that answers are grounded in the uploaded
+// material and pass the 7 safeguards — and animates a live per-search check
+// (dots fill top→bottom, mirroring the trust panel) when a query runs.
+function QualityBand({ sweep }: { sweep: SafeguardSweep }) {
+  const { checked, sweeping, started, total } = sweep;
+  const text = !started
+    ? '근거 기반 답변 · 안전장치 ' + total + '가지'
+    : sweeping
+      ? `답변 점검 중… ${Math.min(checked, total)}/${total}`
+      : `안전장치 ${total}가지 통과 · 근거 함께 표시`;
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-b border-line-soft bg-paper-soft px-5 py-1.5">
+      <span aria-hidden>🛡</span>
+      <span
+        className={`text-xs-soft transition-colors ${started && !sweeping ? 'text-ink-2' : 'text-mute-soft'}`}
+        aria-live="polite"
+      >
+        {text}
+      </span>
+      <span className="ml-auto flex items-center gap-1" aria-hidden>
+        {Array.from({ length: total }).map((_, i) => {
+          const on = started && i < checked;
+          const cur = sweeping && i === checked;
+          return (
+            <span
+              key={i}
+              className={`h-1.5 w-1.5 rounded-full transition-colors duration-200 ${
+                on || cur ? 'bg-amore' : 'bg-line'
+              }`}
+              style={
+                cur ? { animation: 'trustChecking 0.9s ease-out infinite' } : undefined
+              }
+            />
+          );
+        })}
+      </span>
+    </div>
+  );
+}
+
 function Intro({ cross }: { cross: boolean }) {
   const t = useTranslations('InterviewsV2');
   const examples = [
@@ -72,12 +114,16 @@ export function SearchChat({
   projectIds,
   currentProject,
   onSearchStart,
+  sweep,
 }: {
   projectIds: string[] | null;
   currentProject?: CurrentProject;
   // Fired the moment a query is submitted — lets a sibling (the trust panel)
   // run its per-search safeguard sweep. Optional so other callers are unaffected.
   onSearchStart?: () => void;
+  // Shared safeguard sweep state — when provided, renders the quality band
+  // under the scope header. Optional so other callers are unaffected.
+  sweep?: SafeguardSweep;
 }) {
   const t = useTranslations('InterviewsV2');
   const [history, setHistory] = useState<QAData[]>([]);
@@ -211,6 +257,7 @@ export function SearchChat({
           {scopeLabel}
         </span>
       </div>
+      {sweep && <QualityBand sweep={sweep} />}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         {empty ? (
           <Intro cross={cross} />
