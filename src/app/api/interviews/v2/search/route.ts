@@ -56,11 +56,17 @@ const Body = z.object({
   // project_id; [] ⇒ all projects (whole-org); [id...] ⇒ that set.
   project_ids: z.array(z.string().uuid()).max(100).optional().nullable(),
   top_k: z.number().int().min(1).max(50).optional().default(12),
-  // Was 0.7 — too high for short Korean snippets whose cosine similarity
-  // rarely clears that floor, so the RPC returned zero chunks despite a 200
-  // (prod incident 2026-07-03). 0.4 restores recall; weak chunks are still
-  // dropped. Tune later off the [v2/search] debug logs (0.3 vs 0.4).
-  score_threshold: z.number().min(0).max(1).optional().default(0.4),
+  // Was 0.7, which returned zero chunks despite a 200 (prod incident
+  // 2026-07-03). Measured against real prod data the cosine scores top out
+  // at ~0.31 and cluster in 0.20–0.31 for EVERY query — the interview corpus
+  // is English text embedded with text-embedding-3-small while questions are
+  // Korean, so cross-lingual similarity is structurally low and the score
+  // barely separates relevant from irrelevant. 0.4 (and even 0.3) still
+  // returned nothing; 0.2 is the floor that reliably surfaces on-topic
+  // chunks while dropping the clearly-orthogonal tail (~0.19). Relevance is
+  // then gated by the retrieval-first prompt's no_answer path, not this
+  // threshold. Tune off the [v2/search] chunks_count logs.
+  score_threshold: z.number().min(0).max(1).optional().default(0.2),
 });
 
 // Build the authoritative Citation[] from the model's cited chunk_ids,
