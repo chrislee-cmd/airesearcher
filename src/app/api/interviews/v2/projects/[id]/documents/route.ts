@@ -38,32 +38,47 @@ function stripLeadingTimestamps(s: string): string {
   return s.replace(/^(?:[[(]?\s*\d{1,2}:\d{2}(?::\d{2})?\s*[\])]?\s*)+/, '');
 }
 
-// Drop the timestamp + speaker/moderator label so only the plain question
-// remains. Handles either order ("[00:12] AI 모더레이터: …" or
-// "AI 모더레이터: [00:12] …"). The label = a short leading token ending in a
-// colon (e.g. "AI 모더레이터:", "Moderator:", "면접관:", "Q:", "질문:").
+// Exact speaker labels the transcript formatter recognizes (see
+// src/lib/markdown-format.ts). Used to strip a leading "Moderator: …" style
+// tag in the fallback path so only the plain question text remains.
+const SPEAKER_PREFIX =
+  /^(?:M|R|Q|A|I|P|진행자|응답자|면접관|참여자|인터뷰어|Moderator|Interviewer|Respondent|Participant|Interviewee)\s*[:：]\s*/i;
+
+// Reduce a raw line to the plain question: drop markdown headings / list
+// markers, the "Q." prefix, timestamps, and a speaker label (either order).
 function cleanQuestion(s: string): string {
   let out = s.replace(/\s+/g, ' ').trim();
-  // leading markdown / list markers
-  out = out.replace(/^[#>\-*•\s]+/, '');
+  out = out.replace(/^#+\s*/, ''); // markdown heading
+  out = out.replace(/^Q\.\s*/i, ''); // "## Q." question prefix
+  out = out.replace(/^[>\-*•\s]+/, ''); // list markers
   out = stripLeadingTimestamps(out);
-  // one leading speaker / moderator label
-  out = out.replace(/^[^:：?？\n]{1,24}[:：]\s*/, '');
+  out = out.replace(SPEAKER_PREFIX, '');
   out = stripLeadingTimestamps(out);
   return out.trim();
 }
 
-// First / last question in the document. A "question" = a sentence ending in
-// ? / ？ (the char class stops at the previous sentence boundary so each match
-// is one sentence, not a whole paragraph). Timestamps + moderator tags are
-// stripped so only the plain question text shows. Surfacing both endpoints
-// lets a user confirm the transcript was captured from its very first to its
-// very last question — nothing truncated at either end. Null when the doc has
-// no question form.
+// First / last question in the document. The structured transcript format
+// emits every question as a "## Q. <text>" heading (no speaker/timestamp), so
+// we read those directly. Falls back to "?"-terminated sentences (with
+// timestamp + speaker stripped) only for un-structured docs. Surfacing both
+// endpoints lets a user confirm the transcript was captured from its very
+// first to its very last question — nothing truncated at either end. Null
+// when the doc has no question form.
 function extractQuestions(text: string): {
   first: string | null;
   last: string | null;
 } {
+  const fromHeadings = [...text.matchAll(/^##\s*Q\.\s*(.+?)\s*$/gm)]
+    .map((m) => cleanQuestion(m[1]))
+    .filter((q) => q.length > 1)
+    .map((q) => q.slice(0, 140));
+  if (fromHeadings.length > 0) {
+    return {
+      first: fromHeadings[0],
+      last: fromHeadings[fromHeadings.length - 1],
+    };
+  }
+
   const matches = text.match(/[^.!?？。\n]*[?？]/g);
   if (!matches) return { first: null, last: null };
   const qs = matches

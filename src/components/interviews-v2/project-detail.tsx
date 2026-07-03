@@ -154,14 +154,14 @@ export function ProjectDetail({
                           <div className="mt-1 space-y-0.5">
                             {d.first_question && (
                               <div className="truncate text-xs text-mute-soft">
-                                <span className="text-mute">첫 질문</span> ·{' '}
-                                {d.first_question}
+                                <span className="text-mute">첫 질문</span> : “
+                                {d.first_question}”
                               </div>
                             )}
                             {d.last_question && (
                               <div className="truncate text-xs text-mute-soft">
-                                <span className="text-mute">마지막 질문</span> ·{' '}
-                                {d.last_question}
+                                <span className="text-mute">마지막 질문</span> : “
+                                {d.last_question}”
                               </div>
                             )}
                           </div>
