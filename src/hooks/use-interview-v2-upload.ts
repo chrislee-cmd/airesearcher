@@ -55,7 +55,7 @@ type ConvertResult = {
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
-export function useInterviewV2Upload(projectId: string) {
+export function useInterviewV2Upload() {
   const [items, setItems] = useState<UploadFileState[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -72,9 +72,16 @@ export function useInterviewV2Upload(projectId: string) {
 
   // Returns true when at least one file made it through indexing, so the
   // caller knows to refetch the document list.
+  //
+  // projectId is REQUIRED — this is the whole point of the project-setup
+  // gate. Without it the indexed rows would land with a null
+  // interview_documents.project_id and never show up in the V2 fullview
+  // (which filters by project). The UI gate (upload modal Step 2) makes
+  // this unreachable; the guard is a last-resort net that refuses the
+  // batch rather than silently orphaning the files.
   const uploadMany = useCallback(
-    async (files: File[]): Promise<boolean> => {
-      if (files.length === 0 || busy) return false;
+    async (files: File[], projectId: string): Promise<boolean> => {
+      if (!projectId || files.length === 0 || busy) return false;
       setBusy(true);
       setItems(files.map((f) => ({ name: f.name, status: 'converting' })));
 
@@ -159,7 +166,7 @@ export function useInterviewV2Upload(projectId: string) {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             interview_job_id: interviewJobId,
-            project_id: projectId || null,
+            project_id: projectId,
             documents: ok.map((c) => ({
               filename: c.filename,
               mime: c.mime,
@@ -188,7 +195,7 @@ export function useInterviewV2Upload(projectId: string) {
         return true;
       }
     },
-    [busy, projectId, setStatusAt],
+    [busy, setStatusAt],
   );
 
   return { items, busy, uploadMany, reset };
