@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { CreateProjectModal } from './create-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
+import { UploadModal } from './upload-modal';
 
 // Interview V2 — project grid (default fullview). Each card opens the
 // detail view; the trailing "+ 새 프로젝트" tile opens the create modal and,
@@ -62,6 +63,7 @@ export function ProjectList({
   const { projects, isLoading, create } = useInterviewV2Projects();
   const [createOpen, setCreateOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleCreate = async (name: string, description?: string) => {
     const project = await create(name, description);
@@ -79,9 +81,18 @@ export function ProjectList({
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-6 py-6">
-      {/* Cross-project search entry — opens the multi-select picker first;
-          the picked set is handed up to open the cross chat scoped to it. */}
-      <div className="mb-4 flex justify-end">
+      {/* Top actions — 📤 업로드 (프로젝트 설정 gate 뒤 저장) + 🌐 전체 검색.
+          업로드는 여기서 프로젝트 미선택 상태로 열려 Step 2(프로젝트 설정)를
+          강제하고, 완료 시 해당 프로젝트 상세로 이동해 새 파일을 바로 노출. */}
+      <div className="mb-4 flex justify-end gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setUploadOpen(true)}
+          leftIcon={<span aria-hidden>📤</span>}
+        >
+          {t('upload')}
+        </Button>
         <Button
           variant="secondary"
           size="sm"
@@ -144,6 +155,17 @@ export function ProjectList({
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreate={handleCreate}
+      />
+
+      {/* Project-less upload → Step 2 forces project setup. On success jump
+          into that project's detail so the freshly indexed files show up. */}
+      <UploadModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onUploaded={(id) => {
+          setUploadOpen(false);
+          onOpenProject(id);
+        }}
       />
 
       {/* Mount only while open so the selection resets on every reopen. */}
