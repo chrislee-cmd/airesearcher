@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
+import { RecruitingEmptySkeleton } from '@/components/canvas/widgets/skeletons/recruiting-empty-skeleton';
 import { usePaywall } from '@/components/paywall-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
@@ -441,12 +442,19 @@ export function ResponsesSpreadsheet({
             </div>
           </div>
         ) : !data || totalRows === 0 ? (
-          <div className="flex h-full items-center justify-center p-8">
-            <EmptyState
-              tone="subtle"
-              title="아직 응답이 없습니다"
-              description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 개인정보는 기본 잠금 상태로 표시됩니다."
-            />
+          // 응답 0건 — spreadsheet shape skeleton 을 배경으로 깔고 안내
+          // 메시지를 그 위에 겹쳐, 빈 상태에서도 "여기에 응답 표가 그려진다"는
+          // 시각적 힌트를 준다. 첫 응답이 들어오면 이 분기가 사라지고 실제
+          // ResponseTable 이 렌더된다.
+          <div className="relative h-full">
+            <RecruitingEmptySkeleton />
+            <div className="absolute inset-0 flex items-center justify-center p-8">
+              <EmptyState
+                tone="subtle"
+                title="아직 응답이 없습니다"
+                description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 개인정보는 기본 잠금 상태로 표시됩니다."
+              />
+            </div>
           </div>
         ) : (
           <ResponseTable
