@@ -1059,6 +1059,7 @@
     "settings": "설정",
     "upload": "파일 업로드",
     "search": "검색",
+    "filesTitle": "업로드된 파일",
     "statusPending": "대기",
     "statusIndexing": "인덱싱 중",
     "statusDone": "인덱싱 완료",
