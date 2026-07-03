@@ -13,8 +13,6 @@ import {
 } from '@/lib/transcripts/text-extract';
 import { spendCreditsAdmin } from '@/lib/credits';
 
-export const maxDuration = 60;
-
 const Body = z.object({
   storage_key: z.string().min(1),
   filename: z.string().min(1),

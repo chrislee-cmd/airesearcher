@@ -15,8 +15,6 @@ import {
 } from '@/lib/transcripts/diarization';
 import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
-export const maxDuration = 60;
-
 function markdownToPlainText(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
   const out: string[] = [];
