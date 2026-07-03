@@ -1096,7 +1096,15 @@
     "pickerEmptyTitle": "No projects yet",
     "pickerEmptyDescription": "Create a project and add interview files first.",
     "scopeCurrentProject": "Current project ({name})",
-    "scopeSelected": "{count} selected projects"
+    "scopeSelected": "{count} selected projects",
+    "filesTitle": "Files",
+    "trustAria": "Trust information",
+    "trustTitle": "🛡 Trust guarantees",
+    "trustBullet1": "Lossless source text (18× chunk safety margin)",
+    "trustBullet2": "Only uses similarity ≥ 0.2",
+    "trustBullet3": "No answer without evidence",
+    "trustBullet4": "Server drops hallucinated citations",
+    "trustBullet5": "Zero retention"
   },
   "Workspace": {
     "eyebrow": "Workspace",

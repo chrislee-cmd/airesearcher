@@ -1096,7 +1096,15 @@
     "pickerEmptyTitle": "아직 프로젝트가 없습니다",
     "pickerEmptyDescription": "먼저 프로젝트를 만들고 인터뷰 파일을 추가하세요.",
     "scopeCurrentProject": "현재 프로젝트 ({name})",
-    "scopeSelected": "선택된 {count}개 프로젝트"
+    "scopeSelected": "선택된 {count}개 프로젝트",
+    "filesTitle": "파일",
+    "trustAria": "신뢰도 정보",
+    "trustTitle": "🛡 신뢰도 보장",
+    "trustBullet1": "원문 무손실 (chunk 안전 마진 18배)",
+    "trustBullet2": "유사도 0.2 이상만 사용",
+    "trustBullet3": "근거 없으면 답변 X",
+    "trustBullet4": "서버가 환상 citation drop",
+    "trustBullet5": "Zero retention"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",

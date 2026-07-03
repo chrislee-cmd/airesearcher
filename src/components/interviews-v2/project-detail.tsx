@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TrustInfoTooltip } from '@/components/ui/trust-info-tooltip';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import {
   useInterviewV2Documents,
@@ -87,33 +88,43 @@ export function ProjectDetail({
 
       {/* 본문 — 좌(파일 list) 5/12 + 우(검색 chat) 7/12. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-12">
-        <aside className="min-h-0 overflow-y-auto border-b border-line-soft px-6 py-5 lg:col-span-5 lg:border-b-0 lg:border-r">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-12 rounded-sm" />
-              <Skeleton className="h-12 rounded-sm" />
-            </div>
-          ) : documents.length === 0 ? (
-            <EmptyState
-              tone="subtle"
-              title={t('noFilesTitle')}
-              description={t('noFilesDescription')}
-            />
-          ) : (
-            <ul className="rounded-sm border border-line bg-paper">
-              {documents.map((d) => (
-                <li
-                  key={d.id}
-                  className="flex items-center gap-3 border-t border-line-soft px-4 py-3 first:border-t-0"
-                >
-                  <span className="min-w-0 flex-1 truncate text-md text-ink-2">
-                    {d.filename}
-                  </span>
-                  <StatusPill status={d.index_status} />
-                </li>
-              ))}
-            </ul>
-          )}
+        <aside className="min-h-0 overflow-y-auto border-b border-line-soft lg:col-span-5 lg:border-b-0 lg:border-r">
+          {/* 파일 헤더 — 옵션 C: 제목 옆 ℹ️ 만 추가해 신뢰도 요약을 hover/focus
+              popover 로 노출 (시각 잡음 최소). */}
+          <div className="flex items-center gap-2 border-b border-line-soft px-6 py-3">
+            <h3 className="text-sm font-semibold text-ink-2">
+              📁 {t('filesTitle')} ({documents.length})
+            </h3>
+            <TrustInfoTooltip />
+          </div>
+          <div className="px-6 py-5">
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 rounded-sm" />
+                <Skeleton className="h-12 rounded-sm" />
+              </div>
+            ) : documents.length === 0 ? (
+              <EmptyState
+                tone="subtle"
+                title={t('noFilesTitle')}
+                description={t('noFilesDescription')}
+              />
+            ) : (
+              <ul className="rounded-sm border border-line bg-paper">
+                {documents.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center gap-3 border-t border-line-soft px-4 py-3 first:border-t-0"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-md text-ink-2">
+                      {d.filename}
+                    </span>
+                    <StatusPill status={d.index_status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
         <section className="min-h-0 lg:col-span-7">
           <SearchChat
