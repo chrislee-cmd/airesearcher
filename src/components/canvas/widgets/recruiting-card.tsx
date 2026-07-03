@@ -9,6 +9,9 @@ import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { ResponsesSpreadsheet } from './recruiting/responses-spreadsheet';
+import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
+import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
+import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
 
 // 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
 // 이전엔 위젯 바닥에 발행된 폼 목록 "최근 산출물" 영역이 있었지만, prod
@@ -27,6 +30,11 @@ function ExpandedBody() {
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
   const [isPublished, setIsPublished] = useState(false);
+  // 대상자 조건 원본은 wizard React state 에만 존재(서버 form별 미저장)하므로
+  // 콜백으로 lift 해 fullview 상단 좌 위젯(조건 요약)에 그대로 전달한다.
+  const [conditionsBrief, setConditionsBrief] = useState<EditableBrief | null>(
+    null,
+  );
 
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
@@ -47,7 +55,10 @@ function ExpandedBody() {
       {/* 통일 서브헤더(대상자 조건 입력 + 조건 검토) + 스크롤 카드 본문은
           wizard 가 자체 관리 — subheader 가 스크롤에 딸려 올라가지 않도록
           wizard 를 flex 컨텍스트의 직접 자식으로 둔다. */}
-      <RecruitingWizard onPublishedChange={setIsPublished} />
+      <RecruitingWizard
+        onPublishedChange={setIsPublished}
+        onConditionsChange={setConditionsBrief}
+      />
       {isPublished && (
         <WidgetStatusFooter
           status="done"
@@ -60,10 +71,21 @@ function ExpandedBody() {
       {renderInSlot(
         <WidgetFullviewPanel
           title="리크루팅 — 응답"
-          subtitle="발행된 설문의 응답 spreadsheet"
+          subtitle="참여자 조건 · 분포 · 응답 spreadsheet"
           onClose={close}
         >
-          <ResponsesSpreadsheet />
+          {/* 상단 = 2 위젯 (좌 조건 요약 + 우 분포 slot), 하단 = 응답
+              spreadsheet. 상단 row 는 고정 높이, 하단 spreadsheet 가 남은
+              공간을 flex-1 로 채우며 자체 스크롤(기존 unlock/scroll 유지). */}
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
+              <RecruitingConditionsPanel brief={conditionsBrief} />
+              <RecruitingDistributionPanel />
+            </div>
+            <div className="min-h-0 flex-1">
+              <ResponsesSpreadsheet />
+            </div>
+          </div>
         </WidgetFullviewPanel>,
       )}
     </div>
