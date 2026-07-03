@@ -56,7 +56,17 @@ const Body = z.object({
   // project_id; [] ⇒ all projects (whole-org); [id...] ⇒ that set.
   project_ids: z.array(z.string().uuid()).max(100).optional().nullable(),
   top_k: z.number().int().min(1).max(50).optional().default(12),
-  score_threshold: z.number().min(0).max(1).optional().default(0.7),
+  // Was 0.7, which returned zero chunks despite a 200 (prod incident
+  // 2026-07-03). Measured against real prod data the cosine scores top out
+  // at ~0.31 and cluster in 0.20–0.31 for EVERY query — the interview corpus
+  // is English text embedded with text-embedding-3-small while questions are
+  // Korean, so cross-lingual similarity is structurally low and the score
+  // barely separates relevant from irrelevant. 0.4 (and even 0.3) still
+  // returned nothing; 0.2 is the floor that reliably surfaces on-topic
+  // chunks while dropping the clearly-orthogonal tail (~0.19). Relevance is
+  // then gated by the retrieval-first prompt's no_answer path, not this
+  // threshold. Tune off the [v2/search] chunks_count logs.
+  score_threshold: z.number().min(0).max(1).optional().default(0.2),
 });
 
 // Build the authoritative Citation[] from the model's cited chunk_ids,
@@ -147,6 +157,22 @@ export async function POST(req: Request) {
     console.error('[interviews/v2/search] retrieval failed', e);
     return NextResponse.json({ error: 'search_failed' }, { status: 500 });
   }
+
+  // Debug — surfaces which RPC ran, the effective threshold, and how many
+  // chunks came back, so an empty-citations report can be diagnosed straight
+  // from the Vercel Function logs and the threshold tuned off real traffic.
+  const rpcName = useMultiProject
+    ? 'match_interview_chunks_v2_multi'
+    : 'match_interview_chunks_v2';
+  console.log('[v2/search]', {
+    rpc: rpcName,
+    threshold: score_threshold,
+    top_k,
+    project_id: project_id ?? null,
+    project_ids: project_ids ?? null,
+    chunks_count: hits.length,
+    question_preview: question.slice(0, 40),
+  });
 
   // Candidate sources for the UI to render a source list immediately,
   // before the stream resolves which chunks the answer actually cited.
