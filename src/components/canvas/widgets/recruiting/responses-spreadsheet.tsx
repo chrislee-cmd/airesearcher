@@ -82,14 +82,21 @@ export function ResponsesSpreadsheet() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Unlock state is intentionally in-memory (not localStorage): closing the
-  // tab or navigating away re-locks every row, minimising PII leak surface
-  // and re-triggering the paywall on revisit (spec: 세션 종료 시 리셋).
+  // Revealed rows in this session (PII values loaded in-memory only, never
+  // localStorage — minimises leak surface).
   const [unlockedRows, setUnlockedRows] = useState<Set<string>>(new Set());
   const [unlockingRows, setUnlockingRows] = useState<Set<string>>(new Set());
   const [unlockedAnswers, setUnlockedAnswers] = useState<
     Record<string, Record<string, string>>
   >({});
+  // Rows this org has ALREADY PAID to unlock (from `recruiting_pii_unlocks`,
+  // hydrated on form load). These persist across tab close / refresh, so a
+  // re-reveal is free — the server skips the charge for an existing row. Kept
+  // separate from `unlockedRows` because the PII values aren't loaded yet: a
+  // paid row shows a free "보기" affordance, and clicking it fetches the
+  // values (already_unlocked, no charge). This is the spec's "간단" default —
+  // persist the paid marker, defer the payload to an on-demand free re-fetch.
+  const [paidRows, setPaidRows] = useState<Set<string>>(new Set());
 
   // 1) 발행 폼 목록 로드 — 가장 최근 발행 폼을 default 선택.
   const loadForms = useCallback(async () => {
@@ -119,13 +126,31 @@ export function ResponsesSpreadsheet() {
     })();
   }, [loadForms]);
 
-  // 2) 선택된 폼의 응답 로드. 폼을 바꾸면 잠금 상태도 리셋.
+  // 2) 선택된 폼의 응답 로드. 폼을 바꾸면 세션 reveal 상태는 리셋하되, 이미
+  //    결제된 unlock 목록(paidRows)은 서버에서 다시 hydrate 한다 — 재과금 방지.
   const loadResponses = useCallback(async (formId: string) => {
     setLoading(true);
     setError(null);
     setUnlockedRows(new Set());
     setUnlockingRows(new Set());
     setUnlockedAnswers({});
+    setPaidRows(new Set());
+    // 이미 결제된 row 목록 hydrate (응답 로드와 병렬, 실패해도 표는 뜬다).
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/recruiting/fullview/unlocks?formId=${encodeURIComponent(formId)}`,
+        );
+        if (!res.ok) return;
+        const j = (await res.json().catch(() => ({}))) as {
+          unlockedRowIds?: string[];
+        };
+        setPaidRows(new Set(j.unlockedRowIds ?? []));
+      } catch {
+        // hydrate 실패는 무시 — 최악의 경우 해당 세션에서 재클릭이 유료로
+        // 보이지만, 서버가 여전히 already_unlocked 로 재과금을 막는다.
+      }
+    })();
     try {
       const res = await fetch(
         `/api/recruiting/google/forms/${encodeURIComponent(formId)}/responses`,
@@ -173,6 +198,12 @@ export function ResponsesSpreadsheet() {
         };
         setUnlockedAnswers((prev) => ({ ...prev, [rowId]: j.answers ?? {} }));
         setUnlockedRows((prev) => new Set(prev).add(rowId));
+        setPaidRows((prev) => {
+          if (!prev.has(rowId)) return prev;
+          const next = new Set(prev);
+          next.delete(rowId);
+          return next;
+        });
         trackEvent('widget_action', {
           widget: 'recruiting',
           action: 'response_unlock',
@@ -323,6 +354,7 @@ export function ResponsesSpreadsheet() {
             rows={cappedRows}
             unlockedRows={unlockedRows}
             unlockingRows={unlockingRows}
+            paidRows={paidRows}
             unlockedAnswers={unlockedAnswers}
             onUnlock={(rowId) => void unlockRow(rowId)}
           />
@@ -383,6 +415,7 @@ function ResponseTable({
   rows,
   unlockedRows,
   unlockingRows,
+  paidRows,
   unlockedAnswers,
   onUnlock,
 }: {
@@ -391,6 +424,7 @@ function ResponseTable({
   rows: FormResponseRow[];
   unlockedRows: Set<string>;
   unlockingRows: Set<string>;
+  paidRows: Set<string>;
   unlockedAnswers: Record<string, Record<string, string>>;
   onUnlock: (rowId: string) => void;
 }) {
@@ -439,6 +473,7 @@ function ResponseTable({
         {rows.map((r) => {
           const unlocked = unlockedRows.has(r.responseId);
           const unlocking = unlockingRows.has(r.responseId);
+          const paid = paidRows.has(r.responseId);
           const revealed = unlockedAnswers[r.responseId];
           return (
             <tr
@@ -456,6 +491,16 @@ function ResponseTable({
                         <span className="whitespace-nowrap text-xs-soft text-mute-soft">
                           ✓ 해제됨
                         </span>
+                      ) : paid ? (
+                        // 이미 결제된 row — 재과금 없이 무료로 값만 다시 노출.
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          disabled={unlocking}
+                          onClick={() => onUnlock(r.responseId)}
+                        >
+                          {unlocking ? '불러오는 중…' : '🔓 보기 (무료)'}
+                        </Button>
                       ) : (
                         <Button
                           variant="secondary"

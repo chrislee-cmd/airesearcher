@@ -63,20 +63,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
+  const admin = createAdminClient();
+
+  // `recruiting_pii_unlocks` is the source of truth for "already paid". A row
+  // unlocked once must never be charged again — tab close / refresh / form
+  // switch drops the in-memory client state, but the DB row persists, so we
+  // gate the charge on it. Same (org_id, form_id, row_id) key the client
+  // hydrates from via GET /api/recruiting/fullview/unlocks.
+  const { data: existing } = await admin
+    .from('recruiting_pii_unlocks')
+    .select('id')
+    .eq('org_id', org.org_id)
+    .eq('form_id', formId)
+    .eq('row_id', rowId)
+    .maybeSingle();
+
+  if (existing) {
+    // Already unlocked for this org — return the PII without re-charging.
+    const remaining = await getOrgCredits(org.org_id);
+    return NextResponse.json({
+      ok: true,
+      remaining_credits: remaining,
+      answers,
+      already_unlocked: true,
+    });
+  }
+
   // Charge. generationId is left null — each unlock is an independent charge
-  // (no generations row), and the session-scoped client model intentionally
-  // re-charges on re-unlock after a tab close.
+  // (no generations row). Re-unlock after a tab close is now free (guarded by
+  // the `existing` check above); the charge only fires on a row's first ever
+  // unlock for this org.
   const spend = await spendCredits(org.org_id, 'recruiting_pii_unlock');
   if (!spend.ok) {
     const status = spend.reason === 'insufficient' ? 402 : 403;
     return NextResponse.json({ error: spend.reason }, { status });
   }
 
-  // Best-effort audit/billing log via the service-role client (RLS has no
-  // insert policy). The credit_transactions ledger is the authoritative
-  // billing record, so a log failure must not block the paid reveal.
+  // Persist the unlock via the service-role client (RLS has no insert policy).
+  // This row is now the authoritative "already paid" marker (see the guard
+  // above) as well as the audit/billing log. A failure here would let the
+  // same row be charged again, so — unlike a pure audit log — we surface it
+  // is best-effort but log loudly; the credit_transactions ledger remains the
+  // financial record of the charge that already succeeded.
   try {
-    const admin = createAdminClient();
     await admin.from('recruiting_pii_unlocks').insert({
       user_id: user.id,
       org_id: org.org_id,
