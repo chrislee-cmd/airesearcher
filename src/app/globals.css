@@ -535,6 +535,24 @@ html, body {
   animation: completedCtaPulse 1s ease-in-out 3;
 }
 
+/* trust-reveal — 인터뷰 V2 신뢰도 패널 확장 시 stat 카드/7-layer 행이 아래에서
+   부드럽게 올라오며 등장. 행마다 animation-delay 로 stagger. */
+@keyframes trustReveal {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* trust-fade — ⓘ tooltip 등장. -translate-x-1/2(className)와 충돌 않도록
+   opacity 만 애니메이션. */
+@keyframes trustFade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+/* trust-shield — 접힘 요약 방패 dot 가 잔잔히 맥동해 "보호 중" 을 암시. */
+@keyframes trustShield {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+
 /* Docx-derived preview */
 .docx-preview h1 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--color-ink); }
 .docx-preview h2 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--color-ink); }
