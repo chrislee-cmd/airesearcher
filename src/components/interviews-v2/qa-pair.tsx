@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Button } from '@/components/ui/button';
 import type { Citation } from '@/lib/interview-v2/types';
+import { CitationPopover } from '@/components/ui/citation-popover';
 import { CitationCard } from './citation-card';
 
 // Interview V2 search — one question + streamed answer turn.
@@ -13,16 +13,15 @@ import { CitationCard } from './citation-card';
 // The answer is retrieval-grounded markdown with inline [chunk_id]
 // citations. We render it with react-markdown; the inline [12] tokens are
 // rewritten to markdown links (#cite-12) so react-markdown parses them as
-// anchors, and the `a` component swaps those anchors for clickable citation
-// badges. Clicking a badge scrolls to (and flashes) the matching card in the
-// collapsible 근거 list below — all scoped within this turn's root ref so
-// the same chunk_id appearing in another turn never collides.
+// anchors, and the `a` component swaps those anchors for inline citation
+// badges. Clicking a badge opens a popover with the cited chunk's original
+// excerpt (filename / project / score / text) — the answer stays the focus
+// and the full 근거 list below is collapsed by default.
 //
-// Citation card data comes from `candidates` (the route's x-citations
-// header = every retrieved chunk with faithful filename/excerpt/score),
-// keyed by the chunk_ids the model actually cited inline. Same philosophy
-// as the route: retrieval is authoritative, we don't trust model-echoed
-// fields.
+// Citation data comes from `candidates` (the route's x-citations header =
+// every retrieved chunk with faithful filename/excerpt/score), keyed by the
+// chunk_ids the model actually cited inline. Same philosophy as the route:
+// retrieval is authoritative, we don't trust model-echoed fields.
 
 export type QAData = {
   question: string;
@@ -31,8 +30,6 @@ export type QAData = {
   streaming?: boolean;
   error?: string | null;
 };
-
-const HIGHLIGHT_MS = 1600;
 
 // Match inline [123] citations, but not markdown links [123](url).
 function citeToken(): RegExp {
@@ -68,11 +65,6 @@ export function QAPair({ data }: { data: QAData }) {
   const t = useTranslations('InterviewsV2');
   const { question, answer_md, candidates, streaming, error } = data;
 
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [showSources, setShowSources] = useState(true);
-
   const valid = useMemo(
     () => new Set(candidates.map((c) => c.chunk_id)),
     [candidates],
@@ -93,45 +85,17 @@ export function QAPair({ data }: { data: QAData }) {
     [answer_md, valid],
   );
 
-  const onCite = useCallback((id: string) => {
-    setShowSources(true);
-    // Wait a frame in case the list was just expanded, then scroll + flash.
-    requestAnimationFrame(() => {
-      const escaped =
-        typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id;
-      const el = rootRef.current?.querySelector(
-        `[data-citation-id="${escaped}"]`,
-      );
-      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    });
-    setHighlightId(id);
-    if (highlightTimer.current) clearTimeout(highlightTimer.current);
-    highlightTimer.current = setTimeout(
-      () => setHighlightId(null),
-      HIGHLIGHT_MS,
-    );
-  }, []);
-
   const components = useMemo<Components>(
     () => ({
       a: ({ href, children }) => {
         if (href && href.startsWith('#cite-')) {
           const id = href.slice('#cite-'.length);
+          const cit = byId.get(id);
+          // withCiteLinks only links resolvable ids, so cit is present —
+          // fall back to plain text defensively if it ever isn't.
+          if (!cit) return <>[{children}]</>;
           return (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={() => onCite(id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onCite(id);
-                }
-              }}
-              className="mx-0.5 inline-flex cursor-pointer select-none items-center rounded-xs border border-amore bg-amore-bg px-1 align-baseline text-xs-soft font-semibold text-amore transition-colors hover:bg-amore hover:text-paper"
-            >
-              {children}
-            </span>
+            <CitationPopover citation={cit}>{children}</CitationPopover>
           );
         }
         return (
@@ -203,13 +167,13 @@ export function QAPair({ data }: { data: QAData }) {
         </td>
       ),
     }),
-    [onCite],
+    [byId],
   );
 
   const answerEmpty = answer_md.trim().length === 0;
 
   return (
-    <div ref={rootRef} className="space-y-3">
+    <div className="space-y-3">
       {/* Question — right-aligned, amore tint. */}
       <div className="flex justify-end">
         <div className="max-w-[85%] whitespace-pre-wrap rounded-sm border border-line bg-amore-bg px-4 py-2.5 text-md leading-[1.6] text-ink-2">
@@ -238,31 +202,22 @@ export function QAPair({ data }: { data: QAData }) {
         )}
 
         {cited.length > 0 && (
-          <div className="mt-4 border-t border-line-soft pt-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-                {t('searchSources')} {cited.length}
-              </span>
-              <Button
-                variant="link"
-                size="xs"
-                onClick={() => setShowSources((s) => !s)}
+          <details className="group mt-4 border-t border-line-soft pt-3">
+            <summary className="flex cursor-pointer select-none list-none items-center gap-1 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+              <span
+                aria-hidden
+                className="inline-block transition-transform group-open:rotate-90"
               >
-                {showSources ? t('searchSourcesHide') : t('searchSourcesShow')}
-              </Button>
+                ›
+              </span>
+              {t('searchSourcesSummary', { count: cited.length })}
+            </summary>
+            <div className="mt-2 space-y-2">
+              {cited.map((c) => (
+                <CitationCard key={c.chunk_id} citation={c} />
+              ))}
             </div>
-            {showSources && (
-              <div className="space-y-2">
-                {cited.map((c) => (
-                  <CitationCard
-                    key={c.chunk_id}
-                    citation={c}
-                    highlighted={highlightId === c.chunk_id}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          </details>
         )}
       </div>
     </div>

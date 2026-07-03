@@ -1080,6 +1080,7 @@
     "searchSources": "근거",
     "searchSourcesShow": "근거 보기",
     "searchSourcesHide": "근거 숨기기",
+    "searchSourcesSummary": "근거 {count}개 상세 보기",
     "searchScore": "정확도",
     "searchScope": "검색 범위",
     "scopeThisProject": "이 프로젝트",
