@@ -101,6 +101,24 @@ function reconstructCitations(
   return out;
 }
 
+// Expand a whole-org cross-project search (project_ids: []) into the concrete
+// set of the requester's project ids, so the per-project top-K loop below has
+// real targets. interview_projects carries user_id (unlike the org-scoped
+// documents), so scope by org + user — matching the "own project rw" RLS.
+async function getAllUserProjects(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await admin
+    .from('interview_projects')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('user_id', userId);
+  if (error) throw new Error(`getAllUserProjects: ${error.message}`);
+  return (data ?? []).map((r) => r.id as string);
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -140,32 +158,87 @@ export async function POST(req: Request) {
   // route. Authorization already happened above.
   const admin = createAdminClient();
 
+  // Cross-project retrieval strategy (prod incident 2026-07-03): the _multi
+  // RPC does a FLAT top-K across every selected project, so chunks from an
+  // unrelated project outrank the on-topic ones and the real evidence falls
+  // out of the top-K (or under the floor) → empty citations. Instead, run a
+  // per-project top-K and merge: each project contributes its own best chunks,
+  // then we globally re-sort by score and slice to top_k. Single-project search
+  // is already narrow, so it stays on the direct path.
   let hits: InterviewV2Hit[] = [];
+  let strategy = 'single';
+  let projectsScanned = 1;
+  let perProjectK = top_k;
   try {
-    hits = await searchInterviewV2Chunks({
-      client: admin,
-      orgId: org.org_id,
-      projectId: project_id ?? null,
-      // undefined ⇒ lib stays on the single-project path; null/[]/[id...] ⇒
-      // lib switches to the _multi RPC.
-      projectIds: useMultiProject ? project_ids : undefined,
-      query: question,
-      k: top_k,
-      scoreThreshold: score_threshold,
-    });
+    if (useMultiProject) {
+      const targetIds =
+        project_ids && project_ids.length > 0
+          ? project_ids
+          : await getAllUserProjects(admin, org.org_id, user.id);
+
+      if (targetIds.length === 0) {
+        // No explicit selection and the user has no projects (or only legacy
+        // null-project documents) — fall back to the whole-org _multi RPC so
+        // those legacy docs remain searchable. No distinct projects here means
+        // no flat-top-K pollution to guard against.
+        strategy = 'multi_whole_org_fallback';
+        projectsScanned = 0;
+        hits = await searchInterviewV2Chunks({
+          client: admin,
+          orgId: org.org_id,
+          projectIds: [],
+          query: question,
+          k: top_k,
+          scoreThreshold: score_threshold,
+        });
+      } else {
+        strategy = 'per_project_loop';
+        projectsScanned = targetIds.length;
+        // Give each project enough headroom that the merge has candidates from
+        // all of them, but never fewer than 3 so a small selection still pulls
+        // a useful spread.
+        perProjectK = Math.max(3, Math.ceil(top_k / targetIds.length));
+        const perHits = await Promise.all(
+          targetIds.map((pid) =>
+            searchInterviewV2Chunks({
+              client: admin,
+              orgId: org.org_id,
+              projectId: pid,
+              query: question,
+              k: perProjectK,
+              scoreThreshold: score_threshold,
+            }),
+          ),
+        );
+        hits = perHits
+          .flat()
+          .sort((a, b) => b.score - a.score)
+          .slice(0, top_k);
+      }
+    } else {
+      // Backward-compat single-project (or deprecated project_id) path.
+      hits = await searchInterviewV2Chunks({
+        client: admin,
+        orgId: org.org_id,
+        projectId: project_id ?? null,
+        query: question,
+        k: top_k,
+        scoreThreshold: score_threshold,
+      });
+    }
   } catch (e) {
     console.error('[interviews/v2/search] retrieval failed', e);
     return NextResponse.json({ error: 'search_failed' }, { status: 500 });
   }
 
-  // Debug — surfaces which RPC ran, the effective threshold, and how many
-  // chunks came back, so an empty-citations report can be diagnosed straight
-  // from the Vercel Function logs and the threshold tuned off real traffic.
-  const rpcName = useMultiProject
-    ? 'match_interview_chunks_v2_multi'
-    : 'match_interview_chunks_v2';
+  // Debug — surfaces which retrieval strategy ran, how many projects were
+  // scanned, the per-project K, the effective threshold, and how many chunks
+  // came back, so an empty-citations report can be diagnosed straight from the
+  // Vercel Function logs and the threshold tuned off real traffic.
   console.log('[v2/search]', {
-    rpc: rpcName,
+    strategy,
+    projects_scanned: projectsScanned,
+    per_project_k: perProjectK,
     threshold: score_threshold,
     top_k,
     project_id: project_id ?? null,
