@@ -12,8 +12,6 @@ import {
 } from '@/lib/transcripts/diarization';
 import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
-export const maxDuration = 60;
-
 // Same identifier-blob heuristics as the download route, so the preview header
 // matches the eventual download filename instead of leaking the raw UUID.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
