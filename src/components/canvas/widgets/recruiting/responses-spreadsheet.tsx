@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MochiLoader } from '@/components/ui/mochi-loader';
+import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { usePaywall } from '@/components/paywall-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
@@ -97,6 +98,9 @@ export function ResponsesSpreadsheet() {
   // values (already_unlocked, no charge). This is the spec's "간단" default —
   // persist the paid marker, defer the payload to an on-demand free re-fetch.
   const [paidRows, setPaidRows] = useState<Set<string>>(new Set());
+  // 25💎+ 일괄 해제는 금액을 강조하는 별도 modal 로 확인받는다(소액은 native
+  // confirm). 아래 handleBulkUnlock 이 금액에 따라 둘 중 하나를 연다.
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   // 1) 발행 폼 목록 로드 — 가장 최근 발행 폼을 default 선택.
   const loadForms = useCallback(async () => {
@@ -241,6 +245,66 @@ export function ResponsesSpreadsheet() {
     [data],
   );
 
+  // ── 일괄 해제(전체 해제) 파생값 ──
+  // 표에 PII 컬럼이 하나라도 있을 때만 의미가 있다. 대상은 화면에 실제로
+  // 그려지는 cappedRows — 아직 노출되지 않은(마스킹된) row 들.
+  const hasPii = piiQids.size > 0;
+  const lockedIds = useMemo(
+    () =>
+      hasPii
+        ? cappedRows
+            .map((r) => r.responseId)
+            .filter((id) => !unlockedRows.has(id))
+        : [],
+    [hasPii, cappedRows, unlockedRows],
+  );
+  // 실제로 과금되는 row = 잠김 & 아직 미결제(paidRows 아님). 이미 결제된
+  // row 는 서버가 재과금을 막으므로 전체 해제 시 무료로 함께 노출된다.
+  // 따라서 버튼에 표시하는 "발생 크레딧"은 chargeableCount 만 센다 —
+  // spec 의 `total_rows - unlockedRows.size` 를 paidRows 만큼 보수적으로 보정.
+  const chargeableCount = useMemo(
+    () => lockedIds.filter((id) => !paidRows.has(id)).length,
+    [lockedIds, paidRows],
+  );
+  const chargeCredits = chargeableCount * 5;
+
+  const runBulkUnlock = useCallback(() => {
+    if (lockedIds.length === 0) return;
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'response_bulk_unlock',
+      metadata: { rows: lockedIds.length, credits: chargeCredits },
+    });
+    void Promise.all(lockedIds.map((id) => unlockRow(id)));
+  }, [lockedIds, chargeCredits, unlockRow]);
+
+  const handleBulkUnlock = useCallback(() => {
+    if (lockedIds.length === 0) return;
+    // 전부 이미 결제된 row 라 과금이 없으면 곧바로 노출(확인 불필요).
+    if (chargeCredits === 0) {
+      runBulkUnlock();
+      return;
+    }
+    // 소액(≤5💎, 사실상 1 row)은 native confirm, 그 이상은 금액을 강조하는
+    // 별도 modal. spec 이 5💎/25💎 만 규정하고 중간(10~20💎)을 비워둬,
+    // 가장 보수적으로 "소액만 native, 나머지는 강조 modal" 로 해석.
+    if (chargeCredits <= 5) {
+      if (
+        !window.confirm(`총 ${chargeCredits}💎 이 차감됩니다. 진행하시겠습니까?`)
+      ) {
+        return;
+      }
+      runBulkUnlock();
+      return;
+    }
+    setBulkModalOpen(true);
+  }, [lockedIds, chargeCredits, runBulkUnlock]);
+
+  const confirmBulkModal = useCallback(() => {
+    setBulkModalOpen(false);
+    runBulkUnlock();
+  }, [runBulkUnlock]);
+
   // Google 미연동 / 재동의 필요는 responses 엔드포인트가 412 + 명시
   // 에러코드로 알려준다. 그 경우 일반 에러 배너 대신 연동 안내를 띄운다.
   const needsGoogle =
@@ -283,6 +347,18 @@ export function ResponsesSpreadsheet() {
             disabled={loading}
           >
             {loading ? '갱신 중…' : '새로고침'}
+          </Button>
+        )}
+        {data && hasPii && lockedIds.length > 0 && (
+          <Button
+            variant="primary"
+            size="sm"
+            className="ml-auto"
+            onClick={handleBulkUnlock}
+          >
+            {chargeCredits === 0
+              ? '🔓 전체 해제 (무료)'
+              : `🔓 전체 해제 (총 ${chargeCredits}💎 = ${chargeableCount}개 × 5💎)`}
           </Button>
         )}
       </div>
@@ -390,6 +466,39 @@ export function ResponsesSpreadsheet() {
           </a>
         ) : null}
       </footer>
+
+      {/* 25💎+ 일괄 해제 확인 — 금액을 크게 강조. 소액은 native confirm 이 처리. */}
+      <Modal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        size="sm"
+        title="개인정보 전체 해제"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setBulkModalOpen(false)}
+            >
+              취소
+            </Button>
+            <Button variant="primary" size="sm" onClick={confirmBulkModal}>
+              {chargeCredits}💎 차감하고 해제
+            </Button>
+          </>
+        }
+      >
+        <p className="text-md leading-[1.65] text-ink-2">
+          잠긴 응답 <span className="font-semibold">{chargeableCount}개</span> 의
+          개인정보를 해제합니다.
+        </p>
+        <p className="mt-3 text-3xl font-semibold tracking-[-0.01em] text-amore">
+          총 {chargeCredits}💎 차감
+        </p>
+        <p className="mt-1 text-xs-soft text-mute-soft">
+          {chargeableCount}개 × 5💎 · 이미 해제한 응답은 다시 과금되지 않습니다.
+        </p>
+      </Modal>
     </div>
   );
 }
