@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Citation } from '@/lib/interview-v2/types';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 import { QAPair, type QAData } from './qa-pair';
 import { QuestionInput } from './question-input';
@@ -100,6 +101,19 @@ export function SearchChat({
   const submit = useCallback(
     async (question: string) => {
       if (busy) return;
+      // Analytics — 검색 실행 계측. scope: 단일 프로젝트(null) → 'single',
+      // 전체 org([]) → 'cross', 선택 집합([id,…]) → 'multi'.
+      const scope =
+        projectIds === null
+          ? 'single'
+          : projectIds.length === 0
+            ? 'cross'
+            : 'multi';
+      trackEvent('widget_action', {
+        widget: 'interviews',
+        action: 'search_query',
+        metadata: { scope },
+      });
       setBusy(true);
       setPending({ question, answer_md: '', candidates: [], streaming: true });
 

@@ -17,6 +17,7 @@ import { useWidgetState } from '../shell/widget-state-context';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { InterviewV2Fullview } from '@/components/interviews-v2/interview-v2-fullview';
+import { track as trackEvent } from '@/lib/analytics/events';
 
 // 헤더 pill 로 push 할 live state. interview job provider 의 isWorking
 // (변환 / 분석 / extract 중 하나라도 진행 중) → running, label = phase.
@@ -111,6 +112,21 @@ function ExpandedBody() {
   // 를 📤 업로드 버튼 + 모달로 이동. 서브헤더 height ↓.
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  // Analytics — 카드 body mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'interviews' });
+  }, []);
+
+  // 통일 "전체 보기" 진입 계측.
+  const handleInterviewsFullview = () => {
+    trackEvent('widget_action', {
+      widget: 'interviews',
+      action: 'fullview_open',
+    });
+    trackEvent('widget_viewed', { widget: 'interviews', fullview: true });
+    openFullview();
+  };
+
   // Workspace "send to" → interviews prefill. InterviewUploadArea 도 같은
   // 처리를 하지만, 이제 그 컴포넌트가 업로드 모달 안에서만 마운트되므로
   // (모달 닫힘 = unmount) 위젯 마운트 시점에 바로 큐에 넣으려면 여기서도
@@ -200,7 +216,7 @@ function ExpandedBody() {
           resetKey={
             running ? 'running' : `done-${job.doneCount}-${job.analysis ? 1 : 0}`
           }
-          onClick={openFullview}
+          onClick={handleInterviewsFullview}
         />
       )}
       {renderInSlot(<InterviewV2Fullview onClose={close} />)}

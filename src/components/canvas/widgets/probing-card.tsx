@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
@@ -241,6 +242,34 @@ function ExpandedBody() {
     }
     setWidgetState({ kind: 'idle' });
   }, [setWidgetState, sessionStatus, sessionError]);
+
+  // Analytics — 카드 body mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'probing' });
+  }, []);
+
+  // Analytics — 통역/프로빙 세션 job_completed 계측. 라이브 진입 시각을
+  // 잡아 라이브를 벗어날 때 duration 을 계산한다. 시작이 실패해 live 에
+  // 도달 못 하면 (startedAt null) completed 를 발화하지 않는다. 정지 버튼 ·
+  // PDF export 종료 · 언마운트 모두 이 effect 로 커버된다.
+  const sessionStartAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (sessionStatus === 'live') {
+      if (sessionStartAtRef.current === null) {
+        sessionStartAtRef.current = Date.now();
+      }
+      return;
+    }
+    if (sessionStartAtRef.current !== null) {
+      const startedAt = sessionStartAtRef.current;
+      sessionStartAtRef.current = null;
+      trackEvent('job_completed', {
+        widget: 'probing',
+        job_type: 'session',
+        duration_ms: Math.max(0, Date.now() - startedAt),
+      });
+    }
+  }, [sessionStatus]);
 
   // ─── 우패널 입력 — research_context (DB upsert) ───
   const [context, setContext] = useState<ResearchContext>({
@@ -774,6 +803,7 @@ function ExpandedBody() {
 
   // 세션 시작 / 정지.
   const handleStartSession = useCallback(async () => {
+    trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [startSession, source]);
   const handleStopSession = useCallback(async () => {
@@ -789,6 +819,7 @@ function ExpandedBody() {
   const runPdfExport = useCallback(async () => {
     if (pdfExporting) return;
     setPdfExporting(true);
+    trackEvent('widget_action', { widget: 'probing', action: 'pdf_export' });
     try {
       if (isLive) {
         try {
@@ -910,6 +941,18 @@ function ExpandedBody() {
 
   const customSectionsFull = customSections.length >= CUSTOM_SECTION_MAX;
 
+  // Analytics — custom 위젯(섹션) 추가 계측. add 원본을 감싸 발화 후 위임.
+  const handleAddCustomSection = useCallback(
+    (...args: Parameters<typeof addCustomSection>) => {
+      trackEvent('widget_action', {
+        widget: 'probing',
+        action: 'custom_section_add',
+      });
+      return addCustomSection(...args);
+    },
+    [addCustomSection],
+  );
+
   // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
@@ -922,7 +965,7 @@ function ExpandedBody() {
     isLive,
     hasTranscript,
     customSections,
-    onAddCustomSection: addCustomSection,
+    onAddCustomSection: handleAddCustomSection,
     onRemoveCustomSection: removeCustomSection,
     customSectionsFull,
     hiddenKeys: hiddenDefaultKeys,
@@ -970,6 +1013,10 @@ function ExpandedBody() {
             >
               <WidgetSettingsButton
                 onClick={() => {
+                  trackEvent('widget_action', {
+                    widget: 'probing',
+                    action: 'settings_open',
+                  });
                   markSettingsVisited();
                   setSettingsOpen(true);
                 }}

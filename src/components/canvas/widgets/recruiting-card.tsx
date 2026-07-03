@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -26,6 +27,21 @@ function ExpandedBody() {
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
   const [isPublished, setIsPublished] = useState(false);
+
+  // Analytics — 카드 body mount 시 1회 view.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'recruiting' });
+  }, []);
+
+  // 통일 "전체 보기"(응답 spreadsheet) 진입 계측.
+  const handleRecruitingFullview = () => {
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'fullview_open',
+    });
+    trackEvent('widget_viewed', { widget: 'recruiting', fullview: true });
+    openFullview();
+  };
   return (
     <div className="flex h-full flex-col">
       {/* 통일 서브헤더(대상자 조건 입력 + 조건 검토) + 스크롤 카드 본문은
@@ -38,7 +54,7 @@ function ExpandedBody() {
           label={tWidgets('recruitingDone')}
           viewAllLabel={tWidgets('viewAll')}
           resetKey="recruiting-published"
-          onClick={openFullview}
+          onClick={handleRecruitingFullview}
         />
       )}
       {renderInSlot(
