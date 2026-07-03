@@ -1080,6 +1080,7 @@
     "searchSources": "Sources",
     "searchSourcesShow": "Show sources",
     "searchSourcesHide": "Hide sources",
+    "searchSourcesSummary": "View {count} sources",
     "searchScore": "Match",
     "searchScope": "Search scope",
     "scopeThisProject": "This project",
