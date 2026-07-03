@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { track as trackEvent } from '@/lib/analytics/events';
+import { Button } from '@/components/ui/button';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -42,6 +43,30 @@ function ExpandedBody() {
     null,
   );
   const [selectedForm, setSelectedForm] = useState<FormSummary | null>(null);
+
+  // 두 위젯(응답 spreadsheet + 분포 통계)이 각자의 refetch 함수를 여기로
+  // 등록한다. fullview 상단 통합 "새로고침" 버튼이 둘을 함께 호출 → 사용자
+  // 한 번의 클릭으로 테이블과 분포가 동시에 갱신된다 (각 위젯은 자체 로딩
+  // 스피너 유지). ref 라 등록이 리렌더를 유발하지 않는다.
+  const refreshResponsesRef = useRef<(() => void) | null>(null);
+  const refreshDistributionRef = useRef<(() => void) | null>(null);
+  const registerResponsesRefresh = useCallback((fn: () => void) => {
+    refreshResponsesRef.current = fn;
+  }, []);
+  const registerDistributionRefresh = useCallback((fn: () => void) => {
+    refreshDistributionRef.current = fn;
+  }, []);
+  const handleRefresh = useCallback(() => {
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'fullview_refresh',
+    });
+    refreshResponsesRef.current?.();
+    refreshDistributionRef.current?.();
+    // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀 클릭 필터) reset.
+    // 현재 crossFilter 는 미구현(distribution-panel 참고)이라 리셋할 상태가
+    // 없어 no-op. crossFilter 가 wire 되면 여기서 함께 reset 한다.
+  }, []);
 
   const storedBrief: EditableBrief | null =
     selectedForm?.criteria && selectedForm.criteria.length > 0
@@ -90,6 +115,11 @@ function ExpandedBody() {
           title="리크루팅 — 응답"
           subtitle="참여자 조건 · 분포 · 응답 spreadsheet"
           onClose={close}
+          headerAction={
+            <Button variant="secondary" size="sm" onClick={handleRefresh}>
+              새로고침
+            </Button>
+          }
         >
           {/* 상단 = 2 위젯 (좌 조건 요약 + 우 분포 slot), 하단 = 응답
               spreadsheet. 상단 row 는 고정 높이, 하단 spreadsheet 가 남은
@@ -97,10 +127,15 @@ function ExpandedBody() {
           <div className="flex h-full min-h-0 flex-col">
             <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
               <RecruitingConditionsPanel brief={conditionsForPanel} />
-              <RecruitingDistributionPanel />
+              <RecruitingDistributionPanel
+                onRegisterRefresh={registerDistributionRefresh}
+              />
             </div>
             <div className="min-h-0 flex-1">
-              <ResponsesSpreadsheet onSelectedFormChange={setSelectedForm} />
+              <ResponsesSpreadsheet
+                onSelectedFormChange={setSelectedForm}
+                onRegisterRefresh={registerResponsesRefresh}
+              />
             </div>
           </div>
         </WidgetFullviewPanel>,
