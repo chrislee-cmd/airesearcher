@@ -547,10 +547,17 @@ html, body {
   0%   { opacity: 0; }
   100% { opacity: 1; }
 }
-/* trust-shield — 접힘 요약 방패 dot 가 잔잔히 맥동해 "보호 중" 을 암시. */
+/* trust-shield — 방패 dot 가 잔잔히 맥동해 "보호 중" 을 암시. */
 @keyframes trustShield {
   0%, 100% { opacity: 0.4; transform: scale(0.9); }
   50%      { opacity: 1;   transform: scale(1); }
+}
+/* trust-checking — 검색 실행 시 현재 점검 중인 안전장치 배지에 amore ring 이
+   퍼지며 "확인 중" 을 표현. */
+@keyframes trustChecking {
+  0%   { box-shadow: 0 0 0 0 var(--color-amore); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 /* Docx-derived preview */

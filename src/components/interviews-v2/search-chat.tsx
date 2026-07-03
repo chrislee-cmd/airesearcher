@@ -71,9 +71,13 @@ function Intro({ cross }: { cross: boolean }) {
 export function SearchChat({
   projectIds,
   currentProject,
+  onSearchStart,
 }: {
   projectIds: string[] | null;
   currentProject?: CurrentProject;
+  // Fired the moment a query is submitted — lets a sibling (the trust panel)
+  // run its per-search safeguard sweep. Optional so other callers are unaffected.
+  onSearchStart?: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const [history, setHistory] = useState<QAData[]>([]);
@@ -101,6 +105,7 @@ export function SearchChat({
   const submit = useCallback(
     async (question: string) => {
       if (busy) return;
+      onSearchStart?.();
       // Analytics — 검색 실행 계측. scope: 단일 프로젝트(null) → 'single',
       // 전체 org([]) → 'cross', 선택 집합([id,…]) → 'multi'.
       const scope =
@@ -191,7 +196,7 @@ export function SearchChat({
         setBusy(false);
       }
     },
-    [busy, projectIds, currentProject, t],
+    [busy, projectIds, currentProject, t, onSearchStart],
   );
 
   const empty = history.length === 0 && !pending;
