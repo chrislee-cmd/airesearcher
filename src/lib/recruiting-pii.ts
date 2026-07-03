@@ -5,23 +5,32 @@ import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 // treated as PII: pulled to the left of the table, masked by default, and
 // gated behind a per-respondent credit unlock.
 //
-// This is intentionally broader than `contact-filter`'s phone/email strip
-// (which only hides contact channels). Here we also gate name / address /
-// birth / age, because the fullview surfaces the *whole* respondent record
-// and the recruiter must pay to de-anonymise an individual.
+// Narrowly scoped to *name* and *phone* only — the recruiter explicitly asked
+// for just these two to be gated. Address / email / age / birth were removed:
+// substring matching over a broad keyword list produced false positives (e.g.
+// "게임 이름" / "제품 이름" matched "이름" and got locked, pushing recruiters into
+// a pointless re-charge to unlock a non-PII column). Extend via a separate spec
+// if more categories are genuinely needed.
 //
-// Keyword-substring matching (lower-cased) — matches whatever the recruiter
-// or the LLM wrote as the question title. Kept conservative: erring toward
-// classifying a column as PII (and masking it) is the privacy-safe default.
-export const PII_KEYWORDS: readonly string[] = [
-  '이름', '성함', 'name', '전화', '연락처', 'phone', 'tel',
-  '이메일', 'email', 'e-mail', '주소', 'address',
-  '생년월일', '나이', 'age', 'birth',
+// Exact matching (whitespace/separator-stripped, lower-cased) — the column title
+// must *equal* one of these tokens, not merely contain it. This is what kills the
+// "게임 이름" false positive while still catching "연락 가능한 전화번호".
+export const PII_EXACT: readonly string[] = [
+  // 이름 계열
+  '이름', '성명', '성함', 'name',
+  // 전화 계열
+  '전화번호', '전화', '연락처', '휴대폰', '휴대폰번호', '핸드폰', '핸드폰번호',
+  '연락가능한전화번호', '연락가능한번호',
+  'phone', 'tel', 'mobile', 'phonenumber',
 ];
 
+const normalize = (s: string): string => s.replace(/[\s\-_.()]/g, '').toLowerCase();
+
+// Precomputed normalized whitelist for exact-equality lookup.
+const PII_EXACT_NORMALIZED = new Set(PII_EXACT.map(normalize));
+
 export function isPiiColumn(header: string): boolean {
-  const h = header.toLowerCase().trim();
-  return PII_KEYWORDS.some((kw) => h.includes(kw));
+  return PII_EXACT_NORMALIZED.has(normalize(header));
 }
 
 // questionIds of the PII columns in a form's column set.
