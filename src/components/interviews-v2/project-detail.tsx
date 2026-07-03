@@ -10,7 +10,9 @@ import {
   useInterviewV2Documents,
   type InterviewDocumentStatus,
 } from '@/hooks/use-interview-v2-documents';
+import { useInterviewV2TrustStats } from '@/hooks/use-interview-v2-trust-stats';
 import { SearchChat } from './search-chat';
+import { TrustBadgeStrip } from './trust-badge-strip';
 import { UploadModal } from './upload-modal';
 
 // Interview V2 — project detail view (file list + search chat). The ⚙ 설정 /
@@ -46,6 +48,7 @@ export function ProjectDetail({
   const t = useTranslations('InterviewsV2');
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
+  const { stats } = useInterviewV2TrustStats(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const projectName = useMemo(
@@ -100,19 +103,28 @@ export function ProjectDetail({
               description={t('noFilesDescription')}
             />
           ) : (
-            <ul className="rounded-sm border border-line bg-paper">
-              {documents.map((d) => (
-                <li
-                  key={d.id}
-                  className="flex items-center gap-3 border-t border-line-soft px-4 py-3 first:border-t-0"
-                >
-                  <span className="min-w-0 flex-1 truncate text-md text-ink-2">
-                    {d.filename}
-                  </span>
-                  <StatusPill status={d.index_status} />
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="rounded-sm border border-line bg-paper">
+                {documents.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center gap-3 border-t border-line-soft px-4 py-3 first:border-t-0"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-md text-ink-2">
+                      {d.filename}
+                    </span>
+                    <StatusPill status={d.index_status} />
+                  </li>
+                ))}
+              </ul>
+              {stats && (
+                <TrustBadgeStrip
+                  fileCount={stats.file_count}
+                  chunkCount={stats.chunk_count}
+                  embedRate={stats.embed_rate}
+                />
+              )}
+            </>
           )}
         </aside>
         <section className="min-h-0 lg:col-span-7">
