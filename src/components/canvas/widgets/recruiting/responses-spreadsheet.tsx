@@ -83,12 +83,18 @@ function selectorLabel(f: FormSummary): string {
 
 export function ResponsesSpreadsheet({
   onSelectedFormChange,
+  onFormsLoadingChange,
   onRegisterRefresh,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
   // wizard's last-analysed brief.
   onSelectedFormChange?: (form: FormSummary | null) => void;
+  // Reports whether the published-forms list is still loading, so the host can
+  // tell the 분포 위젯 to show a loader (not "발행 설문 없음") while formId is
+  // still null on first paint. spreadsheet 이 폼 selector 의 SSOT 라 로딩 상태도
+  // 여기서 lift 한다.
+  onFormsLoadingChange?: (loading: boolean) => void;
   // Hands this table's refresh up to the fullview host so the shared 상단
   // "새로고침" 버튼이 분포와 함께 응답 spreadsheet 도 refetch 한다. 옛
   // spreadsheet-내부 새로고침 버튼을 대체한다 (spec B).
@@ -254,6 +260,11 @@ export function ResponsesSpreadsheet({
   useEffect(() => {
     onSelectedFormChange?.(selectedForm);
   }, [selectedForm, onSelectedFormChange]);
+
+  // Mirror forms-list loading state up (forms === null 이면 아직 로딩 중).
+  useEffect(() => {
+    onFormsLoadingChange?.(forms === null);
+  }, [forms, onFormsLoadingChange]);
 
   // 현재 선택 폼의 응답을 refetch — 옛 spreadsheet-내부 새로고침 버튼과 동일한
   // 동작(폼 목록 재조회는 안 함, 최소 회귀). fullview 상단 통합 버튼이 호출.
