@@ -1096,6 +1096,7 @@
     "searchSourcesSummary": "View {count} sources",
     "searchScore": "Match",
     "searchScope": "Search scope",
+    "artifactTableFooter": "Based on {count} respondents",
     "scopeThisProject": "This project",
     "scopeAll": "All projects",
     "crossSearch": "Search all projects",

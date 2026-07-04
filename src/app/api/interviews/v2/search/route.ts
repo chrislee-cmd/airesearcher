@@ -18,6 +18,7 @@ import {
   NO_ANSWER_MD,
   searchAnswerSchema,
   formatEvidence,
+  type SearchAnswer,
 } from '@/lib/interview-v2/search-prompt';
 import type { Citation } from '@/lib/interview-v2/types';
 
@@ -99,6 +100,56 @@ function reconstructCitations(
     });
   }
   return out;
+}
+
+// Server-side re-verify of the model's structured artifacts (decision #4 —
+// aggregation accuracy). Every value must be grounded in the retrieved chunk
+// set; ungrounded rows/quotes are dropped (fail-tolerant — the text answer is
+// unaffected). The verified set + created/dropped counts are logged so the
+// artifact grounding rate is observable from the Function logs.
+//
+// Note: InterviewV2Hit carries no respondent_id, so a table's respondent_ids
+// are grounded against the retrieved chunk_id/document_id set (the closest
+// available key). interview_search_queries has no artifacts column, so this
+// pass validates + logs rather than persisting a verified copy.
+type RawArtifact = NonNullable<SearchAnswer['artifacts']>[number];
+
+function verifyArtifacts(
+  artifacts: RawArtifact[] | undefined,
+  hits: InterviewV2Hit[],
+): { verified: RawArtifact[]; created: number; dropped: number } {
+  const raw = artifacts ?? [];
+  const chunkIds = new Set(hits.map((h) => String(h.chunk_id)));
+  const docIds = new Set(hits.map((h) => h.document_id));
+  const norm = (s: string) => s.replace(/\s/g, '');
+  const verified: RawArtifact[] = [];
+  for (const a of raw) {
+    if (a.type === 'table') {
+      const validIds = a.respondent_ids.filter(
+        (id) => chunkIds.has(id) || docIds.has(id),
+      );
+      // <3 grounded rows ⇒ not a real "3+ respondent" table — drop it.
+      if (validIds.length < 3) continue;
+      verified.push(a);
+    } else if (a.type === 'quote_list') {
+      const validQuotes = a.quotes.filter((q) => {
+        if (!q.quote.trim()) return false;
+        const hit = hits.find((h) => String(h.chunk_id) === q.chunk_id);
+        if (!hit) return false;
+        // Fuzzy substring — the quote's leading ~50 chars must appear in the
+        // cited chunk (whitespace-insensitive), so paraphrased/invented
+        // quotes drop while faithful excerpts survive minor spacing drift.
+        return norm(hit.content).includes(norm(q.quote).slice(0, 50));
+      });
+      if (validQuotes.length < 3) continue;
+      verified.push({ ...a, quotes: validQuotes });
+    }
+  }
+  return {
+    verified,
+    created: raw.length,
+    dropped: raw.length - verified.length,
+  };
 }
 
 // Expand a whole-org cross-project search (project_ids: []) into the concrete
@@ -313,6 +364,19 @@ export async function POST(req: Request) {
     providerOptions: ZERO_RETENTION,
     onFinish: async ({ object }) => {
       try {
+        // Server re-verify artifacts (validation + observability). The streamed
+        // client copy is the model's retrieval-grounded output; this logs the
+        // grounding pass rate so artifact quality is measurable over real
+        // traffic (spec verification bullet).
+        const { verified, created, dropped } = verifyArtifacts(
+          object?.artifacts,
+          hits,
+        );
+        console.log('[v2/search] artifacts', {
+          artifacts_created: created,
+          artifacts_dropped: dropped,
+          artifacts_verified: verified.length,
+        });
         const citations = reconstructCitations(object?.citations, hits);
         await admin.from('interview_search_queries').insert({
           org_id: org.org_id,

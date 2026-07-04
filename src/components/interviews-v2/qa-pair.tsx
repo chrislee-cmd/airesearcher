@@ -4,9 +4,10 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Citation } from '@/lib/interview-v2/types';
+import type { Citation, SearchArtifact } from '@/lib/interview-v2/types';
 import { CitationPopover } from '@/components/ui/citation-popover';
 import { CitationCard } from './citation-card';
+import { AnswerArtifactRenderer } from './answer-artifact-renderer';
 
 // Interview V2 search — one question + streamed answer turn.
 //
@@ -27,6 +28,9 @@ export type QAData = {
   question: string;
   answer_md: string;
   candidates: Citation[];
+  // Phase 1 structured artifacts (table + quote list). Streamed alongside
+  // answer_md and rendered below it once each entry completes.
+  artifacts?: SearchArtifact[];
   streaming?: boolean;
   error?: string | null;
 };
@@ -63,7 +67,7 @@ function citedIds(answer: string, valid: Set<string>): string[] {
 
 export function QAPair({ data }: { data: QAData }) {
   const t = useTranslations('InterviewsV2');
-  const { question, answer_md, candidates, streaming, error } = data;
+  const { question, answer_md, candidates, artifacts, streaming, error } = data;
 
   const valid = useMemo(
     () => new Set(candidates.map((c) => c.chunk_id)),
@@ -199,6 +203,10 @@ export function QAPair({ data }: { data: QAData }) {
               <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-amore align-text-bottom" />
             )}
           </div>
+        )}
+
+        {artifacts && artifacts.length > 0 && (
+          <AnswerArtifactRenderer artifacts={artifacts} />
         )}
 
         {cited.length > 0 && (

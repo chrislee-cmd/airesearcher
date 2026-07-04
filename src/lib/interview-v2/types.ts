@@ -40,3 +40,29 @@ export type Citation = {
   excerpt: string;
   score: number;
 };
+
+/**
+ * 검색 답변에 딸린 구조화 산출물 (Phase 1 = 표 + 인용 리스트).
+ * LLM 이 질문 신호를 보고 자율 판단해 answer_md 와 함께 스트림한다.
+ * search-prompt.ts 의 searchAnswerSchema.artifacts 와 shape 를 맞춘다.
+ */
+export type TableArtifact = {
+  type: 'table';
+  title: string;
+  headers: string[];
+  rows: string[][];
+  // row 별 응답자 id (server re-verify 용). client 렌더엔 안 쓰임.
+  respondent_ids: string[];
+};
+
+export type QuoteListArtifact = {
+  type: 'quote_list';
+  title: string;
+  quotes: Array<{
+    respondent: string;
+    quote: string;
+    chunk_id: string;
+  }>;
+};
+
+export type SearchArtifact = TableArtifact | QuoteListArtifact;
