@@ -10,6 +10,12 @@ import { usePaywall } from '@/components/paywall-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
+import {
+  buildFilterableQuestions,
+  rowMatchesFilter,
+  type FilterableQuestion,
+  type RecruitingFilter,
+} from '@/lib/recruiting/distribution';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 
 type Criterion = RecruitingBrief['criteria'][number];
@@ -85,6 +91,8 @@ export function ResponsesSpreadsheet({
   onSelectedFormChange,
   onFormsLoadingChange,
   onRegisterRefresh,
+  activeFilter = null,
+  onFilterableQuestionsChange,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -99,6 +107,12 @@ export function ResponsesSpreadsheet({
   // "새로고침" 버튼이 분포와 함께 응답 spreadsheet 도 refetch 한다. 옛
   // spreadsheet-내부 새로고침 버튼을 대체한다 (spec B).
   onRegisterRefresh?: (fn: () => void) => void;
+  // Crossfilter (2026-07-04): host 가 보유한 활성 필터(분포 셀 or 질문 필터).
+  // null = 전체 응답. spreadsheet 은 이 필터로 보이는 행을 좁힌다.
+  activeFilter?: RecruitingFilter | null;
+  // 로드된 응답 컬럼에서 파생한 객관식 질문 목록(+답변 옵션)을 host 로 올려
+  // 분포 패널의 질문 필터 dropdown 이 쓰게 한다.
+  onFilterableQuestionsChange?: (questions: FilterableQuestion[]) => void;
 } = {}) {
   const { refresh: refreshCredits } = usePaywall();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
@@ -283,24 +297,46 @@ export function ResponsesSpreadsheet({
     return set;
   }, [data, columns]);
 
+  // 객관식 질문 목록(+답변 옵션)을 host 로 lift → 분포 패널 질문 필터 dropdown.
+  const filterableQuestions = useMemo(
+    () => (data ? buildFilterableQuestions(data.columns, data.rows) : []),
+    [data],
+  );
+  useEffect(() => {
+    onFilterableQuestionsChange?.(filterableQuestions);
+  }, [filterableQuestions, onFilterableQuestionsChange]);
+
   const totalRows = data?.rows.length ?? 0;
   const cappedRows = useMemo(
     () => (data ? data.rows.slice(0, ROW_CAP) : []),
     [data],
   );
+  // 활성 필터(분포 셀 or 질문 답변)로 보이는 행을 좁힌다. 필터 없으면 전체.
+  // nowYear 는 분포 crosstab 이 셀을 만들 때 쓴 것과 동일한 연도라 셀 클릭이
+  // 정확히 그 셀을 만든 행에 매칭된다.
+  const displayRows = useMemo(() => {
+    if (!activeFilter) return cappedRows;
+    const nowYear = new Date().getFullYear();
+    return cappedRows.filter((r) =>
+      rowMatchesFilter(r, activeFilter, columns, nowYear),
+    );
+  }, [cappedRows, activeFilter, columns]);
+  const filteredOut = activeFilter != null;
 
   // ── 일괄 해제(전체 해제) 파생값 ──
   // 표에 PII 컬럼이 하나라도 있을 때만 의미가 있다. 대상은 화면에 실제로
   // 그려지는 cappedRows — 아직 노출되지 않은(마스킹된) row 들.
+  // 일괄 해제 대상 = 현재 *보이는*(필터 적용된) 잠긴 행. 필터 중이면 화면에
+  // 안 보이는 행까지 결제되는 혼란을 피한다.
   const hasPii = piiQids.size > 0;
   const lockedIds = useMemo(
     () =>
       hasPii
-        ? cappedRows
+        ? displayRows
             .map((r) => r.responseId)
             .filter((id) => !unlockedRows.has(id))
         : [],
-    [hasPii, cappedRows, unlockedRows],
+    [hasPii, displayRows, unlockedRows],
   );
   // 실제로 과금되는 row = 잠김 & 아직 미결제(paidRows 아님). 이미 결제된
   // row 는 서버가 재과금을 막으므로 전체 해제 시 무료로 함께 노출된다.
@@ -459,11 +495,19 @@ export function ResponsesSpreadsheet({
               description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 개인정보는 기본 잠금 상태로 표시됩니다."
             />
           </div>
+        ) : filteredOut && displayRows.length === 0 ? (
+          <div className="flex h-full items-center justify-center p-8">
+            <EmptyState
+              tone="subtle"
+              title="조건에 맞는 응답이 없습니다"
+              description="분포 셀 또는 질문 필터 조건에 해당하는 응답이 없어요. 상단 분포 패널에서 필터를 초기화하면 전체 응답이 다시 표시됩니다."
+            />
+          </div>
         ) : (
           <ResponseTable
             columns={columns}
             piiQids={piiQids}
-            rows={cappedRows}
+            rows={displayRows}
             unlockedRows={unlockedRows}
             unlockingRows={unlockingRows}
             paidRows={paidRows}
@@ -477,9 +521,11 @@ export function ResponsesSpreadsheet({
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line-soft bg-paper-soft px-5 py-2 text-xs-soft text-mute-soft">
         <span className="tabular-nums">
           {data && totalRows > 0
-            ? totalRows > ROW_CAP
-              ? `총 ${totalRows} 응답 · 처음 ${ROW_CAP}개 표시`
-              : `총 ${totalRows} 응답`
+            ? filteredOut
+              ? `필터 적용 · ${displayRows.length} / ${totalRows} 응답 표시`
+              : totalRows > ROW_CAP
+                ? `총 ${totalRows} 응답 · 처음 ${ROW_CAP}개 표시`
+                : `총 ${totalRows} 응답`
             : '개인정보는 기본 잠금 상태이며, 해제 시 5크레딧이 차감됩니다.'}
         </span>
         {selectedForm?.sheetUrl ? (

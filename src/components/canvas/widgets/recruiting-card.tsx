@@ -17,6 +17,10 @@ import {
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
+import type {
+  FilterableQuestion,
+  RecruitingFilter,
+} from '@/lib/recruiting/distribution';
 
 // 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
 // 이전엔 위젯 바닥에 발행된 폼 목록 "최근 산출물" 영역이 있었지만, prod
@@ -47,6 +51,26 @@ function ExpandedBody() {
   // spreadsheet 의 발행-폼 목록이 아직 로딩 중인지. 분포 위젯이 formId===null
   // 을 "로딩 중" vs "발행 폼 없음" 으로 구분하는 데 쓴다 (초기 flash 방지).
   const [formsLoading, setFormsLoading] = useState(true);
+  // Crossfilter SSOT — 분포 패널과 응답 spreadsheet 의 공통 부모라 여기서
+  // 활성 필터를 쥔다. 분포 패널이 셀 클릭/질문 필터로 set, spreadsheet 이 read.
+  const [activeFilter, setActiveFilter] = useState<RecruitingFilter | null>(
+    null,
+  );
+  // spreadsheet 이 로드한 응답 컬럼에서 파생한 객관식 질문 목록 — 분포 패널의
+  // 질문 필터 dropdown 이 쓴다.
+  const [filterableQuestions, setFilterableQuestions] = useState<
+    FilterableQuestion[]
+  >([]);
+
+  // 선택 폼이 바뀌면 이전 폼 기준 필터는 무의미 → 초기화(전체 응답 복원).
+  // React 권장 "prop 변경 시 state 리셋" 패턴 — effect 대신 render 중 조정해
+  // 폼 전환이 한 커밋 안에서 필터 리셋과 함께 반영된다.
+  const selectedFormId = selectedForm?.formId ?? null;
+  const [prevFormId, setPrevFormId] = useState(selectedFormId);
+  if (selectedFormId !== prevFormId) {
+    setPrevFormId(selectedFormId);
+    setActiveFilter(null);
+  }
 
   // 두 위젯(응답 spreadsheet + 분포 통계)이 각자의 refetch 함수를 여기로
   // 등록한다. fullview 상단 통합 "새로고침" 버튼이 둘을 함께 호출 → 사용자
@@ -67,9 +91,8 @@ function ExpandedBody() {
     });
     refreshResponsesRef.current?.();
     refreshDistributionRef.current?.();
-    // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀 클릭 필터) reset.
-    // 현재 crossFilter 는 미구현(distribution-panel 참고)이라 리셋할 상태가
-    // 없어 no-op. crossFilter 가 wire 되면 여기서 함께 reset 한다.
+    // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀/질문 필터) 초기화.
+    setActiveFilter(null);
   }, []);
 
   const storedBrief: EditableBrief | null =
@@ -169,6 +192,9 @@ function ExpandedBody() {
                 formId={selectedForm?.formId ?? null}
                 formsLoading={formsLoading}
                 onRegisterRefresh={registerDistributionRefresh}
+                filterableQuestions={filterableQuestions}
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
               />
             </div>
             <div className="min-h-0 flex-1">
@@ -176,6 +202,8 @@ function ExpandedBody() {
                 onSelectedFormChange={setSelectedForm}
                 onFormsLoadingChange={setFormsLoading}
                 onRegisterRefresh={registerResponsesRefresh}
+                activeFilter={activeFilter}
+                onFilterableQuestionsChange={setFilterableQuestions}
               />
             </div>
           </div>
