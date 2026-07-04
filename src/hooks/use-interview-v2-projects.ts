@@ -46,15 +46,34 @@ export function useInterviewV2Projects() {
   }, [mutate]);
 
   const create = useCallback(
-    async (name: string, description?: string): Promise<InterviewProject | null> => {
-      const res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
-      });
-      const j = (await res.json().catch(() => ({}))) as { project?: InterviewProject };
-      await mutate();
-      return j.project ?? null;
+    async (
+      name: string,
+      description?: string,
+    ): Promise<{ project: InterviewProject | null; error?: string }> => {
+      // Surface the real failure reason (RLS / org / network) back to the
+      // caller instead of collapsing everything to null — a silent null left
+      // users staring at "왜 안 되는지 모름". See hotfix/interview-v2-project-create-bug.
+      try {
+        const res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description }),
+        });
+        const j = (await res.json().catch(() => ({}))) as {
+          project?: InterviewProject;
+          error?: string;
+        };
+        if (!res.ok) {
+          return { project: null, error: j.error ?? `HTTP ${res.status}` };
+        }
+        await mutate();
+        return { project: j.project ?? null };
+      } catch (e) {
+        return {
+          project: null,
+          error: e instanceof Error ? e.message : 'create_failed',
+        };
+      }
     },
     [mutate],
   );

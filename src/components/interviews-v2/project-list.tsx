@@ -6,6 +6,7 @@ import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { track as trackEvent } from '@/lib/analytics/events';
+import { useToast } from '@/components/toast-provider';
 import { CreateProjectModal } from './create-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
 import { UploadModal } from './upload-modal';
@@ -61,12 +62,13 @@ export function ProjectList({
   const t = useTranslations('InterviewsV2');
   const locale = useLocale();
   const { projects, isLoading, create } = useInterviewV2Projects();
+  const { push } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleCreate = async (name: string, description?: string) => {
-    const project = await create(name, description);
+    const { project, error } = await create(name, description);
     if (project) {
       trackEvent('widget_action', {
         widget: 'interviews',
@@ -76,6 +78,11 @@ export function ProjectList({
       onOpenProject(project.id);
       return project.id;
     }
+    // Surface the real reason so the failure isn't silent (the inline modal
+    // text stays generic; the toast carries the raw cause).
+    push(error ? `${t('createFailed')}: ${error}` : t('createFailed'), {
+      tone: 'warn',
+    });
     return null;
   };
 
