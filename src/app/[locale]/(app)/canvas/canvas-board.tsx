@@ -611,7 +611,10 @@ export function CanvasBoard({
     [positions, widgetByKey],
   );
 
-  // 클릭 jump — target pan 계산 + zoom 1.0 으로 reset.
+  // 클릭 jump — 위젯이 화면에 완전히 들어가는 fit zoom 계산 + 중앙 정렬.
+  // 예전엔 targetZoom = 1.0 하드코딩이라 위젯(816×950)이 container 보다 크면
+  // 짤리고 "너무 클로즈업" 됐다. 이제 위젯 실 픽셀 크기 대비 container 비율로
+  // 축소해 전체를 노출한다.
   // 좌표계: surface 는 flex 로 컨테이너 가로 중앙에 배치되고 transformOrigin
   // 은 'center top'. 따라서 widget 중심을 컨테이너 중심으로 끌어오는 pan 은
   //   pan.x = (SURFACE_W/2 - widgetX) * targetZoom
@@ -620,11 +623,31 @@ export function CanvasBoard({
   const focusWidget = useCallback(
     (key: string) => {
       const center = widgetCenter(key);
+      const widget = widgetByKey[key];
       const container = containerRef.current;
-      if (!center || !container) return;
-      const targetZoom = 1.0;
+      if (!center || !widget || !container) return;
       const rect = container.getBoundingClientRect();
       const SURFACE_PT = 32; // pt-8 = 32px (surface 컨테이너의 top offset)
+
+      // 위젯이 surface 안에서 차지하는 실제 픽셀 크기. widgetCenter 와 동일한
+      // spanOf + CELL/GAP 좌표계 — 스펙 예시의 widget.width/height 는 이 코드엔
+      // 없어 spanOf 기반으로 보수적으로 계산 (현재 spanOf = 항상 1×1 → 816×950).
+      const span = spanOf(widget);
+      const widgetW = span.cols * CELL_W + (span.cols - 1) * GAP;
+      const widgetH = span.rows * CELL_H + (span.rows - 1) * GAP;
+
+      // 위젯이 container 안에 15% 여백(PADDING) 두고 완전히 들어가는 최대 zoom.
+      // max 1.0 = 작은 위젯도 100% 초과 확대 안 함. min 0.3 = 극단 축소 방지.
+      const PADDING = 0.85;
+      const containerW = rect.width;
+      const containerH = rect.height - SURFACE_PT;
+      const fitZoom = Math.min(
+        (containerW / widgetW) * PADDING,
+        (containerH / widgetH) * PADDING,
+        1.0,
+      );
+      const targetZoom = Math.max(0.3, fitZoom);
+
       const targetPan = {
         x: (SURFACE_W / 2 - center.x) * targetZoom,
         y: rect.height / 2 - SURFACE_PT - center.y * targetZoom,
@@ -633,7 +656,7 @@ export function CanvasBoard({
       setPan(targetPan);
       setFocusedKey(key);
     },
-    [widgetCenter],
+    [widgetCenter, widgetByKey],
   );
 
   // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
