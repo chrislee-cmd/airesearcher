@@ -173,9 +173,10 @@ function ExpandedBody() {
             </Button>
           }
         >
-          {/* 상단 = 2 위젯 (좌 조건 요약 + 우 분포 slot), 하단 = 응답
-              spreadsheet. 상단 row 는 고정 높이, 하단 spreadsheet 가 남은
-              공간을 flex-1 로 채우며 자체 스크롤(기존 unlock/scroll 유지). */}
+          {/* 좌우 2패널 — 좌: 참여자 조건(위) + 분포 통계(아래) 세로,
+              우: 응답 spreadsheet 테이블만. (발행 폼 드롭다운·필터 wire 는
+              main 아키텍처 그대로 — spreadsheet 이 폼/응답 SSOT, 분포는
+              lift 된 responseData 에서 파생.) */}
           <div className="flex h-full min-h-0 flex-col">
             {criteriaPersistMissing && (
               <Banner tone="warning" divider="none">
@@ -190,29 +191,40 @@ function ExpandedBody() {
                 </Button>
               </Banner>
             )}
-            <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
-              <RecruitingConditionsPanel brief={conditionsForPanel} />
-              <RecruitingDistributionPanel
-                columns={responseData?.columns ?? []}
-                rows={responseData?.rows ?? []}
-                loading={responsesLoading}
-                formsLoading={formsLoading}
-                hasForm={selectedForm != null}
-                filterableQuestions={filterableQuestions}
-                filter={activeFilter}
-                onFilterChange={setActiveFilter}
-              />
-            </div>
-            <div className="min-h-0 flex-1">
-              <ResponsesSpreadsheet
-                onSelectedFormChange={setSelectedForm}
-                onFormsLoadingChange={setFormsLoading}
-                onRegisterRefresh={registerResponsesRefresh}
-                filter={activeFilter}
-                onFilterableQuestionsChange={setFilterableQuestions}
-                onResponsesChange={setResponseData}
-                onResponsesLoadingChange={setResponsesLoading}
-              />
+            <div className="flex min-h-0 flex-1">
+              {/* 좌측 패널 = 참여자 조건(위) + 분포 통계(아래) 세로 스택.
+                  조건은 고정 높이, 분포는 최소 높이 보장 + 남은 공간을 채운다.
+                  둘 합이 패널보다 커지면 좌측 컬럼이 세로 스크롤. */}
+              <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line-soft p-4">
+                <div className="h-[240px] shrink-0">
+                  <RecruitingConditionsPanel brief={conditionsForPanel} />
+                </div>
+                <div className="min-h-[420px] flex-1">
+                  <RecruitingDistributionPanel
+                    columns={responseData?.columns ?? []}
+                    rows={responseData?.rows ?? []}
+                    loading={responsesLoading}
+                    formsLoading={formsLoading}
+                    hasForm={selectedForm != null}
+                    filterableQuestions={filterableQuestions}
+                    filter={activeFilter}
+                    onFilterChange={setActiveFilter}
+                  />
+                </div>
+              </div>
+
+              {/* 우측 패널 = 응답 spreadsheet 만 (남은 가로 공간 전부). */}
+              <div className="min-h-0 flex-1 p-4">
+                <ResponsesSpreadsheet
+                  onSelectedFormChange={setSelectedForm}
+                  onFormsLoadingChange={setFormsLoading}
+                  onRegisterRefresh={registerResponsesRefresh}
+                  filter={activeFilter}
+                  onFilterableQuestionsChange={setFilterableQuestions}
+                  onResponsesChange={setResponseData}
+                  onResponsesLoadingChange={setResponsesLoading}
+                />
+              </div>
             </div>
           </div>
         </WidgetFullviewPanel>,
