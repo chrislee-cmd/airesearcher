@@ -641,6 +641,10 @@ function ResponseTable({
                 rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
               }
               className={`border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
+              // 긴 질문 컬럼명(자유서술형 안내문 등 10줄+)이 헤더를 세로로
+              // 폭발시키지 않도록 body cell 과 동일하게 3 line clamp — 원문
+              // 전체는 native title tooltip 으로 hover 노출.
+              title={rc.kind === 'field' ? rc.col.title : undefined}
             >
               {rc.kind === 'select' ? (
                 <SelectAllCheckbox
@@ -651,7 +655,7 @@ function ResponseTable({
               ) : rc.kind === 'time' ? (
                 '응답 시각'
               ) : (
-                rc.col.title
+                <span className="line-clamp-3">{rc.col.title}</span>
               )}
             </th>
           ))}
@@ -686,14 +690,24 @@ function ResponseTable({
                 );
               }
               const qid = rc.col.questionId;
+              const answer = r.answers[qid];
               // PII 컬럼은 renderCols 에서 이미 제외됐으므로 여기 남은 field 는
               // 모두 non-PII. 헤더와 동일한 폭 범위 + break-words 로 wrap 정합.
+              // 긴 자유서술 응답은 셀 세로 폭발을 막기 위해 3 line 까지만 노출하고
+              // `...` 로 truncate — 원문 전체는 native title tooltip 으로 hover 노출.
+              // line-clamp 는 `display:-webkit-box` 를 요구해 <td>(table-cell) 에
+              // 직접 걸면 셀 레이아웃이 깨지므로 내부 span 에 건다.
               return (
                 <td
                   key={qid}
-                  className="min-w-[80px] max-w-[160px] break-words px-3 py-2 align-top text-ink-2"
+                  className="min-w-[80px] max-w-[160px] px-3 py-2 align-top text-ink-2"
+                  title={answer || ''}
                 >
-                  {r.answers[qid] || <span className="text-mute-soft">—</span>}
+                  {answer ? (
+                    <span className="line-clamp-3 break-words">{answer}</span>
+                  ) : (
+                    <span className="text-mute-soft">—</span>
+                  )}
                 </td>
               );
             })}
