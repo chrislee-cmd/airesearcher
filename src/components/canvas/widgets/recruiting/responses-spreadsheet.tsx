@@ -12,7 +12,9 @@ import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
   buildFilterableQuestions,
-  rowMatchesFilter,
+  EMPTY_FILTER,
+  hasActiveFilter,
+  matchesFilter,
   type FilterableQuestion,
   type RecruitingFilter,
 } from '@/lib/recruiting/distribution';
@@ -91,8 +93,10 @@ export function ResponsesSpreadsheet({
   onSelectedFormChange,
   onFormsLoadingChange,
   onRegisterRefresh,
-  activeFilter = null,
+  filter = EMPTY_FILTER,
   onFilterableQuestionsChange,
+  onResponsesChange,
+  onResponsesLoadingChange,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -107,12 +111,20 @@ export function ResponsesSpreadsheet({
   // "새로고침" 버튼이 분포와 함께 응답 spreadsheet 도 refetch 한다. 옛
   // spreadsheet-내부 새로고침 버튼을 대체한다 (spec B).
   onRegisterRefresh?: (fn: () => void) => void;
-  // Crossfilter (2026-07-04): host 가 보유한 활성 필터(분포 셀 or 질문 필터).
-  // null = 전체 응답. spreadsheet 은 이 필터로 보이는 행을 좁힌다.
-  activeFilter?: RecruitingFilter | null;
+  // Crossfilter (2026-07-04): host 가 보유한 multi-select 필터(분포 셀들 +
+  // 질문별 답변들). 빈 필터 = 전체 응답. spreadsheet 은 이 필터로 보이는 행을
+  // 좁힌다 — 분포 패널과 동일한 matchesFilter 를 써서 두 뷰가 어긋나지 않는다.
+  filter?: RecruitingFilter;
   // 로드된 응답 컬럼에서 파생한 객관식 질문 목록(+답변 옵션)을 host 로 올려
-  // 분포 패널의 질문 필터 dropdown 이 쓰게 한다.
+  // 분포 패널의 질문 필터 팝오버가 쓰게 한다.
   onFilterableQuestionsChange?: (questions: FilterableQuestion[]) => void;
+  // 로드한 응답(컬럼 + 행)을 host 로 올려 분포 패널이 **같은 rows** 로 crosstab
+  // 을 client-side 재계산하게 한다 (필터 반영). null = 아직 로드 전.
+  onResponsesChange?: (
+    payload: { columns: FormColumn[]; rows: FormResponseRow[] } | null,
+  ) => void;
+  // 선택 폼의 응답 로딩 상태를 host 로 올려 분포 패널이 로더/emtpy 를 구분.
+  onResponsesLoadingChange?: (loading: boolean) => void;
 } = {}) {
   const { refresh: refreshCredits } = usePaywall();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
@@ -311,17 +323,27 @@ export function ResponsesSpreadsheet({
     () => (data ? data.rows.slice(0, ROW_CAP) : []),
     [data],
   );
-  // 활성 필터(분포 셀 or 질문 답변)로 보이는 행을 좁힌다. 필터 없으면 전체.
+  // 활성 필터(분포 셀들 + 질문 답변들)로 보이는 행을 좁힌다. 필터 없으면 전체.
   // nowYear 는 분포 crosstab 이 셀을 만들 때 쓴 것과 동일한 연도라 셀 클릭이
   // 정확히 그 셀을 만든 행에 매칭된다.
+  const filteredOut = hasActiveFilter(filter);
   const displayRows = useMemo(() => {
-    if (!activeFilter) return cappedRows;
+    if (!filteredOut) return cappedRows;
     const nowYear = new Date().getFullYear();
-    return cappedRows.filter((r) =>
-      rowMatchesFilter(r, activeFilter, columns, nowYear),
+    return cappedRows.filter((r) => matchesFilter(r, filter, columns, nowYear));
+  }, [cappedRows, filteredOut, filter, columns]);
+
+  // 로드한 응답(컬럼 + 전체 consent 통과 행)을 host 로 lift → 분포 패널이 같은
+  // rows 로 crosstab 재계산. cappedRows 가 아니라 data.rows 전체를 올려, 필터
+  // 없을 때 분포 총계가 옛 서버 집계와 일치하게 한다(표시만 200개 cap).
+  useEffect(() => {
+    onResponsesChange?.(
+      data ? { columns: data.columns, rows: data.rows } : null,
     );
-  }, [cappedRows, activeFilter, columns]);
-  const filteredOut = activeFilter != null;
+  }, [data, onResponsesChange]);
+  useEffect(() => {
+    onResponsesLoadingChange?.(loading);
+  }, [loading, onResponsesLoadingChange]);
 
   // ── 일괄 해제(전체 해제) 파생값 ──
   // 표에 PII 컬럼이 하나라도 있을 때만 의미가 있다. 대상은 화면에 실제로
