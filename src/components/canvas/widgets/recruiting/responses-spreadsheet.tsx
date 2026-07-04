@@ -615,7 +615,8 @@ function ResponseTable({
   ];
 
   // 컬럼별 폭/wrap — 긴 질문 헤더가 한 줄로 뻗어 컬럼을 독점하지 않도록 field 는
-  // wrap(whitespace-normal + break-words) + 상단 정렬 + 폭 범위(80~160px)로 묶는다.
+  // wrap(whitespace-normal + break-words) + 상단 정렬 + 폭 범위(80~160px)로 묶고,
+  // 셀 내용은 line-clamp-3 으로 3줄까지만 보이고 초과분은 …(전문은 title 툴팁).
   // 선택(체크박스) 열은 좁게, 응답 시각은 nowrap 으로 자연 폭 유지.
   const colWidthClass = (rc: RenderCol) =>
     rc.kind === 'select'
@@ -640,6 +641,7 @@ function ResponseTable({
               key={
                 rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
               }
+              title={rc.kind === 'field' ? rc.col.title : undefined}
               className={`border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
             >
               {rc.kind === 'select' ? (
@@ -651,7 +653,7 @@ function ResponseTable({
               ) : rc.kind === 'time' ? (
                 '응답 시각'
               ) : (
-                rc.col.title
+                <span className="line-clamp-3">{rc.col.title}</span>
               )}
             </th>
           ))}
@@ -686,14 +688,21 @@ function ResponseTable({
                 );
               }
               const qid = rc.col.questionId;
+              const answer = r.answers[qid];
               // PII 컬럼은 renderCols 에서 이미 제외됐으므로 여기 남은 field 는
-              // 모두 non-PII. 헤더와 동일한 폭 범위 + break-words 로 wrap 정합.
+              // 모두 non-PII. 헤더와 동일한 폭 범위 + break-words 로 wrap 하되,
+              // line-clamp-3 으로 3줄 초과분은 …(말줄임) 처리. 전문은 title 툴팁.
               return (
                 <td
                   key={qid}
+                  title={answer || undefined}
                   className="min-w-[80px] max-w-[160px] break-words px-3 py-2 align-top text-ink-2"
                 >
-                  {r.answers[qid] || <span className="text-mute-soft">—</span>}
+                  {answer ? (
+                    <span className="line-clamp-3">{answer}</span>
+                  ) : (
+                    <span className="text-mute-soft">—</span>
+                  )}
                 </td>
               );
             })}
