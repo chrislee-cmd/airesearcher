@@ -231,6 +231,22 @@ function FullviewIcon({ className }: { className?: string }) {
   );
 }
 
+// Inline right-arrow glyph — "이동" 시그널 (다른 화면으로 진입). Decorative +
+// aria-hidden; 버튼은 자체 text/aria-label 로 라벨링됨 (FullviewIcon 과 동일 규칙).
+function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function WidgetShell({
   content,
   dragHandleProps,
@@ -318,12 +334,13 @@ function WidgetShellInner({
             <PopStatePill />
             {onFullview && (
               <Button
-                variant="link"
-                size="xs"
+                variant="secondary"
+                size="sm"
                 onClick={onFullview}
                 aria-label={tWidgets('fullview')}
-                leftIcon={<FullviewIcon className="h-3 w-3" />}
-                className="uppercase tracking-[0.18em]"
+                leftIcon={<FullviewIcon className="h-3.5 w-3.5" />}
+                rightIcon={<ArrowRightIcon className="h-3.5 w-3.5" />}
+                className="normal-case tracking-[0.08em] font-semibold"
               >
                 {tWidgets('fullview')}
               </Button>
