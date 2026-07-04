@@ -1120,6 +1120,8 @@
     "searchScore": "Match",
     "searchScope": "Search scope",
     "artifactTableFooter": "Based on {count} respondents",
+    "artifactChartFooter": "Based on {count} respondents total",
+    "artifactChartTooltip": "{count} respondents",
     "scopeThisProject": "This project",
     "scopeAll": "All projects",
     "crossSearch": "Search all projects",
