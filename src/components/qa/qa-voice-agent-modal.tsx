@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
 import { QA_TAGS } from '@/lib/qa-tags';
@@ -52,6 +53,12 @@ export function QaVoiceAgentModal({
   const [tags, setTags] = useState<string[]>([]);
   const [duration, setDuration] = useState(0);
   const [level, setLevel] = useState(0); // live input level 0..1 (VU meter)
+  // Mic device picker: the silent-take report (see SILENCE_PEAK_THRESHOLD) was
+  // often just the wrong input device selected by the OS. Enumerating audio
+  // inputs lets the tester pick the right mic and self-diagnose a dead input
+  // instead of only seeing an unactionable "no sound" warning.
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -109,6 +116,44 @@ export function QaVoiceAgentModal({
     },
     [],
   );
+
+  // Enumerate audio-input devices whenever the modal opens. enumerateDevices
+  // only exposes device labels once mic permission has been granted, so we take
+  // a throwaway getUserMedia first (immediately stopped) purely to unlock the
+  // labels — otherwise the dropdown would show empty "마이크 xxxxxx" fallbacks.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    async function loadDevices() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        stream.getTracks().forEach((t) => t.stop());
+      } catch {
+        // Permission denied / no device — enumerateDevices still returns
+        // entries (without labels); the diagnostic panel + error toasts cover
+        // the actionable guidance, so we don't surface anything here.
+      }
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        if (cancelled) return;
+        const audioInputs = all.filter((d) => d.kind === 'audioinput');
+        setDevices(audioInputs);
+        setSelectedDeviceId((prev) =>
+          prev && audioInputs.some((d) => d.deviceId === prev)
+            ? prev
+            : (audioInputs[0]?.deviceId ?? ''),
+        );
+      } catch {
+        // enumerateDevices unsupported — leave the picker hidden.
+      }
+    }
+    void loadDevices();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const handleUpload = useCallback(async () => {
     const mime = mimeRef.current || 'audio/webm';
@@ -201,6 +246,9 @@ export function QaVoiceAgentModal({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          deviceId: selectedDeviceId
+            ? { exact: selectedDeviceId }
+            : undefined,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -263,11 +311,28 @@ export function QaVoiceAgentModal({
         durationRef.current += 1;
         setDuration(durationRef.current);
       }, 1000);
-    } catch {
+    } catch (e) {
       stopMetering();
-      push('마이크 권한이 필요합니다', { tone: 'warn' });
+      // Detailed, actionable guidance per failure mode — a bare "권한 필요"
+      // toast left testers unable to self-diagnose (the P0 that motivated this
+      // change). NotAllowedError → permission denied; NotFoundError → no device.
+      const name = e instanceof DOMException ? e.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        push(
+          '마이크 권한이 거부됐어요. Chrome 주소창 왼쪽 자물쇠 → 사이트 설정 → 마이크에서 "허용"으로 바꾼 뒤 다시 시도해 주세요.',
+          { tone: 'warn', ttlMs: 15000 },
+        );
+      } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+        push(
+          '마이크 장치를 찾을 수 없어요. 마이크 연결 상태를 확인하거나 위 목록에서 다른 마이크를 선택해 주세요.',
+          { tone: 'warn', ttlMs: 15000 },
+        );
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        push(`마이크 오류: ${msg}`, { tone: 'warn', ttlMs: 15000 });
+      }
     }
-  }, [handleUpload, push, stopMetering]);
+  }, [handleUpload, push, selectedDeviceId, stopMetering]);
 
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
@@ -281,6 +346,8 @@ export function QaVoiceAgentModal({
   const mmss = `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
   // Scale the raw RMS up for a livelier meter; clamp to 100%.
   const meterPct = Math.min(100, Math.round(level * 240));
+  const selectedDeviceLabel =
+    devices.find((d) => d.deviceId === selectedDeviceId)?.label || '';
 
   const toggleTag = (key: string, checked: boolean) => {
     setTags((prev) =>
@@ -338,6 +405,18 @@ export function QaVoiceAgentModal({
               <br />
               자동으로 텍스트로 변환되어 저장됩니다.
             </p>
+            {devices.length > 0 && (
+              <Select
+                label="마이크"
+                size="sm"
+                value={selectedDeviceId}
+                onChange={(e) => setSelectedDeviceId(e.target.value)}
+                options={devices.map((d, i) => ({
+                  value: d.deviceId,
+                  label: d.label || `마이크 ${i + 1}`,
+                }))}
+              />
+            )}
             <Button variant="primary" size="md" onClick={startRecording}>
               ● 녹음 시작
             </Button>
@@ -347,6 +426,10 @@ export function QaVoiceAgentModal({
           <>
             <div className="animate-pulse text-6xl">🔴</div>
             <p className="font-mono text-lg text-ink">{mmss}</p>
+            {/* Which mic is live — so a wrong-device silent take is obvious. */}
+            <p className="text-xs-soft text-mute">
+              🎤 {selectedDeviceLabel || '기본 마이크'}
+            </p>
             {/* Live input meter — confirms the mic is actually picking up sound. */}
             <div className="h-2 w-40 overflow-hidden rounded-full bg-paper-soft border border-line-soft">
               <div
@@ -357,13 +440,26 @@ export function QaVoiceAgentModal({
             <p className="text-sm text-mute">
               {meterPct < 4 ? '소리가 감지되지 않아요 — 마이크 확인' : '녹음 중…'}
             </p>
-            {/* Sustained-silence warning: after 3s of input below the silence
-                threshold, surface a prominent alert so the tester fixes the mic
-                before stopping — a silent take is hard-blocked on submit. */}
+            {/* Sustained-silence diagnostic: after 3s below the silence
+                threshold, surface a step-by-step panel so the tester can
+                self-diagnose (wrong device / permission / OS volume / another
+                app holding the mic) — a silent take is hard-blocked on submit. */}
             {level < SILENCE_PEAK_THRESHOLD && duration >= 3 && (
-              <p className="text-sm text-warning text-center">
-                ⚠ 마이크 입력이 감지되지 않아요. 마이크 상태를 확인하세요.
-              </p>
+              <div className="w-full space-y-2 rounded-sm border-2 border-warning bg-warning-bg p-3 text-sm">
+                <p className="font-semibold text-warning">
+                  ⚠ 마이크 입력이 감지되지 않아요
+                </p>
+                <ol className="list-inside list-decimal space-y-1 text-xs-soft text-ink">
+                  <li>정지 후 위 목록에서 다른 마이크를 선택해 다시 녹음</li>
+                  <li>
+                    Chrome 주소창 왼쪽 자물쇠 → 사이트 설정 → 마이크 권한이 &quot;허용&quot;인지 확인
+                  </li>
+                  <li>
+                    macOS 시스템 설정 → 사운드 → 입력에서 입력 볼륨 확인
+                  </li>
+                  <li>다른 앱(Zoom, Meet 등)이 마이크를 점유 중이면 종료</li>
+                </ol>
+              </div>
             )}
             <Button variant="primary" size="md" onClick={stopRecording}>
               ⏹ 정지 &amp; 제출
