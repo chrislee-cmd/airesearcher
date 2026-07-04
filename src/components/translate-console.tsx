@@ -553,10 +553,6 @@ export function TranslateConsole({
   const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
-  // Phase 2 (live) slim bar — 접힌 요약(⚙ 원어→대상어 · 입력모드)의 ▼ 를
-  // 누르면 컨트롤이 read-only 로 재노출된다. 세션 중 언어·모드 변경은 불가
-  // (결정 3) 이라 재노출된 필드는 disabled + 재시작 안내만 보여준다.
-  const [controlsExpanded, setControlsExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -3263,17 +3259,6 @@ export function TranslateConsole({
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
   const langOptions = useMemo(() => LANGS, []);
-  // Slim bar 요약용 라벨 — 원어/대상어의 표시명 + 입력모드 축약.
-  const sourceLabel =
-    LANGS.find((l) => l.value === sourceLang)?.label ?? sourceLang;
-  const targetLabel =
-    LANGS.find((l) => l.value === targetLang)?.label ?? targetLang;
-  const captureShort =
-    captureMode === 'both'
-      ? t('captureMode.shortBoth')
-      : captureMode === 'mic-only'
-        ? t('captureMode.shortMic')
-        : t('captureMode.shortTab');
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
@@ -3313,113 +3298,89 @@ export function TranslateConsole({
 
   return (
     <div className="space-y-4">
-      {/* Phase 1 (idle) — 컨트롤 보드. 옛 서브헤더 + 설정 모달을 대체:
-          원어/대상어 · 입력 모드 · Glossary 를 카드에 직접 노출하고 🚀 세션
-          시작 CTA 로 라이브 진입. live 진입 시 아래 slim bar 로 접힌다.
-          idle/starting/ended/error 에서 렌더 (live 만 예외). */}
-      {!live ? (
-        <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
-          {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). 라벨은 각
-              필드 위에 노출 (모달 시절엔 aria-label 만 있었으나 컨트롤
-              보드에선 보이는 라벨이 더 명확). */}
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-              {t('sourceLang')}
-              <select
-                value={sourceLang}
-                onChange={(e) => setSourceLang(e.target.value)}
-                disabled={busy}
-                aria-label={t('sourceLang')}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                {langOptions.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-              {t('targetLang')}
-              <select
-                value={targetLang}
-                onChange={(e) => setTargetLang(e.target.value)}
-                disabled={busy}
-                aria-label={t('targetLang')}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                {langOptions.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-              {t('captureMode.label')}
-              <select
-                value={captureMode}
-                onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-                disabled={busy}
-                aria-label={t('captureMode.label')}
-                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-              >
-                <option value="both">{t('captureMode.both')}</option>
-                <option value="mic-only">{t('captureMode.micOnly')}</option>
-                <option value="tab-only">{t('captureMode.tabOnly')}</option>
-              </select>
-            </label>
-          </div>
-
-          {/* Glossary (Layer B) — 세션 시작 전에만 입력. 인명/도구명/약어의
-              정규 표기를 Enter 로 chip 추가. */}
-          <label className="flex flex-col gap-1 text-sm text-mute">
-            {t('glossary.label')}
-            <GlossaryField
-              values={glossary}
-              onChange={setGlossary}
-              disabled={busy}
-              placeholderEmpty={t('glossary.placeholderEmpty')}
-              placeholderAdd={t('glossary.placeholderAdd')}
-              removeAria={t('glossary.removeAria')}
-            />
-          </label>
-
-          {/* 🚀 세션 시작 — WebRTC + OpenAI Realtime 라이브 진입 (결정 1). */}
-          <ChromeButton
-            variant="default"
-            size="lg"
-            onClick={() => void start()}
-            disabled={busy}
-          >
-            {busy ? t('starting') : `🚀 ${t('start')}`}
-          </ChromeButton>
-        </div>
-      ) : (
-        /* Phase 2 (active) — slim bar. ⚙ 요약 (원어→대상어 · 입력 모드) +
-           타이머 + 종료 CTA. 요약의 ▼ 를 누르면 컨트롤이 read-only 로 다시
-           펼쳐지지만 세션 중 언어·모드 변경은 불가 (결정 3) — 바꾸려면 종료
-           후 재시작. mute / 공유 등은 아래 별도 라인 (기존 UI). */
-        <div className="-mx-5 -mt-5 border-b border-line-soft bg-paper px-5 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <ChromeButton
-              size="sm"
-              variant="mute"
-              onClick={() => setControlsExpanded((v) => !v)}
-              aria-expanded={controlsExpanded}
-              aria-label={
-                controlsExpanded
-                  ? t('controlBoard.collapseAria')
-                  : t('controlBoard.expandAria')
-              }
+      {/* 컨트롤 패널 — 서브헤더 slim bar 폐기, phase 무관 항상 노출. 원어/
+          대상어 · 입력 모드 · Glossary · CTA 를 카드에 직접 노출. 세션 중
+          (live)엔 언어·모드·Glossary 변경 불가 (결정 3) 라 필드는 disabled +
+          안내, CTA 는 🚀 세션 시작 → 정지 로 전환된다. */}
+      <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
+        {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). live 중엔
+            disabled (opacity 로 read-only 신호). */}
+        <div className={`flex flex-wrap items-end gap-3${live ? ' opacity-60' : ''}`}>
+          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+            {t('sourceLang')}
+            <select
+              value={sourceLang}
+              onChange={(e) => setSourceLang(e.target.value)}
+              disabled={busy || live}
+              aria-label={t('sourceLang')}
+              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
             >
-              {`⚙ ${sourceLabel} → ${targetLabel} · ${captureShort} `}
-              <span aria-hidden="true">{controlsExpanded ? '▲' : '▼'}</span>
-            </ChromeButton>
+              {langOptions.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+            {t('targetLang')}
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              disabled={busy || live}
+              aria-label={t('targetLang')}
+              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            >
+              {langOptions.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+            {t('captureMode.label')}
+            <select
+              value={captureMode}
+              onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+              disabled={busy || live}
+              aria-label={t('captureMode.label')}
+              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            >
+              <option value="both">{t('captureMode.both')}</option>
+              <option value="mic-only">{t('captureMode.micOnly')}</option>
+              <option value="tab-only">{t('captureMode.tabOnly')}</option>
+            </select>
+          </label>
+        </div>
+
+        {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
+            추가. 세션 시작 전에만 편집 (live 중 disabled). */}
+        <label className="flex flex-col gap-1 text-sm text-mute">
+          {t('glossary.label')}
+          <GlossaryField
+            values={glossary}
+            onChange={setGlossary}
+            disabled={busy || live}
+            placeholderEmpty={t('glossary.placeholderEmpty')}
+            placeholderAdd={t('glossary.placeholderAdd')}
+            removeAria={t('glossary.removeAria')}
+          />
+        </label>
+
+        {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
+        {live ? (
+          <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
+        ) : null}
+
+        {/* CTA — idle: 🚀 세션 시작 (WebRTC + OpenAI Realtime 진입). live:
+            경과 타이머 + (갱신 중 표시) + 정지. */}
+        {live ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-md tabular-nums text-mute">
+              {formatElapsed(elapsed)}
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-md tabular-nums text-mute">
-                {formatElapsed(elapsed)}
-              </span>
               {/* 🚨 Auto-renewal indicator — subtle, only while a background
                   session handover is in flight (<2s). */}
               {renewing ? (
@@ -3430,63 +3391,17 @@ export function TranslateConsole({
               </ChromeButton>
             </div>
           </div>
-
-          {/* ▼ 재노출 — 세션 중이라 필드는 disabled (read-only). 변경하려면
-              종료 후 재시작하라는 안내만 남긴다. */}
-          {controlsExpanded ? (
-            <div className="mt-3 space-y-2 border-t border-line-soft pt-3">
-              <div className="flex flex-wrap items-end gap-3 opacity-60">
-                <label className="flex flex-col gap-1 text-sm text-mute">
-                  {t('sourceLang')}
-                  <select
-                    value={sourceLang}
-                    disabled
-                    aria-label={t('sourceLang')}
-                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                  >
-                    {langOptions.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-sm text-mute">
-                  {t('targetLang')}
-                  <select
-                    value={targetLang}
-                    disabled
-                    aria-label={t('targetLang')}
-                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                  >
-                    {langOptions.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-sm text-mute">
-                  {t('captureMode.label')}
-                  <select
-                    value={captureMode}
-                    disabled
-                    aria-label={t('captureMode.label')}
-                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-                  >
-                    <option value="both">{t('captureMode.both')}</option>
-                    <option value="mic-only">{t('captureMode.micOnly')}</option>
-                    <option value="tab-only">{t('captureMode.tabOnly')}</option>
-                  </select>
-                </label>
-              </div>
-              <p className="text-sm text-mute-soft">
-                {t('controlBoard.lockedHint')}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      )}
+        ) : (
+          <ChromeButton
+            variant="default"
+            size="lg"
+            onClick={() => void start()}
+            disabled={busy}
+          >
+            {busy ? t('starting') : `🚀 ${t('start')}`}
+          </ChromeButton>
+        )}
+      </div>
 
       {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
           (most visible spot) so the host immediately sees why the monitor

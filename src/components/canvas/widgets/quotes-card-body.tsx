@@ -34,7 +34,7 @@ import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
-import { LANGUAGES, getLanguage, pickFromBrowser } from '@/lib/transcripts/languages';
+import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
   try {
@@ -133,12 +133,11 @@ export function QuotesCardBody() {
   // 실패한 파일만 여기 남아 서브헤더 '전사 시작(재시도)' CTA 로 다시 시작한다.
   const [readyFiles, setReadyFiles] = useState<ReadyTranscriptFile[]>([]);
 
-  // 위젯 phase — 'idle' (실행 전, 컨트롤 보드) → 'active' (실행 중/완료,
-  // slim bar + 산출물). CTA(업로드 시작) 시 active 로 승격하고 되돌아가지
-  // 않는다 (결정 3 — 결과물 있으면 active 유지). `settingsExpanded` 는
-  // active slim bar 의 ▼ 재확장 토글.
+  // 위젯 phase — 'idle' (아직 실행 신호 없음) → 'active' (실행 중/완료).
+  // 컨트롤 패널은 phase 무관 항상 노출되고, phase 는 그 아래 산출물 영역의
+  // 렌더 여부만 가른다 (active 일 때만 업로드/큐/상태 노출). CTA(업로드 시작)
+  // 시 active 로 승격하고 되돌아가지 않는다 (결과물 있으면 active 유지).
   const [phase, setPhase] = useState<'idle' | 'active'>('idle');
-  const [settingsExpanded, setSettingsExpanded] = useState(false);
 
   // 실행 신호(진행/완료 잡, 로컬 업로드, 시작 대기 파일)가 하나라도 있으면
   // active 로 승격. 새로고침/다른 디바이스에서 이미 잡이 있는 경우(realtime
@@ -631,9 +630,9 @@ export function QuotesCardBody() {
     label: `${l.flag} ${l.label}`,
   }));
 
-  // 컨트롤 보드 본체 — idle 메인 영역과 active slim bar 재확장 패널이 공유.
-  // 언어 셀렉트 + 📤 업로드 CTA (+ 자동 시작 실패 시 재시도 CTA/에러 hint).
-  // `idSuffix` 로 idle / expanded 인스턴스의 htmlFor 를 구분한다.
+  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 셀렉트 + 📤 업로드
+  // CTA (+ 자동 시작 실패 시 재시도 CTA/에러 hint). `idSuffix` 는 field
+  // htmlFor 고유화용 (단일 인스턴스라 'main').
   const renderControls = (idSuffix: string) => (
     <div className="space-y-4">
       <Field label="언어" htmlFor={`transcript-lang-${idSuffix}`}>
@@ -691,48 +690,23 @@ export function QuotesCardBody() {
 
   return (
     <>
-      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 2-phase 구조:
-            · idle   → 위젯 본문 전체가 컨트롤 보드 (언어 + 📤 업로드 CTA)
-            · active → 상단 slim bar (설정 요약 + ▼ 재확장) + 산출물(진행/큐)
-          업로드 모달은 두 phase 공용으로 항상 마운트. */}
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 서브헤더 slim bar 폐기:
+            · 컨트롤 패널 = 상단에 phase 무관 항상 노출 (언어 + 📤 업로드 CTA)
+            · 산출물(업로드 진행/큐/상태) = 그 아래 별 영역, active 시만
+          업로드 모달은 항상 마운트. */}
       <div className="flex h-full flex-col">
-        {phase === 'idle' ? (
-          /* ── Phase 1 (idle) — 위젯 본문 전체가 컨트롤 보드. 옛 서브헤더의
-                설정/CTA 를 메인 영역으로 끌어올려 언어 설정 + 큰 📤 업로드
-                CTA 만 노출. 파일 업로드 시작 시 phase='active' 로 전이. ── */
-          <div className="min-h-0 flex-1 overflow-y-auto p-6">
-            {renderControls('idle')}
-          </div>
-        ) : (
-          /* ── Phase 2 (active) — slim bar (설정 요약 + ▼ 재확장) + 산출물. ── */
+        {/* 컨트롤 패널 — 실행 중이라도 언어 재설정·새 파일 업로드가 가능하도록
+            항상 노출. */}
+        <div className="shrink-0 overflow-y-auto border-b border-line-soft p-6">
+          {renderControls('main')}
+        </div>
+
+        {/* 산출물 영역 — active(실행 중/완료) 일 때만. idle 에는 컨트롤만
+            노출되고 이 영역은 렌더되지 않는다. */}
+        {phase === 'active' && (
           <>
-            {/* Slim bar — 옛 서브헤더 대체. 현재 언어 요약 + 펼침 토글만. */}
-            <div className="flex items-center gap-2 border-b-[2px] border-ink bg-paper-soft px-4 py-2">
-              <span className="min-w-0 flex-1 truncate text-xs text-mute">
-                ⚙ 컨트롤 · {getLanguage(language).label}
-              </span>
-              <IconButton
-                variant="ghost"
-                size="sm"
-                aria-label={settingsExpanded ? '컨트롤 접기' : '컨트롤 펼치기'}
-                onClick={() => setSettingsExpanded((v) => !v)}
-              >
-                <span aria-hidden className="text-xs leading-none">
-                  {settingsExpanded ? '▲' : '▼'}
-                </span>
-              </IconButton>
-            </div>
-
-            {/* ▼ 재확장 — 옛 컨트롤 재노출 (값 유지). 여기서 언어 변경 시
-                slim bar 요약도 즉시 반영. 새 파일 업로드도 여기서 시작. */}
-            {settingsExpanded && (
-              <div className="border-b border-line-soft p-4">
-                {renderControls('expanded')}
-              </div>
-            )}
-
-            {/* 중간 영역 — 업로드 진행 + 큐. flex-1 로 산출물을 바닥으로
-                밀어내고, 내용이 길어지면 자체적으로 스크롤. */}
+            {/* 업로드 진행 + 큐. flex-1 로 산출물을 채우고, 길어지면 자체
+                스크롤. */}
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
               {hasUploads && (
                 <div>

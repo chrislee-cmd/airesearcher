@@ -41,10 +41,6 @@ function ExpandedBody() {
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
   const [isPublished, setIsPublished] = useState(false);
-  // Phase 2 slim control bar 접힘/펼침. 발행 후 기본은 접힘(controls 숨김 +
-  // 발행 완료 보드 노출). ▼ 클릭으로 wizard 를 다시 펼쳐 재발행/조건 조정.
-  // wizard 는 항상 마운트되므로(진행 state 보존) collapse 는 display:none.
-  const [controlsExpanded, setControlsExpanded] = useState(false);
   // 대상자 조건은 이제 발행 시 recruiting_forms 에 폼별로 저장된다
   // (migration 20260703060414). 우선순위:
   //   1) fullview 에서 *선택된 폼* 의 저장된 조건 (옛 폼·refresh 후에도 노출)
@@ -148,60 +144,21 @@ function ExpandedBody() {
     trackEvent('widget_viewed', { widget: 'recruiting', fullview: true });
     openFullview();
   };
-  // 전체보기를 한 번 연 세션에서 lift 된 응답 행 수 = 응답 count. fullview
-  // 를 아직 안 열었으면 null (새 fetch 없이 opportunistic — 상단 주석의
-  // forms/list 폭주 회피).
-  const responseCount = responseData?.rows.length ?? null;
-
-  const handleControlsToggle = () => {
-    trackEvent('widget_action', {
-      widget: 'recruiting',
-      action: 'controls_toggle',
-    });
-    setControlsExpanded((v) => !v);
-  };
-
   return (
     <div className="flex h-full flex-col">
-      {/* Phase 2 slim 컨트롤 바 — 발행 후 wizard controls 를 접어 두는 얇은
-          바. ▼ 클릭 = wizard 재확장(재발행/조건 조정). 발행 전(idle)엔 wizard
-          가 곧 컨트롤 보드이므로 바를 띄우지 않는다. */}
-      {isPublished && (
-        <SlimControlBar
-          label={tWidgets('recruitingControlBar')}
-          expanded={controlsExpanded}
-          onToggle={handleControlsToggle}
-        />
-      )}
-
-      {/* wizard = idle 컨트롤 보드 + 폼 발행 flow. fullview·진행 state 보존을
-          위해 항상 마운트하고, 발행 후 접힘 상태에서만 display:none 으로 숨긴다
-          (unmount 시 published/criteria/survey state 유실 → phase 깨짐). */}
-      <div
-        className={
-          'flex min-h-0 flex-1 flex-col' +
-          (isPublished && !controlsExpanded ? ' hidden' : '')
-        }
-      >
+      {/* wizard = 컨트롤 (조건 → 설문 → 발행). 서브헤더 slim bar 폐기 —
+          phase 무관 항상 노출되어 발행 후에도 재발행/조건 조정이 가능하다.
+          fullview·진행 state 보존을 위해 항상 마운트. */}
+      <div className="flex min-h-0 flex-1 flex-col">
         <RecruitingWizard
           onPublishedChange={setIsPublished}
           onConditionsChange={setConditionsBrief}
         />
       </div>
 
-      {/* Phase 2 발행 완료 보드 — controls 접힘 시 메인 영역. 발행 완료 +
-          응답 count + 전체보기 진입 CTA. */}
-      {isPublished && !controlsExpanded && (
-        <PublishedBoard
-          responseCount={responseCount}
-          onFullview={handleRecruitingFullview}
-        />
-      )}
-
-      {/* controls 펼침(재편집) 상태에선 하단 통일 완료 푸터로 "이미 발행됨 →
-          전체보기" 신호 유지 (전사록/데스크/인터뷰와 동일). 접힘 상태는 위
-          발행 완료 보드가 그 역할을 하므로 중복 노출하지 않는다. */}
-      {isPublished && controlsExpanded && (
+      {/* 산출물 영역 — 발행 완료 시만. 하단 통일 완료 푸터로 "이미 발행됨 →
+          전체보기(응답 spreadsheet)" 신호 (전사록/데스크/인터뷰와 동일). */}
+      {isPublished && (
         <WidgetStatusFooter
           status="done"
           label={tWidgets('recruitingDone')}
@@ -281,94 +238,6 @@ function ExpandedBody() {
         </WidgetFullviewPanel>,
       )}
     </div>
-  );
-}
-
-// Phase 2 얇은 컨트롤 바 — 발행 후 wizard controls 를 접어 두고, ⚙ 라벨 +
-// ▼(rotate) 로 펼침 여부를 표시. 전면-폭 composite 클릭 바라 native button +
-// data-canvas-action opt-out (WidgetStatusFooter 선례).
-function SlimControlBar({
-  label,
-  expanded,
-  onToggle,
-}: {
-  label: string;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    /* eslint-disable-next-line react/forbid-elements -- 전면-폭 컨트롤 바:
-       ⚙ 라벨 + ▼ 복합 레이아웃이라 Button primitive variant 에 매핑 안 됨.
-       data-canvas-action 으로 canvas [data-canvas-body] cascade opt-out. */
-    <button
-      type="button"
-      onClick={onToggle}
-      data-canvas-action
-      aria-expanded={expanded}
-      className="flex shrink-0 items-center gap-2 border-b-[2px] border-ink bg-paper-soft px-5 py-2.5 text-left text-sm font-semibold text-ink transition-colors hover:bg-paper"
-    >
-      <span aria-hidden className="shrink-0">
-        ⚙
-      </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span
-        aria-hidden
-        className={
-          'shrink-0 text-mute transition-transform' +
-          (expanded ? ' rotate-180' : '')
-        }
-      >
-        ▼
-      </span>
-    </button>
-  );
-}
-
-// Phase 2 발행 완료 보드 — controls 접힘 시 메인 영역. 완료 배지 + 응답 count
-// (전체보기를 한 번 연 세션에서만 확보 — 새 fetch 없이 lift 된 응답에서 파생)
-// + 전체보기 CTA.
-function PublishedBoard({
-  responseCount,
-  onFullview,
-}: {
-  responseCount: number | null;
-  onFullview: () => void;
-}) {
-  const tWidgets = useTranslations('Widgets');
-  return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-5 py-8 text-center">
-      <div className="flex flex-col items-center gap-2">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xs border-[2px] border-ink bg-mint">
-          <RecruitingCheckIcon className="h-4 w-4 text-ink" />
-        </span>
-        <p className="text-lg font-semibold text-ink">
-          {tWidgets('recruitingPublished')}
-        </p>
-        <p className="text-sm text-mute">
-          {responseCount != null
-            ? tWidgets('recruitingResponseCount', { count: responseCount })
-            : tWidgets('recruitingResponseHint')}
-        </p>
-      </div>
-      <Button variant="primary" size="md" onClick={onFullview}>
-        {tWidgets('viewAll')}
-      </Button>
-    </div>
-  );
-}
-
-// 완료 ✓ glyph (명시 size className + aria-hidden 으로 a11y 통과).
-function RecruitingCheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3.5 8.5L6.5 11.5L12.5 4.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

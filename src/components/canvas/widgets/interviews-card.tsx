@@ -11,10 +11,7 @@ import {
   DropdownMenu,
   type DropdownItem,
 } from '@/components/ui/dropdown-menu';
-import {
-  useInterviewV2Projects,
-  type InterviewProject,
-} from '@/hooks/use-interview-v2-projects';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
 import { UploadModal } from '@/components/interviews-v2/upload-modal';
@@ -28,26 +25,27 @@ import { track as trackEvent } from '@/lib/analytics/events';
 const CARD_PROJECT_KEY = 'interview-v2-card-active-project';
 
 // ────────────────────────────────────────────────────────────────────
-// Idle 컨트롤 보드 (Phase 1) — 프로젝트 선택 dropdown + CTA.
-//   · 프로젝트 미선택 → 📤 파일 업로드 (프로젝트-설정 gate 모달)
-//   · 선택한 프로젝트에 파일 있음 → 🔍 검색 시작 (즉시 active)
-//   · 선택한 프로젝트에 파일 없음 → 📤 파일 업로드 (해당 프로젝트로 preset)
-// (사용자 결정 1 — CTA=파일 업로드, 파일 있으면 자동 active)
+// 프로젝트 컨트롤 바 — 서브헤더 slim bar 폐기 후, phase 무관 항상 노출되는
+// 컨트롤. 프로젝트 선택/전환 dropdown (선택 즉시 active 진입) + 새 프로젝트 +
+// (active 시) 목록으로 나가기 + 📤 업로드. idle(activeProjectId=null) 에서는
+// "프로젝트 선택" 라벨, active 에서는 "프로젝트: <name>" 라벨.
 // ────────────────────────────────────────────────────────────────────
-function IdleControlBoard({ onEnter }: { onEnter: (id: string) => void }) {
+function ProjectControlBar({
+  activeProjectId,
+  activeProjectName,
+  onEnter,
+  onExit,
+  onUpload,
+}: {
+  activeProjectId: string | null;
+  activeProjectName: string | null;
+  onEnter: (id: string) => void;
+  onExit: () => void;
+  onUpload: () => void;
+}) {
   const t = useTranslations('InterviewsV2');
   const { projects, isLoading, create } = useInterviewV2Projects();
-  const [pickedId, setPickedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
-
-  const picked = useMemo(
-    () => projects.find((p) => p.id === pickedId) ?? null,
-    [projects, pickedId],
-  );
-  // 선택한 프로젝트의 파일 수로 CTA 를 분기 (파일 있으면 검색 시작).
-  const { documents, isLoading: docsLoading } =
-    useInterviewV2Documents(pickedId);
 
   const handleCreate = async (name: string, description?: string) => {
     const { project } = await create(name, description);
@@ -63,136 +61,9 @@ function IdleControlBoard({ onEnter }: { onEnter: (id: string) => void }) {
     return null;
   };
 
-  const projectItems: DropdownItem[] = [
-    ...projects.map((p) => ({
-      key: p.id,
-      label: p.name,
-      onSelect: () => setPickedId(p.id),
-    })),
-    {
-      key: '__new',
-      label: <span className="text-amore">＋ {t('newProject')}</span>,
-      onSelect: () => setCreateOpen(true),
-    },
-  ];
-
-  const hasFiles = !!picked && !docsLoading && documents.length > 0;
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 py-8 text-center">
-      <div className="w-full max-w-[360px] space-y-5">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-ink-2">
-            {t('cardIdleTitle')}
-          </h3>
-          <p className="text-sm leading-[1.6] text-mute">{t('cardIdleHint')}</p>
-        </div>
-
-        {/* 프로젝트 선택 dropdown (또는 새로 만들기). */}
-        <DropdownMenu
-          align="start"
-          items={projectItems}
-          trigger={({ open, onClick, ...aria }) => (
-            <Button
-              {...aria}
-              data-open={open}
-              variant="secondary"
-              size="md"
-              onClick={onClick}
-              disabled={isLoading}
-              rightIcon={<span aria-hidden>▼</span>}
-              fullWidth
-            >
-              {picked ? picked.name : t('cardSelectProject')}
-            </Button>
-          )}
-        />
-
-        {/* CTA — 파일 있으면 검색 시작, 없으면 업로드. */}
-        {picked && docsLoading ? (
-          <Skeleton className="h-11 w-full rounded-sm" />
-        ) : hasFiles ? (
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => onEnter(picked!.id)}
-            leftIcon={<span aria-hidden>🔍</span>}
-            fullWidth
-          >
-            {t('cardSearchStart')}
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => setUploadOpen(true)}
-            leftIcon={<span aria-hidden>📤</span>}
-            fullWidth
-          >
-            {t('cardUpload')}
-          </Button>
-        )}
-      </div>
-
-      <CreateProjectModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreate={handleCreate}
-      />
-
-      {/* 프로젝트 미선택 업로드 → 모달이 Step 2(프로젝트 설정)를 강제,
-          완료 시 해당 프로젝트로 즉시 active 진입. 프로젝트 선택 상태면
-          그 프로젝트로 preset (Step 2 skip). */}
-      <UploadModal
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        projectId={pickedId}
-        onUploaded={(id) => {
-          setUploadOpen(false);
-          onEnter(id);
-        }}
-      />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
-// Slim bar (Phase 2 상단) — ⚙ 프로젝트: <name> ▼. ▼ 는 프로젝트 dropdown
-// 을 재노출 (다른 프로젝트로 스위치 / 새 프로젝트 / 프로젝트 선택 화면).
-// (사용자 결정 3 — slim bar = 프로젝트 전환)
-// ────────────────────────────────────────────────────────────────────
-function ProjectSlimBar({
-  projectId,
-  projectName,
-  projects,
-  onEnter,
-  onExit,
-  onUpload,
-}: {
-  projectId: string;
-  projectName: string;
-  projects: InterviewProject[];
-  onEnter: (id: string) => void;
-  onExit: () => void;
-  onUpload: () => void;
-}) {
-  const t = useTranslations('InterviewsV2');
-  const [createOpen, setCreateOpen] = useState(false);
-  const { create } = useInterviewV2Projects();
-
-  const handleCreate = async (name: string, description?: string) => {
-    const { project } = await create(name, description);
-    if (project) {
-      setCreateOpen(false);
-      onEnter(project.id);
-      return project.id;
-    }
-    return null;
-  };
-
-  const switchItems: DropdownItem[] = [
+  const items: DropdownItem[] = [
     ...projects
-      .filter((p) => p.id !== projectId)
+      .filter((p) => p.id !== activeProjectId)
       .map((p) => ({
         key: p.id,
         label: p.name,
@@ -203,19 +74,18 @@ function ProjectSlimBar({
       label: <span className="text-amore">＋ {t('newProject')}</span>,
       onSelect: () => setCreateOpen(true),
     },
-    {
-      key: '__list',
-      label: t('cardBackToPicker'),
-      onSelect: onExit,
-    },
+    // active 상태에서만 "프로젝트 목록으로" (idle 로 복귀) 를 노출.
+    ...(activeProjectId
+      ? [{ key: '__list', label: t('cardBackToPicker'), onSelect: onExit }]
+      : []),
   ];
 
   return (
     <div className="flex shrink-0 items-center gap-2 border-b-[2px] border-ink bg-paper-soft px-4 py-2">
       <DropdownMenu
         align="start"
-        items={switchItems}
-        label={t('cardSwitchProject')}
+        items={items}
+        label={activeProjectId ? t('cardSwitchProject') : t('cardSelectProject')}
         trigger={({ open, onClick, ...aria }) => (
           <Button
             {...aria}
@@ -223,13 +93,22 @@ function ProjectSlimBar({
             variant="ghost"
             size="sm"
             onClick={onClick}
+            disabled={isLoading}
             leftIcon={<span aria-hidden>⚙</span>}
             rightIcon={<span aria-hidden>▼</span>}
             className="min-w-0"
           >
             <span className="truncate">
-              {t('cardProjectLabel')}:{' '}
-              <span className="font-semibold text-ink-2">{projectName}</span>
+              {activeProjectName != null ? (
+                <>
+                  {t('cardProjectLabel')}:{' '}
+                  <span className="font-semibold text-ink-2">
+                    {activeProjectName}
+                  </span>
+                </>
+              ) : (
+                t('cardSelectProject')
+              )}
             </span>
           </Button>
         )}
@@ -254,11 +133,53 @@ function ProjectSlimBar({
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Active 뷰 (Phase 2) — slim bar + 파일 리스트 요약 + 검색 chat.
-// 상세(2-panel 파일 그리드 등)는 "전체 보기" fullview 가 담당.
-// (사용자 결정 2 — active = 파일 리스트 + chat 요약)
+// Idle 본문 — 컨트롤 바(상시) + 안내 hint. 프로젝트를 선택하거나 새로
+// 만들거나 파일을 올리면 active 로 진입한다.
 // ────────────────────────────────────────────────────────────────────
-function ActiveView({
+function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
+  const t = useTranslations('InterviewsV2');
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <ProjectControlBar
+        activeProjectId={null}
+        activeProjectName={null}
+        onEnter={onEnter}
+        onExit={() => {}}
+        onUpload={() => setUploadOpen(true)}
+      />
+
+      {/* 산출물 영역 자리 — idle 이라 안내 hint 만. */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-8 text-center">
+        <div className="max-w-[360px] space-y-2">
+          <h3 className="text-lg font-semibold text-ink-2">
+            {t('cardIdleTitle')}
+          </h3>
+          <p className="text-sm leading-[1.6] text-mute">{t('cardIdleHint')}</p>
+        </div>
+      </div>
+
+      {/* 프로젝트 미선택 업로드 → 모달이 Step 2(프로젝트 설정)를 강제,
+          완료 시 해당 프로젝트로 즉시 active 진입. */}
+      <UploadModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        projectId={null}
+        onUploaded={(id) => {
+          setUploadOpen(false);
+          onEnter(id);
+        }}
+      />
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Active 본문 — 컨트롤 바(상시) + 파일 리스트 요약 + 검색 chat.
+// 상세(2-panel 파일 그리드 등)는 "전체 보기" fullview 가 담당.
+// ────────────────────────────────────────────────────────────────────
+function ActiveBody({
   projectId,
   onEnter,
   onExit,
@@ -279,10 +200,9 @@ function ActiveView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ProjectSlimBar
-        projectId={projectId}
-        projectName={projectName}
-        projects={projects}
+      <ProjectControlBar
+        activeProjectId={projectId}
+        activeProjectName={projectName}
         onEnter={onEnter}
         onExit={onExit}
         onUpload={() => setUploadOpen(true)}
@@ -415,9 +335,9 @@ function ExpandedBody() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {activeProjectId === null ? (
-        <IdleControlBoard onEnter={enterProject} />
+        <IdleBody onEnter={enterProject} />
       ) : (
-        <ActiveView
+        <ActiveBody
           projectId={activeProjectId}
           onEnter={enterProject}
           onExit={exitToIdle}
@@ -436,10 +356,10 @@ function ExpandedBody() {
   );
 }
 
-// 인터뷰 결과 생성기 canvas widget — V2 컨트롤 보드. Phase 1(idle) = 프로젝트
-// 선택 + 업로드, Phase 2(active) = slim bar + 파일 리스트 요약 + 검색 chat.
-// 상세는 "전체 보기" (InterviewV2Fullview). accent 는 moderator 와 같은 peach
-// 재사용 (썸네일이 시각 식별자 우선).
+// 인터뷰 결과 생성기 canvas widget — 서브헤더 slim bar 폐기. 프로젝트 컨트롤
+// 바(선택/전환/업로드)는 phase 무관 항상 노출되고, 산출물(파일 리스트 요약 +
+// 검색 chat)은 프로젝트에 진입한 active 시만 노출된다. 상세는 "전체 보기"
+// (InterviewV2Fullview). accent 는 moderator 와 같은 peach 재사용.
 export const interviewsCard: WidgetContent = {
   key: 'interviews',
   meta: {

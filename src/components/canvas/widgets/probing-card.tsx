@@ -49,8 +49,7 @@ import type { ProbingBackfillFeedback } from './probing/research-context';
 import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
 import {
-  ProbingControlBoard,
-  ProbingControlBar,
+  ProbingControlPanel,
   type SourceKind,
 } from './probing/control-board';
 import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
@@ -1162,42 +1161,29 @@ function ExpandedBody() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        {/* Phase 1 (idle) = 컨트롤 보드 (조사 목적 / 소스 / 언어 / 🚀 CTA),
-            Phase 2 (live) = slim bar (▼ 로 세션 중 컨트롤 재노출 + 정지).
-            starting/stopping/error 는 idle 로 취급 (isLive=false) — 컨트롤
-            보드가 다시 노출되어 재시도 가능. */}
-        {isLive ? (
-          <ProbingControlBar
-            researchGoal={context.research_goal}
-            onResearchGoalChange={(v) =>
-              setContext((prev) => ({ ...prev, research_goal: v }))
-            }
-            source={source}
-            onSourceChange={setSource}
-            outputLang={outputLang}
-            onOutputLangChange={setOutputLang}
-            controlsDisabled={controlsDisabled}
-            onStop={handleStopSession}
-            stopDisabled={stopDisabled}
-            statusLabel={statusLabel}
-          />
-        ) : (
-          <ProbingControlBoard
-            researchGoal={context.research_goal}
-            onResearchGoalChange={(v) =>
-              setContext((prev) => ({ ...prev, research_goal: v }))
-            }
-            goalDisabled={!contextHydrated}
-            source={source}
-            onSourceChange={setSource}
-            outputLang={outputLang}
-            onOutputLangChange={setOutputLang}
-            controlsDisabled={controlsDisabled}
-            onStart={handleStartSession}
-            startDisabled={startDisabled}
-            statusLabel={statusLabel}
-          />
-        )}
+        {/* 컨트롤 패널 — 서브헤더 slim bar 폐기, phase 무관 항상 노출. CTA 만
+            idle→🚀 세션 시작, live→정지 로 전환. starting/stopping/error 는
+            isLive=false 로 취급되어 시작 CTA 가 노출돼 재시도 가능. 조사 목적은
+            라이브 중에도 편집 가능(goalDisabled=hydration 대기), 소스·언어는
+            세션 중 disabled. */}
+        <ProbingControlPanel
+          researchGoal={context.research_goal}
+          onResearchGoalChange={(v) =>
+            setContext((prev) => ({ ...prev, research_goal: v }))
+          }
+          goalDisabled={!contextHydrated}
+          source={source}
+          onSourceChange={setSource}
+          outputLang={outputLang}
+          onOutputLangChange={setOutputLang}
+          controlsDisabled={controlsDisabled}
+          isLive={isLive}
+          onStart={handleStartSession}
+          startDisabled={startDisabled}
+          onStop={handleStopSession}
+          stopDisabled={stopDisabled}
+          statusLabel={statusLabel}
+        />
 
         {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
             popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal
