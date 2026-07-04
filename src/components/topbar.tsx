@@ -57,8 +57,7 @@ export async function Topbar({
       <div className="flex shrink-0 items-center gap-3">
         {isAuthed ? (
           <>
-            {/* QA-only mic trigger — self-gates on isQaTester, renders
-                nothing for non-QA users. */}
+            {/* Voice-feedback mic trigger — shown to every signed-in account. */}
             <QaVoiceAgentButton />
             <TopbarAccount
               email={userEmail}
