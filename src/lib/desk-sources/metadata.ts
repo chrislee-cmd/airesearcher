@@ -10,6 +10,7 @@ export const DESK_REGIONS: DeskRegion[] = ['KR', 'US', 'SG', 'MY', 'TH', 'JP', '
 // because they will return zero results for non-KR keywords (and waste credits).
 export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'dart', 'academic_kr'];
 export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'bok'];
+export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'kosis'];
 
 // Famous, crawler-friendly portals per region. Reached directly via API, or
 // indirectly via Google News RSS aggregation. Shown in the UI as a hint.
@@ -60,5 +61,9 @@ export const DESK_SOURCE_GROUPS: Record<
     label: '한국은행',
     labelEn: 'Bank of Korea',
     hint: 'ECOS_API_KEY 필요',
+  kosis: {
+    label: '통계청 KOSIS',
+    labelEn: 'KOSIS (Korea Statistics)',
+    hint: 'KOSIS_API_KEY 필요',
   },
 };

@@ -33,6 +33,10 @@ export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart' 
   | 'boj_ecos';
 
 export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'bok';
+  // Stats (market TAM/SAM)
+  | 'kosis';
+
+export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'kosis';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely
