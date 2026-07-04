@@ -9,6 +9,7 @@ export const DESK_REGIONS: DeskRegion[] = ['KR', 'US', 'SG', 'MY', 'TH', 'JP', '
 // Sources that only return Korean-language content. Hidden when region != 'KR'
 // because they will return zero results for non-KR keywords (and waste credits).
 export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'dart', 'academic_kr'];
+export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'bok'];
 
 // Famous, crawler-friendly portals per region. Reached directly via API, or
 // indirectly via Google News RSS aggregation. Shown in the UI as a hint.
@@ -55,5 +56,9 @@ export const DESK_SOURCE_GROUPS: Record<
     label: '국내 학술',
     labelEn: 'Korean Academic',
     hint: 'KCI_API_KEY 필요 (한국연구재단)',
+  bok: {
+    label: '한국은행',
+    labelEn: 'Bank of Korea',
+    hint: 'ECOS_API_KEY 필요',
   },
 };
