@@ -33,6 +33,18 @@ export default async function LocaleLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Resolve the QA-tester flag server-side so QA-only UI renders correctly on
+  // first paint (no flash for real QA testers). Refreshed client-side on login.
+  let isQaTester = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_qa_tester')
+      .eq('id', user.id)
+      .maybeSingle();
+    isQaTester = profile?.is_qa_tester ?? false;
+  }
+
   return (
     <html lang={locale} className="h-full" data-theme="pop">
       <head>
@@ -51,7 +63,9 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <MixpanelProvider>
             <PostHogProvider>
-              <AuthProvider initialUser={user}>{children}</AuthProvider>
+              <AuthProvider initialUser={user} initialIsQaTester={isQaTester}>
+                {children}
+              </AuthProvider>
               <CookieConsentBanner />
             </PostHogProvider>
           </MixpanelProvider>
