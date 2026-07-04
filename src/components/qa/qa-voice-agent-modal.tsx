@@ -4,16 +4,23 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
+import { QA_TAGS } from '@/lib/qa-tags';
 
 // QA voice-feedback recorder (PR4 of the QA voice-agent epic). Replaces the
-// PR3 placeholder body. Flow: idle → [record] → recording → [stop & submit]
-// → uploading → Storage upload + qa_feedbacks insert + async transcribe →
-// success toast → close. The modal stays mounted (open/onClose owned by
-// QaVoiceAgentButton); a fresh session_id is minted per submission so every
-// re-open groups its recordings under a new session (spec §C).
-type Phase = 'idle' | 'recording' | 'uploading';
+// PR3 placeholder body. Flow: form → idle → [record] → recording → [stop &
+// submit] → uploading → Storage upload + qa_feedbacks insert + async
+// transcribe → success toast → close. The modal stays mounted (open/onClose
+// owned by QaVoiceAgentButton); a fresh session_id is minted per submission so
+// every re-open groups its recordings under a new session (spec §C).
+//
+// The 'form' step (added by the tagging PR) runs BEFORE recording: the tester
+// tags which feature/area the feedback is about (min 1 tag) so the admin
+// viewer can filter by tag. Detailed opinions still come from the voice take —
+// the form is identifiers only, no rating scale.
+type Phase = 'form' | 'idle' | 'recording' | 'uploading';
 
 // Peak input level (0..1, RMS from the WebAudio analyser) below which we treat
 // the take as effectively silent — mic muted or wrong input device. We still
@@ -41,7 +48,8 @@ export function QaVoiceAgentModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [phase, setPhase] = useState<Phase>('form');
+  const [tags, setTags] = useState<string[]>([]);
   const [duration, setDuration] = useState(0);
   const [level, setLevel] = useState(0); // live input level 0..1 (VU meter)
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -76,6 +84,20 @@ export function QaVoiceAgentModal({
     analyserRef.current = null;
     setLevel(0);
   }, []);
+
+  // Each fresh open starts at the tagging form with a clean slate — the modal
+  // stays mounted between opens, so without this reset the previous take's
+  // phase/tags would leak into the next session. We reset during render on the
+  // closed→open transition (React's "adjust state when a prop changes"
+  // pattern) rather than in an effect, which avoids a cascading extra render.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setPhase('form');
+      setTags([]);
+    }
+  }
 
   // Tear everything down if the modal unmounts mid-recording.
   useEffect(
@@ -130,7 +152,7 @@ export function QaVoiceAgentModal({
         page_url: pathname ?? null,
         duration_seconds: seconds,
         status: 'pending',
-        meta: { user_agent: navigator.userAgent, silent },
+        meta: { user_agent: navigator.userAgent, silent, tags },
       })
       .select('id')
       .single();
@@ -163,7 +185,7 @@ export function QaVoiceAgentModal({
     // New submission cycle → new session next time the user records.
     sessionIdRef.current = null;
     onClose();
-  }, [onClose, pathname, push, supabase]);
+  }, [onClose, pathname, push, supabase, tags]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -250,8 +272,53 @@ export function QaVoiceAgentModal({
   // Scale the raw RMS up for a livelier meter; clamp to 100%.
   const meterPct = Math.min(100, Math.round(level * 240));
 
+  const toggleTag = (key: string, checked: boolean) => {
+    setTags((prev) =>
+      checked ? [...prev, key] : prev.filter((x) => x !== key),
+    );
+  };
+  const canProceed = tags.length > 0;
+
   return (
-    <Modal open={open} onClose={onClose} title="QA 피드백" size="sm">
+    <Modal open={open} onClose={onClose} title="QA 피드백" size="md">
+      {phase === 'form' && (
+        <div className="space-y-5 py-4">
+          <p className="text-sm text-mute">
+            어떤 항목에 대한 피드백인가요? (최소 1개)
+          </p>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {QA_TAGS.map((t) => (
+              <label
+                key={t.key}
+                className="flex items-center gap-2 cursor-pointer text-sm text-ink"
+              >
+                <Checkbox
+                  checked={tags.includes(t.key)}
+                  onChange={(e) => toggleTag(t.key, e.target.checked)}
+                  aria-label={t.label}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => canProceed && setPhase('idle')}
+            disabled={!canProceed}
+            className="w-full"
+          >
+            다음 → 녹음
+          </Button>
+          <p className="text-xs-soft text-mute-soft text-center">
+            상세 의견은 다음 단계에서 음성으로 남겨 주세요.
+          </p>
+        </div>
+      )}
+
+      {phase !== 'form' && (
       <div className="flex flex-col items-center gap-4 py-4">
         {phase === 'idle' && (
           <>
@@ -292,6 +359,7 @@ export function QaVoiceAgentModal({
           </>
         )}
       </div>
+      )}
     </Modal>
   );
 }
