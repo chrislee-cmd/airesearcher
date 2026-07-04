@@ -153,16 +153,37 @@ export function buildDistributionTable(
   };
 }
 
-// ── Crossfilter (분포 셀 클릭 · 질문 필터) ──────────────────────────────
+// ── Crossfilter (분포 셀 다중선택 · 질문 필터 multi-select) ─────────────
 //
-// A single active filter, mutually exclusive by construction (one union, one
-// value): either a clicked distribution cell (gender × age bucket) or a
-// selected 객관식 질문 답변. Held in the fullview host as session-level state
-// (no URL) and applied to the response spreadsheet rows.
+// Multi-select filter (2026-07-04): the fullview holds a *set* of selected
+// distribution cells AND a set of per-question selected answers. Semantics:
+//   • cells     — OR across selected cells (여러 셀 중 하나라도 매치)
+//   • questions — OR within one question's answers, AND between questions
+//     즉 (질문 A 답변군 중 하나) ∧ (질문 B 답변군 중 하나) …
+// Held in the fullview host as session-level state (no URL) and applied to
+// BOTH the response spreadsheet rows AND the 분포 crosstab — so filtering
+// re-computes the distribution too. This is the fix for the old bug where the
+// crosstab was built from the unfiltered server aggregate and ignored the
+// active filter entirely (분포 수치가 필터에 반응하지 않던 P0).
 
-export type RecruitingFilter =
-  | { type: 'cell'; gender: string; ageBucket: string }
-  | { type: 'question'; field: string; answer: string };
+export type RecruitingCellFilter = { gender: string; ageBucket: string };
+export type RecruitingQuestionFilter = { field: string; answers: string[] };
+
+export type RecruitingFilter = {
+  cells: RecruitingCellFilter[];
+  questions: RecruitingQuestionFilter[];
+};
+
+// Shared empty value for initial state / resets. Never mutated — every update
+// below returns a fresh object, so sharing this reference is safe.
+export const EMPTY_FILTER: RecruitingFilter = { cells: [], questions: [] };
+
+export function hasActiveFilter(filter: RecruitingFilter): boolean {
+  return (
+    filter.cells.length > 0 ||
+    filter.questions.some((q) => q.answers.length > 0)
+  );
+}
 
 // A choice question the 질문 필터 dropdown can offer, with its answer options.
 export type FilterableQuestion = {
@@ -220,27 +241,111 @@ function uniqueAnswerValues(
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 
-// Does a response row satisfy the active filter? Used by the spreadsheet to
-// narrow visible rows. A cell filter re-derives the row's gender/age bucket
-// with the same normalisation the crosstab used, so a clicked "여성 × 20s"
-// cell matches exactly the rows that produced it. A missing gender/age column
-// means the cell filter can't apply — we pass all rows through rather than
-// silently emptying the table.
-export function rowMatchesFilter(
+// Does a response row satisfy the active multi-select filter? Used by BOTH the
+// spreadsheet (narrow visible rows) and the 분포 panel (re-derive the crosstab
+// from the filtered rows) so the two can never diverge.
+//
+// A cell filter re-derives the row's gender/age bucket with the same
+// normalisation the crosstab used, so a clicked "여성 × 20s" cell matches
+// exactly the rows that produced it. A missing gender/age column means the
+// cell group can't apply — we skip it (pass rows through) rather than silently
+// emptying the table.
+export function matchesFilter(
   row: FormResponseRow,
   filter: RecruitingFilter,
   columns: FormColumn[],
   nowYear: number,
 ): boolean {
-  if (filter.type === 'cell') {
+  // Cell group — OR across selected cells. Skip entirely when none selected.
+  if (filter.cells.length > 0) {
     const genderCol = findGenderColumn(columns);
     const ageCol = findAgeColumn(columns);
-    if (!genderCol || !ageCol) return true;
-    const g = normalizeGender(row.answers[genderCol.questionId] ?? '');
-    const a = toAgeBucket(row.answers[ageCol.questionId] ?? '', nowYear);
-    return g === filter.gender && a === filter.ageBucket;
+    // Only apply when both axes exist; otherwise the cell group is inert.
+    if (genderCol && ageCol) {
+      const g = normalizeGender(row.answers[genderCol.questionId] ?? '');
+      const a = toAgeBucket(row.answers[ageCol.questionId] ?? '', nowYear);
+      const cellHit = filter.cells.some(
+        (c) => c.gender === g && c.ageBucket === a,
+      );
+      if (!cellHit) return false;
+    }
   }
-  const raw = row.answers[filter.field];
-  if (!raw) return false;
-  return splitAnswerValues(raw).includes(filter.answer);
+
+  // Question groups — OR within a question's answers, AND between questions.
+  for (const q of filter.questions) {
+    if (q.answers.length === 0) continue;
+    const raw = row.answers[q.field];
+    const values = raw ? splitAnswerValues(raw) : [];
+    const hit = q.answers.some((a) => values.includes(a));
+    if (!hit) return false;
+  }
+
+  return true;
+}
+
+// ── Immutable toggle / query helpers for the multi-select filter ──────────
+// All return a fresh RecruitingFilter (React state-safe). Toggling an already
+// selected cell/answer removes it, so the same call powers both the cell/
+// checkbox toggle and the chip "×" removal.
+
+export function isCellActive(
+  filter: RecruitingFilter,
+  gender: string,
+  ageBucket: string,
+): boolean {
+  return filter.cells.some(
+    (c) => c.gender === gender && c.ageBucket === ageBucket,
+  );
+}
+
+export function toggleCell(
+  filter: RecruitingFilter,
+  cell: RecruitingCellFilter,
+): RecruitingFilter {
+  const exists = isCellActive(filter, cell.gender, cell.ageBucket);
+  return {
+    ...filter,
+    cells: exists
+      ? filter.cells.filter(
+          (c) => !(c.gender === cell.gender && c.ageBucket === cell.ageBucket),
+        )
+      : [...filter.cells, cell],
+  };
+}
+
+export function isAnswerActive(
+  filter: RecruitingFilter,
+  field: string,
+  answer: string,
+): boolean {
+  return (
+    filter.questions
+      .find((q) => q.field === field)
+      ?.answers.includes(answer) ?? false
+  );
+}
+
+export function toggleAnswer(
+  filter: RecruitingFilter,
+  field: string,
+  answer: string,
+): RecruitingFilter {
+  const existing = filter.questions.find((q) => q.field === field);
+  if (!existing) {
+    return {
+      ...filter,
+      questions: [...filter.questions, { field, answers: [answer] }],
+    };
+  }
+  const nextAnswers = existing.answers.includes(answer)
+    ? existing.answers.filter((a) => a !== answer)
+    : [...existing.answers, answer];
+  // Drop the question entry entirely when its last answer is removed so
+  // hasActiveFilter / chip rendering stay clean.
+  const questions = nextAnswers.length
+    ? filter.questions.map((q) =>
+        q.field === field ? { field, answers: nextAnswers } : q,
+      )
+    : filter.questions.filter((q) => q.field !== field);
+  return { ...filter, questions };
 }

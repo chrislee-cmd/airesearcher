@@ -17,9 +17,11 @@ import {
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
-import type {
-  FilterableQuestion,
-  RecruitingFilter,
+import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
+import {
+  EMPTY_FILTER,
+  type FilterableQuestion,
+  type RecruitingFilter,
 } from '@/lib/recruiting/distribution';
 
 // 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
@@ -52,15 +54,22 @@ function ExpandedBody() {
   // 을 "로딩 중" vs "발행 폼 없음" 으로 구분하는 데 쓴다 (초기 flash 방지).
   const [formsLoading, setFormsLoading] = useState(true);
   // Crossfilter SSOT — 분포 패널과 응답 spreadsheet 의 공통 부모라 여기서
-  // 활성 필터를 쥔다. 분포 패널이 셀 클릭/질문 필터로 set, spreadsheet 이 read.
-  const [activeFilter, setActiveFilter] = useState<RecruitingFilter | null>(
-    null,
-  );
+  // multi-select 필터를 쥔다. 분포 패널이 셀 다중선택/질문 필터로 set, 분포
+  // crosstab 재계산 + spreadsheet row 필터가 모두 이 값을 read.
+  const [activeFilter, setActiveFilter] =
+    useState<RecruitingFilter>(EMPTY_FILTER);
   // spreadsheet 이 로드한 응답 컬럼에서 파생한 객관식 질문 목록 — 분포 패널의
-  // 질문 필터 dropdown 이 쓴다.
+  // 질문 필터 팝오버가 쓴다.
   const [filterableQuestions, setFilterableQuestions] = useState<
     FilterableQuestion[]
   >([]);
+  // spreadsheet 이 로드한 응답(컬럼 + 행)을 여기로 lift → 분포 패널이 필터 적용
+  // 후 같은 rows 로 crosstab 을 client-side 재계산 (필터 반영 sync fix).
+  const [responseData, setResponseData] = useState<{
+    columns: FormColumn[];
+    rows: FormResponseRow[];
+  } | null>(null);
+  const [responsesLoading, setResponsesLoading] = useState(false);
 
   // 선택 폼이 바뀌면 이전 폼 기준 필터는 무의미 → 초기화(전체 응답 복원).
   // React 권장 "prop 변경 시 state 리셋" 패턴 — effect 대신 render 중 조정해
@@ -69,20 +78,16 @@ function ExpandedBody() {
   const [prevFormId, setPrevFormId] = useState(selectedFormId);
   if (selectedFormId !== prevFormId) {
     setPrevFormId(selectedFormId);
-    setActiveFilter(null);
+    setActiveFilter(EMPTY_FILTER);
   }
 
-  // 두 위젯(응답 spreadsheet + 분포 통계)이 각자의 refetch 함수를 여기로
-  // 등록한다. fullview 상단 통합 "새로고침" 버튼이 둘을 함께 호출 → 사용자
-  // 한 번의 클릭으로 테이블과 분포가 동시에 갱신된다 (각 위젯은 자체 로딩
-  // 스피너 유지). ref 라 등록이 리렌더를 유발하지 않는다.
+  // 응답 spreadsheet 의 refetch 함수를 여기로 등록한다. fullview 상단 통합
+  // "새로고침" 버튼이 호출 → 응답이 다시 로드되면 lift 된 responseData 가
+  // 갱신되고 분포 crosstab 도 자동 재계산된다 (분포는 이제 응답에서 파생 —
+  // 별도 refetch 불필요). ref 라 등록이 리렌더를 유발하지 않는다.
   const refreshResponsesRef = useRef<(() => void) | null>(null);
-  const refreshDistributionRef = useRef<(() => void) | null>(null);
   const registerResponsesRefresh = useCallback((fn: () => void) => {
     refreshResponsesRef.current = fn;
-  }, []);
-  const registerDistributionRefresh = useCallback((fn: () => void) => {
-    refreshDistributionRef.current = fn;
   }, []);
   const handleRefresh = useCallback(() => {
     trackEvent('widget_action', {
@@ -90,9 +95,8 @@ function ExpandedBody() {
       action: 'fullview_refresh',
     });
     refreshResponsesRef.current?.();
-    refreshDistributionRef.current?.();
     // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀/질문 필터) 초기화.
-    setActiveFilter(null);
+    setActiveFilter(EMPTY_FILTER);
   }, []);
 
   const storedBrief: EditableBrief | null =
@@ -189,11 +193,13 @@ function ExpandedBody() {
             <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
               <RecruitingConditionsPanel brief={conditionsForPanel} />
               <RecruitingDistributionPanel
-                formId={selectedForm?.formId ?? null}
+                columns={responseData?.columns ?? []}
+                rows={responseData?.rows ?? []}
+                loading={responsesLoading}
                 formsLoading={formsLoading}
-                onRegisterRefresh={registerDistributionRefresh}
+                hasForm={selectedForm != null}
                 filterableQuestions={filterableQuestions}
-                activeFilter={activeFilter}
+                filter={activeFilter}
                 onFilterChange={setActiveFilter}
               />
             </div>
@@ -202,8 +208,10 @@ function ExpandedBody() {
                 onSelectedFormChange={setSelectedForm}
                 onFormsLoadingChange={setFormsLoading}
                 onRegisterRefresh={registerResponsesRefresh}
-                activeFilter={activeFilter}
+                filter={activeFilter}
                 onFilterableQuestionsChange={setFilterableQuestions}
+                onResponsesChange={setResponseData}
+                onResponsesLoadingChange={setResponsesLoading}
               />
             </div>
           </div>
