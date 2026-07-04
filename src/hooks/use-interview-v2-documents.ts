@@ -28,6 +28,11 @@ export type InterviewDocument = {
   last_question: string | null;
   created_at: string;
   index_status: InterviewDocumentStatus;
+  // Chunk-level indexing progress. total_chunks is null for documents
+  // indexed before the progress feature (no backfill); processed_chunks
+  // advances 0 → total as the indexer embeds each batch.
+  total_chunks: number | null;
+  processed_chunks: number;
 };
 
 export function useInterviewV2Documents(projectId: string | null) {
@@ -35,32 +40,50 @@ export function useInterviewV2Documents(projectId: string | null) {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const mutate = useCallback(async () => {
-    if (!projectId) {
-      setDocuments([]);
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `/api/interviews/v2/projects/${projectId}/documents`,
-      );
-      if (!res.ok) throw new Error(`list_failed_${res.status}`);
-      const j = (await res.json()) as { documents?: InterviewDocument[] };
-      setDocuments(j.documents ?? []);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error('list_failed'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [projectId]);
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!projectId) {
+        setDocuments([]);
+        setIsLoading(false);
+        return;
+      }
+      // Polling refetches pass silent:true so the list doesn't flash its
+      // loading skeleton every 2s while a file indexes.
+      if (!opts?.silent) setIsLoading(true);
+      try {
+        const res = await fetch(
+          `/api/interviews/v2/projects/${projectId}/documents`,
+        );
+        if (!res.ok) throw new Error(`list_failed_${res.status}`);
+        const j = (await res.json()) as { documents?: InterviewDocument[] };
+        setDocuments(j.documents ?? []);
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e : new Error('list_failed'));
+      } finally {
+        if (!opts?.silent) setIsLoading(false);
+      }
+    },
+    [projectId],
+  );
+
+  const mutate = useCallback(() => load(), [load]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async fetch result
-    void mutate();
-  }, [mutate]);
+    void load();
+  }, [load]);
+
+  // Live progress — while any file is mid-indexing, silently refetch every
+  // 2s so the per-file chunk progress bar advances. Keyed on the boolean so
+  // the interval starts when indexing begins and clears once nothing is
+  // 'indexing' (done / error / pending) — idle projects never poll.
+  const hasIndexing = documents.some((d) => d.index_status === 'indexing');
+  useEffect(() => {
+    if (!projectId || !hasIndexing) return;
+    const t = setInterval(() => void load({ silent: true }), 2000);
+    return () => clearInterval(t);
+  }, [projectId, hasIndexing, load]);
 
   return { documents, error, isLoading, mutate };
 }

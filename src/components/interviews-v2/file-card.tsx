@@ -113,6 +113,19 @@ export function FileCard({
       ? '읽음'
       : t(STATUS_KEY[file.index_status]);
 
+  // Chunk-level progress bar — only while this file is actively indexing and
+  // the indexer has published a denominator (total_chunks). Older documents
+  // (total_chunks null) and the search-sweep "읽는 중" state fall back to the
+  // plain status dot + label below.
+  const showProgress =
+    !reading &&
+    file.index_status === 'indexing' &&
+    file.total_chunks != null &&
+    file.total_chunks > 0;
+  const pct = showProgress
+    ? Math.min(100, Math.round((file.processed_chunks / file.total_chunks!) * 100))
+    : 0;
+
   return (
     <>
       {/* Bespoke selectable file tile — no <Button> variant models a
@@ -134,18 +147,32 @@ export function FileCard({
         <div className="w-full truncate text-xs font-semibold text-ink">
           {file.filename}
         </div>
-        <div className="flex items-center gap-1">
-          <span
-            className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`}
-            style={
-              reading
-                ? { animation: 'trustChecking 0.9s ease-out infinite' }
-                : undefined
-            }
-            aria-hidden
-          />
-          <span className="text-xs-soft text-mute-soft">{statusLabel}</span>
-        </div>
+        {showProgress ? (
+          <div className="mt-1 w-full space-y-1">
+            <div className="h-1 w-full overflow-hidden rounded-xs bg-line-soft">
+              <div
+                className="h-full bg-amore transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="block text-xs-soft tabular-nums text-mute-soft">
+              인덱싱 중 {file.processed_chunks}/{file.total_chunks} ({pct}%)
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <span
+              className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`}
+              style={
+                reading
+                  ? { animation: 'trustChecking 0.9s ease-out infinite' }
+                  : undefined
+              }
+              aria-hidden
+            />
+            <span className="text-xs-soft text-mute-soft">{statusLabel}</span>
+          </div>
+        )}
       </button>
 
       {open &&
@@ -177,6 +204,16 @@ export function FileCard({
               </dd>
               <dt className="text-mute">상태</dt>
               <dd className="text-ink-2">{t(STATUS_KEY[file.index_status])}</dd>
+              {file.total_chunks != null && file.total_chunks > 0 && (
+                <>
+                  <dt className="text-mute">청크</dt>
+                  <dd className="tabular-nums text-ink-2">
+                    {file.index_status === 'indexing'
+                      ? `${file.processed_chunks.toLocaleString()} / ${file.total_chunks.toLocaleString()}`
+                      : `${file.total_chunks.toLocaleString()}개`}
+                  </dd>
+                </>
+              )}
               <dt className="text-mute">업로드</dt>
               <dd className="text-ink-2">
                 {new Date(file.created_at).toLocaleString('ko-KR')}

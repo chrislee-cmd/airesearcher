@@ -21,6 +21,10 @@ type DocRow = {
   char_count: number;
   markdown: string | null;
   created_at: string;
+  // Per-document indexing progress. total_chunks is null for documents
+  // indexed before the progress migration (no backfill — card shows "완료").
+  total_chunks: number | null;
+  processed_chunks: number | null;
   interview_jobs: { index_status: string | null } | null;
 };
 
@@ -112,7 +116,7 @@ export async function GET(
   const { data, error } = await supabase
     .from('interview_documents')
     .select(
-      'id, filename, mime, char_count, markdown, created_at, interview_jobs(index_status)',
+      'id, filename, mime, char_count, markdown, created_at, total_chunks, processed_chunks, interview_jobs(index_status)',
     )
     .eq('org_id', org.org_id)
     .eq('project_id', id)
@@ -139,6 +143,9 @@ export async function GET(
       first_question: q.first,
       last_question: q.last,
       created_at: d.created_at,
+      // Chunk-level progress; null total means "no progress info" (old doc).
+      total_chunks: d.total_chunks,
+      processed_chunks: d.processed_chunks ?? 0,
       index_status: d.interview_jobs?.index_status ?? 'pending',
     };
   });
