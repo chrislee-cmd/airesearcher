@@ -641,6 +641,10 @@ function ResponseTable({
                 rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
               }
               className={`border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
+              // 긴 질문 컬럼명(자유서술형 안내문 등 10줄+)이 헤더를 세로로
+              // 폭발시키지 않도록 body cell 과 동일하게 3 line clamp — 원문
+              // 전체는 native title tooltip 으로 hover 노출.
+              title={rc.kind === 'field' ? rc.col.title : undefined}
             >
               {rc.kind === 'select' ? (
                 <SelectAllCheckbox
@@ -651,7 +655,7 @@ function ResponseTable({
               ) : rc.kind === 'time' ? (
                 '응답 시각'
               ) : (
-                rc.col.title
+                <span className="line-clamp-3">{rc.col.title}</span>
               )}
             </th>
           ))}
