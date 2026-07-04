@@ -42,6 +42,14 @@ const Body = z.object({
   // 기존 자유 가이드 텍스트도 같이 받아 호환성 유지 (사용자가 옛 가이드를
   // 그대로 두고 새 3 필드만 채우는 마이그 경로).
   interview_guide: z.string().max(20_000).optional().default(''),
+  // PR (probing-question-injection-input-to-widget): 사용자가 "주입" 버튼으로
+  // **이번 turn 에만** 밀어 넣는 즉시 질문. hypotheses (영구 컨텍스트) 와 달리
+  // one-shot — 이 호출에서만 프롬프트에 들어가고 다음 자동 think 엔 안 실린다.
+  injected_questions: z
+    .array(z.string().min(1).max(500))
+    .max(10)
+    .optional()
+    .default([]),
   // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
   // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
   output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
@@ -70,6 +78,7 @@ export async function POST(request: Request) {
     hypotheses,
     key_research_question,
     interview_guide,
+    injected_questions,
   } = parsed.data;
 
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -84,6 +93,9 @@ export async function POST(request: Request) {
     .map((h) => h.trim())
     .filter((h) => h.length > 0);
   const guideText = interview_guide.trim();
+  const injected = injected_questions
+    .map((q) => q.trim())
+    .filter((q) => q.length > 0);
 
   const sanitizeCtx = {
     endpoint: '/api/probing/think',
@@ -134,6 +146,17 @@ export async function POST(request: Request) {
         input_label: 'interview_guide',
       })
     : null;
+  const injectedSan = injected.length
+    ? await Promise.all(
+        injected.map((q, idx) =>
+          sanitizeUserInput(q, 'injected_question', {
+            ...sanitizeCtx,
+            input_length: q.length,
+            input_label: `injected_question_${idx + 1}`,
+          }),
+        ),
+      )
+    : [];
 
   const contextLines: string[] = [];
   if (goalSan) contextLines.push(`### 조사 목적\n${goalSan.wrapped}`);
@@ -152,10 +175,22 @@ export async function POST(request: Request) {
     ? `## 사용자가 제공한 조사 컨텍스트\n${contextLines.join('\n\n')}\n\n`
     : '## 사용자가 제공한 조사 컨텍스트\n(비어 있음 — transcript 만 보고 진행. emit 은 sharp 신호 있을 때만.)\n\n';
 
+  // 사용자가 방금 "주입" 버튼으로 밀어 넣은 질문 — 이번 turn 한정. 일반 emit
+  // 판단 룰을 우회해 **각 질문을 반드시 EMIT 으로 즉시 노출**한다 (transcript
+  // 맥락에 맞게 표현만 다듬어도 됨). 다음 자동 think 호출엔 안 실린다.
+  const injectedBlock = injectedSan.length
+    ? `## ⚡ 사용자가 방금 직접 주입한 질문 (이번 turn 필수 처리)
+${injectedSan.map((s, idx) => `${idx + 1}. ${s.wrapped}`).join('\n')}
+
+위 각 질문은 인터뷰어가 **지금 즉시 던지려고 직접 밀어 넣은** 것입니다. 일반 emit 판단 룰(신호 강도)과 무관하게, 각 질문을 이번 응답에서 반드시 \`EMIT:\` 라인으로 즉시 노출하세요. transcript 맥락에 맞게 문장을 자연스럽게 다듬는 것은 허용하되 의도는 보존하고, importance 는 high 로, rationale 에는 "사용자 직접 주입" 임을 명시하세요.
+
+`
+    : '';
+
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: buildProbingThinkSystem(parsed.data.output_lang),
-    prompt: `${contextBlock}## 누적 transcript
+    prompt: `${contextBlock}${injectedBlock}## 누적 transcript
 ${transcriptSan.wrapped}
 
 ---
@@ -172,6 +207,7 @@ ${transcriptSan.wrapped}
       'x-probing-goal-length': String(goalText.length),
       'x-probing-hypotheses-count': String(hyps.length),
       'x-probing-krq-length': String(krqText.length),
+      'x-probing-injected-count': String(injected.length),
       'x-probing-window-chars': String(transcript_window.length),
     },
   });

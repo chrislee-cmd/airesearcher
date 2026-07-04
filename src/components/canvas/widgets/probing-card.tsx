@@ -391,6 +391,8 @@ function ExpandedBody() {
   const [thinkingError, setThinkingError] = useState<string | null>(null);
   const thinkInFlightRef = useRef(false);
   const thinkAbortRef = useRef<AbortController | null>(null);
+  // 주입(one-shot) think 는 자동 think 와 동시 실행될 수 있어 별도 abort ref.
+  const injectAbortRef = useRef<AbortController | null>(null);
 
   const [activePopup, setActivePopup] = useState<PopupQuestion | null>(null);
   const [history, setHistory] = useState<HistoryQuestion[]>([]);
@@ -470,46 +472,15 @@ function ExpandedBody() {
     [rawSegments],
   );
 
-  // ─── think route SSE consumer ───
-  const runThink = useCallback(async () => {
-    if (thinkInFlightRef.current) return;
-    const segs = rawSegmentsRef.current;
-    const fullText = segmentsText(segs);
-    if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
-    const transcript =
-      fullText.length > THINK_MAX_CHARS
-        ? fullText.slice(fullText.length - THINK_MAX_CHARS)
-        : fullText;
-
-    thinkInFlightRef.current = true;
-    setThinkingStreaming(true);
-    setThinkingError(null);
-    const controller = new AbortController();
-    thinkAbortRef.current = controller;
-
-    try {
-      const res = await fetchWithAuth('/api/probing/think', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          transcript_window: transcript,
-          research_goal: contextRef.current.research_goal,
-          hypotheses: contextRef.current.hypotheses,
-          key_research_question: contextRef.current.key_research_question,
-          output_lang: outputLangRef.current,
-        }),
-        signal: controller.signal,
-      });
-      if (!res.ok || !res.body) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `think_failed_${res.status}`);
-      }
-      const reader = res.body.getReader();
+  // think route 응답 (NDJSON-like 라인 스트림) 을 줄 단위로 dispatch.
+  // THINK → 사고 흐름 append, EMIT → popup queue. 자동 think 와 주입 both 사용.
+  const consumeThinkStream = useCallback(
+    async (body: ReadableStream<Uint8Array>) => {
+      const reader = body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
-      // 줄 단위 dispatch. THINK / EMIT prefix 외 라인은 무시 (LLM 이 룰 위반
-      // 시 silent drop — UX 영향 0).
+      // THINK / EMIT prefix 외 라인은 무시 (LLM 룰 위반 시 silent drop).
       const dispatchLine = (line: string) => {
         if (line.startsWith('THINK:')) {
           const text = line.slice('THINK:'.length).trim();
@@ -541,22 +512,75 @@ function ExpandedBody() {
           nlIdx = buffer.indexOf('\n');
         }
       }
-      // 마지막 잔여 라인.
       const tail = buffer.trim();
       if (tail.length > 0) dispatchLine(tail);
-    } catch (e) {
-      if (controller.signal.aborted) return;
-      const msg = e instanceof Error ? e.message : 'think_failed';
-      setThinkingError(msg);
-      toast.push('AI 사고 흐름 실패 — 잠시 후 다시 시도해 주세요', {
-        tone: 'warn',
-      });
-    } finally {
-      thinkInFlightRef.current = false;
-      thinkAbortRef.current = null;
-      setThinkingStreaming(false);
-    }
-  }, [toast, handleEmit]);
+    },
+    [handleEmit],
+  );
+
+  // ─── think route SSE consumer ───
+  // injectedQuestions 비어 있으면 = 자동/수동 think (transcript 변경 트리거).
+  // 채워져 있으면 = 사용자가 "주입" 버튼으로 밀어 넣은 one-shot — 이번 호출에만
+  // 실리고 다음 자동 think 엔 안 실린다 (갱신과 무관). 주입은 명시적 사용자
+  // 행동이라 자동 think inFlight 가드를 우회하고 별도 abort ref 로 동시 실행한다.
+  const runThink = useCallback(
+    async (injectedQuestions: string[] = []) => {
+      const isInjection = injectedQuestions.length > 0;
+      if (!isInjection && thinkInFlightRef.current) return;
+      const segs = rawSegmentsRef.current;
+      const fullText = segmentsText(segs);
+      // 주입도 transcript 가 없으면 AI 호출은 skip (좌 위젯은 이미 생성됨).
+      if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
+      const transcript =
+        fullText.length > THINK_MAX_CHARS
+          ? fullText.slice(fullText.length - THINK_MAX_CHARS)
+          : fullText;
+
+      if (!isInjection) thinkInFlightRef.current = true;
+      setThinkingStreaming(true);
+      setThinkingError(null);
+      const controller = new AbortController();
+      if (isInjection) injectAbortRef.current = controller;
+      else thinkAbortRef.current = controller;
+
+      try {
+        const res = await fetchWithAuth('/api/probing/think', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            transcript_window: transcript,
+            research_goal: contextRef.current.research_goal,
+            hypotheses: contextRef.current.hypotheses,
+            key_research_question: contextRef.current.key_research_question,
+            output_lang: outputLangRef.current,
+            injected_questions: injectedQuestions,
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error ?? `think_failed_${res.status}`);
+        }
+        await consumeThinkStream(res.body);
+      } catch (e) {
+        if (controller.signal.aborted) return;
+        const msg = e instanceof Error ? e.message : 'think_failed';
+        setThinkingError(msg);
+        toast.push('AI 사고 흐름 실패 — 잠시 후 다시 시도해 주세요', {
+          tone: 'warn',
+        });
+      } finally {
+        if (isInjection) {
+          injectAbortRef.current = null;
+        } else {
+          thinkInFlightRef.current = false;
+          thinkAbortRef.current = null;
+        }
+        setThinkingStreaming(false);
+      }
+    },
+    [toast, consumeThinkStream],
+  );
 
   const runThinkRef = useRef(runThink);
   useEffect(() => {
@@ -739,6 +763,7 @@ function ExpandedBody() {
   useEffect(() => {
     if (sessionStatus === 'idle' || sessionStatus === 'stopping') {
       thinkAbortRef.current?.abort();
+      injectAbortRef.current?.abort();
     }
   }, [sessionStatus]);
 
@@ -953,6 +978,23 @@ function ExpandedBody() {
     [addCustomSection],
   );
 
+  // 우패널 "주입" 버튼 → 1회 동작 (갱신과 무관). 두 가지를 함께 처리:
+  //   (A) 좌패널 grid 에 신규 위젯 생성 — 옛 "+ 새 위젯 추가" 와 같은
+  //       addCustomSection 재사용 (질문 = 위젯 title, 기본 8 뒤 append).
+  //   (B) AI think 에 one-shot 주입 — injected_questions 로 한 번만 전송해
+  //       이번 turn 에 popup 으로 노출. hypotheses 처럼 영구 재주입되지 않음.
+  const handleInjectQuestion = useCallback(
+    (question: string) => {
+      trackEvent('widget_action', {
+        widget: 'probing',
+        action: 'question_injection',
+      });
+      addCustomSection(question, '즉시 던질 질문');
+      void runThinkRef.current([question]);
+    },
+    [addCustomSection],
+  );
+
   // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
@@ -978,6 +1020,7 @@ function ExpandedBody() {
   const questionPaneProps = {
     context,
     onContextChange: setContext,
+    onInject: handleInjectQuestion,
     contextDisabled: !contextHydrated,
     thinkingEvents,
     thinkingStreaming,

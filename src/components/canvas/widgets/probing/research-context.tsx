@@ -15,70 +15,55 @@
    (AddCustomSectionCard) 으로 이동. 본 컴포넌트는 조사 목적 + 핵심 가설만
    담당한다.
 
-   영속화: research_context 는 부모 (probing-card) 가 GET/PUT
-   `/api/probing/research-context`. 본 컴포넌트는 controlled props 로 표시 /
-   갱신만 한다.
+   PR (probing-question-injection-input-to-widget): 옛 "핵심 가설" 필드를
+   **"추가 질문 주입"** 진입점으로 재편. 입력 후 명시적 **"주입" 버튼**(또는
+   Enter) 을 눌러야만 동작하며, 누를 때 부모의 `onInject(question)` 를 1회
+   호출한다. 부모는 이 1회 호출로 (A) 좌 grid 에 위젯 생성 + (B) AI think 에
+   **one-shot** 주입을 함께 처리한다. 옛 "핵심 가설" 의 영구 재주입 (매 think
+   갱신마다 hypotheses 재전송) 동작은 제거됐다 — 주입은 갱신과 무관하게 사용자
+   행동 시점에만 일어난다.
+
+   영속화: research_context (research_goal 등) 는 부모 (probing-card) 가 GET/PUT
+   `/api/probing/research-context`. 주입 질문은 여기서 state 로 안 들고 있고
+   (one-shot), 부모가 좌 위젯 + think 로 흘려보낸다.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState, type KeyboardEvent } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChipInput } from '@/components/ui/chip-input';
-import { IconButton } from '@/components/ui/icon-button';
+import { Button } from '@/components/ui/button';
 
 const GOAL_MAX = 2_000;
-const HYPOTHESIS_MAX = 500;
-const HYPOTHESES_COUNT_MAX = 20;
+const QUESTION_MAX = 500;
 
 export function ProbingResearchContext({
   researchGoal,
-  hypotheses,
   onResearchGoalChange,
-  onHypothesesChange,
+  onInject,
   disabled = false,
 }: {
   researchGoal: string;
-  hypotheses: string[];
   onResearchGoalChange: (next: string) => void;
-  onHypothesesChange: (next: string[]) => void;
+  // "주입" 버튼 (또는 Enter) 클릭 시 1회 호출. 갱신과 무관.
+  onInject: (question: string) => void;
   disabled?: boolean;
 }) {
   const [draft, setDraft] = useState('');
+  const canInject = draft.trim().length > 0 && !disabled;
 
-  function commitDraft() {
-    const trimmed = draft.trim();
-    if (!trimmed) {
-      setDraft('');
-      return;
-    }
-    if (hypotheses.length >= HYPOTHESES_COUNT_MAX) {
-      setDraft('');
-      return;
-    }
-    if (hypotheses.includes(trimmed)) {
-      setDraft('');
-      return;
-    }
-    onHypothesesChange([...hypotheses, trimmed.slice(0, HYPOTHESIS_MAX)]);
+  function inject() {
+    const value = draft.trim().slice(0, QUESTION_MAX);
+    if (!value) return;
+    onInject(value);
     setDraft('');
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      commitDraft();
-    } else if (
-      e.key === 'Backspace' &&
-      draft.length === 0 &&
-      hypotheses.length > 0
-    ) {
-      e.preventDefault();
-      onHypothesesChange(hypotheses.slice(0, -1));
+      inject();
     }
-  }
-
-  function removeHypothesis(idx: number) {
-    onHypothesesChange(hypotheses.filter((_, i) => i !== idx));
   }
 
   return (
@@ -101,43 +86,29 @@ export function ProbingResearchContext({
       </Field>
 
       <Field
-        label="핵심 가설"
-        description="검증 / 반증 대상 (한 줄씩, Enter 로 추가)"
+        label="추가 질문 주입"
+        description="응답자에게 즉시 던질 질문 — '주입' 을 눌러 AI 질문 popup + 좌측 위젯으로 1회 반영"
       >
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-          {hypotheses.map((h, idx) => (
-            <span
-              key={`${idx}-${h}`}
-              className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-            >
-              {h}
-              <IconButton
-                variant="ghost-brand"
-                onClick={() => removeHypothesis(idx)}
-                aria-label={`가설 제거: ${h}`}
-                disabled={disabled}
-              >
-                ×
-              </IconButton>
-            </span>
-          ))}
-          <ChipInput
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.slice(0, HYPOTHESIS_MAX))}
-            onKeyDown={handleKeyDown}
-            onBlur={() => {
-              if (draft.trim()) commitDraft();
-            }}
-            disabled={disabled || hypotheses.length >= HYPOTHESES_COUNT_MAX}
-            placeholder={
-              hypotheses.length === 0
-                ? '가설 추가 (Enter)'
-                : hypotheses.length >= HYPOTHESES_COUNT_MAX
-                  ? `최대 ${HYPOTHESES_COUNT_MAX}개`
-                  : '+ 가설 추가'
-            }
-            className="min-w-[140px] flex-1"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+            <ChipInput
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, QUESTION_MAX))}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+              placeholder="예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?"
+              className="min-w-[140px] flex-1"
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={inject}
+            disabled={!canInject}
+            title="입력한 질문을 지금 주입 (AI popup + 좌측 위젯)"
+          >
+            주입
+          </Button>
         </div>
       </Field>
     </section>
