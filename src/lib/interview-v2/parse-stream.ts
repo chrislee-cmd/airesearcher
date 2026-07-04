@@ -13,12 +13,13 @@
 // content-type and only feeds the streamed path here.
 
 import { parsePartialJson } from 'ai';
-import type { Citation } from '@/lib/interview-v2/types';
+import type { Citation, SearchArtifact } from '@/lib/interview-v2/types';
 
 export type SearchStreamPartial = {
   answer_md: string;
   citations: Citation[];
   no_answer: boolean;
+  artifacts: SearchArtifact[];
 };
 
 function coerceCitations(value: unknown): Citation[] {
@@ -41,6 +42,63 @@ function coerceCitations(value: unknown): Citation[] {
   return out;
 }
 
+// Coerce the streamed `artifacts` array into fully-formed SearchArtifact[].
+// Because the JSON is partial mid-stream, half-written entries (a table with
+// no rows yet, a quote missing its chunk_id) are dropped defensively so the
+// renderer only ever sees complete artifacts — matching the "완결 후 append"
+// streaming policy. Server-side re-verify (route onFinish) is the authoritative
+// grounding check; this is just shape hygiene.
+function coerceArtifacts(value: unknown): SearchArtifact[] {
+  if (!Array.isArray(value)) return [];
+  const out: SearchArtifact[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const a = raw as Record<string, unknown>;
+    if (a.type === 'table') {
+      const headers = Array.isArray(a.headers) ? a.headers : null;
+      const rows = Array.isArray(a.rows) ? a.rows : null;
+      if (!headers || !rows) continue;
+      if (!headers.every((h) => typeof h === 'string')) continue;
+      const cleanRows = rows.filter(
+        (r): r is string[] =>
+          Array.isArray(r) && r.every((c) => typeof c === 'string'),
+      );
+      if (cleanRows.length === 0) continue;
+      out.push({
+        type: 'table',
+        title: typeof a.title === 'string' ? a.title : '',
+        headers: headers as string[],
+        rows: cleanRows,
+        respondent_ids: Array.isArray(a.respondent_ids)
+          ? a.respondent_ids.filter((x): x is string => typeof x === 'string')
+          : [],
+      });
+    } else if (a.type === 'quote_list') {
+      const quotes = Array.isArray(a.quotes) ? a.quotes : null;
+      if (!quotes) continue;
+      const cleanQuotes = quotes.flatMap((q) => {
+        if (!q || typeof q !== 'object') return [];
+        const o = q as Record<string, unknown>;
+        if (typeof o.quote !== 'string' || o.quote.trim() === '') return [];
+        return [
+          {
+            respondent: typeof o.respondent === 'string' ? o.respondent : '',
+            quote: o.quote,
+            chunk_id: typeof o.chunk_id === 'string' ? o.chunk_id : '',
+          },
+        ];
+      });
+      if (cleanQuotes.length === 0) continue;
+      out.push({
+        type: 'quote_list',
+        title: typeof a.title === 'string' ? a.title : '',
+        quotes: cleanQuotes,
+      });
+    }
+  }
+  return out;
+}
+
 // Turn accumulated (possibly incomplete) JSON text into a snapshot, or null
 // when there isn't enough yet to parse even partially.
 async function snapshot(text: string): Promise<SearchStreamPartial | null> {
@@ -52,6 +110,7 @@ async function snapshot(text: string): Promise<SearchStreamPartial | null> {
     answer_md: typeof obj.answer_md === 'string' ? obj.answer_md : '',
     citations: coerceCitations(obj.citations),
     no_answer: obj.no_answer === true,
+    artifacts: coerceArtifacts(obj.artifacts),
   };
 }
 

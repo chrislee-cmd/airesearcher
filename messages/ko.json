@@ -1118,6 +1118,7 @@
     "searchSourcesSummary": "근거 {count}개 상세 보기",
     "searchScore": "정확도",
     "searchScope": "검색 범위",
+    "artifactTableFooter": "{count}명 응답 기반",
     "scopeThisProject": "이 프로젝트",
     "scopeAll": "전체 프로젝트",
     "crossSearch": "전체 프로젝트 검색",

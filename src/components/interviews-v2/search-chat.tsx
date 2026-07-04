@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Citation } from '@/lib/interview-v2/types';
+import type { Citation, SearchArtifact } from '@/lib/interview-v2/types';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 import { QAPair, type QAData } from './qa-pair';
@@ -120,7 +120,13 @@ export function SearchChat({
         metadata: { scope },
       });
       setBusy(true);
-      setPending({ question, answer_md: '', candidates: [], streaming: true });
+      setPending({
+        question,
+        answer_md: '',
+        candidates: [],
+        artifacts: [],
+        streaming: true,
+      });
 
       try {
         const res = await fetch('/api/interviews/v2/search', {
@@ -166,9 +172,11 @@ export function SearchChat({
         setPending((p) => (p ? { ...p, candidates } : p));
 
         let answer = '';
+        let artifacts: SearchArtifact[] = [];
         const contentType = res.headers.get('content-type') ?? '';
         if (contentType.includes('application/json')) {
           // no_answer / short-circuit path — a complete object, not a stream.
+          // This path never carries artifacts (no evidence to ground them).
           const body = (await res.json().catch(() => ({}))) as {
             answer_md?: string;
           };
@@ -177,13 +185,14 @@ export function SearchChat({
         } else {
           for await (const chunk of parseSearchStream(res.body)) {
             answer = chunk.answer_md;
-            setPending((p) => (p ? { ...p, answer_md: answer } : p));
+            artifacts = chunk.artifacts;
+            setPending((p) => (p ? { ...p, answer_md: answer, artifacts } : p));
           }
         }
 
         setHistory((h) => [
           ...h,
-          { question, answer_md: answer, candidates, streaming: false },
+          { question, answer_md: answer, candidates, artifacts, streaming: false },
         ]);
         setPending(null);
       } catch {
