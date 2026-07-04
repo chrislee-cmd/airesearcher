@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
@@ -49,5 +50,19 @@ export default async function Page({
     user_name: profileMap.get(f.user_id)?.full_name ?? null,
   }));
 
-  return <QaFeedbackList feedbacks={enriched} />;
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex flex-shrink-0 items-center justify-end border-b border-line-soft px-4 py-2">
+        <Link
+          href="/admin/qa-testers"
+          className="text-sm text-mute hover:text-amore transition-colors"
+        >
+          ⚙ QA 계정 관리
+        </Link>
+      </div>
+      <div className="min-h-0 flex-1">
+        <QaFeedbackList feedbacks={enriched} />
+      </div>
+    </div>
+  );
 }
