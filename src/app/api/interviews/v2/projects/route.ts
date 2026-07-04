@@ -16,7 +16,7 @@ const CreateBody = z.object({
   description: z.string().max(2_000).optional(),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,12 +29,21 @@ export async function GET() {
     return NextResponse.json({ projects: [] });
   }
 
-  const { data, error } = await supabase
+  // archived 필터: '0' = 활성만(default) · '1' = 보관만 · 'all' = 전체.
+  // 보관 = archived_at 이 채워진 row (soft delete). 그 외 값은 default 로 취급.
+  const archivedParam = new URL(req.url).searchParams.get('archived') ?? '0';
+
+  let query = supabase
     .from('interview_projects')
-    .select('id, name, description, created_at, updated_at')
-    .eq('user_id', user.id)
+    .select('id, name, description, archived_at, created_at, updated_at')
+    .eq('user_id', user.id);
+
+  if (archivedParam === '1') query = query.not('archived_at', 'is', null);
+  else if (archivedParam !== 'all') query = query.is('archived_at', null);
+
+  const { data, error } = await query
     .order('updated_at', { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (error) {
     console.error('[interviews/v2/projects] list error', error);
@@ -70,7 +79,7 @@ export async function POST(req: Request) {
       name,
       description: description ?? null,
     })
-    .select('id, name, description, created_at, updated_at')
+    .select('id, name, description, archived_at, created_at, updated_at')
     .single();
 
   if (error) {

@@ -3,18 +3,22 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 
-// Interview V2 — interview_projects item endpoint (rename / delete).
+// Interview V2 — interview_projects item endpoint (rename / archive / delete).
 //
 // Ownership is scoped by user_id (matching the "own project rw" RLS
-// policy and the collection GET filter). DELETE relies on the migration's
-// FK `on delete set null` for interview_documents.project_id and
-// interview_search_queries.project_id — documents/queries survive, only
-// the grouping is cleared. updated_at is bumped by the DB trigger, so
-// PATCH never sets it explicitly.
+// policy and the collection GET filter). PATCH covers rename (name /
+// description) AND archive/restore (archived: true → archived_at = now,
+// false → null) — 보관 = soft delete, 리스트에서 숨기되 복구 가능.
+// DELETE is a hard delete: the archived-migration re-pointed
+// interview_documents.project_id / interview_search_queries.project_id at
+// `on delete cascade`, so removing the project row cascades to its
+// documents (→ chunks, already cascade) and search queries. updated_at is
+// bumped by the DB trigger, so PATCH never sets it explicitly.
 
 const PatchBody = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(2_000).nullable().optional(),
+  archived: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -42,6 +46,10 @@ export async function PATCH(
   const patch: Record<string, unknown> = {};
   if (parsed.data.name !== undefined) patch.name = parsed.data.name;
   if (parsed.data.description !== undefined) patch.description = parsed.data.description;
+  if (parsed.data.archived !== undefined) {
+    // 보관 = archived_at 에 now() 기록 · 복원 = null 로 되돌림.
+    patch.archived_at = parsed.data.archived ? new Date().toISOString() : null;
+  }
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'empty_patch' }, { status: 400 });
   }
@@ -51,7 +59,7 @@ export async function PATCH(
     .update(patch)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id, name, description, created_at, updated_at')
+    .select('id, name, description, archived_at, created_at, updated_at')
     .maybeSingle();
 
   if (error) {
