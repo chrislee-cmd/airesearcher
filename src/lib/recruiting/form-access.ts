@@ -7,10 +7,10 @@ import {
 } from '@/lib/google-oauth-admin';
 
 // Resolves a Google API access token for reading a recruiting form's
-// responses, proving that `userId` owns the form first. Extracted so the
-// responses route and the fullview PII-unlock route share one ownership +
-// token-routing path — they must never diverge (a looser check in one would
-// let a user read or de-anonymise another user's responses).
+// responses, proving that `userId` owns the form first. Extracted as a shared
+// ownership + token-routing path so any current or future reader of a form's
+// responses enforces the same check — a looser check would let a user read
+// another user's responses.
 export type FormAccess =
   | { ok: true; accessToken: string }
   | { ok: false; status: number; error: string };
