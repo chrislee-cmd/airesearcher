@@ -61,15 +61,16 @@ const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v3';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-// 행별 헤더 톤 — Row 0 강조(amore) → Row 1 mid(ink-2) → Row 2 subdued(mute).
-// 같은 행의 두 위젯은 동일 톤. wrapper 에 CSS 변수로 주입하면 widget-shell
-// 헤더의 inline background/border fallback 이 이를 참조한다. 사용자가
-// per-widget 색(WidgetHeaderColorPicker)을 지정하면 그 inline 값이 우선하고,
-// 미지정 위젯만 이 행 색으로 렌더된다. 모든 색은 design-system 토큰.
+// 행별 헤더 톤 — Row 0 노란색 계열(sun) → Row 1 초록색 계열(mint) →
+// Row 2 붉은색 계열(rose). 배경은 design-system 파스텔 헤더 팔레트, border
+// 는 같은 계열의 선명한 색으로 정의를 줌. 같은 행의 두 위젯은 동일 톤.
+// wrapper 에 CSS 변수로 주입하면 widget-shell 헤더의 inline background/border
+// fallback 이 이를 참조한다. 사용자가 per-widget 색(WidgetHeaderColorPicker)을
+// 지정하면 그 inline 값이 우선하고, 미지정 위젯만 이 행 색으로 렌더된다.
 const ROW_HEADER_TONE: Record<number, { bg: string; border: string }> = {
-  0: { bg: 'var(--color-amore-bg)', border: 'var(--color-amore)' },
-  1: { bg: 'var(--color-paper-soft)', border: 'var(--color-ink-2)' },
-  2: { bg: 'var(--color-mute-bg)', border: 'var(--color-mute)' },
+  0: { bg: 'var(--color-sun)', border: 'var(--surface-banner)' },
+  1: { bg: 'var(--color-mint)', border: 'var(--color-success)' },
+  2: { bg: 'var(--color-rose)', border: 'var(--color-amore)' },
 };
 
 // "전체 보기" 진입은 이제 모든 위젯이 공유 모달(아래 FullviewShell)을 연다.

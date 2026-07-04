@@ -27,7 +27,6 @@
   --raw-surface-page: #ffffff;
   --raw-surface-card: #ffffff;
   --raw-surface-elevated: #f7f7f5;
-  --raw-surface-muted: #f0eff2;               /* subdued 행 헤더 tint (canvas row 3) */
   --raw-surface-accent-yellow: #fffce1;
   --raw-surface-accent-yellow-strong: #ffeb70;
   --raw-surface-banner-yellow: #ffd53d;
@@ -109,7 +108,6 @@
   --raw-surface-page: #fbf7f2;
   --raw-surface-card: #fefaf5;
   --raw-surface-elevated: #f5efe6;
-  --raw-surface-muted: #f1ebe2;               /* subdued 행 헤더 tint (canvas row 3) */
   --raw-surface-accent-yellow: #fbf7f2;       /* 없음 — page 와 동일 */
   --raw-surface-accent-yellow-strong: #f5efe6;
   --raw-surface-banner-yellow: #f5efe6;       /* 약한 톤 — 강한 banner 없음 */
@@ -309,7 +307,6 @@
   --color-line-soft: var(--raw-border-subtle);
   --color-paper: var(--raw-surface-card);
   --color-paper-soft: var(--raw-surface-elevated);
-  --color-mute-bg: var(--raw-surface-muted);
 
   /* Bento pastel palette */
   --color-lav: var(--raw-pastel-lav);
