@@ -862,7 +862,15 @@
       "micOnly": "Mic only (in-person)",
       "tabOnly": "Tab only (playback)",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
-      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)"
+      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)",
+      "shortBoth": "mic + tab",
+      "shortMic": "mic",
+      "shortTab": "tab"
+    },
+    "controlBoard": {
+      "expandAria": "Expand settings",
+      "collapseAria": "Collapse settings",
+      "lockedHint": "Language and input mode can't change mid-session. Stop and start again to change them."
     },
     "slotIndicator": {
       "hostAria": "Host (mic) capture status",
