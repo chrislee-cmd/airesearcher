@@ -1,27 +1,22 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   ProbingControlBoard / ProbingControlBar — probing 위젯의 세션 컨트롤.
+   ProbingControlPanel — probing 위젯의 세션 컨트롤 (상시 노출).
 
-   PR (widget-control-board-probing): 옛 서브헤더(⚙ 설정 버튼 → 모달 + CTA)
-   구조를 폐기하고 2-phase 컨트롤로 재편.
+   PR (widget-remove-subheader-persistent-controls): 옛 서브헤더 slim bar
+   (⚙ 요약 ▼ 로 접었다 펴는) 구조를 완전 폐기. 컨트롤(조사 목적 / 입력 소스 /
+   언어)은 phase 무관 항상 카드 상단에 노출되고, CTA 만 세션 상태에 따라
+   🚀 세션 시작 ↔ 정지 로 바뀐다. 라이브 중에도 컨트롤이 그대로 보여 조사
+   목적은 즉시(다음 think tick) 반영된다.
 
-     · Phase 1 (idle)  = ProbingControlBoard — 조사 목적 / 입력 소스 / 언어 /
-       🚀 세션 시작 CTA 를 카드 상단에 모달 없이 인라인 노출. (옛 온보딩
-       게이팅 · 설정 모달 폐기 — 컨트롤이 항상 보이므로 불필요.)
-     · Phase 2 (active) = ProbingControlBar — 얇은 slim bar 로 축소. ▼ 를
-       펼치면 세션 중에도 컨트롤(조사 목적 · 입력 소스 · 언어)을 재노출.
-
-   입력 소스 / 언어 select 은 옛 SourcePicker / OutputLangPicker 를 이 파일로
-   이관 (native <select> 는 forbid-elements 대상 아님 — button/input/textarea
-   만 금지). 세션 진행 중 (idle/error 외) 에는 소스/언어 disabled — 옛 동작
-   그대로. 조사 목적은 라이브 중에도 편집 가능 (다음 think tick 에 반영).
+   입력 소스 / 언어 select 은 SourcePicker / OutputLangPicker (native <select>
+   는 forbid-elements 대상 아님 — button/input/textarea 만 금지). 세션 진행 중
+   (idle/error 외) 에는 소스/언어 disabled — 옛 동작 그대로. 조사 목적은
+   라이브 중에도 편집 가능.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 
@@ -142,8 +137,11 @@ function ControlFields({
   );
 }
 
-// ─── Phase 1 (idle) — 컨트롤 보드 ───
-export function ProbingControlBoard({
+// ─── 상시 컨트롤 패널 — 조사 목적 / 소스 / 언어 + 세션 CTA ───
+// isLive 무관 항상 노출. CTA 만 idle→🚀 세션 시작, live→정지 로 전환.
+// 조사 목적은 라이브 중에도 편집 가능(goalDisabled 는 hydration 대기용);
+// 입력 소스·언어는 세션 중(controlsDisabled) disabled + 안내 문구.
+export function ProbingControlPanel({
   researchGoal,
   onResearchGoalChange,
   goalDisabled,
@@ -152,8 +150,11 @@ export function ProbingControlBoard({
   outputLang,
   onOutputLangChange,
   controlsDisabled,
+  isLive,
   onStart,
   startDisabled,
+  onStop,
+  stopDisabled,
   statusLabel,
 }: {
   researchGoal: string;
@@ -164,8 +165,11 @@ export function ProbingControlBoard({
   outputLang: ProbingOutputLang;
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
+  isLive: boolean;
   onStart: () => void;
   startDisabled: boolean;
+  onStop: () => void;
+  stopDisabled: boolean;
   statusLabel: string | null;
 }) {
   return (
@@ -180,87 +184,28 @@ export function ProbingControlBoard({
         onOutputLangChange={onOutputLangChange}
         controlsDisabled={controlsDisabled}
       />
+      {controlsDisabled && (
+        <p className="text-xs text-mute-soft">
+          세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-mute">{statusLabel ?? ''}</span>
-        <ChromeButton
-          variant="default"
-          size="lg"
-          onClick={onStart}
-          disabled={startDisabled}
-        >
-          🚀 세션 시작
-        </ChromeButton>
-      </div>
-    </div>
-  );
-}
-
-// ─── Phase 2 (active) — slim bar + 펼침 컨트롤 ───
-export function ProbingControlBar({
-  researchGoal,
-  onResearchGoalChange,
-  source,
-  onSourceChange,
-  outputLang,
-  onOutputLangChange,
-  controlsDisabled,
-  onStop,
-  stopDisabled,
-  statusLabel,
-}: {
-  researchGoal: string;
-  onResearchGoalChange: (next: string) => void;
-  source: SourceKind;
-  onSourceChange: (next: SourceKind) => void;
-  outputLang: ProbingOutputLang;
-  onOutputLangChange: (next: ProbingOutputLang) => void;
-  controlsDisabled: boolean;
-  onStop: () => void;
-  stopDisabled: boolean;
-  statusLabel: string | null;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="shrink-0 border-b-[2px] border-ink bg-paper-soft">
-      <div className="flex items-center justify-between gap-2 px-5 py-2.5">
-        <Button
-          variant="link"
-          size="xs"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="normal-case tracking-normal"
-        >
-          ⚙ 컨트롤 (조사 목적 · 마이크) {open ? '▲' : '▼'}
-        </Button>
-        <div className="flex items-center gap-2">
-          {statusLabel && <span className="text-xs text-mute">{statusLabel}</span>}
+        {isLive ? (
           <ChromeButton size="lg" onClick={onStop} disabled={stopDisabled}>
             정지
           </ChromeButton>
-        </div>
+        ) : (
+          <ChromeButton
+            variant="default"
+            size="lg"
+            onClick={onStart}
+            disabled={startDisabled}
+          >
+            🚀 세션 시작
+          </ChromeButton>
+        )}
       </div>
-
-      {open && (
-        <div className="flex flex-col gap-4 border-t border-ink/10 px-5 py-3">
-          <ControlFields
-            researchGoal={researchGoal}
-            onResearchGoalChange={onResearchGoalChange}
-            // 조사 목적은 라이브 중에도 편집 가능 (다음 think tick 에 반영).
-            goalDisabled={false}
-            source={source}
-            onSourceChange={onSourceChange}
-            outputLang={outputLang}
-            onOutputLangChange={onOutputLangChange}
-            controlsDisabled={controlsDisabled}
-          />
-          {controlsDisabled && (
-            <p className="text-xs text-mute-soft">
-              세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

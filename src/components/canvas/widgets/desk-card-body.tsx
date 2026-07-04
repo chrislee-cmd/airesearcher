@@ -288,11 +288,6 @@ export function DeskCardBody() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  // Phase 2 (active) 의 slim bar — 접힘(false)이 기본. ▼ 클릭 시 옛 컨트롤
-  // (지역/기간/분석방향성/키워드 + CTA) 을 그대로 재노출해 값 조정 후
-  // 재실행 (결정 3). idle phase 에서는 컨트롤이 항상 메인 보드에 펼쳐져
-  // 있으므로 이 상태와 무관.
-  const [controlsExpanded, setControlsExpanded] = useState(false);
   // 통일 "전체 보기" — 가장 최근 완료 리포트를 풀스크린으로. 공유 모달
   // (CanvasBoard FullviewShell)이 소유하고, desk 가 currentKey 일 때만 본문을
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
@@ -714,28 +709,13 @@ export function DeskCardBody() {
     }),
   );
 
-  // ─── phase (idle 컨트롤 보드 ↔ active slim bar) ────────────────────────────
-  // idle: 아직 실행/제출/진행중이 아니고 표시할 job 도 없음 → 메인 영역이
-  //   곧 컨트롤 보드 (주제·키워드 + 옵션 + 실행 CTA). 옛 ⚙ 서브헤더/설정
-  //   모달 뒤에 숨어 있던 컨트롤을 전면 노출.
-  // active: 제출/진행중이거나 job(결과/에러/취소)이 존재 → controls 를 slim
-  //   bar 로 접고 그 아래 결과(스트리밍/배너/타이밍/상태 푸터)를 렌더. 결과가
-  //   남아 있으면 계속 active 유지 — idle 로 자동 복귀 안 함 (결정 2). 재실행은
-  //   slim bar ▼ 로 controls 재노출 후 값 조정 (결정 3).
+  // ─── active (산출물 영역 노출 여부) ────────────────────────────────────────
+  // 컨트롤 패널은 phase 무관 항상 노출된다. `active` 는 그 아래 산출물 영역
+  // (스트리밍/배너/타이밍/상태 푸터) 렌더 여부만 가른다: 제출/진행중이거나
+  // job(결과/에러/취소)이 존재하면 true. 결과가 남아 있으면 계속 유지 —
+  // false 로 자동 복귀 안 함 (결정 2). 실행 중에도 컨트롤은 그대로라 값 조정
+  // 후 재실행 가능 (결정 3).
   const active = submitting || !!pendingJobId || isWorking || !!job;
-
-  // slim bar 요약 — "주제 N개 · 지역" 형태. 아직 주제 미입력이면 마지막 실행
-  // job 의 키워드로, 그것도 없으면 "주제 미설정".
-  const controlSummary = [
-    keywords.length > 0
-      ? tDesk('controlsSummaryKeywords', { count: keywords.length })
-      : job?.keywords?.length
-        ? job.keywords.slice(0, 2).join(', ')
-        : tDesk('controlsSummaryEmpty'),
-    Array.from(regions)
-      .map((r) => tDesk(`region.${r}`))
-      .join(' · '),
-  ].join(' · ');
 
   // 로컬 error state (제출 전/제출 실패) 배너 — phase 무관하게 노출해야
   // idle 로 되돌아간 실패도 사용자가 본다.
@@ -862,53 +842,23 @@ export function DeskCardBody() {
     </div>
   );
 
-  // Phase 2 slim bar — ⚙ 컨트롤 (요약) ▼. 클릭 시 controlsForm 재노출.
-  const slimBar = (
-    /* eslint-disable-next-line react/forbid-elements -- full-width 요약 바:
-       아이콘 + 요약 텍스트 + chevron 커스텀 레이아웃 + aria-expanded 토글로
-       Button primitive variant 밖 형태. widget-subheader Memphis 톤 유지. */
-    <button
-      type="button"
-      onClick={() => setControlsExpanded((v) => !v)}
-      className="flex h-10 w-full shrink-0 items-center justify-between gap-2 border-b-[2px] border-ink bg-paper-soft px-5 text-md text-ink hover:bg-paper"
-      aria-expanded={controlsExpanded}
-    >
-      <span className="flex min-w-0 items-center gap-2">
-        <span aria-hidden className="text-mute-soft">⚙</span>
-        <span className="truncate">
-          {tDesk('controls')} ({controlSummary})
-        </span>
-      </span>
-      <span aria-hidden className="text-mute-soft">
-        {controlsExpanded ? '▴' : '▾'}
-      </span>
-    </button>
-  );
-
   return (
     <>
-      {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
-          으로 중간 영역 (flex-1, inputs + streaming + 에러 배너). 산출물
-          노출은 "전체 보기" modal 로 일원화 (하단 "최근 산출물" 푸터 제거). */}
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 서브헤더 slim bar 폐기:
+          컨트롤 패널(주제·키워드 + 옵션 + 실행 CTA)을 phase 무관 상단에 항상
+          노출하고, 산출물(스트리밍/배너/타이밍/상태 푸터)은 그 아래 별 영역에
+          active 시만 렌더. 산출물 상세는 "전체 보기" modal 로 일원화. */}
       <div className="flex h-full flex-col">
-        {!active ? (
-          // ── Phase 1 (idle) — 컨트롤 보드: 주제·키워드 + 옵션 + 실행 CTA ──
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-            {controlsForm}
-            {errorBanner}
-          </div>
-        ) : (
-          // ── Phase 2 (active) — slim bar + (확장 시 controls) + 결과 영역 ──
-          <>
-            {slimBar}
-            {controlsExpanded && (
-              <div className="shrink-0 border-b-[2px] border-ink bg-paper-soft px-5 py-4">
-                {controlsForm}
-              </div>
-            )}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {errorBanner}
+        {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출. */}
+        <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
+          {controlsForm}
+          {errorBanner}
+        </div>
 
+        {/* 산출물 영역 — active(제출/진행/결과 존재) 일 때만. */}
+        {active && (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
           <div className="border-t border-line-soft bg-paper px-5 py-5">
