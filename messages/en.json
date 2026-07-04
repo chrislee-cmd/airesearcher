@@ -881,6 +881,7 @@
     "start": "Start interpreting",
     "stop": "Stop",
     "starting": "Connecting…",
+    "renewing": "🔄 Renewing session…",
     "prompter": {
       "empty": "Translated text will stream here once interpreting starts."
     },
