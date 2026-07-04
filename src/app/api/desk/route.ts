@@ -43,6 +43,7 @@ const SOURCE_IDS = [
   'gdelt_news',
   'hacker_news',
   'reddit',
+  'kci',
 ] as const;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
