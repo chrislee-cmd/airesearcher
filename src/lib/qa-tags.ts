@@ -29,9 +29,6 @@ export const QA_TAGS: QaTag[] = [
   { key: 'etc', label: '기타', group: 'general' },
 ];
 
-export const QA_FEATURE_TAGS = QA_TAGS.filter((t) => t.group === 'feature');
-export const QA_GENERAL_TAGS = QA_TAGS.filter((t) => t.group === 'general');
-
 // key → label lookup for rendering badges from stored keys. Falls back to the
 // raw key so an unknown/legacy tag still renders rather than disappearing.
 export const QA_TAG_LABEL: Record<string, string> = Object.fromEntries(

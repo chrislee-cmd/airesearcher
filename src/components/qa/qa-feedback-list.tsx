@@ -3,11 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import {
-  QA_FEATURE_TAGS,
-  QA_GENERAL_TAGS,
-  QA_TAG_LABEL,
-} from '@/lib/qa-tags';
+import { QA_TAGS, QA_TAG_LABEL } from '@/lib/qa-tags';
 
 // MediaRecorder webm files carry no duration in their container, so an
 // <audio> element loads them with duration === Infinity. Chrome then treats
@@ -148,45 +144,22 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
 
         {/* Tag 필터 (OR 다중 toggle) — 좌 사이드바 유저 목록과 우 상세를 함께 좁힌다. */}
         <div className="p-4 border-b-2 border-line-soft space-y-3">
-          <div className="space-y-1.5">
-            <span className="text-xs-soft text-mute block">기능</span>
-            <div className="flex flex-wrap gap-1">
-              {QA_FEATURE_TAGS.map((t) => (
-                // eslint-disable-next-line react/forbid-elements -- compact filter chip; Button primitive capsule chrome unsuitable for a small toggle pill
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => toggleFilter(t.key)}
-                  className={`px-2 py-0.5 rounded-pill text-xs-soft border transition-colors ${
-                    activeTags.includes(t.key)
-                      ? 'border-ink bg-amore-bg text-ink'
-                      : 'border-line-soft text-mute hover:bg-amore-bg'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <span className="text-xs-soft text-mute block">전반</span>
-            <div className="flex flex-wrap gap-1">
-              {QA_GENERAL_TAGS.map((t) => (
-                // eslint-disable-next-line react/forbid-elements -- compact filter chip; Button primitive capsule chrome unsuitable for a small toggle pill
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => toggleFilter(t.key)}
-                  className={`px-2 py-0.5 rounded-pill text-xs-soft border transition-colors ${
-                    activeTags.includes(t.key)
-                      ? 'border-ink bg-amore-bg text-ink'
-                      : 'border-line-soft text-mute hover:bg-amore-bg'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-1">
+            {QA_TAGS.map((t) => (
+              // eslint-disable-next-line react/forbid-elements -- compact filter chip; Button primitive capsule chrome unsuitable for a small toggle pill
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => toggleFilter(t.key)}
+                className={`px-2 py-0.5 rounded-pill text-xs-soft border transition-colors ${
+                  activeTags.includes(t.key)
+                    ? 'border-ink bg-amore-bg text-ink'
+                    : 'border-line-soft text-mute hover:bg-amore-bg'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
           {activeTags.length > 0 && (
             <Button

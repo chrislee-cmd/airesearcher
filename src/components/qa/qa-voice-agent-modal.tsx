@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
-import { QA_FEATURE_TAGS, QA_GENERAL_TAGS } from '@/lib/qa-tags';
+import { QA_TAGS } from '@/lib/qa-tags';
 
 // QA voice-feedback recorder (PR4 of the QA voice-agent epic). Replaces the
 // PR3 placeholder body. Flow: form → idle → [record] → recording → [stop &
@@ -287,42 +287,20 @@ export function QaVoiceAgentModal({
             어떤 항목에 대한 피드백인가요? (최소 1개)
           </p>
 
-          <div className="space-y-2">
-            <span className="text-xs-soft text-mute block">기능</span>
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-              {QA_FEATURE_TAGS.map((t) => (
-                <label
-                  key={t.key}
-                  className="flex items-center gap-2 cursor-pointer text-sm text-ink"
-                >
-                  <Checkbox
-                    checked={tags.includes(t.key)}
-                    onChange={(e) => toggleTag(t.key, e.target.checked)}
-                    aria-label={t.label}
-                  />
-                  {t.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-xs-soft text-mute block">전반</span>
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-              {QA_GENERAL_TAGS.map((t) => (
-                <label
-                  key={t.key}
-                  className="flex items-center gap-2 cursor-pointer text-sm text-ink"
-                >
-                  <Checkbox
-                    checked={tags.includes(t.key)}
-                    onChange={(e) => toggleTag(t.key, e.target.checked)}
-                    aria-label={t.label}
-                  />
-                  {t.label}
-                </label>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {QA_TAGS.map((t) => (
+              <label
+                key={t.key}
+                className="flex items-center gap-2 cursor-pointer text-sm text-ink"
+              >
+                <Checkbox
+                  checked={tags.includes(t.key)}
+                  onChange={(e) => toggleTag(t.key, e.target.checked)}
+                  aria-label={t.label}
+                />
+                {t.label}
+              </label>
+            ))}
           </div>
 
           <Button
