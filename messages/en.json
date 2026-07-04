@@ -1033,6 +1033,8 @@
     "interviewUploadProgress": "Uploading",
     "interviewUploadDone": "Upload complete",
     "recruitingDone": "Recruitment form ready",
+    "recruitingCriteriaEmptyBanner": "This form has no saved participant criteria.",
+    "recruitingCriteriaEmptyBannerCta": "Re-publish with the wizard",
     "settings": "Settings",
     "settingsClose": "Close",
     "upload": "Upload files",

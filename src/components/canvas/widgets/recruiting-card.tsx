@@ -9,6 +9,7 @@ import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
+import { Banner } from '../shell/banner';
 import {
   ResponsesSpreadsheet,
   type FormSummary,
@@ -81,6 +82,27 @@ function ExpandedBody() {
       : null;
   const conditionsForPanel = storedBrief ?? conditionsBrief;
 
+  // 선택된 폼에 저장된 참여자 조건이 없을 때 fullview 상단에 경고 배너.
+  // 두 원인을 같은 UI 로 커버한다:
+  //   ① 옛 폼 (migration 20260703060414 이전 발행 → criteria 컬럼 null)
+  //   ② 발행 시 criteria persist 실패 (create/route.ts 가 criteriaPersisted
+  //      플래그를 false 로 반환 — 마이그 lag 등) → 저장된 조건이 비어 있음
+  // 둘 다 "이 폼엔 조건이 안 남았다" 로 사용자에게 동일하게 보인다. selectedForm
+  // 이 null 이면(폼 선택 전 empty state) 배너를 띄우지 않아 두 상태를 구분한다.
+  // wizard 는 카드 본문에 항상 마운트돼 있으므로 "재발행" CTA 는 fullview 를
+  // 닫아 사용자를 wizard 로 돌려보낸다(별도 wizard-open API 없음 — 보수적 재사용).
+  const criteriaPersistMissing =
+    selectedForm != null &&
+    !(selectedForm.criteria && selectedForm.criteria.length > 0);
+
+  const handleCriteriaRepublish = () => {
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'criteria_republish',
+    });
+    close();
+  };
+
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
     trackEvent('widget_viewed', { widget: 'recruiting' });
@@ -128,6 +150,19 @@ function ExpandedBody() {
               spreadsheet. 상단 row 는 고정 높이, 하단 spreadsheet 가 남은
               공간을 flex-1 로 채우며 자체 스크롤(기존 unlock/scroll 유지). */}
           <div className="flex h-full min-h-0 flex-col">
+            {criteriaPersistMissing && (
+              <Banner tone="warning" divider="none">
+                {tWidgets('recruitingCriteriaEmptyBanner')}
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="ml-1 px-0"
+                  onClick={handleCriteriaRepublish}
+                >
+                  {tWidgets('recruitingCriteriaEmptyBannerCta')}
+                </Button>
+              </Banner>
+            )}
             <div className="grid h-[232px] shrink-0 grid-cols-2 gap-4 border-b-[2px] border-line-soft p-4">
               <RecruitingConditionsPanel brief={conditionsForPanel} />
               <RecruitingDistributionPanel

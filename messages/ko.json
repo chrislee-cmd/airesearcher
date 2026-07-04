@@ -1033,6 +1033,8 @@
     "interviewUploadProgress": "업로드 중",
     "interviewUploadDone": "업로드가 완료되었습니다",
     "recruitingDone": "신청서 제작이 완료되었습니다",
+    "recruitingCriteriaEmptyBanner": "이 폼은 참여자 조건이 저장 안 됐어요.",
+    "recruitingCriteriaEmptyBannerCta": "wizard 로 재발행",
     "settings": "설정",
     "settingsClose": "닫기",
     "upload": "파일 업로드",
