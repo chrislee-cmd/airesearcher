@@ -210,7 +210,21 @@ export async function POST(request: Request) {
         const isMissingCriteria =
           code === '42703' ||
           (code === 'PGRST204' && /criteria|summary/.test(msg));
-        if (!isMissingCriteria) {
+        if (isMissingCriteria) {
+          // Diagnosis breadcrumb (not a hard failure): the publish still
+          // succeeded — we just couldn't stamp criteria because migration
+          // 20260703060414 isn't applied in this environment. A form
+          // published now will show an empty 조건 panel until the column
+          // lands + a backfill runs. Logging this distinguishes 원인 1
+          // (column truly missing → this fires in prod) from 원인 2 (column
+          // present, only *older* rows are null → this never fires). Promoting
+          // it to a user-facing error is deferred to a separate spec so a
+          // migration lag never breaks an otherwise-healthy publish.
+          console.warn(
+            'forms_create_criteria_persist_missing_column',
+            result.formId,
+          );
+        } else {
           console.error('forms_create_criteria_persist_failed', meta.error);
         }
       }
