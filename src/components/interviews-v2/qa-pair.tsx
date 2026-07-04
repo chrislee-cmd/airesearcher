@@ -8,6 +8,7 @@ import type { Citation, SearchArtifact } from '@/lib/interview-v2/types';
 import { CitationPopover } from '@/components/ui/citation-popover';
 import { CitationCard } from './citation-card';
 import { AnswerArtifactRenderer } from './answer-artifact-renderer';
+import { PhaseStatus, type SearchPhase } from './search-phase';
 
 // Interview V2 search — one question + streamed answer turn.
 //
@@ -32,6 +33,10 @@ export type QAData = {
   // answer_md and rendered below it once each entry completes.
   artifacts?: SearchArtifact[];
   streaming?: boolean;
+  // In-flight stage of this turn — drives the inline phase label so the
+  // post-answer artifact-verify window is never silent. Only set while a turn
+  // is pending; history turns leave it undefined (equivalent to 'done').
+  phase?: SearchPhase;
   error?: string | null;
 };
 
@@ -67,7 +72,8 @@ function citedIds(answer: string, valid: Set<string>): string[] {
 
 export function QAPair({ data }: { data: QAData }) {
   const t = useTranslations('InterviewsV2');
-  const { question, answer_md, candidates, artifacts, streaming, error } = data;
+  const { question, answer_md, candidates, artifacts, streaming, phase, error } =
+    data;
 
   const valid = useMemo(
     () => new Set(candidates.map((c) => c.chunk_id)),
@@ -188,10 +194,16 @@ export function QAPair({ data }: { data: QAData }) {
       {/* Answer — full-width so tables/lists don't get squeezed. */}
       <div className="rounded-sm border border-line-soft bg-paper px-5 py-4">
         {answerEmpty && streaming ? (
-          <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-            {t('searchGenerating')}
-          </div>
+          // Pre-answer stages (sending/searching) — prefer the phase label,
+          // fall back to the generic "generating" pill if no phase was set.
+          phase && phase !== 'idle' && phase !== 'done' ? (
+            <PhaseStatus phase={phase} />
+          ) : (
+            <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+              {t('searchGenerating')}
+            </div>
+          )
         ) : error ? (
           <div className="text-md text-warning">{error}</div>
         ) : (
@@ -202,10 +214,17 @@ export function QAPair({ data }: { data: QAData }) {
             {streaming && (
               <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-amore align-text-bottom" />
             )}
+            {/* Answer text is settled but the turn is still streaming — the
+                post-answer artifact-verify window. Label it so it isn't
+                silent (answering/artifacts self-hide otherwise). */}
+            {streaming && phase && <PhaseStatus phase={phase} />}
           </div>
         )}
 
-        {artifacts && artifacts.length > 0 && (
+        {/* Hold artifacts until the turn completes — no partial tables/charts
+            mid-stream (결정 3). While streaming, the 'artifacts' phase label
+            above stands in for them. */}
+        {!streaming && artifacts && artifacts.length > 0 && (
           <AnswerArtifactRenderer artifacts={artifacts} />
         )}
 

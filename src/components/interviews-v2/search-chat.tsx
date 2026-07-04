@@ -6,6 +6,7 @@ import type { Citation, SearchArtifact } from '@/lib/interview-v2/types';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 import { QAPair, type QAData } from './qa-pair';
+import type { SearchPhase } from './search-phase';
 import { QuestionInput } from './question-input';
 
 // Search scope is decided by the caller, not by an in-chat toggle
@@ -126,6 +127,7 @@ export function SearchChat({
         candidates: [],
         artifacts: [],
         streaming: true,
+        phase: 'sending',
       });
 
       try {
@@ -168,8 +170,10 @@ export function SearchChat({
           return;
         }
 
+        // Response head is back → retrieval is done, evidence is in hand
+        // (x-citations). We're now waiting on the first answer token.
         const candidates = readCitationsHeader(res);
-        setPending((p) => (p ? { ...p, candidates } : p));
+        setPending((p) => (p ? { ...p, candidates, phase: 'searching' } : p));
 
         let answer = '';
         let artifacts: SearchArtifact[] = [];
@@ -183,10 +187,39 @@ export function SearchChat({
           answer = body.answer_md ?? '';
           setPending((p) => (p ? { ...p, answer_md: answer } : p));
         } else {
+          // Phase is tracked in a local (React state inside an async loop would
+          // read stale). answer_md growth drives searching→answering; once it
+          // settles (idle) with citations in hand we assume the answer is done
+          // and artifacts are being verified → 'artifacts' (결정 2).
+          let phase: SearchPhase = 'searching';
+          let lastAnswerLen = 0;
+          let idleCount = 0;
           for await (const chunk of parseSearchStream(res.body)) {
             answer = chunk.answer_md;
             artifacts = chunk.artifacts;
-            setPending((p) => (p ? { ...p, answer_md: answer, artifacts } : p));
+
+            if (phase === 'searching' && answer.length > 0) phase = 'answering';
+
+            if (answer.length > lastAnswerLen) {
+              lastAnswerLen = answer.length;
+              idleCount = 0;
+            } else {
+              idleCount++;
+            }
+
+            // Answer settled (~500ms idle) + the model grounded it → the
+            // silent artifact-verify window we're labelling.
+            if (
+              phase === 'answering' &&
+              idleCount >= 5 &&
+              chunk.citations.length > 0
+            ) {
+              phase = 'artifacts';
+            }
+
+            setPending((p) =>
+              p ? { ...p, answer_md: answer, artifacts, phase } : p,
+            );
           }
         }
 
