@@ -14,7 +14,7 @@ import { MochiLoader } from '@/components/ui/mochi-loader';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
-import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
+import { isPiiColumn } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
@@ -34,10 +34,11 @@ type Criterion = RecruitingBrief['criteria'][number];
 //   GET /api/recruiting/google/forms/list           → 발행 폼 목록
 //   GET /api/recruiting/google/forms/[id]/responses → 컬럼 + 행
 //
-// 개인정보(PII) 컬럼(이름/전화)은 좌측으로 일괄 정렬되고 **항상** 마스킹된다.
+// 개인정보(PII) 컬럼(이름/전화)은 표에서 **완전히 숨겨진다** — 마스킹된 셀조차
+// 렌더하지 않고 컬럼 자체를 DOM 에서 제외한다(다른 컬럼 폭 확보). 게다가
 // responses 엔드포인트가 PII 컬럼의 *값*을 서버에서 blank 처리해 보내므로
-// 브라우저 payload 로는 마스킹 전 원본 PII 가 절대 흐르지 않는다 — 유저 뷰엔
-// 어떤 경우에도 연락처가 노출되지 않는다 (옛 크레딧 잠금-해제 흐름은 폐기).
+// 브라우저 payload 로도 원본 PII 가 절대 흐르지 않는다 — 유저 뷰엔 어떤
+// 경우에도 연락처가 노출되지 않는다 (옛 크레딧 잠금-해제 흐름은 폐기).
 //
 // 대신 각 응답자 row 좌측에 초대 대상 체크박스를 두고, 상단 CTA 로 여러 명을
 // 한 번에 골라 초대 요청(POST /api/recruiting/invitations)을 넣는다. 요청은
@@ -555,12 +556,12 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-// 렌더 컬럼 모델 — 맨 앞에 초대 대상 체크박스, 그 다음 PII(항상 마스킹)를 좌측
-// 으로 몰고, 그 다음 '응답 시각', 그 다음 나머지.
+// 렌더 컬럼 모델 — 맨 앞에 초대 대상 체크박스, 그 다음 '응답 시각', 그 다음
+// 나머지 응답 컬럼. PII(이름/전화) 컬럼은 표에서 완전히 제외된다(아래 nonPiiCols).
 type RenderCol =
   | { kind: 'select' }
   | { kind: 'time' }
-  | { kind: 'field'; col: FormColumn; pii: boolean };
+  | { kind: 'field'; col: FormColumn };
 
 // 전체 선택 헤더 체크박스 — Checkbox primitive 은 native <input> 이라
 // indeterminate 를 prop 으로 못 받는다 (DOM 프로퍼티라 ref 로만 설정). 일부만
@@ -603,24 +604,25 @@ function ResponseTable({
   onToggleRow: (rowId: string) => void;
   onToggleAll: (checked: boolean) => void;
 }) {
-  const piiCols = columns.filter((c) => piiQids.has(c.questionId));
+  // PII 컬럼(이름/전화)은 표에서 완전히 제외 — 컬럼 자체를 DOM 에 렌더하지 않아
+  // 다른 컬럼 폭을 확보한다. piiQids 는 서버 목록 + title 기반 판정의 합집합.
   const nonPiiCols = columns.filter((c) => !piiQids.has(c.questionId));
 
   const renderCols: RenderCol[] = [
     { kind: 'select' } as const,
-    ...piiCols.map((col) => ({ kind: 'field', col, pii: true }) as const),
     { kind: 'time' } as const,
-    ...nonPiiCols.map((col) => ({ kind: 'field', col, pii: false }) as const),
+    ...nonPiiCols.map((col) => ({ kind: 'field', col }) as const),
   ];
 
-  // 컬럼별 최소 폭 — 긴 질문 헤더(20+자)가 wrap 되지 않도록 field 는 180px,
+  // 컬럼별 폭/wrap — 긴 질문 헤더가 한 줄로 뻗어 컬럼을 독점하지 않도록 field 는
+  // wrap(whitespace-normal + break-words) + 상단 정렬 + 폭 범위(80~160px)로 묶는다.
   // 선택(체크박스) 열은 좁게, 응답 시각은 nowrap 으로 자연 폭 유지.
   const colWidthClass = (rc: RenderCol) =>
     rc.kind === 'select'
       ? 'w-10'
       : rc.kind === 'time'
         ? 'whitespace-nowrap'
-        : 'min-w-[180px]';
+        : 'whitespace-normal break-words align-top min-w-[80px] max-w-[160px]';
 
   const visibleSelectedCount = rows.filter((r) =>
     selected.has(r.responseId),
@@ -638,7 +640,7 @@ function ResponseTable({
               key={
                 rc.kind === 'field' ? rc.col.questionId : `${rc.kind}-${i}`
               }
-              className={`whitespace-nowrap border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
+              className={`border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
             >
               {rc.kind === 'select' ? (
                 <SelectAllCheckbox
@@ -684,21 +686,12 @@ function ResponseTable({
                 );
               }
               const qid = rc.col.questionId;
-              if (rc.pii) {
-                // PII 컬럼은 어떤 경우에도 마스킹 — 유저 뷰에 연락처 노출 X.
-                return (
-                  <td
-                    key={qid}
-                    className="min-w-[180px] px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
-                  >
-                    {PII_MASK}
-                  </td>
-                );
-              }
+              // PII 컬럼은 renderCols 에서 이미 제외됐으므로 여기 남은 field 는
+              // 모두 non-PII. 헤더와 동일한 폭 범위 + break-words 로 wrap 정합.
               return (
                 <td
                   key={qid}
-                  className="min-w-[180px] px-3 py-2 align-top text-ink-2"
+                  className="min-w-[80px] max-w-[160px] break-words px-3 py-2 align-top text-ink-2"
                 >
                   {r.answers[qid] || <span className="text-mute-soft">—</span>}
                 </td>
