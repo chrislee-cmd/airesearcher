@@ -8,7 +8,7 @@ export const DESK_REGIONS: DeskRegion[] = ['KR', 'US', 'SG', 'MY', 'TH', 'JP', '
 
 // Sources that only return Korean-language content. Hidden when region != 'KR'
 // because they will return zero results for non-KR keywords (and waste credits).
-export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao'];
+export const KR_ONLY_GROUPS: DeskSourceGroup[] = ['naver', 'kakao', 'dart'];
 
 // Famous, crawler-friendly portals per region. Reached directly via API, or
 // indirectly via Google News RSS aggregation. Shown in the UI as a hint.
@@ -45,5 +45,10 @@ export const DESK_SOURCE_GROUPS: Record<
     label: '글로벌',
     labelEn: 'Global',
     hint: '키 없이 동작',
+  },
+  dart: {
+    label: 'DART 공시',
+    labelEn: 'DART (Financial Disclosures)',
+    hint: 'DART_API_KEY 필요',
   },
 };

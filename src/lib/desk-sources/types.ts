@@ -19,9 +19,11 @@ export type DeskSourceId =
   | 'google_news'
   | 'gdelt_news'
   | 'hacker_news'
-  | 'reddit';
+  | 'reddit'
+  // Korea disclosures (DART / FSS)
+  | 'dart';
 
-export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global';
+export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely

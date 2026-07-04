@@ -101,6 +101,7 @@ export const env = createEnv({
     NAVER_CLIENT_SECRET: z.string().min(8).optional(),
     KAKAO_REST_API_KEY: z.string().min(8).optional(),
     YOUTUBE_API_KEY: z.string().min(8).optional(),
+    DART_API_KEY: z.string().min(8).optional(),
 
     NOTION_API_TOKEN: z.string().min(8).optional(),
     NOTION_CLIENT_ID: z.string().min(8).optional(),
@@ -209,6 +210,7 @@ export const env = createEnv({
     NAVER_CLIENT_SECRET: process.env.NAVER_CLIENT_SECRET,
     KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY,
     YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+    DART_API_KEY: process.env.DART_API_KEY,
 
     NOTION_API_TOKEN: process.env.NOTION_API_TOKEN,
     NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
