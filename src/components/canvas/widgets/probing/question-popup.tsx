@@ -248,6 +248,13 @@ function ProbingQuestionPopupInner({
         </span>
       </header>
 
+      {popup.target_section_label && (
+        <div className="mb-2 inline-flex max-w-full items-center gap-1 rounded-pill border border-amore bg-paper-soft px-2 py-0.5 text-xs tracking-[0.14em] text-amore">
+          <span aria-hidden>◆</span>
+          <span className="truncate">{popup.target_section_label} 채우기</span>
+        </div>
+      )}
+
       <p className="mb-3 text-md font-medium leading-snug text-ink">
         {popup.text}
       </p>

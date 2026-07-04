@@ -95,6 +95,11 @@ export type PopupQuestion = {
   importance: ProbingThinkImportance;
   // ms epoch — emit 도착 시각 (popup 표시 시작).
   emitted_at: number;
+  // PR (probing-custom-widget-priority-weight): 이 질문이 채우려는 페르소나
+  // 위젯의 사람 친화 라벨 (title). think EMIT 의 target_section alias 를 client
+  // 가 위젯 라벨로 되돌려 popup 뱃지에 "{라벨} 채우기" 로 표시. 특정 위젯 겨냥이
+  // 아니거나 alias 매핑 실패 시 undefined.
+  target_section_label?: string;
 };
 
 // D. history row — popup 이 사라진 뒤 누적되는 항목. popup 의 메타에 핀 /
