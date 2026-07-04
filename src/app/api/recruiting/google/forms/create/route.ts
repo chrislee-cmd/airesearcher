@@ -196,6 +196,12 @@ export async function POST(request: Request) {
     // throws 42703 / PostgREST PGRST204 and we simply skip, leaving the
     // published form fully functional. Criteria then backfill on the next
     // publish once the migration lands.
+    // Signals to the client whether the analysed 조건/요약 actually landed on
+    // the row. Defaults true (incl. the hand-edited flow that ships no
+    // criteria — nothing to persist, nothing failed). Flipped to false on any
+    // update failure so the fullview can surface a "재발행" banner instead of
+    // silently showing an empty 조건 panel. The publish itself still succeeds.
+    let criteriaPersisted = true;
     if (parsed.data.criteria && parsed.data.criteria.length > 0) {
       const meta = await admin
         .from('recruiting_forms')
@@ -205,6 +211,7 @@ export async function POST(request: Request) {
         })
         .eq('form_id', result.formId);
       if (meta.error) {
+        criteriaPersisted = false;
         const code = meta.error.code;
         const msg = meta.error.message ?? '';
         const isMissingCriteria =
@@ -229,7 +236,7 @@ export async function POST(request: Request) {
         }
       }
     }
-    return NextResponse.json({ ...result, sheetUrl });
+    return NextResponse.json({ ...result, sheetUrl, criteriaPersisted });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'forms_create_failed';
     return NextResponse.json({ error: msg }, { status: 502 });
