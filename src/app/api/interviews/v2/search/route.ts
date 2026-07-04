@@ -143,6 +143,28 @@ function verifyArtifacts(
       });
       if (validQuotes.length < 3) continue;
       verified.push({ ...a, quotes: validQuotes });
+    } else if (a.type === 'chart') {
+      // Re-verify each series against the retrieved chunk set: keep only
+      // grounded respondent_ids and recompute count from them (the model's
+      // count is a hint, not authority). Drop empty series, then drop the
+      // whole chart if fewer than 3 categories survive (text is enough).
+      let totalDropped = 0;
+      const verifiedSeries = a.series
+        .map((s) => {
+          const validIds = s.respondent_ids.filter(
+            (id) => chunkIds.has(id) || docIds.has(id),
+          );
+          totalDropped += s.count - validIds.length;
+          return { ...s, respondent_ids: validIds, count: validIds.length };
+        })
+        .filter((s) => s.count > 0);
+      console.info('[v2/search] chart_reverify', {
+        title: a.title,
+        dropped: totalDropped,
+        series_kept: verifiedSeries.length,
+      });
+      if (verifiedSeries.length < 3) continue;
+      verified.push({ ...a, series: verifiedSeries });
     }
   }
   return {

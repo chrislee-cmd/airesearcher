@@ -1120,6 +1120,8 @@
     "searchScore": "정확도",
     "searchScope": "검색 범위",
     "artifactTableFooter": "{count}명 응답 기반",
+    "artifactChartFooter": "총 {count}명 응답 기반",
+    "artifactChartTooltip": "{count}명",
     "scopeThisProject": "이 프로젝트",
     "scopeAll": "전체 프로젝트",
     "crossSearch": "전체 프로젝트 검색",

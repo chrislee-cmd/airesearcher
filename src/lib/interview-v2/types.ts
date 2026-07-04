@@ -65,4 +65,22 @@ export type QuoteListArtifact = {
   }>;
 };
 
-export type SearchArtifact = TableArtifact | QuoteListArtifact;
+/**
+ * 차트 산출물 (Phase 2 = bar/pie). "몇 %", "비율", "분포" 신호 +
+ * 범주 3개 이상일 때 LLM 이 emit. series 별 count 는 server 가
+ * respondent_ids 실 매칭 개수로 재계산한다 (route verifyArtifacts).
+ */
+export type ChartArtifact = {
+  type: 'chart';
+  title: string;
+  chart_type: 'bar' | 'pie';
+  series: Array<{
+    label: string;
+    count: number;
+    // 각 category 근거 청크의 chunk_id (server re-verify 용).
+    respondent_ids: string[];
+  }>;
+  description?: string;
+};
+
+export type SearchArtifact = TableArtifact | QuoteListArtifact | ChartArtifact;

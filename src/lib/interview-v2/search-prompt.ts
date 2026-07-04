@@ -61,6 +61,21 @@ export const searchAnswerSchema = z.object({
             }),
           ),
         }),
+        // Phase 2 — 분포/비율 차트. series 별 respondent_ids 로 route 가
+        // count 를 재계산하므로 LLM 의 count 는 hint 에 불과하다.
+        z.object({
+          type: z.literal('chart'),
+          title: z.string(),
+          chart_type: z.enum(['bar', 'pie']),
+          series: z.array(
+            z.object({
+              label: z.string(),
+              count: z.number(),
+              respondent_ids: z.array(z.string()).default([]),
+            }),
+          ),
+          description: z.string().optional(),
+        }),
       ]),
     )
     .default([]),
@@ -93,7 +108,13 @@ answer_md 는 항상 채우고, 아래 신호가 잡히면 \`artifacts\` 에 구
 - **인용 리스트 (quote_list)**: "정확히 뭐라 했나", "원문", "몇 명이 언급" 같은 신호 → 원문 발췌 3개 이상 가능할 때만.
   - quotes = { respondent: 응답자 이름 또는 파일명, quote: 청크 원문을 **그대로** 발췌(요약/의역 금지), chunk_id: 그 원문이 있는 근거 청크의 [id] }
 
-- artifact 는 **최대 2개** (표 1 + 인용 리스트 1, 또는 표 2). 근거가 3건 미만이면 그 artifact 는 만들지 마세요 — server 가 검증 실패 시 drop 합니다.
+- **차트 (chart)**: "몇 %", "비율", "얼마나 많이", "분포" 같은 신호 → 범주(category) 3개 이상으로 나눌 수 있을 때만.
+  - chart_type = 'bar' (범주형 분포) 또는 'pie' (구성 비율). 범주가 5개를 넘으면 pie 대신 bar 를 쓰세요.
+  - series = { label: 범주 이름(예: '매우 민감', '보통', '민감하지 않음'), count: 해당 범주 응답자 수, respondent_ids: 그 범주에 매칭되는 근거 청크의 [id] 배열 }
+  - **respondent_ids 는 각 범주에 실제 매칭되는 근거 청크의 chunk_id 여야 하며(필수), count 는 respondent_ids 개수와 일치해야 합니다** — server 가 respondent_ids 실존을 검증하고 count 를 재계산합니다.
+  - 범주가 2개 이하이면 chart 를 만들지 말고 텍스트로만 답하세요.
+
+- artifact 는 **최대 2개** (예: 표 1 + 차트 1, 또는 표 1 + 인용 리스트 1). 근거가 3건 미만이면 그 artifact 는 만들지 마세요 — server 가 검증 실패 시 drop 합니다.
 - artifact 안의 모든 값은 근거 청크에서만 뽑습니다. 지어낸 응답자·수치·인용 금지.${ISOLATION_NOTICE}`;
 
 /**
