@@ -165,10 +165,6 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   const channelRef = useRef<ReturnType<
     ReturnType<typeof createClient>['channel']
   > | null>(null);
-  // Session boundary: only jobs created at/after this moment are surfaced.
-  // Reset on mount (refresh) and on user change (login/logout/relogin) so
-  // past runs never leak into a fresh session.
-  const sessionStartRef = useRef<string>(new Date().toISOString());
   const lastUserIdRef = useRef<string | null>(null);
 
   // Auth health gate. The realtime subscription on `desk_jobs` (below)
@@ -201,8 +197,11 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return;
       const json = await res.json();
       const all: DeskJob[] = json.jobs ?? [];
-      const cutoff = sessionStartRef.current;
-      setJobs(all.filter((j) => j.created_at >= cutoff));
+      // Surface every job the API returns — it already caps at the 20 most
+      // recent, so past runs persist across refresh/relogin (natural rotation
+      // drops the oldest). No client-side session cutoff: a finished report
+      // must stay visible after the tab reloads.
+      setJobs(all);
       stopOnExpiredRef.current = false;
       warnedExpiredOnceRef.current = false;
     } catch {
@@ -210,12 +209,12 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Reset the session cutoff whenever the signed-in user changes.
-  // Also re-arm the auth gate so a re-login wakes polling back up.
+  // On user change (login/logout/relogin) clear the panel and re-arm the auth
+  // gate so a re-login wakes polling back up. The next refresh() repopulates
+  // from the API — no session cutoff, so the new user's own past jobs show.
   useEffect(() => {
     const uid = user?.id ?? null;
     if (lastUserIdRef.current !== uid) {
-      sessionStartRef.current = new Date().toISOString();
       lastUserIdRef.current = uid;
       stopOnExpiredRef.current = false;
       warnedExpiredOnceRef.current = false;
