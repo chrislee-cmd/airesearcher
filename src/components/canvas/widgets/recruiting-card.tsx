@@ -241,13 +241,16 @@ function ExpandedBody() {
             )}
             <div className="flex min-h-0 flex-1">
               {/* 좌측 패널 = 참여자 조건(위) + 분포 통계(아래) 세로 스택.
-                  조건은 고정 높이, 분포는 최소 높이 보장 + 남은 공간을 채운다.
+                  조건은 고정 높이, 분포는 내용 크기에 맞춘 auto height(빈 공간 X).
                   둘 합이 패널보다 커지면 좌측 컬럼이 세로 스크롤. */}
               <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line-soft p-4">
                 <div className="h-[240px] shrink-0">
                   <RecruitingConditionsPanel brief={conditionsForPanel} />
                 </div>
-                <div className="min-h-[420px] flex-1">
+                {/* 분포 위젯 = 내용 크기에 맞춤(auto height, 패널 자체 min 만 유지).
+                    옛 flex-1 은 짧은 테이블에서도 좌측 컬럼 남은 공간을 다 채워
+                    white space 가 생겼다 — shrink-0 으로 테이블 크기에 fit. */}
+                <div className="shrink-0">
                   <RecruitingDistributionPanel
                     columns={responseData?.columns ?? []}
                     rows={responseData?.rows ?? []}
