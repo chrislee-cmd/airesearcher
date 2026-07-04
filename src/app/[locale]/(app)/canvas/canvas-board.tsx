@@ -23,6 +23,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
@@ -35,14 +36,17 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
-const GRID_COLS = 3;
+// 2×3 row-major 배치 — 6 visible 위젯이 2열 × 3행에 정확히 채워짐
+// (Row1 recruiting|desk, Row2 probing|translate, Row3 quotes|interviews).
+// visibility.ts CANVAS_ORDER 가 이 순서를 정의.
+const GRID_COLS = 2;
 const GRID_ROWS = 3;
 // CELL_W 816 — 6×5 시절 expandedCols=3 위젯 한 장의 visual width
 // (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
 // 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
 const CELL_W = 816;
 const CELL_H = 950;
-const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2544
+const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2 × 816 + 48 = 1680
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 // MIN_ZOOM 0.3 — fit-to-view (6 위젯 한눈) 가 작은 viewport (1440×900 +
 // 사이드바 280px → 본문 1160×800) 에서도 clamp 없이 안착하려면 0.3 까지
@@ -51,10 +55,22 @@ const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.03;
-// v1 좌표는 6×5 기준 — v2 bump 로 한 번 reset (디폴트 1·2행 3+3 배치).
-const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v2';
+// v1 = 6×5, v2 = 3×3 (1·2행 3+3). v3 = 2×3 row-major 재배치로 한 번 더 reset —
+// 옛 커스텀 좌표를 버리고 신 layout 을 강제 적용 (사용자 결정: 초기화 의도).
+const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v3';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+// 행별 헤더 톤 — Row 0 강조(amore) → Row 1 mid(ink-2) → Row 2 subdued(mute).
+// 같은 행의 두 위젯은 동일 톤. wrapper 에 CSS 변수로 주입하면 widget-shell
+// 헤더의 inline background/border fallback 이 이를 참조한다. 사용자가
+// per-widget 색(WidgetHeaderColorPicker)을 지정하면 그 inline 값이 우선하고,
+// 미지정 위젯만 이 행 색으로 렌더된다. 모든 색은 design-system 토큰.
+const ROW_HEADER_TONE: Record<number, { bg: string; border: string }> = {
+  0: { bg: 'var(--color-amore-bg)', border: 'var(--color-amore)' },
+  1: { bg: 'var(--color-paper-soft)', border: 'var(--color-ink-2)' },
+  2: { bg: 'var(--color-mute-bg)', border: 'var(--color-mute)' },
+};
 
 // "전체 보기" 진입은 이제 모든 위젯이 공유 모달(아래 FullviewShell)을 연다.
 // WidgetShell 의 "전체 보기" 버튼 → onFullview → openFullview(key) → 공유
@@ -888,23 +904,31 @@ export function CanvasBoard({
             const width = expandedWidthOf(cols);
             const height = expandedHeightOf(rows);
             const isDragSource = dragKey === w.key;
+            // 행별 헤더 톤 — 실제 시각적 행(pos.row) 기준. 위젯을 다른 행으로
+            // 드래그하면 새 행 색을 따라간다 (위젯 정체성이 아니라 위치 기준).
+            const tone = ROW_HEADER_TONE[pos.row] ?? ROW_HEADER_TONE[0];
             return (
               <div
                 key={w.key}
                 data-canvas-card
                 data-widget-key={w.key}
+                data-canvas-row={pos.row}
                 className="absolute"
                 onDragOver={onCellDragOver(pos.col, pos.row)}
                 onDragLeave={onCellDragLeave(pos.col, pos.row)}
                 onDrop={onCellDrop(pos.col, pos.row)}
-                style={{
-                  left: pos.col * (CELL_W + GAP),
-                  top: pos.row * (CELL_H + GAP),
-                  width,
-                  height,
-                  opacity: isDragSource ? 0.4 : 1,
-                  transition: 'opacity 0.15s ease-out',
-                }}
+                style={
+                  {
+                    left: pos.col * (CELL_W + GAP),
+                    top: pos.row * (CELL_H + GAP),
+                    width,
+                    height,
+                    opacity: isDragSource ? 0.4 : 1,
+                    transition: 'opacity 0.15s ease-out',
+                    '--widget-header-row-bg': tone.bg,
+                    '--widget-header-row-border': tone.border,
+                  } as CSSProperties
+                }
               >
                 <WidgetShell
                   content={w}

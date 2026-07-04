@@ -32,17 +32,23 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
 };
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
-// 리서치 흐름 순 — recruiting (모집) → quotes/desk/interviews (수집·분석) →
-// moderator/translate/probing (진행) → topline/slidegen (산출).
-// probing 은 translate 의 transcript 를 구독하므로 translate 바로 다음.
+// row-major 2×3 배치 (canvas-board GRID_COLS=2) — 좌→우, 위→아래로 채움.
+//   Row 1 (상): recruiting | desk
+//   Row 2 (중): probing    | translate
+//   Row 3 (하): quotes(전사록) | interviews(인터뷰 결과 생성기)
+// hidden 3장 (moderator/topline/slidegen) 은 뒤에 두고 visibility=false 로 제외.
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
+  // Row 1 (상)
   'recruiting',
-  'quotes',
   'desk',
-  'interviews',
-  'moderator',
-  'translate',
+  // Row 2 (중)
   'probing',
+  'translate',
+  // Row 3 (하)
+  'quotes',
+  'interviews',
+  // Hidden (order 유지, visibility=false)
+  'moderator',
   'topline',
   'slidegen',
 ];
