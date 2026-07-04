@@ -27,20 +27,12 @@ import {
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
-import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
-import { Field } from '@/components/canvas/shell/field';
-import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
-import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
-import { useVisitedOnce } from '@/components/ui/use-visited-once';
-import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -56,6 +48,11 @@ import {
 import type { ProbingBackfillFeedback } from './probing/research-context';
 import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
+import {
+  ProbingControlBoard,
+  ProbingControlBar,
+  type SourceKind,
+} from './probing/control-board';
 import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
 import { useHiddenDefaults } from './probing/use-hidden-defaults';
 import {
@@ -106,72 +103,6 @@ function segmentsText(segments: TranscriptionSegment[]): string {
 // 좌패널 페르소나 → 우패널 think prompt 에 직접 안 들어감 (think 는 사용자
 // 입력 + transcript 만 보고 사고). 별 helper 불필요.
 
-type SourceKind = 'mic' | 'tab';
-
-function SourcePicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: SourceKind;
-  onChange: (next: SourceKind) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1 text-sm text-mute">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as SourceKind)}
-        disabled={disabled}
-        aria-label="입력 소스"
-        className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-      >
-        <option value="mic">마이크</option>
-        <option value="tab">탭 오디오</option>
-      </select>
-    </div>
-  );
-}
-
-// 분석 출력 언어 옵션 — translate 의 LANGS 6종과 동일. 입력 (STT) 언어와
-// 독립적으로 분석 결과 언어를 선택 (예: 한국어 인터뷰 → 영어 분석).
-const OUTPUT_LANG_OPTIONS: { value: ProbingOutputLang; label: string }[] = [
-  { value: 'ko', label: '한국어' },
-  { value: 'en', label: 'English' },
-  { value: 'ja', label: '日本語' },
-  { value: 'zh', label: '中文' },
-  { value: 'es', label: 'Español' },
-  { value: 'th', label: 'ไทย' },
-];
-
-function OutputLangPicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: ProbingOutputLang;
-  onChange: (next: ProbingOutputLang) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1 text-sm text-mute">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as ProbingOutputLang)}
-        disabled={disabled}
-        aria-label="분석 출력 언어"
-        className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-      >
-        {OUTPUT_LANG_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 // 검증 helper — think route 의 EMIT 라인 JSON 을 schema 로 통과시킨다.
 // resolveTargetLabel: target_section alias → 위젯 라벨 (popup 뱃지용). alias 가
 // 이번 think 호출의 위젯 집합에 없으면 undefined → 뱃지 미표시.
@@ -218,11 +149,6 @@ function ExpandedBody() {
   } = useRealtimeTranscription({ locale: 'ko' });
 
   const [source, setSource] = useState<SourceKind>('mic');
-  // 서브헤더 "설정" 모달 — 옛 필드 (입력 소스 / 분석 출력 언어) 를 담는다.
-  // 값 변경은 즉시 반영, 닫기 = 확정.
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // 온보딩 게이팅 — 세션 시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩).
-  const [settingsVisited, markSettingsVisited] = useVisitedOnce('widget-probing');
 
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
   // (영속화 X). default ko = 옛 동작 (한국어 분석). think / reflection 자동
@@ -1129,7 +1055,6 @@ function ExpandedBody() {
   })();
 
   const startDisabled =
-    !settingsVisited ||
     sessionStatus === 'starting' ||
     sessionStatus === 'live' ||
     sessionStatus === 'stopping';
@@ -1138,6 +1063,9 @@ function ExpandedBody() {
     sessionStatus === 'starting' ||
     sessionStatus === 'stopping' ||
     sessionStatus === 'error';
+  // 입력 소스 / 언어 는 세션 진행 중 (idle/error 외) 에는 변경 불가 — 옛 동작.
+  const controlsDisabled =
+    sessionStatus !== 'idle' && sessionStatus !== 'error';
 
   const canRefreshReflection =
     isLive &&
@@ -1234,77 +1162,42 @@ function ExpandedBody() {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
-        <WidgetSubHeader
-          className="shrink-0"
-          compact
-          inputs={
-            // 세션 시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩). 설정
-            // 미방문 동안 ⚙ pulse + 첫 사용 툴팁으로 유도.
-            <OnboardingTooltip
-              id="widget-probing"
-              message="여기를 눌러 시작 조건을 설정하세요"
-              dismissLabel="안내 닫기"
-            >
-              <WidgetSettingsButton
-                onClick={() => {
-                  trackEvent('widget_action', {
-                    widget: 'probing',
-                    action: 'settings_open',
-                  });
-                  markSettingsVisited();
-                  setSettingsOpen(true);
-                }}
-                hasChanges={source !== 'mic' || outputLang !== 'ko'}
-                pulse={!settingsVisited}
-              />
-            </OnboardingTooltip>
-          }
-          actions={
-            <>
-              {isLive ? (
-                <ChromeButton
-                  size="lg"
-                  onClick={handleStopSession}
-                  disabled={stopDisabled}
-                >
-                  정지
-                </ChromeButton>
-              ) : (
-                <ChromeButton
-                  variant="primary"
-                  size="lg"
-                  onClick={handleStartSession}
-                  disabled={startDisabled}
-                >
-                  세션 시작
-                </ChromeButton>
-              )}
-            </>
-          }
-        />
-
-        {/* 설정 모달 — 옛 서브헤더 필드 (입력 소스 / 분석 출력 언어).
-            값 변경은 즉시 반영, 닫기 = 확정. 세션 진행 중 (idle/error 외)
-            에는 필드 disabled 유지 (옛 동작 그대로). */}
-        <WidgetSettingsModal
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-        >
-          <Field label="입력 소스">
-            <SourcePicker
-              value={source}
-              onChange={setSource}
-              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
-            />
-          </Field>
-          <Field label="분석 출력 언어">
-            <OutputLangPicker
-              value={outputLang}
-              onChange={setOutputLang}
-              disabled={sessionStatus !== 'idle' && sessionStatus !== 'error'}
-            />
-          </Field>
-        </WidgetSettingsModal>
+        {/* Phase 1 (idle) = 컨트롤 보드 (조사 목적 / 소스 / 언어 / 🚀 CTA),
+            Phase 2 (live) = slim bar (▼ 로 세션 중 컨트롤 재노출 + 정지).
+            starting/stopping/error 는 idle 로 취급 (isLive=false) — 컨트롤
+            보드가 다시 노출되어 재시도 가능. */}
+        {isLive ? (
+          <ProbingControlBar
+            researchGoal={context.research_goal}
+            onResearchGoalChange={(v) =>
+              setContext((prev) => ({ ...prev, research_goal: v }))
+            }
+            source={source}
+            onSourceChange={setSource}
+            outputLang={outputLang}
+            onOutputLangChange={setOutputLang}
+            controlsDisabled={controlsDisabled}
+            onStop={handleStopSession}
+            stopDisabled={stopDisabled}
+            statusLabel={statusLabel}
+          />
+        ) : (
+          <ProbingControlBoard
+            researchGoal={context.research_goal}
+            onResearchGoalChange={(v) =>
+              setContext((prev) => ({ ...prev, research_goal: v }))
+            }
+            goalDisabled={!contextHydrated}
+            source={source}
+            onSourceChange={setSource}
+            outputLang={outputLang}
+            onOutputLangChange={setOutputLang}
+            controlsDisabled={controlsDisabled}
+            onStart={handleStartSession}
+            startDisabled={startDisabled}
+            statusLabel={statusLabel}
+          />
+        )}
 
         {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
             popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal
