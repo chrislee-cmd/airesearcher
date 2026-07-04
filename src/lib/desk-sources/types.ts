@@ -29,6 +29,10 @@ export type DeskSourceId =
   | 'arxiv';
 
 export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart' | 'academic_kr';
+  // Bank of Korea ECOS (경제통계시스템)
+  | 'boj_ecos';
+
+export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'bok';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely

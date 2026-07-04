@@ -106,6 +106,7 @@ export const env = createEnv({
     // Optional — raises the Semantic Scholar rate limit. Missing key still
     // works on the public tier, so the desk source has no envKeys gate.
     SEMANTIC_SCHOLAR_API_KEY: z.string().min(8).optional(),
+    ECOS_API_KEY: z.string().min(8).optional(),
 
     NOTION_API_TOKEN: z.string().min(8).optional(),
     NOTION_CLIENT_ID: z.string().min(8).optional(),
@@ -217,6 +218,7 @@ export const env = createEnv({
     DART_API_KEY: process.env.DART_API_KEY,
     KCI_API_KEY: process.env.KCI_API_KEY,
     SEMANTIC_SCHOLAR_API_KEY: process.env.SEMANTIC_SCHOLAR_API_KEY,
+    ECOS_API_KEY: process.env.ECOS_API_KEY,
 
     NOTION_API_TOKEN: process.env.NOTION_API_TOKEN,
     NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
