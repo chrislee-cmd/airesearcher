@@ -19,7 +19,10 @@ import type {
   ResearchContext,
   ThinkingEvent,
 } from '../probing-types';
-import { ProbingResearchContext } from './research-context';
+import {
+  ProbingResearchContext,
+  type ProbingBackfillFeedback,
+} from './research-context';
 import { ProbingThinkingStream } from './thinking-stream';
 import { ProbingQuestionPopup } from './question-popup';
 import { ProbingQuestionHistory } from './question-history';
@@ -28,6 +31,7 @@ export function QuestionPane({
   context,
   onContextChange,
   onInject,
+  backfillFeedback,
   contextDisabled,
   thinkingEvents,
   thinkingStreaming,
@@ -50,6 +54,7 @@ export function QuestionPane({
   context: ResearchContext;
   onContextChange: (next: ResearchContext) => void;
   onInject: (question: string) => void;
+  backfillFeedback: ProbingBackfillFeedback | null;
   contextDisabled: boolean;
   // B. 사고 흐름
   thinkingEvents: ThinkingEvent[];
@@ -99,6 +104,7 @@ export function QuestionPane({
             onContextChange({ ...context, research_goal: v })
           }
           onInject={onInject}
+          backfillFeedback={backfillFeedback}
           disabled={contextDisabled}
         />
 

@@ -37,16 +37,27 @@ import { Button } from '@/components/ui/button';
 const GOAL_MAX = 2_000;
 const QUESTION_MAX = 500;
 
+// PR (probing-custom-widget-backfill-and-priority-question): "주입" 으로 새
+// 커스텀 위젯을 만들면 부모가 누적 대화 backfill 을 시도한다. 그 진행/결과를
+// 입력창 아래 한 줄로 노출한다.
+export type ProbingBackfillFeedback = {
+  status: 'running' | 'backfilled' | 'empty';
+  count: number;
+};
+
 export function ProbingResearchContext({
   researchGoal,
   onResearchGoalChange,
   onInject,
+  backfillFeedback = null,
   disabled = false,
 }: {
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
   // "주입" 버튼 (또는 Enter) 클릭 시 1회 호출. 갱신과 무관.
   onInject: (question: string) => void;
+  // 신규 위젯 backfill 진행/결과 (없으면 미표시).
+  backfillFeedback?: ProbingBackfillFeedback | null;
   disabled?: boolean;
 }) {
   const [draft, setDraft] = useState('');
@@ -110,6 +121,24 @@ export function ProbingResearchContext({
             주입
           </Button>
         </div>
+
+        {backfillFeedback && (
+          <p className="mt-1.5 text-xs" aria-live="polite">
+            {backfillFeedback.status === 'running' && (
+              <span className="text-mute">🔍 관련 내용 찾는 중…</span>
+            )}
+            {backfillFeedback.status === 'backfilled' && (
+              <span className="text-amore">
+                ✓ 대화에서 {backfillFeedback.count}개 발화 자동 채움
+              </span>
+            )}
+            {backfillFeedback.status === 'empty' && (
+              <span className="text-warning">
+                ⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다
+              </span>
+            )}
+          </p>
+        )}
       </Field>
     </section>
   );
