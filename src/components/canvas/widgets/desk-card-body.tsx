@@ -47,10 +47,6 @@ import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
-import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetSettingsButton } from '@/components/canvas/shell/widget-settings-button';
-import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
-import { WidgetSettingsModal } from '@/components/canvas/shell/widget-settings-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -292,9 +288,11 @@ export function DeskCardBody() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  // 서브헤더 "설정" 모달 — 옛 서브헤더 필드 (지역/기간/분석방향성/키워드) 를
-  // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Phase 2 (active) 의 slim bar — 접힘(false)이 기본. ▼ 클릭 시 옛 컨트롤
+  // (지역/기간/분석방향성/키워드 + CTA) 을 그대로 재노출해 값 조정 후
+  // 재실행 (결정 3). idle phase 에서는 컨트롤이 항상 메인 보드에 펼쳐져
+  // 있으므로 이 상태와 무관.
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   // 통일 "전체 보기" — 가장 최근 완료 리포트를 풀스크린으로. 공유 모달
   // (CanvasBoard FullviewShell)이 소유하고, desk 가 currentKey 일 때만 본문을
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
@@ -608,19 +606,8 @@ export function DeskCardBody() {
   }
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
-  // 서브헤더 설정 dot — default (지역 KR 만 / 기간·분석방향성·키워드 비어있음)
-  // 와 다른 값이 하나라도 있으면 "설정됨" 을 amore dot 으로 표시.
-  const hasNonDefaultSettings =
-    !(regions.size === 1 && regions.has('KR')) ||
-    dateFrom !== '' ||
-    dateTo !== '' ||
-    analysisDirection.trim() !== '' ||
-    hasKeywords;
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
-  // 온보딩 게이팅 — CTA 가 "설정 미완료" 로 막혀 있는 상태 (진행중/제출중과
-  // 구분). 이 동안만 ⚙ pulse + CTA 아래 hint 를 띄운다.
-  const settingsIncomplete = !hasKeywords || selected.size === 0;
   // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
   // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
   // would only yield a raw-data dump. A single keyword expands to +4 similar
@@ -727,161 +714,202 @@ export function DeskCardBody() {
     }),
   );
 
+  // ─── phase (idle 컨트롤 보드 ↔ active slim bar) ────────────────────────────
+  // idle: 아직 실행/제출/진행중이 아니고 표시할 job 도 없음 → 메인 영역이
+  //   곧 컨트롤 보드 (주제·키워드 + 옵션 + 실행 CTA). 옛 ⚙ 서브헤더/설정
+  //   모달 뒤에 숨어 있던 컨트롤을 전면 노출.
+  // active: 제출/진행중이거나 job(결과/에러/취소)이 존재 → controls 를 slim
+  //   bar 로 접고 그 아래 결과(스트리밍/배너/타이밍/상태 푸터)를 렌더. 결과가
+  //   남아 있으면 계속 active 유지 — idle 로 자동 복귀 안 함 (결정 2). 재실행은
+  //   slim bar ▼ 로 controls 재노출 후 값 조정 (결정 3).
+  const active = submitting || !!pendingJobId || isWorking || !!job;
+
+  // slim bar 요약 — "주제 N개 · 지역" 형태. 아직 주제 미입력이면 마지막 실행
+  // job 의 키워드로, 그것도 없으면 "주제 미설정".
+  const controlSummary = [
+    keywords.length > 0
+      ? tDesk('controlsSummaryKeywords', { count: keywords.length })
+      : job?.keywords?.length
+        ? job.keywords.slice(0, 2).join(', ')
+        : tDesk('controlsSummaryEmpty'),
+    Array.from(regions)
+      .map((r) => tDesk(`region.${r}`))
+      .join(' · '),
+  ].join(' · ');
+
+  // 로컬 error state (제출 전/제출 실패) 배너 — phase 무관하게 노출해야
+  // idle 로 되돌아간 실패도 사용자가 본다.
+  const errorBanner = error ? (
+    <Banner tone="warning" title={tDesk('error')}>
+      <span className="font-mono">{error}</span>
+    </Banner>
+  ) : null;
+
+  // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 주제·키워드 입력,
+  // 세부 옵션(지역/기간/분석 방향성), 범위 견적, 실행 CTA.
+  const controlsForm = (
+    <div className="space-y-4">
+      {/* 주제 · 키워드 (핵심 입력) */}
+      <div className="space-y-1.5">
+        <SectionLabel>{tDesk('boardTopicLabel')}</SectionLabel>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+          {keywords.map((k, idx) => (
+            <span
+              key={`${k}-${idx}`}
+              className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
+            >
+              {k}
+              <IconButton
+                variant="ghost-brand"
+                onClick={() => removeKeyword(idx)}
+                aria-label={`remove ${k}`}
+              >
+                ×
+              </IconButton>
+            </span>
+          ))}
+          <ChipInput
+            value={keywordDraft}
+            onChange={(e) => setKeywordDraft(e.target.value)}
+            onKeyDown={onKeywordKeyDown}
+            onPaste={onKeywordPaste}
+            onBlur={() => {
+              if (keywordDraft.trim()) commitDraft();
+            }}
+            placeholder={
+              keywords.length === 0
+                ? tDesk('keywordPlaceholder')
+                : tDesk('keywordAddMore')
+            }
+            className="min-w-[140px] flex-1"
+          />
+        </div>
+      </div>
+
+      {/* 세부 옵션 — 지역 / 기간 / 분석 방향성 */}
+      <div className="space-y-1.5">
+        <SectionLabel>{tDesk('boardOptionsLabel')}</SectionLabel>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SelectMenu
+            multi
+            options={DESK_REGIONS.map((r) => ({
+              value: r,
+              label: tDesk(`region.${r}`),
+            }))}
+            values={Array.from(regions)}
+            onChange={(next) => {
+              if (next.length === 0) return; // 최소 1개 보장
+              const set = new Set(next as DeskRegion[]);
+              setRegions(set);
+              setSelected(sourcesForRegions(set));
+            }}
+            placeholder={tDesk('regionLabel')}
+          />
+
+          <DateRangePopover
+            value={{ from: dateFrom, to: dateTo }}
+            onChange={(next) => {
+              setDateFrom(next.from);
+              setDateTo(next.to);
+            }}
+            presets={rangePresets}
+            placeholder={tDesk('range_all')}
+            locale={locale}
+          />
+
+          <Input
+            size="sm"
+            fullWidth
+            value={analysisDirection}
+            onChange={(e) => setAnalysisDirection(e.target.value)}
+            placeholder="예: 시장 성장률 + 주요 플레이어 위주"
+          />
+        </div>
+      </div>
+
+      {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
+      {hasKeywords && (
+        <p
+          className={`text-xs leading-[1.6] ${
+            estimateHeavy ? 'text-amore' : 'text-mute-soft'
+          }`}
+        >
+          {tDesk('estimateLabel', {
+            kw: effectiveKwForEstimate,
+            src: Math.max(selected.size, 1),
+            region: Math.max(regions.size, 1),
+            count: estimatedSearches,
+          })}
+          {' · '}
+          {estimateHeavy ? tDesk('estimateHeavy') : tDesk('estimateOk')}
+        </p>
+      )}
+
+      {/* 실행 CTA — 컨트롤 보드의 핵심 요소 (결정 1). 데스크는 리포트 산출
+          이라 라벨은 기존 "검색" 유지 (스펙의 "매트릭스 생성" 은 형제 스펙
+          템플릿 흔적 — 용어 회귀 방지). */}
+      <ChromeButton
+        variant="primary"
+        size="lg"
+        fullWidth
+        onClick={onClickRun}
+        disabled={!canRun}
+      >
+        {submitting || pendingJobId || isWorking
+          ? tCommon('loading')
+          : tDesk('search')}
+      </ChromeButton>
+    </div>
+  );
+
+  // Phase 2 slim bar — ⚙ 컨트롤 (요약) ▼. 클릭 시 controlsForm 재노출.
+  const slimBar = (
+    /* eslint-disable-next-line react/forbid-elements -- full-width 요약 바:
+       아이콘 + 요약 텍스트 + chevron 커스텀 레이아웃 + aria-expanded 토글로
+       Button primitive variant 밖 형태. widget-subheader Memphis 톤 유지. */
+    <button
+      type="button"
+      onClick={() => setControlsExpanded((v) => !v)}
+      className="flex h-10 w-full shrink-0 items-center justify-between gap-2 border-b-[2px] border-ink bg-paper-soft px-5 text-md text-ink hover:bg-paper"
+      aria-expanded={controlsExpanded}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <span aria-hidden className="text-mute-soft">⚙</span>
+        <span className="truncate">
+          {tDesk('controls')} ({controlSummary})
+        </span>
+      </span>
+      <span aria-hidden className="text-mute-soft">
+        {controlsExpanded ? '▴' : '▾'}
+      </span>
+    </button>
+  );
+
   return (
     <>
       {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
           으로 중간 영역 (flex-1, inputs + streaming + 에러 배너). 산출물
           노출은 "전체 보기" modal 로 일원화 (하단 "최근 산출물" 푸터 제거). */}
       <div className="flex h-full flex-col">
-        {/* 중간 영역 — flex-1 로 산출물을 바닥으로 밀어내고, 내용이
-            길어지면 자체적으로 스크롤. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* WidgetSubHeader — 통일 컴팩트 레이아웃: 좌 = ⚙ 설정 버튼 하나
-            (옛 지역/기간/분석방향성/키워드 필드는 모두 설정 모달로 이동),
-            우 = 검색 CTA 하나. */}
-        <WidgetSubHeader
-          compact
-          inputs={
-            <OnboardingTooltip
-              id="widget-desk"
-              message={tWidgets('onboardingSettings')}
-              dismissLabel={tWidgets('onboardingDismiss')}
-            >
-              <WidgetSettingsButton
-                onClick={() => {
-                  trackEvent('widget_action', {
-                    widget: 'desk',
-                    action: 'settings_open',
-                  });
-                  setSettingsOpen(true);
-                }}
-                label={tWidgets('settings')}
-                hasChanges={hasNonDefaultSettings}
-                pulse={settingsIncomplete}
-              />
-            </OnboardingTooltip>
-          }
-          actions={
-            <ChromeButton
-              variant="primary"
-              size="lg"
-              onClick={onClickRun}
-              disabled={!canRun}
-            >
-              {submitting || pendingJobId || isWorking
-                ? tCommon('loading')
-                : tDesk('search')}
-            </ChromeButton>
-          }
-        />
-
-        {/* 설정 모달 — 옛 서브헤더 필드 (지역 / 기간 / 분석 방향성 / 키워드).
-            값 변경은 즉시 반영, 닫기 = 확정.
-            row 1 = 검색 지역 (multi-select dropdown) / 수집 기간
-              (single-select dropdown + custom 시 date pickers) / 분석 방향성 (text)
-            row 2 = 검색 키워드 (ChipInput, full-width) */}
-        <WidgetSettingsModal
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          title={tWidgets('settings')}
-          closeLabel={tWidgets('settingsClose')}
-        >
-          <div className="w-full space-y-3">
-            {/* Row 1: 지역 / 기간 / 분석 방향성 — placeholder 로 용도 안내. */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <SelectMenu
-                  multi
-                  options={DESK_REGIONS.map((r) => ({
-                    value: r,
-                    label: tDesk(`region.${r}`),
-                  }))}
-                  values={Array.from(regions)}
-                  onChange={(next) => {
-                    if (next.length === 0) return; // 최소 1개 보장
-                    const set = new Set(next as DeskRegion[]);
-                    setRegions(set);
-                    setSelected(sourcesForRegions(set));
-                  }}
-                  placeholder={tDesk('regionLabel')}
-                />
-
-                <DateRangePopover
-                  value={{ from: dateFrom, to: dateTo }}
-                  onChange={(next) => {
-                    setDateFrom(next.from);
-                    setDateTo(next.to);
-                  }}
-                  presets={rangePresets}
-                  placeholder={tDesk('range_all')}
-                  locale={locale}
-                />
-
-                <Input
-                  size="sm"
-                  fullWidth
-                  value={analysisDirection}
-                  onChange={(e) => setAnalysisDirection(e.target.value)}
-                  placeholder="예: 시장 성장률 + 주요 플레이어 위주"
-                />
-              </div>
-
-              {/* Row 2: 검색 키워드 — 서브헤더 라벨 제거, placeholder 안내 */}
-              <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-                {keywords.map((k, idx) => (
-                  <span
-                    key={`${k}-${idx}`}
-                    className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-                  >
-                    {k}
-                    <IconButton
-                      variant="ghost-brand"
-                      onClick={() => removeKeyword(idx)}
-                      aria-label={`remove ${k}`}
-                    >
-                      ×
-                    </IconButton>
-                  </span>
-                ))}
-                <ChipInput
-                  value={keywordDraft}
-                  onChange={(e) => setKeywordDraft(e.target.value)}
-                  onKeyDown={onKeywordKeyDown}
-                  onPaste={onKeywordPaste}
-                  onBlur={() => {
-                    if (keywordDraft.trim()) commitDraft();
-                  }}
-                  placeholder={
-                    keywords.length === 0
-                      ? tDesk('keywordPlaceholder')
-                      : tDesk('keywordAddMore')
-                  }
-                  className="min-w-[140px] flex-1"
-                />
-              </div>
-
-              {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
-              {hasKeywords && (
-                <p
-                  className={`text-xs leading-[1.6] ${
-                    estimateHeavy ? 'text-amore' : 'text-mute-soft'
-                  }`}
-                >
-                  {tDesk('estimateLabel', {
-                    kw: effectiveKwForEstimate,
-                    src: Math.max(selected.size, 1),
-                    region: Math.max(regions.size, 1),
-                    count: estimatedSearches,
-                  })}
-                  {' · '}
-                  {estimateHeavy
-                    ? tDesk('estimateHeavy')
-                    : tDesk('estimateOk')}
-                </p>
-              )}
+        {!active ? (
+          // ── Phase 1 (idle) — 컨트롤 보드: 주제·키워드 + 옵션 + 실행 CTA ──
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            {controlsForm}
+            {errorBanner}
           </div>
-        </WidgetSettingsModal>
+        ) : (
+          // ── Phase 2 (active) — slim bar + (확장 시 controls) + 결과 영역 ──
+          <>
+            {slimBar}
+            {controlsExpanded && (
+              <div className="shrink-0 border-b-[2px] border-ink bg-paper-soft px-5 py-4">
+                {controlsForm}
+              </div>
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {errorBanner}
 
-        {/* Streaming panel — running 또는 events 있을 때 */}
+              {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
           <div className="border-t border-line-soft bg-paper px-5 py-5">
             {isWorking ? (
@@ -942,12 +970,8 @@ export function DeskCardBody() {
           </div>
         )}
 
-        {/* error / cancelled / stuck / done-empty banners — fail 표시 강제 */}
-        {error && (
-          <Banner tone="warning" title={tDesk('error')}>
-            <span className="font-mono">{error}</span>
-          </Banner>
-        )}
+        {/* cancelled / stuck / done-empty banners — fail 표시 강제.
+            (로컬 error state 배너는 errorBanner 로 상단에서 phase 무관 노출) */}
         {/* stuck (active 인데 progress 가 150s 멈춤) — 정상 LLM 호출도 이
             구간에 들 수 있어 alarm 대신 부드러운 info 톤 + phase 별 안내.
             자동 cancel 은 없음. 4.5분(STUCK_CANCEL_HINT_MS)+ 면 더 오래
@@ -1082,24 +1106,26 @@ export function DeskCardBody() {
             </div>
           </div>
         )}
-        </div>
+            </div>
 
-        {/* 상태 푸터 — 리서치 진행중이면 "리서치가 진행중", 완료 리포트가
-            있으면 "리서치가 완료되었습니다"(클릭 → fullview). 진행중 우선.
-            리포트는 단건이라 count 배지 없음. */}
-        {(() => {
-          const running = submitting || !!pendingJobId || isWorking;
-          if (!running && !showResult) return null;
-          return (
-            <WidgetStatusFooter
-              status={running ? 'running' : 'done'}
-              label={running ? tWidgets('deskRunning') : tWidgets('deskDone')}
-              viewAllLabel={tWidgets('viewAll')}
-              resetKey={running ? 'running' : `done-${job?.id ?? ''}`}
-              onClick={handleDeskFullview}
-            />
-          );
-        })()}
+            {/* 상태 푸터 — 리서치 진행중이면 "리서치가 진행중", 완료 리포트가
+                있으면 "리서치가 완료되었습니다"(클릭 → fullview). 진행중 우선.
+                리포트는 단건이라 count 배지 없음. */}
+            {(() => {
+              const running = submitting || !!pendingJobId || isWorking;
+              if (!running && !showResult) return null;
+              return (
+                <WidgetStatusFooter
+                  status={running ? 'running' : 'done'}
+                  label={running ? tWidgets('deskRunning') : tWidgets('deskDone')}
+                  viewAllLabel={tWidgets('viewAll')}
+                  resetKey={running ? 'running' : `done-${job?.id ?? ''}`}
+                  onClick={handleDeskFullview}
+                />
+              );
+            })()}
+          </>
+        )}
       </div>
 
       <Modal
