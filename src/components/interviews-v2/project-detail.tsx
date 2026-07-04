@@ -27,10 +27,9 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Interview V2 — project detail view (file list + search chat). The ⚙ 설정 /
-// 📤 업로드 controls in the subheader are wired by the upload spec (disabled
-// placeholders for now); the right-hand 60% is the ChatGPT-style search chat
-// (pr-interview-v2-search-ui-chat).
+// Interview V2 — project detail view (file list + search chat). 📤 업로드는
+// 파일 리스트 패널 헤더에 있고, 검색은 우측 60% 의 ChatGPT-style search chat
+// (pr-interview-v2-search-ui-chat) 이 상시 담당한다.
 
 function StatusPill({ status }: { status: InterviewDocumentStatus }) {
   const t = useTranslations('InterviewsV2');
@@ -90,9 +89,8 @@ export function ProjectDetail({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* 서브헤더 — 좌: 뒤로 + 프로젝트명. 📤 업로드는 파일 리스트 패널
-          헤더로 이동 (아래); ⚙ 설정 / 🔍 검색은 아직 placeholder disabled
-          (검색은 우측 패널 상시 노출). */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line-soft px-6 py-3">
+          헤더로 이동 (아래); 검색은 우측 패널 상시 노출. */}
+      <div className="flex shrink-0 items-center gap-3 border-b border-line-soft px-6 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onBack}>
             ← {t('back')}
@@ -102,14 +100,6 @@ export function ProjectDetail({
               {projectName}
             </span>
           )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" disabled>
-            ⚙ {t('settings')}
-          </Button>
-          <Button variant="ghost" size="sm" disabled>
-            🔍 {t('search')}
-          </Button>
         </div>
       </div>
 
