@@ -30,6 +30,17 @@ type Phase = 'form' | 'idle' | 'recording' | 'uploading';
 // transcript + no-sound-on-playback report.
 const SILENCE_PEAK_THRESHOLD = 0.02;
 
+// Diagnostic-panel hysteresis. The panel used to toggle on a single
+// `level < SILENCE_PEAK_THRESHOLD` check, but `level` is sampled every animation
+// frame off the live VU meter, so a mic sitting right at the threshold made it
+// oscillate 0.015↔0.025 and the panel flickered on/off many times a second.
+// Separate enter/exit thresholds (a 4x gap) plus dwell times give it a stable
+// state machine: it only appears after 3s of *sustained* silence and only hides
+// after 1s of *sustained* audible input, so threshold-edge jitter never flips it.
+const SILENT_EXIT_THRESHOLD = 0.08; // level must clear this to leave the silent state
+const SILENT_ENTER_MS = 3000; // sustained silence before the panel shows
+const SILENT_EXIT_MS = 1000; // sustained audible input before it hides
+
 function pickMimeType(): string {
   if (typeof MediaRecorder === 'undefined') return '';
   for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
@@ -53,6 +64,12 @@ export function QaVoiceAgentModal({
   const [tags, setTags] = useState<string[]>([]);
   const [duration, setDuration] = useState(0);
   const [level, setLevel] = useState(0); // live input level 0..1 (VU meter)
+  // Silent-mic diagnostic panel visibility, driven by the hysteresis state
+  // machine below (see SILENT_EXIT_THRESHOLD). Kept as its own state — separate
+  // from the raw `level` — so threshold-edge jitter can't flicker the panel.
+  const [silentPanelVisible, setSilentPanelVisible] = useState(false);
+  const silentSinceRef = useRef<number | null>(null); // when sustained silence began
+  const audibleSinceRef = useRef<number | null>(null); // when sustained audible input began
   // Mic device picker: the silent-take report (see SILENCE_PEAK_THRESHOLD) was
   // often just the wrong input device selected by the OS. Enumerating audio
   // inputs lets the tester pick the right mic and self-diagnose a dead input
@@ -90,6 +107,10 @@ export function QaVoiceAgentModal({
     }
     analyserRef.current = null;
     setLevel(0);
+    // Reset the silent-mic hysteresis so a fresh recording starts clean.
+    setSilentPanelVisible(false);
+    silentSinceRef.current = null;
+    audibleSinceRef.current = null;
   }, []);
 
   // Each fresh open starts at the tagging form with a clean slate — the modal
@@ -269,6 +290,11 @@ export function QaVoiceAgentModal({
         audioCtxRef.current = ctx;
         analyserRef.current = analyser;
         peakRef.current = 0;
+        // Start each take with the diagnostic panel hidden and its dwell timers
+        // clear (see the hysteresis block in tick below).
+        setSilentPanelVisible(false);
+        silentSinceRef.current = null;
+        audibleSinceRef.current = null;
         const buf = new Uint8Array(analyser.fftSize);
         const tick = () => {
           const a = analyserRef.current;
@@ -282,6 +308,32 @@ export function QaVoiceAgentModal({
           const rms = Math.sqrt(sum / buf.length);
           peakRef.current = Math.max(peakRef.current, rms);
           setLevel(rms);
+
+          // Silent-mic diagnostic hysteresis, evaluated per frame off the same
+          // rms sample. Two thresholds with a 4x gap plus dwell timers keep the
+          // panel from flickering when the mic sits near the silence threshold:
+          //  - enter: rms below SILENCE_PEAK_THRESHOLD, sustained SILENT_ENTER_MS
+          //  - exit:  rms above SILENT_EXIT_THRESHOLD, sustained SILENT_EXIT_MS
+          //  - between the thresholds: hold (the anti-flicker band).
+          // Crossing a threshold clears the opposing timer so brief blips don't
+          // accumulate toward a transition. setSilentPanelVisible is idempotent —
+          // React bails out when the value is unchanged, so re-asserting it every
+          // frame past a dwell edge costs nothing.
+          const now = Date.now();
+          if (rms < SILENCE_PEAK_THRESHOLD) {
+            if (silentSinceRef.current == null) silentSinceRef.current = now;
+            audibleSinceRef.current = null;
+            if (now - silentSinceRef.current >= SILENT_ENTER_MS) {
+              setSilentPanelVisible(true);
+            }
+          } else if (rms > SILENT_EXIT_THRESHOLD) {
+            if (audibleSinceRef.current == null) audibleSinceRef.current = now;
+            silentSinceRef.current = null;
+            if (now - audibleSinceRef.current >= SILENT_EXIT_MS) {
+              setSilentPanelVisible(false);
+            }
+          }
+
           rafRef.current = requestAnimationFrame(tick);
         };
         rafRef.current = requestAnimationFrame(tick);
@@ -433,18 +485,21 @@ export function QaVoiceAgentModal({
             {/* Live input meter — confirms the mic is actually picking up sound. */}
             <div className="h-2 w-40 overflow-hidden rounded-full bg-paper-soft border border-line-soft">
               <div
-                className="h-full bg-amore transition-[width] duration-75"
+                className="h-full bg-amore transition-[width] duration-300"
                 style={{ width: `${meterPct}%` }}
               />
             </div>
             <p className="text-sm text-mute">
               {meterPct < 4 ? '소리가 감지되지 않아요 — 마이크 확인' : '녹음 중…'}
             </p>
-            {/* Sustained-silence diagnostic: after 3s below the silence
-                threshold, surface a step-by-step panel so the tester can
-                self-diagnose (wrong device / permission / OS volume / another
-                app holding the mic) — a silent take is hard-blocked on submit. */}
-            {level < SILENCE_PEAK_THRESHOLD && duration >= 3 && (
+            {/* Sustained-silence diagnostic: after 3s of sustained silence the
+                hysteresis state machine (SILENT_EXIT_THRESHOLD) flips
+                silentPanelVisible on, surfacing a step-by-step panel so the
+                tester can self-diagnose (wrong device / permission / OS volume /
+                another app holding the mic) — a silent take is hard-blocked on
+                submit. Driving off the debounced state (not raw `level`) is what
+                stops the panel from flickering at the threshold edge. */}
+            {silentPanelVisible && (
               <div className="w-full space-y-2 rounded-sm border-2 border-warning bg-warning-bg p-3 text-sm">
                 <p className="font-semibold text-warning">
                   ⚠ 마이크 입력이 감지되지 않아요
