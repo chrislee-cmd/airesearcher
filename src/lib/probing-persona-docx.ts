@@ -60,6 +60,8 @@ const PANEL_META: Record<
   brand_perception: { icon: '🏷️', title: '브랜드 인식' },
   decision_drivers: { icon: '🧭', title: '의사결정 요인' },
   behavioral_patterns: { icon: '🔁', title: '행동 패턴' },
+  // PR (probing-default-etc-widget): catch-all "기타" — 매치 안 되는 정보.
+  etc: { icon: '📎', title: '기타' },
 };
 
 const CONFIDENCE_LABEL: Record<ProbingPersonaSection['confidence'], string> = {

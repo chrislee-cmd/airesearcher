@@ -1210,7 +1210,7 @@ function ExpandedBody() {
               인터뷰를 종료하고 페르소나를 내보낼까요?
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 응답자 페르소나 그리드(기본 8 + 추가 위젯)를
+              현재 세션을 정지하고, 응답자 페르소나 그리드(기본 9 + 추가 위젯)를
               PDF 파일로 다운로드합니다. 정지 후에는 이 세션을 다시 이어 받을 수
               없습니다.
             </p>
@@ -1254,7 +1254,7 @@ export const probingCard: WidgetContent = {
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
     description:
-      '좌측은 응답자 페르소나 8 패널, 우측은 사용자가 입력한 조사 목적·핵심 가설·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
+      '좌측은 응답자 페르소나 9 패널(기타 포함), 우측은 사용자가 입력한 조사 목적·핵심 가설·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
     expandedCols: 3,
   },
   state: 'idle',

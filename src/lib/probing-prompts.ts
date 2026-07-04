@@ -186,6 +186,10 @@ export const PROBING_PERSONA_SECTION_KEYS = [
   'brand_perception',
   'decision_drivers',
   'behavioral_patterns',
+  // PR (probing-default-etc-widget): 9번째 default = catch-all "기타". 다른
+  // 어떤 섹션 (기본 8 + custom) 에도 매치되지 않는 응답자 정보를 담아 신호가
+  // drop 되지 않게 한다. isCatchAll 표시는 DEFAULT_PERSONA_SECTIONS 참고.
+  'etc',
 ] as const;
 
 export type ProbingPersonaSectionKey =
@@ -210,6 +214,10 @@ export type ProbingPersonaSectionDef = {
   key: string;
   title: string;
   description?: string;
+  // PR (probing-default-etc-widget): catch-all 섹션 표시. true 면
+  // buildProbingPersonaSystem 이 prompt 에 "매치 안 되는 정보는 여기로
+  // fallback, drop 금지" 지시문을 붙인다. 기본값 false (일반 섹션).
+  isCatchAll?: boolean;
 };
 
 // 기본 8 섹션 정의 (key + 사람 친화 title + 신호 가이드 description).
@@ -261,6 +269,18 @@ export const DEFAULT_PERSONA_SECTIONS: ProbingPersonaSectionDef[] = [
     key: 'behavioral_patterns',
     title: '행동 패턴',
     description: '일상 / 소비 / 미디어 습관 / 의사결정 빈도.',
+  },
+  // PR (probing-default-etc-widget): 9번째 default = catch-all "기타".
+  // 다른 어떤 섹션 (기본 8 + custom) 에도 명확히 매치되지 않는 응답자 정보를
+  // 담는 fallback. 취미 / 우연한 일화 / 부수적 맥락처럼 "버려질 뻔한" 신호가
+  // 여기 모여 사용자가 놓치지 않게 한다. isCatchAll=true → 아래 prompt 가
+  // "매치 안 되는 정보는 여기로, drop 금지, 다른 섹션과 중복 금지" 를 강제.
+  {
+    key: 'etc',
+    title: '기타',
+    description:
+      '다른 어떤 섹션에도 명확히 매치되지 않는 추가 정보 (취미 / 우연한 일화 / 부수적 맥락 등). 버려질 뻔한 신호를 담는 catch-all. 다른 섹션에 이미 담긴 정보는 중복 기재하지 말 것.',
+    isCatchAll: true,
   },
 ];
 
@@ -320,6 +340,12 @@ export const probingPersonaSchema = z.object({
   behavioral_patterns: personaSectionSchema.describe(
     '행동 패턴 — 일상 / 소비 / 미디어 습관 / 의사결정 빈도.',
   ),
+  // PR (probing-default-etc-widget): catch-all "기타" — 다른 어떤 섹션에도
+  // 매치되지 않는 응답자 정보 (취미 / 일화 / 부수적 맥락). 신호가 drop 되지
+  // 않도록 담는 fallback. 다른 섹션과 중복 금지.
+  etc: personaSectionSchema.describe(
+    '기타 (catch-all) — 다른 어떤 섹션에도 매치되지 않는 추가 정보. 버려질 뻔한 신호를 담는 fallback. 담을 정보 없으면 confidence=insufficient.',
+  ),
 })
   // custom_sections (PR: probing-persona-dynamic-sections) 을 additively 허용.
   // 기본 8 key 는 required 로 그대로 강제되고, 사용자 정의 key 는 같은 section
@@ -375,6 +401,17 @@ export function buildProbingPersonaSystem(
       return `${i + 1}. **${s.key}** (${s.title})${desc ? ` — ${desc}` : ''}`;
     })
     .join('\n');
+  // catch-all 섹션 (isCatchAll=true) — 매치 안 되는 정보를 담는 fallback.
+  // 별도 블록으로 "drop 금지 / 중복 금지" 를 강조 (PR: probing-default-etc-widget).
+  const catchAllKeys = sections.filter((s) => s.isCatchAll).map((s) => s.key);
+  const catchAllBlock =
+    catchAllKeys.length > 0
+      ? `\n\n## catch-all 섹션 (${catchAllKeys.join(', ')}) — 매치 안 되는 정보 담기
+- 위 key 는 **다른 어떤 섹션에도 명확히 매치되지 않는** 응답자 정보를 담는 fallback 입니다.
+- 응답자가 언급한 정보 중 기본 섹션 / custom 섹션 어디에도 딱 들어맞지 않는 신호 (예: 취미, 우연한 일화, 부수적 맥락) 를 **여기에 담고 절대 버리지 마세요.** 사용자가 이 정보를 놓치지 않게 하는 것이 목적입니다.
+- 이미 다른 섹션에 담긴 정보를 여기 **중복 기재하지 마세요** — 진짜로 "남는" 정보만.
+- 담을 정보가 없으면 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열.`
+      : '';
   // 예시 JSON template — 전달된 모든 key (기본 8 + custom_N) 를 그대로 나열해
   // LLM 이 custom key 도 응답 object 에 포함해야 함을 명시적으로 학습하게 한다.
   // 값은 placeholder — 모델이 채워 넣는다.
@@ -405,7 +442,7 @@ ${exampleJson}
 - \`custom_\` 으로 시작하는 key 들은 사용자가 직접 지정한 조사 목적 (아래 신호 가이드의 description) 을 채우기 위한 것이므로 **특히 중요** — 기본 섹션과 동일한 성실도로 채우시오.
 
 ## 섹션별 신호 가이드
-${sectionGuide}
+${sectionGuide}${catchAllBlock}
 
 ## 각 섹션의 출력 모양
 - \`summary\` — 1~2문장. 이 섹션의 핵심 가설. confidence=insufficient 면 빈 문자열.
