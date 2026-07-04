@@ -193,6 +193,7 @@ function ExpandedBody() {
     status: sessionStatus,
     segments: rawSegments,
     error: sessionError,
+    renewing: sessionRenewing,
     start: startSession,
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
@@ -911,6 +912,8 @@ function ExpandedBody() {
     if (sessionStatus === 'stopping') return '세션 종료 중…';
     if (sessionStatus === 'error') return '세션 오류';
     if (!isLive) return null;
+    // 30분 cap 재연결 중 — transcript 는 계속 흐르므로 subtle 힌트만.
+    if (sessionRenewing) return '🔄 세션 갱신 중…';
     if (reflectionStatus === 'streaming') return '응답자 페르소나 갱신 중…';
     if (thinkingStreaming) return 'AI 사고 흐름 진행 중…';
     return '대기 중';

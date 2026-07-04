@@ -26,7 +26,12 @@ export const maxDuration = 30;
 const CLIENT_SECRETS_URL = 'https://api.openai.com/v1/realtime/client_secrets';
 const DEFAULT_TTL_SECONDS = 600;
 
-export async function POST() {
+// Well-formed UUID guard for the optional renewal `session_id`. Anything else
+// is ignored and treated as a fresh session (new start-lump).
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function POST(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -47,12 +52,26 @@ export async function POST() {
   // credit_transactions(generation_id) WHERE reason='feature_use'. The
   // heartbeat route derives subsequent tick generation_ids deterministically
   // from this same session_id so a session never double-charges itself.
-  const sessionId = randomUUID();
+  //
+  // Session renewal (client hits the OpenAI ~30-min transcription cap and
+  // reconnects mid-session): the client POSTs its original `session_id`. We
+  // reuse it as the generation_id, so spend_credits short-circuits on the
+  // existing feature_use row (0021 migration) and returns ok WITHOUT charging
+  // again — the time-based billing is already covered by the original
+  // start-lump + heartbeat ticks. A forged / unknown session_id has no prior
+  // charge, so it just bills a normal start-lump (no free session).
+  const reqBody = (await req.json().catch(() => ({}))) as { session_id?: unknown };
+  const renewId =
+    typeof reqBody?.session_id === 'string' && UUID_RE.test(reqBody.session_id)
+      ? reqBody.session_id
+      : null;
+  const sessionId = renewId ?? randomUUID();
 
   // Charge the start lump *before* allocating the OpenAI client_secret.
   // FEATURE_COSTS.probing = 25 — covers the first hour (one tick).
   // On insufficient balance the OpenAI call is skipped entirely so the
   // user doesn't pay for an OpenAI session they can't actually use.
+  // On renewal this is idempotent (no extra charge — see above).
   const spend = await spendCredits(org.org_id, 'probing', sessionId);
   if (!spend.ok) {
     return NextResponse.json(
