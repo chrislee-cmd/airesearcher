@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -145,7 +146,11 @@ const ACTIVE: DeskJobStatus[] = ['queued', 'expanding', 'crawling', 'summarizing
 type Ctx = {
   jobs: DeskJob[];
   isWorking: boolean;
-  /** Most recent job for the current user — what the screen renders. */
+  /**
+   * Most recent job created *this session* — what the card body renders.
+   * Session-scoped so a fresh visit lands on the idle input UI instead of
+   * replaying a previous session's completed job (see sessionStart).
+   */
   latestJob: DeskJob | null;
   refresh: () => Promise<void>;
   cancelJob: (id: string) => Promise<void>;
@@ -175,6 +180,16 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   // identity change (re-login) or the next healthy response.
   const stopOnExpiredRef = useRef(false);
   const warnedExpiredOnceRef = useRef(false);
+
+  // Session start timestamp (ms), captured once on mount. `jobs` still persists
+  // every past run so a finished report survives refresh/relogin, but
+  // `latestJob` — what the card body renders — is scoped to jobs created *this
+  // session*. Without this a previous session's old completed job (DB order =
+  // newest first) becomes `latestJob`, replaying its stale keyword input +
+  // output UI when the user tries to start a fresh research run (겹침
+  // regression, 2026-07-05). Lazy useState (not a ref) so the value is stable
+  // and readable during render without tripping react-hooks/purity.
+  const [sessionStart] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -270,7 +285,17 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const latestJob = jobs[0] ?? null;
+  // Session-scoped: only jobs created since this provider mounted are eligible
+  // to be `latestJob`. `jobs` is ordered newest-first, so find() returns the
+  // most recent in-session job (or null → idle UI on a fresh visit). Old
+  // completed jobs stay in `jobs` for history but never surface here.
+  const latestJob = useMemo(
+    () =>
+      jobs.find(
+        (j) => new Date(j.created_at).getTime() >= sessionStart,
+      ) ?? null,
+    [jobs, sessionStart],
+  );
   const isWorking = jobs.some((j) => ACTIVE.includes(j.status));
 
   return (
