@@ -310,10 +310,15 @@ function WidgetShellInner({
           height: 140,
           paddingTop: 16,
           paddingBottom: 16,
-          background: headerColor ?? 'var(--canvas-card-header-bg)',
+          // 우선순위: 사용자 per-widget 색(headerColor) > 행 색(부모 canvas-board
+          // 이 --widget-header-row-* 로 주입) > 전역 default(노란 banner).
+          background:
+            headerColor ??
+            'var(--widget-header-row-bg, var(--canvas-card-header-bg))',
           color: 'var(--canvas-card-header-text)',
           fontFamily: 'var(--font-outfit), var(--font-sans)',
-          borderBottom: '3px solid var(--canvas-card-header-divider)',
+          borderBottom:
+            '3px solid var(--widget-header-row-border, var(--canvas-card-header-divider))',
         }}
       >
         <div className="relative flex items-center gap-2 text-xs uppercase">
