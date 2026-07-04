@@ -2,10 +2,31 @@ import type { Survey, SurveyQuestion } from './survey-schema';
 
 const FORMS_BASE = 'https://forms.googleapis.com/v1/forms';
 
+// Read-side question kind, normalised from the Google Forms schema so the
+// client can tell 객관식(choice) from 주관식(text) without re-fetching the
+// form. Choice kinds carry `options`; text/scale carry none.
+//   single_choice → RADIO · multi_choice → CHECKBOX · dropdown → DROP_DOWN
+//   short_answer / long_answer → TEXT · scale → SCALE
+export type FormColumnKind =
+  | 'short_answer'
+  | 'long_answer'
+  | 'single_choice'
+  | 'multi_choice'
+  | 'dropdown'
+  | 'scale';
+
 export type FormColumn = {
   questionId: string;
   itemId: string;
   title: string;
+  // Present for every question the recruiting fullview reads. Older callers
+  // that only need {questionId,itemId,title} ignore these; the 질문 필터
+  // dropdown uses `kind` to keep only choice questions and `options` for the
+  // answer list. Undefined only for a question shape we don't recognise.
+  kind?: FormColumnKind;
+  // choiceQuestion.options values (choice kinds only). Absent when the schema
+  // stored no options — the client then falls back to observed answer values.
+  options?: string[];
 };
 
 export type FormResponseRow = {
@@ -24,10 +45,16 @@ export type FormResponses = {
 };
 
 // Minimal slice of the forms.googleapis.com schema we read.
+type FormQuestion = {
+  questionId?: string;
+  choiceQuestion?: { type?: string; options?: { value?: string }[] };
+  textQuestion?: { paragraph?: boolean };
+  scaleQuestion?: unknown;
+};
 type FormItem = {
   itemId?: string;
   title?: string;
-  questionItem?: { question?: { questionId?: string } };
+  questionItem?: { question?: FormQuestion };
   pageBreakItem?: unknown;
   textItem?: unknown;
 };
@@ -53,6 +80,34 @@ type UpdateFormInfoRequest = {
   updateFormInfo: { info: { description?: string }; updateMask: string };
 };
 type BatchRequest = CreateItemRequest | UpdateFormInfoRequest;
+
+// Inverse of questionToItem for the read path: map a Forms-API question shape
+// back to our read-side kind + choice options. RADIO (and any unrecognised
+// choice type) collapses to single_choice — a safe default since all choice
+// kinds are "객관식" for the 질문 필터 anyway.
+function classifyQuestion(q: FormQuestion): {
+  kind?: FormColumnKind;
+  options?: string[];
+} {
+  if (q.choiceQuestion) {
+    const t = q.choiceQuestion.type;
+    const kind: FormColumnKind =
+      t === 'CHECKBOX'
+        ? 'multi_choice'
+        : t === 'DROP_DOWN'
+          ? 'dropdown'
+          : 'single_choice';
+    const options = (q.choiceQuestion.options ?? [])
+      .map((o) => o.value ?? '')
+      .filter(Boolean);
+    return { kind, options: options.length ? options : undefined };
+  }
+  if (q.textQuestion) {
+    return { kind: q.textQuestion.paragraph ? 'long_answer' : 'short_answer' };
+  }
+  if (q.scaleQuestion) return { kind: 'scale' };
+  return {};
+}
 
 function questionToItem(q: SurveyQuestion): Record<string, unknown> {
   const required = q.required;
@@ -295,10 +350,13 @@ export async function getFormResponses(
   for (const item of schema.items ?? []) {
     const q = item.questionItem?.question;
     if (q?.questionId && item.itemId && item.title) {
+      const { kind, options } = classifyQuestion(q);
       columns.push({
         questionId: q.questionId,
         itemId: item.itemId,
         title: item.title,
+        kind,
+        options,
       });
     }
   }

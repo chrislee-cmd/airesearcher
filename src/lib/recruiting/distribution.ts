@@ -43,7 +43,9 @@ export function findAgeColumn(columns: FormColumn[]): FormColumn | null {
 // '여성'/'남성' normalised from any variant; a non-empty answer that is
 // neither (e.g. '응답하지 않음') keeps its raw value as its own bucket. Empty
 // answers return null so the row is dropped from the cross-tab.
-function normalizeGender(raw: string): string | null {
+// Exported so the spreadsheet can re-derive a row's bucket when matching a
+// clicked distribution cell (same normalisation → the crossfilter lines up).
+export function normalizeGender(raw: string): string | null {
   const s = raw.trim();
   if (!s) return null;
   if (s.includes('여')) return '여성';
@@ -55,7 +57,8 @@ function normalizeGender(raw: string): string | null {
 // age (1..119), or a Korean '20대' range. Anything unparseable returns null
 // (dropped) so the basic table stays clean, matching a SQL GROUP BY that
 // would produce a NULL bucket.
-function toAgeBucket(raw: string, nowYear: number): string | null {
+// Exported for the crossfilter (see normalizeGender above).
+export function toAgeBucket(raw: string, nowYear: number): string | null {
   const s = raw.trim();
   if (!s) return null;
 
@@ -148,4 +151,96 @@ export function buildDistributionTable(
     xTitle: genderCol.title,
     yTitle: ageCol.title,
   };
+}
+
+// ── Crossfilter (분포 셀 클릭 · 질문 필터) ──────────────────────────────
+//
+// A single active filter, mutually exclusive by construction (one union, one
+// value): either a clicked distribution cell (gender × age bucket) or a
+// selected 객관식 질문 답변. Held in the fullview host as session-level state
+// (no URL) and applied to the response spreadsheet rows.
+
+export type RecruitingFilter =
+  | { type: 'cell'; gender: string; ageBucket: string }
+  | { type: 'question'; field: string; answer: string };
+
+// A choice question the 질문 필터 dropdown can offer, with its answer options.
+export type FilterableQuestion = {
+  field: string; // questionId
+  title: string;
+  answers: string[];
+};
+
+// 객관식 = choice question (RADIO / CHECKBOX / DROP_DOWN). 주관식(text) and
+// scale are excluded per spec.
+export function isObjectiveColumn(c: FormColumn): boolean {
+  return (
+    c.kind === 'single_choice' ||
+    c.kind === 'multi_choice' ||
+    c.kind === 'dropdown'
+  );
+}
+
+// Split a stored answer string into its individual values. Multi-select
+// answers arrive ", "-joined from getFormResponses; single answers pass
+// through as one value.
+function splitAnswerValues(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Build the 질문 필터 option list: each 객관식 column with its answer options.
+// Options come from the form schema (choiceQuestion.options); when the schema
+// stored none, fall back to the distinct values observed in the responses.
+export function buildFilterableQuestions(
+  columns: FormColumn[],
+  rows: FormResponseRow[],
+): FilterableQuestion[] {
+  return columns.filter(isObjectiveColumn).map((c) => {
+    const schemaOptions = c.options ?? [];
+    const answers = schemaOptions.length
+      ? schemaOptions
+      : uniqueAnswerValues(rows, c.questionId);
+    return { field: c.questionId, title: c.title, answers };
+  });
+}
+
+function uniqueAnswerValues(
+  rows: FormResponseRow[],
+  questionId: string,
+): string[] {
+  const set = new Set<string>();
+  for (const r of rows) {
+    const raw = r.answers[questionId];
+    if (!raw) continue;
+    for (const v of splitAnswerValues(raw)) set.add(v);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// Does a response row satisfy the active filter? Used by the spreadsheet to
+// narrow visible rows. A cell filter re-derives the row's gender/age bucket
+// with the same normalisation the crosstab used, so a clicked "여성 × 20s"
+// cell matches exactly the rows that produced it. A missing gender/age column
+// means the cell filter can't apply — we pass all rows through rather than
+// silently emptying the table.
+export function rowMatchesFilter(
+  row: FormResponseRow,
+  filter: RecruitingFilter,
+  columns: FormColumn[],
+  nowYear: number,
+): boolean {
+  if (filter.type === 'cell') {
+    const genderCol = findGenderColumn(columns);
+    const ageCol = findAgeColumn(columns);
+    if (!genderCol || !ageCol) return true;
+    const g = normalizeGender(row.answers[genderCol.questionId] ?? '');
+    const a = toAgeBucket(row.answers[ageCol.questionId] ?? '', nowYear);
+    return g === filter.gender && a === filter.ageBucket;
+  }
+  const raw = row.answers[filter.field];
+  if (!raw) return false;
+  return splitAnswerValues(raw).includes(filter.answer);
 }
