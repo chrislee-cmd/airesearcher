@@ -72,6 +72,9 @@ export type UseRealtimeTranscriptionResult = {
   status: TranscriptionStatus;
   segments: TranscriptionSegment[];
   error: string | null;
+  // 세션이 OpenAI 30분 cap 도달로 재연결 중 (transcript 는 계속 흐른다).
+  // 위젯이 "🔄 세션 갱신 중…" 같은 subtle 힌트를 띄우는 용도.
+  renewing: boolean;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -108,6 +111,18 @@ const TAB_SILENCE_DURATION_MS = 400;
 // credit = 4시간 cap) 까지만 받음. 사용자가 stop 안 누른 경우의 안전망.
 const HEARTBEAT_INTERVAL_MS = 60 * 60 * 1000;
 const HEARTBEAT_MAX_TICK = 3;
+
+// 세션 auto-renewal — OpenAI transcription 세션은 ~30분 hard cap 이 있어
+// 그대로 두면 30분 도달 시 transcript 가 끊긴다 (실 인터뷰/필드 조사는
+// 60~90분). 25분(마진 5분) 도달 시 새 client_secret 으로 새 PC 를 붙이고
+// 옛 PC 는 grace 후 close — 사용자 체감 gap <2초. 크레딧은 renewal 시
+// 재과금 없음 (같은 session_id → server 의 spend_credits idempotent).
+const SESSION_MAX_MS = 25 * 60 * 1000;
+// startedAt 대비 경과를 폴링하는 주기. translate 패턴과 동일한 10초 tick.
+const RENEW_CHECK_INTERVAL_MS = 10_000;
+// 새 PC 로 swap 후 옛 PC 를 즉시 닫지 않고 마지막 transcript delta 를
+// 흘려보낼 유예. 이 안에 in-flight utterance 의 completed 이벤트가 들어온다.
+const RENEW_OLD_PC_GRACE_MS = 2000;
 
 type OaiEvent = {
   type?: string;
@@ -185,6 +200,7 @@ export function useRealtimeTranscription(opts?: {
   const [status, setStatus] = useState<TranscriptionStatus>('idle');
   const [segments, setSegments] = useState<TranscriptionSegment[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [renewing, setRenewing] = useState(false);
 
   // 차감 broadcast — start-lump + 각 heartbeat 성공 시 위젯 헤더 -N
   // fly-up + topbar pulse 트리거. ref 로 잡아둬서 비동기 콜백 안에서
@@ -219,6 +235,13 @@ export function useRealtimeTranscription(opts?: {
   // start() 중복 방지. setStatus('starting') 는 batched 라 같은 microtask
   // 안 두 번째 클릭은 closure 로 idle 을 본다 — ref 가 진짜 가드.
   const startInFlightRef = useRef(false);
+  // auto-renewal 상태. startedAt = 현재 OpenAI 세션이 붙은 시각 (renewal 마다
+  // 갱신). sourceRef = 재연결 시 tab/mic 분기 재현용. renewTimer = 25분 폴링.
+  // renewInFlight = 재연결 중복 방지 (실패 시 10초 뒤 자동 재시도).
+  const startedAtRef = useRef<number>(0);
+  const sourceRef = useRef<TranscriptionSource>('mic');
+  const renewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const renewInFlightRef = useRef(false);
   // 같은 item_id 가 delta 들 사이에서 일관되는 걸 가정한다. 새 utterance
   // 가 시작될 때 started_at 을 보관 (segment.started_at).
   const itemStartedAtRef = useRef<Map<string, number>>(new Map());
@@ -238,6 +261,13 @@ export function useRealtimeTranscription(opts?: {
       clearInterval(heartbeatTimerRef.current);
       heartbeatTimerRef.current = null;
     }
+    if (renewTimerRef.current) {
+      clearInterval(renewTimerRef.current);
+      renewTimerRef.current = null;
+    }
+    startedAtRef.current = 0;
+    renewInFlightRef.current = false;
+    setRenewing(false);
     sessionIdRef.current = null;
     heartbeatTickRef.current = 0;
     if (tabSilenceTimerRef.current) {
@@ -373,6 +403,116 @@ export function useRealtimeTranscription(opts?: {
     },
     [upsertSegment],
   );
+
+  // 세션 renewal — OpenAI transcription 세션이 30분 cap 에 닿기 전(25분)에
+  // 새 client_secret 으로 새 PC 를 붙이고 옛 PC 를 grace 후 close 한다.
+  // 핵심 불변식:
+  //  - transcript(segments) 는 건드리지 않는다 → renewal 걸쳐 연속 유지.
+  //  - capture 트랙은 재사용 → mic/tab picker 재프롬프트 없음. 옛 PC 를
+  //    close 해도 sender 트랙은 새 PC 와 공유하므로 stop 하면 안 된다 (close 만).
+  //  - 서버에 같은 session_id 를 넘겨 spend_credits 가 idempotent → 재과금 0.
+  //  - 실패해도 옛 PC 를 강제로 죽이지 않는다. startedAt 을 그대로 둬서
+  //    다음 10초 tick 이 재시도 (세션이 완전히 끊기기 전 여러 번 기회).
+  const renewSession = useCallback(async () => {
+    if (renewInFlightRef.current) return;
+    const capture = captureStreamRef.current;
+    const sid = sessionIdRef.current;
+    // capture / session 이 없으면 이미 정리된 세션 — renewal 무의미.
+    if (!capture || !sid) return;
+
+    renewInFlightRef.current = true;
+    setRenewing(true);
+    console.info('[probing] session_renew_start', {
+      elapsed_ms: Date.now() - startedAtRef.current,
+      session_id: sid,
+    });
+
+    try {
+      // 1) 새 client_secret — 같은 session_id 를 generation_id 로 전달해
+      //    서버 spend_credits 가 기존 charge 를 보고 재과금 없이 통과.
+      const res = await fetch('/api/probing/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        client_secret?: { value?: string };
+        error?: string;
+      };
+      if (!res.ok || !json.client_secret?.value) {
+        throw new Error(json.error ?? `renew_session_failed_${res.status}`);
+      }
+      const clientSecret = json.client_secret.value;
+
+      // 2) 새 PC + datachannel + SDP 교환. start() 의 step 3 와 동형 — tab
+      //    모드는 Opus mono 강제 (mic 는 native mono 라 munge 불필요).
+      const source = sourceRef.current;
+      const newPc = new RTCPeerConnection({ iceServers: [{ urls: STUN_URLS }] });
+      newPc.oniceconnectionstatechange = () => {
+        console.info('[probing] renew pc.iceConnectionState', newPc.iceConnectionState);
+      };
+      capture.getAudioTracks().forEach((tr) => newPc.addTrack(tr, capture));
+
+      const newDc = newPc.createDataChannel('oai-events');
+      newDc.onerror = (ev) => {
+        console.warn('[probing] renew dc error', ev);
+      };
+      newDc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+
+      const offer = await newPc.createOffer();
+      const offerSdp =
+        source === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
+      await newPc.setLocalDescription({ type: 'offer', sdp: offerSdp });
+      const sdpRes = await fetch(REALTIME_SDP_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${clientSecret}`,
+          'Content-Type': 'application/sdp',
+        },
+        body: offerSdp,
+      });
+      if (!sdpRes.ok) {
+        const body = await sdpRes.text().catch(() => '');
+        console.warn('[probing] renew sdp error', sdpRes.status, body.slice(0, 300));
+        try {
+          newPc.close();
+        } catch {
+          /* already closed */
+        }
+        throw new Error(`renew_openai_sdp_${sdpRes.status}`);
+      }
+      const answerSdp = await sdpRes.text();
+      await newPc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+      // 3) swap — 새 PC/DC 를 active 로. 옛 것은 grace 후 close (마지막 delta
+      //    수신). 트랙은 공유하므로 stop 하지 않고 PC/DC 만 닫는다.
+      const oldPc = pcRef.current;
+      const oldDc = dcRef.current;
+      pcRef.current = newPc;
+      dcRef.current = newDc;
+      startedAtRef.current = Date.now();
+      setTimeout(() => {
+        try {
+          oldDc?.close();
+        } catch {
+          /* already closed */
+        }
+        try {
+          oldPc?.close();
+        } catch {
+          /* already closed */
+        }
+      }, RENEW_OLD_PC_GRACE_MS);
+
+      console.info('[probing] session_renew_done', { session_id: sid });
+    } catch (e) {
+      // 옛 PC 유지 — 다음 tick 재시도. 세션을 끊지 않는다 (best-effort).
+      console.warn('[probing] session_renew_failed', e);
+    } finally {
+      renewInFlightRef.current = false;
+      setRenewing(false);
+    }
+  }, [handleOaiEvent]);
 
   const stop = useCallback(async () => {
     if (status === 'idle') return;
@@ -581,6 +721,20 @@ export function useRealtimeTranscription(opts?: {
       setStatus('live');
       startInFlightRef.current = false;
 
+      // auto-renewal 무장 — 현재 OpenAI 세션 시작 시각 기록 + source 저장
+      // (재연결 시 tab/mic 분기 재현). 10초마다 경과를 보고 25분 넘으면
+      // renewSession() 발사. cleanup() 이 interval + startedAt 을 해제.
+      startedAtRef.current = Date.now();
+      sourceRef.current = source;
+      if (!renewTimerRef.current) {
+        renewTimerRef.current = setInterval(() => {
+          if (startedAtRef.current === 0) return;
+          if (Date.now() - startedAtRef.current >= SESSION_MAX_MS) {
+            void renewSession();
+          }
+        }, RENEW_CHECK_INTERVAL_MS);
+      }
+
       // 1시간 heartbeat 시작 — start lump 가 이미 첫 1시간을 커버하므로
       // 첫 tick (index 1) 은 1시간 후 발사. cleanup() 이 interval 을 해제.
       // 서버가 402 (잔액 부족) 또는 cap 초과를 반환하면 자동 정지.
@@ -623,7 +777,7 @@ export function useRealtimeTranscription(opts?: {
         }, HEARTBEAT_INTERVAL_MS);
       }
     },
-    [cleanup, handleOaiEvent, status],
+    [cleanup, handleOaiEvent, renewSession, status],
   );
 
   // unmount 시 누수 방지. 세션이 살아 있으면 정리.
@@ -633,5 +787,5 @@ export function useRealtimeTranscription(opts?: {
     };
   }, [cleanup]);
 
-  return { status, segments, error, start, stop };
+  return { status, segments, error, renewing, start, stop };
 }
