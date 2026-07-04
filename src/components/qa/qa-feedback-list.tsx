@@ -244,6 +244,14 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
                     >
                       {f.status}
                     </span>
+                    {/* 무음 뱃지 — 무음 hard-block 도입 전 저장된 empty-audio
+                        row (meta.silent=true) 를 시각 경고. 신규 row 는 이제
+                        submit 시 차단되어 이 플래그가 안 붙는다. */}
+                    {Boolean(f.meta?.silent) && (
+                      <span className="px-1.5 py-0.5 rounded-pill border border-warning bg-warning-bg text-xs-soft">
+                        ⚠ 무음 (재생 안 됨)
+                      </span>
+                    )}
                   </div>
                   {Array.isArray(f.meta?.tags) &&
                     (f.meta.tags as string[]).length > 0 && (
