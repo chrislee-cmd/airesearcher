@@ -20,6 +20,7 @@ import { ShareMenu } from '@/components/ui/share-menu';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { JobProgress } from '@/components/ui/job-progress';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
@@ -27,14 +28,11 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
-import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
-import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
 import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
-import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
+import { LANGUAGES, getLanguage, pickFromBrowser } from '@/lib/transcripts/languages';
 
 function readActiveProjectId(): string | null {
   try {
@@ -132,6 +130,28 @@ export function QuotesCardBody() {
   // 실패한 파일만 여기 남아 서브헤더 '전사 시작(재시도)' CTA 로 다시 시작한다.
   const [readyFiles, setReadyFiles] = useState<ReadyTranscriptFile[]>([]);
 
+  // 위젯 phase — 'idle' (실행 전, 컨트롤 보드) → 'active' (실행 중/완료,
+  // slim bar + 산출물). CTA(업로드 시작) 시 active 로 승격하고 되돌아가지
+  // 않는다 (결정 3 — 결과물 있으면 active 유지). `settingsExpanded` 는
+  // active slim bar 의 ▼ 재확장 토글.
+  const [phase, setPhase] = useState<'idle' | 'active'>('idle');
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
+
+  // 실행 신호(진행/완료 잡, 로컬 업로드, 시작 대기 파일)가 하나라도 있으면
+  // active 로 승격. 새로고침/다른 디바이스에서 이미 잡이 있는 경우(realtime
+  // 로 늦게 로드)도 이 effect 가 idle→active 를 처리한다. active 에서 idle 로
+  // 되돌리지 않는다.
+  useEffect(() => {
+    if (
+      job.jobs.length > 0 ||
+      Object.keys(job.localUploads).length > 0 ||
+      readyFiles.length > 0
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- promote on external job state
+      setPhase('active');
+    }
+  }, [job.jobs.length, job.localUploads, readyFiles.length]);
+
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `uploadToStorage` is captured once. We mirror live state into a
   // ref so the captured uploadToStorage still reads the current language.
@@ -223,6 +243,9 @@ export function QuotesCardBody() {
   // 프로그레스가 끊기지 않는다. 시작 실패분만 readyFiles 로 남는다.
   async function uploadToStorage(files: File[]) {
     if (busyUpload) return;
+    // CTA 확정 — idle 컨트롤 보드에서 active(slim bar + 진행률)로 전이.
+    // 업로드 progress 가 곧바로 본문에 뜨도록 업로드 시작 시점에 승격.
+    setPhase('active');
     setBusyUpload(true);
     setUploadError(null);
     const uploaded: ReadyTranscriptFile[] = [];
@@ -532,61 +555,202 @@ export function QuotesCardBody() {
     }
   }, [job.jobs]);
 
+  const languageOptions = LANGUAGES.map((l) => ({
+    value: l.code,
+    label: `${l.flag} ${l.label}`,
+  }));
+
+  // 컨트롤 보드 본체 — idle 메인 영역과 active slim bar 재확장 패널이 공유.
+  // 언어 셀렉트 + 📤 업로드 CTA (+ 자동 시작 실패 시 재시도 CTA/에러 hint).
+  // `idSuffix` 로 idle / expanded 인스턴스의 htmlFor 를 구분한다.
+  const renderControls = (idSuffix: string) => (
+    <div className="space-y-4">
+      <Field label="언어" htmlFor={`transcript-lang-${idSuffix}`}>
+        <Select
+          id={`transcript-lang-${idSuffix}`}
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          options={languageOptions}
+        />
+      </Field>
+
+      {/* 📤 파일 업로드 — 클릭 시 업로드 모달(드롭존) open. 아직 파일이 없는
+          첫 진입엔 amore halo pulse 로 유도. */}
+      <span
+        className={
+          noFiles ? 'block widget-gate-guide-pulse' : 'block'
+        }
+      >
+        <Button
+          variant="primary"
+          size="lg"
+          className="w-full"
+          onClick={() => setUploadOpen(true)}
+          disabled={busyUpload}
+        >
+          📤 {tWidgets('upload')}
+        </Button>
+      </span>
+
+      {/* 자동 전사 시작이 실패해 남은 준비 파일 재시도 CTA — 정상 흐름에선
+          렌더 안 됨. */}
+      {readyCount > 0 && (
+        <ChromeButton
+          variant="primary"
+          size="lg"
+          onClick={() => void startTranscription()}
+          disabled={!canStart}
+          className="w-full"
+        >
+          {busyUpload
+            ? tCommon('loading')
+            : `${tWidgets('transcriptStart')} (${readyCount})`}
+        </ChromeButton>
+      )}
+
+      {uploadError ? (
+        <p className="text-sm text-warning">{uploadError}</p>
+      ) : readyCount > 0 ? (
+        <p className="text-xs text-mute">
+          {tWidgets('transcriptReadyHint', { count: readyCount })}
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
-      {/* 본문 — chrome 과 헤더는 widget-shell 책임. body 는 flex column
-          으로 sub-header (upload dropzone) / 중간 영역 (flex-1, 큐) /
-          최근 산출물 (bottom) 3단으로 나뉘어 — 산출물이 카드 바닥에
-          고정되고 빈 공간은 중간이 흡수. */}
+      {/* 본문 — chrome 과 헤더는 widget-shell 책임. 2-phase 구조:
+            · idle   → 위젯 본문 전체가 컨트롤 보드 (언어 + 📤 업로드 CTA)
+            · active → 상단 slim bar (설정 요약 + ▼ 재확장) + 산출물(진행/큐)
+          업로드 모달은 두 phase 공용으로 항상 마운트. */}
       <div className="flex h-full flex-col">
-        {/* WidgetSubHeader — 좌 = 📤 업로드 버튼. 업로드 완료 시 자동 전사
-            시작이라 우측 '시작' CTA 는 자동 시작이 실패해 readyFiles 에 남은
-            파일이 있을 때만 '재시도'로 노출. 업로드 오류는 hint 로 항상 노출. */}
-        <WidgetSubHeader
-          compact
-          inputs={
-            <OnboardingTooltip
-              id="widget-quotes"
-              message={tWidgets('onboardingUpload')}
-              dismissLabel={tWidgets('onboardingDismiss')}
-            >
-              <WidgetUploadButton
-                onClick={() => setUploadOpen(true)}
-                label={tWidgets('upload')}
-                count={queueJobs.length}
-                disabled={busyUpload}
-                pulse={noFiles}
-              />
-            </OnboardingTooltip>
-          }
-          actions={
-            readyCount > 0 ? (
-              <ChromeButton
-                variant="primary"
-                size="lg"
-                onClick={() => void startTranscription()}
-                disabled={!canStart}
+        {phase === 'idle' ? (
+          /* ── Phase 1 (idle) — 위젯 본문 전체가 컨트롤 보드. 옛 서브헤더의
+                설정/CTA 를 메인 영역으로 끌어올려 언어 설정 + 큰 📤 업로드
+                CTA 만 노출. 파일 업로드 시작 시 phase='active' 로 전이. ── */
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            {renderControls('idle')}
+          </div>
+        ) : (
+          /* ── Phase 2 (active) — slim bar (설정 요약 + ▼ 재확장) + 산출물. ── */
+          <>
+            {/* Slim bar — 옛 서브헤더 대체. 현재 언어 요약 + 펼침 토글만. */}
+            <div className="flex items-center gap-2 border-b-[2px] border-ink bg-paper-soft px-4 py-2">
+              <span className="min-w-0 flex-1 truncate text-xs text-mute">
+                ⚙ 컨트롤 · {getLanguage(language).label}
+              </span>
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label={settingsExpanded ? '컨트롤 접기' : '컨트롤 펼치기'}
+                onClick={() => setSettingsExpanded((v) => !v)}
               >
-                {busyUpload
-                  ? tCommon('loading')
-                  : `${tWidgets('transcriptStart')} (${readyCount})`}
-              </ChromeButton>
-            ) : undefined
-          }
-          hint={
-            uploadError ? (
-              <span className="text-warning">{uploadError}</span>
-            ) : readyCount > 0 ? (
-              <span>{tWidgets('transcriptReadyHint', { count: readyCount })}</span>
-            ) : noFiles ? (
-              <span>{tWidgets('uploadHint')}</span>
-            ) : undefined
-          }
-        />
+                <span aria-hidden className="text-xs leading-none">
+                  {settingsExpanded ? '▲' : '▼'}
+                </span>
+              </IconButton>
+            </div>
 
-        {/* 업로드 모달 — 옛 서브헤더 dropzone (파일 드래그드롭 / 클릭 선택).
-            파일 수신 → startUploads → language-confirm 다이얼로그 (모달은
-            자동 닫힘). 큐 진행 중에도 재열림 → 파일 추가 정상. */}
+            {/* ▼ 재확장 — 옛 컨트롤 재노출 (값 유지). 여기서 언어 변경 시
+                slim bar 요약도 즉시 반영. 새 파일 업로드도 여기서 시작. */}
+            {settingsExpanded && (
+              <div className="border-b border-line-soft p-4">
+                {renderControls('expanded')}
+              </div>
+            )}
+
+            {/* 중간 영역 — 업로드 진행 + 큐. flex-1 로 산출물을 바닥으로
+                밀어내고, 내용이 길어지면 자체적으로 스크롤. */}
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+              {hasUploads && (
+                <div>
+                  <SectionLabel>{tCommon('uploading')}</SectionLabel>
+                  <ul className="mt-2 space-y-2">
+                    {Object.entries(job.localUploads).map(([id, pct]) => (
+                      <li key={id}>
+                        <JobProgress value={pct} label={tCommon('uploadingFiles')} variant="inline" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {queueJobs.length > 0 && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <SectionLabel>진행 중 / 대기</SectionLabel>
+                    <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
+                  </div>
+                  <ul className="space-y-3">
+                    {queueJobs.map((j) => (
+                      <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
+                  기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
+                  이 구간에도 위젯이 진행 신호를 잃지 않도록 indeterminate 바를
+                  노출 (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
+              {busyUpload && !hasUploads && queueJobs.length === 0 && (
+                <div>
+                  <SectionLabel>진행 중</SectionLabel>
+                  <div className="mt-2">
+                    <JobProgress label={tCommon('transcribing')} variant="inline" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
+                진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
+                진행중이 완료보다 우선. `busyUpload` 포함이 핵심: 업로드 100% 직후
+                /api/transcripts/start 응답을 기다리는 갭(잡이 아직 job.jobs 에
+                안 뜬 구간) 동안에도 running 을 유지해, 이전 완료본이 있어도
+                "완료" 로 오표시하지 않는다. 시작 실패로 readyFiles 에 남은
+                대기분이 있으면(pending-retry) 완료로 오인시키지 않고 푸터를
+                숨긴다 — slim bar 재확장의 재시도 CTA + 에러 hint 가 신호를 담당. */}
+            {(() => {
+              const inflight = job.jobs.some(
+                (j) =>
+                  j.status === 'submitting' ||
+                  j.status === 'transcribing' ||
+                  j.status === 'queued',
+              );
+              const running = hasUploads || busyUpload || inflight;
+              if (running) {
+                return (
+                  <WidgetStatusFooter
+                    status="running"
+                    label={tWidgets('transcriptRunning')}
+                    viewAllLabel={tWidgets('viewAll')}
+                    count={doneJobs.length}
+                    resetKey="running"
+                    onClick={handleQuotesFullview}
+                  />
+                );
+              }
+              // pending-retry 중엔 완료로 오인시키지 않는다.
+              if (readyFiles.length > 0 || doneJobs.length === 0) return null;
+              return (
+                <WidgetStatusFooter
+                  status="done"
+                  label={tWidgets('transcriptDone')}
+                  viewAllLabel={tWidgets('viewAll')}
+                  count={doneJobs.length}
+                  resetKey={`done-${doneJobs.length}`}
+                  onClick={handleQuotesFullview}
+                />
+              );
+            })()}
+          </>
+        )}
+
+        {/* 업로드 모달 — 두 phase 공용. idle 컨트롤 보드 / active slim bar
+            재확장의 📤 업로드 CTA 가 연다. 파일 수신 → startUploads →
+            language-confirm 다이얼로그 (모달 자동 닫힘). */}
         <WidgetUploadModal
           open={uploadOpen}
           onClose={() => setUploadOpen(false)}
@@ -608,93 +772,6 @@ export function QuotesCardBody() {
             )}
           </FileDropZone>
         </WidgetUploadModal>
-
-          {/* 중간 영역 — 업로드 진행 + 큐. flex-1 로 산출물을 바닥으로
-              밀어내고, 내용이 길어지면 자체적으로 스크롤. 업로드 드롭존은
-              위 WidgetSubHeader 의 inputs 슬롯으로 이전. */}
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-            {hasUploads && (
-              <div>
-                <SectionLabel>{tCommon('uploading')}</SectionLabel>
-                <ul className="mt-2 space-y-2">
-                  {Object.entries(job.localUploads).map(([id, pct]) => (
-                    <li key={id}>
-                      <JobProgress value={pct} label={tCommon('uploadingFiles')} variant="inline" />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {queueJobs.length > 0 && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <SectionLabel>진행 중 / 대기</SectionLabel>
-                  <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
-                </div>
-                <ul className="space-y-3">
-                  {queueJobs.map((j) => (
-                    <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
-                기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
-                이 구간에도 위젯이 진행 신호를 잃지 않도록 indeterminate 바를
-                노출 (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
-            {busyUpload && !hasUploads && queueJobs.length === 0 && (
-              <div>
-                <SectionLabel>진행 중</SectionLabel>
-                <div className="mt-2">
-                  <JobProgress label={tCommon('transcribing')} variant="inline" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
-              진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
-              진행중이 완료보다 우선. `busyUpload` 포함이 핵심: 업로드 100% 직후
-              /api/transcripts/start 응답을 기다리는 갭(잡이 아직 job.jobs 에
-              안 뜬 구간) 동안에도 running 을 유지해, 이전 완료본이 있어도
-              "완료" 로 오표시하지 않는다. 시작 실패로 readyFiles 에 남은
-              대기분이 있으면(pending-retry) 완료로 오인시키지 않고 푸터를
-              숨긴다 — 서브헤더 재시도 CTA + 에러 hint 가 신호를 담당. */}
-          {(() => {
-            const inflight = job.jobs.some(
-              (j) =>
-                j.status === 'submitting' ||
-                j.status === 'transcribing' ||
-                j.status === 'queued',
-            );
-            const running = hasUploads || busyUpload || inflight;
-            if (running) {
-              return (
-                <WidgetStatusFooter
-                  status="running"
-                  label={tWidgets('transcriptRunning')}
-                  viewAllLabel={tWidgets('viewAll')}
-                  count={doneJobs.length}
-                  resetKey="running"
-                  onClick={handleQuotesFullview}
-                />
-              );
-            }
-            // pending-retry 중엔 완료로 오인시키지 않는다.
-            if (readyFiles.length > 0 || doneJobs.length === 0) return null;
-            return (
-              <WidgetStatusFooter
-                status="done"
-                label={tWidgets('transcriptDone')}
-                viewAllLabel={tWidgets('viewAll')}
-                count={doneJobs.length}
-                resetKey={`done-${doneJobs.length}`}
-                onClick={handleQuotesFullview}
-              />
-            );
-          })()}
       </div>
 
       {pendingFiles && (
