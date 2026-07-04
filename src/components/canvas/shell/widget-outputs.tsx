@@ -81,6 +81,8 @@ export function WidgetOutputs<T>({
 
 export type WidgetOutputRowProps = {
   title: ReactNode;
+  // 좌측 최선두 슬롯 — 선택 체크박스 등. 미지정 시 렌더 안 함 (기존 row 무영향).
+  leading?: ReactNode;
   // 상태 pill / 사이즈 / duration 등 보조 정보. 자식들은 자동으로
   // gap-3 으로 배치됨.
   meta?: ReactNode;
@@ -98,6 +100,7 @@ export type WidgetOutputRowProps = {
 // 사용. 전사록 JobRow 가 SSOT.
 export function WidgetOutputRow({
   title,
+  leading,
   meta,
   extra,
   actions,
@@ -106,6 +109,7 @@ export function WidgetOutputRow({
   return (
     <li className="border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm transition-all duration-[120ms] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black]">
       <div className="flex items-start gap-4 px-5 py-3">
+        {leading && <div className="mt-1 shrink-0">{leading}</div>}
         <div className="min-w-0 flex-1">
           <div className="truncate text-lg text-ink-2">{title}</div>
           {meta && (

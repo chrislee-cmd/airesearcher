@@ -12,9 +12,11 @@ import {
   type TranscriptJobStatus,
 } from '@/components/transcript-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
+import { useToast } from '@/components/toast-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
@@ -91,6 +93,7 @@ export function QuotesCardBody() {
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
+  const toast = useToast();
 
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -443,6 +446,74 @@ export function QuotesCardBody() {
     await job.refreshJobs();
   }
 
+  // ── fullview 일괄 선택/액션 ────────────────────────────────────────────
+  // 선택된 잡 id 집합. fullview("전체 보기") 안에서만 노출/사용된다. 카드
+  // 본문 큐/산출물 목록엔 체크박스가 없어 개별 삭제/다운로드 회귀 없음.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // 일괄 삭제 confirm 모달 (결정 3 — 삭제만 confirm, 다운로드는 바로). busy 는
+  // 병렬 DELETE inflight 동안 버튼 중복 클릭 방지.
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelect = useCallback((id: string, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  // fullview 를 닫을 때 선택도 리셋 — 다음에 열었을 때 지난 선택이 남지 않도록.
+  const handleCloseFullview = useCallback(() => {
+    setSelected(new Set());
+    closeFullview();
+  }, [closeFullview]);
+
+  // 일괄 삭제 — 결정 1: 신규 endpoint 없이 기존 개별 DELETE 를 병렬 호출.
+  // Promise.allSettled 로 일부 실패해도 나머지는 반영, 결과 count 를 toast.
+  async function bulkDelete(ids: string[]) {
+    if (ids.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch(`/api/transcripts/jobs/${id}`, { method: 'DELETE' }).then((r) => {
+            if (!r.ok) throw new Error(`delete ${id} ${r.status}`);
+            return id;
+          }),
+        ),
+      );
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - succeeded;
+      // 성공분은 즉시 provider 에서 제거 — refresh 전에도 목록이 줄어든다.
+      for (const r of results) {
+        if (r.status === 'fulfilled') job.removeJob(r.value);
+      }
+      if (failed === 0) {
+        toast.push(`${succeeded}개 삭제 완료`, { tone: 'info' });
+      } else {
+        toast.push(`${succeeded}개 성공 · ${failed}개 실패`, { tone: 'warn' });
+      }
+    } finally {
+      clearSelection();
+      setBulkDeleteOpen(false);
+      setBulkBusy(false);
+      await job.refreshJobs();
+    }
+  }
+
+  // 일괄 다운로드 — 결정 2: 신규 ZIP endpoint. window.location.href 로
+  // attachment 응답을 트리거 (개별 다운로드 링크와 동일 패턴). confirm 없음.
+  function bulkDownload(ids: string[]) {
+    if (ids.length === 0) return;
+    const qs = new URLSearchParams({ ids: ids.join(','), format: 'docx' });
+    window.location.href = `/api/transcripts/jobs/bulk-download?${qs.toString()}`;
+    track('quotes_bulk_download_click', { count: ids.length });
+  }
+
   // Group jobs for the canvas card layout: in-flight 큐 vs 완료된 산출물.
   // pillFor 가 보는 status 5종 중 'done' 만 recents 로, 나머지는 queue 로.
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
@@ -791,7 +862,7 @@ export function QuotesCardBody() {
         <WidgetFullviewPanel
           title="전사록 — 전체 보기"
           subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
-          onClose={closeFullview}
+          onClose={handleCloseFullview}
         >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
           <div className="mb-4 shrink-0">
@@ -803,41 +874,142 @@ export function QuotesCardBody() {
               aria-label="전사록 파일명 검색"
             />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {(() => {
-              const q = fullviewQuery.trim().toLowerCase();
-              const list = (q
-                ? job.jobs.filter((j) =>
-                    (j.filename ?? '').toLowerCase().includes(q),
-                  )
-                : job.jobs
-              ).slice();
-              if (list.length === 0) {
-                return (
-                  <p className="py-10 text-center text-md text-mute-soft">
-                    {q
-                      ? '검색 결과가 없습니다.'
-                      : '아직 전사 작업이 없습니다.'}
-                  </p>
-                );
-              }
+          {(() => {
+            const q = fullviewQuery.trim().toLowerCase();
+            const list = (q
+              ? job.jobs.filter((j) =>
+                  (j.filename ?? '').toLowerCase().includes(q),
+                )
+              : job.jobs
+            ).slice();
+            if (list.length === 0) {
               return (
-                <ul className="space-y-3">
-                  {list.map((j) => (
-                    <JobRow
-                      key={j.id}
-                      job={j}
-                      onDelete={() => deleteJob(j.id)}
-                      previewMode="inline"
-                    />
-                  ))}
-                </ul>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <p className="py-10 text-center text-md text-mute-soft">
+                    {q ? '검색 결과가 없습니다.' : '아직 전사 작업이 없습니다.'}
+                  </p>
+                </div>
               );
-            })()}
-          </div>
+            }
+            // 전체 선택 상태 — 현재 보이는(검색 필터 적용된) 목록 기준.
+            const visibleIds = list.map((j) => j.id);
+            const selectedVisible = visibleIds.filter((id) => selected.has(id));
+            const allSelected =
+              visibleIds.length > 0 &&
+              selectedVisible.length === visibleIds.length;
+            const someSelected =
+              selectedVisible.length > 0 && !allSelected;
+            const selectedList = Array.from(selected);
+            return (
+              <>
+                {/* 헤더 — 전체 선택 체크박스. bulk toolbar 는 바로 아래에 뜬다. */}
+                <div className="mb-2 flex shrink-0 items-center gap-3 px-1">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-mute">
+                    <Checkbox
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={(e) =>
+                        setSelected(
+                          e.target.checked ? new Set(visibleIds) : new Set(),
+                        )
+                      }
+                      aria-label="전체 선택"
+                    />
+                    전체 선택
+                  </label>
+                </div>
+
+                {/* Bulk toolbar — 선택 1개 이상일 때만 노출. 목록 스크롤 영역
+                    밖(shrink-0)이라 스크롤해도 항상 보인다. 다운로드는 confirm
+                    없이 바로, 삭제는 confirm 모달(결정 3). */}
+                {selected.size > 0 && (
+                  <div className="mb-3 flex shrink-0 items-center gap-3 border-2 border-line-soft bg-amore-bg px-4 py-2 rounded-sm">
+                    <span className="text-sm font-semibold text-ink-2">
+                      {selected.size}개 선택
+                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={clearSelection}
+                      >
+                        선택 해제
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => bulkDownload(selectedList)}
+                      >
+                        📥 ZIP 다운로드 ({selected.size})
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setBulkDeleteOpen(true)}
+                        disabled={bulkBusy}
+                      >
+                        🗑 일괄 삭제 ({selected.size})
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <ul className="space-y-3">
+                    {list.map((j) => (
+                      <JobRow
+                        key={j.id}
+                        job={j}
+                        onDelete={() => deleteJob(j.id)}
+                        previewMode="inline"
+                        selectable
+                        selected={selected.has(j.id)}
+                        onToggleSelect={(on) => toggleSelect(j.id, on)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </>
+            );
+          })()}
         </div>
         </WidgetFullviewPanel>,
       )}
+
+      {/* 일괄 삭제 confirm 모달 — 결정 3. */}
+      <Modal
+        open={bulkDeleteOpen}
+        onClose={() => (bulkBusy ? undefined : setBulkDeleteOpen(false))}
+        title="선택한 전사 작업 삭제"
+        size="sm"
+      >
+        <div className="space-y-5">
+          <p className="text-md leading-[1.7] text-mute">
+            선택한 <span className="font-semibold text-ink-2">{selected.size}개</span>{' '}
+            전사 작업을 삭제할까요? 되돌릴 수 없습니다.
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setBulkDeleteOpen(false)}
+              disabled={bulkBusy}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              size="md"
+              onClick={() => void bulkDelete(Array.from(selected))}
+              disabled={bulkBusy}
+            >
+              {bulkBusy ? '삭제 중…' : `${selected.size}개 삭제`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
@@ -969,12 +1141,20 @@ function JobRow({
   job,
   onDelete,
   previewMode = 'modal',
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: {
   job: TranscriptJob;
   onDelete: () => void;
   // 'modal' = 카드 안 (default) — 미리보기 클릭 시 Modal 팝업.
   // 'inline' = "더보기" 모달 안 — 기존 expand 동작 유지 (nested modal 회피).
   previewMode?: 'modal' | 'inline';
+  // fullview 일괄 선택용. selectable=false (default) 면 체크박스 미노출 —
+  // 카드 안 큐/산출물 목록은 기존 그대로.
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (on: boolean) => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   // Default to the cleaned version — preview/download routes also default to
@@ -998,6 +1178,15 @@ function JobRow({
   return (
     <WidgetOutputRow
       title={job.filename}
+      leading={
+        selectable ? (
+          <Checkbox
+            checked={selected}
+            onChange={(e) => onToggleSelect?.(e.target.checked)}
+            aria-label={`${job.filename} 선택`}
+          />
+        ) : undefined
+      }
       meta={
         <>
           <span
