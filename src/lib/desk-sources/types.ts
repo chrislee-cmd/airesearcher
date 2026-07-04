@@ -23,20 +23,27 @@ export type DeskSourceId =
   // Korea disclosures (DART / FSS)
   | 'dart'
   // Korean academic
-  | 'kci';
-  // Academic
-  | 'semantic_scholar';
-  | 'arxiv';
-
-export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart' | 'academic_kr';
+  | 'kci'
+  // Academic (global, keyless)
+  | 'semantic_scholar'
+  | 'arxiv'
   // Bank of Korea ECOS (경제통계시스템)
-  | 'boj_ecos';
-
-export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'bok';
+  | 'boj_ecos'
   // Stats (market TAM/SAM)
-  | 'kosis';
+  | 'kosis'
+  // Korean research institutes (RSS aggregate)
+  | 'institutes_kr';
 
-export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'kosis';
+export type DeskSourceGroup =
+  | 'naver'
+  | 'kakao'
+  | 'youtube'
+  | 'global'
+  | 'dart'
+  | 'academic_kr'
+  | 'bok'
+  | 'kosis'
+  | 'institute_kr';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely

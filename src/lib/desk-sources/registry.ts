@@ -23,6 +23,7 @@ import { semanticScholar } from './semantic-scholar';
 import { arxiv } from './arxiv';
 import { bojEcos } from './boj-ecos';
 import { kosis } from './kosis';
+import { institutesRss } from './institutes-rss';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
 // stable — the source picker and the report's per-channel sections read it.
@@ -45,6 +46,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   arxiv: arxiv,
   boj_ecos: bojEcos,
   kosis: kosis,
+  institutes_kr: institutesRss,
 };
 
 export const DESK_SOURCES: DeskSourceDefinition[] = Object.values(DESK_SOURCE_REGISTRY);
