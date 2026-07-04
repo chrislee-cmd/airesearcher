@@ -93,6 +93,7 @@ export function QuestionFilterMenu({
         top: anchorRect.bottom + 4,
         left: anchorRect.left,
         minWidth: Math.max(220, anchorRect.width),
+        maxWidth: 480,
       }
     : { position: 'fixed', visibility: 'hidden' };
 
@@ -144,9 +145,9 @@ export function QuestionFilterMenu({
                       type="button"
                       onClick={() => toggleExpand(q.field)}
                       aria-expanded={isOpen}
-                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-ink-2 transition-colors hover:bg-line-soft/40"
+                      className="flex w-full min-w-0 items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-ink-2 transition-colors hover:bg-line-soft/40"
                     >
-                      <span className="truncate">
+                      <span className="truncate" title={q.title}>
                         {q.title}
                         {qActive > 0 && (
                           <span className="ml-1 text-xs-soft font-semibold text-amore">
