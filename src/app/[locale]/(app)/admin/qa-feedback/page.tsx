@@ -1,6 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { QaFeedbackList, type QaFeedbackRow } from '@/components/qa/qa-feedback-list';
@@ -43,10 +44,34 @@ export default async function Page({
     : { data: [] };
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+  // Resolve identities from auth.users (service role) rather than trusting the
+  // profiles table: accounts created before the handle_new_user trigger — or
+  // whose profile insert failed — have no profiles row, which previously
+  // rendered every recording as "(unknown)". auth.users is the source of truth
+  // for email; profiles is only a name fallback. One getUserById per distinct
+  // tester (a small set), run in parallel.
+  const admin = createAdminClient();
+  const identities = new Map<string, { email: string; name: string | null }>();
+  await Promise.all(
+    userIds.map(async (uid) => {
+      const prof = profileMap.get(uid);
+      const { data: authData } = await admin.auth.admin.getUserById(uid);
+      const authUser = authData?.user;
+      const metaName =
+        typeof authUser?.user_metadata?.full_name === 'string'
+          ? authUser.user_metadata.full_name
+          : null;
+      identities.set(uid, {
+        email: authUser?.email ?? prof?.email ?? '(unknown)',
+        name: prof?.full_name ?? metaName,
+      });
+    }),
+  );
+
   const enriched: QaFeedbackRow[] = (feedbacks ?? []).map((f) => ({
     ...f,
-    user_email: profileMap.get(f.user_id)?.email ?? '(unknown)',
-    user_name: profileMap.get(f.user_id)?.full_name ?? null,
+    user_email: identities.get(f.user_id)?.email ?? '(unknown)',
+    user_name: identities.get(f.user_id)?.name ?? null,
   }));
 
   return <QaFeedbackList feedbacks={enriched} />;

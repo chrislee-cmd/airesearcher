@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,28 @@ import { createClient } from '@/lib/supabase/client';
 // PR3 placeholder body. Flow: idle → [record] → recording → [stop & submit]
 // → uploading → Storage upload + qa_feedbacks insert + async transcribe →
 // success toast → close. The modal stays mounted (open/onClose owned by
-// QaVoiceAgentButton); a fresh session_id is minted per mount so every
+// QaVoiceAgentButton); a fresh session_id is minted per submission so every
 // re-open groups its recordings under a new session (spec §C).
 type Phase = 'idle' | 'recording' | 'uploading';
+
+// Peak input level (0..1, RMS from the WebAudio analyser) below which we treat
+// the take as effectively silent — mic muted or wrong input device. We still
+// upload (never lose the user's take) but warn so they check their mic instead
+// of assuming it worked. A near-silent webm is what produced the empty
+// transcript + no-sound-on-playback report.
+const SILENCE_PEAK_THRESHOLD = 0.02;
+
+function pickMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return '';
+}
+
+function extForMime(mime: string): string {
+  return mime.includes('mp4') ? 'm4a' : 'webm';
+}
 
 export function QaVoiceAgentModal({
   open,
@@ -24,24 +43,56 @@ export function QaVoiceAgentModal({
 }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [duration, setDuration] = useState(0);
+  const [level, setLevel] = useState(0); // live input level 0..1 (VU meter)
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Session identity: one id for the life of this mount. Re-opening the modal
-  // remounts the button's <QaVoiceAgentModal /> tree via unmount? No — the
-  // modal is always mounted, so we mint the id lazily on first record and
-  // reset it when the user finishes a submission, matching the spec: same
-  // session across repeated records while open, new session after close/reopen.
+  const durationRef = useRef(0);
+  // Session identity: minted lazily on first record, reset after each
+  // submission — same session across repeated records while open, new session
+  // after a submit or close/reopen.
   const sessionIdRef = useRef<string | null>(null);
+  const mimeRef = useRef<string>('audio/webm');
+  // WebAudio metering — lets the user see, live, whether the mic is picking up
+  // sound, and lets us flag a silent take on submit.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const peakRef = useRef(0);
+
   const pathname = usePathname();
   const { push } = useToast();
   const supabase = createClient();
 
-  const durationRef = useRef(0);
+  const stopMetering = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+    setLevel(0);
+  }, []);
+
+  // Tear everything down if the modal unmounts mid-recording.
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
+      recorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    },
+    [],
+  );
 
   const handleUpload = useCallback(async () => {
-    const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+    const mime = mimeRef.current || 'audio/webm';
+    const blob = new Blob(chunksRef.current, { type: mime });
     const seconds = durationRef.current;
+    const silent = peakRef.current < SILENCE_PEAK_THRESHOLD;
 
     const {
       data: { user },
@@ -59,10 +110,10 @@ export function QaVoiceAgentModal({
     // storage RLS policy (foldername[1] = auth.uid()) admits the write.
     const key = `${user.id}/${sessionId}/${Date.now()}-${crypto
       .randomUUID()
-      .slice(0, 8)}.webm`;
+      .slice(0, 8)}.${extForMime(mime)}`;
     const { error: uploadErr } = await supabase.storage
       .from('qa-feedback-audio')
-      .upload(key, blob, { contentType: 'audio/webm' });
+      .upload(key, blob, { contentType: mime });
     if (uploadErr) {
       push(`업로드 실패: ${uploadErr.message}`, { tone: 'warn' });
       setPhase('idle');
@@ -79,7 +130,7 @@ export function QaVoiceAgentModal({
         page_url: pathname ?? null,
         duration_seconds: seconds,
         status: 'pending',
-        meta: { user_agent: navigator.userAgent },
+        meta: { user_agent: navigator.userAgent, silent },
       })
       .select('id')
       .single();
@@ -98,7 +149,14 @@ export function QaVoiceAgentModal({
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => {});
 
-    push('피드백 제출 완료', { tone: 'amore' });
+    if (silent) {
+      push('제출됐지만 소리가 거의 감지되지 않았어요. 마이크 입력을 확인해 주세요.', {
+        tone: 'warn',
+        ttlMs: 6000,
+      });
+    } else {
+      push('피드백 제출 완료', { tone: 'amore' });
+    }
     setPhase('idle');
     setDuration(0);
     durationRef.current = 0;
@@ -109,14 +167,59 @@ export function QaVoiceAgentModal({
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      // Live input metering: RMS off a time-domain analyser, sampled per frame.
+      const AudioCtx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        audioCtxRef.current = ctx;
+        analyserRef.current = analyser;
+        peakRef.current = 0;
+        const buf = new Uint8Array(analyser.fftSize);
+        const tick = () => {
+          const a = analyserRef.current;
+          if (!a) return;
+          a.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const v = (buf[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / buf.length);
+          peakRef.current = Math.max(peakRef.current, rms);
+          setLevel(rms);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      }
+
+      const mime = pickMimeType();
+      mimeRef.current = mime || 'audio/webm';
+      const recorder = new MediaRecorder(
+        stream,
+        mime ? { mimeType: mime, audioBitsPerSecond: 128000 } : undefined,
+      );
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
+        stopMetering();
         void handleUpload();
       };
       recorder.start();
@@ -129,9 +232,10 @@ export function QaVoiceAgentModal({
         setDuration(durationRef.current);
       }, 1000);
     } catch {
+      stopMetering();
       push('마이크 권한이 필요합니다', { tone: 'warn' });
     }
-  }, [handleUpload, push]);
+  }, [handleUpload, push, stopMetering]);
 
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
@@ -143,6 +247,8 @@ export function QaVoiceAgentModal({
   }, []);
 
   const mmss = `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+  // Scale the raw RMS up for a livelier meter; clamp to 100%.
+  const meterPct = Math.min(100, Math.round(level * 240));
 
   return (
     <Modal open={open} onClose={onClose} title="QA 피드백" size="sm">
@@ -164,7 +270,16 @@ export function QaVoiceAgentModal({
           <>
             <div className="animate-pulse text-6xl">🔴</div>
             <p className="font-mono text-lg text-ink">{mmss}</p>
-            <p className="text-sm text-mute">녹음 중…</p>
+            {/* Live input meter — confirms the mic is actually picking up sound. */}
+            <div className="h-2 w-40 overflow-hidden rounded-full bg-paper-soft border border-line-soft">
+              <div
+                className="h-full bg-amore transition-[width] duration-75"
+                style={{ width: `${meterPct}%` }}
+              />
+            </div>
+            <p className="text-sm text-mute">
+              {meterPct < 4 ? '소리가 감지되지 않아요 — 마이크 확인' : '녹음 중…'}
+            </p>
             <Button variant="primary" size="md" onClick={stopRecording}>
               ⏹ 정지 &amp; 제출
             </Button>
