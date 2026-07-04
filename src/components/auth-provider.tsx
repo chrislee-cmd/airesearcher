@@ -15,6 +15,8 @@ import { LoginDialog } from './login-dialog';
 
 type AuthContextValue = {
   user: User | null;
+  /** True when the signed-in user's profile has `is_qa_tester = true`. Gates QA-only UI. */
+  isQaTester: boolean;
   loading: boolean;
   openLogin: (onSuccess?: () => void) => void;
   closeLogin: () => void;
@@ -42,12 +44,15 @@ export function useRequireAuth() {
 
 export function AuthProvider({
   initialUser,
+  initialIsQaTester = false,
   children,
 }: {
   initialUser: User | null;
+  initialIsQaTester?: boolean;
   children: React.ReactNode;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [isQaTester, setIsQaTester] = useState(initialIsQaTester);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const onSuccessRef = useRef<(() => void) | null>(null);
@@ -55,12 +60,22 @@ export function AuthProvider({
   useEffect(() => {
     const supabase = createClient();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
+      if (nextUser) {
         setOpen(false);
+        // Refresh the QA flag from the profile whenever the session changes.
+        void supabase
+          .from('profiles')
+          .select('is_qa_tester')
+          .eq('id', nextUser.id)
+          .maybeSingle()
+          .then(({ data }) => setIsQaTester(data?.is_qa_tester ?? false));
         const cb = onSuccessRef.current;
         onSuccessRef.current = null;
         cb?.();
+      } else {
+        setIsQaTester(false);
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -76,8 +91,8 @@ export function AuthProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, openLogin, closeLogin }),
-    [user, loading, openLogin, closeLogin],
+    () => ({ user, isQaTester, loading, openLogin, closeLogin }),
+    [user, isQaTester, loading, openLogin, closeLogin],
   );
 
   return (
