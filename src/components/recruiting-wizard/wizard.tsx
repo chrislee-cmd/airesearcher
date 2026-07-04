@@ -664,15 +664,6 @@ export function RecruitingWizard({
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <div className="space-y-1">
-            <h3 className="text-md font-semibold text-ink">
-              조사 목적 · 대상자 조건
-            </h3>
-            <p className="text-sm text-mute">
-              리서치 목적과 대상자 브리프를 붙여넣거나 파일을 올리면 조건·설문을
-              생성해 Google Form 으로 발행합니다.
-            </p>
-          </div>
           <CriteriaInputFields
             files={files}
             pasted={pasted}
