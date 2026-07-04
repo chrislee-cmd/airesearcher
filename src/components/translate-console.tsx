@@ -151,12 +151,26 @@ const PROMPTER_WINDOW_MS = 30_000;
 // Drop a freshly-finalized caption line if its punctuation/whitespace-
 // normalized form matches a final line committed within this window.
 // In production we've seen the pipeline restart mid-session (root cause
-// still under investigation — see [translate] cleanup logs), which spins
-// up a second OpenAI session that retranscribes the same audio with
+// still under investigation — see [translate] session_restart logs), which
+// spins up a second OpenAI session that retranscribes the same audio with
 // slightly different tokenization (e.g. comma added/removed). The
 // dedup window keeps those copies off the prompter without blocking
 // genuine repeats spoken minutes apart.
-const DEDUP_WINDOW_MS = 60_000;
+//
+// 🚨 session-restart-loop diagnosis (pr-translate-session-restart-loop-
+// diagnosis): raised 60_000 → 300_000 as a temporary mitigation for the
+// rapid-fire regression. A mid-session restart (unexpected ICE/connection
+// drop, or the ~2 s auto-renewal overlap where old + new OpenAI sessions
+// briefly both transcribe the shared source track) can re-emit an
+// utterance well over a minute after its original commit — the old 60 s
+// window let those slip through. 300 s covers the realistic restart gap.
+// Tradeoff (accepted, per spec): a GENUINE repeat of the same phrase
+// spoken <5 min apart is now suppressed — but the fuzzy/containment/lcs
+// heuristics already require substantial similarity AND clear script-aware
+// min-length guards, so short acks ("네.", "맞아요.") are unaffected. The
+// real fix (root-cause restart elimination) lands in follow-up specs once
+// the session_restart telemetry below pins the trigger.
+const DEDUP_WINDOW_MS = 300_000;
 
 // Strip whitespace + Unicode punctuation/symbols so different
 // tokenizations of the same utterance collide on the dedup key.
@@ -1132,6 +1146,56 @@ export function TranslateConsole({
       if (el) el.srcObject = null;
     }
   }, []);
+
+  // 🚨 session-restart-loop diagnosis (pr-translate-session-restart-loop-
+  // diagnosis). Unified structured telemetry for EVERY point a per-slot
+  // pipeline is torn down or re-established mid-session. The rapid-fire
+  // regression (a second OpenAI session retranscribing the same audio) is
+  // always preceded by one of these; tagging each with a `reason` + the
+  // session-epoch elapsed lets a SINGLE prod session pin WHICH path fired
+  // (unexpected ICE/connection drop vs. server-side session close vs. the
+  // scheduled auto-renewal) without a re-deploy. Pure telemetry — no
+  // behaviour change. Also pushed as a Sentry breadcrumb so a user bug
+  // report carries the restart trail, and includes the OLD/NEW session ids
+  // when known so a session_id change is traceable across the handover.
+  const logSessionRestart = useCallback(
+    (
+      slot: SourceSlot,
+      reason:
+        | 'connection_failed'
+        | 'connection_disconnected'
+        | 'ice_failed'
+        | 'ice_disconnected'
+        | 'dc_close_unexpected'
+        | 'session_renewal',
+      extra?: Record<string, unknown>,
+    ) => {
+      const epoch = sessionEpochRef.current;
+      const payload = {
+        slot,
+        reason,
+        session_id: sessionIdRef.current,
+        // Whether a scheduled auto-renewal is in flight — distinguishes a
+        // benign renewal handover from an unexpected drop at the same
+        // instant (both can flip connection/ICE state).
+        renewing: renewingRef.current,
+        // Elapsed since the WHOLE translate session went live (visible timer).
+        elapsed_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
+        // Elapsed within the CURRENT OpenAI session epoch — a drop right at
+        // ~25-30 min points at the server hard-close / renewal boundary.
+        session_epoch_ms: epoch ? Date.now() - epoch : 0,
+        ...extra,
+      };
+      console.info('[translate] session_restart', payload);
+      Sentry.addBreadcrumb({
+        category: 'translate.restart',
+        message: `session_restart:${reason}`,
+        level: reason.endsWith('failed') ? 'warning' : 'info',
+        data: payload,
+      });
+    },
+    [],
+  );
 
   // Layer A: retry monitor playback from a real user gesture. The autoplay
   // policy only grants playback after a click/tap, so the "음성 켜기" CTA
@@ -2181,11 +2245,32 @@ export function TranslateConsole({
             // flip the slot inactive even though the new session is healthy.
             if (pcRef.current[slot] === pc) {
               setSlotActive((prev) => ({ ...prev, [slot]: false }));
+              // 🚨 restart telemetry — only for the LIVE pc, and only for the
+              // unexpected transitions. 'closed' is skipped: it fires on
+              // intentional teardown (stop / renewal retire) and would drown
+              // the signal. failed/disconnected on the live pc IS the
+              // rapid-fire precursor (network blip → reconnect loop).
+              if (pc.connectionState === 'failed') {
+                logSessionRestart(slot, 'connection_failed');
+              } else if (pc.connectionState === 'disconnected') {
+                logSessionRestart(slot, 'connection_disconnected');
+              }
             }
           }
         };
         pc.oniceconnectionstatechange = () => {
           console.info(`[translate:${slot}] pc.iceConnectionState`, pc.iceConnectionState);
+          // 🚨 restart telemetry — ICE failed/disconnected on the LIVE pc is
+          // the classic mid-session drop (candidate 1: WebRTC connection drop
+          // → reconnect → retranscribe). Guard on the live pc so a retiring
+          // renewal pc's ICE teardown doesn't log a phantom restart.
+          if (pcRef.current[slot] === pc) {
+            if (pc.iceConnectionState === 'failed') {
+              logSessionRestart(slot, 'ice_failed');
+            } else if (pc.iceConnectionState === 'disconnected') {
+              logSessionRestart(slot, 'ice_disconnected');
+            }
+          }
         };
         pc.onicegatheringstatechange = () => {
           console.info(`[translate:${slot}] pc.iceGatheringState`, pc.iceGatheringState);
@@ -2344,7 +2429,18 @@ export function TranslateConsole({
           handleOaiEvent(slot, text);
         };
         dc.onopen = () => console.info(`[translate:${slot}] dc open`);
-        dc.onclose = () => console.info(`[translate:${slot}] dc close`);
+        dc.onclose = () => {
+          console.info(`[translate:${slot}] dc close`);
+          // 🚨 restart telemetry — an OpenAI data channel closing while it is
+          // still the LIVE dc and we are NOT renewing means the SERVER closed
+          // the session (candidate 5: OpenAI timeout / rate limit / ~30 min
+          // hard cap the renewal didn't beat). That's the retranscribe
+          // trigger. dc closes from stop()/renewal-retire are intentional and
+          // filtered out by these two guards.
+          if (dcRef.current[slot] === dc && !renewingRef.current) {
+            logSessionRestart(slot, 'dc_close_unexpected');
+          }
+        };
         dc.onerror = (ev) => console.warn(`[translate:${slot}] dc error`, ev);
 
         const offer = await pc.createOffer();
@@ -2484,6 +2580,7 @@ export function TranslateConsole({
     captureMode,
     cleanup,
     handleOaiEvent,
+    logSessionRestart,
     outputAudible,
     sourceLang,
     targetLang,
@@ -2563,6 +2660,11 @@ export function TranslateConsole({
         setSlotError((prev) => ({ ...prev, [slot]: null }));
         return false;
       }
+      // 🚨 restart telemetry — a scheduled renewal IS a session restart, just
+      // a graceful one. Log it in the same stream as the unexpected drops so
+      // prod telemetry shows the FULL restart timeline (and can confirm the
+      // renewal fired on time, ~25 min in, before any server hard-close).
+      logSessionRestart(slot, 'session_renewal');
       // Success — pcRef[slot] is now the new pc. Retire the old one after a
       // short grace period so trailing transcription deltas + TTS tail still
       // land. Best-effort session.close so OpenAI tears down server-side.
@@ -2612,7 +2714,7 @@ export function TranslateConsole({
       renewingRef.current = false;
       setRenewing(false);
     }
-  }, []);
+  }, [logSessionRestart]);
 
   // 🚨 Auto-renewal driver. While live, poll every RENEW_CHECK_MS; once the
   // current OpenAI session epoch crosses SESSION_MAX_MS (25 min, 5 min under
