@@ -143,6 +143,40 @@ describe('reSpaceKoreanLine (post-hoc committed-line re-split)', () => {
     assert.equal(reSpaceKoreanLine('main hub the key tool'), 'main hub the key tool');
     assert.equal(reSpaceKoreanLine(''), '');
   });
+
+  it('splits a conjunction fused to the following word ("그리고그")', () => {
+    assert.equal(reSpaceKoreanLine('그리고그 영상 소재로'), '그리고 그 영상 소재로');
+  });
+
+  it('splits a conjunction fused to the preceding word ("말그리고")', () => {
+    assert.equal(reSpaceKoreanLine('수건도 하나말그리고'), '수건도 하나말 그리고');
+  });
+
+  it('splits 게다가 fused into the next word ("게다가고르지")', () => {
+    assert.equal(reSpaceKoreanLine('됐거든요 게다가고르지'), '됐거든요 게다가 고르지');
+  });
+
+  it('splits the user headline line at the conjunction ("그리고저는")', () => {
+    assert.equal(
+      reSpaceKoreanLine('그리고저는 손가락 말 수건도 하나 만들었어요.'),
+      '그리고 저는 손가락 말 수건도 하나 만들었어요.',
+    );
+  });
+
+  it('splits two fused conjunctions on one line', () => {
+    assert.equal(reSpaceKoreanLine('그리고그래서'), '그리고 그래서');
+  });
+
+  it('is idempotent on an already-spaced conjunction', () => {
+    assert.equal(reSpaceKoreanLine('그리고 그 영상'), '그리고 그 영상');
+  });
+
+  it('does NOT touch a particle boundary (Layer D owns it — "저는지난주")', () => {
+    // Documented ceiling: 는/은/을/를 are homographic with verb endings,
+    // so heuristic spacing here would regress words like "하는데". Left
+    // fused on purpose for the server LLM pass.
+    assert.equal(reSpaceKoreanLine('저는지난주 성과'), '저는지난주 성과');
+  });
 });
 
 describe('isHangulFusionBoundary (diagnostic predicate)', () => {

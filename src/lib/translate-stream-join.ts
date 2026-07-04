@@ -110,19 +110,44 @@ function isKoreanSentenceBoundary(endChar: string, headChar: string): boolean {
   return true;
 }
 
-// Re-split a fully-committed caption line whose Korean sentences fused
+// Sentence-initial conjunctions that fuse into the surrounding text when
+// the stream drops their bounding spaces ("그리고저는", "그리고그",
+// "게다가고르지"). Unlike Korean particles/endings (which are homographic
+// with verb morphology — see reSpaceKoreanLine's doc), these are distinct
+// multi-syllable tokens that are (practically) never embedded inside
+// another word, so isolating them with a space is safe in both directions.
+// Kept short and high-confidence on purpose — ambiguous ones like "그런데"
+// (vs "그런 데") and "또한" (vs "또 한 번") are deliberately excluded.
+const KOREAN_CONJUNCTIONS = ['그리고', '그래서', '그러나', '게다가', '그러므로', '따라서'];
+const CONJ = KOREAN_CONJUNCTIONS.join('|');
+// A conjunction fused to the FOLLOWING word ("그리고그" → "그리고 그").
+const CONJ_TRAILING_RE = new RegExp(`(${CONJ})([가-힣])`, 'gu');
+// A conjunction fused to the PRECEDING word ("말그리고" → "말 그리고").
+// The 요/죠 rule already handles a polite-ending → 그리고 seam, but a plain
+// noun/particle tail into a conjunction has no other signal.
+const CONJ_LEADING_RE = new RegExp(`([가-힣])(${CONJ})`, 'gu');
+
+// Re-split a fully-committed caption line whose Korean tokens fused
 // *inside a single delta* — a case `joinDelta` structurally cannot see,
 // since it only inspects the prev/delta boundary, never the interior of
-// one delta. Scans every 종결어미→새 음절 seam in the line and applies the
-// same conservative rule as the streaming join. Idempotent (a line already
-// spaced has no bare seam left to match), so it is safe to run repeatedly
-// (e.g. on a periodic sweep of committed lines).
+// one delta. Two conservative passes:
+//   1. Sentence-initial conjunctions (safe, both sides).
+//   2. Polite verb endings 요/죠 → new clause (same rule as the join).
+// Deliberately does NOT try to space after particles (는/은/을/를/…): those
+// are homographic with verb endings ("저는" topic vs "하는데" connective,
+// "분석을" object vs "-을" adnominal) and cannot be split safely without
+// morphology — that residual is the server LLM postprocess's (Layer D) job.
+// Idempotent (an already-spaced line has no bare seam left to match), so it
+// is safe to run repeatedly on a periodic sweep of committed lines.
 const KOREAN_SEAM_RE = /([요죠])([가-힣])/gu;
 export function reSpaceKoreanLine(text: string): string {
   if (!text) return text;
-  return text.replace(KOREAN_SEAM_RE, (m, endChar: string, headChar: string) =>
+  let out = text.replace(CONJ_LEADING_RE, '$1 $2');
+  out = out.replace(CONJ_TRAILING_RE, '$1 $2');
+  out = out.replace(KOREAN_SEAM_RE, (m, endChar: string, headChar: string) =>
     isKoreanSentenceBoundary(endChar, headChar) ? `${endChar} ${headChar}` : m,
   );
+  return out;
 }
 
 // True when `s` ends on a character that already provides a visual word
