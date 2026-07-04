@@ -182,6 +182,28 @@ export function FileCard({
                 {new Date(file.created_at).toLocaleString('ko-KR')}
               </dd>
             </dl>
+            {/* 첫/마지막 질문 — Q&A 형태(질문+답변)로 담긴 문서일 때만 노출.
+                문서 처음부터 끝까지 온전히 담겼음을 확인할 수 있다. */}
+            {(file.first_question || file.last_question) && (
+              <div className="mt-3 space-y-1.5 border-t border-line-soft pt-2 text-xs-soft">
+                {file.first_question && (
+                  <div>
+                    <span className="text-mute">첫 질문</span>
+                    <p className="mt-0.5 line-clamp-3 text-ink-2">
+                      “{file.first_question}”
+                    </p>
+                  </div>
+                )}
+                {file.last_question && (
+                  <div>
+                    <span className="text-mute">마지막 질문</span>
+                    <p className="mt-0.5 line-clamp-3 text-ink-2">
+                      “{file.last_question}”
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>,
           document.body,
         )}
