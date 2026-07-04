@@ -27,6 +27,7 @@ import { ProbingQuestionHistory } from './question-history';
 export function QuestionPane({
   context,
   onContextChange,
+  onCreateInjectionWidget,
   contextDisabled,
   thinkingEvents,
   thinkingStreaming,
@@ -48,6 +49,7 @@ export function QuestionPane({
   // A. 입력
   context: ResearchContext;
   onContextChange: (next: ResearchContext) => void;
+  onCreateInjectionWidget: (question: string) => void;
   contextDisabled: boolean;
   // B. 사고 흐름
   thinkingEvents: ThinkingEvent[];
@@ -100,6 +102,7 @@ export function QuestionPane({
           onHypothesesChange={(v) =>
             onContextChange({ ...context, hypotheses: v })
           }
+          onCreateInjectionWidget={onCreateInjectionWidget}
           disabled={contextDisabled}
         />
 

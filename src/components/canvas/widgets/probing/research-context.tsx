@@ -15,6 +15,13 @@
    (AddCustomSectionCard) 으로 이동. 본 컴포넌트는 조사 목적 + 핵심 가설만
    담당한다.
 
+   PR (probing-question-injection-input-to-widget): 옛 "핵심 가설" 필드를
+   **"추가 질문 주입"** 진입점으로 재편. 입력 → Enter → (A) hypotheses state
+   에 push (backend think prompt inject 유지) + (B) 좌패널 grid 에 신규 위젯
+   생성 (onCreateInjectionWidget). 옛 chip 시각은 제거 — 좌 위젯이 유일한
+   시각 표현 (single source). hypotheses 는 화면에 안 보이지만 backend inject
+   용으로 계속 누적된다.
+
    영속화: research_context 는 부모 (probing-card) 가 GET/PUT
    `/api/probing/research-context`. 본 컴포넌트는 controlled props 로 표시 /
    갱신만 한다.
@@ -24,7 +31,6 @@ import { useState, type KeyboardEvent } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChipInput } from '@/components/ui/chip-input';
-import { IconButton } from '@/components/ui/icon-button';
 
 const GOAL_MAX = 2_000;
 const HYPOTHESIS_MAX = 500;
@@ -35,12 +41,15 @@ export function ProbingResearchContext({
   hypotheses,
   onResearchGoalChange,
   onHypothesesChange,
+  onCreateInjectionWidget,
   disabled = false,
 }: {
   researchGoal: string;
   hypotheses: string[];
   onResearchGoalChange: (next: string) => void;
   onHypothesesChange: (next: string[]) => void;
+  // 입력 확정 시 좌패널 grid 에 신규 "질문 주입" 위젯을 생성한다.
+  onCreateInjectionWidget: (question: string) => void;
   disabled?: boolean;
 }) {
   const [draft, setDraft] = useState('');
@@ -59,7 +68,11 @@ export function ProbingResearchContext({
       setDraft('');
       return;
     }
-    onHypothesesChange([...hypotheses, trimmed.slice(0, HYPOTHESIS_MAX)]);
+    const value = trimmed.slice(0, HYPOTHESIS_MAX);
+    // A. hypotheses state — backend think prompt inject 유지 (화면엔 안 보임).
+    onHypothesesChange([...hypotheses, value]);
+    // B. 좌패널 grid 에 신규 위젯 생성 — 유일한 시각 표현.
+    onCreateInjectionWidget(value);
     setDraft('');
   }
 
@@ -67,19 +80,10 @@ export function ProbingResearchContext({
     if (e.key === 'Enter') {
       e.preventDefault();
       commitDraft();
-    } else if (
-      e.key === 'Backspace' &&
-      draft.length === 0 &&
-      hypotheses.length > 0
-    ) {
-      e.preventDefault();
-      onHypothesesChange(hypotheses.slice(0, -1));
     }
   }
 
-  function removeHypothesis(idx: number) {
-    onHypothesesChange(hypotheses.filter((_, i) => i !== idx));
-  }
+  const atMax = hypotheses.length >= HYPOTHESES_COUNT_MAX;
 
   return (
     <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
@@ -101,26 +105,10 @@ export function ProbingResearchContext({
       </Field>
 
       <Field
-        label="핵심 가설"
-        description="검증 / 반증 대상 (한 줄씩, Enter 로 추가)"
+        label="추가 질문 주입"
+        description="응답자에게 즉시 던질 질문 (Enter 로 위젯 추가)"
       >
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-          {hypotheses.map((h, idx) => (
-            <span
-              key={`${idx}-${h}`}
-              className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-            >
-              {h}
-              <IconButton
-                variant="ghost-brand"
-                onClick={() => removeHypothesis(idx)}
-                aria-label={`가설 제거: ${h}`}
-                disabled={disabled}
-              >
-                ×
-              </IconButton>
-            </span>
-          ))}
+        <div className="flex items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
           <ChipInput
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, HYPOTHESIS_MAX))}
@@ -128,13 +116,11 @@ export function ProbingResearchContext({
             onBlur={() => {
               if (draft.trim()) commitDraft();
             }}
-            disabled={disabled || hypotheses.length >= HYPOTHESES_COUNT_MAX}
+            disabled={disabled || atMax}
             placeholder={
-              hypotheses.length === 0
-                ? '가설 추가 (Enter)'
-                : hypotheses.length >= HYPOTHESES_COUNT_MAX
-                  ? `최대 ${HYPOTHESES_COUNT_MAX}개`
-                  : '+ 가설 추가'
+              atMax
+                ? `최대 ${HYPOTHESES_COUNT_MAX}개`
+                : '예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?'
             }
             className="min-w-[140px] flex-1"
           />

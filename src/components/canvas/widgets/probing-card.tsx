@@ -953,6 +953,21 @@ function ExpandedBody() {
     [addCustomSection],
   );
 
+  // 우패널 "추가 질문 주입" 입력 → 좌패널 grid 에 신규 위젯 생성. 옛 "+ 새
+  // 위젯 추가" 와 같은 addCustomSection 을 재사용 — 질문 텍스트가 곧 위젯
+  // title 이 되고, 좌 페르소나 grid 에 기본 8 뒤로 append 된다. hypotheses
+  // state 도 별도로 누적되어 backend think prompt 에 계속 주입된다.
+  const handleCreateInjectionWidget = useCallback(
+    (question: string) => {
+      trackEvent('widget_action', {
+        widget: 'probing',
+        action: 'question_injection_add',
+      });
+      addCustomSection(question, '즉시 던질 질문');
+    },
+    [addCustomSection],
+  );
+
   // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
@@ -978,6 +993,7 @@ function ExpandedBody() {
   const questionPaneProps = {
     context,
     onContextChange: setContext,
+    onCreateInjectionWidget: handleCreateInjectionWidget,
     contextDisabled: !contextHydrated,
     thinkingEvents,
     thinkingStreaming,
