@@ -37,8 +37,9 @@ type PanelConfig = {
 };
 
 // 그리드 순서 — 사용자 인지 흐름 (정체성 → 가치관 → 선호 → 욕구 → 행동) 에
-// 맞춰 demographics 부터 시작하고 behavioral_patterns 로 마무리. 8 패널이라
-// 2×4 (lg) / 1×8 (좁을 때) 자동 wrap.
+// 맞춰 demographics 부터 시작하고 behavioral_patterns 로 이어진 뒤, catch-all
+// "기타" 를 마지막 (9번째) 으로 둔다. 9 패널이라 2열 (lg) / 1열 (좁을 때)
+// 자동 wrap. 기타는 다른 8 기본과 동일하게 × 로 숨김 가능 (useHiddenDefaults).
 const PANELS: PanelConfig[] = [
   { key: 'demographics', icon: '👤', title: '데모그래픽' },
   { key: 'values', icon: '🌱', title: '가치관' },
@@ -48,6 +49,9 @@ const PANELS: PanelConfig[] = [
   { key: 'brand_perception', icon: '🏷️', title: '브랜드 인식' },
   { key: 'decision_drivers', icon: '🧭', title: '의사결정 요인' },
   { key: 'behavioral_patterns', icon: '🔁', title: '행동 패턴' },
+  // PR (probing-default-etc-widget): catch-all "기타" — 다른 위젯에 매치
+  // 안 되는 응답자 정보를 담는 9번째 default.
+  { key: 'etc', icon: '📎', title: '기타' },
 ];
 
 const memphisPlaceholderStyle = {
@@ -199,7 +203,7 @@ export function ReflectionPane({
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            세션을 시작하면 발화에서 응답자 페르소나가 8 패널로 정리됩니다.
+            세션을 시작하면 발화에서 응답자 페르소나가 9 패널로 정리됩니다.
           </div>
         ) : !hasTranscript ? (
           <div
