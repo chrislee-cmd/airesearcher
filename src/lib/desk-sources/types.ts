@@ -25,6 +25,7 @@ export type DeskSourceId =
   // Korean academic
   | 'kci'
   // Academic (global, keyless)
+  // Academic (global)
   | 'semantic_scholar'
   | 'arxiv'
   // Bank of Korea ECOS (경제통계시스템)
@@ -44,6 +45,7 @@ export type DeskSourceGroup =
   | 'bok'
   | 'kosis'
   | 'institute_kr';
+  | 'kosis';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely

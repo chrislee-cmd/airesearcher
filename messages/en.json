@@ -770,6 +770,15 @@
     "range_custom": "Custom",
     "sourcesLabel": "Sources",
     "sourcesUnit": "sources",
+    "category": {
+      "news": "News & Portals",
+      "community": "Community",
+      "stats": "Market Stats",
+      "academic": "Academic",
+      "institute": "Research Institutes",
+      "thought": "Thought Leaders",
+      "video": "Video"
+    },
     "search": "Search",
     "error": "Error",
     "errorNoKeyword": "Add at least one keyword",

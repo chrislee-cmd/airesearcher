@@ -61,6 +61,8 @@ import {
   KR_ONLY_GROUPS,
   type DeskRegion,
   type DeskSourceId,
+  type DeskSourceCategory,
+  type DeskSourceDefinition,
 } from '@/lib/desk-sources';
 
 type RangePreset = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
@@ -238,10 +240,11 @@ function SelectMenu({
   );
 }
 
-// 수집 소스는 항상 전체. KR-only 그룹 (네이버/카카오) 은 selected regions 에
-// KR 이 포함될 때만 union 으로 추가 — 그 외 region 만 선택하면 결과가 거의 없어
-// API quota 낭비. 디자인에서 사용자 노출 제거 — selected 는 regions 에 의존적으로
-// 자동 관리.
+// region 이 결정하는 "노출 가능 소스" 집합. KR-only 그룹 (네이버/카카오/DART/
+// 국내학술/한국은행/KOSIS) 은 selected regions 에 KR 이 포함될 때만 포함 — 그 외
+// region 만 선택하면 결과가 거의 없어 API quota 낭비 (결정 3: 국내 소스 group 은
+// 비-KR 지역에서 아예 숨김). region 변경 시 이 집합이 새 기본 선택이 되고, 그
+// 위에서 사용자가 카테고리 피커로 개별 소스를 토글해 좁힐 수 있다.
 function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   const includeKrOnly = regions.has('KR');
   const out = new Set<DeskSourceId>();
@@ -250,6 +253,122 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
     out.add(s.id);
   }
   return out;
+}
+
+// ─── SourceCategoryPicker — 카테고리별 collapsible 소스 피커 ────────────────
+// 소스가 20+ 로 늘며 flat 리스트 UX 가 무너져 category 그룹으로 재구성. 각
+// 카테고리는 접기/펼치기, 헤더에 선택/전체 카운트. 뉴스·시장통계·학술은 기본
+// 펼침, 나머지는 접힘 (결정 1). region 이 비-KR 이면 국내 전용 소스만 있는
+// 카테고리(시장 통계 등)는 groups 계산 단계에서 통째로 빠진다 (결정 3).
+//
+// 결정 2 (env 없는 소스 disabled) 는 부분 반영 — 소스 API 키는 전부 서버 전용
+// (env.ts server 스키마) 이라 client 에서 실제 set 여부를 알 수 없다. 잘못
+// disable 하는 회귀를 피하려 실제 미설정 소스는 서버가 이미 graceful-drop
+// (sourceMissingKey, /api/desk) 하는 기존 동작에 위임하고, 여기서는 어떤 키가
+// 필요한지 title tooltip 으로만 안내한다.
+
+// UI 표기 순서 + 아이콘. label 텍스트는 i18n(Desk.category.*) 에서 온다.
+const CATEGORY_ORDER: DeskSourceCategory[] = [
+  'news',
+  'community',
+  'stats',
+  'academic',
+  'institute',
+  'thought',
+  'video',
+];
+const CATEGORY_ICON: Record<DeskSourceCategory, string> = {
+  news: '📰',
+  community: '💬',
+  stats: '📊',
+  academic: '🎓',
+  institute: '🏛',
+  thought: '✨',
+  video: '🎬',
+};
+// 기본 펼침 카테고리 (결정 1). 나머지는 접힌 상태로 시작.
+const DEFAULT_EXPANDED_CATEGORIES: DeskSourceCategory[] = ['news', 'stats', 'academic'];
+
+function SourceCategoryPicker({
+  groups,
+  selected,
+  onToggle,
+  collapsed,
+  onToggleCollapse,
+  locale,
+  categoryLabel,
+}: {
+  groups: { category: DeskSourceCategory; sources: DeskSourceDefinition[] }[];
+  selected: Set<DeskSourceId>;
+  onToggle: (id: DeskSourceId) => void;
+  collapsed: Set<DeskSourceCategory>;
+  onToggleCollapse: (category: DeskSourceCategory) => void;
+  locale: string;
+  categoryLabel: (category: DeskSourceCategory) => string;
+}) {
+  return (
+    <div className="space-y-2">
+      {groups.map(({ category, sources }) => {
+        const isCollapsed = collapsed.has(category);
+        const selectedCount = sources.filter((s) => selected.has(s.id)).length;
+        return (
+          <div key={category} className="rounded-xs border border-line-soft">
+            {/* eslint-disable-next-line react/forbid-elements -- collapsible
+                group header: needs full-row layout (icon + label + count +
+                chevron) + aria-expanded disclosure semantics outside Button
+                primitive variants */}
+            <button
+              type="button"
+              onClick={() => onToggleCollapse(category)}
+              aria-expanded={!isCollapsed}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-md text-ink hover:bg-paper-soft"
+            >
+              <span className="flex items-center gap-2">
+                <span aria-hidden>{CATEGORY_ICON[category]}</span>
+                <span>{categoryLabel(category)}</span>
+                <span className="text-xs text-mute-soft tabular-nums">
+                  {selectedCount}/{sources.length}
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className={
+                  'text-mute-soft transition-transform ' +
+                  (isCollapsed ? '' : 'rotate-180')
+                }
+              >
+                ▾
+              </span>
+            </button>
+            {!isCollapsed && (
+              <div className="flex flex-col gap-1 border-t border-line-soft px-3 py-2">
+                {sources.map((s) => {
+                  const label = locale === 'ko' ? s.label : s.labelEn;
+                  const keyHint = s.envKeys?.length
+                    ? `${s.envKeys.join(' / ')} 필요`
+                    : undefined;
+                  return (
+                    <label
+                      key={s.id}
+                      title={keyHint}
+                      className="flex cursor-pointer items-center gap-2 py-1 text-md text-ink"
+                    >
+                      <Checkbox
+                        checked={selected.has(s.id)}
+                        onChange={() => onToggle(s.id)}
+                        aria-label={label}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 
@@ -275,10 +394,55 @@ export function DeskCardBody() {
   const [regions, setRegions] = useState<Set<DeskRegion>>(
     () => new Set(['KR']),
   );
-  // selected 는 regions union 에 의존적으로 자동 관리 — UI 미노출.
+  // selected 기본값은 region 이 정하고 (sourcesForRegions), 그 위에서 사용자가
+  // 카테고리 피커로 개별 소스를 토글해 좁힌다.
   const [selected, setSelected] = useState<Set<DeskSourceId>>(() =>
     sourcesForRegions(new Set(['KR'])),
   );
+  // 접힌 카테고리 집합 — 기본 펼침(뉴스·시장통계·학술) 외 나머지는 접힘 상태로
+  // 시작 (결정 1).
+  const [collapsedCats, setCollapsedCats] = useState<Set<DeskSourceCategory>>(
+    () =>
+      new Set(
+        CATEGORY_ORDER.filter((c) => !DEFAULT_EXPANDED_CATEGORIES.includes(c)),
+      ),
+  );
+
+  // 개별 소스 토글 — region 이 정한 기본 선택 위에서 사용자가 좁힌다.
+  function toggleSource(id: DeskSourceId) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleCollapse(category: DeskSourceCategory) {
+    setCollapsedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
+
+  // region 이 노출을 허용한 소스만 카테고리별로 묶는다. 국내 전용 소스만 있는
+  // 카테고리(예: 시장 통계)는 비-KR region 에서 통째로 빠진다 (결정 3). 빈
+  // 카테고리(institute/thought — 아직 소스 없음)는 자연히 제외.
+  const categorizedSources = useMemo(() => {
+    const visible = sourcesForRegions(regions);
+    const byCategory = new Map<DeskSourceCategory, DeskSourceDefinition[]>();
+    for (const s of DESK_SOURCES) {
+      if (!visible.has(s.id)) continue;
+      const arr = byCategory.get(s.category);
+      if (arr) arr.push(s);
+      else byCategory.set(s.category, [s]);
+    }
+    return CATEGORY_ORDER.flatMap((category) => {
+      const sources = byCategory.get(category);
+      return sources ? [{ category, sources }] : [];
+    });
+  }, [regions]);
 
   // regions/selected 갱신은 SelectMenu onChange 콜백에서 직접 처리 —
   // 별도 toggle 헬퍼 미사용 (다중 선택 + 최소 1개 보장 inline).
@@ -805,6 +969,21 @@ export function DeskCardBody() {
             placeholder="예: 시장 성장률 + 주요 플레이어 위주"
           />
         </div>
+      </div>
+
+      {/* 수집 소스 — 카테고리별 collapsible 그룹 (20+ 소스 정리). region 이
+          정한 기본 선택 위에서 개별 토글로 좁힌다. */}
+      <div className="space-y-1.5">
+        <SectionLabel>{tDesk('sourcesLabel')}</SectionLabel>
+        <SourceCategoryPicker
+          groups={categorizedSources}
+          selected={selected}
+          onToggle={toggleSource}
+          collapsed={collapsedCats}
+          onToggleCollapse={toggleCollapse}
+          locale={locale}
+          categoryLabel={(category) => tDesk(`category.${category}` as never)}
+        />
       </div>
 
       {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}

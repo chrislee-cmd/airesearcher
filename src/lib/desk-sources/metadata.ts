@@ -16,6 +16,7 @@ export const KR_ONLY_GROUPS: DeskSourceGroup[] = [
   'bok',
   'kosis',
   'institute_kr',
+
 ];
 
 // Famous, crawler-friendly portals per region. Reached directly via API, or

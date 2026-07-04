@@ -770,6 +770,15 @@
     "range_custom": "직접 지정",
     "sourcesLabel": "수집 소스",
     "sourcesUnit": "개 소스",
+    "category": {
+      "news": "뉴스·포털",
+      "community": "커뮤니티",
+      "stats": "시장 통계",
+      "academic": "학술·논문",
+      "institute": "산하 연구소",
+      "thought": "Thought leader",
+      "video": "Video"
+    },
     "search": "검색",
     "error": "오류",
     "errorNoKeyword": "키워드를 1개 이상 입력하세요",
