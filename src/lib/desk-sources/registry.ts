@@ -17,6 +17,7 @@ import { googleNews } from './google-news';
 import { gdeltNews } from './gdelt-news';
 import { hackerNews } from './hacker-news';
 import { reddit } from './reddit';
+import { dart } from './dart';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
 // stable — the source picker and the report's per-channel sections read it.
@@ -33,6 +34,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   gdelt_news: gdeltNews,
   hacker_news: hackerNews,
   reddit: reddit,
+  dart: dart,
 };
 
 export const DESK_SOURCES: DeskSourceDefinition[] = Object.values(DESK_SOURCE_REGISTRY);
