@@ -53,6 +53,7 @@ import {
   type ProbingReflectionData,
   type ReflectionStatus,
 } from './probing/reflection-pane';
+import type { ProbingBackfillFeedback } from './probing/research-context';
 import { ProbingCanvasCardBody } from './probing/canvas-card-body';
 import { ProbingFullView } from './probing/full-view';
 import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
@@ -376,6 +377,46 @@ function ExpandedBody() {
     customSectionsRef.current = customSections;
   }, [customSections]);
 
+  // ─── custom 위젯 backfill + 우선 질문 (PR: probing-custom-widget-backfill-
+  //     and-priority-question) ───
+  // 새 커스텀 위젯을 만들면 누적 대화를 재분석해 (a) 채울 내용이 있으면 즉시
+  // reflection 에 병합하고 (b) 없으면 emptyCustomRef 에 모아 think 의
+  // priority_sections 로 넘겨 AI 가 그 위젯을 채우는 질문을 우선 제안하게 한다.
+  // reflection 이 나중에 그 섹션을 채우면 ref 에서 제거된다.
+  const [backfillFeedback, setBackfillFeedback] =
+    useState<ProbingBackfillFeedback | null>(null);
+  const emptyCustomRef = useRef<
+    Map<string, { title: string; description?: string }>
+  >(new Map());
+  const backfillFeedbackTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  // 진행 중은 유지, 종료 상태 (backfilled/empty) 는 몇 초 후 자동 사라짐.
+  const showBackfillFeedback = useCallback(
+    (fb: ProbingBackfillFeedback | null) => {
+      if (backfillFeedbackTimerRef.current) {
+        clearTimeout(backfillFeedbackTimerRef.current);
+        backfillFeedbackTimerRef.current = null;
+      }
+      setBackfillFeedback(fb);
+      if (fb && fb.status !== 'running') {
+        backfillFeedbackTimerRef.current = setTimeout(() => {
+          setBackfillFeedback(null);
+          backfillFeedbackTimerRef.current = null;
+        }, 6000);
+      }
+    },
+    [],
+  );
+  useEffect(
+    () => () => {
+      if (backfillFeedbackTimerRef.current) {
+        clearTimeout(backfillFeedbackTimerRef.current);
+      }
+    },
+    [],
+  );
+
   // ─── 기본 8 위젯 개별 숨김 (PR: probing-default-persona-widgets-hide) ───
   // UI-only hide — backend 는 여전히 기본 8 을 required 로 채우고, 여기선
   // 렌더 필터만. localStorage 영속, restore 로 즉시 재노출.
@@ -621,6 +662,10 @@ function ExpandedBody() {
             output_lang: outputLangRef.current,
             injected_questions: injectedQuestions,
             widget_status: widgetStatus,
+            // backfill 후에도 비어 있는 커스텀 위젯 = 채우는 질문 우선 제안.
+            priority_sections: Array.from(
+              emptyCustomRef.current.values(),
+            ).map((s) => ({ title: s.title, description: s.description ?? '' })),
           }),
           signal: controller.signal,
         });
@@ -756,6 +801,8 @@ function ExpandedBody() {
           if (hasContent) {
             mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
+            // reflection 이 이 커스텀 섹션을 채웠으면 더는 우선 질문 대상 아님.
+            emptyCustomRef.current.delete(canonical);
           } else if (!mergedRec[canonical]) {
             mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
@@ -798,6 +845,75 @@ function ExpandedBody() {
     runReflectionRef.current = runReflection;
   }, [runReflection]);
 
+  // ─── 신규 커스텀 위젯 backfill — 누적 대화를 한 번 재분석 ───
+  const runBackfill = useCallback(
+    async (sectionKey: string, title: string, description?: string) => {
+      const segs = rawSegmentsRef.current;
+      const fullText = segmentsText(segs);
+      // 대화가 거의 없으면 backfill 자체가 불가 → empty (우선 질문 대상).
+      if (fullText.length < MIN_TRANSCRIPT_CHARS) {
+        emptyCustomRef.current.set(sectionKey, { title, description });
+        showBackfillFeedback({ status: 'empty', count: 0 });
+        return;
+      }
+      const trimmed =
+        fullText.length > REFLECTION_MAX_CHARS
+          ? fullText.slice(fullText.length - REFLECTION_MAX_CHARS)
+          : fullText;
+      showBackfillFeedback({ status: 'running', count: 0 });
+      try {
+        const res = await fetchWithAuth('/api/probing/backfill', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            transcript_window: trimmed,
+            section: { title, description: description ?? '' },
+            output_lang: outputLangRef.current,
+          }),
+        });
+        if (!res.ok) throw new Error(`backfill_failed_${res.status}`);
+        const json = (await res.json()) as {
+          backfilled?: boolean;
+          count?: number;
+          section?: ProbingPersonaSection;
+        };
+        if (json.backfilled && json.section) {
+          const filled = json.section;
+          // 원본 UUID key 슬롯에 병합 — 좌패널이 바로 채워진다. reflection 의
+          // merge 는 새 응답이 빈 값일 때 기존 값을 지우지 않으므로 이후 tick
+          // 이 이 backfill 결과를 덮어쓰지 않는다.
+          setReflection((prev) => {
+            const next = { ...(prev ?? {}) } as Record<
+              string,
+              ProbingPersonaSection | undefined
+            >;
+            next[sectionKey] = filled;
+            return next as ProbingReflectionData;
+          });
+          setReflectionLastUpdatedAt(Date.now());
+          setReflectionStatus('ready');
+          emptyCustomRef.current.delete(sectionKey);
+          showBackfillFeedback({
+            status: 'backfilled',
+            count: json.count ?? filled.signals.length,
+          });
+        } else {
+          emptyCustomRef.current.set(sectionKey, { title, description });
+          showBackfillFeedback({ status: 'empty', count: 0 });
+        }
+      } catch {
+        // 실패 = 회귀 방지 위해 옛 flow 그대로 (위젯은 이미 생성됨). empty 로
+        // 단정하지 않는다 — 다음 reflection tick 이 자연히 채울 수 있다.
+        showBackfillFeedback(null);
+      }
+    },
+    [showBackfillFeedback],
+  );
+  const runBackfillRef = useRef(runBackfill);
+  useEffect(() => {
+    runBackfillRef.current = runBackfill;
+  }, [runBackfill]);
+
   // ─── 자동 트리거: transcript 변경 → 5초 debounce → 좌·우 호출 ───
   useEffect(() => {
     if (!isLive) return;
@@ -822,9 +938,11 @@ function ExpandedBody() {
       setThinkingError(null);
       setActivePopup(null);
       setHistory([]);
+      emptyCustomRef.current.clear();
+      showBackfillFeedback(null);
     }
     prevLiveRef.current = isLive;
-  }, [isLive]);
+  }, [isLive, showBackfillFeedback]);
 
   // 세션 stop 시 진행 중 think SSE abort.
   useEffect(() => {
@@ -1058,7 +1176,10 @@ function ExpandedBody() {
         widget: 'probing',
         action: 'question_injection',
       });
-      addCustomSection(question, '즉시 던질 질문');
+      const DESC = '즉시 던질 질문';
+      const key = addCustomSection(question, DESC);
+      // 신규 위젯 = 누적 대화 backfill 시도. 생성 실패(상한 도달)면 skip.
+      if (key) void runBackfillRef.current(key, question, DESC);
       void runThinkRef.current([question]);
     },
     [addCustomSection],
@@ -1090,6 +1211,7 @@ function ExpandedBody() {
     context,
     onContextChange: setContext,
     onInject: handleInjectQuestion,
+    backfillFeedback,
     contextDisabled: !contextHydrated,
     thinkingEvents,
     thinkingStreaming,

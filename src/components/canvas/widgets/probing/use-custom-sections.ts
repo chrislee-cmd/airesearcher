@@ -53,7 +53,9 @@ function loadFromStorage(): ProbingCustomSection[] {
 export type UseCustomSections = {
   sections: ProbingCustomSection[];
   hydrated: boolean;
-  add: (title: string, description?: string) => void;
+  // 생성된 섹션의 key 를 반환 (backfill 대상 지정용). 빈 title / 상한 초과로
+  // 생성 안 되면 null.
+  add: (title: string, description?: string) => string | null;
   remove: (key: string) => void;
 };
 
@@ -77,6 +79,15 @@ export function useCustomSections(): UseCustomSections {
   useEffect(() => {
     hydratedRef.current = state.hydrated;
   }, [state.hydrated]);
+
+  // add 가 상한 도달 여부를 동기적으로 판정해 정확한 반환값(key | null)을
+  // 주도록 현재 섹션 수를 ref 로 추적. add 는 사용자 클릭당 1회라 렌더 지연
+  // 으로 인한 stale 위험은 사실상 없다 (functional setState 가드가 실제 상한
+  // 을 최종 보장).
+  const countRef = useRef(state.sections.length);
+  useEffect(() => {
+    countRef.current = state.sections.length;
+  }, [state.sections.length]);
   useEffect(() => {
     if (!hydratedRef.current) return;
     try {
@@ -86,22 +97,29 @@ export function useCustomSections(): UseCustomSections {
     }
   }, [state.sections]);
 
-  const add = useCallback((title: string, description?: string) => {
-    const t = title.trim().slice(0, TITLE_MAX);
-    if (!t) return;
-    const d = description?.trim().slice(0, DESCRIPTION_MAX) || undefined;
-    setState((prev) => {
-      if (prev.sections.length >= MAX_SECTIONS) return prev;
+  const add = useCallback(
+    (title: string, description?: string): string | null => {
+      const t = title.trim().slice(0, TITLE_MAX);
+      if (!t) return null;
+      const d = description?.trim().slice(0, DESCRIPTION_MAX) || undefined;
+      if (countRef.current >= MAX_SECTIONS) return null;
+      // key 를 setState 밖에서 미리 생성해 caller 에 반환한다. backfill 대상
+      // 지정에 이 key 가 즉시 필요하다.
       const key =
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
           : `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      return {
-        ...prev,
-        sections: [...prev.sections, { key, title: t, description: d }],
-      };
-    });
-  }, []);
+      setState((prev) => {
+        if (prev.sections.length >= MAX_SECTIONS) return prev;
+        return {
+          ...prev,
+          sections: [...prev.sections, { key, title: t, description: d }],
+        };
+      });
+      return key;
+    },
+    [],
+  );
 
   const remove = useCallback((key: string) => {
     setState((prev) => ({
