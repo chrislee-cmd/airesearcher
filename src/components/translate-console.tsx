@@ -3387,7 +3387,7 @@ export function TranslateConsole({
 
           {/* 🚀 세션 시작 — WebRTC + OpenAI Realtime 라이브 진입 (결정 1). */}
           <ChromeButton
-            variant="primary"
+            variant="default"
             size="lg"
             onClick={() => void start()}
             disabled={busy}
