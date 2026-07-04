@@ -653,7 +653,46 @@ export function RecruitingWizard({
   const summaryForCard =
     editedBrief?.summary?.trim() || partialBrief?.summary?.trim() || '';
 
-  // ── Render ──────────────────────────────────────────────────────────
+  // ── idle = 컨트롤 보드 (서브헤더 폐기) ────────────────────────────────
+  // 첫 진입 화면. 옛 컴팩트 서브헤더(대상자 조건 입력 버튼 + "조건 검토" CTA)
+  // 는 입력을 모달 뒤에 숨겨 "컨트롤 보드" 로 보이지 않았다. idle 에선 입력
+  // (조사 목적·대상자 브리프 텍스트 + 파일)을 본문에 직접 펼치고, 하단 전면-폭
+  // "폼 발행" CTA 로 wizard flow(추출 → 설문 → Google Form 발행)에 진입한다.
+  // 추출이 시작(criteriaPhase !== 'idle')되면 아래 기존 서브헤더 + 카드 flow
+  // 로 넘어간다 (working flow 회귀 0).
+  if (criteriaPhase === 'idle') {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          <CriteriaInputFields
+            files={files}
+            pasted={pasted}
+            rejected={rejected}
+            running={jobRunning}
+            onPasteChange={setPasted}
+            onAddFiles={addFiles}
+            onRemoveFile={removeFile}
+          />
+          {criteriaError && (
+            <div className="text-sm text-warning">오류: {criteriaError}</div>
+          )}
+        </div>
+        <div className="shrink-0 border-t-[2px] border-ink bg-paper-soft px-5 py-3">
+          <ChromeButton
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={startExtract}
+            disabled={!canExtract}
+          >
+            {jobRunning ? '발행 준비 중…' : '🚀 폼 발행'}
+          </ChromeButton>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render (flow: 추출 시작 후) ───────────────────────────────────────
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 통일 서브헤더 (컴팩트) — 좌: 대상자 조건 입력 (팝업 모달 열기),
@@ -686,45 +725,43 @@ export function RecruitingWizard({
       />
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
-      {/* CARD 1 — 대상자 조건. idle 에는 렌더 X — 우측 "조건 검토" 를 눌러
-          추출이 시작(generating)된 뒤에야 노출. 입력 전엔 서브헤더만 보임. */}
-      {criteriaPhase !== 'idle' && (
-        <WizardCard
-          index={1}
-          title="대상자 조건"
-          phase={criteriaPhase}
-          accentColor="amore"
-          collapseOnApprove
-        >
-          {criteriaPhase === 'generating' && (
-            <GeneratingRow
-              label={
-                partialCriteria.length > 0
-                  ? `${partialCriteria.length}개 조건 추출 중…`
-                  : '조건 추출 중…'
+      {/* CARD 1 — 대상자 조건. idle 은 위 컨트롤 보드에서 early-return 되므로
+          이 지점의 criteriaPhase 는 generating/review/approved 중 하나. */}
+      <WizardCard
+        index={1}
+        title="대상자 조건"
+        phase={criteriaPhase}
+        accentColor="amore"
+        collapseOnApprove
+      >
+        {criteriaPhase === 'generating' && (
+          <GeneratingRow
+            label={
+              partialCriteria.length > 0
+                ? `${partialCriteria.length}개 조건 추출 중…`
+                : '조건 추출 중…'
+            }
+          />
+        )}
+
+        {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
+          editedBrief && (
+            <ReviewRow
+              title={summaryForCard || '추출 완료'}
+              meta={`${editedBrief.criteria.length}개 조건`}
+              phase={criteriaPhase}
+              onPreview={() =>
+                setModal({ open: true, card: 'criteria', mode: 'preview' })
               }
+              onEdit={() =>
+                setModal({ open: true, card: 'criteria', mode: 'editor' })
+              }
+              onApprove={approveCriteria}
+              onRestart={restartCriteria}
+              restartLabel="처음부터 다시"
             />
           )}
-
-          {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
-            editedBrief && (
-              <ReviewRow
-                title={summaryForCard || '추출 완료'}
-                meta={`${editedBrief.criteria.length}개 조건`}
-                phase={criteriaPhase}
-                onPreview={() =>
-                  setModal({ open: true, card: 'criteria', mode: 'preview' })
-                }
-                onEdit={() =>
-                  setModal({ open: true, card: 'criteria', mode: 'editor' })
-                }
-                onApprove={approveCriteria}
-                onRestart={restartCriteria}
-                restartLabel="처음부터 다시"
-              />
-            )}
-        </WizardCard>
-      )}
+      </WizardCard>
 
       {/* CARD 2 — 심사 설문. Card 1 승인 전에는 아예 렌더하지 않음 — 단계가
           진행되면서 카드가 하나씩 순차로 나타나도록. restartCriteria 가
