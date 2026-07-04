@@ -49,7 +49,11 @@ import {
   type Listener,
   type ListenerPresence,
 } from '@/hooks/use-translate-listeners';
-import { isHangulFusionBoundary, joinDelta } from '@/lib/translate-stream-join';
+import {
+  isHangulFusionBoundary,
+  joinDelta,
+  reSpaceKoreanLine,
+} from '@/lib/translate-stream-join';
 import {
   useRealtimeTranscriptLiveBinding,
   useRealtimeTranscriptPublisher,
@@ -1179,6 +1183,38 @@ export function TranslateConsole({
     [],
   );
 
+  // Part B — periodic Korean re-split of already-committed lines. Layer A
+  // (joinDelta + live reSpaceKoreanLine) fixes seams as they stream, but a
+  // fusion that landed inside a delta committed before this heuristic saw
+  // it — or a line built through an alternate pushLine path — can still be
+  // fused on screen. A cheap 5s sweep rescans every final line and splits
+  // any residual 종결어미 seam. reSpaceKoreanLine is idempotent, so a clean
+  // line yields an identical string and we skip the state update (no
+  // re-render churn). The server LLM postprocess (Layer D) still owns the
+  // exact fix at session end.
+  useEffect(() => {
+    const sweep = (
+      setter: React.Dispatch<React.SetStateAction<CaptionLine[]>>,
+    ): void => {
+      setter((prev) => {
+        let mutated = false;
+        const nextLines = prev.map((line) => {
+          if (!line.final) return line;
+          const respaced = reSpaceKoreanLine(line.text);
+          if (respaced === line.text) return line;
+          mutated = true;
+          return { ...line, text: respaced };
+        });
+        return mutated ? nextLines : prev;
+      });
+    };
+    const id = setInterval(() => {
+      sweep(setInputLines);
+      sweep(setOutputLines);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   const broadcastCaption = useCallback(
     (kind: 'input' | 'output', line: CaptionLine, lang: string) => {
       // The viewer prompter only renders translated output, so input
@@ -1376,7 +1412,14 @@ export function TranslateConsole({
       // reported. joinDelta also collapses byte-split mojibake `��` pairs
       // straddling the boundary; count the dropped U+FFFD so the fidelity
       // report reflects the lossy cleanup instead of hiding it.
-      const next = joinDelta(current.text, delta);
+      // joinDelta only inspects the prev/delta seam; a Korean sentence
+      // fusion that arrives *inside* one delta ("잡티예요이제" in a single
+      // fragment) is invisible to it. reSpaceKoreanLine rescans the whole
+      // joined line and splits those interior seams too, so the live
+      // caption is de-fused immediately instead of waiting for the 5s
+      // committed-line sweep below. Idempotent, so double-processing the
+      // boundary joinDelta already spaced is a no-op.
+      const next = reSpaceKoreanLine(joinDelta(current.text, delta));
       const fffdDropped =
         countReplacementChars(current.text) +
         countReplacementChars(delta) -

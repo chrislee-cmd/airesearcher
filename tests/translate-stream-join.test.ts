@@ -4,6 +4,7 @@ import {
   collapseBoundaryFffd,
   isHangulFusionBoundary,
   joinDelta,
+  reSpaceKoreanLine,
 } from '../src/lib/translate-stream-join.ts';
 
 const FFFD = '�';
@@ -74,6 +75,107 @@ describe('joinDelta — whitespace + boundary preservation (no regression)', () 
 
   it('joins a split single word with no space', () => {
     assert.equal(joinDelta('trans', 'lation'), 'translation');
+  });
+});
+
+describe('joinDelta — Korean polite-ending sentence boundary', () => {
+  it('splits a 요-ending running into a new clause ("잡티예요" + "이제")', () => {
+    // The user-reported headline case. 이제 opens with 이 (also the subject
+    // particle) but nothing attaches to a polite verb ending, so it splits.
+    assert.equal(joinDelta('잡티예요', '이제'), '잡티예요 이제');
+  });
+
+  it('splits a 요-ending into a connective adverb ("됐거든요" + "게다가")', () => {
+    assert.equal(joinDelta('됐거든요', '게다가'), '됐거든요 게다가');
+  });
+
+  it('splits a 죠-ending into a new clause', () => {
+    assert.equal(joinDelta('그렇죠', '그런데'), '그렇죠 그런데');
+  });
+
+  it('does NOT shatter a word where 요 is noun-internal but the tail is an ending syllable ("하네" + "요")', () => {
+    // 하네|요 must stay 하네요 — the head 요 is itself an ending syllable,
+    // signalling a mid-word split rather than a fresh sentence.
+    assert.equal(joinDelta('하네', '요'), '하네요');
+  });
+
+  it('does NOT space a 요-ending before a grammatical-particle head', () => {
+    // Defensive: even after 요 we suppress a leading particle syllable.
+    assert.equal(joinDelta('해요', '는'), '해요는');
+  });
+
+  it('leaves 다/네/까 endings to Layer D (not a stream-time trigger)', () => {
+    // 한다|는 (connective) and 기다|리고 (mid-word) would false-split if 다
+    // triggered, so 다 is intentionally excluded here.
+    assert.equal(joinDelta('한다', '는'), '한다는');
+    assert.equal(joinDelta('기다', '리고'), '기다리고');
+  });
+
+  it('preserves the general two-noun Hangul fusion behavior (unchanged)', () => {
+    // 을 is not a polite ending, so the pre-existing "unrecoverable"
+    // contract still holds — no invented space.
+    assert.equal(joinDelta('소재들을', '분석하고'), '소재들을분석하고');
+  });
+});
+
+describe('reSpaceKoreanLine (post-hoc committed-line re-split)', () => {
+  it('splits an intra-line fusion joinDelta never saw ("잡티예요이제")', () => {
+    assert.equal(reSpaceKoreanLine('잡티예요이제 서른셋이'), '잡티예요 이제 서른셋이');
+  });
+
+  it('splits multiple seams in one line', () => {
+    assert.equal(
+      reSpaceKoreanLine('됐거든요게다가 고르죠그런데'),
+      '됐거든요 게다가 고르죠 그런데',
+    );
+  });
+
+  it('is idempotent — an already-spaced line is unchanged', () => {
+    const spaced = '잡티예요 이제 서른셋이';
+    assert.equal(reSpaceKoreanLine(spaced), spaced);
+  });
+
+  it('does not touch 요 followed by an ending syllable ("하네요")', () => {
+    assert.equal(reSpaceKoreanLine('하네요'), '하네요');
+  });
+
+  it('leaves non-Korean text untouched', () => {
+    assert.equal(reSpaceKoreanLine('main hub the key tool'), 'main hub the key tool');
+    assert.equal(reSpaceKoreanLine(''), '');
+  });
+
+  it('splits a conjunction fused to the following word ("그리고그")', () => {
+    assert.equal(reSpaceKoreanLine('그리고그 영상 소재로'), '그리고 그 영상 소재로');
+  });
+
+  it('splits a conjunction fused to the preceding word ("말그리고")', () => {
+    assert.equal(reSpaceKoreanLine('수건도 하나말그리고'), '수건도 하나말 그리고');
+  });
+
+  it('splits 게다가 fused into the next word ("게다가고르지")', () => {
+    assert.equal(reSpaceKoreanLine('됐거든요 게다가고르지'), '됐거든요 게다가 고르지');
+  });
+
+  it('splits the user headline line at the conjunction ("그리고저는")', () => {
+    assert.equal(
+      reSpaceKoreanLine('그리고저는 손가락 말 수건도 하나 만들었어요.'),
+      '그리고 저는 손가락 말 수건도 하나 만들었어요.',
+    );
+  });
+
+  it('splits two fused conjunctions on one line', () => {
+    assert.equal(reSpaceKoreanLine('그리고그래서'), '그리고 그래서');
+  });
+
+  it('is idempotent on an already-spaced conjunction', () => {
+    assert.equal(reSpaceKoreanLine('그리고 그 영상'), '그리고 그 영상');
+  });
+
+  it('does NOT touch a particle boundary (Layer D owns it — "저는지난주")', () => {
+    // Documented ceiling: 는/은/을/를 are homographic with verb endings,
+    // so heuristic spacing here would regress words like "하는데". Left
+    // fused on purpose for the server LLM pass.
+    assert.equal(reSpaceKoreanLine('저는지난주 성과'), '저는지난주 성과');
   });
 });
 

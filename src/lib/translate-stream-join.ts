@@ -64,6 +64,92 @@ export function isHangulFusionBoundary(prev: string, delta: string): boolean {
   return /[가-힣]$/u.test(prev) && /^[가-힣]/u.test(delta);
 }
 
+// ── Korean sentence-boundary heuristic (Layer A, streaming) ────────────
+//
+// The user reported live captions fusing two Korean sentences with no
+// space ("잡티예요이제", "됐거든요게다가"): a polite/declarative verb ending
+// runs straight into the next clause. Unlike the general Hangul fusion
+// above (two arbitrary noun tokens, genuinely unrecoverable at stream
+// time), a *verb ending* → new syllable carries a real structural signal
+// that a sentence break was swallowed, so we can patch a space — the same
+// spirit as the Latin lowercase→Uppercase rule.
+//
+// Trigger set is deliberately narrow. The spec floated 요/다/까/죠/네, but
+// three of those are unsafe as a stream-time trigger:
+//   • 다 — extremely common mid-word (기다리다) and takes connective
+//     particles (한다는 / 한다고), so it shatters real words.
+//   • 네 — "하네요" splits as 하네|요 and would become "하네 요".
+//   • 까 — rarely a standalone ending in this register.
+// 요/죠 are the safe subset: they close the polite register the user's
+// captions are in, are (almost) never followed by a grammatical particle,
+// and cover every fused case in the report. The residual noun-internal
+// false positive (필요|해요 → "필요 해요") is the accepted <10% cost the
+// spec assigns to Layer D (session-end LLM postprocess) to correct.
+const KOREAN_POLITE_ENDING = /[요죠]/u;
+// A syllable that, when it *opens* the next token after a polite ending,
+// signals the join is NOT a fresh sentence, so no space:
+//   • a vowel-form particle (는/를/의/에/와/도/만/가) — 요/죠 are vowel-
+//     final, so the noun-internal case (필요|는, 중요|가) attaches one of
+//     these; the consonant-form particles (은/이/을) grammatically can't
+//     follow a vowel and are deliberately absent so a real clause opener
+//     like "이제" / "은근히" is not suppressed.
+//   • an ending syllable itself (요/죠/네/다/까) — a mid-word tail such as
+//     하네|요, so we keep the word whole.
+const KOREAN_NON_INITIAL_HEAD = /[요죠네다까는를의에와도만가]/u;
+
+// Insert a space when `endChar` (last of prev) is a polite verb ending and
+// `headChar` (first of next) opens a new clause. Returns true → caller
+// splits. Kept as a predicate so both the streaming join and the post-hoc
+// line re-splitter share one rule.
+function isKoreanSentenceBoundary(endChar: string, headChar: string): boolean {
+  if (!KOREAN_POLITE_ENDING.test(endChar)) return false;
+  if (!/[가-힣]/u.test(headChar)) return false;
+  // 새 문장은 어미/조사 음절로 시작하지 않는다 — 시작하면 단어 중간 분리
+  // (필요|해요 는 통과시키되 하네|요 · 요는 류는 막는다).
+  if (KOREAN_NON_INITIAL_HEAD.test(headChar)) return false;
+  return true;
+}
+
+// Sentence-initial conjunctions that fuse into the surrounding text when
+// the stream drops their bounding spaces ("그리고저는", "그리고그",
+// "게다가고르지"). Unlike Korean particles/endings (which are homographic
+// with verb morphology — see reSpaceKoreanLine's doc), these are distinct
+// multi-syllable tokens that are (practically) never embedded inside
+// another word, so isolating them with a space is safe in both directions.
+// Kept short and high-confidence on purpose — ambiguous ones like "그런데"
+// (vs "그런 데") and "또한" (vs "또 한 번") are deliberately excluded.
+const KOREAN_CONJUNCTIONS = ['그리고', '그래서', '그러나', '게다가', '그러므로', '따라서'];
+const CONJ = KOREAN_CONJUNCTIONS.join('|');
+// A conjunction fused to the FOLLOWING word ("그리고그" → "그리고 그").
+const CONJ_TRAILING_RE = new RegExp(`(${CONJ})([가-힣])`, 'gu');
+// A conjunction fused to the PRECEDING word ("말그리고" → "말 그리고").
+// The 요/죠 rule already handles a polite-ending → 그리고 seam, but a plain
+// noun/particle tail into a conjunction has no other signal.
+const CONJ_LEADING_RE = new RegExp(`([가-힣])(${CONJ})`, 'gu');
+
+// Re-split a fully-committed caption line whose Korean tokens fused
+// *inside a single delta* — a case `joinDelta` structurally cannot see,
+// since it only inspects the prev/delta boundary, never the interior of
+// one delta. Two conservative passes:
+//   1. Sentence-initial conjunctions (safe, both sides).
+//   2. Polite verb endings 요/죠 → new clause (same rule as the join).
+// Deliberately does NOT try to space after particles (는/은/을/를/…): those
+// are homographic with verb endings ("저는" topic vs "하는데" connective,
+// "분석을" object vs "-을" adnominal) and cannot be split safely without
+// morphology — that residual is the server LLM postprocess's (Layer D) job.
+// Idempotent (an already-spaced line has no bare seam left to match), so it
+// is safe to run repeatedly on a periodic sweep of committed lines.
+const KOREAN_SEAM_RE = /([요죠])([가-힣])/gu;
+export function reSpaceKoreanLine(text: string): string {
+  if (!text) return text;
+  let out = text.replace(CONJ_LEADING_RE, '$1 $2');
+  out = out.replace(CONJ_TRAILING_RE, '$1 $2');
+  out = out.replace(KOREAN_SEAM_RE, (m, endChar: string, headChar: string) =>
+    isKoreanSentenceBoundary(endChar, headChar) ? `${endChar} ${headChar}` : m,
+  );
+  return out;
+}
+
 // True when `s` ends on a character that already provides a visual word
 // or sentence boundary (whitespace, punctuation, closing bracket). A join
 // after such a char never needs a patched space.
@@ -99,6 +185,11 @@ export function joinDelta(prev: string, delta: string): string {
   const firstChar = d[0];
   // Already separated by whitespace at the join — nothing to do.
   if (/\s/.test(lastChar) || /\s/.test(firstChar)) return p + d;
+  // Korean polite verb ending → new clause ("잡티예요" + "이제"). A real
+  // sentence break the stream swallowed; see isKoreanSentenceBoundary.
+  if (isKoreanSentenceBoundary(lastChar, firstChar)) {
+    return p + ' ' + d;
+  }
   // "alsoOnce" / "serviceWe" pattern — lowercase letter or digit running
   // directly into a capital letter. A word never has an internal
   // lowercase→Uppercase transition, so this is a fused boundary.
