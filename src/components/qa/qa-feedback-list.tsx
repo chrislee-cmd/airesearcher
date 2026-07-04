@@ -1,8 +1,44 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+
+// MediaRecorder webm files carry no duration in their container, so an
+// <audio> element loads them with duration === Infinity. Chrome then treats
+// the element as already-ended: pressing play produces no sound and the seek
+// bar is dead. Forcing a seek to the far end makes the browser scan to the
+// real end and compute the true duration; we then reset to 0 so it's ready to
+// play normally. This is the standard workaround for MediaRecorder playback.
+function FeedbackAudio({ src }: { src: string }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const fixedRef = useRef(false);
+
+  const onLoadedMetadata = useCallback(() => {
+    const el = ref.current;
+    if (!el || fixedRef.current) return;
+    if (el.duration === Infinity || Number.isNaN(el.duration)) {
+      fixedRef.current = true;
+      const onSeeked = () => {
+        el.removeEventListener('timeupdate', onSeeked);
+        el.currentTime = 0;
+      };
+      el.addEventListener('timeupdate', onSeeked);
+      // A finite-but-huge target; Chrome clamps to the true end while scanning.
+      el.currentTime = 1e101;
+    }
+  }, []);
+
+  return (
+    <audio
+      ref={ref}
+      controls
+      src={src}
+      onLoadedMetadata={onLoadedMetadata}
+      className="flex-1"
+    />
+  );
+}
 
 export type QaFeedbackRow = {
   id: string;
@@ -166,9 +202,7 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
                     >
                       🔊 재생
                     </Button>
-                    {audioUrls[f.id] && (
-                      <audio controls src={audioUrls[f.id]} className="flex-1" />
-                    )}
+                    {audioUrls[f.id] && <FeedbackAudio src={audioUrls[f.id]} />}
                   </div>
                   {f.transcript ? (
                     <p className="text-sm text-ink-2 bg-paper-soft p-3 rounded-sm whitespace-pre-wrap">
