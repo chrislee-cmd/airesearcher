@@ -37,11 +37,6 @@ import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
-import { WidgetSubHeader } from './canvas/shell/widget-subheader';
-import { WidgetSettingsButton } from './canvas/shell/widget-settings-button';
-import { OnboardingTooltip } from './ui/onboarding-tooltip';
-import { useVisitedOnce } from './ui/use-visited-once';
-import { WidgetSettingsModal } from './canvas/shell/widget-settings-modal';
 import { ListenerPanel } from './translate/listener-panel';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
@@ -555,15 +550,13 @@ export function TranslateConsole({
 } = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
-  const tWidgets = useTranslations('Widgets');
   const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
-  // 서브헤더 "설정" 모달 — 옛 필드 (캡처방식 / 원어·번역언어 / 용어집) 를
-  // 담는다. 값 변경은 즉시 반영 (staging 없음), 닫기 = 확정.
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // 온보딩 게이팅 — 통역시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩).
-  const [settingsVisited, markSettingsVisited] = useVisitedOnce('widget-translate');
+  // Phase 2 (live) slim bar — 접힌 요약(⚙ 원어→대상어 · 입력모드)의 ▼ 를
+  // 누르면 컨트롤이 read-only 로 재노출된다. 세션 중 언어·모드 변경은 불가
+  // (결정 3) 이라 재노출된 필드는 disabled + 재시작 안내만 보여준다.
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -3270,13 +3263,17 @@ export function TranslateConsole({
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
   const langOptions = useMemo(() => LANGS, []);
-  // 서브헤더 설정 dot — default (both / ko → en / 용어집 없음) 와 다른 값이
-  // 하나라도 있으면 "설정됨" 을 amore dot 으로 표시.
-  const hasNonDefaultSettings =
-    captureMode !== 'both' ||
-    sourceLang !== 'ko' ||
-    targetLang !== 'en' ||
-    glossary.length > 0;
+  // Slim bar 요약용 라벨 — 원어/대상어의 표시명 + 입력모드 축약.
+  const sourceLabel =
+    LANGS.find((l) => l.value === sourceLang)?.label ?? sourceLang;
+  const targetLabel =
+    LANGS.find((l) => l.value === targetLang)?.label ?? targetLang;
+  const captureShort =
+    captureMode === 'both'
+      ? t('captureMode.shortBoth')
+      : captureMode === 'mic-only'
+        ? t('captureMode.shortMic')
+        : t('captureMode.shortTab');
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
@@ -3316,105 +3313,22 @@ export function TranslateConsole({
 
   return (
     <div className="space-y-4">
-      {/* WidgetSubHeader — settings (captureMode / sourceLang / targetLang)
-          / actions (timer / live indicators / monitor mute / share /
-          start-stop CTA). 저장은 항상 ON (default save) 이라 options 슬롯
-          (옛 저장 체크박스) 없음. 3 위젯 공통 primitive. */}
-      <WidgetSubHeader
-        className="-mx-5 -mt-5"
-        compact
-        inputs={
-          // 통역시작 CTA 는 설정을 한 번 거쳐야 활성 (§ 온보딩). 설정 미방문
-          // 동안 ⚙ pulse + 첫 사용 툴팁으로 유도.
-          <OnboardingTooltip
-            id="widget-translate"
-            message={tWidgets('onboardingSettings')}
-            dismissLabel={tWidgets('onboardingDismiss')}
-          >
-            <WidgetSettingsButton
-              onClick={() => {
-                trackEvent('widget_action', {
-                  widget: 'translate',
-                  action: 'settings_open',
-                });
-                markSettingsVisited();
-                setSettingsOpen(true);
-              }}
-              label={tWidgets('settings')}
-              hasChanges={hasNonDefaultSettings}
-              pulse={!settingsVisited}
-            />
-          </OnboardingTooltip>
-        }
-        actions={
-          /* 시계 + 시작/중지 CTA 만. 음성 on/off · 공유 링크 생성 버튼은
-             메인 패널 상단 (프롬프터 바로 위) 으로 이동 — 서브헤더는 설정 +
-             핵심 CTA 만. status / slot-indicator / recording pills 는 이전
-             PR 에서 visual noise 로 제거 (state 는 그대로 behavior 구동). */
-          <div className="flex items-center gap-2">
-            <span className="text-md tabular-nums text-mute">
-              {live ? formatElapsed(elapsed) : '00:00'}
-            </span>
-            {/* 🚨 Auto-renewal indicator — subtle, only while a background
-                session handover is in flight (<2s). Reassures the host the
-                dip is expected, not a crash. */}
-            {live && renewing ? (
-              <span className="text-sm text-mute-soft">{t('renewing')}</span>
-            ) : null}
-            {live ? (
-              <ChromeButton
-                size="lg"
-                onClick={() => void stop()}
-              >
-                {t('stop')}
-              </ChromeButton>
-            ) : (
-              <ChromeButton
-                variant="primary"
-                size="lg"
-                onClick={() => void start()}
-                disabled={busy || !settingsVisited}
-              >
-                {busy ? t('starting') : t('start')}
-              </ChromeButton>
-            )}
-          </div>
-        }
-      />
-
-      {/* 설정 모달 — 옛 서브헤더 필드 (캡처방식 / 원어·번역언어 / 용어집).
-          값 변경은 즉시 반영, 닫기 = 확정. 세션 시작 전에만 편집 가능 —
-          live/busy 시 필드 disabled 유지 (옛 동작 그대로). */}
-      <WidgetSettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        title={tWidgets('settings')}
-        closeLabel={tWidgets('settingsClose')}
-      >
-        {/* 2 컬럼 grid: 좌 = captureMode(위) + sourceLang/targetLang(아래
-            수평) stack, 우 = glossary chips. 가시 라벨 제거 — a11y 는 select /
-            input 의 aria-label 로 보장. */}
-        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
-          {/* 좌측 컬럼: captureMode → sourceLang/targetLang */}
-          <div className="flex min-w-0 flex-col gap-3">
-            {/* 1번 = 입력 소스 (captureMode). */}
-            <select
-              value={captureMode}
-              onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-              disabled={live || busy}
-              aria-label={t('captureMode.label')}
-              className="h-8 w-fit rounded-xs border border-line bg-paper px-2 text-md text-ink"
-            >
-              <option value="both">{t('captureMode.both')}</option>
-              <option value="mic-only">{t('captureMode.micOnly')}</option>
-              <option value="tab-only">{t('captureMode.tabOnly')}</option>
-            </select>
-            {/* 2번 = 언어 (translate 전용). source / target 수평 stack. */}
-            <div className="flex flex-wrap gap-3">
+      {/* Phase 1 (idle) — 컨트롤 보드. 옛 서브헤더 + 설정 모달을 대체:
+          원어/대상어 · 입력 모드 · Glossary 를 카드에 직접 노출하고 🚀 세션
+          시작 CTA 로 라이브 진입. live 진입 시 아래 slim bar 로 접힌다.
+          idle/starting/ended/error 에서 렌더 (live 만 예외). */}
+      {!live ? (
+        <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
+          {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). 라벨은 각
+              필드 위에 노출 (모달 시절엔 aria-label 만 있었으나 컨트롤
+              보드에선 보이는 라벨이 더 명확). */}
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+              {t('sourceLang')}
               <select
                 value={sourceLang}
                 onChange={(e) => setSourceLang(e.target.value)}
-                disabled={live || busy}
+                disabled={busy}
                 aria-label={t('sourceLang')}
                 className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
               >
@@ -3424,10 +3338,13 @@ export function TranslateConsole({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+              {t('targetLang')}
               <select
                 value={targetLang}
                 onChange={(e) => setTargetLang(e.target.value)}
-                disabled={live || busy}
+                disabled={busy}
                 aria-label={t('targetLang')}
                 className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
               >
@@ -3437,24 +3354,139 @@ export function TranslateConsole({
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+              {t('captureMode.label')}
+              <select
+                value={captureMode}
+                onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+                disabled={busy}
+                aria-label={t('captureMode.label')}
+                className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+              >
+                <option value="both">{t('captureMode.both')}</option>
+                <option value="mic-only">{t('captureMode.micOnly')}</option>
+                <option value="tab-only">{t('captureMode.tabOnly')}</option>
+              </select>
+            </label>
           </div>
 
-          {/* 우측 컬럼: glossary (Layer B). 세션 시작 전에만 입력 —
-              live/busy 시 잠금. 인명/도구명/약어의 정규 표기를 Enter 로
-              chip 추가. */}
-          <div className="flex min-w-0 flex-col">
+          {/* Glossary (Layer B) — 세션 시작 전에만 입력. 인명/도구명/약어의
+              정규 표기를 Enter 로 chip 추가. */}
+          <label className="flex flex-col gap-1 text-sm text-mute">
+            {t('glossary.label')}
             <GlossaryField
               values={glossary}
               onChange={setGlossary}
-              disabled={live || busy}
+              disabled={busy}
               placeholderEmpty={t('glossary.placeholderEmpty')}
               placeholderAdd={t('glossary.placeholderAdd')}
               removeAria={t('glossary.removeAria')}
             />
-          </div>
+          </label>
+
+          {/* 🚀 세션 시작 — WebRTC + OpenAI Realtime 라이브 진입 (결정 1). */}
+          <ChromeButton
+            variant="primary"
+            size="lg"
+            onClick={() => void start()}
+            disabled={busy}
+          >
+            {busy ? t('starting') : `🚀 ${t('start')}`}
+          </ChromeButton>
         </div>
-      </WidgetSettingsModal>
+      ) : (
+        /* Phase 2 (active) — slim bar. ⚙ 요약 (원어→대상어 · 입력 모드) +
+           타이머 + 종료 CTA. 요약의 ▼ 를 누르면 컨트롤이 read-only 로 다시
+           펼쳐지지만 세션 중 언어·모드 변경은 불가 (결정 3) — 바꾸려면 종료
+           후 재시작. mute / 공유 등은 아래 별도 라인 (기존 UI). */
+        <div className="-mx-5 -mt-5 border-b border-line-soft bg-paper px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ChromeButton
+              size="sm"
+              variant="mute"
+              onClick={() => setControlsExpanded((v) => !v)}
+              aria-expanded={controlsExpanded}
+              aria-label={
+                controlsExpanded
+                  ? t('controlBoard.collapseAria')
+                  : t('controlBoard.expandAria')
+              }
+            >
+              {`⚙ ${sourceLabel} → ${targetLabel} · ${captureShort} `}
+              <span aria-hidden="true">{controlsExpanded ? '▲' : '▼'}</span>
+            </ChromeButton>
+            <div className="flex items-center gap-2">
+              <span className="text-md tabular-nums text-mute">
+                {formatElapsed(elapsed)}
+              </span>
+              {/* 🚨 Auto-renewal indicator — subtle, only while a background
+                  session handover is in flight (<2s). */}
+              {renewing ? (
+                <span className="text-sm text-mute-soft">{t('renewing')}</span>
+              ) : null}
+              <ChromeButton size="lg" onClick={() => void stop()}>
+                {t('stop')}
+              </ChromeButton>
+            </div>
+          </div>
+
+          {/* ▼ 재노출 — 세션 중이라 필드는 disabled (read-only). 변경하려면
+              종료 후 재시작하라는 안내만 남긴다. */}
+          {controlsExpanded ? (
+            <div className="mt-3 space-y-2 border-t border-line-soft pt-3">
+              <div className="flex flex-wrap items-end gap-3 opacity-60">
+                <label className="flex flex-col gap-1 text-sm text-mute">
+                  {t('sourceLang')}
+                  <select
+                    value={sourceLang}
+                    disabled
+                    aria-label={t('sourceLang')}
+                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                  >
+                    {langOptions.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-mute">
+                  {t('targetLang')}
+                  <select
+                    value={targetLang}
+                    disabled
+                    aria-label={t('targetLang')}
+                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                  >
+                    {langOptions.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-mute">
+                  {t('captureMode.label')}
+                  <select
+                    value={captureMode}
+                    disabled
+                    aria-label={t('captureMode.label')}
+                    className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+                  >
+                    <option value="both">{t('captureMode.both')}</option>
+                    <option value="mic-only">{t('captureMode.micOnly')}</option>
+                    <option value="tab-only">{t('captureMode.tabOnly')}</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-sm text-mute-soft">
+                {t('controlBoard.lockedHint')}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
           (most visible spot) so the host immediately sees why the monitor
