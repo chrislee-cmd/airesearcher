@@ -97,10 +97,20 @@ export async function POST(req: Request) {
     for (const doc of docs) {
       const chunks = chunkMarkdown(doc.markdown, { filename: doc.filename });
       if (chunks.length === 0) continue;
-      const embedded = await embedInterviewChunks(chunks);
-      for (let i = 0; i < embedded.length; i += ROWS_PER_INSERT) {
-        const slice = embedded.slice(i, i + ROWS_PER_INSERT);
-        const rows = slice.map((c) => ({
+
+      // Reset the progress counters for this re-index pass (a prior run may
+      // have left them at 100%). Publish the denominator before embedding so
+      // the card shows "0 / N chunks" straight away.
+      await admin
+        .from('interview_documents')
+        .update({ total_chunks: chunks.length, processed_chunks: 0 })
+        .eq('id', doc.id);
+
+      let processed = 0;
+      for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
+        const slice = chunks.slice(i, i + ROWS_PER_INSERT);
+        const embedded = await embedInterviewChunks(slice);
+        const rows = embedded.map((c) => ({
           org_id: org.org_id,
           interview_job_id: jobId,
           document_id: doc.id,
@@ -115,8 +125,13 @@ export async function POST(req: Request) {
           console.error('[interviews/index/run-now] chunk insert failed', chunkErr);
           throw new Error('chunk_insert_failed');
         }
+        processed += embedded.length;
+        await admin
+          .from('interview_documents')
+          .update({ processed_chunks: processed })
+          .eq('id', doc.id);
       }
-      totalChunks += embedded.length;
+      totalChunks += processed;
     }
 
     await admin

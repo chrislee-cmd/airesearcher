@@ -131,14 +131,25 @@ export async function POST(req: Request) {
       const chunks = chunkMarkdown(doc.markdown, { filename: doc.filename });
       if (chunks.length === 0) continue;
 
-      const embedded = await embedInterviewChunks(chunks);
-      // Insert chunks in batches — 100 rows per call balances HTTP
-      // overhead against PostgREST's per-request payload budget (HNSW
-      // index updates are cheap on the write side at this scale).
+      // Publish the denominator before the first (slow) embed call so the
+      // file card flips from a bare "인덱싱 중…" to "0 / N chunks (0%)" the
+      // moment the client's 2s poll picks it up.
+      await admin
+        .from('interview_documents')
+        .update({ total_chunks: chunks.length, processed_chunks: 0 })
+        .eq('id', documentId);
+
+      // Embed + insert in batches — 100 rows per call balances HTTP overhead
+      // against PostgREST's per-request payload budget (HNSW index updates are
+      // cheap on the write side at this scale). Embedding per-batch (rather
+      // than all-at-once up front) is what lets processed_chunks advance
+      // mid-file so the progress bar actually moves.
       const ROWS_PER_INSERT = 100;
-      for (let i = 0; i < embedded.length; i += ROWS_PER_INSERT) {
-        const slice = embedded.slice(i, i + ROWS_PER_INSERT);
-        const rows = slice.map((c) => ({
+      let processed = 0;
+      for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
+        const slice = chunks.slice(i, i + ROWS_PER_INSERT);
+        const embedded = await embedInterviewChunks(slice);
+        const rows = embedded.map((c) => ({
           org_id: org.org_id,
           interview_job_id,
           document_id: documentId,
@@ -154,8 +165,14 @@ export async function POST(req: Request) {
           console.error('[interviews/index] chunk insert failed', chunkErr);
           throw new Error('chunk_insert_failed');
         }
+        processed += embedded.length;
+        // Progress tick — best-effort; the client polls interview_documents.
+        await admin
+          .from('interview_documents')
+          .update({ processed_chunks: processed })
+          .eq('id', documentId);
       }
-      totalChunks += embedded.length;
+      totalChunks += processed;
     }
 
     await admin

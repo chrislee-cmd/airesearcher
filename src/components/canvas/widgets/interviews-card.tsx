@@ -302,21 +302,65 @@ function ActiveView({
             description={t('noFilesDescription')}
           />
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
               {t('cardFilesCount', { count: documents.length })}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {documents.map((d) => (
-                <span
-                  key={d.id}
-                  className="max-w-[180px] truncate rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute"
-                  title={d.filename}
-                >
-                  {d.filename}
-                </span>
-              ))}
-            </div>
+
+            {/* 인덱싱 중인 파일 — chunk 단위 progress bar + "N/M (X%)".
+                (fullview FileCard 와 동일한 신호. 위젯 요약 뷰에서도 "언제
+                끝날지" 를 볼 수 있도록.) hook 이 indexing 있을 때 2초 폴링. */}
+            {documents
+              .filter((d) => d.index_status === 'indexing')
+              .map((d) => {
+                const hasProg =
+                  d.total_chunks != null && d.total_chunks > 0;
+                const pct = hasProg
+                  ? Math.min(
+                      100,
+                      Math.round((d.processed_chunks / d.total_chunks!) * 100),
+                    )
+                  : 0;
+                return (
+                  <div key={d.id} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-ink-2" title={d.filename}>
+                        {d.filename}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-mute-soft">
+                        {hasProg
+                          ? `${d.processed_chunks}/${d.total_chunks} (${pct}%)`
+                          : t('statusIndexing')}
+                      </span>
+                    </div>
+                    {hasProg && (
+                      <div className="h-1 w-full overflow-hidden rounded-xs bg-line-soft">
+                        <div
+                          className="h-full bg-amore transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+            {/* 나머지 파일 (완료 / 대기 / 오류) — 파일명 chip 요약. */}
+            {documents.some((d) => d.index_status !== 'indexing') && (
+              <div className="flex flex-wrap gap-1.5">
+                {documents
+                  .filter((d) => d.index_status !== 'indexing')
+                  .map((d) => (
+                    <span
+                      key={d.id}
+                      className="max-w-[180px] truncate rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute"
+                      title={d.filename}
+                    >
+                      {d.filename}
+                    </span>
+                  ))}
+              </div>
+            )}
           </div>
         )}
       </div>
