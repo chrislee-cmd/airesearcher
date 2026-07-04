@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useToast } from '@/components/toast-provider';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -80,18 +81,30 @@ export function UploadModal({
   onSubmit?: (files: File[], projectId: string) => void;
 }) {
   const t = useTranslations('InterviewsV2');
+  const { push } = useToast();
   const { items, busy, uploadMany, reset } = useInterviewV2Upload();
-  const { projects, create } = useInterviewV2Projects();
+  const { projects, create, isLoading } = useInterviewV2Projects();
 
   const preset = projectId ?? null;
 
   const [staged, setStaged] = useState<File[]>([]);
   const [step, setStep] = useState<Step>('files');
-  const [mode, setMode] = useState<ProjectMode>('pick');
+  // null until projects have loaded — the effect below then defaults to
+  // 'create' when there are no projects (so a first-time user isn't stuck
+  // behind a disabled upload button — the old 'pick' hardcode left pickId
+  // empty → canUpload false) or 'pick' when projects already exist.
+  const [mode, setMode] = useState<ProjectMode | null>(null);
   const [pickId, setPickId] = useState('');
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [createErr, setCreateErr] = useState(false);
+
+  useEffect(() => {
+    if (mode === null && !isLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reflect async projects load
+      setMode(projects.length > 0 ? 'pick' : 'create');
+    }
+  }, [mode, isLoading, projects.length]);
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ value: p.id, label: p.name })),
@@ -102,7 +115,9 @@ export function UploadModal({
     reset();
     setStaged([]);
     setStep('files');
-    setMode(projects.length === 0 ? 'create' : 'pick');
+    // Back to null so the effect re-decides the mode on next open (mirrors
+    // the load-time default: create when empty, pick when projects exist).
+    setMode(null);
     setPickId('');
     setNewName('');
     setNewDesc('');
@@ -131,9 +146,16 @@ export function UploadModal({
       if (mode === 'create') {
         const name = newName.trim();
         if (!name) return;
-        const created = await create(name, newDesc.trim() || undefined);
+        const { project: created, error } = await create(
+          name,
+          newDesc.trim() || undefined,
+        );
         if (!created) {
           setCreateErr(true);
+          // Toast carries the raw cause; the inline text stays generic.
+          push(error ? `${t('createFailed')}: ${error}` : t('createFailed'), {
+            tone: 'warn',
+          });
           return;
         }
         pid = created.id;
