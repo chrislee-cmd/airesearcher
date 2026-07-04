@@ -81,6 +81,7 @@ export function ProbingCanvasCardBody({
           <ProbingQuestionPopup
             popup={activePopup}
             placement="center"
+            positioning="card"
             onPin={onPopupPin}
             onCopy={onPopupCopy}
             onDismiss={onPopupDismiss}

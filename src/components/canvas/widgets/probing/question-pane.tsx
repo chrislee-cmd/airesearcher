@@ -131,6 +131,8 @@ export function QuestionPane({
       {activePopup && (
         <ProbingQuestionPopup
           popup={activePopup}
+          placement="bottom-right"
+          positioning="viewport"
           onPin={onPopupPin}
           onCopy={onPopupCopy}
           onDismiss={onPopupDismiss}

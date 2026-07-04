@@ -47,25 +47,40 @@ const IMPORTANCE_CARD: Record<
 > = {
   high: {
     container:
-      'border-[3px] border-warning bg-warning-bg shadow-[8px_8px_0_var(--color-warning)] max-w-[460px]',
+      'border-[3px] border-warning bg-warning-bg shadow-[8px_8px_0_var(--color-warning)]',
     label: '지금 던지세요',
     ring: 'stroke-warning',
     pulse: true,
   },
   medium: {
     container:
-      'border-[3px] border-ink bg-paper shadow-[6px_6px_0_var(--color-ink)] max-w-[420px]',
+      'border-[3px] border-ink bg-paper shadow-[6px_6px_0_var(--color-ink)]',
     label: '다음 질문 후보',
     ring: 'stroke-ink',
     pulse: false,
   },
   low: {
     container:
-      'border-[2px] border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)] max-w-[400px]',
+      'border-[2px] border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
     label: '여유 있을 때',
     ring: 'stroke-mute',
     pulse: false,
   },
+};
+
+// importance 별 max-width — viewport 기반 clamp. 좁은 화면(특히 fullview
+// 우패널)에서 popup 이 max-w 보다 좁은 부모에 밀려 우측/좌측이 짤리던
+// 회귀를 fix: min(고정폭, calc(100vw-3rem)) 로 뷰포트에 맞춰 축소.
+// max-w 를 IMPORTANCE_CARD.container 에서 분리한 이유 — Tailwind v4 는 JSX
+// className 문자열 순서가 아니라 컴파일된 CSS 소스 순서로 같은 property
+// (max-width) 충돌을 해결한다 (PROJECT.md §7.11). container 에 max-w-[Npx]
+// 를 두고 placement 쪽에서 후행 override 하려 하면 어느 쪽이 이길지
+// 불확정 — max-w 유틸을 이 한 곳에만 둬서 충돌 자체를 없앤다. 정적
+// 문자열이어야 Tailwind 가 스캔하므로 importance 별로 나열한다.
+const IMPORTANCE_MAX_W: Record<ProbingThinkImportance, string> = {
+  high: 'max-w-[min(460px,calc(100vw-3rem))]',
+  medium: 'max-w-[min(420px,calc(100vw-3rem))]',
+  low: 'max-w-[min(400px,calc(100vw-3rem))]',
 };
 
 const IMPORTANCE_DOTS: Record<ProbingThinkImportance, string> = {
@@ -83,16 +98,26 @@ const IMPORTANCE_DOT_COLOR: Record<ProbingThinkImportance, string> = {
 // 외부에서 popup.id 가 바뀔 때마다 React 가 본 컴포넌트를 새 인스턴스로
 // mount 하도록 부모가 key={popup.id} 를 줘야 한다. 본 wrapper 는 그
 // 합의를 강제 — 새 popup 마다 카운트다운이 깨끗하게 리셋된다.
-// placement — popup 가 부모 영역 어디에 붙는지.
-//   'bottom-right' (default) — fullview 우패널 우하단 floating (좌패널 페르소나
-//      시선 안 가림). 기존 동작 보존.
-//   'center' — canvas card 중앙 절대 위치. preview 카드는 영역이 좁고 사용자
-//      시선이 중앙에 머무므로 가운데에 띄운다.
+// placement — popup 가 어느 모서리/중앙에 붙는지 (offset 좌표).
+//   'bottom-right' (default) — 우하단 floating (좌패널 페르소나 시선 안 가림).
+//   'center' — 중앙 (canvas preview 카드는 좁고 시선이 중앙에 머무므로).
 export type ProbingPopupPlacement = 'bottom-right' | 'center';
+
+// positioning — popup 의 기준 좌표계 (CSS position).
+//   'card' (default) — absolute. 부모 relative 컨테이너(canvas preview 카드)
+//      기준. 좁은 카드 안에 담기므로 기존 동작 보존.
+//   'viewport' — fixed. viewport 기준. fullview 우패널은 max-w 보다 좁아
+//      absolute 로는 popup 이 밖으로 밀려 짤렸다 (2026-07-04 사고). fixed 로
+//      viewport 우하단에 고정하면 부모 폭과 무관하게 항상 온전히 보인다.
+//      fullview 모달 chrome(Modal)은 transform 없이 flex 로 centering 하고
+//      body 에 portal 되므로 fixed 가 실제 viewport 기준으로 동작한다
+//      (PROJECT.md §7.11 류 transform-containing-block 함정 없음).
+export type ProbingPopupPositioning = 'card' | 'viewport';
 
 export function ProbingQuestionPopup({
   popup,
   placement = 'bottom-right',
+  positioning = 'card',
   onPin,
   onCopy,
   onDismiss,
@@ -100,6 +125,7 @@ export function ProbingQuestionPopup({
 }: {
   popup: PopupQuestion;
   placement?: ProbingPopupPlacement;
+  positioning?: ProbingPopupPositioning;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -110,6 +136,7 @@ export function ProbingQuestionPopup({
       key={popup.id}
       popup={popup}
       placement={placement}
+      positioning={positioning}
       onPin={onPin}
       onCopy={onCopy}
       onDismiss={onDismiss}
@@ -121,6 +148,7 @@ export function ProbingQuestionPopup({
 function ProbingQuestionPopupInner({
   popup,
   placement,
+  positioning,
   onPin,
   onCopy,
   onDismiss,
@@ -128,6 +156,7 @@ function ProbingQuestionPopupInner({
 }: {
   popup: PopupQuestion;
   placement: ProbingPopupPlacement;
+  positioning: ProbingPopupPositioning;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -181,12 +210,17 @@ function ProbingQuestionPopupInner({
 
   const progress = secondsLeft / COUNTDOWN_SECONDS;
 
-  // center: 카드 중앙 (inset-x-4 로 좌우 여백 + mx-auto 로 max-w 중앙 정렬,
-  // top-1/2 -translate-y-1/2 로 수직 중앙). bottom-right: 기존 우하단 floating.
+  // center: 중앙 (inset-x-4 로 좌우 여백 + mx-auto 로 max-w 중앙 정렬,
+  // top-1/2 -translate-y-1/2 로 수직 중앙). bottom-right: 우하단 floating.
+  // w-full 제거 — max-w(IMPORTANCE_MAX_W)만으로 폭 clamp 하고 shrink-to-fit
+  // 시킨다. fixed(viewport) 일 때 w-full 은 100vw 라 right-6 기준 좌측 overflow.
   const placementClass =
     placement === 'center'
       ? 'inset-x-4 top-1/2 -translate-y-1/2 mx-auto'
-      : 'bottom-6 right-6 w-full';
+      : 'bottom-6 right-6';
+  const maxWClass = IMPORTANCE_MAX_W[popup.importance];
+  // card → absolute (부모 카드 기준), viewport → fixed (viewport 우하단 고정).
+  const positionClass = positioning === 'viewport' ? 'fixed' : 'absolute';
 
   return (
     <div
@@ -195,7 +229,7 @@ function ProbingQuestionPopupInner({
       aria-label="AI 가 제안한 즉시 질문"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`pointer-events-auto absolute z-popup ${placementClass} ${visual.container} rounded-sm bg-paper p-4 ${visual.pulse ? 'probing-popup-pulse' : ''}`}
+      className={`pointer-events-auto ${positionClass} z-popup ${placementClass} ${maxWClass} ${visual.container} rounded-sm bg-paper p-4 ${visual.pulse ? 'probing-popup-pulse' : ''}`}
     >
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
