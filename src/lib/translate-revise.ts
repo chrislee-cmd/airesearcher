@@ -27,8 +27,10 @@ const MODEL = 'claude-sonnet-4-6';
 // Batch size. Keeps any single call under ~10k input tokens for a
 // typical interview (Korean / English mixed) — well within Sonnet's
 // limits and small enough that one slow chunk doesn't dominate the
-// total wall-clock. Tuned against 30 min sessions which produce
-// ~150-300 input rows.
+// total wall-clock. Batching is per-row, so this tuning stays valid even
+// though live sessions can now run 90+ min via auto renewal (see
+// translate-console SESSION_MAX_MS): a longer session just yields more
+// 40-row batches, not larger ones.
 export const REVISE_BATCH_SIZE = 40;
 
 export type ReviseInputRow = {

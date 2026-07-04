@@ -23,6 +23,7 @@
 // On "Stop": tear down in reverse + POST /sessions/:id/end.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -68,7 +69,8 @@ import { track as trackEvent } from '@/lib/analytics/events';
 // Dev-mode trace gate. Enabled in non-prod builds so a designer running
 // `pnpm dev` can step through the pipeline and confirm Korean / Thai /
 // Chinese deltas land intact at every stage (datachannel → state →
-// /messages POST → DB). Disabled in production so a 30 min session
+// /messages POST → DB). Disabled in production so a long session (sessions
+// can now span 90+ min via auto renewal — see SESSION_MAX_MS / renewSession)
 // doesn't flood the browser console.
 const TRACE_ENCODING =
   typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
@@ -441,6 +443,26 @@ const SENTENCE_TAIL = /[.!?。！？…]+["')\]」』]?\s*$/u;
 // counter (this PR) measures the effect: it should drop sharply at 2400.
 const TURN_SILENCE_MS = 2400;
 
+// 🚨 Session auto-renewal (pr-translate-session-auto-renewal).
+// OpenAI Realtime sessions have a hard server-side max lifetime of ~30 min:
+// the server closes the connection, the client goes silent or reconnect-
+// loops, and the same audio gets re-transcribed (the rapid-fire regression).
+// Real interpreting sessions run 60-90 min, so we proactively renew EACH
+// slot's OpenAI session before the server hard-closes it: spin up a fresh
+// RTCPeerConnection (same mic/tab source track, same shared LiveKit publish +
+// recording mixers) and hand over, then close the old PC after a short delay
+// to catch the last in-flight transcription. Transcript state (React) is
+// untouched across a renewal, so the user sees no discontinuity.
+//
+// SESSION_MAX_MS < 30 min keeps a 5 min safety margin before the server
+// close. RENEW_CHECK_MS is the polling cadence. On a renewal FAILURE we don't
+// tear the session down — the still-open old session keeps running (old
+// behaviour / fallback), and we retry after RENEW_RETRY_MS so a transient
+// ephemeral/SDP hiccup gets a few more shots before the hard 30 min close.
+const SESSION_MAX_MS = 25 * 60_000; // 25 min (5 min margin under the 30 min cap)
+const RENEW_CHECK_MS = 10_000;
+const RENEW_RETRY_MS = 60_000;
+
 // Chunk/word-boundary join (Layer A) now lives in
 // src/lib/translate-stream-join.ts so the heuristics are unit-testable
 // in isolation and reusable by the persist / export path. `joinDelta` is
@@ -646,6 +668,11 @@ export function TranslateConsole({
   // recorder's onstart/onstop events so the indicator pill renders
   // without needing to read the ref during render.
   const [recorderActive, setRecorderActive] = useState(false);
+  // 🚨 Auto-renewal in flight. Drives the subtle "세션 갱신 중…" indicator so
+  // the host knows a background handover is happening (the <2s gap is
+  // otherwise invisible). Cleared when the renewal settles (success or
+  // fallback).
+  const [renewing, setRenewing] = useState(false);
 
   // Mutable refs held only for the duration of a live session.
   //
@@ -704,7 +731,20 @@ export function TranslateConsole({
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  // Wall-clock when the WHOLE translate session went live. Drives the elapsed
+  // display + the stop() duration analytics. NOT reset on auto-renewal — the
+  // visible timer must keep counting up across a background handover.
   const startedAtRef = useRef<number | null>(null);
+  // 🚨 Auto-renewal timing. Wall-clock when the CURRENT OpenAI session epoch
+  // began — reset to now() on each successful renewal. The renewal interval
+  // fires when (now - sessionEpochRef) crosses SESSION_MAX_MS. Kept separate
+  // from startedAtRef precisely so renewal timing doesn't disturb the elapsed
+  // clock (spec's pseudo-code conflated the two — see PR notes).
+  const sessionEpochRef = useRef<number | null>(null);
+  // Re-entry guard for renewSession() — the 10s interval can fire again while
+  // a renewal is still negotiating. Ref (not state) so the check is
+  // synchronous and closure-stale-proof, mirroring startInFlightRef.
+  const renewingRef = useRef(false);
   // Per-slot monitor <audio> elements. We attach each slot's RAW remote TTS
   // stream directly (the OpenAI guide pattern) instead of routing the
   // monitor through the WebAudio mixer: a remote WebRTC track fed ONLY into
@@ -818,6 +858,14 @@ export function TranslateConsole({
   // applied). This ref is read+written in the same microtask so a second
   // start() entering before the first awaits cannot get past it.
   const startInFlightRef = useRef(false);
+
+  // 🚨 Auto-renewal handle. start() stores its per-slot boot closure here so
+  // renewSession() (a component-scoped callback, outside start()'s closure)
+  // can reuse the EXACT same connect path — no duplicated slot-boot logic to
+  // drift. Reassigned on every start(); read at renewal time.
+  const bootSlotRef = useRef<
+    (slot: SourceSlot, clientSecret: string, renewal?: boolean) => Promise<boolean>
+  >(async () => false);
 
   // Dedup keys for finalized lines per kind PER SLOT. Sliding window —
   // entries older than DEDUP_WINDOW_MS are dropped on each insert so the
@@ -1066,6 +1114,11 @@ export function TranslateConsole({
     recordingStartedAtRef.current = null;
     setRecorderActive(false);
     setSlotActive(emptySlotRecord(false));
+    // 🚨 Auto-renewal teardown — stop the renewal clock + clear the in-flight
+    // guard/indicator so a torn-down session never renews.
+    sessionEpochRef.current = null;
+    renewingRef.current = false;
+    setRenewing(false);
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -2046,6 +2099,12 @@ export function TranslateConsole({
     const startSlot = async (
       slot: SourceSlot,
       clientSecret: string,
+      // 🚨 renewal=true when called from renewSession(): the shared output /
+      // recording mixers already have this slot's OLD source node wired, so
+      // the ontrack handler REPLACES it instead of skipping (see below). The
+      // LiveKit publish + mixer destinations are unchanged, so viewers +
+      // recording carry through the handover with no re-publish.
+      renewal = false,
     ): Promise<boolean> => {
       const publishStream = publishStreamRef.current[slot];
       if (!publishStream) return false;
@@ -2073,7 +2132,13 @@ export function TranslateConsole({
             pc.connectionState === 'disconnected' ||
             pc.connectionState === 'closed'
           ) {
-            setSlotActive((prev) => ({ ...prev, [slot]: false }));
+            // Only clear the active indicator if THIS pc is still the live one
+            // for the slot. During auto-renewal the OLD pc closes ~2s after
+            // the NEW one connects; without this guard that close would wrongly
+            // flip the slot inactive even though the new session is healthy.
+            if (pcRef.current[slot] === pc) {
+              setSlotActive((prev) => ({ ...prev, [slot]: false }));
+            }
           }
         };
         pc.oniceconnectionstatechange = () => {
@@ -2164,6 +2229,20 @@ export function TranslateConsole({
           // dest + recording dest). Guard against double-wiring on
           // renegotiation.
           if (!ctx) return;
+          // On renewal the OLD source node for this slot is still connected to
+          // the shared mixers — disconnect + drop it so the guards below re-wire
+          // the NEW TTS stream. On the initial connect these refs are null and
+          // this is a no-op.
+          if (renewal) {
+            try {
+              audioSourceRef.current[slot]?.disconnect();
+            } catch {}
+            audioSourceRef.current[slot] = null;
+            try {
+              recordOutputSrcRef.current[slot]?.disconnect();
+            } catch {}
+            recordOutputSrcRef.current[slot] = null;
+          }
           const mix = audioDestRef.current;
           if (mix && !audioSourceRef.current[slot]) {
             try {
@@ -2276,6 +2355,9 @@ export function TranslateConsole({
         return false;
       }
     };
+    // Expose the boot closure so renewSession() can reuse the identical
+    // connect path for a background handover.
+    bootSlotRef.current = startSlot;
 
     // Hand out the ephemerals. liveSlots[0] reuses the bundle's
     // ephemeral; liveSlots[1] (if present) issues a fresh one via the
@@ -2350,6 +2432,9 @@ export function TranslateConsole({
       connectWatchdogRef.current = null;
     }
     startedAtRef.current = Date.now();
+    // 🚨 Auto-renewal epoch — the current OpenAI session started now. The
+    // renewal interval (below) watches this, not startedAtRef.
+    sessionEpochRef.current = Date.now();
     setStatus('live');
     startInFlightRef.current = false;
   }, [
@@ -2364,6 +2449,143 @@ export function TranslateConsole({
     transcriptPublisher,
     notifyDeduction,
   ]);
+
+  // 🚨 Session auto-renewal (graceful handover). Called by the interval below
+  // when the current OpenAI session epoch approaches the ~30 min server cap.
+  // For each active slot: fetch a fresh ephemeral, boot a NEW RTCPeerConnection
+  // over the SAME source track (bootSlotRef with renewal=true re-wires the
+  // shared output/recording mixers), then close the OLD pc ~2s later to catch
+  // the last in-flight transcription. React transcript state is untouched, so
+  // the host sees no discontinuity (<2s audio gap). On failure the still-open
+  // old session keeps running (old-behaviour fallback) and we retry shortly.
+  const renewSession = useCallback(async () => {
+    if (renewingRef.current) return;
+    const id = sessionIdRef.current;
+    const boot = bootSlotRef.current;
+    if (!id) return;
+    const slots = (['mic', 'tab'] as const).filter((s) => pcRef.current[s]);
+    if (slots.length === 0) return;
+
+    renewingRef.current = true;
+    setRenewing(true);
+    const elapsedBefore = sessionEpochRef.current
+      ? Date.now() - sessionEpochRef.current
+      : 0;
+    console.info('[translate] session_renew_start', {
+      elapsed_ms: elapsedBefore,
+      slots,
+    });
+    Sentry.addBreadcrumb({
+      category: 'translate.renewal',
+      message: 'session_renew_start',
+      level: 'info',
+      data: { session_id: id, elapsed_before_renew_ms: elapsedBefore, slots },
+    });
+
+    const renewOne = async (slot: SourceSlot): Promise<boolean> => {
+      const oldPc = pcRef.current[slot];
+      const oldDc = dcRef.current[slot];
+      if (!oldPc) return false;
+      // Fresh OpenAI ephemeral for the new session (same route the 2nd slot
+      // uses at start).
+      let cs: string | undefined;
+      try {
+        const res = await fetch(
+          `/api/translate/sessions/${id}/ephemeral`,
+          { method: 'POST' },
+        );
+        if (!res.ok) throw new Error(`ephemeral_${res.status}`);
+        const sj = (await res.json()) as {
+          openai?: { client_secret?: { value?: string } };
+        };
+        cs = sj.openai?.client_secret?.value;
+        if (!cs) throw new Error('ephemeral_empty');
+      } catch (e) {
+        console.warn(`[translate:${slot}] renew ephemeral failed`, e);
+        return false;
+      }
+      // Boot a fresh pc for this slot. bootSlotRef points at start()'s
+      // startSlot closure; renewal=true makes its ontrack REPLACE the slot's
+      // mixer nodes instead of skipping.
+      const ok = await boot(slot, cs, true);
+      if (!ok) {
+        // boot()'s failure path closed the NEW pc and nulled pcRef[slot].
+        // Restore the still-open OLD session so it keeps running until the
+        // server hard-closes it (fallback = old behaviour). Clear the slot
+        // error boot() set — the old session is still healthy.
+        if (!pcRef.current[slot]) {
+          pcRef.current[slot] = oldPc;
+          dcRef.current[slot] = oldDc;
+        }
+        setSlotError((prev) => ({ ...prev, [slot]: null }));
+        return false;
+      }
+      // Success — pcRef[slot] is now the new pc. Retire the old one after a
+      // short grace period so trailing transcription deltas + TTS tail still
+      // land. Best-effort session.close so OpenAI tears down server-side.
+      setTimeout(() => {
+        try {
+          oldDc?.send(JSON.stringify({ type: 'session.close' }));
+        } catch {}
+        try {
+          oldDc?.close();
+        } catch {}
+        try {
+          oldPc?.close();
+        } catch {}
+      }, 2000);
+      return true;
+    };
+
+    let anyOk = false;
+    try {
+      const results = await Promise.all(slots.map((s) => renewOne(s)));
+      anyOk = results.some(Boolean);
+    } finally {
+      if (anyOk) {
+        // Restart the renewal clock from the new epoch.
+        sessionEpochRef.current = Date.now();
+        console.info('[translate] session_renew_done', { slots });
+        Sentry.addBreadcrumb({
+          category: 'translate.renewal',
+          message: 'session_renew_done',
+          level: 'info',
+          data: { session_id: id, slots },
+        });
+      } else {
+        // Nudge the epoch so the interval retries in ~RENEW_RETRY_MS instead of
+        // every RENEW_CHECK_MS — a few more shots before the hard 30 min close.
+        sessionEpochRef.current = Date.now() - (SESSION_MAX_MS - RENEW_RETRY_MS);
+        console.warn(
+          '[translate] session_renew_failed — keeping current session, will retry',
+        );
+        Sentry.addBreadcrumb({
+          category: 'translate.renewal',
+          message: 'session_renew_failed',
+          level: 'warning',
+          data: { session_id: id, slots },
+        });
+      }
+      renewingRef.current = false;
+      setRenewing(false);
+    }
+  }, []);
+
+  // 🚨 Auto-renewal driver. While live, poll every RENEW_CHECK_MS; once the
+  // current OpenAI session epoch crosses SESSION_MAX_MS (25 min, 5 min under
+  // the ~30 min server cap) fire renewSession(). Sessions under 25 min never
+  // reach the gate, so short sessions behave exactly as before (no regression).
+  useEffect(() => {
+    if (status !== 'live') return;
+    const handle = setInterval(() => {
+      const epoch = sessionEpochRef.current;
+      if (!epoch) return;
+      if (Date.now() - epoch >= SESSION_MAX_MS) {
+        void renewSession();
+      }
+    }, RENEW_CHECK_MS);
+    return () => clearInterval(handle);
+  }, [status, renewSession]);
 
   // Stop one MediaRecorder cleanly and wait for the final dataavailable
   // tick. Returns the assembled Blob, or null if no chunks were recorded.
@@ -2988,6 +3210,12 @@ export function TranslateConsole({
             <span className="text-md tabular-nums text-mute">
               {live ? formatElapsed(elapsed) : '00:00'}
             </span>
+            {/* 🚨 Auto-renewal indicator — subtle, only while a background
+                session handover is in flight (<2s). Reassures the host the
+                dip is expected, not a crash. */}
+            {live && renewing ? (
+              <span className="text-sm text-mute-soft">{t('renewing')}</span>
+            ) : null}
             {live ? (
               <ChromeButton
                 size="lg"
