@@ -20,6 +20,7 @@ import { reddit } from './reddit';
 import { dart } from './dart';
 import { kci } from './kci';
 import { semanticScholar } from './semantic-scholar';
+import { arxiv } from './arxiv';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
 // stable — the source picker and the report's per-channel sections read it.
@@ -39,6 +40,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   dart: dart,
   kci: kci,
   semantic_scholar: semanticScholar,
+  arxiv: arxiv,
 };
 
 export const DESK_SOURCES: DeskSourceDefinition[] = Object.values(DESK_SOURCE_REGISTRY);

@@ -26,6 +26,7 @@ export type DeskSourceId =
   | 'kci';
   // Academic
   | 'semantic_scholar';
+  | 'arxiv';
 
 export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart' | 'academic_kr';
 
