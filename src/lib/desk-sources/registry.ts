@@ -19,6 +19,7 @@ import { hackerNews } from './hacker-news';
 import { reddit } from './reddit';
 import { dart } from './dart';
 import { kci } from './kci';
+import { semanticScholar } from './semantic-scholar';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
 // stable — the source picker and the report's per-channel sections read it.
@@ -37,6 +38,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   reddit: reddit,
   dart: dart,
   kci: kci,
+  semantic_scholar: semanticScholar,
 };
 
 export const DESK_SOURCES: DeskSourceDefinition[] = Object.values(DESK_SOURCE_REGISTRY);

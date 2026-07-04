@@ -24,6 +24,8 @@ export type DeskSourceId =
   | 'dart'
   // Korean academic
   | 'kci';
+  // Academic
+  | 'semantic_scholar';
 
 export type DeskSourceGroup = 'naver' | 'kakao' | 'youtube' | 'global' | 'dart' | 'academic_kr';
 
