@@ -116,6 +116,21 @@ export function QaVoiceAgentModal({
     const seconds = durationRef.current;
     const silent = peakRef.current < SILENCE_PEAK_THRESHOLD;
 
+    // Silent take = hard block. A near-silent webm produced the empty-transcript
+    // + no-sound-on-playback report, so instead of uploading-and-warning we skip
+    // the Storage upload + DB insert entirely and send the tester back to record
+    // again. QA reliability wins over never-losing-a-take here.
+    if (silent) {
+      push('마이크 입력이 감지되지 않았어요. 다시 녹음해 주세요.', {
+        tone: 'warn',
+        ttlMs: 10000,
+      });
+      setPhase('idle');
+      setDuration(0);
+      durationRef.current = 0;
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -171,14 +186,9 @@ export function QaVoiceAgentModal({
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => {});
 
-    if (silent) {
-      push('제출됐지만 소리가 거의 감지되지 않았어요. 마이크 입력을 확인해 주세요.', {
-        tone: 'warn',
-        ttlMs: 6000,
-      });
-    } else {
-      push('피드백 제출 완료', { tone: 'amore' });
-    }
+    // A silent take never reaches here — it hard-blocks above — so submission is
+    // always a genuine, audible recording at this point.
+    push('피드백 제출 완료', { tone: 'amore' });
     setPhase('idle');
     setDuration(0);
     durationRef.current = 0;
@@ -347,6 +357,14 @@ export function QaVoiceAgentModal({
             <p className="text-sm text-mute">
               {meterPct < 4 ? '소리가 감지되지 않아요 — 마이크 확인' : '녹음 중…'}
             </p>
+            {/* Sustained-silence warning: after 3s of input below the silence
+                threshold, surface a prominent alert so the tester fixes the mic
+                before stopping — a silent take is hard-blocked on submit. */}
+            {level < SILENCE_PEAK_THRESHOLD && duration >= 3 && (
+              <p className="text-sm text-warning text-center">
+                ⚠ 마이크 입력이 감지되지 않아요. 마이크 상태를 확인하세요.
+              </p>
+            )}
             <Button variant="primary" size="md" onClick={stopRecording}>
               ⏹ 정지 &amp; 제출
             </Button>
