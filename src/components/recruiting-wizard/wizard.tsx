@@ -679,7 +679,7 @@ export function RecruitingWizard({
         </div>
         <div className="shrink-0 border-t-[2px] border-ink bg-paper-soft px-5 py-3">
           <ChromeButton
-            variant="primary"
+            variant="default"
             size="lg"
             fullWidth
             onClick={startExtract}

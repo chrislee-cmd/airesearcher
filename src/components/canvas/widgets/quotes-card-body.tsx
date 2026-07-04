@@ -653,7 +653,7 @@ export function QuotesCardBody() {
         }
       >
         <Button
-          variant="primary"
+          variant="secondary"
           size="lg"
           className="w-full"
           onClick={() => setUploadOpen(true)}

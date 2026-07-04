@@ -849,7 +849,7 @@ export function DeskCardBody() {
           이라 라벨은 기존 "검색" 유지 (스펙의 "매트릭스 생성" 은 형제 스펙
           템플릿 흔적 — 용어 회귀 방지). */}
       <ChromeButton
-        variant="primary"
+        variant="default"
         size="lg"
         fullWidth
         onClick={onClickRun}

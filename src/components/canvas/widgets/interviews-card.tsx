@@ -113,7 +113,7 @@ function IdleControlBoard({ onEnter }: { onEnter: (id: string) => void }) {
           <Skeleton className="h-11 w-full rounded-sm" />
         ) : hasFiles ? (
           <Button
-            variant="primary"
+            variant="secondary"
             size="md"
             onClick={() => onEnter(picked!.id)}
             leftIcon={<span aria-hidden>🔍</span>}
@@ -123,7 +123,7 @@ function IdleControlBoard({ onEnter }: { onEnter: (id: string) => void }) {
           </Button>
         ) : (
           <Button
-            variant="primary"
+            variant="secondary"
             size="md"
             onClick={() => setUploadOpen(true)}
             leftIcon={<span aria-hidden>📤</span>}

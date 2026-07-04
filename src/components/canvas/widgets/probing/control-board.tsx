@@ -183,7 +183,7 @@ export function ProbingControlBoard({
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-mute">{statusLabel ?? ''}</span>
         <ChromeButton
-          variant="primary"
+          variant="default"
           size="lg"
           onClick={onStart}
           disabled={startDisabled}
