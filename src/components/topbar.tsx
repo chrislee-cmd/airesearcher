@@ -3,6 +3,7 @@ import { TopbarTabs } from './topbar-tabs';
 import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
+import { QaVoiceAgentButton } from './qa/qa-voice-agent-button';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -55,11 +56,15 @@ export async function Topbar({
 
       <div className="flex shrink-0 items-center gap-3">
         {isAuthed ? (
-          <TopbarAccount
-            email={userEmail}
-            credits={credits}
-            isSuperAdmin={isSuperAdmin}
-          />
+          <>
+            {/* Voice-feedback mic trigger — shown to every signed-in account. */}
+            <QaVoiceAgentButton />
+            <TopbarAccount
+              email={userEmail}
+              credits={credits}
+              isSuperAdmin={isSuperAdmin}
+            />
+          </>
         ) : (
           <SignInButton />
         )}
