@@ -872,8 +872,14 @@
     "monitorMute": {
       "muteAria": "번역 음성 끄기 (시청자에게는 그대로 전송됩니다)",
       "unmuteAria": "번역 음성 켜기",
-      "on": "음성 ON",
-      "off": "음성 OFF (탭하면 켜짐)"
+      "on": "번역 ON",
+      "off": "번역 OFF (탭하면 켜짐)"
+    },
+    "inputMute": {
+      "muteAria": "원본 음성 끄기",
+      "unmuteAria": "원본 음성 켜기 (앱에서 캡처한 원본을 직접 듣기)",
+      "on": "원본 ON",
+      "off": "원본 OFF (탭하면 켜짐)"
     },
     "ttsBlocked": {
       "notice": "통역 음성이 브라우저에 의해 차단됐습니다",

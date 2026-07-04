@@ -872,8 +872,14 @@
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
       "unmuteAria": "Unmute translated audio",
-      "on": "Audio on",
-      "off": "Audio off (tap to enable)"
+      "on": "Translation on",
+      "off": "Translation off (tap to enable)"
+    },
+    "inputMute": {
+      "muteAria": "Mute original audio locally",
+      "unmuteAria": "Unmute original audio (monitor the app's capture directly)",
+      "on": "Original on",
+      "off": "Original off (tap to enable)"
     },
     "ttsBlocked": {
       "notice": "Interpreted audio was blocked by the browser",

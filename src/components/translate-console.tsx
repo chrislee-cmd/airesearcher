@@ -604,6 +604,13 @@ export function TranslateConsole({
   // just doesn't get the echo into their own room. Default ON because
   // the host typically wants to verify the translation in real time.
   const [outputAudible, setOutputAudible] = useState(true);
+  // Host can also monitor the ORIGINAL (input) audio the app captured —
+  // the mic / tab source that feeds the translation pipeline. Default OFF:
+  // the common flow is the host already hearing the source in another tab
+  // (or the room), so playing our own capture on top would double the
+  // sound with a slight offset. The host flips it ON only after muting the
+  // other tab, to hear the source straight from the app instead.
+  const [inputAudible, setInputAudible] = useState(false);
   // Layer A: autoplay-reject guard. Browsers block `<audio>.play()` unless
   // it follows a user gesture (incognito / fresh tab is the common trip),
   // and the monitor's silent `.play().catch(() => {})` swallowed it — the
@@ -774,6 +781,15 @@ export function TranslateConsole({
   // LiveKit publish + recording) actually receives audio. Two elements so
   // `both` mode plays host + guest simultaneously.
   const monitorAudioRefs = useRef<Record<SourceSlot, HTMLAudioElement | null>>(
+    emptySlotRecord<HTMLAudioElement | null>(null),
+  );
+  // Per-slot monitor <audio> for the ORIGINAL (input) source stream. We
+  // attach each slot's RAW captured stream (mic = getUserMedia, tab =
+  // getDisplayMedia) directly — same raw-media-element pattern as the TTS
+  // monitor above (sidesteps the AudioContext / crbug/121673 silence trap).
+  // Kept OFF by default (muted) via `inputAudible`. Two elements so `both`
+  // mode can monitor host + guest source at once.
+  const inputMonitorAudioRefs = useRef<Record<SourceSlot, HTMLAudioElement | null>>(
     emptySlotRecord<HTMLAudioElement | null>(null),
   );
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1010,6 +1026,17 @@ export function TranslateConsole({
     }
   }, [outputAudible]);
 
+  // Input (original source) monitor routing. Mirrors the output effect:
+  // `inputAudible` OFF mutes the local <audio> that plays our raw capture,
+  // without touching the source track feeding the translation pipeline or
+  // the LiveKit 'input' publish — viewers are unaffected.
+  useEffect(() => {
+    for (const slot of ['mic', 'tab'] as const) {
+      const el = inputMonitorAudioRefs.current[slot];
+      if (el) el.muted = !inputAudible;
+    }
+  }, [inputAudible]);
+
   // Layer D: monitor <audio> lifecycle diagnostics. The element is mounted
   // for the component's whole life, so a `[]`-dep effect binds the
   // listeners once. They make a "no sound" report attributable to a
@@ -1144,6 +1171,8 @@ export function TranslateConsole({
     for (const slot of ['mic', 'tab'] as const) {
       const el = monitorAudioRefs.current[slot];
       if (el) el.srcObject = null;
+      const inEl = inputMonitorAudioRefs.current[slot];
+      if (inEl) inEl.srcObject = null;
     }
   }, []);
 
@@ -2007,6 +2036,24 @@ export function TranslateConsole({
       return;
     }
 
+    // Attach each live slot's RAW captured stream to its input monitor
+    // <audio> so the host can optionally listen to the original source
+    // straight from the app. Muted by default (`inputAudible` false); the
+    // element still plays (muted autoplay is always allowed), so an unmute
+    // toggle later takes effect without needing a fresh user gesture. This
+    // is a local monitor only — it does not touch the pipeline source track
+    // or the LiveKit 'input' publish.
+    for (const slot of liveSlots) {
+      const el = inputMonitorAudioRefs.current[slot];
+      const raw = srcStreamRef.current[slot];
+      if (!el || !raw) continue;
+      if (el.srcObject !== raw) el.srcObject = raw;
+      el.muted = !inputAudible;
+      el.play().catch((err) => {
+        console.warn(`[translate:${slot}] input monitor autoplay rejected`, err);
+      });
+    }
+
     // 3) Shared output AudioContext (a single context for both slots'
     //    output mixing + the recording graph). Created up front so the
     //    LiveKit publish + recorder wiring can happen before either
@@ -2582,6 +2629,7 @@ export function TranslateConsole({
     handleOaiEvent,
     logSessionRestart,
     outputAudible,
+    inputAudible,
     sourceLang,
     targetLang,
     glossary,
@@ -3508,16 +3556,31 @@ export function TranslateConsole({
             클릭 한 번으로 복구 가능하단 hint 를 잃어 무음을 고장으로 오해).
             idle 에서는 재생할 통역 오디오가 없어 노출 X — live 진입 시에만. */}
         {live && (
-          <ChromeButton
-            size="lg"
-            onClick={() => setOutputAudible((v) => !v)}
-            aria-pressed={outputAudible}
-            leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
-            aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-            title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
-          >
-            {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
-          </ChromeButton>
+          <>
+            {/* 원본(input) 음성 monitor — default OFF (다른 탭에서 이미
+                재생 중일 때 겹침 방지). 켜면 앱이 캡처한 원본을 직접 듣기. */}
+            <ChromeButton
+              size="lg"
+              onClick={() => setInputAudible((v) => !v)}
+              aria-pressed={inputAudible}
+              leftIcon={inputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+              aria-label={inputAudible ? t('inputMute.muteAria') : t('inputMute.unmuteAria')}
+              title={inputAudible ? t('inputMute.muteAria') : t('inputMute.unmuteAria')}
+            >
+              {inputAudible ? t('inputMute.on') : t('inputMute.off')}
+            </ChromeButton>
+            {/* 번역(output) 음성 monitor — default ON (옛 동작 유지). */}
+            <ChromeButton
+              size="lg"
+              onClick={() => setOutputAudible((v) => !v)}
+              aria-pressed={outputAudible}
+              leftIcon={outputAudible ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+              aria-label={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+              title={outputAudible ? t('monitorMute.muteAria') : t('monitorMute.unmuteAria')}
+            >
+              {outputAudible ? t('monitorMute.on') : t('monitorMute.off')}
+            </ChromeButton>
+          </>
         )}
         {/* 공유 URL — live 진입 시 자동 생성. 생성 중이면 안내, 생성되면
             URL + 복사 + 해제 + 만료안내 인라인. */}
@@ -3601,6 +3664,29 @@ export function TranslateConsole({
         }}
         autoPlay
         playsInline
+        className="hidden"
+      />
+
+      {/* Per-slot ORIGINAL (input) source monitors — each slot's raw
+          captured stream is attached directly (see inputMonitorAudioRefs).
+          Hidden; muted by default, audible only when the host enables the
+          원본 toggle. Two elements so `both` mode monitors host + guest. */}
+      <audio
+        ref={(el) => {
+          inputMonitorAudioRefs.current.mic = el;
+        }}
+        autoPlay
+        playsInline
+        muted
+        className="hidden"
+      />
+      <audio
+        ref={(el) => {
+          inputMonitorAudioRefs.current.tab = el;
+        }}
+        autoPlay
+        playsInline
+        muted
         className="hidden"
       />
     </div>
