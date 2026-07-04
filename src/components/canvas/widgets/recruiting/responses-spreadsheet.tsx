@@ -1,12 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MochiLoader } from '@/components/ui/mochi-loader';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
-import { usePaywall } from '@/components/paywall-provider';
+import { useToast } from '@/components/toast-provider';
 import { isPiiColumn, PII_MASK } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
@@ -25,11 +32,14 @@ type Criterion = RecruitingBrief['criteria'][number];
 //   GET /api/recruiting/google/forms/list           → 발행 폼 목록
 //   GET /api/recruiting/google/forms/[id]/responses → 컬럼 + 행
 //
-// 개인정보(PII) 컬럼(이름/전화/이메일/주소/생년월일/나이)은 좌측으로 일괄
-// 정렬되고 기본적으로 마스킹된다. responses 엔드포인트는 PII 컬럼의 *값*을
-// 서버에서 blank 처리해 보내므로, 실제 값은 오직 크레딧 잠금 해제
-// (POST /api/recruiting/fullview/unlock, 5💎/row) 를 통해서만 서버에서
-// 내려온다 — 브라우저 payload 로는 마스킹 전 원본 PII 가 흐르지 않는다.
+// 개인정보(PII) 컬럼(이름/전화)은 좌측으로 일괄 정렬되고 **항상** 마스킹된다.
+// responses 엔드포인트가 PII 컬럼의 *값*을 서버에서 blank 처리해 보내므로
+// 브라우저 payload 로는 마스킹 전 원본 PII 가 절대 흐르지 않는다 — 유저 뷰엔
+// 어떤 경우에도 연락처가 노출되지 않는다 (옛 크레딧 잠금-해제 흐름은 폐기).
+//
+// 대신 각 응답자 row 좌측에 초대 대상 체크박스를 두고, 상단 CTA 로 여러 명을
+// 한 번에 골라 초대 요청(POST /api/recruiting/invitations)을 넣는다. 요청은
+// 무료 — super admin 이 out-of-band 로 실제 초대를 대행한다.
 const ROW_CAP = 200;
 
 export type FormSummary = {
@@ -114,7 +124,7 @@ export function ResponsesSpreadsheet({
   // 분포 패널의 질문 필터 dropdown 이 쓰게 한다.
   onFilterableQuestionsChange?: (questions: FilterableQuestion[]) => void;
 } = {}) {
-  const { refresh: refreshCredits } = usePaywall();
+  const { push: pushToast } = useToast();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
@@ -123,24 +133,11 @@ export function ResponsesSpreadsheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Revealed rows in this session (PII values loaded in-memory only, never
-  // localStorage — minimises leak surface).
-  const [unlockedRows, setUnlockedRows] = useState<Set<string>>(new Set());
-  const [unlockingRows, setUnlockingRows] = useState<Set<string>>(new Set());
-  const [unlockedAnswers, setUnlockedAnswers] = useState<
-    Record<string, Record<string, string>>
-  >({});
-  // Rows this org has ALREADY PAID to unlock (from `recruiting_pii_unlocks`,
-  // hydrated on form load). These persist across tab close / refresh, so a
-  // re-reveal is free — the server skips the charge for an existing row. Kept
-  // separate from `unlockedRows` because the PII values aren't loaded yet: a
-  // paid row shows a free "보기" affordance, and clicking it fetches the
-  // values (already_unlocked, no charge). This is the spec's "간단" default —
-  // persist the paid marker, defer the payload to an on-demand free re-fetch.
-  const [paidRows, setPaidRows] = useState<Set<string>>(new Set());
-  // 25💎+ 일괄 해제는 금액을 강조하는 별도 modal 로 확인받는다(소액은 native
-  // confirm). 아래 handleBulkUnlock 이 금액에 따라 둘 중 하나를 연다.
-  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  // 초대 대상으로 체크된 응답 row 들 (responseId set). 폼을 바꾸거나 응답을
+  // 다시 로드하면 리셋된다 — 다른 폼의 응답을 잘못 초대하지 않도록.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [inviteConfirmOpen, setInviteConfirmOpen] = useState(false);
+  const [sending, setSending] = useState(false);
 
   // 1) 발행 폼 목록 로드 — 가장 최근 발행 폼을 default 선택.
   const loadForms = useCallback(async () => {
@@ -170,31 +167,11 @@ export function ResponsesSpreadsheet({
     })();
   }, [loadForms]);
 
-  // 2) 선택된 폼의 응답 로드. 폼을 바꾸면 세션 reveal 상태는 리셋하되, 이미
-  //    결제된 unlock 목록(paidRows)은 서버에서 다시 hydrate 한다 — 재과금 방지.
+  // 2) 선택된 폼의 응답 로드. 폼을 바꾸면 초대 선택 상태를 리셋한다.
   const loadResponses = useCallback(async (formId: string) => {
     setLoading(true);
     setError(null);
-    setUnlockedRows(new Set());
-    setUnlockingRows(new Set());
-    setUnlockedAnswers({});
-    setPaidRows(new Set());
-    // 이미 결제된 row 목록 hydrate (응답 로드와 병렬, 실패해도 표는 뜬다).
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/recruiting/fullview/unlocks?formId=${encodeURIComponent(formId)}`,
-        );
-        if (!res.ok) return;
-        const j = (await res.json().catch(() => ({}))) as {
-          unlockedRowIds?: string[];
-        };
-        setPaidRows(new Set(j.unlockedRowIds ?? []));
-      } catch {
-        // hydrate 실패는 무시 — 최악의 경우 해당 세션에서 재클릭이 유료로
-        // 보이지만, 서버가 여전히 already_unlocked 로 재과금을 막는다.
-      }
-    })();
+    setSelected(new Set());
     try {
       const res = await fetch(
         `/api/recruiting/google/forms/${encodeURIComponent(formId)}/responses`,
@@ -222,48 +199,6 @@ export function ResponsesSpreadsheet({
       await loadResponses(selectedFormId);
     })();
   }, [selectedFormId, loadResponses]);
-
-  const unlockRow = useCallback(
-    async (rowId: string) => {
-      if (!selectedFormId) return;
-      if (unlockedRows.has(rowId) || unlockingRows.has(rowId)) return;
-      setUnlockingRows((prev) => new Set(prev).add(rowId));
-      try {
-        // 402 → PaywallProvider 의 전역 fetch interceptor 가 결제 modal 을
-        // 자동으로 연다. 여기선 성공 시 값 반영 + 잔액 갱신만.
-        const res = await fetch('/api/recruiting/fullview/unlock', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ formId: selectedFormId, rowId }),
-        });
-        if (!res.ok) return;
-        const j = (await res.json().catch(() => ({}))) as {
-          answers?: Record<string, string>;
-        };
-        setUnlockedAnswers((prev) => ({ ...prev, [rowId]: j.answers ?? {} }));
-        setUnlockedRows((prev) => new Set(prev).add(rowId));
-        setPaidRows((prev) => {
-          if (!prev.has(rowId)) return prev;
-          const next = new Set(prev);
-          next.delete(rowId);
-          return next;
-        });
-        trackEvent('widget_action', {
-          widget: 'recruiting',
-          action: 'response_unlock',
-          metadata: { row_id: rowId },
-        });
-        void refreshCredits();
-      } finally {
-        setUnlockingRows((prev) => {
-          const next = new Set(prev);
-          next.delete(rowId);
-          return next;
-        });
-      }
-    },
-    [selectedFormId, unlockedRows, unlockingRows, refreshCredits],
-  );
 
   const selectedForm = useMemo(
     () => forms?.find((f) => f.formId === selectedFormId) ?? null,
@@ -323,67 +258,72 @@ export function ResponsesSpreadsheet({
   }, [cappedRows, activeFilter, columns]);
   const filteredOut = activeFilter != null;
 
-  // ── 일괄 해제(전체 해제) 파생값 ──
-  // 표에 PII 컬럼이 하나라도 있을 때만 의미가 있다. 대상은 화면에 실제로
-  // 그려지는 cappedRows — 아직 노출되지 않은(마스킹된) row 들.
-  // 일괄 해제 대상 = 현재 *보이는*(필터 적용된) 잠긴 행. 필터 중이면 화면에
-  // 안 보이는 행까지 결제되는 혼란을 피한다.
-  const hasPii = piiQids.size > 0;
-  const lockedIds = useMemo(
-    () =>
-      hasPii
-        ? displayRows
-            .map((r) => r.responseId)
-            .filter((id) => !unlockedRows.has(id))
-        : [],
-    [hasPii, displayRows, unlockedRows],
+  // ── 초대 선택 파생값 ──
+  // 현재 화면에 보이는(필터 적용된) 행들의 id — 전체 선택 체크박스의 대상.
+  const visibleIds = useMemo(
+    () => displayRows.map((r) => r.responseId),
+    [displayRows],
   );
-  // 실제로 과금되는 row = 잠김 & 아직 미결제(paidRows 아님). 이미 결제된
-  // row 는 서버가 재과금을 막으므로 전체 해제 시 무료로 함께 노출된다.
-  // 따라서 버튼에 표시하는 "발생 크레딧"은 chargeableCount 만 센다 —
-  // spec 의 `total_rows - unlockedRows.size` 를 paidRows 만큼 보수적으로 보정.
-  const chargeableCount = useMemo(
-    () => lockedIds.filter((id) => !paidRows.has(id)).length,
-    [lockedIds, paidRows],
-  );
-  const chargeCredits = chargeableCount * 5;
 
-  const runBulkUnlock = useCallback(() => {
-    if (lockedIds.length === 0) return;
-    trackEvent('widget_action', {
-      widget: 'recruiting',
-      action: 'response_bulk_unlock',
-      metadata: { rows: lockedIds.length, credits: chargeCredits },
+  const toggleRow = useCallback((rowId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
     });
-    void Promise.all(lockedIds.map((id) => unlockRow(id)));
-  }, [lockedIds, chargeCredits, unlockRow]);
+  }, []);
 
-  const handleBulkUnlock = useCallback(() => {
-    if (lockedIds.length === 0) return;
-    // 전부 이미 결제된 row 라 과금이 없으면 곧바로 노출(확인 불필요).
-    if (chargeCredits === 0) {
-      runBulkUnlock();
-      return;
-    }
-    // 소액(≤5💎, 사실상 1 row)은 native confirm, 그 이상은 금액을 강조하는
-    // 별도 modal. spec 이 5💎/25💎 만 규정하고 중간(10~20💎)을 비워둬,
-    // 가장 보수적으로 "소액만 native, 나머지는 강조 modal" 로 해석.
-    if (chargeCredits <= 5) {
-      if (
-        !window.confirm(`총 ${chargeCredits}💎 이 차감됩니다. 진행하시겠습니까?`)
-      ) {
+  // 전체 선택 = 현재 보이는 행 전부 선택, 해제 = 전부 해제. 필터 중이면 화면에
+  // 안 보이는 행까지 선택되는 혼란을 피해 visibleIds 만 대상으로 한다.
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      setSelected(checked ? new Set(visibleIds) : new Set());
+    },
+    [visibleIds],
+  );
+
+  const sendInvitations = useCallback(async () => {
+    if (!selectedFormId || selected.size === 0) return;
+    setSending(true);
+    try {
+      const res = await fetch('/api/recruiting/invitations', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          form_id: selectedFormId,
+          // FormSummary 엔 project_id 가 없어 항상 null 로 보낸다 (스펙의
+          // selectedForm.project_id 는 이 payload 에 존재하지 않는 필드 —
+          // 가장 보수적으로 null 처리). API 는 nullable 이라 안전.
+          project_id: null,
+          response_ids: Array.from(selected),
+        }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        pushToast(`초대 요청 실패: ${j.error ?? res.status}`, { tone: 'warn' });
         return;
       }
-      runBulkUnlock();
-      return;
+      const j = (await res.json().catch(() => ({}))) as { count?: number };
+      const count = j.count ?? selected.size;
+      trackEvent('widget_action', {
+        widget: 'recruiting',
+        action: 'invitation_request',
+        metadata: { count },
+      });
+      pushToast(`${count}명 초대 요청 완료. 관리자가 처리합니다.`, {
+        tone: 'amore',
+      });
+      setSelected(new Set());
+      setInviteConfirmOpen(false);
+    } catch {
+      pushToast('초대 요청 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.', {
+        tone: 'warn',
+      });
+    } finally {
+      setSending(false);
     }
-    setBulkModalOpen(true);
-  }, [lockedIds, chargeCredits, runBulkUnlock]);
-
-  const confirmBulkModal = useCallback(() => {
-    setBulkModalOpen(false);
-    runBulkUnlock();
-  }, [runBulkUnlock]);
+  }, [selectedFormId, selected, pushToast]);
 
   // Google 미연동 / 재동의 필요는 responses 엔드포인트가 412 + 명시
   // 에러코드로 알려준다. 그 경우 일반 에러 배너 대신 연동 안내를 띄운다.
@@ -401,7 +341,7 @@ export function ResponsesSpreadsheet({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Form selector */}
+      {/* Form selector + 초대 CTA */}
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
         {forms.length > 0 ? (
           <Select
@@ -419,18 +359,16 @@ export function ResponsesSpreadsheet({
         ) : (
           <span className="text-sm text-mute-soft">발행된 설문 없음</span>
         )}
-        {/* 새로고침 버튼은 fullview 상단 통합 버튼으로 이동 (spec B) — 여기서
-            누르면 테이블과 분포 통계가 함께 갱신된다. */}
-        {data && hasPii && lockedIds.length > 0 && (
+        {/* 새로고침 버튼은 fullview 상단 통합 버튼으로 이동 (spec B). 최소 1명
+            선택 시 초대 요청 CTA 활성 — confirm modal 을 연다. */}
+        {selected.size > 0 && (
           <Button
             variant="primary"
             size="sm"
             className="ml-auto"
-            onClick={handleBulkUnlock}
+            onClick={() => setInviteConfirmOpen(true)}
           >
-            {chargeCredits === 0
-              ? '🔓 전체 해제 (무료)'
-              : `🔓 전체 해제 (총 ${chargeCredits}💎 = ${chargeableCount}개 × 5💎)`}
+            📧 초대 보내기 ({selected.size}명)
           </Button>
         )}
       </div>
@@ -492,7 +430,7 @@ export function ResponsesSpreadsheet({
             <EmptyState
               tone="subtle"
               title="아직 응답이 없습니다"
-              description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 개인정보는 기본 잠금 상태로 표시됩니다."
+              description="설문 링크를 공유한 뒤 응답이 들어오면 여기서 확인할 수 있어요. 연락처 등 개인정보는 항상 가려진 상태로 표시됩니다."
             />
           </div>
         ) : filteredOut && displayRows.length === 0 ? (
@@ -508,11 +446,9 @@ export function ResponsesSpreadsheet({
             columns={columns}
             piiQids={piiQids}
             rows={displayRows}
-            unlockedRows={unlockedRows}
-            unlockingRows={unlockingRows}
-            paidRows={paidRows}
-            unlockedAnswers={unlockedAnswers}
-            onUnlock={(rowId) => void unlockRow(rowId)}
+            selected={selected}
+            onToggleRow={toggleRow}
+            onToggleAll={toggleAll}
           />
         )}
       </div>
@@ -526,7 +462,7 @@ export function ResponsesSpreadsheet({
               : totalRows > ROW_CAP
                 ? `총 ${totalRows} 응답 · 처음 ${ROW_CAP}개 표시`
                 : `총 ${totalRows} 응답`
-            : '개인정보는 기본 잠금 상태이며, 해제 시 5크레딧이 차감됩니다.'}
+            : '연락처 등 개인정보는 항상 가려집니다.'}
         </span>
         {selectedForm?.sheetUrl ? (
           <a
@@ -549,36 +485,40 @@ export function ResponsesSpreadsheet({
         ) : null}
       </footer>
 
-      {/* 25💎+ 일괄 해제 확인 — 금액을 크게 강조. 소액은 native confirm 이 처리. */}
+      {/* 초대 요청 확인 modal — 크레딧 차감 없음(무료), super admin 이 대행. */}
       <Modal
-        open={bulkModalOpen}
-        onClose={() => setBulkModalOpen(false)}
+        open={inviteConfirmOpen}
+        onClose={() => !sending && setInviteConfirmOpen(false)}
         size="sm"
-        title="개인정보 전체 해제"
+        title="초대 요청 보내기"
         footer={
           <>
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setBulkModalOpen(false)}
+              disabled={sending}
+              onClick={() => setInviteConfirmOpen(false)}
             >
               취소
             </Button>
-            <Button variant="primary" size="sm" onClick={confirmBulkModal}>
-              {chargeCredits}💎 차감하고 해제
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={sending}
+              onClick={() => void sendInvitations()}
+            >
+              {sending ? '요청 중…' : `${selected.size}명 초대 요청`}
             </Button>
           </>
         }
       >
         <p className="text-md leading-[1.65] text-ink-2">
-          잠긴 응답 <span className="font-semibold">{chargeableCount}개</span> 의
-          개인정보를 해제합니다.
+          선택한 응답자 <span className="font-semibold">{selected.size}명</span>{' '}
+          에게 초대를 보내달라고 요청합니다.
         </p>
-        <p className="mt-3 text-3xl font-semibold tracking-[-0.01em] text-amore">
-          총 {chargeCredits}💎 차감
-        </p>
-        <p className="mt-1 text-xs-soft text-mute-soft">
-          {chargeableCount}개 × 5💎 · 이미 해제한 응답은 다시 과금되지 않습니다.
+        <p className="mt-3 text-xs-soft text-mute-soft">
+          크레딧이 차감되지 않으며, 실제 초대 발송은 관리자가 연락처를 확인해
+          대행합니다.
         </p>
       </Modal>
     </div>
@@ -593,52 +533,79 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-// 렌더 컬럼 모델 — PII 를 좌측으로 몰고, 그 다음 '응답 시각', 그 다음 나머지.
-// PII 가 하나라도 있으면 맨 앞에 잠금 해제 액션 열을 둔다.
+// 렌더 컬럼 모델 — 맨 앞에 초대 대상 체크박스, 그 다음 PII(항상 마스킹)를 좌측
+// 으로 몰고, 그 다음 '응답 시각', 그 다음 나머지.
 type RenderCol =
-  | { kind: 'action' }
+  | { kind: 'select' }
   | { kind: 'time' }
   | { kind: 'field'; col: FormColumn; pii: boolean };
+
+// 전체 선택 헤더 체크박스 — Checkbox primitive 은 native <input> 이라
+// indeterminate 를 prop 으로 못 받는다 (DOM 프로퍼티라 ref 로만 설정). 일부만
+// 선택된 상태를 시각적으로 나타내려면 여기서 ref 로 직접 세팅한다.
+function SelectAllCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <Checkbox
+      ref={ref}
+      checked={checked}
+      aria-label="전체 선택"
+      onChange={(e) => onChange(e.target.checked)}
+    />
+  );
+}
 
 function ResponseTable({
   columns,
   piiQids,
   rows,
-  unlockedRows,
-  unlockingRows,
-  paidRows,
-  unlockedAnswers,
-  onUnlock,
+  selected,
+  onToggleRow,
+  onToggleAll,
 }: {
   columns: FormColumn[];
   piiQids: Set<string>;
   rows: FormResponseRow[];
-  unlockedRows: Set<string>;
-  unlockingRows: Set<string>;
-  paidRows: Set<string>;
-  unlockedAnswers: Record<string, Record<string, string>>;
-  onUnlock: (rowId: string) => void;
+  selected: Set<string>;
+  onToggleRow: (rowId: string) => void;
+  onToggleAll: (checked: boolean) => void;
 }) {
   const piiCols = columns.filter((c) => piiQids.has(c.questionId));
   const nonPiiCols = columns.filter((c) => !piiQids.has(c.questionId));
-  const hasPii = piiCols.length > 0;
 
   const renderCols: RenderCol[] = [
-    ...(hasPii ? [{ kind: 'action' } as const] : []),
+    { kind: 'select' } as const,
     ...piiCols.map((col) => ({ kind: 'field', col, pii: true }) as const),
     { kind: 'time' } as const,
     ...nonPiiCols.map((col) => ({ kind: 'field', col, pii: false }) as const),
   ];
 
   // 컬럼별 최소 폭 — 긴 질문 헤더(20+자)가 wrap 되지 않도록 field 는 180px,
-  // 액션(잠금 해제 버튼) 은 140px, 응답 시각은 nowrap 으로 자연 폭 유지.
-  // min-w-max table 과 결합해 좁은 화면에서 부모의 overflow-x 로 수평 스크롤.
+  // 선택(체크박스) 열은 좁게, 응답 시각은 nowrap 으로 자연 폭 유지.
   const colWidthClass = (rc: RenderCol) =>
-    rc.kind === 'action'
-      ? 'min-w-[140px]'
+    rc.kind === 'select'
+      ? 'w-10'
       : rc.kind === 'time'
         ? 'whitespace-nowrap'
         : 'min-w-[180px]';
+
+  const visibleSelectedCount = rows.filter((r) =>
+    selected.has(r.responseId),
+  ).length;
+  const allSelected = rows.length > 0 && visibleSelectedCount === rows.length;
+  const someSelected =
+    visibleSelectedCount > 0 && visibleSelectedCount < rows.length;
 
   return (
     <table className="min-w-max border-collapse text-md">
@@ -651,106 +618,72 @@ function ResponseTable({
               }
               className={`whitespace-nowrap border-b border-line-soft px-3 py-2 text-xs-soft uppercase tracking-[0.04em] text-mute-soft ${colWidthClass(rc)}`}
             >
-              {rc.kind === 'action'
-                ? '개인정보'
-                : rc.kind === 'time'
-                  ? '응답 시각'
-                  : rc.col.title}
+              {rc.kind === 'select' ? (
+                <SelectAllCheckbox
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  onChange={onToggleAll}
+                />
+              ) : rc.kind === 'time' ? (
+                '응답 시각'
+              ) : (
+                rc.col.title
+              )}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => {
-          const unlocked = unlockedRows.has(r.responseId);
-          const unlocking = unlockingRows.has(r.responseId);
-          const paid = paidRows.has(r.responseId);
-          const revealed = unlockedAnswers[r.responseId];
-          return (
-            <tr
-              key={r.responseId}
-              className="border-b border-line-soft last:border-b-0"
-            >
-              {renderCols.map((rc, i) => {
-                if (rc.kind === 'action') {
-                  return (
-                    <td
-                      key={`action-${i}`}
-                      className="min-w-[140px] px-3 py-2 align-top"
-                    >
-                      {unlocked ? (
-                        <span className="whitespace-nowrap text-xs-soft text-mute-soft">
-                          ✓ 해제됨
-                        </span>
-                      ) : paid ? (
-                        // 이미 결제된 row — 재과금 없이 무료로 값만 다시 노출.
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          disabled={unlocking}
-                          onClick={() => onUnlock(r.responseId)}
-                        >
-                          {unlocking ? '불러오는 중…' : '🔓 보기 (무료)'}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          disabled={unlocking}
-                          onClick={() => onUnlock(r.responseId)}
-                        >
-                          {unlocking ? '해제 중…' : '🔒 해제 (5💎)'}
-                        </Button>
-                      )}
-                    </td>
-                  );
-                }
-                if (rc.kind === 'time') {
-                  return (
-                    <td
-                      key={`time-${i}`}
-                      className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-mute"
-                    >
-                      {formatSubmittedAt(r.lastSubmittedTime || r.createTime)}
-                    </td>
-                  );
-                }
-                const qid = rc.col.questionId;
-                if (rc.pii) {
-                  if (unlocked) {
-                    const val = revealed?.[qid];
-                    return (
-                      <td
-                        key={qid}
-                        className="min-w-[180px] px-3 py-2 align-top text-ink-2"
-                      >
-                        {val || <span className="text-mute-soft">—</span>}
-                      </td>
-                    );
-                  }
-                  return (
-                    <td
-                      key={qid}
-                      className="min-w-[180px] px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
-                    >
-                      {PII_MASK}
-                    </td>
-                  );
-                }
+        {rows.map((r) => (
+          <tr
+            key={r.responseId}
+            className="border-b border-line-soft last:border-b-0"
+          >
+            {renderCols.map((rc, i) => {
+              if (rc.kind === 'select') {
+                return (
+                  <td key={`select-${i}`} className="w-10 px-3 py-2 align-top">
+                    <Checkbox
+                      checked={selected.has(r.responseId)}
+                      aria-label="초대 대상 선택"
+                      onChange={() => onToggleRow(r.responseId)}
+                    />
+                  </td>
+                );
+              }
+              if (rc.kind === 'time') {
+                return (
+                  <td
+                    key={`time-${i}`}
+                    className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-mute"
+                  >
+                    {formatSubmittedAt(r.lastSubmittedTime || r.createTime)}
+                  </td>
+                );
+              }
+              const qid = rc.col.questionId;
+              if (rc.pii) {
+                // PII 컬럼은 어떤 경우에도 마스킹 — 유저 뷰에 연락처 노출 X.
                 return (
                   <td
                     key={qid}
-                    className="min-w-[180px] px-3 py-2 align-top text-ink-2"
+                    className="min-w-[180px] px-3 py-2 align-top tracking-[0.12em] text-mute-soft"
                   >
-                    {r.answers[qid] || (
-                      <span className="text-mute-soft">—</span>
-                    )}
+                    {PII_MASK}
                   </td>
                 );
-              })}
-            </tr>
-          );
-        })}
+              }
+              return (
+                <td
+                  key={qid}
+                  className="min-w-[180px] px-3 py-2 align-top text-ink-2"
+                >
+                  {r.answers[qid] || <span className="text-mute-soft">—</span>}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
       </tbody>
     </table>
   );
