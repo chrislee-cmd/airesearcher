@@ -25,6 +25,10 @@ import {
   PROBING_OUTPUT_LANGS,
   buildProbingThinkSystem,
 } from '@/lib/probing-prompts';
+import {
+  EMPTY_FILL_THRESHOLD,
+  sortWidgetsByPriority,
+} from '@/lib/probing-widget-weight';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
 export const maxDuration = 60;
@@ -53,6 +57,23 @@ const Body = z.object({
   // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
   // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
   output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
+  // PR (probing-custom-widget-priority-weight): 페르소나 위젯별 채움 상태 +
+  // 가중치. custom 위젯 (weight 1.0) 이 비어 있으면 그 위젯을 채우는 질문을
+  // 우선 emit 하도록 프롬프트에 우선순위 블록으로 반영한다. 미전달 / 빈 배열
+  // 이면 옛 동작 (위젯 우선순위 없이 신호 기반 emit) 100% 보존.
+  widget_status: z
+    .array(
+      z.object({
+        alias: z.string().min(1).max(64),
+        label: z.string().min(1).max(160),
+        weight: z.number().min(0).max(1),
+        fill_rate: z.number().min(0).max(1),
+        is_custom: z.boolean(),
+      }),
+    )
+    .max(24)
+    .optional()
+    .default([]),
 });
 
 export async function POST(request: Request) {
@@ -79,6 +100,7 @@ export async function POST(request: Request) {
     key_research_question,
     interview_guide,
     injected_questions,
+    widget_status,
   } = parsed.data;
 
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -187,10 +209,38 @@ ${injectedSan.map((s, idx) => `${idx + 1}. ${s.wrapped}`).join('\n')}
 `
     : '';
 
+  // PR (probing-custom-widget-priority-weight): 위젯 채움 상태 → 우선순위 블록.
+  // 점수 (weight × (1-fill)) 내림차순으로 정렬해 LLM 이 상위 위젯부터 채우도록.
+  // 라벨은 사용자 custom 제목을 포함할 수 있으나 alias / weight / fill 은 구조
+  // 메타라 transcript 처럼 injection 위험이 낮다 — reflection route 가 custom
+  // 제목을 sanitize 없이 schema 라벨로 쓰는 것과 동일 취급. 빈 배열이면 블록
+  // 생략 → 옛 동작.
+  const widgetBlock = widget_status.length
+    ? `## 위젯 채우기 우선순위
+아래는 좌패널 페르소나 위젯들의 현재 채움 상태입니다. 우선순위 점수 (weight × (1 − fill_rate)) 내림차순 정렬 — 상위 위젯일수록 지금 채워야 할 대상입니다. empty 임계값은 fill ${Math.round(EMPTY_FILL_THRESHOLD * 100)}% 미만.
+
+${sortWidgetsByPriority(widget_status)
+        .map((w) => {
+          const kind = w.is_custom
+            ? 'custom'
+            : w.weight <= 0.3
+              ? '기타'
+              : 'default';
+          const fillPct = Math.round(w.fill_rate * 100);
+          const empty = w.fill_rate < EMPTY_FILL_THRESHOLD ? ' ← EMPTY' : '';
+          return `- alias="${w.alias}" [${kind}, weight ${w.weight.toFixed(1)}] "${w.label}" — 채움 ${fillPct}%${empty}`;
+        })
+        .join('\n')}
+
+custom 위젯이 EMPTY 이면 그 위젯을 채우는 sharp 질문을 최우선으로 emit 하고 target_section 에 해당 alias 를 적으세요. 단 응답자 발화에 hook 되지 않는 억지 질문은 금지.
+
+`
+    : '';
+
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: buildProbingThinkSystem(parsed.data.output_lang),
-    prompt: `${contextBlock}${injectedBlock}## 누적 transcript
+    prompt: `${contextBlock}${widgetBlock}${injectedBlock}## 누적 transcript
 ${transcriptSan.wrapped}
 
 ---

@@ -624,6 +624,17 @@ export const probingThinkEmitSchema = z.object({
     .describe(
       "high=가설 검증의 결정적 신호 + 응답자가 곧 화제 바꿀 위험; medium=KRQ 와 직접 정합 + 깊이 있는 follow-up; low=보조적, 시간 여유 있을 때 좋음.",
     ),
+  // PR (probing-custom-widget-priority-weight): 이 질문이 어느 페르소나 위젯을
+  // 채우기 위한 것인지 = "## 위젯 채우기 우선순위" 블록에 나열된 alias 중 하나.
+  // 위젯 상태가 프롬프트에 없거나 (backward compat) 특정 위젯 겨냥이 아니면 생략.
+  // client 가 alias→위젯 라벨로 되돌려 popup 뱃지에 "{라벨} 채우기" 로 표시.
+  target_section: z
+    .string()
+    .max(64)
+    .optional()
+    .describe(
+      '이 질문이 채우려는 페르소나 위젯의 alias ("## 위젯 채우기 우선순위" 블록의 alias). 특정 위젯 겨냥이 아니거나 위젯 상태가 제공되지 않았으면 생략.',
+    ),
 });
 
 export type ProbingThinkEmit = z.infer<typeof probingThinkEmitSchema>;
@@ -650,13 +661,24 @@ export function buildProbingThinkSystem(outputLang?: string): string {
 - \`EMIT: <json one-line>\`
   - 사용자에게 **지금 즉시** popup 으로 보여줄 필수 질문. 다음 JSON 스키마를 정확히 따르고 한 줄에 모두 적어야 합니다 (개행 금지):
     \`\`\`
-    {"text": "...", "technique": "...", "rationale": "...", "importance": "..."}
+    {"text": "...", "technique": "...", "rationale": "...", "importance": "...", "target_section": "..."}
     \`\`\`
   - text: 인터뷰어가 그대로 던질 한 문장 질문.
   - technique: contrast / devils_advocate / balance_game / clarification / timeline 중 하나.
   - rationale: 왜 지금 이 질문이 필수인가. 사용자 입력 (조사 목적 / 가설 / KRQ) 중 어느 부분과 연결되는지 명시 (1~2 문장).
   - importance: high (가설 검증의 결정적 신호 + 응답자가 곧 화제 바꿀 위험) / medium (KRQ 와 직접 정합 + 깊이 있는 follow-up) / low (보조적, 시간 여유 있을 때).
+  - target_section (선택): 이 질문이 채우려는 페르소나 위젯의 alias. 아래 "## 위젯 채우기 우선순위" 블록이 제공된 경우 그 블록에 나열된 alias 중 정확히 하나를 그대로 적으세요. 특정 위젯 겨냥이 아니거나 블록이 없으면 이 필드를 아예 생략 (빈 문자열 X).
   - 한 호출에 0~5개. 신호가 강하면 1개로도 충분. 약한 일반 follow-up ("조금 더 말씀해 주세요" 류) 는 절대 emit 금지.
+
+## 위젯 채우기 우선순위 (제공된 경우 emit 방향의 최상위 룰)
+사용자 프롬프트에 **"## 위젯 채우기 우선순위"** 블록이 있으면, 각 페르소나 위젯의 현재 채움 상태 (fill rate %) 와 가중치 (weight) 가 우선순위 점수 내림차순으로 나열됩니다. emit 질문은 **가장 비어 있고 가중치 높은 위젯을 채우는 방향**으로 설계하고 target_section 에 그 alias 를 적으세요.
+
+- **custom 위젯 (weight 1.0) 이 empty (fill rate < 30%) 면 = 최우선.** 그 위젯의 조사 목적 (라벨 / 설명) 을 채울 sharp 질문을 우선 emit.
+- **기본 위젯 (weight 0.5) empty = 중간 순위.** custom 이 모두 채워졌거나 (fill ≥ 30%) 없을 때 비어 있는 기본 위젯을 겨냥.
+- **기타 위젯 (weight 0.3) = 낮은 순위** — catch-all 이라 자연히 채워지므로 특별히 겨냥 안 해도 됨.
+- 우선순위 점수 = **weight × (1 − fill_rate)**. 블록은 이미 점수 내림차순 정렬 — 상위 위젯부터 채우는 질문을 우선 고려.
+- **단, 위젯 채우기가 sharpness / 맥락 hook 룰을 이기지는 않습니다.** 응답자의 직전 발화에 hook 되지 않는데 위젯만 채우려는 억지 질문은 금지 — 그 경우 target_section 없이 발화 기반 sharp 질문을 emit 하거나 THINK 로만 흐르세요.
+- 블록이 없으면 (backward compat) target_section 은 항상 생략하고 종전대로 신호 기반으로만 emit.
 
 ## emit 판단 룰
 - **검증 가능성** — 가설 / KRQ 와 응답자의 발화가 연결됐을 때, 더 깊은 검증 / 반증을 끌어낼 sharp 질문이 떠오르면 즉시 emit.

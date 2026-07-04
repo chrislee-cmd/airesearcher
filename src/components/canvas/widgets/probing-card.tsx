@@ -58,6 +58,7 @@ import { ProbingFullView } from './probing/full-view';
 import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
 import { useHiddenDefaults } from './probing/use-hidden-defaults';
 import {
+  DEFAULT_PERSONA_SECTIONS,
   PROBING_PERSONA_SECTION_KEYS,
   PROBING_TECHNIQUES,
   PROBING_THINK_IMPORTANCE,
@@ -65,6 +66,12 @@ import {
   type ProbingOutputLang,
   type ProbingPersonaSection,
 } from '@/lib/probing-prompts';
+import {
+  CUSTOM_WEIGHT,
+  DEFAULT_WEIGHT,
+  sectionFillRate,
+  type ProbingWidgetStatus,
+} from '@/lib/probing-widget-weight';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
@@ -165,13 +172,23 @@ function OutputLangPicker({
 }
 
 // 검증 helper — think route 의 EMIT 라인 JSON 을 schema 로 통과시킨다.
-function parseEmit(raw: string): PopupQuestion | null {
+// resolveTargetLabel: target_section alias → 위젯 라벨 (popup 뱃지용). alias 가
+// 이번 think 호출의 위젯 집합에 없으면 undefined → 뱃지 미표시.
+function parseEmit(
+  raw: string,
+  resolveTargetLabel?: (alias: string) => string | undefined,
+): PopupQuestion | null {
   try {
     const parsed = JSON.parse(raw) as unknown;
     const result = probingThinkEmitSchema.safeParse(parsed);
     if (!result.success) return null;
-    const { text, technique, rationale, importance } = result.data;
+    const { text, technique, rationale, importance, target_section } =
+      result.data;
     const id = `popup_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const targetLabel =
+      target_section && resolveTargetLabel
+        ? resolveTargetLabel(target_section)
+        : undefined;
     return {
       id,
       text,
@@ -179,6 +196,7 @@ function parseEmit(raw: string): PopupQuestion | null {
       rationale,
       importance,
       emitted_at: Date.now(),
+      target_section_label: targetLabel,
     };
   } catch {
     return null;
@@ -367,6 +385,12 @@ function ExpandedBody() {
     restore: restoreDefault,
     restoreAll: restoreAllDefaults,
   } = useHiddenDefaults();
+  // think 자동 호출 (useCallback, ref 로 최신값 읽음) 에서 숨긴 기본 위젯을
+  // 우선순위 대상에서 제외하기 위한 ref.
+  const hiddenDefaultKeysRef = useRef(hiddenDefaultKeys);
+  useEffect(() => {
+    hiddenDefaultKeysRef.current = hiddenDefaultKeys;
+  }, [hiddenDefaultKeys]);
 
   // ─── 좌패널 — Reflection state ───
   const [reflection, setReflection] = useState<ProbingReflectionData | null>(
@@ -392,6 +416,9 @@ function ExpandedBody() {
   const [thinkingError, setThinkingError] = useState<string | null>(null);
   const thinkInFlightRef = useRef(false);
   const thinkAbortRef = useRef<AbortController | null>(null);
+  // PR (probing-custom-widget-priority-weight): 이번 think 호출의 위젯 alias →
+  // 라벨 매핑. EMIT 의 target_section alias 를 popup 뱃지 라벨로 되돌린다.
+  const widgetAliasLabelRef = useRef<Map<string, string>>(new Map());
   // 주입(one-shot) think 는 자동 think 와 동시 실행될 수 있어 별도 abort ref.
   const injectAbortRef = useRef<AbortController | null>(null);
 
@@ -496,7 +523,9 @@ function ExpandedBody() {
           ]);
         } else if (line.startsWith('EMIT:')) {
           const raw = line.slice('EMIT:'.length).trim();
-          const popup = parseEmit(raw);
+          const popup = parseEmit(raw, (alias) =>
+            widgetAliasLabelRef.current.get(alias),
+          );
           if (popup) handleEmit(popup);
         }
       };
@@ -544,6 +573,42 @@ function ExpandedBody() {
       if (isInjection) injectAbortRef.current = controller;
       else thinkAbortRef.current = controller;
 
+      // PR (probing-custom-widget-priority-weight): 위젯 채움 상태 스냅샷 —
+      // 숨기지 않은 기본 8 (weight 0.5) + custom (weight 1.0). custom 은 짧은
+      // ordinal alias (custom_N), 기본은 semantic key 를 alias 로 사용해 LLM 이
+      // target_section 으로 되돌려 참조 가능. fill_rate 는 현재 reflection 결과
+      // 에서 계산. reflection 아직 없으면 전부 0 (empty) → custom 최우선.
+      const refl = reflectionRef.current as Record<
+        string,
+        ProbingPersonaSection | undefined
+      > | null;
+      const aliasToLabel = new Map<string, string>();
+      const widgetStatus: ProbingWidgetStatus[] = [];
+      const hiddenSet = new Set(hiddenDefaultKeysRef.current);
+      for (const def of DEFAULT_PERSONA_SECTIONS) {
+        if (hiddenSet.has(def.key)) continue;
+        aliasToLabel.set(def.key, def.title);
+        widgetStatus.push({
+          alias: def.key,
+          label: def.title,
+          weight: DEFAULT_WEIGHT,
+          fill_rate: sectionFillRate(refl?.[def.key]),
+          is_custom: false,
+        });
+      }
+      customSectionsRef.current.forEach((c, i) => {
+        const alias = `custom_${i + 1}`;
+        aliasToLabel.set(alias, c.title);
+        widgetStatus.push({
+          alias,
+          label: c.title,
+          weight: CUSTOM_WEIGHT,
+          fill_rate: sectionFillRate(refl?.[c.key]),
+          is_custom: true,
+        });
+      });
+      widgetAliasLabelRef.current = aliasToLabel;
+
       try {
         const res = await fetchWithAuth('/api/probing/think', {
           method: 'POST',
@@ -555,6 +620,7 @@ function ExpandedBody() {
             key_research_question: contextRef.current.key_research_question,
             output_lang: outputLangRef.current,
             injected_questions: injectedQuestions,
+            widget_status: widgetStatus,
           }),
           signal: controller.signal,
         });
