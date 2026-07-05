@@ -11,6 +11,25 @@ import { inRange, safeFetch } from './helpers';
 // `citationCount` is fetched so a later tier-classifier can use it as a T1
 // signal, but this PR only forwards it through — tier assignment lives in a
 // separate spec.
+// Semantic Scholar enforces 1 req/sec cumulative across all endpoints. Desk
+// crawls fire one fetch per keyword in parallel (Promise.all), so without a
+// throttle 5 keywords → 5 simultaneous requests → 429. Serialize via a
+// module-level slot reservation: each caller synchronously claims the next
+// 1.1s slot before awaiting, so concurrent callers get distinct slots instead
+// of all waking from the same timestamp at once. Per Vercel function instance
+// only — accepted trade-off, one user session lands on one instance.
+const MIN_INTERVAL_MS = 1100; // 1s limit + 100ms margin
+let nextSlotAt = 0;
+
+async function throttleWait() {
+  const now = Date.now();
+  const slot = Math.max(now, nextSlotAt);
+  nextSlotAt = slot + MIN_INTERVAL_MS;
+  if (slot > now) {
+    await new Promise((resolve) => setTimeout(resolve, slot - now));
+  }
+}
+
 type S2Author = { name?: string };
 type S2Paper = {
   paperId?: string;
@@ -35,6 +54,7 @@ export const semanticScholar: DeskSourceDefinition = {
   hint: '200M+ 학술 논문 (인용/영향력 포함)',
   // No envKeys — key is optional (raises the rate limit but not required).
   async fetch({ keyword, range, limit }) {
+    await throttleWait();
     const params = new URLSearchParams({
       query: keyword,
       // API hard-caps `limit` at 100 per call.
