@@ -32,6 +32,7 @@ import {
   type DeskJob,
 } from '@/components/desk-job-provider';
 import { DeskReportView } from '@/components/canvas/widgets/desk-result/desk-report-view';
+import { DeskJobHistoryList } from '@/components/canvas/widgets/desk-result/desk-job-history-list';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -265,7 +266,7 @@ export function DeskCardBody() {
   const tProcess = useTranslations('Process');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
-  const { latestJob, isWorking, cancelJob } = useDeskJobs();
+  const { jobs, latestJob, isWorking, cancelJob } = useDeskJobs();
   const { notify: notifyDeduction } = useCreditDeduction();
 
   // ─── inputs ──────────────────────────────────────────────────────────────
@@ -358,6 +359,18 @@ export function DeskCardBody() {
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
   // 에도 보존. 행별 "미리보기" 모달(previewOpen) 과는 별개 — 그건 그대로 유지.
   const { renderInSlot, openFullview, close: closeFullview } = useFullview('desk');
+
+  // Fullview 좌측 "이전 산출물" 사이드바에서 고른 job. 카드 본문(latestJob,
+  // 세션 스코프)은 그대로 두고 fullview 우측 report 만 스위치한다. Default =
+  // latestJob (신 job 자동 노출) → 없으면 가장 최근 done job (fresh 세션에서
+  // navigator 로 fullview 진입 시 옛 완료 산출물이 바로 보이도록 — 이
+  // sidebar 의 존재 이유).
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const fullviewJob =
+    jobs.find((j) => j.id === selectedJobId) ??
+    latestJob ??
+    jobs.find((j) => j.status === 'done' && j.output) ??
+    null;
 
   // 통일 "전체 보기" 진입 계측 — 표준 이벤트 (spec analytics 6/6).
   const handleDeskFullview = () => {
@@ -1315,32 +1328,53 @@ export function DeskCardBody() {
         {job && <DeskReportView job={job} tDesk={tDesk} />}
       </Modal>
 
-      {/* 통일 "전체 보기" — 가장 최근 완료 리포트를 풀스크린으로. 완료
-          리포트가 없으면 안내 EmptyState. 공유 모달 slot 으로 portal 되며
-          chrome(title/subtitle/닫기×)은 WidgetFullviewPanel 이 소유. */}
+      {/* 통일 "전체 보기" — 2-column: 좌측 "이전 산출물" 사이드바(최근 20개
+          persist job) + 우측 선택 job 리포트. 카드 본문은 세션 스코프
+          latestJob 만 보여주므로 옛 완료 job 은 여기서 접근한다. 공유 모달
+          slot 으로 portal 되며 chrome(title/subtitle/닫기×)은
+          WidgetFullviewPanel 이 소유. */}
       {renderInSlot(
         <WidgetFullviewPanel
           title="데스크 리서치 — 전체 보기"
           subtitle={
-            showResult && job
-              ? `${job.keywords.join(', ')} · ${tDesk('reportTitle')}`
+            fullviewJob
+              ? `${fullviewJob.keywords.join(', ')} · ${tDesk('reportTitle')}`
               : '완료된 리포트를 풀스크린으로 봅니다'
           }
           onClose={closeFullview}
         >
-          {showResult && job ? (
-            <div className="px-6 py-6">
-              <DeskReportView job={job} tDesk={tDesk} />
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center p-10">
-              <EmptyState
-                tone="subtle"
-                title="아직 완료된 리포트가 없습니다"
-                description="검색을 실행하면 결과 리포트를 여기서 풀스크린으로 볼 수 있어요."
+          <div className="flex h-full min-h-0">
+            <aside className="w-60 shrink-0 overflow-y-auto border-r border-line-soft bg-paper-soft">
+              <DeskJobHistoryList
+                jobs={jobs}
+                selectedJobId={fullviewJob?.id ?? null}
+                onSelect={setSelectedJobId}
               />
+            </aside>
+            <div className="min-w-0 flex-1 overflow-y-auto">
+              {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
+                <div className="px-6 py-6">
+                  <DeskReportView job={fullviewJob} tDesk={tDesk} />
+                </div>
+              ) : fullviewJob ? (
+                <div className="flex h-full items-center justify-center p-10">
+                  <EmptyState
+                    tone="subtle"
+                    title="이 산출물은 완료되지 않았습니다"
+                    description="왼쪽 리스트에서 완료된 다른 산출물을 선택해 주세요."
+                  />
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center p-10">
+                  <EmptyState
+                    tone="subtle"
+                    title="아직 완료된 리포트가 없습니다"
+                    description="검색을 실행하면 결과 리포트를 여기서 풀스크린으로 볼 수 있어요."
+                  />
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </WidgetFullviewPanel>,
       )}
     </>
