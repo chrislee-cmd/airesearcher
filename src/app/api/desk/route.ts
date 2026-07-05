@@ -21,7 +21,7 @@ import { pickRepresentativeArticles } from '@/lib/desk-embed';
 import { getCache, hashString, setCache } from '@/lib/cache';
 import type { DeskDateRange } from '@/lib/desk-crawl';
 import {
-  DESK_SOURCES,
+  DESK_SOURCE_REGISTRY,
   type DeskArticle,
   type DeskRegion,
   type DeskSourceId,
@@ -30,21 +30,15 @@ import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
 
 export const maxDuration = 300;
 
-const SOURCE_IDS = [
-  'naver_news',
-  'naver_blog',
-  'naver_cafe',
-  'naver_kin',
-  'kakao_web',
-  'kakao_blog',
-  'kakao_cafe',
-  'youtube',
-  'google_news',
-  'gdelt_news',
-  'hacker_news',
-  'reddit',
-  'kci',
-] as const;
+// Auto-derived from the source registry — registering a source in
+// `registry.ts` is now the *only* step to make it acceptable input. The old
+// hard-coded list silently rejected every source added after `kci` (kosis /
+// dart / boj_ecos / arxiv / semantic_scholar / institutes_kr), producing a
+// `400 invalid_input` the moment a user picked one (2026-07-05 P0 regression).
+const SOURCE_IDS = Object.keys(DESK_SOURCE_REGISTRY) as [
+  DeskSourceId,
+  ...DeskSourceId[],
+];
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -148,7 +142,7 @@ function getAnalyticsModel(): LanguageModel | null {
 }
 
 function sourceLabelKo(id: DeskSourceId): string {
-  return DESK_SOURCES.find((s) => s.id === id)?.label ?? id;
+  return DESK_SOURCE_REGISTRY[id]?.label ?? id;
 }
 
 // Phases that record per-step wall-clock (surfaced as the 4-step timing chips
