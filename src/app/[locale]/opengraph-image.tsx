@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getTranslations } from 'next-intl/server';
 
-export const alt = 'Research-Canvas — Research on my canvas';
+export const alt = 'Research-Canvas — Your research workflow, in one place';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

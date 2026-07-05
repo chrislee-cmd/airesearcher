@@ -3,7 +3,7 @@
     "name": "Research-Canvas"
   },
   "Landing": {
-    "metaTitle": "Research-Canvas — Research on my canvas",
+    "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "เครื่องมือเล็กๆ แปดชิ้นบนโต๊ะทำงานเดียวกัน ช่วยให้คุณวิจัยได้โดยไม่ต้องเร่งรีบ",
     "nav": {
       "demo": "เดโม",
@@ -15,7 +15,7 @@
       "freeStart": "เริ่มใช้งานฟรี →"
     },
     "hero": {
-      "tagline": "Research on my canvas",
+      "tagline": "Your research workflow, in one place",
       "headline": "ปล่อยงานจุกจิกให้ <hl>Canvas</hl> จัดการ<br></br>คุณโฟกัสที่ <hlPeach>อินไซต์</hlPeach>",
       "lead": "ตั้งแต่การถอดเสียง การวิเคราะห์อินเทอร์วิว ไปจนถึงการวิจัยจากเอกสารและรายงานฉบับสมบูรณ์ <strong>เครื่องมือทั้งแปด</strong> ในเวิร์กสเปซเดียวจะรับงานหนักไปทำให้ งานวิจัยคุณภาพดีโดยไม่ต้องอดนอน",
       "ctaPrimary": "เริ่มใช้งานฟรี →",
