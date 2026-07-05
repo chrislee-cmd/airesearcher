@@ -9,43 +9,26 @@
    🚀 세션 시작 ↔ 정지 로 바뀐다. 라이브 중에도 컨트롤이 그대로 보여 조사
    목적은 즉시(다음 think tick) 반영된다.
 
-   입력 소스 / 언어 select 은 SourcePicker / OutputLangPicker (native <select>
-   는 forbid-elements 대상 아님 — button/input/textarea 만 금지). 세션 진행 중
-   (idle/error 외) 에는 소스/언어 disabled — 옛 동작 그대로. 조사 목적은
+   입력 소스 / 언어 dropdown 은 ui SelectMenu primitive (위젯 컨트롤 primitive
+   통일 spec — 옛 SourcePicker / OutputLangPicker local 함수 폐기). 세션 진행
+   중 (idle/error 외) 에는 소스/언어 disabled — 옛 동작 그대로. 조사 목적은
    라이브 중에도 편집 가능.
    ──────────────────────────────────────────────────────────────────── */
 
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { SelectMenu } from '@/components/ui/select-menu';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 
 export type SourceKind = 'mic' | 'tab';
 
 const GOAL_MAX = 2_000;
 
-function SourcePicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: SourceKind;
-  onChange: (next: SourceKind) => void;
-  disabled: boolean;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as SourceKind)}
-      disabled={disabled}
-      aria-label="입력 소스"
-      className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink disabled:opacity-40"
-    >
-      <option value="mic">마이크</option>
-      <option value="tab">탭 오디오</option>
-    </select>
-  );
-}
+const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
+  { value: 'mic', label: '마이크' },
+  { value: 'tab', label: '탭 오디오' },
+];
 
 // 분석 출력 언어 옵션 — translate 의 LANGS 6종과 동일. 입력 (STT) 언어와
 // 독립적으로 분석 결과 언어를 선택 (예: 한국어 인터뷰 → 영어 분석).
@@ -57,32 +40,6 @@ const OUTPUT_LANG_OPTIONS: { value: ProbingOutputLang; label: string }[] = [
   { value: 'es', label: 'Español' },
   { value: 'th', label: 'ไทย' },
 ];
-
-function OutputLangPicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: ProbingOutputLang;
-  onChange: (next: ProbingOutputLang) => void;
-  disabled: boolean;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as ProbingOutputLang)}
-      disabled={disabled}
-      aria-label="분석 출력 언어"
-      className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink disabled:opacity-40"
-    >
-      {OUTPUT_LANG_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 // 조사 목적 + 소스/언어 필드 묶음 — idle 보드와 active slim bar 가 공유.
 function ControlFields({
@@ -119,18 +76,28 @@ function ControlFields({
       </Field>
       <div className="flex flex-wrap gap-4">
         <Field label="입력 소스">
-          <SourcePicker
-            value={source}
-            onChange={onSourceChange}
-            disabled={controlsDisabled}
-          />
+          {/* min-w: 옛 native select 은 widest-option 고정폭 — 선택 값에 따라
+              trigger 폭이 출렁이지 않도록 하한만 고정 */}
+          <div className="min-w-24">
+            <SelectMenu
+              aria-label="입력 소스"
+              value={source}
+              onChange={(next) => onSourceChange(next as SourceKind)}
+              options={SOURCE_OPTIONS}
+              disabled={controlsDisabled}
+            />
+          </div>
         </Field>
         <Field label="언어">
-          <OutputLangPicker
-            value={outputLang}
-            onChange={onOutputLangChange}
-            disabled={controlsDisabled}
-          />
+          <div className="min-w-24">
+            <SelectMenu
+              aria-label="분석 출력 언어"
+              value={outputLang}
+              onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
+              options={OUTPUT_LANG_OPTIONS}
+              disabled={controlsDisabled}
+            />
+          </div>
         </Field>
       </div>
     </>
