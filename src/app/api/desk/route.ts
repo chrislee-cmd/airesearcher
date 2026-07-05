@@ -51,7 +51,13 @@ const REGION_ENUM = z.enum(['KR', 'US', 'SG', 'MY', 'TH', 'JP', 'GLOBAL']);
 // Mirrored in the client UI (desk-card-body) for an estimate/warning at input
 // time. Keep the three in sync if you change them.
 const MAX_KEYWORDS = 5;
-const MAX_SOURCES = 12;
+// 12 → 25: PR #741 카테고리 grid 는 카테고리 카드 클릭 시 하위 소스 id 를
+// 자동 확장한다. 5 카테고리를 모두 켜면 news(5)+community(4)+stats(3)+
+// academic(3)+institute(1) ≈ 16-19 소스가 되어 옛 상한 12 를 넘겨 zod 가
+// `400 invalid_input` 을 던졌다 (2026-07-05 P0 회귀). 5 카테고리 × 최대 5
+// 소스 = 25 로 상향해 여유를 둔다. crawl budget(perKwLimit)은 소스 수와
+// 무관하게 SOURCE_BUDGET/키워드로 나뉘므로 300s 예산은 유지된다.
+const MAX_SOURCES = 25;
 const MAX_REGIONS = 3;
 
 const Body = z.object({
