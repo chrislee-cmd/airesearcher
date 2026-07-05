@@ -45,7 +45,6 @@ export type DeskSourceGroup =
   | 'bok'
   | 'kosis'
   | 'institute_kr';
-  | 'kosis';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the
 // source picker for category grouping as the source count grows past 12. Purely
