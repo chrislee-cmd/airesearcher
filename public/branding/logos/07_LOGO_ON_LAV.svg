@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="520" viewBox="0 0 920 520"><rect x="1.5" y="1.5" width="917" height="517" rx="48" fill="#e7defe"></rect><g transform="translate(-12.990000000000009 185) scale(0.2930)"><g fill="none">
+  <line x1="170" y1="188" x2="286" y2="188" stroke="#fdd85e" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="170" y1="234" x2="242" y2="234" stroke="#c9b6f0" stroke-width="22" stroke-linecap="round"></line>
+  <line x1="170" y1="278" x2="214" y2="278" stroke="#c9b6f0" stroke-width="22" stroke-linecap="round"></line>
+  <circle cx="312" cy="300" r="46" fill="none" stroke="#c9b6f0" stroke-width="24"></circle>
+  <path d="M 312.0 254.0 A 46 46 0 0 1 344.5 332.5" fill="none" stroke="#fdd85e" stroke-width="24" stroke-linecap="round"></path>
+  <path d="M 120 300 L 120 164 Q 120 120 164 120 L 348 120 Q 392 120 392 164 L 392 348 Q 392 392 348 392 L 214 392" stroke="#ff5c8a" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"></path></g></g><text x="163.01" y="260" dominant-baseline="central" style="font-family:&#39;Poppins&#39;,system-ui,sans-serif;font-weight:700;font-size:82px;fill:#101828">Research-Canvas</text></svg>

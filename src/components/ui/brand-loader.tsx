@@ -8,7 +8,7 @@ export function BrandLoader({ size = 56, label }: Props) {
     <div className="flex flex-col items-center gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/landing/logo.svg"
+        src="/branding/icons/03_ICON_FULL_COLOR.svg"
         alt=""
         width={size}
         height={size}
