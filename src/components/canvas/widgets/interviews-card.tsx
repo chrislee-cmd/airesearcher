@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
+  ProcessTimeline,
+  buildLinearPhases,
+} from '@/components/ui/process-timeline';
+import {
   DropdownMenu,
   type DropdownItem,
 } from '@/components/ui/dropdown-menu';
@@ -189,9 +193,32 @@ function ActiveBody({
   onExit: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
+  const tProcess = useTranslations('Process');
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  // 인덱싱 중인 문서의 공정 과정 타임라인 (사용자 결정 R3/R5). 인터뷰V2 는
+  // 단일-잡 lifecycle 이 아니라 프로젝트 워크스페이스 + 문서별 인덱싱이라,
+  // 스펙의 "컨트롤 전체 대체" 대신 인덱싱 문서의 진행을 타임라인으로 시각화
+  // 한다(SearchChat/멀티-문서 UX 보존 — 보수적 해석). index_status 는 coarse
+  // (pending/indexing/done/error) 라, indexing 중 관측 가능한 chunk embedding
+  // 을 active 로 두고 앞 단계(업로드/파싱/청크)는 done 으로 표기한다.
+  const INT_PHASES = ['uploading', 'parsing', 'chunking', 'embedding'] as const;
+  const docTimelinePhases = (d: (typeof documents)[number]) => {
+    const hasProg = d.total_chunks != null && d.total_chunks > 0;
+    return buildLinearPhases(
+      INT_PHASES.map((k) => ({
+        key: k,
+        label: tProcess(`interviews.${k}` as never),
+        detail:
+          k === 'embedding' && hasProg
+            ? `${d.processed_chunks}/${d.total_chunks} chunks`
+            : undefined,
+      })),
+      'embedding',
+    );
+  };
 
   const projectName = useMemo(
     () => projects.find((p) => p.id === projectId)?.name ?? '',
@@ -232,38 +259,23 @@ function ActiveBody({
                 끝날지" 를 볼 수 있도록.) hook 이 indexing 있을 때 2초 폴링. */}
             {documents
               .filter((d) => d.index_status === 'indexing')
-              .map((d) => {
-                const hasProg =
-                  d.total_chunks != null && d.total_chunks > 0;
-                const pct = hasProg
-                  ? Math.min(
-                      100,
-                      Math.round((d.processed_chunks / d.total_chunks!) * 100),
-                    )
-                  : 0;
-                return (
-                  <div key={d.id} className="space-y-1">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="truncate text-ink-2" title={d.filename}>
-                        {d.filename}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-mute-soft">
-                        {hasProg
-                          ? `${d.processed_chunks}/${d.total_chunks} (${pct}%)`
-                          : t('statusIndexing')}
-                      </span>
-                    </div>
-                    {hasProg && (
-                      <div className="h-1 w-full overflow-hidden rounded-xs bg-line-soft">
-                        <div
-                          className="h-full bg-amore transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    )}
+              .map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-sm border border-line-soft bg-paper px-3 py-2"
+                >
+                  <div
+                    className="truncate text-xs font-semibold text-ink-2"
+                    title={d.filename}
+                  >
+                    {d.filename}
                   </div>
-                );
-              })}
+                  <ProcessTimeline
+                    phases={docTimelinePhases(d)}
+                    padding="py-1"
+                  />
+                </div>
+              ))}
 
             {/* 나머지 파일 (완료 / 대기 / 오류) — 파일명 chip 요약. */}
             {documents.some((d) => d.index_status !== 'indexing') && (

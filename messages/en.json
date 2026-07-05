@@ -1064,6 +1064,34 @@
       "hoursAgo": "{count}h ago"
     }
   },
+  "Process": {
+    "completeTitle": "All done!",
+    "newResearch": "New research",
+    "desk": {
+      "expanding": "Expanding related keywords",
+      "scoping": "Setting the search scope",
+      "crawling": "Collecting sources",
+      "extracting": "Extracting content",
+      "drafting": "Drafting",
+      "critiquing": "Refining the draft",
+      "synthesizing": "Writing the synthesis report",
+      "summarizing": "Finalizing the summary"
+    },
+    "transcripts": {
+      "uploading": "Uploading files",
+      "transcribing": "Converting speech to text",
+      "md_conversion": "Converting to a document",
+      "speaker_diarization": "Separating speakers",
+      "typo_correction": "Fixing typos",
+      "phrasing_polish": "Polishing phrasing"
+    },
+    "interviews": {
+      "uploading": "Uploading files",
+      "parsing": "Parsing the document",
+      "chunking": "Splitting into chunks",
+      "embedding": "Indexing"
+    }
+  },
   "Widgets": {
     "fullview": "Open Fullview",
     "viewAll": "View all →",

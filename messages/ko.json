@@ -1064,6 +1064,34 @@
       "hoursAgo": "{count}시간 전"
     }
   },
+  "Process": {
+    "completeTitle": "완료됐어요!",
+    "newResearch": "새 리서치",
+    "desk": {
+      "expanding": "유사 키워드 확장 중이에요",
+      "scoping": "검색 범위 정하는 중이에요",
+      "crawling": "자료 수집 중이에요",
+      "extracting": "본문 추출 중이에요",
+      "drafting": "초안 작성 중이에요",
+      "critiquing": "초안 다듬는 중이에요",
+      "synthesizing": "종합 리포트 작성 중이에요",
+      "summarizing": "요약 마무리 중이에요"
+    },
+    "transcripts": {
+      "uploading": "파일 업로드 중이에요",
+      "transcribing": "음성 → 텍스트 변환 중이에요",
+      "md_conversion": "문서로 변환 중이에요",
+      "speaker_diarization": "화자 나누는 중이에요",
+      "typo_correction": "오탈자 수정 중이에요",
+      "phrasing_polish": "어색한 표현 보정 중이에요"
+    },
+    "interviews": {
+      "uploading": "파일 업로드 중이에요",
+      "parsing": "문서 파싱 중이에요",
+      "chunking": "문서 청크 나누는 중이에요",
+      "embedding": "인덱싱 중이에요"
+    }
+  },
   "Widgets": {
     "fullview": "전체 보기",
     "viewAll": "전체 보기 →",
