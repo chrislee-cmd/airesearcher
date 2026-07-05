@@ -32,7 +32,7 @@ import {
   type DeskJob,
 } from '@/components/desk-job-provider';
 import { DeskReportView } from '@/components/canvas/widgets/desk-result/desk-report-view';
-import { DeskJobHistoryList } from '@/components/canvas/widgets/desk-result/desk-job-history-list';
+import { Select } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -258,6 +258,30 @@ function SourceGridPicker({
   );
 }
 
+
+// Fullview 상단 "이전 산출물" 드롭다운의 option 라벨 — 리크루팅 응답
+// fullview 의 selectorLabel(제목 (날짜)) 패턴에 status 접미사만 추가.
+// 미완료 job 도 목록에 남기되 라벨로 구분해 클릭 전에 알 수 있게 한다.
+function deskJobSelectorLabel(job: DeskJob): string {
+  const title = job.keywords.length > 0 ? job.keywords.join(', ') : '(키워드 없음)';
+  const d = new Date(job.created_at);
+  const date = Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+  const status =
+    job.status === 'done'
+      ? ''
+      : job.status === 'error'
+        ? ' — 에러'
+        : job.status === 'cancelled'
+          ? ' — 취소됨'
+          : ' — 진행중';
+  return date ? `${title} (${date})${status}` : `${title}${status}`;
+}
 
 export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
@@ -1328,11 +1352,11 @@ export function DeskCardBody() {
         {job && <DeskReportView job={job} tDesk={tDesk} />}
       </Modal>
 
-      {/* 통일 "전체 보기" — 2-column: 좌측 "이전 산출물" 사이드바(최근 20개
-          persist job) + 우측 선택 job 리포트. 카드 본문은 세션 스코프
-          latestJob 만 보여주므로 옛 완료 job 은 여기서 접근한다. 공유 모달
-          slot 으로 portal 되며 chrome(title/subtitle/닫기×)은
-          WidgetFullviewPanel 이 소유. */}
+      {/* 통일 "전체 보기" — 상단 "이전 산출물" 드롭다운(최근 20개 persist
+          job, 리크루팅 응답 fullview 의 폼 선택 Select 와 동일 패턴) + 아래
+          선택 job 리포트. 카드 본문은 세션 스코프 latestJob 만 보여주므로
+          옛 완료 job 은 여기서 접근한다. 공유 모달 slot 으로 portal 되며
+          chrome(title/subtitle/닫기×)은 WidgetFullviewPanel 이 소유. */}
       {renderInSlot(
         <WidgetFullviewPanel
           title="데스크 리서치 — 전체 보기"
@@ -1343,15 +1367,26 @@ export function DeskCardBody() {
           }
           onClose={closeFullview}
         >
-          <div className="flex h-full min-h-0">
-            <aside className="w-60 shrink-0 overflow-y-auto border-r border-line-soft bg-paper-soft">
-              <DeskJobHistoryList
-                jobs={jobs}
-                selectedJobId={fullviewJob?.id ?? null}
-                onSelect={setSelectedJobId}
-              />
-            </aside>
-            <div className="min-w-0 flex-1 overflow-y-auto">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
+              {jobs.length > 0 ? (
+                <Select
+                  size="sm"
+                  fullWidth={false}
+                  aria-label="이전 산출물 선택"
+                  className="min-w-[280px]"
+                  value={fullviewJob?.id ?? ''}
+                  onChange={(e) => setSelectedJobId(e.target.value || null)}
+                  options={jobs.map((j) => ({
+                    value: j.id,
+                    label: deskJobSelectorLabel(j),
+                  }))}
+                />
+              ) : (
+                <span className="text-sm text-mute-soft">이전 산출물 없음</span>
+              )}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
                 <div className="px-6 py-6">
                   <DeskReportView job={fullviewJob} tDesk={tDesk} />
@@ -1361,7 +1396,7 @@ export function DeskCardBody() {
                   <EmptyState
                     tone="subtle"
                     title="이 산출물은 완료되지 않았습니다"
-                    description="왼쪽 리스트에서 완료된 다른 산출물을 선택해 주세요."
+                    description="위 드롭다운에서 완료된 다른 산출물을 선택해 주세요."
                   />
                 </div>
               ) : (
