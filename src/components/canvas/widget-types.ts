@@ -69,9 +69,10 @@ export type WidgetContent = {
   };
   state: WidgetState;
   ExpandedBody: FC;
-  // 옵션: "준비 중" placeholder 위젯을 dim 처리 (opacity-50 +
-  // pointer-events-none). 헤더·본문·전체보기 버튼까지 전부 반투명 + 클릭
-  // 차단해 옛 실기능 위젯과 시각 구분 (canvas-board 가 셸 wrapper 에 적용).
-  // 실 backend 가 붙어 활성화될 때는 이 플래그만 제거하면 즉시 정상 렌더.
+  // 옵션: "준비 중" placeholder 위젯을 dim 처리 (opacity-50). 헤더·본문
+  // 전체를 반투명 처리해 옛 실기능 위젯과 시각 구분 (canvas-board 가 셸
+  // wrapper 에 적용). 클릭은 살아 있다 — "전체 보기" 로 기능 소개 hero
+  // (ComingSoonBody) 진입 가능. 실 backend 가 붙어 활성화될 때는 이
+  // 플래그만 제거하면 즉시 정상 렌더.
   dimmed?: boolean;
 };
