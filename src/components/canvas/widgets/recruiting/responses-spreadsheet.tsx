@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { BrandLoader } from '@/components/ui/brand-loader';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
+import { Banner } from '../../shell/banner';
 import { useToast } from '@/components/toast-provider';
 import { isPiiColumn } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
@@ -145,6 +146,10 @@ export function ResponsesSpreadsheet({
   const [data, setData] = useState<ResponsesPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 서버가 401 google_reauth_required 와 함께 내려준 재인증 시작 URL.
+  // refresh_token 이 무효(사용자가 Google 계정에서 앱 접근 취소 등)일 때만
+  // 세팅된다 — 이 경우 일반 에러 배너 대신 재연결 CTA 배너를 띄운다.
+  const [reauthUrl, setReauthUrl] = useState<string | null>(null);
 
   // 초대 대상으로 체크된 응답 row 들 (responseId set). 폼을 바꾸거나 응답을
   // 다시 로드하면 리셋된다 — 다른 폼의 응답을 잘못 초대하지 않도록.
@@ -184,6 +189,7 @@ export function ResponsesSpreadsheet({
   const loadResponses = useCallback(async (formId: string) => {
     setLoading(true);
     setError(null);
+    setReauthUrl(null);
     setSelected(new Set());
     try {
       const res = await fetch(
@@ -191,8 +197,16 @@ export function ResponsesSpreadsheet({
       );
       const j = (await res.json().catch(() => ({}))) as
         | ResponsesPayload
-        | { error?: string };
+        | { error?: string; reauth_url?: string };
       if (!res.ok) {
+        if (
+          'error' in j &&
+          j.error === 'google_reauth_required' &&
+          'reauth_url' in j &&
+          j.reauth_url
+        ) {
+          setReauthUrl(j.reauth_url);
+        }
         throw new Error(
           ('error' in j && j.error) || `responses_failed: ${res.statusText}`,
         );
@@ -352,6 +366,17 @@ export function ResponsesSpreadsheet({
   // 에러코드로 알려준다. 그 경우 일반 에러 배너 대신 연동 안내를 띄운다.
   const needsGoogle =
     error === 'google_not_connected' || error === 'reconsent_required';
+  // refresh_token 무효(invalid_grant → 401)는 사용자가 OAuth 를 다시 돌려야만
+  // 풀린다 — "다시 시도" 는 무의미하므로 재연결 CTA 만 노출한다.
+  const needsReauth = error === 'google_reauth_required';
+
+  const handleReauth = useCallback(() => {
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'google_reauth',
+    });
+    window.location.href = reauthUrl ?? '/api/recruiting/google/start';
+  }, [reauthUrl]);
 
   // ── 폼 목록 자체 로딩 중 ──
   if (forms === null) {
@@ -414,6 +439,19 @@ export function ResponsesSpreadsheet({
           <div className="flex h-full items-center justify-center">
             <BrandLoader size={36} />
           </div>
+        ) : needsReauth ? (
+          <Banner tone="warning" divider="none">
+            Google 연결이 만료됐어요. 다시 연결하면 응답을 바로 불러올 수
+            있어요.
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-2"
+              onClick={handleReauth}
+            >
+              Google 재연결하기 →
+            </Button>
+          </Banner>
         ) : needsGoogle ? (
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
