@@ -17,10 +17,14 @@ export async function GET() {
   // Realtime broadcasts the cleanup state on the next tick.
   void cleanupStaleDeskJobs(org.org_id);
 
+  // List stays light on purpose — output/articles/analytics/research_questions/
+  // claims/rq_answers are 100KB~1MB JSON per row, and 20 full rows (~10MB) was
+  // pushing this query past 36s into Vercel 500 timeouts (2026-07-05 incident).
+  // Heavy columns come from the per-job detail endpoint (/api/desk/jobs/[id]).
   const { data, error } = await supabase
     .from('desk_jobs')
     .select(
-      'id, keywords, sources, locale, date_from, date_to, status, progress, similar_keywords, output, articles, analytics, research_questions, claims, rq_answers, skipped, error_message, generation_id, cancel_requested, created_at, updated_at',
+      'id, keywords, sources, locale, date_from, date_to, status, progress, similar_keywords, skipped, error_message, generation_id, cancel_requested, created_at, updated_at',
     )
     .eq('org_id', org.org_id)
     .order('created_at', { ascending: false })
