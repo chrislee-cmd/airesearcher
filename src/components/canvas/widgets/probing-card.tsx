@@ -1165,53 +1165,69 @@ function ExpandedBody() {
             idle→🚀 세션 시작, live→정지 로 전환. starting/stopping/error 는
             isLive=false 로 취급되어 시작 CTA 가 노출돼 재시도 가능. 조사 목적은
             라이브 중에도 편집 가능(goalDisabled=hydration 대기), 소스·언어는
-            세션 중 disabled. */}
-        <ProbingControlPanel
-          researchGoal={context.research_goal}
-          onResearchGoalChange={(v) =>
-            setContext((prev) => ({ ...prev, research_goal: v }))
-          }
-          goalDisabled={!contextHydrated}
-          source={source}
-          onSourceChange={setSource}
-          outputLang={outputLang}
-          onOutputLangChange={setOutputLang}
-          controlsDisabled={controlsDisabled}
-          isLive={isLive}
-          onStart={handleStartSession}
-          startDisabled={startDisabled}
-          onStop={handleStopSession}
-          stopDisabled={stopDisabled}
-          statusLabel={statusLabel}
-        />
+            세션 중 disabled.
+            idle(비-라이브·fullview 미open) 에는 컨트롤을 카드 정중앙(수직+수평
+            center)에 띄워 다른 위젯과 통일된 launcher 룩. 라이브/전체보기 중에는
+            컨트롤을 상단 고정 + 아래 사고흐름/placeholder. */}
+        {(() => {
+          const controlPanel = (
+            <ProbingControlPanel
+              researchGoal={context.research_goal}
+              onResearchGoalChange={(v) =>
+                setContext((prev) => ({ ...prev, research_goal: v }))
+              }
+              goalDisabled={!contextHydrated}
+              source={source}
+              onSourceChange={setSource}
+              outputLang={outputLang}
+              onOutputLangChange={setOutputLang}
+              controlsDisabled={controlsDisabled}
+              isLive={isLive}
+              onStart={handleStartSession}
+              startDisabled={startDisabled}
+              onStop={handleStopSession}
+              stopDisabled={stopDisabled}
+              statusLabel={statusLabel}
+            />
+          );
 
-        {/* 본문 — canvas card (preview) 는 3 section 만: 사고 흐름 / 중앙
-            popup / 질문 기록. 페르소나 8 패널 + 조사 입력은 fullview modal
-            (ProbingFullView) 에만 노출.
-            모달 open 시 카드 본문은 placeholder 로 교체 — 같은 hook(state)
-            인스턴스를 모달과 공유하므로 데이터는 보존되고, 시각적으로 두
-            곳에 동시에 그려지지 않는다 (spec: 두 instance 시각 0). */}
-        {isCurrent ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
-            전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
-          </div>
-        ) : (
-          <ProbingCanvasCardBody
-            thinkingEvents={thinkingEvents}
-            thinkingStreaming={thinkingStreaming}
-            activePopup={activePopup}
-            onPopupPin={handlePopupPin}
-            onPopupCopy={handlePopupCopy}
-            onPopupDismiss={handlePopupManualDismiss}
-            onPopupAutoDismiss={handlePopupAutoDismiss}
-            history={history}
-            nowMs={now}
-            onHistoryCopy={handleHistoryCopy}
-            onHistoryToggleStar={handleHistoryToggleStar}
-            onHistoryDelete={handleHistoryDelete}
-            isLive={isLive}
-          />
-        )}
+          // idle — 컨트롤만 정중앙. (사고흐름/기록 본문은 라이브에서만 의미.)
+          if (!isLive && !isCurrent) {
+            return (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4">
+                <div className="w-full max-w-[440px]">{controlPanel}</div>
+              </div>
+            );
+          }
+
+          // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(사고흐름 or placeholder).
+          return (
+            <>
+              {controlPanel}
+              {isCurrent ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+                  전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
+                </div>
+              ) : (
+                <ProbingCanvasCardBody
+                  thinkingEvents={thinkingEvents}
+                  thinkingStreaming={thinkingStreaming}
+                  activePopup={activePopup}
+                  onPopupPin={handlePopupPin}
+                  onPopupCopy={handlePopupCopy}
+                  onPopupDismiss={handlePopupManualDismiss}
+                  onPopupAutoDismiss={handlePopupAutoDismiss}
+                  history={history}
+                  nowMs={now}
+                  onHistoryCopy={handleHistoryCopy}
+                  onHistoryToggleStar={handleHistoryToggleStar}
+                  onHistoryDelete={handleHistoryDelete}
+                  isLive={isLive}
+                />
+              )}
+            </>
+          );
+        })()}
 
         {thinkingError && (
           <div

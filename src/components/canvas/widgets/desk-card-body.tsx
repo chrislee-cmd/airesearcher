@@ -1028,10 +1028,20 @@ export function DeskCardBody() {
           노출하고, 산출물(스트리밍/배너/타이밍/상태 푸터)은 그 아래 별 영역에
           active 시만 렌더. 산출물 상세는 "전체 보기" modal 로 일원화. */}
       <div className="flex h-full flex-col">
-        {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출. */}
-        <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
-          {controlsForm}
-          {errorBanner}
+        {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출.
+            idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
+            launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
+        <div
+          className={
+            active
+              ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
+              : 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5'
+          }
+        >
+          <div className={active ? undefined : 'w-full max-w-[420px]'}>
+            {controlsForm}
+            {errorBanner}
+          </div>
         </div>
 
         {/* 산출물 영역 — active(제출/진행/결과 존재) 일 때만. */}
