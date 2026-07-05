@@ -127,12 +127,17 @@ export type DeskJob = {
   status: DeskJobStatus;
   progress: DeskJobProgress;
   similar_keywords: string[];
-  output: string | null;
-  articles: DeskArticle[] | null;
-  analytics: DeskAnalytics | null;
-  research_questions: DeskResearchQuestion[] | null;
-  claims: DeskClaim[] | null;
-  rq_answers: DeskRqAnswer[] | null;
+  // Heavy JSON columns — the list endpoint omits them (each is 100KB~1MB per
+  // row and full-column lists were timing out at 36s+, 2026-07-05 incident).
+  // They are hydrated from /api/desk/jobs/[id] for the session's latest done
+  // job (see refresh below); absent (undefined) means "not fetched", null
+  // means "fetched, empty".
+  output?: string | null;
+  articles?: DeskArticle[] | null;
+  analytics?: DeskAnalytics | null;
+  research_questions?: DeskResearchQuestion[] | null;
+  claims?: DeskClaim[] | null;
+  rq_answers?: DeskRqAnswer[] | null;
   skipped: { source: DeskSourceId; missing: string }[] | null;
   error_message: string | null;
   generation_id: string | null;
@@ -191,6 +196,11 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   // and readable during render without tripping react-hooks/purity.
   const [sessionStart] = useState(() => Date.now());
 
+  // Detail hydration cache — one full-column fetch per done job, keyed by id
+  // and invalidated when updated_at moves. Realtime fires refresh() dozens of
+  // times per run; without this every event would re-download the ~500KB row.
+  const detailCacheRef = useRef(new Map<string, DeskJob>());
+
   const refresh = useCallback(async () => {
     if (!user) {
       setJobs([]);
@@ -211,7 +221,37 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
       }
       if (!res.ok) return;
       const json = await res.json();
-      const all: DeskJob[] = json.jobs ?? [];
+      let all: DeskJob[] = json.jobs ?? [];
+      // The list is light (no output/articles/…) — hydrate the one job the
+      // card body actually renders: the session's latest job, once done.
+      // Merge before setJobs so the UI never sees a done job without its
+      // report (that state reads as "결과 비어있음" and flashes the retry
+      // banner). If the detail fetch fails we keep the light row; the next
+      // realtime tick retries.
+      const target = all.find(
+        (j) => new Date(j.created_at).getTime() >= sessionStart,
+      );
+      if (target && target.status === 'done') {
+        const cached = detailCacheRef.current.get(target.id);
+        if (cached && cached.updated_at === target.updated_at) {
+          all = all.map((j) => (j.id === target.id ? cached : j));
+        } else {
+          try {
+            const detailRes = await fetch(`/api/desk/jobs/${target.id}`, {
+              cache: 'no-store',
+            });
+            if (detailRes.ok) {
+              const detail: DeskJob | undefined = (await detailRes.json()).job;
+              if (detail) {
+                detailCacheRef.current.set(detail.id, detail);
+                all = all.map((j) => (j.id === detail.id ? detail : j));
+              }
+            }
+          } catch {
+            // keep the light row — next refresh retries
+          }
+        }
+      }
       // Surface every job the API returns — it already caps at the 20 most
       // recent, so past runs persist across refresh/relogin (natural rotation
       // drops the oldest). No client-side session cutoff: a finished report
@@ -222,7 +262,7 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore — realtime or next refresh will catch up
     }
-  }, [user]);
+  }, [user, sessionStart]);
 
   // On user change (login/logout/relogin) clear the panel and re-arm the auth
   // gate so a re-login wakes polling back up. The next refresh() repopulates
