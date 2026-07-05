@@ -651,22 +651,22 @@ export function QuotesCardBody() {
           noFiles ? 'block widget-gate-guide-pulse' : 'block'
         }
       >
-        <Button
-          variant="secondary"
+        <ChromeButton
+          variant="default"
           size="lg"
           className="w-full"
           onClick={() => setUploadOpen(true)}
           disabled={busyUpload}
         >
           📤 {tWidgets('upload')}
-        </Button>
+        </ChromeButton>
       </span>
 
       {/* 자동 전사 시작이 실패해 남은 준비 파일 재시도 CTA — 정상 흐름에선
           렌더 안 됨. */}
       {readyCount > 0 && (
         <ChromeButton
-          variant="primary"
+          variant="default"
           size="lg"
           onClick={() => void startTranscription()}
           disabled={!canStart}
