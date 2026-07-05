@@ -932,6 +932,11 @@ export function CanvasBoard({
                   } as CSSProperties
                 }
               >
+                {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명 +
+                    클릭 차단해 옛 실기능 위젯과 시각 구분. wrapper 만 감싸므로
+                    바깥 카드 div 의 drag/drop(reposition·swap) 은 유지되고,
+                    카드가 활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
+                <div className={w.dimmed ? 'h-full opacity-50 pointer-events-none' : 'h-full'}>
                 <WidgetShell
                   content={w}
                   dashboardMode
@@ -957,6 +962,7 @@ export function CanvasBoard({
                     },
                   }}
                 />
+                </div>
               </div>
             );
           })}
