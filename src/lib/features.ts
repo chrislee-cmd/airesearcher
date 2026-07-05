@@ -33,7 +33,13 @@ export type FeatureKey =
   // PR-1 ships the placeholder widget + API shells; PR-2 ports the UI;
   // PR-3 wires real generation/deploy. Stays in PREVIEW_FEATURES across
   // the whole 3-PR sequence; credit cost finalized in PR-3.
-  | 'autocontents';
+  | 'autocontents'
+  // Canvas placeholder widgets — 우측 열 3장 (3×3 그리드). 실제 backend 없이
+  // "🚧 준비 중" placeholder 만. 각 위젯의 실 스키마/API/본문은 후속 spec 에서.
+  // 'moderator_ai' 는 옛 'moderator' (감수자/휴먼 모더레이터) 와 별개 키.
+  | 'guideline'
+  | 'moderator_ai'
+  | 'ppt_report';
 
 // Credit costs are scaled around 1 credit ≈ ₩2,000.
 // Three marquee features carry the value: 전사록 / 인터뷰 결과 / 데스크 리서치.
@@ -91,6 +97,13 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // image cost models). href points back to canvas so any sidebar/dialog
   // fallback resolves cleanly.
   { key: 'autocontents', href: '/canvas', cost: 0 },
+  // Canvas placeholder widgets — cost 0 (아직 과금 없음). 전용 페이지 라우트
+  // 없이 canvas entry 로만 노출되지만, sidebar/dialog fallback 이 깨끗이
+  // resolve 하도록 각자 예정 route path 를 href 로 둔다. 실 가격/route 는
+  // 각 위젯 후속 spec 에서 확정.
+  { key: 'guideline', href: '/guideline', cost: 0 },
+  { key: 'moderator_ai', href: '/moderator-ai', cost: 0 },
+  { key: 'ppt_report', href: '/ppt-report', cost: 0 },
 ];
 
 // Features still in development — hidden from the sidebar and gated at

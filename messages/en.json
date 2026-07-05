@@ -358,6 +358,9 @@
     "translate": "Live Interpreter",
     "probing": "Probing Assistant",
     "slidegen": "Slide Generator",
+    "guideline": "Guideline Generator",
+    "moderator_ai": "AI Moderator",
+    "ppt_report": "PPT Report Generator",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -647,6 +650,21 @@
       "title": "Slide Generator",
       "description": "Paste a report and get a diagram-driven slide deck. This is the skeleton step — deterministic split with a bullet fallback only; the editor, LLM classifier, and export land in follow-up PRs.",
       "cost": "Free during preview"
+    },
+    "guideline": {
+      "title": "Guideline Generator",
+      "description": "Automatically generates interview guidelines.",
+      "cost": "Coming soon"
+    },
+    "moderator_ai": {
+      "title": "AI Moderator",
+      "description": "An AI moderator runs the session for you.",
+      "cost": "Coming soon"
+    },
+    "ppt_report": {
+      "title": "PPT Report Generator",
+      "description": "Turns interview results into a PPT report.",
+      "cost": "Coming soon"
     }
   },
   "Quant": {

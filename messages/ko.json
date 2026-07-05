@@ -358,6 +358,9 @@
     "translate": "AI 동시통역",
     "probing": "프로빙 어시스턴트",
     "slidegen": "PPT 생성기",
+    "guideline": "가이드라인 생성기",
+    "moderator_ai": "AI 모더레이터",
+    "ppt_report": "PPT 보고서 생성기",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -647,6 +650,21 @@
       "title": "PPT 생성기",
       "description": "보고서 텍스트를 붙여넣으면 도식 슬라이드 덱으로 자동 변환합니다. 현재 뼈대 단계로 결정론적 분할(bullet 폴백)만 동작하며, 편집·LLM 분류·다운로드는 후속 PR에서 들어옵니다.",
       "cost": "프리뷰 무료"
+    },
+    "guideline": {
+      "title": "가이드라인 생성기",
+      "description": "인터뷰 가이드라인을 자동 생성해요.",
+      "cost": "곧 출시"
+    },
+    "moderator_ai": {
+      "title": "AI 모더레이터",
+      "description": "AI 모더레이터가 자동 진행해요.",
+      "cost": "곧 출시"
+    },
+    "ppt_report": {
+      "title": "PPT 보고서 생성기",
+      "description": "인터뷰 결과를 PPT 보고서로 정리해요.",
+      "cost": "곧 출시"
     }
   },
   "Quant": {

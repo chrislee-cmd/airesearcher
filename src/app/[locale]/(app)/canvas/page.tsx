@@ -16,6 +16,9 @@ import { translateCard } from '@/components/canvas/widgets/translate-card';
 import { probingCard } from '@/components/canvas/widgets/probing-card';
 import { toplineCard } from '@/components/canvas/widgets/topline-card';
 import { slidegenCard } from '@/components/canvas/widgets/slidegen-card';
+import { guidelineCard } from '@/components/canvas/widgets/guideline-card';
+import { moderatorAiCard } from '@/components/canvas/widgets/moderator-ai-card';
+import { pptReportCard } from '@/components/canvas/widgets/ppt-report-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
@@ -31,6 +34,9 @@ const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   probing: probingCard,
   topline: toplineCard,
   slidegen: slidegenCard,
+  guideline: guidelineCard,
+  moderator_ai: moderatorAiCard,
+  ppt_report: pptReportCard,
 };
 
 // preview-gated widgets — 일반 유저에게는 숨김, is_unlimited org 만 노출.
