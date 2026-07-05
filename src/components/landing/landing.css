@@ -74,7 +74,7 @@
   width: 36px; height: 36px;
   border-radius: 8px;
   border: 2.5px solid #000;
-  background: var(--pop-pink);
+  background: #fff;
   object-fit: contain; display: block;
 }
 .landing-root nav.top .links {

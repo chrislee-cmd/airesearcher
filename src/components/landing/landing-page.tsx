@@ -101,7 +101,7 @@ export async function LandingPage({ locale }: { locale: string }) {
       <nav className="top">
         <div className="container row">
           <div className="brand">
-            <img className="logo" src="/landing/logo.svg" alt="Research-Canvas" /> Research-Canvas
+            <img className="logo" src="/branding/icons/03_ICON_FULL_COLOR.svg" alt="Research-Canvas" /> Research-Canvas
           </div>
           <div className="links">
             <a href="#features">{t('nav.features')}</a>
