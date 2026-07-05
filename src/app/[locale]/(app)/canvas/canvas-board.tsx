@@ -932,11 +932,12 @@ export function CanvasBoard({
                   } as CSSProperties
                 }
               >
-                {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명 +
-                    클릭 차단해 옛 실기능 위젯과 시각 구분. wrapper 만 감싸므로
-                    바깥 카드 div 의 drag/drop(reposition·swap) 은 유지되고,
-                    카드가 활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
-                <div className={w.dimmed ? 'h-full opacity-50 pointer-events-none' : 'h-full'}>
+                {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명
+                    처리해 옛 실기능 위젯과 시각 구분. 클릭은 차단하지 않는다
+                    — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
+                    진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
+                    활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
+                <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
                 <WidgetShell
                   content={w}
                   dashboardMode
