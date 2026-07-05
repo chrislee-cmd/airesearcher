@@ -58,11 +58,13 @@ import { prefillKey } from '@/lib/workspace';
 import {
   DESK_REGIONS,
   DESK_SOURCES,
+  DESK_SOURCE_REGISTRY,
   KR_ONLY_GROUPS,
+  UI_CATEGORY_ORDER,
+  UI_CATEGORY_META,
   type DeskRegion,
   type DeskSourceId,
-  type DeskSourceCategory,
-  type DeskSourceDefinition,
+  type UICategory,
 } from '@/lib/desk-sources';
 
 type RangePreset = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
@@ -255,118 +257,156 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
-// ─── SourceCategoryPicker — 카테고리별 collapsible 소스 피커 ────────────────
-// 소스가 20+ 로 늘며 flat 리스트 UX 가 무너져 category 그룹으로 재구성. 각
-// 카테고리는 접기/펼치기, 헤더에 선택/전체 카운트. 뉴스·시장통계·학술은 기본
-// 펼침, 나머지는 접힘 (결정 1). region 이 비-KR 이면 국내 전용 소스만 있는
-// 카테고리(시장 통계 등)는 groups 계산 단계에서 통째로 빠진다 (결정 3).
+// ─── SourceGridPicker — 5-카테고리 all-or-nothing grid popover ──────────────
+// 옛 SourceCategoryPicker (카테고리별 collapsible + 개별 소스 checkbox) 를 완전
+// 폐기·대체. "수집 소스" trigger 버튼을 누르면 portal popover 안에 5 카테고리
+// 카드가 2열 grid 로 뜬다. 카드 클릭 = 그 카테고리를 통째로 토글 — 하위 소스
+// 개별 체크는 없다 (all-or-nothing). 선택 시각 = amore 유색 배경 + border-amore
+// + ✓ (사용자 결정 4). region 이 그 카테고리의 소스를 전부 가리면(비-KR 지역의
+// 국내 전용 카테고리 등) 카드는 disabled. widget-shell 의 overflow:hidden 안이라
+// SelectMenu 와 동일하게 portal + position:fixed 로 잘림을 피한다.
 //
-// 결정 2 (env 없는 소스 disabled) 는 부분 반영 — 소스 API 키는 전부 서버 전용
-// (env.ts server 스키마) 이라 client 에서 실제 set 여부를 알 수 없다. 잘못
-// disable 하는 회귀를 피하려 실제 미설정 소스는 서버가 이미 graceful-drop
-// (sourceMissingKey, /api/desk) 하는 기존 동작에 위임하고, 여기서는 어떤 키가
-// 필요한지 title tooltip 으로만 안내한다.
+// env 없는 소스: API 키는 전부 서버 전용(env.ts server 스키마)이라 client 는
+// 실제 set 여부를 알 수 없다 (옛 PR #732 주석과 동일 사실). 따라서 카드/카테고리
+// 를 임의로 disable 하지 않고 — 서버가 미설정 소스를 이미 graceful-drop
+// (sourceMissingKey, /api/desk) — 어떤 키가 필요한지 카드 tooltip 으로만 안내
+// 한다 (spec 결정 E: 카테고리 활성 유지 + env-disabled 소스는 서버단 자동 skip).
 
-// UI 표기 순서 + 아이콘. label 텍스트는 i18n(Desk.category.*) 에서 온다.
-const CATEGORY_ORDER: DeskSourceCategory[] = [
-  'news',
-  'community',
-  'stats',
-  'academic',
-  'institute',
-  'thought',
-  'video',
-];
-const CATEGORY_ICON: Record<DeskSourceCategory, string> = {
-  news: '📰',
-  community: '💬',
-  stats: '📊',
-  academic: '🎓',
-  institute: '🏛',
-  thought: '✨',
-  video: '🎬',
-};
-// 기본 펼침 카테고리 (결정 1). 나머지는 접힌 상태로 시작.
-const DEFAULT_EXPANDED_CATEGORIES: DeskSourceCategory[] = ['news', 'stats', 'academic'];
-
-function SourceCategoryPicker({
-  groups,
+function SourceGridPicker({
+  order,
   selected,
   onToggle,
-  collapsed,
-  onToggleCollapse,
-  locale,
+  enabledFor,
+  disabled,
   categoryLabel,
+  categoryIcon,
+  categoryHint,
+  placeholder,
 }: {
-  groups: { category: DeskSourceCategory; sources: DeskSourceDefinition[] }[];
-  selected: Set<DeskSourceId>;
-  onToggle: (id: DeskSourceId) => void;
-  collapsed: Set<DeskSourceCategory>;
-  onToggleCollapse: (category: DeskSourceCategory) => void;
-  locale: string;
-  categoryLabel: (category: DeskSourceCategory) => string;
+  order: UICategory[];
+  selected: Set<UICategory>;
+  onToggle: (c: UICategory) => void;
+  enabledFor: (c: UICategory) => boolean;
+  disabled?: boolean;
+  categoryLabel: (c: UICategory) => string;
+  categoryIcon: (c: UICategory) => string;
+  categoryHint: (c: UICategory) => string | undefined;
+  placeholder: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !wrapRef.current) return;
+    const update = () => setRect(wrapRef.current!.getBoundingClientRect());
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function down(e: MouseEvent) {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
+      setOpen(false);
+    }
+    function esc(e: KeyboardEvent | globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', down);
+    document.addEventListener('keydown', esc as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', down);
+      document.removeEventListener('keydown', esc as EventListener);
+    };
+  }, [open]);
+
+  // trigger 요약 — 선택된(그리고 region 가시) 카테고리를 아이콘+라벨로 나열.
+  const chosen = order.filter((c) => selected.has(c) && enabledFor(c));
+  const summary =
+    chosen.length === 0
+      ? placeholder
+      : chosen.map((c) => `${categoryIcon(c)} ${categoryLabel(c)}`).join(' · ');
+
   return (
-    <div className="space-y-2">
-      {groups.map(({ category, sources }) => {
-        const isCollapsed = collapsed.has(category);
-        const selectedCount = sources.filter((s) => selected.has(s.id)).length;
-        return (
-          <div key={category} className="rounded-xs border border-line-soft">
-            {/* eslint-disable-next-line react/forbid-elements -- collapsible
-                group header: needs full-row layout (icon + label + count +
-                chevron) + aria-expanded disclosure semantics outside Button
-                primitive variants */}
-            <button
-              type="button"
-              onClick={() => onToggleCollapse(category)}
-              aria-expanded={!isCollapsed}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-md text-ink hover:bg-paper-soft"
-            >
-              <span className="flex items-center gap-2">
-                <span aria-hidden>{CATEGORY_ICON[category]}</span>
-                <span>{categoryLabel(category)}</span>
-                <span className="text-xs text-mute-soft tabular-nums">
-                  {selectedCount}/{sources.length}
-                </span>
-              </span>
-              <span
-                aria-hidden
-                className={
-                  'text-mute-soft transition-transform ' +
-                  (isCollapsed ? '' : 'rotate-180')
-                }
-              >
-                ▾
-              </span>
-            </button>
-            {!isCollapsed && (
-              <div className="flex flex-col gap-1 border-t border-line-soft px-3 py-2">
-                {sources.map((s) => {
-                  const label = locale === 'ko' ? s.label : s.labelEn;
-                  const keyHint = s.envKeys?.length
-                    ? `${s.envKeys.join(' / ')} 필요`
-                    : undefined;
-                  return (
-                    <label
-                      key={s.id}
-                      title={keyHint}
-                      className="flex cursor-pointer items-center gap-2 py-1 text-md text-ink"
-                    >
-                      <Checkbox
-                        checked={selected.has(s.id)}
-                        onChange={() => onToggle(s.id)}
-                        aria-label={label}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div ref={wrapRef} className="relative">
+      {/* eslint-disable-next-line react/forbid-elements -- popover trigger:
+          summary chip + chevron form-control shape outside Button primitive
+          variants (mirrors this file's SelectMenu trigger). */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-8 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 py-1 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <span className="truncate text-left">{summary}</span>
+        <span aria-hidden className="text-mute-soft">▾</span>
+      </button>
+      {open && rect && typeof window !== 'undefined' &&
+        createPortal(
+          <div
+            ref={panelRef}
+            role="dialog"
+            className="fixed z-overlay rounded-xs border-[2px] border-ink bg-paper shadow-[3px_3px_0_var(--canvas-card-border)]"
+            style={{
+              left: rect.left,
+              top: rect.bottom + 4,
+              minWidth: Math.max(rect.width, 320),
+            }}
+          >
+            <div className="grid grid-cols-2 gap-2 p-3">
+              {order.map((c) => {
+                const isSelected = selected.has(c);
+                const cardEnabled = enabledFor(c);
+                const hint = categoryHint(c);
+                return (
+                  /* eslint-disable-next-line react/forbid-elements -- category
+                     card: custom flex-col toggle surface (icon + label + ✓),
+                     not expressible as a Button primitive variant. */
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={!cardEnabled}
+                    title={hint}
+                    aria-pressed={isSelected}
+                    onClick={() => onToggle(c)}
+                    className={
+                      'relative flex flex-col items-center gap-2 rounded-sm border-[2px] p-4 text-center transition-colors ' +
+                      (!cardEnabled
+                        ? 'cursor-not-allowed border-line-soft bg-paper opacity-40'
+                        : isSelected
+                          ? 'border-amore bg-amore-bg'
+                          : 'border-line-soft bg-paper hover:bg-paper-soft')
+                    }
+                  >
+                    {isSelected && cardEnabled && (
+                      <span aria-hidden className="absolute right-2 top-2 text-amore">
+                        ✓
+                      </span>
+                    )}
+                    <span aria-hidden className="text-3xl leading-none">
+                      {categoryIcon(c)}
+                    </span>
+                    <span className="text-sm font-semibold text-ink">
+                      {categoryLabel(c)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -394,58 +434,68 @@ export function DeskCardBody() {
   const [regions, setRegions] = useState<Set<DeskRegion>>(
     () => new Set(['KR']),
   );
-  // selected 기본값은 region 이 정하고 (sourcesForRegions), 그 위에서 사용자가
-  // 카테고리 피커로 개별 소스를 토글해 좁힌다.
-  const [selected, setSelected] = useState<Set<DeskSourceId>>(() =>
-    sourcesForRegions(new Set(['KR'])),
-  );
-  // 접힌 카테고리 집합 — 기본 펼침(뉴스·시장통계·학술) 외 나머지는 접힘 상태로
-  // 시작 (결정 1).
-  const [collapsedCats, setCollapsedCats] = useState<Set<DeskSourceCategory>>(
-    () =>
-      new Set(
-        CATEGORY_ORDER.filter((c) => !DEFAULT_EXPANDED_CATEGORIES.includes(c)),
-      ),
+  // 5 카테고리 all-or-nothing 선택 (하위 개별 소스 체크 폐기 — supersede
+  // PR #732). 기본 = 5 카테고리 전체 선택 — KR 기본 지역에서 모든 소스가
+  // 켜지던 옛 동작과 동일 범위.
+  const [selectedCategories, setSelectedCategories] = useState<Set<UICategory>>(
+    () => new Set(UI_CATEGORY_ORDER),
   );
 
-  // 개별 소스 토글 — region 이 정한 기본 선택 위에서 사용자가 좁힌다.
-  function toggleSource(id: DeskSourceId) {
-    setSelected((prev) => {
+  // 카테고리 통째 토글 — 카드 클릭 시 그 카테고리의 모든 소스를 켜고/끈다.
+  function toggleCategory(c: UICategory) {
+    setSelectedCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-  function toggleCollapse(category: DeskSourceCategory) {
-    setCollapsedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
       return next;
     });
   }
 
-  // region 이 노출을 허용한 소스만 카테고리별로 묶는다. 국내 전용 소스만 있는
-  // 카테고리(예: 시장 통계)는 비-KR region 에서 통째로 빠진다 (결정 3). 빈
-  // 카테고리(institute/thought — 아직 소스 없음)는 자연히 제외.
-  const categorizedSources = useMemo(() => {
-    const visible = sourcesForRegions(regions);
-    const byCategory = new Map<DeskSourceCategory, DeskSourceDefinition[]>();
-    for (const s of DESK_SOURCES) {
-      if (!visible.has(s.id)) continue;
-      const arr = byCategory.get(s.category);
-      if (arr) arr.push(s);
-      else byCategory.set(s.category, [s]);
+  // region 이 노출을 허용하는 소스 집합 (KR-only 소스는 비-KR 지역에서 제외).
+  const regionVisible = useMemo(() => sourcesForRegions(regions), [regions]);
+
+  // 카테고리 → region 가시 소스만 남긴 매핑. env-missing 소스는 서버가
+  // graceful-drop 하므로 client 에선 거르지 않는다 (SourceGridPicker 주석 참고).
+  const visibleSourceIdsFor = useMemo(() => {
+    const map = new Map<UICategory, DeskSourceId[]>();
+    for (const c of UI_CATEGORY_ORDER) {
+      map.set(
+        c,
+        UI_CATEGORY_META[c].sourceIds.filter((id) => regionVisible.has(id)),
+      );
     }
-    return CATEGORY_ORDER.flatMap((category) => {
-      const sources = byCategory.get(category);
-      return sources ? [{ category, sources }] : [];
-    });
-  }, [regions]);
+    return map;
+  }, [regionVisible]);
 
-  // regions/selected 갱신은 SelectMenu onChange 콜백에서 직접 처리 —
-  // 별도 toggle 헬퍼 미사용 (다중 선택 + 최소 1개 보장 inline).
+  // 카드 활성 여부 — region 이 그 카테고리의 소스를 전부 가리면 비활성.
+  const categoryEnabled = (c: UICategory) =>
+    (visibleSourceIdsFor.get(c)?.length ?? 0) > 0;
+
+  // 카테고리 안 소스가 요구하는 env 키 모음 — 카드 tooltip 안내. 키는 서버
+  // 전용이라 client 는 set 여부를 모른다 → 자동 disable 안 하고 안내만.
+  const categoryHint = (c: UICategory): string | undefined => {
+    const keys = new Set<string>();
+    for (const id of UI_CATEGORY_META[c].sourceIds) {
+      for (const k of DESK_SOURCE_REGISTRY[id].envKeys ?? []) keys.add(k);
+    }
+    return keys.size
+      ? `${tDesk('sourceEnvHint')}: ${Array.from(keys).join(' / ')}`
+      : undefined;
+  };
+
+  // 선택된(그리고 region 가시) 카테고리 → 실제 API 로 보낼 source id 목록.
+  // 카테고리는 소스를 정확히 1번씩 분할하므로 dedup 불필요.
+  const selectedSourceIds = useMemo(() => {
+    const out: DeskSourceId[] = [];
+    for (const c of UI_CATEGORY_ORDER) {
+      if (!selectedCategories.has(c)) continue;
+      out.push(...(visibleSourceIdsFor.get(c) ?? []));
+    }
+    return out;
+  }, [selectedCategories, visibleSourceIdsFor]);
+
+  // region 갱신은 SelectMenu onChange 콜백에서 직접 처리 (다중 선택 + 최소
+  // 1개 보장 inline). 소스 선택은 위 selectedCategories 기반.
 
   const [submitting, setSubmitting] = useState(false);
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
@@ -565,7 +615,7 @@ export function DeskCardBody() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           keywords: finalKeywords,
-          sources: Array.from(selected),
+          sources: selectedSourceIds,
           locale: locale === 'ko' ? 'ko' : 'en',
           regions: Array.from(regions),
           dateFrom: dateFrom || undefined,
@@ -766,7 +816,11 @@ export function DeskCardBody() {
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
   const canRun =
-    !submitting && !pendingJobId && !isWorking && hasKeywords && selected.size > 0;
+    !submitting &&
+    !pendingJobId &&
+    !isWorking &&
+    hasKeywords &&
+    selectedSourceIds.length > 0;
   // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
   // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
   // would only yield a raw-data dump. A single keyword expands to +4 similar
@@ -776,7 +830,9 @@ export function DeskCardBody() {
   const kwCountForEstimate = keywords.length + (keywordDraft.trim() ? 1 : 0);
   const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
   const estimatedSearches = hasKeywords
-    ? effectiveKwForEstimate * Math.max(selected.size, 1) * Math.max(regions.size, 1)
+    ? effectiveKwForEstimate *
+      Math.max(selectedSourceIds.length, 1) *
+      Math.max(regions.size, 1)
     : 0;
   const estimateHeavy = estimatedSearches >= 60;
   const showResult = !!(job?.status === 'done' && job.output);
@@ -943,9 +999,8 @@ export function DeskCardBody() {
             values={Array.from(regions)}
             onChange={(next) => {
               if (next.length === 0) return; // 최소 1개 보장
-              const set = new Set(next as DeskRegion[]);
-              setRegions(set);
-              setSelected(sourcesForRegions(set));
+              // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
+              setRegions(new Set(next as DeskRegion[]));
             }}
             placeholder={tDesk('regionLabel')}
           />
@@ -971,18 +1026,20 @@ export function DeskCardBody() {
         </div>
       </div>
 
-      {/* 수집 소스 — 카테고리별 collapsible 그룹 (20+ 소스 정리). region 이
-          정한 기본 선택 위에서 개별 토글로 좁힌다. */}
+      {/* 수집 소스 — 5 카테고리 all-or-nothing grid popover (supersede PR #732
+          collapsible+checkbox). 카드 선택 → 하위 소스 id 가 자동 확장돼 API 로
+          전송. region 이 소스를 전부 가리는 카테고리는 카드 disabled. */}
       <div className="space-y-1.5">
         <SectionLabel>{tDesk('sourcesLabel')}</SectionLabel>
-        <SourceCategoryPicker
-          groups={categorizedSources}
-          selected={selected}
-          onToggle={toggleSource}
-          collapsed={collapsedCats}
-          onToggleCollapse={toggleCollapse}
-          locale={locale}
-          categoryLabel={(category) => tDesk(`category.${category}` as never)}
+        <SourceGridPicker
+          order={UI_CATEGORY_ORDER}
+          selected={selectedCategories}
+          onToggle={toggleCategory}
+          enabledFor={categoryEnabled}
+          categoryLabel={(c) => tDesk(`category.${c}` as never)}
+          categoryIcon={(c) => UI_CATEGORY_META[c].icon}
+          categoryHint={categoryHint}
+          placeholder={tDesk('sourcePickerPlaceholder')}
         />
       </div>
 
@@ -995,7 +1052,7 @@ export function DeskCardBody() {
         >
           {tDesk('estimateLabel', {
             kw: effectiveKwForEstimate,
-            src: Math.max(selected.size, 1),
+            src: Math.max(selectedSourceIds.length, 1),
             region: Math.max(regions.size, 1),
             count: estimatedSearches,
           })}

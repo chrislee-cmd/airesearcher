@@ -787,6 +787,8 @@
     "range_year": "Last year",
     "range_custom": "Custom",
     "sourcesLabel": "Sources",
+    "sourcePickerPlaceholder": "Select sources",
+    "sourceEnvHint": "Some sources require API keys",
     "sourcesUnit": "sources",
     "category": {
       "news": "News & Portals",
