@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MochiLoader } from '@/components/ui/mochi-loader';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
   buildDistributionTable,
@@ -200,7 +200,7 @@ function PanelBody({
 }) {
   // 폼 목록 자체가 아직 로딩 중 → 로더 (폼 유무 판단 불가).
   if (formsLoading && !hasForm) {
-    return <MochiLoader size={32} />;
+    return <BrandLoader size={32} />;
   }
   // 폼 목록 로딩 끝났는데 발행 폼이 없음.
   if (!hasForm) {
@@ -214,7 +214,7 @@ function PanelBody({
   }
   // 폼은 있으나 아직 응답 로딩 중 → 로더.
   if (loading && (!table || table.grandTotal === 0)) {
-    return <MochiLoader size={32} />;
+    return <BrandLoader size={32} />;
   }
   // 성별/연령 문항이 없어 교차 분포를 만들 수 없음.
   if (table === null) {

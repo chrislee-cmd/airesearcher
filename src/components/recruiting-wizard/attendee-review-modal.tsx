@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import { MochiLoader } from '@/components/ui/mochi-loader';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import {
   isContactColumnTitle,
   isPrivacyConsentColumnTitle,
@@ -159,7 +159,7 @@ export function AttendeeReviewModal({
       <div className="flex-1 min-h-0 overflow-auto bg-paper">
         {loading && !data ? (
           <div className="flex h-full items-center justify-center">
-            <MochiLoader size={36} />
+            <BrandLoader size={36} />
           </div>
         ) : error ? (
           <div className="p-5">

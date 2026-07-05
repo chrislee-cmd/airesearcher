@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { MochiLoader } from '@/components/ui/mochi-loader';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import './loading.css';
 
 // Loading.tsx is rendered as a Suspense fallback. Next.js does not pass
@@ -28,7 +28,7 @@ export default function Loading() {
       className="loading-pop flex min-h-full flex-col items-center justify-center"
     >
       <div className="loading-pop-card">
-        <MochiLoader size={56} />
+        <BrandLoader size={56} />
         <span className="loading-pop-label">{t('loading')}</span>
       </div>
     </div>

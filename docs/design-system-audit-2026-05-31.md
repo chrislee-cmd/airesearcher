@@ -132,13 +132,13 @@ Duration:
 | Overlay | `<Modal/Dialog>` | ❌ | 0 | **`fixed inset-0` 8건** ad-hoc |
 | Overlay | `<Tooltip>/<Popover>` | ❌ | 0 | native `title` 만 |
 | Feedback | `<Skeleton>` | ❌ | 0 | `animate-pulse` 분산 |
-| Feedback | `<Spinner>` | ❌ (MochiLoader 만) | — | — |
+| Feedback | `<Spinner>` | ❌ (BrandLoader 만) | — | — |
 | ✅ 존재 | `<DropdownMenu>` | ✅ | 3 | — |
 | ✅ 존재 | `<EmptyState>` | ✅ | **3** ⚠️ | 16건 추정 ad-hoc empty |
 | ✅ 존재 | `<FileDropZone>` | ✅ | **7** ⚠️ | 4건 native `<input type="file">` |
 | ✅ 존재 | `<JobProgress>` | ✅ | 10 | — |
 | ✅ 존재 | `<FeaturePage>` | ✅ | **5/23** 🚨 | 18 pages custom header |
-| ✅ 존재 | `<MochiLoader>` | ✅ | 3 | `animate-spin/pulse` 8 |
+| ✅ 존재 | `<BrandLoader>` | ✅ | 3 | `animate-spin/pulse` 8 |
 | ✅ 존재 | `<DownloadMenu>/<ShareMenu>` | ✅ | 정상 | — |
 
 **판정**: 가장 큰 단일 부채. **Button/Input 만 도입해도 약 266건의 inline 코드가 정리됨**.

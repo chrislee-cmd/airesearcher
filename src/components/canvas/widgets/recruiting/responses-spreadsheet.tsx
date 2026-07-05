@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MochiLoader } from '@/components/ui/mochi-loader';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
@@ -357,7 +357,7 @@ export function ResponsesSpreadsheet({
   if (forms === null) {
     return (
       <div className="flex h-full items-center justify-center">
-        <MochiLoader size={36} />
+        <BrandLoader size={36} />
       </div>
     );
   }
@@ -412,7 +412,7 @@ export function ResponsesSpreadsheet({
           </div>
         ) : loading && !data ? (
           <div className="flex h-full items-center justify-center">
-            <MochiLoader size={36} />
+            <BrandLoader size={36} />
           </div>
         ) : needsGoogle ? (
           <div className="flex h-full items-center justify-center p-8">
