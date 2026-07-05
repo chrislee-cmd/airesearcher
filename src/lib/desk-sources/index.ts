@@ -27,3 +27,6 @@ export {
   getEnabledSources,
   sourceMissingKey,
 } from './registry';
+
+export type { UICategory } from './ui-categories';
+export { UI_CATEGORY_ORDER, UI_CATEGORY_META } from './ui-categories';

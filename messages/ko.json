@@ -787,6 +787,8 @@
     "range_year": "지난 1년",
     "range_custom": "직접 지정",
     "sourcesLabel": "수집 소스",
+    "sourcePickerPlaceholder": "수집 소스 선택",
+    "sourceEnvHint": "일부 소스는 API 키 필요",
     "sourcesUnit": "개 소스",
     "category": {
       "news": "뉴스·포털",
