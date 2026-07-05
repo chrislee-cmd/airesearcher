@@ -10,7 +10,7 @@
      2544 = 3 × 816 + 2 × 48 (고정값, viewport 따라 reactive 하게 변하지
      않음). 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는 1×1
      로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
-   - 디폴트 배치는 row-major — 6 위젯이면 1·2행에 3+3, 3행은 비움.
+   - 디폴트 배치는 row-major — 9 위젯이면 3행에 3+3+3 로 꽉 참.
    - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
      다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
    - 빈 영역 drag = pan, 휠 = zoom-out (1.0 ~ 0.4, cursor focal point).
@@ -36,28 +36,29 @@ import type { WidgetContent } from '@/components/canvas/widget-types';
 import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
-// 2×3 row-major 배치 — 6 visible 위젯이 2열 × 3행에 정확히 채워짐
-// (Row1 recruiting|desk, Row2 probing|translate, Row3 quotes|interviews).
-// visibility.ts CANVAS_ORDER 가 이 순서를 정의.
-const GRID_COLS = 2;
+// 3×3 row-major 배치 — 9 visible 위젯이 3열 × 3행에 정확히 채워짐
+// (Row1 recruiting|desk|guideline, Row2 probing|translate|moderator_ai,
+// Row3 quotes|interviews|ppt_report). visibility.ts CANVAS_ORDER 가 순서 정의.
+const GRID_COLS = 3;
 const GRID_ROWS = 3;
 // CELL_W 816 — 6×5 시절 expandedCols=3 위젯 한 장의 visual width
 // (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
 // 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
 const CELL_W = 816;
 const CELL_H = 950;
-const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 2 × 816 + 48 = 1680
+const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 3 × 816 + 2 × 48 = 2544
 const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
-// MIN_ZOOM 0.3 — fit-to-view (6 위젯 한눈) 가 작은 viewport (1440×900 +
+// MIN_ZOOM 0.3 — fit-to-view (9 위젯 한눈) 가 작은 viewport (1440×900 +
 // 사이드바 280px → 본문 1160×800) 에서도 clamp 없이 안착하려면 0.3 까지
 // 허용해야 함. 이전 0.4 였으나 height 축에서 ~14% 잘렸음. 위젯 안 텍스트는
 // 0.3 에서도 줌-아웃 미니맵 톤으로 판독 가능.
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.03;
-// v1 = 6×5, v2 = 3×3 (1·2행 3+3). v3 = 2×3 row-major 재배치로 한 번 더 reset —
-// 옛 커스텀 좌표를 버리고 신 layout 을 강제 적용 (사용자 결정: 초기화 의도).
-const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v3';
+// v1 = 6×5, v2 = 3×3 (1·2행 3+3), v3 = 2×3 row-major. v4 = 3×3 (9 위젯, 신
+// placeholder 3장 추가) 로 한 번 더 reset — 옛 커스텀 좌표를 버리고 신 layout 을
+// 강제 적용 (사용자 결정: 초기화 의도).
+const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v4';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -732,8 +733,8 @@ export function CanvasBoard({
       const rect = container.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
 
-      // 현재 positions 의 widget bounding box. 6 위젯 3+3 default 면
-      // 0..2 col × 0..1 row = 2544 × 1948 (3행은 비어 있어 height 절약).
+      // 현재 positions 의 widget bounding box. 9 위젯 3×3 default 면
+      // 0..2 col × 0..2 row = 2544 × 2946 (3행 모두 채워짐).
       let minCol = GRID_COLS;
       let maxCol = -1;
       let minRow = GRID_ROWS;

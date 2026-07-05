@@ -17,36 +17,50 @@ export type CanvasWidgetKey =
   | 'translate'
   | 'probing'
   | 'topline'
-  | 'slidegen';
+  | 'slidegen'
+  // 신 placeholder 위젯 3장 (3×3 우측 열). backend 없이 "준비 중" 안내만.
+  | 'guideline'
+  | 'moderator_ai'
+  | 'ppt_report';
 
 export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
+  // Row 1 (amore): 리크루팅 | 데스크 | 가이드라인
   recruiting: true,
-  quotes: true,
   desk: true,
-  interviews: true,
-  moderator: false,
-  translate: true,
+  guideline: true,
+  // Row 2 (ink-2): 프로빙 | 동시통역 | AI 모더레이터
   probing: true,
+  translate: true,
+  moderator_ai: true,
+  // Row 3 (mute): 전사록 | 인터뷰 결과 | PPT 보고서
+  quotes: true,
+  interviews: true,
+  ppt_report: true,
+  // Hidden (옛 — visibility=false)
+  moderator: false,
   topline: false,
   slidegen: false,
 };
 
 // canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
-// row-major 2×3 배치 (canvas-board GRID_COLS=2) — 좌→우, 위→아래로 채움.
-//   Row 1 (상): recruiting | desk
-//   Row 2 (중): probing    | translate
-//   Row 3 (하): quotes(전사록) | interviews(인터뷰 결과 생성기)
+// row-major 3×3 배치 (canvas-board GRID_COLS=3) — 좌→우, 위→아래로 채움.
+//   Row 1 (상): recruiting | desk       | guideline
+//   Row 2 (중): probing    | translate  | moderator_ai
+//   Row 3 (하): quotes(전사록) | interviews(인터뷰 결과) | ppt_report
 // hidden 3장 (moderator/topline/slidegen) 은 뒤에 두고 visibility=false 로 제외.
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
   // Row 1 (상)
   'recruiting',
   'desk',
+  'guideline',
   // Row 2 (중)
   'probing',
   'translate',
+  'moderator_ai',
   // Row 3 (하)
   'quotes',
   'interviews',
+  'ppt_report',
   // Hidden (order 유지, visibility=false)
   'moderator',
   'topline',
