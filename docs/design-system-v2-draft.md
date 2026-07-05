@@ -319,8 +319,8 @@ className="border border-line bg-paper px-3 py-1.5 text-[12.5px] text-ink-2 disa
 - 좌: H1 (`text-[24px] font-bold`) · 우: `headerRight` (보통 cost 표시)
 - 그 아래 hairline (`border-b border-line pb-3`)
 
-### 7.9 MochiLoader (`src/components/ui/mochi-loader.tsx`)
-- 로고 흔들기 (`mochi-sway` keyframe)
+### 7.9 BrandLoader (`src/components/ui/brand-loader.tsx`)
+- 로고 흔들기 (`brand-sway` keyframe)
 - 긴 로딩 (>1s) 의 visual feedback. 짧은 로딩은 토스트 또는 스피너 한 줄로.
 
 ### 7.10 추가로 필요한 컴포넌트 (미존재 — 다음 PR 시 정의)

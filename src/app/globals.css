@@ -465,15 +465,15 @@ html, body {
 }
 .job-progress-indeterminate { animation: jobProgressIndeterminate 1.4s ease-in-out infinite; }
 
-@keyframes mochiSway {
+@keyframes brandSway {
   0%   { transform: rotate(-7deg) translateY(0px); }
   30%  { transform: rotate(-7deg) translateY(-4px); }
   50%  { transform: rotate(7deg)  translateY(0px); }
   80%  { transform: rotate(7deg)  translateY(-4px); }
   100% { transform: rotate(-7deg) translateY(0px); }
 }
-.mochi-sway {
-  animation: mochiSway 1.8s ease-in-out infinite;
+.brand-sway {
+  animation: brandSway 1.8s ease-in-out infinite;
   transform-origin: center 85%;
   display: block;
 }

@@ -3,7 +3,7 @@ type Props = {
   label?: string;
 };
 
-export function MochiLoader({ size = 56, label }: Props) {
+export function BrandLoader({ size = 56, label }: Props) {
   return (
     <div className="flex flex-col items-center gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -12,7 +12,7 @@ export function MochiLoader({ size = 56, label }: Props) {
         alt=""
         width={size}
         height={size}
-        className="mochi-sway"
+        className="brand-sway"
         style={{ width: size, height: size, objectFit: 'contain' }}
       />
       {label && (

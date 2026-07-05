@@ -7,7 +7,7 @@ import { useRequireAuth } from './auth-provider';
 import { useWorkspace } from './workspace-provider';
 import { useGenerationJobs } from './generation-job-provider';
 import { JobProgress } from './ui/job-progress';
-import { MochiLoader } from './ui/mochi-loader';
+import { BrandLoader } from './ui/brand-loader';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import type { FeatureKey } from '@/lib/features';
@@ -120,7 +120,7 @@ export function FeaturePlaceholder({ feature }: { feature: FeatureKey }) {
 
       {running && (
         <div className="mt-8 flex flex-col items-center gap-6">
-          <MochiLoader size={52} label={job.progress.phase ?? '생성 중'} />
+          <BrandLoader size={52} label={job.progress.phase ?? '생성 중'} />
           <div className="w-full">
             <JobProgress
               value={job.progress.percent}

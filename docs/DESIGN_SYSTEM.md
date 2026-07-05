@@ -313,9 +313,9 @@ accent + dot grid 없음.
 ### 3.9 EmptyState (`empty-state.tsx`)
 - 빈 화면 (테이블·리스트·결과 없음). 헤드라인 + body + optional action.
 
-### 3.10 MochiLoader (`mochi-loader.tsx`)
-- mochi mascot + sway 애니메이션. `.mochi-sway` keyframe.
-- **사용 토큰**: globals.css `@keyframes mochiSway`.
+### 3.10 BrandLoader (`brand-loader.tsx`)
+- 브랜드 mascot + sway 애니메이션. `.brand-sway` keyframe.
+- **사용 토큰**: globals.css `@keyframes brandSway`.
 
 ### 3.11 JobProgress (`job-progress.tsx`)
 - 진행률 indeterminate / determinate. `--color-amore` accent.
@@ -352,7 +352,7 @@ grep -rnE "#[0-9a-fA-F]{3,6}\b" src/ --include="*.tsx" --include="*.ts" | wc -l
 | 카테고리 | 예시 위치 | 사유 |
 |---|---|---|
 | Chart axis / data viz | `desk-analytics-panel.tsx` `credits-usage-predictor.tsx` | recharts series 색 — 의도된 hard value (data viz palette) |
-| SVG path fill | `loading.tsx` `mochi-loader.tsx` `google-signin-button.tsx` | brand mark / 일러스트 — 톤 swap 영향 X |
+| SVG path fill | `loading.tsx` `brand-loader.tsx` `google-signin-button.tsx` | brand mark / 일러스트 — 톤 swap 영향 X |
 | Marketing landing | `credits/page.tsx` `credits-bundles.tsx` | 마케팅 페이지 hero·배너 — 별 톤 (정책 결정 필요) |
 | 잔존 컴포넌트 | `topbar-account.tsx` `translate-console.tsx` `translate-viewer.tsx` `report-generator.tsx` `member-row.tsx` `cookie-consent-banner.tsx` | 미토큰화 — 후속 PR 에서 sweep 대상 |
 | API route (server) | `translate/recordings/[id]/download/route.ts` | DOCX preview 등 server-side 생성 색 — DOM 토큰 무관 |

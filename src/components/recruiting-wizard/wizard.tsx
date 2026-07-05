@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
-import { MochiLoader } from '@/components/ui/mochi-loader';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -1064,7 +1064,7 @@ function CriteriaInputFields({
 function GeneratingRow({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3">
-      <MochiLoader size={28} />
+      <BrandLoader size={28} />
       <span className="text-md text-mute">{label}</span>
     </div>
   );

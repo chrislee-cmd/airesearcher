@@ -60,7 +60,7 @@
 |---|---|---|---|---|
 | `Skeleton` | `ui/skeleton.tsx` | text=xs, block=sm, circle=full | **bento** | animate-pulse bg-line-soft. 3 variant (text/block/circle) |
 | `EmptyState` | `ui/empty-state.tsx` | `rounded-sm` | **bento** | tone=default(solid)/subtle(dashed border). icon/title/desc/action |
-| `MochiLoader` | `ui/mochi-loader.tsx` | (img) | **bento** | mochi-sway 애니메이션 + 옵션 label |
+| `BrandLoader` | `ui/brand-loader.tsx` | (img) | **bento** | brand-sway 애니메이션 + 옵션 label |
 | `JobProgress` | `ui/job-progress.tsx` | `rounded-sm` (panel) + `rounded-full` (bar) | **bento** | indeterminate/determinate. tone=default(amore)/error(warning). 자체 cancel 버튼 (chrome 톤 inline — primitive 아님) |
 | `FileDropZone` | `ui/file-drop-zone.tsx` | `rounded-sm` | **bento** | drag/drop + click picker. dragOver 시 border-ink 로 solid 전환. onDropRaw 로 워크스페이스 artifact 지원 |
 | `FeaturePage` | `ui/feature-page.tsx` | (layout only) | **bento** | 페이지 헤더 + body wrapper. text-3xl title + bottom border |
@@ -82,7 +82,7 @@ design-system 카탈로그 페이지가 보유한 부품이 22개. 실제 코드
 | Radio | 미확인 | — | `<Radio>` |
 | Avatar | sidebar-account 등 | inline | `<Avatar>` |
 | Toast | `ToastProvider` 가 자체 구현 | — | provider 안에 있어 primitive 화 비효율 |
-| Spinner | MochiLoader 외에 일반 spinner | — | `<Spinner size>` |
+| Spinner | BrandLoader 외에 일반 spinner | — | `<Spinner size>` |
 
 → design-system 카탈로그가 catalog 인 만큼 이 누락 부품들이 한 곳에서 보이지 않음. D-? 카탈로그 갱신 PR 에서 *누락 목록* 도 표시 (gap 시각화).
 
