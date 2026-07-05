@@ -8,7 +8,6 @@ import {
   useState,
   type ClipboardEvent,
   type KeyboardEvent,
-  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
@@ -46,10 +45,11 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
+import { SelectMenu } from '@/components/ui/select-menu';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { Field } from '@/components/canvas/shell/field';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -86,164 +86,6 @@ function splitKeywords(raw: string): string[] {
     .split(/[,\n\t、·]+/)
     .map((s) => s.trim())
     .filter(Boolean);
-}
-
-// ─── SelectMenu — desk SubHeader 전용 dropdown primitive ───────────────────
-// region / period 가 dropdown 형태로 통일되도록 portal-based 패널을 제공.
-// `multi` 면 체크박스 토글, 아니면 선택 시 즉시 닫는 radio-like 동작.
-// widget-shell 의 `overflow:hidden` 안에 있어 absolute 가 잘리므로 portal +
-// position:fixed 로 escape. 이건 desk widget local helper — 다른 위젯에서
-// 같은 패턴 필요해지면 별 spec 으로 src/components/ui 로 승격.
-
-type SelectChoice = { value: string; label: ReactNode };
-
-function SelectMenu({
-  options,
-  values,
-  onChange,
-  placeholder,
-  disabled,
-  multi,
-  buttonClassName,
-  renderSummary,
-}: {
-  options: SelectChoice[];
-  values: string[];
-  onChange: (next: string[]) => void;
-  placeholder: string;
-  disabled?: boolean;
-  multi?: boolean;
-  buttonClassName?: string;
-  renderSummary?: (values: string[]) => ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-
-  useLayoutEffect(() => {
-    if (!open || !wrapRef.current) return;
-    const update = () =>
-      setRect(wrapRef.current!.getBoundingClientRect());
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function down(e: MouseEvent) {
-      const t = e.target as Node;
-      if (wrapRef.current?.contains(t)) return;
-      if (panelRef.current?.contains(t)) return;
-      setOpen(false);
-    }
-    function esc(e: KeyboardEvent | globalThis.KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', esc as EventListener);
-    return () => {
-      document.removeEventListener('mousedown', down);
-      document.removeEventListener('keydown', esc as EventListener);
-    };
-  }, [open]);
-
-  function toggle(v: string) {
-    if (multi) {
-      onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
-    } else {
-      onChange([v]);
-      setOpen(false);
-    }
-  }
-
-  const summaryNode = renderSummary
-    ? renderSummary(values)
-    : values.length === 0
-      ? placeholder
-      : values.length <= 2
-        ? values.map((v) => options.find((o) => o.value === v)?.label ?? v).join(', ')
-        : `${values.length}개 선택`;
-
-  return (
-    <div ref={wrapRef} className="relative">
-      {/* eslint-disable-next-line react/forbid-elements -- dropdown trigger:
-          listbox semantics + native form-control border/chevron shape outside
-          Button primitive variants */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-        className={
-          buttonClassName ??
-          'flex h-8 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50'
-        }
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span className="truncate">{summaryNode}</span>
-        <span aria-hidden className="text-mute-soft">▾</span>
-      </button>
-      {open && rect && typeof window !== 'undefined' &&
-        createPortal(
-          <div
-            ref={panelRef}
-            role="listbox"
-            aria-multiselectable={multi}
-            className="fixed z-overlay max-h-72 overflow-y-auto rounded-xs border-[2px] border-ink bg-paper shadow-[3px_3px_0_var(--canvas-card-border)]"
-            style={{
-              left: rect.left,
-              top: rect.bottom + 4,
-              minWidth: rect.width,
-            }}
-          >
-            {options.map((opt) => {
-              const checked = values.includes(opt.value);
-              return (
-                /* eslint-disable-next-line react/forbid-elements -- dropdown
-                   option: needs role="option" + aria-selected for listbox
-                   ARIA semantics outside Button primitive */
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="option"
-                  aria-selected={checked}
-                  onClick={() => toggle(opt.value)}
-                  className={
-                    'flex w-full items-center gap-2 px-3 py-2 text-left text-md ' +
-                    (checked ? 'bg-amore-bg text-ink' : 'text-ink hover:bg-paper-soft')
-                  }
-                >
-                  {multi ? (
-                    <Checkbox
-                      checked={checked}
-                      readOnly
-                      tabIndex={-1}
-                      onChange={() => {}}
-                    />
-                  ) : (
-                    <span
-                      aria-hidden
-                      className={
-                        'inline-block h-3 w-3 rounded-full border-[1.5px] ' +
-                        (checked ? 'border-amore bg-amore' : 'border-line')
-                      }
-                    />
-                  )}
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>,
-          document.body,
-        )}
-    </div>
-  );
 }
 
 // region 이 결정하는 "노출 가능 소스" 집합. KR-only 그룹 (네이버/카카오/DART/
@@ -344,7 +186,7 @@ function SourceGridPicker({
     <div ref={wrapRef} className="relative">
       {/* eslint-disable-next-line react/forbid-elements -- popover trigger:
           summary chip + chevron form-control shape outside Button primitive
-          variants (mirrors this file's SelectMenu trigger). */}
+          variants (mirrors the ui SelectMenu primitive trigger). */}
       <button
         type="button"
         disabled={disabled}
@@ -989,8 +831,7 @@ export function DeskCardBody() {
   const controlsForm = (
     <div className="space-y-4">
       {/* 주제 · 키워드 (핵심 입력) */}
-      <div className="space-y-1.5">
-        <SectionLabel>{tDesk('boardTopicLabel')}</SectionLabel>
+      <Field label={tDesk('boardTopicLabel')}>
         <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
           {keywords.map((k, idx) => (
             <span
@@ -1023,11 +864,10 @@ export function DeskCardBody() {
             className="min-w-[140px] flex-1"
           />
         </div>
-      </div>
+      </Field>
 
       {/* 세부 옵션 — 지역 / 기간 / 분석 방향성 */}
-      <div className="space-y-1.5">
-        <SectionLabel>{tDesk('boardOptionsLabel')}</SectionLabel>
+      <Field label={tDesk('boardOptionsLabel')}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <SelectMenu
             multi
@@ -1035,7 +875,7 @@ export function DeskCardBody() {
               value: r,
               label: tDesk(`region.${r}`),
             }))}
-            values={Array.from(regions)}
+            value={Array.from(regions)}
             onChange={(next) => {
               if (next.length === 0) return; // 최소 1개 보장
               // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
@@ -1063,13 +903,12 @@ export function DeskCardBody() {
             placeholder="예: 시장 성장률 + 주요 플레이어 위주"
           />
         </div>
-      </div>
+      </Field>
 
       {/* 수집 소스 — 5 카테고리 all-or-nothing grid popover (supersede PR #732
           collapsible+checkbox). 카드 선택 → 하위 소스 id 가 자동 확장돼 API 로
           전송. region 이 소스를 전부 가리는 카테고리는 카드 disabled. */}
-      <div className="space-y-1.5">
-        <SectionLabel>{tDesk('sourcesLabel')}</SectionLabel>
+      <Field label={tDesk('sourcesLabel')}>
         <SourceGridPicker
           order={UI_CATEGORY_ORDER}
           selected={selectedCategories}
@@ -1080,7 +919,7 @@ export function DeskCardBody() {
           categoryHint={categoryHint}
           placeholder={tDesk('sourcePickerPlaceholder')}
         />
-      </div>
+      </Field>
 
       {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
       {hasKeywords && (
@@ -1102,18 +941,22 @@ export function DeskCardBody() {
 
       {/* 실행 CTA — 컨트롤 보드의 핵심 요소 (결정 1). 데스크는 리포트 산출
           이라 라벨은 기존 "검색" 유지 (스펙의 "매트릭스 생성" 은 형제 스펙
-          템플릿 흔적 — 용어 회귀 방지). */}
-      <ChromeButton
-        variant="default"
-        size="lg"
-        fullWidth
-        onClick={onClickRun}
-        disabled={!canRun}
-      >
-        {submitting || pendingJobId || isWorking
-          ? tCommon('loading')
-          : tDesk('search')}
-      </ChromeButton>
+          템플릿 흔적 — 용어 회귀 방지). auto width + status slot = 프로빙과
+          동일 pattern (primitive 통일 spec R3). status label 은 아직 없음 —
+          빈 span 이 CTA 우측 정렬을 유지하고 미래 hint 확장 자리. */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-mute" />
+        <ChromeButton
+          variant="default"
+          size="lg"
+          onClick={onClickRun}
+          disabled={!canRun}
+        >
+          {submitting || pendingJobId || isWorking
+            ? tCommon('loading')
+            : tDesk('search')}
+        </ChromeButton>
+      </div>
     </div>
   );
 
