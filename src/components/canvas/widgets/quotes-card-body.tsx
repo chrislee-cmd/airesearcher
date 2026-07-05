@@ -21,6 +21,10 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { JobProgress } from '@/components/ui/job-progress';
+import {
+  ProcessTimeline,
+  buildLinearPhases,
+} from '@/components/ui/process-timeline';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
@@ -90,6 +94,7 @@ export function QuotesCardBody() {
   const tUp = useTranslations('Features.uploader');
   const tCommon = useTranslations('Common');
   const tWidgets = useTranslations('Widgets');
+  const tProcess = useTranslations('Process');
   const requireAuth = useRequireAuth();
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
@@ -525,6 +530,53 @@ export function QuotesCardBody() {
   const readyCount = readyFiles.length;
   const canStart = readyCount > 0 && !busyUpload;
 
+  // ─── 공정 과정 타임라인 (사용자 결정 R2/R3) ────────────────────────────────
+  // 전사록은 backend 가 coarse status(queued/submitting/transcribing/done)만
+  // 노출하고 md변환/화자분리/오탈자/표현보정 세부 phase 는 서버 내부에서만
+  // 일어난다(§주의). 따라서 관측 가능한 upload/transcribe 만 active 로 두고,
+  // 후처리 단계는 pending → 완료 시 done 으로 넘어가는 frontend estimate 를
+  // 쓴다(가짜 active 상태 조작 없음). 멀티-파일 큐 UI 는 아래에 그대로 보존.
+  const anyInflight = job.jobs.some(
+    (j) =>
+      j.status === 'queued' ||
+      j.status === 'submitting' ||
+      j.status === 'transcribing',
+  );
+  const anyError = job.jobs.some((j) => j.status === 'error');
+  // 진행 중(업로드/전사) — 컨트롤+CTA 자리를 타임라인이 대체.
+  const txInflight = hasUploads || busyUpload || anyInflight;
+  // 완료 — 진행 중 없음 + 재시도 대기 없음 + 에러 없음 + 완료본 존재.
+  const txDone =
+    !txInflight && readyFiles.length === 0 && !anyError && doneJobs.length > 0;
+  const primaryInflight =
+    job.jobs.find(
+      (j) =>
+        j.status === 'queued' ||
+        j.status === 'submitting' ||
+        j.status === 'transcribing',
+    ) ?? null;
+  const TX_PHASES = [
+    'uploading',
+    'transcribing',
+    'md_conversion',
+    'speaker_diarization',
+    'typo_correction',
+    'phrasing_polish',
+  ] as const;
+  const txCurrentKey =
+    hasUploads || (busyUpload && !primaryInflight)
+      ? 'uploading'
+      : primaryInflight
+        ? 'transcribing'
+        : null;
+  const txTimelinePhases = buildLinearPhases(
+    TX_PHASES.map((k) => ({
+      key: k,
+      label: tProcess(`transcripts.${k}` as never),
+    })),
+    txCurrentKey,
+  );
+
   // 헤더 pill 로 push 할 live state. 우선순위:
   //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
   //   2) 전사 잡 inflight (submitting/transcribing/queued) → 가장 최근
@@ -708,7 +760,36 @@ export function QuotesCardBody() {
           }
         >
           <div className={phase === 'active' ? undefined : 'w-full max-w-[420px]'}>
-            {renderControls('main')}
+            {txInflight ? (
+              // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
+              <ProcessTimeline phases={txTimelinePhases} />
+            ) : txDone ? (
+              // done: "완료됐어요! + 전체 보기" (+ 파일 추가 업로드 경로 보존).
+              <div className="flex flex-col items-center gap-6 py-8">
+                <p className="text-lg font-semibold text-ink-2">
+                  ✅ {tProcess('completeTitle')}
+                </p>
+                <div className="flex items-center gap-3">
+                  <ChromeButton
+                    variant="default"
+                    size="lg"
+                    onClick={handleQuotesFullview}
+                  >
+                    {tWidgets('viewAll')}
+                  </ChromeButton>
+                  <ChromeButton
+                    variant="default"
+                    size="lg"
+                    onClick={() => setUploadOpen(true)}
+                    disabled={busyUpload}
+                  >
+                    📤 {tWidgets('upload')}
+                  </ChromeButton>
+                </div>
+              </div>
+            ) : (
+              renderControls('main')
+            )}
           </div>
         </div>
 
@@ -788,6 +869,9 @@ export function QuotesCardBody() {
                   />
                 );
               }
+              // done 블록(컨트롤 영역)이 이미 "전체 보기" CTA 를 제공하므로
+              // 하단 완료 푸터는 생략 — 중복 CTA 회피.
+              if (txDone) return null;
               // pending-retry 중엔 완료로 오인시키지 않는다.
               if (readyFiles.length > 0 || doneJobs.length === 0) return null;
               return (

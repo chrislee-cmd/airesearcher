@@ -37,6 +37,10 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { JobProgress } from '@/components/ui/job-progress';
+import {
+  ProcessTimeline,
+  buildLinearPhases,
+} from '@/components/ui/process-timeline';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -416,6 +420,7 @@ export function DeskCardBody() {
   const tDesk = useTranslations('Desk');
   const tCommon = useTranslations('Common');
   const tWidgets = useTranslations('Widgets');
+  const tProcess = useTranslations('Process');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { latestJob, isWorking, cancelJob } = useDeskJobs();
@@ -499,6 +504,10 @@ export function DeskCardBody() {
 
   const [submitting, setSubmitting] = useState(false);
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  // 완료(done) 상태에서 "새 리서치" 를 눌러 컨트롤 폼을 다시 노출하기 위한
+  // 로컬 플래그. active 시 컨트롤+CTA 가 타임라인으로 대체되므로(사용자 결정
+  // R2), 완료 후 재실행 경로를 잃지 않도록 done 블록에 새 리서치 CTA 를 둔다.
+  const [forceControls, setForceControls] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -603,6 +612,7 @@ export function DeskCardBody() {
     }
     setSubmitting(true);
     setError(null);
+    setForceControls(false);
     track('desk_generate_click', { feature: 'desk', kw_count: finalKeywords.length });
     trackEvent('job_started', {
       widget: 'desk',
@@ -937,6 +947,35 @@ export function DeskCardBody() {
   // 후 재실행 가능 (결정 3).
   const active = submitting || !!pendingJobId || isWorking || !!job;
 
+  // ─── 공정 과정 타임라인 (사용자 결정 R2/R3) ────────────────────────────────
+  // 진행 중(deskRunning)이면 컨트롤+CTA 자리를 멀티-라인 타임라인이 대체하고,
+  // 완료(showResult)면 "완료됐어요! + 전체 보기" 블록이 대체한다. 데스크는
+  // 유일하게 세분화된 progress.phase 를 노출해 단일-잡 타임라인에 잘 맞는다.
+  const deskRunning = submitting || !!pendingJobId || isWorking;
+  const DESK_TIMELINE_PHASES = [
+    'expanding',
+    'scoping',
+    'crawling',
+    'extracting',
+    'drafting',
+    'critiquing',
+    'synthesizing',
+    'summarizing',
+  ] as const;
+  const deskTimelinePhases = buildLinearPhases(
+    DESK_TIMELINE_PHASES.map((k) => ({
+      key: k,
+      label: tProcess(`desk.${k}` as never),
+      detail:
+        k === 'crawling'
+          ? `${job?.progress?.crawl_done ?? 0}/${job?.progress?.crawl_total ?? 0}`
+          : undefined,
+    })),
+    // phase 미보고(제출 직후/queued)면 첫 단계를 active 로 — 빈 타임라인 회피.
+    job?.progress?.phase ?? (deskRunning ? 'expanding' : null),
+    { allDone: job?.status === 'done' },
+  );
+
   // 로컬 error state (제출 전/제출 실패) 배너 — phase 무관하게 노출해야
   // idle 로 되돌아간 실패도 사용자가 본다.
   const errorBanner = error ? (
@@ -1096,8 +1135,38 @@ export function DeskCardBody() {
           }
         >
           <div className={active ? undefined : 'w-full max-w-[420px]'}>
-            {controlsForm}
-            {errorBanner}
+            {deskRunning ? (
+              // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
+              <ProcessTimeline phases={deskTimelinePhases} />
+            ) : showResult && !forceControls ? (
+              // done: "완료됐어요! + 전체 보기" (+ 재실행용 새 리서치).
+              <div className="flex flex-col items-center gap-6 py-8">
+                <p className="text-lg font-semibold text-ink-2">
+                  ✅ {tProcess('completeTitle')}
+                </p>
+                <div className="flex items-center gap-3">
+                  <ChromeButton
+                    variant="default"
+                    size="lg"
+                    onClick={handleDeskFullview}
+                  >
+                    {tWidgets('viewAll')}
+                  </ChromeButton>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForceControls(true)}
+                  >
+                    {tProcess('newResearch')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {controlsForm}
+                {errorBanner}
+              </>
+            )}
           </div>
         </div>
 
@@ -1309,16 +1378,31 @@ export function DeskCardBody() {
                 리포트는 단건이라 count 배지 없음. */}
             {(() => {
               const running = submitting || !!pendingJobId || isWorking;
-              if (!running && !showResult) return null;
-              return (
-                <WidgetStatusFooter
-                  status={running ? 'running' : 'done'}
-                  label={running ? tWidgets('deskRunning') : tWidgets('deskDone')}
-                  viewAllLabel={tWidgets('viewAll')}
-                  resetKey={running ? 'running' : `done-${job?.id ?? ''}`}
-                  onClick={handleDeskFullview}
-                />
-              );
+              if (running) {
+                return (
+                  <WidgetStatusFooter
+                    status="running"
+                    label={tWidgets('deskRunning')}
+                    viewAllLabel={tWidgets('viewAll')}
+                    resetKey="running"
+                    onClick={handleDeskFullview}
+                  />
+                );
+              }
+              // done: 상단 완료 블록이 이미 "전체 보기" CTA 를 제공하므로,
+              // 컨트롤을 다시 띄운(새 리서치) 경우에만 하단 완료 푸터를 노출.
+              if (showResult && forceControls) {
+                return (
+                  <WidgetStatusFooter
+                    status="done"
+                    label={tWidgets('deskDone')}
+                    viewAllLabel={tWidgets('viewAll')}
+                    resetKey={`done-${job?.id ?? ''}`}
+                    onClick={handleDeskFullview}
+                  />
+                );
+              }
+              return null;
             })()}
           </>
         )}
