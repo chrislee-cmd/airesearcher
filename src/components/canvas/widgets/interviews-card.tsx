@@ -81,7 +81,7 @@ function ProjectControlBar({
   ];
 
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b-[2px] border-ink bg-paper-soft px-4 py-2">
+    <div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-4 py-2">
       <DropdownMenu
         align="start"
         items={items}

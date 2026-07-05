@@ -173,7 +173,7 @@ export function ProbingControlPanel({
   statusLabel: string | null;
 }) {
   return (
-    <div className="flex shrink-0 flex-col gap-4 border-b-[2px] border-ink bg-paper-soft px-5 py-4">
+    <div className="flex shrink-0 flex-col gap-4 px-5 py-4">
       <ControlFields
         researchGoal={researchGoal}
         onResearchGoalChange={onResearchGoalChange}

@@ -651,22 +651,22 @@ export function QuotesCardBody() {
           noFiles ? 'block widget-gate-guide-pulse' : 'block'
         }
       >
-        <Button
-          variant="secondary"
+        <ChromeButton
+          variant="default"
           size="lg"
           className="w-full"
           onClick={() => setUploadOpen(true)}
           disabled={busyUpload}
         >
           📤 {tWidgets('upload')}
-        </Button>
+        </ChromeButton>
       </span>
 
       {/* 자동 전사 시작이 실패해 남은 준비 파일 재시도 CTA — 정상 흐름에선
           렌더 안 됨. */}
       {readyCount > 0 && (
         <ChromeButton
-          variant="primary"
+          variant="default"
           size="lg"
           onClick={() => void startTranscription()}
           disabled={!canStart}
@@ -696,9 +696,18 @@ export function QuotesCardBody() {
           업로드 모달은 항상 마운트. */}
       <div className="flex h-full flex-col">
         {/* 컨트롤 패널 — 실행 중이라도 언어 재설정·새 파일 업로드가 가능하도록
-            항상 노출. */}
-        <div className="shrink-0 overflow-y-auto border-b border-line-soft p-6">
-          {renderControls('main')}
+            항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
+            띄워 통일 launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
+        <div
+          className={
+            phase === 'active'
+              ? 'shrink-0 overflow-y-auto border-b border-line-soft p-6'
+              : 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto p-6'
+          }
+        >
+          <div className={phase === 'active' ? undefined : 'w-full max-w-[420px]'}>
+            {renderControls('main')}
+          </div>
         </div>
 
         {/* 산출물 영역 — active(실행 중/완료) 일 때만. idle 에는 컨트롤만
