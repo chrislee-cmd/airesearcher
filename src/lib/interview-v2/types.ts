@@ -98,11 +98,17 @@ export type SearchArtifact = TableArtifact | QuoteListArtifact | ChartArtifact;
  */
 export type ToplineBlockType =
   | 'heading'
+  | 'subheading'
   | 'paragraph'
   | 'insight'
   | 'quote'
   | 'table'
+  | 'chart'
+  | 'pie'
   | 'inserted_qa';
+
+/** chart/pie 블록의 데이터 포인트. */
+export type ToplineChartDatum = { label: string; value: number };
 
 export type ToplineBlock = {
   id: string;
@@ -115,6 +121,11 @@ export type ToplineBlock = {
   // 발췌. Q 라벨에 문맥으로 표시된다.
   selected_excerpt?: string;
   table?: { headers: string[]; rows: string[][] };
+  // chart/pie 블록 전용 — 제목/종류/데이터/해설.
+  title?: string;
+  chartKind?: 'bar' | 'line';
+  data?: ToplineChartDatum[];
+  description?: string;
 };
 
 export type ToplineStatus = 'none' | 'idle' | 'generating' | 'done' | 'error';

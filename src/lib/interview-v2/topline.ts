@@ -448,14 +448,16 @@ export async function runTopline(
     });
 
     const anthropic = createAnthropic({ apiKey });
-    const { object } = await generateObject({
+    const { object, finishReason } = await generateObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
       system: `${TOPLINE_SYSTEM}\n\n## 근거 청크\n${formatToplineEvidence(chunks)}`,
       prompt:
-        '위 근거 청크 전체를 분석해 6개 고정 섹션의 탑라인 보고서를 블록 배열로 작성하세요. 교차분석 인사이트 섹션과 table/quote 블록을 반드시 포함하고, 모든 사실 블록에 근거 chunk_id 를 답니다.',
-      temperature: 0.2,
-      maxOutputTokens: 8_000,
+        '위 근거 청크 전체를 분석해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.',
+      temperature: 0.3,
+      // 긴 보고서(10 섹션 + 서브헤더 + 아티팩트)라 출력 예산을 대폭 상향해 잘림
+      // (finishReason='length')을 방지한다. Opus 4.8 는 큰 출력을 지원한다.
+      maxOutputTokens: 32_000,
       maxRetries: 1,
       providerOptions: ZERO_RETENTION,
     });
@@ -465,9 +467,18 @@ export async function runTopline(
       (n, b) => n + ('citations' in b ? b.citations.length : 0),
       0,
     );
+    // 잘림 방지: 예산을 크게 잡았지만 그래도 length 로 끝나면 (희귀) 로그로
+    // 남긴다. generateObject 는 스키마 검증을 통과한 블록만 반환하므로 부분
+    // 결과라도 유효한 블록은 보존된다(보수적 — 별도 2-pass 이어쓰기는 후속).
+    if (finishReason === 'length') {
+      console.warn(`${tag} finishReason=length — output may be truncated`, {
+        blocks: blocks.length,
+      });
+    }
     console.log(`${tag} done`, {
       blocks: blocks.length,
       citations: citedTotal,
+      finishReason,
     });
 
     await admin

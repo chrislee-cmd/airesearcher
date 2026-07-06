@@ -4,6 +4,19 @@ import { Fragment, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -25,46 +38,34 @@ import { useToplineSelection, ToplineAskPopup } from './topline-selection';
 // 상태(GET status + stale): generating=skeleton, done=blocks, stale=배너+
 // 기존 보고서 유지, error/none=CTA. 재생성은 탭 헤더 우측 버튼(명시적 — Opus 비용).
 //
-// 인용: 블록의 citations 는 chunk_id 뿐(원문 excerpt 는 topline payload 에
-// 없음)이라, inline [n] 을 기존 인용 뱃지 톤의 정적 뱃지로 렌더한다. 원문
-// popover 는 excerpt 를 함께 싣는 후속 작업으로 분리(보수적 스코프).
-
-// inline [123] (markdown link [123](url) 제외) — qa-pair 와 동일 규칙.
-function citeToken(): RegExp {
-  return /\[(\d+)\](?!\()/g;
-}
-
-// 렌더 가능한 chunk_id 만 앵커 링크로 치환 → a 컴포넌트가 뱃지로 스왑.
-function withCiteLinks(md: string, valid: Set<string>): string {
-  return md.replace(citeToken(), (full, id: string) =>
-    valid.has(id) ? `[${id}](#cite-${id})` : full,
-  );
+// 인용 표기: 사용자 결정 1 — 문장 흐름을 깨던 빨간 [chunk_id] 숫자 뱃지를
+// 제거한다. 블록의 citations(chunk_id)는 서버 재검증·docx "근거: 문서명" 각주에
+// 여전히 쓰이지만, 화면에서는 raw 숫자를 노출하지 않는다. md 본문에 섞인 inline
+// [chunk_id] 토큰은 렌더 전에 제거한다(docx stripInlineCitations 와 동일 규칙).
+// 원문 근거는 docx/Google Docs export 의 각주로 추적 가능하다(보수적 스코프).
+function stripCiteTokens(md: string, cited: Set<string>): string {
+  return md
+    .replace(/\s*\[([^\]\n]+)\](?!\()/g, (full, tok: string) =>
+      cited.has(tok.trim()) ? '' : full,
+    )
+    .replace(/[ \t]+([.,;:?!、。])/g, '$1');
 }
 
 // paragraph/insight/inserted_qa 의 markdown 컴포넌트 — 보고서 톤(디자인 토큰).
-// 인용 앵커(#cite-)는 비대화형 뱃지로, 그 외 링크는 일반 링크로.
+// 인용 뱃지는 제거됐다(사용자 결정 1). 남는 링크는 일반 링크로만 렌더.
 function useMarkdownComponents(): Components {
   return useMemo<Components>(
     () => ({
-      a: ({ href, children }) => {
-        if (href && href.startsWith('#cite-')) {
-          return (
-            <span className="mx-0.5 inline-flex select-none items-center rounded-xs border border-amore bg-amore-bg px-1 align-baseline text-xs-soft font-semibold text-amore">
-              {children}
-            </span>
-          );
-        }
-        return (
-          <a
-            href={href ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-words text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
-          >
-            {children}
-          </a>
-        );
-      },
+      a: ({ href, children }) => (
+        <a
+          href={href ?? '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-words text-amore underline decoration-amore/40 underline-offset-2 hover:decoration-amore"
+        >
+          {children}
+        </a>
+      ),
       p: ({ children }) => (
         <p className="my-1.5 text-md leading-[1.7] text-ink-2">{children}</p>
       ),
@@ -93,11 +94,102 @@ function Prose({ md, citations }: { md: string; citations?: string[] }) {
     () => new Set((citations ?? []).map((c) => String(c))),
     [citations],
   );
-  const processed = useMemo(() => withCiteLinks(md, valid), [md, valid]);
+  const processed = useMemo(() => stripCiteTokens(md, valid), [md, valid]);
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
       {processed}
     </ReactMarkdown>
+  );
+}
+
+// chart/pie 블록 렌더 — answer-artifact-renderer(#696) 와 동일한 recharts +
+// 디자인 토큰 색 팔레트. 탑라인 블록 shape({title, chartKind, data:[{label,value}]})
+// 에 맞춘 경량 컴포넌트. bar/line/pie 지원.
+const TOPLINE_CHART_COLORS = [
+  'var(--color-amore)',
+  'var(--color-ink)',
+  'var(--color-mute)',
+  '#f97316',
+  '#a855f7',
+];
+
+function ToplineChartBlock({
+  block,
+  common,
+}: {
+  block: ToplineBlock;
+  common: { 'data-block-id': string };
+}) {
+  const data = (block.data ?? []).map((d) => ({ name: d.label, value: d.value }));
+  const isPie = block.type === 'pie';
+  const kind = isPie ? 'pie' : (block.chartKind ?? 'bar');
+  const icon = isPie ? '🥧' : kind === 'line' ? '📈' : '📊';
+
+  return (
+    <div
+      {...common}
+      className="my-3 rounded-sm border border-line-soft bg-paper-soft p-3"
+    >
+      {block.title && (
+        <h4 className="mb-2 text-sm font-semibold text-ink-2">
+          {icon} {block.title}
+        </h4>
+      )}
+      {block.description && (
+        <p className="mb-2 text-xs-soft text-mute">{block.description}</p>
+      )}
+      {data.length > 0 ? (
+        <div className="h-60 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            {kind === 'pie' ? (
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="name"
+                  label={(entry) => `${entry.name} (${entry.value})`}
+                >
+                  {data.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={TOPLINE_CHART_COLORS[i % TOPLINE_CHART_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            ) : kind === 'line' ? (
+              <LineChart data={data}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-amore)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            ) : (
+              <BarChart data={data}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="value">
+                  {data.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={TOPLINE_CHART_COLORS[i % TOPLINE_CHART_COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -109,11 +201,26 @@ function BlockView({ block }: { block: ToplineBlock }) {
     return (
       <h2
         {...common}
-        className="mb-2 mt-7 border-b border-line-soft pb-2 text-lg font-semibold text-ink first:mt-0"
+        className="mb-3 mt-8 border-b border-line pb-2 text-xl font-semibold tracking-tight text-ink first:mt-0"
       >
         {block.md}
       </h2>
     );
+  }
+
+  if (block.type === 'subheading') {
+    return (
+      <h3
+        {...common}
+        className="mb-1.5 mt-5 text-md font-semibold text-ink-2"
+      >
+        {block.md}
+      </h3>
+    );
+  }
+
+  if (block.type === 'chart' || block.type === 'pie') {
+    return <ToplineChartBlock block={block} common={common} />;
   }
 
   if (block.type === 'quote') {

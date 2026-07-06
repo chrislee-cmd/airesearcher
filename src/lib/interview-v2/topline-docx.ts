@@ -144,6 +144,52 @@ function blockToChildren(
     ];
   }
 
+  if (block.type === 'subheading') {
+    return [
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 180, after: 80 },
+        children: [new TextRun({ text: block.md ?? '', bold: true })],
+      }),
+    ];
+  }
+
+  if (block.type === 'chart' || block.type === 'pie') {
+    // 차트 이미지 렌더는 export 워커 후속(#425 인계 노트) — 여기선 제목 + 데이터
+    // 항목을 불릿으로 텍스트화해 문서에 값이 남게 한다(blank 방지).
+    const children: FileChild[] = [];
+    if (block.title) {
+      children.push(
+        new Paragraph({
+          spacing: { before: 120, after: 40 },
+          children: [new TextRun({ text: block.title, bold: true })],
+        }),
+      );
+    }
+    if (block.description) {
+      children.push(
+        new Paragraph({
+          spacing: { after: 40 },
+          children: [
+            new TextRun({ text: block.description, color: '8A8A8A', size: 20 }),
+          ],
+        }),
+      );
+    }
+    for (const d of block.data ?? []) {
+      children.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          children: [new TextRun({ text: `${d.label}: ${d.value}` })],
+        }),
+      );
+    }
+    children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun('')] }));
+    const src = sourceLine(citations, sources);
+    if (src) children.push(src);
+    return children;
+  }
+
   if (block.type === 'quote') {
     // 인용 스타일 — 들여쓰기 + 이탤릭 + 좌측 accent 보더. 인용문 전체를
     // 이탤릭으로(verbatim 발췌라 원문 강조 파싱 대신 통째로 인용 톤).
