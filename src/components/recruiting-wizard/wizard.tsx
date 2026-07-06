@@ -9,6 +9,7 @@ import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
@@ -672,7 +673,15 @@ export function RecruitingWizard({
       // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터
       // (max-w-2xl)가 좌우를 채운다 (데스크/프로빙 justify-start + pt-10 pb-6
       // + max-w-2xl + space-y-5 와 동일 규격).
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
+        {/* 주 CTA(폼 발행) — 우측 중앙 고정 앵커 (6 위젯 통일). */}
+        <WidgetPrimaryCta
+          label="폼 발행"
+          busyLabel="발행 준비 중…"
+          busy={jobRunning}
+          disabled={!canExtract}
+          onClick={startExtract}
+        />
         <div className="w-full max-w-2xl space-y-5">
           <CriteriaInputFields
             files={files}
@@ -686,17 +695,6 @@ export function RecruitingWizard({
           {criteriaError && (
             <div className="text-sm text-warning">오류: {criteriaError}</div>
           )}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-mute" />
-            <ChromeButton
-              variant="default"
-              size="lg"
-              onClick={startExtract}
-              disabled={!canExtract}
-            >
-              {jobRunning ? '발행 준비 중…' : '🚀 폼 발행'}
-            </ChromeButton>
-          </div>
         </div>
       </div>
     );

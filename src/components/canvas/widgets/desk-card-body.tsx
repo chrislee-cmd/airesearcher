@@ -48,6 +48,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
+import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { ChipInput } from '@/components/ui/chip-input';
@@ -1071,24 +1072,9 @@ export function DeskCardBody() {
         </p>
       )}
 
-      {/* 실행 CTA — 컨트롤 보드의 핵심 요소 (결정 1). 데스크는 리포트 산출
-          이라 라벨은 기존 "검색" 유지 (스펙의 "매트릭스 생성" 은 형제 스펙
-          템플릿 흔적 — 용어 회귀 방지). auto width + status slot = 프로빙과
-          동일 pattern (primitive 통일 spec R3). status label 은 아직 없음 —
-          빈 span 이 CTA 우측 정렬을 유지하고 미래 hint 확장 자리. */}
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-mute" />
-        <ChromeButton
-          variant="default"
-          size="lg"
-          onClick={onClickRun}
-          disabled={!canRun}
-        >
-          {submitting || pendingJobId || isWorking
-            ? tCommon('loading')
-            : tDesk('search')}
-        </ChromeButton>
-      </div>
+      {/* 실행 CTA 는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로 이동 — 6 위젯
+          주 CTA 통일. body root(relative) 에 anchor 되므로 컨트롤 폼 안에는
+          더 이상 두지 않는다. 라벨은 데스크 리포트 산출이라 "검색" 유지. */}
     </div>
   );
 
@@ -1098,7 +1084,18 @@ export function DeskCardBody() {
           컨트롤 패널(주제·키워드 + 옵션 + 실행 CTA)을 phase 무관 상단에 항상
           노출하고, 산출물(스트리밍/배너/타이밍/상태 푸터)은 그 아래 별 영역에
           active 시만 렌더. 산출물 상세는 "전체 보기" modal 로 일원화. */}
-      <div className="flex h-full flex-col">
+      <div className="relative flex h-full flex-col">
+        {/* 주 CTA — 우측 중앙 고정 앵커 (6 위젯 통일). 컨트롤 phase(실행 전)
+            에서만 노출: 실행 중 timeline / 완료 done 화면에서는 숨김. */}
+        {!deskRunning && (!showResult || forceControls) && (
+          <WidgetPrimaryCta
+            label={tDesk('search')}
+            busyLabel={tCommon('loading')}
+            busy={Boolean(submitting || pendingJobId || isWorking)}
+            disabled={!canRun}
+            onClick={onClickRun}
+          />
+        )}
         {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출.
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}

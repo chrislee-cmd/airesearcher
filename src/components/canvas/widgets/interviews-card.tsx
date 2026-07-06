@@ -6,6 +6,7 @@ import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -244,10 +245,11 @@ function ActiveBody({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
+      {/* 주 CTA(검색 시작) — 우측 중앙 고정 앵커 (6 위젯 통일) → fullview. */}
+      <WidgetPrimaryCta label={t('cardSearchStart')} onClick={onOpenFullview} />
       {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 프로젝트 전환 +
-          📤 업로드(sub-action, Button 유지) + 주요 CTA(검색 시작 =
-          ChromeButton default lg → fullview). */}
+          📤 업로드(sub-action, Button 유지). 주 CTA 는 위 앵커로 이동. */}
       <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
         <div className="flex flex-col gap-4 bg-transparent">
           <div className="flex flex-wrap items-center gap-2">
@@ -268,14 +270,6 @@ function ActiveBody({
             </Button>
           </div>
 
-          {/* 실행 CTA — 검색(산출물)은 fullview 로 일원화. 좌측 status slot
-              + 우측 auto-width CTA = 데스크/프로빙과 동일 pattern. */}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-mute" />
-            <ChromeButton variant="default" size="lg" onClick={onOpenFullview}>
-              {t('cardSearchStart')}
-            </ChromeButton>
-          </div>
         </div>
       </div>
 

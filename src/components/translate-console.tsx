@@ -30,6 +30,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { ChromeButton } from './ui/chrome-button';
+import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
 import { ChipInput } from './ui/chip-input';
@@ -3923,10 +3924,21 @@ export function TranslateConsole({
             // 축소하고, 넓어진 클러스터(max-w-2xl)가 좌우를 채운다. 부모
             // (translate-card) 가 이미 py-5 를 주므로 여기선 pt-5 만 더해
             // 데스크의 pt-10(40px) 유효 상단 여백을 맞춘다 (이중 패딩 방지).
-            'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto pt-5'
+            'relative flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto pt-5'
           : 'space-y-4'
       }
     >
+      {/* 주 CTA(통역 시작) — 우측 중앙 고정 앵커 (6 위젯 통일). idle 상태만
+          이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지. */}
+      {idlePhase && (
+        <WidgetPrimaryCta
+          label={t('start')}
+          busyLabel={t('starting')}
+          busy={busy}
+          disabled={busy}
+          onClick={() => void start()}
+        />
+      )}
       {idlePhase ? (
         <div className="flex w-full max-w-2xl flex-col gap-5 bg-transparent">
           {controlFields}
@@ -3943,19 +3955,8 @@ export function TranslateConsole({
             copied={shareCopied}
             listenerCount={listeners.length}
           />
-          {/* 실행 CTA — 데스크/프로빙과 동일 pattern: auto width + 좌측
-              status slot (빈 span 이 우측 정렬 유지 + 미래 hint 자리). */}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-mute" />
-            <ChromeButton
-              variant="default"
-              size="lg"
-              onClick={() => void start()}
-              disabled={busy}
-            >
-              {busy ? t('starting') : `🚀 ${t('start')}`}
-            </ChromeButton>
-          </div>
+          {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
+              이동 — 6 위젯 주 CTA 통일. */}
         </div>
       ) : (
         <>
