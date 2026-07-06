@@ -7,6 +7,7 @@ import { useFullview } from '../shell/fullview-shell-context';
 import { Button } from '@/components/ui/button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { Field } from '@/components/canvas/shell/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
@@ -153,36 +154,32 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* idle 3요소 컨트롤 (전사록 동형): 프로젝트 드롭다운(현행 스타일) +
-          인라인 dropzone + 하단 "분석 시작" CTA. ControlBoardPanel SSOT
-          (wrapper/폭/정렬/간격). 좌정렬 통일 (데스크/프로빙/전사록과 동일). */}
-      <ControlBoardPanel>
-        {/* 컨트롤 그룹 — 안내 + 프로젝트 선택 + 업로드 dropzone. transparent. */}
-        <div className="flex flex-col gap-4 bg-transparent">
-          <div className="space-y-2">
-            <p className="text-sm leading-[1.6] text-mute">
-              {t('cardIdleHint')}
-            </p>
-          </div>
+      {/* idle 컨트롤 (전사록 동형): 짧은 "프로젝트" Field 라벨 + 인라인
+          dropzone + 하단 "분석 시작" CTA. ControlBoardPanel SSOT
+          (wrapper/폭/정렬/간격/gap). 설명 문장형 헤더 금지 — 컨트롤 상단은
+          라벨만 (전사록 <Field label="언어"> 미러). 업로드 안내는 dropzone
+          카피(label/helperText)로 흡수. */}
+      <ControlBoardPanel gap="field">
+        <Field label={t('cardProjectLabel')}>
           <ProjectSelectControl
             activeProjectId={null}
             activeProjectName={null}
             onEnter={onEnter}
             onExit={() => {}}
           />
-          {/* 인라인 업로드 — 옛 📤 업로드 CTA(모달 진입)를 대체 (전사록 미러).
-              드래그드롭 + 클릭 업로드. 프로젝트 미선택이라 모달이 프로젝트 설정
-              gate(Step 2)를 강제하고, 완료 시 해당 프로젝트로 active 진입. */}
-          <FileDropZone
-            accept={UPLOAD_ACCEPT}
-            multiple
-            maxSizeBytes={UPLOAD_MAX_BYTES}
-            onFiles={openWithFiles}
-            label={t('uploadDropLabel')}
-            helperText={t('uploadDropHelper')}
-            className="w-full py-10"
-          />
-        </div>
+        </Field>
+        {/* 인라인 업로드 — 옛 📤 업로드 CTA(모달 진입)를 대체 (전사록 미러).
+            드래그드롭 + 클릭 업로드. 프로젝트 미선택이라 모달이 프로젝트 설정
+            gate(Step 2)를 강제하고, 완료 시 해당 프로젝트로 active 진입. */}
+        <FileDropZone
+          accept={UPLOAD_ACCEPT}
+          multiple
+          maxSizeBytes={UPLOAD_MAX_BYTES}
+          onFiles={openWithFiles}
+          label={t('uploadDropLabel')}
+          helperText={t('uploadDropHelper')}
+          className="w-full py-10"
+        />
       </ControlBoardPanel>
 
       {/* 주 CTA "분석 시작" — 바디 최하단 고정 액션 바 (6 위젯 통일). idle 은
@@ -274,30 +271,32 @@ function ActiveBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 3요소: 프로젝트 드롭다운
-          (현행 스타일) + 인라인 dropzone. 옛 우측 상단 📤 업로드 버튼은 제거,
-          인라인 dropzone 이 대체 (전사록 미러). 주 CTA(분석 시작)는 하단 앵커. */}
-      <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
-        <div className="flex flex-col gap-4 bg-transparent">
+      {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 여백은 ControlBoardPanel
+          active 상수 SSOT 경유 (직접 px-5 py-5 지정 제거 — 6 위젯 여백 정합).
+          컨트롤 헤더 = 짧은 "프로젝트" Field 라벨 (전사록 미러, 설명 문장 금지).
+          옛 우측 상단 📤 업로드 버튼은 인라인 dropzone 이 대체. 주 CTA(분석
+          시작)는 하단 앵커. */}
+      <ControlBoardPanel active gap="field">
+        <Field label={t('cardProjectLabel')}>
           <ProjectSelectControl
             activeProjectId={projectId}
             activeProjectName={projectName}
             onEnter={onEnter}
             onExit={onExit}
           />
-          {/* 인라인 업로드 — 프로젝트가 이미 정해졌으므로 모달이 Step 2 를
-              건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles). */}
-          <FileDropZone
-            accept={UPLOAD_ACCEPT}
-            multiple
-            maxSizeBytes={UPLOAD_MAX_BYTES}
-            onFiles={openWithFiles}
-            label={t('uploadDropLabel')}
-            helperText={t('uploadDropHelper')}
-            className="w-full py-8"
-          />
-        </div>
-      </div>
+        </Field>
+        {/* 인라인 업로드 — 프로젝트가 이미 정해졌으므로 모달이 Step 2 를
+            건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles). */}
+        <FileDropZone
+          accept={UPLOAD_ACCEPT}
+          multiple
+          maxSizeBytes={UPLOAD_MAX_BYTES}
+          onFiles={openWithFiles}
+          label={t('uploadDropLabel')}
+          helperText={t('uploadDropHelper')}
+          className="w-full py-8"
+        />
+      </ControlBoardPanel>
 
       {/* 파일 리스트 요약 — 파일명 chip + 개수 + 인덱싱 진행. 상세/검색은
           전체 보기 (fullview). */}
