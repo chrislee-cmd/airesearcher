@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -12,8 +13,10 @@ import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { Banner } from '../shell/banner';
 import {
   ResponsesSpreadsheet,
+  selectorLabel,
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
+import { JudgedListTable } from './recruiting/judged-list-table';
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
@@ -71,6 +74,22 @@ function ExpandedBody() {
   } | null>(null);
   const [responsesLoading, setResponsesLoading] = useState(false);
 
+  // 우측 패널 탭 — 'summary'(부합도 판단 요약 리스트, default) / 'raw'(옛 응답
+  // 스프레드시트, 보조 탭). 요약이 default 이므로 fullview 첫 화면 = 판단 리스트.
+  const [activeTab, setActiveTab] = useState<'summary' | 'raw'>('summary');
+  // 폼 선택을 host 가 SSOT 로 쥔다 — 공유 셀렉터 하나가 요약/raw 탭 + 좌측
+  // 조건·분포 패널을 한 폼으로 묶는다. ResponsesSpreadsheet 은 이 값을
+  // controlled prop 으로 받아 응답을 로드하고, 목록/선택 폼을 다시 lift 한다.
+  const [forms, setForms] = useState<FormSummary[]>([]);
+  const [activeFormId, setActiveFormId] = useState<string | null>(null);
+  // 상단 통합 새로고침 시 요약 탭의 판단도 재조회하도록 신호를 증가시킨다.
+  const [judgeRefreshSignal, setJudgeRefreshSignal] = useState(0);
+
+  const handleFormsChange = useCallback((list: FormSummary[]) => {
+    setForms(list);
+    setActiveFormId((prev) => prev ?? list[0]?.formId ?? null);
+  }, []);
+
   // 선택 폼이 바뀌면 이전 폼 기준 필터는 무의미 → 초기화(전체 응답 복원).
   // React 권장 "prop 변경 시 state 리셋" 패턴 — effect 대신 render 중 조정해
   // 폼 전환이 한 커밋 안에서 필터 리셋과 함께 반영된다.
@@ -95,6 +114,8 @@ function ExpandedBody() {
       action: 'fullview_refresh',
     });
     refreshResponsesRef.current?.();
+    // 요약 탭의 부합도 판단도 재조회(신규 응답 증분 판단).
+    setJudgeRefreshSignal((n) => n + 1);
     // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀/질문 필터) 초기화.
     setActiveFilter(EMPTY_FILTER);
   }, []);
@@ -221,17 +242,87 @@ function ExpandedBody() {
                 </div>
               </div>
 
-              {/* 우측 패널 = 응답 spreadsheet 만 (남은 가로 공간 전부). */}
-              <div className="min-h-0 flex-1 p-4">
-                <ResponsesSpreadsheet
-                  onSelectedFormChange={setSelectedForm}
-                  onFormsLoadingChange={setFormsLoading}
-                  onRegisterRefresh={registerResponsesRefresh}
-                  filter={activeFilter}
-                  onFilterableQuestionsChange={setFilterableQuestions}
-                  onResponsesChange={setResponseData}
-                  onResponsesLoadingChange={setResponsesLoading}
-                />
+              {/* 우측 패널 = 공유 폼 셀렉터 + 탭(요약 default / 전체 데이터).
+                  ResponsesSpreadsheet 은 raw 탭이 아닐 때도 항상 마운트해 둔다 —
+                  좌측 조건/분포 패널이 이 컴포넌트가 lift 하는 선택 폼·응답에
+                  의존하므로(요약 탭이 default 여도 좌측이 살아 있어야 함). 요약
+                  탭일 땐 CSS 로만 숨긴다(unmount X). */}
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-4 py-2">
+                  {forms.length > 0 ? (
+                    <Select
+                      size="sm"
+                      fullWidth={false}
+                      aria-label="설문 선택"
+                      className="min-w-[240px]"
+                      value={activeFormId ?? ''}
+                      onChange={(e) =>
+                        setActiveFormId(e.target.value || null)
+                      }
+                      options={forms.map((f) => ({
+                        value: f.formId,
+                        label: selectorLabel(f),
+                      }))}
+                    />
+                  ) : (
+                    <span className="text-sm text-mute-soft">
+                      발행된 설문 없음
+                    </span>
+                  )}
+                  <div
+                    role="tablist"
+                    aria-label="응답 보기 방식"
+                    className="ml-auto flex items-center gap-1"
+                  >
+                    <Button
+                      variant={activeTab === 'summary' ? 'primary' : 'ghost'}
+                      size="xs"
+                      role="tab"
+                      aria-selected={activeTab === 'summary'}
+                      onClick={() => setActiveTab('summary')}
+                    >
+                      부합도 요약
+                    </Button>
+                    <Button
+                      variant={activeTab === 'raw' ? 'primary' : 'ghost'}
+                      size="xs"
+                      role="tab"
+                      aria-selected={activeTab === 'raw'}
+                      onClick={() => setActiveTab('raw')}
+                    >
+                      전체 데이터
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="relative min-h-0 flex-1">
+                  {/* raw 스프레드시트 — 좌측 패널 데이터 공급 위해 항상 마운트,
+                      요약 탭일 땐 display:none 으로만 숨김. */}
+                  <div className={activeTab === 'raw' ? 'h-full' : 'hidden'}>
+                    <ResponsesSpreadsheet
+                      selectedFormId={activeFormId}
+                      onSelectFormId={setActiveFormId}
+                      onFormsChange={handleFormsChange}
+                      hideSelector
+                      onSelectedFormChange={setSelectedForm}
+                      onFormsLoadingChange={setFormsLoading}
+                      onRegisterRefresh={registerResponsesRefresh}
+                      filter={activeFilter}
+                      onFilterableQuestionsChange={setFilterableQuestions}
+                      onResponsesChange={setResponseData}
+                      onResponsesLoadingChange={setResponsesLoading}
+                    />
+                  </div>
+                  {activeTab === 'summary' && (
+                    <div className="h-full">
+                      <JudgedListTable
+                        formId={activeFormId}
+                        responseData={responseData}
+                        refreshSignal={judgeRefreshSignal}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

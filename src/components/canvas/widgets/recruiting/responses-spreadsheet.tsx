@@ -95,7 +95,7 @@ function formatSubmittedAt(iso: string): string {
   });
 }
 
-function selectorLabel(f: FormSummary): string {
+export function selectorLabel(f: FormSummary): string {
   const title = f.title?.trim() || '제목 없는 설문';
   const date = formatPublishedAt(f.createdAt);
   return date ? `${title} (${date})` : title;
@@ -109,6 +109,10 @@ export function ResponsesSpreadsheet({
   onFilterableQuestionsChange,
   onResponsesChange,
   onResponsesLoadingChange,
+  selectedFormId: controlledFormId,
+  onSelectFormId,
+  onFormsChange,
+  hideSelector = false,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -137,11 +141,32 @@ export function ResponsesSpreadsheet({
   ) => void;
   // 선택 폼의 응답 로딩 상태를 host 로 올려 분포 패널이 로더/emtpy 를 구분.
   onResponsesLoadingChange?: (loading: boolean) => void;
+  // 폼 선택을 host 가 제어(controlled)할 때 쓴다. 요약 탭·raw 탭·좌측
+  // 조건/분포 패널이 하나의 선택 폼을 공유하도록, host 가 selectedFormId 를
+  // 내려주고 변경을 onSelectFormId 로 받는다. undefined 면 기존처럼 내부
+  // 상태로 자체 관리(uncontrolled) — 이 컴포넌트를 단독으로 쓰던 호출부 호환.
+  selectedFormId?: string | null;
+  onSelectFormId?: (id: string | null) => void;
+  // 로드한 발행 폼 목록을 host 로 올려, host 가 공유 셀렉터를 그릴 수 있게 한다.
+  onFormsChange?: (forms: FormSummary[]) => void;
+  // host 가 자체 셀렉터를 그릴 때 내부 <Select> 를 숨긴다(중복 방지).
+  hideSelector?: boolean;
 } = {}) {
   const { push: pushToast } = useToast();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [internalFormId, setInternalFormId] = useState<string | null>(null);
+  // controlled(host 제어) vs uncontrolled(자체 관리) 분기. controlledFormId 가
+  // prop 으로 주어지면(=undefined 아님) host 가 SSOT.
+  const isControlled = controlledFormId !== undefined;
+  const selectedFormId = isControlled ? controlledFormId : internalFormId;
+  const setSelectedFormId = useCallback(
+    (id: string | null) => {
+      if (isControlled) onSelectFormId?.(id);
+      else setInternalFormId(id);
+    },
+    [isControlled, onSelectFormId],
+  );
 
   const [data, setData] = useState<ResponsesPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -172,12 +197,19 @@ export function ResponsesSpreadsheet({
       }
       const list = ('forms' in j && j.forms ? j.forms : []) as FormSummary[];
       setForms(list);
-      setSelectedFormId((prev) => prev ?? list[0]?.formId ?? null);
+      onFormsChange?.(list);
+      // 자체 관리(uncontrolled) 모드에서만 최근 폼을 default 선택. controlled
+      // 모드에선 host 가 onFormsChange 로 받은 목록으로 선택을 정한다.
+      if (!isControlled) {
+        setInternalFormId((prev) => prev ?? list[0]?.formId ?? null);
+      }
     } catch (e) {
       setFormsError(e instanceof Error ? e.message : 'forms_list_failed');
       setForms([]);
     }
-  }, []);
+    // onFormsChange 는 host 가 useCallback 으로 안정화(handleFormsChange) —
+    // deps 에 넣어도 loadForms 가 재생성되지 않아 폼 목록 재로드 안 함.
+  }, [isControlled, onFormsChange]);
 
   useEffect(() => {
     void (async () => {
@@ -393,9 +425,12 @@ export function ResponsesSpreadsheet({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Form selector + 초대 CTA */}
+      {/* Form selector + 초대 CTA. hideSelector 면 host 가 공유 셀렉터를
+          그리므로 내부 <Select> 는 숨긴다(초대 CTA 는 유지). 셀렉터도 숨기고
+          선택된 초대 대상도 없으면 헤더 바 자체를 렌더하지 않는다(빈 바 방지). */}
+      {(!hideSelector || selected.size > 0) && (
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
-        {forms.length > 0 ? (
+        {hideSelector ? null : forms.length > 0 ? (
           <Select
             size="sm"
             fullWidth={false}
@@ -424,6 +459,7 @@ export function ResponsesSpreadsheet({
           </Button>
         )}
       </div>
+      )}
 
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-auto bg-paper">
