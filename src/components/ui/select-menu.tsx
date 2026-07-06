@@ -119,6 +119,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
           listbox trigger semantics + form-control border/chevron shape. */}
       <button
         type="button"
+        data-canvas-action
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         aria-label={ariaLabel}

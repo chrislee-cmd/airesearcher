@@ -204,6 +204,7 @@ export function DateRangePopover({
     <div ref={wrapRef} className="relative">
       <button
         type="button"
+        data-canvas-action
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openPanel())}
         className={

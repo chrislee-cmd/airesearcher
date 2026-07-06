@@ -219,6 +219,7 @@ function SourceGridPicker({
           variants (mirrors the ui SelectMenu primitive trigger). */}
       <button
         type="button"
+        data-canvas-action
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={DESK_OPTION_TRIGGER_CLASS}
