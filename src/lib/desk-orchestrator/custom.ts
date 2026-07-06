@@ -103,9 +103,20 @@ export async function runCustom(
 
   return {
     mode: 'custom',
-    // 옛 flow 에는 판단 로그가 없었다 — 후속 custom PR(E) 이 최소 event 를
-    // 여기에 추가한다.
-    buildJudgmentEvents: () => [],
+    // 커스텀 mode 는 유저가 소스·키워드를 직접 지정하므로 AI 자동 선정·부정
+    // filter·축 설계 같은 "판단" 이 없다 — 트렌드처럼 근거를 나열할 게 없다.
+    // 그래서 판단 로그는 결정 2 대로 "이 mode 는 유저 지정 flow 라는 사실" +
+    // "실제 사용한 소스 목록" 2줄만 최소로 남긴다. usableSources 는 env 필터
+    // 를 이미 통과한(= 실제 crawl 되는) 소스라 그대로 신뢰한다.
+    buildJudgmentEvents: () => {
+      const sourceList = usableSources.length
+        ? usableSources.map(sourceLabelKo).join(' · ')
+        : '(지정된 소스 없음)';
+      return [
+        `🎯 커스텀 mode — 유저가 지정한 소스·키워드로 수집합니다 (AI 자동 선정·필터 없음).`,
+        `📰 유저 지정 소스 = ${sourceList}`,
+      ];
+    },
     buildCrawlTasks: ({ similar }) => {
       const allKeywords = [...keywords, ...similar];
       // 멀티 region 시 region-aware source (google_news/gdelt/youtube) 는
