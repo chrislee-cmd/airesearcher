@@ -24,6 +24,8 @@ import {
   DESK_SOURCE_REGISTRY,
   type DeskArticle,
   type DeskRegion,
+  type DeskSourceErrorReason,
+  type DeskSkippedEntry,
   type DeskSourceId,
 } from '@/lib/desk-sources';
 import {
@@ -158,6 +160,20 @@ function sourceLabelKo(id: DeskSourceId): string {
   return DESK_SOURCE_REGISTRY[id]?.label ?? id;
 }
 
+// One-line Korean explanation of a runtime source error, for the AI 판단 로그
+// (🚫 marker). The result banner has its own localized copy (messages/*.json);
+// this string is only ever shown inside the ko judgment-log events.
+function sourceErrorEventText(reason: DeskSourceErrorReason): string {
+  switch (reason) {
+    case 'invalid_key':
+      return 'API 키가 유효하지 않아 수집 실패 — 키 재등록이 필요합니다.';
+    case 'rate_limited':
+      return '요청 한도 초과로 일부 누락됐어요.';
+    case 'fetch_failed':
+      return '일시 오류로 수집에 실패했어요.';
+  }
+}
+
 // Phases that record per-step wall-clock (surfaced as the 4-step timing chips
 // in desk-card-body: 키워드 확장 / 크롤 / 요약 / 차트).
 type PhaseName = 'expanding' | 'crawling' | 'summarizing' | 'analytics';
@@ -268,11 +284,15 @@ export async function POST(request: Request) {
     requestedSources = [];
   }
 
-  const skipped: { source: DeskSourceId; missing: string }[] = [];
+  // Pre-crawl skip = missing env key ('no_key'). Runtime errors (invalid_key /
+  // rate_limited / fetch_failed) are appended after the crawl in runJob. The
+  // `{ source, reason, missing }` shape is forward-compatible; older rows persist
+  // as `{ source, missing }` and the UI reader treats those as 'no_key'.
+  const skipped: DeskSkippedEntry[] = [];
   const usable: DeskSourceId[] = [];
   for (const s of requestedSources) {
     const missing = sourceMissingKey(s);
-    if (missing) skipped.push({ source: s, missing });
+    if (missing) skipped.push({ source: s, reason: 'no_key', missing });
     else usable.push(s);
   }
   if (usable.length === 0 && mode !== 'market') {
@@ -343,6 +363,7 @@ export async function POST(request: Request) {
       mode,
       keywords: cleanKeywords,
       usable,
+      preSkipped: skipped,
       locale,
       regions,
       range: { from: dateFrom, to: dateTo },
@@ -365,12 +386,15 @@ async function runJob(args: {
   mode: DeskMode;
   keywords: string[];
   usable: DeskSourceId[];
+  // Sources skipped before the crawl for a missing env key ('no_key'). Runtime
+  // errors get appended to this list once the crawl finishes.
+  preSkipped: DeskSkippedEntry[];
   locale: 'ko' | 'en';
   regions: DeskRegion[];
   range: DeskDateRange;
   initialEvents: string[];
 }) {
-  const { jobId, orgId, userId, mode, keywords, usable, locale, regions, range, initialEvents } = args;
+  const { jobId, orgId, userId, mode, keywords, usable, preSkipped, locale, regions, range, initialEvents } = args;
   const admin = createAdminClient();
   const events: string[] = [...initialEvents];
   let crawlDone = 0;
@@ -405,6 +429,7 @@ async function runJob(args: {
     output: string;
     articles: unknown;
     analytics: unknown;
+    skipped: unknown;
     error_message: string;
     generation_id: string;
   }>;
@@ -583,13 +608,35 @@ async function runJob(args: {
     );
 
     const collected: DeskArticle[] = [];
+    // Per-source crawl outcome — how many articles it yielded and the worst
+    // API-side error it reported. Used after the crawl to surface a bad key /
+    // 429 / transient failure that would otherwise hide behind a silent "0건"
+    // (2026-07-06 KOSIS invalid-key incident).
+    const sourceArticleCount = new Map<DeskSourceId, number>();
+    const sourceError = new Map<DeskSourceId, DeskSourceErrorReason>();
+    const ERROR_PRIORITY: Record<DeskSourceErrorReason, number> = {
+      invalid_key: 3,
+      rate_limited: 2,
+      fetch_failed: 1,
+    };
     const tasks = crawlTasks.map(({ source: src, keyword: kw, region }) =>
       // Per-task hard timeout — a single hung/deep-paginating source can no
       // longer balloon the whole crawl phase (2026-06-30 incident root cause).
       crawlSourceWithTimeout(src, kw, region, range, perKwLimit)
-        .then(async (items) => {
+        .then(async (result) => {
           crawlDone += 1;
+          const items = result.articles;
           collected.push(...items);
+          sourceArticleCount.set(
+            src,
+            (sourceArticleCount.get(src) ?? 0) + items.length,
+          );
+          if (result.error) {
+            const prev = sourceError.get(src);
+            if (!prev || ERROR_PRIORITY[result.error] > ERROR_PRIORITY[prev]) {
+              sourceError.set(src, result.error);
+            }
+          }
           await pushAndPatch(
             `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
             'crawling',
@@ -605,6 +652,30 @@ async function runJob(args: {
     );
     await Promise.all(tasks);
     await checkCancel();
+
+    // ── Surface source-level API errors ───────────────────────────────────
+    // A source is reported only if it collected 0 articles across ALL its tasks
+    // AND reported an error — so a bad key / 429 / timeout is distinguished from
+    // a genuine "0 results", while a partial success (some keyword worked)
+    // doesn't false-alarm. Appends to the pre-crawl 'no_key' skips and persists
+    // the merged list so the result banner + AI 판단 로그 can render it.
+    // Narrower than DeskSkippedEntry (never 'no_key' here) so `reason` stays a
+    // DeskSourceErrorReason for sourceErrorEventText; still assignable to
+    // DeskSkippedEntry[] when merged into the persisted list below.
+    const runtimeSkipped: { source: DeskSourceId; reason: DeskSourceErrorReason }[] = [];
+    for (const [src, reason] of sourceError) {
+      if ((sourceArticleCount.get(src) ?? 0) === 0) {
+        runtimeSkipped.push({ source: src, reason });
+      }
+    }
+    if (runtimeSkipped.length > 0) {
+      await patch({ skipped: [...preSkipped, ...runtimeSkipped] });
+      const lines = runtimeSkipped.map(
+        (e) => `🚫 ${sourceLabelKo(e.source)} — ${sourceErrorEventText(e.reason)}`,
+      );
+      for (const line of lines.slice(0, -1)) pushEvent(line);
+      await pushAndPatch(lines[lines.length - 1], 'crawling');
+    }
 
     // Now that per-source pulls aim at 500, the dedupe pool can balloon to
     // a few thousand. Keep a generous global cap so the LLM still gets fed,

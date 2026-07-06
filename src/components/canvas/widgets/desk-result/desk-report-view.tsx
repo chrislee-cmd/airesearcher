@@ -3,6 +3,7 @@
 import { useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DeskClaim, DeskJob } from '@/components/desk-job-provider';
+import type { DeskSkipReason } from '@/lib/desk-sources';
 import { DeskAnalyticsPanel } from '@/components/desk-analytics-panel';
 import {
   parseDeskReport,
@@ -84,12 +85,7 @@ export function DeskReportView({
           job.similar_keywords.length > 0) && (
           <div className="mb-4 flex flex-col gap-2">
             {job.skipped && job.skipped.length > 0 && (
-              <div className="rounded-sm border border-warning-line bg-warning-bg px-4 py-2.5 text-sm text-ink-2">
-                <span className="font-semibold">{tDesk('skippedTitle')}</span>
-                <span className="ml-2 font-mono text-mute">
-                  {job.skipped.map((s) => s.source).join(', ')}
-                </span>
-              </div>
+              <SkippedBanners skipped={job.skipped} tDesk={tDesk} />
             )}
             {job.similar_keywords.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -154,6 +150,71 @@ export function DeskReportView({
         )}
       </div>
     </div>
+  );
+}
+
+// 누락/실패 소스 배너 — reason 별로 문구·톤을 분리해서, 이번 잠복의 직접
+// 원인이던 "키 없음(no_key)" vs "키 틀림(invalid_key)" 을 명확히 구분한다.
+// invalid_key 는 사용자 액션(키 재등록)이 필요하므로 amore 강조 톤, 나머지는
+// warning 톤. reason 누락(옛 job row) 은 'no_key' 로 취급 — 회귀 X.
+const SKIPPED_REASON_ORDER: DeskSkipReason[] = [
+  'invalid_key',
+  'rate_limited',
+  'fetch_failed',
+  'no_key',
+];
+
+const SKIPPED_REASON_META: Record<
+  DeskSkipReason,
+  { titleKey: Parameters<TDesk>[0]; tone: 'amore' | 'warning' }
+> = {
+  invalid_key: { titleKey: 'skippedInvalidKey', tone: 'amore' },
+  rate_limited: { titleKey: 'skippedRateLimited', tone: 'warning' },
+  fetch_failed: { titleKey: 'skippedFetchFailed', tone: 'warning' },
+  no_key: { titleKey: 'skippedTitle', tone: 'warning' },
+};
+
+function SkippedBanners({
+  skipped,
+  tDesk,
+}: {
+  skipped: NonNullable<DeskJob['skipped']>;
+  tDesk: TDesk;
+}) {
+  const groups = new Map<DeskSkipReason, string[]>();
+  for (const s of skipped) {
+    const reason: DeskSkipReason = s.reason ?? 'no_key';
+    const arr = groups.get(reason) ?? [];
+    arr.push(s.source);
+    groups.set(reason, arr);
+  }
+
+  return (
+    <>
+      {SKIPPED_REASON_ORDER.filter((r) => groups.has(r)).map((reason) => {
+        const meta = SKIPPED_REASON_META[reason];
+        const sources = groups.get(reason) ?? [];
+        const toneClass =
+          meta.tone === 'amore'
+            ? 'border-amore bg-amore-bg text-ink-2'
+            : 'border-warning-line bg-warning-bg text-ink-2';
+        const labelClass =
+          meta.tone === 'amore'
+            ? 'font-semibold text-amore'
+            : 'font-semibold';
+        return (
+          <div
+            key={reason}
+            className={`rounded-sm border px-4 py-2.5 text-sm ${toneClass}`}
+          >
+            <span className={labelClass}>{tDesk(meta.titleKey)}</span>
+            <span className="ml-2 font-mono text-mute">
+              {sources.join(', ')}
+            </span>
+          </div>
+        );
+      })}
+    </>
   );
 }
 

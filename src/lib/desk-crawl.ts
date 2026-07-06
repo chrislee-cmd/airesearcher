@@ -3,20 +3,27 @@
 // keeps only the dispatch + timeout + dedupe wrappers the API route calls.
 
 import { DESK_SOURCE_REGISTRY } from './desk-sources';
-import type { DeskArticle, DeskDateRange, DeskRegion, DeskSourceId } from './desk-sources';
-import { SOURCE_BUDGET } from './desk-sources/helpers';
+import type {
+  DeskArticle,
+  DeskDateRange,
+  DeskFetchResult,
+  DeskRegion,
+  DeskSourceId,
+} from './desk-sources';
+import { SOURCE_BUDGET, toFetchResult } from './desk-sources/helpers';
 import { classifyTier } from './desk-source-tiers';
 
 // Re-exported for back-compat with callers that imported these from
 // `@/lib/desk-crawl` before the registry refactor (route.ts, etc).
 export { SOURCE_BUDGET } from './desk-sources/helpers';
 export { sourceMissingKey } from './desk-sources';
-export type { DeskDateRange } from './desk-sources';
+export type { DeskDateRange, DeskFetchResult } from './desk-sources';
 
 // Registry lookup replaces the old per-source `switch`. Adding a source no
 // longer touches this function — it just appears in `DESK_SOURCE_REGISTRY`.
-// crawlSource never rejects: any fetch error is caught and returns [] so one
-// bad source can't poison a whole job.
+// crawlSource never rejects: any fetch error is caught and returns a
+// `{ articles: [], error }` result so one bad source can't poison a whole job,
+// while the error reason still reaches the caller (no silent `[]`).
 export async function crawlSource(
   source: DeskSourceId,
   keyword: string,
@@ -26,14 +33,14 @@ export async function crawlSource(
   // Defaults to the full source budget for back-compat with single-keyword
   // callers; the route divides SOURCE_BUDGET / N_keywords.
   limit: number = SOURCE_BUDGET,
-): Promise<DeskArticle[]> {
+): Promise<DeskFetchResult> {
   const def = DESK_SOURCE_REGISTRY[source];
-  if (!def) return [];
+  if (!def) return { articles: [] };
   try {
-    return await def.fetch({ keyword, region, range, limit });
+    return toFetchResult(await def.fetch({ keyword, region, range, limit }));
   } catch (err) {
     console.error('[desk-crawl]', source, keyword, err);
-    return [];
+    return { articles: [], error: 'fetch_failed' };
   }
 }
 
@@ -46,12 +53,15 @@ export async function crawlSource(
 export const CRAWL_TASK_TIMEOUT_MS = 15_000;
 
 // Race a single crawlSource against a hard timeout. crawlSource never rejects
-// (it catches internally and returns []), so a timeout simply resolves to []
-// — graceful "0 results for this task". Because the route fires all tasks via
-// Promise.all (fully concurrent), this bounds the whole crawl phase's
-// wall-clock to ≈ CRAWL_TASK_TIMEOUT_MS regardless of task count. The orphaned
-// underlying fetch is still aborted by safeFetch's own 10s timer, so nothing
-// leaks past the function's lifetime.
+// (it catches internally and returns a result), so a timeout simply resolves to
+// `{ articles: [], error: 'fetch_failed' }` — a graceful "this task failed to
+// respond in time". Because the route fires all tasks via Promise.all (fully
+// concurrent), this bounds the whole crawl phase's wall-clock to ≈
+// CRAWL_TASK_TIMEOUT_MS regardless of task count. The orphaned underlying fetch
+// is still aborted by safeFetch's own 10s timer, so nothing leaks past the
+// function's lifetime. The job-level aggregation only surfaces this error when
+// the source collected 0 articles across all its tasks, so a slow task on one
+// keyword doesn't false-alarm when another keyword succeeded.
 export async function crawlSourceWithTimeout(
   source: DeskSourceId,
   keyword: string,
@@ -59,10 +69,13 @@ export async function crawlSourceWithTimeout(
   range: DeskDateRange = {},
   limit: number = SOURCE_BUDGET,
   timeoutMs: number = CRAWL_TASK_TIMEOUT_MS,
-): Promise<DeskArticle[]> {
+): Promise<DeskFetchResult> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<DeskArticle[]>((resolve) => {
-    timer = setTimeout(() => resolve([]), timeoutMs);
+  const timeout = new Promise<DeskFetchResult>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ articles: [], error: 'fetch_failed' }),
+      timeoutMs,
+    );
   });
   try {
     return await Promise.race([

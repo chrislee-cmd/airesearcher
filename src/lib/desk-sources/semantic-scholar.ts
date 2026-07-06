@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskArticle, DeskSourceDefinition } from './types';
-import { inRange, safeFetch } from './helpers';
+import { classifyHttpStatus, inRange, safeFetch } from './helpers';
 
 // Semantic Scholar (graph/v1) — 200M+ academic papers. Region-agnostic; the
 // `region` param is ignored. The API key is OPTIONAL: with a key we get a
@@ -69,7 +69,9 @@ export const semanticScholar: DeskSourceDefinition = {
       `https://api.semanticscholar.org/graph/v1/paper/search?${params}`,
       { headers },
     );
-    if (!res.ok) return [];
+    // S2 enforces 1 req/sec; bursts return 429 despite the throttle above. Surface
+    // it as rate_limited instead of a silent `[]` so the user sees "일부 누락".
+    if (!res.ok) return { articles: [], error: classifyHttpStatus(res.status) };
     const json = (await res.json()) as { data?: S2Paper[] };
     const out: DeskArticle[] = [];
     for (const p of json.data ?? []) {

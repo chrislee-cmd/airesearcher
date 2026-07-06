@@ -2,7 +2,24 @@
 // the old `desk-crawl.ts` so each source module can reuse them without importing
 // the crawl orchestrator.
 
+import type { DeskArticle, DeskFetchResult } from './types';
 import type { DeskDateRange } from './types';
+
+// Normalise a source module's return into the richer `DeskFetchResult`. Sources
+// that don't opt into the error channel keep returning a bare array; this wraps
+// them so the crawl orchestrator has one shape to reason about.
+export function toFetchResult(
+  r: DeskArticle[] | DeskFetchResult,
+): DeskFetchResult {
+  return Array.isArray(r) ? { articles: r } : r;
+}
+
+// Map an HTTP status to an error reason for sources that fail at the transport
+// layer (non-2xx). 429 is the one unambiguous rate-limit signal across APIs;
+// everything else (timeout/5xx/4xx) is a generic fetch failure.
+export function classifyHttpStatus(status: number): DeskFetchResult['error'] {
+  return status === 429 ? 'rate_limited' : 'fetch_failed';
+}
 
 export const UA =
   'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
