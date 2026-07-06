@@ -32,7 +32,6 @@ import {
   type DeskJob,
 } from '@/components/desk-job-provider';
 import { DeskResultView } from '@/components/canvas/widgets/desk-result';
-import { useToast } from '@/components/toast-provider';
 import {
   TREND_SOURCE_IDS,
   type DeskMode,
@@ -297,12 +296,11 @@ export function DeskCardBody() {
   const requireAuth = useRequireAuth();
   const { jobs, latestJob, isWorking, cancelJob } = useDeskJobs();
   const { notify: notifyDeduction } = useCreditDeduction();
-  const toast = useToast();
 
   // ─── inputs ──────────────────────────────────────────────────────────────
   // 리서치 목적 mode (데스크 v2). 기본 = 트렌드 — 목적 기반 flow 가 v2 의
-  // 주 경로이고, 옛 소스 직접 선택은 'custom' 으로 이동했다. market 은 라디오
-  // 선택은 가능하되 실행 시 "곧 제공" toast 로 차단 (후속 PR 이 해제).
+  // 주 경로이고, 옛 소스 직접 선택은 'custom' 으로 이동했다. trend / market 은
+  // 서버가 소스를 자동 선정하고, custom 만 사용자가 소스를 직접 고른다.
   const [mode, setMode] = useState<DeskMode>('trend');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordDraft, setKeywordDraft] = useState('');
@@ -494,13 +492,9 @@ export function DeskCardBody() {
     requireAuth(() => void doSubmit());
   }
   async function doSubmit() {
-    // market mode = 아직 stub (후속 PR) — 실행만 차단하고 라디오 선택은
-    // 자유. 서버로 보내도 NotImplementedYet 로 환불되지만, 여기서 막아
-    // 불필요한 job 생성/차감/환불 왕복 자체를 없앤다.
-    if (mode === 'market') {
-      toast.push(tDesk('modeComingSoon'));
-      return;
-    }
+    // market mode = 실 로직 구현 완료 (market PR) — 이제 trend 와 동일하게
+    // 서버가 소스를 자동 선정하고 TAM/SAM 참고 데이터를 생성한다. shell 이
+    // 남겨 둔 '곧 제공' 실행 차단은 이 PR 에서 해제한다.
     const finalKeywords = commitDraft();
     if (finalKeywords.length === 0) {
       setError(tDesk('errorNoKeyword'));
@@ -723,8 +717,8 @@ export function DeskCardBody() {
   }
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
-  // 소스 조건은 custom 만 — trend 는 서버 자동 선정이라 키워드만 있으면 실행
-  // 가능. market 은 CTA 를 살려두고 클릭 시 "곧 제공" toast 로 안내한다.
+  // 소스 조건은 custom 만 — trend / market 은 서버 자동 선정이라 키워드만
+  // 있으면 실행 가능.
   const canRun =
     !submitting &&
     !pendingJobId &&
@@ -739,8 +733,8 @@ export function DeskCardBody() {
   // regions — but it tracks the crawl cap math closely enough for guidance.
   const kwCountForEstimate = keywords.length + (keywordDraft.trim() ? 1 : 0);
   const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
-  // trend 는 서버 자동 선정 소스 수 기준 (부정 filter 추가분은 소량이라 견적
-  // 에선 무시). market 은 실행 자체가 차단이라 견적 숫자에 의미 없음.
+  // trend / market 은 서버 자동 선정 소스 수 기준 (trend 의 부정 filter 나
+  // market 의 소스 세트 차이는 소량이라 견적에선 trend 소스 수로 근사).
   const estimateSourceCount =
     mode === 'custom' ? selectedSourceIds.length : TREND_SOURCE_IDS.length;
   const estimatedSearches = hasKeywords
@@ -890,13 +884,12 @@ export function DeskCardBody() {
 
   // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 주제·키워드 입력,
   // 세부 옵션(지역/기간/분석 방향성), 범위 견적, 실행 CTA.
-  // 리서치 목적 3 mode 카드 — 라디오 3개 모두 enabled (disabled X). market
-  // 은 선택 가능하되 실행 시 "곧 제공" toast (doSubmit). 후속 market/custom
-  // PR 은 이 UI 의 "toast → 실행" 로직만 바꾸고 라디오 위치는 재편집하지
-  // 않는다 (충돌 매트릭스).
+  // 리서치 목적 3 mode 카드 — 라디오 3개 모두 enabled + 실행 가능. `soon`
+  // 배지는 아직 미구현 mode 를 위한 자리로 남겨 두되, 현재 3 mode 는 모두
+  // 라이브라 아무도 켜지 않는다.
   const MODE_OPTIONS: { key: DeskMode; icon: string; soon?: boolean }[] = [
     { key: 'trend', icon: '🔥' },
-    { key: 'market', icon: '📊', soon: true },
+    { key: 'market', icon: '📊' },
     { key: 'custom', icon: '🛠' },
   ];
   const modeSelector = (
