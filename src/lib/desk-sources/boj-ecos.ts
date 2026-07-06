@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskSourceDefinition } from './types';
-import { safeFetch } from './helpers';
+import { cleanApiKey, safeFetch } from './helpers';
 
 // Bank of Korea ECOS (한국은행 경제통계시스템). Free key at
 // https://ecos.bok.or.kr/api/ . We hit `StatisticTableList` — the catalog of
@@ -27,13 +27,17 @@ export const bojEcos: DeskSourceDefinition = {
   regionOnly: ['KR'],
   envKeys: ['ECOS_API_KEY'],
   async fetch({ keyword, limit }) {
-    const key = env.ECOS_API_KEY;
+    const key = cleanApiKey(env.ECOS_API_KEY);
     if (!key) return [];
-    // ECOS paginates 1-indexed inclusive: /start/end/. Cap the pull at `limit`
-    // tables before we keyword-filter (the endpoint offers no server-side text
-    // search, so we over-fetch then narrow locally).
-    const end = Math.min(10_000, Math.max(1, limit));
-    const url = `https://ecos.bok.or.kr/api/StatisticTableList/${key}/json/kr/1/${end}/`;
+    // ECOS paginates 1-indexed inclusive: /start/end/. The endpoint has no
+    // server-side text search, so we must pull the WHOLE catalog and filter
+    // locally. The catalog is ~900 stat tables — capping the pull at `limit`
+    // (as the old code did) fetched only the first ~15 rows in market mode and
+    // the keyword filter almost always matched 0 (same class of bug as the old
+    // DART feed-filter). CATALOG_SPAN over-covers the catalog; we slice to
+    // `limit` AFTER filtering.
+    const CATALOG_SPAN = 1000;
+    const url = `https://ecos.bok.or.kr/api/StatisticTableList/${key}/json/kr/1/${CATALOG_SPAN}/`;
     const res = await safeFetch(url, undefined, 15_000);
     if (!res.ok) return [];
     // ECOS returns 200 with a `{ RESULT: { CODE, MESSAGE } }` envelope on error

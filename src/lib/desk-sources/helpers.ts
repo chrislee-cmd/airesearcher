@@ -7,6 +7,24 @@ import type { DeskDateRange } from './types';
 export const UA =
   'Mozilla/5.0 (compatible; ai-researcher-desk/0.1; +https://example.com/bot)';
 
+// API 키에서 실수로 감싼 따옴표/공백을 벗긴다. `.env.local` 은 값에 따옴표를
+// 두는 관례라 dotenv(로컬)는 자동으로 벗기지만, Vercel 대시보드에 따옴표째
+// 붙여넣으면 벗겨지지 않아 그대로 API 로 전달돼 "invalid key" 로 조용히
+// 실패한다 (DART 는 status 100 "잘못된 인증키(40자리)" 로 거부 → 소스 0건).
+// 정상 키에는 따옴표/공백이 없으므로 이 정규화는 무해하다.
+export function cleanApiKey(k: string | undefined): string {
+  if (!k) return '';
+  let v = k.trim();
+  while (
+    v.length >= 2 &&
+    ((v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'")))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 // Per-source total budget. The route splits this evenly across keywords, so
 // each (keyword × source) pull only takes its slice. This stops the first
 // keyword from devouring the whole budget while later keywords starve.

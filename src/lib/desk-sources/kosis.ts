@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskArticle, DeskSourceDefinition } from './types';
-import { safeFetch } from './helpers';
+import { cleanApiKey, safeFetch } from './helpers';
 
 // KOSIS (통계청) statisticsList open API. Free key, KR-only market/industry
 // statistics — used for TAM/SAM sizing. `method=getList` searches the statistic
@@ -25,7 +25,7 @@ export const kosis: DeskSourceDefinition = {
   regionOnly: ['KR'],
   envKeys: ['KOSIS_API_KEY'],
   async fetch({ keyword, limit }) {
-    const key = env.KOSIS_API_KEY;
+    const key = cleanApiKey(env.KOSIS_API_KEY);
     if (!key) return [];
     const params = new URLSearchParams({
       method: 'getList',
@@ -52,7 +52,16 @@ export const kosis: DeskSourceDefinition = {
     } catch {
       return [];
     }
-    if (!Array.isArray(json)) return [];
+    if (!Array.isArray(json)) {
+      // KOSIS 는 무효 키/파라미터 오류도 200 + {err, errMsg} 로 답한다. 조용히
+      // 삼키면 "0건"과 구분이 안 돼 키 문제가 은폐된다 (2026-07-06 market
+      // 회귀에서 err=11 무효 키가 이 경로로 잠복). 함수 로그에만 남긴다.
+      const errObj = json as { err?: string; errMsg?: string };
+      if (errObj?.err) {
+        console.error('[kosis] API error', errObj.err, errObj.errMsg);
+      }
+      return [];
+    }
     const items = json as KosisItem[];
     return items
       .map((item) => ({
