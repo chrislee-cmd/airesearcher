@@ -138,8 +138,12 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5">
-        <div className="flex w-full max-w-[420px] flex-col gap-8">
+      {/* idle: 데스크 밸런스 미러 — 정중앙(justify-center)이 짧은 폼 위/아래로
+          큰 빈 띠를 남겨, justify-start + pt 로 상단부터 시작해 세로 whitespace
+          를 축소하고 넓어진 클러스터(max-w-2xl)가 좌우를 채운다 (밸런스 튜닝,
+          spec 결정 2 — desk-card-body / probing / quotes 미러와 동일 규격). */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
+        <div className="flex w-full max-w-2xl flex-col gap-8">
           {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). */}
           <div className="flex flex-col items-center gap-4 bg-transparent text-center">
             <div className="space-y-2">
