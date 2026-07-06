@@ -126,14 +126,14 @@ export function useToplineDragToAsk(opts: {
     [projectId, patch],
   );
 
+  // qa 객체를 그대로 받는다(카드가 render 클로저에서 넘김) — id 로 lookup 하지
+  // 않는 이유: setPending 함수형 업데이터는 동기 실행이 보장되지 않아, 그 안에서
+  // target 을 잡으면 이 함수 본문에선 아직 undefined 라 early-return 으로 PATCH
+  // 가 안 나가는 버그가 있었다(유지 눌러도 버튼이 안 사라짐).
   const keep = useCallback(
-    async (id: string) => {
-      let target: PendingQa | undefined;
-      setPending((list) => {
-        target = list.find((p) => p.id === id);
-        return list.map((p) => (p.id === id ? { ...p, saving: true } : p));
-      });
-      if (!target) return;
+    async (qa: PendingQa) => {
+      const id = qa.id;
+      patch(id, { saving: true });
 
       try {
         const res = await fetch('/api/interviews/v2/topline/blocks', {
@@ -141,11 +141,11 @@ export function useToplineDragToAsk(opts: {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             project_id: projectId,
-            anchor_block_id: target.anchorBlockId,
-            question: target.question,
-            selected_excerpt: target.selectedExcerpt,
-            answer_md: target.answerMd,
-            citations: target.citations,
+            anchor_block_id: qa.anchorBlockId,
+            question: qa.question,
+            selected_excerpt: qa.selectedExcerpt,
+            answer_md: qa.answerMd,
+            citations: qa.citations,
           }),
         });
         if (!res.ok) {

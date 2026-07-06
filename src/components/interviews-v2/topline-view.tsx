@@ -440,7 +440,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
                       <PendingQaCard
                         key={p.id}
                         qa={p}
-                        onKeep={() => void dta.keep(p.id)}
+                        onKeep={() => void dta.keep(p)}
                         onDiscard={() => dta.discard(p.id)}
                       />
                     ))}
@@ -451,7 +451,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
                 <PendingQaCard
                   key={p.id}
                   qa={p}
-                  onKeep={() => void dta.keep(p.id)}
+                  onKeep={() => void dta.keep(p)}
                   onDiscard={() => dta.discard(p.id)}
                 />
               ))}
