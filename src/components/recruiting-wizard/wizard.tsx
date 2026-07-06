@@ -662,32 +662,30 @@ export function RecruitingWizard({
   // 로 넘어간다 (working flow 회귀 0).
   if (criteriaPhase === 'idle') {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* 컨트롤(대상자 조건 입력) = 수평 center + 수직 top (프로빙 어시스턴트
-            기준). 짧은 좌측정렬 full-width 대신 max-w-md 중앙 컬럼으로 통일. */}
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pt-5">
-          <div className="w-full max-w-md space-y-5">
-            <CriteriaInputFields
-              files={files}
-              pasted={pasted}
-              rejected={rejected}
-              running={jobRunning}
-              onPasteChange={setPasted}
-              onAddFiles={addFiles}
-              onRemoveFile={removeFile}
-            />
-            {criteriaError && (
-              <div className="text-sm text-warning">오류: {criteriaError}</div>
-            )}
-          </div>
-        </div>
-        {/* CTA = 하단 고정(긴 입력에도 상시 노출) + 컨트롤과 같은 중앙 컬럼 폭. */}
-        <div className="shrink-0 border-t-[2px] border-ink bg-paper-soft px-5 py-3">
-          <div className="mx-auto w-full max-w-md">
+      // 컨트롤(대상자 조건 입력) = 카드 정중앙(수직+수평 center) 통일 launcher
+      // 룩 (데스크/프로빙 규격 — 위젯 메인 패널 통일 follow-up). 옛 하단 고정
+      // bg-paper-soft CTA bar 는 회색 wrapper 제거 규칙에 따라 폐기 — CTA 는
+      // 컨트롤 아래 같은 중앙 컬럼에서 좌측 status slot + 우측 auto-width
+      // (justify-between, 데스크/프로빙 동일 pattern).
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5">
+        <div className="w-full max-w-[420px] space-y-4">
+          <CriteriaInputFields
+            files={files}
+            pasted={pasted}
+            rejected={rejected}
+            running={jobRunning}
+            onPasteChange={setPasted}
+            onAddFiles={addFiles}
+            onRemoveFile={removeFile}
+          />
+          {criteriaError && (
+            <div className="text-sm text-warning">오류: {criteriaError}</div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-mute" />
             <ChromeButton
               variant="default"
               size="lg"
-              fullWidth
               onClick={startExtract}
               disabled={!canExtract}
             >
