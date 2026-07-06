@@ -139,6 +139,15 @@ export const env = createEnv({
     // voice. `alloy` is a neutral, androgynous default; override per-env.
     TRANSLATE_TTS_VOICE: z.string().default('alloy'),
     TRANSLATE_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
+    // 2-voice slot mapping: distinct voices per capture slot so listeners
+    // hear WHO is speaking (mic=host → A, tab=guest → B). These carry
+    // CONTRASTING defaults (onyx = deep/low, shimmer = bright/high) so the
+    // two-voice split works out of the box in dual-source sessions with no
+    // env config — override per-env to taste. Only applied in the dual-source
+    // (`both`) mode; single-source sessions use the base TRANSLATE_TTS_VOICE
+    // (see translate-console.tsx). Server-only, same as the base voice.
+    TRANSLATE_TTS_VOICE_MIC: z.string().default('onyx'),
+    TRANSLATE_TTS_VOICE_TAB: z.string().default('shimmer'),
 
     // 'false' (string) disables LLM zero-retention. Default = enabled.
     LLM_ZERO_RETENTION: z.enum(['true', 'false']).default('true'),
@@ -261,6 +270,8 @@ export const env = createEnv({
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
     TRANSLATE_TTS_VOICE: process.env.TRANSLATE_TTS_VOICE,
     TRANSLATE_TTS_MODEL: process.env.TRANSLATE_TTS_MODEL,
+    TRANSLATE_TTS_VOICE_MIC: process.env.TRANSLATE_TTS_VOICE_MIC,
+    TRANSLATE_TTS_VOICE_TAB: process.env.TRANSLATE_TTS_VOICE_TAB,
     LLM_ZERO_RETENTION: process.env.LLM_ZERO_RETENTION,
     POSTHOG_EMBED_URL: process.env.POSTHOG_EMBED_URL,
 

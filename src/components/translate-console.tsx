@@ -912,6 +912,13 @@ export function TranslateConsole({
   // `<audio>.muted`.
   const ttsQueueRef = useRef<TtsQueue | null>(null);
   const ttsMonitorGainRef = useRef<GainNode | null>(null);
+  // Capture mode of the *running* session, captured at start(). The 2-voice
+  // slot→voice mapping only applies in dual-source (`both`) sessions; in
+  // single-source sessions there is one speaker, so we pass no slot and the
+  // server keeps the base fixed voice (no regression from the single-voice
+  // pipeline). Read inside appendStreaming, which is a stable useCallback —
+  // a ref avoids re-creating it every captureMode change.
+  const runningCaptureModeRef = useRef<CaptureMode>('both');
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Tab-audio mode only: periodic silence injection. Continuous tab
   // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
@@ -1816,9 +1823,15 @@ export function TranslateConsole({
             );
             echoBuf.push({ key: turnKey, ts: wall });
             recentOutputEchoRef.current = echoBuf;
-            // 🔊 Custom TTS: synthesize this committed translation in the
-            // fixed voice (queue preserves commit order across slots).
-            if (CUSTOM_TTS_ENABLED) ttsQueueRef.current?.enqueue(turnText, lang);
+            // 🔊 Custom TTS: synthesize this committed translation. In a
+            // dual-source session the originating slot picks a distinct voice
+            // (mic=host → A, tab=guest → B); single-source sessions pass no
+            // slot and keep the base voice. Queue preserves commit order.
+            if (CUSTOM_TTS_ENABLED) {
+              const voiceSlot =
+                runningCaptureModeRef.current === 'both' ? slot : undefined;
+              ttsQueueRef.current?.enqueue(turnText, lang, voiceSlot);
+            }
           }
           const finalLine: CaptionLine = {
             id: existing.id,
@@ -2032,10 +2045,15 @@ export function TranslateConsole({
               );
               echoBuf.push({ key: dedupKey, ts: wall });
               recentOutputEchoRef.current = echoBuf;
-              // 🔊 Custom TTS: synthesize this committed translation in the
-              // fixed voice (queue preserves commit order across slots).
-              if (CUSTOM_TTS_ENABLED)
-                ttsQueueRef.current?.enqueue(finalText, lang);
+              // 🔊 Custom TTS: synthesize this committed translation. In a
+              // dual-source session the originating slot picks a distinct
+              // voice (mic=host → A, tab=guest → B); single-source sessions
+              // pass no slot and keep the base voice. Order preserved.
+              if (CUSTOM_TTS_ENABLED) {
+                const voiceSlot =
+                  runningCaptureModeRef.current === 'both' ? slot : undefined;
+                ttsQueueRef.current?.enqueue(finalText, lang, voiceSlot);
+              }
             }
             const finalLine: CaptionLine = {
               id: current.id,
@@ -2291,6 +2309,9 @@ export function TranslateConsole({
 
     const slotsToStart = activeSlots(captureMode);
     const captureModeAtStart = captureMode;
+    // Record the running mode so appendStreaming can decide whether the
+    // 2-voice slot mapping applies (dual-source only).
+    runningCaptureModeRef.current = captureModeAtStart;
 
     // Arm the connect watchdog. Any path that succeeds clears it (live
     // reached). Any path that fails has already called cleanup(), which

@@ -29,7 +29,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'missing_openai_key' }, { status: 500 });
   }
 
-  let body: { session_id?: string; text?: string; lang?: string };
+  let body: {
+    session_id?: string;
+    text?: string;
+    lang?: string;
+    slot?: 'mic' | 'tab';
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -65,6 +70,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'session_ended' }, { status: 410 });
   }
 
+  // 2-voice slot mapping: mic (host) and tab (guest) get distinct voices so
+  // listeners hear who is speaking. Each per-slot override falls back to the
+  // base fixed voice when unset, and an absent/unknown slot (single-source
+  // sessions send none) always uses the base voice — so the single-voice
+  // behavior is preserved unless an operator opts in via the env overrides.
+  const voice =
+    body.slot === 'mic'
+      ? env.TRANSLATE_TTS_VOICE_MIC ?? env.TRANSLATE_TTS_VOICE
+      : body.slot === 'tab'
+        ? env.TRANSLATE_TTS_VOICE_TAB ?? env.TRANSLATE_TTS_VOICE
+        : env.TRANSLATE_TTS_VOICE;
+
   // WAV so the browser can `decodeAudioData` it with zero codec ambiguity
   // and no MP3-decode latency — the payload is host↔server only (LiveKit
   // publishes the decoded PCM, not this response).
@@ -78,7 +95,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: env.TRANSLATE_TTS_MODEL,
-        voice: env.TRANSLATE_TTS_VOICE,
+        voice,
         input: text,
         response_format: 'wav',
       }),

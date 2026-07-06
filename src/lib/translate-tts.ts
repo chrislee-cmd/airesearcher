@@ -41,14 +41,23 @@ export function splitSentences(text: string): string[] {
   return matches.map((s) => s.trim()).filter(Boolean);
 }
 
+/**
+ * The capture slot a committed line originated from. Drives the 2-voice
+ * mapping server-side (mic=host → voice A, tab=guest → voice B). `undefined`
+ * means "no slot mapping" — the server uses the base fixed voice. Callers
+ * pass `undefined` in single-source sessions so those never diverge from the
+ * single-voice behavior.
+ */
+export type TtsSlot = 'mic' | 'tab';
+
 export type TtsQueue = {
   /** Queue a committed output-final line for synthesis + playback. */
-  enqueue: (text: string, lang: string) => void;
+  enqueue: (text: string, lang: string, slot?: TtsSlot) => void;
   /** Stop playback, abort in-flight synthesis, and drop the queue. */
   stop: () => void;
 };
 
-type QueueItem = { text: string; lang: string };
+type QueueItem = { text: string; lang: string; slot?: TtsSlot };
 
 export function createTtsQueue(opts: {
   ctx: AudioContext;
@@ -74,14 +83,19 @@ export function createTtsQueue(opts: {
   // `ctx.currentTime` (a small audible gap, never an overlap).
   let playCursor = 0;
 
-  async function synthesize(text: string, lang: string): Promise<AudioBuffer | null> {
+  async function synthesize(
+    text: string,
+    lang: string,
+    slot?: TtsSlot,
+  ): Promise<AudioBuffer | null> {
     const sessionId = getSessionId();
     if (!sessionId) return null;
     try {
       const res = await fetch('/api/translate/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, text, lang }),
+        // `slot` selects the per-slot voice server-side; omitted → base voice.
+        body: JSON.stringify({ session_id: sessionId, text, lang, slot }),
         signal: abort.signal,
       });
       if (!res.ok) {
@@ -132,7 +146,7 @@ export function createTtsQueue(opts: {
         // Serial await keeps sentences in commit order; `.start()` inside
         // schedule() is non-blocking so the NEXT synthesize overlaps this
         // sentence's playback (the pipeline).
-        const buffer = await synthesize(item.text, item.lang);
+        const buffer = await synthesize(item.text, item.lang, item.slot);
         if (buffer) schedule(buffer);
       }
     } finally {
@@ -144,10 +158,10 @@ export function createTtsQueue(opts: {
   }
 
   return {
-    enqueue(text: string, lang: string) {
+    enqueue(text: string, lang: string, slot?: TtsSlot) {
       if (stopped) return;
       for (const sentence of splitSentences(text)) {
-        queue.push({ text: sentence, lang });
+        queue.push({ text: sentence, lang, slot });
       }
       void pump();
     },
