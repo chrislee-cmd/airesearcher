@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskSourceDefinition } from './types';
-import { safeFetch } from './helpers';
+import { cleanApiKey, safeFetch } from './helpers';
 
 // Bank of Korea ECOS (한국은행 경제통계시스템). Free key at
 // https://ecos.bok.or.kr/api/ . We hit `StatisticTableList` — the catalog of
@@ -27,7 +27,7 @@ export const bojEcos: DeskSourceDefinition = {
   regionOnly: ['KR'],
   envKeys: ['ECOS_API_KEY'],
   async fetch({ keyword, limit }) {
-    const key = env.ECOS_API_KEY;
+    const key = cleanApiKey(env.ECOS_API_KEY);
     if (!key) return [];
     // ECOS paginates 1-indexed inclusive: /start/end/. The endpoint has no
     // server-side text search, so we must pull the WHOLE catalog and filter

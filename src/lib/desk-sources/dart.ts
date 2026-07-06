@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskArticle, DeskSourceDefinition } from './types';
-import { inRange, safeFetch } from './helpers';
+import { cleanApiKey, inRange, safeFetch } from './helpers';
 import {
   fetchDartRevenue,
   formatKrwAmount,
@@ -173,7 +173,7 @@ export const dart: DeskSourceDefinition = {
   regionOnly: ['KR'],
   envKeys: ['DART_API_KEY'],
   async fetch({ keyword, range, limit }) {
-    const key = env.DART_API_KEY;
+    const key = cleanApiKey(env.DART_API_KEY);
     if (!key) return [];
 
     // 검색어가 상장사 사명이면 corp_code 로 그 회사를 정확히 조회 (매출액 +

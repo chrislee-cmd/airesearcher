@@ -1,6 +1,6 @@
 import { env } from '@/env';
 import type { DeskArticle, DeskSourceDefinition } from './types';
-import { safeFetch } from './helpers';
+import { cleanApiKey, safeFetch } from './helpers';
 
 // KOSIS (통계청) statisticsList open API. Free key, KR-only market/industry
 // statistics — used for TAM/SAM sizing. `method=getList` searches the statistic
@@ -25,7 +25,7 @@ export const kosis: DeskSourceDefinition = {
   regionOnly: ['KR'],
   envKeys: ['KOSIS_API_KEY'],
   async fetch({ keyword, limit }) {
-    const key = env.KOSIS_API_KEY;
+    const key = cleanApiKey(env.KOSIS_API_KEY);
     if (!key) return [];
     const params = new URLSearchParams({
       method: 'getList',

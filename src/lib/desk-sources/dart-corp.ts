@@ -10,7 +10,7 @@
 import { unzipSync } from 'fflate';
 import { getCache, setCache } from '@/lib/cache';
 import { env } from '@/env';
-import { pickTag, safeFetch } from './helpers';
+import { cleanApiKey, pickTag, safeFetch } from './helpers';
 
 export type DartCorp = { corpCode: string; corpName: string; stockCode: string };
 export type DartRevenue = { year: number; amount: number; label: string };
@@ -78,7 +78,7 @@ async function loadListedCorps(key: string): Promise<DartCorp[]> {
 // 옛 방식(공시 피드 필터)으로 fallback.
 export async function resolveDartCorp(
   name: string,
-  key: string = env.DART_API_KEY ?? '',
+  key: string = cleanApiKey(env.DART_API_KEY),
 ): Promise<DartCorp | null> {
   if (!key) return null;
   const corps = await loadListedCorps(key);
