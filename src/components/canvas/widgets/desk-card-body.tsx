@@ -900,7 +900,7 @@ export function DeskCardBody() {
     { key: 'custom', icon: '🛠' },
   ];
   const modeSelector = (
-    <div role="radiogroup" aria-label={tDesk('modeLabel')} className="grid grid-cols-1 gap-2">
+    <div role="radiogroup" aria-label={tDesk('modeLabel')} className="grid grid-cols-3 gap-2">
       {MODE_OPTIONS.map((opt) => {
         const isSelected = mode === opt.key;
         return (
@@ -913,34 +913,32 @@ export function DeskCardBody() {
             role="radio"
             aria-checked={isSelected}
             onClick={() => setMode(opt.key)}
+            title={tDesk(`modeDesc.${opt.key}` as never)}
             className={
-              'flex items-start gap-3 rounded-sm border-[2px] p-3 text-left transition-colors ' +
+              'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 text-center transition-colors ' +
               (isSelected
                 ? 'border-amore bg-amore-bg'
                 : 'border-line-soft bg-paper hover:bg-paper-soft')
             }
           >
+            {isSelected && (
+              <span aria-hidden className="absolute right-2 top-2 text-amore">
+                ✓
+              </span>
+            )}
             <span aria-hidden className="text-xl leading-none">
               {opt.icon}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-ink">
-                  {tDesk(`modeTitle.${opt.key}` as never)}
-                </span>
-                {opt.soon && (
-                  <span className="rounded-pill border border-line bg-white px-2 py-0.5 text-xs text-mute">
-                    {tDesk('modeSoonBadge')}
-                  </span>
-                )}
-              </span>
-              <span className="mt-0.5 block text-xs leading-[1.6] text-mute">
-                {tDesk(`modeDesc.${opt.key}` as never)}
-              </span>
+            <span className="text-sm font-semibold text-ink">
+              {tDesk(`modeTitle.${opt.key}` as never)}
             </span>
-            {isSelected && (
-              <span aria-hidden className="text-amore">
-                ✓
+            {opt.soon ? (
+              <span className="rounded-pill border border-line bg-white px-2 py-0.5 text-xs text-mute">
+                {tDesk('modeSoonBadge')}
+              </span>
+            ) : (
+              <span className="line-clamp-2 text-xs leading-[1.5] text-mute">
+                {tDesk(`modeDesc.${opt.key}` as never)}
               </span>
             )}
           </button>
