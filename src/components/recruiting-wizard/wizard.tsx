@@ -81,17 +81,29 @@ function formatBytes(n: number): string {
 
 export function RecruitingWizard({
   onPublishedChange,
+  onPublishedFormChange,
   onConditionsChange,
+  persistOnUnmount = false,
 }: {
   // Emitted whenever the wizard enters/leaves the published state so the
   // canvas card can mount the shared WidgetStatusFooter ("신청서 제작이
   // 완료되었습니다" → fullview) without prop-drilling internal wizard state.
   onPublishedChange?: (published: boolean) => void;
+  // Emitted with the just-published form's id / responder link / title so
+  // the host card can render its published summary without re-fetching
+  // forms/list (that poll was removed — recruiting-card.tsx header comment).
+  onPublishedFormChange?: (
+    form: { formId: string; responderUri: string; title: string } | null,
+  ) => void;
   // Emitted whenever the analysed 대상자 조건 change so the fullview's
   // conditions panel can mirror them. The criteria live only in this
   // wizard's React state (never persisted per-form server-side), so the
   // fullview reads them by lifting this callback rather than re-fetching.
   onConditionsChange?: (brief: EditableBrief | null) => void;
+  // When the wizard is hosted inside the card's entry-modal it unmounts on
+  // close. Set true so the in-progress draft is persisted on unmount (card
+  // pre-fill + resume) — see the cleanup effect below.
+  persistOnUnmount?: boolean;
 } = {}) {
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
@@ -152,6 +164,68 @@ export function RecruitingWizard({
   useEffect(() => {
     onConditionsChange?.(editedBrief);
   }, [editedBrief, onConditionsChange]);
+
+  // Surface the just-published form's details to the host card (published
+  // summary). Fires null until Card 3 publishes.
+  useEffect(() => {
+    onPublishedFormChange?.(
+      published
+        ? {
+            formId: published.formId,
+            responderUri: published.responderUri,
+            title: survey?.title ?? '',
+          }
+        : null,
+    );
+  }, [published, survey, onPublishedFormChange]);
+
+  // Persist the in-progress draft when the wizard unmounts (entry-modal
+  // close). A re-open rehydrates from it (loadDraft above) so the flow
+  // resumes exactly where it left off, and the card can pre-fill its
+  // "이어서 만들기" control. Once published we drop the draft instead so a
+  // re-open starts clean AND the approved-survey auto-publish effect can't
+  // re-fire on a rehydrated 'approved' phase (double-publish guard).
+  const persistRef = useRef({
+    pasted,
+    partialBrief,
+    editedBrief,
+    survey,
+    criteriaPhase,
+    surveyPhase,
+    published,
+  });
+  // Keep the snapshot fresh after every commit so the unmount cleanup below
+  // reads the latest state (writing a ref during render is forbidden by
+  // react-hooks/refs — do it in an effect).
+  useEffect(() => {
+    persistRef.current = {
+      pasted,
+      partialBrief,
+      editedBrief,
+      survey,
+      criteriaPhase,
+      surveyPhase,
+      published,
+    };
+  });
+  useEffect(() => {
+    if (!persistOnUnmount) return;
+    return () => {
+      const s = persistRef.current;
+      if (s.published) {
+        clearDraft();
+        return;
+      }
+      persistDraft({
+        pasted: s.pasted,
+        partialBrief: s.partialBrief,
+        editedBrief: s.editedBrief,
+        survey: s.survey,
+        criteriaPhase: s.criteriaPhase,
+        surveyPhase: s.surveyPhase,
+      });
+    };
+  }, [persistOnUnmount]);
 
   // ── Modal state ─────────────────────────────────────────────────────
   type ModalState =

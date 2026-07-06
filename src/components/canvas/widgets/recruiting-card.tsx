@@ -5,11 +5,16 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
+import { ControlBoardPanel } from '../shell/control-board-panel';
+import { WidgetPrimaryCta } from '../shell/widget-primary-cta';
+import { Field } from '../shell/field';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
-import { WidgetStatusFooter } from '../shell/widget-status-footer';
 import { Banner } from '../shell/banner';
 import {
   ResponsesSpreadsheet,
@@ -19,7 +24,12 @@ import {
 import { JudgedListTable } from './recruiting/judged-list-table';
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
-import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
+import {
+  clearDraft,
+  loadDraft,
+  type EditableBrief,
+  type PersistedDraft,
+} from '@/components/recruiting-wizard/draft-storage';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
   EMPTY_FILTER,
@@ -40,10 +50,30 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
-  // Published state emitted by the wizard. When true, the card shows the
-  // shared completion footer ("신청서 제작이 완료되었습니다") whose click
-  // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
-  const [isPublished, setIsPublished] = useState(false);
+  // Entry-modal open state — the wizard (조건 → 설문 → 발행 flow) now lives
+  // in a modal opened by the idle control board's CTA, not embedded in the
+  // card body (6-위젯 ControlBoard 통일). 카드 body = ControlBoardPanel.
+  const [flowOpen, setFlowOpen] = useState(false);
+  // Just-published form (id / responder link / title) lifted from the
+  // wizard. Non-null → card shows its published summary instead of the idle
+  // control board. Session-scoped (matches the removed forms/list poll — we
+  // don't re-fetch published forms on load; see the header comment).
+  const [publishedForm, setPublishedForm] = useState<{
+    formId: string;
+    responderUri: string;
+    title: string;
+  } | null>(null);
+  // Draft snapshot for the idle control board's pre-fill + "이어서 만들기"
+  // CTA. Re-read whenever the entry modal closes (the wizard persists its
+  // draft on unmount when hosted in the modal). null on the server / first
+  // paint.
+  const [draft, setDraft] = useState<PersistedDraft | null>(null);
+  useEffect(() => {
+    // Refresh the draft snapshot after the modal closes (and on mount). The
+    // wizard's unmount cleanup persists before this parent effect runs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-close/hydration draft probe
+    if (!flowOpen) setDraft(loadDraft());
+  }, [flowOpen]);
   // 대상자 조건은 이제 발행 시 recruiting_forms 에 폼별로 저장된다
   // (migration 20260703060414). 우선순위:
   //   1) fullview 에서 *선택된 폼* 의 저장된 조건 (옛 폼·refresh 후에도 노출)
@@ -165,38 +195,67 @@ function ExpandedBody() {
     trackEvent('widget_viewed', { widget: 'recruiting', fullview: true });
     openFullview();
   };
+
+  // 위저드 flow 진입/종료.
+  const handleOpenFlow = () => {
+    trackEvent('widget_action', { widget: 'recruiting', action: 'flow_open' });
+    setFlowOpen(true);
+  };
+  const handleCloseFlow = () => setFlowOpen(false);
+  // "새 설문" (published 요약에서) — 남은 draft 를 버려 위저드가 깨끗한 첫
+  // 단계로 열리고, 세션의 published 요약도 초기화해 모달 뒤 카드가 idle 로
+  // 돌아가게 한다.
+  const handleNewSurvey = () => {
+    clearDraft();
+    setPublishedForm(null);
+    trackEvent('widget_action', { widget: 'recruiting', action: 'flow_open' });
+    setFlowOpen(true);
+  };
   return (
-    <div className="flex h-full flex-col">
-      {/* wizard = 컨트롤 (조건 → 설문 → 발행). 서브헤더 slim bar 폐기 —
-          phase 무관 항상 노출되어 발행 후에도 재발행/조건 조정이 가능하다.
-          fullview·진행 state 보존을 위해 항상 마운트. */}
-      <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* 카드 body = 6-위젯 통일 ControlBoardPanel. published 면 요약, 아니면
+          idle/draft 컨트롤보드. 위저드 3-step 통짜 임베드는 진입형 모달로 해체. */}
+      {publishedForm ? (
+        <PublishedSummary
+          form={publishedForm}
+          onOpenFullview={handleRecruitingFullview}
+          onNewSurvey={handleNewSurvey}
+        />
+      ) : (
+        <IdleControlBoard draft={draft} onOpenFlow={handleOpenFlow} />
+      )}
+
+      {/* 위저드 flow (조건 → 설문 → Google Form 발행) = 진입형 모달. 카드 상주
+          임베드를 해체하되 Step 로직은 불변 — CTA 로만 진입. wide 모달이
+          위저드의 flex 레이아웃에 높이를 준다. 닫으면 위저드가 draft 를
+          persist 해 카드가 pre-fill + "이어서 만들기" 로 이어받는다. */}
+      <Modal
+        open={flowOpen}
+        onClose={handleCloseFlow}
+        size="wide"
+        title="설문 만들기"
+      >
         <RecruitingWizard
-          onPublishedChange={setIsPublished}
+          persistOnUnmount
+          onPublishedFormChange={(f) => {
+            // truthy 만 latch — "새 설문" 모달을 발행 없이 닫아도 직전 요약이
+            // 남도록(위저드는 fresh mount 시 null 을 emit). 초기화는
+            // handleNewSurvey 가 명시적으로 한다.
+            if (f) setPublishedForm(f);
+          }}
           onConditionsChange={setConditionsBrief}
         />
-      </div>
+      </Modal>
 
-      {/* 산출물 영역 — 발행 완료 시만. 하단 통일 완료 푸터로 "이미 발행됨 →
-          전체보기(응답 spreadsheet)" 신호 (전사록/데스크/인터뷰와 동일). */}
-      {isPublished && (
-        <WidgetStatusFooter
-          status="done"
-          label={tWidgets('recruitingDone')}
-          viewAllLabel={tWidgets('viewAll')}
-          resetKey="recruiting-published"
-          onClick={handleRecruitingFullview}
-        />
-      )}
       {renderInSlot(
         <WidgetFullviewPanel
           title="리크루팅 — 응답"
           subtitle="참여자 조건 · 분포 · 응답 spreadsheet"
           onClose={close}
           headerAction={
-            <Button variant="secondary" size="sm" onClick={handleRefresh}>
+            <ChromeButton size="sm" onClick={handleRefresh}>
               새로고침
-            </Button>
+            </ChromeButton>
           }
         >
           {/* 좌우 2패널 — 좌: 참여자 조건(위) + 분포 통계(아래) 세로,
@@ -332,9 +391,138 @@ function ExpandedBody() {
   );
 }
 
-// 리크루팅 canvas widget — 3-step 카드 wizard (조건 → 설문 → Google Form)
-// 를 widget body 에 마운트. PREVIEW_FEATURES 에 속해 canvas/page.tsx 의
-// server-side preview gate 가 일반 유저에게 자동 숨김.
+// Idle / draft 카드 = ControlBoardPanel (6-위젯 통일). 위저드 3-step 통짜
+// 임베드를 해체하고 요약 Field 2개(조사 목적 / 참여자 조건) + 주 CTA 로
+// 재포장. draft 있으면 Field pre-fill + "이어서 만들기" CTA.
+function IdleControlBoard({
+  draft,
+  onOpenFlow,
+}: {
+  draft: PersistedDraft | null;
+  onOpenFlow: () => void;
+}) {
+  const summary =
+    draft?.editedBrief?.summary?.trim() || draft?.pasted?.trim() || '';
+  const criteriaCount = draft?.editedBrief?.criteria?.length ?? 0;
+  const hasDraft = summary.length > 0 || criteriaCount > 0;
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* 주 CTA — 우측 중앙 고정 앵커 (6 위젯 통일). draft 면 "이어서 만들기". */}
+      <WidgetPrimaryCta
+        label={hasDraft ? '이어서 만들기' : '설문 만들기'}
+        onClick={onOpenFlow}
+      />
+      <ControlBoardPanel gap="section">
+        <div className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-ink-2">
+              리서치 대상자 모집
+            </h3>
+            <p className="text-sm leading-[1.6] text-mute">
+              리서치 목적과 대상자 조건을 입력하면 심사 설문을 만들어 Google
+              Form 으로 발행합니다.
+            </p>
+          </div>
+          <Field label="조사 목적">
+            {summary ? (
+              <p className="line-clamp-3 text-md leading-[1.6] text-ink-2">
+                {summary}
+              </p>
+            ) : (
+              <p className="text-sm text-mute-soft">
+                ‘설문 만들기’에서 리서치 목적·대상자 브리프를 입력하세요.
+              </p>
+            )}
+          </Field>
+          <Field label="참여자 조건">
+            {criteriaCount > 0 ? (
+              <p className="text-md text-ink-2">{criteriaCount}개 조건 초안</p>
+            ) : (
+              <p className="text-sm text-mute-soft">
+                ‘설문 만들기’에서 대상자 조건을 설정합니다.
+              </p>
+            )}
+          </Field>
+        </div>
+      </ControlBoardPanel>
+    </div>
+  );
+}
+
+// Published 카드 = 좌컬럼 해체 → 요약(제목/링크 복사) + sub-action
+// (ChromeButton sm) + "전체 보기" 주 CTA. 응답 상세·부합도 판단·새로고침은
+// fullview (다른 위젯의 "산출물 = fullview" 원칙 정합).
+function PublishedSummary({
+  form,
+  onOpenFullview,
+  onNewSurvey,
+}: {
+  form: { formId: string; responderUri: string; title: string };
+  onOpenFullview: () => void;
+  onNewSurvey: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    if (!form.responderUri) return;
+    try {
+      await navigator.clipboard.writeText(form.responderUri);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard blocked (permissions-policy in some embeds) — the
+      // read-only input still lets the user select + copy manually.
+    }
+  };
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* 주 CTA(전체 보기) — 우측 중앙 고정 앵커 (6 위젯 통일) → 응답 fullview. */}
+      <WidgetPrimaryCta label="전체 보기" icon="📋" onClick={onOpenFullview} />
+      <ControlBoardPanel gap="section">
+        <div className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-ink-2">
+              {form.title || '발행된 설문'}
+            </h3>
+            <p className="text-sm leading-[1.6] text-mute">
+              설문이 발행되었습니다. 응답 현황·부합도 판단은 전체 보기에서
+              확인하세요.
+            </p>
+          </div>
+          <Field label="참석자용 링크">
+            <div className="flex items-center gap-2">
+              <Input
+                value={form.responderUri}
+                readOnly
+                size="sm"
+                onFocus={(e) => e.currentTarget.select()}
+                className="min-w-0 flex-1 font-mono text-sm"
+              />
+              <ChromeButton
+                size="sm"
+                onClick={() => void copyLink()}
+                className="shrink-0"
+              >
+                {copied ? '복사됨' : '링크 복사'}
+              </ChromeButton>
+            </div>
+          </Field>
+          <div className="flex items-center gap-2">
+            <ChromeButton size="sm" onClick={onNewSurvey}>
+              ＋ 새 설문
+            </ChromeButton>
+          </div>
+        </div>
+      </ControlBoardPanel>
+    </div>
+  );
+}
+
+// 리크루팅 canvas widget — idle = 6-위젯 통일 ControlBoardPanel (요약 Field
+// + 주 CTA), 위저드 3-step flow (조건 → 설문 → Google Form) 는 진입형 모달로
+// 재포장. PREVIEW_FEATURES 에 속해 canvas/page.tsx 의 server-side preview
+// gate 가 일반 유저에게 자동 숨김.
 export const recruitingCard: WidgetContent = {
   key: 'recruiting',
   meta: {
