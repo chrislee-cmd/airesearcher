@@ -928,6 +928,25 @@
       "on": "음성 ON",
       "off": "음성 OFF (탭하면 켜짐)"
     },
+    "onboarding": {
+      "title": "🎧 에코 없이 쓰는 법",
+      "voiceOn": "🔊 음성 켜짐",
+      "voiceOff": "🔇 음성 꺼짐",
+      "voiceAria": "내 기기 통역 음성 켜기/끄기",
+      "voiceWarning": "스피커로 들으면 에코가 발생할 수 있어요 — 이어폰 사용을 권장합니다.",
+      "step1On": "내 기기 음성이 켜져 있어요",
+      "step1Off": "내 기기 음성 끄기 · 기본 적용됨",
+      "step2": "공유 링크를 복사해 다른 기기(폰·태블릿)에서 열기",
+      "step2Copy": "공유 링크 복사",
+      "step2Copied": "복사됨",
+      "step2Pending": "통역을 시작하면 링크가 생성돼요",
+      "step3": "그 기기에서 이어폰으로 청취",
+      "connected": "다른 기기 {count}대 연결됨 ✅",
+      "dismiss": "다시 안 보기",
+      "restore": "에코 방지 안내 다시 보기",
+      "stateOn": "음성 켜짐",
+      "stateOff": "음성 꺼짐 (기본)"
+    },
     "ttsBlocked": {
       "notice": "통역 음성이 브라우저에 의해 차단됐습니다",
       "enable": "음성 켜기"

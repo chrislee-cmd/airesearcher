@@ -928,6 +928,25 @@
       "on": "Audio on",
       "off": "Audio off (tap to enable)"
     },
+    "onboarding": {
+      "title": "🎧 How to avoid echo",
+      "voiceOn": "🔊 Voice on",
+      "voiceOff": "🔇 Voice off",
+      "voiceAria": "Toggle interpretation audio on this device",
+      "voiceWarning": "Listening on speakers can cause echo — earphones are recommended.",
+      "step1On": "Audio on this device is currently on",
+      "step1Off": "Mute audio on this device · on by default",
+      "step2": "Copy the share link and open it on another device (phone/tablet)",
+      "step2Copy": "Copy share link",
+      "step2Copied": "Copied",
+      "step2Pending": "A link is created once interpretation starts",
+      "step3": "Listen there with earphones",
+      "connected": "{count} other device(s) connected ✅",
+      "dismiss": "Don't show again",
+      "restore": "Show echo-free tips again",
+      "stateOn": "Voice on",
+      "stateOff": "Voice off (default)"
+    },
     "ttsBlocked": {
       "notice": "Interpreted audio was blocked by the browser",
       "enable": "Enable audio"
