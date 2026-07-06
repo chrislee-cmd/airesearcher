@@ -81,6 +81,65 @@ export function looksJapaneseFallback(text: string): boolean {
   return kana.test(text) && !hangul.test(text);
 }
 
+// Silence-hallucination guard (pr-translate-stt-silence-hallucination-gate).
+// gpt-4o-transcribe (Whisper family) invents stock English interjections —
+// "Goodbye", "Hello.", "Okay.", "Thank you." — during silent / low-energy
+// stretches. The translations transcription config REJECTS a source-language
+// hint (400, see src/lib/openai-realtime.ts), so the model can't be pinned to
+// the source language server-side; these ghost phrases arrive as INPUT deltas
+// in CJK-source (ja/ko/zh) sessions 10-13% of the time (Supabase 3-session
+// audit, 2026-07-06). Independent of the cross-channel echo bug — they show up
+// even in muted, echo-free sessions, so it's a pure STT artifact.
+//
+// Three gates, ALL required (precision-first — a false drop eats real speech):
+//   1. script     — the fragment carries ZERO CJK chars. A genuine ja/ko/zh
+//                   utterance is overwhelmingly CJK; a pure Latin / Cyrillic
+//                   fragment in a CJK session is the fallback artifact.
+//   2. length     — short (≤ MAX chars OR ≤ 2 words). The ghosts are all
+//                   short interjections; a long Latin run survives.
+//   3. dictionary — matches the known Whisper ghost repertoire. A real
+//                   loanword / proper noun ("Amazon", "Notion") is NOT in the
+//                   dictionary and passes untouched (code-switching preserved).
+// Fires ONLY when the source language is itself CJK — an en / es / th session's
+// "Okay" / "Sure" is real speech and is never touched.
+const SILENCE_HALLUCINATION_MAX_CHARS = 24;
+
+// Known Whisper silence-ghost repertoire. Anchored ^…$ so only a fragment
+// that is ENTIRELY one of these interjections (plus trailing punctuation /
+// whitespace) matches — a brand name embedded in real speech never does.
+const SILENCE_HALLUCINATION_RE =
+  /^(thank you( very much)?|thanks|bye( bye)?|goodbye|hello|hi|hey|okay|ok|sure|see( you)?|take care|you|yeah|yep|please|hmm+|mm+|uh+|eh+|ah+|oh+)[\s.,!?…"'’)\]]*$/i;
+
+// Hangul syllables + Jamo, CJK Unified Ideographs, Hiragana, Katakana +
+// half-width kana. Mirrors the ranges the host console's hasCJK() uses.
+const CJK_CHAR_RE =
+  /[가-힣ᄀ-ᇿ㄰-㆏぀-ヿｦ-ﾝ一-鿿]/;
+
+// CJK source languages whose silent stretches produce the ghost artifact.
+// ko / ja / zh only — en / es / th are excluded so their real "Okay" survives.
+export function isCJKSourceLang(lang: string): boolean {
+  return lang === 'ko' || lang === 'ja' || lang === 'zh';
+}
+
+// Returns true only when `text` is a silence-hallucination fragment for the
+// given source language, per the three-gate rule documented above.
+export function looksSilenceHallucination(
+  text: string,
+  sourceLang: string,
+): boolean {
+  if (!isCJKSourceLang(sourceLang)) return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  // gate 1 (script) — any CJK char means it's a real utterance, keep it.
+  if (CJK_CHAR_RE.test(trimmed)) return false;
+  // gate 2 (length) — must be short (few chars OR few words). A long Latin
+  // run (e.g. a spelled-out brand phrase) is not the ghost pattern.
+  const words = trimmed.split(/\s+/).filter(Boolean).length;
+  if (trimmed.length > SILENCE_HALLUCINATION_MAX_CHARS && words > 2) return false;
+  // gate 3 (dictionary) — matches a known Whisper silence ghost.
+  return SILENCE_HALLUCINATION_RE.test(trimmed);
+}
+
 // Returns the UTF-8 byte length of `text`. Used by the loss-detection path
 // so logs / audit metadata carry a stable byte count comparable across
 // browser, server, and DB.
