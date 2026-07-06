@@ -3809,16 +3809,18 @@ export function TranslateConsole({
   const controlFields = (
     <>
       {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). live 중엔
-          disabled (opacity 로 read-only 신호). */}
-      <div className={`flex flex-wrap items-end gap-3${live ? ' opacity-60' : ''}`}>
-        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+          disabled (opacity 로 read-only 신호). 밸런스 튜닝(데스크 미러):
+          gap 3→4, 필드 높이 h-8→h-10, 라벨은 데스크 SectionLabel 타이포로
+          정렬 (시각 일관성, spec 결정 2). */}
+      <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('sourceLang')}
           <select
             value={sourceLang}
             onChange={(e) => setSourceLang(e.target.value)}
             disabled={busy || live}
             aria-label={t('sourceLang')}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -3827,14 +3829,14 @@ export function TranslateConsole({
             ))}
           </select>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('targetLang')}
           <select
             value={targetLang}
             onChange={(e) => setTargetLang(e.target.value)}
             disabled={busy || live}
             aria-label={t('targetLang')}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             {langOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -3843,14 +3845,14 @@ export function TranslateConsole({
             ))}
           </select>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('captureMode.label')}
           <select
             value={captureMode}
             onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
             disabled={busy || live}
             aria-label={t('captureMode.label')}
-            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
             <option value="both">{t('captureMode.both')}</option>
             <option value="mic-only">{t('captureMode.micOnly')}</option>
@@ -3861,7 +3863,7 @@ export function TranslateConsole({
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
           추가. 세션 시작 전에만 편집 (live 중 disabled). */}
-      <label className="flex flex-col gap-1 text-sm text-mute">
+      <label className="flex flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
         {t('glossary.label')}
         <GlossaryField
           values={glossary}
@@ -3915,14 +3917,18 @@ export function TranslateConsole({
     <div
       className={
         idlePhase
-          ? // idle — 데스크/프로빙과 통일된 launcher 룩: 회색 wrapper 없이
-            // 컨트롤을 카드 정중앙 (수직+수평 center) 에 transparent 로.
-            'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto'
+          ? // idle — 데스크/프로빙과 통일된 launcher 룩 + 밸런스 튜닝(데스크
+            // 미러): 정중앙(justify-center)은 짧은 폼 위/아래로 큰 빈 띠를
+            // 남겼다. justify-start + pt 로 상단부터 시작해 세로 whitespace 를
+            // 축소하고, 넓어진 클러스터(max-w-2xl)가 좌우를 채운다. 부모
+            // (translate-card) 가 이미 py-5 를 주므로 여기선 pt-5 만 더해
+            // 데스크의 pt-10(40px) 유효 상단 여백을 맞춘다 (이중 패딩 방지).
+            'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto pt-5'
           : 'space-y-4'
       }
     >
       {idlePhase ? (
-        <div className="flex w-full max-w-[440px] flex-col gap-4 bg-transparent">
+        <div className="flex w-full max-w-2xl flex-col gap-5 bg-transparent">
           {controlFields}
           {ttsBlockedBanner}
           {errorBanner}
@@ -4332,7 +4338,7 @@ function GlossaryField({
 
   return (
     <div
-      className={`flex min-h-8 flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-2 py-1 focus-within:border-amore ${
+      className={`flex min-h-10 flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-2 py-1 focus-within:border-amore ${
         disabled ? 'opacity-50' : ''
       }`}
     >
