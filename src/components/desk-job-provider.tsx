@@ -120,6 +120,9 @@ export type DeskAnalytics = {
 export type DeskJob = {
   id: string;
   keywords: string[];
+  // 리서치 목적 mode (데스크 v2). optional — mode 컬럼 마이그 적용 전 API
+  // 응답에 없을 수 있다; 누락 = 'custom'(옛 flow) 으로 취급.
+  mode?: 'trend' | 'market' | 'custom';
   sources: DeskSourceId[];
   locale: string;
   date_from: string | null;

@@ -31,7 +31,12 @@ import {
   useDeskJobs,
   type DeskJob,
 } from '@/components/desk-job-provider';
-import { DeskReportView } from '@/components/canvas/widgets/desk-result/desk-report-view';
+import { DeskResultView } from '@/components/canvas/widgets/desk-result';
+import { useToast } from '@/components/toast-provider';
+import {
+  TREND_SOURCE_IDS,
+  type DeskMode,
+} from '@/lib/desk-orchestrator/types';
 import { Select } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
@@ -292,8 +297,13 @@ export function DeskCardBody() {
   const requireAuth = useRequireAuth();
   const { jobs, latestJob, isWorking, cancelJob } = useDeskJobs();
   const { notify: notifyDeduction } = useCreditDeduction();
+  const toast = useToast();
 
   // ─── inputs ──────────────────────────────────────────────────────────────
+  // 리서치 목적 mode (데스크 v2). 기본 = 트렌드 — 목적 기반 flow 가 v2 의
+  // 주 경로이고, 옛 소스 직접 선택은 'custom' 으로 이동했다. market 은 라디오
+  // 선택은 가능하되 실행 시 "곧 제공" toast 로 차단 (후속 PR 이 해제).
+  const [mode, setMode] = useState<DeskMode>('trend');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordDraft, setKeywordDraft] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -484,6 +494,13 @@ export function DeskCardBody() {
     requireAuth(() => void doSubmit());
   }
   async function doSubmit() {
+    // market mode = 아직 stub (후속 PR) — 실행만 차단하고 라디오 선택은
+    // 자유. 서버로 보내도 NotImplementedYet 로 환불되지만, 여기서 막아
+    // 불필요한 job 생성/차감/환불 왕복 자체를 없앤다.
+    if (mode === 'market') {
+      toast.push(tDesk('modeComingSoon'));
+      return;
+    }
     const finalKeywords = commitDraft();
     if (finalKeywords.length === 0) {
       setError(tDesk('errorNoKeyword'));
@@ -504,7 +521,9 @@ export function DeskCardBody() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           keywords: finalKeywords,
-          sources: selectedSourceIds,
+          mode,
+          // trend 는 서버가 소스를 자동 선정 — sources 는 custom 만 전송.
+          sources: mode === 'custom' ? selectedSourceIds : undefined,
           locale: locale === 'ko' ? 'ko' : 'en',
           regions: Array.from(regions),
           dateFrom: dateFrom || undefined,
@@ -704,12 +723,14 @@ export function DeskCardBody() {
   }
 
   const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
+  // 소스 조건은 custom 만 — trend 는 서버 자동 선정이라 키워드만 있으면 실행
+  // 가능. market 은 CTA 를 살려두고 클릭 시 "곧 제공" toast 로 안내한다.
   const canRun =
     !submitting &&
     !pendingJobId &&
     !isWorking &&
     hasKeywords &&
-    selectedSourceIds.length > 0;
+    (mode !== 'custom' || selectedSourceIds.length > 0);
   // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
   // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
   // would only yield a raw-data dump. A single keyword expands to +4 similar
@@ -718,9 +739,13 @@ export function DeskCardBody() {
   // regions — but it tracks the crawl cap math closely enough for guidance.
   const kwCountForEstimate = keywords.length + (keywordDraft.trim() ? 1 : 0);
   const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
+  // trend 는 서버 자동 선정 소스 수 기준 (부정 filter 추가분은 소량이라 견적
+  // 에선 무시). market 은 실행 자체가 차단이라 견적 숫자에 의미 없음.
+  const estimateSourceCount =
+    mode === 'custom' ? selectedSourceIds.length : TREND_SOURCE_IDS.length;
   const estimatedSearches = hasKeywords
     ? effectiveKwForEstimate *
-      Math.max(selectedSourceIds.length, 1) *
+      Math.max(estimateSourceCount, 1) *
       Math.max(regions.size, 1)
     : 0;
   const estimateHeavy = estimatedSearches >= 60;
@@ -865,8 +890,70 @@ export function DeskCardBody() {
 
   // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 주제·키워드 입력,
   // 세부 옵션(지역/기간/분석 방향성), 범위 견적, 실행 CTA.
+  // 리서치 목적 3 mode 카드 — 라디오 3개 모두 enabled (disabled X). market
+  // 은 선택 가능하되 실행 시 "곧 제공" toast (doSubmit). 후속 market/custom
+  // PR 은 이 UI 의 "toast → 실행" 로직만 바꾸고 라디오 위치는 재편집하지
+  // 않는다 (충돌 매트릭스).
+  const MODE_OPTIONS: { key: DeskMode; icon: string; soon?: boolean }[] = [
+    { key: 'trend', icon: '🔥' },
+    { key: 'market', icon: '📊', soon: true },
+    { key: 'custom', icon: '🛠' },
+  ];
+  const modeSelector = (
+    <div role="radiogroup" aria-label={tDesk('modeLabel')} className="grid grid-cols-1 gap-2">
+      {MODE_OPTIONS.map((opt) => {
+        const isSelected = mode === opt.key;
+        return (
+          /* eslint-disable-next-line react/forbid-elements -- mode radio
+             card: custom icon+title+desc toggle surface (SourceGridPicker
+             카테고리 카드와 동일 계열), Button primitive variant 로 표현 불가. */
+          <button
+            key={opt.key}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => setMode(opt.key)}
+            className={
+              'flex items-start gap-3 rounded-sm border-[2px] p-3 text-left transition-colors ' +
+              (isSelected
+                ? 'border-amore bg-amore-bg'
+                : 'border-line-soft bg-paper hover:bg-paper-soft')
+            }
+          >
+            <span aria-hidden className="text-xl leading-none">
+              {opt.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-ink">
+                  {tDesk(`modeTitle.${opt.key}` as never)}
+                </span>
+                {opt.soon && (
+                  <span className="rounded-pill border border-line bg-white px-2 py-0.5 text-xs text-mute">
+                    {tDesk('modeSoonBadge')}
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 block text-xs leading-[1.6] text-mute">
+                {tDesk(`modeDesc.${opt.key}` as never)}
+              </span>
+            </span>
+            {isSelected && (
+              <span aria-hidden className="text-amore">
+                ✓
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const controlsForm = (
     <div className="space-y-4">
+      {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
+      <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
+
       {/* 주제 · 키워드 (핵심 입력) */}
       <Field label={tDesk('boardTopicLabel')}>
         <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
@@ -942,24 +1029,33 @@ export function DeskCardBody() {
         </div>
       </Field>
 
-      {/* 수집 소스 — 5 카테고리 all-or-nothing grid popover (supersede PR #732
+      {/* 수집 소스 — custom mode 전용 (trend/market 은 서버가 목적 기반으로
+          자동 선정). 5 카테고리 all-or-nothing grid popover (supersede PR #732
           collapsible+checkbox). 카드 선택 → 하위 소스 id 가 자동 확장돼 API 로
           전송. region 이 소스를 전부 가리는 카테고리는 카드 disabled. */}
-      <Field label={tDesk('sourcesLabel')}>
-        <SourceGridPicker
-          order={UI_CATEGORY_ORDER}
-          selected={selectedCategories}
-          onToggle={toggleCategory}
-          enabledFor={categoryEnabled}
-          categoryLabel={(c) => tDesk(`category.${c}` as never)}
-          categoryIcon={(c) => UI_CATEGORY_META[c].icon}
-          categoryHint={categoryHint}
-          placeholder={tDesk('sourcePickerPlaceholder')}
-        />
-      </Field>
+      {mode === 'custom' && (
+        <Field label={tDesk('sourcesLabel')}>
+          <SourceGridPicker
+            order={UI_CATEGORY_ORDER}
+            selected={selectedCategories}
+            onToggle={toggleCategory}
+            enabledFor={categoryEnabled}
+            categoryLabel={(c) => tDesk(`category.${c}` as never)}
+            categoryIcon={(c) => UI_CATEGORY_META[c].icon}
+            categoryHint={categoryHint}
+            placeholder={tDesk('sourcePickerPlaceholder')}
+          />
+        </Field>
+      )}
+      {mode === 'trend' && (
+        <p className="text-xs leading-[1.6] text-mute-soft">
+          {tDesk('modeTrendSourcesHint')}
+        </p>
+      )}
 
-      {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. */}
-      {hasKeywords && (
+      {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. market 은
+          실행 차단 상태라 견적 비노출. */}
+      {hasKeywords && mode !== 'market' && (
         <p
           className={`text-xs leading-[1.6] ${
             estimateHeavy ? 'text-amore' : 'text-mute-soft'
@@ -967,7 +1063,7 @@ export function DeskCardBody() {
         >
           {tDesk('estimateLabel', {
             kw: effectiveKwForEstimate,
-            src: Math.max(selectedSourceIds.length, 1),
+            src: Math.max(estimateSourceCount, 1),
             region: Math.max(regions.size, 1),
             count: estimatedSearches,
           })}
@@ -1349,7 +1445,7 @@ export function DeskCardBody() {
           ) : null
         }
       >
-        {job && <DeskReportView job={job} tDesk={tDesk} />}
+        {job && <DeskResultView job={job} tDesk={tDesk} />}
       </Modal>
 
       {/* 통일 "전체 보기" — 상단 "이전 산출물" 드롭다운(최근 20개 persist
@@ -1389,7 +1485,7 @@ export function DeskCardBody() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
                 <div className="px-6 py-6">
-                  <DeskReportView job={fullviewJob} tDesk={tDesk} />
+                  <DeskResultView job={fullviewJob} tDesk={tDesk} />
                 </div>
               ) : fullviewJob ? (
                 <div className="flex h-full items-center justify-center p-10">

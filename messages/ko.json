@@ -786,6 +786,16 @@
     "range_quarter": "지난 3개월",
     "range_year": "지난 1년",
     "range_custom": "직접 지정",
+    "modeLabel": "리서치 목적",
+    "modeTitle": { "trend": "트렌드 리서치", "market": "시장조사", "custom": "커스텀" },
+    "modeDesc": {
+      "trend": "뉴스·SNS·검색량 기반 최근 흐름 — 6개 축(현황·확산·긍정·부정·주도·전망)으로 분석해요.",
+      "market": "통계·공시 기반 TAM/SAM 참고 데이터 세트를 준비 중이에요.",
+      "custom": "옛 방식 그대로 — 수집 소스를 직접 선택해요."
+    },
+    "modeSoonBadge": "곧 제공",
+    "modeComingSoon": "곧 제공됩니다",
+    "modeTrendSourcesHint": "소스는 AI가 자동 선정해요 — 뉴스·블로그·카페·YouTube·연구소 RSS·웹 검색 (통계·공시 제외). 판단 근거는 보고서 상단 AI 판단 로그에서 확인할 수 있어요.",
     "sourcesLabel": "수집 소스",
     "sourcePickerPlaceholder": "수집 소스 선택",
     "sourceEnvHint": "일부 소스는 API 키 필요",
