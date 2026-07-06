@@ -55,6 +55,14 @@ const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.03;
+// FOCUS_THRESHOLD 0.55 — 이 scale 미만이면 "탐색 모드": 위젯 내부 컴포넌트가
+// 판독 불가한 줌아웃 상태라, 위젯 표면 아무 데나 클릭 = 그 위젯으로 focus
+// 줌인 (click-to-focus). scale 이 이 값 이상이면 "작업 모드": 오버레이 제거 →
+// 내부 인터랙션 정상. hysteresis 없이 클릭 시점 zoom 1회 판정 (spec 결정).
+const FOCUS_THRESHOLD = 0.55;
+// 클릭 vs pan 드래그 구분 — pointerdown→pointerup 이동거리가 이 픽셀 미만일
+// 때만 클릭(=focus)으로 판정. 이보다 크면 드래그 pan 으로 보고 focus 안 함.
+const CLICK_MOVE_THRESHOLD = 5;
 // v1 = 6×5, v2 = 3×3 (1·2행 3+3), v3 = 2×3 row-major. v4 = 3×3 (9 위젯, 신
 // placeholder 3장 추가) 로 한 번 더 reset — 옛 커스텀 좌표를 버리고 신 layout 을
 // 강제 적용 (사용자 결정: 초기화 의도).
@@ -610,6 +618,10 @@ export function CanvasBoard({
     initialFocus && widgetByKey[initialFocus] ? initialFocus : null,
   );
 
+  // click-to-focus 오버레이의 pointerdown 좌표 — pointerup 시점에 이동거리를
+  // 재서 클릭(=focus) vs 드래그 pan 을 구분. 동시 포인터 1개만 가정 (단일 ref).
+  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+
   // 위젯 키 → 위젯이 surface 안에서 차지하는 center (x, y). pan/zoom 무관한
   // 순수 좌표 — 자동 갱신과 click focus 양쪽에서 공유.
   const widgetCenter = useCallback(
@@ -964,6 +976,32 @@ export function CanvasBoard({
                   }}
                 />
                 </div>
+                {/* click-to-focus 오버레이 — scale < FOCUS_THRESHOLD (탐색
+                    모드) 에서만 활성. 위젯 표면 전체를 덮어 (1) 내부 컴포넌트로
+                    클릭 전달 차단 (멀리서 안 보이는 버튼 오조작 방지), (2) 클릭
+                    = 그 위젯으로 fit 줌인. z-overlay 로 위젯 내부 FAB/CTA 위에
+                    확실히 얹는다. pointer 이동 <5px 만 클릭 판정 = pan 드래그
+                    회귀 방지. space-hold pan 모드면 focus 대신 pan 우선. */}
+                {zoom < FOCUS_THRESHOLD && (
+                  <div
+                    data-canvas-focus-overlay
+                    className="absolute inset-0 z-overlay cursor-zoom-in"
+                    onPointerDown={(e) => {
+                      clickStartRef.current = { x: e.clientX, y: e.clientY };
+                    }}
+                    onPointerUp={(e) => {
+                      const start = clickStartRef.current;
+                      clickStartRef.current = null;
+                      // space-hold = 캔버스 pan 모드 → focus 트리거 X
+                      if (!start || isSpaceHeldRef.current) return;
+                      const moved = Math.hypot(
+                        e.clientX - start.x,
+                        e.clientY - start.y,
+                      );
+                      if (moved <= CLICK_MOVE_THRESHOLD) focusWidget(w.key);
+                    }}
+                  />
+                )}
               </div>
             );
           })}
