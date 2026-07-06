@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
+import { Tabs, type TabItem } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
@@ -17,13 +19,81 @@ import { UploadModal } from './upload-modal';
 // 우측 패널 2탭 — 탑라인 보고서(default) / 자유 검색. 사용자 결정 #1.
 type RightTab = 'topline' | 'search';
 
-// 탭 버튼 스타일 — search-panel 의 토글과 동일 톤(밑줄 amore active).
-const tabCls = (active: boolean) =>
-  `!border-0 !rounded-none !px-3 !py-2 !text-sm uppercase tracking-[0.22em] ${
-    active
-      ? '!text-ink-2 !border-b-2 !border-amore'
-      : '!text-mute hover:!text-ink-2'
-  }`;
+// 인라인 feather 아이콘 — 프로젝트 아이콘 컨벤션(라이브러리 미도입, 24×24
+// stroke-currentColor SVG. widget-upload-button / select 와 동일). 이모지
+// 글리프(◀▶📤)를 걷어내고 chrome 아이콘 컴포넌트로 통일한다.
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+// feather "search" — 돋보기. readSweep 진행 표시의 🔍 이모지 대체.
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+// feather "upload" — 트레이 위로 화살표. widget-upload-button 과 동일 path.
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
 
 // Collapse choice for the left file-list panel — persisted so the wider
 // chat area a user opened stays open across refresh / navigation.
@@ -73,6 +143,14 @@ export function ProjectDetail({
     [projects, projectId],
   );
 
+  const rightTabs = useMemo<TabItem<RightTab>[]>(
+    () => [
+      { value: 'topline', label: t('toplineTab') },
+      { value: 'search', label: t('searchTab') },
+    ],
+    [t],
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* 서브헤더 — 좌: 뒤로 + 프로젝트명. 📤 업로드는 파일 리스트 패널
@@ -96,10 +174,12 @@ export function ProjectDetail({
         {collapsed ? (
           <div className="flex w-full shrink-0 items-center justify-center border-b border-line-soft py-3 lg:w-10 lg:items-start lg:border-b-0 lg:border-r lg:py-4">
             <IconButton
+              variant="ghost"
+              size="sm"
               aria-label="파일 패널 펼치기"
               onClick={() => setPanelCollapsed(false)}
             >
-              ▶
+              <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
           </div>
         ) : (
@@ -109,22 +189,25 @@ export function ProjectDetail({
           <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <IconButton
+                variant="ghost"
+                size="sm"
                 aria-label="파일 패널 접기"
                 onClick={() => setPanelCollapsed(true)}
               >
-                ◀
+                <ChevronLeftIcon className="h-4 w-4" />
               </IconButton>
               <h3 className="truncate text-md font-semibold text-ink">
                 {t('filesTitle')}
               </h3>
             </div>
-            <Button
-              variant="secondary"
+            <ChromeButton
+              variant="default"
               size="sm"
               onClick={() => setUploadOpen(true)}
+              leftIcon={<UploadIcon className="h-3.5 w-3.5" />}
             >
-              📤 {t('upload')}
-            </Button>
+              {t('upload')}
+            </ChromeButton>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {isLoading ? (
@@ -147,7 +230,9 @@ export function ProjectDetail({
                   className="mb-3 flex items-center gap-1.5 text-xs"
                   aria-live="polite"
                 >
-                  <span aria-hidden>🔍</span>
+                  <SearchIcon
+                    className={`h-3.5 w-3.5 ${readSweep.running ? 'text-amore' : 'text-mute'}`}
+                  />
                   <span className={readSweep.running ? 'text-amore' : 'text-mute'}>
                     {readSweep.running
                       ? `모든 파일을 읽는 중… (${Math.min(readSweep.count, readSweep.total)}/${readSweep.total})`
@@ -179,24 +264,16 @@ export function ProjectDetail({
         </aside>
         )}
         <section className="flex min-h-0 flex-1 flex-col lg:min-w-0">
-          {/* 탭 헤더 — 탑라인(default) / 자유 검색. */}
-          <div className="flex shrink-0 items-center gap-1 border-b border-line-soft px-6">
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => setRightTab('topline')}
-              className={tabCls(rightTab === 'topline')}
-            >
-              📋 {t('toplineTab')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => setRightTab('search')}
-              className={tabCls(rightTab === 'search')}
-            >
-              🔍 {t('searchTab')}
-            </Button>
+          {/* 탭 헤더 — 탑라인(default) / 자유 검색. 이모지(📋/🔍) 제거하고
+              에디토리얼 underline 탭(텍스트만)으로. Tabs primitive 가 활성
+              amore underline / 비활성 mute 를 토큰으로 소유 (!important 없음). */}
+          <div className="flex shrink-0 items-center border-b border-line-soft px-6">
+            <Tabs
+              aria-label={t('filesTitle')}
+              value={rightTab}
+              onValueChange={setRightTab}
+              items={rightTabs}
+            />
           </div>
 
           {/* 두 탭 모두 상시 mount — 비활성 탭은 hidden (SearchChat 대화·
