@@ -10,8 +10,20 @@ import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { useSequentialSweep } from '@/hooks/use-sequential-sweep';
 import { SearchChat } from './search-chat';
+import { ToplineView } from './topline-view';
 import { FileCard } from './file-card';
 import { UploadModal } from './upload-modal';
+
+// 우측 패널 2탭 — 탑라인 보고서(default) / 자유 검색. 사용자 결정 #1.
+type RightTab = 'topline' | 'search';
+
+// 탭 버튼 스타일 — search-panel 의 토글과 동일 톤(밑줄 amore active).
+const tabCls = (active: boolean) =>
+  `!border-0 !rounded-none !px-3 !py-2 !text-sm uppercase tracking-[0.22em] ${
+    active
+      ? '!text-ink-2 !border-b-2 !border-amore'
+      : '!text-mute hover:!text-ink-2'
+  }`;
 
 // Collapse choice for the left file-list panel — persisted so the wider
 // chat area a user opened stays open across refresh / navigation.
@@ -52,6 +64,9 @@ export function ProjectDetail({
   // file evenly (no single-file bias).
   const [searchRunId, setSearchRunId] = useState(0);
   const readSweep = useSequentialSweep(searchRunId, documents.length);
+  // 우측 탭 — 탑라인이 default (열자마자 보고서). 검색으로 전환해도 SearchChat
+  // 은 언마운트하지 않고 hidden 으로 두어 대화/스크롤이 유지된다 (회귀 0).
+  const [rightTab, setRightTab] = useState<RightTab>('topline');
 
   const projectName = useMemo(
     () => projects.find((p) => p.id === projectId)?.name ?? '',
@@ -163,12 +178,45 @@ export function ProjectDetail({
           </div>
         </aside>
         )}
-        <section className="min-h-0 flex-1 lg:min-w-0">
-          <SearchChat
-            projectIds={null}
-            currentProject={{ id: projectId, name: projectName }}
-            onSearchStart={() => setSearchRunId((n) => n + 1)}
-          />
+        <section className="flex min-h-0 flex-1 flex-col lg:min-w-0">
+          {/* 탭 헤더 — 탑라인(default) / 자유 검색. */}
+          <div className="flex shrink-0 items-center gap-1 border-b border-line-soft px-6">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => setRightTab('topline')}
+              className={tabCls(rightTab === 'topline')}
+            >
+              📋 {t('toplineTab')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => setRightTab('search')}
+              className={tabCls(rightTab === 'search')}
+            >
+              🔍 {t('searchTab')}
+            </Button>
+          </div>
+
+          {/* 두 탭 모두 상시 mount — 비활성 탭은 hidden (SearchChat 대화·
+              ToplineView 로드 상태를 탭 전환 간에 보존). */}
+          <div className="relative min-h-0 flex-1">
+            <div
+              className={`absolute inset-0 ${rightTab === 'topline' ? '' : 'hidden'}`}
+            >
+              <ToplineView projectId={projectId} />
+            </div>
+            <div
+              className={`absolute inset-0 ${rightTab === 'search' ? '' : 'hidden'}`}
+            >
+              <SearchChat
+                projectIds={null}
+                currentProject={{ id: projectId, name: projectName }}
+                onSearchStart={() => setSearchRunId((n) => n + 1)}
+              />
+            </div>
+          </div>
         </section>
       </div>
 

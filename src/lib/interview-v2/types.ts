@@ -84,3 +84,45 @@ export type ChartArtifact = {
 };
 
 export type SearchArtifact = TableArtifact | QuoteListArtifact | ChartArtifact;
+
+/**
+ * 탑라인 보고서 블록 (client-safe). 서버 `lib/interview-v2/topline.ts` 의
+ * `ToplineBlock` 과 shape 를 맞추되, 그 파일은 admin client / AI SDK 를
+ * import 하므로 client 컴포넌트가 쓰기엔 부적합해 여기 순수 타입만 둔다.
+ *
+ * blocks jsonb (migration 20260706114519) 원소:
+ *   { id, type, md?, citations?, table?, attribution?, question? }
+ * table 은 type='table' 일 때만, attribution 은 quote, question 은
+ * inserted_qa(후속 drag-to-ask 병합) 에서만 채워진다. id 는 서버가 부여한
+ * 안정 anchor (drag-to-ask DOM 계약 — data-block-id).
+ */
+export type ToplineBlockType =
+  | 'heading'
+  | 'paragraph'
+  | 'insight'
+  | 'quote'
+  | 'table'
+  | 'inserted_qa';
+
+export type ToplineBlock = {
+  id: string;
+  type: ToplineBlockType;
+  md?: string;
+  citations?: string[];
+  attribution?: string;
+  question?: string;
+  table?: { headers: string[]; rows: string[][] };
+};
+
+export type ToplineStatus = 'none' | 'idle' | 'generating' | 'done' | 'error';
+
+/** GET /api/interviews/v2/topline 응답 shape (읽기 전용 조회). */
+export type ToplineReadResult = {
+  status: ToplineStatus;
+  blocks: ToplineBlock[];
+  stale: boolean;
+  indexed: boolean;
+  generated_at: string | null;
+  model: string | null;
+  error_message: string | null;
+};

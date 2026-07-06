@@ -35,6 +35,69 @@ const Body = z.object({
   force: z.boolean().optional().default(false),
 });
 
+// GET ?project_id=<uuid> — 읽기 전용 조회. 2-tab UI 가 탭 열자마자 저장된
+// 탑라인을 **생성 트리거 없이** 읽는다 (POST 는 stale/미존재 시 Opus 를
+// kick 하므로 초기 로드에 쓰면 원치 않는 과금). stale 여부(현재 문서 셋
+// 해시 ≠ 저장 해시)만 계산해 배너 판단을 클라이언트에 넘긴다.
+export async function GET(req: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const org = await getActiveOrg();
+  if (!org?.org_id) {
+    return NextResponse.json({ error: 'no_org' }, { status: 403 });
+  }
+
+  const projectId = new URL(req.url).searchParams.get('project_id') ?? '';
+  if (!z.string().uuid().safeParse(projectId).success) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  // 프로젝트가 이 org 소유인지 확인 — 아니면 not_found(정보 누출 방지).
+  const { data: projectRow } = await admin
+    .from('interview_projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('org_id', org.org_id)
+    .maybeSingle();
+  if (!projectRow) {
+    return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
+  }
+
+  let hash: string;
+  let chunkCount: number;
+  try {
+    const corpus = await computeProjectCorpus(admin, org.org_id, projectId);
+    hash = corpus.hash;
+    chunkCount = corpus.chunkCount;
+  } catch (e) {
+    console.error('[v2/topline] GET corpus failed', e);
+    return NextResponse.json({ error: 'corpus_failed' }, { status: 500 });
+  }
+
+  const existing = await getTopline(admin, projectId);
+
+  return NextResponse.json({
+    // 'none' = 아직 생성된 적 없음(CTA). 그 외는 row.status 그대로.
+    status: existing?.status ?? 'none',
+    blocks: existing?.blocks ?? [],
+    // 저장 해시와 현재 문서 셋 해시가 다르면 파일이 바뀐 것 = stale.
+    // row 가 없으면 stale 아님(그냥 미생성).
+    stale: existing ? existing.content_hash !== hash : false,
+    // 인덱싱 전이면 생성 자체가 불가 — CTA 대신 안내 문구.
+    indexed: chunkCount > 0,
+    generated_at: existing?.generated_at ?? null,
+    model: existing?.model ?? null,
+    error_message: existing?.error_message ?? null,
+  });
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {

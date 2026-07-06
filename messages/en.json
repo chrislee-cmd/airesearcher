@@ -1264,7 +1264,20 @@
     "tagRemove": "Remove tag {tag}",
     "tagFilterLabel": "Filter by tag",
     "tagFilterClear": "Clear all",
-    "tagSaveFailed": "Failed to save tags."
+    "tagSaveFailed": "Failed to save tags.",
+    "toplineTab": "Topline report",
+    "searchTab": "Free search",
+    "toplineReportLabel": "Topline report",
+    "toplineRegenerate": "Regenerate report",
+    "toplineGenerating": "Generating topline…",
+    "toplineStaleBanner": "Your files changed — regenerate the report to reflect the latest content.",
+    "toplineNotIndexed": "You can generate the topline report once indexing is complete.",
+    "toplineLoadError": "Couldn't load the topline.",
+    "toplineIntroTitle": "No topline report yet",
+    "toplineIntroHint": "We'll cross-analyze all uploaded interviews and generate a six-section topline report automatically.",
+    "toplineGenerateCta": "Start generating",
+    "toplineErrorTitle": "Report generation failed",
+    "toplineErrorHint": "Please try again in a moment. If it persists, check your file status."
   },
   "Workspace": {
     "eyebrow": "Workspace",

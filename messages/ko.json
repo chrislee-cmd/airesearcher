@@ -1264,7 +1264,20 @@
     "tagRemove": "{tag} 태그 제거",
     "tagFilterLabel": "태그 필터",
     "tagFilterClear": "전체 해제",
-    "tagSaveFailed": "태그 저장에 실패했어요."
+    "tagSaveFailed": "태그 저장에 실패했어요.",
+    "toplineTab": "탑라인 보고서",
+    "searchTab": "자유 검색",
+    "toplineReportLabel": "탑라인 보고서",
+    "toplineRegenerate": "보고서 다시 생성",
+    "toplineGenerating": "탑라인 생성 중…",
+    "toplineStaleBanner": "파일이 바뀌었어요 — 보고서를 다시 생성해 최신 내용을 반영하세요.",
+    "toplineNotIndexed": "인덱싱이 완료되면 탑라인 보고서를 생성할 수 있어요.",
+    "toplineLoadError": "탑라인을 불러오지 못했습니다.",
+    "toplineIntroTitle": "아직 탑라인 보고서가 없습니다",
+    "toplineIntroHint": "업로드된 인터뷰 전체를 교차분석해 6개 섹션의 탑라인 보고서를 자동으로 만들어 드려요.",
+    "toplineGenerateCta": "보고서 생성 시작",
+    "toplineErrorTitle": "보고서 생성에 실패했어요",
+    "toplineErrorHint": "잠시 후 다시 시도해 주세요. 문제가 계속되면 파일 상태를 확인하세요."
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
