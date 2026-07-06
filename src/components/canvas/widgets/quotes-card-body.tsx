@@ -111,7 +111,7 @@ export function QuotesCardBody() {
   // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
   // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const { renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
+  const { isCurrent, renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
 
   // Analytics — 카드 body mount 시 1회 view.
@@ -481,12 +481,20 @@ export function QuotesCardBody() {
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  // fullview 를 닫을 때 선택도 리셋 — 다음에 열었을 때 지난 선택이 남지 않도록.
-  // 추가로, 전사 완료분만 남은 상태에서 fullview 로 산출물을 확인하고 닫으면
-  // 카드를 idle 로 되돌려 새 작업 준비 상태로 만든다(spec B). 진행 중(업로드/
-  // 시작 대기/전사 inflight)이면 진행 신호를 잃지 않도록 유지한다. 뷰 상태만
-  // 리셋 — 전사 job/파일은 DB-backed 이라 fullview 재진입 시 그대로 보인다.
-  const handleCloseFullview = useCallback(() => {
+  // fullview 가 닫힐 때(× / Esc / backdrop / 사이드바 전환 모두)의 side effect.
+  // 공유 모달은 canvas-board 의 closeFullview(= shell context close)로 닫혀
+  // 위젯 패널의 onClose 를 우회할 수 있으므로, 이 위젯이 fullview 로 보이는
+  // 중인지(isCurrent) 의 true→false 전이를 직접 감지해 처리한다.
+  //   1) 선택 리셋 — 다음에 열었을 때 지난 선택이 남지 않도록.
+  //   2) 전사 완료분만 남았으면 카드를 idle 로 되돌려 새 작업 준비 상태로
+  //      (spec B). 진행 중(업로드/시작 대기/전사 inflight)이면 유지. 뷰 상태만
+  //      리셋 — 전사 job/파일은 DB-backed 이라 fullview 재진입 시 그대로 보인다.
+  const prevIsCurrentRef = useRef(isCurrent);
+  useEffect(() => {
+    const wasCurrent = prevIsCurrentRef.current;
+    prevIsCurrentRef.current = isCurrent;
+    // 열림→닫힘 전이에서만 동작 (열림 자체/미변경은 무시).
+    if (!wasCurrent || isCurrent) return;
     setSelected(new Set());
     const inflight =
       busyUpload ||
@@ -496,10 +504,10 @@ export function QuotesCardBody() {
     const hasDone = job.jobs.some((j) => j.status === 'done');
     if (hasDone && !inflight) {
       dismissedToIdleRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset view to idle on fullview close
       setPhase('idle');
     }
-    closeFullview();
-  }, [closeFullview, busyUpload, readyFiles.length, job.jobs, job.localUploads]);
+  }, [isCurrent, busyUpload, readyFiles.length, job.jobs, job.localUploads]);
 
   // 일괄 삭제 — 결정 1: 신규 endpoint 없이 기존 개별 DELETE 를 병렬 호출.
   // Promise.allSettled 로 일부 실패해도 나머지는 반영, 결과 count 를 toast.
@@ -941,7 +949,7 @@ export function QuotesCardBody() {
         <WidgetFullviewPanel
           title="전사록 — 전체 보기"
           subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
-          onClose={handleCloseFullview}
+          onClose={closeFullview}
         >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
           <div className="mb-4 shrink-0">
