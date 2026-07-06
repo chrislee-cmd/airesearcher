@@ -662,13 +662,18 @@ export function RecruitingWizard({
   // 로 넘어간다 (working flow 회귀 0).
   if (criteriaPhase === 'idle') {
     return (
-      // 컨트롤(대상자 조건 입력) = 카드 정중앙(수직+수평 center) 통일 launcher
-      // 룩 (데스크/프로빙 규격 — 위젯 메인 패널 통일 follow-up). 옛 하단 고정
-      // bg-paper-soft CTA bar 는 회색 wrapper 제거 규칙에 따라 폐기 — CTA 는
-      // 컨트롤 아래 같은 중앙 컬럼에서 좌측 status slot + 우측 auto-width
-      // (justify-between, 데스크/프로빙 동일 pattern).
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5">
-        <div className="w-full max-w-[420px] space-y-4">
+      // 컨트롤(대상자 조건 입력) = 카드 상단 launcher (데스크/프로빙 밸런스
+      // 규격 — 위젯 메인 패널 통일 follow-up). 옛 하단 고정 bg-paper-soft CTA
+      // bar 는 회색 wrapper 제거 규칙에 따라 폐기 — CTA 는 컨트롤 아래 같은
+      // 컬럼에서 좌측 status slot + 우측 auto-width (justify-between, 데스크/
+      // 프로빙 동일 pattern).
+      // 밸런스 튜닝(desk 미러, PR #758/#762): 정중앙(justify-center) 은 짧은
+      // 폼 위/아래로 큰 빈 띠를 남겼다. justify-start + pt-10 pb-6 으로 상단부터
+      // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터
+      // (max-w-2xl)가 좌우를 채운다 (데스크/프로빙 justify-start + pt-10 pb-6
+      // + max-w-2xl + space-y-5 와 동일 규격).
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
+        <div className="w-full max-w-2xl space-y-5">
           <CriteriaInputFields
             files={files}
             pasted={pasted}
@@ -1008,16 +1013,21 @@ function CriteriaInputFields({
   onAddFiles: (incoming: FileList | File[]) => void;
   onRemoveFile: (idx: number) => void;
 }) {
+  // 밸런스 튜닝(desk 미러): 넓어진 idle 클러스터(max-w-2xl) 대비 왜소함을
+  // 해소하려 필드 세로 간격 gap-4 → gap-5, 두 입력 박스 높이 h-[120px] →
+  // h-[140px] 확대 (데스크 controlsForm space-y-5 + 키워드 input 확대와 같은
+  // 계열). 이 컴포넌트는 flow-mode 입력 모달(size=md)에도 마운트되지만, 더
+  // 커진 입력 박스는 그쪽에서도 무해한 시각 확대일 뿐 기능 회귀는 없다.
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Field label="텍스트 붙여넣기">
           <Textarea
             value={pasted}
             onChange={(e) => onPasteChange(e.target.value)}
             disabled={running}
             placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
-            className="h-[120px] resize-none text-md text-ink-2"
+            className="h-[140px] resize-none text-md text-ink-2"
           />
         </Field>
         <Field label="파일 업로드">
@@ -1027,7 +1037,7 @@ function CriteriaInputFields({
             onFiles={(f) => onAddFiles(f)}
             label="파일을 끌어다 놓거나 클릭"
             helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
-            className="h-[120px] gap-2 px-6"
+            className="h-[140px] gap-2 px-6"
           />
         </Field>
       </div>
