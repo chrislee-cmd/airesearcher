@@ -140,13 +140,14 @@ export const env = createEnv({
     TRANSLATE_TTS_VOICE: z.string().default('alloy'),
     TRANSLATE_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
     // 2-voice slot mapping: distinct voices per capture slot so listeners
-    // hear WHO is speaking (mic=host → A, tab=guest → B). Optional — when
-    // unset each falls back to TRANSLATE_TTS_VOICE, so the single-voice
-    // behavior is unchanged until an operator opts in. Only applied in the
-    // dual-source (`both`) mode; single-source sessions always use the base
-    // voice (see translate-console.tsx). Server-only, same as the base voice.
-    TRANSLATE_TTS_VOICE_MIC: z.string().optional(),
-    TRANSLATE_TTS_VOICE_TAB: z.string().optional(),
+    // hear WHO is speaking (mic=host → A, tab=guest → B). These carry
+    // CONTRASTING defaults (onyx = deep/low, shimmer = bright/high) so the
+    // two-voice split works out of the box in dual-source sessions with no
+    // env config — override per-env to taste. Only applied in the dual-source
+    // (`both`) mode; single-source sessions use the base TRANSLATE_TTS_VOICE
+    // (see translate-console.tsx). Server-only, same as the base voice.
+    TRANSLATE_TTS_VOICE_MIC: z.string().default('onyx'),
+    TRANSLATE_TTS_VOICE_TAB: z.string().default('shimmer'),
 
     // 'false' (string) disables LLM zero-retention. Default = enabled.
     LLM_ZERO_RETENTION: z.enum(['true', 'false']).default('true'),
