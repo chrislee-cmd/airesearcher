@@ -21,8 +21,12 @@
    - SDP Opus mono hint — Chrome 의 createOffer SDP 에 `stereo=0;sprop-stereo=0`
      명시. Opus 기본값이 mono 라 no-op 에 가깝지만 보수적 안전망 (translation
      endpoint 와 달리 transcription pipeline 이 stereo 에 더 strict).
-   - 10s connect watchdog — 'starting' 진입 시 setTimeout 으로 안전망,
-     'live' 도달 시 clear. 만료되면 pc/dc 상태 dump + `probing_timeout` 에러.
+   - 10s connect watchdog — **capture(getDisplayMedia/getUserMedia) 완료 후**
+     'connecting' 단계 진입 시 setTimeout 으로 arm, 'live' 도달 시 clear.
+     사용자 조작(탭 선택/권한 승인) 시간은 제외 — watchdog 은 SDP/ICE/DC
+     네트워크 연결만 감시. 만료되면 phase 태그 + pc/dc 상태 dump +
+     `probing_connect_timeout` 에러. 세션 fetch 는 별도 8s AbortController
+     (`session_timeout`) 로 격리 — watchdog 이 서버 hang 을 대신 삼키지 않는다.
    - ICE 보강 — STUN 2개 + signaling/ice 상태 변화 콘솔 로그.
    - tab VAD 안전망 — 휴지 없는 continuous 콘텐츠 (YouTube/스트리밍) 가
      OpenAI VAD 가 end-of-speech 를 못 잡고 transcript 가 stall 되는 걸 방지.
@@ -54,6 +58,12 @@ export type TranscriptionStatus =
   | 'error';
 
 export type TranscriptionSource = 'mic' | 'tab';
+
+// start() 진행 단계 태그 — 실패/타임아웃 로그에 실려 "pc null 만 보고 추측"
+// 상황을 제거한다 (spec C). 'session_fetch' = 서버 client_secret 발급,
+// 'capture' = getDisplayMedia/getUserMedia (사용자 조작 다이얼로그, watchdog
+// 정지 구간), 'connecting' = SDP/ICE/DC (watchdog armed 구간).
+type StartPhase = 'idle' | 'session_fetch' | 'capture' | 'connecting';
 
 // 위젯 consumer 가 그대로 쓰는 segment shape — realtime-transcript-provider 의
 // TranscriptSegment 와 호환 (id/text/started_at/ended_at/locale). speaker
@@ -96,9 +106,17 @@ const STUN_URLS = [
 // 가장 오래된 segment 부터 drop.
 const SEGMENT_CAP = 1000;
 
-// connect watchdog — 'starting' 진입 후 이 시간 안에 'live' 못 가면
-// `probing_timeout`. translate-console PR #396 과 동일 수치.
+// connect watchdog — **capture 완료 후** 이 시간 안에 SDP/ICE/DC 가 'live' 에
+// 도달 못 하면 `probing_connect_timeout`. translate-console PR #396 과 동일 수치.
+// 핵심: start() 진입이 아니라 getDisplayMedia/getUserMedia (사용자 조작
+// 다이얼로그) 가 끝난 뒤에 armed 된다 — 탭 선택/권한 승인에 걸린 사용자 시간은
+// 네트워크 watchdog 에서 제외 (이 파일의 P0 회귀 root cause 였다).
 const CONNECT_TIMEOUT_MS = 10_000;
+
+// 세션 fetch (`POST /api/probing/sessions`) 자체 타임아웃 — 서버 hang 시
+// 조용히 watchdog 시간을 소진하는 대신 8초에 명시적 `session_timeout` 에러.
+// watchdog 과 분리된 단계별 안전망 (spec B).
+const SESSION_FETCH_TIMEOUT_MS = 8_000;
 
 // tab 모드 VAD 안전망 (3초마다 400ms 트랙 mute) — translate-console PR #396 패턴.
 // 휴지 없는 continuous content (YouTube 등) 에서 OpenAI server_vad 가
@@ -221,8 +239,10 @@ export function useRealtimeTranscription(opts?: {
   const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
-  // 10s connect watchdog.
+  // 10s connect watchdog. capture 완료 후에만 armed (사용자 조작 시간 제외).
   const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 현재 start() 진행 단계 — 실패/타임아웃 진단 로그에 실린다 (spec C).
+  const phaseRef = useRef<StartPhase>('idle');
   // Server-issued probing session id — also the start-lump generation_id.
   // Reused by the heartbeat ticker to derive subsequent tick generation_ids.
   const sessionIdRef = useRef<string | null>(null);
@@ -257,6 +277,7 @@ export function useRealtimeTranscription(opts?: {
       clearTimeout(connectWatchdogRef.current);
       connectWatchdogRef.current = null;
     }
+    phaseRef.current = 'idle';
     if (heartbeatTimerRef.current) {
       clearInterval(heartbeatTimerRef.current);
       heartbeatTimerRef.current = null;
@@ -534,39 +555,42 @@ export function useRealtimeTranscription(opts?: {
       lastTextRef.current.clear();
       setStatus('starting');
 
-      // Arm 10s connect watchdog. 어느 단계에서든 hang 이 나면 사용자가
-      // "연결 중" 에 영원히 갇히지 않게 안전망. 성공 시 'live' 진입 직전에
-      // clear, 실패 시 cleanup() 에서 자동 clear.
-      if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
-      connectWatchdogRef.current = setTimeout(() => {
-        connectWatchdogRef.current = null;
-        const pc = pcRef.current;
-        const dc = dcRef.current;
-        console.warn('[probing] connect timeout', {
-          source,
-          pcConnection: pc?.connectionState ?? null,
-          pcIce: pc?.iceConnectionState ?? null,
-          pcSignaling: pc?.signalingState ?? null,
-          pcGathering: pc?.iceGatheringState ?? null,
-          dcReadyState: dc?.readyState ?? null,
-        });
-        setError('probing_timeout');
-        setStatus('error');
-        cleanup();
-        startInFlightRef.current = false;
-      }, CONNECT_TIMEOUT_MS);
+      // start() 전체 경과의 기준점 — 실패/타임아웃 로그의 elapsed_ms 는
+      // 여기서부터 잰다 (어느 단계까지 갔다가 멈췄는지 phase 태그와 함께 파악).
+      const startedWallAt = Date.now();
+
+      // watchdog 은 여기서 armed 하지 않는다 — capture(getDisplayMedia/
+      // getUserMedia) 가 끝난 뒤 'connecting' 단계 진입 시점에 arm 한다.
+      // 사용자의 탭 선택/권한 승인 시간이 네트워크 watchdog 에 잡히던 P0
+      // 회귀를 막기 위함 (spec A).
 
       // 1) 서버 세션 — client_secret 발급 + start-lump credit 차감.
       // 서버가 반환하는 session_id 는 (a) start-lump 차감의 generation_id
       // 이자 (b) 10분 heartbeat 의 session 핸들. cleanup() 에서 ref 가
       // 초기화되므로 여기서만 set.
+      //
+      // 자체 AbortController 8s — 서버가 hang 하면 watchdog 이 아니라 여기서
+      // 명시적 `session_timeout` 으로 끊는다 (spec B). watchdog 은 아직
+      // armed 되지 않았으므로 이 단계의 hang 은 phase='session_fetch' 로 격리.
+      phaseRef.current = 'session_fetch';
       let clientSecret: string;
       try {
-        const res = await fetch('/api/probing/sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
+        const fetchController = new AbortController();
+        const fetchTimer = setTimeout(
+          () => fetchController.abort(),
+          SESSION_FETCH_TIMEOUT_MS,
+        );
+        let res: Response;
+        try {
+          res = await fetch('/api/probing/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+            signal: fetchController.signal,
+          });
+        } finally {
+          clearTimeout(fetchTimer);
+        }
         const json = (await res.json().catch(() => ({}))) as {
           session_id?: string;
           client_secret?: { value?: string };
@@ -583,7 +607,23 @@ export function useRealtimeTranscription(opts?: {
         // start-lump 차감 성공 — 위젯 헤더 -N fly-up + topbar pulse.
         notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'session_failed');
+        // AbortError = 8s 초과 = 서버 hang. generic session_failed 와 구분되는
+        // 명시적 `session_timeout` 으로 사용자가 원인(서버 지연)을 인지.
+        const aborted = e instanceof DOMException && e.name === 'AbortError';
+        console.warn('[probing] session fetch failed', {
+          phase: 'session_fetch',
+          source,
+          timeout: aborted,
+          elapsed_ms: Date.now() - startedWallAt,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        setError(
+          aborted
+            ? 'session_timeout'
+            : e instanceof Error
+              ? e.message
+              : 'session_failed',
+        );
         setStatus('error');
         cleanup();
         startInFlightRef.current = false;
@@ -593,6 +633,11 @@ export function useRealtimeTranscription(opts?: {
       // 2) capture — source 분기. tab 모드는 getDisplayMedia 의 트랙을 그대로
       // pc.addTrack (raw passthrough). WebAudio resample 그래프를 끼우면
       // transcription endpoint 가 dc 를 즉시 close (PR #401 진단으로 확정).
+      //
+      // 이 단계 = 사용자 조작 다이얼로그(탭 선택 + "오디오 공유" 체크, 또는 mic
+      // 권한 승인). watchdog 은 여전히 정지 상태 — 사용자가 얼마나 오래 고르든
+      // 타임아웃 없음. 취소/거부는 아래 NotAllowedError 경로가 처리 (spec A).
+      phaseRef.current = 'capture';
       let captureStream: MediaStream;
       try {
         if (source === 'tab') {
@@ -633,7 +678,13 @@ export function useRealtimeTranscription(opts?: {
         // NotAllowedError → 사용자가 picker / 권한 prompt 를 명시적으로
         // 취소. 그 외 DOMException 은 OS / 브라우저 레벨 capture 실패.
         const name = e instanceof DOMException ? e.name : '';
-        console.warn('[probing] capture failed', { source, name, error: e });
+        console.warn('[probing] capture failed', {
+          phase: 'capture',
+          source,
+          name,
+          elapsed_ms: Date.now() - startedWallAt,
+          error: e,
+        });
         if (source === 'tab') {
           setError(name === 'NotAllowedError' ? 'tab_audio_denied' : 'tab_audio_failed');
         } else {
@@ -665,7 +716,35 @@ export function useRealtimeTranscription(opts?: {
         }
       }
 
-      // 3) RTCPeerConnection + datachannel + SDP 교환
+      // 3) RTCPeerConnection + datachannel + SDP 교환.
+      // 여기서 비로소 10s connect watchdog 을 arm 한다 — 사용자 조작(capture)
+      // 이 끝났고, 남은 건 순수 네트워크 연결(SDP/ICE/DC)뿐이라 watchdog 의
+      // 본래 감시 대상 (spec A). 'live' 도달 직전 clear, 실패 시 cleanup() 이
+      // clear. 만료 로그는 phase='connecting' + elapsed_ms 로 재발 시 즉시 격리.
+      phaseRef.current = 'connecting';
+      const connectArmedAt = Date.now();
+      if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
+      connectWatchdogRef.current = setTimeout(() => {
+        connectWatchdogRef.current = null;
+        const wpc = pcRef.current;
+        const wdc = dcRef.current;
+        console.warn('[probing] connect timeout', {
+          phase: phaseRef.current,
+          source,
+          elapsed_ms: Date.now() - startedWallAt,
+          connecting_ms: Date.now() - connectArmedAt,
+          pcConnection: wpc?.connectionState ?? null,
+          pcIce: wpc?.iceConnectionState ?? null,
+          pcSignaling: wpc?.signalingState ?? null,
+          pcGathering: wpc?.iceGatheringState ?? null,
+          dcReadyState: wdc?.readyState ?? null,
+        });
+        setError('probing_connect_timeout');
+        setStatus('error');
+        cleanup();
+        startInFlightRef.current = false;
+      }, CONNECT_TIMEOUT_MS);
+
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: STUN_URLS }],
       });
@@ -706,6 +785,13 @@ export function useRealtimeTranscription(opts?: {
         const answerSdp = await sdpRes.text();
         await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
       } catch (e) {
+        console.warn('[probing] connect failed', {
+          phase: 'connecting',
+          source,
+          elapsed_ms: Date.now() - startedWallAt,
+          connecting_ms: Date.now() - connectArmedAt,
+          error: e instanceof Error ? e.message : String(e),
+        });
         setError(e instanceof Error ? e.message : 'webrtc_failed');
         setStatus('error');
         cleanup();
@@ -718,6 +804,7 @@ export function useRealtimeTranscription(opts?: {
         clearTimeout(connectWatchdogRef.current);
         connectWatchdogRef.current = null;
       }
+      phaseRef.current = 'idle';
       setStatus('live');
       startInFlightRef.current = false;
 
