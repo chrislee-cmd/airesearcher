@@ -111,7 +111,7 @@ export function QuotesCardBody() {
   // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
   // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const { renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
+  const { isCurrent, renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
 
   // Analytics — 카드 body mount 시 1회 view.
@@ -140,23 +140,38 @@ export function QuotesCardBody() {
   // 위젯 phase — 'idle' (아직 실행 신호 없음) → 'active' (실행 중/완료).
   // 컨트롤 패널은 phase 무관 항상 노출되고, phase 는 그 아래 산출물 영역의
   // 렌더 여부만 가른다 (active 일 때만 업로드/큐/상태 노출). CTA(업로드 시작)
-  // 시 active 로 승격하고 되돌아가지 않는다 (결과물 있으면 active 유지).
+  // 시 active 로 승격한다. 예외로, 전사 완료분만 남은 상태에서 사용자가
+  // "전체 보기"(fullview)로 산출물을 확인하고 닫으면 카드를 idle 로 되돌려
+  // 새 작업 준비 상태로 만든다 (진행 중이면 유지 — 아래 handleCloseFullview).
   const [phase, setPhase] = useState<'idle' | 'active'>('idle');
+  // fullview 를 확인하고 닫아 idle 로 되돌린 신호. 완료분만 있는 상태에서
+  // 아래 승격 effect 가 다시 active 로 올리지 않도록 막는다. 진행/업로드/대기
+  // 신호가 새로 생기면 해제된다. 뷰 상태 전용 ref — DB 산출물은 보존된다.
+  const dismissedToIdleRef = useRef(false);
 
   // 실행 신호(진행/완료 잡, 로컬 업로드, 시작 대기 파일)가 하나라도 있으면
   // active 로 승격. 새로고침/다른 디바이스에서 이미 잡이 있는 경우(realtime
-  // 로 늦게 로드)도 이 effect 가 idle→active 를 처리한다. active 에서 idle 로
-  // 되돌리지 않는다.
+  // 로 늦게 로드)도 이 effect 가 idle→active 를 처리한다. 단, 완료분만 남고
+  // 사용자가 fullview 를 확인 후 닫아 idle 로 되돌린 경우(dismissedToIdleRef)
+  // 는 재승격하지 않는다 — 진행/업로드/대기 같은 새 신호가 생기면 dismissal
+  // 을 해제하고 다시 active 로 올린다.
   useEffect(() => {
-    if (
-      job.jobs.length > 0 ||
-      Object.keys(job.localUploads).length > 0 ||
-      readyFiles.length > 0
-    ) {
+    const inflightJobs = job.jobs.some((j) => j.status !== 'done');
+    const uploadsActive = Object.keys(job.localUploads).length > 0;
+    const readyPending = readyFiles.length > 0;
+    if (inflightJobs || uploadsActive || readyPending) {
+      dismissedToIdleRef.current = false;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- promote on external job state
       setPhase('active');
+      return;
     }
-  }, [job.jobs.length, job.localUploads, readyFiles.length]);
+    // 완료분만 있는 상태: fullview 확인 후 idle 로 되돌린 게 아니면
+    // (첫 로드/새로고침 등) active 로 승격.
+    if (job.jobs.length > 0 && !dismissedToIdleRef.current) {
+       
+      setPhase('active');
+    }
+  }, [job.jobs, job.localUploads, readyFiles.length]);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `uploadToStorage` is captured once. We mirror live state into a
@@ -466,11 +481,33 @@ export function QuotesCardBody() {
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  // fullview 를 닫을 때 선택도 리셋 — 다음에 열었을 때 지난 선택이 남지 않도록.
-  const handleCloseFullview = useCallback(() => {
+  // fullview 가 닫힐 때(× / Esc / backdrop / 사이드바 전환 모두)의 side effect.
+  // 공유 모달은 canvas-board 의 closeFullview(= shell context close)로 닫혀
+  // 위젯 패널의 onClose 를 우회할 수 있으므로, 이 위젯이 fullview 로 보이는
+  // 중인지(isCurrent) 의 true→false 전이를 직접 감지해 처리한다.
+  //   1) 선택 리셋 — 다음에 열었을 때 지난 선택이 남지 않도록.
+  //   2) 전사 완료분만 남았으면 카드를 idle 로 되돌려 새 작업 준비 상태로
+  //      (spec B). 진행 중(업로드/시작 대기/전사 inflight)이면 유지. 뷰 상태만
+  //      리셋 — 전사 job/파일은 DB-backed 이라 fullview 재진입 시 그대로 보인다.
+  const prevIsCurrentRef = useRef(isCurrent);
+  useEffect(() => {
+    const wasCurrent = prevIsCurrentRef.current;
+    prevIsCurrentRef.current = isCurrent;
+    // 열림→닫힘 전이에서만 동작 (열림 자체/미변경은 무시).
+    if (!wasCurrent || isCurrent) return;
     setSelected(new Set());
-    closeFullview();
-  }, [closeFullview]);
+    const inflight =
+      busyUpload ||
+      readyFiles.length > 0 ||
+      Object.keys(job.localUploads).length > 0 ||
+      job.jobs.some((j) => j.status !== 'done');
+    const hasDone = job.jobs.some((j) => j.status === 'done');
+    if (hasDone && !inflight) {
+      dismissedToIdleRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset view to idle on fullview close
+      setPhase('idle');
+    }
+  }, [isCurrent, busyUpload, readyFiles.length, job.jobs, job.localUploads]);
 
   // 일괄 삭제 — 결정 1: 신규 endpoint 없이 기존 개별 DELETE 를 병렬 호출.
   // Promise.allSettled 로 일부 실패해도 나머지는 반영, 결과 count 를 toast.
@@ -541,6 +578,10 @@ export function QuotesCardBody() {
   // 완료 — 진행 중 없음 + 재시도 대기 없음 + 에러 없음 + 완료본 존재.
   const txDone =
     !txInflight && readyFiles.length === 0 && !anyError && doneJobs.length > 0;
+  // fullview 후 idle 복귀(spec B) — idle 로 되돌린 뒤엔 완료 배너(✅ + 전체
+  // 보기)를 접고 idle 컨트롤(언어 + 드롭존)만 노출한다. 완료 산출물은
+  // DB/fullview 에 보존. phase 가 active 일 때만 done 프리젠테이션을 렌더.
+  const showDone = txDone && phase === 'active';
   const primaryInflight =
     job.jobs.find(
       (j) =>
@@ -745,7 +786,7 @@ export function QuotesCardBody() {
           {txInflight ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={txTimelinePhases} />
-            ) : txDone ? (
+            ) : showDone ? (
               // done: "완료됐어요! + 전체 보기" (+ 파일 추가 업로드 경로 보존).
               <div className="flex flex-col items-center gap-6 py-8">
                 <p className="text-lg font-semibold text-ink-2">
@@ -876,7 +917,7 @@ export function QuotesCardBody() {
             숨김). 업로드는 인라인 dropzone 이 담당하므로 하단 바는 항상
             "전사 시작" — 준비 파일 없으면 disabled, 있으면(자동 시작 실패
             재시도분) 활성. */}
-        {!txInflight && !txDone && (
+        {!txInflight && !showDone && (
           <WidgetPrimaryCta
             label={
               readyCount > 0
@@ -908,7 +949,7 @@ export function QuotesCardBody() {
         <WidgetFullviewPanel
           title="전사록 — 전체 보기"
           subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
-          onClose={handleCloseFullview}
+          onClose={closeFullview}
         >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
           <div className="mb-4 shrink-0">
