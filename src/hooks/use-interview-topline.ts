@@ -1,0 +1,189 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type {
+  ToplineBlock,
+  ToplineReadResult,
+  ToplineStatus,
+} from '@/lib/interview-v2/types';
+
+// 인터뷰 탑라인 — client 데이터 소스. GET(읽기 전용, 생성 트리거 X)로 저장된
+// 보고서를 열자마자 로드하고, interview_toplines row 를 realtime 으로 구독해
+// status 전이(generating → done|error)와 blocks 갱신을 반영한다.
+// (마이그 20260706114519 가 이 테이블을 supabase_realtime publication 에 등록.)
+//
+// 재생성은 명시적 — generate(force) 가 POST 로 Opus 를 kick 한다(비용 통제,
+// 사용자 결정). 초기 로드는 절대 POST 를 부르지 않아 stale/미존재 시에도
+// 과금이 없다.
+
+export type ToplineState = {
+  status: ToplineStatus;
+  blocks: ToplineBlock[];
+  stale: boolean;
+  indexed: boolean;
+  generatedAt: string | null;
+  errorMessage: string | null;
+  // 초기 GET 로딩 중.
+  loading: boolean;
+  // GET/POST 자체가 실패(네트워크/서버).
+  fetchError: string | null;
+  // 재생성 POST in-flight.
+  generating: boolean;
+  generate: (force: boolean) => Promise<void>;
+  refetch: () => Promise<void>;
+};
+
+export function useInterviewTopline(projectId: string | null): ToplineState {
+  const supabase = useMemo(() => createClient(), []);
+  const [data, setData] = useState<ToplineReadResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  // 언마운트 후 setState 방지 (탭 전환/모달 닫힘).
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  const refetch = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(
+        `/api/interviews/v2/topline?project_id=${encodeURIComponent(projectId)}`,
+        { method: 'GET' },
+      );
+      const json = (await res.json().catch(() => null)) as
+        | ToplineReadResult
+        | { error?: string }
+        | null;
+      if (!aliveRef.current) return;
+      if (!res.ok || !json || 'error' in json) {
+        setFetchError(
+          json && 'error' in json && typeof json.error === 'string'
+            ? json.error
+            : `HTTP ${res.status}`,
+        );
+        return;
+      }
+      setFetchError(null);
+      setData(json as ToplineReadResult);
+    } catch (e) {
+      if (!aliveRef.current) return;
+      setFetchError(e instanceof Error ? e.message : 'network_error');
+    }
+  }, [projectId]);
+
+  // 프로젝트 바뀔 때마다 초기 로드.
+  useEffect(() => {
+    if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no project = nothing to load; clear the gate (use-consent.ts pattern)
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    void (async () => {
+      await refetch();
+      if (aliveRef.current) setLoading(false);
+    })();
+  }, [projectId, refetch]);
+
+  // Realtime — 이 프로젝트의 탑라인 row UPDATE/INSERT 구독. status/blocks 를
+  // payload 로 즉시 반영하고, 안전하게 refetch 로 stale 재계산까지 맞춘다.
+  useEffect(() => {
+    if (!projectId) return;
+    const ch = supabase
+      .channel(`interview-topline-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interview_toplines',
+          filter: `project_id=eq.${projectId}`,
+        },
+        (payload) => {
+          const next = payload.new as
+            | { status?: ToplineStatus; blocks?: ToplineBlock[] }
+            | undefined;
+          if (next?.status) {
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: next.status as ToplineStatus,
+                    blocks: Array.isArray(next.blocks)
+                      ? next.blocks
+                      : prev.blocks,
+                  }
+                : prev,
+            );
+          }
+          // done/error 전이 시 stale·generated_at 을 정확히 맞추려 GET 재조회.
+          if (next?.status === 'done' || next?.status === 'error') {
+            void refetch();
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [supabase, projectId, refetch]);
+
+  const generate = useCallback(
+    async (force: boolean) => {
+      if (!projectId) return;
+      setGenerating(true);
+      // 낙관적으로 generating 표시 — realtime/refetch 가 곧 확정.
+      setData((prev) => (prev ? { ...prev, status: 'generating' } : prev));
+      try {
+        const res = await fetch('/api/interviews/v2/topline', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ project_id: projectId, force }),
+        });
+        const json = (await res.json().catch(() => null)) as
+          | { status?: ToplineStatus; error?: string }
+          | null;
+        if (!aliveRef.current) return;
+        if (!res.ok) {
+          setFetchError(
+            json && typeof json.error === 'string'
+              ? json.error
+              : `HTTP ${res.status}`,
+          );
+          // 실패 시 실제 상태로 되돌린다.
+          await refetch();
+          return;
+        }
+        setFetchError(null);
+        // 캐시 히트면 즉시 done + blocks 를 반환하기도 함.
+        await refetch();
+      } catch (e) {
+        if (!aliveRef.current) return;
+        setFetchError(e instanceof Error ? e.message : 'network_error');
+      } finally {
+        if (aliveRef.current) setGenerating(false);
+      }
+    },
+    [projectId, refetch],
+  );
+
+  return {
+    status: data?.status ?? 'none',
+    blocks: data?.blocks ?? [],
+    stale: data?.stale ?? false,
+    indexed: data?.indexed ?? false,
+    generatedAt: data?.generated_at ?? null,
+    errorMessage: data?.error_message ?? null,
+    loading,
+    fetchError,
+    generating,
+    generate,
+    refetch,
+  };
+}
