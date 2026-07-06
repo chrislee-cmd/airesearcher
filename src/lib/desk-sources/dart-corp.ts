@@ -29,48 +29,74 @@ function normName(s: string): string {
 }
 
 // 한 serverless 실행 안에서 여러 DART task(회사 5개)가 상장사 map 을 공유하도록
-// module-level 로 메모이즈 — Supabase 캐시 왕복을 1회로 줄인다.
+// module-level 로 메모이즈 — Supabase 캐시 왕복을 1회로 줄인다. 실패(빈 배열)는
+// 메모에 고정하지 않는다 — 고정하면 warm 인스턴스가 다음 run 에서도 영영 빈
+// 명부를 재사용한다 (self-heal).
 let listedMemo: Promise<DartCorp[]> | null = null;
 
 async function loadListedCorps(key: string): Promise<DartCorp[]> {
-  if (listedMemo) return listedMemo;
-  listedMemo = (async () => {
-    const cached = await getCache<DartCorp[]>(LISTED_CACHE_KEY);
-    if (cached && Array.isArray(cached) && cached.length) return cached;
-    try {
-      const res = await safeFetch(
-        `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${key}`,
-        undefined,
-        20_000,
-      );
-      if (!res.ok) return [];
-      const buf = new Uint8Array(await res.arrayBuffer());
-      const files = unzipSync(buf);
-      const xmlBytes = files['CORPCODE.xml'] ?? Object.values(files)[0];
-      if (!xmlBytes) return [];
-      const xml = new TextDecoder('utf-8').decode(xmlBytes);
-
-      const corps: DartCorp[] = [];
-      const re = /<list>([\s\S]*?)<\/list>/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(xml)) !== null) {
-        const block = m[1];
-        const stockCode = (pickTag(block, 'stock_code') ?? '').trim();
-        // 상장사만 — stock_code 가 비면(공백 한 칸으로 오기도 함) 비상장.
-        if (!stockCode || !/^\d{5,6}$/.test(stockCode)) continue;
-        const corpCode = (pickTag(block, 'corp_code') ?? '').trim();
-        const corpName = (pickTag(block, 'corp_name') ?? '').trim();
-        if (!corpCode || !corpName) continue;
-        corps.push({ corpCode, corpName, stockCode });
-      }
-      if (corps.length) void setCache(LISTED_CACHE_KEY, corps);
+  if (!listedMemo) {
+    listedMemo = fetchListedCorps(key).then((corps) => {
+      if (!corps.length) listedMemo = null;
       return corps;
-    } catch (err) {
-      console.error('[dart] loadListedCorps failed', err);
-      return [];
-    }
-  })();
+    });
+  }
   return listedMemo;
+}
+
+async function fetchListedCorps(key: string): Promise<DartCorp[]> {
+  const cached = await getCache<DartCorp[]>(LISTED_CACHE_KEY);
+  if (cached && Array.isArray(cached) && cached.length) return cached;
+  try {
+    // corpCode.xml 은 전 기업 zip(~3.5MB). Vercel 기본 리전(iad1, 미국)에서
+    // 한국 FSS 서버로부터 받으면 20s 를 훌쩍 넘겨 abort 될 수 있다 — 그래서
+    // 이 다운로드는 crawl task(15s cap) 안이 아니라 warmDartCorps(아래) 로
+    // orchestrator 단계에서 미리 수행하고, 결과는 Supabase 캐시로 영속화해
+    // 이후 실행은 전부 캐시 히트로 끝낸다. timeout 60s 는 원거리 리전용.
+    const res = await safeFetch(
+      `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${key}`,
+      undefined,
+      60_000,
+    );
+    if (!res.ok) return [];
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const files = unzipSync(buf);
+    const xmlBytes = files['CORPCODE.xml'] ?? Object.values(files)[0];
+    if (!xmlBytes) return [];
+    const xml = new TextDecoder('utf-8').decode(xmlBytes);
+
+    const corps: DartCorp[] = [];
+    const re = /<list>([\s\S]*?)<\/list>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml)) !== null) {
+      const block = m[1];
+      const stockCode = (pickTag(block, 'stock_code') ?? '').trim();
+      // 상장사만 — stock_code 가 비면(공백 한 칸으로 오기도 함) 비상장.
+      if (!stockCode || !/^\d{5,6}$/.test(stockCode)) continue;
+      const corpCode = (pickTag(block, 'corp_code') ?? '').trim();
+      const corpName = (pickTag(block, 'corp_name') ?? '').trim();
+      if (!corpCode || !corpName) continue;
+      corps.push({ corpCode, corpName, stockCode });
+    }
+    if (corps.length) void setCache(LISTED_CACHE_KEY, corps);
+    return corps;
+  } catch (err) {
+    console.error('[dart] loadListedCorps failed', err);
+    return [];
+  }
+}
+
+// 상장사 명부 warm-up — market orchestrator(runMarket)가 crawl 시작 전에
+// 호출한다. corpCode.xml 다운로드(원거리 리전에서 20s+)를 crawl task 의
+// 15s 벽 밖에서 미리 끝내고 Supabase 캐시에 실어, 각 DART task 는 캐시
+// 히트로 즉시 회사를 특정하게 한다 (2026-07-06 market DART 0건 회귀의
+// root cause fix). 반환 = 명부 건수 (0 = 실패, 판단 로그에 노출용).
+export async function warmDartCorps(
+  key: string = cleanApiKey(env.DART_API_KEY),
+): Promise<number> {
+  if (!key) return 0;
+  const corps = await loadListedCorps(key);
+  return corps.length;
 }
 
 // 회사명 → 상장사 corp_code. 정확 일치 우선, 없으면 포함 관계(짧은 사명 우선 —

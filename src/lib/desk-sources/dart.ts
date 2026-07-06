@@ -63,18 +63,24 @@ async function fetchByCorp(
   const end = toYyyymmdd(range.to);
   if (end) params.set('end_de', end);
 
-  let items: DartItem[] = [];
-  try {
-    const res = await safeFetch(
-      `https://opendart.fss.or.kr/api/list.json?${params}`,
-    );
-    if (res.ok) {
-      const json = (await res.json()) as { status?: string; list?: DartItem[] };
-      if (json.status === '000') items = json.list ?? [];
-    }
-  } catch {
-    // 공시 목록 실패해도 매출 article 은 만들 수 있으니 계속 진행.
-  }
+  // 공시 목록과 매출 조회는 독립 — 병렬로 돌려 task 를 15s cap 에서 멀리
+  // 둔다 (둘 다 소형 JSON 호출, 각각 safeFetch 10s 상한).
+  const [items, revenue] = await Promise.all([
+    (async (): Promise<DartItem[]> => {
+      try {
+        const res = await safeFetch(
+          `https://opendart.fss.or.kr/api/list.json?${params}`,
+        );
+        if (!res.ok) return [];
+        const json = (await res.json()) as { status?: string; list?: DartItem[] };
+        return json.status === '000' ? (json.list ?? []) : [];
+      } catch {
+        // 공시 목록 실패해도 매출 article 은 만들 수 있으니 계속 진행.
+        return [];
+      }
+    })(),
+    fetchDartRevenue(corp.corpCode, key),
+  ]);
 
   // 매출액 링크로 쓸 대표 공시 — 사업보고서 우선, 없으면 첫 정기공시.
   const businessReport =
@@ -83,7 +89,6 @@ async function fetchByCorp(
   const out: DeskArticle[] = [];
 
   // (1) 매출액 headline — SAM 핵심 수치. 사업보고서 기준 연결 매출액.
-  const revenue = await fetchDartRevenue(corp.corpCode, key);
   if (revenue) {
     const url = businessReport?.rcept_no
       ? reportUrl(businessReport.rcept_no)
