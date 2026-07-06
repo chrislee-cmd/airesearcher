@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { DropdownMenu } from '@/components/ui/dropdown-menu';
+import { ControlTrigger } from '@/components/ui/control-trigger';
 import { RecruitingWizard } from '@/components/recruiting-wizard';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -283,20 +284,34 @@ function ExpandedBody() {
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-4 py-2">
                   {forms.length > 0 ? (
-                    <Select
-                      size="sm"
-                      fullWidth={false}
-                      aria-label="설문 선택"
-                      className="min-w-[240px]"
-                      value={activeFormId ?? ''}
-                      onChange={(e) =>
-                        setActiveFormId(e.target.value || null)
-                      }
-                      options={forms.map((f) => ({
-                        value: f.formId,
-                        label: selectorLabel(f),
-                      }))}
-                    />
+                    // 컨트롤 드롭다운 통일 — native <Select> → DropdownMenu
+                    // (인터뷰 기준). 항목/value/onChange 로직 불변 (spec 결정 3).
+                    <div className="min-w-[240px]">
+                      <DropdownMenu
+                        items={forms.map((f) => ({
+                          key: f.formId,
+                          label: selectorLabel(f),
+                          onSelect: () => setActiveFormId(f.formId),
+                        }))}
+                        trigger={({ open, onClick, ...aria }) => (
+                          <ControlTrigger
+                            {...aria}
+                            data-open={open}
+                            onClick={onClick}
+                            aria-label="설문 선택"
+                          >
+                            {(() => {
+                              const active = forms.find(
+                                (f) => f.formId === activeFormId,
+                              );
+                              return active
+                                ? selectorLabel(active)
+                                : '설문 선택';
+                            })()}
+                          </ControlTrigger>
+                        )}
+                      />
+                    </div>
                   ) : (
                     <span className="text-sm text-mute-soft">
                       발행된 설문 없음

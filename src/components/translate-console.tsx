@@ -38,6 +38,8 @@ import { ChipInput } from './ui/chip-input';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
+import { DropdownMenu } from './ui/dropdown-menu';
+import { ControlTrigger } from './ui/control-trigger';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { ListenerPanel } from './translate/listener-panel';
@@ -3939,53 +3941,87 @@ export function TranslateConsole({
           disabled (opacity 로 read-only 신호). 밸런스 튜닝(데스크 미러):
           gap 3→4, 필드 높이 h-8→h-10, 라벨은 데스크 SectionLabel 타이포로
           정렬 (시각 일관성, spec 결정 2). */}
+      {/* 컨트롤 드롭다운 통일 — native <select> ×3 → DropdownMenu(인터뷰 기준).
+          항목/value/onChange 불변, 껍데기만 교체 (spec 결정 3). controlFields 는
+          idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. live/busy 중엔
+          trigger disabled (옛 select disabled 동작 유지). */}
       <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
+        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('sourceLang')}
-          <select
-            value={sourceLang}
-            onChange={(e) => setSourceLang(e.target.value)}
-            disabled={busy || live}
-            aria-label={t('sourceLang')}
-            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            {langOptions.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
+          <DropdownMenu
+            items={langOptions.map((l) => ({
+              key: l.value,
+              label: l.label,
+              onSelect: () => setSourceLang(l.value),
+            }))}
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                disabled={busy || live}
+                aria-label={t('sourceLang')}
+                className="min-w-32"
+              >
+                {langOptions.find((l) => l.value === sourceLang)?.label ??
+                  sourceLang}
+              </ControlTrigger>
+            )}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('targetLang')}
-          <select
-            value={targetLang}
-            onChange={(e) => setTargetLang(e.target.value)}
-            disabled={busy || live}
-            aria-label={t('targetLang')}
-            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            {langOptions.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
+          <DropdownMenu
+            items={langOptions.map((l) => ({
+              key: l.value,
+              label: l.label,
+              onSelect: () => setTargetLang(l.value),
+            }))}
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                disabled={busy || live}
+                aria-label={t('targetLang')}
+                className="min-w-32"
+              >
+                {langOptions.find((l) => l.value === targetLang)?.label ??
+                  targetLang}
+              </ControlTrigger>
+            )}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
           {t('captureMode.label')}
-          <select
-            value={captureMode}
-            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-            disabled={busy || live}
-            aria-label={t('captureMode.label')}
-            className="h-10 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-          >
-            <option value="both">{t('captureMode.both')}</option>
-            <option value="mic-only">{t('captureMode.micOnly')}</option>
-            <option value="tab-only">{t('captureMode.tabOnly')}</option>
-          </select>
-        </label>
+          <DropdownMenu
+            items={[
+              { key: 'both', label: t('captureMode.both'), mode: 'both' },
+              { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
+              { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
+            ].map((o) => ({
+              key: o.key,
+              label: o.label,
+              onSelect: () => setCaptureMode(o.mode as CaptureMode),
+            }))}
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                disabled={busy || live}
+                aria-label={t('captureMode.label')}
+                className="min-w-32"
+              >
+                {captureMode === 'both'
+                  ? t('captureMode.both')
+                  : captureMode === 'mic-only'
+                    ? t('captureMode.micOnly')
+                    : t('captureMode.tabOnly')}
+              </ControlTrigger>
+            )}
+          />
+        </div>
       </div>
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip

@@ -19,6 +19,7 @@ import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { SelectMenu } from '@/components/ui/select-menu';
+import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 
 export type SourceKind = 'mic' | 'tab';
@@ -94,7 +95,7 @@ function ControlFields({
               onChange={(next) => onSourceChange(next as SourceKind)}
               options={SOURCE_OPTIONS}
               disabled={controlsDisabled}
-              buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+              buttonClassName={CONTROL_TRIGGER_CLASS}
             />
           </div>
         </Field>
@@ -106,7 +107,7 @@ function ControlFields({
               onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
               options={OUTPUT_LANG_OPTIONS}
               disabled={controlsDisabled}
-              buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+              buttonClassName={CONTROL_TRIGGER_CLASS}
             />
           </div>
         </Field>

@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox } from './checkbox';
+import { CONTROL_TRIGGER_CLASS, ControlTriggerChevron } from './control-trigger';
 
 // ─── SelectMenu — 범용 dropdown primitive ───────────────────────────────────
 // desk-card-body 의 local SelectMenu 를 승격 (위젯 컨트롤 primitive 통일 spec).
@@ -27,7 +28,6 @@ type BaseProps = {
   options: SelectMenuOption[];
   placeholder?: string;
   disabled?: boolean;
-  size?: 'sm' | 'md';
   buttonClassName?: string;
   renderSummary?: (values: string[]) => ReactNode;
   // Field 의 label 이 <div> (SectionLabel) 일 때 trigger 의 접근성 이름 보강.
@@ -46,17 +46,11 @@ type MultiProps = BaseProps & {
   onChange: (next: string[]) => void;
 };
 
-const SIZE = {
-  sm: 'h-7 px-2 text-sm',
-  md: 'h-8 px-2 text-md',
-};
-
 export function SelectMenu(props: SingleProps | MultiProps) {
   const {
     options,
     placeholder,
     disabled,
-    size = 'md',
     buttonClassName,
     renderSummary,
     'aria-label': ariaLabel,
@@ -128,15 +122,12 @@ export function SelectMenu(props: SingleProps | MultiProps) {
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         aria-label={ariaLabel}
-        className={
-          buttonClassName ??
-          `flex w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50 ${SIZE[size]}`
-        }
+        className={buttonClassName ?? CONTROL_TRIGGER_CLASS}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <span className="truncate">{summaryNode}</span>
-        <span aria-hidden className="text-mute-soft">▾</span>
+        <ControlTriggerChevron />
       </button>
       {open && rect && typeof window !== 'undefined' &&
         createPortal(

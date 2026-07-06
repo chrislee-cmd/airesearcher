@@ -54,6 +54,10 @@ import { Input } from '@/components/ui/input';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
+import {
+  CONTROL_TRIGGER_CLASS,
+  ControlTriggerChevron,
+} from '@/components/ui/control-trigger';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
@@ -124,9 +128,10 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
 // SourceGridPicker 가 min-h-8+py-1 로 어긋나던 문제 해소). 공유 primitive
 // (ui/select-menu) 의 SIZE 맵을 건드리지 않고 로컬 상수로 두는 이유 = "데스크
 // 단독" 제약(타 위젯 영향 0). 세 곳 복붙 대신 이 상수를 buttonClassName /
-// trigger className 으로 공유한다.
-const DESK_OPTION_TRIGGER_CLASS =
-  'flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50';
+// trigger className 으로 공유한다. 규격 자체는 위젯 전역 공용 primitive
+// (ui/control-trigger 의 CONTROL_TRIGGER_CLASS) 로 승격 — 전사록/리크루팅/통역
+// DropdownMenu trigger 와도 h-10/보더/chevron 완전 정합 (드롭다운 통일 spec).
+const DESK_OPTION_TRIGGER_CLASS = CONTROL_TRIGGER_CLASS;
 
 // ─── SourceGridPicker — 5-카테고리 all-or-nothing grid popover ──────────────
 // 옛 SourceCategoryPicker (카테고리별 collapsible + 개별 소스 checkbox) 를 완전
@@ -221,7 +226,7 @@ function SourceGridPicker({
         aria-expanded={open}
       >
         <span className="truncate text-left">{summary}</span>
-        <span aria-hidden className="text-mute-soft">▾</span>
+        <ControlTriggerChevron />
       </button>
       {open && rect && typeof window !== 'undefined' &&
         createPortal(

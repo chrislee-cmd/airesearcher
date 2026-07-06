@@ -28,6 +28,7 @@ import {
 import { createPortal } from 'react-dom';
 import { IconButton } from '@/components/ui/icon-button';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { ControlTriggerChevron } from '@/components/ui/control-trigger';
 
 export type DateRangeValue = { from: string; to: string };
 export type DateRangePreset = { label: string; days: number | null };
@@ -213,9 +214,7 @@ export function DateRangePopover({
         aria-expanded={open}
       >
         <span className="truncate tabular-nums">{summary}</span>
-        <span aria-hidden className="text-mute-soft">
-          ▾
-        </span>
+        <ControlTriggerChevron />
       </button>
 
       {open &&

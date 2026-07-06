@@ -27,7 +27,8 @@ import {
   buildLinearPhases,
 } from '@/components/ui/process-timeline';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { DropdownMenu } from '@/components/ui/dropdown-menu';
+import { ControlTrigger } from '@/components/ui/control-trigger';
 import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
@@ -673,19 +674,35 @@ export function QuotesCardBody() {
     value: l.code,
     label: `${l.flag} ${l.label}`,
   }));
+  // 컨트롤 드롭다운 통일 — native <Select> → DropdownMenu(인터뷰 기준).
+  // 항목/value/onChange 로직 불변, 껍데기만 교체 (spec 결정 3).
+  const languageItems = languageOptions.map((o) => ({
+    key: o.value,
+    label: o.label,
+    onSelect: () => setLanguage(o.value),
+  }));
+  const currentLanguageLabel =
+    languageOptions.find((o) => o.value === language)?.label ?? language;
 
-  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 셀렉트 + 인라인
+  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 드롭다운 + 인라인
   // 드래그드롭 dropzone (데스크/프로빙 컨트롤과 통일 — 업로드가 모달 뒤에
   // 숨지 않는다). 드롭/클릭 → startUploads → language-confirm → 업로드+자동
-  // 전사. `idSuffix` 는 field htmlFor 고유화용 (단일 인스턴스라 'main').
-  const renderControls = (idSuffix: string) => (
+  // 전사. 언어 트리거 = DropdownMenu(aria-label) 라 Field htmlFor 불필요.
+  const renderControls = () => (
     <div className="space-y-5">
-      <Field label="언어" htmlFor={`transcript-lang-${idSuffix}`}>
-        <Select
-          id={`transcript-lang-${idSuffix}`}
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          options={languageOptions}
+      <Field label="언어">
+        <DropdownMenu
+          items={languageItems}
+          trigger={({ open, onClick, ...aria }) => (
+            <ControlTrigger
+              {...aria}
+              data-open={open}
+              onClick={onClick}
+              aria-label="언어"
+            >
+              {currentLanguageLabel}
+            </ControlTrigger>
+          )}
         />
       </Field>
 
@@ -755,7 +772,7 @@ export function QuotesCardBody() {
                 />
               </div>
             ) : (
-              renderControls('main')
+              renderControls()
             )}
         </ControlBoardPanel>
 
