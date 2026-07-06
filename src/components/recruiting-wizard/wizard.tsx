@@ -673,8 +673,26 @@ export function RecruitingWizard({
       // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터
       // (max-w-2xl)가 좌우를 채운다 (데스크/프로빙 justify-start + pt-10 pb-6
       // + max-w-2xl + space-y-5 와 동일 규격).
-      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
-        {/* 주 CTA(폼 발행) — 우측 중앙 고정 앵커 (6 위젯 통일). */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* 콘텐츠 영역 — flex-1 + 자체 스크롤. 컨트롤이 위에서 끝나고 CTA 는
+            아래 액션 바로 분리 (겹침 구조적 해소). */}
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
+          <div className="w-full max-w-2xl space-y-5">
+            <CriteriaInputFields
+              files={files}
+              pasted={pasted}
+              rejected={rejected}
+              running={jobRunning}
+              onPasteChange={setPasted}
+              onAddFiles={addFiles}
+              onRemoveFile={removeFile}
+            />
+            {criteriaError && (
+              <div className="text-sm text-warning">오류: {criteriaError}</div>
+            )}
+          </div>
+        </div>
+        {/* 주 CTA(폼 발행) — 바디 최하단 고정 액션 바 (6 위젯 통일). */}
         <WidgetPrimaryCta
           label="폼 발행"
           busyLabel="발행 준비 중…"
@@ -682,20 +700,6 @@ export function RecruitingWizard({
           disabled={!canExtract}
           onClick={startExtract}
         />
-        <div className="w-full max-w-2xl space-y-5">
-          <CriteriaInputFields
-            files={files}
-            pasted={pasted}
-            rejected={rejected}
-            running={jobRunning}
-            onPasteChange={setPasted}
-            onAddFiles={addFiles}
-            onRemoveFile={removeFile}
-          />
-          {criteriaError && (
-            <div className="text-sm text-warning">오류: {criteriaError}</div>
-          )}
-        </div>
       </div>
     );
   }

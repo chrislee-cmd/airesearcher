@@ -1162,16 +1162,7 @@ function ExpandedBody() {
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col">
-        {/* 주 CTA(세션 시작) — 우측 중앙 고정 앵커 (6 위젯 통일). idle(비-라이브)
-            에서만 노출: 라이브 중 정지 CTA 는 컨트롤 패널에 그대로 유지. */}
-        {!isLive && (
-          <WidgetPrimaryCta
-            label="세션 시작"
-            disabled={startDisabled}
-            onClick={handleStartSession}
-          />
-        )}
+      <div className="flex h-full min-h-0 flex-col">
         {/* 컨트롤 패널 — 서브헤더 slim bar 폐기, phase 무관 항상 노출. CTA 만
             idle→🚀 세션 시작, live→정지 로 전환. starting/stopping/error 는
             isLive=false 로 취급되어 시작 CTA 가 노출돼 재시도 가능. 조사 목적은
@@ -1246,6 +1237,16 @@ function ExpandedBody() {
           >
             AI 사고 흐름 실패: {thinkingError}
           </div>
+        )}
+        {/* 주 CTA(세션 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle
+            (비-라이브) 에서만 노출: 라이브 중 정지 CTA 는 컨트롤 패널에 그대로
+            유지. */}
+        {!isLive && (
+          <WidgetPrimaryCta
+            label="세션 시작"
+            disabled={startDisabled}
+            onClick={handleStartSession}
+          />
         )}
       </div>
 
