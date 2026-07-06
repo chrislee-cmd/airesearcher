@@ -28,6 +28,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Room, LocalAudioTrack } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
+import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { ChromeButton } from './ui/chrome-button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
@@ -76,6 +77,14 @@ import { track as trackEvent } from '@/lib/analytics/events';
 // doesn't flood the browser console.
 const TRACE_ENCODING =
   typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+
+// 🔊 Custom fixed-voice TTS. When enabled (default), we DROP the realtime
+// model's dynamic-voice audio track and re-synthesize the translated text
+// through OpenAI TTS pinned to one voice (src/lib/translate-tts.ts). The
+// `off` kill-switch reverts to the model's native audio path (the pre-fix
+// behaviour) with zero other changes. Module-level so it's a stable
+// reference across renders and closures.
+const CUSTOM_TTS_ENABLED = env.NEXT_PUBLIC_TRANSLATE_CUSTOM_TTS !== 'off';
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -894,6 +903,15 @@ export function TranslateConsole({
   const monitorAudioRefs = useRef<Record<SourceSlot, HTMLAudioElement | null>>(
     emptySlotRecord<HTMLAudioElement | null>(null),
   );
+  // 🔊 Custom fixed-voice TTS. `ttsQueueRef` owns the per-session sentence
+  // synthesis + playback pipeline (created in start() when enabled).
+  // `ttsMonitorGainRef` is the local-monitor volume gate: the synthesized
+  // audio always flows to the LiveKit publish + recording destinations, but
+  // the host's own speakers are gated by this gain (0 when outputAudible is
+  // OFF / echoMuted) — the WebAudio equivalent of the model path's
+  // `<audio>.muted`.
+  const ttsQueueRef = useRef<TtsQueue | null>(null);
+  const ttsMonitorGainRef = useRef<GainNode | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Tab-audio mode only: periodic silence injection. Continuous tab
   // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
@@ -1159,6 +1177,12 @@ export function TranslateConsole({
       const el = monitorAudioRefs.current[slot];
       if (el) el.muted = !outputAudible || echoMuted;
     }
+    // 🔊 Custom TTS local monitor: same OR'd mute logic, expressed as a
+    // WebAudio gain (0 = silent). The LiveKit publish + recording taps are
+    // separate nodes and stay untouched, so viewers keep hearing the fixed
+    // voice regardless of the host's local toggle.
+    const g = ttsMonitorGainRef.current;
+    if (g) g.gain.value = !outputAudible || echoMuted ? 0 : 1;
   }, [outputAudible, echoMuted]);
 
   // Layer D: monitor <audio> lifecycle diagnostics. The element is mounted
@@ -1255,6 +1279,17 @@ export function TranslateConsole({
       void tabResampleCtxRef.current?.close();
     } catch {}
     tabResampleCtxRef.current = null;
+    // 🔊 Custom TTS: stop the synthesis queue (aborts in-flight fetches +
+    // stops scheduled sources) and drop the monitor gain BEFORE the shared
+    // AudioContext closes below.
+    try {
+      ttsQueueRef.current?.stop();
+    } catch {}
+    ttsQueueRef.current = null;
+    try {
+      ttsMonitorGainRef.current?.disconnect();
+    } catch {}
+    ttsMonitorGainRef.current = null;
     outputPublishedRef.current = false;
     inputPublishedRef.current = false;
     audioDestRef.current = null;
@@ -1781,6 +1816,9 @@ export function TranslateConsole({
             );
             echoBuf.push({ key: turnKey, ts: wall });
             recentOutputEchoRef.current = echoBuf;
+            // 🔊 Custom TTS: synthesize this committed translation in the
+            // fixed voice (queue preserves commit order across slots).
+            if (CUSTOM_TTS_ENABLED) ttsQueueRef.current?.enqueue(turnText, lang);
           }
           const finalLine: CaptionLine = {
             id: existing.id,
@@ -1994,6 +2032,10 @@ export function TranslateConsole({
               );
               echoBuf.push({ key: dedupKey, ts: wall });
               recentOutputEchoRef.current = echoBuf;
+              // 🔊 Custom TTS: synthesize this committed translation in the
+              // fixed voice (queue preserves commit order across slots).
+              if (CUSTOM_TTS_ENABLED)
+                ttsQueueRef.current?.enqueue(finalText, lang);
             }
             const finalLine: CaptionLine = {
               id: current.id,
@@ -2622,10 +2664,43 @@ export function TranslateConsole({
       }
     }
 
+    // 4.5) 🔊 Custom fixed-voice TTS pipeline. Build the session queue now
+    //      that the output mixer (`audioDestRef` → LiveKit publish) and the
+    //      recording dest exist. Each synthesized sentence fans out to:
+    //        - audioDestRef        → LiveKit 'output' publish (viewers)
+    //        - recordOutputDest    → recording (the 통역본 deliverable)
+    //        - a local monitor gain → ctx.destination (host speakers)
+    //      The model's own audio track is dropped in pc.ontrack below. When
+    //      the kill-switch is off this whole block is skipped and the model
+    //      audio flows as before.
+    if (CUSTOM_TTS_ENABLED) {
+      try {
+        const monitorGain = ctx.createGain();
+        monitorGain.gain.value = outputAudible && !echoMutedRef.current ? 1 : 0;
+        monitorGain.connect(ctx.destination);
+        ttsMonitorGainRef.current = monitorGain;
+        const dests: AudioNode[] = [
+          audioDestRef.current,
+          recordOutputDestRef.current,
+          monitorGain,
+        ].filter((n): n is MediaStreamAudioDestinationNode | GainNode => n !== null);
+        ttsQueueRef.current = createTtsQueue({
+          ctx,
+          destinations: dests,
+          getSessionId: () => sessionIdRef.current,
+        });
+      } catch (err) {
+        console.warn('[translate] custom TTS init failed', err);
+        ttsQueueRef.current = null;
+      }
+    }
+
     // 5) LiveKit connect + publish ONE 'input' track (mixed across
     //    live slots). The translated 'output' publish lands later when
     //    the first slot's ontrack fires — same as the legacy single
-    //    pipeline, just gated against the shared mixer.
+    //    pipeline, just gated against the shared mixer. With custom TTS
+    //    the model's ontrack no longer feeds the mixer, so we publish the
+    //    (custom-fed) output mixer track right here instead.
     outputPublishedRef.current = false;
     inputPublishedRef.current = false;
     console.info('[translate] connecting livekit');
@@ -2657,6 +2732,28 @@ export function TranslateConsole({
           console.info('[translate] livekit input published (mixed)', {
             liveSlots,
           });
+        }
+      }
+      // 🔊 Custom TTS: publish the output mixer track NOW (independent of the
+      // model's ontrack, which we ignore). The MediaStreamDestination already
+      // has a live — initially silent — track; synthesized sentences feed it
+      // as output finals commit, and viewers subscribed to 'output' hear the
+      // fixed voice with no viewer-side change.
+      if (CUSTOM_TTS_ENABLED && !outputPublishedRef.current) {
+        const outDest = audioDestRef.current;
+        const outTrack = outDest?.stream.getAudioTracks()[0];
+        if (outTrack) {
+          try {
+            outputPublishedRef.current = true;
+            await room.localParticipant.publishTrack(
+              new LocalAudioTrack(outTrack),
+              { name: 'output' },
+            );
+            console.info('[translate] livekit output published (custom TTS)');
+          } catch (err) {
+            console.warn('[translate] custom TTS output publish failed', err);
+            outputPublishedRef.current = false;
+          }
         }
       }
     } catch (e) {
@@ -2794,6 +2891,13 @@ export function TranslateConsole({
           const stream = e.streams[0];
           if (!stream) return;
           ttsStreamRef.current[slot] = stream;
+          // 🔊 Custom fixed-voice TTS: the model's dynamic-voice audio is
+          // intentionally DROPPED here — not attached to the host monitor,
+          // not mixed into the LiveKit publish, not recorded. The 'output'
+          // track was already published (step 5) and is fed by our own
+          // sentence synthesis instead. Bail before any model-audio wiring.
+          // (Kill-switch off → fall through to the legacy model path below.)
+          if (CUSTOM_TTS_ENABLED) return;
           // First slot to deliver a TTS stream attaches it to the
           // local monitor; later slots also mix into the monitor via
           // the shared audioDest (which both feed). Keeping the
