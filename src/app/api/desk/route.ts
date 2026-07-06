@@ -73,10 +73,24 @@ const Body = z.object({
   project_id: z.string().uuid().nullable().optional(),
 });
 
-const EXPAND_SYSTEM = `당신은 데스크 리서치를 위해 사용자가 입력한 키워드의 검색 적합 유사 키워드를 만드는 보조자입니다.
-- 의미가 가깝거나 함께 검색되는 변형을 4개 제시합니다.
-- 한국어 입력이면 한국어 위주, 영어 입력이면 영어 위주로 작성하되 통용되는 영문/한글 표기는 섞어도 됩니다.
-- 결과는 콤마(,)로만 구분된 한 줄로 출력. 따옴표/번호/설명 금지.`;
+const EXPAND_SYSTEM = `
+사용자가 입력한 검색 키워드를 데스크 리서치용 6개 검색어로 재구성한다.
+원 키워드가 좁거나 결과가 없을 가능성이 높을 때 대비해 다양성 축을 확보한다.
+
+축 배분 (원 키워드 제외 총 6개, 각 축 1-2개):
+1. broader (macro): 원보다 상위 범주 — 산업/시장 전체
+   예: "스킨케어 회사 시장규모" → "화장품 산업 시장", "뷰티 산업 규모"
+2. narrower (specific): 원보다 하위 — 대표 회사/브랜드/제품군 명시
+   예: "스킨케어 회사 시장규모" → "아모레퍼시픽 매출", "LG생활건강 화장품 실적"
+3. lateral (인접): 원과 다른 각도 — 연구/트렌드/전망 등
+   예: "스킨케어 회사 시장규모" → "K-뷰티 수출 동향", "글로벌 화장품 트렌드"
+
+규칙:
+- 원 키워드 언어 (한국어/영어) 유지
+- 각 검색어 = 명확한 명사구 (질문 X)
+- 원 키워드 그대로 반복 X (원과 유사 표현 X)
+- 반환 = 쉼표 또는 줄바꿈 구분, 6 개 이내
+`.trim();
 
 const REPORT_SYSTEM = `당신은 데스크 리서치 보고서를 작성하는 전문 리서처입니다. 입력으로 키워드, 유사 키워드, 그리고 여러 출처에서 수집한 기사/포스트/영상 헤드라인 + 요약 목록을 받습니다. 입력의 항목 목록은 이미 **UI 카테고리 별로 그룹핑**되어 제공됩니다.
 
@@ -513,14 +527,14 @@ async function runJob(args: {
     if (keywords.length === 1) {
       await patch({ status: 'expanding' });
       await pushAndPatch(
-        '한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 4개 더 받아올게요…',
+        '한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 6개 더 받아올게요…',
         'expanding',
       );
       // Same keyword + locale always yields the same suggestions (modulo
       // model/temperature drift, which we accept). Cache cross-org/cross-user
-      // because the output isn't user-specific. Bump 'v1' if EXPAND_SYSTEM
+      // because the output isn't user-specific. Bump 'v2' if EXPAND_SYSTEM
       // changes meaningfully.
-      const expandKey = `desk-expand:v1:${locale}:${hashString(keywords[0].trim().toLowerCase())}`;
+      const expandKey = `desk-expand:v2:${locale}:${hashString(keywords[0].trim().toLowerCase())}`;
       try {
         const cached = await getCache<string[]>(expandKey);
         if (cached && Array.isArray(cached)) {
@@ -540,7 +554,7 @@ async function runJob(args: {
             .map((s) => s.trim().replace(/^["'`]+|["'`]+$/g, ''))
             .filter(Boolean)
             .filter((k) => k.toLowerCase() !== keywords[0].toLowerCase())
-            .slice(0, 4);
+            .slice(0, 6);
           if (similar.length > 0) {
             void setCache(expandKey, similar);
           }
