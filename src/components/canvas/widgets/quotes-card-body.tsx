@@ -696,40 +696,6 @@ export function QuotesCardBody() {
         />
       </Field>
 
-      {/* 📤 파일 업로드 — 클릭 시 업로드 모달(드롭존) open. 아직 파일이 없는
-          첫 진입엔 amore halo pulse 로 유도. */}
-      <span
-        className={
-          noFiles ? 'block widget-gate-guide-pulse' : 'block'
-        }
-      >
-        <ChromeButton
-          variant="default"
-          size="lg"
-          className="w-full"
-          onClick={() => setUploadOpen(true)}
-          disabled={busyUpload}
-        >
-          📤 {tWidgets('upload')}
-        </ChromeButton>
-      </span>
-
-      {/* 자동 전사 시작이 실패해 남은 준비 파일 재시도 CTA — 정상 흐름에선
-          렌더 안 됨. */}
-      {readyCount > 0 && (
-        <ChromeButton
-          variant="default"
-          size="lg"
-          onClick={() => void startTranscription()}
-          disabled={!canStart}
-          className="w-full"
-        >
-          {busyUpload
-            ? tCommon('loading')
-            : `${tWidgets('transcriptStart')} (${readyCount})`}
-        </ChromeButton>
-      )}
-
       {uploadError ? (
         <p className="text-sm text-warning">{uploadError}</p>
       ) : readyCount > 0 ? (
@@ -737,6 +703,42 @@ export function QuotesCardBody() {
           {tWidgets('transcriptReadyHint', { count: readyCount })}
         </p>
       ) : null}
+
+      {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot + 우측
+          auto-width CTA (`justify-between`). 📤 업로드는 클릭 시 업로드
+          모달(드롭존) open, 첫 진입(파일 0)엔 amore halo pulse 로 유도.
+          재시도 CTA 는 자동 전사 시작 실패분이 있을 때만 렌더. */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-mute" />
+        <div className="flex items-center gap-3">
+          {readyCount > 0 && (
+            <ChromeButton
+              variant="default"
+              size="lg"
+              onClick={() => void startTranscription()}
+              disabled={!canStart}
+            >
+              {busyUpload
+                ? tCommon('loading')
+                : `${tWidgets('transcriptStart')} (${readyCount})`}
+            </ChromeButton>
+          )}
+          <span
+            className={
+              noFiles ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'
+            }
+          >
+            <ChromeButton
+              variant="default"
+              size="lg"
+              onClick={() => setUploadOpen(true)}
+              disabled={busyUpload}
+            >
+              📤 {tWidgets('upload')}
+            </ChromeButton>
+          </span>
+        </div>
+      </div>
     </div>
   );
 
@@ -748,15 +750,14 @@ export function QuotesCardBody() {
           업로드 모달은 항상 마운트. */}
       <div className="flex h-full flex-col">
         {/* 컨트롤 패널 — 실행 중이라도 언어 재설정·새 파일 업로드가 가능하도록
-            항상 노출. idle(산출물 없음) 에는 컨트롤을 **수평 center + 수직 top**
-            (프로빙 어시스턴트 기준) 으로 배치 — 짧은 컨트롤이 카드 정중앙에
-            떠 보이던 회귀(PR #733) 를 상단 정렬로 정정. active 진입 시 상단
-            고정 + 아래 산출물. */}
+            항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
+            띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
+            active 진입 시 상단 고정 + 아래 산출물. */}
         <div
           className={
             phase === 'active'
-              ? 'shrink-0 overflow-y-auto border-b border-line-soft p-6'
-              : 'flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 pt-6'
+              ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
+              : 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5'
           }
         >
           <div className={phase === 'active' ? undefined : 'w-full max-w-[420px]'}>
