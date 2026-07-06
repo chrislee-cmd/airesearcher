@@ -7,6 +7,7 @@ import { useFullview } from '../shell/fullview-shell-context';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -139,45 +140,42 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* idle: 데스크 밸런스 미러 — 정중앙(justify-center)이 짧은 폼 위/아래로
-          큰 빈 띠를 남겨, justify-start + pt 로 상단부터 시작해 세로 whitespace
-          를 축소하고 넓어진 클러스터(max-w-2xl)가 좌우를 채운다 (밸런스 튜닝,
-          spec 결정 2 — desk-card-body / probing / quotes 미러와 동일 규격). */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
-        <div className="flex w-full max-w-2xl flex-col gap-8">
-          {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). */}
-          <div className="flex flex-col items-center gap-4 bg-transparent text-center">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-ink-2">
-                {t('cardIdleTitle')}
-              </h3>
-              <p className="text-sm leading-[1.6] text-mute">
-                {t('cardIdleHint')}
-              </p>
-            </div>
-            <ProjectSelectControl
-              activeProjectId={null}
-              activeProjectName={null}
-              onEnter={onEnter}
-              onExit={() => {}}
-            />
+      {/* idle 컨트롤보드 = ControlBoardPanel SSOT (wrapper/폭/정렬/간격 박제).
+          섹션 간 gap = 'section'(gap-6). 첫 클러스터의 items-center/text-center
+          제거 = 좌정렬 통일 (spec 편차 제거 — 데스크/프로빙/전사록과 동일). */}
+      <ControlBoardPanel gap="section">
+        {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). 좌정렬. */}
+        <div className="flex flex-col gap-4 bg-transparent">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-ink-2">
+              {t('cardIdleTitle')}
+            </h3>
+            <p className="text-sm leading-[1.6] text-mute">
+              {t('cardIdleHint')}
+            </p>
           </div>
-
-          {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot +
-              우측 auto-width ChromeButton (justify-between). idle 의 주요
-              액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-mute" />
-            <ChromeButton
-              variant="default"
-              size="lg"
-              onClick={() => setUploadOpen(true)}
-            >
-              📤 {t('cardUpload')}
-            </ChromeButton>
-          </div>
+          <ProjectSelectControl
+            activeProjectId={null}
+            activeProjectName={null}
+            onEnter={onEnter}
+            onExit={() => {}}
+          />
         </div>
-      </div>
+
+        {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot +
+            우측 auto-width ChromeButton (justify-between). idle 의 주요
+            액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-mute" />
+          <ChromeButton
+            variant="default"
+            size="lg"
+            onClick={() => setUploadOpen(true)}
+          >
+            📤 {t('cardUpload')}
+          </ChromeButton>
+        </div>
+      </ControlBoardPanel>
 
       {/* 프로젝트 미선택 업로드 → 모달이 Step 2(프로젝트 설정)를 강제,
           완료 시 해당 프로젝트로 즉시 active 진입. */}

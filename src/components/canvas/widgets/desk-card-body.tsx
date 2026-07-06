@@ -56,6 +56,7 @@ import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -1117,19 +1118,8 @@ export function DeskCardBody() {
         {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출.
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
-        <div
-          className={
-            active
-              ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
-              : // idle: 정중앙(justify-center) 은 짧은 폼 위/아래로 큰 빈 띠를
-                // 남겼다(DevTools 보라 빗금). justify-start + pt 로 상단부터
-                // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진
-                // 클러스터(max-w-2xl)가 좌우를 채운다 (밸런스 튜닝, spec 결정 2).
-                'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6'
-          }
-        >
-          <div className={active ? undefined : 'w-full max-w-2xl'}>
-            {deskRunning ? (
+        <ControlBoardPanel active={active}>
+          {deskRunning ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={deskTimelinePhases} />
             ) : showResult && !forceControls ? (
@@ -1161,8 +1151,7 @@ export function DeskCardBody() {
                 {errorBanner}
               </>
             )}
-          </div>
-        </div>
+        </ControlBoardPanel>
 
         {/* 산출물 영역 — active(제출/진행/결과 존재) 일 때만. */}
         {active && (
