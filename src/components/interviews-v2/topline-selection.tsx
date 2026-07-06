@@ -12,6 +12,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/icon-button';
+import { Button } from '@/components/ui/button';
 
 // 인터뷰 탑라인 drag-to-ask — 선택 레이어.
 //
@@ -105,18 +106,26 @@ function popupStyle(rect: ToplineSelection['rect']): CSSProperties {
 }
 
 /**
- * 선택 rect 근처에 뜨는 질문 입력 팝업. 선택 발췌를 상단에 표시(사용자가 뭘
- * 물어보는지 명확). Enter 제출(IME 조합 중 제외), Shift+Enter 개행.
+ * 선택 rect 근처에 뜨는 팝업. 상단에 선택 발췌를 표시하고, 두 액션을 제공한다:
+ * `추가 질문`(기본 — 근거 검색 답변 스트리밍) / `편집`(선택 블록을 인라인
+ * 텍스트 편집 모드로 전환). editable=false(table/chart/pie 등 텍스트 아님)면
+ * 편집 액션은 비활성. 질문 입력은 Enter 제출(IME 조합 중 제외), Shift+Enter 개행.
  */
 export function ToplineAskPopup({
   selection,
   busy,
+  editable,
   onSubmit,
+  onEdit,
   onClose,
 }: {
   selection: ToplineSelection;
   busy: boolean;
+  // 선택 블록이 인라인 편집 가능한 텍스트 블록인지(false 면 편집 액션 비활성).
+  editable: boolean;
   onSubmit: (question: string) => void;
+  // 편집 액션 — 선택 블록을 인라인 편집 모드로 전환(팝업은 닫힘).
+  onEdit: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
@@ -194,6 +203,22 @@ export function ToplineAskPopup({
         <p className="line-clamp-2 text-xs-soft italic leading-snug text-mute">
           “{selection.text}”
         </p>
+      </div>
+      {/* 액션 2개 — 추가 질문(기본, 아래 입력) / 편집(선택 블록 인라인 수정).
+          편집은 텍스트 블록일 때만 활성(table/chart/pie 는 disabled). */}
+      <div className="mb-2 flex items-center gap-1.5">
+        <span className="rounded-xs border border-ink bg-ink px-2 py-1 text-xs-soft font-semibold text-paper">
+          💬 {t('toplineAskAction')}
+        </span>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={onEdit}
+          disabled={!editable}
+          title={t('toplineEditAction')}
+        >
+          ✏️ {t('toplineEditAction')}
+        </Button>
       </div>
       <div className="flex items-end gap-2">
         <div className="flex-1">

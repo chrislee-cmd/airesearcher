@@ -32,6 +32,9 @@ export type ToplineState = {
   generating: boolean;
   generate: (force: boolean) => Promise<void>;
   refetch: () => Promise<void>;
+  // 인라인 편집의 낙관적 반영 — 특정 블록의 md 를 클라 상태에서 즉시 교체한다
+  // (서버 PATCH 성공 시 refetch 로 확정, 실패 시 원문 md 로 되돌려 롤백).
+  applyBlockMd: (blockId: string, md: string) => void;
 };
 
 export function useInterviewTopline(projectId: string | null): ToplineState {
@@ -173,6 +176,21 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     [projectId, refetch],
   );
 
+  // 낙관적 블록 md 교체 — 인라인 편집이 저장 성공/실패 확정 전에 즉시 화면에
+  // 반영하거나(저장) 원문으로 되돌리는(롤백) 데 쓴다. 블록 타입/구조는 유지.
+  const applyBlockMd = useCallback((blockId: string, md: string) => {
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            blocks: prev.blocks.map((b) =>
+              b.id === blockId ? ({ ...b, md } as ToplineBlock) : b,
+            ),
+          }
+        : prev,
+    );
+  }, []);
+
   return {
     status: data?.status ?? 'none',
     blocks: data?.blocks ?? [],
@@ -185,5 +203,6 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     generating,
     generate,
     refetch,
+    applyBlockMd,
   };
 }

@@ -107,6 +107,20 @@ export type ToplineBlockType =
   | 'pie'
   | 'inserted_qa';
 
+/**
+ * 인라인 텍스트 편집이 가능한 블록 타입 — 순수 텍스트(md)를 담는 것만. table/
+ * chart/pie 는 구조 데이터라 제외(사용자 결정 3 — 텍스트 블록만 편집). client
+ * (팝업의 편집 버튼 활성 판정)와 server(route 의 editBlockMd)가 이 한 벌을
+ * 공유해 목록이 어긋나지 않게 한다.
+ */
+export const EDITABLE_TOPLINE_BLOCK_TYPES: ReadonlySet<ToplineBlockType> =
+  new Set(['heading', 'subheading', 'paragraph', 'insight', 'quote', 'inserted_qa']);
+
+/** 이 블록이 인라인 텍스트 편집 대상인지(md 를 교체할 수 있는지). */
+export function isEditableToplineBlockType(type: ToplineBlockType): boolean {
+  return EDITABLE_TOPLINE_BLOCK_TYPES.has(type);
+}
+
 /** chart/pie 블록의 데이터 포인트. */
 export type ToplineChartDatum = { label: string; value: number };
 

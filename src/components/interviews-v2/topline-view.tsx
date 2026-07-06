@@ -22,13 +22,18 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Modal } from '@/components/ui/modal';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/toast-provider';
-import type { ToplineBlock } from '@/lib/interview-v2/types';
+import {
+  isEditableToplineBlockType,
+  type ToplineBlock,
+} from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
 import {
   useToplineDragToAsk,
   type PendingQa,
 } from '@/hooks/use-topline-drag-to-ask';
+import { useToplineEdit } from '@/hooks/use-topline-edit';
 import { useToplineSelection, ToplineAskPopup } from './topline-selection';
 
 // 인터뷰 탑라인 보고서 — 우측 패널 탭1. interview_toplines.blocks 를 보고서
@@ -411,6 +416,52 @@ function PendingQaCard({
   );
 }
 
+// 인라인 블록 편집기 — 선택 블록의 md 를 plain textarea 로 열어 내용만 수정한다
+// (스타일 X — 사용자 결정 1·3). 저장 = 낙관적 반영 + PATCH(edit_block), 취소 =
+// 원문 유지(편집 모드만 닫음). 변경 없거나 빈 내용이면 저장은 취소처럼 동작.
+function BlockEditor({
+  initialMd,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  initialMd: string;
+  saving: boolean;
+  onSave: (nextMd: string) => void;
+  onCancel: () => void;
+}) {
+  const t = useTranslations('InterviewsV2');
+  const [draft, setDraft] = useState(initialMd);
+  const unchanged = draft.trim() === initialMd.trim();
+
+  return (
+    <div className="my-2 rounded-sm border border-ink bg-paper p-3">
+      <Textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={Math.min(12, Math.max(3, draft.split('\n').length + 1))}
+        autoFocus
+        disabled={saving}
+        aria-label={t('toplineEditAction')}
+      />
+      <p className="mt-1.5 text-xs-soft text-mute-soft">{t('toplineEditHint')}</p>
+      <div className="mt-2 flex items-center justify-end gap-2 border-t border-line-soft pt-2">
+        <Button variant="ghost" size="xs" onClick={onCancel} disabled={saving}>
+          {t('toplineEditCancel')}
+        </Button>
+        <Button
+          variant="primary"
+          size="xs"
+          onClick={() => onSave(draft)}
+          disabled={saving || unchanged || draft.trim().length === 0}
+        >
+          {t('toplineEditSave')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function StaleBanner({
   onRegenerate,
   disabled,
@@ -462,8 +513,10 @@ export function ToplineView({ projectId }: { projectId: string }) {
     generating,
     generate,
     refetch,
+    applyBlockMd,
   } = useInterviewTopline(projectId);
 
+  const toast = useToast();
   const hasBlocks = blocks.length > 0;
   // 재생성 버튼 활성 = 인덱싱 완료 & 생성 중 아님.
   const canGenerate = indexed && status !== 'generating' && !generating;
@@ -475,6 +528,37 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const { selection, clear } = useToplineSelection(scrollRef, askEnabled);
   const dta = useToplineDragToAsk({ projectId, onMerged: refetch });
 
+  // 인라인 편집 — 현재 편집 중인 블록 id + 저장 오케스트레이션(낙관 + 롤백).
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const edit = useToplineEdit({ projectId, applyBlockMd, onSaved: refetch });
+
+  // 팝업 "편집" 액션 가용성 — 선택 블록이 텍스트 블록일 때만(table/chart/pie 제외).
+  const selectionBlock = selection
+    ? blocks.find((b) => b.id === selection.anchorBlockId)
+    : undefined;
+  const selectionEditable =
+    !!selectionBlock && isEditableToplineBlockType(selectionBlock.type);
+
+  const handleSaveEdit = async (
+    blockId: string,
+    prevMd: string,
+    nextMd: string,
+  ) => {
+    // 변경 없음/빈 내용 → 서버 왕복 없이 편집만 닫는다(취소와 동일).
+    if (!nextMd.trim() || nextMd.trim() === prevMd.trim()) {
+      setEditingBlockId(null);
+      return;
+    }
+    const result = await edit.save(blockId, prevMd, nextMd);
+    if (result.ok) {
+      setEditingBlockId(null);
+      toast.push(t('toplineEditSaved'), { tone: 'amore' });
+    } else {
+      // 롤백은 hook 이 이미 수행 — 편집 모드는 유지해 재시도 가능.
+      toast.push(`${t('toplineEditError')} (${result.error})`, { tone: 'warn' });
+    }
+  };
+
   // 재생성 시 삽입 Q&A 유실 경고(사용자 결정 3) — inserted_qa 가 하나라도
   // 있을 때만 confirm modal 을 거친다.
   const hasInsertedQa = blocks.some((b) => b.type === 'inserted_qa');
@@ -485,7 +569,6 @@ export function ToplineView({ projectId }: { projectId: string }) {
   };
 
   // Word 다운로드 = attachment GET 으로 브라우저 다운로드(쿠키 포함 네비게이션).
-  const toast = useToast();
   const downloadWord = () => {
     const a = document.createElement('a');
     a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
@@ -612,7 +695,19 @@ export function ToplineView({ projectId }: { projectId: string }) {
             <article>
               {blocks.map((b) => (
                 <Fragment key={b.id}>
-                  <BlockView block={b} />
+                  {editingBlockId === b.id ? (
+                    // 편집 모드 — 블록 대신 인라인 textarea 로 md 수정.
+                    <BlockEditor
+                      initialMd={b.md ?? ''}
+                      saving={edit.savingId === b.id}
+                      onSave={(nextMd) =>
+                        void handleSaveEdit(b.id, b.md ?? '', nextMd)
+                      }
+                      onCancel={() => setEditingBlockId(null)}
+                    />
+                  ) : (
+                    <BlockView block={b} />
+                  )}
                   {/* anchor 블록 바로 아래에 pending 삽입을 렌더. */}
                   {dta.pending
                     .filter((p) => p.anchorBlockId === b.id)
@@ -671,6 +766,11 @@ export function ToplineView({ projectId }: { projectId: string }) {
           key={`${selection.anchorBlockId}:${selection.text}`}
           selection={selection}
           busy={false}
+          editable={selectionEditable}
+          onEdit={() => {
+            setEditingBlockId(selection.anchorBlockId);
+            clear();
+          }}
           onSubmit={(q) => {
             void dta.ask(selection.anchorBlockId, selection.text, q);
             clear();
