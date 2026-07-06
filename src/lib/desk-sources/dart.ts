@@ -123,9 +123,11 @@ async function fetchByCorp(
       : companySearchUrl;
     out.push({
       source: 'dart',
-      title: `${corp.corpName} ${revenue.year} ${revenue.label} ${formatKrwAmount(revenue.amount)}`,
+      // period 병기 필수 — 연간 매출과 분기/반기 누적 매출을 같은 수치인 양 비교하면
+      // 안 된다 (예: "농심 2025 3분기 누적 매출액 …"). 2026-07-06 사고 fix.
+      title: `${corp.corpName} ${revenue.period} ${revenue.label} ${formatKrwAmount(revenue.amount)}`,
       url,
-      snippet: `DART 사업보고서(${revenue.year}) 기준 ${revenue.label} ${revenue.amount.toLocaleString()}원 · 연결 우선`,
+      snippet: `DART ${revenue.period} 기준 ${revenue.label} ${revenue.amount.toLocaleString()}원 · 연결 우선`,
       publishedAt: `${revenue.year + 1}-04-01`,
       origin: corp.corpName,
       keyword,
