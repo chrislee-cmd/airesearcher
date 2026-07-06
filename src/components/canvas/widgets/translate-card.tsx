@@ -49,8 +49,11 @@ function ExpandedBody() {
       <TranslateStatePush />
       {/* 카드에 항상 mount 유지 — 세션 소유. 모달이 열려도 unmount 되지
           않으므로 통역이 끊기지 않는다. 모달이 열린 동안은 backdrop 뒤로
-          가려질 뿐이다. */}
-      <div className="space-y-5 px-5 py-5">
+          가려질 뿐이다.
+          flex min-h-full — idle 센터 보드 (메인 패널 규격 통일) 가 카드
+          높이를 채워 수직 center 되도록 높이 체인 제공. 콘텐츠가 카드보다
+          길어지는 live 에서는 min-h 라 그대로 늘어나 기존 스크롤 유지. */}
+      <div className="flex min-h-full flex-col px-5 py-5">
         <TranslateConsole />
       </div>
       {renderInSlot(

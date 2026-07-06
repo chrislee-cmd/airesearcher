@@ -3296,135 +3296,182 @@ export function TranslateConsole({
     });
   }, [publishSession, liveSessionId, shareUrl, status, promptedLines, listeners]);
 
-  return (
-    <div className="space-y-4">
-      {/* 컨트롤 패널 — 서브헤더 slim bar 폐기, phase 무관 항상 노출. 원어/
-          대상어 · 입력 모드 · Glossary · CTA 를 카드에 직접 노출. 세션 중
-          (live)엔 언어·모드·Glossary 변경 불가 (결정 3) 라 필드는 disabled +
-          안내, CTA 는 🚀 세션 시작 → 정지 로 전환된다. */}
-      <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
-        {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). live 중엔
-            disabled (opacity 로 read-only 신호). */}
-        <div className={`flex flex-wrap items-end gap-3${live ? ' opacity-60' : ''}`}>
-          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-            {t('sourceLang')}
-            <select
-              value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
-              disabled={busy || live}
-              aria-label={t('sourceLang')}
-              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-            >
-              {langOptions.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-            {t('targetLang')}
-            <select
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              disabled={busy || live}
-              aria-label={t('targetLang')}
-              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-            >
-              {langOptions.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
-            {t('captureMode.label')}
-            <select
-              value={captureMode}
-              onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
-              disabled={busy || live}
-              aria-label={t('captureMode.label')}
-              className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
-            >
-              <option value="both">{t('captureMode.both')}</option>
-              <option value="mic-only">{t('captureMode.micOnly')}</option>
-              <option value="tab-only">{t('captureMode.tabOnly')}</option>
-            </select>
-          </label>
-        </div>
+  // idle(시작 전) 여부 — starting/error 도 시작 CTA 가 노출되는 "세션 전"
+  // 화면이므로 idle launcher layout 을 공유한다 (starting 에 layout 이
+  // 점프하지 않고, error 후 재시도도 동일 보드에서). live/ending/ended 는
+  // 기존 layout 그대로 (자막 스트리밍 / 다운로드 패널 = 이 spec 밖).
+  const idlePhase =
+    status === 'idle' || status === 'starting' || status === 'error';
 
-        {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
-            추가. 세션 시작 전에만 편집 (live 중 disabled). */}
-        <label className="flex flex-col gap-1 text-sm text-mute">
-          {t('glossary.label')}
-          <GlossaryField
-            values={glossary}
-            onChange={setGlossary}
+  // 원어/대상어/입력 모드 + Glossary — idle 센터 보드와 live 상단 고정 바가
+  // 공유하는 필드 묶음 (probing ControlFields 패턴).
+  const controlFields = (
+    <>
+      {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). live 중엔
+          disabled (opacity 로 read-only 신호). */}
+      <div className={`flex flex-wrap items-end gap-3${live ? ' opacity-60' : ''}`}>
+        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+          {t('sourceLang')}
+          <select
+            value={sourceLang}
+            onChange={(e) => setSourceLang(e.target.value)}
             disabled={busy || live}
-            placeholderEmpty={t('glossary.placeholderEmpty')}
-            placeholderAdd={t('glossary.placeholderAdd')}
-            removeAria={t('glossary.removeAria')}
-          />
-        </label>
-
-        {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
-        {live ? (
-          <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
-        ) : null}
-
-        {/* CTA — idle: 🚀 세션 시작 (WebRTC + OpenAI Realtime 진입). live:
-            경과 타이머 + (갱신 중 표시) + 정지. */}
-        {live ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-md tabular-nums text-mute">
-              {formatElapsed(elapsed)}
-            </span>
-            <div className="flex items-center gap-2">
-              {/* 🚨 Auto-renewal indicator — subtle, only while a background
-                  session handover is in flight (<2s). */}
-              {renewing ? (
-                <span className="text-sm text-mute-soft">{t('renewing')}</span>
-              ) : null}
-              <ChromeButton size="lg" onClick={() => void stop()}>
-                {t('stop')}
-              </ChromeButton>
-            </div>
-          </div>
-        ) : (
-          <ChromeButton
-            variant="default"
-            size="lg"
-            onClick={() => void start()}
-            disabled={busy}
+            aria-label={t('sourceLang')}
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
           >
-            {busy ? t('starting') : `🚀 ${t('start')}`}
-          </ChromeButton>
-        )}
+            {langOptions.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+          {t('targetLang')}
+          <select
+            value={targetLang}
+            onChange={(e) => setTargetLang(e.target.value)}
+            disabled={busy || live}
+            aria-label={t('targetLang')}
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+          >
+            {langOptions.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-1 text-sm text-mute">
+          {t('captureMode.label')}
+          <select
+            value={captureMode}
+            onChange={(e) => setCaptureMode(e.target.value as CaptureMode)}
+            disabled={busy || live}
+            aria-label={t('captureMode.label')}
+            className="h-8 rounded-xs border border-line bg-paper px-2 text-md text-ink"
+          >
+            <option value="both">{t('captureMode.both')}</option>
+            <option value="mic-only">{t('captureMode.micOnly')}</option>
+            <option value="tab-only">{t('captureMode.tabOnly')}</option>
+          </select>
+        </label>
       </div>
 
-      {/* Layer A: autoplay-blocked banner. Placed at the top of the widget
-          (most visible spot) so the host immediately sees why the monitor
-          is silent and can restore it with one click. Viewers are
-          unaffected — this is the host's local monitor only. */}
-      {ttsBlocked ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xs border border-amore bg-paper px-3 py-2 text-md text-ink">
-          <span className="text-amore">{t('ttsBlocked.notice')}</span>
-          <ChromeButton
-            variant="primary"
-            size="md"
-            onClick={() => void enableTtsPlayback()}
-          >
-            {t('ttsBlocked.enable')}
-          </ChromeButton>
-        </div>
-      ) : null}
+      {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
+          추가. 세션 시작 전에만 편집 (live 중 disabled). */}
+      <label className="flex flex-col gap-1 text-sm text-mute">
+        {t('glossary.label')}
+        <GlossaryField
+          values={glossary}
+          onChange={setGlossary}
+          disabled={busy || live}
+          placeholderEmpty={t('glossary.placeholderEmpty')}
+          placeholderAdd={t('glossary.placeholderAdd')}
+          removeAria={t('glossary.removeAria')}
+        />
+      </label>
+    </>
+  );
 
-      {error ? (
-        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
-          {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
+  const errorBanner = error ? (
+    <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
+      {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
+    </div>
+  ) : null;
+
+  // Layer A: autoplay-blocked banner. Placed at the top of the widget
+  // (most visible spot) so the host immediately sees why the monitor
+  // is silent and can restore it with one click. Viewers are
+  // unaffected — this is the host's local monitor only.
+  const ttsBlockedBanner = ttsBlocked ? (
+    <div className="flex flex-wrap items-center gap-2 rounded-xs border border-amore bg-paper px-3 py-2 text-md text-ink">
+      <span className="text-amore">{t('ttsBlocked.notice')}</span>
+      <ChromeButton
+        variant="primary"
+        size="md"
+        onClick={() => void enableTtsPlayback()}
+      >
+        {t('ttsBlocked.enable')}
+      </ChromeButton>
+    </div>
+  ) : null;
+
+  return (
+    <div
+      className={
+        idlePhase
+          ? // idle — 데스크/프로빙과 통일된 launcher 룩: 회색 wrapper 없이
+            // 컨트롤을 카드 정중앙 (수직+수평 center) 에 transparent 로.
+            'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto'
+          : 'space-y-4'
+      }
+    >
+      {idlePhase ? (
+        <div className="flex w-full max-w-[440px] flex-col gap-4 bg-transparent">
+          {controlFields}
+          {ttsBlockedBanner}
+          {errorBanner}
+          {/* 실행 CTA — 데스크/프로빙과 동일 pattern: auto width + 좌측
+              status slot (빈 span 이 우측 정렬 유지 + 미래 hint 자리). */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-mute" />
+            <ChromeButton
+              variant="default"
+              size="lg"
+              onClick={() => void start()}
+              disabled={busy}
+            >
+              {busy ? t('starting') : `🚀 ${t('start')}`}
+            </ChromeButton>
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <>
+          {/* 컨트롤 패널 — live/ending/ended 는 기존 상단 고정 바 유지. 세션 중
+              (live)엔 언어·모드·Glossary 변경 불가 (결정 3) 라 필드는 disabled +
+              안내, CTA 는 🚀 세션 시작 → 정지 로 전환된다. */}
+          <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
+            {controlFields}
+
+            {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
+            {live ? (
+              <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
+            ) : null}
+
+            {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음
+                세션용 🚀 세션 시작. */}
+            {live ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-md tabular-nums text-mute">
+                  {formatElapsed(elapsed)}
+                </span>
+                <div className="flex items-center gap-2">
+                  {/* 🚨 Auto-renewal indicator — subtle, only while a background
+                      session handover is in flight (<2s). */}
+                  {renewing ? (
+                    <span className="text-sm text-mute-soft">{t('renewing')}</span>
+                  ) : null}
+                  <ChromeButton size="lg" onClick={() => void stop()}>
+                    {t('stop')}
+                  </ChromeButton>
+                </div>
+              </div>
+            ) : (
+              <ChromeButton
+                variant="default"
+                size="lg"
+                onClick={() => void start()}
+                disabled={busy}
+              >
+                {busy ? t('starting') : `🚀 ${t('start')}`}
+              </ChromeButton>
+            )}
+          </div>
+
+          {ttsBlockedBanner}
+
+          {errorBanner}
 
       {live && (slotError.mic || slotError.tab) ? (
         <div className="rounded-xs border border-line bg-paper px-3 py-2 text-sm text-mute">
@@ -3529,11 +3576,14 @@ export function TranslateConsole({
           onRevise={() => void triggerRevision()}
         />
       ) : null}
+        </>
+      )}
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
           directly (see monitorAudioRefs). Hidden; audible unless the host
           mutes via the toggle. Two elements so `both` mode plays host +
-          guest at once. */}
+          guest at once. branch 밖 공통 위치 — idle ↔ live 전환에 remount
+          되지 않아야 pc.ontrack 이 붙인 srcObject 가 살아남는다. */}
       <audio
         ref={(el) => {
           monitorAudioRefs.current.mic = el;
