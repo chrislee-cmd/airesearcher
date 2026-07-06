@@ -8,10 +8,16 @@ import {
   Table,
   TableRow,
   TableCell,
+  TableLayoutType,
   WidthType,
   BorderStyle,
   type FileChild,
 } from 'docx';
+
+// A4/Letter 기본 여백(1인치) 기준 페이지 본문 폭(twips). 표를 이 폭에 균등
+// 분배해 채운다 — WidthType.AUTO 는 Word 가 컬럼을 내용 최소폭으로 접어
+// 텍스트가 뭉개지므로 쓰지 않는다.
+const TABLE_CONTENT_WIDTH_DXA = 9026;
 
 // Inline markdown parser — handles `**bold**`, `*italic*`, `` `code` ``, and
 // `[label](url)` links. Returns docx runs in document order. Good enough for
@@ -20,7 +26,7 @@ type Inline =
   | { kind: 'text'; text: string; bold?: boolean; italic?: boolean; code?: boolean }
   | { kind: 'link'; url: string; label: string };
 
-function parseInline(line: string): Inline[] {
+export function parseInline(line: string): Inline[] {
   const out: Inline[] = [];
   let i = 0;
   let buf = '';
@@ -83,7 +89,7 @@ function parseInline(line: string): Inline[] {
   return out;
 }
 
-function inlineToRuns(inlines: Inline[]): (TextRun | ExternalHyperlink)[] {
+export function inlineToRuns(inlines: Inline[]): (TextRun | ExternalHyperlink)[] {
   const out: (TextRun | ExternalHyperlink)[] = [];
   for (const it of inlines) {
     if (it.kind === 'link') {
@@ -171,9 +177,15 @@ function inlineToRunsWithBoldOverride(
   return out;
 }
 
-function makeTableCell(text: string, header: boolean): TableCell {
+function makeTableCell(
+  text: string,
+  header: boolean,
+  widthDxa: number,
+): TableCell {
   return new TableCell({
-    width: { size: 100 / 5, type: WidthType.AUTO },
+    // 명시적 DXA 폭 + FIXED 레이아웃(아래)이라야 Word 가 컬럼을 이 폭으로
+    // 잡고 그 안에서 텍스트를 wrap 한다. AUTO 면 내용 최소폭으로 접힌다.
+    width: { size: widthDxa, type: WidthType.DXA },
     children: [
       new Paragraph({
         children: inlineToRunsWithBoldOverride(parseInline(text), header),
@@ -182,15 +194,20 @@ function makeTableCell(text: string, header: boolean): TableCell {
   });
 }
 
-function buildTable(headerCells: string[], bodyRows: string[][]): Table {
+export function buildTable(headerCells: string[], bodyRows: string[][]): Table {
+  const colCount = Math.max(1, headerCells.length);
+  // 페이지 본문 폭을 컬럼 수로 균등 분배(twips). 컬럼별 명시 폭 + FIXED
+  // 레이아웃으로 표가 페이지 폭을 꽉 채우고, 텍스트는 컬럼 폭 안에서 wrap 된다.
+  const colW = Math.floor(TABLE_CONTENT_WIDTH_DXA / colCount);
+  const columnWidths = Array.from({ length: colCount }, () => colW);
+
   const rows: TableRow[] = [];
   rows.push(
     new TableRow({
       tableHeader: true,
-      children: headerCells.map((c) => makeTableCell(c, true)),
+      children: headerCells.map((c) => makeTableCell(c, true, colW)),
     }),
   );
-  const colCount = headerCells.length;
   for (const body of bodyRows) {
     // Normalize cell count — pad or truncate to match the header so docx
     // doesn't render misaligned rows.
@@ -199,13 +216,15 @@ function buildTable(headerCells: string[], bodyRows: string[][]): Table {
     padded.length = colCount;
     rows.push(
       new TableRow({
-        children: padded.map((c) => makeTableCell(c, false)),
+        children: padded.map((c) => makeTableCell(c, false, colW)),
       }),
     );
   }
   const thin = { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' };
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: TABLE_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths,
+    layout: TableLayoutType.FIXED,
     rows,
     borders: {
       top: thin,

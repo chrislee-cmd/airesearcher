@@ -247,6 +247,113 @@ export function insertQaAfterAnchor(
   return [...blocks.slice(0, idx + 1), inserted, ...blocks.slice(idx + 1)];
 }
 
+/**
+ * 인용 chunk_id 집합 → 사람이 읽는 출처(문서명 + 발췌) 맵. export(docx)/공유가
+ * raw chunk_id 대신 "근거: 문서명" 을 렌더하는 데 쓴다(사용자 결정 3). chunk 가
+ * 이 org 소유 문서에 속할 때만 해석되므로 격리도 유지된다.
+ */
+export async function getCitationSources(
+  admin: AdminClient,
+  orgId: string,
+  chunkIds: string[],
+): Promise<Map<string, { filename: string; excerpt: string }>> {
+  const ids = Array.from(new Set(chunkIds.map((c) => String(c).trim()))).filter(
+    Boolean,
+  );
+  const out = new Map<string, { filename: string; excerpt: string }>();
+  if (ids.length === 0) return out;
+
+  const { data: chunks, error: chunkErr } = await admin
+    .from('interview_chunks')
+    .select('id, document_id, content')
+    .eq('org_id', orgId)
+    .in('id', ids);
+  if (chunkErr) throw new Error(`getCitationSources chunks: ${chunkErr.message}`);
+  if (!chunks || chunks.length === 0) return out;
+
+  const docIds = Array.from(new Set(chunks.map((c) => String(c.document_id))));
+  const { data: docs, error: docErr } = await admin
+    .from('interview_documents')
+    .select('id, filename')
+    .eq('org_id', orgId)
+    .in('id', docIds);
+  if (docErr) throw new Error(`getCitationSources docs: ${docErr.message}`);
+  const filenameById = new Map(
+    (docs ?? []).map((d) => [String(d.id), String(d.filename ?? '')]),
+  );
+
+  for (const c of chunks) {
+    out.set(String(c.id), {
+      filename: filenameById.get(String(c.document_id)) ?? '',
+      excerpt: String(c.content ?? '').slice(0, 240),
+    });
+  }
+  return out;
+}
+
+/** 블록 배열에서 인용 chunk_id 전체를 중복 없이 모은다. */
+export function collectCitationIds(blocks: ToplineBlock[]): string[] {
+  const set = new Set<string>();
+  for (const b of blocks) {
+    if ('citations' in b && Array.isArray(b.citations)) {
+      for (const c of b.citations) set.add(String(c));
+    }
+  }
+  return Array.from(set);
+}
+
+/** 던져지는 에러 코드 — route 가 상태 코드로 매핑한다. */
+export class ToplineNotReadyError extends Error {
+  constructor() {
+    super('topline_not_ready');
+    this.name = 'ToplineNotReadyError';
+  }
+}
+
+/**
+ * 프로젝트의 저장된 탑라인 → Word(.docx) Buffer 조립. export 다운로드와 Google
+ * Docs 공유가 공유하는 경로: getTopline → 인용 출처 해석 → 프로젝트명 조회 →
+ * toplineBlocksToDocx. 블록이 없으면 ToplineNotReadyError.
+ *
+ * 소유 검증(org)은 호출측 route 가 먼저 수행한다고 가정한다.
+ */
+export async function assembleToplineDocx(
+  admin: AdminClient,
+  orgId: string,
+  projectId: string,
+): Promise<{ buffer: Buffer; projectName: string; generatedAt: string | null }> {
+  const topline = await getTopline(admin, projectId);
+  const blocks = topline?.blocks ?? [];
+  if (!topline || blocks.length === 0) {
+    throw new ToplineNotReadyError();
+  }
+
+  const sources = await getCitationSources(
+    admin,
+    orgId,
+    collectCitationIds(blocks),
+  );
+
+  const { data: projectRow } = await admin
+    .from('interview_projects')
+    .select('name')
+    .eq('id', projectId)
+    .eq('org_id', orgId)
+    .maybeSingle();
+  const projectName = String(projectRow?.name ?? '').trim() || '탑라인 보고서';
+
+  // docx 조립은 순수 lib(DB 무관) — 여기서 해석한 sources 맵만 주입한다.
+  const { toplineBlocksToDocx } = await import(
+    '@/lib/interview-v2/topline-docx'
+  );
+  const buffer = await toplineBlocksToDocx(blocks, {
+    projectName,
+    generatedAt: topline.generated_at,
+    sources,
+  });
+  return { buffer, projectName, generatedAt: topline.generated_at };
+}
+
 /** 프로젝트의 기존 탑라인 row (없으면 null). */
 export async function getTopline(
   admin: AdminClient,
