@@ -163,16 +163,44 @@ export function useInterviewV2Projects() {
     [mutate],
   );
 
-  // 태그 통째 교체 (부분 연산 X). 서버가 trim/중복제거/≤10개/≤20자 재검증하므로
-  // 여기선 낙관적 refetch 만.
+  // 태그 통째 교체 (부분 연산 X). 서버가 trim/중복제거/≤10개/≤20자 재검증한다.
+  //
+  // 낙관적 업데이트: 전체 리스트 refetch(`await mutate()`) 를 기다리지 않고
+  // **해당 프로젝트 row 만 즉시 로컬 갱신**한다 → chip 이 곧바로 등장(빈 박스 0).
+  // editor 가 이미 서버와 동일 규칙(trim·중복제거·≤10·≤20)으로 선제 정규화하므로
+  // 성공 시 refetch 불필요. 실패하면 이전 tags 로 롤백하고 정합용으로만 refetch
+  // 한 뒤 throw — caller(project-list)가 잡아 "태그 저장 실패" 토스트를 띄운다.
   const setTags = useCallback(
     async (id: string, tags: string[]): Promise<void> => {
-      await fetch(`${ENDPOINT}/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags }),
-      });
-      await mutate();
+      // 이전 tags 를 캡처하며 낙관적 갱신 (updater 는 확실히 호출되고, prevTags 는
+      // await 이후 catch 에서만 읽으므로 이 시점엔 채워져 있다).
+      let prevTags: string[] | null = null;
+      setAllProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          prevTags = p.tags;
+          return { ...p, tags };
+        }),
+      );
+      try {
+        const res = await fetch(`${ENDPOINT}/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tags }),
+        });
+        if (!res.ok) throw new Error(`tags_failed_${res.status}`);
+      } catch (e) {
+        // 롤백 — 캡처한 이전 tags 로 복원.
+        if (prevTags !== null) {
+          const restore = prevTags;
+          setAllProjects((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, tags: restore } : p)),
+          );
+        }
+        // 서버 실제 상태와 재동기화 (백그라운드, 비차단).
+        void mutate();
+        throw e instanceof Error ? e : new Error('tags_failed');
+      }
     },
     [mutate],
   );
