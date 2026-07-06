@@ -35,6 +35,7 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -755,19 +756,8 @@ export function QuotesCardBody() {
             항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
             띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
             active 진입 시 상단 고정 + 아래 산출물. */}
-        <div
-          className={
-            phase === 'active'
-              ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
-              : // idle: 데스크 밸런스 미러 — 정중앙(justify-center)이 짧은 폼
-                // 위/아래로 큰 빈 띠를 남겨, justify-start + pt 로 상단부터
-                // 시작해 세로 whitespace 를 축소하고 넓어진 클러스터(max-w-2xl)가
-                // 좌우를 채운다 (밸런스 튜닝, spec 결정 2 — desk-card-body 미러).
-                'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6'
-          }
-        >
-          <div className={phase === 'active' ? undefined : 'w-full max-w-2xl'}>
-            {txInflight ? (
+        <ControlBoardPanel active={phase === 'active'}>
+          {txInflight ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={txTimelinePhases} />
             ) : txDone ? (
@@ -797,8 +787,7 @@ export function QuotesCardBody() {
             ) : (
               renderControls('main')
             )}
-          </div>
-        </div>
+        </ControlBoardPanel>
 
         {/* 산출물 영역 — active(실행 중/완료) 일 때만. idle 에는 컨트롤만
             노출되고 이 영역은 렌더되지 않는다. */}

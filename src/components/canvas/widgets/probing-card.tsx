@@ -35,6 +35,7 @@ import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
@@ -1200,16 +1201,9 @@ function ExpandedBody() {
           );
 
           // idle — 컨트롤만. (사고흐름/기록 본문은 라이브에서만 의미.)
-          // 밸런스 튜닝(desk 미러): 정중앙(justify-center) 은 짧은 폼 위/아래로
-          // 큰 빈 띠를 남겼다. justify-start + pt 로 상단부터 자연스럽게 시작해
-          // 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터(max-w-2xl)가 좌우를
-          // 채운다 (데스크 justify-start + pt-10 pb-6 + max-w-2xl 와 동일 규격).
+          // 컨트롤보드 layout = ControlBoardPanel SSOT (px-4 → px-5 정합 포함).
           if (!isLive && !isCurrent) {
-            return (
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-6">
-                <div className="w-full max-w-2xl">{controlPanel}</div>
-              </div>
-            );
+            return <ControlBoardPanel>{controlPanel}</ControlBoardPanel>;
           }
 
           // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(사고흐름 or placeholder).

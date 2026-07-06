@@ -39,6 +39,7 @@ import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
+import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
@@ -4043,13 +4044,11 @@ export function TranslateConsole({
     <div
       className={
         idlePhase
-          ? // idle — 데스크/프로빙과 통일된 launcher 룩 + 밸런스 튜닝(데스크
-            // 미러): 정중앙(justify-center)은 짧은 폼 위/아래로 큰 빈 띠를
-            // 남겼다. justify-start + pt 로 상단부터 시작해 세로 whitespace 를
-            // 축소하고, 넓어진 클러스터(max-w-2xl)가 좌우를 채운다. 부모
-            // (translate-card) 가 이미 py-5 를 주므로 여기선 pt-5 만 더해
-            // 데스크의 pt-10(40px) 유효 상단 여백을 맞춘다 (이중 패딩 방지).
-            'relative flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto pt-5'
+          ? // idle — 컨트롤보드 layout(wrapper/폭/정렬/간격) 은 ControlBoardPanel
+            // SSOT 가 소유. 이 래퍼는 relative(WidgetPrimaryCta absolute 앵커)
+            // + 높이 체인만 제공한다. 부모(translate-card) 의 px-5 py-5 이중
+            // 패딩은 ControlBoardPanel 의 unpadParent(-m-5) 가 흡수 (유효 40px).
+            'relative flex min-h-0 flex-1 flex-col'
           : 'space-y-4'
       }
     >
@@ -4065,24 +4064,34 @@ export function TranslateConsole({
         />
       )}
       {idlePhase ? (
-        <div className="flex w-full max-w-2xl flex-col gap-5 bg-transparent">
-          {controlFields}
-          {ttsBlockedBanner}
-          {errorBanner}
-          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
-              비침습(Start 안 막음), "다시 안 보기" localStorage 저장. 공유링크는
-              세션 시작 후 생성되므로 idle 에선 복사 버튼이 안내용으로 대기. */}
-          <EchoOnboarding
-            audible={outputAudible}
-            onToggleAudible={() => setOutputAudible((v) => !v)}
-            shareUrl={shareUrl}
-            onCopyShareUrl={() => void copyShareUrl()}
-            copied={shareCopied}
-            listenerCount={listeners.length}
-          />
+        // 컨트롤보드 = ControlBoardPanel SSOT. 필드(controlFields)만 클러스터에
+        // 꽂고, 배너/온보딩은 banners 슬롯(클러스터 위 고정)으로 분리 — 필드
+        // 사이 끼임 제거(편차 #6). gap = 'field'(gap-4, 이전 gap-5 정규화).
+        <ControlBoardPanel
+          unpadParent
+          gap="field"
+          banners={
+            <>
+              {ttsBlockedBanner}
+              {errorBanner}
+              {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
+                  비침습(Start 안 막음), "다시 안 보기" localStorage 저장. 공유
+                  링크는 세션 시작 후 생성되므로 idle 에선 복사 버튼이 안내용 대기. */}
+              <EchoOnboarding
+                audible={outputAudible}
+                onToggleAudible={() => setOutputAudible((v) => !v)}
+                shareUrl={shareUrl}
+                onCopyShareUrl={() => void copyShareUrl()}
+                copied={shareCopied}
+                listenerCount={listeners.length}
+              />
+            </>
+          }
+        >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
               이동 — 6 위젯 주 CTA 통일. */}
-        </div>
+          {controlFields}
+        </ControlBoardPanel>
       ) : (
         <>
           {/* 컨트롤 패널 — live/ending/ended 는 기존 상단 고정 바 유지. 세션 중
