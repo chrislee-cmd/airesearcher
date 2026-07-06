@@ -147,9 +147,6 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
         {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). 좌정렬. */}
         <div className="flex flex-col gap-4 bg-transparent">
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-ink-2">
-              {t('cardIdleTitle')}
-            </h3>
             <p className="text-sm leading-[1.6] text-mute">
               {t('cardIdleHint')}
             </p>
