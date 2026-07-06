@@ -63,17 +63,26 @@ function ControlFields({
 }) {
   return (
     <>
+      {/* 조사 목적 = 핵심 입력. 밸런스 튜닝(desk 미러): 넓어진 클러스터
+          (max-w-2xl) 대비 왜소함을 해소하려 rows 2 → 3 으로 확대 — 데스크
+          키워드 input 확대(min-h 44→52) 와 같은 계열. 폭은 fullWidth 로 이미
+          클러스터를 채운다. */}
       <Field label="조사 목적" description="이 인터뷰로 알고자 하는 것 (1~2 문장)">
         <Textarea
           value={researchGoal}
           onChange={(e) => onResearchGoalChange(e.target.value.slice(0, GOAL_MAX))}
-          rows={2}
+          rows={3}
           maxLength={GOAL_MAX}
           disabled={goalDisabled}
           placeholder="예: 가성비 vs 프리미엄 선택 기준 이해"
           className="resize-none text-md"
         />
       </Field>
+      {/* 입력 소스 / 언어 — 밸런스 튜닝(desk 미러): SelectMenu 를 기본 h-8 →
+          h-10 으로 확대해 넓어진 클러스터 대비 왜소함 해소. SelectMenu 는 공유
+          primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬 오버라이드로
+          프로빙 안에서만 키운다 (타 위젯 영향 0 = "프로빙 단독" 제약). 데스크
+          지역/기간 드롭다운과 동일 h-10 규격. */}
       <div className="flex flex-wrap gap-4">
         <Field label="입력 소스">
           {/* min-w: 옛 native select 은 widest-option 고정폭 — 선택 값에 따라
@@ -85,6 +94,7 @@ function ControlFields({
               onChange={(next) => onSourceChange(next as SourceKind)}
               options={SOURCE_OPTIONS}
               disabled={controlsDisabled}
+              buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
             />
           </div>
         </Field>
@@ -96,6 +106,7 @@ function ControlFields({
               onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
               options={OUTPUT_LANG_OPTIONS}
               disabled={controlsDisabled}
+              buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
             />
           </div>
         </Field>
@@ -139,8 +150,10 @@ export function ProbingControlPanel({
   stopDisabled: boolean;
   statusLabel: string | null;
 }) {
+  // 밸런스 튜닝(desk 미러): 필드 간 세로 간격 gap-4 → gap-5 확대
+  // (데스크 controlsForm space-y-4 → space-y-5 와 동일 계열).
   return (
-    <div className="flex shrink-0 flex-col gap-4 px-5 py-4">
+    <div className="flex shrink-0 flex-col gap-5 px-5 py-4">
       <ControlFields
         researchGoal={researchGoal}
         onResearchGoalChange={onResearchGoalChange}

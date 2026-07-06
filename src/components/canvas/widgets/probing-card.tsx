@@ -1191,11 +1191,15 @@ function ExpandedBody() {
             />
           );
 
-          // idle — 컨트롤만 정중앙. (사고흐름/기록 본문은 라이브에서만 의미.)
+          // idle — 컨트롤만. (사고흐름/기록 본문은 라이브에서만 의미.)
+          // 밸런스 튜닝(desk 미러): 정중앙(justify-center) 은 짧은 폼 위/아래로
+          // 큰 빈 띠를 남겼다. justify-start + pt 로 상단부터 자연스럽게 시작해
+          // 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터(max-w-2xl)가 좌우를
+          // 채운다 (데스크 justify-start + pt-10 pb-6 + max-w-2xl 와 동일 규격).
           if (!isLive && !isCurrent) {
             return (
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4">
-                <div className="w-full max-w-[440px]">{controlPanel}</div>
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-6">
+                <div className="w-full max-w-2xl">{controlPanel}</div>
               </div>
             );
           }
