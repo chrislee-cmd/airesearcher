@@ -3,7 +3,7 @@
     "name": "Research-Canvas"
   },
   "Landing": {
-    "metaTitle": "Research-Canvas — Research on my canvas",
+    "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "한 화면에서 리서치를 처음부터 끝까지. 전사 · 동시통역 · 프로빙 · 인사이트 분석까지 캔버스 위에서 함께.",
     "nav": {
       "features": "기능",
@@ -15,7 +15,7 @@
       "freeStart": "무료 시작 →"
     },
     "hero": {
-      "tagline": "Research on my canvas",
+      "tagline": "Your research workflow, in one place",
       "headline": "한 화면에서,<br></br>리서치의 <hl>처음부터 끝까지</hl><br></br>리서치 <hlPeach>캔버스</hlPeach>.",
       "lead": "",
       "ctaPrimary": "캔버스 열기 →",
