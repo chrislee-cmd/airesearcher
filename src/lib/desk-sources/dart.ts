@@ -23,7 +23,16 @@ import {
   formatKrwAmount,
   resolveDartCorp,
   type DartCorp,
+  type DartRevenueReason,
 } from './dart-corp';
+
+// 매출 조회 실패 사유 → 보고서에 병기할 한국어 라벨 (decision 3: "확보 실패"
+// 단독 금지). LLM 이 주요 기업 매출 표의 괄호 사유로 그대로 옮겨 쓴다.
+const REVENUE_FAIL_KO: Record<DartRevenueReason, string> = {
+  timeout: '조회 시간 초과',
+  no_report: '공시 없음',
+  api_error: 'API 오류',
+};
 
 // DART (금융감독원 전자공시) — 상장사 사업보고서/공시. TAM/SAM 검증용 (상장사
 // 매출·시장 점유). 검색어가 상장사 사명이면 corp_code 로 그 회사를 특정해
@@ -81,8 +90,8 @@ async function fetchByCorp(
   if (end) params.set('end_de', end);
 
   // 공시 목록과 매출 조회는 독립 — 병렬로 돌려 task 를 15s cap 에서 멀리
-  // 둔다 (둘 다 소형 JSON 호출, 각각 safeFetch 10s 상한).
-  const [items, revenue] = await Promise.all([
+  // 둔다 (둘 다 소형 JSON 호출, 각각 safeFetch 상한).
+  const [items, revenueResult] = await Promise.all([
     (async (): Promise<DartItem[]> => {
       try {
         const res = await safeFetch(
@@ -104,18 +113,37 @@ async function fetchByCorp(
     items.find((it) => (it.report_nm ?? '').includes('사업보고서')) ?? items[0];
 
   const out: DeskArticle[] = [];
+  const companySearchUrl = `https://dart.fss.or.kr/dsae001/main.do?autoSearch=true&textCrpNm=${encodeURIComponent(corp.corpName)}`;
 
   // (1) 매출액 headline — SAM 핵심 수치. 사업보고서 기준 연결 매출액.
-  if (revenue) {
+  if (revenueResult.ok) {
+    const revenue = revenueResult.revenue;
     const url = businessReport?.rcept_no
       ? reportUrl(businessReport.rcept_no)
-      : `https://dart.fss.or.kr/dsae001/main.do?autoSearch=true&textCrpNm=${encodeURIComponent(corp.corpName)}`;
+      : companySearchUrl;
     out.push({
       source: 'dart',
       title: `${corp.corpName} ${revenue.year} ${revenue.label} ${formatKrwAmount(revenue.amount)}`,
       url,
       snippet: `DART 사업보고서(${revenue.year}) 기준 ${revenue.label} ${revenue.amount.toLocaleString()}원 · 연결 우선`,
       publishedAt: `${revenue.year + 1}-04-01`,
+      origin: corp.corpName,
+      keyword,
+    });
+  } else {
+    // 조용한 null 금지 — 명부 매칭은 됐는데 재무 조회가 실패한 경우, 사유를
+    // 담은 진단 항목을 근거로 흘려보낸다. 보고서 LLM 이 주요 기업 매출 표에서
+    // 이 회사 행을 "데이터 확보 실패 (조회 시간 초과)" 처럼 사유와 함께 렌더한다.
+    // Vercel 로그에도 남겨 다음 진단을 즉시 가능하게 한다 (2026-07-06 사고 교훈).
+    const reasonKo = REVENUE_FAIL_KO[revenueResult.reason];
+    console.warn(
+      `[dart] revenue lookup failed — corp=${corp.corpName} code=${corp.corpCode} reason=${revenueResult.reason}`,
+    );
+    out.push({
+      source: 'dart',
+      title: `${corp.corpName} 매출 — 데이터 확보 실패 (${reasonKo})`,
+      url: businessReport?.rcept_no ? reportUrl(businessReport.rcept_no) : companySearchUrl,
+      snippet: `DART 상장사 명부 매칭 성공(corp_code=${corp.corpCode}), 사업보고서 매출 조회 단계에서 실패 — ${reasonKo}. 수치를 임의로 채우지 말고 “데이터 확보 실패 (${reasonKo})”로 표기하세요.`,
       origin: corp.corpName,
       keyword,
     });
