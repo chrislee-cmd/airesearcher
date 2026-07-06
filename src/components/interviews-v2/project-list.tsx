@@ -21,6 +21,8 @@ import { CreateProjectModal } from './create-project-modal';
 import { RenameProjectModal } from './rename-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
 import { UploadModal } from './upload-modal';
+import { ProjectTagEditor } from './project-tag-editor';
+import { TagFilterBar } from './tag-filter-bar';
 
 // Interview V2 — project grid (default fullview). Each card opens the
 // detail view; the trailing "+ 새 프로젝트" tile opens the create modal and,
@@ -78,12 +80,14 @@ export function ProjectList({
     setTab,
     activeCount,
     archivedCount,
+    allTags,
     isLoading,
     create,
     rename,
     archive,
     unarchive,
     remove,
+    setTags,
   } = useInterviewV2Projects();
   const { push } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
@@ -97,6 +101,23 @@ export function ProjectList({
     null,
   );
   const [deleting, setDeleting] = useState(false);
+  // 선택된 필터 태그 key (lowercase) — OR 매칭. 빈 배열 = 전체.
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+
+  const toggleTagFilter = (key: string) =>
+    setTagFilter((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+
+  const tagSuggestions = allTags.map((tc) => tc.tag);
+
+  // OR 필터: 선택 태그 중 하나라도 가진 프로젝트만. 선택 0 = 전체 노출.
+  const visibleProjects =
+    tagFilter.length === 0
+      ? projects
+      : projects.filter((p) =>
+          p.tags.some((tag) => tagFilter.includes(tag.toLowerCase())),
+        );
 
   const handleCreate = async (name: string, description?: string) => {
     const { project, error } = await create(name, description);
@@ -170,6 +191,18 @@ export function ProjectList({
     }
   };
 
+  const handleSetTags = async (project: InterviewProject, tags: string[]) => {
+    try {
+      await setTags(project.id, tags);
+      trackEvent('widget_action', {
+        widget: 'interviews',
+        action: 'project_tag',
+      });
+    } catch {
+      push(t('tagSaveFailed'), { tone: 'warn' });
+    }
+  };
+
   const menuItems = (project: InterviewProject): DropdownItem[] => [
     {
       key: 'rename',
@@ -235,6 +268,17 @@ export function ProjectList({
           </Button>
         </div>
       </div>
+
+      {/* 태그 필터 chip row — org 전체 태그(빈도순), OR 토글. 태그가 없으면 렌더 X. */}
+      {!isLoading && (
+        <TagFilterBar
+          tags={allTags}
+          selected={tagFilter}
+          onToggle={toggleTagFilter}
+          onClear={() => setTagFilter([])}
+        />
+      )}
+
       {!isLoading && tab === 'archived' && projects.length === 0 ? (
         <EmptyState
           tone="subtle"
@@ -252,7 +296,7 @@ export function ProjectList({
             </>
           ) : (
             <>
-              {projects.map((p) => (
+              {visibleProjects.map((p) => (
                 <div
                   key={p.id}
                   role="button"
@@ -295,6 +339,14 @@ export function ProjectList({
                         {p.description}
                       </div>
                     )}
+                    {/* 태그 chip + 인라인 추가(ChipInput, org 태그 자동완성). */}
+                    <div className="mt-2">
+                      <ProjectTagEditor
+                        tags={p.tags}
+                        suggestions={tagSuggestions}
+                        onChange={(next) => handleSetTags(p, next)}
+                      />
+                    </div>
                   </div>
                   <div className="text-xs text-mute-soft tabular-nums">
                     {t('updatedAt', {

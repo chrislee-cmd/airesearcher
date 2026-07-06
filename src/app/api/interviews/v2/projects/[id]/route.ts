@@ -15,10 +15,31 @@ import { getActiveOrg } from '@/lib/org';
 // documents (→ chunks, already cascade) and search queries. updated_at is
 // bumped by the DB trigger, so PATCH never sets it explicitly.
 
+// tags = 자유 라벨 배열. 통째 교체(부분 연산 X). 검증:
+//   - 각 태그: trim 후 1~20자 (공백-only / 20자 초과 = 거부)
+//   - 최대 10개 (초과 = 거부)
+//   - 대소문자 무시 중복 제거 (silent — "UX" + "ux" → 하나만 남김)
+// min/max 위반은 400 으로 거부하고, 중복만 조용히 정규화한다.
+const TagsField = z
+  .array(z.string().trim().min(1).max(20))
+  .max(10)
+  .transform((arr) => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const tag of arr) {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(tag);
+    }
+    return out;
+  });
+
 const PatchBody = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(2_000).nullable().optional(),
   archived: z.boolean().optional(),
+  tags: TagsField.optional(),
 });
 
 export async function PATCH(
@@ -50,6 +71,7 @@ export async function PATCH(
     // 보관 = archived_at 에 now() 기록 · 복원 = null 로 되돌림.
     patch.archived_at = parsed.data.archived ? new Date().toISOString() : null;
   }
+  if (parsed.data.tags !== undefined) patch.tags = parsed.data.tags;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'empty_patch' }, { status: 400 });
   }
@@ -59,7 +81,7 @@ export async function PATCH(
     .update(patch)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id, name, description, archived_at, created_at, updated_at')
+    .select('id, name, description, tags, archived_at, created_at, updated_at')
     .maybeSingle();
 
   if (error) {

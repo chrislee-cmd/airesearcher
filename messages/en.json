@@ -1258,7 +1258,13 @@
     "pickerEmptyTitle": "No projects yet",
     "pickerEmptyDescription": "Create a project and add interview files first.",
     "scopeCurrentProject": "Current project ({name})",
-    "scopeSelected": "{count} selected projects"
+    "scopeSelected": "{count} selected projects",
+    "tagAdd": "Tag",
+    "tagPlaceholder": "Add tag",
+    "tagRemove": "Remove tag {tag}",
+    "tagFilterLabel": "Filter by tag",
+    "tagFilterClear": "Clear all",
+    "tagSaveFailed": "Failed to save tags."
   },
   "Workspace": {
     "eyebrow": "Workspace",

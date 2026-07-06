@@ -20,10 +20,14 @@ export type InterviewProject = {
   id: string;
   name: string;
   description: string | null;
+  tags: string[];
   archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** org 태그 유니버스 원소 — 자동완성/필터 chip row 용 (사용 빈도순). */
+export type TagCount = { tag: string; count: number };
 
 export type ProjectTab = 'active' | 'archived';
 
@@ -40,7 +44,10 @@ export function useInterviewV2Projects() {
       const res = await fetch(`${ENDPOINT}?archived=all`);
       if (!res.ok) throw new Error(`list_failed_${res.status}`);
       const j = (await res.json()) as { projects?: InterviewProject[] };
-      setAllProjects(j.projects ?? []);
+      // tags 를 항상 배열로 정규화 (DB default '{}' → [], 방어적).
+      setAllProjects(
+        (j.projects ?? []).map((p) => ({ ...p, tags: p.tags ?? [] })),
+      );
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e : new Error('list_failed'));
@@ -63,6 +70,26 @@ export function useInterviewV2Projects() {
     [allProjects],
   );
   const projects = tab === 'archived' ? archivedProjects : activeProjects;
+
+  // org 태그 유니버스 — 자동완성 제안 + 필터 chip row 의 소스.
+  // 파편화 방지를 위해 대소문자 무시로 집계하되 first-seen 원본 표기를 유지.
+  // 빈도순(desc) → 동률은 가나다/알파벳 순. 모든(활성+보관) 프로젝트 기준이라
+  // 탭 전환에도 필터 chip 세트가 안정적이다.
+  const allTags = useMemo<TagCount[]>(() => {
+    const counts = new Map<string, TagCount>();
+    for (const p of allProjects) {
+      for (const raw of p.tags ?? []) {
+        const key = raw.trim().toLowerCase();
+        if (!key) continue;
+        const existing = counts.get(key);
+        if (existing) existing.count += 1;
+        else counts.set(key, { tag: raw, count: 1 });
+      }
+    }
+    return [...counts.values()].sort(
+      (a, b) => b.count - a.count || a.tag.localeCompare(b.tag),
+    );
+  }, [allProjects]);
 
   const create = useCallback(
     async (
@@ -136,12 +163,27 @@ export function useInterviewV2Projects() {
     [mutate],
   );
 
+  // 태그 통째 교체 (부분 연산 X). 서버가 trim/중복제거/≤10개/≤20자 재검증하므로
+  // 여기선 낙관적 refetch 만.
+  const setTags = useCallback(
+    async (id: string, tags: string[]): Promise<void> => {
+      await fetch(`${ENDPOINT}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags }),
+      });
+      await mutate();
+    },
+    [mutate],
+  );
+
   return {
     projects,
     tab,
     setTab,
     activeCount: activeProjects.length,
     archivedCount: archivedProjects.length,
+    allTags,
     error,
     isLoading,
     mutate,
@@ -150,5 +192,6 @@ export function useInterviewV2Projects() {
     archive,
     unarchive,
     remove,
+    setTags,
   };
 }
