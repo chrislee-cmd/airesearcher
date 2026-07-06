@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createRedirectClient } from '@/lib/supabase/route-client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   exchangeCodeForTokens,
@@ -37,16 +37,16 @@ export async function GET(request: Request) {
   const back = (status: string) =>
     new URL(`/${locale}/recruiting?google=${status}`, url);
 
-  const supabase = await createClient();
+  // Redirect client so a rotated session cookie survives back to the browser
+  // (see route-client.ts). applySession() is applied to every response below.
+  const { supabase, applySession } = await createRedirectClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.redirect(back('unauth'));
-  }
+
   if (errorParam) {
-    return NextResponse.redirect(back('denied'));
+    return applySession(NextResponse.redirect(back('denied')));
   }
   if (!code) {
-    return NextResponse.redirect(back('missing_code'));
+    return applySession(NextResponse.redirect(back('missing_code')));
   }
 
   // state format: `${userId}.${nonce}` (recruiting) or
@@ -59,37 +59,48 @@ export async function GET(request: Request) {
     .map((c) => c.trim())
     .find((c) => c.startsWith('g_oauth_nonce='))
     ?.slice('g_oauth_nonce='.length);
-  if (
-    !stateUserId ||
-    !nonce ||
-    stateUserId !== user.id ||
-    cookieNonce !== nonce
-  ) {
-    return NextResponse.redirect(back('bad_state'));
+
+  // The httpOnly nonce (set by /start, which required a valid session) is the
+  // CSRF binding for this flow. When it matches the state, the state's user id
+  // is authentic — even if the app session cookie briefly dropped during the
+  // Google round-trip. We prefer the live session id but fall back to the
+  // state id so the refresh_token still gets persisted: the user may need to
+  // re-login, but the (admin) token lands in the DB and the server self-heals
+  // on the next request. Without a valid nonce we can't trust the flow at all.
+  const nonceValid =
+    !!stateUserId && !!nonce && !!cookieNonce && cookieNonce === nonce;
+
+  // With a live session, the state must still match it (unchanged CSRF guard).
+  if (user && (!nonceValid || stateUserId !== user.id)) {
+    return applySession(NextResponse.redirect(back('bad_state')));
+  }
+  const effectiveUserId = user?.id ?? (nonceValid ? stateUserId : null);
+  if (!effectiveUserId) {
+    return applySession(NextResponse.redirect(back('unauth')));
   }
 
   let tokens;
   try {
     tokens = await exchangeCodeForTokens(code);
   } catch {
-    return NextResponse.redirect(back('token_exchange_failed'));
+    return applySession(NextResponse.redirect(back('token_exchange_failed')));
   }
 
   if (!tokens.refresh_token) {
-    return NextResponse.redirect(back('no_refresh_token'));
+    return applySession(NextResponse.redirect(back('no_refresh_token')));
   }
 
   const email = decodeIdTokenEmail(tokens.id_token);
   const admin = createAdminClient();
   const { error } = await admin.from('user_google_oauth').upsert({
-    user_id: user.id,
+    user_id: effectiveUserId,
     refresh_token: tokens.refresh_token,
     scope: tokens.scope,
     email,
     updated_at: new Date().toISOString(),
   });
   if (error) {
-    return NextResponse.redirect(back('store_failed'));
+    return applySession(NextResponse.redirect(back('store_failed')));
   }
 
   // If the share feature encoded a return path in state, redirect there.
@@ -108,5 +119,5 @@ export async function GET(request: Request) {
   const res = NextResponse.redirect(destination);
   // Clear the nonce cookie now that we've consumed it.
   res.cookies.set('g_oauth_nonce', '', { path: '/', maxAge: 0 });
-  return res;
+  return applySession(res);
 }

@@ -20,7 +20,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  if (isAdminProxyConfigured()) {
+  if (await isAdminProxyConfigured()) {
     const adminEmail = getAdminEmail();
     return NextResponse.json({
       connected: true,

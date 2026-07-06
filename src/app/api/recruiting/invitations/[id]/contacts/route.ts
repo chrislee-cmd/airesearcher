@@ -7,6 +7,10 @@ import {
   formAccessErrorBody,
   resolveFormAccess,
 } from '@/lib/recruiting/form-access';
+import {
+  ADMIN_REAUTH_ERROR,
+  adminReauthErrorBody,
+} from '@/lib/google-oauth-admin';
 import { getFormResponses } from '@/lib/google-forms';
 import { isContactColumnTitle } from '@/lib/recruiting/contact-filter';
 import { isPiiColumn } from '@/lib/recruiting-pii';
@@ -57,9 +61,11 @@ export async function GET(
     invitation.requester_user_id,
   );
   if (!access.ok) {
-    return NextResponse.json(formAccessErrorBody(access), {
-      status: access.status,
-    });
+    const body =
+      access.error === ADMIN_REAUTH_ERROR
+        ? adminReauthErrorBody(user?.email)
+        : formAccessErrorBody(access);
+    return NextResponse.json(body, { status: access.status });
   }
 
   try {

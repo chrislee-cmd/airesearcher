@@ -8,6 +8,8 @@ import {
 } from '@/lib/google-oauth';
 import { GOOGLE_REAUTH_URL } from '@/lib/recruiting/form-access';
 import {
+  ADMIN_REAUTH_ERROR,
+  adminReauthErrorBody,
   getAdminAccessToken,
   getAdminEmail,
   isAdminProxyConfigured,
@@ -92,8 +94,9 @@ export async function POST(
   // sheets in the admin Drive; legacy per-user publishes keep using
   // the requesting user's OAuth token.
   const adminEmail = getAdminEmail();
+  const proxyOn = await isAdminProxyConfigured();
   const useAdminToken =
-    isAdminProxyConfigured() &&
+    proxyOn &&
     ownerEmail !== null &&
     adminEmail !== null &&
     ownerEmail === adminEmail;
@@ -104,6 +107,13 @@ export async function POST(
       accessToken = await getAdminAccessToken();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      // Admin token exhausted (DB + env) → clean reauth code, not the raw
+      // Google error, so the client can offer the operator self-service CTA.
+      if (msg === ADMIN_REAUTH_ERROR) {
+        return NextResponse.json(adminReauthErrorBody(user.email), {
+          status: 503,
+        });
+      }
       return NextResponse.json({ error: msg }, { status: 502 });
     }
   } else {

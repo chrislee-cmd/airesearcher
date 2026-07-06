@@ -9,6 +9,10 @@ import {
   formAccessErrorBody,
   resolveFormAccess,
 } from '@/lib/recruiting/form-access';
+import {
+  ADMIN_REAUTH_ERROR,
+  adminReauthErrorBody,
+} from '@/lib/google-oauth-admin';
 import { maskPiiAnswers, piiQuestionIds } from '@/lib/recruiting-pii';
 
 export const maxDuration = 60;
@@ -33,9 +37,13 @@ export async function GET(
   // shared with the PII-unlock route so the two can never diverge.
   const access = await resolveFormAccess(formId, user.id);
   if (!access.ok) {
-    return NextResponse.json(formAccessErrorBody(access), {
-      status: access.status,
-    });
+    // Admin-proxy token exhausted → friendly reauth payload (CTA only for the
+    // operator). All other failures keep the shared per-user error body.
+    const body =
+      access.error === ADMIN_REAUTH_ERROR
+        ? adminReauthErrorBody(user.email)
+        : formAccessErrorBody(access);
+    return NextResponse.json(body, { status: access.status });
   }
 
   try {

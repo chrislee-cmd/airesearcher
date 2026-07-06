@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
 import {
+  ADMIN_REAUTH_ERROR,
+  adminReauthErrorBody,
   getAdminAccessToken,
   getAdminEmail,
   isAdminProxyConfigured,
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
   // When the admin env is unset (local dev, untouched preview) we fall
   // through to the legacy per-user OAuth path so old worktrees keep
   // working without an env migration.
-  const adminProxy = isAdminProxyConfigured();
+  const adminProxy = await isAdminProxyConfigured();
 
   let accessToken: string;
   let ownerEmail: string | null = null;
@@ -58,6 +60,14 @@ export async function POST(request: Request) {
       accessToken = await getAdminAccessToken();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      // DB + env admin tokens both exhausted → surface a clean reauth code
+      // (never the raw Google invalid_grant) so the client can render the
+      // friendly banner + operator self-service CTA.
+      if (msg === ADMIN_REAUTH_ERROR) {
+        return NextResponse.json(adminReauthErrorBody(user.email), {
+          status: 503,
+        });
+      }
       return NextResponse.json({ error: msg }, { status: 502 });
     }
     ownerEmail = getAdminEmail();

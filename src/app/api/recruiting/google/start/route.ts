@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { createClient } from '@/lib/supabase/server';
+import { createRedirectClient } from '@/lib/supabase/route-client';
 import { buildAuthorizeUrl, buildShareAuthorizeUrl } from '@/lib/google-oauth';
 import { routing } from '@/i18n/routing';
 
@@ -12,7 +12,12 @@ import { routing } from '@/i18n/routing';
 // the recruiting widget's auto-link-sheet path and the Share menu.
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  const supabase = await createClient();
+  // Redirect client: getUser() below may rotate an expiring access token, and
+  // this route redirects cross-origin to Google — applySession() carries the
+  // rotated session cookie onto that redirect so the callback still sees a
+  // valid session (otherwise the browser keeps a consumed token and bounces to
+  // /login on return). See route-client.ts.
+  const { supabase, applySession } = await createRedirectClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
@@ -42,8 +47,10 @@ export async function GET(request: Request) {
       (routing.locales as readonly string[]).includes(localeFromCookie)
         ? localeFromCookie
         : routing.defaultLocale;
-    return NextResponse.redirect(
-      new URL(`/${locale}/recruiting?google=config_error`, requestUrl),
+    return applySession(
+      NextResponse.redirect(
+        new URL(`/${locale}/recruiting?google=config_error`, requestUrl),
+      ),
     );
   }
 
@@ -55,5 +62,5 @@ export async function GET(request: Request) {
     path: '/',
     maxAge: 600,
   });
-  return res;
+  return applySession(res);
 }
