@@ -9,7 +9,6 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/icon-button';
@@ -173,7 +172,14 @@ export function ToplineAskPopup({
 
   if (typeof window === 'undefined') return null;
 
-  return createPortal(
+  // portal 하지 않고 인라인으로 렌더한다 — ToplineView 는 fullview Modal
+  // subtree 안에 있으므로, body 로 portal 하면 팝업이 모달(z-modal:50) 밖
+  // stacking context 에서 z-popup(20) 으로 경쟁해 모달 아래로 깔린다. 인라인
+  // fixed 는 모달의 stacking context 안에서 z-popup 으로 떠 모달 콘텐츠 위에
+  // 그려진다(probing question-popup 과 동일 패턴). Modal chrome 은 transform
+  // 없이 flex centering 이라 fixed 가 실제 viewport 기준으로 동작한다
+  // (PROJECT.md §7.11 류 transform-containing-block 함정 없음).
+  return (
     <div
       ref={cardRef}
       role="dialog"
@@ -211,7 +217,6 @@ export function ToplineAskPopup({
           →
         </IconButton>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
