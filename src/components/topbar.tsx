@@ -44,16 +44,18 @@ export async function Topbar({
               yellow (--sidebar-bg-strong) banner; on-color card variants would
               float a badge inside the bar. `unoptimized` skips the image
               optimizer (SVG, no dangerouslyAllowSVG config) — the vector is
-              served as-is. Height pinned to 28px inside the h-14 bar; width
-              follows the 1539×272 viewBox ratio so it never distorts. */}
+              served as-is. The asset's viewBox carries generous transparent
+              padding (glyph is ~44% of the 1539×272 box), so we render at 40px
+              inside the h-14 (56px) bar to keep the visible mark legible; width
+              follows the viewBox ratio so it never distorts. */}
           <Image
             src="/branding/logos/01_PRIMARY_LOGO_HORIZONTAL.svg"
             alt={tBrand('name')}
-            width={158}
-            height={28}
+            width={226}
+            height={40}
             priority
             unoptimized
-            style={{ height: 28, width: 'auto' }}
+            style={{ height: 40, width: 'auto' }}
           />
         </Link>
         <BackgroundJobPill />
