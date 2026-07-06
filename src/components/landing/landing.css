@@ -64,17 +64,10 @@
 }
 .landing-root nav.top .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .landing-root nav.top .brand {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--outfit);
-  font-weight: 800;
-  font-size: 17px;
-  letter-spacing: -.02em;
+  display: flex; align-items: center;
 }
 .landing-root nav.top .brand .logo {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  border: 2.5px solid #000;
-  background: #fff;
+  height: 30px; width: auto; max-width: 190px;
   object-fit: contain; display: block;
 }
 .landing-root nav.top .links {
@@ -1168,6 +1161,7 @@
 @media (max-width: 760px) {
   .landing-root nav.top { padding: 12px 0; }
   .landing-root nav.top .links { display: none; }
+  .landing-root nav.top .brand .logo { height: 26px; max-width: 150px; }
   .landing-root .hero { padding: 56px 0 64px; }
   .landing-root .hero::before { width: 32px; height: 32px; top: 4%; left: 4%; }
   .landing-root .hero::after { width: 24px; height: 24px; top: 6%; right: 4%; }
