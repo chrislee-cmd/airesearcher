@@ -117,6 +117,16 @@ function sourcesForRegions(regions: Set<DeskRegion>): Set<DeskSourceId> {
   return out;
 }
 
+// 데스크 세부 옵션 3 trigger (지역 SelectMenu · 기간 DateRangePopover · 소스
+// SourceGridPicker) 공유 규격 — 밸런스 튜닝 h-10 확정값을 한 곳에서 소유해
+// 세 trigger 가 같은 행에서 높이·보더·폰트 완전 동일하도록 정합 (편차 #3:
+// SourceGridPicker 가 min-h-8+py-1 로 어긋나던 문제 해소). 공유 primitive
+// (ui/select-menu) 의 SIZE 맵을 건드리지 않고 로컬 상수로 두는 이유 = "데스크
+// 단독" 제약(타 위젯 영향 0). 세 곳 복붙 대신 이 상수를 buttonClassName /
+// trigger className 으로 공유한다.
+const DESK_OPTION_TRIGGER_CLASS =
+  'flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50';
+
 // ─── SourceGridPicker — 5-카테고리 all-or-nothing grid popover ──────────────
 // 옛 SourceCategoryPicker (카테고리별 collapsible + 개별 소스 checkbox) 를 완전
 // 폐기·대체. "수집 소스" trigger 버튼을 누르면 portal popover 안에 5 카테고리
@@ -205,7 +215,7 @@ function SourceGridPicker({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-8 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 py-1 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+        className={DESK_OPTION_TRIGGER_CLASS}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -1011,7 +1021,7 @@ export function DeskCardBody() {
               setRegions(new Set(next as DeskRegion[]));
             }}
             placeholder={tDesk('regionLabel')}
-            buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
           />
 
           <DateRangePopover
@@ -1023,7 +1033,7 @@ export function DeskCardBody() {
             presets={rangePresets}
             placeholder={tDesk('range_all')}
             locale={locale}
-            buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
+            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
           />
 
           <Input
