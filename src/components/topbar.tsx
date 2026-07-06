@@ -1,4 +1,6 @@
 import { getTranslations } from 'next-intl/server';
+import Image from 'next/image';
+import { Link } from '@/i18n/navigation';
 import { TopbarTabs } from './topbar-tabs';
 import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
@@ -20,7 +22,6 @@ export async function Topbar({
 }) {
   const tBrand = await getTranslations('Brand');
   const tTabs = await getTranslations('Topbar.tabs');
-  const outfitStack = 'var(--font-outfit), var(--font-sans)';
 
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
@@ -38,17 +39,23 @@ export async function Topbar({
       }}
     >
       <div className="flex shrink-0 items-center gap-4">
-        <div
-          style={{
-            fontFamily: outfitStack,
-            fontSize: 20,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            color: 'var(--sidebar-border)',
-          }}
-        >
-          {tBrand('name')}
-        </div>
+        <Link href="/" aria-label={tBrand('name')} className="flex shrink-0 items-center">
+          {/* Primary horizontal lockup — dark wordmark reads cleanly on the
+              yellow (--sidebar-bg-strong) banner; on-color card variants would
+              float a badge inside the bar. `unoptimized` skips the image
+              optimizer (SVG, no dangerouslyAllowSVG config) — the vector is
+              served as-is. Height pinned to 28px inside the h-14 bar; width
+              follows the 1539×272 viewBox ratio so it never distorts. */}
+          <Image
+            src="/branding/logos/01_PRIMARY_LOGO_HORIZONTAL.svg"
+            alt={tBrand('name')}
+            width={158}
+            height={28}
+            priority
+            unoptimized
+            style={{ height: 28, width: 'auto' }}
+          />
+        </Link>
         <BackgroundJobPill />
       </div>
 
