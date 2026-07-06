@@ -5,9 +5,11 @@ import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/toast-provider';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
 import {
@@ -375,6 +377,63 @@ export function ToplineView({ projectId }: { projectId: string }) {
     else void generate(true);
   };
 
+  // Word 다운로드 = attachment GET 으로 브라우저 다운로드(쿠키 포함 네비게이션).
+  const toast = useToast();
+  const downloadWord = () => {
+    const a = document.createElement('a');
+    a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
+      projectId,
+    )}&format=docx`;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  // Google Docs 공유 = admin Drive 로 변환 업로드 → 링크 복사 + 새 탭.
+  const [sharing, setSharing] = useState(false);
+  const shareGoogleDocs = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const res = await fetch('/api/interviews/v2/topline/share-gdoc', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+      if (!res.ok || !json?.url) {
+        // #770 체계 reauth / 미구성 등은 서버 message 를 그대로 안내.
+        const code = json?.error ?? `HTTP ${res.status}`;
+        toast.push(
+          code === 'admin_google_reauth_required' ||
+            code === 'google_admin_not_configured'
+            ? t('toplineShareUnavailable')
+            : `${t('toplineShareError')} (${code})`,
+          { tone: 'warn' },
+        );
+        return;
+      }
+      // 링크 복사(실패해도 새 탭은 연다).
+      try {
+        await navigator.clipboard.writeText(json.url);
+        toast.push(t('toplineShareCopied'), { tone: 'amore' });
+      } catch {
+        toast.push(t('toplineShareOpened'), { tone: 'amore' });
+      }
+      window.open(json.url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      toast.push(
+        `${t('toplineShareError')} (${e instanceof Error ? e.message : 'network'})`,
+        { tone: 'warn' },
+      );
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const blockIds = useMemo(() => new Set(blocks.map((b) => b.id)), [blocks]);
   const orphanPending = dta.pending.filter(
     (p) => !blockIds.has(p.anchorBlockId),
@@ -385,19 +444,33 @@ export function ToplineView({ projectId }: { projectId: string }) {
       {/* 탭 헤더 우측 = 재생성 버튼 (명시적 — Opus 비용). blocks 가 이미 있을
           때만 노출(최초 생성은 본문 CTA 가 담당). */}
       {hasBlocks && (
-        <div className="flex shrink-0 items-center justify-between border-b border-line-soft px-6 py-2.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line-soft px-6 py-2.5">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('toplineReportLabel')}
           </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={requestRegenerate}
-            disabled={!canGenerate}
-            title={t('toplineRegenerate')}
-          >
-            🔄 {t('toplineRegenerate')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* export — 주 CTA 아님(quiet chrome). Word 다운로드 + Google Docs 공유. */}
+            <ChromeButton size="sm" onClick={downloadWord} title={t('toplineExportWord')}>
+              ⬇ {t('toplineExportWord')}
+            </ChromeButton>
+            <ChromeButton
+              size="sm"
+              onClick={() => void shareGoogleDocs()}
+              disabled={sharing}
+              title={t('toplineShareGdoc')}
+            >
+              {sharing ? `⏳ ${t('toplineSharing')}` : `📄 ${t('toplineShareGdoc')}`}
+            </ChromeButton>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={requestRegenerate}
+              disabled={!canGenerate}
+              title={t('toplineRegenerate')}
+            >
+              🔄 {t('toplineRegenerate')}
+            </Button>
+          </div>
         </div>
       )}
 

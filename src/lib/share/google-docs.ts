@@ -165,6 +165,30 @@ export async function createGoogleDocFromBytes(
   };
 }
 
+// Grant "anyone with the link → viewer" on a Drive file so a shared Google
+// Doc opens for anyone holding the URL, no per-user grant. Used by the topline
+// Google Docs 공유 flow (admin-proxy owns the file; this opens read access).
+export async function setAnyoneReader(
+  accessToken: string,
+  fileId: string,
+): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    },
+  );
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`drive_permission_failed: ${res.status} ${msg}`);
+  }
+}
+
 // Convenience for markdown sources: convert to HTML first, then upload.
 export async function createGoogleDoc(
   accessToken: string,

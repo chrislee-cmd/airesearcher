@@ -20,7 +20,7 @@ type Inline =
   | { kind: 'text'; text: string; bold?: boolean; italic?: boolean; code?: boolean }
   | { kind: 'link'; url: string; label: string };
 
-function parseInline(line: string): Inline[] {
+export function parseInline(line: string): Inline[] {
   const out: Inline[] = [];
   let i = 0;
   let buf = '';
@@ -83,7 +83,7 @@ function parseInline(line: string): Inline[] {
   return out;
 }
 
-function inlineToRuns(inlines: Inline[]): (TextRun | ExternalHyperlink)[] {
+export function inlineToRuns(inlines: Inline[]): (TextRun | ExternalHyperlink)[] {
   const out: (TextRun | ExternalHyperlink)[] = [];
   for (const it of inlines) {
     if (it.kind === 'link') {
@@ -182,7 +182,7 @@ function makeTableCell(text: string, header: boolean): TableCell {
   });
 }
 
-function buildTable(headerCells: string[], bodyRows: string[][]): Table {
+export function buildTable(headerCells: string[], bodyRows: string[][]): Table {
   const rows: TableRow[] = [];
   rows.push(
     new TableRow({

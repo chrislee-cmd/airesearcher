@@ -1293,7 +1293,14 @@
     "toplineRegenWarnTitle": "Regenerating will remove your added Q&A",
     "toplineRegenWarnBody": "Regenerating the report removes every Q&A you inserted via drag-to-ask. Continue?",
     "toplineRegenWarnCancel": "Cancel",
-    "toplineRegenWarnConfirm": "Regenerate"
+    "toplineRegenWarnConfirm": "Regenerate",
+    "toplineExportWord": "Word",
+    "toplineShareGdoc": "Share to Google Docs",
+    "toplineSharing": "Sharing…",
+    "toplineShareCopied": "Link copied — opening in a new tab.",
+    "toplineShareOpened": "Opened Google Docs in a new tab.",
+    "toplineShareError": "Couldn't share to Google Docs",
+    "toplineShareUnavailable": "Google Docs sharing isn't available right now. Please try again shortly."
   },
   "Workspace": {
     "eyebrow": "Workspace",

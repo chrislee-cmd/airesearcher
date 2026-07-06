@@ -1293,7 +1293,14 @@
     "toplineRegenWarnTitle": "재생성하면 추가한 Q&A가 사라져요",
     "toplineRegenWarnBody": "보고서를 재생성하면 드래그로 추가한 Q&A 삽입이 모두 사라집니다. 계속할까요?",
     "toplineRegenWarnCancel": "취소",
-    "toplineRegenWarnConfirm": "재생성"
+    "toplineRegenWarnConfirm": "재생성",
+    "toplineExportWord": "Word",
+    "toplineShareGdoc": "Google Docs 공유",
+    "toplineSharing": "공유 중…",
+    "toplineShareCopied": "링크를 복사했어요 — 새 탭에서 열립니다.",
+    "toplineShareOpened": "Google Docs 를 새 탭에서 열었어요.",
+    "toplineShareError": "Google Docs 공유에 실패했어요",
+    "toplineShareUnavailable": "지금은 Google Docs 공유를 사용할 수 없어요. 잠시 후 다시 시도해 주세요."
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
