@@ -38,6 +38,7 @@ import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
 import { Field } from './canvas/shell/field';
 import { ListenerPanel } from './translate/listener-panel';
+import { EchoOnboarding } from './translate/echo-onboarding';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
   listenersFromPresence,
@@ -671,9 +672,13 @@ export function TranslateConsole({
   const [elapsed, setElapsed] = useState(0);
   // Host can mute the local translation playback without dropping the
   // LiveKit publish — viewers still hear the translated TTS, the host
-  // just doesn't get the echo into their own room. Default ON because
-  // the host typically wants to verify the translation in real time.
-  const [outputAudible, setOutputAudible] = useState(true);
+  // just doesn't get the echo into their own room. Default OFF: audible
+  // local playback is the physical root of the acoustic echo loop (host
+  // speaker → host mic re-pickup). Live A/B (2026-07-06) confirmed
+  // voice-OFF + separate-device earphones = 0 echo, so the safe default
+  // is muted; the echo-free onboarding walks the host to the ON path
+  // (listen on a separate device) rather than making the echo the default.
+  const [outputAudible, setOutputAudible] = useState(false);
   // 🚨 Cross-channel echo detection (Fix 2). `echoDetected` drives the
   // headphone-nudge banner (sticky for the session, reset on Start);
   // `echoMuted` temporarily silences the local monitor to break the acoustic
@@ -3639,6 +3644,17 @@ export function TranslateConsole({
           {controlFields}
           {ttsBlockedBanner}
           {errorBanner}
+          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
+              비침습(Start 안 막음), "다시 안 보기" localStorage 저장. 공유링크는
+              세션 시작 후 생성되므로 idle 에선 복사 버튼이 안내용으로 대기. */}
+          <EchoOnboarding
+            audible={outputAudible}
+            onToggleAudible={() => setOutputAudible((v) => !v)}
+            shareUrl={shareUrl}
+            onCopyShareUrl={() => void copyShareUrl()}
+            copied={shareCopied}
+            listenerCount={listeners.length}
+          />
           {/* 실행 CTA — 데스크/프로빙과 동일 pattern: auto width + 좌측
               status slot (빈 span 이 우측 정렬 유지 + 미래 hint 자리). */}
           <div className="flex items-center justify-between gap-3">
@@ -3771,6 +3787,14 @@ export function TranslateConsole({
           <span className="text-sm text-mute-soft">{t('share.creating')}</span>
         ) : null}
       </div>
+
+      {/* 음성 ON 인라인 경고 (결정 C) — live 중 스피커 재생은 에코 유발 가능.
+          막지 않고 안내만 (이어폰/별 기기 권장). */}
+      {live && outputAudible ? (
+        <p role="status" className="text-sm text-amore">
+          {t('onboarding.voiceWarning')}
+        </p>
+      ) : null}
 
       {/* 스트리밍(프롬프터) 패널 — idle 에는 표시할 통역 라인이 없어 노출 X.
           통역 시작(live) 후에만 렌더. */}
