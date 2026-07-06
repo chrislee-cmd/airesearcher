@@ -41,7 +41,11 @@ type Props = {
 type Pos = { x: number; y: number };
 
 const NAV_POS_KEY = 'canvas-navigator-position';
-const DEFAULT_POS: Pos = { x: 24, y: 24 };
+// 상단 topbar = h-14 (56px). 네비게이터가 그 아래에서 시작/머물도록 하는 안전 하한.
+const HEADER_H = 56;
+const HEADER_GAP = 12; // 헤더와 네비 사이 숨쉴 여백
+const TOP_SAFE = HEADER_H + HEADER_GAP; // = 68 — default 위치 + clamp y 하한
+const DEFAULT_POS: Pos = { x: 24, y: TOP_SAFE };
 const FALLBACK_W = 224;
 const FALLBACK_H = 320;
 // 드래그 임계치 — 이만큼 움직여야 실제 drag 로 인정 (의도치 않은 미세 떨림 무시).
@@ -50,10 +54,11 @@ const DRAG_THRESHOLD = 3;
 function clampToViewport(p: Pos, w: number, h: number): Pos {
   if (typeof window === 'undefined') return p;
   const maxX = Math.max(0, window.innerWidth - w);
-  const maxY = Math.max(0, window.innerHeight - h);
+  // y 하한을 TOP_SAFE 로 — 드래그·resize·localStorage 복원 어느 경로로도 헤더 침범 불가.
+  const maxY = Math.max(TOP_SAFE, window.innerHeight - h);
   return {
     x: Math.max(0, Math.min(maxX, p.x)),
-    y: Math.max(0, Math.min(maxY, p.y)),
+    y: Math.max(TOP_SAFE, Math.min(maxY, p.y)),
   };
 }
 
