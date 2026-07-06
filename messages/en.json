@@ -1260,7 +1260,7 @@
     "scopeCurrentProject": "Current project ({name})",
     "scopeSelected": "{count} selected projects",
     "tagAdd": "Tag",
-    "tagPlaceholder": "Add tag",
+    "tagPlaceholder": "Add tag, press Enter",
     "tagRemove": "Remove tag {tag}",
     "tagFilterLabel": "Filter by tag",
     "tagFilterClear": "Clear all",

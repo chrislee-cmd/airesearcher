@@ -1260,7 +1260,7 @@
     "scopeCurrentProject": "현재 프로젝트 ({name})",
     "scopeSelected": "선택된 {count}개 프로젝트",
     "tagAdd": "태그",
-    "tagPlaceholder": "태그 입력",
+    "tagPlaceholder": "태그 입력 후 Enter",
     "tagRemove": "{tag} 태그 제거",
     "tagFilterLabel": "태그 필터",
     "tagFilterClear": "전체 해제",
