@@ -948,13 +948,13 @@ export function DeskCardBody() {
   );
 
   const controlsForm = (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
       <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
 
       {/* 주제 · 키워드 (핵심 입력) */}
       <Field label={tDesk('boardTopicLabel')}>
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore">
           {keywords.map((k, idx) => (
             <span
               key={`${k}-${idx}`}
@@ -988,9 +988,14 @@ export function DeskCardBody() {
         </div>
       </Field>
 
-      {/* 세부 옵션 — 지역 / 기간 / 분석 방향성 */}
+      {/* 세부 옵션 — 지역 / 기간 / 분석 방향성.
+          밸런스 튜닝(desk 예시): 3 필드 높이를 h-8 → h-10 으로 확대해 넓어진
+          클러스터(max-w-2xl) 대비 왜소함을 해소. SelectMenu/DateRangePopover 는
+          공유 primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬
+          오버라이드로 데스크 안에서만 키운다 (타 위젯 영향 0 = "데스크 단독"
+          제약). 최종 px 는 preview 로 조정 (spec 결정 3). */}
       <Field label={tDesk('boardOptionsLabel')}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <SelectMenu
             multi
             options={DESK_REGIONS.map((r) => ({
@@ -1004,6 +1009,7 @@ export function DeskCardBody() {
               setRegions(new Set(next as DeskRegion[]));
             }}
             placeholder={tDesk('regionLabel')}
+            buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
           />
 
           <DateRangePopover
@@ -1015,11 +1021,13 @@ export function DeskCardBody() {
             presets={rangePresets}
             placeholder={tDesk('range_all')}
             locale={locale}
+            buttonClassName="flex h-10 w-full items-center justify-between gap-2 rounded-xs border border-line bg-paper px-2 text-md text-ink hover:border-ink focus-visible:border-amore disabled:opacity-50"
           />
 
           <Input
             size="sm"
             fullWidth
+            className="h-10"
             value={analysisDirection}
             onChange={(e) => setAnalysisDirection(e.target.value)}
             placeholder="예: 시장 성장률 + 주요 플레이어 위주"
@@ -1105,10 +1113,14 @@ export function DeskCardBody() {
           className={
             active
               ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
-              : 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5'
+              : // idle: 정중앙(justify-center) 은 짧은 폼 위/아래로 큰 빈 띠를
+                // 남겼다(DevTools 보라 빗금). justify-start + pt 로 상단부터
+                // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진
+                // 클러스터(max-w-2xl)가 좌우를 채운다 (밸런스 튜닝, spec 결정 2).
+                'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6'
           }
         >
-          <div className={active ? undefined : 'w-full max-w-[420px]'}>
+          <div className={active ? undefined : 'w-full max-w-2xl'}>
             {deskRunning ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={deskTimelinePhases} />
