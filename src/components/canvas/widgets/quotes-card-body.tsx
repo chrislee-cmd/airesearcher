@@ -525,9 +525,6 @@ export function QuotesCardBody() {
   const queueJobs = job.jobs.filter((j) => j.status !== 'done');
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const hasUploads = Object.keys(job.localUploads).length > 0;
-  // 온보딩 게이팅 — 아직 아무 파일도 없음 (큐·완료·업로드·준비 전부 0). 이
-  // 동안만 📤 pulse + "파일을 먼저 업로드" hint.
-  const noFiles = job.jobs.length === 0 && !hasUploads && readyFiles.length === 0;
   // '시작' CTA — 업로드+언어확인까지 끝난 준비 파일이 있어야 활성.
   const readyCount = readyFiles.length;
   const canStart = readyCount > 0 && !busyUpload;
@@ -706,31 +703,21 @@ export function QuotesCardBody() {
         </p>
       ) : null}
 
-      {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot + 우측
-          auto-width CTA (`justify-between`). 📤 업로드는 클릭 시 업로드
-          모달(드롭존) open, 첫 진입(파일 0)엔 amore halo pulse 로 유도.
-          재시도 CTA 는 자동 전사 시작 실패분이 있을 때만 렌더. */}
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-mute" />
-        <div className="flex items-center gap-3">
-          {/* 전사 시작(주 CTA)은 WidgetPrimaryCta (우측 중앙 고정 앵커) 로 이동
-              — 6 위젯 통일. 📤 업로드는 보조 액션이라 여기 그대로 유지. */}
-          <span
-            className={
-              noFiles ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'
-            }
+      {/* 보조 CTA(📤 추가 업로드) — 파일이 이미 준비된 상태에서만 인라인.
+          주 액션은 하단 액션 바(전사 시작). 빈 상태(파일 0)에서는 업로드가
+          주 액션이라 인라인이 아닌 하단 액션 바로 노출된다 (6 위젯 통일). */}
+      {readyCount > 0 && (
+        <div className="flex items-center justify-end gap-3">
+          <ChromeButton
+            variant="default"
+            size="lg"
+            onClick={() => setUploadOpen(true)}
+            disabled={busyUpload}
           >
-            <ChromeButton
-              variant="default"
-              size="lg"
-              onClick={() => setUploadOpen(true)}
-              disabled={busyUpload}
-            >
-              📤 {tWidgets('upload')}
-            </ChromeButton>
-          </span>
+            📤 {tWidgets('upload')}
+          </ChromeButton>
         </div>
-      </div>
+      )}
     </div>
   );
 
@@ -873,17 +860,26 @@ export function QuotesCardBody() {
           </>
         )}
 
-        {/* 주 CTA(전사 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). 컨트롤
-            phase + 재시도 대기(readyCount>0) 에서만 노출: 진행 timeline / 완료
-            done 은 숨김. */}
-        {!txInflight && !txDone && readyCount > 0 && (
-          <WidgetPrimaryCta
-            label={`${tWidgets('transcriptStart')} (${readyCount})`}
-            busyLabel={tCommon('loading')}
-            busy={busyUpload}
-            disabled={!canStart}
-            onClick={() => void startTranscription()}
-          />
+        {/* 주 CTA — 바디 최하단 고정 액션 바 (6 위젯 통일). 컨트롤 phase 에서만
+            노출(진행 timeline / 완료 done 은 숨김): 파일 준비되면 전사 시작,
+            빈 상태(파일 0)면 업로드가 주 액션이라 📤 업로드를 하단 바로 노출. */}
+        {!txInflight && !txDone && (
+          readyCount > 0 ? (
+            <WidgetPrimaryCta
+              label={`${tWidgets('transcriptStart')} (${readyCount})`}
+              busyLabel={tCommon('loading')}
+              busy={busyUpload}
+              disabled={!canStart}
+              onClick={() => void startTranscription()}
+            />
+          ) : (
+            <WidgetPrimaryCta
+              label={tWidgets('upload')}
+              icon="📤"
+              busy={busyUpload}
+              onClick={() => setUploadOpen(true)}
+            />
+          )
         )}
 
         {/* 업로드 모달 — 두 phase 공용. idle 컨트롤 보드 / active slim bar

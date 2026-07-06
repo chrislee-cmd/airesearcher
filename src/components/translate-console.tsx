@@ -4245,15 +4245,19 @@ export function TranslateConsole({
       )}
 
       {/* 주 CTA(통역 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle
-          상태만 이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지. */}
+          상태만 이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지.
+          translate-card 래퍼의 px-5 py-5 를 -mx-5 -mb-5 로 상쇄해 액션 바가
+          다른 위젯처럼 프레임 하단·좌우 끝에 붙게 한다 (여백 정합). */}
       {idlePhase && (
-        <WidgetPrimaryCta
-          label={t('start')}
-          busyLabel={t('starting')}
-          busy={busy}
-          disabled={busy}
-          onClick={() => void start()}
-        />
+        <div className="-mx-5 -mb-5 shrink-0">
+          <WidgetPrimaryCta
+            label={t('start')}
+            busyLabel={t('starting')}
+            busy={busy}
+            disabled={busy}
+            onClick={() => void start()}
+          />
+        </div>
       )}
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached

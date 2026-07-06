@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
 import { Button } from '@/components/ui/button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -141,9 +140,10 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* idle 컨트롤보드 = ControlBoardPanel SSOT (wrapper/폭/정렬/간격 박제).
-          섹션 간 gap = 'section'(gap-6). 첫 클러스터의 items-center/text-center
-          제거 = 좌정렬 통일 (spec 편차 제거 — 데스크/프로빙/전사록과 동일). */}
-      <ControlBoardPanel gap="section">
+          첫 클러스터의 items-center/text-center 제거 = 좌정렬 통일 (spec 편차
+          제거 — 데스크/프로빙/전사록과 동일). 주 액션(📤 업로드)은 하단 액션
+          바로 이동 (6 위젯 통일). */}
+      <ControlBoardPanel>
         {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). 좌정렬. */}
         <div className="flex flex-col gap-4 bg-transparent">
           <div className="space-y-2">
@@ -161,21 +161,15 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
             onExit={() => {}}
           />
         </div>
-
-        {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot +
-            우측 auto-width ChromeButton (justify-between). idle 의 주요
-            액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-mute" />
-          <ChromeButton
-            variant="default"
-            size="lg"
-            onClick={() => setUploadOpen(true)}
-          >
-            📤 {t('cardUpload')}
-          </ChromeButton>
-        </div>
       </ControlBoardPanel>
+
+      {/* 주 CTA(업로드) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle 의 주요
+          액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
+      <WidgetPrimaryCta
+        label={t('cardUpload')}
+        icon="📤"
+        onClick={() => setUploadOpen(true)}
+      />
 
       {/* 프로젝트 미선택 업로드 → 모달이 Step 2(프로젝트 설정)를 강제,
           완료 시 해당 프로젝트로 즉시 active 진입. */}
