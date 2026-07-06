@@ -111,6 +111,9 @@ export type ToplineBlock = {
   citations?: string[];
   attribution?: string;
   question?: string;
+  // inserted_qa(drag-to-ask 병합) 에서만 — 사용자가 드래그로 선택한 원문
+  // 발췌. Q 라벨에 문맥으로 표시된다.
+  selected_excerpt?: string;
   table?: { headers: string[]; rows: string[][] };
 };
 

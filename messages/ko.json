@@ -1281,7 +1281,19 @@
     "toplineIntroHint": "업로드된 인터뷰 전체를 교차분석해 6개 섹션의 탑라인 보고서를 자동으로 만들어 드려요.",
     "toplineGenerateCta": "보고서 생성 시작",
     "toplineErrorTitle": "보고서 생성에 실패했어요",
-    "toplineErrorHint": "잠시 후 다시 시도해 주세요. 문제가 계속되면 파일 상태를 확인하세요."
+    "toplineErrorHint": "잠시 후 다시 시도해 주세요. 문제가 계속되면 파일 상태를 확인하세요.",
+    "toplineAskTitle": "선택 구절에 질문하기",
+    "toplineAskSelectedLabel": "선택",
+    "toplineAskPlaceholder": "이 부분에 대해 더 물어보세요…",
+    "toplineAskSend": "질문 보내기",
+    "toplineAskThinking": "인터뷰 근거를 찾는 중…",
+    "toplineAskError": "답변 생성에 실패했어요",
+    "toplineAskKeep": "유지",
+    "toplineAskDiscard": "버리기",
+    "toplineRegenWarnTitle": "재생성하면 추가한 Q&A가 사라져요",
+    "toplineRegenWarnBody": "보고서를 재생성하면 드래그로 추가한 Q&A 삽입이 모두 사라집니다. 계속할까요?",
+    "toplineRegenWarnCancel": "취소",
+    "toplineRegenWarnConfirm": "재생성"
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
