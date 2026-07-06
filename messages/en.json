@@ -932,6 +932,9 @@
       "notice": "Interpreted audio was blocked by the browser",
       "enable": "Enable audio"
     },
+    "echoDetected": {
+      "notice": "🔊 Echo detected — use headphones/earphones instead of a speaker"
+    },
     "start": "Start interpreting",
     "stop": "Stop",
     "starting": "Connecting…",
