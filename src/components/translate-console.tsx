@@ -356,6 +356,83 @@ function matchDedupRule(
   return null;
 }
 
+// 🚨 Cross-channel echo gate (pr-translate-cross-channel-echo-gate).
+//
+// The dedup stack above only compares WITHIN one channel (input↔input,
+// output↔output). The production "rapid fire" loop is a CROSS-channel echo:
+// the translated TTS (output, target-lang) leaves the speaker, gets
+// re-picked-up by the mic/tab (tab capture runs with echoCancellation:false
+// and the TTS is on no AEC reference signal, so acoustic cancellation is
+// impossible), and re-enters as an INPUT transcription in the TARGET
+// language — which is then re-translated into another TTS, amplifying the
+// loop. Same-channel dedup structurally cannot see this (the copy crosses
+// output→input). A text-level gate is the only fix: when an input final
+// matches a recent OUTPUT final, it's our own voice echoing back.
+//
+// Buffer window is short (20s): a real echo re-enters within a couple
+// seconds of the TTS, so 20s covers restart/renewal jitter without risking
+// a genuine later utterance colliding with a minutes-old output.
+const ECHO_WINDOW_MS = 20_000;
+
+// Minimum normalized length before the echo gate will fire. Short
+// code-switching tokens ("OK", "Notion", brand names) legitimately appear in
+// both the source speech and the translation, so gating them would suppress
+// real input. CJK packs more meaning per char (same rationale as the
+// containment thresholds above), so it clears at a lower bar.
+const ECHO_MIN_LEN_CJK = 6;
+const ECHO_MIN_LEN_LATIN = 14;
+
+// Containment coverage floor for the echo gate. isContainmentDup alone would
+// flag an input that is any substring of a longer output — too loose for the
+// "whole sentence" match the spec requires (부분 단어 X). Require the shorter
+// side to cover most of the longer so we only gate near-complete
+// re-transcriptions, never partial words.
+const ECHO_CONTAINMENT_COVERAGE = 0.7;
+
+function echoMinLen(key: string): number {
+  return hasCJK(key) ? ECHO_MIN_LEN_CJK : ECHO_MIN_LEN_LATIN;
+}
+
+// Whole-sentence cross-channel match. Deliberately STRICTER than
+// matchDedupRule: fuzzy whole-string (lengths within 30%, ≤20% edits) OR
+// near-total containment. No LCS — a shared substring is exactly the
+// "partial word" false-positive the spec's guard forbids.
+function isCrossChannelEcho(inputKey: string, outputKey: string): boolean {
+  if (inputKey.length < echoMinLen(inputKey)) return false;
+  if (isFuzzyDup(inputKey, outputKey)) return true;
+  const shorter = Math.min(inputKey.length, outputKey.length);
+  const longer = Math.max(inputKey.length, outputKey.length);
+  return (
+    longer > 0 &&
+    shorter / longer >= ECHO_CONTAINMENT_COVERAGE &&
+    isContainmentDup(inputKey, outputKey)
+  );
+}
+
+// Scan the recent-output echo buffer for a cross-channel match. Returns the
+// matched output key (for the diagnostic log) or null.
+function matchEcho(
+  inputKey: string,
+  outputs: ReadonlyArray<{ key: string; ts: number }>,
+): string | null {
+  for (const e of outputs) {
+    if (isCrossChannelEcho(inputKey, e.key)) return e.key;
+  }
+  return null;
+}
+
+// 🚨 Echo-loop breaker (Fix 2). Two self-echoes inside 30s = a live feedback
+// loop (a single stray echo can happen from an accidental unmute). On the
+// Nth we surface a headphone-nudge banner and temporarily mute the LOCAL
+// monitor <audio> to break the acoustic re-amplification path. We NEVER mute
+// the mic — half-duplex muting is forbidden per spec (drops real speech).
+const ECHO_BURST_WINDOW_MS = 30_000;
+const ECHO_BURST_THRESHOLD = 2;
+// How long the local monitor stays auto-muted after an echo burst. Extended
+// on each new echo; auto-clears so the host's audio returns once the loop
+// stops. Best-effort UX, not a hard gate.
+const ECHO_MUTE_MS = 5_000;
+
 type SessionBundle = {
   session: {
     id: string;
@@ -498,6 +575,9 @@ type FidelityChannelCounters = {
   droppedChars: number;
   turnSilenceCommits: number;
   midSentenceCommits: number;
+  // 🚨 cross-channel echo gate: input finals dropped because they matched a
+  // recent output final (our own TTS re-entering the mic/tab). input-only.
+  selfEchoDrops: number;
 };
 
 function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCounters> {
@@ -513,6 +593,7 @@ function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCoun
     droppedChars: 0,
     turnSilenceCommits: 0,
     midSentenceCommits: 0,
+    selfEchoDrops: 0,
   });
   return { input: channel(), output: channel() };
 }
@@ -593,6 +674,13 @@ export function TranslateConsole({
   // just doesn't get the echo into their own room. Default ON because
   // the host typically wants to verify the translation in real time.
   const [outputAudible, setOutputAudible] = useState(true);
+  // 🚨 Cross-channel echo detection (Fix 2). `echoDetected` drives the
+  // headphone-nudge banner (sticky for the session, reset on Start);
+  // `echoMuted` temporarily silences the local monitor to break the acoustic
+  // loop (auto-clears — see ECHO_MUTE_MS / registerSelfEcho). Never touches
+  // the mic.
+  const [echoDetected, setEchoDetected] = useState(false);
+  const [echoMuted, setEchoMuted] = useState(false);
   // Layer A: autoplay-reject guard. Browsers block `<audio>.play()` unless
   // it follows a user gesture (incognito / fresh tab is the common trip),
   // and the monitor's silent `.play().catch(() => {})` swallowed it — the
@@ -886,6 +974,21 @@ export function TranslateConsole({
     tab: { input: [], output: [] },
   });
 
+  // 🚨 Cross-channel echo gate buffer. Rolling window of recent OUTPUT final
+  // keys (target-lang, normalized), CROSS-slot — the echo can re-enter on any
+  // input slot regardless of which slot's TTS produced it. Pruned to
+  // ECHO_WINDOW_MS on each insert. Separate from recentFinalsRef (which is
+  // per-slot per-kind for same-channel dedup) because the echo gate is a
+  // distinct cross-channel layer (decision 1).
+  const recentOutputEchoRef = useRef<Array<{ key: string; ts: number }>>([]);
+  // Fix 2 burst counter — timestamps of recent self_echo detections, pruned
+  // to ECHO_BURST_WINDOW_MS. `echoMutedRef` mirrors the `echoMuted` state so
+  // the TTS-attach closures (which capture a stale state value) read the live
+  // flag. `echoMuteTimerRef` holds the auto-clear timer.
+  const echoEventsRef = useRef<number[]>([]);
+  const echoMutedRef = useRef(false);
+  const echoMuteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // PR #223 caught the prompter duplication symptom but the prod logs
   // showed `kind: 'input'` getting deduped 5+ times per utterance —
   // meaning the OpenAI translations API itself is re-emitting the same
@@ -992,12 +1095,15 @@ export function TranslateConsole({
   // translated TTS keeps flowing through LiveKit so viewers still hear
   // it. We do NOT stop the publish — the gain node / track on the
   // outbound side stays untouched.
+  // `echoMuted` (Fix 2) forces the monitor silent on top of the host toggle
+  // to break the acoustic feedback loop — OR'd in so it can only ADD mute,
+  // never un-mute against the host's wish.
   useEffect(() => {
     for (const slot of ['mic', 'tab'] as const) {
       const el = monitorAudioRefs.current[slot];
-      if (el) el.muted = !outputAudible;
+      if (el) el.muted = !outputAudible || echoMuted;
     }
-  }, [outputAudible]);
+  }, [outputAudible, echoMuted]);
 
   // Layer D: monitor <audio> lifecycle diagnostics. The element is mounted
   // for the component's whole life, so a `[]`-dep effect binds the
@@ -1211,7 +1317,7 @@ export function TranslateConsole({
         const raw = ttsStreamRef.current[slot];
         if (!el || !raw) continue;
         if (el.srcObject !== raw) el.srcObject = raw;
-        el.muted = !outputAudible;
+        el.muted = !outputAudible || echoMutedRef.current;
         await el.play();
         played = true;
       }
@@ -1340,6 +1446,30 @@ export function TranslateConsole({
     [],
   );
 
+  // 🚨 Register a self_echo detection (Fix 2). Bumps the burst counter and,
+  // once ECHO_BURST_THRESHOLD echoes land inside ECHO_BURST_WINDOW_MS, raises
+  // the headphone banner and temporarily mutes the LOCAL monitor to break the
+  // acoustic loop. The mic is NEVER touched (half-duplex mute forbidden). The
+  // mute auto-clears after ECHO_MUTE_MS, extended on each fresh echo, so audio
+  // returns once the loop stops.
+  const registerSelfEcho = useCallback((wall: number) => {
+    const events = echoEventsRef.current.filter(
+      (ts) => wall - ts <= ECHO_BURST_WINDOW_MS,
+    );
+    events.push(wall);
+    echoEventsRef.current = events;
+    if (events.length < ECHO_BURST_THRESHOLD) return;
+    setEchoDetected(true);
+    echoMutedRef.current = true;
+    setEchoMuted(true);
+    if (echoMuteTimerRef.current) clearTimeout(echoMuteTimerRef.current);
+    echoMuteTimerRef.current = setTimeout(() => {
+      echoMutedRef.current = false;
+      setEchoMuted(false);
+      echoMuteTimerRef.current = null;
+    }, ECHO_MUTE_MS);
+  }, []);
+
   // Speaker mapping is now slot-driven (mic → host, tab → guest). For
   // single-mode sessions the slot is fixed by captureMode; for `both`
   // mode each delta routes through the slot that emitted it. The
@@ -1378,6 +1508,18 @@ export function TranslateConsole({
         const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
         const ctr = fidelityCountersRef.current[kind];
         const dup = turnKey.length > 0 ? matchDedupRule(turnKey, fresh) : null;
+        // 🚨 Cross-channel echo gate: an INPUT final that matches a recent
+        // OUTPUT final is our own TTS re-entering the mic/tab. Only checked
+        // when same-channel dedup didn't already claim it.
+        const echoMatch =
+          !dup && kind === 'input' && turnKey.length > 0
+            ? matchEcho(
+                turnKey,
+                recentOutputEchoRef.current.filter(
+                  (e) => wall - e.ts <= ECHO_WINDOW_MS,
+                ),
+              )
+            : null;
         if (dup) {
           // 🚨 truncation investigation: attribute the drop + log the FULL
           // text that was dropped (not a 40-char preview) so the host can
@@ -1397,6 +1539,19 @@ export function TranslateConsole({
           });
           const setter = kind === 'input' ? setInputLines : setOutputLines;
           setter((prev) => prev.filter((l) => l.id !== existing.id));
+        } else if (echoMatch) {
+          // Self-echo: drop silently (no display, no broadcast, no persist)
+          // and feed the loop-breaker. Do NOT add it to recentFinals — it's
+          // not real speech.
+          ctr.selfEchoDrops++;
+          ctr.droppedChars += turnText.length;
+          console.info('[translate] self_echo drop (turn-silence)', {
+            slot,
+            dropped: turnText,
+            matched: echoMatch,
+          });
+          registerSelfEcho(wall);
+          setInputLines((prev) => prev.filter((l) => l.id !== existing.id));
         } else {
           // Kept commit triggered by the turn-silence gate. If it doesn't
           // end on sentence punctuation it's a mid-sentence early commit —
@@ -1412,6 +1567,15 @@ export function TranslateConsole({
           }
           fresh.push({ key: turnKey, ts: wall });
           recentFinalsRef.current[slot][kind] = fresh;
+          // Feed the cross-channel echo buffer with committed OUTPUT finals
+          // so a later input echo can be matched against them.
+          if (kind === 'output') {
+            const echoBuf = recentOutputEchoRef.current.filter(
+              (e) => wall - e.ts <= ECHO_WINDOW_MS,
+            );
+            echoBuf.push({ key: turnKey, ts: wall });
+            recentOutputEchoRef.current = echoBuf;
+          }
           const finalLine: CaptionLine = {
             id: existing.id,
             text: turnText,
@@ -1533,6 +1697,18 @@ export function TranslateConsole({
           //      longer line that contains them.
           const dup =
             dedupKey.length > 0 ? matchDedupRule(dedupKey, fresh) : null;
+          // 🚨 Cross-channel echo gate: an INPUT final matching a recent
+          // OUTPUT final is our own TTS echoing back through the mic/tab.
+          // Only checked when same-channel dedup didn't already claim it.
+          const echoMatch =
+            !dup && kind === 'input' && dedupKey.length > 0
+              ? matchEcho(
+                  dedupKey,
+                  recentOutputEchoRef.current.filter(
+                    (e) => wall - e.ts <= ECHO_WINDOW_MS,
+                  ),
+                )
+              : null;
           if (dup) {
             // 🚨 truncation investigation: per-reason attribution + full
             // dropped text so a live session quantifies how much real
@@ -1560,9 +1736,31 @@ export function TranslateConsole({
             // commit.
             const setter = kind === 'input' ? setInputLines : setOutputLines;
             setter((prev) => prev.filter((l) => l.id !== current.id));
+          } else if (echoMatch) {
+            // Self-echo: drop silently (no display, no broadcast, no persist,
+            // NOT added to recentFinals) and feed the loop-breaker.
+            const ctr = fidelityCountersRef.current.input;
+            ctr.selfEchoDrops++;
+            ctr.droppedChars += finalText.length;
+            console.info('[translate] self_echo drop', {
+              slot,
+              dropped: finalText,
+              matched: echoMatch,
+            });
+            registerSelfEcho(wall);
+            setInputLines((prev) => prev.filter((l) => l.id !== current.id));
           } else {
             fresh.push({ key: dedupKey, ts: wall });
             recentFinalsRef.current[slot][kind] = fresh;
+            // Feed the cross-channel echo buffer with committed OUTPUT
+            // finals so a later input echo can be matched against them.
+            if (kind === 'output') {
+              const echoBuf = recentOutputEchoRef.current.filter(
+                (e) => wall - e.ts <= ECHO_WINDOW_MS,
+              );
+              echoBuf.push({ key: dedupKey, ts: wall });
+              recentOutputEchoRef.current = echoBuf;
+            }
             const finalLine: CaptionLine = {
               id: current.id,
               text: finalText,
@@ -1616,7 +1814,7 @@ export function TranslateConsole({
         publishInput(next, undefined);
       }
     },
-    [broadcastCaption, persistMessage, pushLine, transcriptPublisher],
+    [broadcastCaption, persistMessage, pushLine, registerSelfEcho, transcriptPublisher],
   );
 
   const handleOaiEvent = useCallback(
@@ -1725,6 +1923,17 @@ export function TranslateConsole({
       mic: { input: [], output: [] },
       tab: { input: [], output: [] },
     };
+    // 🚨 Reset cross-channel echo state each session — a stale output buffer
+    // or a lingering banner/mute from a prior session must not carry over.
+    recentOutputEchoRef.current = [];
+    echoEventsRef.current = [];
+    if (echoMuteTimerRef.current) {
+      clearTimeout(echoMuteTimerRef.current);
+      echoMuteTimerRef.current = null;
+    }
+    echoMutedRef.current = false;
+    setEchoMuted(false);
+    setEchoDetected(false);
     inputLineStartedAtRef.current.clear();
     // PR-T2: fresh silence tracker each session — a stale `lastAt`
     // from a prior session would force-commit the first delta of the
@@ -2333,7 +2542,7 @@ export function TranslateConsole({
           const el = monitorAudioRefs.current[slot];
           if (el) {
             if (el.srcObject !== stream) el.srcObject = stream;
-            el.muted = !outputAudible;
+            el.muted = !outputAudible || echoMutedRef.current;
             // Layer A: surface autoplay rejection instead of swallowing it.
             el.play()
               .then(() => setTtsBlocked(false))
@@ -2949,13 +3158,15 @@ export function TranslateConsole({
         droppedChars: c.droppedChars,
         turnSilenceCommits: c.turnSilenceCommits,
         midSentenceCommits: c.midSentenceCommits,
+        // 🚨 cross-channel echo gate: input finals dropped as self-echo.
+        selfEchoDrops: c.selfEchoDrops,
         lossRatio: ratio,
       };
       // Report on any diagnostic signal, not just threshold breach — a
       // session under the 5% loss bar can still reveal which heuristic is
       // dropping content or whether turn-silence is chopping sentences.
       const hasDiagnosticSignal =
-        c.droppedChars > 0 || c.midSentenceCommits > 0;
+        c.droppedChars > 0 || c.midSentenceCommits > 0 || c.selfEchoDrops > 0;
       if (
         ratio > FIDELITY_LOSS_THRESHOLD ||
         c.persistFail > 0 ||
@@ -2999,6 +3210,9 @@ export function TranslateConsole({
   useEffect(() => {
     return () => {
       cleanup('unmount');
+      // Clear the echo loop-breaker's auto-unmute timer so it can't fire a
+      // setState on the unmounted component.
+      if (echoMuteTimerRef.current) clearTimeout(echoMuteTimerRef.current);
     };
   }, [cleanup]);
 
@@ -3397,6 +3611,19 @@ export function TranslateConsole({
     </div>
   ) : null;
 
+  // 🚨 Cross-channel echo banner (Fix 2). Raised once a self-echo burst is
+  // detected; nudges the host toward headphones (the only real cure for the
+  // acoustic loop). Advisory only — the loop-breaker mute already fired. Uses
+  // `role="status"` since it's a non-blocking notice, not an error.
+  const echoBanner = echoDetected ? (
+    <div
+      role="status"
+      className="rounded-xs border border-amore bg-paper px-3 py-2 text-md text-ink"
+    >
+      <span className="text-amore">{t('echoDetected.notice')}</span>
+    </div>
+  ) : null;
+
   return (
     <div
       className={
@@ -3470,6 +3697,8 @@ export function TranslateConsole({
           </div>
 
           {ttsBlockedBanner}
+
+          {echoBanner}
 
           {errorBanner}
 
