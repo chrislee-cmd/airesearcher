@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
 import { Button } from '@/components/ui/button';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -19,7 +20,6 @@ import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
 import { UploadModal } from '@/components/interviews-v2/upload-modal';
-import { SearchChat } from '@/components/interviews-v2/search-chat';
 import { InterviewV2Fullview } from '@/components/interviews-v2/interview-v2-fullview';
 import { track as trackEvent } from '@/lib/analytics/events';
 
@@ -29,23 +29,22 @@ import { track as trackEvent } from '@/lib/analytics/events';
 const CARD_PROJECT_KEY = 'interview-v2-card-active-project';
 
 // ────────────────────────────────────────────────────────────────────
-// 프로젝트 컨트롤 바 — 서브헤더 slim bar 폐기 후, phase 무관 항상 노출되는
-// 컨트롤. 프로젝트 선택/전환 dropdown (선택 즉시 active 진입) + 새 프로젝트 +
-// (active 시) 목록으로 나가기 + 📤 업로드. idle(activeProjectId=null) 에서는
-// "프로젝트 선택" 라벨, active 에서는 "프로젝트: <name>" 라벨.
+// 프로젝트 선택 컨트롤 — 옛 border-b 슬림 바 폐기 (메인 패널 규격 통일:
+// 컨트롤은 transparent 그룹 안에 배치). 프로젝트 선택/전환 dropdown
+// (선택 즉시 active 진입) + 새 프로젝트 + (active 시) 목록으로 나가기.
+// idle(activeProjectId=null) 에서는 "프로젝트 선택" 라벨, active 에서는
+// "프로젝트: <name>" 라벨.
 // ────────────────────────────────────────────────────────────────────
-function ProjectControlBar({
+function ProjectSelectControl({
   activeProjectId,
   activeProjectName,
   onEnter,
   onExit,
-  onUpload,
 }: {
   activeProjectId: string | null;
   activeProjectName: string | null;
   onEnter: (id: string) => void;
   onExit: () => void;
-  onUpload: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const { projects, isLoading, create } = useInterviewV2Projects();
@@ -85,7 +84,7 @@ function ProjectControlBar({
   ];
 
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-4 py-2">
+    <>
       <DropdownMenu
         align="start"
         items={items}
@@ -117,28 +116,21 @@ function ProjectControlBar({
           </Button>
         )}
       />
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={onUpload}
-        leftIcon={<span aria-hidden>📤</span>}
-        className="ml-auto shrink-0"
-      >
-        {t('upload')}
-      </Button>
 
       <CreateProjectModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreate={handleCreate}
       />
-    </div>
+    </>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Idle 본문 — 컨트롤 바(상시) + 안내 hint. 프로젝트를 선택하거나 새로
-// 만들거나 파일을 올리면 active 로 진입한다.
+// Idle 본문 — 메인 패널 규격 통일 (데스크/프로빙 idle 기준): 컨트롤을
+// 카드 정중앙(수직+수평 center)에 transparent 로 띄우고, 주요 CTA
+// (📤 파일 업로드 = ChromeButton default lg)는 컨트롤 아래 gap-8.
+// 프로젝트를 선택하거나 새로 만들거나 파일을 올리면 active 로 진입한다.
 // ────────────────────────────────────────────────────────────────────
 function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
   const t = useTranslations('InterviewsV2');
@@ -146,21 +138,39 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ProjectControlBar
-        activeProjectId={null}
-        activeProjectName={null}
-        onEnter={onEnter}
-        onExit={() => {}}
-        onUpload={() => setUploadOpen(true)}
-      />
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5">
+        <div className="flex w-full max-w-[420px] flex-col gap-8">
+          {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). */}
+          <div className="flex flex-col items-center gap-4 bg-transparent text-center">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-ink-2">
+                {t('cardIdleTitle')}
+              </h3>
+              <p className="text-sm leading-[1.6] text-mute">
+                {t('cardIdleHint')}
+              </p>
+            </div>
+            <ProjectSelectControl
+              activeProjectId={null}
+              activeProjectName={null}
+              onEnter={onEnter}
+              onExit={() => {}}
+            />
+          </div>
 
-      {/* 산출물 영역 자리 — idle 이라 안내 hint 만. */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-8 text-center">
-        <div className="max-w-[360px] space-y-2">
-          <h3 className="text-lg font-semibold text-ink-2">
-            {t('cardIdleTitle')}
-          </h3>
-          <p className="text-sm leading-[1.6] text-mute">{t('cardIdleHint')}</p>
+          {/* 실행 CTA — 데스크/프로빙과 동일 pattern: 좌측 status slot +
+              우측 auto-width ChromeButton (justify-between). idle 의 주요
+              액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-mute" />
+            <ChromeButton
+              variant="default"
+              size="lg"
+              onClick={() => setUploadOpen(true)}
+            >
+              📤 {t('cardUpload')}
+            </ChromeButton>
+          </div>
         </div>
       </div>
 
@@ -180,17 +190,21 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Active 본문 — 컨트롤 바(상시) + 파일 리스트 요약 + 검색 chat.
-// 상세(2-panel 파일 그리드 등)는 "전체 보기" fullview 가 담당.
+// Active 본문 — 컨트롤 패널을 상단 고정 (데스크 active 패턴: shrink-0 +
+// border-b)하고, 아래는 파일 리스트 요약 (인덱싱 타임라인 + 파일 chip)
+// 만. 산출물(검색 chat/결과)은 카드에서 제거 — "검색 시작" CTA 가
+// fullview (InterviewV2Fullview, SearchChat 보유) 로 일원화한다 (R5).
 // ────────────────────────────────────────────────────────────────────
 function ActiveBody({
   projectId,
   onEnter,
   onExit,
+  onOpenFullview,
 }: {
   projectId: string;
   onEnter: (id: string) => void;
   onExit: () => void;
+  onOpenFullview: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const tProcess = useTranslations('Process');
@@ -201,7 +215,7 @@ function ActiveBody({
   // 인덱싱 중인 문서의 공정 과정 타임라인 (사용자 결정 R3/R5). 인터뷰V2 는
   // 단일-잡 lifecycle 이 아니라 프로젝트 워크스페이스 + 문서별 인덱싱이라,
   // 스펙의 "컨트롤 전체 대체" 대신 인덱싱 문서의 진행을 타임라인으로 시각화
-  // 한다(SearchChat/멀티-문서 UX 보존 — 보수적 해석). index_status 는 coarse
+  // 한다(멀티-문서 UX 보존 — 보수적 해석). index_status 는 coarse
   // (pending/indexing/done/error) 라, indexing 중 관측 가능한 chunk embedding
   // 을 active 로 두고 앞 단계(업로드/파싱/청크)는 done 으로 표기한다.
   const INT_PHASES = ['uploading', 'parsing', 'chunking', 'embedding'] as const;
@@ -227,16 +241,43 @@ function ActiveBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ProjectControlBar
-        activeProjectId={projectId}
-        activeProjectName={projectName}
-        onEnter={onEnter}
-        onExit={onExit}
-        onUpload={() => setUploadOpen(true)}
-      />
+      {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 프로젝트 전환 +
+          📤 업로드(sub-action, Button 유지) + 주요 CTA(검색 시작 =
+          ChromeButton default lg → fullview). */}
+      <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
+        <div className="flex flex-col gap-4 bg-transparent">
+          <div className="flex flex-wrap items-center gap-2">
+            <ProjectSelectControl
+              activeProjectId={projectId}
+              activeProjectName={projectName}
+              onEnter={onEnter}
+              onExit={onExit}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setUploadOpen(true)}
+              leftIcon={<span aria-hidden>📤</span>}
+              className="ml-auto shrink-0"
+            >
+              {t('upload')}
+            </Button>
+          </div>
 
-      {/* 파일 리스트 요약 — 파일명 chip + 개수. 상세는 전체 보기. */}
-      <div className="shrink-0 border-b border-line-soft px-4 py-3">
+          {/* 실행 CTA — 검색(산출물)은 fullview 로 일원화. 좌측 status slot
+              + 우측 auto-width CTA = 데스크/프로빙과 동일 pattern. */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-mute" />
+            <ChromeButton variant="default" size="lg" onClick={onOpenFullview}>
+              {t('cardSearchStart')}
+            </ChromeButton>
+          </div>
+        </div>
+      </div>
+
+      {/* 파일 리스트 요약 — 파일명 chip + 개수 + 인덱싱 진행. 상세/검색은
+          전체 보기 (fullview). */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (
           <div className="flex gap-2">
             <Skeleton className="h-6 w-24 rounded-sm" />
@@ -297,14 +338,6 @@ function ActiveBody({
         )}
       </div>
 
-      {/* 검색 chat — 현재 프로젝트 스코프 (project-detail 과 동일 컴포넌트). */}
-      <div className="min-h-0 flex-1">
-        <SearchChat
-          projectIds={null}
-          currentProject={{ id: projectId, name: projectName }}
-        />
-      </div>
-
       <UploadModal
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
@@ -318,7 +351,7 @@ function ActiveBody({
 function ExpandedBody() {
   // "전체 보기" → InterviewV2Fullview (공유 FullviewShell slot 으로 portal).
   // idle 이면 프로젝트 목록부터, active 면 해당 프로젝트 상세로 진입.
-  const { renderInSlot, close } = useFullview('interviews');
+  const { renderInSlot, openFullview, close } = useFullview('interviews');
 
   // 카드가 들어가 있는 프로젝트. null = idle. SSR 기본 null → 하이드레이션
   // 후 localStorage 값 복원 (use-consent.ts 와 동일 패턴).
@@ -339,6 +372,14 @@ function ExpandedBody() {
     window.localStorage.removeItem(CARD_PROJECT_KEY);
   };
 
+  // "검색 시작" CTA → 통일 "전체 보기" 진입 계측 — 표준 이벤트 (데스크와
+  // 동일 pattern).
+  const handleOpenFullview = () => {
+    trackEvent('widget_action', { widget: 'interviews', action: 'fullview_open' });
+    trackEvent('widget_viewed', { widget: 'interviews', fullview: true });
+    openFullview();
+  };
+
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
     trackEvent('widget_viewed', { widget: 'interviews' });
@@ -353,11 +394,13 @@ function ExpandedBody() {
           projectId={activeProjectId}
           onEnter={enterProject}
           onExit={exitToIdle}
+          onOpenFullview={handleOpenFullview}
         />
       )}
 
-      {/* 공유 전체보기 모달 slot. 헤더 "전체보기" 버튼(shell)이 열면
-          현재 프로젝트(active) 또는 목록(idle)으로 진입. */}
+      {/* 공유 전체보기 모달 slot. 헤더 "전체보기" 버튼(shell) 또는 카드의
+          "검색 시작" CTA 가 열면 현재 프로젝트(active) 또는 목록(idle)으로
+          진입. */}
       {renderInSlot(
         <InterviewV2Fullview
           onClose={close}
@@ -368,10 +411,11 @@ function ExpandedBody() {
   );
 }
 
-// 인터뷰 결과 생성기 canvas widget — 서브헤더 slim bar 폐기. 프로젝트 컨트롤
-// 바(선택/전환/업로드)는 phase 무관 항상 노출되고, 산출물(파일 리스트 요약 +
-// 검색 chat)은 프로젝트에 진입한 active 시만 노출된다. 상세는 "전체 보기"
-// (InterviewV2Fullview). accent 는 moderator 와 같은 peach 재사용.
+// 인터뷰 결과 생성기 canvas widget — 메인 패널 규격 통일 (데스크/프로빙
+// 규칙): idle 은 컨트롤(프로젝트 선택 + 업로드 CTA)을 카드 정중앙에
+// transparent 로 배치, active 는 컨트롤 상단 고정 + 파일 리스트 요약만.
+// 산출물(검색 chat/결과)은 "전체 보기" (InterviewV2Fullview) 로 일원화.
+// accent 는 moderator 와 같은 peach 재사용.
 export const interviewsCard: WidgetContent = {
   key: 'interviews',
   meta: {
