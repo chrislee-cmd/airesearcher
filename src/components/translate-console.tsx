@@ -59,6 +59,7 @@ import {
   countReplacementChars,
   decodeDataChannelMessage,
   looksJapaneseFallback,
+  looksSilenceHallucination,
   lossRatio,
   summarizeFidelity,
 } from '@/lib/translate-fidelity';
@@ -510,6 +511,13 @@ const SENTENCE_END = /([.!?。！？]+|[。…?])(\s+|$)/;
 // quote/bracket after the punctuation.
 const SENTENCE_TAIL = /[.!?。！？…]+["')\]」』]?\s*$/u;
 
+// 🚨 Fragment merge (Fix 2). Strip trailing sentence-ending punctuation +
+// whitespace so a folded short shard ("Okay.") doesn't re-trigger a sentence
+// boundary when it merges into the following utterance. Mirrors SENTENCE_TAIL.
+function stripTerminalPunct(s: string): string {
+  return s.replace(/[.!?。！？…]+["')\]」』]?\s*$/u, '').trimEnd();
+}
+
 // PR-T2 turn detection. The translations API has no `speech_started` /
 // `speech_stopped` events (see src/lib/openai-realtime.ts) — to spot a
 // turn boundary we watch the gap between successive deltas of the same
@@ -533,6 +541,19 @@ const SENTENCE_TAIL = /[.!?。！？…]+["')\]」』]?\s*$/u;
 // resurfaces, 1800 is the conservative fallback. The `midSentenceCommits`
 // counter (this PR) measures the effect: it should drop sharply at 2400.
 const TURN_SILENCE_MS = 2400;
+
+// 🚨 Fragment merge (Fix 2, pr-translate-stt-silence-hallucination-gate).
+// The translations session can't override server VAD (turn_detection is
+// rejected — see src/lib/openai-realtime.ts), so it over-splits: ~17% of
+// committed INPUT lines were ≤4-char shards (Supabase audit, 2026-07-06). A
+// short input line that hits a sentence boundary with nothing after it is
+// deferred for MERGE_DEBOUNCE_MS instead of committing immediately: if the
+// speaker continues within the window the shard FOLDS into that utterance
+// (its terminal punctuation stripped so it doesn't re-trigger a boundary);
+// otherwise the debounce timer commits it standalone. Only shards ≤
+// MERGE_MAX_CHARS are eligible so real sentence splitting is untouched.
+const MERGE_MAX_CHARS = 4;
+const MERGE_DEBOUNCE_MS = 300;
 
 // 🚨 Session auto-renewal (pr-translate-session-auto-renewal).
 // OpenAI Realtime sessions have a hard server-side max lifetime of ~30 min:
@@ -579,6 +600,17 @@ type FidelityChannelCounters = {
   // 🚨 cross-channel echo gate: input finals dropped because they matched a
   // recent output final (our own TTS re-entering the mic/tab). input-only.
   selfEchoDrops: number;
+  // 🚨 silence-hallucination gate (Fix 1): input DELTAS dropped as Whisper
+  // silence ghosts ("Goodbye"/"Okay") in CJK-source sessions. input-only.
+  // Surfaced in the loss report so an over-eager gate (dropping real
+  // code-switch loanwords) is observable without a live console.
+  silenceHallucinationDrops: number;
+  // 🚨 fragment-merge (Fix 2): short input sentence-boundary commits DEFERRED
+  // by the debounce window, and how many of those then FOLDED into the
+  // following utterance instead of committing standalone. High deferrals with
+  // low folds ⇒ most short fragments were genuinely standalone. input-only.
+  mergeDeferrals: number;
+  mergeFolds: number;
 };
 
 function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCounters> {
@@ -595,6 +627,9 @@ function freshFidelityCounters(): Record<'input' | 'output', FidelityChannelCoun
     turnSilenceCommits: 0,
     midSentenceCommits: 0,
     selfEchoDrops: 0,
+    silenceHallucinationDrops: 0,
+    mergeDeferrals: 0,
+    mergeFolds: 0,
   });
   return { input: channel(), output: channel() };
 }
@@ -923,6 +958,21 @@ export function TranslateConsole({
   );
   const partialOutputRef = useRef<Record<SourceSlot, { id: string; text: string } | null>>(
     emptySlotRecord<{ id: string; text: string } | null>(null),
+  );
+
+  // 🚨 Fragment merge (Fix 2). A short input sentence-boundary commit is
+  // parked here during the debounce window instead of committing. Keyed per
+  // slot so the host's parked shard doesn't collide with the guest's. Holds
+  // the display id + started_at so a fold or a standalone flush reuses the
+  // same caption row (no orphaned partial). See MERGE_MAX_CHARS.
+  const pendingInputMergeRef = useRef<
+    Record<
+      SourceSlot,
+      { id: string; text: string; lang: string; speaker: 'host' | 'guest'; startedAt: number } | null
+    >
+  >(emptySlotRecord(null));
+  const mergeTimerRef = useRef<Record<SourceSlot, ReturnType<typeof setTimeout> | null>>(
+    emptySlotRecord<ReturnType<typeof setTimeout> | null>(null),
   );
 
   // PR-T2: wall-clock of the most recent delta per kind PER SLOT. A gap
@@ -1482,12 +1532,162 @@ export function TranslateConsole({
   // can derive its speaker from the slot it's bound to without
   // capturing a stale closure value.
 
+  // 🚨 Fragment merge (Fix 2) — commit a deferred short INPUT shard through
+  // the SAME dedup → echo → push/persist/publish path the inline
+  // SENTENCE_END branch uses. Kept as its own callback so the debounce flush
+  // can't diverge from the live commit. MUST stay in lockstep with the input
+  // arm of the SENTENCE_END `if (finalText)` block below.
+  const commitInputFinal = useCallback(
+    (
+      slot: SourceSlot,
+      id: string,
+      finalText: string,
+      lang: string,
+      speaker: 'host' | 'guest',
+      startedAt: number,
+    ) => {
+      const wall = Date.now();
+      const dedupKey = normalizeForDedup(finalText);
+      const bucket = recentFinalsRef.current[slot].input;
+      const fresh = bucket.filter((e) => wall - e.ts <= DEDUP_WINDOW_MS);
+      const dup = dedupKey.length > 0 ? matchDedupRule(dedupKey, fresh) : null;
+      const echoMatch =
+        !dup && dedupKey.length > 0
+          ? matchEcho(
+              dedupKey,
+              recentOutputEchoRef.current.filter(
+                (e) => wall - e.ts <= ECHO_WINDOW_MS,
+              ),
+            )
+          : null;
+      const ctr = fidelityCountersRef.current.input;
+      if (dup) {
+        if (dup.rule === 'fuzzy') ctr.fuzzyDrops++;
+        else if (dup.rule === 'containment') ctr.containmentDrops++;
+        else ctr.lcsDrops++;
+        ctr.droppedChars += finalText.length;
+        console.info('[translate] dedup (merge-flush)', {
+          slot,
+          kind: 'input',
+          rule: dup.rule,
+          dropped: finalText,
+          matched: dup.matched,
+        });
+        setInputLines((prev) => prev.filter((l) => l.id !== id));
+        return;
+      }
+      if (echoMatch) {
+        ctr.selfEchoDrops++;
+        ctr.droppedChars += finalText.length;
+        console.info('[translate] self_echo drop (merge-flush)', {
+          slot,
+          dropped: finalText,
+          matched: echoMatch,
+        });
+        registerSelfEcho(wall);
+        setInputLines((prev) => prev.filter((l) => l.id !== id));
+        return;
+      }
+      fresh.push({ key: dedupKey, ts: wall });
+      recentFinalsRef.current[slot].input = fresh;
+      const finalLine: CaptionLine = {
+        id,
+        text: finalText,
+        final: true,
+        ts: wall,
+        speaker,
+      };
+      pushLine('input', finalLine);
+      broadcastCaption('input', finalLine, lang);
+      void persistMessage('input', finalText, lang, speaker);
+      transcriptPublisher.publishSegment({
+        id,
+        text: finalText,
+        started_at: startedAt,
+        ended_at: wall,
+        locale: lang,
+      });
+    },
+    [broadcastCaption, persistMessage, pushLine, registerSelfEcho, transcriptPublisher],
+  );
+
+  // Fix 2 — the debounce window elapsed with no follow-up delta, so the
+  // parked shard was a genuine standalone utterance; commit it.
+  const flushInputMerge = useCallback(
+    (slot: SourceSlot) => {
+      mergeTimerRef.current[slot] = null;
+      const pending = pendingInputMergeRef.current[slot];
+      if (!pending) return;
+      pendingInputMergeRef.current[slot] = null;
+      commitInputFinal(
+        slot,
+        pending.id,
+        pending.text,
+        pending.lang,
+        pending.speaker,
+        pending.startedAt,
+      );
+    },
+    [commitInputFinal],
+  );
+
+  // Fix 2 — park a short input shard for MERGE_DEBOUNCE_MS instead of
+  // committing it now. The preview row (id) already renders on screen, so we
+  // just arm the flush timer and remember the shard.
+  const scheduleInputMerge = useCallback(
+    (
+      slot: SourceSlot,
+      id: string,
+      text: string,
+      lang: string,
+      speaker: 'host' | 'guest',
+      wall: number,
+    ) => {
+      const startedAt = inputLineStartedAtRef.current.get(id) ?? wall;
+      const existingTimer = mergeTimerRef.current[slot];
+      if (existingTimer) clearTimeout(existingTimer);
+      pendingInputMergeRef.current[slot] = { id, text, lang, speaker, startedAt };
+      fidelityCountersRef.current.input.mergeDeferrals++;
+      mergeTimerRef.current[slot] = setTimeout(
+        () => flushInputMerge(slot),
+        MERGE_DEBOUNCE_MS,
+      );
+    },
+    [flushInputMerge],
+  );
+
   const appendStreaming = useCallback(
     (slot: SourceSlot, kind: 'input' | 'output', delta: string, lang: string) => {
       if (!delta) return;
       const speaker = SLOT_SPEAKER[slot];
       const partialBag = kind === 'input' ? partialInputRef : partialOutputRef;
       const wall = Date.now();
+
+      // 🚨 Fragment merge (Fix 2) — FOLD. A short input shard is parked
+      // awaiting merge and the speaker just continued (this delta arrived
+      // inside the debounce window): seed the rolling partial with the parked
+      // text — terminal punctuation stripped so it doesn't re-trigger a
+      // sentence boundary — and let the normal accumulation below merge them
+      // into one committed line. Reuses the shard's caption id + started_at so
+      // no orphaned partial row is left behind. Runs before turn detection so
+      // the folded text becomes `existing`; the shard's last delta was ≤
+      // MERGE_DEBOUNCE_MS ago, well under TURN_SILENCE_MS, so it won't be
+      // mistaken for a stale turn.
+      if (kind === 'input') {
+        const pendingMerge = pendingInputMergeRef.current[slot];
+        if (pendingMerge) {
+          const timer = mergeTimerRef.current[slot];
+          if (timer) clearTimeout(timer);
+          mergeTimerRef.current[slot] = null;
+          pendingInputMergeRef.current[slot] = null;
+          partialBag.current[slot] = {
+            id: pendingMerge.id,
+            text: stripTerminalPunct(pendingMerge.text),
+          };
+          inputLineStartedAtRef.current.set(pendingMerge.id, pendingMerge.startedAt);
+          fidelityCountersRef.current.input.mergeFolds++;
+        }
+      }
 
       // PR-T2 silence-based turn detection (per slot). If a long enough
       // gap has elapsed since the previous delta of the same (slot,
@@ -1682,6 +1882,34 @@ export function TranslateConsole({
         const finalText = next.slice(0, cut).trim();
         const remainder = next.slice(cut).trim();
         if (finalText) {
+          // 🚨 Fragment merge (Fix 2) — DEFER. A very short input shard that
+          // lands on a sentence boundary with nothing after it (remainder
+          // empty) is the VAD over-split symptom (~17% of input lines were
+          // ≤4-char shards). Park it for MERGE_DEBOUNCE_MS instead of
+          // committing: if the speaker continues the fold above merges it into
+          // that utterance, otherwise the debounce timer commits it standalone
+          // via commitInputFinal (same dedup/echo path). Only ≤ MERGE_MAX_CHARS
+          // input shards qualify, so normal sentence splitting, echo, and
+          // dedup on real lines are untouched. Show the shard as a live
+          // preview row meanwhile so the prompter doesn't stall.
+          if (
+            kind === 'input' &&
+            !remainder &&
+            stripTerminalPunct(finalText).length <= MERGE_MAX_CHARS
+          ) {
+            scheduleInputMerge(slot, current.id, finalText, lang, speaker, wall);
+            partialBag.current[slot] = null;
+            const previewLine: CaptionLine = {
+              id: current.id,
+              text: finalText,
+              final: false,
+              ts: wall,
+              speaker,
+            };
+            pushLine('input', previewLine);
+            publishInput(finalText, undefined);
+            return;
+          }
           // Dedup against recent finals (see DEDUP_WINDOW_MS comment).
           // We normalize punctuation+whitespace because successive OpenAI
           // sessions tokenize the same utterance slightly differently
@@ -1819,7 +2047,14 @@ export function TranslateConsole({
         publishInput(next, undefined);
       }
     },
-    [broadcastCaption, persistMessage, pushLine, registerSelfEcho, transcriptPublisher],
+    [
+      broadcastCaption,
+      persistMessage,
+      pushLine,
+      registerSelfEcho,
+      scheduleInputMerge,
+      transcriptPublisher,
+    ],
   );
 
   const handleOaiEvent = useCallback(
@@ -1867,6 +2102,28 @@ export function TranslateConsole({
           fidelityCountersRef.current.input.deltaChars += delta.length;
           console.warn('[translate] japanese-fallback drop (ko source)', {
             slot,
+            preview: delta.slice(0, 32),
+          });
+          return;
+        }
+        // 🚨 Silence-hallucination gate (Fix 1). gpt-4o-transcribe invents
+        // stock English interjections ("Goodbye", "Okay.") during silence in
+        // CJK-source sessions — the translations config can't pin the source
+        // language server-side (400), so this client text gate is the only
+        // layer that can catch it (same structure as the echo gate). Drop the
+        // fragment here before it pollutes the caption / transcript. Counted
+        // as delta chars first so the fidelity loss ratio REFLECTS the drop
+        // instead of silently masking it (mirrors the japanese-fallback guard
+        // above), plus a dedicated counter so an over-eager gate is
+        // observable in the loss report. Three-gate (script + length +
+        // dictionary) keeps real speech and code-switching ("Amazon"/"Notion")
+        // intact; only CJK source sessions are guarded (en/es "Okay" is real).
+        if (looksSilenceHallucination(delta, sourceLang)) {
+          fidelityCountersRef.current.input.deltaChars += delta.length;
+          fidelityCountersRef.current.input.silenceHallucinationDrops++;
+          console.warn('[translate] silence-hallucination drop (CJK source)', {
+            slot,
+            sourceLang,
             preview: delta.slice(0, 32),
           });
           return;
@@ -1949,6 +2206,14 @@ export function TranslateConsole({
     };
     partialInputRef.current = emptySlotRecord(null);
     partialOutputRef.current = emptySlotRecord(null);
+    // 🚨 Fix 2: drop any parked shard + its debounce timer from a prior
+    // session so it can't flush a stale fragment into the new one.
+    for (const s of ['mic', 'tab'] as const) {
+      const timer = mergeTimerRef.current[s];
+      if (timer) clearTimeout(timer);
+    }
+    mergeTimerRef.current = emptySlotRecord(null);
+    pendingInputMergeRef.current = emptySlotRecord(null);
     // Shared transcript provider — 새 세션이 시작되면 이전 세그먼트는 무효.
     // provider 가 없는 컨텍스트 (/live) 에서는 no-op.
     transcriptPublisher.clear();
@@ -3165,13 +3430,20 @@ export function TranslateConsole({
         midSentenceCommits: c.midSentenceCommits,
         // 🚨 cross-channel echo gate: input finals dropped as self-echo.
         selfEchoDrops: c.selfEchoDrops,
+        // 🚨 silence-hallucination gate (Fix 1) + fragment merge (Fix 2).
+        silenceHallucinationDrops: c.silenceHallucinationDrops,
+        mergeDeferrals: c.mergeDeferrals,
+        mergeFolds: c.mergeFolds,
         lossRatio: ratio,
       };
       // Report on any diagnostic signal, not just threshold breach — a
       // session under the 5% loss bar can still reveal which heuristic is
       // dropping content or whether turn-silence is chopping sentences.
       const hasDiagnosticSignal =
-        c.droppedChars > 0 || c.midSentenceCommits > 0 || c.selfEchoDrops > 0;
+        c.droppedChars > 0 ||
+        c.midSentenceCommits > 0 ||
+        c.selfEchoDrops > 0 ||
+        c.silenceHallucinationDrops > 0;
       if (
         ratio > FIDELITY_LOSS_THRESHOLD ||
         c.persistFail > 0 ||
@@ -3218,6 +3490,12 @@ export function TranslateConsole({
       // Clear the echo loop-breaker's auto-unmute timer so it can't fire a
       // setState on the unmounted component.
       if (echoMuteTimerRef.current) clearTimeout(echoMuteTimerRef.current);
+      // 🚨 Fix 2: clear any pending fragment-merge flush timers so they can't
+      // fire a setState / commit on the unmounted component.
+      for (const s of ['mic', 'tab'] as const) {
+        const timer = mergeTimerRef.current[s];
+        if (timer) clearTimeout(timer);
+      }
     };
   }, [cleanup]);
 
