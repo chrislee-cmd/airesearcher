@@ -36,7 +36,6 @@ import {
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
-import { WidgetUploadModal } from '@/components/canvas/shell/widget-upload-modal';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -104,9 +103,6 @@ export function QuotesCardBody() {
 
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // 업로드 모달 open state. 옛 서브헤더 상시 dropzone 을 📤 업로드 버튼 +
-  // 모달 안 dropzone 으로 이동 — 서브헤더 height ↓.
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [language, setLanguage] = useState<string>('multi');
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
   // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
@@ -225,9 +221,6 @@ export function QuotesCardBody() {
       requireAuth(() => {
         // Don't upload yet — open the language-confirm modal and let the
         // user verify. uploadToStorage fires only after confirm.
-        // Close the upload modal so the language-confirm dialog shows alone
-        // (both are z-modal portals — avoid stacking two modals).
-        setUploadOpen(false);
         setPendingFiles(Array.from(files));
       });
     },
@@ -681,9 +674,10 @@ export function QuotesCardBody() {
     label: `${l.flag} ${l.label}`,
   }));
 
-  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 셀렉트 + 📤 업로드
-  // CTA (+ 자동 시작 실패 시 재시도 CTA/에러 hint). `idSuffix` 는 field
-  // htmlFor 고유화용 (단일 인스턴스라 'main').
+  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 셀렉트 + 인라인
+  // 드래그드롭 dropzone (데스크/프로빙 컨트롤과 통일 — 업로드가 모달 뒤에
+  // 숨지 않는다). 드롭/클릭 → startUploads → language-confirm → 업로드+자동
+  // 전사. `idSuffix` 는 field htmlFor 고유화용 (단일 인스턴스라 'main').
   const renderControls = (idSuffix: string) => (
     <div className="space-y-5">
       <Field label="언어" htmlFor={`transcript-lang-${idSuffix}`}>
@@ -695,6 +689,20 @@ export function QuotesCardBody() {
         />
       </Field>
 
+      {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
+          업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
+          드롭도 그대로 수용. */}
+      <FileDropZone
+        accept={ACCEPT}
+        multiple
+        disabled={busyUpload}
+        onFiles={(files) => startUploads(files)}
+        onDropRaw={handleArtifactDrop}
+        label={tUp('dropHere')}
+        helperText={tUp('supported')}
+        className="w-full py-12"
+      />
+
       {uploadError ? (
         <p className="text-sm text-warning">{uploadError}</p>
       ) : readyCount > 0 ? (
@@ -702,22 +710,6 @@ export function QuotesCardBody() {
           {tWidgets('transcriptReadyHint', { count: readyCount })}
         </p>
       ) : null}
-
-      {/* 보조 CTA(📤 추가 업로드) — 파일이 이미 준비된 상태에서만 인라인.
-          주 액션은 하단 액션 바(전사 시작). 빈 상태(파일 0)에서는 업로드가
-          주 액션이라 인라인이 아닌 하단 액션 바로 노출된다 (6 위젯 통일). */}
-      {readyCount > 0 && (
-        <div className="flex items-center justify-end gap-3">
-          <ChromeButton
-            variant="default"
-            size="lg"
-            onClick={() => setUploadOpen(true)}
-            disabled={busyUpload}
-          >
-            📤 {tWidgets('upload')}
-          </ChromeButton>
-        </div>
-      )}
     </div>
   );
 
@@ -742,23 +734,25 @@ export function QuotesCardBody() {
                 <p className="text-lg font-semibold text-ink-2">
                   ✅ {tProcess('completeTitle')}
                 </p>
-                <div className="flex items-center gap-3">
-                  <ChromeButton
-                    variant="default"
-                    size="lg"
-                    onClick={handleQuotesFullview}
-                  >
-                    {tWidgets('viewAll')}
-                  </ChromeButton>
-                  <ChromeButton
-                    variant="default"
-                    size="lg"
-                    onClick={() => setUploadOpen(true)}
-                    disabled={busyUpload}
-                  >
-                    📤 {tWidgets('upload')}
-                  </ChromeButton>
-                </div>
+                <ChromeButton
+                  variant="default"
+                  size="lg"
+                  onClick={handleQuotesFullview}
+                >
+                  {tWidgets('viewAll')}
+                </ChromeButton>
+                {/* 파일 추가 업로드 경로 — 모달 제거 후 인라인 dropzone 으로.
+                    드롭/클릭 → 새 전사 flow (idle 컨트롤과 동일 핸들러). */}
+                <FileDropZone
+                  accept={ACCEPT}
+                  multiple
+                  disabled={busyUpload}
+                  onFiles={(files) => startUploads(files)}
+                  onDropRaw={handleArtifactDrop}
+                  label={tUp('dropHere')}
+                  helperText={tUp('supported')}
+                  className="w-full max-w-md py-8"
+                />
               </div>
             ) : (
               renderControls('main')
@@ -860,54 +854,24 @@ export function QuotesCardBody() {
           </>
         )}
 
-        {/* 주 CTA — 바디 최하단 고정 액션 바 (6 위젯 통일). 컨트롤 phase 에서만
-            노출(진행 timeline / 완료 done 은 숨김): 파일 준비되면 전사 시작,
-            빈 상태(파일 0)면 업로드가 주 액션이라 📤 업로드를 하단 바로 노출. */}
+        {/* 주 CTA — 바디 최하단 고정 액션 바 (6 위젯 통일, 위치는 bottom-bar
+            spec 소유). 컨트롤 phase 에서만 노출(진행 timeline / 완료 done 은
+            숨김). 업로드는 인라인 dropzone 이 담당하므로 하단 바는 항상
+            "전사 시작" — 준비 파일 없으면 disabled, 있으면(자동 시작 실패
+            재시도분) 활성. */}
         {!txInflight && !txDone && (
-          readyCount > 0 ? (
-            <WidgetPrimaryCta
-              label={`${tWidgets('transcriptStart')} (${readyCount})`}
-              busyLabel={tCommon('loading')}
-              busy={busyUpload}
-              disabled={!canStart}
-              onClick={() => void startTranscription()}
-            />
-          ) : (
-            <WidgetPrimaryCta
-              label={tWidgets('upload')}
-              icon="📤"
-              busy={busyUpload}
-              onClick={() => setUploadOpen(true)}
-            />
-          )
+          <WidgetPrimaryCta
+            label={
+              readyCount > 0
+                ? `${tWidgets('transcriptStart')} (${readyCount})`
+                : tWidgets('transcriptStart')
+            }
+            busyLabel={tCommon('loading')}
+            busy={busyUpload}
+            disabled={!canStart}
+            onClick={() => void startTranscription()}
+          />
         )}
-
-        {/* 업로드 모달 — 두 phase 공용. idle 컨트롤 보드 / active slim bar
-            재확장의 📤 업로드 CTA 가 연다. 파일 수신 → startUploads →
-            language-confirm 다이얼로그 (모달 자동 닫힘). */}
-        <WidgetUploadModal
-          open={uploadOpen}
-          onClose={() => setUploadOpen(false)}
-          title={tWidgets('upload')}
-          closeLabel={tWidgets('settingsClose')}
-        >
-          <FileDropZone
-            accept={ACCEPT}
-            multiple
-            disabled={busyUpload}
-            onFiles={(files) => startUploads(files)}
-            onDropRaw={handleArtifactDrop}
-            label={tUp('dropHere')}
-            helperText={tUp('supported')}
-            // 밸런스 튜닝(desk 미러, spec 결정 3): 왜소한 dropzone 을 세로로
-            // 확대해 업로드 모달 폭(w-full)을 채우고 드롭 타깃을 키운다.
-            className="w-full py-12"
-          >
-            {uploadError && (
-              <div className="mt-3 text-sm text-warning">{uploadError}</div>
-            )}
-          </FileDropZone>
-        </WidgetUploadModal>
       </div>
 
       {pendingFiles && (
