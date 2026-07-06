@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('interview_projects')
-    .select('id, name, description, archived_at, created_at, updated_at')
+    .select('id, name, description, tags, archived_at, created_at, updated_at')
     .eq('user_id', user.id);
 
   if (archivedParam === '1') query = query.not('archived_at', 'is', null);
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       name,
       description: description ?? null,
     })
-    .select('id, name, description, archived_at, created_at, updated_at')
+    .select('id, name, description, tags, archived_at, created_at, updated_at')
     .single();
 
   if (error) {

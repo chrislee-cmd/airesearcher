@@ -1258,7 +1258,13 @@
     "pickerEmptyTitle": "아직 프로젝트가 없습니다",
     "pickerEmptyDescription": "먼저 프로젝트를 만들고 인터뷰 파일을 추가하세요.",
     "scopeCurrentProject": "현재 프로젝트 ({name})",
-    "scopeSelected": "선택된 {count}개 프로젝트"
+    "scopeSelected": "선택된 {count}개 프로젝트",
+    "tagAdd": "태그",
+    "tagPlaceholder": "태그 입력",
+    "tagRemove": "{tag} 태그 제거",
+    "tagFilterLabel": "태그 필터",
+    "tagFilterClear": "전체 해제",
+    "tagSaveFailed": "태그 저장에 실패했어요."
   },
   "Workspace": {
     "eyebrow": "워크스페이스",
