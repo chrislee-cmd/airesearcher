@@ -9,6 +9,14 @@ import {
   type DeskSourceId,
 } from '@/lib/desk-sources';
 import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
+import { parseDeskQuery } from '@/lib/desk-query-parse';
+import {
+  STAT_CATALOG_SOURCES,
+  MACRO_STAT_SOURCES,
+  COMPANY_SOURCES,
+  MACRO_ANCHORS,
+  firstNounToken,
+} from '@/lib/desk-source-classes';
 import {
   REGION_AWARE_SOURCES,
   type CrawlTask,
@@ -101,38 +109,104 @@ export async function runCustom(
   // 단일 region 만 받는 다운스트림 (region-무관 source crawl) 용 representative.
   const primaryRegion: DeskRegion = regions[0] ?? 'KR';
 
+  // 소스 클래스별 분리 — 유저가 통계(KOSIS)·공시(DART)·거시(ECOS)를 골랐으면
+  // 자연어를 그 소스가 알아듣는 검색어로 재작성한다 (market 과 동일 로직).
+  // 뉴스형 phrase 를 통계 카탈로그에 던지면 0건인 구조 문제는 custom 도 동일.
+  const selectedStat = usableSources.filter((s) => STAT_CATALOG_SOURCES.has(s));
+  const selectedCompany = usableSources.filter((s) => COMPANY_SOURCES.has(s));
+  const selectedMacro = usableSources.filter((s) => MACRO_STAT_SOURCES.has(s));
+  const feedSources = usableSources.filter(
+    (s) =>
+      !STAT_CATALOG_SOURCES.has(s) &&
+      !COMPANY_SOURCES.has(s) &&
+      !MACRO_STAT_SOURCES.has(s),
+  );
+
+  // 통계/공시 소스를 하나라도 골랐을 때만 파싱(추가 LLM 호출). 순수 뉴스/
+  // 커뮤니티 선택이면 파싱 없이 기존 일반 확장 경로 그대로 (회귀 0).
+  const needsParse = selectedStat.length > 0 || selectedCompany.length > 0;
+  const parsed = needsParse ? await parseDeskQuery(keywords, locale) : undefined;
+  const statTerms = parsed?.statTerms ?? [];
+  const companies = parsed?.companies ?? [];
+  const fallbackTok = firstNounToken(keywords[0] ?? '');
+  const kosisQueries = Array.from(
+    new Set([...statTerms, fallbackTok].filter(Boolean)),
+  );
+
   return {
     mode: 'custom',
+    // 파싱했을 때만 plan.parsed 노출 — runner 가 phrases 를 similar 로 재사용하고
+    // 일반 확장 호출을 건너뛴다. 순수 뉴스 선택이면 undefined 라 기존 확장 경로.
+    parsed,
     // 커스텀 mode 는 유저가 소스·키워드를 직접 지정하므로 AI 자동 선정·부정
-    // filter·축 설계 같은 "판단" 이 없다 — 트렌드처럼 근거를 나열할 게 없다.
-    // 그래서 판단 로그는 결정 2 대로 "이 mode 는 유저 지정 flow 라는 사실" +
-    // "실제 사용한 소스 목록" 2줄만 최소로 남긴다. usableSources 는 env 필터
-    // 를 이미 통과한(= 실제 crawl 되는) 소스라 그대로 신뢰한다.
+    // filter·축 설계 같은 "판단" 이 없다. 단, 통계/공시 소스를 골랐다면 자연어를
+    // 소스별 검색어로 재작성한 내역은 노출한다 (유저가 변환을 인지하도록).
     buildJudgmentEvents: () => {
       const sourceList = usableSources.length
         ? usableSources.map(sourceLabelKo).join(' · ')
         : '(지정된 소스 없음)';
-      return [
+      const lines: string[] = [
         `🎯 커스텀 mode — 유저가 지정한 소스·키워드로 수집합니다 (AI 자동 선정·필터 없음).`,
         `📰 유저 지정 소스 = ${sourceList}`,
       ];
+      if (selectedStat.length) {
+        lines.push(
+          kosisQueries.length
+            ? `🧠 통계 검색용 변환 = ${kosisQueries.map((k) => `‘${k}’`).join(' · ')} — 통계 카탈로그는 조사·수식어를 뗀 짧은 산업 명사로 검색합니다 (뉴스형 문장은 0건).`
+            : `🧠 통계 검색용 명사를 뽑지 못했어요 — 통계 소스는 원 키워드로만 시도합니다.`,
+        );
+      }
+      if (selectedCompany.length) {
+        lines.push(
+          companies.length
+            ? `🧠 회사 축 = ${companies.join(' · ')} — DART 공시를 회사명으로 조회합니다.`
+            : `🚫 DART = 조회할 상장사가 없어 공시 수집을 건너뜁니다 (일반 키워드 공시 피드는 구조적으로 0건).`,
+        );
+      }
+      return lines;
     },
     buildCrawlTasks: ({ similar }) => {
-      const allKeywords = [...keywords, ...similar];
+      const tasks: CrawlTask[] = [];
+      // 뉴스/커뮤니티 = (원 + phrase) 키워드. similar = runner 가 넘긴
+      // parsed.phrases(파싱 안 했으면 일반 확장 결과).
+      const feedKeywords = [...keywords, ...similar];
       // 멀티 region 시 region-aware source (google_news/gdelt/youtube) 는
       // region 마다 별도 crawl, 나머지 (naver/kakao/reddit/hn) 는 한 번만.
       const targets: { src: DeskSourceId; region: DeskRegion }[] = [];
-      for (const src of usableSources) {
+      for (const src of feedSources) {
         if (REGION_AWARE_SOURCES.has(src)) {
           for (const r of regions) targets.push({ src, region: r });
         } else {
           targets.push({ src, region: primaryRegion });
         }
       }
-      const tasks: CrawlTask[] = [];
-      for (const kw of allKeywords) {
+      for (const kw of feedKeywords) {
         for (const { src, region } of targets) {
           tasks.push({ source: src, keyword: kw, region });
+        }
+      }
+
+      // KOSIS 류 = 짧은 산업 명사(stat_terms + fallback 토큰)로만. KR 전용.
+      for (const src of selectedStat) {
+        for (const q of kosisQueries) {
+          tasks.push({ source: src, keyword: q, region: 'KR' });
+        }
+      }
+
+      // DART 류 = 회사명으로만. 회사가 없으면 건너뜀(일반 피드 필터 강등 —
+      // 구조적 0건). KR 전용.
+      if (companies.length) {
+        for (const src of selectedCompany) {
+          for (const q of companies) {
+            tasks.push({ source: src, keyword: q, region: 'KR' });
+          }
+        }
+      }
+
+      // ECOS 류 = 거시 anchor(환율/GDP/물가)로만 — 시장 키워드론 매칭 0. KR 전용.
+      for (const src of selectedMacro) {
+        for (const anchor of MACRO_ANCHORS) {
+          tasks.push({ source: src, keyword: anchor, region: 'KR' });
         }
       }
       return tasks;
