@@ -47,6 +47,14 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
 ];
 
 const DART: DeskSourceId = 'dart';
+const ECOS: DeskSourceId = 'boj_ecos';
+
+// ECOS(한국은행)는 거시 경제통계(환율/GDP/물가)라 시장 키워드("스킨케어 시장")
+// 로는 매칭이 0 이다. 스펙의 ECOS 역할(글로벌 환산·경제지표 근거)을 실현하려면
+// DART 가 회사명을 받듯 ECOS 도 고정 거시 anchor 로 조회해야 한다. ECOS fetcher
+// 의 client 필터는 STAT_NAME.includes(anchor) 라, 아래 substring 이 관련 통계표
+// (대원화환율 / 국내총생산 / 소비자물가지수 …)를 폭넓게 잡는다.
+const MACRO_ANCHORS = ['환율', '국내총생산', '소비자물가지수'];
 
 export async function runMarket(
   input: OrchestratorInput,
@@ -70,7 +78,12 @@ export async function runMarket(
   const companies = await extractMarketCompanies(keywords, locale);
 
   const hasDart = effectiveSources.includes(DART);
-  const nonDartSources = effectiveSources.filter((id) => id !== DART);
+  const hasEcos = effectiveSources.includes(ECOS);
+  // 키워드 검색이 유효한 소스(KOSIS·학술·뉴스)만 (원+유사) 키워드로 crawl.
+  // DART(회사명) · ECOS(거시 anchor)는 아래에서 전용 검색어로 따로 건다.
+  const feedSources = effectiveSources.filter(
+    (id) => id !== DART && id !== ECOS,
+  );
 
   return {
     mode: 'market',
@@ -101,10 +114,10 @@ export async function runMarket(
       const tasks: CrawlTask[] = [];
       const allKeywords = [...keywords, ...similar];
 
-      // 통계·학술·뉴스 소스 = (원 + 유사) 키워드. region-aware 소스(구글 뉴스)
-      // 만 region 마다 별도 crawl, 나머지는 대표 region 한 번.
+      // KOSIS·학술·뉴스 = (원 + 유사) 키워드. region-aware 소스(구글 뉴스)만
+      // region 마다 별도 crawl, 나머지는 대표 region 한 번.
       const targets: { src: DeskSourceId; region: DeskRegion }[] = [];
-      for (const src of nonDartSources) {
+      for (const src of feedSources) {
         if (REGION_AWARE_SOURCES.has(src)) {
           for (const r of regions) targets.push({ src, region: r });
         } else {
@@ -117,12 +130,20 @@ export async function runMarket(
         }
       }
 
-      // DART = 공시 검색은 회사명이 정확하므로 회사 축을 검색어로 쓴다. 회사
+      // DART = 공시는 회사명 검색이 정확하므로 회사 축을 검색어로 쓴다. 회사
       // 추출 실패 시엔 원 키워드로 fallback. DART 는 KR 전용이라 region 고정.
       if (hasDart) {
         const dartQueries = companies.length ? companies : keywords;
         for (const q of dartQueries) {
           tasks.push({ source: DART, keyword: q, region: 'KR' });
+        }
+      }
+
+      // ECOS = 거시 경제통계라 시장 키워드로는 매칭 0. 고정 거시 anchor(환율/
+      // GDP/물가)로 조회해 글로벌 환산·경제지표 근거를 확보한다. KR 전용.
+      if (hasEcos) {
+        for (const anchor of MACRO_ANCHORS) {
+          tasks.push({ source: ECOS, keyword: anchor, region: 'KR' });
         }
       }
       return tasks;
