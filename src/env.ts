@@ -132,6 +132,14 @@ export const env = createEnv({
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
 
+    // Custom translation TTS (single fixed voice). The realtime model's
+    // audio uses dynamic voice adaptation with no voice selector, so we
+    // re-synthesize the translated text through OpenAI TTS pinned to ONE
+    // voice for consistency. Server-only so the client never picks the
+    // voice. `alloy` is a neutral, androgynous default; override per-env.
+    TRANSLATE_TTS_VOICE: z.string().default('alloy'),
+    TRANSLATE_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
+
     // 'false' (string) disables LLM zero-retention. Default = enabled.
     LLM_ZERO_RETENTION: z.enum(['true', 'false']).default('true'),
 
@@ -149,6 +157,13 @@ export const env = createEnv({
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
     NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(8).optional(),
     NEXT_PUBLIC_TRANSLATE_VIEWER_HOST: z.string().min(1).optional(),
+
+    // Kill-switch for the custom fixed-voice TTS pipeline. Default `on`
+    // (the fix is live). Set to `off` to fall back to the realtime model's
+    // native (dynamic-voice) audio if the custom path ever regresses.
+    // Client-readable because the console pipeline is where the divert
+    // happens.
+    NEXT_PUBLIC_TRANSLATE_CUSTOM_TTS: z.enum(['on', 'off']).default('on'),
 
     // PostHog product analytics. Optional so local dev / PR previews
     // without the keys keep working — the client init no-ops when the key
@@ -244,6 +259,8 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    TRANSLATE_TTS_VOICE: process.env.TRANSLATE_TTS_VOICE,
+    TRANSLATE_TTS_MODEL: process.env.TRANSLATE_TTS_MODEL,
     LLM_ZERO_RETENTION: process.env.LLM_ZERO_RETENTION,
     POSTHOG_EMBED_URL: process.env.POSTHOG_EMBED_URL,
 
@@ -253,6 +270,8 @@ export const env = createEnv({
     NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_TRANSLATE_VIEWER_HOST:
       process.env.NEXT_PUBLIC_TRANSLATE_VIEWER_HOST,
+    NEXT_PUBLIC_TRANSLATE_CUSTOM_TTS:
+      process.env.NEXT_PUBLIC_TRANSLATE_CUSTOM_TTS,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
