@@ -785,6 +785,7 @@
     "range_month": "Last month",
     "range_quarter": "Last 3 months",
     "range_year": "Last year",
+    "range_three_years": "Last 3 years",
     "range_custom": "Custom",
     "modeLabel": "Research purpose",
     "modeTitle": { "trend": "Trend research", "market": "Market research", "custom": "Custom" },

@@ -564,6 +564,7 @@
     "range_month": "過去1ヶ月",
     "range_quarter": "過去3ヶ月",
     "range_year": "過去1年",
+    "range_three_years": "過去3年",
     "range_custom": "カスタム",
     "sourcesLabel": "ソース",
     "sourcesUnit": "ソース",
