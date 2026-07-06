@@ -5,7 +5,14 @@
 
 import { env } from '@/env';
 import type { DeskArticle, DeskSourceDefinition } from './types';
-import { inRange, pickTag, safeFetch, UA } from './helpers';
+import { classifyHttpStatus, inRange, pickTag, safeFetch, UA } from './helpers';
+
+// KCI returns XML, and its auth/error envelope is not consistently documented,
+// so we classify conservatively: HTTP status first (429 → rate_limited), then a
+// narrow content probe for an explicit auth-error marker when 0 records parse.
+// Normal article XML never contains these tokens, so a false positive is
+// unlikely; an unrecognised error just stays a genuine empty (no false alarm).
+const KCI_AUTH_ERROR = /인증\s*키|인증오류|<error\b|invalid[\s_-]*key|권한이\s*없/i;
 
 const ENDPOINT = 'https://open.kci.go.kr/po/openapi/openApiSearch.kci';
 const ARTICLE_VIEW =
@@ -66,12 +73,18 @@ export const kci: DeskSourceDefinition = {
     const res = await safeFetch(`${ENDPOINT}?${params}`, {
       headers: { 'user-agent': UA, accept: 'application/xml' },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { articles: [], error: classifyHttpStatus(res.status) };
     const xml = await res.text();
-    return recordBlocks(xml)
+    const articles = recordBlocks(xml)
       .map((b) => parseRecord(b, keyword))
       .filter((a): a is DeskArticle => a !== null)
       .filter((a) => inRange(a.publishedAt, range))
       .slice(0, limit);
+    // 0 records + an explicit auth-error marker ⇒ bad key surfaced (not silent
+    // "0건"). Records present, or no marker ⇒ treat as genuine empty.
+    if (articles.length === 0 && KCI_AUTH_ERROR.test(xml)) {
+      return { articles: [], error: 'invalid_key' };
+    }
+    return articles;
   },
 };

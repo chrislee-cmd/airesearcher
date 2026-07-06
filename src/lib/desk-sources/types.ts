@@ -87,15 +87,50 @@ export type DeskArticle = {
   tier?: 'T1' | 'T2' | 'T3' | 'unknown';
 };
 
+// Why a source produced 0 usable articles when the cause is an API-side error
+// rather than a genuine "no results". Surfacing this is the whole point of the
+// error channel: a bad KOSIS key (err=11) used to return `[]`, indistinguishable
+// from "0 results", so it stayed latent for days (2026-07-06 incident).
+//   - invalid_key   키가 틀림/등록 안 됨/사용중지 (KOSIS err=11, DART 010, 401 …)
+//   - rate_limited  요청 한도 초과 (HTTP 429, DART 020, KOSIS 요청제한, S2 throttle)
+//   - fetch_failed  timeout / 5xx / 파싱 실패 등 일시 오류
+export type DeskSourceErrorReason = 'invalid_key' | 'rate_limited' | 'fetch_failed';
+
+// Why a source was skipped or failed, as persisted in `desk_jobs.skipped` and
+// rendered by the result banner. `no_key` is decided before the crawl (missing
+// env key); the three DeskSourceErrorReason values are decided during the crawl
+// (API-side failure). One entry per affected source.
+export type DeskSkipReason = 'no_key' | DeskSourceErrorReason;
+
+export type DeskSkippedEntry = {
+  source: DeskSourceId;
+  reason: DeskSkipReason;
+  // Which env key(s) are missing — only set for reason 'no_key'.
+  missing?: string;
+};
+
+// A source fetch either returns a plain article array (success / genuine empty)
+// or this richer shape when it needs to report *why* it came back empty. The
+// registry-level `crawlSource` normalises both into `DeskFetchResult`, so a
+// source module can keep returning a bare array (back-compat) or opt in to the
+// error channel by returning `{ articles, error }`. New sources SHOULD report
+// errors via `{ articles: [], error }` instead of swallowing them into `[]`.
+export type DeskFetchResult = {
+  articles: DeskArticle[];
+  error?: DeskSourceErrorReason;
+};
+
 // The single crawl entry point every source module implements. Region is always
 // passed but region-agnostic sources (Naver/Kakao/Reddit/HackerNews) simply
 // ignore it — the caller decides which (source × region) targets to fire.
+// A module may return a bare `DeskArticle[]` (no error signalling) or a
+// `DeskFetchResult` to classify an API-side failure (see DeskSourceErrorReason).
 export type DeskSourceFetcher = (params: {
   keyword: string;
   region: DeskRegion;
   range: DeskDateRange;
   limit: number;
-}) => Promise<DeskArticle[]>;
+}) => Promise<DeskArticle[] | DeskFetchResult>;
 
 // A source = its own self-contained module. Adding a source is: (1) create
 // `<source>.ts` exporting one of these, (2) register it in `registry.ts`.

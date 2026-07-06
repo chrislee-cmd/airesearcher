@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from './auth-provider';
-import type { DeskArticle, DeskSourceId } from '@/lib/desk-sources';
+import type { DeskArticle, DeskSkipReason, DeskSourceId } from '@/lib/desk-sources';
 
 export type DeskJobStatus =
   | 'queued'
@@ -141,7 +141,13 @@ export type DeskJob = {
   research_questions?: DeskResearchQuestion[] | null;
   claims?: DeskClaim[] | null;
   rq_answers?: DeskRqAnswer[] | null;
-  skipped: { source: DeskSourceId; missing: string }[] | null;
+  // `reason` distinguishes a missing key ('no_key') from a runtime API failure
+  // (invalid_key / rate_limited / fetch_failed). Optional for back-compat: rows
+  // written before this change persist as `{ source, missing }` with no reason —
+  // the banner treats a missing reason as 'no_key'.
+  skipped:
+    | { source: DeskSourceId; reason?: DeskSkipReason; missing?: string }[]
+    | null;
   error_message: string | null;
   generation_id: string | null;
   cancel_requested: boolean;

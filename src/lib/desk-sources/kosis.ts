@@ -1,6 +1,22 @@
 import { env } from '@/env';
-import type { DeskArticle, DeskSourceDefinition } from './types';
-import { cleanApiKey, safeFetch } from './helpers';
+import type {
+  DeskArticle,
+  DeskSourceDefinition,
+  DeskSourceErrorReason,
+} from './types';
+import { cleanApiKey, classifyHttpStatus, safeFetch } from './helpers';
+
+// KOSIS answers 200 with `{ err, errMsg }` on any problem. Classify the err code
+// so the crawl can distinguish a bad key from a genuine "no data" (2026-07-06
+// incident: err=11 invalid key was returning `[]`, latent for days). Codes per
+// https://kosis.kr/openapi — key/auth vs quota vs no-data. Unknown codes fall
+// through to fetch_failed rather than being swallowed silently.
+function classifyKosisErr(code: string): DeskSourceErrorReason | undefined {
+  if (['10', '11', '12', '32'].includes(code)) return 'invalid_key'; // 미등록/무효/중지/키없음
+  if (['20', '21', '22'].includes(code)) return 'rate_limited'; // 요청·사용 한도 초과
+  if (['30', '31'].includes(code)) return undefined; // 해당 자료 없음 = genuine empty
+  return 'fetch_failed';
+}
 
 // KOSIS (통계청) statisticsList open API. Free key, KR-only market/industry
 // statistics — used for TAM/SAM sizing. `method=getList` searches the statistic
@@ -41,7 +57,9 @@ export const kosis: DeskSourceDefinition = {
       undefined,
       15_000,
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return { articles: [], error: classifyHttpStatus(res.status) };
+    }
     // KOSIS answers 200 with an `{ err, errMsg }` object (not an array) on a bad
     // key or empty result. Guard the parse and the shape so a bad response can't
     // poison the whole job.
@@ -50,17 +68,19 @@ export const kosis: DeskSourceDefinition = {
     try {
       json = JSON.parse(text);
     } catch {
-      return [];
+      return { articles: [], error: 'fetch_failed' };
     }
     if (!Array.isArray(json)) {
       // KOSIS 는 무효 키/파라미터 오류도 200 + {err, errMsg} 로 답한다. 조용히
       // 삼키면 "0건"과 구분이 안 돼 키 문제가 은폐된다 (2026-07-06 market
-      // 회귀에서 err=11 무효 키가 이 경로로 잠복). 함수 로그에만 남긴다.
+      // 회귀에서 err=11 무효 키가 이 경로로 잠복). 이제 분류된 error 로
+      // job 리포트까지 전달한다 (함수 로그도 유지).
       const errObj = json as { err?: string; errMsg?: string };
       if (errObj?.err) {
         console.error('[kosis] API error', errObj.err, errObj.errMsg);
+        return { articles: [], error: classifyKosisErr(errObj.err) };
       }
-      return [];
+      return { articles: [] };
     }
     const items = json as KosisItem[];
     return items

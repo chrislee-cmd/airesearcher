@@ -1,6 +1,23 @@
 import { env } from '@/env';
-import type { DeskArticle, DeskSourceDefinition } from './types';
-import { cleanApiKey, inRange, safeFetch } from './helpers';
+import type {
+  DeskArticle,
+  DeskFetchResult,
+  DeskSourceDefinition,
+  DeskSourceErrorReason,
+} from './types';
+import { cleanApiKey, classifyHttpStatus, inRange, safeFetch } from './helpers';
+
+// DART returns 200 with a `{ status, message }` envelope. Classify the status
+// so a bad key (010/011/012) surfaces distinctly from a genuine "no data" (013),
+// instead of every failure collapsing to `[]` (2026-07-06 incident class).
+// Docs: https://opendart.fss.or.kr — 010 미등록키 / 011 사용중지 / 012 접근불가 IP /
+// 013 조회데이터없음 / 020 요청제한 초과 / 021 조회회사수 초과.
+function classifyDartStatus(status: string): DeskSourceErrorReason | undefined {
+  if (['010', '011', '012'].includes(status)) return 'invalid_key';
+  if (['020', '021'].includes(status)) return 'rate_limited';
+  if (status === '013') return undefined; // 조회 데이터 없음 = genuine empty
+  return 'fetch_failed';
+}
 import {
   fetchDartRevenue,
   formatKrwAmount,
@@ -131,7 +148,7 @@ async function fetchByFeedFilter(
   keyword: string,
   range: { from?: string; to?: string },
   limit: number,
-): Promise<DeskArticle[]> {
+): Promise<DeskFetchResult> {
   const params = new URLSearchParams({
     crtfc_key: key,
     corp_cls: 'Y',
@@ -143,9 +160,11 @@ async function fetchByFeedFilter(
   if (end) params.set('end_de', end);
 
   const res = await safeFetch(`https://opendart.fss.or.kr/api/list.json?${params}`);
-  if (!res.ok) return [];
+  if (!res.ok) return { articles: [], error: classifyHttpStatus(res.status) };
   const json = (await res.json()) as { status?: string; list?: DartItem[] };
-  if (json.status !== '000') return [];
+  if (json.status !== '000') {
+    return { articles: [], error: classifyDartStatus(json.status ?? '') };
+  }
 
   const out: DeskArticle[] = [];
   for (const item of json.list ?? []) {
@@ -165,7 +184,7 @@ async function fetchByFeedFilter(
       keyword,
     });
   }
-  return out.slice(0, limit);
+  return { articles: out.slice(0, limit) };
 }
 
 export const dart: DeskSourceDefinition = {
@@ -182,7 +201,9 @@ export const dart: DeskSourceDefinition = {
     if (!key) return [];
 
     // 검색어가 상장사 사명이면 corp_code 로 그 회사를 정확히 조회 (매출액 +
-    // 정기공시). 실패하면 옛 피드 필터로 안전하게 fallback.
+    // 정기공시). 실패하면 옛 피드 필터로 안전하게 fallback. corp 경로가 실제
+    // 기사를 만들면 그대로 반환 (에러 채널은 fallback 이 소유 — 항상 마지막에
+    // 도는 경로라 API status 를 가장 신뢰성 있게 관측한다).
     try {
       const corp = await resolveDartCorp(keyword, key);
       if (corp) {
@@ -196,7 +217,7 @@ export const dart: DeskSourceDefinition = {
     try {
       return await fetchByFeedFilter(key, keyword, range, limit);
     } catch {
-      return [];
+      return { articles: [], error: 'fetch_failed' };
     }
   },
 };
