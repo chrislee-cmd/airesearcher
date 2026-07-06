@@ -519,7 +519,22 @@ async function runJob(args: {
 
     let similar: string[] = [];
     beginPhase('expanding');
-    if (keywords.length === 1) {
+    if (plan.parsed && plan.parsed.phrases.length > 0) {
+      // mode(market / 통계·공시 custom)가 자연어를 이미 한 번의 LLM 호출로
+      // {phrases / statTerms / companies} 로 구조화 파싱했다 — 그 phrases 를
+      // 뉴스·학술 확장어(similar)로 재사용하고 일반 유사어 확장 호출은 건너뛴다
+      // (소스별 검색어 재작성 = 이 파싱이 SSOT). statTerms/companies 는 plan 이
+      // 자체 crawl task 로 직접 라우팅한다.
+      similar = plan.parsed.phrases;
+      await patch({ status: 'expanding' });
+      await pushAndPatch(
+        `입력을 소스별 검색어로 재구성했어요. 뉴스·학술은 ${similar
+          .map((k) => `‘${k}’`)
+          .join(', ')} 로 함께 검색합니다.`,
+        'expanding',
+      );
+      await patch({ similar_keywords: similar });
+    } else if (keywords.length === 1) {
       await patch({ status: 'expanding' });
       await pushAndPatch(
         '한 키워드라 비슷한 표현도 같이 찾으면 더 풍부하겠어요. AI한테 6개 더 받아올게요…',

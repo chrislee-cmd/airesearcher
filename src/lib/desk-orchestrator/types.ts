@@ -99,6 +99,16 @@ export type ReportContext = {
 // 하면 되고 runner 는 재편집하지 않는다.
 export type OrchestratorPlan = {
   mode: DeskMode;
+  // 소스별 검색어 재작성 결과(source-aware query rewrite). present 하면 runner
+  // 는 이 mode 가 자연어를 이미 한 번의 LLM 호출로 구조화 파싱했다는 뜻 —
+  // 일반 유사어 확장(expand)을 건너뛰고 `phrases` 를 similar 로 재사용한다.
+  // trend 는 이 필드를 안 채워 기존 확장 경로를 그대로 탄다.
+  parsed?: {
+    phrases: string[];
+    statTerms: string[];
+    companies: string[];
+    intent?: string;
+  };
   // 키워드 확장 직후 · crawl 시작 전에 progress.events 로 push 되는 AI 판단
   // 로그 라인들. 각 라인은 JUDGMENT_EVENT_MARKERS 로 시작해야 한다.
   buildJudgmentEvents: (args: { similar: string[] }) => string[];
