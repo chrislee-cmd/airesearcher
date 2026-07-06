@@ -109,6 +109,11 @@ export async function POST(req: Request) {
     },
   };
 
+  // OpenAI client_secrets 발급 — 명시적 15s 타임아웃. 이게 없으면 OpenAI 가
+  // hang 할 때 클라이언트의 8s session-fetch AbortController (훅) 가 먼저
+  // 끊고, 서버는 유령 요청을 계속 붙들고 있게 된다. 소요 시간은 아래 timing
+  // 로그로 Vercel 함수 로그에서 확인 가능 (느린 응답 진단용, spec D).
+  const openaiStartedAt = Date.now();
   let res: Response;
   try {
     res = await fetch(CLIENT_SECRETS_URL, {
@@ -118,13 +123,30 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
     });
   } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === 'TimeoutError';
+    console.warn('[probing/sessions] openai client_secret failed', {
+      timeout: timedOut,
+      elapsed_ms: Date.now() - openaiStartedAt,
+      error: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'openai_unreachable' },
-      { status: 502 },
+      {
+        error: timedOut
+          ? 'openai_session_timeout'
+          : e instanceof Error
+            ? e.message
+            : 'openai_unreachable',
+      },
+      { status: 504 },
     );
   }
+  console.info('[probing/sessions] openai client_secret', {
+    status: res.status,
+    elapsed_ms: Date.now() - openaiStartedAt,
+  });
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');

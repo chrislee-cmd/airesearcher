@@ -1029,9 +1029,11 @@ function ExpandedBody() {
               ? "Chrome picker 에서 '탭 오디오 공유' 를 체크해 주세요"
               : sessionError === 'tab_audio_failed'
                 ? '탭 오디오 캡처에 실패했습니다 — 다른 탭에서 다시 시도해 주세요'
-                : sessionError === 'probing_timeout'
-                  ? '네트워크 확인 후 다시 시작해 주세요'
-                  : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
+                : sessionError === 'session_timeout'
+                  ? '세션 준비가 지연되고 있습니다 — 잠시 후 다시 시작해 주세요'
+                  : sessionError === 'probing_connect_timeout'
+                    ? '네트워크 확인 후 다시 시작해 주세요'
+                    : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
     toast.push(human, { tone: 'warn' });
   }, [sessionError, toast]);
 
