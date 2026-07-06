@@ -3027,11 +3027,15 @@ export function TranslateConsole({
     ch.subscribe();
     channelRef.current = ch;
 
-    // Flip status='live' on the row so anon viewers see it.
-    void supa
-      .from('translate_sessions')
-      .update({ status: 'live', started_at: new Date().toISOString() })
-      .eq('id', bundle.session.id);
+    // Flip status='live' + stamp started_at on the row (go-live). Routed
+    // through the server /start endpoint: the previous inline
+    // `supabase.from().update()` was a `void`-discarded thenable that
+    // never fired the PATCH, so status stayed 'idle' and started_at NULL
+    // for every session. fetch() sends immediately; fire-and-forget is
+    // fine — viewers flip live off the LiveKit tracks, not this row.
+    void fetch(`/api/translate/sessions/${bundle.session.id}/start`, {
+      method: 'POST',
+    }).catch(() => {});
 
     // Connect succeeded — disarm the watchdog before flipping live.
     if (connectWatchdogRef.current) {

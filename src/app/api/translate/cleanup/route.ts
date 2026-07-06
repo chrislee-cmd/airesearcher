@@ -50,7 +50,8 @@ export async function GET(request: Request) {
   }
 
   // 2) Long-running 'live' sessions with no expires_at (host left tab
-  //    open and walked away). Treat 6h as a hard ceiling.
+  //    open and walked away). Treat 6h as a hard ceiling, measured from
+  //    started_at (the go-live moment).
   const liveTimedOut = await admin
     .from('translate_sessions')
     .update({
@@ -66,9 +67,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: liveTimedOut.error.message }, { status: 500 });
   }
 
+  // 3) created_at-based straggler safety net — independent of started_at.
+  //    Clause (2) is blind whenever started_at is NULL (a regression of
+  //    the go-live stamp, or a legacy zombie left 'idle' because the old
+  //    client never persisted go-live). Reap any idle/live session with
+  //    no expires_at that was created more than 6h ago. created_at is
+  //    NOT NULL by schema, so this clause can never silently no-op the
+  //    way the started_at filter did.
+  const createdStaleCutoff = liveStaleCutoff; // same 6h ceiling
+  const createdTimedOut = await admin
+    .from('translate_sessions')
+    .update({
+      status: 'ended',
+      share_token: null,
+      ended_at: nowIso,
+    })
+    .lt('created_at', createdStaleCutoff)
+    .in('status', ['idle', 'live'])
+    .is('expires_at', null)
+    .select('id');
+  if (createdTimedOut.error) {
+    return NextResponse.json({ error: createdTimedOut.error.message }, { status: 500 });
+  }
+
   return NextResponse.json({
     ok: true,
     expired: expired.data?.length ?? 0,
     live_timed_out: liveTimedOut.data?.length ?? 0,
+    created_timed_out: createdTimedOut.data?.length ?? 0,
   });
 }
