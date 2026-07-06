@@ -21,6 +21,8 @@ import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
+import { triggerBlobDownload } from '@/lib/export/download';
+import { csvFilename, responsesToCsv } from '@/lib/recruiting/responses-csv';
 import {
   EMPTY_FILTER,
   type FilterableQuestion,
@@ -120,6 +122,26 @@ function ExpandedBody() {
     setActiveFilter(EMPTY_FILTER);
   }, []);
 
+  // 전체보기 상단 "CSV 다운로드" — 선택된 폼의 응답 전체를 내보낸다.
+  // PII 컬럼(이름/전화)은 responses-csv 가 컬럼째 제외하므로 파일에 개인정보가
+  // 남지 않는다. host 가 이미 lift 한 responseData(전체 응답, 필터 무관)를 쓰므로
+  // "전체" 응답이 그대로 나간다 — 화면 crossfilter 와 독립.
+  const hasResponses = (responseData?.rows.length ?? 0) > 0;
+  const handleDownloadCsv = useCallback(() => {
+    if (!responseData || responseData.rows.length === 0) return;
+    trackEvent('widget_action', {
+      widget: 'recruiting',
+      action: 'fullview_csv_download',
+    });
+    const csv = responsesToCsv(responseData.columns, responseData.rows);
+    const title = forms.find((f) => f.formId === activeFormId)?.title ?? null;
+    const stamp = new Date().toISOString().slice(0, 10);
+    triggerBlobDownload(
+      new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+      csvFilename(title, stamp),
+    );
+  }, [responseData, forms, activeFormId]);
+
   const storedBrief: EditableBrief | null =
     selectedForm?.criteria && selectedForm.criteria.length > 0
       ? {
@@ -194,9 +216,20 @@ function ExpandedBody() {
           subtitle="참여자 조건 · 분포 · 응답 spreadsheet"
           onClose={close}
           headerAction={
-            <Button variant="secondary" size="sm" onClick={handleRefresh}>
-              새로고침
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDownloadCsv}
+                disabled={!hasResponses}
+                title="응답 전체를 CSV 로 내려받습니다 (이름·전화 등 개인정보 제외)"
+              >
+                CSV 다운로드
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleRefresh}>
+                새로고침
+              </Button>
+            </div>
           }
         >
           {/* 좌우 2패널 — 좌: 참여자 조건(위) + 분포 통계(아래) 세로,
