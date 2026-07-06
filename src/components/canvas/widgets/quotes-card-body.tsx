@@ -740,18 +740,7 @@ export function QuotesCardBody() {
             · 컨트롤 패널 = 상단에 phase 무관 항상 노출 (언어 + 📤 업로드 CTA)
             · 산출물(업로드 진행/큐/상태) = 그 아래 별 영역, active 시만
           업로드 모달은 항상 마운트. */}
-      <div className="relative flex h-full flex-col">
-        {/* 주 CTA(전사 시작) — 우측 중앙 고정 앵커 (6 위젯 통일). 컨트롤 phase +
-            재시도 대기(readyCount>0) 에서만 노출: 진행 timeline / 완료 done 은 숨김. */}
-        {!txInflight && !txDone && readyCount > 0 && (
-          <WidgetPrimaryCta
-            label={`${tWidgets('transcriptStart')} (${readyCount})`}
-            busyLabel={tCommon('loading')}
-            busy={busyUpload}
-            disabled={!canStart}
-            onClick={() => void startTranscription()}
-          />
-        )}
+      <div className="flex h-full flex-col">
         {/* 컨트롤 패널 — 실행 중이라도 언어 재설정·새 파일 업로드가 가능하도록
             항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
             띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
@@ -882,6 +871,19 @@ export function QuotesCardBody() {
               );
             })()}
           </>
+        )}
+
+        {/* 주 CTA(전사 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). 컨트롤
+            phase + 재시도 대기(readyCount>0) 에서만 노출: 진행 timeline / 완료
+            done 은 숨김. */}
+        {!txInflight && !txDone && readyCount > 0 && (
+          <WidgetPrimaryCta
+            label={`${tWidgets('transcriptStart')} (${readyCount})`}
+            busyLabel={tCommon('loading')}
+            busy={busyUpload}
+            disabled={!canStart}
+            onClick={() => void startTranscription()}
+          />
         )}
 
         {/* 업로드 모달 — 두 phase 공용. idle 컨트롤 보드 / active slim bar

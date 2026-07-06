@@ -1103,18 +1103,7 @@ export function DeskCardBody() {
           컨트롤 패널(주제·키워드 + 옵션 + 실행 CTA)을 phase 무관 상단에 항상
           노출하고, 산출물(스트리밍/배너/타이밍/상태 푸터)은 그 아래 별 영역에
           active 시만 렌더. 산출물 상세는 "전체 보기" modal 로 일원화. */}
-      <div className="relative flex h-full flex-col">
-        {/* 주 CTA — 우측 중앙 고정 앵커 (6 위젯 통일). 컨트롤 phase(실행 전)
-            에서만 노출: 실행 중 timeline / 완료 done 화면에서는 숨김. */}
-        {!deskRunning && (!showResult || forceControls) && (
-          <WidgetPrimaryCta
-            label={tDesk('search')}
-            busyLabel={tCommon('loading')}
-            busy={Boolean(submitting || pendingJobId || isWorking)}
-            disabled={!canRun}
-            onClick={onClickRun}
-          />
-        )}
+      <div className="flex h-full flex-col">
         {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출.
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
@@ -1388,6 +1377,17 @@ export function DeskCardBody() {
               return null;
             })()}
           </>
+        )}
+        {/* 주 CTA — 바디 최하단 고정 액션 바 (6 위젯 통일). 컨트롤 phase(실행
+            전) 에서만 노출: 실행 중 timeline / 완료 done 화면에서는 숨김. */}
+        {!deskRunning && (!showResult || forceControls) && (
+          <WidgetPrimaryCta
+            label={tDesk('search')}
+            busyLabel={tCommon('loading')}
+            busy={Boolean(submitting || pendingJobId || isWorking)}
+            disabled={!canRun}
+            onClick={onClickRun}
+          />
         )}
       </div>
 

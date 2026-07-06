@@ -4045,24 +4045,13 @@ export function TranslateConsole({
       className={
         idlePhase
           ? // idle — 컨트롤보드 layout(wrapper/폭/정렬/간격) 은 ControlBoardPanel
-            // SSOT 가 소유. 이 래퍼는 relative(WidgetPrimaryCta absolute 앵커)
-            // + 높이 체인만 제공한다. 부모(translate-card) 의 px-5 py-5 이중
+            // SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만 제공한다 (CTA 는
+            // 하단 액션 바로 분리). 부모(translate-card) 의 px-5 py-5 이중
             // 패딩은 ControlBoardPanel 의 unpadParent(-m-5) 가 흡수 (유효 40px).
-            'relative flex min-h-0 flex-1 flex-col'
+            'flex min-h-0 flex-1 flex-col'
           : 'space-y-4'
       }
     >
-      {/* 주 CTA(통역 시작) — 우측 중앙 고정 앵커 (6 위젯 통일). idle 상태만
-          이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지. */}
-      {idlePhase && (
-        <WidgetPrimaryCta
-          label={t('start')}
-          busyLabel={t('starting')}
-          busy={busy}
-          disabled={busy}
-          onClick={() => void start()}
-        />
-      )}
       {idlePhase ? (
         // 컨트롤보드 = ControlBoardPanel SSOT. 필드(controlFields)만 클러스터에
         // 꽂고, 배너/온보딩은 banners 슬롯(클러스터 위 고정)으로 분리 — 필드
@@ -4253,6 +4242,18 @@ export function TranslateConsole({
         />
       ) : null}
         </>
+      )}
+
+      {/* 주 CTA(통역 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle
+          상태만 이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지. */}
+      {idlePhase && (
+        <WidgetPrimaryCta
+          label={t('start')}
+          busyLabel={t('starting')}
+          busy={busy}
+          disabled={busy}
+          onClick={() => void start()}
+        />
       )}
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached

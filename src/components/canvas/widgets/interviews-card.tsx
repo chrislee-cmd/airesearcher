@@ -243,9 +243,7 @@ function ActiveBody({
   );
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
-      {/* 주 CTA(검색 시작) — 우측 중앙 고정 앵커 (6 위젯 통일) → fullview. */}
-      <WidgetPrimaryCta label={t('cardSearchStart')} onClick={onOpenFullview} />
+    <div className="flex h-full min-h-0 flex-col">
       {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 프로젝트 전환 +
           📤 업로드(sub-action, Button 유지). 주 CTA 는 위 앵커로 이동. */}
       <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
@@ -333,6 +331,10 @@ function ActiveBody({
           </div>
         )}
       </div>
+
+      {/* 주 CTA(검색 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
+          파일 리스트가 위 flex-1 영역에서 스크롤 → CTA 와 겹침 0. */}
+      <WidgetPrimaryCta label={t('cardSearchStart')} onClick={onOpenFullview} />
 
       <UploadModal
         open={uploadOpen}

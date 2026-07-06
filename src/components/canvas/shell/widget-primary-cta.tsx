@@ -12,9 +12,11 @@ type Props = {
   icon?: ReactNode; // 기본 = 🚀
 };
 
-// 6 위젯 주 CTA SSOT — 우측 중앙 고정 앵커 + 🚀 pill ChromeButton.
-// 위젯 body 는 반드시 relative 컨테이너여야 한다 (absolute anchor 기준).
-// 규격 = ChromeButton variant="primary" size="lg" — 프로빙/통역 정본.
+// 6 위젯 주 CTA SSOT — 바디 최하단 고정 액션 바(레이아웃 행) + 🚀 pill ChromeButton.
+// absolute 오버레이 폐기: 위젯 body 를 flex flex-col 로 두고 콘텐츠(flex-1
+// overflow-y-auto) 아래 마지막 자식(shrink-0)으로 배치한다 → 콘텐츠 겹침 구조적
+// 해소 + 6 위젯 CTA 가 카드 하단 우측 같은 y 로 싱크. 규격 = ChromeButton
+// variant="primary" size="lg" — 프로빙/통역 정본 (위치 방식만 오버레이→레이아웃).
 export function WidgetPrimaryCta({
   label,
   busy,
@@ -24,7 +26,7 @@ export function WidgetPrimaryCta({
   icon = '🚀',
 }: Props) {
   return (
-    <div className="absolute right-5 top-1/2 z-10 -translate-y-1/2">
+    <div className="flex shrink-0 justify-end border-t border-line-soft px-5 py-3">
       <ChromeButton
         variant="primary"
         size="lg"
