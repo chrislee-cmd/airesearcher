@@ -374,7 +374,9 @@ function WidgetShellInner({
         style={{ background: 'var(--canvas-card-bg)' }}
       >
         <div
-          className="h-full overflow-y-auto"
+          // touch-pan-y — 캔버스 root 의 touch-action:none 아래에서도 위젯
+          // 본문 세로 터치 스크롤 복원 (pull-to-refresh fix 회귀 방지).
+          className="h-full overflow-y-auto touch-pan-y"
           style={{
             border: '2.5px solid var(--canvas-card-border)',
             borderRadius: 6,

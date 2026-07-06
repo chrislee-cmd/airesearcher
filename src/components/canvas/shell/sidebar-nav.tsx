@@ -87,7 +87,7 @@ export function SidebarNav({
   return (
     <nav
       aria-label="위젯 전체보기 네비게이션"
-      className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto border-r-[2px] border-ink bg-paper-soft p-3"
+      className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto touch-pan-y border-r-[2px] border-ink bg-paper-soft p-3"
     >
       {widgets.map((w) => {
         const active = w.key === current;

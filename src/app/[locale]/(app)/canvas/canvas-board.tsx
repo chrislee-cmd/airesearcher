@@ -835,7 +835,13 @@ export function CanvasBoard({
     <div
       ref={containerRef}
       data-canvas
-      className="relative h-full overflow-hidden"
+      // touch-none = touch-action: none — 이 pan surface 위 터치 제스처를
+      // 브라우저 native (pull-to-refresh / 스크롤) 로 넘기지 않고 커스텀
+      // pan 만 동작시킨다. 모바일에서 빈 영역 드래그가 당겨서-새로고침으로
+      // 새어나가던 P1 사고 차단. 위젯 내부 스크롤 영역은 자기 touch-action
+      // (pan-y) 을 명시해 복원 — 브라우저는 첫 스크롤 컨테이너까지만
+      // touch-action 을 교집합하므로 자식 스크롤은 살아남는다.
+      className="relative h-full overflow-hidden touch-none"
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}

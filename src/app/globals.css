@@ -386,6 +386,12 @@ html, body {
      `overflow-wrap: anywhere` — 긴 URL / token 은 break 허용해 overflow 회피. */
   word-break: keep-all;
   overflow-wrap: anywhere;
+  /* 문서 레벨 pull-to-refresh backstop — 세로 overscroll 이 문서까지 새어
+     나가 "당겨서 새로고침" 을 발동시키던 모바일 캔버스 pan 사고 차단.
+     `-y: contain` 은 세로 스크롤 체이닝만 문서에서 끊고, 가로축(브라우저
+     swipe back/forward navigation)은 건드리지 않아 `none` 보다 보수적.
+     주 방어선은 캔버스 pan surface 의 touch-action:none — 이건 이중 안전. */
+  overscroll-behavior-y: contain;
 }
 
 /* =========================================================================
