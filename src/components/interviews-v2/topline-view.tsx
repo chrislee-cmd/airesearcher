@@ -1,14 +1,20 @@
 'use client';
 
-import { useMemo } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Modal } from '@/components/ui/modal';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
+import {
+  useToplineDragToAsk,
+  type PendingQa,
+} from '@/hooks/use-topline-drag-to-ask';
+import { useToplineSelection, ToplineAskPopup } from './topline-selection';
 
 // 인터뷰 탑라인 보고서 — 우측 패널 탭1. interview_toplines.blocks 를 보고서
 // 톤으로 렌더한다. 각 블록은 data-block-id 를 노출해 후속 drag-to-ask 가
@@ -169,20 +175,28 @@ function BlockView({ block }: { block: ToplineBlock }) {
   }
 
   if (block.type === 'inserted_qa') {
-    // 후속 drag-to-ask 가 병합하는 삽입 Q&A — Q 라벨 + A 본문 + 인용.
+    // drag-to-ask 가 병합한 삽입 Q&A — Q 라벨(선택 발췌 포함) + A 본문 + 인용.
+    // 좌 amore 보더로 본문과 미묘히 구분(사용자 결정 §D, 디자인 토큰 내).
     return (
       <div
         {...common}
-        className="my-3 rounded-sm border border-line bg-paper px-4 py-3"
+        className="my-3 rounded-sm border border-line border-l-2 border-l-amore bg-paper px-4 py-3"
       >
         {block.question && (
           <div className="mb-2 flex items-start gap-2">
             <span className="mt-0.5 shrink-0 rounded-xs bg-amore-bg px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
               Q
             </span>
-            <p className="text-md font-medium leading-[1.6] text-ink-2">
-              {block.question}
-            </p>
+            <div className="min-w-0">
+              <p className="text-md font-medium leading-[1.6] text-ink-2">
+                {block.question}
+              </p>
+              {block.selected_excerpt && (
+                <p className="mt-1 line-clamp-2 text-xs-soft italic text-mute">
+                  “{block.selected_excerpt}”
+                </p>
+              )}
+            </div>
           </div>
         )}
         {block.md && <Prose md={block.md} citations={block.citations} />}
@@ -202,6 +216,88 @@ function BlockView({ block }: { block: ToplineBlock }) {
       }
     >
       <Prose md={block.md ?? ''} citations={block.citations} />
+    </div>
+  );
+}
+
+// drag-to-ask pending 삽입 카드 — anchor 블록 바로 아래에 스트리밍 답변을
+// 렌더한다. pending 은 옅은 배경 + 점선 테두리로 확정 블록과 시각 구분(사용자
+// 결정 flow 3). 스트리밍 완료 시 [✓ 유지][✕ 버리기], 에러 시 버리기만.
+function PendingQaCard({
+  qa,
+  onKeep,
+  onDiscard,
+}: {
+  qa: PendingQa;
+  onKeep: () => void;
+  onDiscard: () => void;
+}) {
+  const t = useTranslations('InterviewsV2');
+  const streaming = qa.phase === 'streaming';
+  const errored = qa.phase === 'error';
+  return (
+    <div
+      aria-busy={streaming}
+      className={`my-3 rounded-sm border-l-2 border-l-amore px-4 py-3 ${
+        streaming
+          ? 'border border-dashed border-line bg-paper-soft'
+          : errored
+            ? 'border border-warning bg-warning-bg'
+            : 'border border-line bg-paper'
+      }`}
+    >
+      <div className="mb-2 flex items-start gap-2">
+        <span className="mt-0.5 shrink-0 rounded-xs bg-amore-bg px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
+          Q
+        </span>
+        <div className="min-w-0">
+          <p className="text-md font-medium leading-[1.6] text-ink-2">
+            {qa.question}
+          </p>
+          {qa.selectedExcerpt && (
+            <p className="mt-1 line-clamp-2 text-xs-soft italic text-mute">
+              “{qa.selectedExcerpt}”
+            </p>
+          )}
+        </div>
+      </div>
+
+      {errored ? (
+        <p className="text-sm text-warning">
+          {t('toplineAskError')}
+          {qa.errorMsg ? ` (${qa.errorMsg})` : ''}
+        </p>
+      ) : qa.answerMd ? (
+        <Prose md={qa.answerMd} citations={qa.citations} />
+      ) : (
+        <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+          {t('toplineAskThinking')}
+        </div>
+      )}
+
+      {(qa.phase === 'done' || errored) && (
+        <div className="mt-3 flex items-center justify-end gap-2 border-t border-line-soft pt-2">
+          {qa.phase === 'done' && (
+            <Button
+              variant="primary"
+              size="xs"
+              onClick={onKeep}
+              disabled={qa.saving}
+            >
+              ✓ {t('toplineAskKeep')}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={onDiscard}
+            disabled={qa.saving}
+          >
+            ✕ {t('toplineAskDiscard')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -256,11 +352,33 @@ export function ToplineView({ projectId }: { projectId: string }) {
     fetchError,
     generating,
     generate,
+    refetch,
   } = useInterviewTopline(projectId);
 
   const hasBlocks = blocks.length > 0;
   // 재생성 버튼 활성 = 인덱싱 완료 & 생성 중 아님.
   const canGenerate = indexed && status !== 'generating' && !generating;
+
+  // drag-to-ask — 보고서가 done 으로 렌더 중일 때만 선택 활성.
+  const askEnabled =
+    hasBlocks && !loading && !fetchError && indexed && status !== 'generating';
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { selection, clear } = useToplineSelection(scrollRef, askEnabled);
+  const dta = useToplineDragToAsk({ projectId, onMerged: refetch });
+
+  // 재생성 시 삽입 Q&A 유실 경고(사용자 결정 3) — inserted_qa 가 하나라도
+  // 있을 때만 confirm modal 을 거친다.
+  const hasInsertedQa = blocks.some((b) => b.type === 'inserted_qa');
+  const [warnOpen, setWarnOpen] = useState(false);
+  const requestRegenerate = () => {
+    if (hasInsertedQa) setWarnOpen(true);
+    else void generate(true);
+  };
+
+  const blockIds = useMemo(() => new Set(blocks.map((b) => b.id)), [blocks]);
+  const orphanPending = dta.pending.filter(
+    (p) => !blockIds.has(p.anchorBlockId),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -274,7 +392,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
           <Button
             variant="ghost"
             size="xs"
-            onClick={() => void generate(true)}
+            onClick={requestRegenerate}
             disabled={!canGenerate}
             title={t('toplineRegenerate')}
           >
@@ -283,7 +401,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {loading ? (
           <GeneratingSkeleton />
         ) : fetchError ? (
@@ -307,13 +425,35 @@ export function ToplineView({ projectId }: { projectId: string }) {
             )}
             {stale && status !== 'generating' && (
               <StaleBanner
-                onRegenerate={() => void generate(true)}
+                onRegenerate={requestRegenerate}
                 disabled={!canGenerate}
               />
             )}
             <article>
               {blocks.map((b) => (
-                <BlockView key={b.id} block={b} />
+                <Fragment key={b.id}>
+                  <BlockView block={b} />
+                  {/* anchor 블록 바로 아래에 pending 삽입을 렌더. */}
+                  {dta.pending
+                    .filter((p) => p.anchorBlockId === b.id)
+                    .map((p) => (
+                      <PendingQaCard
+                        key={p.id}
+                        qa={p}
+                        onKeep={() => void dta.keep(p.id)}
+                        onDiscard={() => dta.discard(p.id)}
+                      />
+                    ))}
+                </Fragment>
+              ))}
+              {/* anchor 를 못 찾은 orphan(그 사이 재생성 등) — 말미에. */}
+              {orphanPending.map((p) => (
+                <PendingQaCard
+                  key={p.id}
+                  qa={p}
+                  onKeep={() => void dta.keep(p.id)}
+                  onDiscard={() => dta.discard(p.id)}
+                />
               ))}
             </article>
           </>
@@ -344,6 +484,52 @@ export function ToplineView({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
+
+      {/* 선택 → 질문 입력 팝업. key 로 새 선택마다 입력 초기화. */}
+      {askEnabled && selection && (
+        <ToplineAskPopup
+          key={`${selection.anchorBlockId}:${selection.text}`}
+          selection={selection}
+          busy={false}
+          onSubmit={(q) => {
+            void dta.ask(selection.anchorBlockId, selection.text, q);
+            clear();
+          }}
+          onClose={clear}
+        />
+      )}
+
+      {/* 재생성 경고 — 삽입 Q&A 유실 명시 동의(사용자 결정 3). */}
+      <Modal
+        open={warnOpen}
+        onClose={() => setWarnOpen(false)}
+        size="sm"
+        title={t('toplineRegenWarnTitle')}
+        description={t('toplineRegenWarnBody')}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setWarnOpen(false)}
+            >
+              {t('toplineRegenWarnCancel')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setWarnOpen(false);
+                void generate(true);
+              }}
+            >
+              {t('toplineRegenWarnConfirm')}
+            </Button>
+          </>
+        }
+      >
+        {null}
+      </Modal>
     </div>
   );
 }

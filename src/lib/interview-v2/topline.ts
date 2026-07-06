@@ -58,6 +58,9 @@ export type ToplineBlock =
       type: 'inserted_qa';
       md: string;
       question?: string;
+      // 사용자가 드래그로 선택한 원문 발췌 — Q 라벨에 문맥으로 표시(사용자
+      // 결정 §D). 없어도 렌더는 동작(구버전 블록 호환).
+      selected_excerpt?: string;
       citations: string[];
     };
 
@@ -184,6 +187,64 @@ export function capChunksToBudget(
     }
   }
   return out;
+}
+
+/**
+ * 프로젝트 전체 chunk 의 id 집합(문자열). drag-to-ask "유지" 시 삽입할
+ * inserted_qa 의 citations 를 이 집합에 대해 재검증(무효 chunk id drop —
+ * verifyBlockCitations 와 동일 원리)하는 데 쓴다. content 는 로드하지 않아
+ * 가볍다.
+ */
+export async function getProjectChunkIds(
+  admin: AdminClient,
+  orgId: string,
+  projectId: string,
+): Promise<Set<string>> {
+  const { data: docs, error: docErr } = await admin
+    .from('interview_documents')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('project_id', projectId);
+  if (docErr) throw new Error(`getProjectChunkIds docs: ${docErr.message}`);
+  const docIds = (docs ?? []).map((d) => d.id);
+  if (docIds.length === 0) return new Set();
+
+  const { data: rows, error: chunkErr } = await admin
+    .from('interview_chunks')
+    .select('id')
+    .eq('org_id', orgId)
+    .in('document_id', docIds);
+  if (chunkErr) throw new Error(`getProjectChunkIds chunks: ${chunkErr.message}`);
+  return new Set((rows ?? []).map((r) => String(r.id)));
+}
+
+/**
+ * anchor 블록 바로 뒤에 inserted_qa 블록을 끼운 새 blocks 배열을 만든다
+ * (drag-to-ask "유지"). anchor 가 없으면 null (호출측이 404 로 응답). 순수
+ * 함수 — 검증/영속은 route 책임.
+ */
+export function insertQaAfterAnchor(
+  blocks: ToplineBlock[],
+  anchorId: string,
+  qa: {
+    id: string;
+    md: string;
+    question: string;
+    selected_excerpt: string;
+    citations: string[];
+  },
+): ToplineBlock[] | null {
+  const idx = blocks.findIndex((b) => b.id === anchorId);
+  if (idx === -1) return null;
+  const inserted: ToplineBlock = {
+    id: qa.id,
+    type: 'inserted_qa',
+    md: qa.md,
+    question: qa.question,
+    selected_excerpt: qa.selected_excerpt,
+    citations: qa.citations,
+  };
+  return [...blocks.slice(0, idx + 1), inserted, ...blocks.slice(idx + 1)];
 }
 
 /** 프로젝트의 기존 탑라인 row (없으면 null). */

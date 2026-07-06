@@ -1277,7 +1277,19 @@
     "toplineIntroHint": "We'll cross-analyze all uploaded interviews and generate a six-section topline report automatically.",
     "toplineGenerateCta": "Start generating",
     "toplineErrorTitle": "Report generation failed",
-    "toplineErrorHint": "Please try again in a moment. If it persists, check your file status."
+    "toplineErrorHint": "Please try again in a moment. If it persists, check your file status.",
+    "toplineAskTitle": "Ask about the selection",
+    "toplineAskSelectedLabel": "Selected",
+    "toplineAskPlaceholder": "Ask more about this passage…",
+    "toplineAskSend": "Send question",
+    "toplineAskThinking": "Searching interview evidence…",
+    "toplineAskError": "Failed to generate an answer",
+    "toplineAskKeep": "Keep",
+    "toplineAskDiscard": "Discard",
+    "toplineRegenWarnTitle": "Regenerating will remove your added Q&A",
+    "toplineRegenWarnBody": "Regenerating the report removes every Q&A you inserted via drag-to-ask. Continue?",
+    "toplineRegenWarnCancel": "Cancel",
+    "toplineRegenWarnConfirm": "Regenerate"
   },
   "Workspace": {
     "eyebrow": "Workspace",
