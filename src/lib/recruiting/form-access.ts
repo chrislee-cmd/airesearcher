@@ -5,6 +5,7 @@ import {
   hasResponsesScope,
 } from '@/lib/google-oauth';
 import {
+  ADMIN_REAUTH_ERROR,
   getAdminAccessToken,
   getAdminEmail,
   isAdminProxyConfigured,
@@ -86,8 +87,9 @@ export async function resolveFormAccess(
   // fetch with the admin token. Legacy rows (owner_email null) were published
   // by the requesting user's own OAuth — use their per-user token.
   const adminEmail = getAdminEmail();
+  const proxyOn = await isAdminProxyConfigured();
   const useAdminToken =
-    isAdminProxyConfigured() &&
+    proxyOn &&
     ownerEmail !== null &&
     adminEmail !== null &&
     ownerEmail === adminEmail;
@@ -98,6 +100,12 @@ export async function resolveFormAccess(
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : 'admin_token_refresh_failed';
+      // Both admin token sources (DB + env) failed. Return a clean 503 reauth
+      // code — the calling route turns this into the friendly operator-reconnect
+      // payload (adminReauthErrorBody) so no raw Google error reaches the client.
+      if (msg === ADMIN_REAUTH_ERROR) {
+        return { ok: false, status: 503, error: ADMIN_REAUTH_ERROR };
+      }
       return { ok: false, status: 502, error: msg };
     }
   }

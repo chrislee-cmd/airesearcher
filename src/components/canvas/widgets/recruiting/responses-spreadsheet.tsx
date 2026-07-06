@@ -199,12 +199,12 @@ export function ResponsesSpreadsheet({
         | ResponsesPayload
         | { error?: string; reauth_url?: string };
       if (!res.ok) {
-        if (
-          'error' in j &&
-          j.error === 'google_reauth_required' &&
-          'reauth_url' in j &&
-          j.reauth_url
-        ) {
+        // Both the per-user (google_reauth_required, 401) and admin-proxy
+        // (admin_google_reauth_required, 503) failures carry a reauth_url when
+        // the current user is allowed to fix it — capture either so the banner
+        // can render the reconnect CTA. For admin reauth the server only sends
+        // reauth_url to the operator, so a regular user gets an info-only banner.
+        if ('reauth_url' in j && j.reauth_url) {
           setReauthUrl(j.reauth_url);
         }
         throw new Error(
@@ -369,6 +369,10 @@ export function ResponsesSpreadsheet({
   // refresh_token 무효(invalid_grant → 401)는 사용자가 OAuth 를 다시 돌려야만
   // 풀린다 — "다시 시도" 는 무의미하므로 재연결 CTA 만 노출한다.
   const needsReauth = error === 'google_reauth_required';
+  // 운영자(admin-proxy) 토큰 만료(503) — 폼은 운영자 Drive 소유라 사용자가
+  // 고칠 수 없다. 일반 사용자에겐 안내 + "다시 시도"(운영자가 재연결하면 서버가
+  // 자동 회복)만, 운영자 본인에겐 서버가 reauth_url 을 함께 내려줘 재연결 CTA 노출.
+  const needsAdminReauth = error === 'admin_google_reauth_required';
 
   const handleReauth = useCallback(() => {
     trackEvent('widget_action', {
@@ -471,6 +475,30 @@ export function ResponsesSpreadsheet({
               }
             />
           </div>
+        ) : needsAdminReauth ? (
+          <Banner tone="warning" divider="none">
+            운영자 Google 연결 갱신이 필요해요. 잠시 후 다시 시도해 주세요.
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-2"
+              onClick={() =>
+                selectedFormId && void loadResponses(selectedFormId)
+              }
+            >
+              다시 시도
+            </Button>
+            {reauthUrl && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="ml-2"
+                onClick={handleReauth}
+              >
+                Google 재연결하기 →
+              </Button>
+            )}
+          </Banner>
         ) : error ? (
           <div className="p-5">
             <ErrorBanner message={`응답을 불러오지 못했어요: ${error}`} />
