@@ -786,6 +786,16 @@
     "range_quarter": "Last 3 months",
     "range_year": "Last year",
     "range_custom": "Custom",
+    "modeLabel": "Research purpose",
+    "modeTitle": { "trend": "Trend research", "market": "Market research", "custom": "Custom" },
+    "modeDesc": {
+      "trend": "Recent momentum from news, social, and search — analyzed across 6 axes (overview, virality, positive, negative, key players, outlook).",
+      "market": "TAM/SAM reference datasets from statistics and disclosures — coming soon.",
+      "custom": "The classic flow — pick collection sources yourself."
+    },
+    "modeSoonBadge": "Coming soon",
+    "modeComingSoon": "Coming soon",
+    "modeTrendSourcesHint": "Sources are auto-selected by AI — news, blogs, forums, YouTube, institute RSS, and web search (statistics/disclosures excluded). See the AI judgment log at the top of the report for the rationale.",
     "sourcesLabel": "Sources",
     "sourcePickerPlaceholder": "Select sources",
     "sourceEnvHint": "Some sources require API keys",

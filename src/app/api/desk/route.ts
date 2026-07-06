@@ -26,7 +26,13 @@ import {
   type DeskRegion,
   type DeskSourceId,
 } from '@/lib/desk-sources';
-import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
+import {
+  runOrchestrator,
+  NotImplementedYet,
+  TREND_SOURCE_IDS,
+  type DeskMode,
+  type OrchestratorPlan,
+} from '@/lib/desk-orchestrator';
 
 export const maxDuration = 300;
 
@@ -62,7 +68,12 @@ const MAX_REGIONS = 3;
 
 const Body = z.object({
   keywords: z.array(z.string().min(1).max(120)).min(1).max(MAX_KEYWORDS),
-  sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES),
+  // 리서치 목적 mode (데스크 v2). 누락 시 'custom' — mode 도입 전 클라이언트
+  // 요청이 옛 flow(소스 직접 선택) 그대로 동작하는 backward-compat.
+  mode: z.enum(['trend', 'market', 'custom']).optional(),
+  // custom mode 에서만 필수 (아래 POST 에서 mode 별 검증). trend/market 은
+  // 서버가 소스를 자동 선정하므로 client 가 보내지 않는다.
+  sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES).optional(),
   locale: z.enum(['ko', 'en']).optional(),
   // 멀티 region 우선. 단일 `region` 도 backward-compat 으로 유지 — 누락 시
   // locale 로 기본값 결정 (기존 동작과 동일).
@@ -92,37 +103,10 @@ const EXPAND_SYSTEM = `
 - 반환 = 쉼표 또는 줄바꿈 구분, 6 개 이내
 `.trim();
 
-const REPORT_SYSTEM = `당신은 데스크 리서치 보고서를 작성하는 전문 리서처입니다. 입력으로 키워드, 유사 키워드, 그리고 여러 출처에서 수집한 기사/포스트/영상 헤드라인 + 요약 목록을 받습니다. 입력의 항목 목록은 이미 **UI 카테고리 별로 그룹핑**되어 제공됩니다.
+// 리포트 합성 system prompt + 항목 목록 형식은 mode 소유로 이관됐다 —
+// src/lib/desk-orchestrator/{custom,trend}.ts 참고. 이 파일(runner)에는
+// mode 무관 공통 프롬프트(키워드 확장 / 차트)만 남는다.
 
-[작성 원칙]
-- 한국어 Markdown으로 작성합니다 (요청 언어가 영어인 경우 영어).
-- 본문은 정중한 **존댓말**로 작성합니다 — 모든 서술은 '-입니다 / -합니다 / -하였습니다 / -보입니다 / -로 보입니다' 어미를 사용합니다. 반말('-다', '-한다', '-이다')과 명사형 종결('-함', '-됨')은 금지합니다.
-- 사실을 임의로 추가하지 않고 제공된 자료에만 근거합니다. 자료에 없는 수치·날짜·이름은 만들어내지 않습니다.
-- 강조는 **굵게** 를 사용할 수 있습니다.
-
-[인용 규칙 — 반드시 준수]
-- 모든 링크는 반드시 \`[매체명](URL)\` 형식의 markdown 링크입니다. 절대 raw URL을 본문에 노출하지 않습니다.
-- **각 불릿(claim/사실) 옆에는 반드시 inline citation 을 붙입니다.** 인용 없는 서술은 금지합니다.
-  - 좋은 예: "삼성전자 2024 Q3 매출 79조원 [매일경제](https://mk.co.kr/...) [연합뉴스](https://yna.co.kr/...)"
-  - 나쁜 예: "삼성전자 2024 Q3 매출 79조원" (인용 없음)
-- **각 claim 은 가능하면 2개 이상의 출처를 인용**합니다. 자료에 해당 claim 을 뒷받침하는 출처가 1개뿐이면 1개만 인용해도 됩니다 (억지로 무관한 출처를 붙이지 않습니다).
-- **primary source 우선**: 공식 통계·공시(DART / KOSIS / 한국은행 ECOS / 산하 연구소 리포트) > 언론 > 커뮤니티 > 학술 논문 순으로 신뢰도를 둡니다. primary source 가 있으면 우선 인용하고, 부족하면 언론·커뮤니티로 보완합니다.
-- 매체명은 입력 항목의 \`[매체명]\` 을 그대로 사용합니다.
-
-[필수 출력 구조]
-1. \`# 🗞 데스크 리서치 요약\` — 키워드와 수집 기간을 표지에 표기합니다 (한 줄).
-2. 그 다음 **아래 5개 카테고리 섹션을 이 순서대로** 작성합니다. 단, **입력 항목 목록에 자료가 있는 카테고리만** heading 을 냅니다 (자료가 0건인 카테고리는 heading 자체를 생략 — 빈 섹션을 만들지 않습니다):
-   \`## 📰 뉴스·포털 요약\`
-   \`## 💬 커뮤니티 요약\`
-   \`## 📊 시장 통계 요약\`
-   \`## 🎓 학술·논문 요약\`
-   \`## 🏛 산하 연구소 요약\`
-   - 각 카테고리 안 = **불릿 리스트 3~8개**. 자료가 많으면 핵심만 압축하고, 적으면 있는 만큼만 작성합니다.
-   - 각 불릿 = 하나의 claim/사실 + inline citation. 같은 카테고리 안에서 교차 검증되는 내용은 통합하고, 상충하면 함께 짚습니다.
-   - 요청 언어가 영어이면 카테고리 heading 을 영어로 번역하되 이모지는 그대로 둡니다 (예: \`## 📰 News & Portals\`).
-3. \`## ⚠️ 한계 / 추가 조사 제안\` — 3~5개 불릿. 데이터 부족 영역, 편향 가능성, 후속 리서치 아이디어를 적습니다 (이 섹션은 인용 없이 작성해도 됩니다).
-
-분량은 충실하게 작성하되 불필요하게 늘리지 않으며, 각 불릿은 의미 있는 정보가 담길 때만 둡니다.${ISOLATION_NOTICE}`;
 
 const ANALYTICS_SYSTEM = `당신은 방금 작성된 데스크 리서치 보고서를 시각적으로 뒷받침할 정량 분석 차트를 설계합니다.
 
@@ -172,50 +156,6 @@ function getAnalyticsModel(): LanguageModel | null {
 
 function sourceLabelKo(id: DeskSourceId): string {
   return DESK_SOURCE_REGISTRY[id]?.label ?? id;
-}
-
-// ── Report category grouping ─────────────────────────────────────────────────
-// The synthesizing prompt groups collected articles into the 5 UI categories the
-// spec surfaces (뉴스·포털 / 커뮤니티 / 시장 통계 / 학술·논문 / 산하 연구소) so the
-// LLM produces one `## <emoji> 카테고리 요약` section per non-empty bucket instead
-// of a flat report. The bucket is derived from each source's `category` in
-// DESK_SOURCE_REGISTRY (the code SSOT, reused per the source-picker category
-// grid) — never re-inferred by the LLM. The registry has two finer categories
-// the 5-category UI doesn't surface (`video` = YouTube, `thought` = thought
-// leaders); both collapse into `news` (the spec lists YouTube under 뉴스·포털),
-// so a new source auto-lands in a sane bucket without touching this map.
-type DeskUiCategory = 'news' | 'community' | 'stats' | 'academic' | 'institute';
-
-const UI_CATEGORY_ORDER: DeskUiCategory[] = [
-  'news',
-  'community',
-  'stats',
-  'academic',
-  'institute',
-];
-
-const UI_CATEGORY_HEADING: Record<DeskUiCategory, string> = {
-  news: '📰 뉴스·포털',
-  community: '💬 커뮤니티',
-  stats: '📊 시장 통계',
-  academic: '🎓 학술·논문',
-  institute: '🏛 산하 연구소',
-};
-
-function uiCategoryOf(id: DeskSourceId): DeskUiCategory {
-  switch (DESK_SOURCE_REGISTRY[id]?.category) {
-    case 'community':
-      return 'community';
-    case 'stats':
-      return 'stats';
-    case 'academic':
-      return 'academic';
-    case 'institute':
-      return 'institute';
-    // news / video / thought (+ unknown) → 뉴스·포털
-    default:
-      return 'news';
-  }
 }
 
 // Phases that record per-step wall-clock (surfaced as the 4-step timing chips
@@ -280,6 +220,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { keywords, sources, locale = 'ko', regions: regionsInput, region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
+  const mode: DeskMode = parsed.data.mode ?? 'custom';
   // Default region from locale: Korean researchers default to KR sources,
   // English researchers default to GLOBAL (Google News will use US/en).
   // 멀티 region 입력이 있으면 그대로, 아니면 단일 region (legacy) 또는 locale
@@ -312,14 +253,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   }
 
+  // mode 별 소스 결정 — custom 은 사용자 선택(필수), trend 는 서버 자동 선정
+  // (뉴스·SNS·검색량 위주), market 은 후속 PR 에서 resolve (지금은 빈 목록 —
+  // runner 의 NotImplementedYet 가드가 크레딧 환불과 함께 최종 처리).
+  let requestedSources: DeskSourceId[];
+  if (mode === 'custom') {
+    if (!sources || sources.length === 0) {
+      return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+    }
+    requestedSources = sources as DeskSourceId[];
+  } else if (mode === 'trend') {
+    requestedSources = TREND_SOURCE_IDS;
+  } else {
+    requestedSources = [];
+  }
+
   const skipped: { source: DeskSourceId; missing: string }[] = [];
   const usable: DeskSourceId[] = [];
-  for (const s of sources as DeskSourceId[]) {
+  for (const s of requestedSources) {
     const missing = sourceMissingKey(s);
     if (missing) skipped.push({ source: s, missing });
     else usable.push(s);
   }
-  if (usable.length === 0) {
+  if (usable.length === 0 && mode !== 'market') {
     return NextResponse.json(
       { error: 'no_usable_sources', skipped },
       { status: 400 },
@@ -349,6 +305,7 @@ export async function POST(request: Request) {
       project_id: project_id ?? null,
       user_id: user.id,
       keywords: cleanKeywords,
+      mode,
       sources: usable as unknown as string[],
       locale,
       date_from: dateFrom ?? null,
@@ -383,6 +340,7 @@ export async function POST(request: Request) {
       jobId: job.id,
       orgId: org.org_id,
       userId: user.id,
+      mode,
       keywords: cleanKeywords,
       usable,
       locale,
@@ -395,21 +353,16 @@ export async function POST(request: Request) {
   return NextResponse.json({ job_id: job.id });
 }
 
-// Sources that take a region parameter (Google News / GDELT / YouTube). For
-// these we crawl once per selected region. Naver/Kakao/Daum are KR-only and
-// Reddit/HackerNews are region-agnostic — both are crawled once regardless of
-// how many regions the user picked.
-const REGION_AWARE_SOURCES = new Set<DeskSourceId>([
-  'google_news',
-  'gdelt_news',
-  'youtube',
-]);
-
 // ─── Background runner ───────────────────────────────────────────────────────
+// mode 무관 공통 파이프라인 (확장 → crawl → 안전망 → 샘플링 → 리포트 → 차트
+// → 저장). mode 별 결정(소스/crawl task/판단 로그/리포트 prompt)은 orchestrator
+// plan (src/lib/desk-orchestrator) 이 소유 — 후속 mode PR 은 이 파일을 재편집
+// 하지 않는다.
 async function runJob(args: {
   jobId: string;
   orgId: string;
   userId: string;
+  mode: DeskMode;
   keywords: string[];
   usable: DeskSourceId[];
   locale: 'ko' | 'en';
@@ -417,11 +370,7 @@ async function runJob(args: {
   range: DeskDateRange;
   initialEvents: string[];
 }) {
-  const { jobId, orgId, userId, keywords, usable, locale, regions, range, initialEvents } = args;
-  // 단일 region 만 받는 다운스트림 (region-무관 source crawl) 용 representative.
-  // 멀티 region 일 때 첫 region 을 대표값으로 — 보고서 본문은 regions 전체
-  // 목록을 별도로 받음.
-  const primaryRegion: DeskRegion = regions[0] ?? 'KR';
+  const { jobId, orgId, userId, mode, keywords, usable, locale, regions, range, initialEvents } = args;
   const admin = createAdminClient();
   const events: string[] = [...initialEvents];
   let crawlDone = 0;
@@ -520,6 +469,27 @@ async function runJob(args: {
       return;
     }
 
+    // mode 별 실행 계획 — 소스/crawl task/판단 로그/리포트 prompt 의 SSOT.
+    // market 은 아직 stub 이라 여기서 NotImplementedYet 를 던진다 (LLM 호출 0
+    // 시점 = 확장 전). 크레딧 환불 + 구분 가능한 에러 코드로 마무리.
+    let plan: OrchestratorPlan;
+    try {
+      plan = await runOrchestrator(mode, {
+        keywords,
+        usableSources: usable,
+        locale,
+        regions,
+        range,
+      });
+    } catch (err) {
+      if (err instanceof NotImplementedYet) {
+        await refundOnFailure('not_implemented_yet');
+        await patch({ status: 'error', error_message: err.message });
+        return;
+      }
+      throw err;
+    }
+
     await checkCancel();
 
     let similar: string[] = [];
@@ -581,22 +551,20 @@ async function runJob(args: {
 
     await checkCancel();
 
-    const allKeywords = [...keywords, ...similar];
-    // 멀티 region 시 region-aware source (google_news/gdelt/youtube) 는 region
-    // 마다 별도 crawl, 나머지 (naver/kakao/reddit/hn) 는 한 번만. 사용자가
-    // KR + JP 를 고르면 Google News 가 둘 다 검색됩니다.
-    type CrawlTarget = { src: DeskSourceId; region: DeskRegion };
-    const targets: CrawlTarget[] = [];
-    for (const src of usable) {
-      if (REGION_AWARE_SOURCES.has(src)) {
-        for (const r of regions) targets.push({ src, region: r });
-      } else {
-        // primaryRegion 으로 한 번만 — 어차피 source 자체가 region 무관.
-        targets.push({ src, region: primaryRegion });
-      }
+    // AI 판단 로그 — mode plan 이 만든 판단 근거(소스 선정 / 축 설계 / 제외
+    // 사유)를 crawl 시작 전에 이벤트로 push. 보고서 상단 AiJudgmentLog 가
+    // 마커(🎯🔍🧠📰🚫)로 이 라인들만 골라 렌더한다. custom 은 아직 0줄.
+    const judgmentLines = plan.buildJudgmentEvents({ similar });
+    if (judgmentLines.length > 0) {
+      for (const line of judgmentLines.slice(0, -1)) pushEvent(line);
+      await pushAndPatch(judgmentLines[judgmentLines.length - 1], 'expanding');
     }
 
-    crawlTotal = allKeywords.length * targets.length;
+    const allKeywords = [...keywords, ...similar];
+    // crawl task 구성은 mode plan 소유 — custom 은 옛 (키워드 × 소스 × region)
+    // 조합 그대로, trend 는 부정 신호 filter 조합이 추가된다.
+    const crawlTasks = plan.buildCrawlTasks({ similar });
+    crawlTotal = crawlTasks.length;
     await patch({ status: 'crawling' });
     beginPhase('crawling');
     // Split each source's budget evenly across keywords. Without this, the
@@ -610,32 +578,30 @@ async function runJob(args: {
     const sourceList = Array.from(new Set(usable.map(sourceLabelKo))).join(', ');
     const regionLabel = regions.join(', ');
     await pushAndPatch(
-      `이제 ${allKeywords.length}개 키워드 × ${targets.length}개 (소스 × 지역) = ${crawlTotal}회 검색을 동시에 돌릴게요. 키워드당 소스별 ${perKwLimit}건씩 균등 분배합니다. 지역: ${regionLabel}. 소스: ${sourceList}.`,
+      `이제 키워드 ${allKeywords.length}개 기준 총 ${crawlTotal}회 검색을 동시에 돌릴게요. 키워드당 소스별 ${perKwLimit}건씩 균등 분배합니다. 지역: ${regionLabel}. 소스: ${sourceList}.`,
       'crawling',
     );
 
     const collected: DeskArticle[] = [];
-    const tasks = allKeywords.flatMap((kw) =>
-      targets.map(({ src, region }) =>
-        // Per-task hard timeout — a single hung/deep-paginating source can no
-        // longer balloon the whole crawl phase (2026-06-30 incident root cause).
-        crawlSourceWithTimeout(src, kw, region, range, perKwLimit)
-          .then(async (items) => {
-            crawlDone += 1;
-            collected.push(...items);
-            await pushAndPatch(
-              `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
-              'crawling',
-            );
-          })
-          .catch(async (err) => {
-            crawlDone += 1;
-            await pushAndPatch(
-              `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
-              'crawling',
-            );
-          }),
-      ),
+    const tasks = crawlTasks.map(({ source: src, keyword: kw, region }) =>
+      // Per-task hard timeout — a single hung/deep-paginating source can no
+      // longer balloon the whole crawl phase (2026-06-30 incident root cause).
+      crawlSourceWithTimeout(src, kw, region, range, perKwLimit)
+        .then(async (items) => {
+          crawlDone += 1;
+          collected.push(...items);
+          await pushAndPatch(
+            `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — ${items.length}건 가져왔어요. (${crawlDone}/${crawlTotal})`,
+            'crawling',
+          );
+        })
+        .catch(async (err) => {
+          crawlDone += 1;
+          await pushAndPatch(
+            `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
+            'crawling',
+          );
+        }),
     );
     await Promise.all(tasks);
     await checkCancel();
@@ -658,7 +624,7 @@ async function runJob(args: {
           org_id: orgId,
           user_id: userId,
           feature: 'desk',
-          input: JSON.stringify({ keywords, sources: usable, locale, range }),
+          input: JSON.stringify({ mode, keywords, sources: usable, locale, range }),
           output,
           credits_spent: FEATURE_COSTS.desk,
         })
@@ -723,7 +689,7 @@ async function runJob(args: {
           org_id: orgId,
           user_id: userId,
           feature: 'desk',
-          input: JSON.stringify({ keywords, sources: usable, locale, range }),
+          input: JSON.stringify({ mode, keywords, sources: usable, locale, range }),
           output,
           credits_spent: FEATURE_COSTS.desk,
         })
@@ -820,51 +786,17 @@ async function runJob(args: {
       'summarizing',
     );
 
-    // Group the sampled articles into the 5 UI categories so the LLM writes one
-    // section per non-empty bucket. The bucket comes from the registry category
-    // (uiCategoryOf) — pre-computed here, never re-inferred by the model. Each
-    // item is tagged with its human 매체명 ([origin] for aggregators like Google
-    // News, else the source label) so the model can cite `[매체명](url)` directly.
-    const grouped = new Map<DeskUiCategory, typeof articlesForLLM>();
-    for (const a of articlesForLLM) {
-      const cat = uiCategoryOf(a.source);
-      const bucket = grouped.get(cat);
-      if (bucket) bucket.push(a);
-      else grouped.set(cat, [a]);
-    }
-
-    let itemIdx = 0;
-    const categoryBlocks = UI_CATEGORY_ORDER.filter(
-      (c) => (grouped.get(c)?.length ?? 0) > 0,
-    ).map((c) => {
-      const items = grouped.get(c) ?? [];
-      const body = items
-        .map((a) => {
-          itemIdx += 1;
-          const media = a.origin || sourceLabelKo(a.source);
-          const lines = [
-            `${itemIdx}. [${media}] ${a.title}`,
-            `   url: ${a.url}`,
-            a.publishedAt ? `   published: ${a.publishedAt}` : '',
-            a.snippet ? `   snippet: ${a.snippet.slice(0, 200)}` : '',
-          ].filter(Boolean);
-          return lines.join('\n');
-        })
-        .join('\n\n');
-      return `=== ${UI_CATEGORY_HEADING[c]} (${items.length}건) ===\n${body}`;
+    // 리포트 합성 입력은 mode plan 소유 — custom 은 5 카테고리 그룹핑
+    // (옛 형식 그대로), trend 는 일반 수집 / 부정 신호 filter 2 구획.
+    const userMsg = plan.buildReportUserMsg({
+      locale,
+      keywords,
+      similar,
+      regions,
+      range,
+      articles,
+      sampled: articlesForLLM,
     });
-
-    const userMsg = [
-      `요청 언어: ${locale === 'ko' ? '한국어' : 'English'}`,
-      `메인 키워드: ${keywords.join(', ')}`,
-      `유사 키워드: ${similar.length ? similar.join(', ') : '(없음)'}`,
-      `검색 지역: ${regions.join(', ')}`,
-      `수집 기간: ${range.from || range.to ? `${range.from ?? '전체'} ~ ${range.to ?? '오늘'}` : '제한 없음'}`,
-      `전체 수집: ${articles.length}건 (이 중 의미가 다양한 ${articlesForLLM.length}건을 본문에 첨부)`,
-      '',
-      '--- 항목 목록 (카테고리별로 그룹핑됨 — 이 카테고리 순서·구획을 그대로 리포트 heading 으로 사용하세요) ---',
-      categoryBlocks.join('\n\n'),
-    ].join('\n');
 
     // Deadline-aware cap: give the report nearly all remaining function budget
     // (reserve ~15s for the chart call + DB writes) instead of a fixed ceiling.
@@ -883,7 +815,7 @@ async function runJob(args: {
       // hung provider while letting a full-length report finish.
       const { text } = await generateText({
         model,
-        system: REPORT_SYSTEM,
+        system: plan.reportSystem,
         prompt: userMsg,
         temperature: 0.2,
         maxOutputTokens: 6000,
@@ -974,7 +906,7 @@ async function runJob(args: {
         org_id: orgId,
         user_id: userId,
         feature: 'desk',
-        input: JSON.stringify({ keywords, sources: usable, locale, range }),
+        input: JSON.stringify({ mode, keywords, sources: usable, locale, range }),
         output,
         credits_spent: FEATURE_COSTS.desk,
       })
