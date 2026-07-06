@@ -34,6 +34,7 @@ import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
+import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
@@ -1160,7 +1161,16 @@ function ExpandedBody() {
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="relative flex h-full min-h-0 flex-col">
+        {/* 주 CTA(세션 시작) — 우측 중앙 고정 앵커 (6 위젯 통일). idle(비-라이브)
+            에서만 노출: 라이브 중 정지 CTA 는 컨트롤 패널에 그대로 유지. */}
+        {!isLive && (
+          <WidgetPrimaryCta
+            label="세션 시작"
+            disabled={startDisabled}
+            onClick={handleStartSession}
+          />
+        )}
         {/* 컨트롤 패널 — 서브헤더 slim bar 폐기, phase 무관 항상 노출. CTA 만
             idle→🚀 세션 시작, live→정지 로 전환. starting/stopping/error 는
             isLive=false 로 취급되어 시작 CTA 가 노출돼 재시도 가능. 조사 목적은
@@ -1183,8 +1193,6 @@ function ExpandedBody() {
               onOutputLangChange={setOutputLang}
               controlsDisabled={controlsDisabled}
               isLive={isLive}
-              onStart={handleStartSession}
-              startDisabled={startDisabled}
               onStop={handleStopSession}
               stopDisabled={stopDisabled}
               statusLabel={statusLabel}

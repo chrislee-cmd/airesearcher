@@ -129,8 +129,6 @@ export function ProbingControlPanel({
   onOutputLangChange,
   controlsDisabled,
   isLive,
-  onStart,
-  startDisabled,
   onStop,
   stopDisabled,
   statusLabel,
@@ -144,8 +142,6 @@ export function ProbingControlPanel({
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
   isLive: boolean;
-  onStart: () => void;
-  startDisabled: boolean;
   onStop: () => void;
   stopDisabled: boolean;
   statusLabel: string | null;
@@ -169,20 +165,13 @@ export function ProbingControlPanel({
           세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.
         </p>
       )}
+      {/* 세션 CTA — live: 정지 (여기 유지). idle: 세션 시작 은 WidgetPrimaryCta
+          (우측 중앙 고정 앵커) 로 이동 = 6 위젯 주 CTA 통일. */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-mute">{statusLabel ?? ''}</span>
-        {isLive ? (
+        {isLive && (
           <ChromeButton size="lg" onClick={onStop} disabled={stopDisabled}>
             정지
-          </ChromeButton>
-        ) : (
-          <ChromeButton
-            variant="default"
-            size="lg"
-            onClick={onStart}
-            disabled={startDisabled}
-          >
-            🚀 세션 시작
           </ChromeButton>
         )}
       </div>
