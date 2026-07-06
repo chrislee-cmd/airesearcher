@@ -686,7 +686,7 @@ export function QuotesCardBody() {
   // CTA (+ 자동 시작 실패 시 재시도 CTA/에러 hint). `idSuffix` 는 field
   // htmlFor 고유화용 (단일 인스턴스라 'main').
   const renderControls = (idSuffix: string) => (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Field label="언어" htmlFor={`transcript-lang-${idSuffix}`}>
         <Select
           id={`transcript-lang-${idSuffix}`}
@@ -757,10 +757,14 @@ export function QuotesCardBody() {
           className={
             phase === 'active'
               ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
-              : 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-5'
+              : // idle: 데스크 밸런스 미러 — 정중앙(justify-center)이 짧은 폼
+                // 위/아래로 큰 빈 띠를 남겨, justify-start + pt 로 상단부터
+                // 시작해 세로 whitespace 를 축소하고 넓어진 클러스터(max-w-2xl)가
+                // 좌우를 채운다 (밸런스 튜닝, spec 결정 2 — desk-card-body 미러).
+                'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6'
           }
         >
-          <div className={phase === 'active' ? undefined : 'w-full max-w-[420px]'}>
+          <div className={phase === 'active' ? undefined : 'w-full max-w-2xl'}>
             {txInflight ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={txTimelinePhases} />
@@ -906,7 +910,9 @@ export function QuotesCardBody() {
             onDropRaw={handleArtifactDrop}
             label={tUp('dropHere')}
             helperText={tUp('supported')}
-            className="w-full py-6"
+            // 밸런스 튜닝(desk 미러, spec 결정 3): 왜소한 dropzone 을 세로로
+            // 확대해 업로드 모달 폭(w-full)을 채우고 드롭 타깃을 키운다.
+            className="w-full py-12"
           >
             {uploadError && (
               <div className="mt-3 text-sm text-warning">{uploadError}</div>
