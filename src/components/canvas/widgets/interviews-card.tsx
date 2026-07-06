@@ -9,6 +9,7 @@ import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FileDropZone } from '@/components/ui/file-drop-zone';
 import {
   ProcessTimeline,
   buildLinearPhases,
@@ -28,6 +29,12 @@ import { track as trackEvent } from '@/lib/analytics/events';
 // localStorage 로 persist — 새로고침해도 카드가 같은 프로젝트의 active
 // 뷰로 복귀 (프로젝트 자체는 DB-backed 이므로 id 만 기억).
 const CARD_PROJECT_KEY = 'interview-v2-card-active-project';
+
+// 인라인 dropzone accept/최대 크기 — UploadModal 과 동일 규격 (SSOT 는 모달이
+// 최종 검증하지만, 카드 dropzone 도 같은 필터/한도를 걸어 UX 를 맞춘다).
+const UPLOAD_ACCEPT =
+  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*';
+const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 
 // ────────────────────────────────────────────────────────────────────
 // 프로젝트 선택 컨트롤 — 옛 border-b 슬림 바 폐기 (메인 패널 규격 통일:
@@ -136,15 +143,21 @@ function ProjectSelectControl({
 function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
   const t = useTranslations('InterviewsV2');
   const [uploadOpen, setUploadOpen] = useState(false);
+  // 카드 인라인 dropzone 이 드롭/선택한 파일 — 모달을 열며 pre-stage 로 넘긴다.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+
+  const openWithFiles = (files: File[]) => {
+    setPendingFiles(files);
+    setUploadOpen(true);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* idle 컨트롤보드 = ControlBoardPanel SSOT (wrapper/폭/정렬/간격 박제).
-          첫 클러스터의 items-center/text-center 제거 = 좌정렬 통일 (spec 편차
-          제거 — 데스크/프로빙/전사록과 동일). 주 액션(📤 업로드)은 하단 액션
-          바로 이동 (6 위젯 통일). */}
+      {/* idle 3요소 컨트롤 (전사록 동형): 프로젝트 드롭다운(현행 스타일) +
+          인라인 dropzone + 하단 "분석 시작" CTA. ControlBoardPanel SSOT
+          (wrapper/폭/정렬/간격). 좌정렬 통일 (데스크/프로빙/전사록과 동일). */}
       <ControlBoardPanel>
-        {/* 컨트롤 그룹 — 안내 + 프로젝트 선택. transparent (회색 패널 X). 좌정렬. */}
+        {/* 컨트롤 그룹 — 안내 + 프로젝트 선택 + 업로드 dropzone. transparent. */}
         <div className="flex flex-col gap-4 bg-transparent">
           <div className="space-y-2">
             <p className="text-sm leading-[1.6] text-mute">
@@ -157,25 +170,40 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
             onEnter={onEnter}
             onExit={() => {}}
           />
+          {/* 인라인 업로드 — 옛 📤 업로드 CTA(모달 진입)를 대체 (전사록 미러).
+              드래그드롭 + 클릭 업로드. 프로젝트 미선택이라 모달이 프로젝트 설정
+              gate(Step 2)를 강제하고, 완료 시 해당 프로젝트로 active 진입. */}
+          <FileDropZone
+            accept={UPLOAD_ACCEPT}
+            multiple
+            maxSizeBytes={UPLOAD_MAX_BYTES}
+            onFiles={openWithFiles}
+            label={t('uploadDropLabel')}
+            helperText={t('uploadDropHelper')}
+            className="w-full py-10"
+          />
         </div>
       </ControlBoardPanel>
 
-      {/* 주 CTA(업로드) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle 의 주요
-          액션은 업로드 (모달이 프로젝트 설정을 강제 → active 진입). */}
-      <WidgetPrimaryCta
-        label={t('cardUpload')}
-        icon="📤"
-        onClick={() => setUploadOpen(true)}
-      />
+      {/* 주 CTA "분석 시작" — 바디 최하단 고정 액션 바 (6 위젯 통일). idle 은
+          아직 진입한 프로젝트가 없어 비활성 (파일을 올려 프로젝트에 진입하면
+          active 에서 인덱싱 완료 후 활성화 → fullview). */}
+      <WidgetPrimaryCta label={t('cardAnalyze')} onClick={() => {}} disabled />
 
       {/* 프로젝트 미선택 업로드 → 모달이 Step 2(프로젝트 설정)를 강제,
-          완료 시 해당 프로젝트로 즉시 active 진입. */}
+          완료 시 해당 프로젝트로 즉시 active 진입. dropzone 이 드롭한 파일은
+          initialFiles 로 pre-stage. */}
       <UploadModal
         open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
+        onClose={() => {
+          setUploadOpen(false);
+          setPendingFiles(null);
+        }}
         projectId={null}
+        initialFiles={pendingFiles ?? undefined}
         onUploaded={(id) => {
           setUploadOpen(false);
+          setPendingFiles(null);
           onEnter(id);
         }}
       />
@@ -205,6 +233,13 @@ function ActiveBody({
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
+  // 카드 인라인 dropzone 이 드롭/선택한 파일 — 모달을 열며 pre-stage 로 넘긴다.
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+
+  const openWithFiles = (files: File[]) => {
+    setPendingFiles(files);
+    setUploadOpen(true);
+  };
 
   // 인덱싱 중인 문서의 공정 과정 타임라인 (사용자 결정 R3/R5). 인터뷰V2 는
   // 단일-잡 lifecycle 이 아니라 프로젝트 워크스페이스 + 문서별 인덱싱이라,
@@ -233,30 +268,34 @@ function ActiveBody({
     [projects, projectId],
   );
 
+  // "분석 시작" 은 인덱싱이 최소 1건 완료된 뒤에만 활성 (인덱싱 중/미업로드
+  // 상태에서 빈 검색 fullview 로 들어가지 않도록).
+  const canAnalyze = documents.some((d) => d.index_status === 'done');
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 프로젝트 전환 +
-          📤 업로드(sub-action, Button 유지). 주 CTA 는 위 앵커로 이동. */}
+      {/* 컨트롤 패널 — 상단 고정 (데스크 active 패턴). 3요소: 프로젝트 드롭다운
+          (현행 스타일) + 인라인 dropzone. 옛 우측 상단 📤 업로드 버튼은 제거,
+          인라인 dropzone 이 대체 (전사록 미러). 주 CTA(분석 시작)는 하단 앵커. */}
       <div className="shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5">
         <div className="flex flex-col gap-4 bg-transparent">
-          <div className="flex flex-wrap items-center gap-2">
-            <ProjectSelectControl
-              activeProjectId={projectId}
-              activeProjectName={projectName}
-              onEnter={onEnter}
-              onExit={onExit}
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setUploadOpen(true)}
-              leftIcon={<span aria-hidden>📤</span>}
-              className="ml-auto shrink-0"
-            >
-              {t('upload')}
-            </Button>
-          </div>
-
+          <ProjectSelectControl
+            activeProjectId={projectId}
+            activeProjectName={projectName}
+            onEnter={onEnter}
+            onExit={onExit}
+          />
+          {/* 인라인 업로드 — 프로젝트가 이미 정해졌으므로 모달이 Step 2 를
+              건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles). */}
+          <FileDropZone
+            accept={UPLOAD_ACCEPT}
+            multiple
+            maxSizeBytes={UPLOAD_MAX_BYTES}
+            onFiles={openWithFiles}
+            label={t('uploadDropLabel')}
+            helperText={t('uploadDropHelper')}
+            className="w-full py-8"
+          />
         </div>
       </div>
 
@@ -323,14 +362,23 @@ function ActiveBody({
         )}
       </div>
 
-      {/* 주 CTA(검색 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
-          파일 리스트가 위 flex-1 영역에서 스크롤 → CTA 와 겹침 0. */}
-      <WidgetPrimaryCta label={t('cardSearchStart')} onClick={onOpenFullview} />
+      {/* 주 CTA(분석 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
+          인덱싱 완료(≥1 done) 후 활성. 파일 리스트가 위 flex-1 영역에서
+          스크롤 → CTA 와 겹침 0. */}
+      <WidgetPrimaryCta
+        label={t('cardAnalyze')}
+        onClick={onOpenFullview}
+        disabled={!canAnalyze}
+      />
 
       <UploadModal
         open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
+        onClose={() => {
+          setUploadOpen(false);
+          setPendingFiles(null);
+        }}
         projectId={projectId}
+        initialFiles={pendingFiles ?? undefined}
         onUploaded={() => void mutate()}
       />
     </div>

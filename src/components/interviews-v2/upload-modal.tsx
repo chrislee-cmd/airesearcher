@@ -64,12 +64,18 @@ export function UploadModal({
   projectId,
   onUploaded,
   onSubmit,
+  initialFiles,
 }: {
   open: boolean;
   onClose: () => void;
   // Preset project (project-detail entry) → Step 2 is skipped. Omitted / null
   // (project-list entry) → Step 2 is a required gate before upload.
   projectId?: string | null;
+  // Files handed in from an inline FileDropZone outside the modal (the widget
+  // card control). Pre-staged when the modal opens so a drop on the card
+  // carries its files straight into the wizard instead of asking the user to
+  // drop them again inside the modal.
+  initialFiles?: File[];
   // Internal mode (default): the modal runs the upload itself, shows per-file
   // status pills, and calls onUploaded(id) when the batch finishes.
   onUploaded?: (projectId: string) => void;
@@ -105,6 +111,18 @@ export function UploadModal({
       setMode(projects.length > 0 ? 'pick' : 'create');
     }
   }, [mode, isLoading, projects.length]);
+
+  // Pre-stage files handed in from the card's inline dropzone when the modal
+  // opens. Only seeds when the stage is still empty so re-renders (and the
+  // user then removing a staged file) don't re-add them; resetAll() on close
+  // clears the stage for the next open.
+  useEffect(() => {
+    if (open && initialFiles && initialFiles.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- seed staged files on open transition
+      setStaged((prev) => (prev.length === 0 ? [...initialFiles] : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once per open transition
+  }, [open]);
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ value: p.id, label: p.name })),
