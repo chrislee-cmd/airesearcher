@@ -864,7 +864,13 @@ export function CanvasBoard({
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
           data-canvas-surface
-          className="relative"
+          // shrink-0 필수 — surface 의 자식(위젯 카드·빈 셀)이 전부 absolute
+          // 라 min-content 폭이 0. flex-shrink 기본 1 이면 컨테이너가 SURFACE_W
+          // (2544) 보다 좁을 때 surface 실제 렌더 폭이 컨테이너 폭으로 축소되고,
+          // transformOrigin 'center top' 의 center 가 SURFACE_W/2 가 아니게 되어
+          // focusWidget / initialFit / wheel focal point 의 pan 계산이 전부
+          // 좌측으로 어긋난다 (click-to-focus 좌상단 쏠림 회귀의 root cause).
+          className="relative shrink-0"
           style={{
             width: SURFACE_W,
             height: SURFACE_H,
