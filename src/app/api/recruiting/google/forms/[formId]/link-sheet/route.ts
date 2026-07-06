@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { refreshAccessToken, hasSheetsScope } from '@/lib/google-oauth';
+import {
+  GoogleInvalidGrantError,
+  refreshAccessToken,
+  hasSheetsScope,
+} from '@/lib/google-oauth';
+import { GOOGLE_REAUTH_URL } from '@/lib/recruiting/form-access';
 import {
   getAdminAccessToken,
   getAdminEmail,
@@ -123,6 +128,18 @@ export async function POST(
       const { access_token } = await refreshAccessToken(oauth.refresh_token);
       accessToken = access_token;
     } catch (e) {
+      // Revoked/expired refresh_token → user must reconnect. share=1 because
+      // linking a sheet needs the Sheets scope superset.
+      if (e instanceof GoogleInvalidGrantError) {
+        return NextResponse.json(
+          {
+            error: 'google_reauth_required',
+            message: 'Google 재연결이 필요합니다',
+            reauth_url: `${GOOGLE_REAUTH_URL}?share=1`,
+          },
+          { status: 401 },
+        );
+      }
       const msg = e instanceof Error ? e.message : 'refresh_failed';
       return NextResponse.json({ error: msg }, { status: 502 });
     }

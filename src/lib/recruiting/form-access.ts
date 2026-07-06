@@ -1,5 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { refreshAccessToken, hasResponsesScope } from '@/lib/google-oauth';
+import {
+  GoogleInvalidGrantError,
+  refreshAccessToken,
+  hasResponsesScope,
+} from '@/lib/google-oauth';
 import {
   getAdminAccessToken,
   getAdminEmail,
@@ -13,7 +17,28 @@ import {
 // another user's responses.
 export type FormAccess =
   | { ok: true; accessToken: string }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; reauthUrl?: string };
+
+// Where the client should send the user to redo the Google OAuth consent
+// flow. Reuses the existing start route (callback already overwrites the
+// stored refresh_token) — no new endpoint.
+export const GOOGLE_REAUTH_URL = '/api/recruiting/google/start';
+
+// JSON body for a failed FormAccess — shared by every route that answers
+// with `resolveFormAccess` failures so the reauth payload shape
+// (`error` + `reauth_url` + human message) can never diverge between them.
+export function formAccessErrorBody(
+  access: Extract<FormAccess, { ok: false }>,
+): Record<string, string> {
+  if (access.error === 'google_reauth_required') {
+    return {
+      error: access.error,
+      message: 'Google 재연결이 필요합니다',
+      reauth_url: access.reauthUrl ?? GOOGLE_REAUTH_URL,
+    };
+  }
+  return { error: access.error };
+}
 
 export async function resolveFormAccess(
   formId: string,
@@ -92,6 +117,17 @@ export async function resolveFormAccess(
     const { access_token } = await refreshAccessToken(oauth.refresh_token);
     return { ok: true, accessToken: access_token };
   } catch (e) {
+    // Revoked/expired refresh_token — only the user can fix this, by
+    // reconnecting Google. 401 + explicit code lets the client render a
+    // reconnect CTA instead of the old opaque 502.
+    if (e instanceof GoogleInvalidGrantError) {
+      return {
+        ok: false,
+        status: 401,
+        error: 'google_reauth_required',
+        reauthUrl: GOOGLE_REAUTH_URL,
+      };
+    }
     const msg = e instanceof Error ? e.message : 'refresh_failed';
     return { ok: false, status: 502, error: msg };
   }

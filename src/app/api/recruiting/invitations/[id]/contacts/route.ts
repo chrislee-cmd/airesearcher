@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
-import { resolveFormAccess } from '@/lib/recruiting/form-access';
+import {
+  formAccessErrorBody,
+  resolveFormAccess,
+} from '@/lib/recruiting/form-access';
 import { getFormResponses } from '@/lib/google-forms';
 import { isContactColumnTitle } from '@/lib/recruiting/contact-filter';
 import { isPiiColumn } from '@/lib/recruiting-pii';
@@ -54,7 +57,9 @@ export async function GET(
     invitation.requester_user_id,
   );
   if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+    return NextResponse.json(formAccessErrorBody(access), {
+      status: access.status,
+    });
   }
 
   try {

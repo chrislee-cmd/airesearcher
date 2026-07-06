@@ -132,6 +132,19 @@ export async function exchangeCodeForTokens(
   return (await res.json()) as GoogleTokenResponse;
 }
 
+// Google answers 400 + `invalid_grant` when a stored refresh_token has been
+// revoked/expired (user removed the app in myaccount.google.com/permissions,
+// password change, 6-month inactivity, ...). This is the one refresh failure
+// the *user* can fix — by re-running the OAuth consent flow — so callers need
+// to tell it apart from transient/server failures and answer 401
+// `google_reauth_required` instead of a dead-end 502.
+export class GoogleInvalidGrantError extends Error {
+  constructor() {
+    super('google_refresh_invalid_grant');
+    this.name = 'GoogleInvalidGrantError';
+  }
+}
+
 export async function refreshAccessToken(
   refreshToken: string,
 ): Promise<{ access_token: string; expires_in: number }> {
@@ -148,6 +161,15 @@ export async function refreshAccessToken(
   });
   if (!res.ok) {
     const txt = await res.text();
+    if (res.status === 400) {
+      let code: string | undefined;
+      try {
+        code = (JSON.parse(txt) as { error?: string }).error;
+      } catch {
+        // non-JSON body — fall through to the generic error below
+      }
+      if (code === 'invalid_grant') throw new GoogleInvalidGrantError();
+    }
     throw new Error(`google_token_refresh_failed: ${res.status} ${txt}`);
   }
   return (await res.json()) as { access_token: string; expires_in: number };

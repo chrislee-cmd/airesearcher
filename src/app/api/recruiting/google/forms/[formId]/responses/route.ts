@@ -5,7 +5,10 @@ import {
   filterConsentedRows,
   findConsentColumn,
 } from '@/lib/recruiting/contact-filter';
-import { resolveFormAccess } from '@/lib/recruiting/form-access';
+import {
+  formAccessErrorBody,
+  resolveFormAccess,
+} from '@/lib/recruiting/form-access';
 import { maskPiiAnswers, piiQuestionIds } from '@/lib/recruiting-pii';
 
 export const maxDuration = 60;
@@ -30,7 +33,9 @@ export async function GET(
   // shared with the PII-unlock route so the two can never diverge.
   const access = await resolveFormAccess(formId, user.id);
   if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+    return NextResponse.json(formAccessErrorBody(access), {
+      status: access.status,
+    });
   }
 
   try {
