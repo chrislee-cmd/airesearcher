@@ -563,6 +563,7 @@
     "range_month": "เดือนที่ผ่านมา",
     "range_quarter": "3 เดือนที่ผ่านมา",
     "range_year": "ปีที่ผ่านมา",
+    "range_three_years": "3 ปีที่ผ่านมา",
     "range_custom": "กำหนดเอง",
     "sourcesLabel": "แหล่งข้อมูล",
     "sourcesUnit": "แหล่ง",

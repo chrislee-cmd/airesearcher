@@ -785,6 +785,7 @@
     "range_month": "지난 1개월",
     "range_quarter": "지난 3개월",
     "range_year": "지난 1년",
+    "range_three_years": "지난 3년",
     "range_custom": "직접 지정",
     "modeLabel": "리서치 목적",
     "modeTitle": { "trend": "트렌드 리서치", "market": "시장조사", "custom": "커스텀" },

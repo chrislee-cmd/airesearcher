@@ -77,13 +77,21 @@ import {
   type UICategory,
 } from '@/lib/desk-sources';
 
-type RangePreset = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+type RangePreset =
+  | 'all'
+  | 'week'
+  | 'month'
+  | 'quarter'
+  | 'year'
+  | 'three_years'
+  | 'custom';
 const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
   { id: 'all', days: null },
   { id: 'week', days: 7 },
   { id: 'month', days: 30 },
   { id: 'quarter', days: 90 },
   { id: 'year', days: 365 },
+  { id: 'three_years', days: 1095 },
   { id: 'custom', days: null },
 ];
 
