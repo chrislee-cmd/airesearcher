@@ -9,7 +9,9 @@ import { forwardRef, type InputHTMLAttributes } from 'react';
 // intentionally has NO own border / background — those belong to the
 // parent chip container's focus-within frame.
 //
-// Audit observed 1 site — desk-research keyword chip extender. New
+// Audit observed 5 sites — desk-card-body keyword chip extender,
+// translate-console glossary, widget-settings-modal, probing
+// research-context, plus the /design-system catalog demo. New
 // chip-style inputs (tag editors, multi-select drafts) should reuse
 // this primitive rather than introducing another bare <input>.
 //
@@ -29,7 +31,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>;
 
 const BASE =
   '!border-0 !bg-transparent !rounded-none !shadow-none ' +
-  '!px-0 !py-0.5 text-lg text-ink-2 placeholder:text-mute-soft ' +
+  '!px-0 !py-1 text-sm text-ink placeholder:text-mute-soft ' +
   'focus:!outline-none ' +
   'disabled:opacity-40 disabled:cursor-not-allowed';
 
