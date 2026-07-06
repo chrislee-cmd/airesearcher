@@ -21,6 +21,7 @@ import {
   formatToplineEvidence,
   type ToplineBlockRaw,
 } from '@/lib/interview-v2/topline-prompt';
+import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
 
 export const TOPLINE_MODEL = 'claude-opus-4-8';
 
@@ -245,6 +246,27 @@ export function insertQaAfterAnchor(
     citations: qa.citations,
   };
   return [...blocks.slice(0, idx + 1), inserted, ...blocks.slice(idx + 1)];
+}
+
+/**
+ * 편집 대상 블록의 md 를 새 텍스트로 교체한 새 blocks 배열을 만든다(인라인
+ * 편집 저장). 블록 타입/구조는 그대로 두고 md 만 갈아끼운다 — 스타일 편집 X,
+ * 내용만(사용자 결정 1·3). blockId 가 없거나 편집 불가 타입(table/chart/pie)이면
+ * null (호출측이 422 로 응답). 편집 가능 타입 판정은 client/server 공유 집합
+ * (types.ts 의 isEditableToplineBlockType). 순수 함수 — 검증/영속은 route 책임.
+ */
+export function editBlockMd(
+  blocks: ToplineBlock[],
+  blockId: string,
+  md: string,
+): ToplineBlock[] | null {
+  const idx = blocks.findIndex((b) => b.id === blockId);
+  if (idx === -1) return null;
+  const block = blocks[idx];
+  if (!isEditableToplineBlockType(block.type)) return null;
+  // 타입/citations/attribution 등은 유지하고 md 만 교체.
+  const next = { ...block, md } as ToplineBlock;
+  return [...blocks.slice(0, idx), next, ...blocks.slice(idx + 1)];
 }
 
 /**
