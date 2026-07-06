@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -6,6 +6,7 @@ import { getActiveOrg } from '@/lib/org';
 import { hashString } from '@/lib/cache';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
+import { maybeKickTopline } from '@/lib/interview-v2/topline';
 
 // PR-1 — background corpus indexing for interview jobs.
 //
@@ -180,6 +181,21 @@ export async function POST(req: Request) {
       .update({ index_status: 'done' })
       .eq('id', interview_job_id)
       .eq('org_id', org.org_id);
+
+    // 인덱싱 완료 → 탑라인 자동 생성(fire-and-forget). content_hash 동일하면
+    // maybeKickTopline 내부에서 skip(재업로드 없는 재방문 = 비용 0). 프로젝트에
+    // 소속된 문서일 때만 — 프로젝트 미지정(legacy) 업로드는 탑라인 대상 아님.
+    const toplineProjectId = project_id ?? jobRow.project_id ?? null;
+    if (toplineProjectId) {
+      after(() =>
+        maybeKickTopline(admin, {
+          orgId: org.org_id,
+          projectId: toplineProjectId,
+        }).catch((e) =>
+          console.error('[interviews/index] topline kick failed', e),
+        ),
+      );
+    }
 
     return NextResponse.json({
       ok: true,
