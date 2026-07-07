@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/components/canvas/shell/field';
 import { Banner } from '@/components/canvas/shell/banner';
@@ -47,6 +48,7 @@ export type SectionId =
   | 'dropdown-menu'
   | 'label'
   | 'skeleton'
+  | 'stage-flow'
   | 'canvas-widget-primitives';
 
 type SectionEntry = {
@@ -103,6 +105,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
   {
     title: 'Widget primitives',
     sections: [
+      { id: 'stage-flow', label: 'StageFlow', render: () => <StageFlowSection /> },
       {
         id: 'canvas-widget-primitives',
         label: 'Canvas Widget Primitives',
@@ -680,6 +683,52 @@ function SkeletonSection() {
             <Skeleton variant="circle" width={48} height={48} />
             <Skeleton variant="circle" width={64} height={64} />
           </div>
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function StageFlowSection() {
+  const midFlow: Stage[] = [
+    { id: 'input', label: '입력 수집', status: 'done' },
+    { id: 'crawl', label: '크롤링', status: 'active', hint: '47/240 수집중' },
+    { id: 'synth', label: '종합', status: 'pending' },
+    { id: 'report', label: '리포트', status: 'pending' },
+  ];
+  const errorFlow: Stage[] = [
+    { id: 'input', label: '입력 수집', status: 'done' },
+    { id: 'crawl', label: '크롤링', status: 'error' },
+    { id: 'synth', label: '종합', status: 'pending' },
+  ];
+  return (
+    <PrimitivePage
+      title="StageFlow"
+      hint="src/components/ui/stage-flow.tsx · 공정 플로우차트 아티팩트 · 노드(pending/active/done/error)+엣지 · active glow + done→active 엣지 흐름(CSS keyframe, prefers-reduced-motion 존중) · complete=true → 완료 hero · 소비처=데스크 #439 / 인터뷰V2 #440"
+    >
+      <Subsection label="Horizontal (기본) — done · active(hint) · pending">
+        <div className="rounded-sm border border-line-soft bg-paper p-6">
+          <StageFlow stages={midFlow} />
+        </div>
+      </Subsection>
+      <Subsection label="Error 톤 (warning 재사용)">
+        <div className="rounded-sm border border-line-soft bg-paper p-6">
+          <StageFlow stages={errorFlow} />
+        </div>
+      </Subsection>
+      <Subsection label="Vertical (좁은 폭 반응형)">
+        <div className="max-w-[220px] rounded-sm border border-line-soft bg-paper p-6">
+          <StageFlow stages={midFlow} orientation="vertical" />
+        </div>
+      </Subsection>
+      <Subsection label="Complete (전 단계 done → 완료 hero + 결과 보기 CTA)">
+        <div className="rounded-sm border border-line-soft bg-paper p-6">
+          <StageFlow
+            stages={midFlow}
+            complete
+            completeLabel="생성이 완료됐어요"
+            onResult={() => {}}
+          />
         </div>
       </Subsection>
     </PrimitivePage>
