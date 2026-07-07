@@ -47,7 +47,11 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
 // color changes. disabled neutralizes transform/shadow so hover lift
 // doesn't fight the disabled-state read.
 const BASE =
-  'transition-all duration-[120ms] focus:outline-none focus-visible:text-amore ' +
+  // duration = 모션 토큰(--dur-fast) SSOT. active:scale = 전역 press 피드백
+  // (마이크로인터랙션 Foundation) — reduced-motion 시 중립. disabled 는 아래
+  // transform-none 이 무력화.
+  'transition-all duration-[var(--dur-fast)] focus:outline-none focus-visible:text-amore ' +
+  'active:scale-[0.97] motion-reduce:active:scale-100 ' +
   'disabled:transform-none disabled:shadow-none';
 
 // Memphis pop tone — boxed icon with 2px border + small hard shadow.
