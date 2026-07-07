@@ -153,4 +153,8 @@ export type ToplineReadResult = {
   generated_at: string | null;
   model: string | null;
   error_message: string | null;
+  // map-reduce 진행률(전 문서 순회) — generating 중 "N/M 문서 분석". map_total 이
+  // null 이면 진행률 미노출(레거시 또는 아직 map 시작 전).
+  map_total: number | null;
+  map_done: number | null;
 };

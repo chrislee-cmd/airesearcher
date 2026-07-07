@@ -95,6 +95,10 @@ export async function GET(req: Request) {
     generated_at: existing?.generated_at ?? null,
     model: existing?.model ?? null,
     error_message: existing?.error_message ?? null,
+    // map-reduce 진행률 — generating 중 "N/M 문서 분석" 표시(map_total 이 null 인
+    // 레거시 row 는 UI 가 진행률을 숨기고 단순 스켈레톤만).
+    map_total: existing?.map_total ?? null,
+    map_done: existing?.map_done ?? null,
   });
 }
 
