@@ -95,7 +95,10 @@ export async function POST(req: Request) {
 
     let totalChunks = 0;
     for (const doc of docs) {
-      const chunks = chunkMarkdown(doc.markdown, { filename: doc.filename });
+      const chunks = chunkMarkdown(doc.markdown, {
+        filename: doc.filename,
+        docId: doc.id,
+      });
       if (chunks.length === 0) continue;
 
       // Reset the progress counters for this re-index pass (a prior run may
