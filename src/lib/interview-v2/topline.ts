@@ -1,12 +1,19 @@
-// 인터뷰 탑라인 보고서 — core (corpus fetch · content_hash · Opus 생성 · 검증).
+// 인터뷰 탑라인 보고서 — core (map-reduce 전수 포괄 · content_hash · 검증).
 //
 // route(POST /api/interviews/v2/topline)와 index auto-kick 이 공유한다.
-//   - computeProjectCorpus : 프로젝트 문서 셋 해시(캐시 키) + 문서/청크 카운트
-//   - fetchProjectChunks   : 프로젝트 전체 chunk(컨텍스트 예산 내 per-doc 샘플)
+//   - computeProjectCorpus   : 프로젝트 문서 셋 해시(캐시 키) + 문서/청크 카운트
+//   - fetchDocumentsWithChunks : 문서별 전문 chunk (샘플링 X — 전수)
 //   - getTopline / upsertGenerating : 캐시 조회 + 'generating' 마킹
-//   - runTopline           : Opus generateObject → 블록 검증 → 영속 (after() 안에서)
+//   - runTopline             : map-reduce (문서별 map 추출 → Opus reduce 종합) →
+//                              블록 검증 → 영속 (after() 안에서)
 //
-// 근거 = 프로젝트 전체 chunk (선택 영역 X — 사용자 결정 #2). 인용은 v2/search
+// 왜 map-reduce (카드 #430): 탑라인/집계는 "빠짐없는 포괄"이 생명이다. 예전엔
+// 전체 chunk 를 한 번의 Opus 패스에 밀어넣되 예산 초과 시 문서별로 chunk 를
+// 샘플링해 응답자 발언이 유실될 수 있었다. 이제 **모든 문서(응답자)를 전용
+// map 호출로 전문 순회**해 추출(유실 0)하고, reduce(Opus)가 N개 추출을 모두
+// 받아 종합한다. 수치는 제공된 전수 위에서 실제로 센다(추정 아님 — 결정 #3).
+//
+// 근거 = 프로젝트 전체 문서 (선택 영역 X — 사용자 결정 #2). 인용은 v2/search
 // 와 동일하게 근거 chunk_id 집합에 대해 재검증한다(지어낸 id drop).
 
 import { generateObject } from 'ai';
@@ -17,21 +24,33 @@ import { hashString } from '@/lib/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   TOPLINE_SYSTEM,
+  TOPLINE_REDUCE_NOTICE,
   toplineSchema,
-  formatToplineEvidence,
   type ToplineBlockRaw,
 } from '@/lib/interview-v2/topline-prompt';
+import {
+  mapDocument,
+  runPool,
+  formatExtractsForReduce,
+  docExtractSchema,
+  MAP_CONCURRENCY,
+  TOPLINE_MAP_MODEL,
+  type DocExtract,
+  type DocExtractWithMeta,
+} from '@/lib/interview-v2/topline-map';
 import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
 
 export const TOPLINE_MODEL = 'claude-opus-4-8';
 
-// Opus 4.8 입력 컨텍스트(~200k tokens) + 출력 여유를 고려한 근거 예산(문자).
-// 한국어는 토큰 밀도가 높아 보수적으로 잡는다(~1자 ≈ 0.4tok → 320k자 ≈ 128k tok).
-// 초과 시 문서별 균등 샘플로 줄여 **모든 문서가 교차분석에 대표되도록** 한다
-// (2-pass 요약 대신 택한 보수적 under-budget 경로 — PR 본문 참고).
-const MAX_EVIDENCE_CHARS = 320_000;
-
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/** map-reduce 에서 한 문서(응답자) = 파일명 + content_hash + 전문 chunk. */
+export type ToplineDocument = {
+  document_id: string;
+  filename: string;
+  content_hash: string;
+  chunks: ToplineChunk[];
+};
 
 /** interview_toplines row (server-side shape). */
 export type InterviewToplineRow = {
@@ -44,6 +63,10 @@ export type InterviewToplineRow = {
   error_message: string | null;
   model: string | null;
   generated_at: string | null;
+  // map-reduce 진행률 — map_total = 이번 생성이 순회하는 문서 수(null=레거시),
+  // map_done = 완료된 문서 수. UI 가 generating 중 "N/M 문서 분석" 을 그린다.
+  map_total: number | null;
+  map_done: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -112,82 +135,140 @@ export async function computeProjectCorpus(
 }
 
 /**
- * 프로젝트 전체 chunk 를 근거로 로드. 문서별로 그룹핑해(교차분석용) 반환하며,
- * 총량이 MAX_EVIDENCE_CHARS 를 넘으면 문서별 균등 샘플로 줄인다.
+ * 프로젝트의 모든 문서를 **문서별 전문 chunk 로 그룹핑**해 로드(map-reduce map
+ * 입력). 샘플링·예산 절단 없음 — 각 문서를 통째로 map 에 넣어 어떤 발언도
+ * 유실되지 않게 한다(카드 #430 결정 #1). 문서 하나가 컨텍스트에 편하게 들어가는
+ * 크기라 전량 로드해도 안전하다. content_hash 를 함께 실어 문서 단위 캐시 키로
+ * 쓴다. filename 오름차순(안정 순서 → 진행률/로그 재현성).
  */
-export async function fetchProjectChunks(
+export async function fetchDocumentsWithChunks(
   admin: AdminClient,
   orgId: string,
   projectId: string,
-): Promise<ToplineChunk[]> {
+): Promise<ToplineDocument[]> {
   const { data: docs, error: docErr } = await admin
     .from('interview_documents')
-    .select('id, filename')
+    .select('id, filename, content_hash')
     .eq('org_id', orgId)
-    .eq('project_id', projectId);
-  if (docErr) throw new Error(`fetchProjectChunks docs: ${docErr.message}`);
+    .eq('project_id', projectId)
+    .order('filename', { ascending: true });
+  if (docErr) throw new Error(`fetchDocumentsWithChunks docs: ${docErr.message}`);
   if (!docs || docs.length === 0) return [];
 
-  const filenameById = new Map(docs.map((d) => [d.id, String(d.filename ?? '')]));
   const docIds = docs.map((d) => d.id);
-
   const { data: rows, error: chunkErr } = await admin
     .from('interview_chunks')
     .select('id, document_id, content')
     .eq('org_id', orgId)
     .in('document_id', docIds)
-    // 문서별로 인접하도록 정렬 — evidence 블록이 문서 단위로 묶여 모델이
-    // 문서 간 대조를 하기 쉬워진다.
     .order('document_id', { ascending: true })
     .order('id', { ascending: true });
-  if (chunkErr) throw new Error(`fetchProjectChunks chunks: ${chunkErr.message}`);
+  if (chunkErr) throw new Error(`fetchDocumentsWithChunks chunks: ${chunkErr.message}`);
 
-  const all: ToplineChunk[] = (rows ?? []).map((r) => ({
-    chunk_id: String(r.id),
-    document_id: String(r.document_id),
-    filename: filenameById.get(r.document_id) ?? '',
-    content: String(r.content ?? ''),
-  }));
+  const chunksByDoc = new Map<string, ToplineChunk[]>();
+  for (const r of rows ?? []) {
+    const docId = String(r.document_id);
+    const chunk: ToplineChunk = {
+      chunk_id: String(r.id),
+      document_id: docId,
+      filename: '',
+      content: String(r.content ?? ''),
+    };
+    const arr = chunksByDoc.get(docId);
+    if (arr) arr.push(chunk);
+    else chunksByDoc.set(docId, [chunk]);
+  }
 
-  return capChunksToBudget(all, MAX_EVIDENCE_CHARS);
+  const out: ToplineDocument[] = [];
+  for (const d of docs) {
+    const id = String(d.id);
+    const filename = String(d.filename ?? '');
+    const chunks = (chunksByDoc.get(id) ?? []).map((c) => ({ ...c, filename }));
+    // chunk 가 0 인 문서(인덱싱 지연 등)는 map 대상에서 제외 — 근거가 없다.
+    if (chunks.length === 0) continue;
+    out.push({
+      document_id: id,
+      filename,
+      content_hash: String(d.content_hash ?? ''),
+      chunks,
+    });
+  }
+  return out;
 }
 
 /**
- * 예산 초과 시 문서별 균등 샘플. 모든 문서가 대표되도록(교차분석 유지) 각
- * 문서에서 고르게 간격을 둔 chunk 를 뽑는다. 예산 내면 원본 그대로.
+ * 문서 단위 map 추출 캐시 조회 — (document_id, content_hash) 로 이미 뽑아둔
+ * 추출을 가져온다(변하지 않은 파일은 map LLM 재호출 0 — 결정 #4). content_hash
+ * 가 없는(레거시) 문서는 캐시하지 않는다. 반환은 document_id → DocExtract.
  */
-export function capChunksToBudget(
-  chunks: ToplineChunk[],
-  budget: number,
-): ToplineChunk[] {
-  const total = chunks.reduce((n, c) => n + c.content.length, 0);
-  if (total <= budget) return chunks;
+async function loadCachedExtracts(
+  admin: AdminClient,
+  orgId: string,
+  docs: ToplineDocument[],
+): Promise<Map<string, DocExtract>> {
+  const out = new Map<string, DocExtract>();
+  const hashable = docs.filter((d) => d.content_hash);
+  if (hashable.length === 0) return out;
 
-  // 문서별 그룹핑(원 순서 유지).
-  const byDoc = new Map<string, ToplineChunk[]>();
-  for (const c of chunks) {
-    const arr = byDoc.get(c.document_id);
-    if (arr) arr.push(c);
-    else byDoc.set(c.document_id, [c]);
+  const { data, error } = await admin
+    .from('interview_topline_doc_extracts')
+    .select('document_id, content_hash, extract')
+    .eq('org_id', orgId)
+    .in(
+      'document_id',
+      hashable.map((d) => d.document_id),
+    );
+  if (error) {
+    // 캐시는 최적화일 뿐 — 조회 실패해도 map 을 새로 돌리면 되므로 삼킨다.
+    console.warn('[v2/topline] extract cache read failed', error.message);
+    return out;
   }
-  const perDocBudget = Math.floor(budget / byDoc.size);
-
-  const out: ToplineChunk[] = [];
-  for (const arr of byDoc.values()) {
-    const avgLen =
-      Math.max(1, arr.reduce((n, c) => n + c.content.length, 0) / arr.length);
-    const keep = Math.max(1, Math.min(arr.length, Math.floor(perDocBudget / avgLen)));
-    if (keep >= arr.length) {
-      out.push(...arr);
-      continue;
-    }
-    // 고르게 간격을 둔 keep 개 인덱스 선택.
-    const step = arr.length / keep;
-    for (let i = 0; i < keep; i++) {
-      out.push(arr[Math.floor(i * step)]);
-    }
+  const hashByDoc = new Map(hashable.map((d) => [d.document_id, d.content_hash]));
+  for (const row of data ?? []) {
+    const docId = String(row.document_id);
+    // content_hash 가 현재와 같을 때만 히트(파일이 바뀌었으면 stale → 재map).
+    if (hashByDoc.get(docId) !== String(row.content_hash)) continue;
+    const parsed = docExtractSchema.safeParse(row.extract);
+    if (parsed.success) out.set(docId, parsed.data);
   }
   return out;
+}
+
+/**
+ * 문서 map 추출을 캐시에 upsert (document_id, content_hash 유니크). content_hash
+ * 없는 문서는 건너뛴다(캐시 키 불가). best-effort — 실패해도 생성은 진행.
+ */
+async function saveExtract(
+  admin: AdminClient,
+  orgId: string,
+  doc: ToplineDocument,
+  extract: DocExtract,
+): Promise<void> {
+  if (!doc.content_hash) return;
+  const { error } = await admin.from('interview_topline_doc_extracts').upsert(
+    {
+      org_id: orgId,
+      document_id: doc.document_id,
+      content_hash: doc.content_hash,
+      extract: extract as unknown as object,
+      model: TOPLINE_MAP_MODEL,
+    },
+    { onConflict: 'document_id,content_hash' },
+  );
+  if (error) console.warn('[v2/topline] extract cache write failed', error.message);
+}
+
+/** 탑라인 row 의 map 진행률 갱신 — realtime 으로 "N/M 문서 분석" 을 노출. */
+async function updateMapProgress(
+  admin: AdminClient,
+  toplineId: string,
+  patch: { map_total?: number; map_done?: number },
+): Promise<void> {
+  const { error } = await admin
+    .from('interview_toplines')
+    .update(patch)
+    .eq('id', toplineId);
+  if (error) console.warn('[v2/topline] progress update failed', error.message);
 }
 
 /**
@@ -409,6 +490,10 @@ export async function upsertGenerating(
         status: 'generating',
         error_message: null,
         model: TOPLINE_MODEL,
+        // 진행률 리셋 — 이번 생성의 map 이 아직 시작 전(runTopline 이 문서 수를
+        // 알면 map_total 을 채운다). 이전 생성의 진행률이 남지 않게 0/null 로.
+        map_total: null,
+        map_done: 0,
       },
       { onConflict: 'project_id' },
     )
@@ -424,9 +509,8 @@ export async function upsertGenerating(
 // (v2/search reconstructCitations 원리). server 가 인용 무결성을 소유한다.
 function verifyBlockCitations(
   blocks: ToplineBlockRaw[],
-  chunks: ToplineChunk[],
+  validIds: Set<string>,
 ): ToplineBlock[] {
-  const validIds = new Set(chunks.map((c) => c.chunk_id));
   return blocks.map((b, i) => {
     const id = `blk_${String(i + 1).padStart(2, '0')}`;
     if ('citations' in b && Array.isArray(b.citations)) {
@@ -440,9 +524,16 @@ function verifyBlockCitations(
 }
 
 /**
- * Opus 로 탑라인 blocks 를 생성해 row 를 'done' 으로 갱신. 실패 시 'error'.
- * after() 안에서 호출되므로 스스로 완결(예외를 밖으로 던지지 않음).
- * row 는 이미 upsertGenerating 으로 존재한다고 가정.
+ * map-reduce 로 탑라인 blocks 를 생성해 row 를 'done' 으로 갱신. 실패 시 'error'.
+ *
+ *   map    : 모든 문서(응답자)를 전용 Sonnet 호출로 전문 추출(themes/quotes).
+ *            (document_id, content_hash) 캐시 히트는 LLM 0. 동시성 제한 풀 +
+ *            문서별 재시도 1회, 그래도 실패하면 빈 추출로 대체(그 응답자는
+ *            근거 없음으로 reduce 에 표기 — 파이프라인은 완주).
+ *   reduce : Opus 가 N개 문서 추출을 **모두** 받아 종합(전수 위 실제 카운트).
+ *
+ * after() 안에서 호출되므로 스스로 완결(예외를 밖으로 던지지 않음). row 는 이미
+ * upsertGenerating 으로 존재한다고 가정.
  */
 export async function runTopline(
   admin: AdminClient,
@@ -454,8 +545,9 @@ export async function runTopline(
     const apiKey = env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error('missing_anthropic_key');
 
-    const chunks = await fetchProjectChunks(admin, orgId, projectId);
-    if (chunks.length === 0) {
+    // ── 전 문서 로드 (샘플링 X — 전수) ──
+    const docs = await fetchDocumentsWithChunks(admin, orgId, projectId);
+    if (docs.length === 0) {
       await admin
         .from('interview_toplines')
         .update({ status: 'error', error_message: 'no_chunks' })
@@ -463,19 +555,99 @@ export async function runTopline(
       return;
     }
 
-    const totalChars = chunks.reduce((n, c) => n + c.content.length, 0);
-    console.log(`${tag} generating`, {
-      chunks: chunks.length,
-      evidence_chars: totalChars,
-    });
+    // 인용 재검증용 전체 chunk_id 집합(전수 — 샘플 아님).
+    const validIds = new Set<string>();
+    let totalChunks = 0;
+    for (const d of docs) {
+      for (const c of d.chunks) validIds.add(c.chunk_id);
+      totalChunks += d.chunks.length;
+    }
 
     const anthropic = createAnthropic({ apiKey });
+
+    // 진행률 분모 = 문서 수. map 이 도는 동안 realtime 으로 "k/N" 노출.
+    await updateMapProgress(admin, toplineId, {
+      map_total: docs.length,
+      map_done: 0,
+    });
+
+    // ── MAP: 문서별 추출 (캐시 → 없으면 LLM, 동시성 제한, 재시도 1회) ──
+    const cached = await loadCachedExtracts(admin, orgId, docs);
+    let mapped = 0;
+    let cacheHits = 0;
+    let mapFailures = 0;
+
+    const extracts = await runPool<ToplineDocument, DocExtractWithMeta>(
+      docs,
+      MAP_CONCURRENCY,
+      async (doc) => {
+        const hit = cached.get(doc.document_id);
+        if (hit) {
+          cacheHits += 1;
+          return { ...hit, document_id: doc.document_id, filename: doc.filename };
+        }
+        // 문서별 재시도 1회 — 일시적 provider 오류 흡수. 그래도 실패하면 빈
+        // 추출로 대체해 파이프라인을 완주시킨다(그 응답자만 근거 없음 표기).
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const extract = await mapDocument(anthropic, doc);
+            await saveExtract(admin, orgId, doc, {
+              themes: extract.themes,
+              quotes: extract.quotes,
+            });
+            return extract;
+          } catch (e) {
+            if (attempt === 1) {
+              mapFailures += 1;
+              console.warn(
+                `${tag} map failed ${doc.filename}`,
+                e instanceof Error ? e.message : e,
+              );
+              return {
+                themes: [],
+                quotes: [],
+                document_id: doc.document_id,
+                filename: doc.filename,
+                failed: true,
+              };
+            }
+          }
+        }
+        // 도달 불가(위 루프가 항상 반환) — 타입 만족용.
+        return {
+          themes: [],
+          quotes: [],
+          document_id: doc.document_id,
+          filename: doc.filename,
+          failed: true,
+        };
+      },
+      async (done) => {
+        mapped = done;
+        // 진행률은 자주 쓰면 realtime 트래픽이 커지므로 매 문서 갱신하되 DB
+        // update 는 가볍다(단일 row). 대량이면 이 정도 빈도는 무해.
+        await updateMapProgress(admin, toplineId, { map_done: done });
+      },
+    );
+
+    // 빠짐없음 정량 로그 — map 은 전 문서를 읽으므로 doc coverage = 1.0,
+    // chunk 도 전량(샘플링 0). top-K/예산샘플 대비 유실 0 을 수치로 남긴다.
+    console.log(`${tag} map done`, {
+      docs: docs.length,
+      chunks_read: totalChunks,
+      cache_hits: cacheHits,
+      mapped_llm: mapped - cacheHits,
+      map_failures: mapFailures,
+      doc_coverage: 1, // 전 문서 순회 — 구조적 유실 0 (카드 #430 핵심 지표)
+    });
+
+    // ── REDUCE: Opus 가 전수 추출을 종합 ──
+    const reduceEvidence = formatExtractsForReduce(extracts);
     const { object, finishReason } = await generateObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
-      system: `${TOPLINE_SYSTEM}\n\n## 근거 청크\n${formatToplineEvidence(chunks)}`,
-      prompt:
-        '위 근거 청크 전체를 분석해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.',
+      system: `${TOPLINE_SYSTEM}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
+      prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출입니다. 이를 종합해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. **집계 수치("N명 중 M명")는 위 ${docs.length}명 추출을 직접 세어** 산출하고(추정 금지), 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
       // 긴 보고서(10 섹션 + 서브헤더 + 아티팩트)라 출력 예산을 대폭 상향해 잘림
       // (finishReason='length')을 방지한다. Opus 4.8 는 큰 출력을 지원한다.
@@ -484,11 +656,25 @@ export async function runTopline(
       providerOptions: ZERO_RETENTION,
     });
 
-    const blocks = verifyBlockCitations(object?.blocks ?? [], chunks);
+    const blocks = verifyBlockCitations(object?.blocks ?? [], validIds);
     const citedTotal = blocks.reduce(
       (n, b) => n + ('citations' in b ? b.citations.length : 0),
       0,
     );
+    // 최종 블록이 인용한 고유 문서 수 — 종합이 얼마나 많은 응답자를 실제로
+    // 근거로 삼았는지(전수 대비). map 이 전 문서를 읽어도 reduce 가 인용을
+    // 몇 개 문서에 걸쳐 다는지는 별개라 함께 로그.
+    const citedDocs = new Set<string>();
+    const chunkToDoc = new Map<string, string>();
+    for (const d of docs) for (const c of d.chunks) chunkToDoc.set(c.chunk_id, d.document_id);
+    for (const b of blocks) {
+      if ('citations' in b) {
+        for (const c of b.citations) {
+          const docId = chunkToDoc.get(c);
+          if (docId) citedDocs.add(docId);
+        }
+      }
+    }
     // 잘림 방지: 예산을 크게 잡았지만 그래도 length 로 끝나면 (희귀) 로그로
     // 남긴다. generateObject 는 스키마 검증을 통과한 블록만 반환하므로 부분
     // 결과라도 유효한 블록은 보존된다(보수적 — 별도 2-pass 이어쓰기는 후속).
@@ -500,6 +686,9 @@ export async function runTopline(
     console.log(`${tag} done`, {
       blocks: blocks.length,
       citations: citedTotal,
+      cited_docs: citedDocs.size,
+      total_docs: docs.length,
+      cited_doc_coverage: docs.length ? citedDocs.size / docs.length : 0,
       finishReason,
     });
 

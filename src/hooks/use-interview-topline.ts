@@ -24,6 +24,10 @@ export type ToplineState = {
   indexed: boolean;
   generatedAt: string | null;
   errorMessage: string | null;
+  // map-reduce 진행률(전 문서 순회) — generating 중 "N/M 문서 분석". null 이면
+  // 진행률 미노출.
+  mapTotal: number | null;
+  mapDone: number | null;
   // 초기 GET 로딩 중.
   loading: boolean;
   // GET/POST 자체가 실패(네트워크/서버).
@@ -110,7 +114,12 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
         },
         (payload) => {
           const next = payload.new as
-            | { status?: ToplineStatus; blocks?: ToplineBlock[] }
+            | {
+                status?: ToplineStatus;
+                blocks?: ToplineBlock[];
+                map_total?: number | null;
+                map_done?: number | null;
+              }
             | undefined;
           if (next?.status) {
             setData((prev) =>
@@ -121,6 +130,16 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
                     blocks: Array.isArray(next.blocks)
                       ? next.blocks
                       : prev.blocks,
+                    // map 진행률 bump 는 status='generating' 유지한 채 map_done
+                    // 만 바뀌는 UPDATE 로 온다 — 매 문서 완료마다 반영.
+                    map_total:
+                      next.map_total !== undefined
+                        ? next.map_total
+                        : prev.map_total,
+                    map_done:
+                      next.map_done !== undefined
+                        ? next.map_done
+                        : prev.map_done,
                   }
                 : prev,
             );
@@ -198,6 +217,8 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     indexed: data?.indexed ?? false,
     generatedAt: data?.generated_at ?? null,
     errorMessage: data?.error_message ?? null,
+    mapTotal: data?.map_total ?? null,
+    mapDone: data?.map_done ?? null,
     loading,
     fetchError,
     generating,

@@ -1275,6 +1275,7 @@
     "toplineReportLabel": "Topline report",
     "toplineRegenerate": "Regenerate report",
     "toplineGenerating": "Generating topline…",
+    "toplineMapProgress": "Analyzing all documents — {done}/{total} respondents",
     "toplineStaleBanner": "Your files changed — regenerate the report to reflect the latest content.",
     "toplineNotIndexed": "You can generate the topline report once indexing is complete.",
     "toplineLoadError": "Couldn't load the topline.",

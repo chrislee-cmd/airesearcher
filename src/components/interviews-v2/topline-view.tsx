@@ -496,7 +496,42 @@ function StaleBanner({
   );
 }
 
-function GeneratingSkeleton() {
+// map-reduce 진행률 — 전 문서 순회 중 "N/M 문서 분석" + 진행 바. map_total 이
+// 없으면(레거시/시작 전) 아무것도 그리지 않는다. 이 문구가 "빠짐없이 전 문서를
+// 읽는 중"을 사용자에게 보이게 해 긴 생성 시간을 납득시킨다(카드 #430).
+function ToplineMapProgress({
+  mapTotal,
+  mapDone,
+}: {
+  mapTotal?: number | null;
+  mapDone?: number | null;
+}) {
+  const t = useTranslations('InterviewsV2');
+  if (!mapTotal || mapTotal <= 0) return null;
+  const done = Math.max(0, Math.min(mapDone ?? 0, mapTotal));
+  const pct = Math.round((done / mapTotal) * 100);
+  return (
+    <div className="space-y-1.5">
+      <div className="text-sm text-mute">
+        {t('toplineMapProgress', { done, total: mapTotal })}
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded-full bg-line-soft">
+        <div
+          className="h-full rounded-full bg-amore transition-[width] duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GeneratingSkeleton({
+  mapTotal,
+  mapDone,
+}: {
+  mapTotal?: number | null;
+  mapDone?: number | null;
+}) {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="space-y-4">
@@ -504,6 +539,7 @@ function GeneratingSkeleton() {
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
         {t('toplineGenerating')}
       </div>
+      <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
       <Skeleton className="h-6 w-1/3 rounded-sm" />
       <Skeleton className="h-24 w-full rounded-sm" />
       <Skeleton className="h-6 w-1/4 rounded-sm" />
@@ -525,6 +561,8 @@ export function ToplineView({ projectId }: { projectId: string }) {
     generate,
     refetch,
     applyBlockMd,
+    mapTotal,
+    mapDone,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
@@ -687,14 +725,17 @@ export function ToplineView({ projectId }: { projectId: string }) {
         ) : !indexed ? (
           <EmptyState tone="subtle" title={t('toplineNotIndexed')} />
         ) : status === 'generating' && !hasBlocks ? (
-          <GeneratingSkeleton />
+          <GeneratingSkeleton mapTotal={mapTotal} mapDone={mapDone} />
         ) : hasBlocks ? (
           <>
             {/* 생성 중이지만 이전 보고서가 남아 있으면 상단에 진행 표시. */}
             {status === 'generating' && (
-              <div className="mb-4 flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                {t('toplineGenerating')}
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                  {t('toplineGenerating')}
+                </div>
+                <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
               </div>
             )}
             {stale && status !== 'generating' && (
