@@ -30,6 +30,18 @@ import {
 
 export const maxDuration = 300;
 
+// 'generating' 리스(lease) — stuck 생성 자동 복구용.
+//
+// runTopline 은 실패를 catch 해 status='error' 를 쓰지만, 함수가 maxDuration
+// (300s) 타임아웃/크래시로 **kill** 되면 catch 가 못 돌아 row 가 'generating'
+// 에 영구 잔류한다. 아래 POST 의 generating 분기가 나이 체크 없이 재-kick 을
+// 막으면 UI 가 "생성 중…" 에 무한 고착된다(2026-07-07 사고: 55-doc/1.9M자
+// 프로젝트가 300s 초과로 wedge). live map-reduce 는 문서 완료마다 updated_at
+// 을 bump 하고 함수는 어차피 maxDuration 을 못 넘기므로, updated_at 이 이보다
+// 오래 방치된 'generating' 은 죽은 생성이다 — 재-kick 한다. 여유 60s 를 더해
+// 정상 종료 직전 job 을 오판하지 않는다.
+const GENERATING_LEASE_MS = (300 + 60) * 1000;
+
 const Body = z.object({
   project_id: z.string().uuid(),
   force: z.boolean().optional().default(false),
@@ -83,9 +95,18 @@ export async function GET(req: Request) {
 
   const existing = await getTopline(admin, projectId);
 
+  // stuck 'generating' 을 읽기 전용으로 감지해 UI 에 재시도 경로를 연다. row 가
+  // 'generating' 인데 lease(GENERATING_LEASE_MS)가 만료됐으면 생성 함수가 죽은
+  // 것 — DB 는 건드리지 않고(GET 은 무과금·무부작용) 응답 status 만 'error' 로
+  // 표면화한다. 실제 재-kick 은 사용자가 재생성(POST)할 때 lease 분기가 처리.
+  const leaseExpired =
+    existing?.status === 'generating' &&
+    Date.now() - new Date(existing.updated_at).getTime() >= GENERATING_LEASE_MS;
+
   return NextResponse.json({
     // 'none' = 아직 생성된 적 없음(CTA). 그 외는 row.status 그대로.
-    status: existing?.status ?? 'none',
+    // lease 만료된 stuck 'generating' 은 'error' 로 보고(재시도 CTA 노출).
+    status: leaseExpired ? 'error' : existing?.status ?? 'none',
     blocks: existing?.blocks ?? [],
     // 저장 해시와 현재 문서 셋 해시가 다르면 파일이 바뀐 것 = stale.
     // row 가 없으면 stale 아님(그냥 미생성).
@@ -94,7 +115,9 @@ export async function GET(req: Request) {
     indexed: chunkCount > 0,
     generated_at: existing?.generated_at ?? null,
     model: existing?.model ?? null,
-    error_message: existing?.error_message ?? null,
+    error_message: leaseExpired
+      ? '생성이 중단되었습니다. 다시 생성해 주세요.'
+      : existing?.error_message ?? null,
     // map-reduce 진행률 — generating 중 "N/M 문서 분석" 표시(map_total 이 null 인
     // 레거시 row 는 UI 가 진행률을 숨기고 단순 스켈레톤만).
     map_total: existing?.map_total ?? null,
@@ -168,13 +191,25 @@ export async function POST(req: Request) {
     });
   }
 
-  // 이미 다른 요청이 생성 중이면 중복 kick 하지 않는다.
+  // 이미 다른 요청이 생성 중이면 중복 kick 하지 않는다 — 단, 그 생성이 아직
+  // 살아있을 때만. lease 가 만료된(= 죽은) 생성은 재-kick 해 stuck 을 자동
+  // 복구한다(위 GENERATING_LEASE_MS 주석 참고). upsertGenerating 이 row 를
+  // 깨끗이 덮으므로(status/error_message/map 진행률 리셋) 재시작은 안전하다.
   if (existing?.status === 'generating') {
-    return NextResponse.json({
+    const ageMs = Date.now() - new Date(existing.updated_at).getTime();
+    if (ageMs < GENERATING_LEASE_MS) {
+      return NextResponse.json({
+        topline_id: existing.id,
+        status: 'generating',
+        cached: false,
+      });
+    }
+    console.warn('[v2/topline] stale generating lease expired — re-kicking', {
+      project_id,
       topline_id: existing.id,
-      status: 'generating',
-      cached: false,
+      age_ms: ageMs,
     });
+    // fall through: 죽은 생성으로 판단 → 아래에서 재-kick.
   }
 
   // LLM 호출을 태우므로 rate-limit 게이트(생성 경로에서만).
