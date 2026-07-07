@@ -227,3 +227,103 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     applyBlockMd,
   };
 }
+
+// 경량 read-only 진행률 구독 — status/map_total/map_done 만 추적한다.
+// useInterviewTopline(전체 상태 + blocks/edit/generate)과 달리 POST 를 절대
+// 부르지 않아 과금이 없고, blocks 를 들고 있지 않아 가볍다. 이 hook 은 fullview
+// (팝업) 밖, 즉 캔버스에 항상 마운트되는 위젯 카드 본문에서 호출돼 팝업을 닫아도
+// 구독이 살아있게 한다 — 백엔드는 after()+DB 로 이미 persist 되지만, 구독이
+// fullview 에 묶여 팝업을 닫으면 progress 가 사라져 "멈춘 것처럼" 보이던 문제
+// (card #434 가시성 fix). 팝업이 열려 fullview 의 자체 구독과 동시에 살아도
+// 충돌하지 않도록 별도 채널명(interview-topline-status-*)을 쓴다.
+export type ToplineStatusState = {
+  status: ToplineStatus;
+  mapTotal: number | null;
+  mapDone: number | null;
+};
+
+export function useInterviewToplineStatus(
+  projectId: string | null,
+): ToplineStatusState {
+  const supabase = useMemo(() => createClient(), []);
+  const [state, setState] = useState<ToplineStatusState>({
+    status: 'none',
+    mapTotal: null,
+    mapDone: null,
+  });
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  // 초기 status 조회 — GET(읽기 전용, 생성 트리거 X). 카드가 생성 도중
+  // 마운트되거나 팝업을 재오픈해도 현재 진행률을 즉시 반영(0% 리셋 방지).
+  useEffect(() => {
+    if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no project = nothing to track; reset the gate (use-interview-topline.ts 초기 로드 패턴)
+      setState({ status: 'none', mapTotal: null, mapDone: null });
+      return;
+    }
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/interviews/v2/topline?project_id=${encodeURIComponent(projectId)}`,
+          { method: 'GET' },
+        );
+        const json = (await res.json().catch(() => null)) as
+          | ToplineReadResult
+          | { error?: string }
+          | null;
+        if (!aliveRef.current || !res.ok || !json || 'error' in json) return;
+        const r = json as ToplineReadResult;
+        setState({ status: r.status, mapTotal: r.map_total, mapDone: r.map_done });
+      } catch {
+        // 상시 배경 구독 — 초기 조회 실패는 무음(다음 realtime UPDATE 가 채움).
+      }
+    })();
+  }, [projectId]);
+
+  // Realtime — 이 프로젝트 탑라인 row 의 status/map 진행률만 반영. blocks 는
+  // 무시(카드 ambient 표시엔 불필요). 매 문서 완료마다 오는 map_done bump 을
+  // 그대로 화면에 흘려보낸다.
+  useEffect(() => {
+    if (!projectId) return;
+    const ch = supabase
+      .channel(`interview-topline-status-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interview_toplines',
+          filter: `project_id=eq.${projectId}`,
+        },
+        (payload) => {
+          const next = payload.new as
+            | {
+                status?: ToplineStatus;
+                map_total?: number | null;
+                map_done?: number | null;
+              }
+            | undefined;
+          if (!next?.status || !aliveRef.current) return;
+          setState((prev) => ({
+            status: next.status as ToplineStatus,
+            mapTotal:
+              next.map_total !== undefined ? next.map_total : prev.mapTotal,
+            mapDone:
+              next.map_done !== undefined ? next.map_done : prev.mapDone,
+          }));
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [supabase, projectId]);
+
+  return state;
+}
