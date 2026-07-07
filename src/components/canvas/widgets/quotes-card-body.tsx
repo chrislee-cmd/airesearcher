@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
-import { useRequireAuth } from '@/components/auth-provider';
+import { useAuth, useRequireAuth } from '@/components/auth-provider';
 import { track } from '@/components/mixpanel-provider';
 import { track as trackEvent } from '@/lib/analytics/events';
 import {
@@ -53,6 +53,49 @@ function readActiveProjectId(): string | null {
   }
 }
 
+// ── idle 복귀(dismissal) 영속화 ────────────────────────────────────────────
+// #805 는 "완료분만 남은 카드를 fullview 로 확인 후 닫으면 idle 로 되돌린다"를
+// 세션 내(useRef)로만 처리해, 새로고침/리마운트 시 ref 가 초기화되면 승격
+// effect 가 DB 완료분에서 phase='active' 를 재도출 → 결과 뷰로 되돌아갔다.
+// 해결: dismissal 을 계정 스코프 localStorage 에 영속화한다. 값은 "확인한
+// 완료 job-set 의 시그니처". 마운트 시 저장 시그니처가 현재 완료 job-set 과
+// 일치하면 재승격을 막아 idle 을 유지하고, 새 전사가 완료되면 시그니처가
+// 바뀌어 저장분과 불일치 → 자동 해제되어 새 완료분은 정상적으로 노출된다.
+const DISMISS_KEY_PREFIX = 'quotes:dismissedToIdle:v1';
+
+// 계정(userId) 스코프 — 공용 브라우저에서 다른 사용자의 dismissal 이 섞이지
+// 않게. 익명(user 없음)이면 'anon' 으로 폴백.
+function dismissStorageKey(userId: string | null): string {
+  return `${DISMISS_KEY_PREFIX}:${userId ?? 'anon'}`;
+}
+
+// 완료 job id 들의 정렬 결합 = 완료 job-set 시그니처. 새 완료/삭제로 done 집합이
+// 바뀌면 시그니처가 바뀐다(순서 무관 — 정렬).
+function doneSignature(jobs: TranscriptJob[]): string {
+  return jobs
+    .filter((j) => j.status === 'done')
+    .map((j) => j.id)
+    .sort()
+    .join(',');
+}
+
+function readPersistedDismissal(userId: string | null): string | null {
+  try {
+    return window.localStorage.getItem(dismissStorageKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedDismissal(userId: string | null, signature: string) {
+  try {
+    window.localStorage.setItem(dismissStorageKey(userId), signature);
+  } catch {
+    // localStorage 불가(사생활 모드/quota 초과) — 영속화만 실패한다. 세션 내
+    // dismissal(ref)은 그대로 동작하므로 조용히 무시.
+  }
+}
+
 // 스토리지 업로드 완료 후 '시작' 대기 중인 파일 메타. /api/transcripts/start
 // 에 그대로 넘긴다.
 type ReadyTranscriptFile = {
@@ -98,6 +141,10 @@ export function QuotesCardBody() {
   const tWidgets = useTranslations('Widgets');
   const tProcess = useTranslations('Process');
   const requireAuth = useRequireAuth();
+  const { user } = useAuth();
+  // 영속 dismissal 키 스코프 (계정별). 로그아웃/계정 전환 시 자동으로 다른
+  // 키를 보게 되어 이전 계정의 idle 복귀가 섞이지 않는다.
+  const userId = user?.id ?? null;
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
   const toast = useToast();
@@ -167,11 +214,22 @@ export function QuotesCardBody() {
     }
     // 완료분만 있는 상태: fullview 확인 후 idle 로 되돌린 게 아니면
     // (첫 로드/새로고침 등) active 로 승격.
-    if (job.jobs.length > 0 && !dismissedToIdleRef.current) {
-       
-      setPhase('active');
+    if (job.jobs.length > 0) {
+      // 영속 dismissal 복원 — 새로고침/리마운트로 ref 가 초기화됐어도, 저장된
+      // 시그니처가 현재 완료 job-set 과 일치하면 사용자가 이미 확인·idle 로
+      // 되돌린 job-set 이므로 재승격하지 않는다. 시그니처가 다르면(새 완료분)
+      // 저장분과 불일치 → dismissal 이 해제되어 정상적으로 결과 뷰를 노출.
+      if (
+        !dismissedToIdleRef.current &&
+        readPersistedDismissal(userId) === doneSignature(job.jobs)
+      ) {
+        dismissedToIdleRef.current = true;
+      }
+      if (!dismissedToIdleRef.current) {
+        setPhase('active');
+      }
     }
-  }, [job.jobs, job.localUploads, readyFiles.length]);
+  }, [job.jobs, job.localUploads, readyFiles.length, userId]);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `uploadToStorage` is captured once. We mirror live state into a
@@ -504,10 +562,14 @@ export function QuotesCardBody() {
     const hasDone = job.jobs.some((j) => j.status === 'done');
     if (hasDone && !inflight) {
       dismissedToIdleRef.current = true;
+      // 새로고침 생존 — 지금 확인한 완료 job-set 시그니처를 영속화한다.
+      // 마운트 시 승격 effect 가 이 시그니처와 일치하면 재승격을 막아 idle 을
+      // 유지한다. 계정당 키 1개라 다음 dismissal 때 덮어써져 누적되지 않는다.
+      writePersistedDismissal(userId, doneSignature(job.jobs));
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset view to idle on fullview close
       setPhase('idle');
     }
-  }, [isCurrent, busyUpload, readyFiles.length, job.jobs, job.localUploads]);
+  }, [isCurrent, busyUpload, readyFiles.length, job.jobs, job.localUploads, userId]);
 
   // 일괄 삭제 — 결정 1: 신규 endpoint 없이 기존 개별 DELETE 를 병렬 호출.
   // Promise.allSettled 로 일부 실패해도 나머지는 반영, 결과 count 를 toast.
