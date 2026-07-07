@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
-import { useInterviewTopline } from '@/hooks/use-interview-topline';
+import { useInterviewToplineStatus } from '@/hooks/use-interview-topline';
 import { deriveToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import type { ToplineStatus } from '@/lib/interview-v2/types';
 import { ToplineMapProgress } from '@/components/interviews-v2/topline-view';
@@ -238,8 +238,8 @@ function ToplineAmbientProgress({
   const t = useTranslations('InterviewsV2');
   const toast = useToast();
 
-  // status/blocks 는 ActiveBody 가 useInterviewTopline 으로 단일 구독해 prop 으로
-  // 내려준다 (abstract 파생과 progress 가 같은 소스를 공유 — 이중 구독 제거).
+  // status/map 진행률은 ActiveBody 가 useInterviewToplineStatus 로 단일 구독해 prop
+  // 으로 내려준다 (abstract 파생과 progress 가 같은 소스를 공유 — 이중 구독 제거).
 
   // generating → done|error 전이에서만 toast. 초기 로드(null→done/none)나
   // 이미 완료된 보고서를 다시 열 때는 무음(오탐 방지). projectId 가 바뀌면
@@ -293,15 +293,17 @@ function ActiveBody({
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   // 탑라인 상태 + blocks 단일 소스 — 프로젝트 선택 시 하단 영역을 status 로 분기
   // (done=abstract / generating=진행률 / 미생성=분석 프롬프트). GET(읽기 전용)만
-  // 부르므로 과금 없음. blocks 는 abstract 파생에만 쓰고, status/map 진행률은
-  // ambient 밴드로 내려보낸다(이중 구독 제거).
+  // 부르므로 과금 없음. blocks 는 abstract 파생, status/map 진행률은 ambient 밴드로.
+  // ⚠️ 반드시 useInterviewToplineStatus(격리 채널 interview-topline-status-*)를 쓴다 —
+  // useInterviewTopline 을 쓰면 팝업(fullview)의 ToplineView 와 같은 채널명으로
+  // 이중 구독돼 Supabase realtime 이 크래시한다(동일 토픽 재구독 금지).
   const {
     status: toplineStatus,
     blocks: toplineBlocks,
     mapTotal,
     mapDone,
     loading: toplineLoading,
-  } = useInterviewTopline(projectId);
+  } = useInterviewToplineStatus(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
   // 카드 인라인 dropzone 이 드롭/선택한 파일 — 모달을 열며 pre-stage 로 넘긴다.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
@@ -537,7 +539,7 @@ function ActiveBody({
       {/* 팝업 밖 ambient 탑라인 진행률 — 전체보기를 닫아도 생성 진행률이
           카드에 계속 보이고, 완료/실패 시 toast 로 알림 (card #434). CTA
           바로 위, shrink-0 밴드라 파일 리스트 스크롤과 무관하게 상시 노출.
-          status/map 진행률은 위 useInterviewTopline 단일 소스에서 내려온다. */}
+          status/map 진행률은 위 useInterviewToplineStatus 단일 소스에서 내려온다. */}
       <ToplineAmbientProgress
         projectId={projectId}
         status={toplineStatus}

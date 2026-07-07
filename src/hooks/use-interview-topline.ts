@@ -228,18 +228,27 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   };
 }
 
-// 경량 read-only 진행률 구독 — status/map_total/map_done 만 추적한다.
-// useInterviewTopline(전체 상태 + blocks/edit/generate)과 달리 POST 를 절대
-// 부르지 않아 과금이 없고, blocks 를 들고 있지 않아 가볍다. 이 hook 은 fullview
-// (팝업) 밖, 즉 캔버스에 항상 마운트되는 위젯 카드 본문에서 호출돼 팝업을 닫아도
-// 구독이 살아있게 한다 — 백엔드는 after()+DB 로 이미 persist 되지만, 구독이
+// 경량 read-only 진행률 + blocks 구독 — status/map_total/map_done 에 더해 위젯
+// 카드가 abstract 를 그리는 데 필요한 blocks 까지 싣는다. useInterviewTopline(전체
+// 상태 + edit/generate)과 달리 POST 를 절대 부르지 않아 과금이 없다. 이 hook 은
+// fullview(팝업) 밖, 즉 캔버스에 항상 마운트되는 위젯 카드 본문에서 호출돼 팝업을
+// 닫아도 구독이 살아있게 한다 — 백엔드는 after()+DB 로 이미 persist 되지만, 구독이
 // fullview 에 묶여 팝업을 닫으면 progress 가 사라져 "멈춘 것처럼" 보이던 문제
-// (card #434 가시성 fix). 팝업이 열려 fullview 의 자체 구독과 동시에 살아도
-// 충돌하지 않도록 별도 채널명(interview-topline-status-*)을 쓴다.
+// (card #434 가시성 fix).
+//
+// ⚠️ 채널명은 반드시 useInterviewTopline(interview-topline-*)과 달라야 한다
+// (interview-topline-status-*). 팝업이 열리면 fullview 의 ToplineView 가
+// useInterviewTopline 으로 같은 프로젝트를 구독하는데, 토픽명이 같으면 Supabase
+// realtime 이 "cannot add postgres_changes callbacks after subscribe()" 로 크래시한다
+// (동일 토픽 이중 구독 금지). 이 격리 채널명 덕에 카드+팝업이 동시에 살아도 안전.
 export type ToplineStatusState = {
   status: ToplineStatus;
   mapTotal: number | null;
   mapDone: number | null;
+  // 카드 abstract 파생용 blocks. generating 중엔 비어 있다가 done 에서 채워진다.
+  blocks: ToplineBlock[];
+  // 초기 GET 로딩 중 — 카드가 skeleton 을 그려 status='none' 순간 깜빡임을 막는다.
+  loading: boolean;
 };
 
 export function useInterviewToplineStatus(
@@ -250,6 +259,8 @@ export function useInterviewToplineStatus(
     status: 'none',
     mapTotal: null,
     mapDone: null,
+    blocks: [],
+    loading: true,
   });
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -259,36 +270,53 @@ export function useInterviewToplineStatus(
     };
   }, []);
 
-  // 초기 status 조회 — GET(읽기 전용, 생성 트리거 X). 카드가 생성 도중
-  // 마운트되거나 팝업을 재오픈해도 현재 진행률을 즉시 반영(0% 리셋 방지).
-  useEffect(() => {
-    if (!projectId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- no project = nothing to track; reset the gate (use-interview-topline.ts 초기 로드 패턴)
-      setState({ status: 'none', mapTotal: null, mapDone: null });
-      return;
+  // 상태 + blocks 조회 — GET(읽기 전용, 생성 트리거 X). 카드가 생성 도중
+  // 마운트되거나 팝업을 재오픈해도 현재 진행률/요약을 즉시 반영(0% 리셋 방지).
+  const loadStatus = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(
+        `/api/interviews/v2/topline?project_id=${encodeURIComponent(projectId)}`,
+        { method: 'GET' },
+      );
+      const json = (await res.json().catch(() => null)) as
+        | ToplineReadResult
+        | { error?: string }
+        | null;
+      if (!aliveRef.current || !res.ok || !json || 'error' in json) return;
+      const r = json as ToplineReadResult;
+      setState({
+        status: r.status,
+        mapTotal: r.map_total,
+        mapDone: r.map_done,
+        blocks: Array.isArray(r.blocks) ? r.blocks : [],
+        loading: false,
+      });
+    } catch {
+      // 상시 배경 구독 — 초기 조회 실패는 무음(다음 realtime UPDATE 가 채움).
+      if (aliveRef.current) setState((prev) => ({ ...prev, loading: false }));
     }
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/interviews/v2/topline?project_id=${encodeURIComponent(projectId)}`,
-          { method: 'GET' },
-        );
-        const json = (await res.json().catch(() => null)) as
-          | ToplineReadResult
-          | { error?: string }
-          | null;
-        if (!aliveRef.current || !res.ok || !json || 'error' in json) return;
-        const r = json as ToplineReadResult;
-        setState({ status: r.status, mapTotal: r.map_total, mapDone: r.map_done });
-      } catch {
-        // 상시 배경 구독 — 초기 조회 실패는 무음(다음 realtime UPDATE 가 채움).
-      }
-    })();
   }, [projectId]);
 
-  // Realtime — 이 프로젝트 탑라인 row 의 status/map 진행률만 반영. blocks 는
-  // 무시(카드 ambient 표시엔 불필요). 매 문서 완료마다 오는 map_done bump 을
-  // 그대로 화면에 흘려보낸다.
+  useEffect(() => {
+    if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no project = nothing to track; reset the gate
+      setState({
+        status: 'none',
+        mapTotal: null,
+        mapDone: null,
+        blocks: [],
+        loading: false,
+      });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: true }));
+    void loadStatus();
+  }, [projectId, loadStatus]);
+
+  // Realtime — 이 프로젝트 탑라인 row 의 status/map 진행률 + blocks 반영. 매 문서
+  // 완료마다 오는 map_done bump 을 그대로 흘려보내고, done/error 전이 시엔 GET
+  // 재조회로 blocks/정합을 맞춘다(payload 누락 방어 — useInterviewTopline 미러).
   useEffect(() => {
     if (!projectId) return;
     const ch = supabase
@@ -307,6 +335,7 @@ export function useInterviewToplineStatus(
                 status?: ToplineStatus;
                 map_total?: number | null;
                 map_done?: number | null;
+                blocks?: ToplineBlock[];
               }
             | undefined;
           if (!next?.status || !aliveRef.current) return;
@@ -316,14 +345,19 @@ export function useInterviewToplineStatus(
               next.map_total !== undefined ? next.map_total : prev.mapTotal,
             mapDone:
               next.map_done !== undefined ? next.map_done : prev.mapDone,
+            blocks: Array.isArray(next.blocks) ? next.blocks : prev.blocks,
+            loading: false,
           }));
+          if (next.status === 'done' || next.status === 'error') {
+            void loadStatus();
+          }
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [supabase, projectId]);
+  }, [supabase, projectId, loadStatus]);
 
   return state;
 }
