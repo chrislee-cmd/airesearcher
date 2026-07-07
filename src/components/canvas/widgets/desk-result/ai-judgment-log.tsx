@@ -10,7 +10,7 @@ import { isJudgmentEvent } from '@/lib/desk-orchestrator/types';
 // job 등) 아무것도 그리지 않는다 — legacy 결과 화면 회귀 0.
 //
 // 소유권: 이 파일은 shell PR(C) 완결. market PR(D) 은 desk-result/index.tsx
-// 의 mode branch 만, custom PR(E) 은 custom.ts 의 log 라인만 추가한다.
+// 의 mode branch 만 편집한다.
 export function AiJudgmentLog({ job }: { job: DeskJob }) {
   const lines = useMemo(
     () => (job.progress?.events ?? []).filter(isJudgmentEvent),

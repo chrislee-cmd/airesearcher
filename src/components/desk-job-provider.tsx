@@ -121,8 +121,10 @@ export type DeskJob = {
   id: string;
   keywords: string[];
   // 리서치 목적 mode (데스크 v2). optional — mode 컬럼 마이그 적용 전 API
-  // 응답에 없을 수 있다; 누락 = 'custom'(옛 flow) 으로 취급.
-  mode?: 'trend' | 'market' | 'custom';
+  // 응답에 없을 수 있다. custom mode 는 제거됐지만 옛 job row 는 여전히
+  // mode='custom' 을 담고 있을 수 있다 — 그런 row 는 result view 가 'market'
+  // 이 아닌 값으로 취급해 공용 markdown 리포트로 graceful 하게 렌더한다.
+  mode?: 'trend' | 'market';
   sources: DeskSourceId[];
   locale: string;
   date_from: string | null;

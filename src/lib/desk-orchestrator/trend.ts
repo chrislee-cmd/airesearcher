@@ -136,7 +136,7 @@ export async function runTrend(
     buildCrawlTasks: ({ similar }) => {
       const tasks: CrawlTask[] = [];
       // 일반 수집 — (원 + 유사) 키워드 × 트렌드 소스. region-aware 소스만
-      // region 마다 별도 crawl (custom mode 와 동일 규칙).
+      // region 마다 별도 crawl.
       const allKeywords = [...keywords, ...similar];
       const targets: { src: DeskSourceId; region: DeskRegion }[] = [];
       for (const src of effectiveSources) {

@@ -8,15 +8,15 @@
 //     "화장품" ✅ / "스킨케어 시장" ❌, 2026-07-06 라이브 프로브로 확정)
 //   - DART 공시 = 한글 정식 사명 (회사명 검색이 정확)
 //
-// 이 파서는 그 셋을 **한 번의 LLM 호출**로 뽑는다. runMarket / runCustom(통계·
-// 공시 소스 선택 시)이 실행 계획을 만들기 직전에 호출하고, 결과는 소스 클래스
-// 별 crawl 검색어 + AI 판단 로그에 쓰인다.
+// 이 파서는 그 셋을 **한 번의 LLM 호출**로 뽑는다. runMarket 이 실행 계획을
+// 만들기 직전에 호출하고, 결과는 소스 클래스별 crawl 검색어 + AI 판단 로그에
+// 쓰인다.
 //
 // 실패해도 절대 throw 하지 않는다 — 빈 구조를 돌려 crawl 이 원 키워드만으로라도
 // 진행되게 한다 (LLM 이 임의 회사/통계를 지어내지 않는 것이 market mode citation
 // 원칙과 일관).
 //
-// server 전용 모듈 — orchestrator(market.ts / custom.ts)만 import (env / LLM 의존).
+// server 전용 모듈 — orchestrator(market.ts)만 import (env / LLM 의존).
 
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';

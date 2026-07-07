@@ -70,11 +70,11 @@ const MAX_REGIONS = 3;
 
 const Body = z.object({
   keywords: z.array(z.string().min(1).max(120)).min(1).max(MAX_KEYWORDS),
-  // 리서치 목적 mode (데스크 v2). 누락 시 'custom' — mode 도입 전 클라이언트
-  // 요청이 옛 flow(소스 직접 선택) 그대로 동작하는 backward-compat.
-  mode: z.enum(['trend', 'market', 'custom']).optional(),
-  // custom mode 에서만 필수 (아래 POST 에서 mode 별 검증). trend/market 은
-  // 서버가 소스를 자동 선정하므로 client 가 보내지 않는다.
+  // 리서치 목적 mode (데스크 v2). 누락 시 'trend' — 기본 경로. (custom mode 는
+  // 제거됨 — fix/desk-remove-custom-mode.)
+  mode: z.enum(['trend', 'market']).optional(),
+  // legacy: 옛 custom flow 가 소스를 직접 보냈다. custom 제거 후 trend/market 은
+  // 서버가 소스를 자동 선정하므로 무시된다 — 옛 클라이언트 호환 위해 스키마만 유지.
   sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES).optional(),
   locale: z.enum(['ko', 'en']).optional(),
   // 멀티 region 우선. 단일 `region` 도 backward-compat 으로 유지 — 누락 시
@@ -106,7 +106,7 @@ const EXPAND_SYSTEM = `
 `.trim();
 
 // 리포트 합성 system prompt + 항목 목록 형식은 mode 소유로 이관됐다 —
-// src/lib/desk-orchestrator/{custom,trend}.ts 참고. 이 파일(runner)에는
+// src/lib/desk-orchestrator/{trend,market}.ts 참고. 이 파일(runner)에는
 // mode 무관 공통 프롬프트(키워드 확장 / 차트)만 남는다.
 
 
@@ -235,8 +235,8 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { keywords, sources, locale = 'ko', regions: regionsInput, region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
-  const mode: DeskMode = parsed.data.mode ?? 'custom';
+  const { keywords, locale = 'ko', regions: regionsInput, region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
+  const mode: DeskMode = parsed.data.mode ?? 'trend';
   // Default region from locale: Korean researchers default to KR sources,
   // English researchers default to GLOBAL (Google News will use US/en).
   // 멀티 region 입력이 있으면 그대로, 아니면 단일 region (legacy) 또는 locale
@@ -269,20 +269,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   }
 
-  // mode 별 소스 결정 — custom 은 사용자 선택(필수), trend 는 서버 자동 선정
-  // (뉴스·SNS·검색량 위주), market 은 후속 PR 에서 resolve (지금은 빈 목록 —
-  // runner 의 NotImplementedYet 가드가 크레딧 환불과 함께 최종 처리).
-  let requestedSources: DeskSourceId[];
-  if (mode === 'custom') {
-    if (!sources || sources.length === 0) {
-      return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-    }
-    requestedSources = sources as DeskSourceId[];
-  } else if (mode === 'trend') {
-    requestedSources = TREND_SOURCE_IDS;
-  } else {
-    requestedSources = [];
-  }
+  // mode 별 소스 결정 — trend 는 서버 자동 선정(뉴스·SNS·검색량 위주),
+  // market 은 runner(market.ts)가 통계·공시 세트를 자체 resolve 하므로 여기선
+  // 빈 목록으로 둔다.
+  const requestedSources: DeskSourceId[] =
+    mode === 'trend' ? TREND_SOURCE_IDS : [];
 
   // Pre-crawl skip = missing env key ('no_key'). Runtime errors (invalid_key /
   // rate_limited / fetch_failed) are appended after the crawl in runJob. The
@@ -380,7 +371,7 @@ export async function POST(request: Request) {
 // "라면 시장 규모" market mode 에서 오뚜기 매출만 생존, 농심·삼양 탈락 — 수치를
 // 못 가져와서가 아니라 가져온 수치를 샘플링이 버려서). 샘플링 전에 이 근거를 pin 해
 // LLM 입력 앞에 강제 배치하고 남은 슬롯만 클러스터링으로 채운다.
-// - market mode 한정. 뉴스 위주 custom/trend 은 호출 안 하므로 회귀 0.
+// - market mode 한정. 뉴스 위주 trend 은 호출 안 하므로 회귀 0.
 // - PIN_CAP 상한으로 50 토큰 상한(Anthropic 30k tok/min) 안에서 뉴스 슬롯 잠식 방지.
 // - 정책 유지: LLM 이 숫자를 생성하지 않는다. 이미 수집된 명시 수치를 LLM 까지
 //   "도달"하게만 한다.
@@ -557,7 +548,7 @@ async function runJob(args: {
     let similar: string[] = [];
     beginPhase('expanding');
     if (plan.parsed && plan.parsed.phrases.length > 0) {
-      // mode(market / 통계·공시 custom)가 자연어를 이미 한 번의 LLM 호출로
+      // mode(통계·공시 market)가 자연어를 이미 한 번의 LLM 호출로
       // {phrases / statTerms / companies} 로 구조화 파싱했다 — 그 phrases 를
       // 뉴스·학술 확장어(similar)로 재사용하고 일반 유사어 확장 호출은 건너뛴다
       // (소스별 검색어 재작성 = 이 파싱이 SSOT). statTerms/companies 는 plan 이
@@ -630,7 +621,7 @@ async function runJob(args: {
 
     // AI 판단 로그 — mode plan 이 만든 판단 근거(소스 선정 / 축 설계 / 제외
     // 사유)를 crawl 시작 전에 이벤트로 push. 보고서 상단 AiJudgmentLog 가
-    // 마커(🎯🔍🧠📰🚫)로 이 라인들만 골라 렌더한다. custom 은 아직 0줄.
+    // 마커(🎯🔍🧠📰🚫)로 이 라인들만 골라 렌더한다.
     const judgmentLines = plan.buildJudgmentEvents({ similar });
     if (judgmentLines.length > 0) {
       for (const line of judgmentLines.slice(0, -1)) pushEvent(line);
@@ -638,8 +629,8 @@ async function runJob(args: {
     }
 
     const allKeywords = [...keywords, ...similar];
-    // crawl task 구성은 mode plan 소유 — custom 은 옛 (키워드 × 소스 × region)
-    // 조합 그대로, trend 는 부정 신호 filter 조합이 추가된다.
+    // crawl task 구성은 mode plan 소유 — trend 는 부정 신호 filter 조합이
+    // 추가되고, market 은 통계·공시·회사 축으로 라우팅한다.
     const crawlTasks = plan.buildCrawlTasks({ similar });
     crawlTotal = crawlTasks.length;
     await patch({ status: 'crawling' });
@@ -930,8 +921,8 @@ async function runJob(args: {
       'summarizing',
     );
 
-    // 리포트 합성 입력은 mode plan 소유 — custom 은 5 카테고리 그룹핑
-    // (옛 형식 그대로), trend 는 일반 수집 / 부정 신호 filter 2 구획.
+    // 리포트 합성 입력은 mode plan 소유 — trend 는 일반 수집 / 부정 신호
+    // filter 2 구획, market 은 TAM/SAM 참고 데이터 구성.
     const userMsg = plan.buildReportUserMsg({
       locale,
       keywords,
