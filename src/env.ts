@@ -32,6 +32,10 @@ export const env = createEnv({
     // flag is the gate that lets us trust XFF in rate-limit.ts.
     VERCEL: z.string().optional(),
     VERCEL_URL: z.string().optional(),
+    // Deployment git SHA, injected by Vercel. Optional (absent locally / in
+    // test). Stamped onto rag_eval_runs so a metric snapshot is traceable to
+    // the exact deploy — the A/B/C before/after comparison hinges on this.
+    VERCEL_GIT_COMMIT_SHA: z.string().optional(),
 
     // ── Required in production (build fails if missing) ──────────────
     CRON_SECRET: z.string().min(16),
@@ -189,6 +193,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     VERCEL: process.env.VERCEL,
     VERCEL_URL: process.env.VERCEL_URL,
+    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
 
     CRON_SECRET: process.env.CRON_SECRET,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
