@@ -21,6 +21,7 @@ function classifyDartStatus(status: string): DeskSourceErrorReason | undefined {
 import {
   fetchDartRevenue,
   formatKrwAmount,
+  listedRosterSize,
   resolveDartCorp,
   type DartCorp,
   type DartRevenueReason,
@@ -230,24 +231,62 @@ export const dart: DeskSourceDefinition = {
     const key = cleanApiKey(env.DART_API_KEY);
     if (!key) return [];
 
-    // 검색어가 상장사 사명이면 corp_code 로 그 회사를 정확히 조회 (매출액 +
-    // 정기공시). 실패하면 옛 피드 필터로 안전하게 fallback. corp 경로가 실제
-    // 기사를 만들면 그대로 반환 (에러 채널은 fallback 이 소유 — 항상 마지막에
-    // 도는 경로라 API status 를 가장 신뢰성 있게 관측한다).
+    // market·custom 두 mode 모두 DART 에는 회사명(companies 축)만 보낸다 — 즉 이
+    // keyword 는 항상 "회사"로 간주된다. corp_code 로 그 회사를 정확히 조회하고
+    // (매출액 + 정기공시), 실패하면 피드 필터로 API status 를 관측한다. 그래도
+    // 0 이면 조용히 비우지 않고 사유를 남긴다 (무음 0건 금지 — 2026-07-08 진단:
+    // ‘팔도’/‘KIS정보통신’ 등 비상장·자회사가 corp 미해석 → 피드 필터 오늘-창
+    // → 0건인데 아무 사유도 안 남아 유저가 버그와 구분 못 했다).
+    let corp: DartCorp | null = null;
     try {
-      const corp = await resolveDartCorp(keyword, key);
+      corp = await resolveDartCorp(keyword, key);
       if (corp) {
         const byCorp = await fetchByCorp(corp, key, keyword, range, limit);
+        console.info(
+          `[desk-debug] dart corp — name=${keyword} code=${corp.corpCode} articles=${byCorp.length}`,
+        );
         if (byCorp.length) return byCorp;
       }
     } catch (err) {
       console.error('[dart] corp path failed, falling back', err);
     }
 
+    // corp 미해석(비상장/자회사) 또는 corp 경로 0건 → 피드 필터로 키/한도 오류를
+    // 관측한다 (에러 채널 소유 경로).
+    let feed: DeskFetchResult;
     try {
-      return await fetchByFeedFilter(key, keyword, range, limit);
+      feed = await fetchByFeedFilter(key, keyword, range, limit);
     } catch {
-      return { articles: [], error: 'fetch_failed' };
+      feed = { articles: [], error: 'fetch_failed' };
     }
+    // 명부 준비 여부로 "명부 미준비(warm-up 실패)"와 "명부엔 있으나 미등재
+    // (비상장)"를 가른다 — 메모/캐시만 보므로 추가 왕복 없음.
+    const rosterSize = corp ? -1 : await listedRosterSize(key);
+    console.info(
+      `[desk-debug] dart feed — name=${keyword} corp=${corp ? corp.corpCode : 'unresolved'} roster=${rosterSize} articles=${feed.articles.length} error=${feed.error ?? 'none'}`,
+    );
+    if (feed.articles.length || feed.error) return feed;
+
+    // 여기 = corp 미해석 + 피드 0건 + API 오류 아님. 명부가 준비된 상태에서
+    // 못 찾았다면 상장사가 아니란 뜻 — 조용한 0 대신 사유 article 을 흘려 보고서
+    // LLM 이 "비상장이라 공시 없음"을 알고 임의 수치를 지어내지 않게 한다.
+    // (명부 미준비면 root cause 가 달라 여기서 라벨을 붙이지 않고 그대로 반환 —
+    // market 판단 로그가 "명부 준비 실패"를 이미 노출한다.)
+    if (!corp && rosterSize > 0) {
+      const searchUrl = `https://dart.fss.or.kr/dsae001/main.do?autoSearch=true&textCrpNm=${encodeURIComponent(keyword)}`;
+      return {
+        articles: [
+          {
+            source: 'dart',
+            title: `${keyword} — DART 공시 없음 (비상장·자회사 추정)`,
+            url: searchUrl,
+            snippet: `‘${keyword}’ 은 DART 상장사 명부(코스피/코스닥 ${rosterSize.toLocaleString()}건)에서 찾지 못했습니다. 비상장·자회사·외국계 본사이면 전자공시 대상이 아니라 매출 공시가 없습니다. 수치를 임의로 채우지 말고 “공시 없음(비상장 추정)”으로 표기하세요.`,
+            origin: keyword,
+            keyword,
+          },
+        ],
+      };
+    }
+    return feed;
   },
 };

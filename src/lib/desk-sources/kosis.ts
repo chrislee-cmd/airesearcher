@@ -82,13 +82,21 @@ export const kosis: DeskSourceDefinition = {
       // job 리포트까지 전달한다 (함수 로그도 유지).
       const errObj = json as { err?: string; errMsg?: string };
       if (errObj?.err) {
-        console.error('[kosis] API error', errObj.err, errObj.errMsg);
-        return { articles: [], error: classifyKosisErr(errObj.err) };
+        // 구조화 디버그 로그(2026-07-08): 컴파일된 검색어 + err 코드 + 분류를
+        // 함께 남긴다. err=30/31(자료 없음)은 genuine empty 라 error=undefined 로
+        // 조용히 비지만, 무슨 검색어가 어떤 err 로 0건인지는 로그로 추적 가능.
+        // 키/한도 오류는 error-level(Vercel 알림), 자료 없음은 info. 키는 로그에 없음.
+        const reason = classifyKosisErr(errObj.err);
+        const log = reason ? console.error : console.info;
+        log(
+          `[desk-debug] kosis — searchNm=${keyword} err=${errObj.err} reason=${reason ?? 'no_data'} msg=${errObj.errMsg ?? ''}`,
+        );
+        return { articles: [], error: reason };
       }
       return { articles: [] };
     }
     const items = json as KosisItem[];
-    return items
+    const out = items
       .map((item) => ({
         source: 'kosis' as const,
         title: item.TBL_NM ?? '',
@@ -106,5 +114,12 @@ export const kosis: DeskSourceDefinition = {
       } satisfies DeskArticle))
       .filter((a) => a.title && a.url)
       .slice(0, limit);
+    // 구조화 디버그 로그: 컴파일된 검색어당 raw 응답 건수 vs url/title 필터 후
+    // 최종 건수. 배열은 왔는데 0건이면 "카탈로그에 있으나 필터로 다 빠짐"인지
+    // "애초에 매칭 0"인지 이 로그로 구분한다 (무음 0건 추적).
+    console.info(
+      `[desk-debug] kosis — searchNm=${keyword} raw=${items.length} kept=${out.length}`,
+    );
+    return out;
   },
 };

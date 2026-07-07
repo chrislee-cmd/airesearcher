@@ -155,7 +155,13 @@ export async function resolveDartCorp(
   if (!key) return null;
   // crawl task 안 — 캐시/메모만. 미스면 다운로드 없이 null → feed filter fallback.
   const corps = await loadListedCorps(key, { allowDownload: false });
-  if (!corps.length) return null;
+  // 진단 구분(2026-07-08): null 이 "명부 미준비(warm-up/캐시 미스)"인지 "명부엔
+  // 있으나 미등재(비상장/자회사)"인지를 로그로 가른다 — 둘은 root cause 가 완전히
+  // 다른데 이전엔 똑같이 조용한 0건이 됐다. 키는 로그에 없음.
+  if (!corps.length) {
+    console.warn(`[desk-debug] dart resolve — roster_unready name=${name}`);
+    return null;
+  }
   const q = normName(name);
   if (!q) return null;
 
@@ -168,7 +174,23 @@ export async function resolveDartCorp(
       return n.includes(q) || q.includes(n);
     })
     .sort((a, b) => a.corpName.length - b.corpName.length);
+  if (!partial.length) {
+    console.info(
+      `[desk-debug] dart resolve — unlisted name=${name} roster=${corps.length}`,
+    );
+  }
   return partial[0] ?? null;
+}
+
+// 상장사 명부가 (다운로드 없이) 준비돼 있는지 확인용 크기. corp 미해석이
+// "비상장/자회사(명부엔 있음)"인지 "명부 미준비"인지 dart.ts 가 가려 진단 사유를
+// 정확히 붙이기 위한 헬퍼. loadListedCorps 는 메모/캐시라 추가 왕복이 없다.
+export async function listedRosterSize(
+  key: string = cleanApiKey(env.DART_API_KEY),
+): Promise<number> {
+  if (!key) return 0;
+  const corps = await loadListedCorps(key, { allowDownload: false });
+  return corps.length;
 }
 
 // 매출로 인정하는 계정명 — 표준 '매출액' 외에 지주/금융사의 '영업수익',
