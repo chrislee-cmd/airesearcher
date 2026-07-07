@@ -560,6 +560,51 @@ html, body {
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* stage-flow — 공정 플로우차트 아티팩트 primitive (StageFlow).
+   active 노드는 amore glow ring 이 잔잔히 맥동(probingThinkingPulse/
+   widgetGateGuidePulse 패턴 재사용 — box-shadow ring, 노드 자체 그림자 없음).
+   done→active 엣지는 흐르는 대시(marching dashes)로 "데이터가 다음 단계로
+   흐르는 중" 을 표현. 정적 엣지(pending)는 이 class 없이 단색 bg-line-soft.
+   prefers-reduced-motion 존중 — 모션 off 시 애니메이션 정지, 상태 색만 유지. */
+@keyframes stageFlowNodePulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-amore); }
+  50%      { box-shadow: 0 0 0 5px transparent; }
+}
+.stage-flow-node-active {
+  animation: stageFlowNodePulse 1.6s ease-in-out infinite;
+}
+@keyframes stageFlowEdgeFlowX {
+  from { background-position: 0 0; }
+  to   { background-position: 14px 0; }
+}
+.stage-flow-edge-flow-h {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-amore) 0 6px,
+    transparent 6px 14px
+  );
+  animation: stageFlowEdgeFlowX 0.7s linear infinite;
+}
+@keyframes stageFlowEdgeFlowY {
+  from { background-position: 0 0; }
+  to   { background-position: 0 14px; }
+}
+.stage-flow-edge-flow-v {
+  background-image: repeating-linear-gradient(
+    180deg,
+    var(--color-amore) 0 6px,
+    transparent 6px 14px
+  );
+  animation: stageFlowEdgeFlowY 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-flow-node-active { animation: none; }
+  /* 모션 off 시 흐름은 멈추되 대시(amore path)는 정적으로 남아 방향/활성 구간을
+     색으로 계속 전달. */
+  .stage-flow-edge-flow-h,
+  .stage-flow-edge-flow-v { animation: none; }
+}
+
 /* Docx-derived preview */
 .docx-preview h1 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--color-ink); }
 .docx-preview h2 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--color-ink); }
