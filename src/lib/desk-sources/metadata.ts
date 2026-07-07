@@ -15,6 +15,7 @@ export const KR_ONLY_GROUPS: DeskSourceGroup[] = [
   'academic_kr',
   'bok',
   'kosis',
+  'atfis',
   'institute_kr',
 
 ];
@@ -74,6 +75,11 @@ export const DESK_SOURCE_GROUPS: Record<
     label: '통계청 KOSIS',
     labelEn: 'KOSIS (Korea Statistics)',
     hint: 'KOSIS_API_KEY 필요',
+  },
+  atfis: {
+    label: 'aTFIS 식품산업통계',
+    labelEn: 'aTFIS (Food Industry Statistics)',
+    hint: '키 없이 동작 (가공식품 세분시장 시장규모 보고서)',
   },
   institute_kr: {
     label: '국내 연구소',
