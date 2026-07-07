@@ -416,7 +416,12 @@ function ActiveBody({
     </details>
   );
 
-  // 프로젝트 선택 시 하단 영역 — 탑라인 status 로 분기.
+  // 프로젝트 선택 시 하단 영역 — 탑라인 "보고서 존재" 여부로 분기. fullview 의
+  // ToplineView 는 status 가 아니라 hasBlocks(blocks.length>0)로 보고서를 렌더하므로,
+  // 카드도 같은 기준을 써야 한다 — 안 그러면 status 가 idle/stale 이지만 보고서가
+  // 있는 프로젝트에서 fullview 는 보고서를, 카드는 "분석 전" 프롬프트를 띄우는
+  // 불일치가 난다. 그래서 abstract(=blocks 파생) 유무를 우선 게이트로 쓴다.
+  const hasReport = toplineBlocks.length > 0;
   let projectBody: ReactNode;
   if (isLoading || toplineLoading) {
     projectBody = (
@@ -434,8 +439,11 @@ function ActiveBody({
         description={t('noFilesDescription')}
       />
     );
-  } else if (toplineStatus === 'done' && abstract) {
-    // B. 탑라인 done → 핵심 요약 abstract(제목 + 요약 + 수치 + 전체 보기).
+  } else if (abstract) {
+    // B. 보고서 존재(blocks) → 핵심 요약 abstract(제목 + 요약 + 수치 + 전체 보기).
+    // status 가 done/idle/stale 이든 보고서가 있으면 요약을 보여준다(fullview 정합).
+    // 재생성 중(generating)이라도 이전 blocks 로 요약을 유지하고, 진행률은 하단
+    // ambient 밴드가 표시.
     projectBody = (
       <div className="space-y-4">
         <div className="space-y-2">
@@ -462,20 +470,19 @@ function ActiveBody({
         {filesToggle}
       </div>
     );
-  } else if (toplineStatus === 'generating') {
-    // C. 생성 중 — 본문은 파일 목록 유지, 진행률은 하단 ambient 밴드(#434).
+  } else if (hasReport || toplineStatus === 'generating') {
+    // C. 보고서는 있으나 요약 파생 불가(표·인용만) OR 최초 생성 중 — 파일 목록을
+    // 보여준다. "분석 전" 프롬프트는 fullview 가 보고서를 렌더하거나 곧 렌더하므로
+    // 부정확 → 여기서 배제. 생성 진행률은 하단 ambient 밴드(#434)가 표시.
     projectBody = (
       <div className="space-y-2">
         {filesCountHeader}
         {fileChips}
       </div>
     );
-  } else if (
-    toplineStatus === 'idle' ||
-    toplineStatus === 'none' ||
-    toplineStatus === 'error'
-  ) {
-    // D. 탑라인 미생성 — "분석 시작" 프롬프트(하단 CTA 로 유도) + 파일 토글.
+  } else {
+    // D. 보고서 없음(none/idle/error & blocks 없음) & 생성 중 아님 → "분석 시작"
+    // 프롬프트(하단 CTA 로 유도) + 파일 토글.
     projectBody = (
       <div className="space-y-3">
         <div className="rounded-sm border border-line-soft bg-paper-soft px-3 py-3">
@@ -487,14 +494,6 @@ function ActiveBody({
           </p>
         </div>
         {filesToggle}
-      </div>
-    );
-  } else {
-    // done 이지만 abstract 파생 실패(quote·table 만) — 파일 목록으로 폴백.
-    projectBody = (
-      <div className="space-y-2">
-        {filesCountHeader}
-        {fileChips}
       </div>
     );
   }
