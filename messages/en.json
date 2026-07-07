@@ -788,11 +788,10 @@
     "range_three_years": "Last 3 years",
     "range_custom": "Custom",
     "modeLabel": "Research purpose",
-    "modeTitle": { "trend": "Trend research", "market": "Market research", "custom": "Custom" },
+    "modeTitle": { "trend": "Trend research", "market": "Market research" },
     "modeDesc": {
       "trend": "Recent momentum from news, social, and search — analyzed across 6 axes (overview, virality, positive, negative, key players, outlook).",
-      "market": "TAM/SAM reference datasets from statistics and disclosures — coming soon.",
-      "custom": "The classic flow — pick collection sources yourself."
+      "market": "TAM/SAM reference datasets from statistics and disclosures — coming soon."
     },
     "modeSoonBadge": "Coming soon",
     "modeComingSoon": "Coming soon",

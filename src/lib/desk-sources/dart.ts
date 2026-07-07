@@ -174,7 +174,7 @@ async function fetchByCorp(
   return out.slice(0, limit);
 }
 
-// ── fallback 경로 (옛 동작) — 사명이 아닌 검색어(custom mode 등)용 ─────────────
+// ── fallback 경로 (옛 동작) — 사명이 아닌 검색어(corp_code 미해석 시)용 ────────
 // corp_cls=Y 최근 공시 피드를 당겨 클라이언트에서 키워드로 필터. 특정 회사
 // 조회엔 부정확하지만, "화장품" 같은 일반어엔 최근 관련 공시를 훑는 용도로 유지.
 async function fetchByFeedFilter(
@@ -234,7 +234,7 @@ export const dart: DeskSourceDefinition = {
     const key = cleanApiKey(env.DART_API_KEY);
     if (!key) return [];
 
-    // market·custom 두 mode 모두 DART 에는 회사명(companies 축)만 보낸다 — 즉 이
+    // market mode 는 DART 에 회사명(companies 축)만 보낸다 — 즉 이
     // keyword 는 항상 "회사"로 간주된다. corp_code 로 그 회사를 정확히 조회하고
     // (매출액 + 정기공시), 실패하면 피드 필터로 API status 를 관측한다. 그래도
     // 0 이면 조용히 비우지 않고 사유를 남긴다 (무음 0건 금지 — 2026-07-08 진단:

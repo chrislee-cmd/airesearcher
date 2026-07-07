@@ -1,10 +1,10 @@
-// Desk orchestrator 공유 계약 — 3 mode (trend/market/custom) 가 공유하는
+// Desk orchestrator 공유 계약 — 2 mode (trend/market) 가 공유하는
 // 타입·상수만 둔다. 이 파일은 client(모드 selector / AI 판단 로그)에서도
 // import 되므로 server 전용 모듈(env, LLM, supabase)을 절대 import 하지 말 것.
 //
-// 소유권 (충돌 매트릭스): 이 파일은 shell PR(C) 이 완결한다. 후속 market(D) /
-// custom(E) PR 은 자기 mode 파일(market.ts / custom.ts)만 편집하고 이 파일은
-// 편집하지 않는다.
+// 소유권 (충돌 매트릭스): 이 파일은 shell PR(C) 이 완결한다. 후속 market(D)
+// PR 은 자기 mode 파일(market.ts)만 편집하고 이 파일은 편집하지 않는다.
+// (custom mode 는 제거됨 — fix/desk-remove-custom-mode.)
 
 import type {
   DeskArticle,
@@ -13,9 +13,9 @@ import type {
   DeskSourceId,
 } from '@/lib/desk-sources';
 
-export type DeskMode = 'trend' | 'market' | 'custom';
+export type DeskMode = 'trend' | 'market';
 
-export const DESK_MODES: DeskMode[] = ['trend', 'market', 'custom'];
+export const DESK_MODES: DeskMode[] = ['trend', 'market'];
 
 // 아직 orchestrator 실 로직이 없는 mode 를 실행하려 할 때 던진다. route 의
 // runner 가 이 에러를 잡아 크레딧 환불 + `not_implemented_yet:<mode>` 로
@@ -72,8 +72,8 @@ export type CrawlTask = {
 
 export type OrchestratorInput = {
   keywords: string[];
-  // custom mode: 사용자가 고른(env 필터 통과) 소스. trend/market: 서버가
-  // 정한 소스(env 필터 통과) — POST 단계에서 이미 resolve 되어 들어온다.
+  // trend/market: 서버가 정한 소스(env 필터 통과) — POST 단계에서 이미
+  // resolve 되어 들어온다.
   usableSources: DeskSourceId[];
   locale: 'ko' | 'en';
   regions: DeskRegion[];
