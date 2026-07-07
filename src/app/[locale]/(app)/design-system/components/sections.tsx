@@ -34,6 +34,7 @@ export type SectionId =
   | 'z-index'
   | 'button'
   | 'icon-button'
+  | 'icon-button-alt'
   | 'chrome-button'
   | 'input'
   | 'chrome-input'
@@ -110,6 +111,16 @@ export const SECTION_GROUPS: SectionGroup[] = [
         id: 'canvas-widget-primitives',
         label: 'Canvas Widget Primitives',
         render: () => <CanvasWidgetPrimitivesSection />,
+      },
+    ],
+  },
+  {
+    title: 'Sandbox (미적용)',
+    sections: [
+      {
+        id: 'icon-button-alt',
+        label: 'IconButton 대안 탐색',
+        render: () => <IconButtonAltSection />,
       },
     ],
   },
@@ -396,6 +407,113 @@ function IconButtonSection() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// IconButton 대안 탐색 (샌드박스 — 미적용)
+//
+// 프로덕션 IconButton(ui/icon-button.tsx) 은 Memphis 하드섀도(2px 잉크 테두리 +
+// shadow-[2px_2px_0_black] + hover 들림) 라 디자인 시스템의 no-shadow·미니멀
+// 원칙과 충돌한다. 아래는 교체 후보 5종을 눈으로 비교하기 위한 로컬 데모다.
+// 어떤 위젯에도 wire 하지 않으며, 승자 선택 후 실제 primitive 교체는 후속 spec.
+// 전부 no-shadow · 디자인 토큰 · 4px(또는 full) radius. 색은 각 style 이 단독 소유
+// (PROJECT.md §7.11 — base 에 색 두지 않음).
+// ─────────────────────────────────────────────────────────────────────────
+
+type AltStyleKey = 'flat-ghost' | 'keyline' | 'soft-filled' | 'circular' | 'accent-ghost';
+
+const ALT_BASE =
+  'inline-flex items-center justify-center leading-none transition-colors duration-[120ms] ' +
+  'focus:outline-none focus-visible:text-amore';
+
+// 색/테두리/배경 tint 만 담는다 (layout 은 ALT_BASE + size). shadow 없음.
+const ALT_STYLE: Record<AltStyleKey, string> = {
+  // Flat ghost — 테두리·배경 없음. hover 에서만 은은한 ink tint + 아이콘 진하게.
+  'flat-ghost': 'rounded-xs text-mute hover:bg-ink/6 hover:text-ink',
+  // Keyline — 1px 라인 + paper. hover 에서 테두리만 ink 로 또렷하게.
+  keyline: 'rounded-xs border border-line bg-paper text-ink hover:border-ink',
+  // Soft-filled — 무테 ink tint chip. hover 에서 tint 진하게.
+  'soft-filled': 'rounded-xs bg-ink/6 text-ink hover:bg-ink/12',
+  // Circular — rounded-full + 은은한 keyline. hover 에서 테두리 ink.
+  circular: 'rounded-full border border-line bg-paper text-ink hover:border-ink',
+  // Accent ghost — 무테 mute. hover 에서 amore 배경 + 브랜드 텍스트 pop.
+  'accent-ghost': 'rounded-xs text-mute hover:bg-amore-bg hover:text-amore',
+};
+
+const ALT_SIZE: Record<IconButtonSize, string> = {
+  compact: 'p-1',
+  sm: 'h-6 w-6',
+  md: 'h-7 w-7',
+  lg: 'h-8 w-8',
+};
+
+const ALT_META: { key: AltStyleKey; label: string; note: string }[] = [
+  { key: 'flat-ghost', label: 'Flat ghost', note: '무테·무배경, hover 에서만 은은한 ink tint — 가장 미니멀·에디토리얼.' },
+  { key: 'keyline', label: 'Keyline', note: '1px 라인 + paper, hover 에 테두리만 ink — 조용한 구조감.' },
+  { key: 'soft-filled', label: 'Soft-filled', note: '무테 ink tint chip, hover 에 tint 진하게 — 모던 chip.' },
+  { key: 'circular', label: 'Circular', note: 'rounded-full + keyline, hover 에 테두리 ink — 친근.' },
+  { key: 'accent-ghost', label: 'Accent ghost', note: '무테 mute, hover 에 amore 배경 + 브랜드 텍스트 — 미니멀 + 브랜드 pop.' },
+];
+
+const ALT_ICONS: { key: string; label: string; render: () => ReactNode }[] = [
+  { key: 'close', label: '×', render: () => <CloseIcon /> },
+  { key: 'settings', label: '⚙', render: () => <SettingsIcon /> },
+  { key: 'send', label: '→', render: () => <SendIcon /> },
+];
+
+// 로컬 scratch 데모 버튼 — 프로덕션 IconButton 과 무관. onClick no-op.
+function AltIconButton({
+  styleKey,
+  size,
+  children,
+  'aria-label': ariaLabel,
+}: {
+  styleKey: AltStyleKey;
+  size: IconButtonSize;
+  children: ReactNode;
+  'aria-label': string;
+}) {
+  const cls = [ALT_BASE, ALT_STYLE[styleKey], ALT_SIZE[size]].join(' ');
+  return (
+    // eslint-disable-next-line react/forbid-elements -- 샌드박스가 탐색하는 대상이 IconButton primitive 의 대안 스타일 자체라 primitive 를 쓸 수 없음. 카탈로그 전용 데모(미적용), 어떤 위젯에도 wire 안 됨.
+    <button type="button" className={cls} aria-label={ariaLabel} onClick={() => {}}>
+      {children}
+    </button>
+  );
+}
+
+function IconButtonAltSection() {
+  const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
+  return (
+    <PrimitivePage
+      title="IconButton 대안 탐색 (비교용 — 미적용)"
+      hint="샌드박스 데모 · 프로덕션 IconButton(ui/icon-button.tsx) 미변경 · 전부 no-shadow·토큰 · 승자 선택 후 후속 spec 에서 primitive 교체 · hover 를 실제로 확인 (클릭 no-op)"
+    >
+      {ALT_META.map((style) => (
+        <Subsection key={style.key} label={`${style.label} — ${style.note}`}>
+          <div className="flex flex-col gap-3">
+            {sizes.map((size) => (
+              <div key={size} className="flex items-center gap-4">
+                <span className="w-16 shrink-0 text-sm text-mute-soft">{size}</span>
+                <div className="flex items-center gap-3">
+                  {ALT_ICONS.map((icon) => (
+                    <AltIconButton
+                      key={icon.key}
+                      styleKey={style.key}
+                      size={size}
+                      aria-label={`${style.label} ${size} ${icon.label}`}
+                    >
+                      {icon.render()}
+                    </AltIconButton>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Subsection>
+      ))}
+    </PrimitivePage>
+  );
+}
+
 function ChromeButtonSection() {
   const variants: ChromeButtonVariant[] = ['default', 'mute', 'primary'];
   const sizes: ChromeButtonSize[] = ['xs', 'sm', 'md', 'lg'];
@@ -435,6 +553,34 @@ function CloseIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="2.1" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M7 1.2v1.6M7 11.2v1.6M12.8 7h-1.6M2.8 7H1.2M11.1 2.9l-1.1 1.1M4 10l-1.1 1.1M11.1 11.1L10 10M4 4L2.9 2.9"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 7h8M7 3.5L10.5 7 7 10.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
