@@ -132,6 +132,9 @@ async function fetchByCorp(
       publishedAt: `${revenue.year + 1}-04-01`,
       origin: corp.corpName,
       keyword,
+      // primary 수치 근거 — market mode 샘플링이 이 매출 headline 을 뉴스 사이에서
+      // dropout 시키지 않도록 pin 대상으로 표시 (2026-07-08 진단: 농심·삼양 탈락).
+      kind: 'metric',
     });
   } else {
     // 조용한 null 금지 — 명부 매칭은 됐는데 재무 조회가 실패한 경우, 사유를

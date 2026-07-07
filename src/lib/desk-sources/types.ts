@@ -85,6 +85,11 @@ export type DeskArticle = {
   // Optional so older code paths and persisted rows from before PR-1 stay
   // valid; downstream code should fall back to 'unknown' if missing.
   tier?: 'T1' | 'T2' | 'T3' | 'unknown';
+  // Primary numeric evidence marker. Set only by sources that emit an explicit
+  // metric an analyst would cite verbatim — DART 매출 headline, KOSIS 통계행.
+  // market-mode 샘플링(route.ts splitPinnedPrimary)이 이 근거를 임베딩 클러스터링
+  // dropout 에서 보호(pin)하는 데 쓴다. 뉴스/일반 소스는 미설정(undefined).
+  kind?: 'metric';
 };
 
 // Why a source produced 0 usable articles when the cause is an API-side error

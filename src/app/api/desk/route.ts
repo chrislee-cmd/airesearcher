@@ -374,6 +374,43 @@ export async function POST(request: Request) {
   return NextResponse.json({ job_id: job.id });
 }
 
+// ─── market-mode primary-evidence pinning ────────────────────────────────────
+// DART 매출 headline / KOSIS 통계행 같은 수치 primary 근거는 임베딩 클러스터링에
+// 맡기면 뉴스 ~1500건 사이 한 점으로 경쟁하다 dropout 한다 (2026-07-08 진단:
+// "라면 시장 규모" market mode 에서 오뚜기 매출만 생존, 농심·삼양 탈락 — 수치를
+// 못 가져와서가 아니라 가져온 수치를 샘플링이 버려서). 샘플링 전에 이 근거를 pin 해
+// LLM 입력 앞에 강제 배치하고 남은 슬롯만 클러스터링으로 채운다.
+// - market mode 한정. 뉴스 위주 custom/trend 은 호출 안 하므로 회귀 0.
+// - PIN_CAP 상한으로 50 토큰 상한(Anthropic 30k tok/min) 안에서 뉴스 슬롯 잠식 방지.
+// - 정책 유지: LLM 이 숫자를 생성하지 않는다. 이미 수집된 명시 수치를 LLM 까지
+//   "도달"하게만 한다.
+const PIN_CAP = 15;
+
+// 우선순위로 pinned 를 고른다: (1) kind==='metric'(DART 매출·KOSIS 통계 = 실제
+// 수치 근거, 반드시 생존) → (2) 기타 dart/kosis 진단 항목(공시 없음/조회 실패 등,
+// LLM 이 임의 수치 생성 안 하게 하는 근거) → (3) 기타 tier-T1 primary. PIN_CAP
+// 초과분과 나머지는 rest 로 넘겨 기존 임베딩 클러스터링 대상이 된다.
+function splitPinnedPrimary(articles: DeskArticle[]): {
+  pinned: DeskArticle[];
+  rest: DeskArticle[];
+} {
+  const metric: DeskArticle[] = [];
+  const disclosure: DeskArticle[] = [];
+  const t1: DeskArticle[] = [];
+  const rest: DeskArticle[] = [];
+  for (const a of articles) {
+    if (a.kind === 'metric') metric.push(a);
+    else if (a.source === 'dart' || a.source === 'kosis') disclosure.push(a);
+    else if (a.tier === 'T1') t1.push(a);
+    else rest.push(a);
+  }
+  const ranked = [...metric, ...disclosure, ...t1];
+  const pinned = ranked.slice(0, PIN_CAP);
+  const overflow = ranked.slice(PIN_CAP);
+  // overflow(pin 상한 초과 T1/진단)는 rest 뒤로 — 여전히 클러스터링 후보.
+  return { pinned, rest: [...rest, ...overflow] };
+}
+
 // ─── Background runner ───────────────────────────────────────────────────────
 // mode 무관 공통 파이프라인 (확장 → crawl → 안전망 → 샘플링 → 리포트 → 차트
 // → 저장). mode 별 결정(소스/crawl task/판단 로그/리포트 prompt)은 orchestrator
@@ -844,24 +881,45 @@ async function runJob(args: {
     const SUMMARIZE_SAMPLE_K = 50;
     let articlesForLLM = articles;
     if (articles.length > SUMMARIZE_SAMPLE_K) {
+      // market mode 는 수치 primary 근거(DART 매출·KOSIS 통계·T1)를 샘플링 전에
+      // pin 해 dropout 을 막는다. 그 외 mode 는 pinned=[] 로 기존 동작 그대로.
+      const { pinned, rest } =
+        mode === 'market'
+          ? splitPinnedPrimary(articles)
+          : { pinned: [] as DeskArticle[], rest: articles };
+      const restSlots = SUMMARIZE_SAMPLE_K - pinned.length;
+      if (pinned.length > 0) {
+        console.info(
+          `[desk-debug] market pin — pinned=${pinned.length} rest=${rest.length} restSlots=${restSlots}`,
+        );
+      }
       await pushAndPatch(
-        `${articles.length}건은 한 번에 다 못 넣어서, 임베딩으로 의미가 다양한 ${SUMMARIZE_SAMPLE_K}건을 골라낼게요…`,
+        pinned.length > 0
+          ? `${articles.length}건 중 수치 근거(공시·통계) ${pinned.length}건은 먼저 확보하고, 나머지는 임베딩으로 의미가 다양한 ${Math.max(restSlots, 0)}건을 골라낼게요…`
+          : `${articles.length}건은 한 번에 다 못 넣어서, 임베딩으로 의미가 다양한 ${SUMMARIZE_SAMPLE_K}건을 골라낼게요…`,
         'summarizing',
       );
       try {
-        articlesForLLM = await pickRepresentativeArticles(
-          articles,
-          SUMMARIZE_SAMPLE_K,
-        );
+        // 남은 슬롯이 있을 때만 클러스터링. pinned 가 상한(15)이라 restSlots 는
+        // 항상 ≥35 이지만, 방어적으로 0 이하면 rest 샘플링을 건너뛴다.
+        const sampledRest =
+          restSlots > 0
+            ? await pickRepresentativeArticles(rest, restSlots)
+            : [];
+        articlesForLLM = [...pinned, ...sampledRest];
         await pushAndPatch(
           `대표 ${articlesForLLM.length}건 골랐어요.`,
           'summarizing',
         );
       } catch (err) {
         console.error('[desk] sampling failed', err);
-        articlesForLLM = articles.slice(0, SUMMARIZE_SAMPLE_K);
+        // fallback 도 pinned 를 앞에 두어 수치 근거를 보존한다.
+        articlesForLLM = [
+          ...pinned,
+          ...rest.slice(0, Math.max(restSlots, 0)),
+        ].slice(0, SUMMARIZE_SAMPLE_K);
         await pushAndPatch(
-          `의미 분석은 실패했지만 ${SUMMARIZE_SAMPLE_K}건으로 줄여서 진행할게요.`,
+          `의미 분석은 실패했지만 ${articlesForLLM.length}건으로 줄여서 진행할게요.`,
           'summarizing',
         );
       }

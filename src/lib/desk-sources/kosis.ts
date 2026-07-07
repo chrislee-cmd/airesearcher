@@ -111,6 +111,9 @@ export const kosis: DeskSourceDefinition = {
         snippet: [item.ORG_NM, item.MT_ATITLE].filter(Boolean).join(' · ') || undefined,
         origin: item.ORG_NM,
         keyword,
+        // 통계 primary 근거 — market mode 샘플링이 통계 테이블 행을 뉴스 사이에서
+        // dropout 시키지 않도록 pin 대상으로 표시 ("시장 통계" 섹션 생존 보장).
+        kind: 'metric' as const,
       } satisfies DeskArticle))
       .filter((a) => a.title && a.url)
       .slice(0, limit);
