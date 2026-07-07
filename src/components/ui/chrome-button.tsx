@@ -48,7 +48,11 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 // label) after #230 migrated them off the native <button>.
 const BASE =
   'border rounded-xs ' +
-  'transition-colors duration-[120ms] ' +
+  // `transition`(색+transform 포함) + 모션 토큰 duration. active:scale = 전역
+  // press 피드백(마이크로인터랙션 Foundation). transition-colors 였다면 scale 이
+  // 애니메이션 안 되므로 transform 포함 그룹으로 교체. reduced-motion 시 중립.
+  'transition duration-[var(--dur-fast)] ' +
+  'active:scale-[0.97] motion-reduce:active:scale-100 ' +
   'disabled:opacity-40 disabled:cursor-not-allowed ' +
   'focus:outline-none focus-visible:border-amore';
 

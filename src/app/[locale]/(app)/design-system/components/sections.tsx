@@ -1,6 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { useCountUp } from '@/hooks/use-count-up';
 import { Button, type ButtonVariant, type ButtonSize } from '@/components/ui/button';
 import { IconButton, type IconButtonVariant, type IconButtonSize } from '@/components/ui/icon-button';
 import { ChromeButton, type ChromeButtonVariant, type ChromeButtonSize } from '@/components/ui/chrome-button';
@@ -32,6 +34,7 @@ export type SectionId =
   | 'radius'
   | 'font-size'
   | 'z-index'
+  | 'motion'
   | 'button'
   | 'icon-button'
   | 'chrome-button'
@@ -70,6 +73,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'radius', label: 'Radius', render: () => <RadiusTokens /> },
       { id: 'font-size', label: 'Font Size', render: () => <FontSizeTokens /> },
       { id: 'z-index', label: 'Z-index', render: () => <ZIndexTokens /> },
+      { id: 'motion', label: 'Motion', render: () => <MotionSection /> },
     ],
   },
   {
@@ -302,6 +306,137 @@ function ZIndexTokens() {
           </tbody>
         </table>
       </div>
+    </PrimitivePage>
+  );
+}
+
+function MotionSection() {
+  const reduced = useReducedMotion();
+  // key 를 증가시켜 데모 노드를 remount → CSS 애니메이션 재생.
+  const [replay, setReplay] = useState(0);
+  const [countTarget, setCountTarget] = useState(128);
+  const count = useCountUp(countTarget, { startFrom: 0 });
+
+  const tokenRows = [
+    { group: 'Duration', name: '--dur-fast', value: '120ms', usage: 'press / hover 즉각 피드백' },
+    { group: 'Duration', name: '--dur', value: '180ms', usage: '기본 등장 / 전환' },
+    { group: 'Duration', name: '--dur-slow', value: '260ms', usage: '강조 등장 (fade-in-up / pop-in)' },
+    { group: 'Easing', name: '--ease-out', value: 'cubic-bezier(0.22, 1, 0.36, 1)', usage: '감속 정착 (기본)' },
+    { group: 'Easing', name: '--ease-emphasized', value: 'cubic-bezier(0.34, 1.4, 0.64, 1)', usage: '강조 overshoot (pop-in)' },
+    { group: 'Distance', name: '--motion-rise', value: '6px', usage: 'fade-in-up 상승 거리' },
+  ];
+
+  const utils = [
+    { cls: 'fade-in-up', desc: '아래→위 떠오르며 등장' },
+    { cls: 'pop-in', desc: 'scale 0.8→1 튕기며 등장' },
+    { cls: 'shake', desc: '오류 피드백 좌우 흔들림' },
+  ];
+
+  return (
+    <PrimitivePage
+      title="Motion"
+      hint="globals.css 모션 토큰(--dur-*/--ease-*/--motion-rise) + 공용 유틸(.fade-in-up/.pop-in/.shake/.stagger/.press-scale) + 훅(useReducedMotion/useCountUp). 라이브러리 없이 CSS keyframes only · prefers-reduced-motion 전면 존중."
+    >
+      {reduced ? (
+        <div className="rounded-xs border border-warning-line bg-warning-bg px-3 py-2 text-sm text-ink-2">
+          OS ‘동작 줄이기(reduce motion)’ 가 켜져 있어 아래 데모가 애니메이션 없이 즉시
+          최종 상태로 표시됩니다 — 의도된 접근성 존중.
+        </div>
+      ) : null}
+
+      <Subsection label="Tokens (globals.css SSOT — 하드코드 duration 금지)">
+        <div className="border border-line bg-paper rounded-sm">
+          <table className="w-full text-md">
+            <thead className="border-b border-line">
+              <tr className="text-left">
+                <th className="px-4 py-2.5 font-semibold text-ink-2">Group</th>
+                <th className="px-4 py-2.5 font-semibold text-ink-2">Token</th>
+                <th className="px-4 py-2.5 font-semibold text-ink-2">Value</th>
+                <th className="px-4 py-2.5 font-semibold text-ink-2">Usage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tokenRows.map((t) => (
+                <tr key={t.name} className="border-b border-line-soft last:border-b-0">
+                  <td className="px-4 py-2 text-mute-soft">{t.group}</td>
+                  <td className="px-4 py-2 font-mono text-ink">{t.name}</td>
+                  <td className="px-4 py-2 font-mono text-mute">{t.value}</td>
+                  <td className="px-4 py-2 text-mute">{t.usage}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Subsection>
+
+      <Subsection label="유틸 클래스 — 재생">
+        <div className="mb-3">
+          <Button size="sm" variant="secondary" onClick={() => setReplay((n) => n + 1)}>
+            ▶ 다시 재생
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {utils.map((u) => (
+            <div
+              key={u.cls}
+              className="flex flex-col items-center gap-2 border border-line bg-paper p-4 rounded-sm"
+            >
+              {/* replay key 로 remount → 애니메이션 재생 */}
+              <div key={replay} className={`h-12 w-12 rounded-xs bg-amore ${u.cls}`} />
+              <code className="text-sm text-ink">.{u.cls}</code>
+              <p className="text-center text-xs-soft text-mute">{u.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label=".stagger — 직계 자식 순차 등장 (fade-in-up 계단식)">
+        <div key={`stagger-${replay}`} className="stagger flex flex-wrap gap-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="flex h-10 w-10 items-center justify-center rounded-xs border border-line bg-amore-bg text-sm text-ink"
+            >
+              {i + 1}
+            </div>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label=".press-scale — 클릭 시 눌림 (프리미티브 밖 임의 요소용)">
+        <div className="press-scale inline-flex cursor-pointer select-none items-center rounded-sm border border-line bg-paper px-4 py-2 text-md text-ink">
+          여기를 눌러보세요 (mousedown 시 scale 0.97)
+        </div>
+      </Subsection>
+
+      <Subsection label="useCountUp — 숫자 카운트업/다운 (문서 수 · 크레딧 · N/240)">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="min-w-[120px] text-display font-semibold tabular-nums text-ink">
+            {count.toLocaleString()}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[42, 128, 1240].map((v) => (
+              <Button key={v} size="sm" variant="secondary" onClick={() => setCountTarget(v)}>
+                → {v.toLocaleString()}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Subsection>
+
+      <Subsection label="프리미티브 press 내장 (active:scale-[0.97] — 눌러 확인)">
+        <p className="mb-2 text-sm text-mute">
+          Button / IconButton / ChromeButton 은 base 에 press-scale 내장. hover(Memphis
+          translate/shadow)·focus·클릭 동작은 그대로.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button>Button</Button>
+          <ChromeButton>ChromeButton</ChromeButton>
+          <IconButton aria-label="press demo" variant="bordered" size="md">
+            <CloseIcon />
+          </IconButton>
+        </div>
+      </Subsection>
     </PrimitivePage>
   );
 }

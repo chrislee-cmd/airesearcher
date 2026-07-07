@@ -270,6 +270,21 @@
   --sidebar-active-border: var(--border-strong);
   --sidebar-group-heading: var(--fg-primary);
 
+  /* motion — 마이크로인터랙션 duration/easing/distance SSOT.
+     theme-agnostic (톤 swap 영향 없음, type scale 과 동일 성격).
+     하드코드 duration 산발 금지 — 유틸/컴포넌트/훅은 이 토큰만 참조.
+       --dur-fast  press/hover 즉각 피드백
+       --dur       기본 등장/전환
+       --dur-slow  강조 등장(fade-in-up/pop-in)
+       --ease-out        감속(자연 정착), --ease-emphasized  강조(살짝 overshoot 계열)
+       --motion-rise     fade-in-up 시 아래→위 이동 거리(1px translate 원칙, 6px) */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-emphasized: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --motion-rise: 6px;
+
   /* memphis hard shadows — 기존 이름 보존 */
   --memphis-shadow-sm: var(--raw-shadow-hard-sm);
   --memphis-shadow-xs: var(--raw-shadow-hard-xs);
@@ -603,6 +618,84 @@ html, body {
      색으로 계속 전달. */
   .stage-flow-edge-flow-h,
   .stage-flow-edge-flow-v { animation: none; }
+}
+
+/* =========================================================================
+   마이크로인터랙션 Foundation — 공용 keyframes + 유틸 클래스 (Wave1~3 소비 기반)
+   원칙: 목적 있는 모션만 · 120~260ms · no drop-shadow (translate/opacity/scale/
+   border 로만 표현) · prefers-reduced-motion 전면 존중(무애니메이션 = 즉시 최종
+   상태). 값은 위 Motion tokens(--dur / --ease / --motion-rise) SSOT 참조.
+   훅 useReducedMotion() 는 JS 분기용 — 여기 CSS 는 @media 로 독립 존중.
+   ========================================================================= */
+
+/* fade-in-up — 아래에서 살짝 떠오르며 등장(카드/행/패널 mount). */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(var(--motion-rise)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+
+/* pop-in — scale 0.8→1 살짝 튕기며 등장(배지/토스트/체크 컨테이너). */
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.8); }
+  70%  { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.pop-in { animation: popIn var(--dur-slow) var(--ease-emphasized) both; }
+
+/* shake — 유효성 오류 등 "안 됨" 피드백(좌우 흔들림, 색/그림자 없음). */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(3px); }
+}
+.shake { animation: shake var(--dur-slow) var(--ease-out) both; }
+
+/* check-draw — 체크마크 stroke 가 그려지듯 등장. 사용처는 <path> 에 이 class +
+   pathLength="1" 를 주고 stroke-dasharray/offset 을 1 기준으로 애니메이션.
+   (pathLength 정규화로 실제 path 길이와 무관하게 동작.) */
+@keyframes checkDraw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.check-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: checkDraw var(--dur-slow) var(--ease-out) forwards;
+}
+
+/* press-scale — 클릭 순간 살짝 눌리는 촉감(active:scale). 프리미티브 밖에서
+   임의 clickable 요소에 얹는 유틸(프리미티브 Button 계열은 자체 내장). */
+.press-scale { transition: transform var(--dur-fast) var(--ease-out); }
+.press-scale:active { transform: scale(0.97); }
+
+/* stagger — 부모에 .stagger, 직계 자식이 fade-in-up 을 순차 지연으로 등장.
+   자식마다 wrapper/훅 없이 CSS 만으로 최대 8개까지 계단식 delay. 9번째부터는
+   마지막 delay 를 공유(초과분은 거의 동시 등장 — 목록이 길면 자연스럽게 수렴). */
+.stagger > * { animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 225ms; }
+.stagger > *:nth-child(7) { animation-delay: 270ms; }
+.stagger > *:nth-child(n + 8) { animation-delay: 315ms; }
+
+/* 전면 reduced-motion 존중 — 모든 유틸이 즉시 최종 상태(무애니메이션). */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up,
+  .pop-in,
+  .shake,
+  .stagger > * {
+    animation: none;
+  }
+  /* check-draw 는 정지 시 stroke 가 숨겨지지 않게 완성 상태(offset 0)로 고정. */
+  .check-draw { animation: none; stroke-dashoffset: 0; }
+  .press-scale { transition: none; }
+  .press-scale:active { transform: none; }
 }
 
 /* Docx-derived preview */

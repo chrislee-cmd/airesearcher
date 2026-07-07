@@ -38,7 +38,12 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 // so opacity-40 read stays flat.
 const BASE =
   'inline-flex items-center justify-center gap-1.5 border font-semibold ' +
-  'transition-all duration-[120ms] ' +
+  // duration 은 모션 토큰(--dur-fast) SSOT 참조 — 하드코드 산발 금지.
+  'transition-all duration-[var(--dur-fast)] ' +
+  // 전역 press 피드백(마이크로인터랙션 Foundation). Memphis active translate/
+  // shadow(variant) 위에 scale 이 합성돼 "눌림" 촉감을 더한다. reduced-motion
+  // 시 scale 중립(motion-reduce). disabled 는 아래 transform-none 이 무력화.
+  'active:scale-[0.97] motion-reduce:active:scale-100 ' +
   'disabled:cursor-not-allowed disabled:opacity-40 ' +
   'disabled:transform-none disabled:shadow-none ' +
   // Border-driven focus matches existing app pattern; loud ring left to
