@@ -368,25 +368,36 @@ function PendingQaCard({
           <p className="text-md font-medium leading-[1.6] text-ink-2">
             {qa.question}
           </p>
-          {qa.selectedExcerpt && (
-            <p className="mt-1 line-clamp-2 text-xs-soft italic text-mute">
-              “{qa.selectedExcerpt}”
-            </p>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {/* 근거 소스 배지 — 웹 답변임을 명시해 인터뷰 데이터와 혼동 방지. */}
+            <span className="shrink-0 rounded-xs border border-line-soft px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-mute-soft">
+              {qa.mode === 'web'
+                ? `🌐 ${t('toplineAskModeWeb')}`
+                : `📚 ${t('toplineAskModeInterview')}`}
+            </span>
+            {qa.selectedExcerpt && (
+              <p className="line-clamp-2 min-w-0 text-xs-soft italic text-mute">
+                “{qa.selectedExcerpt}”
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
       {errored ? (
         <p className="text-sm text-warning">
-          {t('toplineAskError')}
-          {qa.errorMsg ? ` (${qa.errorMsg})` : ''}
+          {qa.errorMsg === 'web_search_unavailable'
+            ? t('toplineAskWebUnavailable')
+            : `${t('toplineAskError')}${qa.errorMsg ? ` (${qa.errorMsg})` : ''}`}
         </p>
       ) : qa.answerMd ? (
         <Prose md={qa.answerMd} citations={qa.citations} />
       ) : (
         <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
           <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-          {t('toplineAskThinking')}
+          {qa.mode === 'web'
+            ? t('toplineAskThinkingWeb')
+            : t('toplineAskThinking')}
         </div>
       )}
 
@@ -771,8 +782,8 @@ export function ToplineView({ projectId }: { projectId: string }) {
             setEditingBlockId(selection.anchorBlockId);
             clear();
           }}
-          onSubmit={(q) => {
-            void dta.ask(selection.anchorBlockId, selection.text, q);
+          onSubmit={(q, mode) => {
+            void dta.ask(selection.anchorBlockId, selection.text, q, mode);
             clear();
           }}
           onClose={clear}

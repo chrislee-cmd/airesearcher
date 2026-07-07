@@ -11,12 +11,17 @@ import { parseSearchStream } from '@/lib/interview-v2/parse-stream';
 // 뒤 refetch 로 확정된 blocks 를 다시 읽는다. discard(): 클라 상태에서 제거
 // (서버 미저장이라 롤백으로 충분 — 사용자 결정 2).
 
+// 추가질문 근거 소스 — 'interview'(인터뷰 코퍼스) / 'web'(Tavily 웹 검색).
+export type AskMode = 'interview' | 'web';
+
 export type PendingQa = {
   // 클라 전용 id(서버 blocks id 와 무관).
   id: string;
   anchorBlockId: string;
   selectedExcerpt: string;
   question: string;
+  // 이 답변의 근거 소스(카드 배지 + "찾는 중" 문구 분기용).
+  mode: AskMode;
   answerMd: string;
   // 답변이 인용한 chunk_id(뱃지 하이라이트 + keep 시 서버 재검증 시드).
   citations: string[];
@@ -56,7 +61,12 @@ export function useToplineDragToAsk(opts: {
   }, []);
 
   const ask = useCallback(
-    async (anchorBlockId: string, selectedText: string, question: string) => {
+    async (
+      anchorBlockId: string,
+      selectedText: string,
+      question: string,
+      mode: AskMode = 'interview',
+    ) => {
       const id = newId();
       setPending((list) => [
         ...list,
@@ -65,6 +75,7 @@ export function useToplineDragToAsk(opts: {
           anchorBlockId,
           selectedExcerpt: selectedText,
           question,
+          mode,
           answerMd: '',
           citations: [],
           phase: 'streaming',
@@ -80,6 +91,7 @@ export function useToplineDragToAsk(opts: {
             anchor_block_id: anchorBlockId,
             selected_text: selectedText,
             question,
+            mode,
           }),
         });
 
