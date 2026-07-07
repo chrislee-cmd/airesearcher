@@ -24,6 +24,10 @@ const Body = z.object({
   project_id: z.string().uuid(),
   sample_size: z.number().int().min(1).max(MAX_SAMPLE_SIZE).optional(),
   k: z.number().int().min(1).max(50).optional(),
+  // Retrieval under test — 'vector' (baseline) vs 'hybrid' (C-stage: vector ⊕
+  // keyword RRF + per-doc coverage floor). Run one of each and diff the metrics
+  // to quantify the C-stage lift. Defaults to baseline for unchanged behavior.
+  retrieval: z.enum(['vector', 'hybrid']).optional(),
 });
 
 // super-admin gate + 활성 org 확인 공통 처리. 통과 시 { user, org } 반환.
@@ -82,6 +86,7 @@ export async function POST(req: Request) {
     projectId: body.project_id,
     sampleSize: body.sample_size,
     k: body.k,
+    retrieval: body.retrieval,
     gitSha: env.VERCEL_GIT_COMMIT_SHA ?? 'local',
   });
 

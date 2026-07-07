@@ -14,7 +14,11 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
-import { searchInterviewV2Chunks } from '@/lib/interview-v2/pgvector-query';
+import {
+  searchInterviewV2Chunks,
+  type InterviewV2Hit,
+} from '@/lib/interview-v2/pgvector-query';
+import { hybridSearch } from '@/lib/interview-v2/hybrid-search';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import {
   EVAL_MODEL,
@@ -46,6 +50,49 @@ const AGGREGATE_QUERIES = [
 // Coverage 검색은 RAG 에 공정한 기회를 주기 위해 넓게 가져온다(=top-K RAG 의
 // 상한 커버리지). 그래도 전수에 못 미치는 게 정상 — 그게 B 로 개선될 여지.
 const COVERAGE_K = 30;
+
+// A retrieval closure the metrics call instead of a hard-coded search — lets
+// the same harness measure the baseline (pure vector) and the C-stage
+// (hybrid + coverage floor) so the delta is directly comparable. Returns
+// chunk-granular hits (parent expansion is OFF here — Recall@K must check the
+// original gold chunk id, which parent merging would hide). scoreThreshold is
+// 0 for both so ranking, not the floor, is what's measured.
+type RetrieveFn = (query: string, k: number) => Promise<InterviewV2Hit[]>;
+
+function vectorRetrieve(
+  admin: AdminClient,
+  orgId: string,
+  projectId: string,
+): RetrieveFn {
+  return (query, k) =>
+    searchInterviewV2Chunks({
+      client: admin,
+      orgId,
+      projectId,
+      query,
+      k,
+      scoreThreshold: 0,
+    });
+}
+
+function hybridRetrieve(
+  admin: AdminClient,
+  orgId: string,
+  projectId: string,
+): RetrieveFn {
+  return async (query, k) => {
+    const res = await hybridSearch({
+      admin,
+      orgId,
+      scope: { kind: 'single', projectId },
+      query,
+      topK: k,
+      scoreThreshold: 0,
+      expandParents: false,
+    });
+    return res.chunks;
+  };
+}
 
 const answerSchema = z.object({
   // 각 claim = 답변의 원자적 주장 + 그것을 뒷받침하는 인용 chunk_id 들.
@@ -94,9 +141,7 @@ async function projectChunkIdSet(
  *    에 되돌아오면 hit. recall = hits/sampled, mrr = 평균 역순위.
  */
 export async function runRecall(
-  admin: AdminClient,
-  orgId: string,
-  projectId: string,
+  retrieve: RetrieveFn,
   gold: GoldQuestion[],
   k: number,
 ): Promise<RecallMetric | null> {
@@ -104,15 +149,7 @@ export async function runRecall(
   let hits = 0;
   let reciprocalSum = 0;
   for (const g of gold) {
-    const results = await searchInterviewV2Chunks({
-      client: admin,
-      orgId,
-      projectId,
-      query: g.question,
-      k,
-      // 평가는 순위 그대로 봐야 하므로 similarity floor 를 낮춰 top-K 를 채운다.
-      scoreThreshold: 0,
-    });
+    const results = await retrieve(g.question, k);
     const rank = results.findIndex((r) => r.chunk_id === g.chunk_id);
     if (rank >= 0) {
       hits += 1;
@@ -132,22 +169,13 @@ export async function runRecall(
  * 2. Coverage — 집계형 질문 검색 결과가 커버하는 고유 문서 비율.
  */
 export async function runCoverage(
-  admin: AdminClient,
-  orgId: string,
-  projectId: string,
+  retrieve: RetrieveFn,
   totalDocs: number,
 ): Promise<CoverageMetric | null> {
   if (totalDocs === 0) return null;
   const covered = new Set<string>();
   for (const q of AGGREGATE_QUERIES) {
-    const results = await searchInterviewV2Chunks({
-      client: admin,
-      orgId,
-      projectId,
-      query: q,
-      k: COVERAGE_K,
-      scoreThreshold: 0,
-    });
+    const results = await retrieve(q, COVERAGE_K);
     for (const r of results) covered.add(r.document_id);
   }
   return {
@@ -164,9 +192,7 @@ export async function runCoverage(
  * 그리고 인용 chunk_id 실재 여부를 채점한다. 비용 통제를 위해 질문 1개만.
  */
 export async function runFaithfulnessAndCitation(
-  admin: AdminClient,
-  orgId: string,
-  projectId: string,
+  retrieve: RetrieveFn,
   k: number,
   validChunkIds: Set<number>,
 ): Promise<{ faithfulness: FaithfulnessMetric | null; citation: CitationMetric | null }> {
@@ -175,14 +201,7 @@ export async function runFaithfulnessAndCitation(
   const anthropic = createAnthropic({ apiKey });
 
   const question = AGGREGATE_QUERIES[0];
-  const hits = await searchInterviewV2Chunks({
-    client: admin,
-    orgId,
-    projectId,
-    query: question,
-    k,
-    scoreThreshold: 0,
-  });
+  const hits = await retrieve(question, k);
   if (hits.length === 0) return { faithfulness: null, citation: null };
 
   const evidence = hits
@@ -270,6 +289,11 @@ export type RunEvalOpts = {
   sampleSize?: number;
   k?: number;
   gitSha: string;
+  // Retrieval under test. 'vector' = baseline pure-cosine; 'hybrid' = the
+  // C-stage (vector ⊕ keyword RRF + per-doc coverage floor). Run both and diff
+  // the metrics to quantify the C-stage lift (spec verification). Default
+  // 'vector' so existing eval runs are unchanged.
+  retrieval?: 'vector' | 'hybrid';
 };
 
 /**
@@ -278,12 +302,17 @@ export type RunEvalOpts = {
  */
 export async function runEval(opts: RunEvalOpts): Promise<EvalResult> {
   const { admin, orgId, projectId, gitSha } = opts;
+  const retrievalMode = opts.retrieval ?? 'vector';
+  const retrieve =
+    retrievalMode === 'hybrid'
+      ? hybridRetrieve(admin, orgId, projectId)
+      : vectorRetrieve(admin, orgId, projectId);
   const k = Math.max(1, Math.min(50, opts.k ?? 10));
   const sampleSize = Math.max(
     1,
     Math.min(MAX_SAMPLE_SIZE, opts.sampleSize ?? DEFAULT_SAMPLE_SIZE),
   );
-  const notes: string[] = [];
+  const notes: string[] = [`retrieval=${retrievalMode}`];
 
   // 전체 문서 수 (Coverage 분모).
   const { count: docCount, error: docErr } = await admin
@@ -313,7 +342,7 @@ export async function runEval(opts: RunEvalOpts): Promise<EvalResult> {
       if (gold.length < sampled.length) {
         notes.push(`gold_partial — ${sampled.length} 중 ${gold.length} 생성`);
       }
-      metrics.recall = await runRecall(admin, orgId, projectId, gold, k);
+      metrics.recall = await runRecall(retrieve, gold, k);
     }
   }
 
@@ -324,7 +353,7 @@ export async function runEval(opts: RunEvalOpts): Promise<EvalResult> {
     if (totalDocs === 1) {
       notes.push('coverage_single_doc — 문서 1개라 coverage 상한 1.0 (신뢰 낮음)');
     }
-    metrics.coverage = await runCoverage(admin, orgId, projectId, totalDocs);
+    metrics.coverage = await runCoverage(retrieve, totalDocs);
   }
 
   // Faithfulness + Citation.
@@ -332,7 +361,7 @@ export async function runEval(opts: RunEvalOpts): Promise<EvalResult> {
   if (validIds.size === 0) {
     notes.push('faithfulness_skipped — 청크 0');
   } else {
-    const fc = await runFaithfulnessAndCitation(admin, orgId, projectId, k, validIds);
+    const fc = await runFaithfulnessAndCitation(retrieve, k, validIds);
     metrics.faithfulness = fc.faithfulness;
     metrics.citation = fc.citation;
     if (!fc.faithfulness) notes.push('faithfulness_unavailable — 답변/판정 실패');
