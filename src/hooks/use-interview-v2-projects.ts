@@ -21,6 +21,9 @@ export type InterviewProject = {
   name: string;
   description: string | null;
   tags: string[];
+  // 프로젝트에 속한 인터뷰 문서 수 (서버 aggregate). 목록 카드의 "인터뷰 N개".
+  // 구 응답/생성 직후엔 없을 수 있어 방어적으로 0 정규화한다.
+  document_count: number;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -44,9 +47,14 @@ export function useInterviewV2Projects() {
       const res = await fetch(`${ENDPOINT}?archived=all`);
       if (!res.ok) throw new Error(`list_failed_${res.status}`);
       const j = (await res.json()) as { projects?: InterviewProject[] };
-      // tags 를 항상 배열로 정규화 (DB default '{}' → [], 방어적).
+      // tags 를 항상 배열로, document_count 를 항상 숫자로 정규화
+      // (DB default '{}' → [], count 누락 → 0, 방어적).
       setAllProjects(
-        (j.projects ?? []).map((p) => ({ ...p, tags: p.tags ?? [] })),
+        (j.projects ?? []).map((p) => ({
+          ...p,
+          tags: p.tags ?? [],
+          document_count: p.document_count ?? 0,
+        })),
       );
       setError(null);
     } catch (e) {
@@ -136,6 +144,25 @@ export function useInterviewV2Projects() {
     [mutate],
   );
 
+  // 편집 모달용 — 이름·설명·태그를 한 PATCH 로 통째 저장 (부분 전송). 카드에서
+  // 인라인 태그 편집기를 걷어낸 뒤, 태그 편집은 이 경로로만 이뤄진다. PATCH 는
+  // 셋을 한 번에 받으므로 (route [id] PatchBody) 왕복 1회. 저장 후 목록 refetch.
+  const update = useCallback(
+    async (
+      id: string,
+      patch: { name?: string; description?: string | null; tags?: string[] },
+    ): Promise<void> => {
+      const res = await fetch(`${ENDPOINT}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error(`update_failed_${res.status}`);
+      await mutate();
+    },
+    [mutate],
+  );
+
   const setArchived = useCallback(
     async (id: string, archived: boolean): Promise<void> => {
       await fetch(`${ENDPOINT}/${id}`, {
@@ -217,6 +244,7 @@ export function useInterviewV2Projects() {
     mutate,
     create,
     rename,
+    update,
     archive,
     unarchive,
     remove,

@@ -21,7 +21,6 @@ import { CreateProjectModal } from './create-project-modal';
 import { RenameProjectModal } from './rename-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
 import { UploadModal } from './upload-modal';
-import { ProjectTagEditor } from './project-tag-editor';
 import { TagFilterBar } from './tag-filter-bar';
 
 // Interview V2 — project grid (default fullview). Each card opens the
@@ -83,11 +82,10 @@ export function ProjectList({
     allTags,
     isLoading,
     create,
-    rename,
+    update,
     archive,
     unarchive,
     remove,
-    setTags,
   } = useInterviewV2Projects();
   const { push } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
@@ -164,9 +162,15 @@ export function ProjectList({
     }
   };
 
-  const handleRename = async (name: string) => {
+  // 편집 모달 저장 — 이름·설명·태그를 한 번에. 태그 인라인 편집을 카드에서
+  // 걷어낸 뒤 태그 저장의 유일한 경로다 (setTags 대신 update 로 통합 PATCH).
+  const handleEditSave = async (patch: {
+    name: string;
+    description: string | null;
+    tags: string[];
+  }) => {
     if (!renameTarget) return;
-    await rename(renameTarget.id, name);
+    await update(renameTarget.id, patch);
     trackEvent('widget_action', {
       widget: 'interviews',
       action: 'project_rename',
@@ -191,22 +195,10 @@ export function ProjectList({
     }
   };
 
-  const handleSetTags = async (project: InterviewProject, tags: string[]) => {
-    try {
-      await setTags(project.id, tags);
-      trackEvent('widget_action', {
-        widget: 'interviews',
-        action: 'project_tag',
-      });
-    } catch {
-      push(t('tagSaveFailed'), { tone: 'warn' });
-    }
-  };
-
   const menuItems = (project: InterviewProject): DropdownItem[] => [
     {
-      key: 'rename',
-      label: t('menuRename'),
+      key: 'edit',
+      label: t('menuEdit'),
       onSelect: () => setRenameTarget(project),
     },
     tab === 'archived'
@@ -330,28 +322,38 @@ export function ProjectList({
                       )}
                     />
                   </div>
+                  {/* 정보 계층: 제목 → 메타(문서 수 · 최근 수정) → 설명 → 태그칩.
+                      태그는 읽기전용 칩(라벨만) — 편집은 kebab "편집" 모달로 이동. */}
                   <div className="min-w-0 w-full pr-8">
                     <div className="truncate text-lg font-semibold text-ink-2">
                       {p.name}
                     </div>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-mute-soft tabular-nums">
+                      <span>{t('documentCount', { count: p.document_count })}</span>
+                      <span aria-hidden>·</span>
+                      <span>
+                        {t('updatedAt', {
+                          time: relativeTime(p.updated_at, locale),
+                        })}
+                      </span>
+                    </div>
                     {p.description && (
-                      <div className="mt-1 line-clamp-2 text-sm text-mute-soft">
+                      <div className="mt-2 line-clamp-2 text-sm text-mute-soft">
                         {p.description}
                       </div>
                     )}
-                    {/* 태그 chip + 인라인 추가(ChipInput, org 태그 자동완성). */}
-                    <div className="mt-2">
-                      <ProjectTagEditor
-                        tags={p.tags}
-                        suggestions={tagSuggestions}
-                        onChange={(next) => handleSetTags(p, next)}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-xs text-mute-soft tabular-nums">
-                    {t('updatedAt', {
-                      time: relativeTime(p.updated_at, locale),
-                    })}
+                    {p.tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {p.tags.map((tag, idx) => (
+                          <span
+                            key={`${tag}-${idx}`}
+                            className="inline-flex items-center rounded-xs bg-amore-bg px-2 py-0.5 text-xs text-amore"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -385,8 +387,11 @@ export function ProjectList({
       {renameTarget && (
         <RenameProjectModal
           initialName={renameTarget.name}
+          initialDescription={renameTarget.description}
+          initialTags={renameTarget.tags}
+          suggestions={tagSuggestions}
           onClose={() => setRenameTarget(null)}
-          onSave={handleRename}
+          onSave={handleEditSave}
         />
       )}
 
