@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
-import { Button } from '@/components/ui/button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Field } from '@/components/canvas/shell/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
-import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { ControlTrigger } from '@/components/ui/control-trigger';
+import { FileDropZone, FILE_DROP_ZONE_PY } from '@/components/ui/file-drop-zone';
 import {
   ProcessTimeline,
   buildLinearPhases,
@@ -99,30 +99,31 @@ function ProjectSelectControl({
         items={items}
         label={activeProjectId ? t('cardSwitchProject') : t('cardSelectProject')}
         trigger={({ open, onClick, ...aria }) => (
-          <Button
+          // 전사록 언어 트리거와 동일 primitive(ControlTrigger) — 컨트롤
+          // 드롭다운 트리거 height/패딩/타이포를 6 위젯에서 픽셀 정합.
+          // 공용 chevron(▼)은 ControlTrigger 가 소유하므로 rightIcon 제거.
+          // ⚙ 어포던스는 라벨 앞 글리프로 보존 (content 무변경).
+          <ControlTrigger
             {...aria}
             data-open={open}
-            variant="ghost"
-            size="sm"
             onClick={onClick}
             disabled={isLoading}
-            leftIcon={<span aria-hidden>⚙</span>}
-            rightIcon={<span aria-hidden>▼</span>}
             className="min-w-0"
           >
-            <span className="truncate">
-              {activeProjectName != null ? (
-                <>
-                  {t('cardProjectLabel')}:{' '}
-                  <span className="font-semibold text-ink-2">
-                    {activeProjectName}
-                  </span>
-                </>
-              ) : (
-                t('cardSelectProject')
-              )}
+            <span aria-hidden className="mr-1.5">
+              ⚙
             </span>
-          </Button>
+            {activeProjectName != null ? (
+              <>
+                {t('cardProjectLabel')}:{' '}
+                <span className="font-semibold text-ink-2">
+                  {activeProjectName}
+                </span>
+              </>
+            ) : (
+              t('cardSelectProject')
+            )}
+          </ControlTrigger>
         )}
       />
 
@@ -178,7 +179,7 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
           onFiles={openWithFiles}
           label={t('uploadDropLabel')}
           helperText={t('uploadDropHelper')}
-          className="w-full py-10"
+          className={`w-full ${FILE_DROP_ZONE_PY}`}
         />
       </ControlBoardPanel>
 
@@ -294,7 +295,7 @@ function ActiveBody({
           onFiles={openWithFiles}
           label={t('uploadDropLabel')}
           helperText={t('uploadDropHelper')}
-          className="w-full py-8"
+          className={`w-full ${FILE_DROP_ZONE_PY}`}
         />
       </ControlBoardPanel>
 

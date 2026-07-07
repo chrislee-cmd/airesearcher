@@ -20,7 +20,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
-import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { FileDropZone, FILE_DROP_ZONE_PY } from '@/components/ui/file-drop-zone';
 import { JobProgress } from '@/components/ui/job-progress';
 import {
   ProcessTimeline,
@@ -758,7 +758,7 @@ export function QuotesCardBody() {
         onDropRaw={handleArtifactDrop}
         label={tUp('dropHere')}
         helperText={tUp('supported')}
-        className="w-full py-12"
+        className={`w-full ${FILE_DROP_ZONE_PY}`}
       />
 
       {uploadError ? (

@@ -7,6 +7,14 @@ import {
   type ReactNode,
 } from 'react';
 
+// ─── 컨트롤 패널 dropzone 세로 패딩 SSOT (PR-432) ────────────────────────────
+// 위젯 컨트롤 보드(ControlBoardPanel)의 인라인 업로드 dropzone 세로 높이를
+// 한 곳에서 소유. 전에는 위젯마다 py-12/py-10/py-8 을 제각각 하드코드해
+// 전사록(py-12) vs 인터뷰(py-10) 업로드 컨테이너 높이가 미세하게 달랐다.
+// 표준값 = py-12 (dropzone 사용처 다수가 이미 채택한 값). 컨트롤 dropzone 은
+// 임의 py-* 대신 이 상수를 참조해 6 위젯 업로드 컨테이너 높이를 픽셀 정합한다.
+export const FILE_DROP_ZONE_PY = 'py-12';
+
 export type FileDropZoneProps = {
   accept?: string;
   multiple?: boolean;
