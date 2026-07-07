@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
@@ -9,6 +9,7 @@ import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel
 import { Field } from '@/components/canvas/shell/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { ControlTrigger } from '@/components/ui/control-trigger';
 import { FileDropZone, FILE_DROP_ZONE_PY } from '@/components/ui/file-drop-zone';
 import {
@@ -21,10 +22,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
-import {
-  useInterviewToplineStatus,
-  type ToplineStatusState,
-} from '@/hooks/use-interview-topline';
+import { useInterviewTopline } from '@/hooks/use-interview-topline';
+import { deriveToplineAbstract } from '@/lib/interview-v2/topline-abstract';
+import type { ToplineStatus } from '@/lib/interview-v2/types';
 import { ToplineMapProgress } from '@/components/interviews-v2/topline-view';
 import { useToast } from '@/components/toast-provider';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
@@ -224,15 +224,27 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 //  - generating→done / →error 전이 시 toast 로 완료/실패를 알림
 // 팝업이 열려 fullview 자체 구독과 동시에 살아도 별도 채널명이라 충돌 없음.
 // ────────────────────────────────────────────────────────────────────
-function ToplineAmbientProgress({ projectId }: { projectId: string }) {
+function ToplineAmbientProgress({
+  projectId,
+  status,
+  mapTotal,
+  mapDone,
+}: {
+  projectId: string;
+  status: ToplineStatus;
+  mapTotal: number | null;
+  mapDone: number | null;
+}) {
   const t = useTranslations('InterviewsV2');
   const toast = useToast();
-  const { status, mapTotal, mapDone } = useInterviewToplineStatus(projectId);
+
+  // status/blocks 는 ActiveBody 가 useInterviewTopline 으로 단일 구독해 prop 으로
+  // 내려준다 (abstract 파생과 progress 가 같은 소스를 공유 — 이중 구독 제거).
 
   // generating → done|error 전이에서만 toast. 초기 로드(null→done/none)나
   // 이미 완료된 보고서를 다시 열 때는 무음(오탐 방지). projectId 가 바뀌면
   // 새 프로젝트 기준으로 다시 추적.
-  const prevStatusRef = useRef<ToplineStatusState['status'] | null>(null);
+  const prevStatusRef = useRef<ToplineStatus | null>(null);
   useEffect(() => {
     prevStatusRef.current = null;
   }, [projectId]);
@@ -279,6 +291,17 @@ function ActiveBody({
   const tProcess = useTranslations('Process');
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
+  // 탑라인 상태 + blocks 단일 소스 — 프로젝트 선택 시 하단 영역을 status 로 분기
+  // (done=abstract / generating=진행률 / 미생성=분석 프롬프트). GET(읽기 전용)만
+  // 부르므로 과금 없음. blocks 는 abstract 파생에만 쓰고, status/map 진행률은
+  // ambient 밴드로 내려보낸다(이중 구독 제거).
+  const {
+    status: toplineStatus,
+    blocks: toplineBlocks,
+    mapTotal,
+    mapDone,
+    loading: toplineLoading,
+  } = useInterviewTopline(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
   // 카드 인라인 dropzone 이 드롭/선택한 파일 — 모달을 열며 pre-stage 로 넘긴다.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
@@ -315,9 +338,164 @@ function ActiveBody({
     [projects, projectId],
   );
 
+  // 탑라인 blocks → abstract(제목 + 핵심 요약 2~4문장) 파생. 요약 소스가 없으면
+  // null → 파일 리스트 폴백(빈 blocks / quote·table 만 있는 보고서 방어).
+  const abstract = useMemo(
+    () => deriveToplineAbstract(toplineBlocks, projectName),
+    [toplineBlocks, projectName],
+  );
+
   // "분석 시작" 은 인덱싱이 최소 1건 완료된 뒤에만 활성 (인덱싱 중/미업로드
   // 상태에서 빈 검색 fullview 로 들어가지 않도록).
   const canAnalyze = documents.some((d) => d.index_status === 'done');
+
+  // 파일 요약 조각(인덱싱 타임라인 + 파일명 chip) — done abstract 의 접기 토글
+  // 안, generating 본문, 분석 전 프롬프트 아래에서 공용으로 재사용. count 헤더는
+  // 바깥에서(토글 라벨 vs. countHeader) 별도로 붙인다.
+  const indexingDocs = documents.filter((d) => d.index_status === 'indexing');
+  const restDocs = documents.filter((d) => d.index_status !== 'indexing');
+  const fileChips = (
+    <div className="space-y-2">
+      {/* 인덱싱 중인 파일 — chunk 단위 progress bar + "N/M". */}
+      {indexingDocs.map((d) => (
+        <div
+          key={d.id}
+          className="rounded-sm border border-line-soft bg-paper px-3 py-2"
+        >
+          <div
+            className="truncate text-xs font-semibold text-ink-2"
+            title={d.filename}
+          >
+            {d.filename}
+          </div>
+          <ProcessTimeline phases={docTimelinePhases(d)} padding="py-1" />
+        </div>
+      ))}
+
+      {/* 나머지 파일 (완료 / 대기 / 오류) — 파일명 chip 요약. */}
+      {restDocs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {restDocs.map((d) => (
+            <span
+              key={d.id}
+              className="max-w-[180px] truncate rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute"
+              title={d.filename}
+            >
+              {d.filename}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // 파일 개수 헤더(캡션) — generating/미생성 본문에서 파일 목록 위에 붙는다.
+  const filesCountHeader = (
+    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
+      {t('cardFilesCount', { count: documents.length })}
+    </div>
+  );
+
+  // "파일 N개 ▸" 접기 토글 — abstract/프롬프트 모드에서 파일 목록을 숨기되
+  // 접근성은 보존(사용자 결정 1 — 파일은 제거가 아니라 이동/토글). native
+  // <details>/<summary> 는 forbid-elements(button/input/textarea) 밖이라 허용.
+  const filesToggle = (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden
+          className="inline-block transition-transform duration-[var(--dur-fast)] group-open:rotate-90"
+        >
+          ▸
+        </span>
+        {t('cardFilesCount', { count: documents.length })}
+      </summary>
+      <div className="mt-2">{fileChips}</div>
+    </details>
+  );
+
+  // 프로젝트 선택 시 하단 영역 — 탑라인 status 로 분기.
+  let projectBody: ReactNode;
+  if (isLoading || toplineLoading) {
+    projectBody = (
+      <div className="flex gap-2">
+        <Skeleton className="h-6 w-24 rounded-sm" />
+        <Skeleton className="h-6 w-20 rounded-sm" />
+      </div>
+    );
+  } else if (documents.length === 0) {
+    // 파일 자체가 없는 프로젝트 — 업로드 안내(회귀 없음).
+    projectBody = (
+      <EmptyState
+        tone="subtle"
+        title={t('noFilesTitle')}
+        description={t('noFilesDescription')}
+      />
+    );
+  } else if (toplineStatus === 'done' && abstract) {
+    // B. 탑라인 done → 핵심 요약 abstract(제목 + 요약 + 수치 + 전체 보기).
+    projectBody = (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <h3 className="line-clamp-2 text-md font-semibold leading-snug text-ink">
+            {abstract.title}
+          </h3>
+          <p className="line-clamp-5 whitespace-pre-wrap text-md leading-[1.7] text-ink-2">
+            {abstract.summary}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <span className="rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute">
+              {t('cardAbstractDocsMetric', { count: documents.length })}
+            </span>
+            <ChromeButton
+              size="sm"
+              variant="mute"
+              onClick={onOpenFullview}
+              rightIcon={<span aria-hidden>→</span>}
+            >
+              {t('cardAbstractViewAll')}
+            </ChromeButton>
+          </div>
+        </div>
+        {filesToggle}
+      </div>
+    );
+  } else if (toplineStatus === 'generating') {
+    // C. 생성 중 — 본문은 파일 목록 유지, 진행률은 하단 ambient 밴드(#434).
+    projectBody = (
+      <div className="space-y-2">
+        {filesCountHeader}
+        {fileChips}
+      </div>
+    );
+  } else if (
+    toplineStatus === 'idle' ||
+    toplineStatus === 'none' ||
+    toplineStatus === 'error'
+  ) {
+    // D. 탑라인 미생성 — "분석 시작" 프롬프트(하단 CTA 로 유도) + 파일 토글.
+    projectBody = (
+      <div className="space-y-3">
+        <div className="rounded-sm border border-line-soft bg-paper-soft px-3 py-3">
+          <div className="text-sm font-semibold text-ink-2">
+            {t('cardAnalyzePromptTitle')}
+          </div>
+          <p className="mt-1 text-xs-soft leading-[1.6] text-mute">
+            {t('cardAnalyzePromptHint')}
+          </p>
+        </div>
+        {filesToggle}
+      </div>
+    );
+  } else {
+    // done 이지만 abstract 파생 실패(quote·table 만) — 파일 목록으로 폴백.
+    projectBody = (
+      <div className="space-y-2">
+        {filesCountHeader}
+        {fileChips}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -348,73 +526,24 @@ function ActiveBody({
         />
       </ControlBoardPanel>
 
-      {/* 파일 리스트 요약 — 파일명 chip + 개수 + 인덱싱 진행. 상세/검색은
-          전체 보기 (fullview). */}
+      {/* 프로젝트 선택 시 하단 영역 — 탑라인 status 로 분기(위 projectBody):
+          done=핵심 요약 abstract / generating=파일 목록(+아래 진행률 밴드) /
+          미생성=분석 프롬프트. 파일 목록은 abstract·프롬프트 모드에서 "파일 N개 ▸"
+          토글로 접근 보존(사용자 결정 1). 상세/검색은 전체 보기(fullview). */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {isLoading ? (
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-24 rounded-sm" />
-            <Skeleton className="h-6 w-20 rounded-sm" />
-          </div>
-        ) : documents.length === 0 ? (
-          <EmptyState
-            tone="subtle"
-            title={t('noFilesTitle')}
-            description={t('noFilesDescription')}
-          />
-        ) : (
-          <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
-              {t('cardFilesCount', { count: documents.length })}
-            </div>
-
-            {/* 인덱싱 중인 파일 — chunk 단위 progress bar + "N/M (X%)".
-                (fullview FileCard 와 동일한 신호. 위젯 요약 뷰에서도 "언제
-                끝날지" 를 볼 수 있도록.) hook 이 indexing 있을 때 2초 폴링. */}
-            {documents
-              .filter((d) => d.index_status === 'indexing')
-              .map((d) => (
-                <div
-                  key={d.id}
-                  className="rounded-sm border border-line-soft bg-paper px-3 py-2"
-                >
-                  <div
-                    className="truncate text-xs font-semibold text-ink-2"
-                    title={d.filename}
-                  >
-                    {d.filename}
-                  </div>
-                  <ProcessTimeline
-                    phases={docTimelinePhases(d)}
-                    padding="py-1"
-                  />
-                </div>
-              ))}
-
-            {/* 나머지 파일 (완료 / 대기 / 오류) — 파일명 chip 요약. */}
-            {documents.some((d) => d.index_status !== 'indexing') && (
-              <div className="flex flex-wrap gap-1.5">
-                {documents
-                  .filter((d) => d.index_status !== 'indexing')
-                  .map((d) => (
-                    <span
-                      key={d.id}
-                      className="max-w-[180px] truncate rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute"
-                      title={d.filename}
-                    >
-                      {d.filename}
-                    </span>
-                  ))}
-              </div>
-            )}
-          </div>
-        )}
+        {projectBody}
       </div>
 
       {/* 팝업 밖 ambient 탑라인 진행률 — 전체보기를 닫아도 생성 진행률이
           카드에 계속 보이고, 완료/실패 시 toast 로 알림 (card #434). CTA
-          바로 위, shrink-0 밴드라 파일 리스트 스크롤과 무관하게 상시 노출. */}
-      <ToplineAmbientProgress projectId={projectId} />
+          바로 위, shrink-0 밴드라 파일 리스트 스크롤과 무관하게 상시 노출.
+          status/map 진행률은 위 useInterviewTopline 단일 소스에서 내려온다. */}
+      <ToplineAmbientProgress
+        projectId={projectId}
+        status={toplineStatus}
+        mapTotal={mapTotal}
+        mapDone={mapDone}
+      />
 
       {/* 주 CTA(분석 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
           인덱싱 완료(≥1 done) 후 활성. 파일 리스트가 위 flex-1 영역에서
