@@ -45,6 +45,7 @@ function sourceLabelKo(id: DeskSourceId): string {
 // 필터도 여기서 직접 건다.
 const MARKET_SOURCE_IDS: DeskSourceId[] = [
   'kosis',
+  'atfis',
   'boj_ecos',
   'dart',
   'semantic_scholar',
@@ -54,6 +55,7 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
 ];
 
 const KOSIS: DeskSourceId = 'kosis';
+const ATFIS: DeskSourceId = 'atfis';
 const DART: DeskSourceId = 'dart';
 const ECOS: DeskSourceId = 'boj_ecos';
 
@@ -75,13 +77,14 @@ export async function runMarket(
   });
 
   const hasKosis = effectiveSources.includes(KOSIS);
+  const hasAtfis = effectiveSources.includes(ATFIS);
   const hasDart = effectiveSources.includes(DART);
   const hasEcos = effectiveSources.includes(ECOS);
   // 뉴스형 phrase 로 검색하는 소스(학술·뉴스)만 (원+phrase) 키워드로 crawl.
-  // KOSIS(통계 명사) · DART(회사명) · ECOS(거시 anchor)는 아래에서 전용 검색어로
-  // 따로 건다 — 소스 클래스별 검색어 분리가 이 mode 재작성의 핵심.
+  // KOSIS·aTFIS(통계 명사) · DART(회사명) · ECOS(거시 anchor)는 아래에서 전용
+  // 검색어로 따로 건다 — 소스 클래스별 검색어 분리가 이 mode 재작성의 핵심.
   const feedSources = effectiveSources.filter(
-    (id) => id !== KOSIS && id !== DART && id !== ECOS,
+    (id) => id !== KOSIS && id !== ATFIS && id !== DART && id !== ECOS,
   );
 
   // 자연어 → 소스별 검색어 컴파일(한 번의 LLM 호출) + DART 상장사 명부 warm-up
@@ -119,11 +122,16 @@ export async function runMarket(
       ];
       // 소스별 검색어 재작성 내역을 항상 노출한다 — 유저가 "무슨 말로 검색됐는지"
       // 를 인지하고, 0건이어도 시도어를 병기해 정직하게 보이게 한다.
-      if (hasKosis || hasEcos) {
+      if (hasKosis || hasAtfis || hasEcos) {
         events.push(
           kosisQueries.length
-            ? `🧠 통계 검색용 변환 = ${kosisQueries.map((k) => `‘${k}’`).join(' · ')} — KOSIS 통계 카탈로그는 조사·수식어를 뗀 짧은 산업 명사로 검색합니다 (뉴스형 문장으로는 0건).`
+            ? `🧠 통계 검색용 변환 = ${kosisQueries.map((k) => `‘${k}’`).join(' · ')} — KOSIS·aTFIS 통계 카탈로그는 조사·수식어를 뗀 짧은 산업 명사로 검색합니다 (뉴스형 문장으로는 0건).`
             : `🧠 통계 검색용 명사를 뽑지 못했어요 — 통계 소스는 원 키워드로만 시도합니다.`,
+        );
+      }
+      if (hasAtfis) {
+        events.push(
+          `🧠 aTFIS 식품산업통계 = 가공식품 세분시장 시장보고서(라면·음료·커피 등)를 세분시장 명칭으로 매칭해 소비재 TAM 근거로 씁니다 — KOSIS 정형 통계에 없는 식품 시장 규모의 1차 출처입니다.`,
         );
       }
       // 뉴스·학술 확장 축 = route 가 넘긴 similar (parsed.phrases, 파싱 실패 시
@@ -148,7 +156,7 @@ export async function runMarket(
         );
       }
       events.push(
-        `📰 소스 선정 = ${sourceList || '(가용 소스 없음)'} — TAM=KOSIS·ECOS / SAM=DART / 이론=학술 / 보조=뉴스.`,
+        `📰 소스 선정 = ${sourceList || '(가용 소스 없음)'} — TAM=KOSIS·aTFIS·ECOS+뉴스 시장규모 / SAM=DART / 이론=학술 / 보조=뉴스.`,
         `🚫 제외 = YouTube · 산하 연구소 RSS · 커뮤니티 (트렌드 위주 — 시장 규모 산정 관련성 낮음).`,
         `🧠 TAM/SAM 수치는 자동 계산하지 않습니다 — 모든 수치에 출처(발간처·URL·발간일)를 강제하고, 근거 없는 항목은 “데이터 확보 실패”로 표기합니다.`,
       );
@@ -180,6 +188,17 @@ export async function runMarket(
       if (hasKosis) {
         for (const q of kosisQueries) {
           tasks.push({ source: KOSIS, keyword: q, region: 'KR' });
+        }
+      }
+
+      // aTFIS = 가공식품 세분시장 시장보고서 카탈로그. KOSIS 와 같은 짧은 산업
+      // 명사 축으로 조회한다 — 소스가 세분시장 명칭(라면↔면류)으로 게이트하므로
+      // 문장형 phrase 는 불필요. 소비재 식품 TAM 은 KOSIS 에 없고 여기가 1차
+      // 출처라 통계 bucket 을 보강한다. KR 전용. (검색 파라미터가 무력이라 소스
+      // 내부에서 목록을 캐시해 kosisQueries 여러 건이어도 실제 네트워크는 1회.)
+      if (hasAtfis) {
+        for (const q of kosisQueries) {
+          tasks.push({ source: ATFIS, keyword: q, region: 'KR' });
         }
       }
 

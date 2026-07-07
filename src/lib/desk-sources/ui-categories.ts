@@ -1,10 +1,10 @@
 // UI-facing category grouping for the desk source picker. This is a *presentation
 // layer* only: the backend registry (`registry.ts`) and each source's own
-// `category` field are untouched. The picker used to expose 19 individual source
+// `category` field are untouched. The picker used to expose 20 individual source
 // checkboxes; the grid picker instead offers 5 coarse, all-or-nothing category
 // cards, and selecting a card expands to every source id it maps to.
 //
-// The 5 categories partition all 19 registered sources exactly once — no source
+// The 5 categories partition all 20 registered sources exactly once — no source
 // is omitted and none appears twice. Blog-flavoured sources (naver_blog,
 // kakao_blog, hacker_news) are folded into `news` (뉴스·포털) per the spec's
 // worker-choice recommendation. Video (youtube) is likewise a `news` member, not
@@ -50,7 +50,7 @@ export const UI_CATEGORY_META: Record<UICategory, { icon: string; sourceIds: Des
   },
   stats: {
     icon: '📊',
-    sourceIds: ['kosis', 'dart', 'boj_ecos'],
+    sourceIds: ['kosis', 'atfis', 'dart', 'boj_ecos'],
   },
   academic: {
     icon: '🎓',

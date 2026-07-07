@@ -23,6 +23,7 @@ import { semanticScholar } from './semantic-scholar';
 import { arxiv } from './arxiv';
 import { bojEcos } from './boj-ecos';
 import { kosis } from './kosis';
+import { atfis } from './atfis';
 import { institutesRss } from './institutes-rss';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
@@ -46,6 +47,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   arxiv: arxiv,
   boj_ecos: bojEcos,
   kosis: kosis,
+  atfis: atfis,
   institutes_kr: institutesRss,
 };
 
