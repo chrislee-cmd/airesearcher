@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/icon-button';
 import { Button } from '@/components/ui/button';
+import type { AskMode } from '@/hooks/use-topline-drag-to-ask';
 
 // 인터뷰 탑라인 drag-to-ask — 선택 레이어.
 //
@@ -110,6 +111,9 @@ function popupStyle(rect: ToplineSelection['rect']): CSSProperties {
  * `추가 질문`(기본 — 근거 검색 답변 스트리밍) / `편집`(선택 블록을 인라인
  * 텍스트 편집 모드로 전환). editable=false(table/chart/pie 등 텍스트 아님)면
  * 편집 액션은 비활성. 질문 입력은 Enter 제출(IME 조합 중 제외), Shift+Enter 개행.
+ *
+ * 추가 질문의 근거 소스는 토글로 고른다: 인터뷰 근거(기본, 코퍼스 벡터 검색) /
+ * 웹 검색(Tavily). 선택된 모드가 onSubmit 으로 함께 넘어간다.
  */
 export function ToplineAskPopup({
   selection,
@@ -123,20 +127,21 @@ export function ToplineAskPopup({
   busy: boolean;
   // 선택 블록이 인라인 편집 가능한 텍스트 블록인지(false 면 편집 액션 비활성).
   editable: boolean;
-  onSubmit: (question: string) => void;
+  onSubmit: (question: string, mode: AskMode) => void;
   // 편집 액션 — 선택 블록을 인라인 편집 모드로 전환(팝업은 닫힘).
   onEdit: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const [value, setValue] = useState('');
+  const [mode, setMode] = useState<AskMode>('interview');
   const cardRef = useRef<HTMLDivElement>(null);
 
   const submit = useCallback(() => {
     const q = value.trim();
     if (!q || busy) return;
-    onSubmit(q);
-  }, [value, busy, onSubmit]);
+    onSubmit(q, mode);
+  }, [value, busy, onSubmit, mode]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -218,6 +223,28 @@ export function ToplineAskPopup({
           title={t('toplineEditAction')}
         >
           ✏️ {t('toplineEditAction')}
+        </Button>
+      </div>
+      {/* 근거 소스 토글 — 인터뷰 근거(기본) / 웹 검색. 선택 모드는 submit 시
+          함께 넘어간다. 선택 = primary(ink), 비선택 = ghost. */}
+      <div className="mb-2 flex items-center gap-1.5">
+        <Button
+          variant={mode === 'interview' ? 'primary' : 'ghost'}
+          size="xs"
+          onClick={() => setMode('interview')}
+          disabled={busy}
+          aria-pressed={mode === 'interview'}
+        >
+          📚 {t('toplineAskModeInterview')}
+        </Button>
+        <Button
+          variant={mode === 'web' ? 'primary' : 'ghost'}
+          size="xs"
+          onClick={() => setMode('web')}
+          disabled={busy}
+          aria-pressed={mode === 'web'}
+        >
+          🌐 {t('toplineAskModeWeb')}
         </Button>
       </div>
       <div className="flex items-end gap-2">

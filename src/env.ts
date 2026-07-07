@@ -106,6 +106,10 @@ export const env = createEnv({
     // Optional — raises the Semantic Scholar rate limit. Missing key still
     // works on the public tier, so the desk source has no envKeys gate.
     SEMANTIC_SCHOLAR_API_KEY: z.string().min(8).optional(),
+    // Tavily web search — powers the 탑라인 drag-to-ask "웹 검색" mode.
+    // Optional: when missing, the ask route rejects web-mode requests with
+    // `web_search_unavailable` (interview mode keeps working).
+    TAVILY_API_KEY: z.string().min(8).optional(),
     ECOS_API_KEY: z.string().min(8).optional(),
     KOSIS_API_KEY: z.string().min(8).optional(),
 
@@ -243,6 +247,7 @@ export const env = createEnv({
     DART_API_KEY: process.env.DART_API_KEY,
     KCI_API_KEY: process.env.KCI_API_KEY,
     SEMANTIC_SCHOLAR_API_KEY: process.env.SEMANTIC_SCHOLAR_API_KEY,
+    TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     ECOS_API_KEY: process.env.ECOS_API_KEY,
     KOSIS_API_KEY: process.env.KOSIS_API_KEY,
 

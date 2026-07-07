@@ -17,8 +17,11 @@ import { formatEvidence } from '@/lib/interview-v2/search-prompt';
 import {
   ASK_SYSTEM,
   ASK_NO_ANSWER_MD,
+  ASK_WEB_SYSTEM,
+  ASK_WEB_NO_RESULTS_MD,
   askAnswerSchema,
 } from '@/lib/interview-v2/ask-prompt';
+import { searchWeb, formatWebEvidence } from '@/lib/web-search/tavily';
 import type { Citation } from '@/lib/interview-v2/types';
 
 // 인터뷰 탑라인 drag-to-ask — 선택 구절 + 추가질문에 대한 근거 기반 답변.
@@ -48,6 +51,8 @@ const Body = z.object({
   anchor_block_id: z.string().trim().min(1).max(200),
   selected_text: z.string().trim().min(1).max(2_000),
   question: z.string().trim().min(1).max(2_000),
+  // 근거 소스 — 'interview'(기본, 인터뷰 코퍼스 벡터 검색) / 'web'(Tavily 웹 검색).
+  mode: z.enum(['interview', 'web']).optional().default('interview'),
   top_k: z.number().int().min(1).max(50).optional().default(12),
   // v2/search 와 동일한 floor(교차언어 유사도가 구조적으로 낮아 0.2 가 바닥).
   score_threshold: z.number().min(0).max(1).optional().default(0.2),
@@ -73,7 +78,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { project_id, anchor_block_id, selected_text, question, top_k, score_threshold } =
+  const { project_id, anchor_block_id, selected_text, question, mode, top_k, score_threshold } =
     parsed.data;
 
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -94,6 +99,90 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
   }
 
+  // 선택 구절 + 질문은 신뢰할 수 없는 사용자 입력 — wrap + injection 로깅
+  // (차단 X, UX 회귀 방지). 두 모드(interview/web) 공통.
+  const questionSan = await sanitizeUserInput(question, 'ask_question', {
+    endpoint: '/api/interviews/v2/topline/ask',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+    input_length: question.length,
+    input_label: 'ask_question',
+  });
+  const selectedSan = await sanitizeUserInput(selected_text, 'ask_selected', {
+    endpoint: '/api/interviews/v2/topline/ask',
+    user_id: user.id,
+    org_id: org.org_id,
+    actor_email: user.email ?? null,
+    input_length: selected_text.length,
+    input_label: 'ask_selected',
+  });
+
+  const anthropic = createAnthropic({ apiKey });
+
+  // ── 웹 검색 모드 ── 인터뷰 코퍼스 대신 Tavily 웹 결과를 근거로 답한다.
+  // 인용은 answer_md 의 inline markdown 링크(chunk_id 아님)라 x-citations 는
+  // 빈 배열 — 클라가 chunk 인용 카드를 그리지 않는다. keep 시 PATCH 는
+  // citations: [] 로 병합돼 무효 chunk_id drop 경로와 자연히 호환된다.
+  if (mode === 'web') {
+    const tavilyKey = env.TAVILY_API_KEY;
+    if (!tavilyKey) {
+      return NextResponse.json(
+        { error: 'web_search_unavailable' },
+        { status: 503 },
+      );
+    }
+
+    const webQuery = `${selected_text} ${question}`;
+    const results = await searchWeb(webQuery, {
+      apiKey: tavilyKey,
+      maxResults: 6,
+    });
+
+    console.log('[v2/topline/ask]', {
+      mode: 'web',
+      project_id: project_id.slice(0, 8),
+      anchor: anchor_block_id.slice(0, 24),
+      results_count: results.length,
+      selected_preview: selected_text.slice(0, 40),
+      question_preview: question.slice(0, 40),
+    });
+
+    const emptyCitations = encodeURIComponent('[]');
+
+    // 결과 0 → 모델 호출 없이 no_answer(streamed 경로와 같은 JSON shape).
+    if (results.length === 0) {
+      return new Response(
+        JSON.stringify({
+          answer_md: ASK_WEB_NO_RESULTS_MD,
+          citations: [],
+          no_answer: true,
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'x-citations': emptyCitations,
+          },
+        },
+      );
+    }
+
+    const webSystem = `${ASK_WEB_SYSTEM}\n\n## 웹 검색 결과\n${formatWebEvidence(results)}`;
+    const webResult = streamObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: askAnswerSchema,
+      system: webSystem,
+      prompt: `## 선택한 보고서 구절\n${selectedSan.wrapped}\n\n## 추가 질문\n${questionSan.wrapped}\n\n위 웹 검색 결과만 사용해 추가 질문에 짧게 답하고, 각 사실 뒤에 출처 markdown 링크를 다세요.`,
+      temperature: 0.2,
+      providerOptions: ZERO_RETENTION,
+    });
+    const webResponse = webResult.toTextStreamResponse();
+    webResponse.headers.set('x-citations', emptyCitations);
+    return webResponse;
+  }
+
+  // ── 인터뷰 근거 모드(기본) ──
   // 검색 시드 = 선택 구절 + 질문 — 선택 문맥이 retrieval 을 조준한다.
   const seed = `${selected_text}\n${question}`;
 
@@ -146,26 +235,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // 선택 구절 + 질문은 신뢰할 수 없는 사용자 입력 — wrap + injection 로깅
-  // (차단 X, UX 회귀 방지). 근거는 system prompt 에 산다.
-  const questionSan = await sanitizeUserInput(question, 'ask_question', {
-    endpoint: '/api/interviews/v2/topline/ask',
-    user_id: user.id,
-    org_id: org.org_id,
-    actor_email: user.email ?? null,
-    input_length: question.length,
-    input_label: 'ask_question',
-  });
-  const selectedSan = await sanitizeUserInput(selected_text, 'ask_selected', {
-    endpoint: '/api/interviews/v2/topline/ask',
-    user_id: user.id,
-    org_id: org.org_id,
-    actor_email: user.email ?? null,
-    input_length: selected_text.length,
-    input_label: 'ask_selected',
-  });
-
-  const anthropic = createAnthropic({ apiKey });
   const systemPrompt = `${ASK_SYSTEM}\n\n## 근거 청크\n${formatEvidence(hits)}`;
 
   const result = streamObject({
