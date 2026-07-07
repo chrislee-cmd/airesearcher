@@ -487,8 +487,15 @@ function IconButtonAltSection() {
       title="IconButton 대안 탐색 (비교용 — 미적용)"
       hint="샌드박스 데모 · 프로덕션 IconButton(ui/icon-button.tsx) 미변경 · 전부 no-shadow·토큰 · 승자 선택 후 후속 spec 에서 primitive 교체 · hover 를 실제로 확인 (클릭 no-op)"
     >
-      {ALT_META.map((style) => (
-        <Subsection key={style.key} label={`${style.label} — ${style.note}`}>
+      {ALT_META.map((style, i) => (
+        <div key={style.key} className="rounded-sm border border-line-soft p-4">
+          {/* variant 식별 라벨: 사람이 읽는 이름 + 코드용 key 칩 + 번호 */}
+          <div className="mb-1 flex items-baseline gap-2">
+            <span className="text-sm text-mute-soft">{i + 1}.</span>
+            <span className="text-lg font-medium text-ink">{style.label}</span>
+            <code className="rounded-xs bg-ink/6 px-1.5 py-0.5 text-sm text-mute">{style.key}</code>
+          </div>
+          <p className="mb-4 text-sm text-mute-soft">{style.note}</p>
           <div className="flex flex-col gap-3">
             {sizes.map((size) => (
               <div key={size} className="flex items-center gap-4">
@@ -508,7 +515,7 @@ function IconButtonAltSection() {
               </div>
             ))}
           </div>
-        </Subsection>
+        </div>
       ))}
     </PrimitivePage>
   );
