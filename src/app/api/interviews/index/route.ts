@@ -129,7 +129,10 @@ export async function POST(req: Request) {
       documentId = inserted.id;
       totalDocs += 1;
 
-      const chunks = chunkMarkdown(doc.markdown, { filename: doc.filename });
+      const chunks = chunkMarkdown(doc.markdown, {
+        filename: doc.filename,
+        docId: documentId,
+      });
       if (chunks.length === 0) continue;
 
       // Publish the denominator before the first (slow) embed call so the
