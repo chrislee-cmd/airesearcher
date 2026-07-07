@@ -1464,6 +1464,33 @@
       "exportXlsx": "XLSX 내보내기"
     }
   },
+  "AdminRagEval": {
+    "title": "인터뷰 RAG 품질 평가",
+    "subtitle": "청킹·인덱싱·검색(A/B/C) 개선 효과를 정량 측정합니다. 자동 정답 + LLM 판사 4 메트릭 — 실행할 때마다 스냅샷이 저장되어 직전 대비 변화(delta)를 보여줍니다.",
+    "project": "프로젝트",
+    "projectPlaceholder": "프로젝트 선택",
+    "sampleSize": "표본 청크",
+    "run": "평가 실행",
+    "running": "측정 중…",
+    "runningHint": "청크 표본 → 질문 생성 → 검색 → LLM 판사. 표본 수에 따라 수십 초~수 분 걸릴 수 있습니다.",
+    "error": "오류",
+    "runMeta": "{model} · {sha} · 표본 {sample} · K={k}",
+    "vsPrevious": "직전 run 대비 delta",
+    "noPrevious": "이 프로젝트의 첫 run — 비교 기준 없음",
+    "unavailable": "측정 불가",
+    "recall": "Retrieval Recall@K",
+    "recallHint": "청크로 만든 질문이 자기 청크를 top-K 로 되찾는 비율. 청킹·임베딩 품질 직접 지표.",
+    "recallDetail": "{hits}/{sampled} 적중 · MRR {mrr}",
+    "coverage": "Respondent Coverage",
+    "coverageHint": "집계형 질문 검색이 커버하는 고유 문서 비율. top-K RAG 는 낮고 map-reduce(B)는 높아야.",
+    "coverageDetail": "{cited}/{total} 문서 커버",
+    "faithfulness": "Faithfulness",
+    "faithfulnessHint": "생성 답변 claim 중 인용 근거로 뒷받침되는 비율. 낮으면 환각.",
+    "faithfulnessDetail": "{supported}/{claims} claim 지지",
+    "citation": "Citation Validity",
+    "citationHint": "답변 인용 chunk_id 가 실재하는 비율. 낮으면 지어낸 인용.",
+    "citationDetail": "{valid}/{total} 인용 유효"
+  },
   "AdminApiUsage": {
     "label": "관리자",
     "title": "API 사용량 · 비용 · 잔액",

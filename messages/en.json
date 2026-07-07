@@ -1464,6 +1464,33 @@
       "exportXlsx": "Export XLSX"
     }
   },
+  "AdminRagEval": {
+    "title": "Interview RAG Quality Eval",
+    "subtitle": "Quantifies the impact of chunking/indexing/retrieval (A/B/C) work. Auto gold + LLM-judge, 4 metrics — each run saves a snapshot and shows the delta vs the previous run.",
+    "project": "Project",
+    "projectPlaceholder": "Select a project",
+    "sampleSize": "Sample chunks",
+    "run": "Run eval",
+    "running": "Measuring…",
+    "runningHint": "Sample chunks → generate questions → retrieve → LLM judge. May take tens of seconds to a few minutes depending on sample size.",
+    "error": "Error",
+    "runMeta": "{model} · {sha} · sample {sample} · K={k}",
+    "vsPrevious": "delta vs previous run",
+    "noPrevious": "First run for this project — no baseline yet",
+    "unavailable": "Unavailable",
+    "recall": "Retrieval Recall@K",
+    "recallHint": "Share of chunk-derived questions that retrieve their own chunk in top-K. Direct signal of chunking/embedding quality.",
+    "recallDetail": "{hits}/{sampled} hit · MRR {mrr}",
+    "coverage": "Respondent Coverage",
+    "coverageHint": "Share of unique documents covered by aggregate-query retrieval. Low for top-K RAG, high for map-reduce (B).",
+    "coverageDetail": "{cited}/{total} docs covered",
+    "faithfulness": "Faithfulness",
+    "faithfulnessHint": "Share of generated-answer claims backed by their cited evidence. Low = hallucination.",
+    "faithfulnessDetail": "{supported}/{claims} claims supported",
+    "citation": "Citation Validity",
+    "citationHint": "Share of cited chunk_ids that actually exist. Low = fabricated citations.",
+    "citationDetail": "{valid}/{total} citations valid"
+  },
   "AdminApiUsage": {
     "label": "Admin",
     "title": "API usage · cost · balance",
