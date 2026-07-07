@@ -41,6 +41,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { DropdownMenu } from './ui/dropdown-menu';
 import { ControlTrigger } from './ui/control-trigger';
 import { Field } from './canvas/shell/field';
+import { SectionLabel } from './canvas/shell/widget-outputs';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
@@ -3946,8 +3947,8 @@ export function TranslateConsole({
           idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. live/busy 중엔
           trigger disabled (옛 select disabled 동작 유지). */}
       <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
-        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
-          {t('sourceLang')}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <SectionLabel>{t('sourceLang')}</SectionLabel>
           <DropdownMenu
             items={langOptions.map((l) => ({
               key: l.value,
@@ -3969,8 +3970,8 @@ export function TranslateConsole({
             )}
           />
         </div>
-        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
-          {t('targetLang')}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <SectionLabel>{t('targetLang')}</SectionLabel>
           <DropdownMenu
             items={langOptions.map((l) => ({
               key: l.value,
@@ -3992,8 +3993,8 @@ export function TranslateConsole({
             )}
           />
         </div>
-        <div className="flex min-w-0 flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
-          {t('captureMode.label')}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <SectionLabel>{t('captureMode.label')}</SectionLabel>
           <DropdownMenu
             items={[
               { key: 'both', label: t('captureMode.both'), mode: 'both' },
@@ -4026,8 +4027,8 @@ export function TranslateConsole({
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
           추가. 세션 시작 전에만 편집 (live 중 disabled). */}
-      <label className="flex flex-col gap-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
-        {t('glossary.label')}
+      <label className="flex flex-col gap-1.5">
+        <SectionLabel>{t('glossary.label')}</SectionLabel>
         <GlossaryField
           values={glossary}
           onChange={setGlossary}

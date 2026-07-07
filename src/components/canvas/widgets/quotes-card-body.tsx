@@ -792,7 +792,9 @@ export function QuotesCardBody() {
   // 숨지 않는다). 드롭/클릭 → startUploads → language-confirm → 업로드+자동
   // 전사. 언어 트리거 = DropdownMenu(aria-label) 라 Field htmlFor 불필요.
   const renderControls = () => (
-    <div className="space-y-5">
+    // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
+    // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
+    <>
       <Field label="언어">
         <DropdownMenu
           items={languageItems}
@@ -830,7 +832,7 @@ export function QuotesCardBody() {
           {tWidgets('transcriptReadyHint', { count: readyCount })}
         </p>
       ) : null}
-    </div>
+    </>
   );
 
   return (
@@ -844,7 +846,7 @@ export function QuotesCardBody() {
             항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
             띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
             active 진입 시 상단 고정 + 아래 산출물. */}
-        <ControlBoardPanel active={phase === 'active'}>
+        <ControlBoardPanel active={phase === 'active'} gap="field">
           {txInflight ? (
               // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
               <ProcessTimeline phases={txTimelinePhases} />
