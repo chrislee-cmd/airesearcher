@@ -9,10 +9,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
+import { type InterviewV2Hit } from '@/lib/interview-v2/pgvector-query';
 import {
-  searchInterviewV2Chunks,
-  type InterviewV2Hit,
-} from '@/lib/interview-v2/pgvector-query';
+  hybridSearch,
+  type HybridScope,
+} from '@/lib/interview-v2/hybrid-search';
 import {
   SEARCH_SYSTEM,
   NO_ANSWER_MD,
@@ -231,92 +232,76 @@ export async function POST(req: Request) {
   // route. Authorization already happened above.
   const admin = createAdminClient();
 
-  // Cross-project retrieval strategy (prod incident 2026-07-03): the _multi
-  // RPC does a FLAT top-K across every selected project, so chunks from an
-  // unrelated project outrank the on-topic ones and the real evidence falls
-  // out of the top-K (or under the floor) → empty citations. Instead, run a
-  // per-project top-K and merge: each project contributes its own best chunks,
-  // then we globally re-sort by score and slice to top_k. Single-project search
-  // is already narrow, so it stays on the direct path.
-  let hits: InterviewV2Hit[] = [];
-  let strategy = 'single';
-  let projectsScanned = 1;
-  let perProjectK = top_k;
-  try {
-    if (useMultiProject) {
-      const targetIds =
-        project_ids && project_ids.length > 0
-          ? project_ids
-          : await getAllUserProjects(admin, org.org_id, user.id);
-
-      if (targetIds.length === 0) {
-        // No explicit selection and the user has no projects (or only legacy
-        // null-project documents) — fall back to the whole-org _multi RPC so
-        // those legacy docs remain searchable. No distinct projects here means
-        // no flat-top-K pollution to guard against.
-        strategy = 'multi_whole_org_fallback';
-        projectsScanned = 0;
-        hits = await searchInterviewV2Chunks({
-          client: admin,
-          orgId: org.org_id,
-          projectIds: [],
-          query: question,
-          k: top_k,
-          scoreThreshold: score_threshold,
-        });
-      } else {
-        strategy = 'per_project_loop';
-        projectsScanned = targetIds.length;
-        // Give each project enough headroom that the merge has candidates from
-        // all of them, but never fewer than 3 so a small selection still pulls
-        // a useful spread.
-        perProjectK = Math.max(3, Math.ceil(top_k / targetIds.length));
-        const perHits = await Promise.all(
-          targetIds.map((pid) =>
-            searchInterviewV2Chunks({
-              client: admin,
-              orgId: org.org_id,
-              projectId: pid,
-              query: question,
-              k: perProjectK,
-              scoreThreshold: score_threshold,
-            }),
-          ),
-        );
-        hits = perHits
-          .flat()
-          .sort((a, b) => b.score - a.score)
-          .slice(0, top_k);
-      }
+  // Hybrid retrieval (spec C — decisions 1–3): vector ⊕ keyword fused with RRF
+  // (recovers exact tokens the cosine path misses), a per-document coverage
+  // floor (respondent diversity), then small-to-big parent expansion (the LLM
+  // sees whole Q&A pairs, not mid-answer fragments). All three live in
+  // hybridSearch; the route resolves the retrieval scope and forwards it.
+  //
+  // Scope resolution preserves the prod-incident-2026-07-03 anti-pollution
+  // rule: a concrete multi-project selection loops per project rather than one
+  // flat top-K across all of them (which let an unrelated project outrank the
+  // on-topic chunks). single/whole-org paths are already narrow.
+  let scope: HybridScope;
+  let strategy: string;
+  let projectsScanned: number;
+  if (useMultiProject) {
+    const targetIds =
+      project_ids && project_ids.length > 0
+        ? project_ids
+        : await getAllUserProjects(admin, org.org_id, user.id).catch((e) => {
+            console.error('[interviews/v2/search] getAllUserProjects failed', e);
+            return [] as string[];
+          });
+    if (targetIds.length === 0) {
+      // No explicit selection and no projects (or only legacy null-project
+      // docs) — whole-org _multi so those legacy docs stay searchable.
+      scope = { kind: 'whole_org_multi' };
+      strategy = 'multi_whole_org_fallback';
+      projectsScanned = 0;
     } else {
-      // Backward-compat single-project (or deprecated project_id) path.
-      hits = await searchInterviewV2Chunks({
-        client: admin,
-        orgId: org.org_id,
-        projectId: project_id ?? null,
-        query: question,
-        k: top_k,
-        scoreThreshold: score_threshold,
-      });
+      scope = { kind: 'per_project', projectIds: targetIds };
+      strategy = 'per_project_loop';
+      projectsScanned = targetIds.length;
     }
+  } else {
+    scope = { kind: 'single', projectId: project_id ?? null };
+    strategy = 'single';
+    projectsScanned = 1;
+  }
+
+  let hits: InterviewV2Hit[] = [];
+  let hybridDebug: Record<string, number> = {};
+  try {
+    const res = await hybridSearch({
+      admin,
+      orgId: org.org_id,
+      scope,
+      query: question,
+      topK: top_k,
+      scoreThreshold: score_threshold,
+    });
+    // Parent-expanded evidence is what the model reads (small-to-big).
+    hits = res.parents;
+    hybridDebug = res.debug;
   } catch (e) {
     console.error('[interviews/v2/search] retrieval failed', e);
     return NextResponse.json({ error: 'search_failed' }, { status: 500 });
   }
 
-  // Debug — surfaces which retrieval strategy ran, how many projects were
-  // scanned, the per-project K, the effective threshold, and how many chunks
-  // came back, so an empty-citations report can be diagnosed straight from the
-  // Vercel Function logs and the threshold tuned off real traffic.
+  // Debug — retrieval strategy, projects scanned, effective threshold, and the
+  // hybrid stage counts (vector/keyword/fused/floored/parents), so an
+  // empty-citations report can be diagnosed straight from the Function logs and
+  // the fusion/floor tuned off real traffic.
   console.log('[v2/search]', {
     strategy,
     projects_scanned: projectsScanned,
-    per_project_k: perProjectK,
     threshold: score_threshold,
     top_k,
     project_id: project_id ?? null,
     project_ids: project_ids ?? null,
     chunks_count: hits.length,
+    ...hybridDebug,
     question_preview: question.slice(0, 40),
   });
 
