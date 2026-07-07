@@ -499,7 +499,9 @@ function StaleBanner({
 // map-reduce 진행률 — 전 문서 순회 중 "N/M 문서 분석" + 진행 바. map_total 이
 // 없으면(레거시/시작 전) 아무것도 그리지 않는다. 이 문구가 "빠짐없이 전 문서를
 // 읽는 중"을 사용자에게 보이게 해 긴 생성 시간을 납득시킨다(카드 #430).
-function ToplineMapProgress({
+// export — 위젯 카드 본문(interviews-card)이 팝업 밖 ambient 진행률로 재사용한다
+// (로직 복붙 금지, card #434). 여기가 SSOT.
+export function ToplineMapProgress({
   mapTotal,
   mapDone,
 }: {
