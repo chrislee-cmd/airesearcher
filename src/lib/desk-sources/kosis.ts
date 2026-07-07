@@ -36,6 +36,148 @@ type KosisItem = {
   MT_ATITLE?: string; // classification path ("보건 > 화장품산업현황 > …")
 };
 
+// statisticsSearch.do gives the table *catalog* (name/link/path) but no cell
+// values — the TAM row therefore stayed permanently "—" because policy forbids
+// the LLM from inventing numbers (2026-07-08 diagnosis, #822). To surface the
+// actual figure we make a 2nd call per top table to `Param/statisticsParameterData.do`,
+// which returns the latest-period rows with the value in `DT`.
+//
+// Why this endpoint (probe-confirmed 2026-07-08): plain `statisticsData.do?method=getList`
+// rejects `itmId=ALL&objL1=ALL` with err=20 (required-var missing) — it wants the
+// exact item/object codes, which would force an extra `getMeta` round-trip per
+// table. `Param/statisticsParameterData.do` accepts `ALL` and returns every
+// item×classification row in one call, so we resolve item/object codes
+// client-side and stay within the 15s task cap (one value call per table, run in
+// parallel).
+type KosisValueRow = {
+  DT?: string; // the numeric value ("175426")
+  UNIT_NM?: string; // unit ("억원", "천원", "%" …)
+  PRD_DE?: string; // period ("2024")
+  ITM_NM?: string; // item name ("금액", "국내판매액" …)
+  C1_NM?: string; // level-1 classification name ("합계", "기초화장용 제품류" …)
+};
+
+// Top K search hits to enrich with values. Kept low (spec allowed 2~3): each
+// table adds a KOSIS daily-quota hit, and the value calls race the same 15s task
+// cap as the search. K=2 covers the two most-relevant tables (search returns in
+// relevance order, so rank-1 is the headline production/sales total) while
+// leaving headroom under the cap. Conservative reading of the 2~3 range.
+const VALUE_TABLE_COUNT = 2;
+// Search must finish well under the 15s crawl cap so the parallel value calls
+// can still run inside it. 9s is generous for KOSIS search yet leaves ~5s for
+// the value round-trips (search then values → worst case ≈14s < 15s cap).
+const SEARCH_TIMEOUT_MS = 9_000;
+const VALUE_TIMEOUT_MS = 5_000;
+
+// Classification names that denote a total/aggregate row — the representative
+// figure an analyst cites for TAM. Preferred over any single sub-category.
+const TOTAL_NAMES = ['합계', '계', '전체', '총계', '소계', '총합'];
+
+function toNum(dt: string | undefined): number | null {
+  if (dt == null) return null;
+  const raw = String(dt).replace(/,/g, '').trim();
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Pick the single row that best represents the table's headline figure:
+// prefer a total(합계) classification, then a monetary/quantity unit over a
+// share(%)/ratio(율), then the largest value (top-level totals dominate). Never
+// fabricates — it only selects among rows KOSIS actually returned.
+function pickRepresentative(
+  rows: KosisValueRow[],
+): KosisValueRow | undefined {
+  const withVal = rows.filter((r) => toNum(r.DT) != null);
+  if (!withVal.length) return undefined;
+  const isTotal = (r: KosisValueRow) =>
+    TOTAL_NAMES.includes((r.C1_NM ?? '').trim());
+  const isMonetary = (r: KosisValueRow) => {
+    const u = r.UNIT_NM ?? '';
+    return !!u && !u.includes('%') && !u.includes('율');
+  };
+  const score = (r: KosisValueRow) => (isTotal(r) ? 2 : 0) + (isMonetary(r) ? 1 : 0);
+  return [...withVal].sort((a, b) => {
+    const s = score(b) - score(a);
+    if (s !== 0) return s;
+    return (toNum(b.DT) ?? 0) - (toNum(a.DT) ?? 0);
+  })[0];
+}
+
+// "최신값 175,426 억원 (금액 합계, 2024)" — value + unit + item/classification +
+// period, so the LLM can transcribe an explicit figure into the TAM table. The
+// classification name is carried verbatim so a non-total figure is never
+// misread as the whole-market total.
+function formatValue(r: KosisValueRow): string | null {
+  const n = toNum(r.DT);
+  if (n == null) return null;
+  const num = n.toLocaleString('ko-KR');
+  const unit = (r.UNIT_NM ?? '').trim();
+  const itm = (r.ITM_NM ?? '').trim();
+  const cls = (r.C1_NM ?? '').trim();
+  const yr = (r.PRD_DE ?? '').trim();
+  const label = [itm, cls].filter(Boolean).join(' ');
+  const paren = [label, yr].filter(Boolean).join(', ');
+  return `최신값 ${num}${unit ? ` ${unit}` : ''}${paren ? ` (${paren})` : ''}`;
+}
+
+// 2nd call: pull the latest-period rows for one table and format the
+// representative value. Fully degrade-safe — any failure (network, non-array
+// {err}, no numeric row) returns null so the catalog link is kept unchanged
+// (regression 0). Structured debug log (key never printed) keeps 무음 0건 traceable.
+async function fetchLatestValue(
+  orgId: string,
+  tblId: string,
+  key: string,
+): Promise<string | null> {
+  const params = new URLSearchParams({
+    method: 'getList',
+    apiKey: key,
+    format: 'json',
+    jsonVD: 'Y',
+    itmId: 'ALL',
+    objL1: 'ALL',
+    prdSe: 'Y', // 최신 1기간 (연). 비연간 표는 값 없이 카탈로그 링크로 degrade.
+    newEstPrdCnt: '1',
+    orgId,
+    tblId,
+  });
+  let res: Response;
+  try {
+    res = await safeFetch(
+      `https://kosis.kr/openapi/Param/statisticsParameterData.do?${params}`,
+      undefined,
+      VALUE_TIMEOUT_MS,
+    );
+  } catch {
+    console.info(`[desk-debug] kosis value — tbl=${tblId} fetch_error`);
+    return null;
+  }
+  if (!res.ok) {
+    console.info(`[desk-debug] kosis value — tbl=${tblId} http=${res.status}`);
+    return null;
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(await res.text());
+  } catch {
+    console.info(`[desk-debug] kosis value — tbl=${tblId} parse_error`);
+    return null;
+  }
+  if (!Array.isArray(json)) {
+    // {err,…} — bad params / no data for prdSe=Y / etc. Degrade to catalog link.
+    const err = (json as { err?: string })?.err;
+    console.info(`[desk-debug] kosis value — tbl=${tblId} err=${err ?? 'shape'}`);
+    return null;
+  }
+  const rep = pickRepresentative(json as KosisValueRow[]);
+  const value = rep ? formatValue(rep) : null;
+  console.info(
+    `[desk-debug] kosis value — tbl=${tblId} rows=${json.length} value=${value ? 'y' : 'n'}`,
+  );
+  return value;
+}
+
 export const kosis: DeskSourceDefinition = {
   id: 'kosis',
   category: 'stats',
@@ -60,7 +202,7 @@ export const kosis: DeskSourceDefinition = {
     const res = await safeFetch(
       `https://kosis.kr/openapi/statisticsSearch.do?${params}`,
       undefined,
-      15_000,
+      SEARCH_TIMEOUT_MS,
     );
     if (!res.ok) {
       return { articles: [], error: classifyHttpStatus(res.status) };
@@ -96,32 +238,62 @@ export const kosis: DeskSourceDefinition = {
       return { articles: [] };
     }
     const items = json as KosisItem[];
-    const out = items
+    // Build (article, source-item) pairs so the top-K value enrichment can reach
+    // ORG_ID/TBL_ID after filtering — the DeskArticle itself doesn't carry them.
+    const built = items
       .map((item) => ({
-        source: 'kosis' as const,
-        title: item.TBL_NM ?? '',
-        url:
-          item.ORG_ID && item.TBL_ID
-            ? `https://kosis.kr/statHtml/statHtml.do?orgId=${item.ORG_ID}&tblId=${item.TBL_ID}`
-            : '',
-        // MT_ATITLE = classification path ("보건 > 화장품산업현황 > …") — carries
-        // more table context than the period unit did. statisticsSearch.do has no
-        // last-changed date field, so publishedAt is omitted (STRT/END_PRD_DE are
-        // data-coverage years, not a publish date — intentionally not mapped).
-        snippet: [item.ORG_NM, item.MT_ATITLE].filter(Boolean).join(' · ') || undefined,
-        origin: item.ORG_NM,
-        keyword,
-        // 통계 primary 근거 — market mode 샘플링이 통계 테이블 행을 뉴스 사이에서
-        // dropout 시키지 않도록 pin 대상으로 표시 ("시장 통계" 섹션 생존 보장).
-        kind: 'metric' as const,
-      } satisfies DeskArticle))
-      .filter((a) => a.title && a.url)
+        item,
+        article: {
+          source: 'kosis' as const,
+          title: item.TBL_NM ?? '',
+          url:
+            item.ORG_ID && item.TBL_ID
+              ? `https://kosis.kr/statHtml/statHtml.do?orgId=${item.ORG_ID}&tblId=${item.TBL_ID}`
+              : '',
+          // MT_ATITLE = classification path ("보건 > 화장품산업현황 > …") — carries
+          // more table context than the period unit did. statisticsSearch.do has no
+          // last-changed date field, so publishedAt is omitted (STRT/END_PRD_DE are
+          // data-coverage years, not a publish date — intentionally not mapped).
+          snippet:
+            [item.ORG_NM, item.MT_ATITLE].filter(Boolean).join(' · ') || undefined,
+          origin: item.ORG_NM,
+          keyword,
+          // 통계 primary 근거 — market mode 샘플링이 통계 테이블 행을 뉴스 사이에서
+          // dropout 시키지 않도록 pin 대상으로 표시 ("시장 통계" 섹션 생존 보장).
+          kind: 'metric' as const,
+        } satisfies DeskArticle,
+      }))
+      .filter((b) => b.article.title && b.article.url)
       .slice(0, limit);
+
+    // 2단: 상위 K개 표에 실제 최신값을 병렬로 당겨 snippet 에 담는다. 실패는
+    // null 로 degrade → 카탈로그 링크만 유지(회귀 0). 병렬이라 값 조회가 wall-clock
+    // 을 K배 늘리지 않는다.
+    const targets = built
+      .slice(0, VALUE_TABLE_COUNT)
+      .filter((b) => b.item.ORG_ID && b.item.TBL_ID);
+    if (targets.length) {
+      const values = await Promise.all(
+        targets.map((b) =>
+          fetchLatestValue(b.item.ORG_ID as string, b.item.TBL_ID as string, key),
+        ),
+      );
+      targets.forEach((b, i) => {
+        const v = values[i];
+        if (v) {
+          b.article.snippet = [b.article.snippet, v]
+            .filter(Boolean)
+            .join(' · ');
+        }
+      });
+    }
+
+    const out = built.map((b) => b.article);
     // 구조화 디버그 로그: 컴파일된 검색어당 raw 응답 건수 vs url/title 필터 후
-    // 최종 건수. 배열은 왔는데 0건이면 "카탈로그에 있으나 필터로 다 빠짐"인지
-    // "애초에 매칭 0"인지 이 로그로 구분한다 (무음 0건 추적).
+    // 최종 건수 + 값 enrich 대상 수. 배열은 왔는데 0건이면 "카탈로그에 있으나
+    // 필터로 다 빠짐"인지 "애초에 매칭 0"인지 이 로그로 구분한다 (무음 0건 추적).
     console.info(
-      `[desk-debug] kosis — searchNm=${keyword} raw=${items.length} kept=${out.length}`,
+      `[desk-debug] kosis — searchNm=${keyword} raw=${items.length} kept=${out.length} valued=${targets.length}`,
     );
     return out;
   },
