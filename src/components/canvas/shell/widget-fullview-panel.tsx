@@ -47,7 +47,7 @@ export function WidgetFullviewPanel({
         <div className="ml-4 flex shrink-0 items-center gap-2">
           {headerAction}
           <IconButton
-            variant="bordered"
+            variant="ghost"
             size="md"
             onClick={onClose}
             aria-label={closeLabel}

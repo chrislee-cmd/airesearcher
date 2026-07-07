@@ -261,7 +261,7 @@ export function ToplineAskPopup({
         </div>
         <IconButton
           aria-label={t('toplineAskSend')}
-          variant="bordered"
+          variant="ghost-brand"
           size="lg"
           onClick={submit}
           disabled={busy || value.trim().length === 0}

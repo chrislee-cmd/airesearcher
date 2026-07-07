@@ -58,7 +58,7 @@ export function QuestionInput({
       </div>
       <IconButton
         aria-label={t('searchSend')}
-        variant="bordered"
+        variant="ghost-brand"
         size="lg"
         onClick={submit}
         disabled={disabled || value.trim().length === 0}

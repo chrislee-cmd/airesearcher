@@ -6,7 +6,7 @@
    📤 업로드 아이콘 버튼 하나로 통일 — 클릭 시 dropzone 은 업로드 모달
    (WidgetUploadModal) 안으로 이동. 서브헤더 height 극단 ↓.
 
-   시각: IconButton `bordered` (Memphis 2px ink border + hard shadow) md
+   시각: IconButton `ghost` (표준 1px line chrome) md
    사이즈 — WidgetSettingsButton / 우측 CTA 와 같은 chrome 톤. 대기 중
    (큐) 파일이 있으면 우상단 amore count 배지로 명시.
    ──────────────────────────────────────────────────────────────────── */
@@ -59,7 +59,7 @@ export function WidgetUploadButton({
     // 얹는다 (globals.css .widget-gate-guide-pulse).
     <span className={pulse ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'}>
       <IconButton
-        variant="bordered"
+        variant="ghost"
         size="md"
         onClick={onClick}
         disabled={disabled}

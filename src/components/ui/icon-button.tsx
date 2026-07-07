@@ -12,9 +12,6 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 //   ghost         text-mute → ink-2          most close/expand/menu cases
 //   ghost-danger  text-mute → warning        deletes (× delete folder etc.)
 //   ghost-brand   text-mute → amore          remove-keyword chips, accents
-//   bordered      h-? w-? rounded-[4px] +
-//                 border-line bg-paper +
-//                 hover:border-amore         chrome toggles (e.g. speaker mute)
 //
 // Sizes (shape):
 //   compact   no fixed h/w, inline; honors className for padding/text
@@ -32,7 +29,6 @@ export type IconButtonVariant =
   | 'ghost'
   | 'ghost-danger'
   | 'ghost-brand'
-  | 'bordered'
   | 'subtle';
 export type IconButtonSize = 'compact' | 'sm' | 'md' | 'lg';
 
@@ -52,8 +48,7 @@ const BASE =
 
 // Memphis pop tone — boxed icon with 2px border + small hard shadow.
 // ghost / ghost-danger / ghost-brand share the same chrome; only hover
-// border / text / shadow tint changes per intent. `bordered` lands the
-// loudest treatment (filled ink border + black shadow).
+// border / text / shadow tint changes per intent.
 const VARIANT: Record<IconButtonVariant, string> = {
   ghost:
     'border-[2px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
@@ -66,9 +61,6 @@ const VARIANT: Record<IconButtonVariant, string> = {
     'border-[2px] border-line bg-paper text-mute shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
     'hover:-translate-x-px hover:-translate-y-px hover:border-amore hover:text-amore ' +
     'hover:shadow-[3px_3px_0_var(--color-amore)]',
-  bordered:
-    'border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_black] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_black] rounded-xs',
   // Subtle tone for header bands (yellow Topbar banner) — circular chip
   // with soft ink fill, no border/shadow. Pairs with Button `subtle` (pill
   // form) so the gear inside the account pill or alongside SignIn reads as
@@ -80,7 +72,7 @@ const VARIANT: Record<IconButtonVariant, string> = {
 
 const SIZE: Record<IconButtonSize, string> = {
   // inline-flex + centering + leading-none so callers that pass no padding
-  // still render the glyph centered inside the Memphis bordered chrome
+  // still render the glyph centered inside the Memphis boxed chrome
   // (PR #466 added border-2 + shadow to every variant; compact size had
   // no inline placement so the glyph sat off-box or clipped).
   compact: 'inline-flex items-center justify-center leading-none',

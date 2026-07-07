@@ -62,7 +62,7 @@ export function WidgetFullviewModal({
           ) : null}
         </div>
         <IconButton
-          variant="bordered"
+          variant="ghost"
           size="md"
           onClick={onClose}
           aria-label={closeLabel}

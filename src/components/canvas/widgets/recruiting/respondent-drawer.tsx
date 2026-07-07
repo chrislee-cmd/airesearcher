@@ -114,7 +114,7 @@ export function RespondentDrawer({
               )}
             </div>
             <IconButton
-              variant="bordered"
+              variant="ghost"
               size="md"
               onClick={onClose}
               aria-label="닫기"

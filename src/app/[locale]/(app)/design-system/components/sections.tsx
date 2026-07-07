@@ -361,7 +361,6 @@ function IconButtonSection() {
     'ghost',
     'ghost-danger',
     'ghost-brand',
-    'bordered',
     'subtle',
   ];
   const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
@@ -380,10 +379,10 @@ function IconButtonSection() {
         </div>
       </Subsection>
 
-      <Subsection label="Sizes (variant=bordered)">
+      <Subsection label="Sizes (variant=ghost)">
         <div className="flex flex-wrap items-center gap-3">
           {sizes.map((s) => (
-            <IconButton key={s} variant="bordered" size={s} aria-label={s}>
+            <IconButton key={s} variant="ghost" size={s} aria-label={s}>
               <CloseIcon />
             </IconButton>
           ))}

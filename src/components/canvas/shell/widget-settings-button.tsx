@@ -5,7 +5,7 @@
    지역·기간·키워드·용어집·소스 등) 로 제각각 어수선했던 것을, 좌측 ⚙ 설정
    버튼 하나로 통일. 세부 필드는 클릭 시 WidgetSettingsModal 안으로 이동.
 
-   시각: IconButton `bordered` (Memphis 2px ink border + hard shadow) md
+   시각: IconButton `ghost` (표준 1px line chrome) md
    사이즈 — 우측 CTA 와 같은 chrome 톤. default 와 다른 값이 하나라도
    있으면 우상단 amore dot 으로 "설정됨" 을 명시 (hasChanges).
    ──────────────────────────────────────────────────────────────────── */
@@ -58,7 +58,7 @@ export function WidgetSettingsButton({
     // wrapper 는 유지 — 토글 시 IconButton 리마운트 방지 (DOM 안정).
     <span className={pulse ? 'inline-flex widget-gate-guide-pulse' : 'inline-flex'}>
       <IconButton
-        variant="bordered"
+        variant="ghost"
         size="md"
         onClick={onClick}
         disabled={disabled}
