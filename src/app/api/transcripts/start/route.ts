@@ -20,6 +20,12 @@ const Body = z.object({
   size_bytes: z.number().int().nonnegative().optional(),
   language: z.string().optional(),
   project_id: z.string().uuid().nullable().optional(),
+  // 전사 모드 (card #484) — 'research'(현행) | 'meeting'(회의록 요약+Todo #485
+  // 가 소비). 이 라우트는 값 저장만, 전사 자체는 두 모드 동일.
+  mode: z.enum(['research', 'meeting']).optional(),
+  // 발화자 수 hint — 1 / 2 / 3(="3명 이상"). ElevenLabs num_speakers 로 매핑
+  // (1·2 만 실어 보냄; 3/미지정 = auto diarize = 현행). null = 미지정.
+  speaker_count: z.number().int().min(1).max(3).nullable().optional(),
 });
 
 function getDeploymentBaseUrl(): string {
@@ -41,8 +47,16 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { storage_key, filename, mime_type, size_bytes, language, project_id } =
-    parsed.data;
+  const {
+    storage_key,
+    filename,
+    mime_type,
+    size_bytes,
+    language,
+    project_id,
+    mode,
+    speaker_count,
+  } = parsed.data;
   const langEntry = getLanguage(language);
   // Provider is now derived from language (see languages.ts): English →
   // Deepgram nova-3, everything else → ElevenLabs Scribe v2. The user-facing
@@ -63,6 +77,8 @@ export async function POST(request: Request) {
       size_bytes: size_bytes ?? null,
       provider,
       model: apiModel,
+      mode: mode ?? 'research',
+      speaker_count: speaker_count ?? null,
       status: 'submitting',
     })
     .select('id')
@@ -119,6 +135,11 @@ export async function POST(request: Request) {
     signedUrl: signed.signedUrl,
     apiModel,
     languageCode: langEntry.code === 'multi' ? null : langEntry.dgLanguage,
+    // 발화자 수 hint → ElevenLabs num_speakers. 1·2 만 고정 hint 로 실어
+    // 정확도를 높이고, 3("3명 이상")/미지정은 실어 보내지 않아 auto diarize
+    // (현행 동작) 를 그대로 유지한다. Deepgram(영어)은 고정 화자 수 파라미터가
+    // 없어 hint 미적용 — 항상 auto diarize.
+    numSpeakers: speaker_count === 1 || speaker_count === 2 ? speaker_count : null,
   });
 }
 
@@ -219,8 +240,10 @@ async function dispatchElevenLabs(args: {
   signedUrl: string;
   apiModel: string;
   languageCode: string | null;
+  numSpeakers: number | null;
 }) {
-  const { supabase, jobId, signedUrl, apiModel, languageCode } = args;
+  const { supabase, jobId, signedUrl, apiModel, languageCode, numSpeakers } =
+    args;
 
   const apiKey = env.ELEVENLABS_API_KEY;
   if (!apiKey) {
@@ -249,6 +272,8 @@ async function dispatchElevenLabs(args: {
   form.append('tag_audio_events', 'true');
   form.append('webhook', 'true');
   if (languageCode) form.append('language_code', languageCode);
+  // 고정 발화자 수 hint (1·2). 미지정이면 ElevenLabs 가 화자 수를 자동 추정.
+  if (numSpeakers) form.append('num_speakers', String(numSpeakers));
 
   let resp: Response;
   try {
