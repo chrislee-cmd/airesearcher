@@ -50,6 +50,12 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** 만료 판정 — expires_at 이 현재 이후면 만료. (컴포넌트 렌더에서 Date.now()
+ *  직접 호출을 피하려 lib 로 추출: react-hooks/purity.) */
+export function isShareExpired(expiresAt: string | null): boolean {
+  return !!expiresAt && new Date(expiresAt).getTime() <= Date.now();
+}
+
 /**
  * 공유 대상 리소스의 org_id 를 org-scoped 클라이언트로 조회한다.
  * RLS 가 "자기 org(또는 본인) resource" 만 보이게 하므로, null 이면
