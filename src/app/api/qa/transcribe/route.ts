@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { env } from '@/env';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { ELEVENLABS_API_MODEL } from '@/lib/transcripts/models';
 import type { ElevenLabsScribeResult } from '@/lib/transcripts/elevenlabs';
 
@@ -30,10 +32,45 @@ export async function POST(req: Request) {
   }
   const { feedback_id } = parsed.data;
 
+  // ── Gate 1: authentication ───────────────────────────────────────────────
+  // The only legitimate caller is the logged-in QA tester whose browser just
+  // inserted the row and fired this off. No session → no transcription.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  // ── Gate 2: rate limit (per user) ────────────────────────────────────────
+  // This route triggers a paid ElevenLabs Scribe call, so cap it per user to
+  // stop a single account from running up STT cost. Fail-open while Upstash is
+  // unprovisioned is a known limitation tracked separately (#497).
+  const limit = await rateLimit(user.id, 'qa-transcribe', 10, '1 m');
+  if (!limit.success) {
+    return rateLimitResponse(limit);
+  }
+
+  // ── Gate 3: ownership ────────────────────────────────────────────────────
+  // Read through the caller's RLS-scoped client and pin the row to their own
+  // user_id. A non-existent OR non-owned id both come back empty → 404, so we
+  // never reveal that someone else's feedback row exists. Only after this gate
+  // passes do we escalate to the service role for the privileged work below.
+  const { data: owned, error: ownErr } = await supabase
+    .from('qa_feedbacks')
+    .select('id')
+    .eq('id', feedback_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (ownErr || !owned) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
   const apiKey = env.ELEVENLABS_API_KEY;
-  // Service role: this runs without the user's session and must read the
-  // row + private audio object and write back the transcript (RLS has no
-  // user UPDATE policy — transcription writes go through service role).
+  // Service role: transcription must read the private audio object and write
+  // back the transcript (RLS has no user UPDATE policy — transcription writes
+  // go through service role). Safe to use now that the ownership gate passed.
   const admin = createAdminClient();
 
   const { data: row, error: rowErr } = await admin
@@ -106,5 +143,8 @@ export async function POST(req: Request) {
     .update({ transcript, status: 'done' })
     .eq('id', feedback_id);
 
-  return NextResponse.json({ ok: true, feedback_id, transcript });
+  // The client fires this off fire-and-forget and never reads the body, so we
+  // return only an ack — the transcript lives in the row (read back via the
+  // RLS-scoped admin viewer), never echoed over HTTP.
+  return NextResponse.json({ ok: true, feedback_id });
 }
