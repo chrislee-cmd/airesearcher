@@ -8,6 +8,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { ChipInput } from '@/components/ui/chip-input';
 import { IconButton } from '@/components/ui/icon-button';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 // Interview V2 — 프로젝트 카드 안의 태그 chip 편집기.
 //
@@ -41,9 +42,13 @@ export function ProjectTagEditor({
   onChange: (next: string[]) => void;
 }) {
   const t = useTranslations('InterviewsV2');
+  const reduced = useReducedMotion();
   const [draft, setDraft] = useState('');
   // 자동완성 드롭다운은 입력 포커스 중에만 노출 (상시 열림 방지).
   const [focused, setFocused] = useState(false);
+  // 삭제 애니메이션 진행 중인 chip 값들 — collapse 가 끝나야 실제 제거.
+  // 값으로 추적(태그는 keyOf 로 대소문자 무시 중복 제거되어 유일).
+  const [removing, setRemoving] = useState<string[]>([]);
 
   const atMax = tags.length >= MAX_TAGS;
 
@@ -56,8 +61,23 @@ export function ProjectTagEditor({
     onChange([...tags, value]);
   };
 
-  const removeAt = (idx: number) => {
-    onChange(tags.filter((_, i) => i !== idx));
+  const commitRemove = (tag: string) => {
+    onChange(tags.filter((x) => x !== tag));
+  };
+
+  // 삭제 요청 — reduced-motion 은 즉시 제거, 아니면 collapse 애니메이션 후 제거.
+  const removeTag = (tag: string) => {
+    if (reduced) {
+      commitRemove(tag);
+      return;
+    }
+    setRemoving((r) => (r.includes(tag) ? r : [...r, tag]));
+  };
+
+  // chip-out 애니메이션 종료 → 실제 배열에서 제거 + removing 목록 정리.
+  const onChipExitEnd = (tag: string) => {
+    setRemoving((r) => r.filter((x) => x !== tag));
+    commitRemove(tag);
   };
 
   // 아직 안 붙은 태그 중 draft 부분일치. draft 가 비면 인기순 상위 몇 개 노출.
@@ -74,7 +94,7 @@ export function ProjectTagEditor({
       e.preventDefault();
       commit(draft);
     } else if (e.key === 'Backspace' && !draft && tags.length) {
-      removeAt(tags.length - 1);
+      removeTag(tags[tags.length - 1]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setDraft('');
@@ -92,22 +112,30 @@ export function ProjectTagEditor({
     >
       {/* 데스크 키워드 컨테이너와 동일 프레임 — chip + 입력을 한 박스에 담는다. */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-2 border-ink bg-paper px-2.5 py-1.5 focus-within:border-amore">
-        {tags.map((tag, idx) => (
-          <span
-            key={`${tag}-${idx}`}
-            className="inline-flex items-center gap-1 rounded-pill border border-amore bg-paper px-2.5 py-0.5 text-xs text-amore"
-          >
-            {tag}
-            <IconButton
-              variant="ghost-brand"
-              size="compact"
-              onClick={() => removeAt(idx)}
-              aria-label={t('tagRemove', { tag })}
+        {tags.map((tag) => {
+          const exiting = removing.includes(tag);
+          return (
+            <span
+              key={tag}
+              // 등장 pop-in, 삭제 중이면 chip-out(collapse). 삭제 애니메이션이
+              // 끝나면 실제 배열에서 제거한다.
+              className={`inline-flex items-center gap-1 rounded-pill border border-amore bg-paper px-2.5 py-0.5 text-xs text-amore ${
+                exiting ? 'chip-out' : 'pop-in'
+              }`}
+              onAnimationEnd={exiting ? () => onChipExitEnd(tag) : undefined}
             >
-              <span aria-hidden>×</span>
-            </IconButton>
-          </span>
-        ))}
+              {tag}
+              <IconButton
+                variant="ghost-brand"
+                size="compact"
+                onClick={() => removeTag(tag)}
+                aria-label={t('tagRemove', { tag })}
+              >
+                <span aria-hidden>×</span>
+              </IconButton>
+            </span>
+          );
+        })}
 
         {!atMax && (
           <ChipInput

@@ -698,6 +698,34 @@ html, body {
   .press-scale:active { transform: none; }
 }
 
+/* =========================================================================
+   Wave2 — 데이터·인터랙션 유틸 (Foundation motion 토큰 위에 쌓음).
+   menu-in  드롭다운/셀렉트 팝오버 등장(fade + 살짝 위→제자리 translate).
+   chip-out 태그/키워드 chip 삭제(fade + scale 로 collapse 하며 사라짐).
+   값은 Motion tokens(--dur / --ease) SSOT 참조. reduced-motion 전면 존중.
+   (탭 밑줄 slide · 모달 open/close scale+fade 는 컴포넌트 내부 transition 으로
+    처리 — 상태 기반이라 keyframe 이 아닌 transition 이 자연스럽다.)
+   ========================================================================= */
+
+/* menu-in — 드롭다운 메뉴 패널이 트리거 아래로 살짝 내려오며 fade-in. */
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.menu-in { animation: menuIn var(--dur) var(--ease-out) both; }
+
+/* chip-out — chip 삭제 시 살짝 오그라들며 사라짐(fade + scale collapse). */
+@keyframes chipOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.6); }
+}
+.chip-out { animation: chipOut var(--dur) var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-in,
+  .chip-out { animation: none; }
+}
+
 /* Docx-derived preview */
 .docx-preview h1 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--color-ink); }
 .docx-preview h2 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--color-ink); }

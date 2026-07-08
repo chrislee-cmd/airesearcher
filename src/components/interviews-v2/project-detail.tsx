@@ -243,7 +243,7 @@ export function ProjectDetail({
               {/* 파일 그리드 — 가로 5칸 고정 · 세로 무한 · 5행 초과 시 위 스크롤
                   영역이 세로 스크롤. 카드는 최소 정보(파일명 + 상태)만, 상세는
                   클릭 popover. */}
-              <div className="grid grid-cols-5 gap-3">
+              <div className="stagger grid grid-cols-5 gap-3">
                 {documents.map((d, i) => {
                   const reading =
                     readSweep.started && readSweep.running && i === readSweep.count;

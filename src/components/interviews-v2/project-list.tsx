@@ -279,7 +279,7 @@ export function ProjectList({
           icon={<span aria-hidden className="text-2xl">📦</span>}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
             <>
               <Skeleton className="h-[132px] rounded-sm" />
