@@ -310,8 +310,14 @@ export type ToplineStatusState = {
   loading: boolean;
 };
 
+// channelKey 는 realtime 토픽 접미사 — 같은 client(싱글턴) 에서 동일 토픽을
+// 두 번 구독하면 "cannot add postgres_changes callbacks after subscribe()" 로
+// 크래시한다(동일 토픽 이중 구독 금지). 위젯 카드 본문(기본 'status')과 fullview
+// ProjectDetail(다른 key, 예: 'detail')이 같은 프로젝트를 동시에 구독할 수 있으므로
+// 소비처마다 고유 key 를 넘겨 토픽을 격리한다.
 export function useInterviewToplineStatus(
   projectId: string | null,
+  channelKey = 'status',
 ): ToplineStatusState {
   const supabase = useMemo(() => createClient(), []);
   const [state, setState] = useState<ToplineStatusState>({
@@ -379,7 +385,7 @@ export function useInterviewToplineStatus(
   useEffect(() => {
     if (!projectId) return;
     const ch = supabase
-      .channel(`interview-topline-status-${projectId}`)
+      .channel(`interview-topline-${channelKey}-${projectId}`)
       .on(
         'postgres_changes',
         {
@@ -416,7 +422,7 @@ export function useInterviewToplineStatus(
     return () => {
       void supabase.removeChannel(ch);
     };
-  }, [supabase, projectId, loadStatus]);
+  }, [supabase, projectId, channelKey, loadStatus]);
 
   return state;
 }

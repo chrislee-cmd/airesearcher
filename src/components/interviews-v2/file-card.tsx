@@ -47,12 +47,19 @@ export function FileCard({
   file,
   reading,
   readDone,
+  analyzing,
+  analyzed,
 }: {
   file: InterviewDocument;
   // 검색 sweep 진행 중 이 카드가 지금 "읽는 중" 인지.
   reading?: boolean;
   // 검색 sweep 에서 이미 "읽음" 처리됐는지.
   readDone?: boolean;
+  // 탑라인 생성 map 단계에서 지금 "분석 중" 인 파일(순차 진행 frontier).
+  // 검색 sweep 과 독립 — 동시에 뜰 일은 드물지만 reading 이 우선한다.
+  analyzing?: boolean;
+  // 탑라인 map 이 이미 훑은 파일("분석됨").
+  analyzed?: boolean;
 }) {
   const t = useTranslations('InterviewsV2');
   const [open, setOpen] = useState(false);
@@ -99,19 +106,28 @@ export function FileCard({
     };
   }, [open]);
 
-  // 상태 dot + 라벨 — 검색 sweep 중이면 읽는 중/읽음을, 아니면 인덱싱 상태를.
-  const dotClass = reading
-    ? 'bg-amore'
-    : file.index_status === 'done'
+  // amore 하이라이트(테두리 + pulse) = 지금 능동 처리 중. 검색 "읽는 중" 또는
+  // 탑라인 map "분석 중" frontier. reading(사용자 명시 검색) 이 우선.
+  const active = reading || analyzing;
+  // 상태 dot + 라벨 — 검색 sweep(읽는 중/읽음) · 탑라인 map(분석 중/분석됨) ·
+  // 그 외 인덱싱 상태 순으로 분기.
+  const dotClass =
+    active || readDone || analyzed
       ? 'bg-amore'
-      : file.index_status === 'error'
-        ? 'bg-warning'
-        : 'bg-mute';
+      : file.index_status === 'done'
+        ? 'bg-amore'
+        : file.index_status === 'error'
+          ? 'bg-warning'
+          : 'bg-mute';
   const statusLabel = reading
     ? '읽는 중'
     : readDone
       ? '읽음'
-      : t(STATUS_KEY[file.index_status]);
+      : analyzing
+        ? '분석 중'
+        : analyzed
+          ? '분석됨'
+          : t(STATUS_KEY[file.index_status]);
 
   // Chunk-level progress bar — only while this file is actively indexing and
   // the indexer has published a denominator (total_chunks). Older documents
@@ -119,6 +135,8 @@ export function FileCard({
   // plain status dot + label below.
   const showProgress =
     !reading &&
+    !analyzing &&
+    !analyzed &&
     file.index_status === 'indexing' &&
     file.total_chunks != null &&
     file.total_chunks > 0;
@@ -141,7 +159,7 @@ export function FileCard({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={`flex w-full flex-col items-start gap-1 rounded-sm border-[2px] p-3 text-left transition-colors ${
-          reading ? 'border-amore bg-amore-bg' : 'border-line-soft hover:border-ink'
+          active ? 'border-amore bg-amore-bg' : 'border-line-soft hover:border-ink'
         }`}
       >
         <div className="w-full truncate text-xs font-semibold text-ink">
@@ -162,7 +180,9 @@ export function FileCard({
         ) : (
           <div className="flex items-center gap-1">
             <span
-              className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`}
+              className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotClass} ${
+                analyzing ? 'topline-analyzing-pulse' : ''
+              }`}
               style={
                 reading
                   ? { animation: 'trustChecking 0.9s ease-out infinite' }
