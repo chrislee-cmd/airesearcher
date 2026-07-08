@@ -1346,9 +1346,11 @@ function ExpandedBody() {
           }
 
           // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(사고흐름 or placeholder).
+          // active 컨트롤도 idle 과 동일한 ControlBoardPanel 프레임 경유 (손코딩
+          // 상단 바 제거) — idle→active 프레임/컨트롤 위치 불변, 본문은 아래 flex-1.
           return (
             <>
-              {controlPanel}
+              <ControlBoardPanel active>{controlPanel}</ControlBoardPanel>
               {isCurrent ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
                   전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
