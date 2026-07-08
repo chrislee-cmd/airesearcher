@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -29,6 +29,7 @@ export function ShareEmailGate({
   notInvited?: boolean;
 }) {
   const t = useTranslations('ShareViewer');
+  const locale = useLocale();
   const router = useRouter();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState(prefillEmail ?? '');
@@ -45,7 +46,9 @@ export function ShareEmailGate({
       const res = await fetch('/api/share/viewer/otp', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token, email: value }),
+        // locale: 매직링크가 남더라도 앱 루트가 아닌 이 공유 페이지로
+        // 리다이렉트되도록 서버가 emailRedirectTo 를 구성하는 데 쓴다.
+        body: JSON.stringify({ token, email: value, locale }),
       }).catch(() => null);
       if (!res || !res.ok) {
         setError(t('errorGeneric'));
