@@ -795,7 +795,6 @@
     },
     "modeSoonBadge": "Coming soon",
     "modeComingSoon": "Coming soon",
-    "modeTrendSourcesHint": "Sources are auto-selected by AI — news, blogs, forums, YouTube, institute RSS, and web search (statistics/disclosures excluded). See the AI judgment log at the top of the report for the rationale.",
     "sourcesLabel": "Sources",
     "sourcePickerPlaceholder": "Select sources",
     "sourceEnvHint": "Some sources require API keys",
