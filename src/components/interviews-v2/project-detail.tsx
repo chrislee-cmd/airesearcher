@@ -11,8 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { useSequentialSweep } from '@/hooks/use-sequential-sweep';
+import { useInterviewToplineStatus } from '@/hooks/use-interview-topline';
 import { SearchChat } from './search-chat';
-import { ToplineView } from './topline-view';
+import {
+  ToplineView,
+  ToplineMapProgress,
+  ToplineReduceProgress,
+} from './topline-view';
 import { FileCard } from './file-card';
 import { UploadModal } from './upload-modal';
 
@@ -134,6 +139,41 @@ export function ProjectDetail({
   // file evenly (no single-file bias).
   const [searchRunId, setSearchRunId] = useState(0);
   const readSweep = useSequentialSweep(searchRunId, documents.length);
+
+  // 탑라인 생성 진행 — 업로드~보고서 스트리밍 시작 전 "조용한 구간"을 없앤다.
+  // 좌측 파일 그리드가 처리 phase(map=문서 분석 / reduce=보고서 작성)와 N/M 을
+  // 지속 표시하고, map 단계 frontier 파일을 하이라이트한다. ⚠️ ToplineView 는
+  // 내부에서 useInterviewTopline(interview-topline-*)을 구독하므로, 여기서는
+  // 반드시 격리 channelKey('detail' → interview-topline-detail-*)로 구독해
+  // 동일-토픽 이중 구독 크래시를 피한다(위젯 카드의 'status' 채널과도 분리).
+  const {
+    status: toplineStatus,
+    mapTotal,
+    mapDone,
+  } = useInterviewToplineStatus(projectId, 'detail');
+  const generating = toplineStatus === 'generating';
+  const mapT = mapTotal ?? 0;
+  const mapD = Math.max(0, Math.min(mapDone ?? 0, mapT || Number.MAX_SAFE_INTEGER));
+  // map(전 문서 순회) vs reduce(보고서 작성) 구분. map_total 을 아직 모르면 둘 다
+  // false — 상단 밴드는 일반 "생성 중" 문구만 그린다.
+  const inMap = generating && mapT > 0 && mapD < mapT;
+  const inReduce = generating && mapT > 0 && mapD >= mapT;
+  // frontier 하이라이트는 인덱싱 완료(=map 대상) 문서에만. 백엔드 map 은
+  // concurrent(6×)라 정확히 "이 파일 1개"가 아니지만, map_done 카운터를 그리드
+  // 위치에 투영해 진행이 위→아래로 흐르는 걸 보인다(집계 진행 시각화). 그리드
+  // 순서(created_at desc)와 백엔드 순서(filename asc)가 달라 특정 파일 지목은
+  // 근사 — 검색 sweep 과 같은 성격의 안심 신호.
+  const analyzedPosById = useMemo(() => {
+    const m = new Map<string, number>();
+    let pos = 0;
+    for (const d of documents) {
+      if (d.index_status === 'done') {
+        m.set(d.id, pos);
+        pos += 1;
+      }
+    }
+    return m;
+  }, [documents]);
   // 우측 탭 — 탑라인이 default (열자마자 보고서). 검색으로 전환해도 SearchChat
   // 은 언마운트하지 않고 hidden 으로 두어 대화/스크롤이 유지된다 (회귀 0).
   const [rightTab, setRightTab] = useState<RightTab>('topline');
@@ -224,6 +264,22 @@ export function ProjectDetail({
             />
           ) : (
             <>
+              {/* 탑라인 생성 진행 — 보고서 스트리밍 시작 전(map=문서 분석)에도
+                  좌측 그리드가 "지금 뭘 하는지"를 지속 표시해 조용한 구간을 없앤다.
+                  map 순회 중엔 N/M, map 이 끝나고 reduce(보고서 작성) 중엔 "작성 중". */}
+              {generating && (
+                <div className="mb-3 space-y-1.5" aria-live="polite">
+                  <div className="flex items-center gap-1.5 text-xs uppercase tracking-[0.22em] text-amore">
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                    {t('toplineGenerating')}
+                  </div>
+                  {inReduce ? (
+                    <ToplineReduceProgress blockCount={null} />
+                  ) : (
+                    <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+                  )}
+                </div>
+              )}
               {/* 검색 시 모든 파일을 순차로 훑는 진행 표시 — "특정 파일 치중 없음". */}
               {readSweep.started && (
                 <div
@@ -248,12 +304,23 @@ export function ProjectDetail({
                   const reading =
                     readSweep.started && readSweep.running && i === readSweep.count;
                   const readDone = readSweep.started && i < readSweep.count;
+                  // 탑라인 map frontier — 인덱싱 완료 문서 중 map_done 위치가 "분석 중",
+                  // 그 앞은 "분석됨". reduce 단계(map 완료)면 전부 "분석됨".
+                  const donePos = analyzedPosById.get(d.id);
+                  const analyzing =
+                    inMap && donePos !== undefined && donePos === mapD;
+                  const analyzed =
+                    generating &&
+                    donePos !== undefined &&
+                    (inReduce || donePos < mapD);
                   return (
                     <FileCard
                       key={d.id}
                       file={d}
                       reading={reading}
                       readDone={readDone}
+                      analyzing={analyzing}
+                      analyzed={analyzed}
                     />
                   );
                 })}

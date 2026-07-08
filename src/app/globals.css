@@ -490,6 +490,27 @@ html, body {
   }
 }
 
+/* topline-analyzing-pulse — 탑라인 생성 map 단계에서 "지금 분석 중"인 파일
+   카드(FileCard) dot 에 얹는 amore ring pulse. FileCard 검색 sweep 의 inline
+   trustChecking 과 달리 클래스라 prefers-reduced-motion 을 존중한다 —
+   reduced-motion 시 pulse 대신 정적 amore 링으로 대체(모션 없이도 "분석 중"이
+   명백). qa-mic-recording-pulse 와 동일 패턴. */
+@keyframes toplineAnalyzingPulse {
+  0%   { box-shadow: 0 0 0 0 var(--color-amore); }
+  70%  { box-shadow: 0 0 0 5px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.topline-analyzing-pulse {
+  border-radius: var(--radius-pill);
+  animation: toplineAnalyzingPulse 1.2s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .topline-analyzing-pulse {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--color-amore);
+  }
+}
+
 @keyframes workspaceRowFlash {
   0%   { background-color: color-mix(in srgb, var(--color-amore) 16%, transparent); }
   100% { background-color: transparent; }
