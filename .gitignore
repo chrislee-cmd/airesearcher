@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# e2e QA harness — generated evidence (video/trace/screenshots/report).
+# Keep the dir (.gitkeep) but never commit run artifacts or Playwright browsers.
+/e2e/artifacts/*
+!/e2e/artifacts/.gitkeep
+/playwright-report/
+/test-results/
+
 # next.js
 /.next/
 /out/

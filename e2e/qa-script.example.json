@@ -1,0 +1,20 @@
+{
+  "surfaces": [
+    {
+      "name": "글로벌 소스 P2a — SEC EDGAR",
+      "route": "/desk-research",
+      "requiresAuth": true,
+      "steps": [
+        { "label": "데스크 리서치 진입", "action": "goto", "path": "/desk-research" },
+        { "label": "글로벌 소스 패널 노출", "action": "expect", "selector": "text=글로벌 소스" },
+        { "label": "미국 기업 재무 소스 선택", "action": "click", "selector": "text=SEC EDGAR" },
+        {
+          "label": "실 XBRL 재무 데이터 조회 결과",
+          "action": "note",
+          "dataDependent": true,
+          "reason": "preview 환경에 EDGAR 캐시/실 API 키 없음 — 실제 재무 수치는 prod 에서만 확인 가능"
+        }
+      ]
+    }
+  ]
+}
