@@ -1,9 +1,7 @@
-// Shared QA-feedback tag catalogue. Single source of truth reused by three
-// call sites so the label/key/group set can never drift between them:
-//   1. <QaVoiceAgentModal /> form step  — the checkboxes a tester picks before
-//      recording ("어떤 항목에 대한 피드백인가요?").
-//   2. <QaFeedbackList /> admin filter   — the chip toggles that narrow the
-//      viewer, plus the per-card tag badges.
+// Shared QA-feedback tag catalogue. Consumed by <QaFeedbackList /> (admin
+// filter chips + per-card tag badges). The one-tap voice flow no longer tags
+// feedback at capture time (the tagging form was dropped), so new feedback is
+// untagged; these tags remain to render/filter legacy tagged rows.
 // Tags are stored as a plain string array under qa_feedbacks.meta.tags
 // (e.g. ["transcripts", "ux"]) — no migration, meta is already jsonb.
 
