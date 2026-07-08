@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
 
@@ -34,6 +35,9 @@ export async function POST(req: Request) {
   if (!org?.org_id) {
     return NextResponse.json({ error: 'no_org' }, { status: 403 });
   }
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const jobId = url.searchParams.get('job_id');

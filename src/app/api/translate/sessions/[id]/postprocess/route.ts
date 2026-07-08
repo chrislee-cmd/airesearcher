@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdminAmount, refundCredits } from '@/lib/credits';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   postProcessTranscript,
   POST_PROCESS_MODEL_LABEL,
@@ -118,6 +119,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (session.host_user_id !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
+
+  const limited = await checkLlmRateLimit(user.id, session.org_id);
+  if (limited) return limited;
+
   if (session.status !== 'ended') {
     return NextResponse.json({ error: 'session_not_ended' }, { status: 409 });
   }

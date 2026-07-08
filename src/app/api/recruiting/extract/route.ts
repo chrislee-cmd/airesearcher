@@ -5,6 +5,7 @@ import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
 import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const formData = await request.formData();
   const entries = formData.getAll('files');

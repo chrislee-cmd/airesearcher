@@ -47,14 +47,16 @@ export const env = createEnv({
     GMAIL_USER: z.string().email(),
     GMAIL_APP_PASSWORD: z.string().min(8),
 
-    // ── Optional providers (graceful degradation at call site) ───────
-    // PR-SEC4b — Upstash is optional until the Vercel Marketplace
-    // integration is added. When missing, rate-limit.ts fails open with
-    // a one-shot warning. Restore to required (`z.string().url()` /
-    // `.min(20)`) once Upstash is provisioned in prod.
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-    UPSTASH_REDIS_REST_TOKEN: z.string().min(20).optional(),
+    // Upstash Redis — required (fail-closed). rate-limit.ts enforces the
+    // app-level cost-abuse cap on every LLM/STT route, so a missing var must
+    // fail the build rather than silently disable the limiter. The Vercel
+    // Marketplace Upstash integration must be provisioned (prod/preview/dev)
+    // before deploying — see PR "rate limit fail-closed 전환". (Was
+    // `.optional()` under PR-SEC4b's temporary fail-open window.)
+    UPSTASH_REDIS_REST_URL: z.string().url(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(20),
 
+    // ── Optional providers (graceful degradation at call site) ───────
     ELEVENLABS_API_KEY: z.string().min(20).optional(),
     ELEVENLABS_WEBHOOK_SECRET: z.string().min(16).optional(),
     TWELVELABS_API_KEY: z.string().min(20).optional(),
