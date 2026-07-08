@@ -151,6 +151,8 @@ export type ToplineStatus = 'none' | 'idle' | 'generating' | 'done' | 'error';
 
 /** GET /api/interviews/v2/topline 응답 shape (읽기 전용 조회). */
 export type ToplineReadResult = {
+  // interview_toplines.id — 공유 링크(#477)의 resource_id. 미생성이면 null.
+  id: string | null;
   status: ToplineStatus;
   blocks: ToplineBlock[];
   stale: boolean;

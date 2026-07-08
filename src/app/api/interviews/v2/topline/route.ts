@@ -92,6 +92,8 @@ export async function GET(req: Request) {
   const existing = await getTopline(admin, projectId);
 
   return NextResponse.json({
+    // interview_toplines.id — 공유 링크(#477) resource_id. 미생성이면 null.
+    id: existing?.id ?? null,
     // 'none' = 아직 생성된 적 없음(CTA). 그 외는 row.status 그대로.
     status: existing?.status ?? 'none',
     blocks: existing?.blocks ?? [],

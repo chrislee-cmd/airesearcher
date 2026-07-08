@@ -41,7 +41,8 @@ export async function GET() {
   // /api/probing/questions GET semantics). Row missing = empty context.
   const { data, error } = await supabase
     .from('probing_sessions')
-    .select('research_goal, hypotheses, key_research_question, updated_at')
+    // id 포함 — 공유 링크(#477)의 resource_id(probing_persona). 미저장이면 null.
+    .select('id, research_goal, hypotheses, key_research_question, updated_at')
     .maybeSingle();
   if (error) {
     // probing_sessions 마이그가 아직 prod 미적용인 prod-preview 차이 등을
@@ -49,6 +50,7 @@ export async function GET() {
     console.error('[probing/research-context] get failed (graceful empty)', error);
     return NextResponse.json({
       row: {
+        id: null,
         research_goal: '',
         hypotheses: [],
         key_research_question: '',
@@ -58,6 +60,7 @@ export async function GET() {
   }
   return NextResponse.json({
     row: data ?? {
+      id: null,
       research_goal: '',
       hypotheses: [],
       key_research_question: '',
@@ -101,7 +104,8 @@ export async function PUT(req: Request) {
       },
       { onConflict: 'user_id' },
     )
-    .select('research_goal, hypotheses, key_research_question, updated_at')
+    // id 포함 — 저장 직후 클라이언트가 공유 링크(#477) resource_id 를 얻는다.
+    .select('id, research_goal, hypotheses, key_research_question, updated_at')
     .single();
   if (error || !data) {
     console.error('[probing/research-context] upsert failed', error);
