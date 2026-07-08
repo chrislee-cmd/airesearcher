@@ -72,6 +72,12 @@ import {
   sectionFillRate,
   type ProbingWidgetStatus,
 } from '@/lib/probing-widget-weight';
+import {
+  PROBING_PERSONA_SNAPSHOT_VERSION,
+  type ProbingPersonaSnapshot,
+  type ProbingPersonaSnapshotPanel,
+  type ProbingPersonaSnapshotQuestion,
+} from '@/lib/probing-persona-snapshot';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
@@ -405,6 +411,16 @@ function ExpandedBody() {
 
   const [activePopup, setActivePopup] = useState<PopupQuestion | null>(null);
   const [history, setHistory] = useState<HistoryQuestion[]>([]);
+  // 공유 스냅샷(share-snapshot-persist)은 사용자 클릭 시 imperative 하게 현재
+  // reflection/질문을 읽어야 하므로 ref 로 최신값을 들고 있는다.
+  const historyRef = useRef(history);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+  const activePopupRef = useRef(activePopup);
+  useEffect(() => {
+    activePopupRef.current = activePopup;
+  }, [activePopup]);
 
   // ─── 페르소나 export — 세션 시작 시점 추적 + confirm modal + busy flag ───
   // sessionStartedAt: 라이브 진입 시 한 번 set, 종료 시 docx 메타 (인터뷰 일시 /
@@ -1129,6 +1145,90 @@ function ExpandedBody() {
     [addCustomSection],
   );
 
+  // ─── 공유 스냅샷 (PR: probing-persona-share-snapshot-persist) ───
+  // reflection(8 기본 + custom) + 생성 질문은 in-memory state 라 DB 에 없다.
+  // 공유 뷰어(#476)가 그걸 read-only 로 그리려면 먼저 스냅샷을 persist 해야 한다.
+  // 공유 버튼 클릭(공유 시점) 직전에 현재 상태를 계약 shape 로 빌드한다.
+  const buildPersonaSnapshot =
+    useCallback((): ProbingPersonaSnapshot | null => {
+      const refl = reflectionRef.current as Record<
+        string,
+        ProbingPersonaSection | undefined
+      > | null;
+
+      // reflection 패널 — 기본 9(DEFAULT_PERSONA_SECTIONS) + custom 순서. 각 칸의
+      // 내용은 현재 reflection 결과에서, 아직 안 채워졌으면 insufficient 빈 칸.
+      const panels: ProbingPersonaSnapshotPanel[] = [];
+      const pushPanel = (key: string, title: string) => {
+        const sec = refl?.[key];
+        panels.push({
+          key,
+          title,
+          summary: sec?.summary ?? '',
+          signals: (sec?.signals ?? []).map((s) => ({
+            bullet: s.bullet,
+            ...(s.quote ? { quote: s.quote } : {}),
+          })),
+          confidence: sec?.confidence ?? 'insufficient',
+        });
+      };
+      for (const def of DEFAULT_PERSONA_SECTIONS) pushPanel(def.key, def.title);
+      for (const c of customSectionsRef.current) pushPanel(c.key, c.title);
+
+      // 생성 질문 — 현재 popup(있으면) + history, id 로 중복 제거.
+      const seen = new Set<string>();
+      const questions: ProbingPersonaSnapshotQuestion[] = [];
+      const pushQuestion = (q: PopupQuestion, starred: boolean) => {
+        if (seen.has(q.id)) return;
+        seen.add(q.id);
+        questions.push({
+          id: q.id,
+          text: q.text,
+          ...(typeof q.technique === 'string' && q.technique
+            ? { technique: q.technique }
+            : {}),
+          ...(q.rationale ? { rationale: q.rationale } : {}),
+          ...(q.importance ? { importance: q.importance } : {}),
+          is_starred: starred,
+        });
+      };
+      const cur = activePopupRef.current;
+      if (cur) pushQuestion(cur, false);
+      for (const h of historyRef.current) pushQuestion(h, h.is_starred);
+
+      // 의미 있는 데이터가 없으면 null → PUT skip. reflection 은 in-memory 라
+      // reload 후 null 로 리셋되므로, 빈 스냅샷으로 기존 걸 덮어쓰지 않는다.
+      const hasReflection = panels.some(
+        (p) => p.summary.trim().length > 0 || p.signals.length > 0,
+      );
+      if (!hasReflection && questions.length === 0) return null;
+
+      return {
+        version: PROBING_PERSONA_SNAPSHOT_VERSION,
+        reflection: panels,
+        questions,
+      };
+    }, []);
+
+  // 공유 버튼 클릭 직전 훅 — 현재 스냅샷을 자기 probing_sessions row 에 PUT.
+  // best-effort: 실패해도 공유 자체는 막지 않는다(뷰어가 이전 스냅샷/빈 화면
+  // 으로 degrade). 데이터 없으면 build 가 null → no-op.
+  const snapshotPersonaForShare = useCallback(() => {
+    const snapshot = buildPersonaSnapshot();
+    if (!snapshot) return;
+    void (async () => {
+      try {
+        await fetchWithAuth('/api/probing/persona-snapshot', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(snapshot),
+        });
+      } catch {
+        // silent — 공유 UX 를 막지 않는다.
+      }
+    })();
+  }, [buildPersonaSnapshot]);
+
   // 좌/우 패널 props.
   const reflectionPaneProps = {
     data: reflection,
@@ -1283,6 +1383,7 @@ function ExpandedBody() {
               <ShareInviteButton
                 resourceType="probing_persona"
                 resourceId={probingSessionId}
+                onBeforeOpen={snapshotPersonaForShare}
               />
               <Button
                 variant="primary"
