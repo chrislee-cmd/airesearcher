@@ -140,6 +140,49 @@ export async function runPool<T, R>(
 }
 
 /**
+ * 시간예산 배치 러너 — runPool 과 같지만 **새 item 을 꺼내기 전에** shouldStop()
+ * 을 확인해, 참이면 남은 item 을 건드리지 않고 워커를 비운다(현재 진행 중인
+ * 호출은 끝까지 마친다). durable 재개(카드 #434)에서 한 함수 호출의 시간예산
+ * (~230s) 이 소진되면 map 을 중단하고 커서(=extract 캐시)만 남긴 뒤 다음 홉으로
+ * 넘기는 데 쓴다. 반환의 stopped=true 면 예산 소진으로 조기 종료된 것.
+ *
+ * results 배열은 꺼내지 못한 index 가 undefined 로 남을 수 있다(호출측이
+ * 캐시로 재구성하므로 무해). processed = 이 홉에서 실제 handler 를 완료한 수.
+ */
+export async function runPoolUntil<T, R>(
+  items: T[],
+  limit: number,
+  shouldStop: () => boolean,
+  handler: (item: T, index: number) => Promise<R>,
+  onProgress?: (done: number) => void | Promise<void>,
+): Promise<{ results: Array<R | undefined>; processed: number; stopped: boolean }> {
+  const results = new Array<R | undefined>(items.length);
+  let next = 0;
+  let done = 0;
+  let stopped = false;
+  const size = Math.max(1, Math.min(limit, items.length));
+
+  async function worker(): Promise<void> {
+    while (true) {
+      // 예산 소진 — 새 item 을 꺼내지 않고 이 워커 종료(진행 중 호출은 이미
+      // 위에서 await 로 끝난 상태).
+      if (shouldStop()) {
+        stopped = true;
+        return;
+      }
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await handler(items[i], i);
+      done += 1;
+      if (onProgress) await onProgress(done);
+    }
+  }
+
+  await Promise.all(Array.from({ length: size }, () => worker()));
+  return { results, processed: done, stopped };
+}
+
+/**
  * 문서별 map 추출을 사람이 읽는(=reduce 입력) 텍스트로 렌더. 각 문서를 번호와
  * filename 으로 구분해 reduce 가 "몇 명 중 몇 명" 을 실제 문서 단위로 셀 수 있게
  * 한다(추정 아니라 제공된 전수 위에서 카운트).
