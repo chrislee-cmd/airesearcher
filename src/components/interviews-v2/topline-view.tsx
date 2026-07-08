@@ -530,14 +530,19 @@ function BlockEditor({
 function StaleBanner({
   onRegenerate,
   disabled,
+  stuck = false,
 }: {
   onRegenerate: () => void;
   disabled: boolean;
+  // 파일 변경 stale(기본) vs 생성 멈춤 stuck — 안내 문구를 바꾼다.
+  stuck?: boolean;
 }) {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amore bg-amore-bg px-4 py-3">
-      <span className="text-md text-ink-2">{t('toplineStaleBanner')}</span>
+      <span className="text-md text-ink-2">
+        {t(stuck ? 'toplineStuckBanner' : 'toplineStaleBanner')}
+      </span>
       <Button
         variant="secondary"
         size="sm"
@@ -650,13 +655,18 @@ export function ToplineView({ projectId }: { projectId: string }) {
     applyBlockMd,
     mapTotal,
     mapDone,
+    generatingStale,
     savedLang,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
   const hasBlocks = blocks.length > 0;
-  // 재생성 버튼 활성 = 인덱싱 완료 & 생성 중 아님.
-  const canGenerate = indexed && status !== 'generating' && !generating;
+  // 재생성 버튼 활성 = 인덱싱 완료 & POST in-flight 아님 & (생성 중 아님 OR
+  // 생성이 멈춰 stuck). stuck('generating' 인데 updated_at 오래됨 = 함수 사망)이면
+  // 재생성/추가질문 잠금을 푼다(결정 A). 정상 진행 중(non-stale generating)은
+  // 여전히 비활성 — 중복 생성 방지 유지.
+  const canGenerate =
+    indexed && !generating && (status !== 'generating' || generatingStale);
 
   // reduce 단계 감지 — map(전 문서 순회)이 끝나면(map_done ≥ map_total) reduce
   // (보고서 작성)로 넘어간다. 이때 streamObject 가 blocks 를 증분 스트리밍하므로
@@ -852,7 +862,9 @@ export function ToplineView({ projectId }: { projectId: string }) {
           />
         ) : !indexed ? (
           <EmptyState tone="subtle" title={t('toplineNotIndexed')} />
-        ) : status === 'generating' && !hasBlocks ? (
+        ) : status === 'generating' && !hasBlocks && !generatingStale ? (
+          // 살아 있는 첫 생성만 무한 스켈레톤. stuck(함수 사망)이면 아래 CTA 로
+          // 떨어져 재생성 버튼을 노출한다(데드엔드 해제 — 결정 A/C).
           <GeneratingSkeleton
             mapTotal={mapTotal}
             mapDone={mapDone}
@@ -864,8 +876,8 @@ export function ToplineView({ projectId }: { projectId: string }) {
             {/* 생성 중이면 상단에 진행 표시. map 순회 중엔 N/M, reduce(보고서
                 작성) 중엔 "작성 중(N블록)". reduce 중엔 아래 <article> 의 blocks
                 가 스트리밍으로 점진 렌더된다(부분/미완 블록은 서버가 접두만 보내
-                graceful). */}
-            {status === 'generating' && (
+                graceful). stuck 이면 진행 표시 대신 아래 stuck 배너를 그린다. */}
+            {status === 'generating' && !generatingStale && (
               <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
@@ -878,10 +890,13 @@ export function ToplineView({ projectId }: { projectId: string }) {
                 )}
               </div>
             )}
-            {stale && status !== 'generating' && (
+            {/* 파일 변경 stale(정상 done) 또는 stuck generating(함수 사망) 이면
+                재생성 CTA 배너. stuck 이면 문구를 바꿔 "멈춤" 을 알린다. */}
+            {((stale && status !== 'generating') || generatingStale) && (
               <StaleBanner
                 onRegenerate={requestRegenerate}
                 disabled={!canGenerate}
+                stuck={generatingStale}
               />
             )}
             <article>
@@ -925,18 +940,23 @@ export function ToplineView({ projectId }: { projectId: string }) {
             </article>
           </>
         ) : (
-          // none / error / idle & 블록 없음 → 생성 시작 CTA.
+          // none / error / idle / stuck generating & 블록 없음 → 생성/복구 CTA.
+          // stuck(첫 생성이 멈춰 블록 0)이면 "멈춤" 안내 + 재생성으로 데드엔드 해제.
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="max-w-[420px]">
               <h3 className="text-lg font-semibold text-ink-2">
-                {status === 'error'
-                  ? t('toplineErrorTitle')
-                  : t('toplineIntroTitle')}
+                {generatingStale
+                  ? t('toplineStuckTitle')
+                  : status === 'error'
+                    ? t('toplineErrorTitle')
+                    : t('toplineIntroTitle')}
               </h3>
               <p className="mt-2 text-md text-mute">
-                {status === 'error'
-                  ? t('toplineErrorHint')
-                  : t('toplineIntroHint')}
+                {generatingStale
+                  ? t('toplineStuckHint')
+                  : status === 'error'
+                    ? t('toplineErrorHint')
+                    : t('toplineIntroHint')}
               </p>
               {/* 분석 언어 선택 — 입력 파일 언어와 독립(전사록 언어 트리거 미러
                   primitive = SelectMenu/ControlTrigger). 생성 CTA 바로 위에 둔다. */}

@@ -167,4 +167,32 @@ export type ToplineReadResult = {
   // null 이면 진행률 미노출(레거시 또는 아직 map 시작 전).
   map_total: number | null;
   map_done: number | null;
+  // row 의 마지막 갱신 시각(ISO). 살아 있는 생성은 map 진행/부분 블록 flush 마다
+  // updated_at 트리거가 bump 한다. 이 값이 STALE 창을 넘긴 채 status='generating'
+  // 이면 백그라운드 함수가 죽은 것 = stuck(카드 #483). null = 미생성.
+  updated_at: string | null;
 };
+
+// 'generating' row 가 이 시간(ms)보다 오래 갱신 안 되면 백그라운드 생성 함수가
+// 죽은 것(maxDuration 300s 타임아웃/크래시)으로 간주한다. maxDuration(300s) +
+// 여유(60s) = 360s. 서버 on-read 정리(GET)와 클라 stuck 판정이 이 값을 공유해
+// 판정을 정합시킨다(카드 #483). updated_at 은 map 진행·부분 블록 flush 마다
+// 트리거로 bump 되므로, 살아 있는 생성은 이 창을 절대 넘기지 않는다.
+export const TOPLINE_GENERATING_STALE_MS = 360_000;
+
+/**
+ * row 가 stuck 'generating' 인지 — status='generating' 인데 updated_at 이
+ * STALE_MS 넘게 갱신 안 됐으면 true. 타임아웃(300s 킬)은 JS 미실행이라 runTopline
+ * catch 가 status='error' 로 못 넘겨 영구 'generating' 에 갇히는데, 이 판정이
+ * 재생성/추가질문 잠금 해제의 기준이 된다. 서버(on-read flip)·클라(재생성 활성)
+ * 공용.
+ */
+export function isToplineGeneratingStale(
+  row: { status: string; updated_at?: string | null } | null | undefined,
+  nowMs: number,
+): boolean {
+  if (!row || row.status !== 'generating' || !row.updated_at) return false;
+  const updated = Date.parse(row.updated_at);
+  if (Number.isNaN(updated)) return false;
+  return nowMs - updated > TOPLINE_GENERATING_STALE_MS;
+}
