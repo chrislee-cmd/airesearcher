@@ -33,13 +33,27 @@ export const G7: readonly G7Country[] = [
 
 export const G7_ISO3: readonly string[] = G7.map((c) => c.iso3);
 
-// alpha-2/alpha-3 어느 쪽이 와도(대소문자 무관) canonical G7 레코드로 해석. G7 이
-// 아니면 undefined — 호출부가 G7 필터를 이걸로 건다.
+// 국내 기준축(한국) — G7 이 아니라 **대비의 기준**이다(P3 "국내 vs G7 대비"). 매크로
+// 소스(World Bank/OECD)에서 G7 과 함께 조회해, 대비 섹션·차트가 국가 규모 축에서
+// 한국의 위치를 G7 옆에 세울 수 있게 한다. G7 셋과 분리해 둬 `isG7` 의미를 지킨다.
+export const KOREA: G7Country = { iso3: 'KOR', iso2: 'KR', ko: '한국', en: 'South Korea' };
+
+// 매크로 대비 조회 대상 = 한국 + G7. 매크로 소스가 이 목록으로 한 번에 받아
+// "국내 기준 → G7 대비"의 국가 축을 확보한다. 순서는 국내 기준을 먼저 노출.
+export const COMPARISON_COUNTRIES: readonly G7Country[] = [KOREA, ...G7] as const;
+export const COMPARISON_ISO3: readonly string[] = COMPARISON_COUNTRIES.map((c) => c.iso3);
+
+// alpha-2/alpha-3 어느 쪽이 와도(대소문자 무관) canonical 레코드로 해석. 한국+G7(대비
+// 대상)이 아니면 undefined — 호출부가 국가 필터를 이걸로 건다.
 const BY_CODE = new Map<string, G7Country>();
-for (const c of G7) {
+for (const c of COMPARISON_COUNTRIES) {
   BY_CODE.set(c.iso3.toUpperCase(), c);
   BY_CODE.set(c.iso2.toUpperCase(), c);
 }
+
+// G7 코드만 별도 집합으로 — normalizeCountry 가 한국도 해석하므로 isG7 을 여기에
+// 위임하면 한국이 G7 로 오인된다. G7 멤버십은 이 집합으로만 판정한다.
+const G7_CODES = new Set(G7.flatMap((c) => [c.iso3.toUpperCase(), c.iso2.toUpperCase()]));
 
 export function normalizeCountry(code: string | undefined | null): G7Country | undefined {
   if (!code) return undefined;
@@ -47,7 +61,13 @@ export function normalizeCountry(code: string | undefined | null): G7Country | u
 }
 
 export function isG7(code: string | undefined | null): boolean {
-  return !!normalizeCountry(code);
+  if (!code) return false;
+  return G7_CODES.has(code.trim().toUpperCase());
+}
+
+export function isKorea(code: string | undefined | null): boolean {
+  if (!code) return false;
+  return code.trim().toUpperCase() === KOREA.iso3 || code.trim().toUpperCase() === KOREA.iso2;
 }
 
 // 매크로 대분류 → 소스별 코드. World Bank 는 전 지표를 커버(명목 USD 시계열),

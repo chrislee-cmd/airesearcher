@@ -18,6 +18,8 @@ import {
 } from '@/lib/desk-sources';
 import { warmDartCorps } from '@/lib/desk-sources/dart-corp';
 import { warmDartFinancials } from '@/lib/desk-sources/dart-financials';
+import { warmWorldBank } from '@/lib/desk-sources/worldbank';
+import { warmOecd } from '@/lib/desk-sources/oecd';
 import { resolveSecCik, warmSecCorps } from '@/lib/desk-sources/sec-edgar-corp';
 import { warmSecFinancials } from '@/lib/desk-sources/sec-edgar-financials';
 import { parseDeskQuery } from '@/lib/desk-query-parse';
@@ -126,10 +128,16 @@ export async function runMarket(
   // 로그에 명부 준비 실패를 명시한다.
   // SEC EDGAR 명부(company_tickers.json) warm-up 도 DART 와 같은 이유로 병렬 —
   // companyfacts 는 payload 가 커 crawl task 15s 벽 안엔 timeout 위험이 크다.
+  // World Bank/OECD 매크로도 여기(task cap 밖)서 warm-up 한다 — iad1 콜드(6~9s)+
+  // 간헐 502 로 crawl task(15s) 안 라이브 조회가 조용히 0건이 되던 문제(P3 "국내 vs
+  // G7 대비" 무데이터 회귀)를 DART corpCode 와 동일한 warm-up+캐시 패턴으로 막는다.
+  // 결과 카운트는 사용하지 않지만(캐시가 SSOT), Promise.all 로 병렬 완료를 기다린다.
   const [parsed, dartCorpCount, secCorpCount] = await Promise.all([
     parseDeskQuery(keywords, locale),
     hasDart ? warmDartCorps() : Promise.resolve(0),
     hasSecEdgar ? warmSecCorps() : Promise.resolve(0),
+    hasWorldBank ? warmWorldBank().catch(() => 0) : Promise.resolve(0),
+    hasOecd ? warmOecd().catch(() => 0) : Promise.resolve(0),
   ]);
   const { statTerms, companies, intent } = parsed;
 
@@ -194,7 +202,7 @@ export async function runMarket(
           .filter(Boolean)
           .join(' · ');
         events.push(
-          `🌐 글로벌 매크로 대비 기준선 = ${macroSrc} — G7(미국·일본·독일·영국·프랑스·이탈리아·캐나다)의 GDP·산업 부가가치·인구를 명목 USD·동일 연도 기준으로 정규화해 국내 시장을 글로벌 규모와 대비합니다. 개별 시장(TAM) 수치가 아니라 국가 규모 컨텍스트이며, 모든 값은 소스 제공값 그대로(환산·정렬만 코드, 추정 없음)입니다.`,
+          `🌐 글로벌 매크로 대비 기준선 = ${macroSrc} — 한국(기준축) + G7(미국·일본·독일·영국·프랑스·이탈리아·캐나다)의 GDP·산업 부가가치·인구를 명목 USD·동일 연도 기준으로 정규화해 "국내 vs G7 대비" 섹션·차트(한국 강조)를 만듭니다. 개별 시장(TAM) 수치가 아니라 국가 규모 컨텍스트이며, 모든 값은 소스 제공값 그대로(환산·정렬만 코드, 추정 없음)입니다.`,
         );
       }
       // 뉴스·학술 확장 축 = route 가 넘긴 similar (parsed.phrases, 파싱 실패 시

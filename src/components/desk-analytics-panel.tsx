@@ -18,9 +18,18 @@ function pct(n: number, total: number): string {
   return `${Math.round((n / total) * 100)}%`;
 }
 
-function valueLabel(c: DeskChart, v: number, total: number): string {
-  if (c.unit === 'percent') return `${Math.round(v)}%`;
-  return `${v} (${pct(v, total)})`;
+// 강조 막대 색 = amore 액센트(팔레트 0번). 대비 차트에서 한국 위치를 부각한다.
+const HIGHLIGHT_COLOR = '#1F5795';
+
+function valueLabel(
+  c: DeskChart,
+  d: DeskChart['data'][number],
+  total: number,
+): string {
+  // 코드가 미리 포맷한 라벨(USD 원값 등)이 있으면 그대로 — unit 자동 라벨보다 우선.
+  if (d.display) return d.display;
+  if (c.unit === 'percent') return `${Math.round(d.value)}%`;
+  return `${d.value} (${pct(d.value, total)})`;
 }
 
 function ChartBar({ chart }: { chart: DeskChart }) {
@@ -30,12 +39,17 @@ function ChartBar({ chart }: { chart: DeskChart }) {
     <ul className="space-y-2">
       {chart.data.map((d, i) => {
         const w = max === 0 ? 0 : (d.value / max) * 100;
+        const highlighted = !!chart.highlight && d.label === chart.highlight;
         return (
           <li key={`${d.label}-${i}`} className="text-md leading-tight">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-ink-2">{d.label}</span>
-              <span className="tabular-nums text-mute">
-                {valueLabel(chart, d.value, total)}
+              <span className={highlighted ? 'font-semibold text-amore' : 'text-ink-2'}>
+                {d.label}
+              </span>
+              <span
+                className={`tabular-nums ${highlighted ? 'font-semibold text-amore' : 'text-mute'}`}
+              >
+                {valueLabel(chart, d, total)}
               </span>
             </div>
             <div className="mt-1 h-2 w-full bg-paper-soft rounded-full">
@@ -43,7 +57,9 @@ function ChartBar({ chart }: { chart: DeskChart }) {
                 className="h-full rounded-full"
                 style={{
                   width: `${w}%`,
-                  backgroundColor: PALETTE[i % PALETTE.length],
+                  backgroundColor: highlighted
+                    ? HIGHLIGHT_COLOR
+                    : PALETTE[i % PALETTE.length],
                 }}
               />
             </div>
@@ -80,6 +96,7 @@ function ChartPie({ chart }: { chart: DeskChart }) {
       color: PALETTE[i % PALETTE.length],
       label: d.label,
       value: d.value,
+      valueText: valueLabel(chart, d, total),
       share: d.value / total,
     };
   });
@@ -121,7 +138,7 @@ function ChartPie({ chart }: { chart: DeskChart }) {
               {s.label}
             </span>
             <span className="tabular-nums text-mute">
-              {valueLabel(chart, s.value, total)}
+              {s.valueText}
             </span>
           </li>
         ))}

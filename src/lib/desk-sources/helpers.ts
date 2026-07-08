@@ -82,6 +82,34 @@ export function safeFetch(
   return fetch(url, { ...init, signal: ac.signal }).finally(() => clearTimeout(t));
 }
 
+// safeFetch + 5xx·네트워크 오류 짧은 재시도. 매크로 소스(World Bank/OECD)가 iad1
+// 콜드스타트에서 간헐 502(Azure Application Gateway)·타임아웃을 맞고 재시도 없이
+// 0건이 되던 문제(P3 "국내 vs G7 대비" 무데이터 회귀)를 막는다. 4xx 는 재시도가
+// 무의미하므로 즉시 반환. 재시도 사이에만 짧은 백오프(200·400ms)를 둔다.
+export async function safeFetchRetry(
+  url: string,
+  init?: RequestInit,
+  timeoutMs = 10_000,
+  tries = 3,
+): Promise<Response> {
+  let last: Response | undefined;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await safeFetch(url, init, timeoutMs);
+      // 성공 또는 4xx(영구 오류) → 그대로 반환. 5xx 만 재시도 대상.
+      if (res.ok || (res.status >= 400 && res.status < 500)) return res;
+      last = res;
+    } catch (err) {
+      // 마지막 시도의 네트워크/timeout 오류는 호출부가 처리하도록 그대로 던진다.
+      if (i === tries - 1) throw err;
+    }
+    if (i < tries - 1) {
+      await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+    }
+  }
+  return last as Response;
+}
+
 // Universal post-filter — for sources whose API can't filter server-side. If
 // publishedAt is missing or unparseable we keep the item rather than dropping
 // it (false-negatives are worse than slight over-collection at this stage).
