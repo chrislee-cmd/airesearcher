@@ -81,6 +81,11 @@ export const DESK_SOURCE_GROUPS: Record<
     labelEn: 'aTFIS (Food Industry Statistics)',
     hint: '키 없이 동작 (가공식품 세분시장 시장규모 보고서)',
   },
+  global_macro: {
+    label: '글로벌 매크로',
+    labelEn: 'Global Macro (World Bank / OECD)',
+    hint: '키 없이 동작 (G7 GDP·산업 대비 기준선)',
+  },
   institute_kr: {
     label: '국내 연구소',
     labelEn: 'Korean Research Institutes',
