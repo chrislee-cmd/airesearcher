@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type {
-  ToplineBlock,
-  ToplineReadResult,
-  ToplineStatus,
+import {
+  isToplineGeneratingStale,
+  type ToplineBlock,
+  type ToplineReadResult,
+  type ToplineStatus,
 } from '@/lib/interview-v2/types';
 
 // 인터뷰 탑라인 — client 데이터 소스. GET(읽기 전용, 생성 트리거 X)로 저장된
@@ -30,6 +31,10 @@ export type ToplineState = {
   // 진행률 미노출.
   mapTotal: number | null;
   mapDone: number | null;
+  // stuck 'generating' — status='generating' 인데 updated_at 이 STALE 창 넘게
+  // 갱신 안 됨(백그라운드 함수 사망). true 면 UI 가 재생성/추가질문 잠금을 푼다
+  // (카드 #483). 살아 있는 생성 중엔 항상 false(진행마다 updated_at bump).
+  generatingStale: boolean;
   // 마지막 생성에 쓰인 출력 언어(ko/en/ja/zh/es/th). null = 레거시/미생성 →
   // UI 가 기본(한국어) 선택으로 초기화. 언어 선택기의 초기값 소스.
   savedLang: string | null;
@@ -125,6 +130,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
                 blocks?: ToplineBlock[];
                 map_total?: number | null;
                 map_done?: number | null;
+                updated_at?: string | null;
               }
             | undefined;
           if (next?.status) {
@@ -146,6 +152,12 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
                       next.map_done !== undefined
                         ? next.map_done
                         : prev.map_done,
+                    // 살아 있는 생성의 liveness 신호 — 매 UPDATE 마다 최신화해
+                    // stuck 오판(멈춘 것으로 오인)을 막는다.
+                    updated_at:
+                      next.updated_at !== undefined
+                        ? next.updated_at
+                        : prev.updated_at,
                   }
                 : prev,
             );
@@ -222,9 +234,41 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     );
   }, []);
 
+  // stuck 'generating' 판정 — status='generating' 인데 updated_at 이 STALE 창
+  // 넘게 안 바뀌면(백그라운드 함수 사망) true. 재fetch 없이도 버튼을 풀어주려
+  // status='generating' 인 동안만 tick 을 돌려 시각이 흐르면 재평가한다. 살아
+  // 있는 생성은 realtime UPDATE 마다 updated_at 이 bump 돼 항상 false.
+  const status = data?.status ?? 'none';
+  const updatedAt = data?.updated_at ?? null;
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (status !== 'generating') return;
+    const id = setInterval(() => {
+      if (aliveRef.current) setNowTick(Date.now());
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [status]);
+  const generatingStale = useMemo(
+    () => isToplineGeneratingStale({ status, updated_at: updatedAt }, nowTick),
+    [status, updatedAt, nowTick],
+  );
+
+  // stuck 감지 시 1회 refetch — GET 이 서버에서 row 를 'error' 로 정리(결정 C)해
+  // status 를 실제로 전이시킨다. generatingStale 은 그 전까지의 브릿지.
+  const healedRef = useRef(false);
+  useEffect(() => {
+    if (!generatingStale) {
+      healedRef.current = false;
+      return;
+    }
+    if (healedRef.current) return;
+    healedRef.current = true;
+    void refetch();
+  }, [generatingStale, refetch]);
+
   return {
     toplineId: data?.id ?? null,
-    status: data?.status ?? 'none',
+    status,
     blocks: data?.blocks ?? [],
     stale: data?.stale ?? false,
     indexed: data?.indexed ?? false,
@@ -232,6 +276,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     errorMessage: data?.error_message ?? null,
     mapTotal: data?.map_total ?? null,
     mapDone: data?.map_done ?? null,
+    generatingStale,
     savedLang: data?.output_lang ?? null,
     loading,
     fetchError,
