@@ -25,6 +25,7 @@ import {
   ModalDemo,
   WidgetFullviewModalDemo,
   FileDropZoneDemo,
+  ControlDropzoneDemo,
   DropdownMenuDemo,
   SliderDemo,
   ChipInputDemo,
@@ -51,6 +52,7 @@ export type SectionId =
   | 'modal'
   | 'widget-fullview-modal'
   | 'file-drop-zone'
+  | 'control-dropzone'
   | 'dropdown-menu'
   | 'label'
   | 'skeleton'
@@ -105,6 +107,11 @@ export const SECTION_GROUPS: SectionGroup[] = [
         render: () => <WidgetFullviewModalSection />,
       },
       { id: 'file-drop-zone', label: 'FileDropZone', render: () => <FileDropZoneSection /> },
+      {
+        id: 'control-dropzone',
+        label: 'ControlDropzone',
+        render: () => <ControlDropzoneSection />,
+      },
       { id: 'dropdown-menu', label: 'DropdownMenu', render: () => <MenuSection /> },
       { id: 'label', label: 'Label', render: () => <LabelSection /> },
       { id: 'skeleton', label: 'Skeleton', render: () => <SkeletonSection /> },
@@ -1008,6 +1015,19 @@ function FileDropZoneSection() {
     >
       <Subsection label="Default (drag or click)">
         <FileDropZoneDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function ControlDropzoneSection() {
+  return (
+    <PrimitivePage
+      title="ControlDropzone"
+      hint="src/components/ui/control-dropzone.tsx · 위젯 컨트롤 보드(ControlBoardPanel) 업로드 dropzone 규격 SSOT · 폭(w-full) + 세로(FILE_DROP_ZONE_PY=py-12) baked-in · 레이아웃 className 미노출(타입 차단) — 위젯은 데이터/동작/카피만 주입 → 같은 문맥 위젯은 픽셀 동일. 모달/애널라이저 등 다른 문맥은 FileDropZone 을 그대로 사용."
+    >
+      <Subsection label="규격 고정 (위젯이 치수 override 불가)">
+        <ControlDropzoneDemo />
       </Subsection>
     </PrimitivePage>
   );
