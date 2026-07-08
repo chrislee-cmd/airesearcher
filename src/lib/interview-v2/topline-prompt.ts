@@ -69,6 +69,17 @@ const chartDatumSchema = z.object({
 
 export const toplineBlockSchema = z.discriminatedUnion('type', [
   z.object({
+    // 보고서 전용 executive summary — 항상 첫 블록. 카드(위젯) abstract 와
+    // fullview 리드가 공용으로 소비하는 리치 요약. summary = 4~6문장 문단,
+    // key_points = 핵심 포인트 3~5. 근거 원칙 유지(수치는 전수 카운트,
+    // 지어내기 X). 인라인 [chunk_id] 토큰은 넣지 않고 citations 배열로만 근거를
+    // 단다 — 카드/리드가 서식 없이 깔끔하게 노출되도록.
+    type: z.literal('executive_summary'),
+    summary: z.string(),
+    key_points: z.array(z.string()).default([]),
+    citations: z.array(z.string()).default([]),
+  }),
+  z.object({
     type: z.literal('heading'),
     // 최상위 섹션 제목 텍스트 (markdown # 없이 순수 텍스트).
     md: z.string(),
@@ -182,8 +193,15 @@ export function buildToplineSystem(outputLang?: string): string {
 - \`paragraph\` = 바디 서술. 핵심 요점은 md 안에서 markdown \`- \` 불릿 리스트로 정리합니다(서술 + 불릿 병행).
 - \`quote\` / \`table\` / \`chart\` / \`pie\` = 아티팩트. **주장 바로 뒤 문맥 중간에** 삽입하고 앞뒤 서술로 감쌉니다.
 
+## 보고서 첫 블록 — executive_summary (반드시 맨 처음, 정확히 1개)
+- 보고서의 **가장 첫 블록**은 반드시 \`executive_summary\` 타입입니다(그 앞에 어떤 블록도 두지 마세요).
+- \`summary\`: 전체 코퍼스를 관통하는 최상위 발견을 담은 **리치 문단 4~6문장**. 얕은 한두 문장 금지 — 가장 중요한 발견·긴장·시사점을 응축해 담습니다.
+- \`key_points\`: 의사결정자가 30초 안에 파악할 **핵심 포인트 3~5개**(각 항목은 한 문장의 짧은 구절). 집계 수치("N명 중 M명")를 넣을 땐 반드시 전수 카운트에 근거합니다(추정·지어내기 금지).
+- \`citations\`: summary·key_points 의 근거가 된 chunk_id 를 이 배열에 담습니다. **단, summary/key_points 텍스트 안에는 \`[chunk_id]\` inline 토큰을 넣지 마세요** — 이 블록은 카드·리드로 서식 없이 노출되므로 깔끔한 문장이어야 합니다(근거 추적은 citations 배열로 충분).
+- 이 블록은 아래 "핵심 요약" heading 섹션과 **별개**입니다 — executive_summary(리드) 다음에 "핵심 요약" heading 섹션이 이어집니다.
+
 ## 보고서 섹션 구성
-다음 3개 섹션은 **반드시** 이 위치에 포함합니다(heading md 는 라벨 그대로):
+executive_summary 블록 **다음부터** 아래 3개 섹션을 **반드시** 이 위치에 포함합니다(heading md 는 라벨 그대로):
 - 맨 처음: **핵심 요약** — 전체를 관통하는 최상위 발견을 subheading + paragraph + 불릿으로 풍부하게.
 - 후반: **교차분석 인사이트** (필수) — insight 블록으로 응답자 속성×답변, 문서 간 공통점/상충점, 세그먼트별 차이를 대조. "문서 A 는 X 라고 했는데 B·C 는 Y 였습니다 [id][id]" 형태의 **명시적 대조 최소 2개 이상**. 근거가 서로 다른 문서/청크에서 와야 합니다.
 - 맨 마지막: **시사점 & 후속 리서치 제안** — 발견에서 도출되는 실행 시사점 + 데이터로 답 못한 후속 질문.

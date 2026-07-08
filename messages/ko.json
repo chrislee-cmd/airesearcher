@@ -1280,6 +1280,7 @@
     "toplineTab": "탑라인 보고서",
     "searchTab": "자유 검색",
     "toplineReportLabel": "탑라인 보고서",
+    "toplineExecSummaryLabel": "핵심 요약",
     "toplineLangLabel": "분석 언어",
     "toplineRegenerate": "보고서 다시 생성",
     "toplineGenerating": "탑라인 생성 중…",

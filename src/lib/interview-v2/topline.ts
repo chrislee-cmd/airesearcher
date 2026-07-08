@@ -660,7 +660,7 @@ export async function runTopline(
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
       system: `${buildToplineSystem(outputLang)}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
-      prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출입니다. 이를 종합해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. **집계 수치("N명 중 M명")는 위 ${docs.length}명 추출을 직접 세어** 산출하고(추정 금지), 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
+      prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출입니다. 이를 종합해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. **맨 첫 블록은 executive_summary(리치 요약 문단 4~6문장 + 핵심 포인트 3~5)** 로 시작하고, 이어서 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. **집계 수치("N명 중 M명")는 위 ${docs.length}명 추출을 직접 세어** 산출하고(추정 금지), 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
       // 긴 보고서(10 섹션 + 서브헤더 + 아티팩트)라 출력 예산을 대폭 상향해 잘림
       // (finishReason='length')을 방지한다. Opus 4.8 는 큰 출력을 지원한다.

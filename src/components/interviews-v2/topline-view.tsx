@@ -214,8 +214,46 @@ function ToplineChartBlock({
 }
 
 function BlockView({ block }: { block: ToplineBlock }) {
+  const tView = useTranslations('InterviewsV2');
   // 모든 블록은 data-block-id 로 anchor 노출 (drag-to-ask DOM 계약).
   const common = { 'data-block-id': block.id } as const;
+
+  if (block.type === 'executive_summary') {
+    // 보고서 리드 — 카드 abstract 와 동일 소스(summary + 핵심 포인트)를 fullview
+    // 상단에 강조 렌더(카드=fullview 일관, 결정 2). 첫 블록이라 자연스레 리드로
+    // 위치한다. amore 액센트 좌 보더 + paper-soft 배경(디자인 토큰).
+    const summary = block.summary?.trim() ?? '';
+    const keyPoints = (block.key_points ?? [])
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (!summary && keyPoints.length === 0) return null;
+    return (
+      <section
+        {...common}
+        className="mb-6 rounded-sm border border-line-soft border-l-2 border-l-amore bg-paper-soft px-5 py-4"
+      >
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
+          {tView('toplineExecSummaryLabel')}
+        </div>
+        {summary && <Prose md={summary} citations={block.citations} />}
+        {keyPoints.length > 0 && (
+          <ul className="mt-2.5 space-y-1.5">
+            {keyPoints.map((point, i) => (
+              <li
+                key={i}
+                className="flex gap-2 text-md leading-[1.6] text-ink-2"
+              >
+                <span aria-hidden className="mt-[0.1em] shrink-0 text-amore">
+                  ▪
+                </span>
+                <span className="min-w-0">{point}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  }
 
   if (block.type === 'heading') {
     return (

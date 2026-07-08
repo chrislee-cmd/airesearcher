@@ -134,6 +134,29 @@ function blockToChildren(
   const citations = 'citations' in block ? block.citations : undefined;
   const citedIds = new Set((citations ?? []).map((c) => String(c).trim()));
 
+  if (block.type === 'executive_summary') {
+    // 보고서 리드 — 요약 문단 + 핵심 포인트 불릿. 근거는 문서 하단 "근거: 문서명"
+    // 각주로(raw chunk_id 노출 X). 카드/fullview 와 동일 소스.
+    const children: FileChild[] = [];
+    if (block.summary?.trim()) {
+      children.push(...proseParagraphs(block.summary, citedIds));
+    }
+    for (const point of block.key_points ?? []) {
+      if (!point.trim()) continue;
+      children.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          spacing: { after: 40 },
+          children: inlineToRuns(parseInline(stripInlineCitations(point, citedIds))),
+        }),
+      );
+    }
+    children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun('')] }));
+    const src = sourceLine(citations, sources);
+    if (src) children.push(src);
+    return children;
+  }
+
   if (block.type === 'heading') {
     return [
       new Paragraph({

@@ -1280,6 +1280,7 @@
     "toplineTab": "Topline report",
     "searchTab": "Free search",
     "toplineReportLabel": "Topline report",
+    "toplineExecSummaryLabel": "Executive summary",
     "toplineLangLabel": "Analysis language",
     "toplineRegenerate": "Regenerate report",
     "toplineGenerating": "Generating topline…",
