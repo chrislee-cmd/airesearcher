@@ -16,9 +16,15 @@ import { createOtpClient } from '@/lib/share/otp-client';
 
 export const runtime = 'nodejs';
 
+// locale 은 로케일 세그먼트 오염 방지용으로 화이트리스트 매칭만 신뢰한다.
+const LOCALES = ['ko', 'en'] as const;
+
 const Body = z.object({
   token: z.string().min(16).max(64),
   email: z.string().email(),
+  // 매직링크 fallback 리다이렉트를 공유 페이지로 고정하기 위한 로케일.
+  // 없으면 기본 로케일로 폴백(회귀 방지 — 구버전 클라이언트도 동작).
+  locale: z.enum(LOCALES).optional(),
 });
 
 export async function POST(req: Request) {
@@ -26,7 +32,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { token } = parsed.data;
+  const { token, locale = 'ko' } = parsed.data;
   const email = normalizeEmail(parsed.data.email);
 
   // 초대·토큰 유효성을 먼저 확인 — 통과할 때만 실제로 코드를 보낸다.
@@ -34,10 +40,22 @@ export async function POST(req: Request) {
   const gate = await assertInvitedViewer(admin, token, email);
   if (gate.ok) {
     const otp = createOtpClient();
+    // 🔒 emailRedirectTo: 매직링크가 이메일에 남더라도(1차 방어선은 Supabase
+    // 이메일 템플릿에서 {{ .ConfirmationURL }} 제거 — 인간 액션) 앱 루트가 아닌
+    // 이 공유 뷰어 페이지로만 향하게 고정한다. origin 은 요청이 실제로 도달한
+    // 배포 주소에서 파생 — SITE_URL 설정에 의존하지 않는다.
+    const emailRedirectTo = new URL(
+      `/${locale}/share/${token}`,
+      new URL(req.url).origin,
+    ).toString();
     // shouldCreateUser: 외부 뷰어는 계정이 없을 수 있으므로 shadow user 허용.
+    // (축소하면 계정 없는 뷰어에게 코드가 아예 안 발송되는 회귀 → 유지.)
     // 실패해도 응답은 generic — 재시도 유도 문구는 클라이언트가 처리.
     await otp.auth
-      .signInWithOtp({ email, options: { shouldCreateUser: true } })
+      .signInWithOtp({
+        email,
+        options: { shouldCreateUser: true, emailRedirectTo },
+      })
       .catch(() => {});
   }
 
