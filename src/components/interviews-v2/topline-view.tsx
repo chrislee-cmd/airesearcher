@@ -35,6 +35,7 @@ import {
 } from '@/hooks/use-topline-drag-to-ask';
 import { useToplineEdit } from '@/hooks/use-topline-edit';
 import { useToplineSelection, ToplineAskPopup } from './topline-selection';
+import { ToplineStageFlow } from './topline-stage-flow';
 
 // 인터뷰 탑라인 보고서 — 우측 패널 탭1. interview_toplines.blocks 를 보고서
 // 톤으로 렌더한다. 각 블록은 data-block-id 를 노출해 후속 drag-to-ask 가
@@ -496,52 +497,37 @@ function StaleBanner({
   );
 }
 
-// map-reduce 진행률 — 전 문서 순회 중 "N/M 문서 분석" + 진행 바. map_total 이
-// 없으면(레거시/시작 전) 아무것도 그리지 않는다. 이 문구가 "빠짐없이 전 문서를
-// 읽는 중"을 사용자에게 보이게 해 긴 생성 시간을 납득시킨다(카드 #430).
-// export — 위젯 카드 본문(interviews-card)이 팝업 밖 ambient 진행률로 재사용한다
-// (로직 복붙 금지, card #434). 여기가 SSOT.
-export function ToplineMapProgress({
-  mapTotal,
-  mapDone,
-}: {
-  mapTotal?: number | null;
-  mapDone?: number | null;
-}) {
-  const t = useTranslations('InterviewsV2');
-  if (!mapTotal || mapTotal <= 0) return null;
-  const done = Math.max(0, Math.min(mapDone ?? 0, mapTotal));
-  const pct = Math.round((done / mapTotal) * 100);
-  return (
-    <div className="space-y-1.5">
-      <div className="text-sm text-mute">
-        {t('toplineMapProgress', { done, total: mapTotal })}
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-line-soft">
-        <div
-          className="h-full rounded-full bg-amore transition-[width] duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
+// 탑라인 생성 스트리밍 스켈레톤 — StageFlow 공정 플로우(#438) 가 hero. streaming
+// 일 때(status='generating') 단계 플로우차트 + hint "N/M 문서" 를 얹고, 아래로는
+// 곧 채워질 보고서 자리를 스켈레톤으로 남긴다. streaming=false(초기 GET 로딩)면
+// 아직 map 정보가 없어 플로우 대신 경량 pulse 헤더만 (오탐 방지).
 function GeneratingSkeleton({
   mapTotal,
   mapDone,
+  streaming = false,
 }: {
   mapTotal?: number | null;
   mapDone?: number | null;
+  streaming?: boolean;
 }) {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-        {t('toplineGenerating')}
-      </div>
-      <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+      {streaming ? (
+        <ToplineStageFlow
+          status="generating"
+          mapTotal={mapTotal}
+          mapDone={mapDone}
+          hasBlocks={false}
+          orientation="horizontal"
+          className="mb-1"
+        />
+      ) : (
+        <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+          {t('toplineGenerating')}
+        </div>
+      )}
       <Skeleton className="h-6 w-1/3 rounded-sm" />
       <Skeleton className="h-24 w-full rounded-sm" />
       <Skeleton className="h-6 w-1/4 rounded-sm" />
@@ -727,18 +713,20 @@ export function ToplineView({ projectId }: { projectId: string }) {
         ) : !indexed ? (
           <EmptyState tone="subtle" title={t('toplineNotIndexed')} />
         ) : status === 'generating' && !hasBlocks ? (
-          <GeneratingSkeleton mapTotal={mapTotal} mapDone={mapDone} />
+          <GeneratingSkeleton mapTotal={mapTotal} mapDone={mapDone} streaming />
         ) : hasBlocks ? (
           <>
-            {/* 생성 중이지만 이전 보고서가 남아 있으면 상단에 진행 표시. */}
+            {/* 생성 중이지만 이전 보고서가 남아 있으면 상단에 진행 표시 —
+                재생성이라 이전 blocks 는 유지되므로 hasBlocks. */}
             {status === 'generating' && (
-              <div className="mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                  {t('toplineGenerating')}
-                </div>
-                <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
-              </div>
+              <ToplineStageFlow
+                status="generating"
+                mapTotal={mapTotal}
+                mapDone={mapDone}
+                hasBlocks
+                orientation="horizontal"
+                className="mb-4"
+              />
             )}
             {stale && status !== 'generating' && (
               <StaleBanner

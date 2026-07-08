@@ -25,7 +25,7 @@ import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { useInterviewToplineStatus } from '@/hooks/use-interview-topline';
 import { deriveToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import type { ToplineStatus } from '@/lib/interview-v2/types';
-import { ToplineMapProgress } from '@/components/interviews-v2/topline-view';
+import { ToplineStageFlow } from '@/components/interviews-v2/topline-stage-flow';
 import { useToast } from '@/components/toast-provider';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
 import { UploadModal } from '@/components/interviews-v2/upload-modal';
@@ -216,12 +216,15 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// 팝업 밖 ambient 탑라인 진행률 (card #434). 탑라인 생성은 오래 걸리는데
-// realtime 구독이 fullview(팝업) 안에 있어, 팝업을 닫으면 진행률이 사라져
+// 팝업 밖 ambient 탑라인 진행 (card #434). 탑라인 생성은 오래 걸리는데
+// realtime 구독이 fullview(팝업) 안에 있어, 팝업을 닫으면 진행이 사라져
 // "멈춘 것처럼" 보였다. 백엔드는 after()+DB 로 이미 계속 도는데 화면만 침묵.
 // 여기서는 항상 마운트되는 카드 본문에서 경량 read-only 구독을 유지해:
-//  - status='generating' 이면 N/M 진행률(ToplineMapProgress 재사용) 상시 노출
-//  - generating→done / →error 전이 시 toast 로 완료/실패를 알림
+//  - status='generating' 이면 StageFlow 공정 플로우(#438)를 hero 로 상시 노출
+//    (좁은 카드라 vertical). 로직/파생은 topline-view 와 동일 SSOT 공유.
+//  - generating→done 전이 시 완료 hero(StageFlow complete) + "결과 보기" CTA 를
+//    보여 fullview 보고서로 유도(사용자 결정 3). 클릭 시 dismiss.
+//  - generating→done / →error 전이 시 toast 로 완료/실패를 알림.
 // 팝업이 열려 fullview 자체 구독과 동시에 살아도 별도 채널명이라 충돌 없음.
 // ────────────────────────────────────────────────────────────────────
 function ToplineAmbientProgress({
@@ -229,45 +232,80 @@ function ToplineAmbientProgress({
   status,
   mapTotal,
   mapDone,
+  hasBlocks,
+  onResult,
 }: {
   projectId: string;
   status: ToplineStatus;
   mapTotal: number | null;
   mapDone: number | null;
+  hasBlocks: boolean;
+  onResult: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const toast = useToast();
 
-  // status/map 진행률은 ActiveBody 가 useInterviewToplineStatus 로 단일 구독해 prop
+  // status/map 진행은 ActiveBody 가 useInterviewToplineStatus 로 단일 구독해 prop
   // 으로 내려준다 (abstract 파생과 progress 가 같은 소스를 공유 — 이중 구독 제거).
 
-  // generating → done|error 전이에서만 toast. 초기 로드(null→done/none)나
+  // 완료 hero 는 이번 세션에서 generating→done 으로 갓 전이했을 때만(justCompleted).
+  // 이미 완료된 보고서를 다시 열 때는 body 의 abstract 가 결과 표면이라 무음.
+  const [justCompleted, setJustCompleted] = useState(false);
+
+  // generating → done|error 전이에서만 toast/hero. 초기 로드(null→done/none)나
   // 이미 완료된 보고서를 다시 열 때는 무음(오탐 방지). projectId 가 바뀌면
   // 새 프로젝트 기준으로 다시 추적.
   const prevStatusRef = useRef<ToplineStatus | null>(null);
   useEffect(() => {
     prevStatusRef.current = null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset hero gate on project switch
+    setJustCompleted(false);
   }, [projectId]);
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
     if (prev === 'generating' && status === 'done') {
       toast.push(t('toplineDoneToast'), { tone: 'amore' });
+      setJustCompleted(true);
     } else if (prev === 'generating' && status === 'error') {
       toast.push(t('toplineErrorToast'), { tone: 'warn' });
     }
   }, [status, toast, t]);
 
-  if (status !== 'generating') return null;
-  return (
-    <div className="shrink-0 border-t border-line-soft px-4 py-3">
-      <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-        {t('toplineGenerating')}
+  if (status === 'generating') {
+    return (
+      <div className="shrink-0 border-t border-line-soft px-4 py-3">
+        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+          {t('toplineGenerating')}
+        </div>
+        <ToplineStageFlow
+          status="generating"
+          mapTotal={mapTotal}
+          mapDone={mapDone}
+          hasBlocks={hasBlocks}
+          orientation="vertical"
+        />
       </div>
-      <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
-    </div>
-  );
+    );
+  }
+
+  if (justCompleted && status === 'done') {
+    return (
+      <div className="shrink-0 border-t border-line-soft px-4 py-3">
+        <ToplineStageFlow
+          status="done"
+          hasBlocks={hasBlocks}
+          onResult={() => {
+            setJustCompleted(false);
+            onResult();
+          }}
+        />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -544,6 +582,8 @@ function ActiveBody({
         status={toplineStatus}
         mapTotal={mapTotal}
         mapDone={mapDone}
+        hasBlocks={toplineBlocks.length > 0}
+        onResult={onOpenFullview}
       />
 
       {/* 주 CTA(분석 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
