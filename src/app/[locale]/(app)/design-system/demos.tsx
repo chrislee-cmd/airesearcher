@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal';
 import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { Button } from '@/components/ui/button';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { ControlDropzone } from '@/components/ui/control-dropzone';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { ChipInput } from '@/components/ui/chip-input';
@@ -182,6 +183,37 @@ export function FileDropZoneDemo() {
       ) : (
         <p className="text-sm text-mute-soft">
           파일을 드롭하면 여기에 목록이 표시됩니다 (실제 업로드 없음 — 데모용).
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function ControlDropzoneDemo() {
+  const [files, setFiles] = useState<File[]>([]);
+  return (
+    <div className="space-y-3">
+      {/* 레이아웃 className prop 이 아예 없다 — 폭(w-full) + py(FILE_DROP_ZONE_PY)
+          가 primitive 안에 박제되어 있어 위젯이 치수를 정할 수 없다. */}
+      <ControlDropzone
+        accept=".csv,.xlsx,.pdf"
+        multiple
+        maxSizeBytes={10 * 1024 * 1024}
+        onFiles={(fs) => setFiles((prev) => [...prev, ...fs])}
+        label="파일을 드래그하거나 클릭해서 업로드"
+        helperText="CSV / XLSX / PDF · 최대 10MB"
+      />
+      {files.length > 0 ? (
+        <ul className="text-md text-mute">
+          {files.map((f, i) => (
+            <li key={i}>
+              {f.name} — {(f.size / 1024).toFixed(1)} KB
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-mute-soft">
+          폭·세로 규격이 primitive 에 고정 — 어느 컨트롤 위젯에서 써도 픽셀 동일 (데모용, 실제 업로드 없음).
         </p>
       )}
     </div>
