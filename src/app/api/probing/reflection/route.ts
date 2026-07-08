@@ -51,6 +51,12 @@ const Body = z.object({
     )
     .max(16)
     .optional(),
+  // PR (probing-persona-section-configurator #470): 활성 기본 섹션 key 목록.
+  // active-section SSOT — 컨트롤 패널 구성기에서 켜진 기본 섹션만 클라이언트가
+  // 보낸다. 미전달 시 기본 9 전부 (옛 동작 100%). 전달 시 이 목록에 든 기본
+  // 섹션만 prompt/schema 에 포함 → 꺼진 섹션은 데이터 적재 자체가 안 됨.
+  // 빈 배열 = 모든 기본 제거 (custom 만으로 진행 — sections 0 이면 400).
+  default_section_keys: z.array(z.string().min(1).max(64)).max(16).optional(),
 });
 
 export async function POST(request: Request) {
@@ -102,12 +108,24 @@ export async function POST(request: Request) {
     ? `## 사용자가 제공한 가이드 (인터뷰 RQ / 가설 / 의도)\n${guideSan.wrapped}\n\n위 가이드의 가설 / 의도 검증 흐름이 응답자 이해의 1순위 방향입니다.\n\n`
     : '';
 
-  // 기본 8 섹션 + (옵션) 사용자 custom 섹션. custom_sections 미전달 시
-  // 기본 8만 — 옛 동작 100% 보존.
-  const sections = [
-    ...DEFAULT_PERSONA_SECTIONS,
-    ...(parsed.data.custom_sections ?? []),
-  ];
+  // 활성 기본 섹션 — default_section_keys 미전달 시 기본 9 전부 (옛 동작).
+  // 전달 시 그 목록에 든 기본 섹션만 (순서는 DEFAULT_PERSONA_SECTIONS 유지).
+  // 빈 배열 = 모든 기본 제거. active-section SSOT (PR #470).
+  const requestedDefaultKeys = parsed.data.default_section_keys;
+  const activeDefaults = requestedDefaultKeys
+    ? DEFAULT_PERSONA_SECTIONS.filter((d) =>
+        requestedDefaultKeys.includes(d.key),
+      )
+    : DEFAULT_PERSONA_SECTIONS;
+
+  // 활성 기본 + (옵션) 사용자 custom 섹션. custom_sections 미전달 시
+  // 활성 기본만 — 옛 동작 100% 보존 (default_section_keys 도 미전달 시).
+  const sections = [...activeDefaults, ...(parsed.data.custom_sections ?? [])];
+  // 모든 섹션이 꺼진 경우 (기본 0 + custom 0) — 채울 대상이 없어 LLM 호출
+  // 무의미. 빈 schema 는 grammar 오류를 유발하므로 명시적 400.
+  if (sections.length === 0) {
+    return NextResponse.json({ error: 'no_sections' }, { status: 400 });
+  }
   const sectionKeyList = sections.map((s) => s.key).join(' / ');
 
   const result = streamObject({

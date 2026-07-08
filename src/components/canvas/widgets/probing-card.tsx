@@ -59,7 +59,6 @@ import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sect
 import { useHiddenDefaults } from './probing/use-hidden-defaults';
 import {
   DEFAULT_PERSONA_SECTIONS,
-  PROBING_PERSONA_SECTION_KEYS,
   PROBING_TECHNIQUES,
   PROBING_THINK_IMPORTANCE,
   probingThinkEmitSchema,
@@ -315,6 +314,7 @@ function ExpandedBody() {
   // reflection 자동 호출은 useCallback 안에서 ref 로 최신 값을 읽는다.
   const {
     sections: customSections,
+    hydrated: customSectionsHydrated,
     add: addCustomSection,
     remove: removeCustomSection,
   } = useCustomSections();
@@ -368,9 +368,9 @@ function ExpandedBody() {
   // 렌더 필터만. localStorage 영속, restore 로 즉시 재노출.
   const {
     hiddenKeys: hiddenDefaultKeys,
+    hydrated: hiddenDefaultsHydrated,
     hide: hideDefault,
     restore: restoreDefault,
-    restoreAll: restoreAllDefaults,
   } = useHiddenDefaults();
   // think 자동 호출 (useCallback, ref 로 최신값 읽음) 에서 숨긴 기본 위젯을
   // 우선순위 대상에서 제외하기 위한 ref.
@@ -686,6 +686,21 @@ function ExpandedBody() {
       return { key: alias, title: c.title, description: c.description };
     });
 
+    // active-section SSOT (PR #470) — 컨트롤 패널 구성기에서 켜진 기본 섹션만
+    // 요청에 싣는다. 꺼진 (숨긴) 기본 섹션은 prompt/schema 에서 빠져 데이터
+    // 적재 자체가 안 됨 → 전체보기 렌더 (hiddenKeys 필터) 와 정확히 일치.
+    // 요청 시점 스냅샷 — 스트리밍 중 토글돼도 이번 호출 key 집합은 고정.
+    const hiddenSnapshot = new Set(hiddenDefaultKeysRef.current);
+    const activeDefaultKeys = DEFAULT_PERSONA_SECTIONS.map((d) => d.key).filter(
+      (k) => !hiddenSnapshot.has(k),
+    );
+    // 모든 기본 꺼짐 + custom 0 = 채울 섹션 없음. 요청 skip (서버 400 회피).
+    if (activeDefaultKeys.length === 0 && requestCustomSections.length === 0) {
+      reflectionInFlightRef.current = false;
+      setReflectionStatus(reflectionRef.current ? 'ready' : 'idle');
+      return;
+    }
+
     try {
       const res = await fetchWithAuth('/api/probing/reflection', {
         method: 'POST',
@@ -694,7 +709,10 @@ function ExpandedBody() {
           transcript_window: trimmed,
           interview_guide: '',
           output_lang: outputLangRef.current,
-          // 빈 배열이면 서버는 옛 동작 (기본 8만).
+          // 활성 기본 섹션 key — 미전달과 달리 명시 목록. 전부 켜져 있으면
+          // 기본 9 전체라 옛 동작과 동일.
+          default_section_keys: activeDefaultKeys,
+          // 빈 배열이면 서버는 활성 기본만.
           custom_sections: requestCustomSections,
         }),
       });
@@ -725,8 +743,10 @@ function ExpandedBody() {
         // 하므로 reflection state / 렌더 (reflection-pane) 는 종전대로 원본
         // key 로 인덱싱된다. 아직 안 채워졌으면 sectionOrNull 이 insufficient
         // 로 떨굼.
+        // 요청에 실은 활성 기본 key + custom alias 만 파싱 (꺼진 기본은 응답에
+        // 없음). active-section SSOT (PR #470).
         const allKeys: string[] = [
-          ...PROBING_PERSONA_SECTION_KEYS,
+          ...activeDefaultKeys,
           ...requestCustomSections.map((c) => c.key),
         ];
         for (const key of allKeys) {
@@ -1172,7 +1192,13 @@ function ExpandedBody() {
           confidence: sec?.confidence ?? 'insufficient',
         });
       };
-      for (const def of DEFAULT_PERSONA_SECTIONS) pushPanel(def.key, def.title);
+      // 활성 섹션만 스냅샷 — 컨트롤 패널에서 끈 기본 섹션은 전체보기 렌더 ·
+      // 데이터 적재와 동일하게 공유 뷰어에서도 제외 (불일치 0, PR #470).
+      const snapshotHidden = hiddenDefaultKeysRef.current;
+      for (const def of DEFAULT_PERSONA_SECTIONS) {
+        if (snapshotHidden.has(def.key)) continue;
+        pushPanel(def.key, def.title);
+      }
       for (const c of customSectionsRef.current) pushPanel(c.key, c.title);
 
       // 생성 질문 — 현재 popup(있으면) + history, id 로 중복 제거.
@@ -1240,14 +1266,10 @@ function ExpandedBody() {
     onRefresh: handleManualReflection,
     isLive,
     hasTranscript,
+    // 표시 전용 — 섹션 구성 (추가/삭제/숨김) 은 컨트롤 패널 구성기로 이전
+    // (PR #470). hiddenKeys 로 활성 섹션만 렌더.
     customSections,
-    onAddCustomSection: handleAddCustomSection,
-    onRemoveCustomSection: removeCustomSection,
-    customSectionsFull,
     hiddenKeys: hiddenDefaultKeys,
-    onHideDefault: hideDefault,
-    onRestoreDefault: restoreDefault,
-    onRestoreAllDefaults: restoreAllDefaults,
     gridRef: personaGridRef,
   };
 
@@ -1303,6 +1325,17 @@ function ExpandedBody() {
               onStop={handleStopSession}
               stopDisabled={stopDisabled}
               statusLabel={statusLabel}
+              // 페르소나 섹션 구성 (PR #470) — active-section SSOT.
+              customSections={customSections}
+              hiddenSectionKeys={hiddenDefaultKeys}
+              onHideSection={hideDefault}
+              onRestoreSection={restoreDefault}
+              onRemoveCustomSection={removeCustomSection}
+              onAddCustomSection={handleAddCustomSection}
+              customSectionsFull={customSectionsFull}
+              sectionConfigDisabled={
+                !customSectionsHydrated || !hiddenDefaultsHydrated
+              }
             />
           );
 
