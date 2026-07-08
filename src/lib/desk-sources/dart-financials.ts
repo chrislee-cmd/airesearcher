@@ -131,10 +131,28 @@ export type DartFinancialsFailReason = 'timeout' | 'no_report' | 'api_error';
 // 하위호환 별칭 — dart.ts 가 기존 사유 라벨 맵을 재사용한다.
 export type DartRevenueReason = DartFinancialsFailReason;
 
+// 한 지표의 한 기간(연도) 값. fnlttSinglAcntAll 은 한 계정 줄에 당기/전기/전전기
+// 3기간을 동시에 실어 주므로(추가 API 0), 여기서 3개년 시계열이 나온다.
+//   year       = 회계연도 (당기=bsns_year, 전기=-1, 전전기=-2).
+//   label      = DART *_nm 원문(예 "제 79 기") — 표시/검증용.
+//   amount     = 원 단위 금액. 그 기간 값이 응답에 없으면 null(→ "데이터 확보 실패").
+//   cumulative = 누적(add_amount) 기반 여부. 분기/반기 보고서의 flow 지표는 당기·전기를
+//                누적으로 뽑아 서로 견줄 수 있게 하고, 전전기(bfefrmtrm)는 DART 가
+//                누적 필드를 안 줘 전년도 전체값이므로 false — YOY 동일기준 판정에서
+//                다른 기준끼리의 계산을 걸러내는 데 쓴다.
+export type DartPeriodValue = {
+  year: number;
+  label: string;
+  amount: number | null;
+  cumulative: boolean;
+};
+
 export type DartMetric = {
   key: MetricKey;
   labelKo: string;
-  amount: number;
+  amount: number; // 당기 값 (하위호환 — periods[0].amount 와 동일).
+  // 당기/전기/전전기 3기간 시계열(항상 길이 3, 결측 기간은 amount=null).
+  periods: DartPeriodValue[];
   // 실제 선택된 계정의 한글명(표시용 — 회사에 따라 "영업수익" 등으로 나온다).
   accountNm: string;
   // XBRL account_id (tier-1 매칭 시). tier-2/3 로 잡았으면 원문 그대로(없으면 '').
@@ -145,6 +163,18 @@ export type DartMetric = {
   // 신뢰 불가, 아래 probe 로 검증).
   fsDiv: 'CFS' | 'OFS';
 };
+
+// YOY(전년比 성장률, %) = (당기 − 전기) / 전기 × 100 을 **코드에서 결정론적으로**
+// 계산한다(정책: LLM 계산 금지 — 두 값 모두 cited 라 산술은 안전). 아래 경우는
+// 계산 불가로 null 을 돌려 표에서 "—" 로 두고 결코 지어내지 않는다:
+//   · 한쪽 기간 값 결측         · 두 기간이 다른 기준(누적 vs 전체 — 견줄 수 없음)
+//   · 전기 ≤ 0 (성장률이 무의미/부호 왜곡 — 손실 기저 방어)
+export function yoyPct(cur: DartPeriodValue, prev: DartPeriodValue): number | null {
+  if (cur.amount === null || prev.amount === null) return null;
+  if (cur.cumulative !== prev.cumulative) return null;
+  if (prev.amount <= 0) return null;
+  return ((cur.amount - prev.amount) / prev.amount) * 100;
+}
 
 export type DartFinancials = {
   corpCode: string;
@@ -177,8 +207,14 @@ type FnlttAllRow = {
   sj_div?: string; // BS | IS | CIS | CF | SCE
   account_id?: string; // XBRL (비표준이면 '-표준계정코드 미사용-')
   account_nm?: string;
+  thstrm_nm?: string; // 당기명 (예 "제 79 기")
   thstrm_amount?: string; // 당기금액 (콤마 포함 문자열)
   thstrm_add_amount?: string; // 당기 누적금액 — 분기/반기 보고서 손익에만 존재
+  frmtrm_nm?: string; // 전기명
+  frmtrm_amount?: string; // 전기금액 (전년 동일 보고서 기준)
+  frmtrm_add_amount?: string; // 전기 누적금액 — 분기/반기 손익에 존재(당기 누적과 견줌)
+  bfefrmtrm_nm?: string; // 전전기명
+  bfefrmtrm_amount?: string; // 전전기금액 (DART 는 누적 필드를 안 줌 → 전년도 전체값)
 };
 
 const DART_API_ERROR_STATUS = new Set(['010', '011', '012', '020', '021']);
@@ -215,6 +251,41 @@ function pickAmount(row: FnlttAllRow, flow: boolean, annual: boolean): number | 
     return parseAmount(row.thstrm_add_amount) ?? parseAmount(row.thstrm_amount);
   }
   return parseAmount(row.thstrm_amount);
+}
+
+// 한 기간 슬롯의 금액을 뽑는다. 누적 기준을 원할 때(flow·비연간) add_amount 가
+// 있으면 그것을(견줌 가능), 없으면 amount 로 폴백하되 cumulative=false 로 정직 표기.
+function pickSlot(
+  add: string | undefined,
+  amt: string | undefined,
+  wantCumulative: boolean,
+): { amount: number | null; cumulative: boolean } {
+  if (wantCumulative) {
+    const a = parseAmount(add);
+    if (a !== null) return { amount: a, cumulative: true };
+  }
+  return { amount: parseAmount(amt), cumulative: false };
+}
+
+// 한 계정 줄 → 당기/전기/전전기 3기간 시계열. baseYear=락한 보고서 bsns_year(당기).
+// fnlttSinglAcntAll 정의상 frmtrm=baseYear-1, bfefrmtrm=baseYear-2 라 연도는 산술로
+// 확정한다(추가 호출 0). flow·비연간이면 당기·전기를 누적으로 뽑아 YOY 가 동일기준.
+// 전전기는 DART 가 누적 필드를 안 줘 항상 전년도 전체값(cumulative=false).
+function extractPeriods(
+  row: FnlttAllRow,
+  flow: boolean,
+  annual: boolean,
+  baseYear: number,
+): DartPeriodValue[] {
+  const wantCum = flow && !annual;
+  const cur = pickSlot(row.thstrm_add_amount, row.thstrm_amount, wantCum);
+  const prev = pickSlot(row.frmtrm_add_amount, row.frmtrm_amount, wantCum);
+  const bfe = pickSlot(undefined, row.bfefrmtrm_amount, false);
+  return [
+    { year: baseYear, label: (row.thstrm_nm ?? '').trim(), amount: cur.amount, cumulative: cur.cumulative },
+    { year: baseYear - 1, label: (row.frmtrm_nm ?? '').trim(), amount: prev.amount, cumulative: prev.cumulative },
+    { year: baseYear - 2, label: (row.bfefrmtrm_nm ?? '').trim(), amount: bfe.amount, cumulative: bfe.cumulative },
+  ];
 }
 
 // 한 보고서 응답에서 한 지표를 뽑는다: sjDiv 필터 → tier-1 XBRL id → tier-2 한글
@@ -325,7 +396,9 @@ const LLM_MIN_BUDGET_MS = 9_000;
 // 결과를 Supabase 캐시에 실어, orchestrator warm-up(task cap 밖) 이 미리 채우면 각
 // DART task 는 캐시 히트로 즉시 값을 확보한다(corpCode.xml warm-up #759 패턴 계승).
 // 월 버킷 — 분기 보고서가 새로 공시되면 한 달 내 자동 갱신(≤30일 staleness 허용).
-const FIN_CACHE_VERSION = 'v1';
+// v2: DartMetric 에 periods(3기간 시계열) 추가 — v1 캐시 객체는 periods 가 없어
+// 시계열 렌더가 깨지므로 버전을 올려 옛 shape 을 재사용하지 않는다.
+const FIN_CACHE_VERSION = 'v2';
 function finCacheKey(corpCode: string): string {
   const now = new Date();
   const bucket = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -408,6 +481,7 @@ export async function fetchDartFinancials(
         key: spec.key,
         labelKo: spec.labelKo,
         amount: hit.amount,
+        periods: extractPeriods(hit.row, spec.flow, annual, locked.year),
         accountNm: (hit.row.account_nm ?? '').trim(),
         accountId: (hit.row.account_id ?? '').trim(),
         tier: hit.tier,
@@ -423,7 +497,7 @@ export async function fetchDartFinancials(
   //    숫자를 만들지 않는다(정책). 실패/키 없음/예산 부족 = 조용히 skip(degrade).
   if (unmapped.length && deadline - Date.now() > LLM_MIN_BUDGET_MS) {
     const timeoutMs = Math.min(LLM_MIN_BUDGET_MS - 500, deadline - Date.now() - 500);
-    const picked = await llmSelectMetrics(locked.rows, unmapped, annual, locked.fsDiv, timeoutMs);
+    const picked = await llmSelectMetrics(locked.rows, unmapped, annual, locked.fsDiv, locked.year, timeoutMs);
     for (const m of picked) {
       metrics.push(m);
       const i = unmapped.findIndex((s) => s.key === m.key);
@@ -521,6 +595,7 @@ async function llmSelectMetrics(
   unmapped: MetricSpec[],
   annual: boolean,
   fsDiv: 'CFS' | 'OFS',
+  baseYear: number,
   timeoutMs: number,
 ): Promise<DartMetric[]> {
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -590,6 +665,7 @@ async function llmSelectMetrics(
         key: spec.key,
         labelKo: spec.labelKo,
         amount,
+        periods: extractPeriods(row, spec.flow, annual, baseYear),
         accountNm: (row.account_nm ?? '').trim(),
         accountId: (row.account_id ?? '').trim(),
         tier: 3,
