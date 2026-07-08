@@ -41,7 +41,6 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { DropdownMenu } from './ui/dropdown-menu';
 import { ControlTrigger } from './ui/control-trigger';
 import { Field } from './canvas/shell/field';
-import { SectionLabel } from './canvas/shell/widget-outputs';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
@@ -3938,17 +3937,17 @@ export function TranslateConsole({
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
     <>
-      {/* 원어 / 대상어 / 입력 모드 — 한 줄 (좁으면 wrap). live 중엔
-          disabled (opacity 로 read-only 신호). 밸런스 튜닝(데스크 미러):
-          gap 3→4, 필드 높이 h-8→h-10, 라벨은 데스크 SectionLabel 타이포로
-          정렬 (시각 일관성, spec 결정 2). */}
+      {/* 원어 / 대상어 / 입력 모드 — 드롭다운 3종을 컨트롤 최상단에 먼저
+          배치 (전사록/인터뷰 dropdown-first 미러). 한 줄 (좁으면 wrap), live
+          중엔 disabled (opacity 로 read-only 신호). 라벨은 Field primitive 로
+          정합 — 전사록/인터뷰와 동일 SectionLabel 타이포·간격(mb-1.5), 인라인
+          재현 0 (spec 결정 2). */}
       {/* 컨트롤 드롭다운 통일 — native <select> ×3 → DropdownMenu(인터뷰 기준).
           항목/value/onChange 불변, 껍데기만 교체 (spec 결정 3). controlFields 는
           idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. live/busy 중엔
           trigger disabled (옛 select disabled 동작 유지). */}
       <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <SectionLabel>{t('sourceLang')}</SectionLabel>
+        <Field label={t('sourceLang')}>
           <DropdownMenu
             items={langOptions.map((l) => ({
               key: l.value,
@@ -3969,9 +3968,8 @@ export function TranslateConsole({
               </ControlTrigger>
             )}
           />
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <SectionLabel>{t('targetLang')}</SectionLabel>
+        </Field>
+        <Field label={t('targetLang')}>
           <DropdownMenu
             items={langOptions.map((l) => ({
               key: l.value,
@@ -3992,9 +3990,8 @@ export function TranslateConsole({
               </ControlTrigger>
             )}
           />
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <SectionLabel>{t('captureMode.label')}</SectionLabel>
+        </Field>
+        <Field label={t('captureMode.label')}>
           <DropdownMenu
             items={[
               { key: 'both', label: t('captureMode.both'), mode: 'both' },
@@ -4022,13 +4019,12 @@ export function TranslateConsole({
               </ControlTrigger>
             )}
           />
-        </div>
+        </Field>
       </div>
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
           추가. 세션 시작 전에만 편집 (live 중 disabled). */}
-      <label className="flex flex-col gap-1.5">
-        <SectionLabel>{t('glossary.label')}</SectionLabel>
+      <Field label={t('glossary.label')}>
         <GlossaryField
           values={glossary}
           onChange={setGlossary}
@@ -4037,7 +4033,7 @@ export function TranslateConsole({
           placeholderAdd={t('glossary.placeholderAdd')}
           removeAria={t('glossary.removeAria')}
         />
-      </label>
+      </Field>
     </>
   );
 
@@ -4090,9 +4086,10 @@ export function TranslateConsole({
       }
     >
       {idlePhase ? (
-        // 컨트롤보드 = ControlBoardPanel SSOT. 필드(controlFields)만 클러스터에
-        // 꽂고, 배너/온보딩은 banners 슬롯(클러스터 위 고정)으로 분리 — 필드
-        // 사이 끼임 제거(편차 #6). gap = 'field'(gap-4, 이전 gap-5 정규화).
+        // 컨트롤보드 = ControlBoardPanel SSOT. 드롭다운(controlFields)이 진짜
+        // 최상단이 되도록 — 에코 온보딩 가이드는 클러스터 하단으로 내린다
+        // (dropdown-first, 사용자 요청 2026-07-08). banners 슬롯엔 진짜 경고
+        // (tts 차단·에러)만 상단 고정. gap = 'field'(gap-4).
         <ControlBoardPanel
           unpadParent
           gap="field"
@@ -4100,23 +4097,24 @@ export function TranslateConsole({
             <>
               {ttsBlockedBanner}
               {errorBanner}
-              {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
-                  비침습(Start 안 막음), "다시 안 보기" localStorage 저장. 공유
-                  링크는 세션 시작 후 생성되므로 idle 에선 복사 버튼이 안내용 대기. */}
-              <EchoOnboarding
-                audible={outputAudible}
-                onToggleAudible={() => setOutputAudible((v) => !v)}
-                shareUrl={shareUrl}
-                onCopyShareUrl={() => void copyShareUrl()}
-                copied={shareCopied}
-                listenerCount={listeners.length}
-              />
             </>
           }
         >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
               이동 — 6 위젯 주 CTA 통일. */}
           {controlFields}
+          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
+              드롭다운 아래 배치(dropdown-first). 비침습(Start 안 막음), "다시
+              안 보기" localStorage 저장. 공유 링크는 세션 시작 후 생성되므로
+              idle 에선 복사 버튼이 안내용 대기. */}
+          <EchoOnboarding
+            audible={outputAudible}
+            onToggleAudible={() => setOutputAudible((v) => !v)}
+            shareUrl={shareUrl}
+            onCopyShareUrl={() => void copyShareUrl()}
+            copied={shareCopied}
+            listenerCount={listeners.length}
+          />
         </ControlBoardPanel>
       ) : (
         <>
