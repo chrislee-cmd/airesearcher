@@ -28,7 +28,7 @@
    (one-shot), 부모가 좌 위젯 + think 로 흘려보낸다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { ChipInput } from '@/components/ui/chip-input';
@@ -70,13 +70,6 @@ export function ProbingResearchContext({
     setDraft('');
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      inject();
-    }
-  }
-
   return (
     <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
       <Field
@@ -105,7 +98,7 @@ export function ProbingResearchContext({
             <ChipInput
               value={draft}
               onChange={(e) => setDraft(e.target.value.slice(0, QUESTION_MAX))}
-              onKeyDown={handleKeyDown}
+              onCommit={inject}
               disabled={disabled}
               placeholder="예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?"
               className="min-w-[140px] flex-1"

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
+import { isComposingEnter } from '@/components/ui/chip-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 
@@ -88,7 +89,8 @@ export function CreateProjectModal({
           placeholder={t('projectNamePlaceholder')}
           maxLength={200}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            // IME 조합 중 Enter 는 음절 확정용 — 폼 조기 submit 방지.
+            if (e.key === 'Enter' && !isComposingEnter(e)) {
               e.preventDefault();
               void handleSubmit();
             }

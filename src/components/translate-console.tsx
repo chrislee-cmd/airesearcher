@@ -4654,11 +4654,9 @@ function GlossaryField({
         className="min-w-[120px] flex-1 text-md"
         value={draft}
         onChange={(e) => setDraft(e.target.value.slice(0, MAX_LEN))}
+        onCommit={commitDraft}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commitDraft();
-          } else if (
+          if (
             e.key === 'Backspace' &&
             draft.length === 0 &&
             values.length > 0

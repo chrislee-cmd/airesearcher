@@ -89,11 +89,10 @@ export function ProjectTagEditor({
       .slice(0, 6);
   }, [draft, suggestions, tags]);
 
+  // Enter commit lives in <ChipInput onCommit> (IME-guarded). Here we only own
+  // the non-commit keys: Backspace pops the last chip, Escape clears the draft.
   const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commit(draft);
-    } else if (e.key === 'Backspace' && !draft && tags.length) {
+    if (e.key === 'Backspace' && !draft && tags.length) {
       removeTag(tags[tags.length - 1]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -142,6 +141,7 @@ export function ProjectTagEditor({
             value={draft}
             maxLength={MAX_LEN}
             onChange={(e) => setDraft(e.target.value)}
+            onCommit={commit}
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => {
