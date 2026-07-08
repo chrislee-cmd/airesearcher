@@ -18,22 +18,27 @@ function classifyDartStatus(status: string): DeskSourceErrorReason | undefined {
   if (status === '013') return undefined; // 조회 데이터 없음 = genuine empty
   return 'fetch_failed';
 }
+import { listedRosterSize, resolveDartCorp, type DartCorp } from './dart-corp';
 import {
-  fetchDartRevenue,
+  fetchDartFinancials,
   formatKrwAmount,
-  listedRosterSize,
-  resolveDartCorp,
-  type DartCorp,
-  type DartRevenueReason,
-} from './dart-corp';
+  type DartFinancialsFailReason,
+  type DartMetric,
+} from './dart-financials';
 
-// 매출 조회 실패 사유 → 보고서에 병기할 한국어 라벨 (decision 3: "확보 실패"
+// 재무 조회 실패 사유 → 보고서에 병기할 한국어 라벨 (decision 3: "확보 실패"
 // 단독 금지). LLM 이 주요 기업 매출 표의 괄호 사유로 그대로 옮겨 쓴다.
-const REVENUE_FAIL_KO: Record<DartRevenueReason, string> = {
+const REVENUE_FAIL_KO: Record<DartFinancialsFailReason, string> = {
   timeout: '조회 시간 초과',
   no_report: '공시 없음',
   api_error: 'API 오류',
 };
+
+// tier(어느 정규화 층에서 잡혔는지) → 스니펫 병기용 라벨. XBRL 표준계정으로
+// 잡은 값이 라벨 변동에 가장 robust 함을 유저가 인지하게 한다.
+function tierKo(tier: DartMetric['tier']): string {
+  return tier === 1 ? 'XBRL 표준계정' : tier === 2 ? '한글 계정 매칭' : 'LLM 계정 선택';
+}
 
 // DART (금융감독원 전자공시) — 상장사 사업보고서/공시. TAM/SAM 검증용 (상장사
 // 매출·시장 점유). 검색어가 상장사 사명이면 corp_code 로 그 회사를 특정해
@@ -90,9 +95,9 @@ async function fetchByCorp(
   const end = toYyyymmdd(range.to);
   if (end) params.set('end_de', end);
 
-  // 공시 목록과 매출 조회는 독립 — 병렬로 돌려 task 를 15s cap 에서 멀리
+  // 공시 목록과 재무 조회는 독립 — 병렬로 돌려 task 를 15s cap 에서 멀리
   // 둔다 (둘 다 소형 JSON 호출, 각각 safeFetch 상한).
-  const [items, revenueResult] = await Promise.all([
+  const [items, finResult] = await Promise.all([
     (async (): Promise<DartItem[]> => {
       try {
         const res = await safeFetch(
@@ -106,7 +111,7 @@ async function fetchByCorp(
         return [];
       }
     })(),
-    fetchDartRevenue(corp.corpCode, key),
+    fetchDartFinancials(corp.corpCode, key),
   ]);
 
   // 매출액 링크로 쓸 대표 공시 — 사업보고서 우선, 없으면 첫 정기공시.
@@ -116,40 +121,81 @@ async function fetchByCorp(
   const out: DeskArticle[] = [];
   const companySearchUrl = `https://dart.fss.or.kr/dsae001/main.do?autoSearch=true&textCrpNm=${encodeURIComponent(corp.corpName)}`;
 
-  // (1) 매출액 headline — SAM 핵심 수치. 사업보고서 기준 연결 매출액.
-  if (revenueResult.ok) {
-    const revenue = revenueResult.revenue;
-    const url = businessReport?.rcept_no
-      ? reportUrl(businessReport.rcept_no)
-      : companySearchUrl;
-    out.push({
-      source: 'dart',
-      // period 병기 필수 — 연간 매출과 분기/반기 누적 매출을 같은 수치인 양 비교하면
-      // 안 된다 (예: "농심 2025 3분기 누적 매출액 …"). 2026-07-06 사고 fix.
-      title: `${corp.corpName} ${revenue.period} ${revenue.label} ${formatKrwAmount(revenue.amount)}`,
-      url,
-      snippet: `DART ${revenue.period} 기준 ${revenue.label} ${revenue.amount.toLocaleString()}원 · 연결 우선`,
-      publishedAt: `${revenue.year + 1}-04-01`,
-      origin: corp.corpName,
-      keyword,
-      // primary 수치 근거 — market mode 샘플링이 이 매출 headline 을 뉴스 사이에서
-      // dropout 시키지 않도록 pin 대상으로 표시 (2026-07-08 진단: 농심·삼양 탈락).
-      kind: 'metric',
-    });
+  // (1) 재무 지표 headline + 지표별 article — 6개 핵심 지표(매출/영업이익/순이익/
+  //     자산/부채/자본)를 XBRL 표준계정 1순위로 정규화해 뽑는다 (dart-financials).
+  if (finResult.ok) {
+    const fin = finResult.financials;
+    // 값의 출처 = 실제 재무제표 공시(rcpNo). 없으면 사업보고서 → 회사검색.
+    const finUrl = fin.rceptNo
+      ? reportUrl(fin.rceptNo)
+      : businessReport?.rcept_no
+        ? reportUrl(businessReport.rcept_no)
+        : companySearchUrl;
+    const fsKo = fin.fsDiv === 'CFS' ? '연결' : '별도';
+    // 연간 보고서는 이듬해 3월경 공시 → 근사 publishedAt. 분기/반기도 같은 근사.
+    const publishedAt = `${fin.year + 1}-04-01`;
+
+    const revenue = fin.metrics.find((m) => m.key === 'revenue');
+    if (revenue) {
+      out.push({
+        source: 'dart',
+        // period 병기 필수 — 연간 매출과 분기/반기 누적 매출을 같은 수치인 양 비교하면
+        // 안 된다 (예: "농심 2025 3분기 누적 매출액 …"). 2026-07-06 사고 fix.
+        title: `${corp.corpName} ${fin.period} ${revenue.labelKo} ${formatKrwAmount(revenue.amount)}`,
+        url: finUrl,
+        snippet: `DART ${fin.period} 기준 ${revenue.accountNm || revenue.labelKo} ${revenue.amount.toLocaleString()}원 · ${fsKo} · ${tierKo(revenue.tier)}`,
+        publishedAt,
+        origin: corp.corpName,
+        keyword,
+        // primary 수치 근거 — market mode 샘플링이 이 매출 headline 을 뉴스 사이에서
+        // dropout 시키지 않도록 pin 대상으로 표시 (2026-07-08 진단: 농심·삼양 탈락).
+        kind: 'metric',
+      });
+    } else {
+      // 보고서는 락됐지만 매출 계정만 미매핑 — 무음 0건 금지. 사유를 남겨 보고서
+      // LLM 이 임의 매출 수치를 지어내지 않게 한다.
+      console.warn(
+        `[dart] revenue unmapped — corp=${corp.corpName} code=${corp.corpCode} period=${fin.period}`,
+      );
+      out.push({
+        source: 'dart',
+        title: `${corp.corpName} 매출 — 계정 미매핑 (${fin.period})`,
+        url: finUrl,
+        snippet: `DART ${fin.period} 재무제표는 확보했으나 매출 계정을 특정하지 못했습니다. 수치를 임의로 채우지 말고 링크의 원문을 확인하세요.`,
+        origin: corp.corpName,
+        keyword,
+      });
+    }
+
+    // (1-b) 나머지 지표(영업이익·순이익·자산·부채·자본) — 지표별 근거 article.
+    // 매출 headline 만 pin(kind:'metric') 대상으로 두고 이들은 일반 근거로 둔다
+    // (over-pin 방지 — pin 의 본래 의도는 SAM 앵커인 매출 보호. spec 보수 해석).
+    for (const m of fin.metrics) {
+      if (m.key === 'revenue') continue;
+      out.push({
+        source: 'dart',
+        title: `${corp.corpName} ${fin.period} ${m.labelKo} ${formatKrwAmount(m.amount)}`,
+        url: finUrl,
+        snippet: `DART ${fin.period} 기준 ${m.accountNm || m.labelKo} ${m.amount.toLocaleString()}원 · ${fsKo} · ${tierKo(m.tier)}`,
+        publishedAt,
+        origin: corp.corpName,
+        keyword,
+      });
+    }
   } else {
     // 조용한 null 금지 — 명부 매칭은 됐는데 재무 조회가 실패한 경우, 사유를
     // 담은 진단 항목을 근거로 흘려보낸다. 보고서 LLM 이 주요 기업 매출 표에서
     // 이 회사 행을 "데이터 확보 실패 (조회 시간 초과)" 처럼 사유와 함께 렌더한다.
     // Vercel 로그에도 남겨 다음 진단을 즉시 가능하게 한다 (2026-07-06 사고 교훈).
-    const reasonKo = REVENUE_FAIL_KO[revenueResult.reason];
+    const reasonKo = REVENUE_FAIL_KO[finResult.reason];
     console.warn(
-      `[dart] revenue lookup failed — corp=${corp.corpName} code=${corp.corpCode} reason=${revenueResult.reason}`,
+      `[dart] financials lookup failed — corp=${corp.corpName} code=${corp.corpCode} reason=${finResult.reason}`,
     );
     out.push({
       source: 'dart',
       title: `${corp.corpName} 매출 — 데이터 확보 실패 (${reasonKo})`,
       url: businessReport?.rcept_no ? reportUrl(businessReport.rcept_no) : companySearchUrl,
-      snippet: `DART 상장사 명부 매칭 성공(corp_code=${corp.corpCode}), 사업보고서 매출 조회 단계에서 실패 — ${reasonKo}. 수치를 임의로 채우지 말고 “데이터 확보 실패 (${reasonKo})”로 표기하세요.`,
+      snippet: `DART 상장사 명부 매칭 성공(corp_code=${corp.corpCode}), 사업보고서 재무 조회 단계에서 실패 — ${reasonKo}. 수치를 임의로 채우지 말고 “데이터 확보 실패 (${reasonKo})”로 표기하세요.`,
       origin: corp.corpName,
       keyword,
     });
