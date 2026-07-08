@@ -21,6 +21,8 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
+import { PersonaSectionConfigurator } from './persona-section-configurator';
+import type { ProbingCustomSection } from '../probing-types';
 
 export type SourceKind = 'mic' | 'tab';
 
@@ -137,6 +139,14 @@ export function ProbingControlPanel({
   onStop,
   stopDisabled,
   statusLabel,
+  customSections,
+  hiddenSectionKeys,
+  onHideSection,
+  onRestoreSection,
+  onRemoveCustomSection,
+  onAddCustomSection,
+  customSectionsFull,
+  sectionConfigDisabled,
 }: {
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
@@ -150,6 +160,17 @@ export function ProbingControlPanel({
   onStop: () => void;
   stopDisabled: boolean;
   statusLabel: string | null;
+  // ─── 페르소나 섹션 구성 (PR #470) — active-section SSOT 구성기 ───
+  // 기본 9 on/off (숨김/복원) + custom add/remove 를 컨트롤 패널에서 관리.
+  // 이 활성 목록이 전체보기 위젯 렌더 · persona 요청 · 데이터 적재를 관통.
+  customSections: ProbingCustomSection[];
+  hiddenSectionKeys: Set<string>;
+  onHideSection: (key: string) => void;
+  onRestoreSection: (key: string) => void;
+  onRemoveCustomSection: (key: string) => void;
+  onAddCustomSection: (title: string, description?: string) => void;
+  customSectionsFull: boolean;
+  sectionConfigDisabled: boolean;
 }) {
   // 밸런스 튜닝(desk 미러): 필드 간 세로 간격 gap-4 → gap-5 확대
   // (데스크 controlsForm space-y-4 → space-y-5 와 동일 계열).
@@ -170,6 +191,20 @@ export function ProbingControlPanel({
           세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.
         </p>
       )}
+      {/* 페르소나 섹션 구성 — 옛 전체보기 좌패널 (× / 위젯 추가 / 숨김 복원)
+          을 컨트롤 패널로 이전. 세션 중에도 편집 가능 (다음 갱신 tick 에 반영).
+          data-canvas-body 밖 (컨트롤 패널) 이라 ModeButton 이 amore/paper
+          토큰 룩으로 렌더 (globals.css memphis chrome 미적용). */}
+      <PersonaSectionConfigurator
+        customSections={customSections}
+        hiddenKeys={hiddenSectionKeys}
+        onHideDefault={onHideSection}
+        onRestoreDefault={onRestoreSection}
+        onRemoveCustom={onRemoveCustomSection}
+        onAddCustom={onAddCustomSection}
+        customFull={customSectionsFull}
+        disabled={sectionConfigDisabled}
+      />
       {/* 세션 CTA — live: 정지 (여기 유지). idle: 세션 시작 은 WidgetPrimaryCta
           (우측 중앙 고정 앵커) 로 이동 = 6 위젯 주 CTA 통일. */}
       <div className="flex items-center justify-between gap-3">

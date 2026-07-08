@@ -12,47 +12,29 @@
    컴포넌트는 순수 표시 + "지금 갱신" 액션만 노출.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState } from 'react';
 import type { Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import type {
   ProbingPersona,
   ProbingPersonaSection,
-  ProbingPersonaSectionKey,
 } from '@/lib/probing-prompts';
 import type { ProbingCustomSection } from '../probing-types';
 import { PersonaPanel } from './persona-panel';
-import { AddCustomSectionCard } from './add-custom-section-card';
+import {
+  DEFAULT_PERSONA_PANELS,
+  CUSTOM_PANEL_ICON,
+} from './persona-section-meta';
 
 // 위젯 전반 (probing-card.tsx 등) 에서 동일 타입을 import 하므로 그대로 export.
 export type ProbingReflectionData = Partial<ProbingPersona>;
 
 export type ReflectionStatus = 'idle' | 'streaming' | 'ready' | 'error';
 
-type PanelConfig = {
-  key: ProbingPersonaSectionKey;
-  icon: string;
-  title: string;
-};
-
-// 그리드 순서 — 사용자 인지 흐름 (정체성 → 가치관 → 선호 → 욕구 → 행동) 에
-// 맞춰 demographics 부터 시작하고 behavioral_patterns 로 이어진 뒤, catch-all
-// "기타" 를 마지막 (9번째) 으로 둔다. 9 패널이라 2열 (lg) / 1열 (좁을 때)
-// 자동 wrap. 기타는 다른 8 기본과 동일하게 × 로 숨김 가능 (useHiddenDefaults).
-const PANELS: PanelConfig[] = [
-  { key: 'demographics', icon: '👤', title: '데모그래픽' },
-  { key: 'values', icon: '🌱', title: '가치관' },
-  { key: 'preferences', icon: '💎', title: '선호' },
-  { key: 'needs', icon: '🎯', title: '니즈' },
-  { key: 'painpoints', icon: '⚠️', title: '페인포인트' },
-  { key: 'brand_perception', icon: '🏷️', title: '브랜드 인식' },
-  { key: 'decision_drivers', icon: '🧭', title: '의사결정 요인' },
-  { key: 'behavioral_patterns', icon: '🔁', title: '행동 패턴' },
-  // PR (probing-default-etc-widget): catch-all "기타" — 다른 위젯에 매치
-  // 안 되는 응답자 정보를 담는 9번째 default.
-  { key: 'etc', icon: '📎', title: '기타' },
-];
+// 그리드 순서 SSOT = persona-section-meta (컨트롤 패널 구성기와 공유).
+// PR (probing-persona-section-configurator #470): 섹션 구성 (숨김/추가/삭제)
+// 은 컨트롤 패널 구성기로 이전 — 이 패널은 활성 섹션을 순수 표시만 한다.
+const PANELS = DEFAULT_PERSONA_PANELS;
 
 const memphisPlaceholderStyle = {
   border: '2px solid var(--canvas-card-border)',
@@ -90,13 +72,7 @@ export function ReflectionPane({
   isLive,
   hasTranscript,
   customSections,
-  onAddCustomSection,
-  onRemoveCustomSection,
-  customSectionsFull,
   hiddenKeys,
-  onHideDefault,
-  onRestoreDefault,
-  onRestoreAllDefaults,
   gridRef,
 }: {
   data: ProbingReflectionData | null;
@@ -108,27 +84,17 @@ export function ReflectionPane({
   onRefresh: () => void;
   isLive: boolean;
   hasTranscript: boolean;
-  // custom 섹션 (PR: probing-custom-section-ui) — 기본 8 패널 뒤에 append.
-  // "위젯 추가" 블록 (PR: probing-widget-add-move-to-left-grid) 은 grid 의
-  // 마지막 칸으로 이동 — 우패널 대신 여기서 modal 을 띄운다.
+  // custom 섹션 (PR: probing-custom-section-ui) — 기본 9 패널 뒤에 append.
+  // PR (probing-persona-section-configurator #470): 추가/삭제 컨트롤은 컨트롤
+  // 패널 구성기로 이전 — 여기선 활성 custom 섹션을 표시만 한다.
   customSections: ProbingCustomSection[];
-  onAddCustomSection: (title: string, description?: string) => void;
-  onRemoveCustomSection: (key: string) => void;
-  customSectionsFull: boolean;
-  // 기본 8 위젯 개별 숨김 (PR: probing-default-persona-widgets-hide) —
-  // UI-only hide. hiddenKeys 에 든 기본 key 는 grid 에서 빠지고 하단
-  // "숨긴 위젯" 복원 리스트로 이동. custom 섹션 삭제와는 별개 mechanism.
+  // 활성 섹션 필터 — hiddenKeys 에 든 기본 key 는 grid 에서 제외 (컨트롤 패널
+  // 구성기에서 off 처리). 표시 전용 필터, 토글 UI 는 여기 없다.
   hiddenKeys: Set<string>;
-  onHideDefault: (key: string) => void;
-  onRestoreDefault: (key: string) => void;
-  onRestoreAllDefaults: () => void;
   // PDF 내보내기 (PR: probing-pdf-export-persona-only) — 페르소나 grid DOM 을
   // 캡쳐 대상으로 노출. 부모(probing-card.tsx)가 이 ref 로 grid 만 PDF 화한다.
-  // grid 안의 "위젯 추가" 카드는 data-export-hide 로 캡쳐에서 제외.
   gridRef?: Ref<HTMLDivElement>;
 }) {
-  // 하단 "숨긴 위젯 (N)" 복원 리스트 — 기본 접힘 (사용자 결정).
-  const [restoreOpen, setRestoreOpen] = useState(false);
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
     status === 'streaming'
@@ -162,34 +128,25 @@ export function ReflectionPane({
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {hasAnyPanelData ? (
           <div ref={gridRef} className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {/* 활성 기본 섹션 (hiddenKeys 제외) + custom 섹션 순수 표시.
+                섹션 구성 (추가/삭제/숨김) 은 컨트롤 패널 구성기가 소유
+                (PR #470) — 여기 × / 추가 카드는 제거됐다. */}
             {PANELS.filter((p) => !hiddenKeys.has(p.key)).map((p) => (
               <PersonaPanel
                 key={p.key}
                 icon={p.icon}
                 title={p.title}
                 section={sectionOrNull(data, p.key)}
-                onRemove={() => onHideDefault(p.key)}
               />
             ))}
             {customSections.map((c) => (
               <PersonaPanel
                 key={c.key}
-                icon="🧩"
+                icon={CUSTOM_PANEL_ICON}
                 title={c.title}
                 section={sectionOrNull(data, c.key)}
-                onRemove={() => onRemoveCustomSection(c.key)}
               />
             ))}
-            {/* "위젯 추가" 블록은 최초 8 패널 생성 이후에만 grid 마지막 칸
-                으로 노출 (생성 전 무분별한 입력 부하 방지 — 사용자 결정).
-                data-export-hide: 인터랙션 전용 affordance 라 PDF 캡쳐 (페르소나
-                grid) 에서는 제외 — display:contents 로 grid 레이아웃은 그대로. */}
-            <div data-export-hide className="contents">
-              <AddCustomSectionCard
-                onAdd={onAddCustomSection}
-                full={customSectionsFull}
-              />
-            </div>
           </div>
         ) : status === 'streaming' ? (
           <div
@@ -222,51 +179,6 @@ export function ReflectionPane({
             &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
           </div>
         )}
-
-        {/* 숨긴 기본 위젯 복원 리스트 (PR: probing-default-persona-widgets-hide).
-            숨김 0 이면 미표시, default 접힘. chip 클릭 → 복원, "전체 복원"
-            → 일괄. hiddenKeys 는 기본 8 key 만 담기므로 PANELS lookup 으로
-            icon/title 을 복원. */}
-        {(() => {
-          const hiddenPanels = PANELS.filter((p) => hiddenKeys.has(p.key));
-          if (hiddenPanels.length === 0) return null;
-          return (
-            <div className="mt-4 border-t border-line-soft pt-3">
-              <Button
-                variant="link"
-                size="xs"
-                onClick={() => setRestoreOpen((v) => !v)}
-                aria-expanded={restoreOpen}
-                className="!px-0"
-              >
-                숨긴 위젯 ({hiddenPanels.length}) {restoreOpen ? '▲' : '▼'}
-              </Button>
-              {restoreOpen && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {hiddenPanels.map((p) => (
-                    <Button
-                      key={p.key}
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => onRestoreDefault(p.key)}
-                      aria-label={`위젯 복원: ${p.title}`}
-                    >
-                      <span aria-hidden>{p.icon}</span> {p.title}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="link"
-                    size="xs"
-                    onClick={onRestoreAllDefaults}
-                    className="!px-0"
-                  >
-                    전체 복원
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {error && (
           <div
