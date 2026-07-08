@@ -15,6 +15,25 @@ import {
 } from '@/lib/transcripts/diarization';
 import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
+// 회의록 요약 블록을 전사 마크다운의 front-matter 직후(본문 상단)에 삽입.
+// docx 는 markdownToDocx 의 opts 로 별 챕터 렌더하지만, md/txt 는 순수 텍스트라
+// 여기서 직접 끼워넣는다. front-matter 펜스(`---`)를 못 찾으면 맨 앞에 붙인다.
+function insertSummary(markdown: string, summary: string): string {
+  const lines = markdown.split(/\r?\n/);
+  let insertAt = 0;
+  if (lines[0]?.trim() === '---') {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        insertAt = i + 1;
+        break;
+      }
+    }
+  }
+  const head = lines.slice(0, insertAt).join('\n');
+  const tail = lines.slice(insertAt).join('\n');
+  return `${head}\n\n${summary.trim()}\n${tail}`;
+}
+
 function markdownToPlainText(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
   const out: string[] = [];
@@ -143,6 +162,13 @@ export async function GET(
     `$1${displayBase}`,
   );
 
+  // 회의록 모드 잡이면 요약 + Todo 블록. md/txt 는 본문 상단에 삽입, docx 는
+  // markdownToDocx 가 별 챕터로 렌더. 리서치/실패 잡은 NULL → 현행 그대로.
+  const summaryMarkdown = (job.meeting_summary as string | null) ?? undefined;
+  const mdWithSummary = summaryMarkdown
+    ? insertSummary(displayMarkdown, summaryMarkdown)
+    : displayMarkdown;
+
   // Hoist `job.created_at` into a local — the inner closure loses TS's
   // null-narrowing on `job` otherwise.
   const jobCreatedAt = job.created_at as string;
@@ -156,7 +182,7 @@ export async function GET(
   }
 
   if (format === 'md') {
-    return new Response(displayMarkdown, {
+    return new Response(mdWithSummary, {
       status: 200,
       headers: {
         'content-type': 'text/markdown; charset=utf-8',
@@ -168,7 +194,7 @@ export async function GET(
   if (format === 'txt') {
     // Drop YAML front-matter fences, render `key: value` rows + body as plain
     // text so the download opens cleanly in any text editor.
-    const plain = markdownToPlainText(displayMarkdown);
+    const plain = markdownToPlainText(mdWithSummary);
     return new Response(plain, {
       status: 200,
       headers: {
@@ -178,8 +204,8 @@ export async function GET(
     });
   }
 
-  // docx
-  const buf = await markdownToDocx(displayMarkdown);
+  // docx — 요약은 splice 대신 별 챕터로(커버 다음, 본문 앞) 렌더.
+  const buf = await markdownToDocx(displayMarkdown, { summaryMarkdown });
   return new Response(new Uint8Array(buf), {
     status: 200,
     headers: {

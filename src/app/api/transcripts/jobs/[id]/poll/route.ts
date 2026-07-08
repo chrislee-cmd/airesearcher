@@ -13,6 +13,7 @@ import { classifySpeakerRoles } from '@/lib/transcripts/speaker-roles';
 import { normalizeTermsInTranscript } from '@/lib/transcripts/term-normalize';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 import { classifyQaDiarization } from '@/lib/transcripts/diarization';
+import { summarizeMeeting } from '@/lib/transcripts/meeting-summary';
 import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped from 30s to 200s because the cleanup pass scheduled via `after()`
@@ -41,7 +42,7 @@ export async function POST(
   const { data: job, error: fetchErr } = await supabase
     .from('transcript_jobs')
     .select(
-      'id, org_id, user_id, filename, status, provider, provider_request_id',
+      'id, org_id, user_id, filename, status, provider, provider_request_id, mode',
     )
     .eq('id', id)
     .single();
@@ -209,9 +210,12 @@ export async function POST(
   // On any pass failure that column stays NULL → UI falls back to raw
   // markdown + Speaker N labels.
   const shouldDiarize = formatted.speakers === 1 && formatted.duration >= 60;
+  // 회의록 모드(mode='meeting') 잡만 전체 요약 + Todo 후처리. 리서치 모드는
+  // 현행 그대로(skip). 실패해도 markdown 은 이미 저장돼 전사 본문은 유지.
+  const shouldSummarize = job.mode === 'meeting';
   after(async () => {
     try {
-      const [textPipeline, rolesRes, diarRes] = await Promise.all([
+      const [textPipeline, rolesRes, diarRes, summaryRes] = await Promise.all([
         (async () => {
           const cleanup = await cleanupTranscript(
             mergedWords,
@@ -254,6 +258,12 @@ export async function POST(
               },
             )
           : Promise.resolve(null),
+        shouldSummarize
+          ? summarizeMeeting(formatted.markdown, job.filename).catch((e) => {
+              console.warn('[transcripts/poll] meeting-summary pass failed', e);
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       const { cleanup: cleanupRes, termNormalize: termRes, numberNormalize: numberRes } =
         textPipeline;
@@ -270,11 +280,13 @@ export async function POST(
           ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
           ...(diarRes ? { _diarization: diarRes.audit } : {}),
+          ...(summaryRes ? { _meeting_summary: summaryRes.audit } : {}),
         },
       };
       if (finalCleanMarkdown) patch.clean_markdown = finalCleanMarkdown;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
       if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
+      if (summaryRes?.markdown) patch.meeting_summary = summaryRes.markdown;
       await updateWithInferredFallback(
         async (p) => {
           const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);
