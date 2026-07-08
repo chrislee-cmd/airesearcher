@@ -50,7 +50,7 @@ export const UI_CATEGORY_META: Record<UICategory, { icon: string; sourceIds: Des
   },
   stats: {
     icon: '📊',
-    sourceIds: ['kosis', 'atfis', 'dart', 'boj_ecos'],
+    sourceIds: ['kosis', 'atfis', 'dart', 'sec_edgar', 'boj_ecos'],
   },
   academic: {
     icon: '🎓',
