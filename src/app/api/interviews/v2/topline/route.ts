@@ -11,6 +11,10 @@ import {
   runTopline,
   TOPLINE_MODEL,
 } from '@/lib/interview-v2/topline';
+import {
+  TOPLINE_OUTPUT_LANGS,
+  TOPLINE_DEFAULT_LANG,
+} from '@/lib/interview-v2/topline-prompt';
 
 // 인터뷰 탑라인 보고서 — 생성/캐시 엔드포인트.
 //
@@ -33,6 +37,10 @@ export const maxDuration = 300;
 const Body = z.object({
   project_id: z.string().uuid(),
   force: z.boolean().optional().default(false),
+  // 출력 언어 — 입력 transcript 언어와 독립적으로 보고서 언어를 강제(사용자
+  // 결정 1). 미지정이면 기본(한국어) — 기존 클라이언트/동작 회귀 X. 캐시 키의
+  // 일부라 언어를 바꾸면 문서셋이 같아도 재생성한다(결정 3).
+  output_lang: z.enum(TOPLINE_OUTPUT_LANGS).optional(),
 });
 
 // GET ?project_id=<uuid> — 읽기 전용 조회. 2-tab UI 가 탭 열자마자 저장된
@@ -90,6 +98,9 @@ export async function GET(req: Request) {
     // 저장 해시와 현재 문서 셋 해시가 다르면 파일이 바뀐 것 = stale.
     // row 가 없으면 stale 아님(그냥 미생성).
     stale: existing ? existing.content_hash !== hash : false,
+    // 마지막 생성에 쓰인 출력 언어 — UI 언어 선택기 초기값. null(레거시/미생성)
+    // 이면 클라이언트가 기본(한국어)으로 표시.
+    output_lang: existing?.output_lang ?? null,
     // 인덱싱 전이면 생성 자체가 불가 — CTA 대신 안내 문구.
     indexed: chunkCount > 0,
     generated_at: existing?.generated_at ?? null,
@@ -119,7 +130,9 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { project_id, force } = parsed.data;
+  const { project_id, force, output_lang } = parsed.data;
+  // 요청 언어 정규화 — 미지정 = 기본(한국어). 캐시 비교/저장 모두 이 값 기준.
+  const requestLang = output_lang ?? TOPLINE_DEFAULT_LANG;
 
   const admin = createAdminClient();
 
@@ -152,11 +165,14 @@ export async function POST(req: Request) {
 
   const existing = await getTopline(admin, project_id);
 
-  // 캐시 히트 — 해시 동일 & 완료 & 강제재생성 아님 → LLM 0.
+  // 캐시 히트 — 해시 동일 & **언어 동일** & 완료 & 강제재생성 아님 → LLM 0.
+  // 언어가 다르면 문서셋이 같아도 재생성(옛 언어 캐시 오반환 방지 — 결정 3).
+  // 레거시 row(output_lang=null)는 기본 언어(한국어)로 취급.
   if (
     !force &&
     existing?.status === 'done' &&
-    existing.content_hash === hash
+    existing.content_hash === hash &&
+    (existing.output_lang ?? TOPLINE_DEFAULT_LANG) === requestLang
   ) {
     return NextResponse.json({
       topline_id: existing.id,
@@ -187,6 +203,7 @@ export async function POST(req: Request) {
       orgId: org.org_id,
       projectId: project_id,
       hash,
+      outputLang: requestLang,
     });
   } catch (e) {
     console.error('[v2/topline] upsert failed', e);
@@ -200,6 +217,7 @@ export async function POST(req: Request) {
       toplineId,
       orgId: org.org_id,
       projectId: project_id,
+      outputLang: requestLang,
     }),
   );
 

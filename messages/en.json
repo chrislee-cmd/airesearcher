@@ -1280,6 +1280,7 @@
     "toplineTab": "Topline report",
     "searchTab": "Free search",
     "toplineReportLabel": "Topline report",
+    "toplineLangLabel": "Analysis language",
     "toplineRegenerate": "Regenerate report",
     "toplineGenerating": "Generating topline…",
     "toplineMapProgress": "Analyzing all documents — {done}/{total} respondents",
