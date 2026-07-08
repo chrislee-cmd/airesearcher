@@ -177,6 +177,7 @@ export function CrossProjectPicker({
       ) : projects.length === 0 ? (
         <EmptyState
           tone="subtle"
+          mascot
           title={t('pickerEmptyTitle')}
           description={t('pickerEmptyDescription')}
         />

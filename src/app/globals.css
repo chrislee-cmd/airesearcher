@@ -492,6 +492,10 @@ html, body {
   transform-origin: center 85%;
   display: block;
 }
+/* reduced-motion 존중 — mascot idle sway 정지(BrandLoader · EmptyState mascot). */
+@media (prefers-reduced-motion: reduce) {
+  .brand-sway { animation: none; }
+}
 
 /* 차감 마이크로 인터랙션 — 위젯 헤더 -N 텍스트가 위로 떠올라 사라짐.
    creditDeductionProvider 의 notify() 가 트리거. widget-shell 의
@@ -724,6 +728,40 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .menu-in,
   .chip-out { animation: none; }
+}
+
+/* =========================================================================
+   마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (Foundation 유틸 소비)
+   toast slide-in/out · 아이콘 hover 미세 이동. 배지 bounce 는 .pop-in 재사용,
+   에러 shake 는 .shake 재사용, empty mascot 은 .brand-sway 재사용 — 신규 최소.
+   모두 위 Motion tokens 참조 + prefers-reduced-motion 존중.
+   ========================================================================= */
+
+/* toast-in — 우측 edge 에서 미끄러져 들어오며 fade. z-toast 스택 우상단 정렬. */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(calc(var(--motion-rise) + 10px)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.toast-in { animation: toastIn var(--dur-slow) var(--ease-out) both; }
+
+/* toast-out — auto-dismiss 시 제자리에서 fade + 살짝 우측 이탈. leaving 표시된
+   토스트에만 얹혀 fade 후 unmount. */
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(var(--motion-rise) + 10px)); }
+}
+.toast-out { animation: toastOut var(--dur) var(--ease-out) both; }
+
+/* icon-nudge — 부모 group hover 시 아이콘이 미세하게 회전/이동(설정 ⚙ 등).
+   색/그림자 없이 transform 만. 절제된 delight — 12deg 이내. */
+.icon-nudge { transition: transform var(--dur) var(--ease-out); }
+.group:hover .icon-nudge { transform: rotate(12deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in,
+  .toast-out { animation: none; }
+  .icon-nudge { transition: none; }
+  .group:hover .icon-nudge { transform: none; }
 }
 
 /* Docx-derived preview */

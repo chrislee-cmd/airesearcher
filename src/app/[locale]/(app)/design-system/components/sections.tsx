@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/components/canvas/shell/field';
@@ -437,7 +438,109 @@ function MotionSection() {
           </IconButton>
         </div>
       </Subsection>
+
+      <Wave3Demos replay={replay} />
     </PrimitivePage>
+  );
+}
+
+// Wave3 — 주의 환기(toast slide-in / 배지 bounce / 에러 shake) + 미세 delight
+// (empty mascot idle sway / 아이콘 hover). Foundation 유틸(.toast-in/.pop-in/
+// .shake/.brand-sway/.icon-nudge) 소비. confetti 비채택. 크레딧 flash 는 기존
+// creditBalancePulse(#64) 재사용이라 여기 데모 제외.
+function Wave3Demos({ replay }: { replay: number }) {
+  const [toastKey, setToastKey] = useState(0);
+  const [badgeState, setBadgeState] = useState<'idle' | 'running' | 'done'>('running');
+  const [errored, setErrored] = useState(false);
+
+  return (
+    <>
+      <Subsection label="Wave3 · toast slide-in + fade (.toast-in / .toast-out)">
+        <div className="mb-3">
+          <Button size="sm" variant="secondary" onClick={() => setToastKey((n) => n + 1)}>
+            ▶ 다시 재생
+          </Button>
+        </div>
+        <div
+          key={toastKey}
+          className="toast-in inline-block min-w-[260px] max-w-[360px] border border-line bg-paper px-4 py-2.5 text-md leading-[1.6] text-ink-2 rounded-sm"
+          role="status"
+        >
+          저장되었습니다 — 우측 edge 에서 slide-in, ttl 만료 시 fade-out.
+        </div>
+      </Subsection>
+
+      <Subsection label="Wave3 · 배지 / 카운트 변경 bounce (.pop-in, state 변경 시 remount)">
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            key={`${badgeState}-${replay}`}
+            className="pop-in inline-flex items-center gap-1 rounded-xs border-2 border-ink px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+            style={{
+              background:
+                badgeState === 'running'
+                  ? 'var(--color-amore)'
+                  : badgeState === 'done'
+                    ? 'var(--color-mint)'
+                    : 'var(--color-paper)',
+              color: badgeState === 'running' ? 'var(--canvas-card-bg)' : 'var(--color-ink)',
+            }}
+          >
+            {badgeState.toUpperCase()}
+          </span>
+          <div className="flex gap-2">
+            {(['idle', 'running', 'done'] as const).map((s) => (
+              <Button key={s} size="sm" variant="secondary" onClick={() => setBadgeState(s)}>
+                {s}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Subsection>
+
+      <Subsection label="Wave3 · 입력 에러 shake + error 톤 transition (Input primitive)">
+        <div className="max-w-[320px] space-y-3">
+          <Input
+            label="이메일"
+            placeholder="you@example.com"
+            error={errored ? '유효한 이메일을 입력하세요.' : undefined}
+          />
+          <Button size="sm" variant="secondary" onClick={() => setErrored((v) => !v)}>
+            {errored ? '에러 해제' : '에러 트리거 (shake)'}
+          </Button>
+        </div>
+      </Subsection>
+
+      <Subsection label="Wave3 · empty 상태 mascot idle sway (.brand-sway)">
+        <div className="max-w-[420px]">
+          <EmptyState
+            tone="subtle"
+            mascot
+            title="아직 프로젝트가 없어요"
+            description="첫 프로젝트를 만들면 여기에 표시됩니다."
+          />
+        </div>
+      </Subsection>
+
+      <Subsection label="Wave3 · 아이콘 hover 미세 회전 (.icon-nudge — 아래 버튼에 hover)">
+        <IconButton aria-label="settings demo" variant="subtle" size="md" className="group">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className="icon-nudge"
+          >
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </IconButton>
+      </Subsection>
+    </>
   );
 }
 

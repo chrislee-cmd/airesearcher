@@ -22,8 +22,11 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
   const visual = badgeVisual(state);
   if (!visual) return null;
   return (
+    // Wave3 주의 환기 — state.kind 가 바뀌면 key remount 로 .pop-in 재생(살짝
+    // bounce). .pop-in 은 globals.css 에서 reduced-motion 을 독립 존중.
     <span
-      className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+      key={state.kind}
+      className="pop-in inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
       style={{
         background: visual.background,
         color: visual.color,
