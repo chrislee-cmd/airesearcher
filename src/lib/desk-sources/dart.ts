@@ -22,6 +22,7 @@ import { listedRosterSize, resolveDartCorp, type DartCorp } from './dart-corp';
 import {
   fetchDartFinancials,
   formatKrwAmount,
+  yoyPct,
   type DartFinancialsFailReason,
   type DartMetric,
 } from './dart-financials';
@@ -38,6 +39,24 @@ const REVENUE_FAIL_KO: Record<DartFinancialsFailReason, string> = {
 // 잡은 값이 라벨 변동에 가장 robust 함을 유저가 인지하게 한다.
 function tierKo(tier: DartMetric['tier']): string {
   return tier === 1 ? 'XBRL 표준계정' : tier === 2 ? '한글 계정 매칭' : 'LLM 계정 선택';
+}
+
+// 지표의 3기간(당기/전기/전전기) 시계열을 보고서 LLM 이 그대로 옮겨 쓸 문자열로
+// 만든다 — 연도별 금액 + **코드에서 계산한 YOY**(전년比, ▲/▼). 보고서 LLM 은 이
+// 값을 표에 옮기기만 하고 스스로 계산하지 않는다(정책: LLM 계산 금지). 결측 기간은
+// "데이터 확보 실패", 계산 불가 YOY 는 "—" 로 정직 표기. periods 는 [당기,전기,전전기]
+// 내림차순이라 각 항목의 YOY 는 자기 다음(더 과거) 기간과의 비교다.
+function formatMetricSeries(m: DartMetric): string {
+  return m.periods
+    .map((p, i) => {
+      if (p.amount === null) return `${p.year}년 데이터 확보 실패`;
+      const prev = m.periods[i + 1];
+      const yoy = prev ? yoyPct(p, prev) : null;
+      const yoyStr =
+        yoy === null ? ' (YoY —)' : ` (YoY ${yoy >= 0 ? '▲' : '▼'}${Math.abs(yoy).toFixed(1)}%)`;
+      return `${p.year}년 ${formatKrwAmount(p.amount)}${yoyStr}`;
+    })
+    .join(' · ');
 }
 
 // DART (금융감독원 전자공시) — 상장사 사업보고서/공시. TAM/SAM 검증용 (상장사
@@ -143,7 +162,10 @@ async function fetchByCorp(
         // 안 된다 (예: "농심 2025 3분기 누적 매출액 …"). 2026-07-06 사고 fix.
         title: `${corp.corpName} ${fin.period} ${revenue.labelKo} ${formatKrwAmount(revenue.amount)}`,
         url: finUrl,
-        snippet: `DART ${fin.period} 기준 ${revenue.accountNm || revenue.labelKo} ${revenue.amount.toLocaleString()}원 · ${fsKo} · ${tierKo(revenue.tier)}`,
+        // 3개년 시계열 + 코드 계산 YOY 를 병기 — 보고서 "주요 기업 매출" 표가 회사당
+        // 최대 3행(당기/전기/전전기)으로 렌더되게 한다(단일 fnlttSinglAcntAll 응답,
+        // 추가 API 0). 보고서 LLM 은 이 연도별 값·YOY 를 그대로 옮기고 계산하지 않는다.
+        snippet: `DART ${fin.period} 기준 ${revenue.accountNm || revenue.labelKo} · ${fsKo} · ${tierKo(revenue.tier)} · 연도별 매출: ${formatMetricSeries(revenue)}`,
         publishedAt,
         origin: corp.corpName,
         keyword,
