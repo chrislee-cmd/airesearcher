@@ -91,6 +91,54 @@ assertion" 을 아래 JSON 으로 컴파일한 것입니다. 이게 하네스의
 스크립트가 없으면 PR diff 에서 앱 라우트 변경 파일만 골라 `/route` 로 매핑하고
 "페이지가 렌더되는가" 최소 스모크만 돕니다 (전체 앱을 훑지 않음).
 
+## 예시 시나리오 — 탑라인 스트리밍 (`## QA 스크립트` 블록 → JSON)
+
+컴파일된 결과: [`e2e/qa-script.topline-streaming.json`](../e2e/qa-script.topline-streaming.json).
+대상 = seed(#480)로 prod 에 심긴 **`[QA] 탑라인 스트리밍 샘플`** 프로젝트. 검증 대상 =
+탑라인 스트리밍(#478) · map N/M 진행률 · executive_summary(#472).
+
+아래가 spec 에 두는 `## QA 스크립트` 블록(사람이 읽는 authoring 형태)입니다. 위
+JSON 은 이 블록을 하네스 스키마로 컴파일한 것입니다.
+
+```
+## QA 스크립트
+
+surface: 탑라인 스트리밍 — fresh 생성   (route: /canvas?focus=interviews, auth)
+  1. goto   /canvas?focus=interviews            — 인터뷰 결과 생성기(V2)
+  2. expect "프로젝트 선택"                      — 인터뷰 카드 컨트롤 노출
+  3. click  "프로젝트 선택"                      — 프로젝트 드롭다운 열기
+  4. click  "[QA] 탑라인 스트리밍 샘플"          — seed 프로젝트 선택
+  5. click  "분석 시작"                          — 전체보기(프로젝트 상세) 진입
+  6. expect "보고서 생성 시작"                   — 캐시 미존재 = fresh 생성 가능
+  7. click  "보고서 생성 시작"                   — fresh 트리거(Opus map-reduce)
+  8. expect "탑라인 생성 중"        ★핵심        — 스트리밍 시작 = 무반응 아님
+  9. expect "전 문서 분석 중"       ★핵심        — map N/M 진행률 노출
+ 10. note   블록 점진 등장(#478)   (관전)        — 부분 블록 증분 렌더 = 스크린샷/영상
+ 11. note   executive_summary(#472)(미검증)      — 60s 스모크 윈도우 초과 가능 → 재진입 확인
+ 12. note   LLM 출력 품질          (미검증)      — 결정 #2, 관전
+
+surface: executive_summary 노출 — 완료 보고서 재진입   (route: /canvas?focus=interviews, auth)
+  1. goto   /canvas?focus=interviews
+  2. click  "프로젝트 선택" → "[QA] 탑라인 스트리밍 샘플"
+  3. note   "핵심 요약" 라벨 (미검증)            — 생성 1회 완료·캐시 후에만 노출
+```
+
+**핵심 assertion = 스트리밍 무반응 아님**(스텝 8·9). 이 두 스텝이 통과하면
+"클릭 후 화면이 얼어붙지 않고 점진 반응한다"가 증명됩니다. 블록 내용·요약
+정확도 같은 **LLM 품질은 관전(미검증 허용)** — 하네스가 판정하지 않습니다.
+
+⚠️ **비용**: 스트리밍은 **fresh 생성에서만** 보입니다(캐시 히트면 즉시 완료 =
+스트리밍 안 봄). 검증하려면 매 실행마다 force 재생성 = **Opus 비용**. 그래서
+소량 문서(#480 seed, 응답자 4명)로 비용을 낮추고 **탑라인 계열 PR 에만** 이
+스크립트를 `QA_SCRIPT_PATH` 로 주입합니다(전 PR 자동 실행 X).
+
+```bash
+QA_PREVIEW_URL="https://<preview>.vercel.app" \
+QA_TEST_EMAIL="qa@example.com" QA_TEST_PASSWORD="********" \
+QA_SCRIPT_PATH="e2e/qa-script.topline-streaming.json" \
+pnpm e2e
+```
+
 ## no-merge 보장
 
 이 디렉토리 + `playwright.config.ts` 어디에도 `gh` / `git merge` / PR API 호출이
