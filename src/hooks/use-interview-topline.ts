@@ -28,13 +28,17 @@ export type ToplineState = {
   // 진행률 미노출.
   mapTotal: number | null;
   mapDone: number | null;
+  // 마지막 생성에 쓰인 출력 언어(ko/en/ja/zh/es/th). null = 레거시/미생성 →
+  // UI 가 기본(한국어) 선택으로 초기화. 언어 선택기의 초기값 소스.
+  savedLang: string | null;
   // 초기 GET 로딩 중.
   loading: boolean;
   // GET/POST 자체가 실패(네트워크/서버).
   fetchError: string | null;
   // 재생성 POST in-flight.
   generating: boolean;
-  generate: (force: boolean) => Promise<void>;
+  // outputLang 미지정이면 서버가 기본(한국어)으로 생성 — 기존 회귀 X.
+  generate: (force: boolean, outputLang?: string) => Promise<void>;
   refetch: () => Promise<void>;
   // 인라인 편집의 낙관적 반영 — 특정 블록의 md 를 클라 상태에서 즉시 교체한다
   // (서버 PATCH 성공 시 refetch 로 확정, 실패 시 원문 md 로 되돌려 롤백).
@@ -157,7 +161,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   }, [supabase, projectId, refetch]);
 
   const generate = useCallback(
-    async (force: boolean) => {
+    async (force: boolean, outputLang?: string) => {
       if (!projectId) return;
       setGenerating(true);
       // 낙관적으로 generating 표시 — realtime/refetch 가 곧 확정.
@@ -166,7 +170,13 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
         const res = await fetch('/api/interviews/v2/topline', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ project_id: projectId, force }),
+          // output_lang 미지정(undefined)이면 JSON.stringify 가 키를 생략 →
+          // 서버 기본(한국어) 동작. 기존 회귀 X.
+          body: JSON.stringify({
+            project_id: projectId,
+            force,
+            output_lang: outputLang,
+          }),
         });
         const json = (await res.json().catch(() => null)) as
           | { status?: ToplineStatus; error?: string }
@@ -219,6 +229,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     errorMessage: data?.error_message ?? null,
     mapTotal: data?.map_total ?? null,
     mapDone: data?.map_done ?? null,
+    savedLang: data?.output_lang ?? null,
     loading,
     fetchError,
     generating,

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,12 +23,27 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
+import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
 import {
   isEditableToplineBlockType,
   type ToplineBlock,
 } from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
+
+// 출력 언어 선택 옵션 — SSOT 는 topline-prompt.ts 의 TOPLINE_OUTPUT_LANGS
+// (zod enum) / TOPLINE_DEFAULT_LANG. 여기선 서버 프롬프트 모듈을 client 번들에
+// 끌어오지 않으려 라벨만 로컬로 미러한다(값은 반드시 동기 유지). 라벨은 각
+// 언어의 자기표기 — locale 무관하게 통용.
+const TOPLINE_LANG_OPTIONS = [
+  { value: 'ko', label: '한국어' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'zh', label: '中文' },
+  { value: 'es', label: 'Español' },
+  { value: 'th', label: 'ไทย' },
+] as const;
+const TOPLINE_DEFAULT_LANG = 'ko';
 import {
   useToplineDragToAsk,
   type PendingQa,
@@ -565,12 +580,26 @@ export function ToplineView({ projectId }: { projectId: string }) {
     applyBlockMd,
     mapTotal,
     mapDone,
+    savedLang,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
   const hasBlocks = blocks.length > 0;
   // 재생성 버튼 활성 = 인덱싱 완료 & 생성 중 아님.
   const canGenerate = indexed && status !== 'generating' && !generating;
+
+  // 출력 언어 선택(입력 transcript 언어와 독립 — 사용자 결정 1). 기본 = 한국어.
+  // 저장된 보고서가 있으면 그 언어로 초기화(GET 이 output_lang 반환)해, 사용자가
+  // 마지막에 고른 언어를 선택기에 반영한다. 언어를 바꿔 재생성하면 캐시가
+  // 안 걸리고(결정 3) 새 언어로 다시 생성된다.
+  const [outputLang, setOutputLang] = useState<string>(TOPLINE_DEFAULT_LANG);
+  useEffect(() => {
+    // GET 이 저장된 언어를 실어오면 선택기를 그 값으로 초기화(사용자가 마지막에
+    // 고른 언어 반영). 이후 사용자가 자유롭게 바꿀 수 있고, 재생성 완료 시
+    // savedLang 이 새 값으로 갱신돼도 동일 값이라 무해.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selector to server-persisted lang on load (use-interview-topline savedLang)
+    if (savedLang) setOutputLang(savedLang);
+  }, [savedLang]);
 
   // drag-to-ask — 보고서가 done 으로 렌더 중일 때만 선택 활성.
   const askEnabled =
@@ -616,7 +645,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const [warnOpen, setWarnOpen] = useState(false);
   const requestRegenerate = () => {
     if (hasInsertedQa) setWarnOpen(true);
-    else void generate(true);
+    else void generate(true, outputLang);
   };
 
   // Word 다운로드 = attachment GET 으로 브라우저 다운로드(쿠키 포함 네비게이션).
@@ -690,6 +719,20 @@ export function ToplineView({ projectId }: { projectId: string }) {
             {t('toplineReportLabel')}
           </span>
           <div className="flex items-center gap-2">
+            {/* 분석 언어 — 재생성 시 이 언어로 강제(입력 파일 언어 독립). 언어를
+                바꾸고 🔄 재생성하면 캐시 안 걸리고 새 언어로 재생성된다. */}
+            <div className="w-[132px]">
+              <SelectMenu
+                value={outputLang}
+                onChange={setOutputLang}
+                options={TOPLINE_LANG_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+                disabled={!canGenerate}
+                aria-label={t('toplineLangLabel')}
+              />
+            </div>
             {/* export — 주 CTA 아님(quiet chrome). Word 다운로드 + Google Docs 공유. */}
             <ChromeButton size="sm" onClick={downloadWord} title={t('toplineExportWord')}>
               ⬇ {t('toplineExportWord')}
@@ -800,11 +843,28 @@ export function ToplineView({ projectId }: { projectId: string }) {
                   ? t('toplineErrorHint')
                   : t('toplineIntroHint')}
               </p>
+              {/* 분석 언어 선택 — 입력 파일 언어와 독립(전사록 언어 트리거 미러
+                  primitive = SelectMenu/ControlTrigger). 생성 CTA 바로 위에 둔다. */}
+              <div className="mx-auto mt-5 flex max-w-[240px] flex-col items-start gap-1.5 text-left">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                  {t('toplineLangLabel')}
+                </span>
+                <SelectMenu
+                  value={outputLang}
+                  onChange={setOutputLang}
+                  options={TOPLINE_LANG_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                  disabled={!canGenerate}
+                  aria-label={t('toplineLangLabel')}
+                />
+              </div>
               <Button
                 variant="primary"
                 size="sm"
                 className="mt-5"
-                onClick={() => void generate(false)}
+                onClick={() => void generate(false, outputLang)}
                 disabled={!canGenerate}
               >
                 {t('toplineGenerateCta')}
@@ -854,7 +914,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
               size="sm"
               onClick={() => {
                 setWarnOpen(false);
-                void generate(true);
+                void generate(true, outputLang);
               }}
             >
               {t('toplineRegenWarnConfirm')}

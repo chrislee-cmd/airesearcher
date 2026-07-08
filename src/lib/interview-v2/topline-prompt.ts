@@ -11,6 +11,51 @@
 import { z } from 'zod';
 import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
 
+/* ────────────────────────────────────────────────────────────────────
+   출력 언어 (outputLang) — 탑라인 보고서를 사용자가 고른 언어로 강제.
+
+   PR (interview-topline-output-lang-select): 인터뷰 결과물(탑라인) 생성 시
+   출력 언어를 입력(transcript) 언어와 독립적으로 선택. 예: 영어 인터뷰
+   파일 → 한국어 분석 보고서. 프로빙 outputLang(PROBING_OUTPUT_LANGS) 과
+   동일 세트를 미러한다(ko/en/ja/zh/es/th).
+
+   `buildToplineSystem(outputLang)` 이 system prompt 의 언어 지시를 이 값으로
+   치환한다. outputLang 미전달(undefined) 시 옛 동작 — 한국어 존댓말 — 그대로
+   보존(backward compat). 프로빙 hot 파일(probing-prompts.ts)의 상수를
+   재사용하지 않고 로컬로 두는 이유: 동시 진행 중인 프로빙 outputLang PR 과
+   충돌 회피(보수적 스코프 — §3.2 one-PR-one-change).
+   ──────────────────────────────────────────────────────────────────── */
+
+export const TOPLINE_OUTPUT_LANGS = [
+  'ko',
+  'en',
+  'ja',
+  'zh',
+  'es',
+  'th',
+] as const;
+
+export type ToplineOutputLang = (typeof TOPLINE_OUTPUT_LANGS)[number];
+
+// 기본 출력 언어 — outputLang 미지정 시의 fallback(옛 동작 = 한국어).
+export const TOPLINE_DEFAULT_LANG: ToplineOutputLang = 'ko';
+
+const TOPLINE_LANG_LABEL: Record<ToplineOutputLang, string> = {
+  ko: '한국어',
+  en: 'English',
+  ja: '日本語',
+  zh: '中文',
+  es: 'Español',
+  th: 'ไทย',
+};
+
+// outputLang 코드 → 프롬프트에 박을 사람 친화 라벨. enum 밖 값 / undefined 는
+// null → 호출부가 기본(한국어) fallback 으로 분기.
+function toplineLangLabel(outputLang?: string): string | null {
+  if (!outputLang) return null;
+  return TOPLINE_LANG_LABEL[outputLang as ToplineOutputLang] ?? null;
+}
+
 // LLM 이 emit 하는 블록. id 는 서버(assignBlockIds)가 blk_NN 으로 부여하므로
 // 스키마엔 없다. table/chart/pie 는 해당 type 일 때만 데이터를 채운다.
 //
@@ -99,7 +144,25 @@ export const TOPLINE_REQUIRED_SECTIONS = [
   '시사점 & 후속 리서치 제안', // 항상 마지막
 ] as const;
 
-export const TOPLINE_SYSTEM = `당신은 정성 인터뷰 코퍼스를 분석해 **깊이 있는 탑라인 보고서**를 작성하는 시니어 리서치 애널리스트입니다. 아래 "근거 청크"만을 사실 근거로 사용해 한국어 존댓말로 작성합니다. 이 보고서는 클라이언트에게 전달되는 **핵심 산출물**이므로, 얕은 요약이 아니라 **충분히 길고 구조적이며 근거로 촘촘한** 문서를 만들어야 합니다.
+/**
+ * 탑라인 reduce system prompt 를 출력 언어와 함께 조립.
+ *
+ * outputLang 이 지정되면(ko/en/ja/zh/es/th) **입력 transcript 언어와 무관하게**
+ * 그 언어로 보고서를 강제한다(프로빙 buildProbing*System 미러). 미지정(undefined)
+ * 이면 옛 동작 — 한국어 존댓말 — 을 그대로 보존한다(backward compat).
+ *
+ * 언어 강제 범위: 서술(제목·서브제목·문단·인사이트·표 헤더/셀·차트 라벨·캡션·
+ * attribution)은 모두 출력 언어로. 단 quote 블록의 md 는 근거 청크의 **원문
+ * verbatim** 을 유지한다 — 서버가 원문 대조로 인용을 재검증하므로 번역하면
+ * 검증에서 drop 된다(요약/의역 금지 룰과도 정합). 원문 인용 + 출력 언어 분석은
+ * 표준 리서치 보고서 관행이며, 이것이 "언어 혼합 아티팩트"가 아니다.
+ */
+export function buildToplineSystem(outputLang?: string): string {
+  const label = toplineLangLabel(outputLang);
+  const langClause = label
+    ? `아래 "근거 청크"만을 사실 근거로 사용하되, **입력 transcript 의 언어와 무관하게 보고서 전체를 ${label} 로 작성합니다**(제목·서브제목·문단·인사이트·표 헤더/셀·차트 라벨·캡션·attribution 모두 ${label}). 예외로 quote 블록의 인용문(md)은 응답자 원문 verbatim 을 그대로 두고 번역하지 않습니다(서버가 원문 대조로 검증) — 대신 앞뒤 서술을 ${label} 로 감싸 해석합니다.`
+    : `아래 "근거 청크"만을 사실 근거로 사용해 한국어 존댓말로 작성합니다.`;
+  return `당신은 정성 인터뷰 코퍼스를 분석해 **깊이 있는 탑라인 보고서**를 작성하는 시니어 리서치 애널리스트입니다. ${langClause} 이 보고서는 클라이언트에게 전달되는 **핵심 산출물**이므로, 얕은 요약이 아니라 **충분히 길고 구조적이며 근거로 촘촘한** 문서를 만들어야 합니다.
 
 ## 절대 룰 (환각 금지)
 - 근거 청크 **밖의 정보는 절대 생성하지 마세요.** 일반 상식·추측·외부 지식 금지.
@@ -134,6 +197,12 @@ export const TOPLINE_SYSTEM = `당신은 정성 인터뷰 코퍼스를 분석해
 - **pie**: 채널 점유·비중 등 부분/전체 관계에. data=[{label,value}].
 - 아티팩트는 앞 문단에서 "무엇을 보여주는지" 예고하고 뒤 문단에서 "그래서 무엇을 뜻하는지" 해석해 **유기적으로 감쌉니다.**
 - table 1개 이상 + chart 또는 pie 1개 이상을 반드시 포함하세요(근거가 허용하는 한).${ISOLATION_NOTICE}`;
+}
+
+// 기존 호출자 호환 — outputLang 미지정 = 한국어(옛 동작). 정적 참조가 필요한
+// 곳(테스트/도구)이 있으면 이 상수를, 언어 파라미터가 필요하면
+// buildToplineSystem(outputLang) 을 쓴다.
+export const TOPLINE_SYSTEM = buildToplineSystem();
 
 // map-reduce reduce 단계 전용 추가 지침 — 입력이 raw chunk 가 아니라 **전
 // 문서(응답자)를 순회해 뽑은 구조화 추출**임을 알리고, 수치는 제공된 전수

@@ -23,7 +23,7 @@ import { ZERO_RETENTION } from '@/lib/llm/config';
 import { hashString } from '@/lib/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  TOPLINE_SYSTEM,
+  buildToplineSystem,
   TOPLINE_REDUCE_NOTICE,
   toplineSchema,
   type ToplineBlockRaw,
@@ -58,6 +58,9 @@ export type InterviewToplineRow = {
   org_id: string;
   project_id: string;
   content_hash: string;
+  // 출력 언어(ko/en/ja/zh/es/th). null = 레거시 row(한국어로 취급). 캐시
+  // dedup 키의 일부 — 같은 문서셋이라도 언어가 다르면 재생성한다.
+  output_lang: string | null;
   blocks: ToplineBlock[];
   status: 'idle' | 'generating' | 'done' | 'error';
   error_message: string | null;
@@ -477,9 +480,9 @@ export async function getTopline(
  */
 export async function upsertGenerating(
   admin: AdminClient,
-  opts: { orgId: string; projectId: string; hash: string },
+  opts: { orgId: string; projectId: string; hash: string; outputLang?: string },
 ): Promise<string> {
-  const { orgId, projectId, hash } = opts;
+  const { orgId, projectId, hash, outputLang } = opts;
   const { data, error } = await admin
     .from('interview_toplines')
     .upsert(
@@ -487,6 +490,9 @@ export async function upsertGenerating(
         org_id: orgId,
         project_id: projectId,
         content_hash: hash,
+        // 이번 생성의 출력 언어 — 캐시 키의 일부. 미지정(undefined)이면 null 로
+        // 저장(레거시/자동 kick = 한국어 기본 취급).
+        output_lang: outputLang ?? null,
         status: 'generating',
         error_message: null,
         model: TOPLINE_MODEL,
@@ -537,9 +543,16 @@ function verifyBlockCitations(
  */
 export async function runTopline(
   admin: AdminClient,
-  opts: { toplineId: string; orgId: string; projectId: string },
+  opts: {
+    toplineId: string;
+    orgId: string;
+    projectId: string;
+    // 출력 언어(ko/en/ja/zh/es/th). 미지정 시 buildToplineSystem 이 옛 동작
+    // (한국어)으로 fallback. reduce(최종 보고서)만 언어를 강제 — map 추출은 중립.
+    outputLang?: string;
+  },
 ): Promise<void> {
-  const { toplineId, orgId, projectId } = opts;
+  const { toplineId, orgId, projectId, outputLang } = opts;
   const tag = `[v2/topline] ${projectId.slice(0, 8)}`;
   try {
     const apiKey = env.ANTHROPIC_API_KEY;
@@ -646,7 +659,7 @@ export async function runTopline(
     const { object, finishReason } = await generateObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
-      system: `${TOPLINE_SYSTEM}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
+      system: `${buildToplineSystem(outputLang)}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
       prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출입니다. 이를 종합해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. **집계 수치("N명 중 M명")는 위 ${docs.length}명 추출을 직접 세어** 산출하고(추정 금지), 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
       // 긴 보고서(10 섹션 + 서브헤더 + 아티팩트)라 출력 예산을 대폭 상향해 잘림
