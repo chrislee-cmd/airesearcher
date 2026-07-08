@@ -258,18 +258,32 @@ export function QaVoiceAgentButton() {
     // phase === 'uploading' → ignore taps until the submit resolves.
   }, [phase, startRecording, stopRecording]);
 
-  // One button, three reads: idle mic, live recording (amore pulse + stop
-  // glyph), and a brief uploading state. No modal, no form — the button IS the
-  // whole UI. `subtle` + `md` match the adjacent TopbarAccount gear.
+  // One button, three reads: idle mic, live recording, and a brief uploading
+  // state. No modal, no form — the button IS the whole UI. `subtle` + `md`
+  // match the adjacent TopbarAccount gear.
+  //
+  // The recording read is the point of #487: static wasn't enough to tell
+  // "it's on". So live recording gets a THREE-way dynamic shift, not a static
+  // badge:
+  //   1. amore ring PULSE around the chip (wrapper span, CSS keyframe) — the
+  //      "we're listening" heartbeat. Under prefers-reduced-motion the CSS
+  //      swaps the pulse for a static amore ring so it's still unmistakably on.
+  //   2. glyph swap 🎤 → ⏹ (stop) — the affordance flips to "tap to end".
+  //   3. amore color on the glyph — the accent shifts from neutral ink.
+  // aria-pressed + a "눌러서 종료" label carry the same state to SR users.
+  //
+  // A live input-level meter (spec §B, optional) is intentionally omitted to
+  // keep the one-tap chrome as minimal as #486 intended — the silent-take
+  // metering already guards the muted-mic case via a passive submit warning.
   const recording = phase === 'recording';
   const label =
     phase === 'recording'
-      ? 'QA 피드백 녹음 정지 및 제출'
+      ? 'QA 피드백 녹음 중 — 눌러서 종료 및 제출'
       : phase === 'uploading'
         ? 'QA 피드백 제출 중'
         : 'QA 피드백 녹음 시작';
 
-  return (
+  const button = (
     <IconButton
       variant="subtle"
       size="md"
@@ -277,9 +291,18 @@ export function QaVoiceAgentButton() {
       aria-pressed={recording}
       onClick={handleClick}
       disabled={phase === 'uploading'}
-      className={recording ? 'animate-pulse text-amore' : undefined}
+      className={recording ? 'text-amore' : undefined}
     >
       {recording ? '⏹' : phase === 'uploading' ? '⏳' : '🎤'}
     </IconButton>
+  );
+
+  // Wrap only while recording so the pulsing ring lives on a dedicated span and
+  // never fights the IconButton's own chrome (same technique as
+  // widget-gate-guide-pulse). inline-flex hugs the circular chip.
+  return recording ? (
+    <span className="qa-mic-recording-pulse inline-flex">{button}</span>
+  ) : (
+    button
   );
 }
