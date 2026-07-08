@@ -447,6 +447,14 @@ function ActiveBody({
     projectBody = (
       <div className="space-y-4">
         <div className="space-y-2">
+          {/* "핵심 요약" 라벨 칩 — reduce 전용 executive_summary 블록에서 온
+              요약일 때만 노출(신버전 보고서). 구버전 파생 fallback 은 미노출 →
+              신·구 시각 구분. */}
+          {abstract.source === 'executive_summary' && (
+            <span className="inline-flex items-center gap-1 rounded-sm bg-amore-bg px-2 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
+              {t('toplineExecSummaryLabel')}
+            </span>
+          )}
           <h3 className="line-clamp-2 text-md font-semibold leading-snug text-ink">
             {abstract.title}
           </h3>

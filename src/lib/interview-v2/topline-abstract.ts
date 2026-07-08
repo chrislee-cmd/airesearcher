@@ -16,6 +16,9 @@ export type ToplineAbstract = {
   // 핵심 포인트 3~5(plain text). executive_summary 블록이 있을 때만 채워진다.
   // 구버전 보고서(파생 fallback)에서는 빈 배열.
   keyPoints: string[];
+  // 요약 출처 — 'executive_summary'(reduce 전용 블록) vs 'derived'(#471 파생
+  // fallback). 카드가 "핵심 요약" 라벨 칩을 신버전에서만 띄우는 데 쓴다.
+  source: 'executive_summary' | 'derived';
 };
 
 // markdown/인용 토큰을 제거해 순수 텍스트로 — 카드 abstract 는 서식 없이 짧게
@@ -88,7 +91,7 @@ export function deriveToplineAbstract(
         .map((p) => toPlainText(p))
         .filter(Boolean)
         .slice(0, 5);
-      return { title, summary, keyPoints };
+      return { title, summary, keyPoints, source: 'executive_summary' };
     }
   }
 
@@ -106,5 +109,5 @@ export function deriveToplineAbstract(
   const summary = clampSentences(source, 4, 240);
   if (!summary) return null;
 
-  return { title, summary, keyPoints: [] };
+  return { title, summary, keyPoints: [], source: 'derived' };
 }
