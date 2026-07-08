@@ -11,6 +11,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useMemo, useState } from 'react';
+import { WIDGET_FRAME_INSET_X } from '@/components/canvas/shell/control-board-panel';
 import {
   PROBING_TECHNIQUE_LABEL,
   type ProbingTechnique,
@@ -74,7 +75,7 @@ export function ProbingQuestionHistory({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         data-canvas-action
-        className="flex w-full items-center justify-between gap-2 bg-paper px-4 py-2.5 text-left hover:bg-paper-soft"
+        className={`flex w-full items-center justify-between gap-2 bg-paper ${WIDGET_FRAME_INSET_X} py-2.5 text-left hover:bg-paper-soft`}
       >
         <span className="text-sm font-medium text-ink-2">
           질문 기록 · {history.length}개
@@ -99,7 +100,9 @@ export function ProbingQuestionHistory({
       </button>
 
       {open && (
-        <ul className="max-h-[280px] space-y-1.5 overflow-y-auto border-t border-line-soft bg-paper-soft px-3 py-3">
+        <ul
+          className={`max-h-[280px] space-y-1.5 overflow-y-auto border-t border-line-soft bg-paper-soft ${WIDGET_FRAME_INSET_X} py-3`}
+        >
           {sorted.length === 0 ? (
             <li className="py-4 text-center text-sm italic text-mute-soft">
               아직 기록된 질문이 없습니다.

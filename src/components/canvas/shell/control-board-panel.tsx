@@ -32,6 +32,14 @@
 
 import type { ReactNode } from 'react';
 
+// 위젯 프레임 수평 inset SSOT — 컨트롤 클러스터와 산출물 영역이 공유하는 단일
+// 좌우 여백. 컨트롤(ControlBoardPanel wrapper)과 그 아래 형제 산출물 영역·진행률
+// 밴드가 이 한 상수를 상속해 좌측 픽셀이 정렬된다. 위젯 body 가 산출물 래퍼에
+// px-4/px-3 를 손코딩하면 컨트롤↔산출물이 4px 어긋난다(인터뷰 "핵심 요약" 회귀
+// 사례) — 산출물 영역 수평 여백은 반드시 이 상수만 참조한다. 세로 여백은 영역별
+// 자유(정렬은 수평 문제).
+export const WIDGET_FRAME_INSET_X = 'px-5';
+
 // 클러스터 세로 간격 — 임의 gap 금지, 이 열거형만 허용.
 //   none    = 간격 없음 (단일 자식 클러스터: 데스크/프로빙/전사록)
 //   field   = gap-4  (필드 간 리듬)
@@ -81,7 +89,8 @@ export function ControlBoardPanel({
   //   active = shrink-0 + border-b (자연 높이 상단 바; 산출물은 형제 flex-1)
   // justify-start 라 flex-1↔shrink-0 전환에도 컨트롤은 상단 제자리 = 안 튐.
   const wrapper = cx(
-    'flex min-h-0 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6',
+    'flex min-h-0 flex-col items-center justify-start overflow-y-auto pt-10 pb-6',
+    WIDGET_FRAME_INSET_X,
     active ? 'shrink-0 border-b border-line-soft' : 'flex-1',
   );
   // 클러스터 폭 — idle=active 동일. max-w-2xl 로 좌우를 채우고 수평 중앙.

@@ -37,7 +37,10 @@ import {
 } from '@/components/canvas/shell/widget-outputs';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
-import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import {
+  ControlBoardPanel,
+  WIDGET_FRAME_INSET_X,
+} from '@/components/canvas/shell/control-board-panel';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -979,7 +982,9 @@ export function QuotesCardBody() {
           <>
             {/* 업로드 진행 + 큐. flex-1 로 산출물을 채우고, 길어지면 자체
                 스크롤. */}
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            <div
+              className={`min-h-0 flex-1 space-y-5 overflow-y-auto ${WIDGET_FRAME_INSET_X} py-5`}
+            >
               {hasUploads && (
                 <div>
                   <SectionLabel>{tCommon('uploading')}</SectionLabel>
