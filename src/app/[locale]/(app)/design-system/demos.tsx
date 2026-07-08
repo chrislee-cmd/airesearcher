@@ -430,12 +430,8 @@ export function ChipInputDemo() {
       <ChipInput
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            commit();
-          }
-        }}
+        onCommit={commit}
+        commitOnComma
         onBlur={commit}
         placeholder={chips.length === 0 ? '키워드 입력 후 Enter' : '추가 키워드…'}
         className="min-w-[140px] flex-1"

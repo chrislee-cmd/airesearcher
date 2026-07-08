@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
+import { isComposingEnter } from '@/components/ui/chip-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -98,7 +99,8 @@ export function RenameProjectModal({
           maxLength={200}
           onKeyDown={(e) => {
             // Enter 는 이름 칸에서만 저장 — 태그 편집기는 자체 Enter(추가) 를 갖는다.
-            if (e.key === 'Enter') {
+            // IME 조합 중 Enter 는 음절 확정용 — 조기 저장 방지.
+            if (e.key === 'Enter' && !isComposingEnter(e)) {
               e.preventDefault();
               void handleSubmit();
             }

@@ -1,6 +1,27 @@
 'use client';
 
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+} from 'react';
+
+// IME-safe commit guard. During a Korean/Japanese/Chinese IME composition the
+// browser fires a synthetic Enter keydown to *finish* the current syllable —
+// `nativeEvent.isComposing` is true (legacy Safari/IME: `keyCode === 229`).
+// If a chip/token input commits on that Enter, it double-writes: the completed
+// word PLUS the still-composing trailing syllable ("하이" → [하이][이]). Every
+// Enter-to-commit text input MUST bail while this returns true.
+//
+// Exported so inputs that can't route through <ChipInput onCommit> (single
+// submit-on-Enter forms, tag editors with custom Backspace/Escape handling)
+// reuse the exact same guard instead of re-deriving it — the whole point of
+// PR is that the guard lives in one place and can't be forgotten.
+export function isComposingEnter(
+  e: Pick<KeyboardEvent, 'nativeEvent' | 'keyCode'>,
+): boolean {
+  return e.nativeEvent?.isComposing || e.keyCode === 229;
+}
 
 // Shared <ChipInput> primitive — codifies the "extender" <input> that
 // lives inside a chip container (the bare text field where users type
@@ -27,7 +48,16 @@ import { forwardRef, type InputHTMLAttributes } from 'react';
 // stacked inside the parent's container frame. The `!*` prefixes below
 // reclaim the bare-input contract.
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>;
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
+  // IME-safe Enter commit, owned by the primitive so consumers can't forget the
+  // composition guard. When set, ChipInput intercepts Enter (and comma when
+  // `commitOnComma`) with `isComposingEnter` applied and emits the current
+  // value. Consumers keep passing `onKeyDown` for other keys (Backspace to pop
+  // the last chip, Escape to clear) — it still fires after the commit check.
+  onCommit?: (value: string) => void;
+  // Also treat "," as a commit key (email / comma-separated tag lists).
+  commitOnComma?: boolean;
+};
 
 const BASE =
   '!border-0 !bg-transparent !rounded-none !shadow-none ' +
@@ -36,9 +66,25 @@ const BASE =
   'disabled:opacity-40 disabled:cursor-not-allowed';
 
 export const ChipInput = forwardRef<HTMLInputElement, Props>(function ChipInput(
-  { className, ...rest },
+  { className, onCommit, commitOnComma, onKeyDown, ...rest },
   ref,
 ) {
   const cls = [BASE, className ?? ''].filter(Boolean).join(' ');
-  return <input ref={ref} className={cls} {...rest} />;
+  const handleKeyDown = onCommit
+    ? (e: KeyboardEvent<HTMLInputElement>) => {
+        // Bail while the IME is mid-composition — this Enter only finishes the
+        // syllable, it is not a commit intent (see isComposingEnter).
+        if (
+          !isComposingEnter(e) &&
+          (e.key === 'Enter' || (commitOnComma && e.key === ','))
+        ) {
+          e.preventDefault();
+          onCommit(e.currentTarget.value);
+        }
+        onKeyDown?.(e);
+      }
+    : onKeyDown;
+  return (
+    <input ref={ref} className={cls} onKeyDown={handleKeyDown} {...rest} />
+  );
 });

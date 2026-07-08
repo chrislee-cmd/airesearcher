@@ -17,6 +17,7 @@ import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
+import { isComposingEnter } from './ui/chip-input';
 import { IconButton } from './ui/icon-button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
@@ -480,7 +481,8 @@ export function WorkspacePanel() {
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') void createProject();
+                    if (e.key === 'Enter' && !isComposingEnter(e))
+                      void createProject();
                     if (e.key === 'Escape') {
                       setCreatingProject(false);
                       setNewProjectName('');
@@ -647,7 +649,8 @@ export function WorkspacePanel() {
                             onChange={(e) => setRenameValue(e.target.value)}
                             onBlur={() => void submitFolderRename(folder.id)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') void submitFolderRename(folder.id);
+                              if (e.key === 'Enter' && !isComposingEnter(e))
+                                void submitFolderRename(folder.id);
                               if (e.key === 'Escape') {
                                 setRenamingFolder(null);
                                 setRenameValue('');
@@ -706,7 +709,8 @@ export function WorkspacePanel() {
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') void submitFolderCreate();
+                              if (e.key === 'Enter' && !isComposingEnter(e))
+                                void submitFolderCreate();
                               if (e.key === 'Escape') {
                                 setCreatingFolderParent(undefined);
                                 setNewFolderName('');
@@ -737,7 +741,8 @@ export function WorkspacePanel() {
                       value={newFolderName}
                       onChange={(e) => setNewFolderName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') void submitFolderCreate();
+                        if (e.key === 'Enter' && !isComposingEnter(e))
+                          void submitFolderCreate();
                         if (e.key === 'Escape') {
                           setCreatingFolderParent(undefined);
                           setNewFolderName('');

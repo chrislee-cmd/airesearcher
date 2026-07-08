@@ -401,11 +401,11 @@ function EmailChips({
     onAdd(value);
   };
 
+  // Enter / "," commit lives in <ChipInput onCommit commitOnComma> (IME-guarded
+  // — harmless for Latin email but keeps the guard uniform). Only Backspace
+  // (pop last chip) stays here.
   const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      commit(draft);
-    } else if (e.key === 'Backspace' && !draft && emails.length) {
+    if (e.key === 'Backspace' && !draft && emails.length) {
       onRemove(emails[emails.length - 1]);
     }
   };
@@ -437,6 +437,8 @@ function EmailChips({
           type="email"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onCommit={commit}
+          commitOnComma
           onKeyDown={onKeyDown}
           onBlur={() => {
             if (draft.trim()) commit(draft);
