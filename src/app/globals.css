@@ -468,6 +468,28 @@ html, body {
   .widget-gate-guide-pulse { animation: none; }
 }
 
+/* qa-mic-recording-pulse — QA 피드백 마이크가 녹음 중(활성)일 때 버튼을 감싼
+   wrapper span 에 얹는 amore ring pulse. 정적이던 표시를 "지금 듣고 있음" 이
+   한눈에 들어오게 강화 (#487). widget-gate-guide-pulse 와 같은 이유로 버튼
+   자체가 아닌 wrapper 에 box-shadow 를 얹어 IconButton chrome 과 충돌 X.
+   reduced-motion 시엔 pulse 대신 정적 amore 링으로 대체 — 모션 없이도 "켜짐"
+   이 명백 (spec §C). */
+@keyframes qaMicRecordingPulse {
+  0%   { box-shadow: 0 0 0 0 var(--color-amore); }
+  70%  { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.qa-mic-recording-pulse {
+  border-radius: var(--radius-pill);
+  animation: qaMicRecordingPulse 1.3s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qa-mic-recording-pulse {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--color-amore);
+  }
+}
+
 @keyframes workspaceRowFlash {
   0%   { background-color: color-mix(in srgb, var(--color-amore) 16%, transparent); }
   100% { background-color: transparent; }
