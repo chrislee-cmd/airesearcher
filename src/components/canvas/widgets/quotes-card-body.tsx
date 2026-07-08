@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { ControlDropzone } from '@/components/ui/control-dropzone';
+import { TranscriptRecordButton } from '@/components/canvas/widgets/transcript-record-button';
 import { JobProgress } from '@/components/ui/job-progress';
 import {
   ProcessTimeline,
@@ -918,6 +919,14 @@ export function QuotesCardBody() {
         helperText={tUp('supported')}
       />
 
+      {/* 직접 녹음 — 파일 업로드 대신 위젯에서 바로 마이크 녹음 (#503).
+          정지 시 Blob→File 로 래핑해 startUploads 로 투입 → 파일 업로드와
+          동일한 언어확인·업로드·전사 흐름(mode/발화자/언어)이 재사용된다. */}
+      <TranscriptRecordButton
+        disabled={busyUpload}
+        onRecorded={(file) => startUploads([file])}
+      />
+
       {uploadError ? (
         <p className="text-sm text-warning">{uploadError}</p>
       ) : readyCount > 0 ? (
@@ -958,15 +967,22 @@ export function QuotesCardBody() {
                 </ChromeButton>
                 {/* 파일 추가 업로드 경로 — 모달 제거 후 인라인 dropzone 으로.
                     드롭/클릭 → 새 전사 flow (idle 컨트롤과 동일 핸들러). */}
-                <ControlDropzone
-                  accept={ACCEPT}
-                  multiple
-                  disabled={busyUpload}
-                  onFiles={(files) => startUploads(files)}
-                  onDropRaw={handleArtifactDrop}
-                  label={tUp('dropHere')}
-                  helperText={tUp('supported')}
-                />
+                <div className="w-full space-y-4">
+                  <ControlDropzone
+                    accept={ACCEPT}
+                    multiple
+                    disabled={busyUpload}
+                    onFiles={(files) => startUploads(files)}
+                    onDropRaw={handleArtifactDrop}
+                    label={tUp('dropHere')}
+                    helperText={tUp('supported')}
+                  />
+                  {/* 완료 상태에서도 직접 녹음으로 새 전사 추가 (#503). */}
+                  <TranscriptRecordButton
+                    disabled={busyUpload}
+                    onRecorded={(file) => startUploads([file])}
+                  />
+                </div>
               </div>
             ) : (
               renderControls()
