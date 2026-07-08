@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { ControlTrigger } from '@/components/ui/control-trigger';
-import { FileDropZone, FILE_DROP_ZONE_PY } from '@/components/ui/file-drop-zone';
+import { ControlDropzone } from '@/components/ui/control-dropzone';
 import {
   ProcessTimeline,
   buildLinearPhases,
@@ -181,14 +181,13 @@ function IdleBody({ onEnter }: { onEnter: (id: string) => void }) {
         {/* 인라인 업로드 — 옛 📤 업로드 CTA(모달 진입)를 대체 (전사록 미러).
             드래그드롭 + 클릭 업로드. 프로젝트 미선택이라 모달이 프로젝트 설정
             gate(Step 2)를 강제하고, 완료 시 해당 프로젝트로 active 진입. */}
-        <FileDropZone
+        <ControlDropzone
           accept={UPLOAD_ACCEPT}
           multiple
           maxSizeBytes={UPLOAD_MAX_BYTES}
           onFiles={openWithFiles}
           label={t('uploadDropLabel')}
           helperText={t('uploadDropHelper')}
-          className={`w-full ${FILE_DROP_ZONE_PY}`}
         />
       </ControlBoardPanel>
 
@@ -554,14 +553,13 @@ function ActiveBody({
         </Field>
         {/* 인라인 업로드 — 프로젝트가 이미 정해졌으므로 모달이 Step 2 를
             건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles). */}
-        <FileDropZone
+        <ControlDropzone
           accept={UPLOAD_ACCEPT}
           multiple
           maxSizeBytes={UPLOAD_MAX_BYTES}
           onFiles={openWithFiles}
           label={t('uploadDropLabel')}
           helperText={t('uploadDropHelper')}
-          className={`w-full ${FILE_DROP_ZONE_PY}`}
         />
       </ControlBoardPanel>
 

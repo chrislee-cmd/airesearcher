@@ -20,7 +20,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
-import { FileDropZone, FILE_DROP_ZONE_PY } from '@/components/ui/file-drop-zone';
+import { ControlDropzone } from '@/components/ui/control-dropzone';
 import { JobProgress } from '@/components/ui/job-progress';
 import {
   ProcessTimeline,
@@ -908,7 +908,7 @@ export function QuotesCardBody() {
       {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
           업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
           드롭도 그대로 수용. */}
-      <FileDropZone
+      <ControlDropzone
         accept={ACCEPT}
         multiple
         disabled={busyUpload}
@@ -916,7 +916,6 @@ export function QuotesCardBody() {
         onDropRaw={handleArtifactDrop}
         label={tUp('dropHere')}
         helperText={tUp('supported')}
-        className={`w-full ${FILE_DROP_ZONE_PY}`}
       />
 
       {uploadError ? (
@@ -959,7 +958,7 @@ export function QuotesCardBody() {
                 </ChromeButton>
                 {/* 파일 추가 업로드 경로 — 모달 제거 후 인라인 dropzone 으로.
                     드롭/클릭 → 새 전사 flow (idle 컨트롤과 동일 핸들러). */}
-                <FileDropZone
+                <ControlDropzone
                   accept={ACCEPT}
                   multiple
                   disabled={busyUpload}
@@ -967,7 +966,6 @@ export function QuotesCardBody() {
                   onDropRaw={handleArtifactDrop}
                   label={tUp('dropHere')}
                   helperText={tUp('supported')}
-                  className="w-full max-w-md py-8"
                 />
               </div>
             ) : (
