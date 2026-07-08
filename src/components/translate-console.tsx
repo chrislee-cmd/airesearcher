@@ -4234,45 +4234,51 @@ export function TranslateConsole({
         </ControlBoardPanel>
       ) : (
         <>
-          {/* 컨트롤 패널 — live/ending/ended 는 기존 상단 고정 바 유지. 세션 중
-              (live)엔 언어·모드·Glossary 변경 불가 (결정 3) 라 필드는 disabled +
-              안내, CTA 는 🚀 세션 시작 → 정지 로 전환된다. */}
-          <div className="-mx-5 -mt-5 space-y-3 border-b border-line-soft bg-paper px-5 py-4">
-            {controlFields}
+          {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
+              동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
+              프레임/컨트롤 위치 픽셀 불변). translate-card 의 px-5 py-5 를
+              -mx-5 -mt-5 로 상쇄해 프레임이 카드 상단·좌우 끝에서 시작하고
+              divider(border-b, ControlBoardPanel active 소유)가 전폭이 되게 한다
+              (옛 바와 동일 box). 세션 중(live)엔 언어·모드·Glossary 변경 불가
+              (결정 3) 라 필드는 disabled + 안내, CTA 는 🚀 세션 시작 → 정지 전환. */}
+          <div className="-mx-5 -mt-5 bg-paper">
+            <ControlBoardPanel active gap="field">
+              {controlFields}
 
-            {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
-            {live ? (
-              <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
-            ) : null}
+              {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
+              {live ? (
+                <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
+              ) : null}
 
-            {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음
-                세션용 🚀 세션 시작. */}
-            {live ? (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-md tabular-nums text-mute">
-                  {formatElapsed(elapsed)}
-                </span>
-                <div className="flex items-center gap-2">
-                  {/* 🚨 Auto-renewal indicator — subtle, only while a background
-                      session handover is in flight (<2s). */}
-                  {renewing ? (
-                    <span className="text-sm text-mute-soft">{t('renewing')}</span>
-                  ) : null}
-                  <ChromeButton size="lg" onClick={() => void stop()}>
-                    {t('stop')}
-                  </ChromeButton>
+              {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음
+                  세션용 🚀 세션 시작. */}
+              {live ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-md tabular-nums text-mute">
+                    {formatElapsed(elapsed)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* 🚨 Auto-renewal indicator — subtle, only while a background
+                        session handover is in flight (<2s). */}
+                    {renewing ? (
+                      <span className="text-sm text-mute-soft">{t('renewing')}</span>
+                    ) : null}
+                    <ChromeButton size="lg" onClick={() => void stop()}>
+                      {t('stop')}
+                    </ChromeButton>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <ChromeButton
-                variant="default"
-                size="lg"
-                onClick={() => void start()}
-                disabled={busy}
-              >
-                {busy ? t('starting') : `🚀 ${t('start')}`}
-              </ChromeButton>
-            )}
+              ) : (
+                <ChromeButton
+                  variant="default"
+                  size="lg"
+                  onClick={() => void start()}
+                  disabled={busy}
+                >
+                  {busy ? t('starting') : `🚀 ${t('start')}`}
+                </ChromeButton>
+              )}
+            </ControlBoardPanel>
           </div>
 
           {ttsBlockedBanner}

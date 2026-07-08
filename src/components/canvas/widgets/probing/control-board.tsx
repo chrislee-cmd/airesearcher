@@ -151,10 +151,12 @@ export function ProbingControlPanel({
   stopDisabled: boolean;
   statusLabel: string | null;
 }) {
-  // 밸런스 튜닝(desk 미러): 필드 간 세로 간격 gap-4 → gap-5 확대
-  // (데스크 controlsForm space-y-4 → space-y-5 와 동일 계열).
+  // 프레임(외곽 padding/폭/정렬/세로채움)은 ControlBoardPanel SSOT 소유 —
+  // 여기서 px-5 py-4 / shrink-0 를 직접 지정하지 않는다 (idle=active 프레임
+  // 불변). 이 컴포넌트는 컨트롤 클러스터의 내부 3-구성(필드/안내/CTA) 세로
+  // 리듬(gap-5)만 소유. idle·active 모두 <ControlBoardPanel> 경유.
   return (
-    <div className="flex shrink-0 flex-col gap-5 px-5 py-4">
+    <div className="flex flex-col gap-5">
       <ControlFields
         researchGoal={researchGoal}
         onResearchGoalChange={onResearchGoalChange}

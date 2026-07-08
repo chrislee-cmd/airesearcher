@@ -1,5 +1,5 @@
 /* ────────────────────────────────────────────────────────────────────
-   ControlBoardPanel — 6 위젯 idle 컨트롤보드 layout SSOT.
+   ControlBoardPanel — 6 위젯 컨트롤보드 layout SSOT (상태 불변 프레임).
 
    문제: balance 5종 머지 후에도 각 위젯이 데스크를 "미러" 하는 방식이라
    gap 리듬(gap-5 vs gap-8/4)·정렬(text-center)·조건부 폭·wrapper pt 가
@@ -7,13 +7,24 @@
    → wrapper(justify-start + 유효 상단여백 40px + px-5 pb-6 + overflow) +
    클러스터(w-full max-w-2xl, 세로 gap 고정) 를 한 컴포넌트로 박제한다.
 
+   ★ 상태 불변 프레임 (2026-07-09):
+   "잘 설계된 위젯은 상태(idle/active)가 달라진다고 프레임 규격이 바뀌면
+   안 된다 — 언제나 고정 프레임 안에서 동적 부분만 반응한다" (사용자 원칙).
+   그래서 wrapper 의 외곽 padding/폭/정렬은 active 무관 고정이다:
+   px-5 pt-10 pb-6(40/20/24) · 상단정렬(justify-start) · items-center ·
+   클러스터 w-full max-w-2xl 수평 중앙 — idle 과 active 가 픽셀 동일.
+   active 가 바꾸는 것은 프레임이 아니라 (1) 세로 채움 정책(idle=flex-1 로
+   카드를 채우고, active=shrink-0 상단 바 + 아래 산출물이 flex-1) 과
+   (2) 컨트롤/산출물 사이 divider(border-b) — 둘 다 컨트롤 위치를 안 움직인다
+   (justify-start 라 flex-1↔shrink-0 전환에도 컨트롤은 상단 제자리).
+
    ⚠️  위젯은 <Field> 클러스터만 children 으로 꽂는다. wrapper/gap/정렬/폭을
    위젯이 지정할 수 없다 — 아래 상수만 SSOT. 임의 layout 클래스(max-w-*,
    justify-*, pt-* 등)를 위젯 body 에서 직접 쓰면 리뷰 reject 기준.
    허용된 변주는 prop(active / gap 열거형 / banners / unpadParent) 뿐.
 
-   규격 (balance 확정값 = 상수):
-   - idle 유효 상단 여백 40px (pt-10) · px-5 · pb-6 · overflow-y-auto
+   규격 (balance 확정값 = 상수, idle=active 동일):
+   - 유효 상단 여백 40px (pt-10) · px-5 · pb-6 · overflow-y-auto
    - 클러스터 = w-full max-w-2xl, 좌정렬 고정 (text-center 금지)
    - 필드 간 gap-4 / 섹션 간 gap-6 (gap prop 열거형 — 임의 gap 금지)
    - banners 슬롯 = 클러스터 위 고정 위치 (배너/온보딩 = 필드 사이 끼임 제거)
@@ -39,8 +50,10 @@ type ControlBoardPanelProps = {
   // 배너/온보딩 슬롯 — 클러스터와 분리된 고정 위치(클러스터 위). 필드 사이
   // 끼임 제거용. 없으면 렌더 안 함.
   banners?: ReactNode;
-  // active 상태 = 클러스터 제약 해제(max-w 없이 상단 고정 바). 실행 중/완료
-  // 화면에서 컨트롤을 상단에 붙이는 위젯용(데스크/전사록). 기본 idle launcher.
+  // active 상태 = 산출물이 아래에 붙는 위젯용(데스크/전사록/통역/프로빙 등).
+  //   프레임(외곽 padding/폭/정렬) 은 idle 과 동일 — active 는 세로 채움
+  //   정책(shrink-0 상단 바 + 산출물 flex-1)과 divider(border-b) 만 바꾼다.
+  //   기본 idle launcher (flex-1 로 카드를 채우고 상단정렬).
   active?: boolean;
   // 클러스터 세로 간격 열거형 (위 ClusterGap 주석 참고). 기본 none.
   gap?: ClusterGap;
@@ -62,19 +75,22 @@ export function ControlBoardPanel({
   gap = 'none',
   unpadParent = false,
 }: ControlBoardPanelProps) {
-  // wrapper — idle: 상단부터 시작(justify-start) + 유효 40px 상단 여백.
-  //           active: 상단 고정 바(shrink-0 + border-b), 세로 채움 안 함.
-  const wrapper = active
-    ? 'shrink-0 overflow-y-auto border-b border-line-soft px-5 py-5'
-    : 'flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6';
-  // 클러스터 폭 — idle 은 max-w-2xl 로 좌우를 채우고 중앙 정렬(items-center),
-  // active 는 상단 바라 전폭.
-  const clusterWidth = active ? 'w-full' : 'w-full max-w-2xl';
+  // wrapper — 외곽 padding/폭/정렬은 상태 불변(px-5 pt-10 pb-6 + 상단정렬 +
+  // 수평 중앙). active 는 세로 채움 정책만 바꾼다:
+  //   idle   = flex-1  (카드를 채우고 컨트롤은 상단정렬, 아래는 빈 공간)
+  //   active = shrink-0 + border-b (자연 높이 상단 바; 산출물은 형제 flex-1)
+  // justify-start 라 flex-1↔shrink-0 전환에도 컨트롤은 상단 제자리 = 안 튐.
+  const wrapper = cx(
+    'flex min-h-0 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6',
+    active ? 'shrink-0 border-b border-line-soft' : 'flex-1',
+  );
+  // 클러스터 폭 — idle=active 동일. max-w-2xl 로 좌우를 채우고 수평 중앙.
+  const clusterWidth = 'w-full max-w-2xl';
 
   return (
     <div className={cx(unpadParent && '-m-5', wrapper)}>
       {banners && (
-        <div className={cx('flex flex-col gap-4', clusterWidth, active ? 'mb-4' : 'mb-6')}>
+        <div className={cx('flex flex-col gap-4', clusterWidth, 'mb-6')}>
           {banners}
         </div>
       )}
