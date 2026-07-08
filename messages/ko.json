@@ -1285,6 +1285,8 @@
     "toplineRegenerate": "보고서 다시 생성",
     "toplineGenerating": "탑라인 생성 중…",
     "toplineMapProgress": "전 문서 분석 중 — 응답자 {done}/{total}명",
+    "toplineReduceProgressStart": "보고서 작성 중…",
+    "toplineReduceProgress": "보고서 작성 중… ({count}블록)",
     "toplineDoneToast": "탑라인 보고서 생성 완료 — 전체보기에서 확인하세요",
     "toplineErrorToast": "탑라인 보고서 생성에 실패했어요",
     "toplineStaleBanner": "파일이 바뀌었어요 — 보고서를 다시 생성해 최신 내용을 반영하세요.",
