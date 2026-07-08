@@ -10,7 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "prepare": "husky",
-    "migration:new": "supabase migration new"
+    "migration:new": "supabase migration new",
+    "e2e": "playwright test",
+    "e2e:list": "playwright test --list",
+    "e2e:install": "playwright install chromium",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json --noEmit",
+    "e2e:trace": "playwright show-trace"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": "sh -c 'pnpm exec eslint --fix \"$@\" || true' --"
@@ -56,6 +61,7 @@
     "zod": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/mixpanel-browser": "^2.66.0",
     "@types/node": "^20",
