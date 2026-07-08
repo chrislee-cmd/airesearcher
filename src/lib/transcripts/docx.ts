@@ -164,6 +164,52 @@ function metaTable(entries: Array<[string, string]>): Table {
   });
 }
 
+// 회의록 모드 요약/Todo 블록 렌더러. 전사 본문(TIMESTAMP_RE 라인)과 달리
+// 마크다운 heading(`## …`) / bullet(`- …`) 을 인식한다. 전사 본문 라인은
+// `[hh:mm:ss] Speaker:` 로 시작해 `#`/`-` 로 시작하지 않으므로, 이 헬퍼는
+// 요약 챕터에만 쓰고 본문 루프에는 영향이 없다(회귀 0).
+function renderMarkdownBlock(md: string): Paragraph[] {
+  const out: Paragraph[] = [];
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) {
+      out.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 200, after: 80 },
+          border: {
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: AP.line, space: 4 },
+          },
+          children: [
+            new TextRun({ text: h[2], bold: true, size: SIZE.h2, color: AP.ink }),
+          ],
+        }),
+      );
+      continue;
+    }
+    const b = /^[-*]\s+(.*)$/.exec(line);
+    if (b) {
+      out.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          spacing: { line: 360, lineRule: 'auto', after: 60 },
+          children: inlineRuns(b[1], SIZE.body, AP.ink2),
+        }),
+      );
+      continue;
+    }
+    out.push(
+      new Paragraph({
+        spacing: { line: 360, lineRule: 'auto', after: 120 },
+        children: inlineRuns(line, SIZE.body, AP.ink2),
+      }),
+    );
+  }
+  return out;
+}
+
 function todayISO(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -177,7 +223,10 @@ function todayISO(): string {
  * lines) into an editorial docx that follows design-system.md:
  * UPPERCASE eyebrow, 1px amore accent, 4-stat meta grid, Pretendard body.
  */
-export async function markdownToDocx(markdown: string): Promise<Buffer> {
+export async function markdownToDocx(
+  markdown: string,
+  opts?: { summaryMarkdown?: string },
+): Promise<Buffer> {
   const lines = markdown.split(/\r?\n/);
 
   // Split YAML front matter from body. The `---` fence isn't always on line 0:
@@ -288,6 +337,20 @@ export async function markdownToDocx(markdown: string): Promise<Buffer> {
   }
   children.push(metaTable(metaEntries));
   children.push(blank(360));
+
+  // ── Meeting summary chapter (회의록 모드 전용) ────────────
+  // mode='meeting' 잡에만 채워지는 요약 + Todo. 전사 본문 챕터 위에 별 섹션으로
+  // 렌더 → 커버 다음, 본문 앞. 리서치 모드/후처리 실패 잡은 opts 미전달이라 skip.
+  if (opts?.summaryMarkdown?.trim()) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 60 },
+        children: [eyebrow('Chapter · Meeting Summary')],
+      }),
+    );
+    children.push(...renderMarkdownBlock(opts.summaryMarkdown));
+    children.push(blank(360));
+  }
 
   // ── Chapter header for the body ──────────────────────────
   children.push(

@@ -6,6 +6,7 @@ import { deepgramToMarkdown, type DeepgramResult } from '@/lib/transcripts/forma
 import { classifySpeakerRolesEn } from '@/lib/transcripts/speaker-roles';
 import { normalizeNumbersInTranscript } from '@/lib/transcripts/number-normalize';
 import { classifyQaDiarizationEn } from '@/lib/transcripts/diarization';
+import { summarizeMeeting } from '@/lib/transcripts/meeting-summary';
 import { updateWithInferredFallback } from '@/lib/transcripts/jobs-select';
 
 // Bumped to 200s to match poll/route.ts — after() callbacks keep the function
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
   const { data: job, error: fetchErr } = await admin
     .from('transcript_jobs')
-    .select('id, org_id, user_id, filename, status')
+    .select('id, org_id, user_id, filename, status, mode')
     .eq('id', jobId)
     .single();
   if (fetchErr || !job) {
@@ -111,10 +112,13 @@ export async function POST(request: Request) {
   // 동시통역사 시나리오 where mic = 1명 but content = host/guest 교대.
   // Skips automatically on multi-speaker / monologue / low-confidence.
   const shouldDiarize = formatted.speakers === 1 && formatted.duration >= 60;
+  // 회의록 모드(mode='meeting') 잡만 전체 요약 + Todo 후처리. 리서치 모드는
+  // 현행 그대로(skip). 실패해도 markdown 은 이미 저장돼 전사 본문은 유지.
+  const shouldSummarize = job.mode === 'meeting';
   after(async () => {
     try {
       const rawMd = formatted.markdown;
-      const [rolesRes, numberRes, diarRes] = await Promise.all([
+      const [rolesRes, numberRes, diarRes, summaryRes] = await Promise.all([
         classifySpeakerRolesEn(body, job.filename).catch((e) => {
           console.warn('[transcripts/webhook] roles pass failed', e);
           return null;
@@ -129,6 +133,12 @@ export async function POST(request: Request) {
               return null;
             })
           : Promise.resolve(null),
+        shouldSummarize
+          ? summarizeMeeting(rawMd, job.filename).catch((e) => {
+              console.warn('[transcripts/webhook] meeting-summary pass failed', e);
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       const patch: Record<string, unknown> = {
         raw_result: {
@@ -136,11 +146,13 @@ export async function POST(request: Request) {
           ...(rolesRes ? { _roles: rolesRes.audit } : {}),
           ...(numberRes ? { _number_normalize: numberRes.audit } : {}),
           ...(diarRes ? { _diarization: diarRes.audit } : {}),
+          ...(summaryRes ? { _meeting_summary: summaryRes.audit } : {}),
         },
       };
       if (numberRes?.normalized) patch.clean_markdown = numberRes.normalized;
       if (rolesRes?.roles) patch.speaker_roles = rolesRes.roles;
       if (diarRes?.inferred) patch.inferred_speakers = diarRes.inferred;
+      if (summaryRes?.markdown) patch.meeting_summary = summaryRes.markdown;
       await updateWithInferredFallback(
         async (p) => {
           const r = await admin.from('transcript_jobs').update(p).eq('id', job.id);

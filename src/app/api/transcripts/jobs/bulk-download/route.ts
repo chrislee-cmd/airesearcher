@@ -30,10 +30,29 @@ type BulkJob = {
   clean_markdown: string | null;
   speaker_roles: SpeakerRolesMap | null;
   inferred_speakers: InferredSpeakersPayload | null;
+  meeting_summary: string | null;
   provider: string | null;
   status: string | null;
   created_at: string;
 };
+
+// 회의록 요약 블록을 전사 마크다운의 front-matter 직후에 삽입(단건 download 와
+// 동일 동작). docx 는 markdownToDocx 의 opts 로 별 챕터 렌더.
+function insertSummary(markdown: string, summary: string): string {
+  const lines = markdown.split(/\r?\n/);
+  let insertAt = 0;
+  if (lines[0]?.trim() === '---') {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        insertAt = i + 1;
+        break;
+      }
+    }
+  }
+  const head = lines.slice(0, insertAt).join('\n');
+  const tail = lines.slice(insertAt).join('\n');
+  return `${head}\n\n${summary.trim()}\n${tail}`;
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -126,11 +145,16 @@ export async function GET(req: Request) {
     }
     usedNames.add(name);
 
+    // 회의록 모드 잡이면 요약 + Todo 반영(리서치/실패 잡은 NULL → 현행 그대로).
+    const summaryMarkdown = job.meeting_summary ?? undefined;
     if (format === 'docx') {
-      const buf = await markdownToDocx(labeled);
+      const buf = await markdownToDocx(labeled, { summaryMarkdown });
       zip.file(name, new Uint8Array(buf));
     } else {
-      zip.file(name, labeled);
+      zip.file(
+        name,
+        summaryMarkdown ? insertSummary(labeled, summaryMarkdown) : labeled,
+      );
     }
   }
 

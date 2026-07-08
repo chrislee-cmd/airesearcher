@@ -121,10 +121,14 @@ export async function GET(
     `$1${base}`,
   );
 
+  // 회의록 모드 잡이면 요약 + Todo 블록을 별 섹션(커버 다음, 본문 앞)으로
+  // 렌더. 리서치 모드/후처리 실패 잡은 NULL → 미전달 → 현행 그대로.
+  const summaryMarkdown = (job.meeting_summary as string | null) ?? undefined;
+
   // Pipeline: markdown → docx (same generator used for download) → HTML.
   // This guarantees the in-page preview shows the user the same content layout
   // the docx file will render, without shipping the raw docx to the browser.
-  const buf = await markdownToDocx(displayMarkdown);
+  const buf = await markdownToDocx(displayMarkdown, { summaryMarkdown });
   const { value: html } = await mammoth.convertToHtml({ buffer: buf });
 
   return NextResponse.json({
