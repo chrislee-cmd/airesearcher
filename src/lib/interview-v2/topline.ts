@@ -16,7 +16,7 @@
 // 근거 = 프로젝트 전체 문서 (선택 영역 X — 사용자 결정 #2). 인용은 v2/search
 // 와 동일하게 근거 chunk_id 집합에 대해 재검증한다(지어낸 id drop).
 
-import { generateObject } from 'ai';
+import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
@@ -26,6 +26,7 @@ import {
   buildToplineSystem,
   TOPLINE_REDUCE_NOTICE,
   toplineSchema,
+  toplineBlockSchema,
   type ToplineBlockRaw,
 } from '@/lib/interview-v2/topline-prompt';
 import {
@@ -511,6 +512,22 @@ export async function upsertGenerating(
   return data.id as string;
 }
 
+// streamObject 의 partialObjectStream 은 **검증되지 않은** 부분 객체를 흘린다
+// (마지막 블록은 필드가 채워지는 중일 수 있음). 스트리밍 도중 안전하게 노출할 수
+// 있는 "완성 접두 블록"만 골라낸다: 각 블록을 toplineBlockSchema 로 safeParse 해
+// 성공하는 동안만 채우고, 첫 실패(= 아직 생성 중인 마지막 블록)에서 멈춘다.
+// 접두만 유지하므로 index 기반 blk_NN id 가 스트리밍 내내 안정적으로 유지된다
+// (중간 블록이 나중에 유효해지며 뒤 블록 id 를 밀어내는 일이 없음).
+function completePrefixBlocks(rawBlocks: unknown[]): ToplineBlockRaw[] {
+  const out: ToplineBlockRaw[] = [];
+  for (const item of rawBlocks) {
+    const parsed = toplineBlockSchema.safeParse(item);
+    if (!parsed.success) break;
+    out.push(parsed.data);
+  }
+  return out;
+}
+
 // 근거 chunk_id 집합에 대해 블록의 citations 를 재검증 — 지어낸 id 는 drop
 // (v2/search reconstructCitations 원리). server 가 인용 무결성을 소유한다.
 function verifyBlockCitations(
@@ -654,9 +671,13 @@ export async function runTopline(
       doc_coverage: 1, // 전 문서 순회 — 구조적 유실 0 (카드 #430 핵심 지표)
     });
 
-    // ── REDUCE: Opus 가 전수 추출을 종합 ──
+    // ── REDUCE: Opus 가 전수 추출을 종합 (streamObject — 부분 블록 증분 노출) ──
+    // 예전엔 generateObject(blocking) 라 reduce(대량 보고서 생성)가 끝날 때까지
+    // 완전 무반응 → 사용자가 "멈춘 것"으로 오인했다. streamObject 로 바꿔
+    // partialObjectStream 으로 블록이 완성되는 대로 interview_toplines.blocks 에
+    // throttle 증분 upsert → realtime 이 부분 보고서를 push, 클라가 점진 렌더한다.
     const reduceEvidence = formatExtractsForReduce(extracts);
-    const { object, finishReason } = await generateObject({
+    const stream = streamObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
       system: `${buildToplineSystem(outputLang)}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
@@ -669,7 +690,46 @@ export async function runTopline(
       providerOptions: ZERO_RETENTION,
     });
 
-    const blocks = verifyBlockCitations(object?.blocks ?? [], validIds);
+    // 부분 블록 증분 upsert — realtime/DB 쓰기 폭주를 막으려 throttle 한다.
+    // 완성(스키마 통과)된 접두 블록만 쓰고 마지막 미완 블록은 보류(graceful).
+    // 첫 완성 블록은 즉시 써서 무반응 구간을 최소화하고, 재생성 시 이전 보고서
+    // blocks 를 새 부분본으로 빠르게 교체한다. 이후 쓰기는 interval throttle.
+    const REDUCE_WRITE_INTERVAL_MS = 1500;
+    let lastWriteAt = 0;
+    let lastWrittenCount = -1;
+    const flushPartialBlocks = async (rawBlocks: unknown[]): Promise<void> => {
+      const complete = completePrefixBlocks(rawBlocks);
+      if (complete.length === 0) return; // 아직 완성 블록 없음.
+      const now = Date.now();
+      const first = lastWrittenCount < 0;
+      if (
+        !first &&
+        (complete.length === lastWrittenCount ||
+          now - lastWriteAt < REDUCE_WRITE_INTERVAL_MS)
+      ) {
+        return; // 블록 수 변화 없음 또는 throttle 창 안 — skip.
+      }
+      lastWriteAt = now;
+      lastWrittenCount = complete.length;
+      const partial = verifyBlockCitations(complete, validIds);
+      const { error } = await admin
+        .from('interview_toplines')
+        .update({ blocks: partial as unknown as object })
+        .eq('id', toplineId);
+      // 부분 upsert 는 best-effort — 실패해도 다음 flush/최종 done 이 만회한다.
+      if (error) console.warn(`${tag} partial blocks upsert failed`, error.message);
+    };
+
+    for await (const partial of stream.partialObjectStream) {
+      const rawBlocks = Array.isArray(partial?.blocks) ? partial.blocks : [];
+      await flushPartialBlocks(rawBlocks);
+    }
+
+    // 스트림 종료 — 검증된 최종 객체 + finishReason 확보(예외는 상위 catch 로).
+    const finalObject = await stream.object;
+    const finishReason = await stream.finishReason;
+
+    const blocks = verifyBlockCitations(finalObject?.blocks ?? [], validIds);
     const citedTotal = blocks.reduce(
       (n, b) => n + ('citations' in b ? b.citations.length : 0),
       0,

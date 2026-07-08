@@ -580,12 +580,37 @@ export function ToplineMapProgress({
   );
 }
 
+// reduce(보고서 작성) 진행 신호 — map(N/M) 이 끝나고 streamObject 가 블록을
+// 스트리밍하는 동안 "보고서 작성 중… (N블록)" 을 노출한다. blockCount 는 지금까지
+// 도착한 부분 블록 수. count 가 0 이면(첫 블록 도착 전) 수치 없는 문구만 그린다.
+// export — 카드 ambient 밴드(interviews-card)가 팝업 밖에서 재사용한다. 여기가 SSOT.
+export function ToplineReduceProgress({
+  blockCount,
+}: {
+  blockCount?: number | null;
+}) {
+  const t = useTranslations('InterviewsV2');
+  const count = Math.max(0, blockCount ?? 0);
+  return (
+    <div className="flex items-center gap-2 text-sm text-mute">
+      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+      {count > 0
+        ? t('toplineReduceProgress', { count })
+        : t('toplineReduceProgressStart')}
+    </div>
+  );
+}
+
 function GeneratingSkeleton({
   mapTotal,
   mapDone,
+  inReduce,
+  blockCount,
 }: {
   mapTotal?: number | null;
   mapDone?: number | null;
+  inReduce?: boolean;
+  blockCount?: number | null;
 }) {
   const t = useTranslations('InterviewsV2');
   return (
@@ -594,7 +619,12 @@ function GeneratingSkeleton({
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
         {t('toplineGenerating')}
       </div>
-      <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+      {/* map 순회 중이면 N/M, map 이 끝나고 reduce 스트리밍 중이면 "작성 중(N블록)". */}
+      {inReduce ? (
+        <ToplineReduceProgress blockCount={blockCount} />
+      ) : (
+        <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+      )}
       <Skeleton className="h-6 w-1/3 rounded-sm" />
       <Skeleton className="h-24 w-full rounded-sm" />
       <Skeleton className="h-6 w-1/4 rounded-sm" />
@@ -625,6 +655,13 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const hasBlocks = blocks.length > 0;
   // 재생성 버튼 활성 = 인덱싱 완료 & 생성 중 아님.
   const canGenerate = indexed && status !== 'generating' && !generating;
+
+  // reduce 단계 감지 — map(전 문서 순회)이 끝나면(map_done ≥ map_total) reduce
+  // (보고서 작성)로 넘어간다. 이때 streamObject 가 blocks 를 증분 스트리밍하므로
+  // "보고서 작성 중… (N블록)" 신호를 노출한다. map_total 이 없으면(레거시) map
+  // 진행률 자체를 안 그리므로 reduce 신호도 skip.
+  const mapComplete = !!mapTotal && (mapDone ?? 0) >= mapTotal;
+  const inReduce = status === 'generating' && mapComplete;
 
   // 출력 언어 선택(입력 transcript 언어와 독립 — 사용자 결정 1). 기본 = 한국어.
   // 저장된 보고서가 있으면 그 언어로 초기화(GET 이 output_lang 반환)해, 사용자가
@@ -808,17 +845,29 @@ export function ToplineView({ projectId }: { projectId: string }) {
         ) : !indexed ? (
           <EmptyState tone="subtle" title={t('toplineNotIndexed')} />
         ) : status === 'generating' && !hasBlocks ? (
-          <GeneratingSkeleton mapTotal={mapTotal} mapDone={mapDone} />
+          <GeneratingSkeleton
+            mapTotal={mapTotal}
+            mapDone={mapDone}
+            inReduce={inReduce}
+            blockCount={blocks.length}
+          />
         ) : hasBlocks ? (
           <>
-            {/* 생성 중이지만 이전 보고서가 남아 있으면 상단에 진행 표시. */}
+            {/* 생성 중이면 상단에 진행 표시. map 순회 중엔 N/M, reduce(보고서
+                작성) 중엔 "작성 중(N블록)". reduce 중엔 아래 <article> 의 blocks
+                가 스트리밍으로 점진 렌더된다(부분/미완 블록은 서버가 접두만 보내
+                graceful). */}
             {status === 'generating' && (
               <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
                   {t('toplineGenerating')}
                 </div>
-                <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+                {inReduce ? (
+                  <ToplineReduceProgress blockCount={blocks.length} />
+                ) : (
+                  <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+                )}
               </div>
             )}
             {stale && status !== 'generating' && (

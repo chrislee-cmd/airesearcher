@@ -25,7 +25,10 @@ import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { useInterviewToplineStatus } from '@/hooks/use-interview-topline';
 import { deriveToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import type { ToplineStatus } from '@/lib/interview-v2/types';
-import { ToplineMapProgress } from '@/components/interviews-v2/topline-view';
+import {
+  ToplineMapProgress,
+  ToplineReduceProgress,
+} from '@/components/interviews-v2/topline-view';
 import { useToast } from '@/components/toast-provider';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
 import { UploadModal } from '@/components/interviews-v2/upload-modal';
@@ -229,11 +232,13 @@ function ToplineAmbientProgress({
   status,
   mapTotal,
   mapDone,
+  blockCount,
 }: {
   projectId: string;
   status: ToplineStatus;
   mapTotal: number | null;
   mapDone: number | null;
+  blockCount: number;
 }) {
   const t = useTranslations('InterviewsV2');
   const toast = useToast();
@@ -259,13 +264,20 @@ function ToplineAmbientProgress({
   }, [status, toast, t]);
 
   if (status !== 'generating') return null;
+  // map(전 문서 순회)이 끝나면 reduce(보고서 작성) 단계 — streamObject 가 blocks
+  // 를 증분 스트리밍하므로 "작성 중(N블록)" 으로 전환(팝업 밖에서도 무반응 0).
+  const inReduce = !!mapTotal && (mapDone ?? 0) >= mapTotal;
   return (
     <div className="shrink-0 border-t border-line-soft px-4 py-3">
       <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
         {t('toplineGenerating')}
       </div>
-      <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+      {inReduce ? (
+        <ToplineReduceProgress blockCount={blockCount} />
+      ) : (
+        <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+      )}
     </div>
   );
 }
@@ -570,6 +582,7 @@ function ActiveBody({
         status={toplineStatus}
         mapTotal={mapTotal}
         mapDone={mapDone}
+        blockCount={toplineBlocks.length}
       />
 
       {/* 주 CTA(분석 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일) → fullview.
