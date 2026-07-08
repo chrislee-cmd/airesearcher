@@ -1550,5 +1550,38 @@
       "unconfigured": "Not set",
       "error": "Error"
     }
+  },
+  "ShareViewer": {
+    "eyebrow": "Shared view",
+    "readOnlyHint": "This is a read-only view. Editing and regeneration are disabled.",
+    "toplineTitle": "Interview topline",
+    "personaTitle": "Probing persona",
+    "personaGoal": "Research goal",
+    "personaKrq": "Key research question",
+    "personaHypotheses": "Hypotheses",
+    "emptyContent": "There is no content to show yet.",
+    "gateTitle": "Verify your invited email",
+    "gateSubtitle": "This link is viewable only by invited emails. Enter your email and we'll send a verification code.",
+    "gateCodeSubtitle": "Enter the verification code we emailed you.",
+    "gateSessionNotInvited": "The email on your signed-in account is not invited. Please verify with an invited email.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Send verification code",
+    "sending": "Sending…",
+    "codeLabel": "Verification code",
+    "codePlaceholder": "6-digit code",
+    "codeHelper": "Enter the code sent to {email}.",
+    "verify": "Verify and view",
+    "verifying": "Verifying…",
+    "changeEmail": "Try a different email",
+    "notInvitedBody": "This email is not on the invite list. Ask the person who shared the link to invite you.",
+    "errorInvalidCode": "That code is incorrect or has expired. Please try again.",
+    "errorGeneric": "Something went wrong. Please try again in a moment.",
+    "invalidTitle": "Invalid link",
+    "invalidBody": "We couldn't find this share link. Please check that the link is correct.",
+    "expiredTitle": "Link expired",
+    "expiredBody": "This share link has expired. Ask the person who shared it for a new link.",
+    "revokedTitle": "Link revoked",
+    "revokedBody": "This share link is no longer available. Please contact the person who shared it."
   }
 }
