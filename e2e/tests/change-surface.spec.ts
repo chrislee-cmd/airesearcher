@@ -9,6 +9,7 @@ import {
   localizedPath,
   readEnv,
   slug,
+  stripAnsi,
   type LoadedScript,
   type QAStep,
 } from '../lib/config';
@@ -79,7 +80,7 @@ async function runStep(page: Page, step: QAStep, dir: string, index: number): Pr
       label: step.label,
       action: step.action,
       status: 'fail',
-      detail: err instanceof Error ? err.message.split('\n')[0] : String(err),
+      detail: stripAnsi(err instanceof Error ? err.message.split('\n')[0] : String(err)),
       screenshot: fs.existsSync(shotAbs) ? shotRel : undefined,
     };
   }
@@ -99,7 +100,7 @@ for (const surface of script.surfaces) {
       // 표면 진입(리포트 스텝과 별개의 setup). 명시 goto 스텝은 이후 재이동 가능.
       await page.goto(localizedPath(surface.route, env.locale), { waitUntil: 'domcontentloaded' });
     } catch (err) {
-      surfaceError = err instanceof Error ? err.message.split('\n')[0] : String(err);
+      surfaceError = stripAnsi(err instanceof Error ? err.message.split('\n')[0] : String(err));
     }
 
     for (let i = 0; i < surface.steps.length; i++) {

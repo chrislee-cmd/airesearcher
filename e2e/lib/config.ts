@@ -189,6 +189,14 @@ export function loadScript(): LoadedScript {
   };
 }
 
+/** 터미널 색상 코드(ANSI escape) 제거 — Playwright expect 에러엔 색 코드가 섞여 있어 리포트가 지저분해진다. */
+// ESC(0x1b) 를 소스에 리터럴 제어문자로 두지 않으려고 fromCharCode 로 조립
+// (no-control-regex 룰과 제어문자 커밋을 동시에 회피).
+const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+export function stripAnsi(input: string): string {
+  return input.replace(ANSI_RE, '');
+}
+
 /** 파일명에 안전한 slug (스크린샷/결과 파일 경로용). */
 export function slug(input: string): string {
   return input

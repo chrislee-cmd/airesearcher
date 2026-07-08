@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // QA 하네스가 생성하는 증거물(비디오/트레이스/HTML 리포트의 번들 JS).
+    // 커밋되지 않는 산출물이라 lint 대상에서 제외.
+    "e2e/artifacts/**",
   ]),
   // Design-system enforcement — split into TWO rules so native controls
   // (warn) and tokenized arbitrary values (error) can carry different
