@@ -18,6 +18,8 @@ import {
 } from '@/lib/desk-sources';
 import { warmDartCorps } from '@/lib/desk-sources/dart-corp';
 import { warmDartFinancials } from '@/lib/desk-sources/dart-financials';
+import { resolveSecCik, warmSecCorps } from '@/lib/desk-sources/sec-edgar-corp';
+import { warmSecFinancials } from '@/lib/desk-sources/sec-edgar-financials';
 import { parseDeskQuery } from '@/lib/desk-query-parse';
 import {
   MACRO_ANCHORS,
@@ -53,6 +55,7 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
   'world_bank',
   'oecd',
   'dart',
+  'sec_edgar',
   'semantic_scholar',
   'kci',
   'google_news',
@@ -62,6 +65,7 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
 const KOSIS: DeskSourceId = 'kosis';
 const ATFIS: DeskSourceId = 'atfis';
 const DART: DeskSourceId = 'dart';
+const SEC_EDGAR: DeskSourceId = 'sec_edgar';
 const ECOS: DeskSourceId = 'boj_ecos';
 const WORLD_BANK: DeskSourceId = 'world_bank';
 const OECD: DeskSourceId = 'oecd';
@@ -78,14 +82,21 @@ export async function runMarket(
   const enabled = new Set(getEnabledSources());
   const effectiveSources = MARKET_SOURCE_IDS.filter((id) => {
     if (!enabled.has(id)) return false;
+    const def = DESK_SOURCE_REGISTRY[id];
+    // regionOnly 소스는 대상 region 과 교집합이 있을 때만 (SEC=US 전용, DART=KR
+    // 전용 등). KR_ONLY_GROUPS 와 중복 커버되지만, US 전용 SEC 처럼 KR 축이 아닌
+    // region-gated 소스를 일반적으로 걸러낸다.
+    if (def?.regionOnly && !def.regionOnly.some((r) => regions.includes(r))) return false;
     if (regions.includes('KR')) return true;
-    const group = DESK_SOURCE_REGISTRY[id]?.group;
-    return !group || !KR_ONLY_GROUPS.includes(group);
+    return !def?.group || !KR_ONLY_GROUPS.includes(def.group);
   });
 
   const hasKosis = effectiveSources.includes(KOSIS);
   const hasAtfis = effectiveSources.includes(ATFIS);
   const hasDart = effectiveSources.includes(DART);
+  // SEC EDGAR = DART 의 미국 등가. effectiveSources 가 이미 US region 을 강제하므로
+  // (regionOnly:['US']) 여기 포함되면 US 축이 확정된 것 — 별도 region gate 불필요.
+  const hasSecEdgar = effectiveSources.includes(SEC_EDGAR);
   const hasEcos = effectiveSources.includes(ECOS);
   const hasWorldBank = effectiveSources.includes(WORLD_BANK);
   const hasOecd = effectiveSources.includes(OECD);
@@ -98,6 +109,7 @@ export async function runMarket(
       id !== KOSIS &&
       id !== ATFIS &&
       id !== DART &&
+      id !== SEC_EDGAR &&
       id !== ECOS &&
       id !== WORLD_BANK &&
       id !== OECD,
@@ -112,9 +124,12 @@ export async function runMarket(
   // task cap 이 없는 여기서 미리 받아 Supabase 캐시에 실으면, 각 DART task 는
   // 캐시 히트(~0.3s)로 즉시 회사를 특정한다. 실패해도 plan 은 계속 — 판단
   // 로그에 명부 준비 실패를 명시한다.
-  const [parsed, dartCorpCount] = await Promise.all([
+  // SEC EDGAR 명부(company_tickers.json) warm-up 도 DART 와 같은 이유로 병렬 —
+  // companyfacts 는 payload 가 커 crawl task 15s 벽 안엔 timeout 위험이 크다.
+  const [parsed, dartCorpCount, secCorpCount] = await Promise.all([
     parseDeskQuery(keywords, locale),
     hasDart ? warmDartCorps() : Promise.resolve(0),
+    hasSecEdgar ? warmSecCorps() : Promise.resolve(0),
   ]);
   const { statTerms, companies, intent } = parsed;
 
@@ -127,6 +142,19 @@ export async function runMarket(
   // 조회가 task 벽 안에서 실패해서였다). 명부 미준비면 skip — crawl 이 라이브 재시도.
   if (hasDart && companies.length && dartCorpCount > 0) {
     await warmDartFinancials(companies).catch(() => 0);
+  }
+
+  // SEC 재무 warm-up — 회사명을 CIK 로 해석한 뒤(명부 준비 후) companyfacts 를
+  // orchestrator 단계(task cap 밖)에서 미리 받아 캐시에 실는다. resolveSecCik 은
+  // warmSecCorps 가 채운 캐시/메모를 히트하므로 추가 다운로드가 없다. rate limit
+  // (~10/s)은 warmSecFinancials 내부 동시성 제한(secThrottledAll)이 지킨다.
+  if (hasSecEdgar && companies.length && secCorpCount > 0) {
+    const secCorps = (
+      await Promise.all(companies.map((name) => resolveSecCik(name).catch(() => null)))
+    ).filter((c): c is NonNullable<typeof c> => c !== null);
+    if (secCorps.length) {
+      await warmSecFinancials(secCorps).catch(() => 0);
+    }
   }
 
   // KOSIS 검색어 = stat_terms + 결정론 fallback 토큰(첫 명사). stat_terms 가
@@ -190,6 +218,15 @@ export async function runMarket(
               : `🚫 DART 상장사 명부 준비 실패 — 회사별 매출 조회 정확도가 낮아질 수 있습니다.`,
         );
       }
+      if (hasSecEdgar) {
+        events.push(
+          !companies.length
+            ? `🚫 SEC EDGAR = 조회할 미국 상장사가 없어 이번엔 재무 공시 수집을 건너뜁니다 (회사명 없이는 CIK 를 해석할 수 없습니다).`
+            : secCorpCount > 0
+              ? `🧠 SEC EDGAR 상장사 명부 ${secCorpCount.toLocaleString()}건 준비 완료 — 회사명→CIK→companyfacts XBRL 로 매출·영업이익·순이익 3개년(USD)을 직접 조회합니다 (DART 의 미국 등가).`
+              : `🚫 SEC EDGAR 명부 준비 실패 — 미국 회사 재무 조회 정확도가 낮아질 수 있습니다.`,
+        );
+      }
       events.push(
         `📰 소스 선정 = ${sourceList || '(가용 소스 없음)'} — TAM=KOSIS·aTFIS·ECOS+뉴스 시장규모 / SAM=DART / 이론=학술 / 보조=뉴스.`,
         `🚫 제외 = YouTube · 산하 연구소 RSS · 커뮤니티 (트렌드 위주 — 시장 규모 산정 관련성 낮음).`,
@@ -244,6 +281,15 @@ export async function runMarket(
       if (hasDart && companies.length) {
         for (const q of companies) {
           tasks.push({ source: DART, keyword: q, region: 'KR' });
+        }
+      }
+
+      // SEC EDGAR = 미국 상장사 공시. DART 와 동일하게 회사 축을 검색어로 쓰되
+      // region 은 US 고정(regionOnly:['US']). 회사가 없으면 건너뛴다 — 회사명
+      // 없이 SEC 를 조회할 방법이 없다(CIK 해석 불가).
+      if (hasSecEdgar && companies.length) {
+        for (const q of companies) {
+          tasks.push({ source: SEC_EDGAR, keyword: q, region: 'US' });
         }
       }
 

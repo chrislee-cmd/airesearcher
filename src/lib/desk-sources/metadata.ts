@@ -61,6 +61,11 @@ export const DESK_SOURCE_GROUPS: Record<
     labelEn: 'DART (Financial Disclosures)',
     hint: 'DART_API_KEY 필요',
   },
+  sec: {
+    label: 'SEC EDGAR 공시',
+    labelEn: 'SEC EDGAR (US Filings)',
+    hint: '키 없이 동작 (미국 상장사 재무 XBRL)',
+  },
   academic_kr: {
     label: '국내 학술',
     labelEn: 'Korean Academic',

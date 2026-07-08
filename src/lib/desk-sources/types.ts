@@ -22,6 +22,8 @@ export type DeskSourceId =
   | 'reddit'
   // Korea disclosures (DART / FSS)
   | 'dart'
+  // US disclosures (SEC EDGAR — 미국 상장사 재무 XBRL, DART 의 미국 등가)
+  | 'sec_edgar'
   // Korean academic
   | 'kci'
   // Academic (global, keyless)
@@ -46,6 +48,7 @@ export type DeskSourceGroup =
   | 'youtube'
   | 'global'
   | 'dart'
+  | 'sec'
   | 'academic_kr'
   | 'bok'
   | 'kosis'

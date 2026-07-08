@@ -18,6 +18,7 @@ import { gdeltNews } from './gdelt-news';
 import { hackerNews } from './hacker-news';
 import { reddit } from './reddit';
 import { dart } from './dart';
+import { secEdgar } from './sec-edgar';
 import { kci } from './kci';
 import { semanticScholar } from './semantic-scholar';
 import { arxiv } from './arxiv';
@@ -44,6 +45,7 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   hacker_news: hackerNews,
   reddit: reddit,
   dart: dart,
+  sec_edgar: secEdgar,
   kci: kci,
   semantic_scholar: semanticScholar,
   arxiv: arxiv,
