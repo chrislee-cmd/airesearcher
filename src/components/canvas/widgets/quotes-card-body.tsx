@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
+import { ModeCardGroup } from '@/components/ui/mode-button';
 import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
@@ -98,12 +99,21 @@ function writePersistedDismissal(userId: string | null, signature: string) {
 
 // 스토리지 업로드 완료 후 '시작' 대기 중인 파일 메타. /api/transcripts/start
 // 에 그대로 넘긴다.
+// 전사 모드 — 'research'(리서치 인터뷰, 현행) | 'meeting'(회의록). 회의록
+// 결과물(요약+Todo)은 #485 가 이 값을 소비. 이 카드는 값만 전달·저장.
+type TranscriptMode = 'research' | 'meeting';
+// 발화자 수 hint — 1 / 2 / 3("3명 이상"). 3/기본은 서버에서 auto diarize 로
+// 매핑돼 현행 동작을 보존한다.
+type SpeakerCount = 1 | 2 | 3;
+
 type ReadyTranscriptFile = {
   storage_key: string;
   filename: string;
   mime_type?: string;
   size_bytes: number;
   language: string;
+  mode: TranscriptMode;
+  speaker_count: SpeakerCount;
 };
 
 function safeFilename(title: string) {
@@ -152,6 +162,11 @@ export function QuotesCardBody() {
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
+  // 전사 모드 — default 'research'(현행 동작 보존). 회의록 결과물은 #485.
+  const [mode, setMode] = useState<TranscriptMode>('research');
+  // 발화자 수 — default 3("3명 이상") = auto diarize = 현행 동작 보존.
+  // 1·2 선택 시에만 서버가 ElevenLabs num_speakers hint 를 실어 보낸다.
+  const [speakerCount, setSpeakerCount] = useState<SpeakerCount>(3);
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
   // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
   // 때만 본문을 모달 slot 으로 portal. useTranscriptJobs provider 기반이라
@@ -238,6 +253,16 @@ export function QuotesCardBody() {
   useEffect(() => {
     languageRef.current = language;
   }, [language]);
+  // 언어와 같은 이유로 mode/speakerCount 도 ref 미러 — 업로드 완료 후
+  // ReadyTranscriptFile 을 만드는 시점의 최신 선택을 안정적으로 읽는다.
+  const modeRef = useRef<TranscriptMode>(mode);
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+  const speakerCountRef = useRef<SpeakerCount>(speakerCount);
+  useEffect(() => {
+    speakerCountRef.current = speakerCount;
+  }, [speakerCount]);
 
   // Default the selector to the browser locale on mount. SSR-safe — initial
   // value is "multi" so the server and first client render agree.
@@ -389,6 +414,8 @@ export function QuotesCardBody() {
             mime_type: file.type || undefined,
             size_bytes: file.size,
             language: languageRef.current,
+            mode: modeRef.current,
+            speaker_count: speakerCountRef.current,
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'upload_failed';
@@ -429,6 +456,10 @@ export function QuotesCardBody() {
             size_bytes: rf.size_bytes,
             language: rf.language,
             project_id: readActiveProjectId(),
+            mode: rf.mode,
+            // 사용자 선택값(1/2/3)을 그대로 저장. 서버가 1·2 만 ElevenLabs
+            // num_speakers hint 로 매핑하고 3("3명 이상")은 auto 로 둔다.
+            speaker_count: rf.speaker_count,
           }),
         });
         if (!startRes.ok) {
@@ -787,6 +818,35 @@ export function QuotesCardBody() {
   const currentLanguageLabel =
     languageOptions.find((o) => o.value === language)?.label ?? language;
 
+  // 전사 모드 카드 (ModeCardGroup #852 primitive 재사용, single). default
+  // 리서치 = 현행. 회의록은 값만 저장 — 요약+Todo 결과물은 #485.
+  const MODE_OPTIONS: { key: TranscriptMode; icon: string }[] = [
+    { key: 'research', icon: '🎙️' },
+    { key: 'meeting', icon: '📝' },
+  ];
+  const modeTitle: Record<TranscriptMode, string> = {
+    research: tWidgets('transcriptModeResearch'),
+    meeting: tWidgets('transcriptModeMeeting'),
+  };
+  const modeDesc: Record<TranscriptMode, string> = {
+    research: tWidgets('transcriptModeResearchDesc'),
+    meeting: tWidgets('transcriptModeMeetingDesc'),
+  };
+
+  // 발화자 수 드롭다운 (언어 옆). 1/2/3("3명 이상"). ControlTrigger 통일.
+  const speakerOptions: { value: SpeakerCount; label: string }[] = [
+    { value: 1, label: tWidgets('transcriptSpeaker1') },
+    { value: 2, label: tWidgets('transcriptSpeaker2') },
+    { value: 3, label: tWidgets('transcriptSpeaker3') },
+  ];
+  const speakerItems = speakerOptions.map((o) => ({
+    key: String(o.value),
+    label: o.label,
+    onSelect: () => setSpeakerCount(o.value),
+  }));
+  const currentSpeakerLabel =
+    speakerOptions.find((o) => o.value === speakerCount)?.label ?? '';
+
   // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 드롭다운 + 인라인
   // 드래그드롭 dropzone (데스크/프로빙 컨트롤과 통일 — 업로드가 모달 뒤에
   // 숨지 않는다). 드롭/클릭 → startUploads → language-confirm → 업로드+자동
@@ -795,21 +855,55 @@ export function QuotesCardBody() {
     // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
     // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      <Field label="언어">
-        <DropdownMenu
-          items={languageItems}
-          trigger={({ open, onClick, ...aria }) => (
-            <ControlTrigger
-              {...aria}
-              data-open={open}
-              onClick={onClick}
-              aria-label="언어"
-            >
-              {currentLanguageLabel}
-            </ControlTrigger>
-          )}
+      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single. */}
+      <Field label={tWidgets('transcriptModeLabel')}>
+        <ModeCardGroup
+          ariaLabel={tWidgets('transcriptModeLabel')}
+          options={MODE_OPTIONS.map((opt) => ({
+            key: opt.key,
+            icon: opt.icon,
+            label: modeTitle[opt.key],
+            description: modeDesc[opt.key],
+          }))}
+          value={mode}
+          onChange={(key) => setMode(key as TranscriptMode)}
         />
       </Field>
+
+      {/* 언어 + 발화자 수 — 나란히. 발화자 수는 diarization hint 로 배선. */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="언어">
+          <DropdownMenu
+            items={languageItems}
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                aria-label="언어"
+              >
+                {currentLanguageLabel}
+              </ControlTrigger>
+            )}
+          />
+        </Field>
+
+        <Field label={tWidgets('transcriptSpeakerLabel')}>
+          <DropdownMenu
+            items={speakerItems}
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                aria-label={tWidgets('transcriptSpeakerLabel')}
+              >
+                {currentSpeakerLabel}
+              </ControlTrigger>
+            )}
+          />
+        </Field>
+      </div>
 
       {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
           업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
