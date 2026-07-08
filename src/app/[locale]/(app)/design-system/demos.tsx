@@ -9,6 +9,7 @@ import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { ChipInput } from '@/components/ui/chip-input';
 import { IconButton } from '@/components/ui/icon-button';
+import { ModeCardGroup, type ModeOption } from '@/components/ui/mode-button';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -290,6 +291,79 @@ export function SliderDemo() {
         <span className="min-w-[40px] text-right text-md tabular-nums text-mute-soft">
           disabled
         </span>
+      </div>
+    </div>
+  );
+}
+
+export function ModeButtonDemo() {
+  const singleOptions: ModeOption[] = [
+    {
+      key: 'trend',
+      icon: '🔥',
+      label: '트렌드 리서치',
+      description: '지금 뜨는 주제·시그널을 빠르게 훑습니다.',
+    },
+    {
+      key: 'market',
+      icon: '📊',
+      label: '시장조사',
+      description: '규모·경쟁·수요를 구조적으로 정리합니다.',
+    },
+    {
+      key: 'custom',
+      icon: '🧪',
+      label: '커스텀',
+      soon: true,
+      soonLabel: '곧 제공',
+      disabled: true,
+    },
+  ];
+  const multiOptions: ModeOption[] = [
+    { key: 'pain', icon: '😣', label: '페인포인트', description: '불편·불만 지점 탐색.' },
+    { key: 'motiv', icon: '🎯', label: '동기', description: '구매/사용 동기 파악.' },
+    { key: 'habit', icon: '🔁', label: '습관', description: '반복 행동 패턴.' },
+  ];
+  const [mode, setMode] = useState('trend');
+  const [selected, setSelected] = useState<string[]>(['pain', 'habit']);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="mb-2 text-xs uppercase tracking-[0.22em] text-mute-soft">
+          selection=&quot;single&quot; (radiogroup) — 데스크 트렌드/시장조사 + soon/disabled
+        </div>
+        <ModeCardGroup
+          ariaLabel="리서치 목적"
+          columns={3}
+          options={singleOptions}
+          value={mode}
+          onChange={setMode}
+        />
+        <p className="mt-2 text-sm text-mute">
+          선택: <code className="font-mono text-ink-2">{mode}</code>
+        </p>
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs uppercase tracking-[0.22em] text-mute-soft">
+          selection=&quot;multi&quot; (toggle group) — 프로빙 섹션 on/off (#470)
+        </div>
+        <ModeCardGroup
+          selection="multi"
+          ariaLabel="프로빙 섹션"
+          columns={3}
+          options={multiOptions}
+          selected={selected}
+          onToggle={(key) =>
+            setSelected((prev) =>
+              prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+            )
+          }
+        />
+        <p className="mt-2 text-sm text-mute">
+          켜짐: <code className="font-mono text-ink-2">{selected.join(', ') || '없음'}</code>
+        </p>
       </div>
     </div>
   );
