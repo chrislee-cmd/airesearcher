@@ -36,7 +36,7 @@ const MARKET_BUCKET_ORDER: MarketBucket[] = [
 ];
 
 const MARKET_BUCKET_HEADING: Record<MarketBucket, string> = {
-  stats: '📊 산업 통계 (KOSIS · aTFIS 식품산업통계 · ECOS) — TAM 근거',
+  stats: '📊 산업 통계 (KOSIS · aTFIS · ECOS) + 글로벌 매크로 (World Bank · OECD, G7 GDP·산업 대비 기준선) — TAM 근거',
   disclosure: '🏢 상장사 공시 (DART) — SAM 근거',
   academic: '🎓 산업 리포트 · 논문 (Semantic Scholar · KCI) — 이론 근거',
   news: '📰 시장 규모 언급 기사 (구글·네이버 뉴스) — 보조 근거',

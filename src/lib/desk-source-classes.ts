@@ -18,6 +18,21 @@ export const STAT_CATALOG_SOURCES = new Set<DeskSourceId>(['kosis']);
 // 거시 경제통계 소스 — 시장 키워드로는 매칭 0 이라 고정 anchor 로 조회한다.
 export const MACRO_STAT_SOURCES = new Set<DeskSourceId>(['boj_ecos']);
 
+// 글로벌 매크로 소스(World Bank·OECD) — ECOS 와 같은 부류지만 초국가·G7 축이다.
+// 시장 키워드가 아니라 "국가 규모·산업 대분류" 지표 앵커로 조회해 G7 대비 기준선을
+// 만든다. 키 없이 동작하고 region 무관(항상 글로벌 비교 컨텍스트로 얹는다).
+export const GLOBAL_MACRO_SOURCES = new Set<DeskSourceId>(['world_bank', 'oecd']);
+
+// 매크로 지표 앵커 — 유저 messy 입력을 국가별 지표 코드로 컴파일하는 결정론 축.
+// 소스 모듈이 이 앵커를 MACRO_INDICATORS 로 해석한다(수치 생성 X, 코드 선택만).
+// GDP=국가 규모, industry/manufacturing=산업 대분류, population=규모 정규화 분모.
+// LLM 없이 고정 앵커로 두는 이유: 매크로는 시장별로 달라지지 않는 국가 기준선이라
+// ECOS(MACRO_ANCHORS)와 동일하게 결정론이 recall·단순성·정책(추정 X)에 유리하다.
+export const GLOBAL_MACRO_ANCHORS = ['gdp', 'industry', 'population'];
+// OECD Economic Outlook 은 GDP 계열만 커버 — GDP 앵커만 던진다(나머지는 소스가
+// no-op skip 하지만 불필요한 task 를 줄인다). World Bank 는 전 앵커를 받는다.
+export const OECD_ANCHORS = ['gdp'];
+
 // 전자공시 소스 — 회사명(companies)으로만 crawl 한다.
 export const COMPANY_SOURCES = new Set<DeskSourceId>(['dart']);
 

@@ -24,6 +24,8 @@ import { arxiv } from './arxiv';
 import { bojEcos } from './boj-ecos';
 import { kosis } from './kosis';
 import { atfis } from './atfis';
+import { worldBank } from './worldbank';
+import { oecd } from './oecd';
 import { institutesRss } from './institutes-rss';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
@@ -48,6 +50,8 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   boj_ecos: bojEcos,
   kosis: kosis,
   atfis: atfis,
+  world_bank: worldBank,
+  oecd: oecd,
   institutes_kr: institutesRss,
 };
 

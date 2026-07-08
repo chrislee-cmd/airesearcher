@@ -34,6 +34,9 @@ export type DeskSourceId =
   | 'kosis'
   // aTFIS 식품산업통계 — 가공식품 세분시장 시장규모 (소비재 TAM)
   | 'atfis'
+  // Global macro baseline (초국가·키X) — G7 GDP·산업 대비 기준선
+  | 'world_bank'
+  | 'oecd'
   // Korean research institutes (RSS aggregate)
   | 'institutes_kr';
 
@@ -47,6 +50,7 @@ export type DeskSourceGroup =
   | 'bok'
   | 'kosis'
   | 'atfis'
+  | 'global_macro'
   | 'institute_kr';
 
 // UI-facing category, one level coarser than `group`. Introduced to prepare the

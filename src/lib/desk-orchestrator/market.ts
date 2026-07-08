@@ -21,6 +21,8 @@ import { warmDartFinancials } from '@/lib/desk-sources/dart-financials';
 import { parseDeskQuery } from '@/lib/desk-query-parse';
 import {
   MACRO_ANCHORS,
+  GLOBAL_MACRO_ANCHORS,
+  OECD_ANCHORS,
   firstNounToken,
 } from '@/lib/desk-source-classes';
 import {
@@ -48,6 +50,8 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
   'kosis',
   'atfis',
   'boj_ecos',
+  'world_bank',
+  'oecd',
   'dart',
   'semantic_scholar',
   'kci',
@@ -59,6 +63,8 @@ const KOSIS: DeskSourceId = 'kosis';
 const ATFIS: DeskSourceId = 'atfis';
 const DART: DeskSourceId = 'dart';
 const ECOS: DeskSourceId = 'boj_ecos';
+const WORLD_BANK: DeskSourceId = 'world_bank';
+const OECD: DeskSourceId = 'oecd';
 
 export async function runMarket(
   input: OrchestratorInput,
@@ -81,11 +87,20 @@ export async function runMarket(
   const hasAtfis = effectiveSources.includes(ATFIS);
   const hasDart = effectiveSources.includes(DART);
   const hasEcos = effectiveSources.includes(ECOS);
+  const hasWorldBank = effectiveSources.includes(WORLD_BANK);
+  const hasOecd = effectiveSources.includes(OECD);
   // 뉴스형 phrase 로 검색하는 소스(학술·뉴스)만 (원+phrase) 키워드로 crawl.
-  // KOSIS·aTFIS(통계 명사) · DART(회사명) · ECOS(거시 anchor)는 아래에서 전용
-  // 검색어로 따로 건다 — 소스 클래스별 검색어 분리가 이 mode 재작성의 핵심.
+  // KOSIS·aTFIS(통계 명사) · DART(회사명) · ECOS(거시 anchor) · World Bank/OECD
+  // (글로벌 매크로 지표 앵커)는 아래에서 전용 검색어로 따로 건다 — 소스 클래스별
+  // 검색어 분리가 이 mode 재작성의 핵심.
   const feedSources = effectiveSources.filter(
-    (id) => id !== KOSIS && id !== ATFIS && id !== DART && id !== ECOS,
+    (id) =>
+      id !== KOSIS &&
+      id !== ATFIS &&
+      id !== DART &&
+      id !== ECOS &&
+      id !== WORLD_BANK &&
+      id !== OECD,
   );
 
   // 자연어 → 소스별 검색어 컴파일(한 번의 LLM 호출) + DART 상장사 명부 warm-up
@@ -144,6 +159,14 @@ export async function runMarket(
       if (hasAtfis) {
         events.push(
           `🧠 aTFIS 식품산업통계 = 가공식품 세분시장 시장보고서(라면·음료·커피 등)를 세분시장 명칭으로 매칭해 소비재 TAM 근거로 씁니다 — KOSIS 정형 통계에 없는 식품 시장 규모의 1차 출처입니다.`,
+        );
+      }
+      if (hasWorldBank || hasOecd) {
+        const macroSrc = [hasWorldBank ? 'World Bank' : null, hasOecd ? 'OECD' : null]
+          .filter(Boolean)
+          .join(' · ');
+        events.push(
+          `🌐 글로벌 매크로 대비 기준선 = ${macroSrc} — G7(미국·일본·독일·영국·프랑스·이탈리아·캐나다)의 GDP·산업 부가가치·인구를 명목 USD·동일 연도 기준으로 정규화해 국내 시장을 글로벌 규모와 대비합니다. 개별 시장(TAM) 수치가 아니라 국가 규모 컨텍스트이며, 모든 값은 소스 제공값 그대로(환산·정렬만 코드, 추정 없음)입니다.`,
         );
       }
       // 뉴스·학술 확장 축 = route 가 넘긴 similar (parsed.phrases, 파싱 실패 시
@@ -229,6 +252,21 @@ export async function runMarket(
       if (hasEcos) {
         for (const anchor of MACRO_ANCHORS) {
           tasks.push({ source: ECOS, keyword: anchor, region: 'KR' });
+        }
+      }
+
+      // World Bank/OECD = 초국가 글로벌 매크로. 시장 키워드가 아니라 국가 규모·
+      // 산업 대분류 지표 앵커(gdp/industry/population)로 G7 전체를 한 번에 받아
+      // "대비 기준선"을 만든다. region 무관(소스가 자체적으로 G7 을 조회)이라 대표
+      // region 으로 고정 — 한 앵커당 1 task(멀티국가 응답)라 task cap 안전.
+      if (hasWorldBank) {
+        for (const anchor of GLOBAL_MACRO_ANCHORS) {
+          tasks.push({ source: WORLD_BANK, keyword: anchor, region: primaryRegion });
+        }
+      }
+      if (hasOecd) {
+        for (const anchor of OECD_ANCHORS) {
+          tasks.push({ source: OECD, keyword: anchor, region: primaryRegion });
         }
       }
       return tasks;
