@@ -35,6 +35,8 @@ import {
   type DeskMode,
   type OrchestratorPlan,
 } from '@/lib/desk-orchestrator';
+import { buildComparisonCharts } from '@/lib/global-macro/comparison';
+import type { DeskAnalytics } from '@/components/desk-job-provider';
 
 export const maxDuration = 300;
 
@@ -989,7 +991,7 @@ async function runJob(args: {
     // 가 방금 같은 분 안에서 큰 입력을 태웠으니, 차트는 별도 provider
     // (OpenAI gpt-4o-mini) 로 돌려 Anthropic 윈도우를 안 건드립니다. 보고서
     // 본문은 12k자로 잘라 입력으로 넣고, 출력 토큰도 4k 로 제한합니다.
-    let analytics: { charts: { type: 'bar' | 'pie'; title: string; insight: string; unit: 'percent' | 'count'; data: { label: string; value: number }[] }[] } | null = null;
+    let analytics: DeskAnalytics | null = null;
     const analyticsModel = getAnalyticsModel();
     if (timeLeft() < SKIP_ANALYTICS_BELOW_MS) {
       // Report is already written + about to be saved — don't risk the function
@@ -1033,6 +1035,18 @@ async function runJob(args: {
         await pushAndPatch('정량 분석 차트는 못 만들었어요 — 보고서만 띄울게요.', 'summarizing');
       }
       endPhase('analytics');
+    }
+
+    // ── P3 "국내 vs G7 대비" 차트 (코드 정규화, LLM 무관) ────────────────────
+    //
+    // World Bank/OECD 가 실어 보낸 구조화 매크로 관측치로 국내 vs G7 대비 bar 를
+    // 코드로 만들어 LLM 차트 앞에 얹는다. 매크로 소스가 없는 도메인/지역이면 빈
+    // 배열 → 대비 차트 없이 기존 분석만(graceful, 회귀 없음). LLM analytics 실패로
+    // analytics 가 null 이어도 대비 차트는 독립적으로 붙는다(deadline skip 무관 —
+    // 순수 CPU 라 남은 예산과 상관없이 안전).
+    const comparisonCharts = buildComparisonCharts(articles);
+    if (comparisonCharts.length) {
+      analytics = { charts: [...comparisonCharts, ...(analytics?.charts ?? [])] };
     }
 
     const { data: gen } = await admin

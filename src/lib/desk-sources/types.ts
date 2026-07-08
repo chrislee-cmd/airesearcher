@@ -3,6 +3,8 @@
 // pulling in the whole registry (avoids a runtime import cycle: source modules
 // depend only on types/helpers, registry depends on source modules).
 
+import type { MacroObservation } from '@/lib/global-macro/normalize';
+
 export type DeskSourceId =
   // Naver Search API
   | 'naver_news'
@@ -100,6 +102,10 @@ export type DeskArticle = {
   // market-mode 샘플링(route.ts splitPinnedPrimary)이 이 근거를 임베딩 클러스터링
   // dropout 에서 보호(pin)하는 데 쓴다. 뉴스/일반 소스는 미설정(undefined).
   kind?: 'metric';
+  // 구조화된 매크로 관측치 — World Bank/OECD 만 채운다(국가×지표×USD 원값). P3
+  // "국내 vs G7 대비" 차트가 문자열 파싱 없이 이 값으로 코드 정규화(정렬·USD 표기)
+  // 한다. 옵셔널 — 매크로 외 소스·이전 저장 row 는 미설정(undefined).
+  macro?: MacroObservation;
 };
 
 // Why a source produced 0 usable articles when the cause is an API-side error

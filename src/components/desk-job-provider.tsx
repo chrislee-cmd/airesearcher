@@ -110,7 +110,12 @@ export type DeskChart = {
   title: string;
   insight: string;
   unit: 'percent' | 'count';
-  data: { label: string; value: number }[];
+  // 한 막대를 강조할 라벨 — data[].label 과 매칭되면 액센트 색으로 렌더한다.
+  // P3 "국내 vs G7 대비" 차트가 한국 막대를 G7 사이에서 부각하는 데 쓴다. 옵셔널.
+  highlight?: string;
+  // display = 코드가 미리 포맷한 값 라벨(예: "$1.9T"). 있으면 패널이 unit 기반
+  // 자동 라벨 대신 이걸 그대로 쓴다 — USD 원값(수조 단위)을 사람이 읽게. 옵셔널.
+  data: { label: string; value: number; display?: string }[];
 };
 
 export type DeskAnalytics = {

@@ -1,8 +1,8 @@
 import type { DeskArticle, DeskSourceDefinition } from './types';
 import { classifyHttpStatus, safeFetch } from './helpers';
 import {
-  G7,
-  G7_ISO3,
+  COMPARISON_COUNTRIES,
+  COMPARISON_ISO3,
   MACRO_INDICATORS,
   formatCount,
   formatUsd,
@@ -61,7 +61,7 @@ export const worldBank: DeskSourceDefinition = {
     // country/USA;JPN;… /indicator/{code} — 세미콜론 멀티국가. mrv=1 = 국가별
     // 최신 1개 관측(mrnev 는 멀티국가와 결합 시 Request Error 라 mrv 사용).
     const url =
-      `${BASE}/country/${G7_ISO3.join(';')}/indicator/${ind.wbCode}` +
+      `${BASE}/country/${COMPARISON_ISO3.join(';')}/indicator/${ind.wbCode}` +
       `?format=json&mrv=1&per_page=300`;
     let res: Response;
     try {
@@ -96,9 +96,9 @@ export const worldBank: DeskSourceDefinition = {
     for (const r of rows) {
       const n = typeof r.value === 'number' ? r.value : null;
       if (n == null) continue; // 소스가 값을 안 준 국가·연도는 건너뜀(추정 X).
-      // countryiso3code 우선, 없으면 country.id(alpha-2)로 G7 정규화.
+      // countryiso3code 우선, 없으면 country.id(alpha-2)로 한국+G7 정규화.
       const c = normalizeCountry(r.countryiso3code) ?? normalizeCountry(r.country?.id);
-      if (!c) continue; // G7 외(집계 지역 등) 제외.
+      if (!c) continue; // 한국·G7 외(집계 지역 등) 제외.
       const year = Number(r.date);
       if (!Number.isFinite(year)) continue;
       const display = ind.usd ? formatUsd(n) : `${formatCount(n)}명`;
@@ -113,10 +113,23 @@ export const worldBank: DeskSourceDefinition = {
         keyword,
         // 매크로 명시 수치 — market 샘플링이 뉴스 사이에서 dropout 시키지 않게 pin.
         kind: 'metric',
+        // 구조화 관측치 — P3 대비 차트가 문자열 파싱 없이 이 원값으로 정규화한다.
+        macro: {
+          iso3: c.iso3,
+          countryKo: c.ko,
+          countryEn: c.en,
+          indicator: ind.key,
+          labelKo: ind.ko,
+          labelEn: ind.en,
+          value: n,
+          year,
+          usd: ind.usd,
+          source: 'world_bank',
+        },
       });
     }
     console.info(
-      `[desk-debug] world_bank — ind=${ind.key} rows=${rows.length} kept=${out.length}/${G7.length}`,
+      `[desk-debug] world_bank — ind=${ind.key} rows=${rows.length} kept=${out.length}/${COMPARISON_COUNTRIES.length}`,
     );
     return out;
   },

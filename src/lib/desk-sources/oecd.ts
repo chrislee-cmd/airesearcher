@@ -1,7 +1,7 @@
 import type { DeskArticle, DeskSourceDefinition } from './types';
 import { classifyHttpStatus, safeFetch } from './helpers';
 import {
-  G7_ISO3,
+  COMPARISON_ISO3,
   MACRO_INDICATORS,
   formatUsd,
   normalizeCountry,
@@ -25,8 +25,9 @@ import {
 // (World Bank 가 그 지표를 커버하므로 에러가 아니라 의도된 no-op).
 
 const BASE = 'https://sdmx.oecd.org/public/rest/data/OECD.ECO.MAD,DSD_EO@DF_EO,1.2';
-// OECD EO REF_AREA 키 = G7 alpha-3 를 '+' 로 결합 (SSOT = normalize.ts 의 G7).
-const G7_KEY = G7_ISO3.join('+');
+// OECD EO REF_AREA 키 = 한국+G7 alpha-3 를 '+' 로 결합 (SSOT = normalize.ts).
+// 한국(KOR)도 OECD 회원이라 EO 에 포함 — 대비 기준축으로 함께 받는다.
+const G7_KEY = COMPARISON_ISO3.join('+');
 const FETCH_TIMEOUT_MS = 12_000;
 
 // SDMX-JSON 최소 shape — 우리가 읽는 필드만 타입화(스키마가 커서 나머지는 무시).
@@ -138,6 +139,19 @@ export const oecd: DeskSourceDefinition = {
         publishedAt: `${best.year}-12-31`,
         keyword,
         kind: 'metric',
+        // 구조화 관측치 — P3 대비 차트가 원값으로 코드 정규화한다(World Bank 와 동형).
+        macro: {
+          iso3: c.iso3,
+          countryKo: c.ko,
+          countryEn: c.en,
+          indicator: ind.key,
+          labelKo: ind.ko,
+          labelEn: ind.en,
+          value: best.value,
+          year: best.year,
+          usd: ind.usd,
+          source: 'oecd',
+        },
       });
     }
     console.info(
