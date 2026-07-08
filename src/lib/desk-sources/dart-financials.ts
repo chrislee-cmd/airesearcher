@@ -21,8 +21,10 @@ import { z } from 'zod';
 import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
+import { getCache, setCache } from '@/lib/cache';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { cleanApiKey, safeFetch } from './helpers';
+import { resolveDartCorp } from './dart-corp';
 
 // ── 핵심 지표 세트 (approach a — 시작 범위 6개. 확장은 METRIC_MAP 에 추가만) ──
 export type MetricKey =
@@ -239,7 +241,8 @@ function matchMetric(
 
 // ── (연도 × 보고서종류 × fs_div) 한 번의 fnlttSinglAcntAll 왕복 ─────────────────
 // fnlttSinglAcntAll 은 fs_div(OFS 별도 / CFS 연결)가 **필수 파라미터**라(fnlttSinglAcnt
-// 와 다름) 연결/별도를 각각 요청해야 한다. 재무 JSON 은 소형(~수백 줄)이라 5s 상한.
+// 와 다름) 연결/별도를 각각 요청해야 한다. timeoutMs 는 호출부가 예산에 맞춰 준다
+// (crawl task=5s, warm-up=넉넉).
 type StatementOutcome =
   | { kind: 'ok'; rows: FnlttAllRow[] }
   | { kind: DartFinancialsFailReason };
@@ -250,6 +253,7 @@ async function fetchStatements(
   year: number,
   reprtCode: ReprtCode,
   fsDiv: 'CFS' | 'OFS',
+  timeoutMs: number,
 ): Promise<StatementOutcome> {
   try {
     const params = new URLSearchParams({
@@ -262,7 +266,7 @@ async function fetchStatements(
     const res = await safeFetch(
       `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?${params}`,
       undefined,
-      5_000,
+      timeoutMs,
     );
     if (!res.ok) return { kind: 'api_error' };
     const json = (await res.json()) as { status?: string; list?: FnlttAllRow[] };
@@ -305,17 +309,51 @@ function buildLadder(nowYear: number): Array<{ year: number; reprtCode: ReprtCod
 // crawl task 15s cap 보호 — 콜 카운트가 아니라 wall-clock 예산으로 묶는다. 흔한
 // 케이스(작년 연간 CFS 200 OK)는 1콜로 끝나고, 최악(연속 timeout)도 예산 안에서
 // 멈춰 task 를 통째로 자르지 않는다. LLM fallback 은 남는 예산이 넉넉할 때만.
+// orchestrator warm-up 은 task cap 밖이라 넉넉한 예산을 opts 로 주입한다(아래).
 const FIN_BUDGET_MS = 14_000;
 const PER_CALL_MS = 5_000;
 const LLM_MIN_BUDGET_MS = 9_000;
 
+// fnlttSinglAcntAll 은 payload 가 크다(~106KB, fnlttSinglAcnt 의 6.5배). iad1→FSS
+// 원거리에서 crawl task 15s 벽 안에 매번 새로 받으면 timeout 위험이 크다(옛 코드
+// 주석의 "iad1→FSS 5s 타임아웃"과 동일 위험, payload 가 더 커 악화). 그래서 성공
+// 결과를 Supabase 캐시에 실어, orchestrator warm-up(task cap 밖) 이 미리 채우면 각
+// DART task 는 캐시 히트로 즉시 값을 확보한다(corpCode.xml warm-up #759 패턴 계승).
+// 월 버킷 — 분기 보고서가 새로 공시되면 한 달 내 자동 갱신(≤30일 staleness 허용).
+const FIN_CACHE_VERSION = 'v1';
+function finCacheKey(corpCode: string): string {
+  const now = new Date();
+  const bucket = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return `dart:fin:${FIN_CACHE_VERSION}:${corpCode}:${bucket}`;
+}
+
+// crawl task(기본) vs orchestrator warm-up(넉넉) 예산 분리. warm-up 은 15s cap 밖이라
+// iad1 지연을 견디는 긴 per-call/budget 을 준다 — 무거운 호출을 여기서 지불한다.
+type FinFetchOpts = { perCallMs?: number; budgetMs?: number };
+
 export async function fetchDartFinancials(
   corpCode: string,
   key: string,
+  opts: FinFetchOpts = {},
 ): Promise<DartFinancialsResult> {
+  const perCallMs = opts.perCallMs ?? PER_CALL_MS;
+  const budgetMs = opts.budgetMs ?? FIN_BUDGET_MS;
+
+  // 캐시 히트 = 원거리 왕복·timeout 위험 0. 성공 결과만 캐시하므로(아래) 실패를
+  // 재활용하지 않는다.
+  const cacheKey = finCacheKey(corpCode);
+  try {
+    const cached = await getCache<DartFinancials>(cacheKey);
+    if (cached && Array.isArray(cached.metrics) && cached.metrics.length) {
+      return { ok: true, financials: cached };
+    }
+  } catch {
+    // 캐시 조회 실패는 무시하고 라이브 조회로 진행.
+  }
+
   const nowYear = new Date().getFullYear();
   const ladder = buildLadder(nowYear);
-  const deadline = Date.now() + FIN_BUDGET_MS;
+  const deadline = Date.now() + budgetMs;
   let sawTimeout = false;
   let sawApiError = false;
 
@@ -326,8 +364,15 @@ export async function fetchDartFinancials(
 
   outer: for (const step of ladder) {
     for (const fsDiv of ['CFS', 'OFS'] as const) {
-      if (Date.now() + PER_CALL_MS > deadline) break outer; // 예산 보호
-      const outcome = await fetchStatements(corpCode, key, step.year, step.reprtCode, fsDiv);
+      if (Date.now() + perCallMs > deadline) break outer; // 예산 보호
+      const outcome = await fetchStatements(
+        corpCode,
+        key,
+        step.year,
+        step.reprtCode,
+        fsDiv,
+        perCallMs,
+      );
       if (outcome.kind === 'ok' && hasProfitLoss(outcome.rows)) {
         locked = { rows: outcome.rows, year: step.year, reprtCode: step.reprtCode, fsDiv };
         break outer;
@@ -393,18 +438,65 @@ export async function fetchDartFinancials(
 
   if (!metrics.length) return { ok: false, reason: 'no_report' };
 
-  return {
-    ok: true,
-    financials: {
-      corpCode,
-      year: locked.year,
-      reprtCode: locked.reprtCode,
-      period: `${locked.year} ${REPRT_PERIOD_KO[locked.reprtCode]}`,
-      fsDiv: locked.fsDiv,
-      rceptNo,
-      metrics,
-    },
+  const financials: DartFinancials = {
+    corpCode,
+    year: locked.year,
+    reprtCode: locked.reprtCode,
+    period: `${locked.year} ${REPRT_PERIOD_KO[locked.reprtCode]}`,
+    fsDiv: locked.fsDiv,
+    rceptNo,
+    metrics,
   };
+
+  // 성공 결과만 캐시(실패는 재활용 안 함). await 로 영속을 보장해 warm-up 이 채운
+  // 값을 뒤이은 crawl task 가 확실히 히트하게 한다 — Supabase 왕복 1회는 예산 내.
+  try {
+    await setCache(cacheKey, financials);
+  } catch (err) {
+    console.error('[dart-fin] cache persist failed', err);
+  }
+
+  return { ok: true, financials };
+}
+
+// ── orchestrator warm-up — 회사 축 확정 후 재무제표를 미리 받아 캐시 채우기 ──────
+// market orchestrator(runMarket)가 crawl 시작 전에 호출한다. 무거운 fnlttSinglAcntAll
+// 호출(iad1→FSS)을 crawl task 15s 벽 밖에서 넉넉한 timeout 으로 끝내 캐시에 실으면,
+// 각 DART crawl task 는 캐시 히트로 즉시 값을 확보한다 — 매출 headline 이 안정적으로
+// 생성되어 pin(#451) 대상이 되고 리포트에 남는다 (corpCode.xml warm-up #759 패턴 계승).
+// 명부(roster)가 준비된 뒤 호출해야 resolveDartCorp 가 캐시로 회사를 특정한다.
+// 실패는 조용히 skip — plan 은 계속되고 crawl task 가 라이브로 재시도한다.
+// per-call 은 iad1→FSS 106KB 전송을 견디게 넉넉히, budget 은 crawl 시작 지연을
+// 과하게 늘리지 않게 상한. 회사들은 병렬이라 총 warm-up wall-clock ≈ 가장 느린
+// 회사(≤budget). 흔한 케이스(작년 연간 CFS 첫 콜 히트)는 회사당 ~1콜.
+const WARM_PER_CALL_MS = 9_000;
+const WARM_BUDGET_MS = 18_000;
+
+export async function warmDartFinancials(
+  companies: string[],
+  key: string = cleanApiKey(env.DART_API_KEY),
+): Promise<number> {
+  if (!key || !companies.length) return 0;
+  const results = await Promise.all(
+    companies.map(async (name) => {
+      try {
+        const corp = await resolveDartCorp(name, key);
+        if (!corp) return false;
+        const r = await fetchDartFinancials(corp.corpCode, key, {
+          perCallMs: WARM_PER_CALL_MS,
+          budgetMs: WARM_BUDGET_MS,
+        });
+        return r.ok;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  const warmed = results.filter(Boolean).length;
+  console.info(
+    `[desk-debug] dart-fin warm — companies=${companies.length} warmed=${warmed}`,
+  );
+  return warmed;
 }
 
 // ── tier-3 LLM 줄-선택 fallback ───────────────────────────────────────────────
