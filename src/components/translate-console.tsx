@@ -4086,9 +4086,10 @@ export function TranslateConsole({
       }
     >
       {idlePhase ? (
-        // 컨트롤보드 = ControlBoardPanel SSOT. 필드(controlFields)만 클러스터에
-        // 꽂고, 배너/온보딩은 banners 슬롯(클러스터 위 고정)으로 분리 — 필드
-        // 사이 끼임 제거(편차 #6). gap = 'field'(gap-4, 이전 gap-5 정규화).
+        // 컨트롤보드 = ControlBoardPanel SSOT. 드롭다운(controlFields)이 진짜
+        // 최상단이 되도록 — 에코 온보딩 가이드는 클러스터 하단으로 내린다
+        // (dropdown-first, 사용자 요청 2026-07-08). banners 슬롯엔 진짜 경고
+        // (tts 차단·에러)만 상단 고정. gap = 'field'(gap-4).
         <ControlBoardPanel
           unpadParent
           gap="field"
@@ -4096,23 +4097,24 @@ export function TranslateConsole({
             <>
               {ttsBlockedBanner}
               {errorBanner}
-              {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
-                  비침습(Start 안 막음), "다시 안 보기" localStorage 저장. 공유
-                  링크는 세션 시작 후 생성되므로 idle 에선 복사 버튼이 안내용 대기. */}
-              <EchoOnboarding
-                audible={outputAudible}
-                onToggleAudible={() => setOutputAudible((v) => !v)}
-                shareUrl={shareUrl}
-                onCopyShareUrl={() => void copyShareUrl()}
-                copied={shareCopied}
-                listenerCount={listeners.length}
-              />
             </>
           }
         >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
               이동 — 6 위젯 주 CTA 통일. */}
           {controlFields}
+          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
+              드롭다운 아래 배치(dropdown-first). 비침습(Start 안 막음), "다시
+              안 보기" localStorage 저장. 공유 링크는 세션 시작 후 생성되므로
+              idle 에선 복사 버튼이 안내용 대기. */}
+          <EchoOnboarding
+            audible={outputAudible}
+            onToggleAudible={() => setOutputAudible((v) => !v)}
+            shareUrl={shareUrl}
+            onCopyShareUrl={() => void copyShareUrl()}
+            copied={shareCopied}
+            listenerCount={listeners.length}
+          />
         </ControlBoardPanel>
       ) : (
         <>
