@@ -44,6 +44,7 @@ import {
   buildLinearPhases,
 } from '@/components/ui/process-timeline';
 import { Button } from '@/components/ui/button';
+import { ModeCardGroup } from '@/components/ui/mode-button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
@@ -663,56 +664,25 @@ export function DeskCardBody() {
   // 리서치 목적 2 mode 카드 — 라디오 2개 모두 enabled + 실행 가능. `soon`
   // 배지는 아직 미구현 mode 를 위한 자리로 남겨 두되, 현재 2 mode 는 모두
   // 라이브라 아무도 켜지 않는다. (custom mode 는 제거됨.)
+  // 카드 UI 는 ModeCardGroup primitive (ui/mode-button.tsx) — 시각 무변경.
   const MODE_OPTIONS: { key: DeskMode; icon: string; soon?: boolean }[] = [
     { key: 'trend', icon: '🔥' },
     { key: 'market', icon: '📊' },
   ];
   const modeSelector = (
-    <div role="radiogroup" aria-label={tDesk('modeLabel')} className="grid grid-cols-2 gap-2">
-      {MODE_OPTIONS.map((opt) => {
-        const isSelected = mode === opt.key;
-        return (
-          /* eslint-disable-next-line react/forbid-elements -- mode radio
-             card: bespoke icon+title+desc toggle surface, Button primitive
-             variant 로 표현 불가. */
-          <button
-            key={opt.key}
-            type="button"
-            role="radio"
-            aria-checked={isSelected}
-            onClick={() => setMode(opt.key)}
-            title={tDesk(`modeDesc.${opt.key}` as never)}
-            className={
-              'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 text-center transition-colors ' +
-              (isSelected
-                ? 'border-amore bg-amore-bg'
-                : 'border-line-soft bg-paper hover:bg-paper-soft')
-            }
-          >
-            {isSelected && (
-              <span aria-hidden className="absolute right-2 top-2 text-amore">
-                ✓
-              </span>
-            )}
-            <span aria-hidden className="text-xl leading-none">
-              {opt.icon}
-            </span>
-            <span className="text-sm font-semibold text-ink">
-              {tDesk(`modeTitle.${opt.key}` as never)}
-            </span>
-            {opt.soon ? (
-              <span className="rounded-pill border border-line bg-white px-2 py-0.5 text-xs text-mute">
-                {tDesk('modeSoonBadge')}
-              </span>
-            ) : (
-              <span className="line-clamp-2 text-xs leading-[1.5] text-mute">
-                {tDesk(`modeDesc.${opt.key}` as never)}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+    <ModeCardGroup
+      ariaLabel={tDesk('modeLabel')}
+      options={MODE_OPTIONS.map((opt) => ({
+        key: opt.key,
+        icon: opt.icon,
+        label: tDesk(`modeTitle.${opt.key}` as never),
+        description: tDesk(`modeDesc.${opt.key}` as never),
+        soon: opt.soon,
+        soonLabel: tDesk('modeSoonBadge'),
+      }))}
+      value={mode}
+      onChange={(key) => setMode(key as DeskMode)}
+    />
   );
 
   const controlsForm = (

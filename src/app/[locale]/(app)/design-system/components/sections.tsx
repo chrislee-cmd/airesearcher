@@ -28,6 +28,7 @@ import {
   DropdownMenuDemo,
   SliderDemo,
   ChipInputDemo,
+  ModeButtonDemo,
 } from '../demos';
 
 export type SectionId =
@@ -46,6 +47,7 @@ export type SectionId =
   | 'select'
   | 'checkbox'
   | 'slider'
+  | 'mode-button'
   | 'modal'
   | 'widget-fullview-modal'
   | 'file-drop-zone'
@@ -90,6 +92,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'select', label: 'Select', render: () => <SelectSection /> },
       { id: 'checkbox', label: 'Checkbox', render: () => <CheckboxSection /> },
       { id: 'slider', label: 'Slider', render: () => <SliderSection /> },
+      { id: 'mode-button', label: 'ModeButton', render: () => <ModeButtonSection /> },
     ],
   },
   {
@@ -1031,6 +1034,19 @@ function SliderSection() {
     >
       <Subsection label="Interactive (sync to label)">
         <SliderDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function ModeButtonSection() {
+  return (
+    <PrimitivePage
+      title="ModeButton"
+      hint="src/components/ui/mode-button.tsx · 선택 가능한 카드 버튼 그룹 (ModeCardGroup) · selection=single(radiogroup, value/onChange) | multi(toggle, selected[]/onToggle) · icon / description / soon 배지 / disabled · 소비처: 데스크 리서치 목적(single) · 프로빙 섹션 구성기 #470(multi)"
+    >
+      <Subsection label="Interactive (single radiogroup + multi toggle)">
+        <ModeButtonDemo />
       </Subsection>
     </PrimitivePage>
   );
