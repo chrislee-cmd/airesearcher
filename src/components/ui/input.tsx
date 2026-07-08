@@ -1,6 +1,14 @@
 'use client';
 
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { Label } from './label';
 
 // Shared <Input> primitive — codifies the recurring native <input>
@@ -42,13 +50,30 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
   const autoId = useId();
   const inputId = id ?? autoId;
 
+  // Wave3 주의 환기 — 에러가 없다가 생기는 순간(false→true)에만 shake 1회.
+  // .shake 는 globals.css 에서 reduced-motion 을 독립 존중(무애니메이션). 색은
+  // border-warning transition(transition-colors)으로 error 톤이 부드럽게 전환.
+  const hasError = Boolean(error);
+  const prevError = useRef(hasError);
+  const [shaking, setShaking] = useState(false);
+  useEffect(() => {
+    if (hasError && !prevError.current) {
+      setShaking(true);
+      const t = window.setTimeout(() => setShaking(false), 300);
+      prevError.current = hasError;
+      return () => window.clearTimeout(t);
+    }
+    prevError.current = hasError;
+  }, [hasError]);
+
   const inputCls = [
-    'border bg-paper text-ink placeholder:text-mute-soft',
+    'border bg-paper text-ink placeholder:text-mute-soft transition-colors',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
     'rounded-sm',
     fullWidth ? 'w-full' : '',
     error ? 'border-warning focus:border-warning' : 'border-line focus:border-ink',
+    shaking ? 'shake' : '',
     SIZE[size],
     leftSlot ? 'pl-8' : '',
     rightSlot ? 'pr-8' : '',
