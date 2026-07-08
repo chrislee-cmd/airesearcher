@@ -97,6 +97,7 @@ export type SearchArtifact = TableArtifact | QuoteListArtifact | ChartArtifact;
  * 안정 anchor (drag-to-ask DOM 계약 — data-block-id).
  */
 export type ToplineBlockType =
+  | 'executive_summary'
   | 'heading'
   | 'subheading'
   | 'paragraph'
@@ -135,6 +136,10 @@ export type ToplineBlock = {
   // 발췌. Q 라벨에 문맥으로 표시된다.
   selected_excerpt?: string;
   table?: { headers: string[]; rows: string[][] };
+  // executive_summary 블록 전용 — 리치 요약 문단 + 핵심 포인트 3~5. 카드
+  // abstract 와 fullview 리드가 공용 소비(pr-interview-topline-executive-summary-field).
+  summary?: string;
+  key_points?: string[];
   // chart/pie 블록 전용 — 제목/종류/데이터/해설.
   title?: string;
   chartKind?: 'bar' | 'line';

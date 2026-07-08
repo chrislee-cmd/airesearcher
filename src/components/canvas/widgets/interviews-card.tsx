@@ -447,12 +447,38 @@ function ActiveBody({
     projectBody = (
       <div className="space-y-4">
         <div className="space-y-2">
+          {/* "핵심 요약" 라벨 칩 — reduce 전용 executive_summary 블록에서 온
+              요약일 때만 노출(신버전 보고서). 구버전 파생 fallback 은 미노출 →
+              신·구 시각 구분. */}
+          {abstract.source === 'executive_summary' && (
+            <span className="inline-flex items-center gap-1 rounded-sm bg-amore-bg px-2 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
+              {t('toplineExecSummaryLabel')}
+            </span>
+          )}
           <h3 className="line-clamp-2 text-md font-semibold leading-snug text-ink">
             {abstract.title}
           </h3>
           <p className="line-clamp-5 whitespace-pre-wrap text-md leading-[1.7] text-ink-2">
             {abstract.summary}
           </p>
+          {/* 핵심 포인트 3~5 — executive_summary 블록이 있을 때만(신버전 보고서).
+              구버전 파생 fallback 은 keyPoints 가 비어 렌더 생략. 카드 공간 방어로
+              최대 4개만 노출(전체는 전체 보기). */}
+          {abstract.keyPoints.length > 0 && (
+            <ul className="space-y-1 pt-0.5">
+              {abstract.keyPoints.slice(0, 4).map((point, i) => (
+                <li
+                  key={i}
+                  className="flex gap-1.5 text-xs-soft leading-[1.6] text-mute"
+                >
+                  <span aria-hidden className="text-amore">
+                    ·
+                  </span>
+                  <span className="line-clamp-2">{point}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             <span className="rounded-sm border border-line-soft bg-paper px-2 py-0.5 text-xs text-mute">
               {t('cardAbstractDocsMetric', { count: documents.length })}
