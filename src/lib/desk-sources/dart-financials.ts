@@ -18,13 +18,18 @@
 // server 전용 모듈 — dart.ts 만 import(env / LLM 의존, 키 마스킹).
 
 import { z } from 'zod';
-import { generateObject } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { getCache, setCache } from '@/lib/cache';
-import { ZERO_RETENTION } from '@/lib/llm/config';
 import { cleanApiKey, safeFetch } from './helpers';
 import { resolveDartCorp } from './dart-corp';
+
+// ⚠️ 이 모듈은 dart.ts → registry(@/lib/desk-sources) 를 거쳐 **클라이언트 번들에
+// 도달 가능**하다 (desk-card-body 등이 registry 에서 DESK_REGIONS 같은 값을 import).
+// 따라서 module 최상위에서 서버 전용 env 를 접근하는 것을 import 하면 안 된다 —
+// `@/lib/llm/config` 는 top-level 에서 env.LLM_ZERO_RETENTION 를 읽어 클라이언트에서
+// "server-side env on client" 로 페이지 전체를 죽인다. LLM 관련 import(ai/anthropic/
+// llm-config)는 tier-3 fallback 함수 안에서 **동적 import**(서버 호출 시점에만 평가)
+// 한다. env proxy 의 static import 자체는 안전(키 접근 시점에만 검사).
 
 // ── 핵심 지표 세트 (approach a — 시작 범위 6개. 확장은 METRIC_MAP 에 추가만) ──
 export type MetricKey =
@@ -511,12 +516,6 @@ const LlmPickSchema = z.object({
   ),
 });
 
-function getLlmModel() {
-  const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-  return createAnthropic({ apiKey })('claude-sonnet-4-6');
-}
-
 async function llmSelectMetrics(
   rows: FnlttAllRow[],
   unmapped: MetricSpec[],
@@ -524,8 +523,8 @@ async function llmSelectMetrics(
   fsDiv: 'CFS' | 'OFS',
   timeoutMs: number,
 ): Promise<DartMetric[]> {
-  const model = getLlmModel();
-  if (!model) return [];
+  const apiKey = env.ANTHROPIC_API_KEY;
+  if (!apiKey) return [];
 
   const sjSet = new Set(unmapped.flatMap((s) => s.sjDiv));
   const candidates = rows
@@ -545,6 +544,15 @@ async function llmSelectMetrics(
     .join('\n');
 
   try {
+    // 동적 import — 서버 호출 시점에만 평가. module top-level 에서 import 하면
+    // llm/config 의 top-level env 접근이 클라이언트 번들을 죽인다(위 주석 참고).
+    const [{ generateObject }, { createAnthropic }, { ZERO_RETENTION }] =
+      await Promise.all([
+        import('ai'),
+        import('@ai-sdk/anthropic'),
+        import('@/lib/llm/config'),
+      ]);
+    const model = createAnthropic({ apiKey })('claude-sonnet-4-6');
     const { object } = await generateObject({
       model,
       system:
