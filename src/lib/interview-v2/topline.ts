@@ -31,7 +31,7 @@ import {
 } from '@/lib/interview-v2/topline-prompt';
 import {
   mapDocument,
-  runPool,
+  runPoolUntil,
   formatExtractsForReduce,
   docExtractSchema,
   MAP_CONCURRENCY,
@@ -71,6 +71,12 @@ export type InterviewToplineRow = {
   // map_done = 완료된 문서 수. UI 가 generating 중 "N/M 문서 분석" 을 그린다.
   map_total: number | null;
   map_done: number | null;
+  // durable 재개 상태(카드 #434). phase = 현재 단계('map'|'reduce', null=레거시),
+  // map_cursor = 캐시된(추출 영속된) 문서 수 = map 커서 미러, resume_count =
+  // self-kick 홉 카운터(무한 루프 가드).
+  phase: 'map' | 'reduce' | null;
+  map_cursor: number | null;
+  resume_count: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -262,11 +268,20 @@ async function saveExtract(
   if (error) console.warn('[v2/topline] extract cache write failed', error.message);
 }
 
-/** 탑라인 row 의 map 진행률 갱신 — realtime 으로 "N/M 문서 분석" 을 노출. */
+/**
+ * 탑라인 row 의 map 진행률/재개 상태 갱신 — realtime 으로 "N/M 문서 분석" 을
+ * 노출하고, 매 update 가 updated_at 트리거를 bump 해 heartbeat 이 된다(살아 있는
+ * 재개 루프는 이 갱신으로 stuck 오판을 면한다 — 카드 #483).
+ */
 async function updateMapProgress(
   admin: AdminClient,
   toplineId: string,
-  patch: { map_total?: number; map_done?: number },
+  patch: {
+    map_total?: number;
+    map_done?: number;
+    map_cursor?: number;
+    phase?: 'map' | 'reduce';
+  },
 ): Promise<void> {
   const { error } = await admin
     .from('interview_toplines')
@@ -501,6 +516,13 @@ export async function upsertGenerating(
         // 알면 map_total 을 채운다). 이전 생성의 진행률이 남지 않게 0/null 로.
         map_total: null,
         map_done: 0,
+        // durable 재개 상태 리셋(카드 #434) — 새 생성이므로 map 단계부터, 커서
+        // 0, 홉 카운터 0. force 재생성/언어 변경도 이 upsert 를 타므로 이전
+        // 생성의 재개 상태가 남지 않는다. (extract 캐시는 content_hash 유효분을
+        // 그대로 재사용 — 재map 0.)
+        phase: 'map',
+        map_cursor: 0,
+        resume_count: 0,
       },
       { onConflict: 'project_id' },
     )
@@ -546,17 +568,113 @@ function verifyBlockCitations(
   });
 }
 
+// ── durable 재개 상수 (카드 #434) ──────────────────────────────────────────
+// 한 함수 호출(maxDuration=300s) 안에서 map 이 새 문서를 꺼내도 되는 마지노선.
+// 이 soft-deadline 을 넘기면 진행 중 호출만 마치고 다음 홉으로 넘긴다 — 나머지
+// (self-kick fetch + 최종 DB write)에 ~70s 여유를 남긴다.
+const MAP_SOFT_DEADLINE_MS = 230_000;
+// reduce(단일 Opus streamObject, ~100~140s)를 이 홉 안에서 시작하려면 남아 있어야
+// 하는 최소 예산. 이보다 적으면 map 완료 후 reduce 를 다음 홉(신선한 300s)으로
+// 미뤄 reduce 가 함수 킬에 잘리지 않게 한다.
+const REDUCE_MIN_BUDGET_MS = 180_000;
+// 홉의 하드 예산(참고) — 이 시각을 넘기면 새 무거운 작업(reduce)을 시작 안 함.
+const HOP_HARD_BUDGET_MS = 290_000;
+// self-kick 홉 최대 횟수 — 무한 재개 루프 방지 가드. 230s×30 ≈ 115분 총 예산이라
+// 현실적 규모(수백 문서)도 완주하고, 넘으면 병리적 상황이라 stale-sweep 이 아니라
+// 명시적 error 로 종료한다.
+const MAX_RESUME_HOPS = 30;
+
+// 재개 홉을 kick 할 배포 base URL — preview 는 자기 자신으로 라우팅되게
+// deployment-specific VERCEL_URL 을 우선(transcripts/start 와 동일 패턴).
+function getDeploymentBaseUrl(): string {
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
+  if (env.NEXT_PUBLIC_SITE_URL) return env.NEXT_PUBLIC_SITE_URL;
+  return 'http://localhost:3000';
+}
+
+/** toplineId 로 row 를 직접 조회 — 재개 홉이 org/lang/상태/홉 카운터를 row 에서
+ * 복원하는 데 쓴다(생성을 시작한 요청의 세션에 의존하지 않음). */
+export async function getToplineById(
+  admin: AdminClient,
+  toplineId: string,
+): Promise<InterviewToplineRow | null> {
+  const { data } = await admin
+    .from('interview_toplines')
+    .select('*')
+    .eq('id', toplineId)
+    .maybeSingle();
+  return (data as InterviewToplineRow | null) ?? null;
+}
+
 /**
- * map-reduce 로 탑라인 blocks 를 생성해 row 를 'done' 으로 갱신. 실패 시 'error'.
+ * 다음 재개 홉을 kick — 새 Vercel 함수 호출(신선한 300s)로 생성을 이어간다.
+ * CRON_SECRET Bearer 로 인증된 내부 엔드포인트(/resume)를 호출한다(세션 없이도
+ * 동작). 요청이 접수(202)될 때까지만 await 해 현재 함수가 죽기 전에 다음 홉이
+ * 스케줄됐음을 보장하고 곧장 반환한다. 실패해도 치명적이지 않다 — row 는
+ * generating 으로 남고, GET on-read stale-sweep(360s)이 잠금을 풀어 사용자가
+ * 재생성으로 복구할 수 있다(map 은 캐시라 재개 비용 0).
+ */
+async function kickResume(toplineId: string, tag: string): Promise<void> {
+  const base = getDeploymentBaseUrl();
+  try {
+    const res = await fetch(`${base}/api/interviews/v2/topline/resume`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ topline_id: toplineId }),
+      // kick 은 202 를 빨리 받는 가벼운 호출 — 무한 대기 방지 타임아웃.
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) console.warn(`${tag} resume kick non-ok`, res.status);
+  } catch (e) {
+    console.error(
+      `${tag} resume kick failed`,
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
+
+/**
+ * extract 캐시 + 문서 목록으로 reduce 입력(전 문서 DocExtractWithMeta[])을
+ * 재구성. 캐시에 없는 문서(map 영구 실패 또는 홉 상한 강행 시 미완)는 빈
+ * 추출(failed)로 채운다 — reduce 가 "그 응답자 근거 없음" 으로 표기하고
+ * 파이프라인은 완주한다(단일-패스 시절과 동일한 부분 실패 처리).
+ */
+function buildExtractsFromCache(
+  docs: ToplineDocument[],
+  cached: Map<string, DocExtract>,
+): DocExtractWithMeta[] {
+  return docs.map((d) => {
+    const hit = cached.get(d.document_id);
+    if (hit) {
+      return { ...hit, document_id: d.document_id, filename: d.filename };
+    }
+    return {
+      themes: [],
+      quotes: [],
+      document_id: d.document_id,
+      filename: d.filename,
+      failed: true,
+    };
+  });
+}
+
+/**
+ * map-reduce 로 탑라인 blocks 를 생성 — **durable 재개형**(카드 #434). 한 함수
+ * 호출의 300초 벽 안에서 처리 가능한 만큼만 map 하고, 남은 작업이 있으면 스스로
+ * 새 함수 호출(/resume)을 kick 해 이어간다. map 은 (document_id, content_hash)
+ * 추출 캐시가 곧 커서라 재진입 시 완료분 재map 0.
  *
- *   map    : 모든 문서(응답자)를 전용 Sonnet 호출로 전문 추출(themes/quotes).
- *            (document_id, content_hash) 캐시 히트는 LLM 0. 동시성 제한 풀 +
- *            문서별 재시도 1회, 그래도 실패하면 빈 추출로 대체(그 응답자는
- *            근거 없음으로 reduce 에 표기 — 파이프라인은 완주).
- *   reduce : Opus 가 N개 문서 추출을 **모두** 받아 종합(전수 위 실제 카운트).
+ *   map    : 미완 문서만 시간예산(MAP_SOFT_DEADLINE) 안에서 전용 Sonnet 호출로
+ *            추출→캐시 저장(=커서 전진). 예산 소진 시 다음 홉으로 이어간다.
+ *   reduce : 전 문서 map 완료 후 Opus 가 캐시된 전수 추출을 종합. 남은 예산이
+ *            부족하면 reduce 를 신선한 홉으로 미뤄 함수 킬 잘림을 피한다.
  *
- * after() 안에서 호출되므로 스스로 완결(예외를 밖으로 던지지 않음). row 는 이미
- * upsertGenerating 으로 존재한다고 가정.
+ * after()/resume 안에서 호출되므로 스스로 완결(예외를 밖으로 던지지 않음). row
+ * 는 이미 upsertGenerating 으로 존재한다고 가정. 매 진행 update 가 updated_at
+ * (heartbeat)을 bump 해 살아 있는 홉은 stuck 오판을 면한다.
  */
 export async function runTopline(
   admin: AdminClient,
@@ -569,11 +687,36 @@ export async function runTopline(
     outputLang?: string;
   },
 ): Promise<void> {
+  const startMs = Date.now();
   const { toplineId, orgId, projectId, outputLang } = opts;
   const tag = `[v2/topline] ${projectId.slice(0, 8)}`;
   try {
     const apiKey = env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error('missing_anthropic_key');
+
+    // 재개 홉 — row 로 현재 상태/홉 카운터 확보. status!=='generating' 이면
+    // (취소/완료/다른 생성으로 대체) 이 홉을 조용히 종료해 유령 재개를 막는다.
+    const row = await getToplineById(admin, toplineId);
+    if (!row) {
+      console.warn(`${tag} row gone — abort hop`);
+      return;
+    }
+    if (row.status !== 'generating') {
+      console.log(`${tag} status=${row.status} — abort hop`);
+      return;
+    }
+    const resumeCount = row.resume_count ?? 0;
+
+    // 홉 상한 초과 — 병리적 재개 루프(정상 프로젝트는 절대 도달 안 함). 무한
+    // kick 을 끊고 error 로 명시 종료(사용자는 재생성으로 캐시 위에서 복구 가능).
+    if (resumeCount > MAX_RESUME_HOPS) {
+      console.error(`${tag} resume hops exhausted (${resumeCount}) — error`);
+      await admin
+        .from('interview_toplines')
+        .update({ status: 'error', error_message: 'resume_exhausted' })
+        .eq('id', toplineId);
+      return;
+    }
 
     // ── 전 문서 로드 (샘플링 X — 전수) ──
     const docs = await fetchDocumentsWithChunks(admin, orgId, projectId);
@@ -595,81 +738,130 @@ export async function runTopline(
 
     const anthropic = createAnthropic({ apiKey });
 
-    // 진행률 분모 = 문서 수. map 이 도는 동안 realtime 으로 "k/N" 노출.
+    // ── MAP: 캐시(=커서) 기준으로 미완 문서만 시간예산 안에서 추출 ──
+    // 진입 시 캐시된 문서 = 이전 홉들이 이미 map 한 것(재map 0 — LLM 0). 진행률
+    // 분모 = 문서 수, 시작점 = 캐시 크기(재개해도 0 리셋 안 됨).
+    let cached = await loadCachedExtracts(admin, orgId, docs);
+    const cacheHits = cached.size; // 이 홉이 재사용한 완료 문서 수(재map 0 지표).
     await updateMapProgress(admin, toplineId, {
       map_total: docs.length,
-      map_done: 0,
+      map_done: cached.size,
+      map_cursor: cached.size,
+      phase: 'map',
     });
 
-    // ── MAP: 문서별 추출 (캐시 → 없으면 LLM, 동시성 제한, 재시도 1회) ──
-    const cached = await loadCachedExtracts(admin, orgId, docs);
-    let mapped = 0;
-    let cacheHits = 0;
+    const pending = docs.filter((d) => !cached.has(d.document_id));
     let mapFailures = 0;
 
-    const extracts = await runPool<ToplineDocument, DocExtractWithMeta>(
-      docs,
-      MAP_CONCURRENCY,
-      async (doc) => {
-        const hit = cached.get(doc.document_id);
-        if (hit) {
-          cacheHits += 1;
-          return { ...hit, document_id: doc.document_id, filename: doc.filename };
-        }
-        // 문서별 재시도 1회 — 일시적 provider 오류 흡수. 그래도 실패하면 빈
-        // 추출로 대체해 파이프라인을 완주시킨다(그 응답자만 근거 없음 표기).
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            const extract = await mapDocument(anthropic, doc);
-            await saveExtract(admin, orgId, doc, {
-              themes: extract.themes,
-              quotes: extract.quotes,
-            });
-            return extract;
-          } catch (e) {
-            if (attempt === 1) {
-              mapFailures += 1;
-              console.warn(
-                `${tag} map failed ${doc.filename}`,
-                e instanceof Error ? e.message : e,
-              );
-              return {
-                themes: [],
-                quotes: [],
-                document_id: doc.document_id,
-                filename: doc.filename,
-                failed: true,
-              };
+    if (pending.length > 0) {
+      let liveDone = cached.size;
+      const mapDeadline = startMs + MAP_SOFT_DEADLINE_MS;
+      await runPoolUntil<ToplineDocument, void>(
+        pending,
+        MAP_CONCURRENCY,
+        () => Date.now() >= mapDeadline,
+        async (doc) => {
+          // 문서별 재시도 1회 — 일시 provider 오류 흡수. 성공분만 캐시에 영속
+          // (=커서 전진). 실패분은 캐시에 안 남겨 다음 홉에서 재시도되게 둔다.
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              const extract = await mapDocument(anthropic, doc);
+              await saveExtract(admin, orgId, doc, {
+                themes: extract.themes,
+                quotes: extract.quotes,
+              });
+              return;
+            } catch (e) {
+              if (attempt === 1) {
+                mapFailures += 1;
+                console.warn(
+                  `${tag} map failed ${doc.filename}`,
+                  e instanceof Error ? e.message : e,
+                );
+              }
             }
           }
-        }
-        // 도달 불가(위 루프가 항상 반환) — 타입 만족용.
-        return {
-          themes: [],
-          quotes: [],
-          document_id: doc.document_id,
-          filename: doc.filename,
-          failed: true,
-        };
-      },
-      async (done) => {
-        mapped = done;
-        // 진행률은 자주 쓰면 realtime 트래픽이 커지므로 매 문서 갱신하되 DB
-        // update 는 가볍다(단일 row). 대량이면 이 정도 빈도는 무해.
-        await updateMapProgress(admin, toplineId, { map_done: done });
-      },
-    );
+        },
+        async () => {
+          // 진행 bump = heartbeat. 매 문서 갱신하되 DB update 는 단일 row 라 가볍다.
+          liveDone += 1;
+          await updateMapProgress(admin, toplineId, {
+            map_done: liveDone,
+            map_cursor: liveDone,
+          });
+        },
+      );
 
-    // 빠짐없음 정량 로그 — map 은 전 문서를 읽으므로 doc coverage = 1.0,
-    // chunk 도 전량(샘플링 0). top-K/예산샘플 대비 유실 0 을 수치로 남긴다.
+      // 이 홉에서 실제 영속된 것 재계산(캐시 = 진실 — liveDone 은 실패 포함 근사).
+      cached = await loadCachedExtracts(admin, orgId, docs);
+      const stillPending = docs.filter((d) => !cached.has(d.document_id));
+      await updateMapProgress(admin, toplineId, {
+        map_done: cached.size,
+        map_cursor: cached.size,
+      });
+
+      if (stillPending.length > 0) {
+        // map 미완 — 시간예산 소진(대형 프로젝트) 또는 일부 문서 영구 실패. 홉
+        // 상한 안이면 다음 홉으로 이어간다. 상한이면 남은 실패분을 빈 추출로 둔 채
+        // reduce 를 강행해 파이프라인을 완주시킨다(무한 루프 방지).
+        if (resumeCount < MAX_RESUME_HOPS) {
+          console.log(`${tag} map hop`, {
+            cursor: cached.size,
+            total: docs.length,
+            still_pending: stillPending.length,
+            hop: resumeCount,
+            cache_hits: cacheHits,
+            map_failures: mapFailures,
+          });
+          await admin
+            .from('interview_toplines')
+            .update({ resume_count: resumeCount + 1 })
+            .eq('id', toplineId);
+          await kickResume(toplineId, tag);
+          return;
+        }
+        console.warn(
+          `${tag} map incomplete at hop cap — forcing reduce ${cached.size}/${docs.length}`,
+        );
+      }
+    }
+
+    // map 전수 완료(또는 상한 강행) — reduce 로. 남은 예산이 reduce 최소치보다
+    // 적으면 reduce 를 신선한 홉으로 미뤄 함수 킬 잘림을 피한다.
+    const remaining = HOP_HARD_BUDGET_MS - (Date.now() - startMs);
+    if (remaining < REDUCE_MIN_BUDGET_MS && resumeCount < MAX_RESUME_HOPS) {
+      console.log(`${tag} map complete — reduce deferred to fresh hop`, {
+        remaining_ms: remaining,
+        hop: resumeCount,
+      });
+      await updateMapProgress(admin, toplineId, {
+        phase: 'reduce',
+        map_done: cached.size,
+        map_cursor: cached.size,
+      });
+      await admin
+        .from('interview_toplines')
+        .update({ resume_count: resumeCount + 1 })
+        .eq('id', toplineId);
+      await kickResume(toplineId, tag);
+      return;
+    }
+
+    await updateMapProgress(admin, toplineId, { phase: 'reduce' });
+
+    // 빠짐없음 정량 로그 — map 은 전 문서를 읽으므로 doc coverage = 1.0.
+    // cache_hits = 이전 홉들이 남긴 재사용분(재map 0 회귀 검증 지표).
     console.log(`${tag} map done`, {
       docs: docs.length,
       chunks_read: totalChunks,
       cache_hits: cacheHits,
-      mapped_llm: mapped - cacheHits,
+      mapped_llm: cached.size - cacheHits,
       map_failures: mapFailures,
       doc_coverage: 1, // 전 문서 순회 — 구조적 유실 0 (카드 #430 핵심 지표)
     });
+
+    // reduce 입력 — 캐시에서 전수 추출 재구성(성공분 + 실패분 빈 추출).
+    const extracts = buildExtractsFromCache(docs, cached);
 
     // ── REDUCE: Opus 가 전수 추출을 종합 (streamObject — 부분 블록 증분 노출) ──
     // 예전엔 generateObject(blocking) 라 reduce(대량 보고서 생성)가 끝날 때까지
