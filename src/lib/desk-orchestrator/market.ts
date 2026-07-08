@@ -17,6 +17,7 @@ import {
   type DeskSourceId,
 } from '@/lib/desk-sources';
 import { warmDartCorps } from '@/lib/desk-sources/dart-corp';
+import { warmDartFinancials } from '@/lib/desk-sources/dart-financials';
 import { parseDeskQuery } from '@/lib/desk-query-parse';
 import {
   MACRO_ANCHORS,
@@ -101,6 +102,17 @@ export async function runMarket(
     hasDart ? warmDartCorps() : Promise.resolve(0),
   ]);
   const { statTerms, companies, intent } = parsed;
+
+  // 재무제표 warm-up — 회사 축이 정해진 뒤(명부 준비 후) 각 상장사의 재무제표를
+  // orchestrator 단계(task cap 밖)에서 미리 받아 Supabase 캐시에 실는다. 이유:
+  // fnlttSinglAcntAll 은 payload 가 커(~106KB) iad1→FSS 원거리에서 crawl task 15s
+  // 벽 안엔 timeout 위험이 크다 — 여기서 넉넉한 timeout 으로 받아 캐시에 실으면 각
+  // DART task 는 캐시 히트(~0.3s)로 즉시 매출·영업이익 등을 확보한다(2026-07-08
+  // 진단: 농심·삼양 매출이 리포트에 '—' 로 뜬 건 데이터가 없어서가 아니라 무거운
+  // 조회가 task 벽 안에서 실패해서였다). 명부 미준비면 skip — crawl 이 라이브 재시도.
+  if (hasDart && companies.length && dartCorpCount > 0) {
+    await warmDartFinancials(companies).catch(() => 0);
+  }
 
   // KOSIS 검색어 = stat_terms + 결정론 fallback 토큰(첫 명사). stat_terms 가
   // 비어도(파싱 실패/불명확) 최소한 fallback 으로 1회는 시도한다 (spec C —
