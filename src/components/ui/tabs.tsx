@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 // Shared <Tabs> primitive — codifies the app's editorial underline-tab
 // pattern (uppercase + tracking, active = ink text + 2px amore underline,
@@ -30,15 +31,17 @@ type Props<T extends string> = {
 
 // Base owns layout/typography only (per §7.11 — color lives in the
 // active/inactive branches so nothing fights class-order resolution).
-// -mb-px pulls each tab's 2px underline down onto the container's 1px
-// bottom border so the active amore line sits flush on that seam.
+// The 2px underline is no longer per-button: a single amore indicator span
+// slides between tabs (measured from the active button's box) so switching
+// tabs glides instead of jump-cutting the border. -mb-px pulls that indicator
+// down onto the container's 1px bottom border so it sits flush on the seam.
 const TAB_BASE =
-  'relative -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 ' +
+  'relative -mb-px inline-flex items-center gap-1.5 px-3 py-2 ' +
   'text-sm uppercase tracking-[0.22em] transition-colors duration-[120ms] ' +
   'focus:outline-none focus-visible:text-amore';
 
-const TAB_ACTIVE = 'border-amore text-ink-2';
-const TAB_INACTIVE = 'border-transparent text-mute hover:text-ink-2';
+const TAB_ACTIVE = 'text-ink-2';
+const TAB_INACTIVE = 'text-mute hover:text-ink-2';
 
 export function Tabs<T extends string>({
   items,
@@ -47,11 +50,36 @@ export function Tabs<T extends string>({
   'aria-label': ariaLabel,
   className,
 }: Props<T>) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(
+    null,
+  );
+  const reduced = useReducedMotion();
+
+  // Measure the active tab's box relative to the tablist so the underline
+  // can be absolutely positioned + transitioned. Re-runs on value/items
+  // change; also on resize so the indicator tracks reflow (font load, wrap).
+  useLayoutEffect(() => {
+    const measure = () => {
+      const list = listRef.current;
+      const btn = btnRefs.current[value];
+      if (!list || !btn) return;
+      const lb = list.getBoundingClientRect();
+      const bb = btn.getBoundingClientRect();
+      setIndicator({ left: bb.left - lb.left, width: bb.width });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [value, items]);
+
   return (
     <div
+      ref={listRef}
       role="tablist"
       aria-label={ariaLabel}
-      className={['flex items-center gap-1', className ?? '']
+      className={['relative flex items-center gap-1', className ?? '']
         .filter(Boolean)
         .join(' ')}
     >
@@ -60,6 +88,9 @@ export function Tabs<T extends string>({
         return (
           <button
             key={it.value}
+            ref={(el) => {
+              btnRefs.current[it.value] = el;
+            }}
             type="button"
             role="tab"
             aria-selected={active}
@@ -70,6 +101,19 @@ export function Tabs<T extends string>({
           </button>
         );
       })}
+      {indicator && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 -mb-px h-0.5 bg-amore"
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width,
+            transition: reduced
+              ? 'none'
+              : 'transform var(--dur) var(--ease-out), width var(--dur) var(--ease-out)',
+          }}
+        />
+      )}
     </div>
   );
 }

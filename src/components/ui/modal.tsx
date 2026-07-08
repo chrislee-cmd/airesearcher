@@ -4,9 +4,11 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 // Shared <Modal> primitive — replaces the 8 ad-hoc `fixed inset-0`
 // backdrops scattered across the app (paywall, signup, share dialog,
@@ -64,6 +66,31 @@ export function Modal({
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const reduced = useReducedMotion();
+
+  // Open/close transition: keep the portal mounted through the exit so the
+  // panel can scale+fade out instead of snapping away. `render` gates the
+  // DOM; `entered` drives the enter/leave visual state (opacity/scale).
+  // The Esc / scroll-lock / focus effects below stay keyed on `open`, so
+  // behavior (focus restore, scroll unlock) fires immediately on close and
+  // only the visual teardown is deferred by one animation.
+  const [render, setRender] = useState(open);
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // Mount, then flip to entered on the next frame so the enter transition
+      // runs from the closed (scale-95/opacity-0) state. Synchronous mount is
+      // the canonical enter-animation coordination for a portal'd overlay.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- enter-anim: mount before the rAF flip below
+      setRender(true);
+      const id = requestAnimationFrame(() => setEntered(true));
+      return () => cancelAnimationFrame(id);
+    }
+    setEntered(false);
+    const id = setTimeout(() => setRender(false), reduced ? 0 : 180);
+    return () => clearTimeout(id);
+  }, [open, reduced]);
 
   // Esc to close.
   useEffect(() => {
@@ -104,7 +131,7 @@ export function Modal({
     if (dismissOnBackdrop) onClose();
   }, [dismissOnBackdrop, onClose]);
 
-  if (!open || typeof window === 'undefined') return null;
+  if (!render || typeof window === 'undefined') return null;
 
   const headingId = labelledBy ?? (title ? 'modal-title' : undefined);
 
@@ -126,7 +153,11 @@ export function Modal({
       onTouchMove={(e) => e.stopPropagation()}
     >
       <div
-        className="absolute inset-0 bg-ink/40"
+        className={[
+          'absolute inset-0 bg-ink/40',
+          reduced ? '' : 'transition-opacity duration-[180ms] ease-out',
+          entered ? 'opacity-100' : 'opacity-0',
+        ].join(' ')}
         onClick={handleBackdrop}
         aria-hidden="true"
       />
@@ -145,6 +176,10 @@ export function Modal({
           size === 'full'
             ? 'rounded-none'
             : 'rounded-sm shadow-[8px_8px_0_var(--color-ink)]',
+          // Enter/leave: gentle scale+fade (origin center). reduced-motion
+          // drops the transition so it snaps to the final state instantly.
+          reduced ? '' : 'transition-[transform,opacity] duration-[180ms] ease-out',
+          entered ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
           SIZE[size],
         ].join(' ')}
       >

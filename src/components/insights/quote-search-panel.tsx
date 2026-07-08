@@ -174,7 +174,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
       )}
 
       {results.length > 0 && (
-        <ul className="mt-3 divide-y divide-line-soft">
+        <ul className="stagger mt-3 divide-y divide-line-soft">
           {results.map((row) => (
             <li key={row.id} className="py-3">
               <div className="flex items-baseline justify-between gap-3 text-sm text-mute-soft">
