@@ -975,7 +975,27 @@ export function TranslateConsole({
   // logs added in PR #393 give us the WHERE; this watchdog gives the
   // user a way OUT.
   const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const CONNECT_TIMEOUT_MS = 10_000;
+  // Global connect watchdog — the FINAL safety net for a hang BEFORE the agent
+  // phase (session POST / room.connect / audio graph). Raised 10s → 50s so the
+  // OpenAI Realtime "agent" cold-start (agent dispatch + model load on the very
+  // first start) no longer trips a false-positive `translate_timeout`: room
+  // (signal) connects fine, but the first SDP negotiation is slow while the
+  // agent warms. The agent-join phase now owns its own budget + transparent
+  // retry (see SLOT_CONNECT_* below), so this watchdog only fires on a genuine
+  // stuck connect. (pr-translate-first-start-connect-timeout-fix)
+  const CONNECT_TIMEOUT_MS = 50_000;
+  // Per-attempt budget for the OpenAI Realtime SDP negotiation ("agent join").
+  // The first start is a COLD agent (dispatch + model load) so it gets a
+  // generous budget; a WARM agent (retries, renewal) answers in <2s so retries
+  // are tighter. If the answer doesn't land in time we abort + retry: the agent
+  // keeps warming server-side, so a later attempt lands — this is exactly why
+  // the old manual "다시 시작" worked, now done transparently.
+  const SLOT_CONNECT_TIMEOUT_MS = 20_000;
+  const SLOT_CONNECT_RETRY_MS = 10_000;
+  // Total agent-join attempts per slot (1 cold try + 2 warm retries). The user
+  // stays on 'starting' ("연결 중…") across retries — the error only surfaces if
+  // every attempt fails.
+  const MAX_CONNECT_ATTEMPTS = 3;
 
   // Rolling buffer for the currently-streaming caption line per side
   // PER SLOT. Each OpenAI Realtime session has its own delta stream
@@ -2802,6 +2822,12 @@ export function TranslateConsole({
       // LiveKit publish + mixer destinations are unchanged, so viewers +
       // recording carry through the handover with no re-publish.
       renewal = false,
+      // Abort budget for the OpenAI SDP POST — the cold-start bottleneck. A hang
+      // here (agent still loading) becomes a retryable failure instead of the
+      // whole start() silently blowing the global watchdog. Warm callers
+      // (renewal) keep the default; the cold-start retry wrapper passes shorter
+      // budgets on later attempts.
+      sdpTimeoutMs: number = SLOT_CONNECT_TIMEOUT_MS,
     ): Promise<boolean> => {
       const publishStream = publishStreamRef.current[slot];
       if (!publishStream) return false;
@@ -3042,18 +3068,31 @@ export function TranslateConsole({
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        console.info(`[translate:${slot}] sdp offer ready, posting to openai`);
-        const sdpRes = await fetch(
-          'https://api.openai.com/v1/realtime/translations/calls',
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${clientSecret}`,
-              'Content-Type': 'application/sdp',
+        console.info(`[translate:${slot}] sdp offer ready, posting to openai`, {
+          sdpTimeoutMs,
+        });
+        // Bound the cold-start SDP wait so a slow/hung agent-join aborts and
+        // becomes retryable (caught below → returns false → retry wrapper),
+        // instead of stalling the whole start() until the global watchdog.
+        const sdpController = new AbortController();
+        const sdpTimer = setTimeout(() => sdpController.abort(), sdpTimeoutMs);
+        let sdpRes: Response;
+        try {
+          sdpRes = await fetch(
+            'https://api.openai.com/v1/realtime/translations/calls',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${clientSecret}`,
+                'Content-Type': 'application/sdp',
+              },
+              body: offer.sdp ?? '',
+              signal: sdpController.signal,
             },
-            body: offer.sdp ?? '',
-          },
-        );
+          );
+        } finally {
+          clearTimeout(sdpTimer);
+        }
         console.info(`[translate:${slot}] sdp response`, { status: sdpRes.status });
         if (!sdpRes.ok) {
           const body = await sdpRes.text().catch(() => '');
@@ -3074,10 +3113,19 @@ export function TranslateConsole({
         console.info(`[translate:${slot}] sdp answer applied`);
         return true;
       } catch (e) {
-        console.warn(`[translate:${slot}] slot start failed`, e);
+        // An aborted SDP POST is the cold-start budget elapsing, not a hard
+        // fault — log it as such so the retry path reads cleanly in the console.
+        const aborted = e instanceof DOMException && e.name === 'AbortError';
+        if (aborted) {
+          console.warn(
+            `[translate:${slot}] agent-join timed out after ${sdpTimeoutMs}ms (cold start) — retryable`,
+          );
+        } else {
+          console.warn(`[translate:${slot}] slot start failed`, e);
+        }
         setSlotError((prev) => ({
           ...prev,
-          [slot]: e instanceof Error ? e.message : 'slot_failed',
+          [slot]: aborted ? 'translate_timeout' : e instanceof Error ? e.message : 'slot_failed',
         }));
         // Best-effort tear down for just this slot.
         try {
@@ -3120,15 +3168,74 @@ export function TranslateConsole({
       }
     }
 
+    // Mint a fresh single-use ephemeral for a retry attempt (reusing a spent
+    // secret would 401). Returns null on failure so the caller can decide.
+    const mintEphemeral = async (): Promise<string | null> => {
+      try {
+        const res = await fetch(
+          `/api/translate/sessions/${bundle.session.id}/ephemeral`,
+          { method: 'POST' },
+        );
+        if (!res.ok) throw new Error('ephemeral_failed');
+        const j = (await res.json()) as {
+          openai: { client_secret: { value: string } };
+        };
+        return j.openai.client_secret.value;
+      } catch (e) {
+        console.warn('[translate] retry ephemeral mint failed', e);
+        return null;
+      }
+    };
+
+    // 🚨 Transparent cold-start retry (the fix). On the very first start the
+    // OpenAI Realtime agent is COLD (dispatch + model load), so its SDP answer
+    // can miss the per-attempt budget even though room/signal is fine. Instead
+    // of surfacing a WebRTC error — which used to force a manual "다시 시작" —
+    // we retry the slot up to MAX_CONNECT_ATTEMPTS times with a short backoff.
+    // The agent warms across attempts (same reason the manual retry always
+    // worked), so a later try lands. Each retry mints a FRESH ephemeral (the
+    // spent one is single-use). Status stays 'starting' ("연결 중…") the whole
+    // time; the error only surfaces if every attempt fails.
+    const startSlotWithRetry = async (
+      slot: SourceSlot,
+      initialSecret: string | null,
+    ): Promise<boolean> => {
+      let secret: string | null = initialSecret;
+      for (let attempt = 1; attempt <= MAX_CONNECT_ATTEMPTS; attempt++) {
+        if (!secret) secret = await mintEphemeral();
+        if (secret) {
+          const budget =
+            attempt === 1 ? SLOT_CONNECT_TIMEOUT_MS : SLOT_CONNECT_RETRY_MS;
+          const ok = await startSlot(slot, secret, false, budget);
+          if (ok) {
+            if (attempt > 1) {
+              console.info(`[translate:${slot}] agent connected on attempt ${attempt}`);
+            }
+            return true;
+          }
+        }
+        // Torn down mid-retry (user hit stop / global watchdog fired) — bail so
+        // we don't spin against a dead session.
+        if (!startInFlightRef.current) return false;
+        // Force a fresh ephemeral for the next attempt (this one is spent).
+        secret = null;
+        if (attempt < MAX_CONNECT_ATTEMPTS) {
+          const backoff = attempt * 400;
+          console.info(
+            `[translate:${slot}] agent cold-start — retry ${attempt}/${MAX_CONNECT_ATTEMPTS - 1} in ${backoff}ms`,
+          );
+          await new Promise((r) => setTimeout(r, backoff));
+        }
+      }
+      console.warn(`[translate:${slot}] agent-join failed after ${MAX_CONNECT_ATTEMPTS} attempts`);
+      return false;
+    };
+
     // Fire per-slot pipelines in parallel. Each Promise resolves a
     // boolean (true = up, false = failed). At least one must succeed
     // for the session to flip to 'live'.
     const slotResults = await Promise.all(
-      liveSlots.map(async (slot) => {
-        const cs = ephemeralForSlot[slot];
-        if (!cs) return false;
-        return startSlot(slot, cs);
-      }),
+      liveSlots.map(async (slot) => startSlotWithRetry(slot, ephemeralForSlot[slot])),
     );
     const anySlotUp = slotResults.some((ok) => ok);
     if (!anySlotUp) {
@@ -3136,6 +3243,15 @@ export function TranslateConsole({
       setStatus('error');
       cleanup('start_error_webrtc');
       startInFlightRef.current = false;
+      return;
+    }
+
+    // Race guard: if the global watchdog fired (or the host hit stop) while the
+    // agent-join retries were in flight, startInFlightRef was cleared and
+    // cleanup() already tore the session down. Don't resurrect it into 'live'
+    // over the top of that error state — bail and leave the surfaced error.
+    if (!startInFlightRef.current) {
+      cleanup('start_error_webrtc');
       return;
     }
 

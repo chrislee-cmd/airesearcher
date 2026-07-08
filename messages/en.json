@@ -1071,7 +1071,8 @@
       "tab_audio_denied": "Tab audio sharing was cancelled. Click \"Start interpreting\" again and approve the share dialog.",
       "tab_audio_unavailable": "The surface you picked has no shareable audio. In the share dialog choose \"Chrome Tab\" and make sure to tick \"Share tab audio\" at the bottom. (Chrome desktop only.)",
       "tab_audio_failed": "Couldn't capture tab audio. Make sure you're on the latest Chrome desktop and no other app is holding the system audio device, then try again.",
-      "translate_timeout": "Connection didn't complete within 10 seconds. Check your network/firewall (VPN, corporate network) or OpenAI status, then try again. (Filter the DevTools console by \"[translate]\" to see step-by-step progress.)"
+      "translate_timeout": "The connection took longer than expected and didn't complete. We retried automatically a few times but it kept failing. Check your network/firewall (VPN, corporate network) or OpenAI status, then press \"Start interpreting\" again. (Filter the DevTools console by \"[translate]\" to see step-by-step progress.)",
+      "webrtc_failed": "Connection failed. We retried automatically but it didn't complete. Wait a moment and press \"Start interpreting\" again. (Check your network/firewall or OpenAI status.)"
     },
     "status": {
       "idle": "Idle",
