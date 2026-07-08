@@ -14,6 +14,7 @@ import {
   getAdminEmail,
   isAdminProxyConfigured,
 } from '@/lib/google-oauth-admin';
+import { decryptStoredRefreshToken } from '@/lib/crypto/oauth-token-store';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { getFormResponses } from '@/lib/google-forms';
 
@@ -135,7 +136,12 @@ export async function POST(
       );
     }
     try {
-      const { access_token } = await refreshAccessToken(oauth.refresh_token);
+      const refreshToken = await decryptStoredRefreshToken(
+        admin,
+        oauth.refresh_token,
+        { user_id: user.id },
+      );
+      const { access_token } = await refreshAccessToken(refreshToken);
       accessToken = access_token;
     } catch (e) {
       // Revoked/expired refresh_token → user must reconnect. share=1 because

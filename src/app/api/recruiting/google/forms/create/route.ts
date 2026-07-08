@@ -11,6 +11,7 @@ import {
   getAdminEmail,
   isAdminProxyConfigured,
 } from '@/lib/google-oauth-admin';
+import { decryptStoredRefreshToken } from '@/lib/crypto/oauth-token-store';
 import { createGoogleForm } from '@/lib/google-forms';
 import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey } from '@/lib/survey-schema';
@@ -85,7 +86,12 @@ export async function POST(request: Request) {
       );
     }
     try {
-      const { access_token } = await refreshAccessToken(row.refresh_token);
+      const refreshToken = await decryptStoredRefreshToken(
+        admin,
+        row.refresh_token,
+        { user_id: user.id },
+      );
+      const { access_token } = await refreshAccessToken(refreshToken);
       accessToken = access_token;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'refresh_failed';

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { refreshAccessToken, hasDriveFileScope } from '@/lib/google-oauth';
+import { decryptStoredRefreshToken } from '@/lib/crypto/oauth-token-store';
 import { createGoogleDoc, createGoogleDocFromBytes } from '@/lib/share/google-docs';
 
 export async function POST(request: Request) {
@@ -8,7 +10,10 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const { data: oauth } = await supabase
+  // Service-role read: the row is deny-all to the browser session now
+  // (self-select policy dropped). Auth enforced by getUser() above.
+  const admin = createAdminClient();
+  const { data: oauth } = await admin
     .from('user_google_oauth')
     .select('refresh_token, scope')
     .eq('user_id', user.id)
@@ -26,7 +31,12 @@ export async function POST(request: Request) {
 
   let accessToken: string;
   try {
-    const refreshed = await refreshAccessToken(oauth.refresh_token);
+    const refreshToken = await decryptStoredRefreshToken(
+      admin,
+      oauth.refresh_token,
+      { user_id: user.id },
+    );
+    const refreshed = await refreshAccessToken(refreshToken);
     accessToken = refreshed.access_token;
   } catch {
     // Refresh token revoked/expired — Google needs the user to consent

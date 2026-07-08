@@ -5,6 +5,7 @@ import {
   exchangeCodeForTokens,
   decodeIdTokenEmail,
 } from '@/lib/google-oauth';
+import { encryptToken } from '@/lib/crypto/token-cipher';
 import { routing } from '@/i18n/routing';
 
 // Receives the OAuth code, swaps it for tokens, and stores the
@@ -94,7 +95,9 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const { error } = await admin.from('user_google_oauth').upsert({
     user_id: effectiveUserId,
-    refresh_token: tokens.refresh_token,
+    // Encrypt at rest — the browser can no longer read this row (self-select
+    // policy dropped) and now a DB/backup leak can't recover the token either.
+    refresh_token: encryptToken(tokens.refresh_token),
     scope: tokens.scope,
     email,
     updated_at: new Date().toISOString(),

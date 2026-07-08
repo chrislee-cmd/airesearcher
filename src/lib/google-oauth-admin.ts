@@ -15,6 +15,7 @@ import * as Sentry from '@sentry/nextjs';
 
 import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { decryptStoredRefreshToken } from '@/lib/crypto/oauth-token-store';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -83,7 +84,10 @@ async function getAdminDbRefreshToken(): Promise<string | null> {
       .maybeSingle();
     const token = (data as { refresh_token?: string | null } | null)
       ?.refresh_token;
-    return token && token.length > 0 ? token : null;
+    if (!token || token.length === 0) return null;
+    // Decrypt (and lazily re-encrypt legacy plaintext) before returning the
+    // usable refresh_token to the token-exchange flow.
+    return decryptStoredRefreshToken(admin, token, { email });
   } catch {
     // DB unreachable / schema drift → treat as "no DB token" and let env
     // fallback carry the request. Never surface DB internals to callers.
