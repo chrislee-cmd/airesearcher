@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectMenu } from '@/components/ui/select-menu';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { useToast } from '@/components/toast-provider';
 import {
   isEditableToplineBlockType,
@@ -636,6 +637,7 @@ function GeneratingSkeleton({
 export function ToplineView({ projectId }: { projectId: string }) {
   const t = useTranslations('InterviewsV2');
   const {
+    toplineId,
     status,
     blocks,
     stale,
@@ -820,6 +822,12 @@ export function ToplineView({ projectId }: { projectId: string }) {
             >
               {sharing ? `⏳ ${t('toplineSharing')}` : `📄 ${t('toplineShareGdoc')}`}
             </ChromeButton>
+            {/* 링크로 공유(#477) — export(Google Docs) 와 구분되는 초대 게이트
+                링크. 탑라인 row 가 생성된 뒤(toplineId) 활성화. */}
+            <ShareInviteButton
+              resourceType="interview_topline"
+              resourceId={toplineId}
+            />
             <Button
               variant="ghost"
               size="xs"

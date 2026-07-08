@@ -18,6 +18,8 @@ import type {
 // 과금이 없다.
 
 export type ToplineState = {
+  // interview_toplines.id — 공유 링크(#477) resource_id. 미생성이면 null.
+  toplineId: string | null;
   status: ToplineStatus;
   blocks: ToplineBlock[];
   stale: boolean;
@@ -221,6 +223,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   }, []);
 
   return {
+    toplineId: data?.id ?? null,
     status: data?.status ?? 'none',
     blocks: data?.blocks ?? [],
     stale: data?.stale ?? false,

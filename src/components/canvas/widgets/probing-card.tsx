@@ -27,6 +27,7 @@ import {
   type TranscriptionSegment,
 } from '@/hooks/use-realtime-transcription';
 import { Button } from '@/components/ui/button';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
@@ -225,6 +226,9 @@ function ExpandedBody() {
     key_research_question: '',
   });
   const [contextHydrated, setContextHydrated] = useState(false);
+  // probing_sessions.id — 공유 링크(#477) resource_id(probing_persona). 컨텍스트가
+  // 저장되기 전(GET row 없음)에는 null 이라 공유 버튼이 비활성.
+  const [probingSessionId, setProbingSessionId] = useState<string | null>(null);
   const contextRef = useRef(context);
   useEffect(() => {
     contextRef.current = context;
@@ -241,6 +245,7 @@ function ExpandedBody() {
         if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
         const j = (await res.json()) as {
           row?: {
+            id?: string | null;
             research_goal?: string;
             hypotheses?: string[];
             key_research_question?: string;
@@ -248,6 +253,7 @@ function ExpandedBody() {
         };
         if (cancelled) return;
         if (j.row) {
+          setProbingSessionId(j.row.id ?? null);
           setContext({
             research_goal: j.row.research_goal ?? '',
             hypotheses: Array.isArray(j.row.hypotheses)
@@ -273,7 +279,7 @@ function ExpandedBody() {
     const handle = setTimeout(() => {
       void (async () => {
         try {
-          await fetchWithAuth('/api/probing/research-context', {
+          const res = await fetchWithAuth('/api/probing/research-context', {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
@@ -283,6 +289,13 @@ function ExpandedBody() {
                 contextRef.current.key_research_question,
             }),
           });
+          // 저장 직후 probing_sessions.id 확보 — 공유 버튼(#477) 활성화용.
+          if (res.ok) {
+            const j = (await res.json().catch(() => null)) as {
+              row?: { id?: string | null };
+            } | null;
+            if (j?.row?.id) setProbingSessionId(j.row.id);
+          }
         } catch {
           // best-effort. 사용자에게 토스트는 부담스러우니 silent.
         }
@@ -1264,20 +1277,28 @@ function ExpandedBody() {
           }
           onClose={close}
           headerAction={
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handlePdfExportClick}
-              loading={pdfExporting}
-              loadingLabel="내보내는 중…"
-              title={
-                isLive
-                  ? '인터뷰 종료 + 페르소나 PDF 다운로드'
-                  : '페르소나 PDF 다운로드'
-              }
-            >
-              {isLive ? '종료 + PDF 내보내기' : 'PDF 내보내기'}
-            </Button>
+            <>
+              {/* 링크로 공유(#477) — 초대 게이트 링크. PDF 내보내기와 구분되는
+                  quiet chrome. 컨텍스트가 저장돼야(probingSessionId) 활성화. */}
+              <ShareInviteButton
+                resourceType="probing_persona"
+                resourceId={probingSessionId}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handlePdfExportClick}
+                loading={pdfExporting}
+                loadingLabel="내보내는 중…"
+                title={
+                  isLive
+                    ? '인터뷰 종료 + 페르소나 PDF 다운로드'
+                    : '페르소나 PDF 다운로드'
+                }
+              >
+                {isLive ? '종료 + PDF 내보내기' : 'PDF 내보내기'}
+              </Button>
+            </>
           }
         >
           <ProbingFullView
