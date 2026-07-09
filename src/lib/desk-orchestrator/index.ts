@@ -13,9 +13,12 @@ export {
   isJudgmentEvent,
   JUDGMENT_EVENT_MARKERS,
   DESK_MODES,
+  DESK_COUNTRY_SCOPES,
+  DEFAULT_COUNTRY_SCOPE,
 } from './types';
 export type {
   DeskMode,
+  DeskCountryScope,
   OrchestratorInput,
   OrchestratorPlan,
   CrawlTask,
