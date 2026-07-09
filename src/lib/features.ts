@@ -175,6 +175,13 @@ export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, f.cost]),
 ) as Record<FeatureKey, number>;
 
+// 위젯별 동시사용 게이트(/api/gate/*) 가 body 의 widget 파라미터가 실제
+// FeatureKey 인지 서버 검증할 때 사용. 임의 문자열이 widget_active_uses/
+// widget_use_queue 에 쓰레기 키로 쌓이는 것을 라우트에서 차단한다.
+export function isFeatureKey(value: unknown): value is FeatureKey {
+  return typeof value === 'string' && value in FEATURE_COSTS;
+}
+
 // Sidebar grouping. Features not listed here are still routable but
 // hidden from the sidebar — useful for legacy or work-in-progress flows.
 // `/canvas` 의 6장 widget (desk · quotes · moderator · translate · reports ·
