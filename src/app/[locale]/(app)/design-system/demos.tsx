@@ -9,6 +9,7 @@ import { ControlDropzone } from '@/components/ui/control-dropzone';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { ChipInput } from '@/components/ui/chip-input';
+import { ChipField } from '@/components/ui/chip-field';
 import { IconButton } from '@/components/ui/icon-button';
 import { ModeCardGroup, type ModeOption } from '@/components/ui/mode-button';
 
@@ -436,6 +437,48 @@ export function ChipInputDemo() {
         placeholder={chips.length === 0 ? '키워드 입력 후 Enter' : '추가 키워드…'}
         className="min-w-[140px] flex-1"
       />
+    </div>
+  );
+}
+
+export function ChipFieldDemo() {
+  const [bordered, setBordered] = useState<string[]>(['리서치', '브랜드']);
+  const [subtle, setSubtle] = useState<string[]>(['tag']);
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="mb-1.5 text-sm text-mute">variant=&quot;bordered&quot; (default) · plain × 제거</p>
+        <ChipField
+          values={bordered}
+          onChange={setBordered}
+          commitOnComma
+          maxItems={8}
+          placeholderEmpty="키워드 입력 후 Enter"
+          placeholderAdd="추가 키워드…"
+          chipRemoveLabel={(v) => `${v} 제거`}
+        />
+      </div>
+      <div>
+        <p className="mb-1.5 text-sm text-mute">variant=&quot;subtle&quot; (border-line)</p>
+        <ChipField
+          variant="subtle"
+          values={subtle}
+          onChange={setSubtle}
+          placeholderEmpty="태그 추가"
+          placeholderAdd=""
+          chipRemoveLabel={(v) => `${v} 제거`}
+        />
+      </div>
+      <div>
+        <p className="mb-1.5 text-sm text-mute">disabled</p>
+        <ChipField
+          disabled
+          values={['읽기 전용']}
+          onChange={() => {}}
+          placeholderEmpty="비활성"
+          chipRemoveLabel={(v) => `${v} 제거`}
+        />
+      </div>
     </div>
   );
 }
