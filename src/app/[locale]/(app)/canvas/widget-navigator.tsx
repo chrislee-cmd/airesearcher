@@ -31,12 +31,47 @@ import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { ACCENT_BG } from '@/components/canvas/shell/tokens';
 import { useWidgetStateOf } from '@/components/canvas/shell/widget-state-context';
+import { IconButton } from '@/components/ui/icon-button';
 
 type Props = {
   widgets: WidgetContent[];
   focusedKey: string | null;
   onFocus: (key: string) => void;
+  // 숨긴 위젯 key 집합 + 토글 콜백 — 각 row 우측 eye/eye-off 컨트롤이 사용.
+  hiddenKeys: Set<string>;
+  onToggleHidden: (key: string) => void;
 };
+
+// Inline eye / eye-off glyphs (16×16, stroke currentColor 1.5 — widget-shell
+// 의 FullviewIcon 과 동일 규칙). aria-hidden: 버튼이 자체 aria-label 로 라벨링됨.
+function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M1.5 8S3.5 3.5 8 3.5 14.5 8 14.5 8 12.5 12.5 8 12.5 1.5 8 1.5 8Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M6.4 3.7A6.3 6.3 0 0 1 8 3.5C12.5 3.5 14.5 8 14.5 8a11 11 0 0 1-1.8 2.4M3.6 5A11 11 0 0 0 1.5 8S3.5 12.5 8 12.5a6.3 6.3 0 0 0 2.3-.4M6.6 6.6a2 2 0 0 0 2.8 2.8M2 2l12 12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 type Pos = { x: number; y: number };
 
@@ -140,7 +175,13 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
   return null;
 }
 
-export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
+export function WidgetNavigator({
+  widgets,
+  focusedKey,
+  onFocus,
+  hiddenKeys,
+  onToggleHidden,
+}: Props) {
   const t = useTranslations('Canvas.navigator');
   // default expanded — 위젯 9 개 내외라 list 가 짧고 Navigator 의 가치는
   // 시각적으로 보이는 list 자체. collapse 는 작은 viewport 배려용 옵션.
@@ -194,14 +235,16 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
       if (isEditableTarget(e.target)) return;
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1 || n > 9) return;
-      const w = widgets[n - 1];
+      // focus 단축키는 visible 위젯만 대상 — 숨긴 위젯은 미렌더라 focus 불가.
+      const visible = widgets.filter((w) => !hiddenKeys.has(w.key));
+      const w = visible[n - 1];
       if (!w) return;
       e.preventDefault();
       onFocus(w.key);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [widgets, onFocus]);
+  }, [widgets, hiddenKeys, onFocus]);
 
   // pointer drag — header 의 grip 영역에서 시작.
   // pointer capture 로 drag 중 화면 어디로 가도 이벤트 점유 → canvas pan
@@ -342,19 +385,25 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
       {open ? (
         <ul className="border-t-[2px] border-ink/15 py-1">
           {widgets.map((w) => {
-            const isFocused = focusedKey === w.key;
+            const isHidden = hiddenKeys.has(w.key);
+            const isFocused = focusedKey === w.key && !isHidden;
             const accentCls = ACCENT_BG[w.meta.accent];
+            // 숨긴 row 는 목록에 dim 으로 남아 복원 가능. label 클릭 = 숨김이면
+            // 복원(미렌더라 focus 불가), 아니면 focus. eye/eye-off 는 항상 토글.
             return (
-              <li key={w.key}>
+              <li key={w.key} className="flex items-center">
                 {/* eslint-disable-next-line react/forbid-elements -- menu-row item (dot + label + state badge), identical pattern to src/components/ui/dropdown-menu.tsx; <Button> capsule chrome would break the list row read. */}
                 <button
                   type="button"
-                  onClick={() => onFocus(w.key)}
+                  onClick={() =>
+                    isHidden ? onToggleHidden(w.key) : onFocus(w.key)
+                  }
                   className={
-                    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ' +
+                    'flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-3 text-left text-xs transition-colors ' +
                     (isFocused
                       ? 'bg-amore-bg text-amore font-semibold'
-                      : 'text-ink hover:bg-paper-soft')
+                      : 'text-ink hover:bg-paper-soft') +
+                    (isHidden ? ' opacity-45' : '')
                   }
                   aria-current={isFocused ? 'true' : undefined}
                 >
@@ -366,8 +415,22 @@ export function WidgetNavigator({ widgets, focusedKey, onFocus }: Props) {
                     }
                   />
                   <span className="min-w-0 flex-1 truncate">{w.meta.label}</span>
-                  <WidgetStateBadge widgetKey={w.key} />
+                  {!isHidden ? <WidgetStateBadge widgetKey={w.key} /> : null}
                 </button>
+                <IconButton
+                  variant="plain"
+                  size="sm"
+                  className="mr-1 shrink-0"
+                  onClick={() => onToggleHidden(w.key)}
+                  aria-label={isHidden ? t('showWidget') : t('hideWidget')}
+                  title={isHidden ? t('showWidget') : t('hideWidget')}
+                >
+                  {isHidden ? (
+                    <EyeOffIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <EyeIcon className="h-3.5 w-3.5" />
+                  )}
+                </IconButton>
               </li>
             );
           })}

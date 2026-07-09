@@ -775,7 +775,9 @@
       "resetPosition": "위치 초기화",
       "stateRunning": "진행 중",
       "stateDone": "완료",
-      "stateError": "오류"
+      "stateError": "오류",
+      "hideWidget": "위젯 숨기기",
+      "showWidget": "위젯 보이기"
     }
   },
   "Desk": {

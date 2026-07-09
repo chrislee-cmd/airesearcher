@@ -68,6 +68,10 @@ const CLICK_MOVE_THRESHOLD = 5;
 // placeholder 3장 추가) 로 한 번 더 reset — 옛 커스텀 좌표를 버리고 신 layout 을
 // 강제 적용 (사용자 결정: 초기화 의도).
 const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v4';
+// 개별 위젯 hide/show — 숨긴 위젯 key 목록. positions(v4) 와 분리된 신 키:
+// hide 는 렌더 필터일 뿐 positions 는 건드리지 않아 복원 시 원위치 재등장.
+// SSR-safe: 초기 빈 Set → mount 후 hydrate (probing use-hidden-defaults 패턴).
+const HIDDEN_STORAGE_KEY = 'canvas:hidden-widgets:v1';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -274,9 +278,68 @@ export function CanvasBoard({
     }
   }, []);
 
+  // ── 개별 위젯 hide/show (localStorage 영속) ──────────────────────────
+  // hiddenWidgets: 숨긴 위젯 key Set. positions 는 그대로 두고 렌더에서만
+  // 스킵 → 복원 시 원위치 재등장. SSR-safe: 초기 빈 Set(전부 visible) →
+  // mount 후 localStorage hydrate (positions/use-hidden-defaults 동일 패턴).
+  const [hiddenWidgets, setHiddenWidgets] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const hiddenHydratedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_STORAGE_KEY);
+      hiddenHydratedRef.current = true;
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return;
+      const valid = new Set(widgets.map((w) => w.key));
+      const next = new Set(
+        parsed.filter(
+          (k): k is string => typeof k === 'string' && valid.has(k),
+        ),
+      );
+      if (next.size === 0) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
+      setHiddenWidgets(next);
+    } catch {
+      hiddenHydratedRef.current = true;
+      /* localStorage 접근 실패 — 전부 visible 유지 */
+    }
+  }, [widgets]);
+
+  const toggleHidden = useCallback((key: string) => {
+    setHiddenWidgets((curr) => {
+      const next = new Set(curr);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      // hydrate 이전엔 저장 skip — 초기 빈 Set 이 저장값을 덮지 않도록.
+      if (hiddenHydratedRef.current) {
+        try {
+          window.localStorage.setItem(
+            HIDDEN_STORAGE_KEY,
+            JSON.stringify([...next]),
+          );
+        } catch {
+          /* quota / private mode */
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const widgetByKey = useMemo(
     () => Object.fromEntries(widgets.map((w) => [w.key, w])),
     [widgets],
+  );
+
+  // 화면에 렌더되는(숨기지 않은) 위젯 목록 — 카드 렌더 / focus / auto-follow
+  // 대상. 숨긴 위젯은 grid 미렌더 + focus 스킵. positions/occupiedCells 는
+  // 전체 위젯 기준 유지 → 숨긴 슬롯은 예약된 채 비어(빈 셀) 복원 시 원위치.
+  const visibleWidgets = useMemo(
+    () => widgets.filter((w) => !hiddenWidgets.has(w.key)),
+    [widgets, hiddenWidgets],
   );
 
   // ── 공유 전체보기 모달 (shared fullview shell) ──────────────────────
@@ -656,7 +719,8 @@ export function CanvasBoard({
       const center = widgetCenter(key);
       const widget = widgetByKey[key];
       const container = containerRef.current;
-      if (!center || !widget || !container) return;
+      // 숨긴 위젯은 grid 미렌더 → focus 대상 아님 (deep-link 방어).
+      if (!center || !widget || !container || hiddenWidgets.has(key)) return;
       const rect = container.getBoundingClientRect();
       const SURFACE_PT = 32; // pt-8 = 32px (surface 컨테이너의 top offset)
 
@@ -687,7 +751,7 @@ export function CanvasBoard({
       setPan(targetPan);
       setFocusedKey(key);
     },
-    [widgetCenter, widgetByKey],
+    [widgetCenter, widgetByKey, hiddenWidgets],
   );
 
   // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
@@ -805,7 +869,7 @@ export function CanvasBoard({
     const centerY = rect.height / 2;
     let bestKey: string | null = null;
     let bestDist = Infinity;
-    widgets.forEach((w) => {
+    visibleWidgets.forEach((w) => {
       const c = widgetCenter(w.key);
       if (!c) return;
       // widget 의 화면상 중심 좌표 (transformOrigin: 'center top' 보정)
@@ -820,7 +884,7 @@ export function CanvasBoard({
     if (bestKey && bestKey !== focusedKey) {
       setFocusedKey(bestKey);
     }
-  }, [pan, zoom, widgets, widgetCenter, focusedKey]);
+  }, [pan, zoom, visibleWidgets, widgetCenter, focusedKey]);
 
   // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
   // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker
@@ -862,6 +926,8 @@ export function CanvasBoard({
         widgets={widgets}
         focusedKey={focusedKey}
         onFocus={focusWidget}
+        hiddenKeys={hiddenWidgets}
+        onToggleHidden={toggleHidden}
       />
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
@@ -918,8 +984,11 @@ export function CanvasBoard({
               );
             }),
           )}
-          {/* 위젯 카드 — 절대 좌표 배치, expandedCols × expandedRows 만큼 span. */}
-          {widgets.map((w) => {
+          {/* 위젯 카드 — 절대 좌표 배치, expandedCols × expandedRows 만큼 span.
+              숨긴 위젯은 visibleWidgets 에서 제외돼 미렌더 (positions 는 보존
+              → 복원 시 원위치). 숨긴 슬롯은 occupiedCells 에 남아 예약되므로
+              빈 셀 drop target 도, empty-cell hint 도 뜨지 않는다. */}
+          {visibleWidgets.map((w) => {
             const pos = positions[w.key];
             if (!pos) return null;
             const { cols, rows } = spanOf(w);

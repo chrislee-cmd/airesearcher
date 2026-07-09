@@ -775,7 +775,9 @@
       "resetPosition": "Reset position",
       "stateRunning": "Running",
       "stateDone": "Done",
-      "stateError": "Error"
+      "stateError": "Error",
+      "hideWidget": "Hide widget",
+      "showWidget": "Show widget"
     }
   },
   "Desk": {
