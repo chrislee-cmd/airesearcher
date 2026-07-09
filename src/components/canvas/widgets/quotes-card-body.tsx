@@ -715,15 +715,16 @@ export function QuotesCardBody() {
           uploadValues.reduce((s, v) => s + v, 0) / uploadValues.length,
         )
       : null;
-  // 집계된 "실제" active 단계 인덱스: 업로드 중이면 0, 전사 잡이 돌면 1, 아니면
-  // -1. 업로드 100% 직후 /start 응답 대기 갭(busyUpload && !primaryInflight)도
-  // 업로드로 본다 — 헤더 pill 규칙과 동일.
-  const realActiveIdx =
-    hasUploads || (busyUpload && !primaryInflight)
-      ? 0
-      : primaryInflight
-        ? 1
-        : -1;
+  // 집계된 "실제" active 단계 인덱스: 로컬 업로드 progress 가 살아 있으면 0
+  // (업로드), 그 외엔 전사 잡(primaryInflight) 또는 업로드 100% 직후 /start
+  // 응답 대기 갭(busyUpload)을 1(전사)로 본다. 업로드 progress 가 사라진(=업로드
+  // 끝난) 순간 바로 전사 노드로 넘겨, "업로드 노드에 갇혀 전사 진행이 안 보이는"
+  // 갭 회귀를 막는다. 아무 신호 없으면 -1.
+  const realActiveIdx = hasUploads
+    ? 0
+    : primaryInflight || busyUpload
+      ? 1
+      : -1;
 
   // ─── 타임드 스테이지 리빌 (데스크 STAGE_DWELL_MS 패턴) ─────────────────────
   // 업로드→전사 전이가 순식간이어도 각 단계를 최소 STAGE_DWELL_MS(≈5s) 노출한다.
