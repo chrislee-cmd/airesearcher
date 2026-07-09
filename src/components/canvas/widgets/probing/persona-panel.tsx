@@ -6,10 +6,11 @@
    ReflectionPane 가 8 PersonaPanel 을 2×4 (lg) / 1×8 (좁을 때) 로
    배치한다. 각 패널은 summary + signals + confidence 를 표시.
 
-   - confidence='insufficient' → 패널은 빈 placeholder 톤 (점선 border
-     없이 dimmed body — 아직 단서가 모이지 않았다는 의도 표시).
-   - 그 외엔 Memphis 박스 (token 기반 border + shadow). summary 본문
-     강조, signals 는 bullet list. quote 가 있는 신호는 italic 보조줄.
+   - confidence='insufficient' → 패널은 빈 placeholder 톤 (점선 border +
+     dimmed body — 아직 단서가 모이지 않았다는 의도 표시).
+   - 그 외엔 editorial 박스 (얇은 1px border, shadow 없음 — §9). summary
+     본문 강조, signals 는 bullet list. quote 가 있는 신호는 italic 보조줄.
+     신뢰도는 단색 dot 1개 (의미는 title/aria 로 보존).
 
    확장성: 후속 PR 에서 패널 클릭 시 expand / drag / send-to 등이 붙으면
    여기에 추가. 현재는 순수 표시.
@@ -18,14 +19,16 @@
 import type { ProbingPersonaSection } from '@/lib/probing-prompts';
 import { IconButton } from '@/components/ui/icon-button';
 
+// §9 editorial: 9패널 그리드라 카드 크롬이 ×9 로 쌓여 무거움. 2px+memphis-shadow
+// → 얇은 1px border + shadow 제거. active(solid)/insufficient(dashed) 구분은
+// 유지하되 둘 다 더 조용하게 (color-line 계열, 그림자 없음).
 const panelStyle = {
-  border: '2px solid var(--canvas-card-border)',
+  border: '1px solid var(--color-line)',
   borderRadius: 'var(--sidebar-nav-radius)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 const insufficientStyle = {
-  border: '2px dashed var(--color-line)',
+  border: '1px dashed var(--color-line-soft)',
   borderRadius: 'var(--sidebar-nav-radius)',
 } as const;
 
@@ -48,17 +51,12 @@ function ConfidenceDot({ confidence }: { confidence: Confidence }) {
         : confidence === 'low'
           ? 'text-mute'
           : 'text-mute-soft';
-  const glyph =
-    confidence === 'high'
-      ? '●●●'
-      : confidence === 'medium'
-        ? '●●○'
-        : confidence === 'low'
-          ? '●○○'
-          : '○○○';
+  // 9장 반복 시 3-글리프 점 그리드가 시각 노이즈 → 단색 dot 1개로 축소.
+  // 강/보통/약/부족 의미는 색 + label(title/aria) 로 보존.
+  const glyph = confidence === 'insufficient' ? '○' : '●';
   return (
     <span
-      className={`text-xs leading-none tracking-tight ${cls}`}
+      className={`text-xs leading-none ${cls}`}
       aria-label={label}
       title={label}
     >
@@ -100,7 +98,7 @@ export function PersonaPanel({
           <span aria-hidden className="text-lg leading-none">
             {icon}
           </span>
-          <h4 className="truncate text-xs uppercase tracking-[0.22em] text-mute-soft">
+          <h4 className="truncate text-xs uppercase tracking-wider text-mute-soft">
             {title}
           </h4>
         </div>
@@ -138,7 +136,7 @@ export function PersonaPanel({
                   key={i}
                   className="text-xs leading-snug text-mute"
                 >
-                  <span className="text-ink-2">·</span> {s.bullet}
+                  <span aria-hidden className="text-mute-soft">·</span> {s.bullet}
                   {s.quote && s.quote.trim().length > 0 && (
                     <span className="mt-0.5 block pl-2 italic text-mute-soft">
                       &ldquo;{s.quote.trim()}&rdquo;
