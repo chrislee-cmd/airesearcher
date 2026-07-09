@@ -15,6 +15,12 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 //   bordered      h-? w-? rounded-[4px] +
 //                 border-line bg-paper +
 //                 hover:border-amore         chrome toggles (e.g. speaker mute)
+//   plain         text-mute → ink-2, NO      bare glyph — no box/bg/shadow at
+//                 border/bg/shadow            all, hover changes color only.
+//                                             For dense UI or icons already
+//                                             sitting inside a bordered
+//                                             container where a second Memphis
+//                                             box would be visual noise.
 //
 // Sizes (shape):
 //   compact   no fixed h/w, inline; honors className for padding/text
@@ -33,7 +39,8 @@ export type IconButtonVariant =
   | 'ghost-danger'
   | 'ghost-brand'
   | 'bordered'
-  | 'subtle';
+  | 'subtle'
+  | 'plain';
 export type IconButtonSize = 'compact' | 'sm' | 'md' | 'lg';
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
@@ -80,6 +87,13 @@ const VARIANT: Record<IconButtonVariant, string> = {
   subtle:
     'border-transparent rounded-full bg-ink/10 text-ink shadow-none ' +
     'hover:bg-ink/15',
+  // Bare glyph — no box, background, or shadow at all; hover changes color
+  // only (text-mute → ink-2). Restores the pre-#466 "hover-color-only" ghost
+  // behavior as an explicit opt-in variant. §7.11: caller className cannot
+  // strip a variant's border/bg via source order, so a dedicated variant is
+  // the only reliable way to render an IconButton with zero chrome. Shares
+  // BASE focus-visible:text-amore + active:scale for interaction consistency.
+  plain: 'border-transparent bg-transparent shadow-none text-mute hover:text-ink-2',
 };
 
 const SIZE: Record<IconButtonSize, string> = {
