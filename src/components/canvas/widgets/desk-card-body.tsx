@@ -57,6 +57,7 @@ import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -881,7 +882,7 @@ export function DeskCardBody() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {/* Streaming panel — running 또는 events 있을 때 */}
         {showStream && (
-          <div className="border-t border-line-soft bg-paper px-5 py-5">
+          <WidgetOutputRegion scroll={false} padY="lg" className="border-t border-line-soft bg-paper">
             {isWorking ? (
               <JobProgress
                 value={
@@ -937,7 +938,7 @@ export function DeskCardBody() {
                 </div>
               ))}
             </div>
-          </div>
+          </WidgetOutputRegion>
         )}
 
         {/* cancelled / stuck / done-empty banners — fail 표시 강제.
@@ -1040,14 +1041,14 @@ export function DeskCardBody() {
           </Banner>
         )}
         {job?.status === 'cancelled' && (
-          <div className="border-t border-line-soft px-5 py-5">
+          <WidgetOutputRegion scroll={false} padY="lg" className="border-t border-line-soft">
             <EmptyState tone="subtle" title={tDesk('cancelledNotice')} />
-          </div>
+          </WidgetOutputRegion>
         )}
         {/* 단계별 timing chips — running 중에도 누적 표시 (완료 단계만).
             "지금 어디서 시간 먹는지" 사용자가 알 수 있게. */}
         {timingChips.length > 0 && (
-          <div className="border-t border-line-soft bg-paper px-5 py-3">
+          <WidgetOutputRegion scroll={false} padY="sm" className="border-t border-line-soft bg-paper">
             <div className="flex items-center justify-between text-xs uppercase tracking-[.18em] text-mute-soft">
               <span>{tDesk('timingsLabel')}</span>
               {elapsedSec != null && (
@@ -1074,7 +1075,7 @@ export function DeskCardBody() {
                 </span>
               ))}
             </div>
-          </div>
+          </WidgetOutputRegion>
         )}
             </div>
 
