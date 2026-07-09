@@ -453,6 +453,16 @@
     "toast": "출시 준비중이에요",
     "body": "이 기능은 곧 만나보실 수 있어요. 준비가 끝나면 가장 먼저 알려드릴게요."
   },
+  "ConcurrencyGate": {
+    "connecting": "연결 중…",
+    "title": "접속자가 많아 순서를 기다리고 있어요",
+    "body": "지금 이용자가 많아 잠시 대기 중이에요. 앞사람이 나가면 자동으로 입장됩니다.",
+    "positionAhead": "앞에 {count}명",
+    "autoAdmit": "새로고침하지 않으셔도 곧 자동으로 입장됩니다.",
+    "loadingLabel": "대기 중",
+    "errorTitle": "연결이 잠시 지연되고 있어요",
+    "errorBody": "다시 연결하는 중이에요. 잠시만 기다려 주세요."
+  },
   "Common": {
     "language": "언어",
     "korean": "한국어",
