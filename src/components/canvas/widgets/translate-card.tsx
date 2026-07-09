@@ -52,8 +52,10 @@ function ExpandedBody() {
           가려질 뿐이다.
           flex min-h-full — idle 센터 보드 (메인 패널 규격 통일) 가 카드
           높이를 채워 수직 center 되도록 높이 체인 제공. 콘텐츠가 카드보다
-          길어지는 live 에서는 min-h 라 그대로 늘어나 기존 스크롤 유지. */}
-      <div className="flex min-h-full flex-col px-5 py-5">
+          길어지는 live 에서는 min-h 라 그대로 늘어나 기존 스크롤 유지.
+          패딩 0 — 타 5위젯처럼 ControlBoardPanel 이 프레임 여백(pt-10/px-5)을
+          단독 소유(부모 이중 패딩 + unpadParent 상쇄 특수 경로 제거). */}
+      <div className="flex min-h-full flex-col">
         <TranslateConsole />
       </div>
       {renderInSlot(

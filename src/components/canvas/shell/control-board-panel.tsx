@@ -21,7 +21,7 @@
    ⚠️  위젯은 <Field> 클러스터만 children 으로 꽂는다. wrapper/gap/정렬/폭을
    위젯이 지정할 수 없다 — 아래 상수만 SSOT. 임의 layout 클래스(max-w-*,
    justify-*, pt-* 등)를 위젯 body 에서 직접 쓰면 리뷰 reject 기준.
-   허용된 변주는 prop(active / gap 열거형 / banners / unpadParent) 뿐.
+   허용된 변주는 prop(active / gap 열거형 / banners) 뿐.
 
    규격 (balance 확정값 = 상수, idle=active 동일):
    - 유효 상단 여백 40px (pt-10) · px-5 · pb-6 · overflow-y-auto
@@ -74,11 +74,6 @@ type ControlBoardPanelProps = {
   active?: boolean;
   // 클러스터 세로 간격 열거형 (위 ClusterGap 주석 참고). 기본 none.
   gap?: ClusterGap;
-  // 부모가 이미 p-5 패딩을 주는 경우(통역-card 의 px-5 py-5) 그 이중 패딩을
-  // -m-5 로 상쇄해 유효 40px/px-5 를 이 컴포넌트가 그대로 흡수한다. layout
-  // 값 자체는 여전히 이 컴포넌트 상수 — 위젯은 "부모가 패딩을 준다"는
-  // 구조 사실만 선언한다.
-  unpadParent?: boolean;
 };
 
 function cx(...parts: Array<string | false | undefined>): string {
@@ -90,7 +85,6 @@ export function ControlBoardPanel({
   banners,
   active = false,
   gap = 'none',
-  unpadParent = false,
 }: ControlBoardPanelProps) {
   // wrapper — 외곽 padding/폭/정렬은 상태 불변(px-5 pt-10 pb-6 + 상단정렬 +
   // 수평 중앙). active 는 세로 채움 정책만 바꾼다:
@@ -107,7 +101,7 @@ export function ControlBoardPanel({
   const clusterWidth = WIDGET_FRAME_CLUSTER_W;
 
   return (
-    <div className={cx(unpadParent && '-m-5', wrapper)}>
+    <div className={wrapper}>
       {banners && (
         <div className={cx('flex flex-col gap-4', clusterWidth, 'mb-6')}>
           {banners}
