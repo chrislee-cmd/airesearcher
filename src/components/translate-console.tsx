@@ -4286,12 +4286,14 @@ export function TranslateConsole({
               )}
           </ControlBoardPanel>
 
-          {/* 컨트롤 아래 출력부 — 수평 여백(px-5)은 WidgetOutputRegion SSOT.
-              PrompterPane(스트림, mx-auto max-w-[760px]) · listener rail ·
-              다운로드 패널 등 넓은 산출물이라 bleed(풀폭 유지 = 정렬 대상 아님,
-              클러스터로 감싸면 프롬프터 폭이 줄어 회귀). 세로는 데스크/쿼트
-              산출부 미러(py-5). */}
-          <WidgetOutputRegion bleed scroll={false} padY="lg" className="space-y-4">
+          {/* 컨트롤 아래 출력부 — 수평 여백·클러스터(컨트롤 좌측 정합)는
+              WidgetOutputRegion SSOT. 전사록/데스크와 동일 클러스터라 넓은
+              카드(폭>max-w-2xl)에서도 컨트롤과 좌측 픽셀 정합. (bleed 는 좁은-카드
+              inset px-5 에 고정돼, 넓은 카드에선 컨트롤 클러스터보다 왼쪽으로
+              튀어나옴 = "좁은 버전 여백" 회귀. PrompterPane 은 클러스터 폭
+              안에서 중앙정렬.) 세로는 데스크/쿼트 산출부 미러(py-5). */}
+          <WidgetOutputRegion scroll={false} padY="lg">
+            <div className="space-y-4">
           {ttsBlockedBanner}
 
           {echoBanner}
@@ -4409,6 +4411,7 @@ export function TranslateConsole({
           onRevise={() => void triggerRevision()}
         />
       ) : null}
+            </div>
           </WidgetOutputRegion>
         </>
       )}
