@@ -160,6 +160,18 @@ export const env = createEnv({
     // 'false' (string) disables LLM zero-retention. Default = enabled.
     LLM_ZERO_RETENTION: z.enum(['true', 'false']).default('true'),
 
+    // 동시접속 정원 게이트 cap. 앱 진입 시 살아있는 세션이 이 수를 넘으면
+    // 신규 진입은 대기열로 (가상 대기실). 안전밸브라 나중에 쉽게 상향 —
+    // 어드민 테이블은 과함, env 로. 문자열로 두는 이유: 이 env 객체를
+    // Record<string, string|undefined> 로 캐스팅해 순회하는 곳이 있어(provider
+    // configured 체크 등) number 값을 넣으면 그 캐스팅이 깨진다. 게이트
+    // 라우트가 사용 시점에 Number(env.CONCURRENCY_CAP) 로 파싱. 자릿수 + >0 검증만.
+    CONCURRENCY_CAP: z
+      .string()
+      .regex(/^\d+$/, 'must be a non-negative integer')
+      .refine((v) => Number(v) > 0, 'must be > 0')
+      .default('5'),
+
     // PostHog dashboard "Share externally" embed URL for /admin/analytics.
     // Server-only (not NEXT_PUBLIC) — the iframe src is rendered by an RSC
     // gated to super-admins. Optional so local dev / previews without the
@@ -283,6 +295,7 @@ export const env = createEnv({
     TRANSLATE_TTS_VOICE_MIC: process.env.TRANSLATE_TTS_VOICE_MIC,
     TRANSLATE_TTS_VOICE_TAB: process.env.TRANSLATE_TTS_VOICE_TAB,
     LLM_ZERO_RETENTION: process.env.LLM_ZERO_RETENTION,
+    CONCURRENCY_CAP: process.env.CONCURRENCY_CAP,
     POSTHOG_EMBED_URL: process.env.POSTHOG_EMBED_URL,
 
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
