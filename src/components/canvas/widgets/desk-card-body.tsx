@@ -761,7 +761,7 @@ export function DeskCardBody() {
 
       {/* 주제 · 키워드 (핵심 입력) */}
       <Field label={tDesk('boardTopicLabel')}>
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore">
+        <div className="flex flex-wrap items-start gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[60px] focus-within:border-amore">
           {keywords.map((k, idx) => (
             <span
               key={`${k}-${idx}`}
