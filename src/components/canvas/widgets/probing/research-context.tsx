@@ -28,8 +28,10 @@
    (one-shot), 부모가 좌 위젯 + think 로 흘려보낸다.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   ProbingInjectField,
   type ProbingBackfillFeedback,
@@ -56,20 +58,53 @@ export function ProbingResearchContext({
   backfillFeedback?: ProbingBackfillFeedback | null;
   disabled?: boolean;
 }) {
+  // 조사 목적 = draft + 명시적 "적용" 버튼 커밋. 타이핑은 goalDraft 만 갱신하고
+  // (키 입력마다 자동저장하지 않음), "적용" 클릭 시에만 onResearchGoalChange 를
+  // 1회 호출한다. 외부 로드/세션 전환으로 researchGoal prop 이 바뀌면 draft 동기 —
+  // effect 대신 render 중 prop 변화 감지로 리셋 (React "adjust state on prop change").
+  // (주입 필드 state 는 515 에서 ProbingInjectField 로 추출돼 여기서 안 든다.)
+  const [goalDraft, setGoalDraft] = useState(researchGoal);
+  const [syncedGoal, setSyncedGoal] = useState(researchGoal);
+  if (researchGoal !== syncedGoal) {
+    setSyncedGoal(researchGoal);
+    setGoalDraft(researchGoal);
+  }
+  const goalDirty = goalDraft !== researchGoal;
+  const canApplyGoal = goalDirty && !disabled;
+
+  function applyGoal() {
+    if (!canApplyGoal) return;
+    const value = goalDraft.trim().slice(0, GOAL_MAX);
+    onResearchGoalChange(value);
+    setGoalDraft(value);
+  }
+
   return (
     <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
       <Field label="조사 목적">
         <Textarea
-          value={researchGoal}
-          onChange={(e) =>
-            onResearchGoalChange(e.target.value.slice(0, GOAL_MAX))
-          }
+          value={goalDraft}
+          onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
           rows={2}
           maxLength={GOAL_MAX}
           disabled={disabled}
           placeholder="예: 가성비 vs 프리미엄 선택 기준 이해"
           className="resize-none text-md"
         />
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="text-xs text-mute" aria-live="polite">
+            {goalDirty ? "미적용 변경 — '적용' 을 눌러 반영" : ''}
+          </p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={applyGoal}
+            disabled={!canApplyGoal}
+            title="입력한 조사 목적을 지금 반영"
+          >
+            적용
+          </Button>
+        </div>
       </Field>
 
       <ProbingInjectField
