@@ -82,6 +82,9 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import {
   probingLiveChannelName,
   PROBING_LIVE_PERSONA_EVENT,
+  PROBING_LIVE_THINK_EVENT,
+  PROBING_LIVE_INJECT_EVENT,
+  probingLiveInjectSchema,
 } from '@/lib/probing/live-channel';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
@@ -95,6 +98,15 @@ const DEBOUNCE_MS = 5_000;
 // 공유 실시간화: persona 갱신 → broadcast 송출 debounce. reflection/질문 state 가
 // 연달아 바뀔 때(스트리밍 머지) 매 tick 송출하지 않고 짧게 합쳐 한 번만 보낸다.
 const LIVE_BROADCAST_DEBOUNCE_MS = 700;
+// 협업화: think broadcast 로 보낼 최근 사고 흐름 라인 상한(스키마 max 200 이하).
+// thinkingEvents 는 무한 누적되므로 tail 만 송출(뷰어는 통째로 교체 — live 흐름
+// 이라 오래된 라인 유실 무해). mid-join 뷰어는 다음 tick 에 이 tail 을 받는다.
+const LIVE_THINK_BROADCAST_MAX = 120;
+// 협업화: 뷰어 inject 수신 rate-limit. 여러 뷰어가 동시/연속 주입해도 호스트는
+// 단일 엔진이라 최소 간격으로 순차 처리한다(스팸 폭주 방어, 협업 취지는 유지).
+const INJECT_MIN_GAP_MS = 2_500;
+// 대기 큐 상한 — 초과 주입은 드롭(과부하 방어). 협업 규모상 충분.
+const INJECT_QUEUE_MAX = 12;
 // history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
 const HISTORY_MAX = 100;
 
@@ -1200,6 +1212,58 @@ function ExpandedBody() {
     [addCustomSection],
   );
 
+  // 협업화: 뷰어 inject 수신 → 호스트 자기 주입 핸들러를 그대로 호출하기 위한
+  // ref. 채널 구독 effect(probingSessionId 만 dep)가 stable 하게 최신 핸들러를
+  // 읽는다.
+  const handleInjectQuestionRef = useRef(handleInjectQuestion);
+  useEffect(() => {
+    handleInjectQuestionRef.current = handleInjectQuestion;
+  }, [handleInjectQuestion]);
+
+  // ─── 협업화: 뷰어 inject rate-limit 큐 ───
+  // 뷰어가 채널로 보낸 주입을 호스트가 단일 엔진으로 순차 처리한다. 최소 간격
+  // (INJECT_MIN_GAP_MS)으로 드레인해 여러 뷰어 동시 주입이 LLM 호출을 폭주시키지
+  // 않게 한다. 큐 상한 초과분은 드롭. handleInjectQuestion 은 호스트가 직접
+  // 입력한 것과 동일 코드경로(위젯 생성 + priority_sections 가중치 + think).
+  const injectQueueRef = useRef<string[]>([]);
+  const injectLastAtRef = useRef<number>(0);
+  const injectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 드레인/enqueue 는 자기 자신을 재참조(self-scheduling)하므로 useCallback 대신
+  // ref-held 클로저로 둔다(순환 참조 lint 회피 + 매 렌더 안정).
+  const scheduleDrainRef = useRef<() => void>(() => {});
+  const enqueueInjectRef = useRef<(question: string) => void>(() => {});
+  useEffect(() => {
+    scheduleDrainRef.current = () => {
+      if (injectTimerRef.current) return; // 이미 예약됨
+      const since = Date.now() - injectLastAtRef.current;
+      const wait = Math.max(0, INJECT_MIN_GAP_MS - since);
+      injectTimerRef.current = setTimeout(() => {
+        injectTimerRef.current = null;
+        const next = injectQueueRef.current.shift();
+        if (next !== undefined) {
+          handleInjectQuestionRef.current(next);
+          injectLastAtRef.current = Date.now();
+        }
+        if (injectQueueRef.current.length > 0) scheduleDrainRef.current();
+      }, wait);
+    };
+    enqueueInjectRef.current = (question: string) => {
+      const q = question.trim();
+      if (!q) return;
+      if (injectQueueRef.current.length >= INJECT_QUEUE_MAX) return; // 폭주 드롭
+      injectQueueRef.current.push(q);
+      scheduleDrainRef.current();
+    };
+  }, []);
+
+  // 언마운트 시 드레인 타이머 정리.
+  useEffect(
+    () => () => {
+      if (injectTimerRef.current) clearTimeout(injectTimerRef.current);
+    },
+    [],
+  );
+
   // ─── 공유 스냅샷 (PR: probing-persona-share-snapshot-persist) ───
   // reflection(8 기본 + custom) + 생성 질문은 in-memory state 라 DB 에 없다.
   // 공유 뷰어(#476)가 그걸 read-only 로 그리려면 먼저 스냅샷을 persist 해야 한다.
@@ -1310,8 +1374,18 @@ function ExpandedBody() {
     if (!id) return;
     const supa = createBrowserSupabase();
     const ch = supa.channel(probingLiveChannelName(id), {
-      // 뷰어에게만 tunnel 하면 되고 호스트는 자기 송출을 되받을 필요가 없다.
+      // 뷰어에게만 tunnel 하면 되고 호스트는 자기 송출(persona/think)을 되받을
+      // 필요가 없다. self:false 는 자기 outbound echo 만 막을 뿐 뷰어가 보낸
+      // inject 수신에는 영향 없다.
       config: { broadcast: { self: false } },
+    });
+    // 협업화: 뷰어 → 호스트 inject 구독. 익명 송신자라 스키마로 방어적 파싱 후
+    // rate-limit 큐로 넘긴다. 수신 시 호스트가 자기 주입 핸들러를 그대로 호출 →
+    // 위젯 생성·priority_sections·think 가 호스트 직접 주입과 동일하게 실행되고,
+    // 결과가 persona/think 재브로드캐스트로 호스트+전 뷰어에 동기화된다.
+    ch.on('broadcast', { event: PROBING_LIVE_INJECT_EVENT }, ({ payload }) => {
+      const parsed = probingLiveInjectSchema.safeParse(payload);
+      if (parsed.success) enqueueInjectRef.current(parsed.data.question);
     });
     ch.subscribe();
     liveChannelRef.current = ch;
@@ -1359,6 +1433,30 @@ function ExpandedBody() {
     probingSessionId,
     buildPersonaSnapshot,
   ]);
+
+  // ─── 협업화: AI 사고 흐름(think) broadcast ───
+  // persona 스냅샷엔 없는 thinkingEvents 를 뷰어 우패널에 실시간 노출한다.
+  // 사고 라인이 바뀌거나 streaming 상태가 토글될 때마다 짧게 debounce 해 최근
+  // tail 을 전량 송출(뷰어는 통째로 교체 — 멱등, mid-join 안전). 빈 흐름은 skip.
+  useEffect(() => {
+    if (!liveChannelRef.current) return;
+    if (thinkingEvents.length === 0) return;
+    const t = setTimeout(() => {
+      liveChannelRef.current
+        ?.send({
+          type: 'broadcast',
+          event: PROBING_LIVE_THINK_EVENT,
+          payload: {
+            events: thinkingEvents.slice(-LIVE_THINK_BROADCAST_MAX),
+            streaming: thinkingStreaming,
+          },
+        })
+        .catch(() => {
+          // best-effort — 다음 tick 이 다시 송출한다.
+        });
+    }, LIVE_BROADCAST_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [thinkingEvents, thinkingStreaming, probingSessionId]);
 
   // 좌/우 패널 props.
   const reflectionPaneProps = {
