@@ -359,8 +359,8 @@
     "probing": "Probing Assistant",
     "slidegen": "Slide Generator",
     "guideline": "Guideline Generator",
-    "moderator_ai": "AI Moderator",
-    "ppt_report": "PPT Report Generator",
+    "moderator_ai": "AI UT",
+    "ppt_report": "Video Analyzer",
     "members": "Members",
     "organizations": "Organizations",
     "settings": "Settings",
@@ -667,13 +667,13 @@
       "cost": "Coming soon"
     },
     "moderator_ai": {
-      "title": "AI Moderator",
-      "description": "An AI moderator runs the session for you.",
+      "title": "AI UT",
+      "description": "AI runs usability tests (UT) for you.",
       "cost": "Coming soon"
     },
     "ppt_report": {
-      "title": "PPT Report Generator",
-      "description": "Turns interview results into a PPT report.",
+      "title": "Video Analyzer",
+      "description": "Upload a video and it gets analyzed automatically.",
       "cost": "Coming soon"
     }
   },
