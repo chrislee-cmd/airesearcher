@@ -163,6 +163,9 @@ export type ToplineReadResult = {
   // 마지막 생성에 쓰인 출력 언어(ko/en/ja/zh/es/th). null = 레거시/미생성 →
   // 클라이언트가 기본(한국어)으로 표시.
   output_lang: string | null;
+  // 마지막 재생성에 쓰인 분석 방향(자유 텍스트). null = 방향 없음/레거시/미생성 →
+  // 재생성 모달을 빈 입력으로 시작.
+  user_direction: string | null;
   // map-reduce 진행률(전 문서 순회) — generating 중 "N/M 문서 분석". map_total 이
   // null 이면 진행률 미노출(레거시 또는 아직 map 시작 전).
   map_total: number | null;

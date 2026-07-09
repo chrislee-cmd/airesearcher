@@ -14,6 +14,7 @@ import {
 import {
   TOPLINE_OUTPUT_LANGS,
   TOPLINE_DEFAULT_LANG,
+  TOPLINE_DIRECTION_MAX,
 } from '@/lib/interview-v2/topline-prompt';
 import { isToplineGeneratingStale } from '@/lib/interview-v2/types';
 
@@ -42,6 +43,11 @@ const Body = z.object({
   // 결정 1). 미지정이면 기본(한국어) — 기존 클라이언트/동작 회귀 X. 캐시 키의
   // 일부라 언어를 바꾸면 문서셋이 같아도 재생성한다(결정 3).
   output_lang: z.enum(TOPLINE_OUTPUT_LANGS).optional(),
+  // 재생성 방향 — 사용자가 자유 텍스트로 지정한 분석 방향(선택). reduce system
+  // prompt 에 주입돼 강조점·구성을 조정한다. 미지정/빈 값이면 방향 없음(옛 동작).
+  // 캐시 키의 일부라 방향이 다르면 문서셋·언어가 같아도 재생성한다. 길이는
+  // TOPLINE_DIRECTION_MAX 로 제한(프롬프트 토큰/주입 표면 통제).
+  user_direction: z.string().max(TOPLINE_DIRECTION_MAX).optional(),
 });
 
 // GET ?project_id=<uuid> — 읽기 전용 조회. 2-tab UI 가 탭 열자마자 저장된
@@ -125,6 +131,9 @@ export async function GET(req: Request) {
     // 마지막 생성에 쓰인 출력 언어 — UI 언어 선택기 초기값. null(레거시/미생성)
     // 이면 클라이언트가 기본(한국어)으로 표시.
     output_lang: existing?.output_lang ?? null,
+    // 마지막 재생성에 쓰인 방향 — UI 재생성 모달 textarea 초기값(마지막에 지정한
+    // 방향을 다시 보여줌). null(방향 없음/레거시/미생성)이면 빈 입력으로 시작.
+    user_direction: existing?.user_direction ?? null,
     // 인덱싱 전이면 생성 자체가 불가 — CTA 대신 안내 문구.
     indexed: chunkCount > 0,
     generated_at: existing?.generated_at ?? null,
@@ -157,9 +166,12 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { project_id, force, output_lang } = parsed.data;
+  const { project_id, force, output_lang, user_direction } = parsed.data;
   // 요청 언어 정규화 — 미지정 = 기본(한국어). 캐시 비교/저장 모두 이 값 기준.
   const requestLang = output_lang ?? TOPLINE_DEFAULT_LANG;
+  // 요청 방향 정규화 — trim 후 빈 문자열이면 null(방향 없음). 캐시 비교/저장
+  // 모두 이 값 기준(레거시/방향 없음 row 의 user_direction 도 null 이라 정합).
+  const requestDirection = user_direction?.trim() || null;
 
   const admin = createAdminClient();
 
@@ -192,14 +204,16 @@ export async function POST(req: Request) {
 
   const existing = await getTopline(admin, project_id);
 
-  // 캐시 히트 — 해시 동일 & **언어 동일** & 완료 & 강제재생성 아님 → LLM 0.
-  // 언어가 다르면 문서셋이 같아도 재생성(옛 언어 캐시 오반환 방지 — 결정 3).
-  // 레거시 row(output_lang=null)는 기본 언어(한국어)로 취급.
+  // 캐시 히트 — 해시 동일 & **언어 동일** & **방향 동일** & 완료 & 강제재생성
+  // 아님 → LLM 0. 언어/방향이 다르면 문서셋이 같아도 재생성(옛 캐시 오반환 방지
+  // — 결정 3). 레거시 row(output_lang=null)는 기본 언어(한국어)로, 방향 없음 row
+  // (user_direction=null)는 null 로 취급 — 양쪽 다 null 이면 방향 없이 매칭.
   if (
     !force &&
     existing?.status === 'done' &&
     existing.content_hash === hash &&
-    (existing.output_lang ?? TOPLINE_DEFAULT_LANG) === requestLang
+    (existing.output_lang ?? TOPLINE_DEFAULT_LANG) === requestLang &&
+    (existing.user_direction ?? null) === requestDirection
   ) {
     return NextResponse.json({
       topline_id: existing.id,
@@ -240,6 +254,7 @@ export async function POST(req: Request) {
       projectId: project_id,
       hash,
       outputLang: requestLang,
+      userDirection: requestDirection ?? undefined,
     });
   } catch (e) {
     console.error('[v2/topline] upsert failed', e);
@@ -254,6 +269,7 @@ export async function POST(req: Request) {
       orgId: org.org_id,
       projectId: project_id,
       outputLang: requestLang,
+      userDirection: requestDirection ?? undefined,
     }),
   );
 

@@ -38,6 +38,9 @@ export type ToplineState = {
   // 마지막 생성에 쓰인 출력 언어(ko/en/ja/zh/es/th). null = 레거시/미생성 →
   // UI 가 기본(한국어) 선택으로 초기화. 언어 선택기의 초기값 소스.
   savedLang: string | null;
+  // 마지막 재생성에 쓰인 분석 방향. null = 방향 없음/레거시/미생성 → 재생성
+  // 모달을 빈 입력으로 시작. 재생성 방향 textarea 의 초기값 소스.
+  savedDirection: string | null;
   // 초기 GET 로딩 중.
   loading: boolean;
   // GET/POST 자체가 실패(네트워크/서버).
@@ -45,7 +48,13 @@ export type ToplineState = {
   // 재생성 POST in-flight.
   generating: boolean;
   // outputLang 미지정이면 서버가 기본(한국어)으로 생성 — 기존 회귀 X.
-  generate: (force: boolean, outputLang?: string) => Promise<void>;
+  // userDirection 미지정/빈 값이면 방향 없이 생성(옛 동작). 재생성 방향 입력에서만
+  // 전달 — 최초 생성 CTA 는 방향 없이 호출한다.
+  generate: (
+    force: boolean,
+    outputLang?: string,
+    userDirection?: string,
+  ) => Promise<void>;
   refetch: () => Promise<void>;
   // 인라인 편집의 낙관적 반영 — 특정 블록의 md 를 클라 상태에서 즉시 교체한다
   // (서버 PATCH 성공 시 refetch 로 확정, 실패 시 원문 md 로 되돌려 롤백).
@@ -175,7 +184,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   }, [supabase, projectId, refetch]);
 
   const generate = useCallback(
-    async (force: boolean, outputLang?: string) => {
+    async (force: boolean, outputLang?: string, userDirection?: string) => {
       if (!projectId) return;
       setGenerating(true);
       // 낙관적으로 generating 표시 — realtime/refetch 가 곧 확정.
@@ -184,12 +193,13 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
         const res = await fetch('/api/interviews/v2/topline', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          // output_lang 미지정(undefined)이면 JSON.stringify 가 키를 생략 →
-          // 서버 기본(한국어) 동작. 기존 회귀 X.
+          // output_lang / user_direction 미지정(undefined)이면 JSON.stringify 가
+          // 키를 생략 → 서버 기본(한국어 · 방향 없음) 동작. 기존 회귀 X.
           body: JSON.stringify({
             project_id: projectId,
             force,
             output_lang: outputLang,
+            user_direction: userDirection,
           }),
         });
         const json = (await res.json().catch(() => null)) as
@@ -278,6 +288,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     mapDone: data?.map_done ?? null,
     generatingStale,
     savedLang: data?.output_lang ?? null,
+    savedDirection: data?.user_direction ?? null,
     loading,
     fetchError,
     generating,
