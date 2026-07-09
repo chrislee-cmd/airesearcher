@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import type { ShareResource } from '@/lib/share/viewer-resource';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
 import { ReadonlyToplineBlocks } from '@/components/interviews-v2/topline-blocks';
-import { SharePersonaView } from './share-persona-view';
+import { SharePersonaLive } from './share-persona-live';
 
 // 공유 뷰어 read-only 프레임 — 사이드바·편집 컨트롤 없는 최소 헤더 + 메인
 // 패널 슬롯. (app) 셸 밖이라 편집/드래그/자유검색 진입점이 아예 존재하지
@@ -81,27 +81,23 @@ function PersonaBody({
     snapshotMissing: string;
   };
 }) {
-  const snapshot = resource.snapshot;
-  const hasSnapshotContent =
-    !!snapshot && (snapshot.reflection.length > 0 || snapshot.questions.length > 0);
-
+  // 실시간화: 초기 = #493 스냅샷(mid-join 즉시 표시), 그 위에
+  // probing-live:<sessionId> broadcast 를 구독해 live 재렌더(client). 스냅샷
+  // 미저장/미지원/미채움 상태는 라이브 래퍼가 방어적 안내로 그리다가 첫 live
+  // delta 에 콘텐츠로 전환한다(결정 2 유지).
   return (
     <div className="space-y-8">
       <ResearchContextBody resource={resource} labels={labels} />
-      {hasSnapshotContent ? (
-        <SharePersonaView
-          snapshot={snapshot}
-          labels={{
-            grid: labels.grid,
-            questions: labels.questions,
-            questionsEmpty: labels.questionsEmpty,
-          }}
-        />
-      ) : (
-        // 구 세션(공유 전 스냅샷 미저장) 또는 미지원 버전 — 데이터 노출 0,
-        // 방어적 안내(결정 2). goal/KRQ 만 있으면 위에서 이미 표시됐다.
-        <p className="text-md text-mute">{labels.snapshotMissing}</p>
-      )}
+      <SharePersonaLive
+        sessionId={resource.sessionId}
+        initialSnapshot={resource.snapshot}
+        labels={{
+          grid: labels.grid,
+          questions: labels.questions,
+          questionsEmpty: labels.questionsEmpty,
+          snapshotMissing: labels.snapshotMissing,
+        }}
+      />
     </div>
   );
 }
@@ -117,18 +113,10 @@ export async function ShareViewerFrame({
       ? t('toplineTitle')
       : t('personaTitle');
 
-  const hasContent =
-    resource.type === 'interview_topline'
-      ? resource.blocks.length > 0
-      : Boolean(
-          resource.researchGoal.trim() ||
-            resource.keyResearchQuestion.trim() ||
-            resource.hypotheses.length > 0 ||
-            (resource.snapshot &&
-              (resource.snapshot.reflection.length > 0 ||
-                resource.snapshot.questions.length > 0)),
-        );
-
+  // 인터뷰 탑라인은 정적 스냅샷이라 빈 상태를 안내로 막는다. 프로빙 페르소나는
+  // 실시간화(broadcast) 대상이라 초기 스냅샷이 비어 있어도 항상 PersonaBody 를
+  // 마운트해야 한다 — 그래야 mid-join 후 도착하는 live delta 로 채워진다(빈→라이브
+  // 전환은 SharePersonaLive 가 방어적으로 처리).
   return (
     <main className="mx-auto w-full max-w-[860px] flex-1 px-5 pb-16 pt-10">
       <header className="mb-8 border-b border-line-soft pb-5">
@@ -142,27 +130,25 @@ export async function ShareViewerFrame({
       </header>
 
       <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
-        {hasContent ? (
-          resource.type === 'interview_topline' ? (
-            <ReadonlyToplineBlocks
-              blocks={resource.blocks as ToplineBlock[]}
-            />
+        {resource.type === 'interview_topline' ? (
+          resource.blocks.length > 0 ? (
+            <ReadonlyToplineBlocks blocks={resource.blocks as ToplineBlock[]} />
           ) : (
-            <PersonaBody
-              resource={resource}
-              labels={{
-                goal: t('personaGoal'),
-                krq: t('personaKrq'),
-                hypotheses: t('personaHypotheses'),
-                grid: t('personaGrid'),
-                questions: t('personaQuestions'),
-                questionsEmpty: t('personaQuestionsEmpty'),
-                snapshotMissing: t('personaSnapshotMissing'),
-              }}
-            />
+            <p className="text-md text-mute">{t('emptyContent')}</p>
           )
         ) : (
-          <p className="text-md text-mute">{t('emptyContent')}</p>
+          <PersonaBody
+            resource={resource}
+            labels={{
+              goal: t('personaGoal'),
+              krq: t('personaKrq'),
+              hypotheses: t('personaHypotheses'),
+              grid: t('personaGrid'),
+              questions: t('personaQuestions'),
+              questionsEmpty: t('personaQuestionsEmpty'),
+              snapshotMissing: t('personaSnapshotMissing'),
+            }}
+          />
         )}
       </div>
     </main>
