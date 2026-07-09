@@ -28,6 +28,10 @@ const TOPLINE_LANG_OPTIONS = [
   { value: 'th', label: 'ไทย' },
 ] as const;
 const TOPLINE_DEFAULT_LANG = 'ko';
+// 재생성 방향 입력 최대 길이 — SSOT 는 topline-prompt.ts 의 TOPLINE_DIRECTION_MAX.
+// 서버 프롬프트 모듈을 client 번들에 끌어오지 않으려 값만 로컬로 미러한다(반드시
+// 동기 유지). textarea maxLength 와 route zod .max 가 같은 값을 공유한다.
+const TOPLINE_DIRECTION_MAX = 600;
 import {
   useToplineDragToAsk,
   type PendingQa,
@@ -311,6 +315,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
     mapDone,
     generatingStale,
     savedLang,
+    savedDirection,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
@@ -380,13 +385,23 @@ export function ToplineView({ projectId }: { projectId: string }) {
     }
   };
 
-  // 재생성 시 삽입 Q&A 유실 경고(사용자 결정 3) — inserted_qa 가 하나라도
-  // 있을 때만 confirm modal 을 거친다.
+  // 재생성 방향 모달 — 🔄 재생성 버튼/stale 배너에서 열린다. 방향은 자유 텍스트
+  // 입력(선택 — 빈 값이면 방향 없이 재생성). 삽입 Q&A 유실 경고(사용자 결정 3)도
+  // 별도 모달이 아니라 이 모달 안에 함께 노출한다(inserted_qa 가 있을 때만).
   const hasInsertedQa = blocks.some((b) => b.type === 'inserted_qa');
-  const [warnOpen, setWarnOpen] = useState(false);
-  const requestRegenerate = () => {
-    if (hasInsertedQa) setWarnOpen(true);
-    else void generate(true, outputLang);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [direction, setDirection] = useState('');
+  // 저장된 방향을 모달 입력 초기값으로 반영 — 마지막에 지정한 방향을 다시 보여줘
+  // 미세 조정을 쉽게 한다(savedLang 선택기 초기화와 동일 패턴).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync textarea to server-persisted direction on load (savedDirection)
+    if (savedDirection) setDirection(savedDirection);
+  }, [savedDirection]);
+  const requestRegenerate = () => setRegenOpen(true);
+  const confirmRegenerate = () => {
+    setRegenOpen(false);
+    // 빈 방향은 undefined 로 넘겨 서버가 "방향 없음"(옛 동작)으로 처리하게 한다.
+    void generate(true, outputLang, direction.trim() || undefined);
   };
 
   // Word 다운로드 = attachment GET 으로 브라우저 다운로드(쿠키 포함 네비게이션).
@@ -662,36 +677,43 @@ export function ToplineView({ projectId }: { projectId: string }) {
         />
       )}
 
-      {/* 재생성 경고 — 삽입 Q&A 유실 명시 동의(사용자 결정 3). */}
+      {/* 재생성 방향 모달 — 자유 텍스트로 분석 방향을 지정(선택)하고 재생성한다.
+          방향은 reduce 프롬프트에 주입돼 강조점·구성을 조정(근거 밖 생성은 금지).
+          inserted_qa 가 있으면 유실 경고를 함께 노출(사용자 결정 3). */}
       <Modal
-        open={warnOpen}
-        onClose={() => setWarnOpen(false)}
+        open={regenOpen}
+        onClose={() => setRegenOpen(false)}
         size="sm"
-        title={t('toplineRegenWarnTitle')}
-        description={t('toplineRegenWarnBody')}
+        title={t('toplineRegenTitle')}
+        description={t('toplineRegenDirectionHint')}
         footer={
           <>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setWarnOpen(false)}
+              onClick={() => setRegenOpen(false)}
             >
               {t('toplineRegenWarnCancel')}
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setWarnOpen(false);
-                void generate(true, outputLang);
-              }}
-            >
+            <Button variant="primary" size="sm" onClick={confirmRegenerate}>
               {t('toplineRegenWarnConfirm')}
             </Button>
           </>
         }
       >
-        {null}
+        <div className="space-y-3">
+          <Textarea
+            value={direction}
+            onChange={(e) => setDirection(e.target.value)}
+            rows={4}
+            maxLength={TOPLINE_DIRECTION_MAX}
+            placeholder={t('toplineRegenDirectionPlaceholder')}
+            aria-label={t('toplineRegenDirectionLabel')}
+          />
+          {hasInsertedQa && (
+            <p className="text-sm text-warning">{t('toplineRegenWarnBody')}</p>
+          )}
+        </div>
       </Modal>
     </div>
   );

@@ -54,14 +54,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ status: row.status, skipped: true });
   }
 
-  // 다음 홉 실행 — org/project/lang 은 row 에서 복원. runTopline 이 캐시 기준으로
-  // map/reduce 단계를 재유도하고, 남으면 다시 self-kick 한다.
+  // 다음 홉 실행 — org/project/lang/방향 은 row 에서 복원(위조 body 불가).
+  // runTopline 이 캐시 기준으로 map/reduce 단계를 재유도하고, 남으면 다시
+  // self-kick 한다. user_direction 도 row 에서 복원해 재개 홉의 reduce 가 최초
+  // 요청과 동일한 방향으로 종합하게 한다(null = 방향 없음).
   after(() =>
     runTopline(admin, {
       toplineId: row.id,
       orgId: row.org_id,
       projectId: row.project_id,
       outputLang: row.output_lang ?? TOPLINE_DEFAULT_LANG,
+      userDirection: row.user_direction ?? undefined,
     }),
   );
 
