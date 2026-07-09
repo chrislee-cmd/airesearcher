@@ -4195,8 +4195,8 @@ export function TranslateConsole({
         idlePhase
           ? // idle — 컨트롤보드 layout(wrapper/폭/정렬/간격) 은 ControlBoardPanel
             // SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만 제공한다 (CTA 는
-            // 하단 액션 바로 분리). 부모(translate-card) 의 px-5 py-5 이중
-            // 패딩은 ControlBoardPanel 의 unpadParent(-m-5) 가 흡수 (유효 40px).
+            // 하단 액션 바로 분리). 부모(translate-card) 패딩 0 → 타 5위젯과
+            // 동일 경로로 ControlBoardPanel pt-10=40px 를 그대로 흡수.
             'flex min-h-0 flex-1 flex-col'
           : 'space-y-4'
       }
@@ -4207,13 +4207,18 @@ export function TranslateConsole({
         // (dropdown-first, 사용자 요청 2026-07-08). banners 슬롯엔 진짜 경고
         // (tts 차단·에러)만 상단 고정. gap = 'field'(gap-4).
         <ControlBoardPanel
-          unpadParent
           gap="field"
+          // ⚠️ 실제 배너가 있을 때만 넘긴다. `<>{null}{null}</>` 프래그먼트는
+          // 항상 truthy 라, 그대로 넘기면 ControlBoardPanel 이 idle·무에러에도
+          // 빈 banners 래퍼(mb-6=24px)를 렌더해 컨트롤이 24px 밀린다 — 통역만
+          // banners 를 쓰던 탓에 "통역 혼자 상단 여백" outlier 의 진짜 원인.
           banners={
-            <>
-              {ttsBlockedBanner}
-              {errorBanner}
-            </>
+            ttsBlockedBanner || errorBanner ? (
+              <>
+                {ttsBlockedBanner}
+                {errorBanner}
+              </>
+            ) : undefined
           }
         >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
@@ -4236,13 +4241,13 @@ export function TranslateConsole({
         <>
           {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
               동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
-              프레임/컨트롤 위치 픽셀 불변). translate-card 의 px-5 py-5 를
-              -mx-5 -mt-5 로 상쇄해 프레임이 카드 상단·좌우 끝에서 시작하고
-              divider(border-b, ControlBoardPanel active 소유)가 전폭이 되게 한다
-              (옛 바와 동일 box). 세션 중(live)엔 언어·모드·Glossary 변경 불가
-              (결정 3) 라 필드는 disabled + 안내, CTA 는 🚀 세션 시작 → 정지 전환. */}
-          <div className="-mx-5 -mt-5 bg-paper">
-            <ControlBoardPanel active gap="field">
+              프레임/컨트롤 위치 픽셀 불변). 부모 패딩 0 → ControlBoardPanel 이
+              카드 상단·좌우 끝에서 시작하고 divider(border-b, active 소유)가 전폭
+              (타 5위젯과 동일 경로 — 음수 마진 상쇄 불필요). 컨트롤 아래 출력부
+              (공유/프롬프터/녹음)는 자체 px-5 로 좌우 여백을 소유(데스크/쿼트 출력부
+              미러). 세션 중(live)엔 언어·모드·Glossary 변경 불가(결정 3) 라 필드는
+              disabled + 안내, CTA 는 🚀 세션 시작 → 정지 전환. */}
+          <ControlBoardPanel active gap="field">
               {controlFields}
 
               {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
@@ -4278,9 +4283,11 @@ export function TranslateConsole({
                   {busy ? t('starting') : `🚀 ${t('start')}`}
                 </ChromeButton>
               )}
-            </ControlBoardPanel>
-          </div>
+          </ControlBoardPanel>
 
+          {/* 컨트롤 아래 출력부 — 부모 패딩이 사라졌으므로 좌우 여백(px-5)을
+              자체 소유(데스크/쿼트 출력부 미러). pb-5 로 하단 여백 유지. */}
+          <div className="space-y-4 px-5 pb-5">
           {ttsBlockedBanner}
 
           {echoBanner}
@@ -4398,23 +4405,22 @@ export function TranslateConsole({
           onRevise={() => void triggerRevision()}
         />
       ) : null}
+          </div>
         </>
       )}
 
       {/* 주 CTA(통역 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle
           상태만 이동: live(정지)·ended(다음 세션 시작) CTA 는 기존 위치 유지.
-          translate-card 래퍼의 px-5 py-5 를 -mx-5 -mb-5 로 상쇄해 액션 바가
-          다른 위젯처럼 프레임 하단·좌우 끝에 붙게 한다 (여백 정합). */}
+          부모 패딩 0 → WidgetPrimaryCta 를 직접 렌더하면 자체 border-t + px-5 로
+          프레임 하단·좌우 끝에 붙는다 (타 5위젯 미러 — 음수 마진 상쇄 불필요). */}
       {idlePhase && (
-        <div className="-mx-5 -mb-5 shrink-0">
-          <WidgetPrimaryCta
-            label={t('start')}
-            busyLabel={t('starting')}
-            busy={busy}
-            disabled={busy}
-            onClick={() => void start()}
-          />
-        </div>
+        <WidgetPrimaryCta
+          label={t('start')}
+          busyLabel={t('starting')}
+          busy={busy}
+          disabled={busy}
+          onClick={() => void start()}
+        />
       )}
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
