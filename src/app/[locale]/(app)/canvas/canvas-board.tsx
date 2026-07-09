@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
+import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
 import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
 import { Modal } from '@/components/ui/modal';
@@ -843,6 +844,7 @@ export function CanvasBoard({
 
   return (
     <WidgetStatesMapProvider>
+    <WidgetGateProvider>
     <FullviewShellProvider value={fullviewValue}>
     <div
       ref={containerRef}
@@ -1039,6 +1041,7 @@ export function CanvasBoard({
       </div>
     </Modal>
     </FullviewShellProvider>
+    </WidgetGateProvider>
     </WidgetStatesMapProvider>
   );
 }

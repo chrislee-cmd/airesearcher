@@ -20,7 +20,6 @@ import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
 import { AuthStateListener } from '@/components/auth-state-listener';
 import { SessionExpiredModal } from '@/components/auth/session-expired-modal';
-import { ConcurrencyGateProvider } from '@/components/concurrency-gate-provider';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -69,9 +68,9 @@ export default async function AppLayout({
     : [null, [] as Awaited<ReturnType<typeof listProjects>>];
 
   return (
-    // 동시접속 정원 게이트 (#505) — 앱 셸 전체를 감싸 cap 초과 시 대기실만
-    // 렌더하고 앱 마운트를 보류. 정원 여유/에러 시 fail-open 으로 투명 통과.
-    <ConcurrencyGateProvider>
+    // 동시사용 게이트는 앱 진입 축(#505)에서 위젯 축(#512)으로 이전됐다 — 앱/
+    // 캔버스는 전원 즉시 입장하고, 게이트는 각 위젯이 비싼 작업을 시작할 때만
+    // 발동한다(WidgetGateProvider 는 canvas-board 에서 위젯 카드들을 감싼다).
     <PaywallProvider>
      <ToastProvider>
      <CreditDeductionProvider>
@@ -116,6 +115,5 @@ export default async function AppLayout({
      </CreditDeductionProvider>
      </ToastProvider>
     </PaywallProvider>
-    </ConcurrencyGateProvider>
   );
 }

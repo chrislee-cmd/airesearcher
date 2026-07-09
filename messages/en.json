@@ -453,15 +453,10 @@
     "toast": "This feature is on the way",
     "body": "We're putting the finishing touches on this one. We'll let you know the moment it's ready."
   },
-  "ConcurrencyGate": {
-    "connecting": "Connecting…",
-    "title": "You're in line — lots of people are here right now",
-    "body": "We're a little busy at the moment, so you're briefly in a queue. You'll be let in automatically as soon as a spot opens up.",
-    "positionAhead": "{count} ahead of you",
-    "autoAdmit": "No need to refresh — you'll be admitted automatically.",
-    "loadingLabel": "In line",
-    "errorTitle": "Connection is taking a moment",
-    "errorBody": "We're reconnecting. Please hold on a second."
+  "WidgetGate": {
+    "title": "This tool is busy right now",
+    "body": "You're briefly in line. It'll start automatically once someone ahead finishes.",
+    "positionAhead": "{count} ahead of you"
   },
   "Common": {
     "language": "Language",

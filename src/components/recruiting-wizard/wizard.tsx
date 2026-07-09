@@ -7,6 +7,7 @@ import { track as trackEvent } from '@/lib/analytics/events';
 import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
@@ -96,6 +97,8 @@ export function RecruitingWizard({
   const requireAuth = useRequireAuth();
   const jobs = useGenerationJobs();
   const workspace = useWorkspace();
+  // 위젯별 동시사용 게이트 (#512) — 추출 시작 시 슬롯 획득, 종료 시 반납.
+  const gate = useWidgetGate('recruiting');
 
   // ── Draft rehydration ───────────────────────────────────────────────
   // Load any sessionStorage draft once on first render so each state
@@ -274,6 +277,9 @@ export function RecruitingWizard({
 
   async function doExtract() {
     if (files.length === 0 && !pasted.trim()) return;
+    // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
+    const admitted = await gate.acquire();
+    if (!admitted) return;
     track('recruiting_extract_click', {
       feature: 'recruiting',
       file_count: files.length,
@@ -293,6 +299,7 @@ export function RecruitingWizard({
     setPublishError(null);
     setCriteriaPhase('generating');
 
+    try {
     await jobs.start<RecruitingBrief>('recruiting', {
       input: { count: submittedFiles.length },
       run: async () => {
@@ -333,6 +340,10 @@ export function RecruitingWizard({
         return finalParsed;
       },
     });
+    } finally {
+      // 추출 종료(성공/실패 모두 jobs.start 가 resolve) — 슬롯 반납.
+      gate.release();
+    }
   }
 
   // Surface job-level error into the card without an effect: track the

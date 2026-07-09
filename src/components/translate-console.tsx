@@ -70,6 +70,7 @@ import {
   summarizeFidelity,
 } from '@/lib/translate-fidelity';
 import { useCreditDeduction } from './credit-deduction-provider';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import { FEATURE_COSTS } from '@/lib/features';
 import { track as trackEvent } from '@/lib/analytics/events';
 
@@ -684,6 +685,24 @@ export function TranslateConsole({
   const locale = useLocale();
 
   const [status, setStatus] = useState<Status>('idle');
+
+  // 위젯별 동시사용 게이트 (#512) — 통역 세션 start 시 슬롯 획득, 종료 시 반납.
+  // 캔버스 밖(/live 단독 페이지)에서는 provider 부재로 no-op(투명 통과).
+  const gate = useWidgetGate('translate');
+  // 세션이 끝나거나(ended/idle) 실패(error)하면 슬롯 반납. 정지 버튼 · 시작
+  // 실패 · 언마운트가 모두 status 전환으로 커버된다.
+  const prevGateStatusRef = useRef<Status>('idle');
+  useEffect(() => {
+    const prev = prevGateStatusRef.current;
+    prevGateStatusRef.current = status;
+    if (
+      prev !== status &&
+      (status === 'ended' || status === 'error' || status === 'idle')
+    ) {
+      gate.release();
+    }
+  }, [status, gate]);
+
   const [error, setError] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState('ko');
   const [targetLang, setTargetLang] = useState('en');
@@ -2263,6 +2282,13 @@ export function TranslateConsole({
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
+    // 위젯 동시사용 게이트 — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
+    // 뜨고 admitted 로 바뀔 때까지 여기서 보류된다(자동 진행). 취소 시 false.
+    const admitted = await gate.acquire();
+    if (!admitted) {
+      startInFlightRef.current = false;
+      return;
+    }
     // RESET dedup memory on every Start (per-slot per-kind buckets).
     // Cross-session dedup proved too brittle — see the original PR
     // comment kept below for context.
@@ -3306,6 +3332,7 @@ export function TranslateConsole({
     status,
     transcriptPublisher,
     notifyDeduction,
+    gate,
   ]);
 
   // 🚨 Session auto-renewal (graceful handover). Called by the interval below

@@ -13,6 +13,7 @@ import { track } from '@/components/mixpanel-provider';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { useRequireAuth } from '@/components/auth-provider';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import { FEATURE_COSTS } from '@/lib/features';
 
 function readActiveProjectId(): string | null {
@@ -134,6 +135,8 @@ export function DeskCardBody() {
   const requireAuth = useRequireAuth();
   const { jobs, latestJob, isWorking, cancelJob, hydrateJob } = useDeskJobs();
   const { notify: notifyDeduction } = useCreditDeduction();
+  // 위젯별 동시사용 게이트 (#512) — 잡 실행 시 슬롯 획득, 잡 종료 시 반납.
+  const gate = useWidgetGate('desk');
 
   // ─── inputs ──────────────────────────────────────────────────────────────
   // 리서치 목적 mode (데스크 v2). 기본 = 트렌드 — 목적 기반 flow 가 v2 의
@@ -311,6 +314,10 @@ export function DeskCardBody() {
       setError(tDesk('errorNoKeyword'));
       return;
     }
+    // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
+    // 취소/이탈 시 false → 잡 시작 안 함.
+    const admitted = await gate.acquire();
+    if (!admitted) return;
     setSubmitting(true);
     setError(null);
     setForceControls(false);
@@ -616,6 +623,10 @@ export function DeskCardBody() {
     deskJobIdRef.current = job.id;
     deskJobStatusRef.current = job.status;
     if (!prev || prev === job.status) return;
+    // 잡이 종점(done/error/cancelled)에 닿으면 게이트 슬롯 반납 → 대기자 승격.
+    if (job.status === 'done' || job.status === 'error' || job.status === 'cancelled') {
+      gate.release();
+    }
     if (job.status === 'done') {
       trackEvent('job_completed', {
         widget: 'desk',
@@ -629,7 +640,7 @@ export function DeskCardBody() {
         error: job.error_message ?? 'unknown_error',
       });
     }
-  }, [job]);
+  }, [job, gate]);
 
   // 수집 기간 quick-pick — RANGE_PRESETS 를 popover preset 형태로 매핑.
   // 'custom' 은 캘린더 직접 선택이라 quick-pick 에서 제외. 'all' 은 days=null

@@ -37,6 +37,7 @@ import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
 } from '@/components/credit-deduction-provider';
+import { WidgetGateOverlay } from '@/components/widget-gate-overlay';
 import type { FeatureKey } from '@/lib/features';
 
 export type DragHandleProps = {
@@ -388,6 +389,9 @@ function WidgetShellInner({
           </div>
         </div>
       </div>
+      {/* 위젯 국소 대기 오버레이 — 이 위젯이 동시사용 정원 초과로 대기 중일
+          때만 카드 전체를 덮는다. 다른 위젯·캔버스는 정상. */}
+      <WidgetGateOverlay widget={content.key} />
     </div>
   );
 }
