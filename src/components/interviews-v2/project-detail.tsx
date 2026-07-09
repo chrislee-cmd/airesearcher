@@ -226,7 +226,9 @@ export function ProjectDetail({
         <aside className="flex min-h-0 w-full flex-col border-b border-line-soft lg:shrink-0 lg:basis-5/12 lg:border-b-0 lg:border-r">
           {/* 헤더 — 좌: 접기 + "업로드된 파일" 타이틀, 우: 파일 업로드 버튼
               (옛 서브헤더 📤 업로드를 여기로 통합). */}
-          <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
+          {/* 헤더 좌우 패딩을 본문 그리드(px-6)·우측 패널(px-6)과 맞춰 좌우
+              여백 리듬을 px-6 한 종으로 통일 — 타이틀이 파일 카드와 좌측 정렬. */}
+          <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-6 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <IconButton
                 variant="ghost"
