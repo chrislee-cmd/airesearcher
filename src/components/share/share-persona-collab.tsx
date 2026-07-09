@@ -13,6 +13,7 @@
 // 편집/드래그/삭제 진입점 0. 유일한 write = 주입 필드 → onInject → 호스트가
 // 자기 주입 파이프라인을 그대로 실행 → persona/think 재브로드캐스트로 미러.
 
+import { useEffect, useRef, useState } from 'react';
 import { PersonaPanel } from '@/components/canvas/widgets/probing/persona-panel';
 import { ProbingThinkingStream } from '@/components/canvas/widgets/probing/thinking-stream';
 import { ProbingInjectField } from '@/components/canvas/widgets/probing/inject-field';
@@ -111,6 +112,43 @@ export function SharePersonaCollab({
     return 0;
   });
 
+  // 새 위젯 ephemeral 하이라이트 — 브로드캐스트로 도착한 스냅샷에서 이전에 없던
+  // 패널 key 를 감지해 마운트 엔트런스 애니메이션을 1회 재생한다(호스트 grid 와
+  // 동일 UX). 초기 스냅샷의 key 는 seen 처리해 첫 렌더는 애니메이션 없음.
+  const seenKeysRef = useRef<Set<string> | null>(null);
+  const [recentKeys, setRecentKeys] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    const currentKeys = panels.map((p) => p.key);
+    // 빈 스냅샷은 기준선/디프 대상 아님(empty→첫 내용 전환에서 전 패널 flash 방지).
+    if (currentKeys.length === 0) return;
+    if (seenKeysRef.current === null) {
+      // 첫 내용 스냅샷 = 기준선(애니메이션 없음). 이후 새 key 만 하이라이트.
+      seenKeysRef.current = new Set(currentKeys);
+      return;
+    }
+    const seen = seenKeysRef.current;
+    const fresh = currentKeys.filter((k) => !seen.has(k));
+    if (fresh.length === 0) return;
+    fresh.forEach((k) => seen.add(k));
+    setRecentKeys((prev) => {
+      const next = new Set(prev);
+      fresh.forEach((k) => next.add(k));
+      return next;
+    });
+    // 키별 fire-and-forget 타이머(effect cleanup 에 묶지 않아 다음 스냅샷이
+    // 해제 타이머를 취소하지 않는다).
+    fresh.forEach((k) => {
+      setTimeout(() => {
+        setRecentKeys((prev) => {
+          if (!prev.has(k)) return prev;
+          const next = new Set(prev);
+          next.delete(k);
+          return next;
+        });
+      }, 2000);
+    });
+  }, [panels]);
+
   return (
     <div className="flex w-full flex-col gap-6 lg:flex-row">
       {/* 메인 — 3컬럼 위젯 그리드(read-only). */}
@@ -127,6 +165,7 @@ export function SharePersonaCollab({
                   icon={ICON_BY_KEY.get(p.key) ?? CUSTOM_PANEL_ICON}
                   title={p.title}
                   section={toSection(p)}
+                  highlight={recentKeys.has(p.key)}
                 />
               ))}
             </div>

@@ -74,6 +74,7 @@ export function ReflectionPane({
   customSections,
   hiddenKeys,
   gridRef,
+  recentKeys,
 }: {
   data: ProbingReflectionData | null;
   status: ReflectionStatus;
@@ -94,6 +95,8 @@ export function ReflectionPane({
   // PDF 내보내기 (PR: probing-pdf-export-persona-only) — 페르소나 grid DOM 을
   // 캡쳐 대상으로 노출. 부모(probing-card.tsx)가 이 ref 로 grid 만 PDF 화한다.
   gridRef?: Ref<HTMLDivElement>;
+  // 방금 주입/추가된 위젯 key — 마운트 시 ephemeral 하이라이트 (없으면 미표시).
+  recentKeys?: Set<string>;
 }) {
   const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
   const headerLabel =
@@ -145,6 +148,7 @@ export function ReflectionPane({
                 icon={CUSTOM_PANEL_ICON}
                 title={c.title}
                 section={sectionOrNull(data, c.key)}
+                highlight={recentKeys?.has(c.key)}
               />
             ))}
           </div>
