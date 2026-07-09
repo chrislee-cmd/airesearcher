@@ -1064,7 +1064,7 @@ function ModeButtonSection() {
   return (
     <PrimitivePage
       title="ModeButton"
-      hint="src/components/ui/mode-button.tsx · 선택 가능한 카드 버튼 그룹 (ModeCardGroup) · selection=single(radiogroup, value/onChange) | multi(toggle, selected[]/onToggle) · icon / description / soon 배지 / disabled · 소비처: 데스크 리서치 목적(single) · 프로빙 섹션 구성기 #470(multi)"
+      hint="src/components/ui/mode-button.tsx · 선택 가능한 카드 버튼 그룹 (ModeCardGroup) · selection=single(radiogroup, value/onChange) | multi(toggle, selected[]/onToggle) · variant=memphis(default, canvas 볼드 카세이드) | flat(canvas memphis 탈출 = 얇은 border-line-soft·no shadow 차분 카드, data-canvas-action escape hatch) · icon / description / soon 배지 / disabled · 소비처: 데스크 리서치 목적(single, memphis) · 프로빙 섹션 구성기 #470(multi, flat #521)"
     >
       <Subsection label="Interactive (single radiogroup + multi toggle)">
         <ModeButtonDemo />
