@@ -77,6 +77,12 @@ import {
   type ProbingPersonaSnapshotPanel,
   type ProbingPersonaSnapshotQuestion,
 } from '@/lib/probing-persona-snapshot';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import {
+  probingLiveChannelName,
+  PROBING_LIVE_PERSONA_EVENT,
+} from '@/lib/probing/live-channel';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
@@ -86,6 +92,9 @@ const THINK_MAX_CHARS = 60_000;
 const MIN_TRANSCRIPT_CHARS = 60;
 // transcript 변경 → 자동 호출 debounce.
 const DEBOUNCE_MS = 5_000;
+// 공유 실시간화: persona 갱신 → broadcast 송출 debounce. reflection/질문 state 가
+// 연달아 바뀔 때(스트리밍 머지) 매 tick 송출하지 않고 짧게 합쳐 한 번만 보낸다.
+const LIVE_BROADCAST_DEBOUNCE_MS = 700;
 // history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
 const HISTORY_MAX = 100;
 
@@ -1280,6 +1289,76 @@ function ExpandedBody() {
       }
     })();
   }, [buildPersonaSnapshot]);
+
+  // ─── 공유 실시간화: 호스트 broadcast (probing-persona-share-live-broadcast) ───
+  // 요구 변경: 공유는 스냅샷 1회가 아니라 실시간. 라이브 세션 중 페르소나가
+  // 갱신되면 공유 뷰어도 같은 갱신을 실시간으로 본다(동시통역 /live 와 동급).
+  //
+  // 공유 뷰어는 OTP 게이트라 sb-* 세션이 없어 postgres_changes(RLS)는 못 쓴다.
+  // 그래서 동시통역이 검증한 broadcast 채널 패턴(translate-console.tsx:18)을
+  // 이식: probing-live:<probingSessionId> 로 현재 스냅샷을 송출한다. broadcast 는
+  // DB RLS 불필요라 익명 뷰어 수신 OK. DB persist(#493, snapshotPersonaForShare)는
+  // 대체가 아니라 초기/mid-join/세션종료후 정적 소스로 그대로 유지 — broadcast=
+  // 실시간 delta, DB=초기/영속.
+  //
+  // 채널 open 은 probingSessionId(공유 resource_id) 가 확보된 뒤. 위젯이 살아
+  // 있는 동안 idle 채널 하나만 유지(translate 는 세션이 ephemeral 이라 go-live 에
+  // open 하지만, 여기 probingSessionId 는 research context row 라 영속적).
+  const liveChannelRef = useRef<RealtimeChannel | null>(null);
+  useEffect(() => {
+    const id = probingSessionId;
+    if (!id) return;
+    const supa = createBrowserSupabase();
+    const ch = supa.channel(probingLiveChannelName(id), {
+      // 뷰어에게만 tunnel 하면 되고 호스트는 자기 송출을 되받을 필요가 없다.
+      config: { broadcast: { self: false } },
+    });
+    ch.subscribe();
+    liveChannelRef.current = ch;
+    return () => {
+      try {
+        ch.unsubscribe();
+      } catch {
+        // ignore
+      }
+      liveChannelRef.current = null;
+    };
+  }, [probingSessionId]);
+
+  // persona 갱신 tick → 현재 스냅샷을 broadcast. reflection / 커스텀 섹션 / 숨김 /
+  // 질문(history·popup) state 가 바뀔 때마다 짧게 debounce 해 합쳐 송출한다. 채널이
+  // 아직 없으면(공유 resource_id 미확보) no-op. buildPersonaSnapshot 이 null(의미
+  // 있는 데이터 없음) 이면 송출도 skip 해 빈 스냅샷으로 뷰어를 덮지 않는다.
+  //
+  // buildPersonaSnapshot 은 refs(reflectionRef/historyRef/…) 를 읽으므로, 이 effect
+  // 는 그 ref 들을 갱신하는 effect 들보다 아래(늦게) 선언돼 tick 시점에 refs 가 이미
+  // 최신이다. probingSessionId 를 dep 에 두어 채널이 막 열린 직후에도 현재 스냅샷을
+  // 한 번 보낸다(mid-join 이전에 이미 채워진 상태 커버).
+  useEffect(() => {
+    if (!liveChannelRef.current) return;
+    const t = setTimeout(() => {
+      const snapshot = buildPersonaSnapshot();
+      if (!snapshot) return;
+      liveChannelRef.current
+        ?.send({
+          type: 'broadcast',
+          event: PROBING_LIVE_PERSONA_EVENT,
+          payload: snapshot,
+        })
+        .catch(() => {
+          // best-effort — 다음 tick 이 다시 송출한다. DB 스냅샷이 초기/영속 백업.
+        });
+    }, LIVE_BROADCAST_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [
+    reflection,
+    customSections,
+    hiddenDefaultKeys,
+    history,
+    activePopup,
+    probingSessionId,
+    buildPersonaSnapshot,
+  ]);
 
   // 좌/우 패널 props.
   const reflectionPaneProps = {

@@ -21,12 +21,18 @@ export type ShareResource =
     }
   | {
       type: 'probing_persona';
+      // probing_sessions.id(공유 resource_id). 실시간화(broadcast) 뷰어가
+      // probing-live:<sessionId> 채널을 구독할 채널키 — 게이트 통과 뷰어에게만
+      // tunnel(동시통역 뷰어가 sessionId 를 내려받는 것 미러). raw 세션 접근권은
+      // 없고 채널 topic 만 안다.
+      sessionId: string;
       researchGoal: string;
       keyResearchQuestion: string;
       hypotheses: string[];
       // 공유 시점 스냅샷(#493) — 페르소나 reflection 그리드 + 생성 질문.
       // 구 세션(공유 전 스냅샷 미저장)이나 미지원 버전이면 null → 뷰어가
-      // 방어적 빈/안내 상태로 렌더(결정 2).
+      // 방어적 빈/안내 상태로 렌더(결정 2). 실시간화 뒤엔 broadcast 로 갱신되는
+      // live 상태의 초기값(mid-join 즉시 표시)이기도 하다.
       snapshot: ProbingPersonaSnapshot | null;
     };
 
@@ -69,6 +75,7 @@ export async function loadShareResource(
 
   return {
     type: 'probing_persona',
+    sessionId: resourceId,
     researchGoal: (data.research_goal as string | null) ?? '',
     keyResearchQuestion: (data.key_research_question as string | null) ?? '',
     hypotheses: Array.isArray(data.hypotheses)
