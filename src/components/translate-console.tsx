@@ -30,6 +30,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { Button } from './ui/button';
 import { ChromeButton } from './ui/chrome-button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
@@ -4176,6 +4177,7 @@ export function TranslateConsole({
           placeholderEmpty={t('glossary.placeholderEmpty')}
           placeholderAdd={t('glossary.placeholderAdd')}
           removeAria={t('glossary.removeAria')}
+          injectLabel={t('glossary.injectLabel')}
         />
       </Field>
     </>
@@ -4651,6 +4653,7 @@ function GlossaryField({
   placeholderEmpty,
   placeholderAdd,
   removeAria,
+  injectLabel,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
@@ -4658,6 +4661,7 @@ function GlossaryField({
   placeholderEmpty: string;
   placeholderAdd: string;
   removeAria: string;
+  injectLabel: string;
 }) {
   const [draft, setDraft] = useState('');
   const MAX_TERMS = 200;
@@ -4672,9 +4676,13 @@ function GlossaryField({
     onChange([...values, trimmed.slice(0, MAX_LEN)]);
   }
 
+  const canInject =
+    draft.trim().length > 0 && !disabled && values.length < MAX_TERMS;
+
   return (
+    <div className="flex items-center gap-2">
     <div
-      className={`flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore ${
+      className={`flex flex-1 flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore ${
         disabled ? 'opacity-50' : ''
       }`}
     >
@@ -4716,6 +4724,16 @@ function GlossaryField({
         disabled={disabled || values.length >= MAX_TERMS}
         placeholder={values.length === 0 ? placeholderEmpty : placeholderAdd}
       />
+    </div>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={commitDraft}
+        disabled={!canInject}
+        title={injectLabel}
+      >
+        {injectLabel}
+      </Button>
     </div>
   );
 }

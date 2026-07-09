@@ -1064,7 +1064,8 @@
       "hint": "인명·도구명·약어의 정규 표기. 같은 사람·고유명사의 음차 흔들림을 통일해요 (사후 보정·재번역에 반영).",
       "placeholderEmpty": "고유 용어/맥락 주입",
       "placeholderAdd": "+ 용어 추가",
-      "removeAria": "용어 제거"
+      "removeAria": "용어 제거",
+      "injectLabel": "주입"
     },
     "postProcess": {
       "eyebrow": "출력 품질 보정 (사후 LLM)",

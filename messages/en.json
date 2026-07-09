@@ -1064,7 +1064,8 @@
       "hint": "Canonical spellings of names, tools, and acronyms. Keeps proper nouns consistent (applied in post-process / revise).",
       "placeholderEmpty": "Custom terms / context",
       "placeholderAdd": "+ Add term",
-      "removeAria": "Remove term"
+      "removeAria": "Remove term",
+      "injectLabel": "Add"
     },
     "postProcess": {
       "eyebrow": "Output quality fix (post-process LLM)",
