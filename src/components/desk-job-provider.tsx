@@ -181,9 +181,12 @@ type Ctx = {
    * incident), so only the session's latest done job is auto-hydrated by
    * refresh(). The fullview viewer calls this when the user opens *any other*
    * past done job — without it that job renders as "완료되지 않았습니다"
-   * despite the DB row being done with a full report+charts.
+   * despite the DB row being done with a full report+charts. Resolves to
+   * `true` when the heavy row was fetched and merged, `false` on any failure
+   * (network / 401 / empty) so the viewer can show an error instead of
+   * spinning the loader forever.
    */
-  hydrateJob: (id: string) => Promise<void>;
+  hydrateJob: (id: string) => Promise<boolean>;
   cancelJob: (id: string) => Promise<void>;
 };
 
@@ -310,12 +313,14 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   // caller stops asking (output is no longer undefined), and the detail cache
   // keeps it hydrated across subsequent refresh() ticks.
   const hydrateJob = useCallback(
-    async (id: string) => {
-      if (!user || stopOnExpiredRef.current) return;
+    async (id: string): Promise<boolean> => {
+      if (!user || stopOnExpiredRef.current) return false;
       const detail = await fetchDetail(id);
       if (detail) {
         setJobs((prev) => prev.map((j) => (j.id === detail.id ? detail : j)));
+        return true;
       }
+      return false;
     },
     [user, fetchDetail],
   );
