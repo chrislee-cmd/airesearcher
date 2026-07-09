@@ -52,12 +52,11 @@ export type StageFlowProps = {
 
 // 상태별 노드 chrome — 색(border/bg/text)은 여기서만 소유(BASE 는 색 없음,
 // PROJECT.md §7.11 primitive BASE 색 금지 함정 회피). 카드형 스텝(모노크롬):
-// 미래(pending)=회색, 현재(active)=ink 채움(검정) + glow, 과거(done)=line
-// 아웃라인 + ✓, 에러=warning. active 는 검정 배경이라 콘텐츠(라벨/hint/설명)를
-// paper(흰색)로 뒤집는다.
+// 미래(pending)=회색, 현재(active)=검정 보더 + 흰 배경(아웃라인) + glow,
+// 과거(done)=line 아웃라인 + ✓, 에러=warning. 배경은 전부 흰색(paper).
 const NODE_TONE: Record<StageStatus, string> = {
   pending: 'border-line-soft bg-paper text-mute-soft',
-  active: 'border-ink bg-ink text-paper stage-flow-node-active',
+  active: 'border-ink bg-paper text-ink stage-flow-node-active',
   done: 'border-line bg-paper text-ink-2',
   error: 'border-warning bg-warning-bg text-warning',
 };
@@ -96,11 +95,10 @@ function StageMarker({ status }: { status: StageStatus }) {
     );
   }
   if (status === 'active') {
-    // 검정 active 카드 위 → 흰 점.
     return (
       <span
         aria-hidden
-        className="h-2 w-2 shrink-0 rounded-full bg-paper"
+        className="h-2 w-2 shrink-0 rounded-full bg-ink"
       />
     );
   }
@@ -149,16 +147,14 @@ function StageNode({ stage, fill }: { stage: Stage; fill?: boolean }) {
               open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
             }`}
           >
-            {/* hint·description 은 active(검정 카드) 에서만 펼쳐지므로 항상
-                검정 배경 위 — paper(흰색) 계열로 표기. */}
             <div className="overflow-hidden">
               {stage.hint ? (
-                <span className="mt-1 block whitespace-nowrap text-xs tabular-nums text-paper">
+                <span className="mt-1 block whitespace-nowrap text-xs tabular-nums text-mute-soft">
                   {stage.hint}
                 </span>
               ) : null}
               {stage.description ? (
-                <p className="mt-1 text-xs leading-[1.5] text-paper/75">
+                <p className="mt-1 text-xs leading-[1.5] text-mute">
                   {stage.description}
                 </p>
               ) : null}
@@ -220,7 +216,7 @@ function CompleteHero({
           border · amore 채움)로 통일(기존 외톨이 원형 폐기). pop-in 으로 튕겨
           등장 + amore ring 이 한 번 퍼지고(ping) + 체크가 그려지듯 나타난다
           (check-draw). 모든 모션은 prefers-reduced-motion 존중. */}
-      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border-[2px] border-ink bg-ink text-paper">
+      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border-[2px] border-ink bg-paper text-ink">
         <span
           aria-hidden
           className="stage-flow-complete-ping pointer-events-none absolute inset-0 rounded-sm border-[2px] border-ink"
