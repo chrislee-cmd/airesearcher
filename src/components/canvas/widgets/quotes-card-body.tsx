@@ -15,7 +15,6 @@ import { useWorkspace } from '@/components/workspace-provider';
 import { useToast } from '@/components/toast-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { IconButton } from '@/components/ui/icon-button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,10 +23,7 @@ import { ShareMenu } from '@/components/ui/share-menu';
 import { ControlDropzone } from '@/components/ui/control-dropzone';
 import { TranscriptRecordButton } from '@/components/canvas/widgets/transcript-record-button';
 import { JobProgress } from '@/components/ui/job-progress';
-import {
-  ProcessTimeline,
-  buildLinearPhases,
-} from '@/components/ui/process-timeline';
+import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
@@ -126,6 +122,16 @@ function safeFilename(title: string) {
 
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+// 전사록 집계 공정 단계 — 관측 신호(멀티파일 업로드 progress + 잡 status)를
+// 2 노드(업로드 → 전사)로 집계하고, 전 파일 done 이면 StageFlow complete hero
+// 로 넘어간다(3번째 "완료" 단계는 노드가 아니라 complete=true). 정적 정의라
+// 모듈 스코프 — 컴포넌트 안에서 재생성/메모이즈 불필요.
+const TX_STAGE_DEFS = [
+  { id: 'upload', icon: '📤' },
+  { id: 'transcribe', icon: '🎧' },
+] as const;
+const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
 function formatBytes(n: number | null) {
   if (n === null || n === undefined) return '';
@@ -697,27 +703,102 @@ export function QuotesCardBody() {
         j.status === 'submitting' ||
         j.status === 'transcribing',
     ) ?? null;
-  const TX_PHASES = [
-    'uploading',
-    'transcribing',
-    'md_conversion',
-    'speaker_diarization',
-    'typo_correction',
-    'phrasing_polish',
-  ] as const;
-  const txCurrentKey =
+  // ─── StageFlow 공정 플로우 (데스크 미러) ──────────────────────────────────
+  // 전사록은 멀티파일 — N 파일 각자 status(queued/submitting/transcribing/done)
+  // + 로컬 업로드 progress. 데스크(단일 잡 6단계)와 달리 관측 신호를 집계 2노드
+  // (업로드 → 전사) + 완료 hero 로 매핑한다. hint 로 진행 세부(업로드 %, 전사
+  // 완료 N/M)를 노출. 전 파일 done 이면 StageFlow complete=true 로 완료 hero.
+  const uploadValues = Object.values(job.localUploads);
+  const uploadingAvgPct =
+    uploadValues.length > 0
+      ? Math.round(
+          uploadValues.reduce((s, v) => s + v, 0) / uploadValues.length,
+        )
+      : null;
+  // 집계된 "실제" active 단계 인덱스: 업로드 중이면 0, 전사 잡이 돌면 1, 아니면
+  // -1. 업로드 100% 직후 /start 응답 대기 갭(busyUpload && !primaryInflight)도
+  // 업로드로 본다 — 헤더 pill 규칙과 동일.
+  const realActiveIdx =
     hasUploads || (busyUpload && !primaryInflight)
-      ? 'uploading'
+      ? 0
       : primaryInflight
-        ? 'transcribing'
-        : null;
-  const txTimelinePhases = buildLinearPhases(
-    TX_PHASES.map((k) => ({
-      key: k,
-      label: tProcess(`transcripts.${k}` as never),
-    })),
-    txCurrentKey,
-  );
+        ? 1
+        : -1;
+
+  // ─── 타임드 스테이지 리빌 (데스크 STAGE_DWELL_MS 패턴) ─────────────────────
+  // 업로드→전사 전이가 순식간이어도 각 단계를 최소 STAGE_DWELL_MS(≈5s) 노출한다.
+  // 표시 인덱스(displayIdx)는 실제 단계(realActiveIdx)를 앞지르지 않되, 전 파일
+  // 완료(txDone)면 남은 단계까지 걸어 보여준 뒤 완료 hero 로 넘어간다.
+  const STAGE_DWELL_MS = 5000;
+  const revealTarget = txDone ? TX_STAGE_COUNT : Math.max(realActiveIdx, 0);
+  const [displayIdx, setDisplayIdx] = useState(0);
+  const stageEnteredAtRef = useRef(0);
+  // 새 업로드/전사 사이클이 더 앞 단계에서 시작되면(예: 완료 후 새 파일 추가)
+  // 리빌을 그 단계로 되감아, 이전 완료 잔상을 지운다.
+  useEffect(() => {
+    if (realActiveIdx >= 0 && realActiveIdx < displayIdx) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- rewind reveal to a newly-started earlier stage
+      setDisplayIdx(realActiveIdx);
+      stageEnteredAtRef.current = Date.now();
+    }
+  }, [realActiveIdx, displayIdx]);
+  // 한 번에 한 단계씩, 진입 후 최소 STAGE_DWELL_MS 지난 뒤에만 다음 단계로.
+  useEffect(() => {
+    if (displayIdx >= revealTarget) return;
+    const wait = Math.max(
+      0,
+      STAGE_DWELL_MS - (Date.now() - stageEnteredAtRef.current),
+    );
+    const t = setTimeout(() => {
+      stageEnteredAtRef.current = Date.now();
+      setDisplayIdx((i) => i + 1);
+    }, wait);
+    return () => clearTimeout(t);
+  }, [displayIdx, revealTarget]);
+
+  // 리빌이 아직 끝까지 안 걸어갔으면(완료여도) 플로우를 계속 보여준다. phase
+  // active 일 때만 — fullview 후 idle 복귀(dismissed)면 컨트롤로 되돌린다.
+  const revealFlowActive =
+    phase === 'active' &&
+    (txInflight || (txDone && displayIdx < TX_STAGE_COUNT));
+
+  // StageFlow 노드 — status 는 실제 status 가 아니라 "표시" 인덱스(displayIdx)
+  // 기준(리빌). active 단계에서만 hint: 업로드 % / 전사 완료 N/M. error 파일이
+  // 있으면 현재 표시 단계를 error 톤으로. (useMemo 없이 plain — React Compiler
+  // 가 자동 메모이즈. 데스크와 달리 파생 const 를 dep 로 두면 preserve-manual-
+  // memoization 린트가 걸린다.)
+  const txStages: Stage[] = TX_STAGE_DEFS.map((s, i) => {
+    let status: Stage['status'];
+    if (i < displayIdx) status = 'done';
+    else if (i === displayIdx) status = anyError ? 'error' : 'active';
+    else status = 'pending';
+    const hint =
+      status !== 'active'
+        ? undefined
+        : s.id === 'upload'
+          ? uploadingAvgPct != null
+            ? `${uploadingAvgPct}%`
+            : undefined
+          : job.jobs.length > 0
+            ? `${doneJobs.length}/${job.jobs.length}`
+            : undefined;
+    return {
+      id: s.id,
+      label: tWidgets(
+        s.id === 'upload'
+          ? 'transcriptStageUpload'
+          : 'transcriptStageTranscribe',
+      ),
+      status,
+      icon: s.icon,
+      description: tWidgets(
+        s.id === 'upload'
+          ? 'transcriptStageUploadDesc'
+          : 'transcriptStageTranscribeDesc',
+      ),
+      hint,
+    };
+  });
 
   // 헤더 pill 로 push 할 live state. 우선순위:
   //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
@@ -727,13 +808,8 @@ export function QuotesCardBody() {
   //   4) 그 외 + done 잡 있음 → 'done'
   //   5) 그 외 → 'idle'
   const { setState } = useWidgetState();
-  const uploadValues = Object.values(job.localUploads);
-  const uploadingAvgPct =
-    uploadValues.length > 0
-      ? Math.round(
-          uploadValues.reduce((s, v) => s + v, 0) / uploadValues.length,
-        )
-      : null;
+  // uploadValues/uploadingAvgPct 는 StageFlow 블록에서 이미 계산 (헤더 pill 과
+  // StageFlow 업로드 hint 가 같은 평균 진행률을 공유).
   const inflightJob = queueJobs[0] ?? null;
   const errorJob = job.jobs.find((j) => j.status === 'error') ?? null;
   // 1초마다 강제 tick — ETA 가 시간 기반이라 잡이 그대로여도 헤더 진행률이
@@ -963,24 +1039,32 @@ export function QuotesCardBody() {
             띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
             active 진입 시 상단 고정 + 아래 산출물. */}
         <ControlBoardPanel active={phase === 'active'} gap="field">
-          {txInflight ? (
-              // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
-              <ProcessTimeline phases={txTimelinePhases} />
+          {revealFlowActive ? (
+              // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
+              // (사용자 결정 3, 데스크 미러). 좁은 카드 대응 vertical. per-file
+              // 상세(업로드/큐 JobProgress)는 아래 산출물 영역의 "파일별 상세"
+              // 접기로 강등된다. 완료 후에도 리빌이 끝까지 안 걸어갔으면 계속 노출.
+              <div className="flex flex-col items-center gap-5 py-6">
+                <StageFlow
+                  stages={txStages}
+                  orientation="vertical"
+                  className="w-full max-w-xs"
+                />
+              </div>
             ) : showDone ? (
-              // done: "완료됐어요! + 전체 보기" (+ 파일 추가 업로드 경로 보존).
-              <div className="flex flex-col items-center gap-6 py-8">
-                <p className="text-lg font-semibold text-ink-2">
-                  ✅ {tProcess('completeTitle')}
-                </p>
-                <ChromeButton
-                  variant="default"
-                  size="lg"
-                  onClick={handleQuotesFullview}
-                >
-                  {tWidgets('viewAll')}
-                </ChromeButton>
-                {/* 파일 추가 업로드 경로 — 모달 제거 후 인라인 dropzone 으로.
-                    드롭/클릭 → 새 전사 flow (idle 컨트롤과 동일 핸들러). */}
+              // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
+              // fullview 진입. 파일 추가 업로드 경로(dropzone + 녹음)는 hero
+              // 아래 보존 — 완료 상태에서도 새 전사를 이어서 시작할 수 있다.
+              <div className="flex flex-col items-center gap-6 py-4">
+                <StageFlow
+                  stages={txStages}
+                  complete
+                  completeLabel={tProcess('completeTitle')}
+                  onResult={handleQuotesFullview}
+                  resultLabel={tWidgets('viewAll')}
+                />
+                {/* 파일 추가 업로드 경로 — 인라인 dropzone (idle 컨트롤과 동일
+                    핸들러). 드롭/클릭 → 새 전사 flow. */}
                 <div className="w-full space-y-4">
                   <ControlDropzone
                     accept={ACCEPT}
@@ -1010,49 +1094,66 @@ export function QuotesCardBody() {
             {/* 업로드 진행 + 큐. flex-1 로 산출물을 채우고, 길어지면 자체
                 스크롤. 수평 여백·클러스터(컨트롤 좌측 정합)는 WidgetOutputRegion
                 SSOT 소유 — 손코딩 px 금지. */}
-            <WidgetOutputRegion padY="lg">
-              <div className="space-y-5">
-              {hasUploads && (
-                <div>
-                  <SectionLabel>{tCommon('uploading')}</SectionLabel>
-                  <ul className="mt-2 space-y-2">
-                    {Object.entries(job.localUploads).map(([id, pct]) => (
-                      <li key={id}>
-                        <JobProgress value={pct} label={tCommon('uploadingFiles')} variant="inline" />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {/* per-file 상세 — StageFlow 가 hero(위 컨트롤 영역)라, 파일별
+                업로드/큐 진행 막대는 보조로 강등하고 기본 접힘(사용자 결정 3,
+                데스크 진행 로그 패턴). 접기 안에 업로드 진행 + 큐 리스트 +
+                전사 시작 갭 indeterminate 바를 모두 담는다. 표시할 상세가 하나도
+                없으면 details 자체를 렌더하지 않는다. */}
+            {(hasUploads ||
+              queueJobs.length > 0 ||
+              (busyUpload && queueJobs.length === 0)) && (
+              <WidgetOutputRegion padY="lg">
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between text-xs uppercase tracking-[.18em] text-mute-soft">
+                    <span>{tWidgets('transcriptStageDetails')}</span>
+                    <span className="tabular-nums normal-case tracking-normal">
+                      {Object.keys(job.localUploads).length + queueJobs.length}건
+                    </span>
+                  </summary>
+                  <div className="mt-3 space-y-5">
+                    {hasUploads && (
+                      <div>
+                        <SectionLabel>{tCommon('uploading')}</SectionLabel>
+                        <ul className="mt-2 space-y-2">
+                          {Object.entries(job.localUploads).map(([id, pct]) => (
+                            <li key={id}>
+                              <JobProgress value={pct} label={tCommon('uploadingFiles')} variant="inline" />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-              {queueJobs.length > 0 && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <SectionLabel>진행 중 / 대기</SectionLabel>
-                    <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
-                  </div>
-                  <ul className="space-y-3">
-                    {queueJobs.map((j) => (
-                      <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
-                    ))}
-                  </ul>
-                </div>
-              )}
+                    {queueJobs.length > 0 && (
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <SectionLabel>진행 중 / 대기</SectionLabel>
+                          <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
+                        </div>
+                        <ul className="space-y-3">
+                          {queueJobs.map((j) => (
+                            <JobRow key={j.id} job={j} onDelete={() => deleteJob(j.id)} />
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-              {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
-                  기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
-                  이 구간에도 위젯이 진행 신호를 잃지 않도록 indeterminate 바를
-                  노출 (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
-              {busyUpload && !hasUploads && queueJobs.length === 0 && (
-                <div>
-                  <SectionLabel>진행 중</SectionLabel>
-                  <div className="mt-2">
-                    <JobProgress label={tCommon('transcribing')} variant="inline" />
+                    {/* 전사 시작 갭 — 업로드 100% 후 /api/transcripts/start 응답을
+                        기다리는 동안엔 잡이 아직 job.jobs 에 없어 위 큐가 비어 있다.
+                        이 구간에도 진행 신호를 잃지 않도록 indeterminate 바를 노출
+                        (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
+                    {busyUpload && !hasUploads && queueJobs.length === 0 && (
+                      <div>
+                        <SectionLabel>진행 중</SectionLabel>
+                        <div className="mt-2">
+                          <JobProgress label={tCommon('transcribing')} variant="inline" />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-              </div>
-            </WidgetOutputRegion>
+                </details>
+              </WidgetOutputRegion>
+            )}
 
             {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
                 진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).
