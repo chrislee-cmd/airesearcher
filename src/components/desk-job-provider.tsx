@@ -174,6 +174,16 @@ type Ctx = {
    */
   latestJob: DeskJob | null;
   refresh: () => Promise<void>;
+  /**
+   * Force-fetch one job's heavy columns (output/articles/analytics/claims/…)
+   * from the per-job detail endpoint and merge them into `jobs`. The list
+   * endpoint is light on purpose (heavy columns stripped, 2026-07-05 timeout
+   * incident), so only the session's latest done job is auto-hydrated by
+   * refresh(). The fullview viewer calls this when the user opens *any other*
+   * past done job — without it that job renders as "완료되지 않았습니다"
+   * despite the DB row being done with a full report+charts.
+   */
+  hydrateJob: (id: string) => Promise<void>;
   cancelJob: (id: string) => Promise<void>;
 };
 
@@ -217,6 +227,28 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
   // times per run; without this every event would re-download the ~500KB row.
   const detailCacheRef = useRef(new Map<string, DeskJob>());
 
+  // Fetch one job's heavy columns from the detail endpoint and cache them.
+  // Shared by refresh() (auto-hydrate the session's latest done job) and the
+  // public hydrateJob() (fullview opens an older done job). Returns the full
+  // row or null on any failure; a 401 trips the expired-session gate so we
+  // stop hammering the API the same way refresh() does.
+  const fetchDetail = useCallback(async (id: string): Promise<DeskJob | null> => {
+    try {
+      const res = await fetch(`/api/desk/jobs/${id}`, { cache: 'no-store' });
+      if (res.status === 401) {
+        stopOnExpiredRef.current = true;
+        return null;
+      }
+      if (!res.ok) return null;
+      const detail: DeskJob | undefined = (await res.json()).job;
+      if (!detail) return null;
+      detailCacheRef.current.set(detail.id, detail);
+      return detail;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!user) {
       setJobs([]);
@@ -238,35 +270,26 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return;
       const json = await res.json();
       let all: DeskJob[] = json.jobs ?? [];
-      // The list is light (no output/articles/…) — hydrate the one job the
-      // card body actually renders: the session's latest job, once done.
-      // Merge before setJobs so the UI never sees a done job without its
-      // report (that state reads as "결과 비어있음" and flashes the retry
-      // banner). If the detail fetch fails we keep the light row; the next
-      // realtime tick retries.
+      // The list is light (no output/articles/…). Re-apply any heavy columns
+      // we already hydrated (detail cache) to *every* matching row — keyed by
+      // id, reused only while updated_at still matches. Without this, each
+      // realtime tick would strip a job the user hydrated in the fullview back
+      // to output=undefined, flipping the viewer to "완료되지 않았습니다".
+      all = all.map((j) => {
+        const cached = detailCacheRef.current.get(j.id);
+        return cached && cached.updated_at === j.updated_at ? cached : j;
+      });
+      // Auto-hydrate the one job the card body actually renders: the session's
+      // latest job, once done. Merge before setJobs so the UI never sees a
+      // done job without its report (that state reads as "결과 비어있음" and
+      // flashes the retry banner). If the detail fetch fails we keep the light
+      // row; the next realtime tick retries.
       const target = all.find(
         (j) => new Date(j.created_at).getTime() >= sessionStart,
       );
-      if (target && target.status === 'done') {
-        const cached = detailCacheRef.current.get(target.id);
-        if (cached && cached.updated_at === target.updated_at) {
-          all = all.map((j) => (j.id === target.id ? cached : j));
-        } else {
-          try {
-            const detailRes = await fetch(`/api/desk/jobs/${target.id}`, {
-              cache: 'no-store',
-            });
-            if (detailRes.ok) {
-              const detail: DeskJob | undefined = (await detailRes.json()).job;
-              if (detail) {
-                detailCacheRef.current.set(detail.id, detail);
-                all = all.map((j) => (j.id === detail.id ? detail : j));
-              }
-            }
-          } catch {
-            // keep the light row — next refresh retries
-          }
-        }
+      if (target && target.status === 'done' && target.output === undefined) {
+        const detail = await fetchDetail(target.id);
+        if (detail) all = all.map((j) => (j.id === detail.id ? detail : j));
       }
       // Surface every job the API returns — it already caps at the 20 most
       // recent, so past runs persist across refresh/relogin (natural rotation
@@ -278,7 +301,24 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore — realtime or next refresh will catch up
     }
-  }, [user, sessionStart]);
+  }, [user, sessionStart, fetchDetail]);
+
+  // Public on-demand hydration for the fullview viewer. The list is light, so
+  // opening a past done job (any job that isn't the session-auto-hydrated one)
+  // needs its heavy columns fetched before it can render — otherwise it shows
+  // "완료되지 않았습니다" despite a full DB report. Idempotent: once merged the
+  // caller stops asking (output is no longer undefined), and the detail cache
+  // keeps it hydrated across subsequent refresh() ticks.
+  const hydrateJob = useCallback(
+    async (id: string) => {
+      if (!user || stopOnExpiredRef.current) return;
+      const detail = await fetchDetail(id);
+      if (detail) {
+        setJobs((prev) => prev.map((j) => (j.id === detail.id ? detail : j)));
+      }
+    },
+    [user, fetchDetail],
+  );
 
   // On user change (login/logout/relogin) clear the panel and re-arm the auth
   // gate so a re-login wakes polling back up. The next refresh() repopulates
@@ -356,7 +396,7 @@ export function DeskJobProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DeskJobCtx.Provider
-      value={{ jobs, isWorking, latestJob, refresh, cancelJob }}
+      value={{ jobs, isWorking, latestJob, refresh, hydrateJob, cancelJob }}
     >
       {children}
     </DeskJobCtx.Provider>

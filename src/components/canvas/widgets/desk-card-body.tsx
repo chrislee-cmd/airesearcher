@@ -39,6 +39,7 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { JobProgress } from '@/components/ui/job-progress';
+import { BrandLoader } from '@/components/ui/brand-loader';
 import {
   ProcessTimeline,
   buildLinearPhases,
@@ -137,7 +138,7 @@ export function DeskCardBody() {
   const tProcess = useTranslations('Process');
   const locale = useLocale();
   const requireAuth = useRequireAuth();
-  const { jobs, latestJob, isWorking, cancelJob } = useDeskJobs();
+  const { jobs, latestJob, isWorking, cancelJob, hydrateJob } = useDeskJobs();
   const { notify: notifyDeduction } = useCreditDeduction();
 
   // ─── inputs ──────────────────────────────────────────────────────────────
@@ -187,6 +188,22 @@ export function DeskCardBody() {
     latestJob ??
     jobs.find((j) => j.status === 'done' && j.output) ??
     null;
+
+  // The fullview dropdown can select any of the last 20 jobs, but the list
+  // endpoint is light — only the session's latest done job is auto-hydrated
+  // by the provider. When the shown job is done yet its report body was never
+  // fetched (output === undefined = "not fetched", vs null = "fetched empty"),
+  // pull the full row from /api/desk/jobs/[id] so it renders instead of
+  // falsely showing "완료되지 않았습니다" (spec decision C — stale snapshot).
+  // Idempotent: once hydrated output is defined, so the effect stops firing.
+  const fullviewJobId = fullviewJob?.id ?? null;
+  const fullviewNeedsHydration =
+    fullviewJob?.status === 'done' && fullviewJob.output === undefined;
+  useEffect(() => {
+    if (fullviewJobId && fullviewNeedsHydration) {
+      void hydrateJob(fullviewJobId);
+    }
+  }, [fullviewJobId, fullviewNeedsHydration, hydrateJob]);
 
   // 통일 "전체 보기" 진입 계측 — 표준 이벤트 (spec analytics 6/6).
   const handleDeskFullview = () => {
@@ -1202,6 +1219,13 @@ export function DeskCardBody() {
               {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
                 <div className="px-6 py-6">
                   <DeskResultView job={fullviewJob} tDesk={tDesk} />
+                </div>
+              ) : fullviewNeedsHydration ? (
+                // done job, report body being fetched on demand (list is
+                // light) — show a loader, not a false "미완료", while the
+                // detail request lands.
+                <div className="flex h-full items-center justify-center p-10">
+                  <BrandLoader size={36} label={tCommon('loading')} />
                 </div>
               ) : fullviewJob ? (
                 <div className="flex h-full items-center justify-center p-10">
