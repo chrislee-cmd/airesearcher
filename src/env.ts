@@ -128,6 +128,15 @@ export const env = createEnv({
     TAVILY_API_KEY: z.string().min(8).optional(),
     ECOS_API_KEY: z.string().min(8).optional(),
     KOSIS_API_KEY: z.string().min(8).optional(),
+    // e-Stat (일본 통계포털 api.e-stat.go.jp) appId — 국내 KOSIS 의 일본 등가.
+    // 무료 발급(https://www.e-stat.go.jp/api/). 미설정 시 e-Stat 소스 자동 비활성
+    // (envKeys 게이트) — 다른 소스엔 영향 없음. 3환경 등록은 /api 스킬(사용자 액션).
+    ESTAT_APP_ID: z.string().min(8).optional(),
+    // EDINET (일본 전자공시 api.edinet-fss.go.jp v2) subscription key — 국내 DART 의
+    // 일본 등가. EDINET API v2 는 발급받은 Subscription-Key 헤더를 요구한다(스펙은
+    // "무료" 로 기술했으나 v2 는 키 필수 — 보수적으로 optional 로 추가). 미설정 시
+    // EDINET 소스는 라이브 조회에서 401 → 사유를 담아 graceful skip(무음 0건 아님).
+    EDINET_API_KEY: z.string().min(8).optional(),
 
     NOTION_API_TOKEN: z.string().min(8).optional(),
     NOTION_CLIENT_ID: z.string().min(8).optional(),
@@ -280,6 +289,8 @@ export const env = createEnv({
     TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     ECOS_API_KEY: process.env.ECOS_API_KEY,
     KOSIS_API_KEY: process.env.KOSIS_API_KEY,
+    ESTAT_APP_ID: process.env.ESTAT_APP_ID,
+    EDINET_API_KEY: process.env.EDINET_API_KEY,
 
     NOTION_API_TOKEN: process.env.NOTION_API_TOKEN,
     NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,

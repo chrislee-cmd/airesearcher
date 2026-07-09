@@ -161,6 +161,53 @@ export function formatUsd(value: number): string {
   return `${sign}$${abs.toFixed(0)}`;
 }
 
+// ── 통화 정규화 (P2 재사용) — 비-USD 소스 값을 USD 대비축으로 환산 ─────────────
+// P1 이 formatUsd/formatCount(표기)만 뒀는데, P2(일본 EDINET·e-Stat)는 값이 **엔(JPY)**
+// 으로 온다. 한·일 대비를 하려면 JPY 를 USD 축으로 환산해야 한다. 정책(명시 값만,
+// 코드 환산)에 맞춰: **원값(JPY)은 그대로 cited 로 보존**하고, USD 는 아래 명시된
+// 참조 환율로 코드가 결정론적으로 환산한 **근사치(≈)**임을 호출부가 라벨로 밝힌다
+// (LLM 이 환율을 지어내지 않게 코드가 소유). 라이브 FX 를 매 task 마다 조회하면
+// 원거리 지연·rate limit 위험이 커, 연 평균 참조 환율 상수로 고정한다 — 국가 규모
+// 대비(자릿수 비교)엔 충분하고, 정밀 재무비교가 목적이 아님을 USD 근사 라벨이 명시.
+//
+// 참조 환율(USD/JPY) — 2024 연평균 ≈ 151.4 (일본은행/IMF 공표 근사). 값은 코드
+// 상수라 로그·PR 에 키가 아니며, 매년 갱신 후보(§5.4 SSOT self-check). 대비축이
+// "달러 자릿수"라 소폭 환율 변동은 대비 결론을 바꾸지 않는다.
+export const JPY_USD_REFERENCE_RATE = 151.4;
+export const JPY_USD_REFERENCE_YEAR = 2024;
+
+// JPY 금액 → USD 근사. 원값 보존, 환산만 코드. 유한수 아니면 null(무음 대신 호출부
+// 가 "환산 불가"로 정직 표기).
+export function jpyToUsd(
+  amountJpy: number,
+  rate: number = JPY_USD_REFERENCE_RATE,
+): number | null {
+  if (!Number.isFinite(amountJpy) || !Number.isFinite(rate) || rate <= 0) return null;
+  return amountJpy / rate;
+}
+
+// "≈$12.3B" 형태. USD 는 참조 환율 근사임을 ≈ 로 명시(cited 원값은 JPY). 환산
+// 불가면 null → 호출부가 원값(JPY)만 노출.
+export function formatJpyAsUsd(
+  amountJpy: number,
+  rate: number = JPY_USD_REFERENCE_RATE,
+): string | null {
+  const usd = jpyToUsd(amountJpy, rate);
+  return usd === null ? null : `≈${formatUsd(usd)}`;
+}
+
+// JPY 원값을 사람이 읽는 축약(엔). 1.23조엔 / 4,560억엔 — DART formatKrwAmount 의
+// 일본판(억/조 단위는 한국 관례와 동일 1e8/1e12). 원 수치는 링크로 검증 가능.
+export function formatJpyAmount(amount: number): string {
+  const abs = Math.abs(Math.round(amount));
+  const sign = amount < 0 ? '-' : '';
+  const cho = Math.floor(abs / 1e12); // 조
+  const oku = Math.round((abs % 1e12) / 1e8); // 억
+  if (cho > 0) return `${sign}${cho}조${oku ? ` ${oku.toLocaleString()}억` : ''}엔`;
+  if (abs >= 1e8) return `${sign}${Math.round(abs / 1e8).toLocaleString()}억엔`;
+  return `${sign}${abs.toLocaleString()}엔`;
+}
+
 // 인구 등 비-USD 카운트용. 12,345,678 → "12.3M명 아님" — 원 단위는 호출부가 붙인다.
 export function formatCount(value: number): string {
   const abs = Math.abs(value);

@@ -34,6 +34,10 @@ export type DeskSourceId =
   | 'arxiv'
   // Bank of Korea ECOS (경제통계시스템)
   | 'boj_ecos'
+  // Japan statistics portal (e-Stat — KOSIS 의 일본 등가)
+  | 'estat'
+  // Japan disclosures (EDINET — DART 의 일본 등가, 상장사 재무 XBRL)
+  | 'edinet'
   // Stats (market TAM/SAM)
   | 'kosis'
   // aTFIS 식품산업통계 — 가공식품 세분시장 시장규모 (소비재 TAM)
@@ -53,6 +57,8 @@ export type DeskSourceGroup =
   | 'sec'
   | 'academic_kr'
   | 'bok'
+  | 'estat'
+  | 'edinet'
   | 'kosis'
   | 'atfis'
   | 'global_macro'
