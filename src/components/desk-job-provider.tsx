@@ -118,8 +118,30 @@ export type DeskChart = {
   data: { label: string; value: number; display?: string }[];
 };
 
+// 주요 기업 매출 차트용 구조화 시계열 — #461. route 가 DART 매출 headline
+// article 의 구조화 값(article.financials)에서 코드로 만든다(LLM 파싱 없음).
+// display 는 코드가 미리 포맷한 조/억 라벨(예 "4조 2,528억원"), yoyPct 는 코드가
+// 계산한 전년比(%)로, 클라이언트 차트 컴포넌트는 포맷·계산 없이 렌더만 한다.
+// periods 는 연도 오름차순(과거→최신)이라 bar 가 좌→우로 추이를 이룬다.
+export type DeskRevenuePeriod = {
+  year: number;
+  amount: number | null; // 원 단위 원값 (결측 = null → "데이터 확보 실패")
+  display: string | null; // 조/억 축약 라벨 (amount 있을 때만)
+  yoyPct: number | null; // 직전(더 과거) 기간 대비 성장률 %, 계산 불가 시 null
+};
+
+export type DeskRevenueSeries = {
+  company: string;
+  sourceUrl: string;
+  periods: DeskRevenuePeriod[];
+};
+
 export type DeskAnalytics = {
   charts: DeskChart[];
+  // 주요 기업 매출 시계열 — 구조화 값에서 코드로 emit(옵셔널). 매크로 대비
+  // charts 와 별개 축이라 charts 계약(단일 시리즈)을 건드리지 않는다. 이전 저장
+  // row·비-market job 은 미설정(undefined).
+  revenueSeries?: DeskRevenueSeries[];
 };
 
 export type DeskJob = {

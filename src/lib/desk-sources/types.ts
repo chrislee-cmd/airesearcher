@@ -112,6 +112,23 @@ export type DeskArticle = {
   // "국내 vs G7 대비" 차트가 문자열 파싱 없이 이 값으로 코드 정규화(정렬·USD 표기)
   // 한다. 옵셔널 — 매크로 외 소스·이전 저장 row 는 미설정(undefined).
   macro?: MacroObservation;
+  // 구조화된 상장사 매출 시계열 — DART 매출 headline article 만 채운다(#457 이
+  // fnlttSinglAcntAll 응답에서 뽑은 당기/전기/전전기 3기간 원값). "주요 기업 매출"
+  // 차트가 이 값으로 코드에서 grouped bar + YoY 를 만든다 — snippet 텍스트 파싱이
+  // 아니라 구조화 값 그대로라 표·차트 수치가 항상 일치한다(#461 정책). 옵셔널 —
+  // DART 매출 외 article·이전 저장 row 는 미설정(undefined).
+  financials?: DeskRevenueObservation;
+};
+
+// DART 매출 headline article 에 실리는 구조화 매출 시계열. amount 는 원 단위
+// 원값(결측 기간은 null → "데이터 확보 실패"). cumulative 는 분기/반기 누적
+// 기준 여부(YoY 동일기준 판정용 — DartPeriodValue 와 동일 의미). period 는
+// "2024 연간" 처럼 기준 기간 라벨.
+export type DeskRevenueObservation = {
+  company: string;
+  sourceUrl: string;
+  period: string;
+  periods: { year: number; amount: number | null; cumulative: boolean }[];
 };
 
 // Why a source produced 0 usable articles when the cause is an API-side error

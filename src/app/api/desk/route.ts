@@ -36,6 +36,7 @@ import {
   type OrchestratorPlan,
 } from '@/lib/desk-orchestrator';
 import { buildComparisonCharts } from '@/lib/global-macro/comparison';
+import { buildRevenueSeries } from '@/lib/desk-revenue/series';
 import type { DeskAnalytics } from '@/components/desk-job-provider';
 
 export const maxDuration = 300;
@@ -1045,8 +1046,16 @@ async function runJob(args: {
     // analytics 가 null 이어도 대비 차트는 독립적으로 붙는다(deadline skip 무관 —
     // 순수 CPU 라 남은 예산과 상관없이 안전).
     const comparisonCharts = buildComparisonCharts(articles);
-    if (comparisonCharts.length) {
-      analytics = { charts: [...comparisonCharts, ...(analytics?.charts ?? [])] };
+    // "주요 기업 매출" 시계열 (코드 정규화, LLM 무관) — DART 매출 headline article 의
+    // 구조화 값에서 회사별 3개년 추이 + YoY 를 만든다. charts 와 별개 축(revenueSeries)
+    // 이라 매크로 대비 차트 계약을 건드리지 않고, desk-report-view 가 매출 섹션 상단에
+    // grouped bar 로 렌더한다. DART 미수집/전건 결측이면 빈 배열(테이블만 정상 렌더).
+    const revenueSeries = buildRevenueSeries(articles);
+    if (comparisonCharts.length || revenueSeries.length) {
+      analytics = {
+        charts: [...comparisonCharts, ...(analytics?.charts ?? [])],
+        revenueSeries: revenueSeries.length ? revenueSeries : analytics?.revenueSeries,
+      };
     }
 
     const { data: gen } = await admin
