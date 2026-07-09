@@ -183,10 +183,17 @@ export function DeskCardBody() {
   // navigator 로 fullview 진입 시 옛 완료 산출물이 바로 보이도록 — 이
   // sidebar 의 존재 이유).
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  // Default (nothing selected, no in-session latestJob): fall back to the most
+  // recent *done* job by status alone — NOT `&& j.output`. The list endpoint
+  // is light (#206: output/articles/analytics stripped), so every list row has
+  // output === undefined; requiring output here made the default resolve to
+  // null and the viewer render "아직 완료된 리포트가 없습니다" even though past
+  // done reports exist in the DB. Resolving by status lets the hydration effect
+  // below pull the heavy row on demand (spec decision A + B).
   const fullviewJob =
     jobs.find((j) => j.id === selectedJobId) ??
     latestJob ??
-    jobs.find((j) => j.status === 'done' && j.output) ??
+    jobs.find((j) => j.status === 'done') ??
     null;
 
   // The fullview dropdown can select any of the last 20 jobs, but the list
@@ -199,10 +206,23 @@ export function DeskCardBody() {
   const fullviewJobId = fullviewJob?.id ?? null;
   const fullviewNeedsHydration =
     fullviewJob?.status === 'done' && fullviewJob.output === undefined;
+  // Which job id (if any) failed its on-demand hydration. Scoped by id so
+  // switching the dropdown to another job clears the error; re-selecting the
+  // failed job re-fires the effect (needsHydration is still true) → retry.
+  const [hydrationFailedId, setHydrationFailedId] = useState<string | null>(null);
+  const fullviewHydrationFailed =
+    fullviewNeedsHydration && hydrationFailedId === fullviewJobId;
   useEffect(() => {
-    if (fullviewJobId && fullviewNeedsHydration) {
-      void hydrateJob(fullviewJobId);
-    }
+    if (!fullviewJobId || !fullviewNeedsHydration) return;
+    let cancelled = false;
+    // Surface failures (network / 401 / empty) as an error state — never leave
+    // the loader spinning silently (spec decision B: 무음 X).
+    void hydrateJob(fullviewJobId).then((ok) => {
+      if (!cancelled && !ok) setHydrationFailedId(fullviewJobId);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fullviewJobId, fullviewNeedsHydration, hydrateJob]);
 
   // 통일 "전체 보기" 진입 계측 — 표준 이벤트 (spec analytics 6/6).
@@ -1219,6 +1239,32 @@ export function DeskCardBody() {
               {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
                 <div className="px-6 py-6">
                   <DeskResultView job={fullviewJob} tDesk={tDesk} />
+                </div>
+              ) : fullviewHydrationFailed ? (
+                // done job, but the on-demand heavy-column fetch failed — show
+                // an explicit error + retry, never a silent forever-spinner
+                // (spec decision B: 무음 X).
+                <div className="flex h-full items-center justify-center p-10">
+                  <EmptyState
+                    tone="subtle"
+                    title="리포트를 불러오지 못했습니다"
+                    description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+                    action={
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          if (!fullviewJobId) return;
+                          setHydrationFailedId(null);
+                          void hydrateJob(fullviewJobId).then((ok) => {
+                            if (!ok) setHydrationFailedId(fullviewJobId);
+                          });
+                        }}
+                      >
+                        {tDesk('retry')}
+                      </Button>
+                    }
+                  />
                 </div>
               ) : fullviewNeedsHydration ? (
                 // done job, report body being fetched on demand (list is
