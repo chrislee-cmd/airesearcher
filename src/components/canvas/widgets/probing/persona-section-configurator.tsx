@@ -127,7 +127,7 @@ export function PersonaSectionConfigurator({
       <div className="flex flex-col gap-2">
         <ModeCardGroup
           selection="multi"
-          columns={3}
+          columns={6}
           variant="flat"
           ariaLabel="페르소나 섹션 구성"
           options={options}

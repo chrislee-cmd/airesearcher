@@ -37,24 +37,26 @@ export type ModeOption = {
   disabled?: boolean;
 };
 
-const COLS: Record<1 | 2 | 3, string> = {
+const COLS: Record<1 | 2 | 3 | 6, string> = {
   1: 'grid-cols-1',
   2: 'grid-cols-2',
   3: 'grid-cols-3',
+  6: 'grid-cols-6',
 };
 
 // variant:
 //   default — 내용 높이만큼 가변 (desk 트렌드/시장조사, quotes, enhance 공유).
 //   flat    — 정사각형 카드 (aspect-square). probing 페르소나 섹션 구성기 한정.
-//     3열 square 안에서 아이콘·제목이 항상 보이도록 세로 중앙 정렬 + 넘치는
-//     설명은 overflow-hidden 으로 하단부터 클립 (설명은 이미 line-clamp-2).
+//     6열 square 라 카드가 작아 아이콘·제목이 항상 보이도록 위→아래 흐름
+//     (justify-start) + 넘치는 설명은 overflow-hidden 으로 하단부터 클립
+//     (설명은 이미 line-clamp-2). 중앙정렬이면 넘칠 때 상단 아이콘이 잘림.
 export type ModeVariant = 'default' | 'flat';
 
 function cardClassName(selected: boolean, variant: ModeVariant): string {
   return (
     'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 ' +
     'text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ' +
-    (variant === 'flat' ? 'aspect-square justify-center overflow-hidden ' : '') +
+    (variant === 'flat' ? 'aspect-square justify-start overflow-hidden ' : '') +
     (selected
       ? 'border-amore bg-amore-bg'
       : 'border-line-soft bg-paper hover:bg-paper-soft')
@@ -128,7 +130,7 @@ type CommonProps = {
   /** Accessible name for the radiogroup / group. */
   ariaLabel: string;
   /** Card columns (default 2). */
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | 6;
   /** 'flat' → 정사각형 카드 (persona 한정). 기본 'default'. */
   variant?: ModeVariant;
   className?: string;
