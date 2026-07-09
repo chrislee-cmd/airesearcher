@@ -43,10 +43,18 @@ const COLS: Record<1 | 2 | 3, string> = {
   3: 'grid-cols-3',
 };
 
-function cardClassName(selected: boolean): string {
+// variant:
+//   default — 내용 높이만큼 가변 (desk 트렌드/시장조사, quotes, enhance 공유).
+//   flat    — 정사각형 카드 (aspect-square). probing 페르소나 섹션 구성기 한정.
+//     3열 square 안에서 아이콘·제목이 항상 보이도록 세로 중앙 정렬 + 넘치는
+//     설명은 overflow-hidden 으로 하단부터 클립 (설명은 이미 line-clamp-2).
+export type ModeVariant = 'default' | 'flat';
+
+function cardClassName(selected: boolean, variant: ModeVariant): string {
   return (
     'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 ' +
     'text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ' +
+    (variant === 'flat' ? 'aspect-square justify-center overflow-hidden ' : '') +
     (selected
       ? 'border-amore bg-amore-bg'
       : 'border-line-soft bg-paper hover:bg-paper-soft')
@@ -81,10 +89,18 @@ export type ModeButtonProps = {
   onSelect: (key: string) => void;
   /** 'single' → role=radio + aria-checked · 'multi' → aria-pressed toggle. */
   selection: 'single' | 'multi';
+  /** 'flat' → 정사각형 카드 (persona 한정). 기본 'default'. */
+  variant?: ModeVariant;
 };
 
 /** A single selectable mode card. Usually consumed via <ModeCardGroup>. */
-export function ModeButton({ option, selected, onSelect, selection }: ModeButtonProps) {
+export function ModeButton({
+  option,
+  selected,
+  onSelect,
+  selection,
+  variant = 'default',
+}: ModeButtonProps) {
   const radio = selection === 'single';
   return (
     <button
@@ -95,7 +111,7 @@ export function ModeButton({ option, selected, onSelect, selection }: ModeButton
       disabled={option.disabled}
       title={option.description}
       onClick={() => onSelect(option.key)}
-      className={cardClassName(selected)}
+      className={cardClassName(selected, variant)}
     >
       {selected ? (
         <span aria-hidden className="absolute right-2 top-2 text-amore">
@@ -113,6 +129,8 @@ type CommonProps = {
   ariaLabel: string;
   /** Card columns (default 2). */
   columns?: 1 | 2 | 3;
+  /** 'flat' → 정사각형 카드 (persona 한정). 기본 'default'. */
+  variant?: ModeVariant;
   className?: string;
 };
 
@@ -136,7 +154,7 @@ export type ModeCardGroupProps = SingleProps | MultiProps;
  * - multi:            group of toggles — `selected[]` / `onToggle`.
  */
 export function ModeCardGroup(props: ModeCardGroupProps) {
-  const { options, ariaLabel, columns = 2, className } = props;
+  const { options, ariaLabel, columns = 2, variant = 'default', className } = props;
   const multi = props.selection === 'multi';
   const gridClass = ['grid gap-2', COLS[columns], className ?? '']
     .filter(Boolean)
@@ -154,6 +172,7 @@ export function ModeCardGroup(props: ModeCardGroupProps) {
             option={opt}
             selected={selected}
             selection={multi ? 'multi' : 'single'}
+            variant={variant}
             onSelect={(key) =>
               multi
                 ? (props as MultiProps).onToggle(key)

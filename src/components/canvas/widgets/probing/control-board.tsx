@@ -131,7 +131,7 @@ function ControlFields({
           넓어진 클러스터 (max-w-2xl) 대비 왜소함을 해소하려 rows 2 → 3 으로
           확대 — 데스크 키워드 input 확대(min-h 44→52) 와 같은 계열. 폭은
           fullWidth 로 이미 클러스터를 채운다. */}
-      <Field label="조사 목적" description="이 인터뷰로 알고자 하는 것 (1~2 문장)">
+      <Field label="조사 목적">
         <Textarea
           value={goalDraft}
           onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
