@@ -10,7 +10,6 @@ import { useWorkspace } from '@/components/workspace-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
-import { WIDGET_FRAME_INSET_X } from '@/components/canvas/shell/control-board-panel';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
@@ -737,9 +736,7 @@ export function RecruitingWizard({
         }
       />
 
-      <div
-        className={`min-h-0 flex-1 space-y-4 overflow-y-auto ${WIDGET_FRAME_INSET_X} py-5`}
-      >
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
       {/* CARD 1 — 대상자 조건. idle 은 위 컨트롤 보드에서 early-return 되므로
           이 지점의 criteriaPhase 는 generating/review/approved 중 하나. */}
       <WizardCard

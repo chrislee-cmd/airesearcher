@@ -36,10 +36,7 @@ import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
-import {
-  ControlBoardPanel,
-  WIDGET_FRAME_INSET_X,
-} from '@/components/canvas/shell/control-board-panel';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import type {
@@ -1355,9 +1352,7 @@ function ExpandedBody() {
             <>
               <ControlBoardPanel active>{controlPanel}</ControlBoardPanel>
               {isCurrent ? (
-                <div
-                  className={`flex min-h-0 flex-1 items-center justify-center ${WIDGET_FRAME_INSET_X} text-center text-sm italic text-mute-soft`}
-                >
+                <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
                   전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
                 </div>
               ) : (

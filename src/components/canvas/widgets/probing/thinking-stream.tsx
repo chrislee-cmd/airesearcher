@@ -14,7 +14,6 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useRef } from 'react';
-import { WIDGET_FRAME_INSET_X } from '@/components/canvas/shell/control-board-panel';
 import type { ThinkingEvent } from '../probing-types';
 
 export function ProbingThinkingStream({
@@ -38,9 +37,7 @@ export function ProbingThinkingStream({
 
   return (
     <section className="flex flex-col border-b-[2px] border-line-soft bg-paper">
-      <header
-        className={`flex items-center justify-between ${WIDGET_FRAME_INSET_X} pb-1 pt-2.5`}
-      >
+      <header className="flex items-center justify-between px-4 pb-1 pt-2.5">
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           AI 의 사고 흐름
         </span>
@@ -48,7 +45,7 @@ export function ProbingThinkingStream({
       </header>
       <div
         ref={scrollerRef}
-        className={`max-h-[180px] overflow-y-auto ${WIDGET_FRAME_INSET_X} pb-3 pt-1 text-sm leading-relaxed text-ink-2`}
+        className="max-h-[180px] overflow-y-auto px-4 pb-3 pt-1 text-sm leading-relaxed text-ink-2"
       >
         {events.length === 0 ? (
           <span className="italic text-mute-soft">

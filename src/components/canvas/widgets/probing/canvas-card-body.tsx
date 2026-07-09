@@ -18,7 +18,6 @@
    floating 과 대비 — 좁은 카드는 사용자 시선이 중앙에 머무므로).
    ──────────────────────────────────────────────────────────────────── */
 
-import { WIDGET_FRAME_INSET_X } from '@/components/canvas/shell/control-board-panel';
 import { ProbingThinkingStream } from './thinking-stream';
 import { ProbingQuestionPopup } from './question-popup';
 import { ProbingQuestionHistory } from './question-history';
@@ -70,9 +69,7 @@ export function ProbingCanvasCardBody({
       />
 
       {/* 2. 제안 질문 popup — 중앙 영역 */}
-      <div
-        className={`relative flex min-h-0 flex-1 items-center justify-center ${WIDGET_FRAME_INSET_X} py-3`}
-      >
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-3">
         {!activePopup && (
           <p className="text-center text-sm italic text-mute-soft">
             {isLive

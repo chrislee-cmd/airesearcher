@@ -9,7 +9,6 @@ import { useRealtimeTranscript } from '@/components/realtime-transcript-provider
 import { useWidgetState } from '../shell/widget-state-context';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
-import { WIDGET_FRAME_INSET_X } from '../shell/control-board-panel';
 
 // TranslateConsole 의 status 는 내부 useState — 외부에서 못 본다. 대신
 // 같은 컴포넌트가 useRealtimeTranscriptLiveBinding 으로 RealtimeTranscript
@@ -54,7 +53,7 @@ function ExpandedBody() {
           flex min-h-full — idle 센터 보드 (메인 패널 규격 통일) 가 카드
           높이를 채워 수직 center 되도록 높이 체인 제공. 콘텐츠가 카드보다
           길어지는 live 에서는 min-h 라 그대로 늘어나 기존 스크롤 유지. */}
-      <div className={`flex min-h-full flex-col ${WIDGET_FRAME_INSET_X} py-5`}>
+      <div className="flex min-h-full flex-col px-5 py-5">
         <TranslateConsole />
       </div>
       {renderInSlot(
