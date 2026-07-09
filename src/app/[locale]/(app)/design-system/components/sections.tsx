@@ -29,6 +29,7 @@ import {
   DropdownMenuDemo,
   SliderDemo,
   ChipInputDemo,
+  ChipFieldDemo,
   ModeButtonDemo,
 } from '../demos';
 
@@ -44,6 +45,7 @@ export type SectionId =
   | 'input'
   | 'chrome-input'
   | 'chip-input'
+  | 'chip-field'
   | 'textarea'
   | 'select'
   | 'checkbox'
@@ -90,6 +92,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'input', label: 'Input', render: () => <InputSection /> },
       { id: 'chrome-input', label: 'ChromeInput', render: () => <ChromeInputSection /> },
       { id: 'chip-input', label: 'ChipInput', render: () => <ChipInputSection /> },
+      { id: 'chip-field', label: 'ChipField', render: () => <ChipFieldSection /> },
       { id: 'textarea', label: 'Textarea', render: () => <TextareaSection /> },
       { id: 'select', label: 'Select', render: () => <SelectSection /> },
       { id: 'checkbox', label: 'Checkbox', render: () => <CheckboxSection /> },
@@ -1042,6 +1045,19 @@ function ChipInputSection() {
     >
       <Subsection label="Interactive (Enter 또는 쉼표로 추가)">
         <ChipInputDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function ChipFieldSection() {
+  return (
+    <PrimitivePage
+      title="ChipField"
+      hint="src/components/ui/chip-field.tsx · 칩 컨테이너 전체 SSOT (프레임 + 칩 pill + plain × 제거 + 내부 ChipInput) · variant=bordered(default, border-[2px] border-ink) | subtle(border-line) · focus-within:border-amore · × = IconButton variant=plain (배경/보더 없는 bare, #903) · API: values/onChange/placeholderEmpty·Add/maxItems/maxLength/commitOnComma/disabled/chipRemoveLabel/inputType · IME-safe commit + Backspace pop + blur commit 내장 · Phase 2 에서 desk/translate/tags/invite 4곳 정합 예정"
+    >
+      <Subsection label="Interactive (bordered / subtle / disabled · plain × 제거)">
+        <ChipFieldDemo />
       </Subsection>
     </PrimitivePage>
   );
