@@ -4647,14 +4647,14 @@ function GlossaryField({
 
   return (
     <div
-      className={`flex min-h-10 flex-wrap items-center gap-1.5 rounded-xs border border-line bg-paper px-2 py-1 focus-within:border-amore ${
+      className={`flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore ${
         disabled ? 'opacity-50' : ''
       }`}
     >
       {values.map((v, idx) => (
         <span
           key={`${idx}-${v}`}
-          className="inline-flex items-center gap-1 rounded-full border border-amore bg-paper px-2 py-0.5 text-sm text-amore"
+          className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
         >
           {v}
           <IconButton
