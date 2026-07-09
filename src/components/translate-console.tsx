@@ -4205,22 +4205,17 @@ export function TranslateConsole({
       {idlePhase ? (
         // 컨트롤보드 = ControlBoardPanel SSOT. 드롭다운(controlFields)이 진짜
         // 최상단이 되도록 — 에코 온보딩 가이드는 클러스터 하단으로 내린다
-        // (dropdown-first, 사용자 요청 2026-07-08). banners 슬롯엔 진짜 경고
-        // (tts 차단·에러)만 상단 고정. gap = 'field'(gap-4).
+        // (dropdown-first, 사용자 요청 2026-07-08). banners 슬롯엔 autoplay
+        // 차단(tts)만 상단 고정 — 오류 배너는 에코 안내 아래로. gap = 'field'(gap-4).
         <ControlBoardPanel
           gap="field"
-          // ⚠️ 실제 배너가 있을 때만 넘긴다. `<>{null}{null}</>` 프래그먼트는
-          // 항상 truthy 라, 그대로 넘기면 ControlBoardPanel 이 idle·무에러에도
-          // 빈 banners 래퍼(mb-6=24px)를 렌더해 컨트롤이 24px 밀린다 — 통역만
-          // banners 를 쓰던 탓에 "통역 혼자 상단 여백" outlier 의 진짜 원인.
-          banners={
-            ttsBlockedBanner || errorBanner ? (
-              <>
-                {ttsBlockedBanner}
-                {errorBanner}
-              </>
-            ) : undefined
-          }
+          // banners 슬롯엔 autoplay 차단(Layer A tts)만 상단 고정 — 이건 "왜
+          // 모니터가 조용한가"를 즉시 알려야 해서 top 이 맞다. 반면 WebRTC/연결
+          // 오류 배너(errorBanner)는 EchoOnboarding("에코 없이 쓰는법") 아래로
+          // 내려 컨트롤 top 노출을 없앤다 (사용자 2026-07-09).
+          // ⚠️ ttsBlockedBanner 는 없을 때 null 이라 `banners && …` 가드가
+          // 알아서 빈 mb-6 래퍼를 안 그린다 — 프래그먼트 phantom 여백 회귀 없음.
+          banners={ttsBlockedBanner ?? undefined}
         >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
               이동 — 6 위젯 주 CTA 통일. */}
@@ -4237,6 +4232,10 @@ export function TranslateConsole({
             copied={shareCopied}
             listenerCount={listeners.length}
           />
+          {/* WebRTC/연결 오류 배너 — 컨트롤 top 이 아니라 "에코 없이 쓰는법"
+              안내 아래에 노출 (사용자 2026-07-09). errorBanner 는 무오류 시
+              null 이라 클러스터 gap-4 를 소비하지 않아 빈 공간 회귀 없음. */}
+          {errorBanner}
         </ControlBoardPanel>
       ) : (
         <>
