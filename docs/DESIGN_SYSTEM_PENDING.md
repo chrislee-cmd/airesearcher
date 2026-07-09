@@ -42,4 +42,4 @@ PROJECT.md §5.4 의 `docs/PROJECT_PENDING.md` 와 동일 패턴.
 - 2026-07-02 · PR #501 · §4.2 · translate-console hex 6건 sweep → 139→133
 -->
 
-_(아직 후보 없음 — 이 파일은 inbox 도입 PR 에서 생성)_
+- 2026-07-10 · PR (iconbutton-plain-variant) · §3 · IconButton `plain` variant 추가 — bare glyph (border/bg/shadow 무, hover 색만 text-mute→ink-2)

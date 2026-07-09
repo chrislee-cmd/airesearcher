@@ -614,12 +614,13 @@ function IconButtonSection() {
     'ghost-brand',
     'bordered',
     'subtle',
+    'plain',
   ];
   const sizes: IconButtonSize[] = ['compact', 'sm', 'md', 'lg'];
   return (
     <PrimitivePage
       title="IconButton"
-      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · subtle = 헤더 banner 위 circular pill (Topbar account pill 안의 gear) · sizes are shape"
+      hint="src/components/ui/icon-button.tsx · aria-label required (a11y enforced by type) · subtle = 헤더 banner 위 circular pill (Topbar account pill 안의 gear) · plain = bare glyph (박스/배경/그림자 무, hover 색만) · sizes are shape"
     >
       <Subsection label="Variants (size=md)">
         <div className="flex flex-wrap items-center gap-3">
