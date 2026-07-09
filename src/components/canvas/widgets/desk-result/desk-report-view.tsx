@@ -2,7 +2,11 @@
 
 import { useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import type { DeskClaim, DeskJob } from '@/components/desk-job-provider';
+import type {
+  DeskClaim,
+  DeskJob,
+  DeskRevenueSeries,
+} from '@/components/desk-job-provider';
 import type { DeskSkipReason } from '@/lib/desk-sources';
 import { DeskAnalyticsPanel } from '@/components/desk-analytics-panel';
 import {
@@ -10,12 +14,23 @@ import {
   type DeskParsedSection,
 } from '@/lib/desk-report-parser';
 import { DeskMarkdownBody } from './desk-markdown';
+import { RevenueChart } from './revenue-chart';
 import { SectionCard } from './section-card';
 import { TopicCard } from './topic-card';
 import { RQCard } from './rq-card';
 import { SectionNav, type NavItem } from './section-nav';
 
 type TDesk = ReturnType<typeof useTranslations<'Desk'>>;
+
+// "주요 기업 매출" 섹션 식별 — 이 섹션 상단에 구조화 매출 grouped bar 를 얹는다
+// (#461). market 리포트 prompt 가 고정 발행하는 heading("🏢 주요 기업 매출" /
+// 영어 "Key Company Revenue")을 이모지 제거 후 title 로 매칭한다. 매칭 실패해도
+// wide 테이블은 그대로 렌더되므로 회귀는 없다(차트만 그 섹션에 안 붙음).
+function isRevenueSection(title: string): boolean {
+  return /주요\s*기업\s*매출|기업\s*매출|주요\s*상장사\s*매출|company\s*revenue|key\s*compan/i.test(
+    title,
+  );
+}
 
 // 데스크 결과 보고서 위젯 grid — 좌측 섹션 nav (scroll-spy) + 우측 섹션별
 // Memphis 카드 grid. LLM markdown (job.output) 을 섹션으로 파싱해 카드로
@@ -39,6 +54,11 @@ export function DeskReportView({
 
   const hasArticles = !!(job.articles && job.articles.length > 0);
   const hasCharts = !!(job.analytics && job.analytics.charts.length > 0);
+  // 구조화 매출 시계열 (코드 emit) — "주요 기업 매출" 섹션 상단 grouped bar 용.
+  const revenueSeries = useMemo(
+    () => job.analytics?.revenueSeries ?? [],
+    [job.analytics],
+  );
   const quantClaims = useMemo(
     () =>
       (job.claims ?? []).filter(
@@ -117,6 +137,7 @@ export function DeskReportView({
                 hasCharts={hasCharts}
                 hasStructuredRq={hasStructuredRq}
                 rqById={rqById}
+                revenueSeries={revenueSeries}
               />
             ))}
 
@@ -134,6 +155,17 @@ export function DeskReportView({
             >
               <DeskMarkdownBody source={job.output ?? ''} />
             </SectionCard>
+            {revenueSeries.length > 0 && (
+              <SectionCard
+                id="desk-sec-revenue"
+                icon="🏢"
+                title={tDesk('revenueCardTitle')}
+                emphasis="large"
+                accent="peach"
+              >
+                <RevenueChart series={revenueSeries} tDesk={tDesk} />
+              </SectionCard>
+            )}
             {hasCharts && job.analytics && (
               <SectionCard
                 id="desk-sec-analytics"
@@ -226,6 +258,7 @@ function SectionRenderer({
   hasCharts,
   hasStructuredRq,
   rqById,
+  revenueSeries,
 }: {
   section: DeskParsedSection;
   job: DeskJob;
@@ -234,6 +267,7 @@ function SectionRenderer({
   hasCharts: boolean;
   hasStructuredRq: boolean;
   rqById: Map<string, NonNullable<DeskJob['rq_answers']>[number]>;
+  revenueSeries: DeskRevenueSeries[];
 }) {
   const common = {
     id: section.id,
@@ -242,6 +276,20 @@ function SectionRenderer({
     emphasis: section.emphasis,
     accent: section.accent,
   };
+
+  // ── 주요 기업 매출 — 구조화 매출 grouped bar(위) + wide 테이블 markdown(아래). ──
+  // 차트는 구조화 DART 값(revenueSeries)에서, 표는 LLM markdown 에서 오지만 둘 다
+  // 같은 공시 원값이라 수치가 일치한다(#461). 값 없으면 표만 렌더(회귀 없음).
+  if (isRevenueSection(section.title) && revenueSeries.length > 0) {
+    return (
+      <SectionCard {...common}>
+        <div className="mb-4">
+          <RevenueChart series={revenueSeries} tDesk={tDesk} />
+        </div>
+        <DeskMarkdownBody source={section.body} compact />
+      </SectionCard>
+    );
+  }
 
   // ── Findings / Competitive — ### 토픽 sub-card grid ──
   if (

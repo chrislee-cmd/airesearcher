@@ -172,6 +172,19 @@ async function fetchByCorp(
         // primary 수치 근거 — market mode 샘플링이 이 매출 headline 을 뉴스 사이에서
         // dropout 시키지 않도록 pin 대상으로 표시 (2026-07-08 진단: 농심·삼양 탈락).
         kind: 'metric',
+        // 구조화 매출 시계열 — 위 snippet 과 같은 값을 코드가 파싱 없이 소비하도록
+        // 원값 그대로 실어 보낸다. "주요 기업 매출" 차트가 이 값으로 grouped bar +
+        // YoY 를 만들어 표와 수치가 항상 일치한다(#461 — LLM 텍스트 파싱 금지).
+        financials: {
+          company: corp.corpName,
+          sourceUrl: finUrl,
+          period: fin.period,
+          periods: revenue.periods.map((p) => ({
+            year: p.year,
+            amount: p.amount,
+            cumulative: p.cumulative,
+          })),
+        },
       });
     } else {
       // 보고서는 락됐지만 매출 계정만 미매핑 — 무음 0건 금지. 사유를 남겨 보고서
