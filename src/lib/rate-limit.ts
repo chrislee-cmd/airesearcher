@@ -6,34 +6,21 @@ import { env } from '@/env';
 // of network/CDN — Upstash Redis is shared across Vercel regions so the
 // counter doesn't drift between Fluid Compute instances.
 //
-// PR-SEC4b — temporary fail-open. Upstash env is currently optional
-// (Marketplace integration not yet provisioned in prod), so when either
-// var is missing we skip the limiter entirely and log once per process.
-// Restore to fail-closed (env.ts required + remove the `isEnabled` gate
-// here) once Upstash is added.
+// Fail-closed: KV_REST_API_URL/TOKEN (the Vercel Marketplace Upstash REST
+// creds) are required in env.ts, so the build fails without them rather than
+// silently disabling the limiter. The former PR-SEC4b temporary fail-open
+// gate (skip-when-env-missing) has been removed now that Upstash is
+// provisioned — every call hits Redis.
 
 type Window = `${number} s` | `${number} m` | `${number} h` | `${number} d`;
-
-function isEnabled(): boolean {
-  return Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
-}
-
-let warned = false;
-function warnDisabledOnce(): void {
-  if (warned) return;
-  warned = true;
-  console.warn(
-    '[rate-limit] Upstash env missing — rate limit disabled (fail-open)',
-  );
-}
 
 let redis: Redis | null = null;
 
 function getRedis(): Redis {
   if (redis) return redis;
   redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL!,
-    token: env.UPSTASH_REDIS_REST_TOKEN!,
+    url: env.KV_REST_API_URL,
+    token: env.KV_REST_API_TOKEN,
   });
   return redis;
 }
@@ -86,10 +73,6 @@ export async function rateLimit(
   limit: number,
   window: Window,
 ): Promise<RateLimitResult> {
-  if (!isEnabled()) {
-    warnDisabledOnce();
-    return { success: true, retryAfter: 0, remaining: limit, limit };
-  }
   const limiter = getLimiter(prefix, limit, window);
   const { success, reset, remaining } = await limiter.limit(identifier);
   const retryAfter = success

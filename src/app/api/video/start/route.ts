@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   createAsset,
   createIndexedAsset,
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   if (!env.TWELVELABS_API_KEY || !env.TWELVELABS_ANALYZE_INDEX_ID) {
     return NextResponse.json({ error: 'missing_twelvelabs_config' }, { status: 500 });

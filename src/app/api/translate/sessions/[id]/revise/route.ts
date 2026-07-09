@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdminAmount, refundCredits } from '@/lib/credits';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 import {
   REVISE_BATCH_SIZE,
   REVISION_MODEL_LABEL,
@@ -91,6 +92,10 @@ export async function POST(
   if (session.host_user_id !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
+
+  const limited = await checkLlmRateLimit(user.id, session.org_id);
+  if (limited) return limited;
+
   if (session.status !== 'ended') {
     return NextResponse.json({ error: 'session_not_ended' }, { status: 409 });
   }

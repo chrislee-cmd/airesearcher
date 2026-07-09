@@ -12,6 +12,7 @@ import {
   formatAsMarkdown,
 } from '@/lib/transcripts/text-extract';
 import { spendCreditsAdmin } from '@/lib/credits';
+import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 const Body = z.object({
   storage_key: z.string().min(1),
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
 
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+
+  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  if (limited) return limited;
 
   const parsed = Body.safeParse(await request.json());
   if (!parsed.success) {
