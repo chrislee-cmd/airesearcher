@@ -359,8 +359,8 @@
     "probing": "프로빙 어시스턴트",
     "slidegen": "PPT 생성기",
     "guideline": "가이드라인 생성기",
-    "moderator_ai": "AI 모더레이터",
-    "ppt_report": "PPT 보고서 생성기",
+    "moderator_ai": "AI UT",
+    "ppt_report": "영상 분석기",
     "members": "멤버",
     "organizations": "조직",
     "settings": "설정",
@@ -667,13 +667,13 @@
       "cost": "곧 출시"
     },
     "moderator_ai": {
-      "title": "AI 모더레이터",
-      "description": "AI 모더레이터가 자동 진행해요.",
+      "title": "AI UT",
+      "description": "AI가 사용성 테스트(UT)를 대신 진행해요.",
       "cost": "곧 출시"
     },
     "ppt_report": {
-      "title": "PPT 보고서 생성기",
-      "description": "인터뷰 결과를 PPT 보고서로 정리해요.",
+      "title": "영상 분석기",
+      "description": "영상을 업로드하면 자동으로 분석해요.",
       "cost": "곧 출시"
     }
   },

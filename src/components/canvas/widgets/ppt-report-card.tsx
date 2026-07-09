@@ -3,30 +3,31 @@
 import type { WidgetContent } from '../widget-types';
 import { ComingSoonBody } from './coming-soon-body';
 
-// PPT 보고서 생성기 — Row 3 우측. 옛 'slidegen' (보고서→슬라이드 뼈대) 와
-// 별개 신 위젯. 현재 placeholder — 카드 안은 짧은 "준비 중", 전체보기는
+// 영상 분석기 — Row 3 우측. 옛 'slidegen' (보고서→슬라이드 뼈대) 와
+// 별개 신 위젯. key 는 내부 식별자라 'ppt_report' 유지 (표시 라벨만 영상
+// 분석기). 현재 placeholder — 카드 안은 짧은 "준비 중", 전체보기는
 // 기능 소개 hero (ComingSoonBody). 실 본문은 후속 spec 에서 교체.
 export const pptReportCard: WidgetContent = {
   key: 'ppt_report',
   meta: {
-    label: 'PPT 보고서 생성기',
+    label: '영상 분석기',
     accent: 'rose',
     cost: 0,
-    description: '인터뷰 결과를 PPT 보고서로 정리해요',
+    description: '영상을 업로드하면 자동으로 분석해요',
   },
   state: 'idle',
   ExpandedBody: () => (
     <ComingSoonBody
       widgetKey="ppt_report"
-      label="PPT 보고서 생성기"
-      icon="📊"
-      title="PPT 보고서 생성기가 곧 만나요"
-      description="인터뷰 결과와 데스크 리서치 결과를 모아 AI가 발표용 PPT 보고서를 자동 생성해요. 표지부터 appendix까지 완결."
+      label="영상 분석기"
+      icon="🎬"
+      title="영상 분석기가 곧 만나요"
+      description="인터뷰·사용성 테스트 영상을 업로드하면 AI가 자동으로 발화·행동·주요 장면을 분석해요. 긴 영상도 핵심만 빠르게."
       features={[
-        '표지 / 요약 / 인사이트 / 증거 인용 / appendix 자동 구성',
-        '데이터 시각화 (차트 / 표) 자동 삽입',
-        '인터뷰 원문 인용 자동 링크',
-        'PPTX 파일 다운로드',
+        '영상 자동 전사 + 화자 구분',
+        '주요 장면 / 하이라이트 자동 추출',
+        '발화·행동 기반 인사이트 태깅',
+        '타임스탬프별 원본 영상 링크',
       ]}
     />
   ),
