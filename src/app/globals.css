@@ -629,7 +629,7 @@ html, body {
    흐르는 중" 을 표현. 정적 엣지(pending)는 이 class 없이 단색 bg-line-soft.
    prefers-reduced-motion 존중 — 모션 off 시 애니메이션 정지, 상태 색만 유지. */
 @keyframes stageFlowNodePulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--color-amore); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-ink); }
   50%      { box-shadow: 0 0 0 5px transparent; }
 }
 .stage-flow-node-active {
@@ -642,7 +642,7 @@ html, body {
 .stage-flow-edge-flow-h {
   background-image: repeating-linear-gradient(
     90deg,
-    var(--color-amore) 0 6px,
+    var(--color-ink) 0 6px,
     transparent 6px 14px
   );
   animation: stageFlowEdgeFlowX 0.7s linear infinite;
@@ -654,7 +654,7 @@ html, body {
 .stage-flow-edge-flow-v {
   background-image: repeating-linear-gradient(
     180deg,
-    var(--color-amore) 0 6px,
+    var(--color-ink) 0 6px,
     transparent 6px 14px
   );
   animation: stageFlowEdgeFlowY 0.7s linear infinite;
