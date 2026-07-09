@@ -85,6 +85,11 @@ export type UseRealtimeTranscriptionResult = {
   // 세션이 OpenAI 30분 cap 도달로 재연결 중 (transcript 는 계속 흐른다).
   // 위젯이 "🔄 세션 갱신 중…" 같은 subtle 힌트를 띄우는 용도.
   renewing: boolean;
+  // 서버가 발급한 probing_sessions.id (start 성공 시 set, stop/cleanup 시 null).
+  // renew(30분 cap 재연결)는 같은 session_id 를 재사용하므로 이 값이 불변 →
+  // 소비자가 "새 세션 vs 같은 세션 재진입" 을 구별할 수 있다. 채워진 페르소나를
+  // 재연결/renew 로 지우지 않기 위한 게이트 (probing-card 리셋 effect).
+  sessionId: string | null;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -219,6 +224,9 @@ export function useRealtimeTranscription(opts?: {
   const [segments, setSegments] = useState<TranscriptionSegment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [renewing, setRenewing] = useState(false);
+  // sessionIdRef 의 reactive 미러 — 소비자에게 노출. ref 는 비동기 콜백용,
+  // state 는 리셋 게이트 같은 렌더/effect 의존용.
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // 차감 broadcast — start-lump + 각 heartbeat 성공 시 위젯 헤더 -N
   // fly-up + topbar pulse 트리거. ref 로 잡아둬서 비동기 콜백 안에서
@@ -290,6 +298,7 @@ export function useRealtimeTranscription(opts?: {
     renewInFlightRef.current = false;
     setRenewing(false);
     sessionIdRef.current = null;
+    setSessionId(null);
     heartbeatTickRef.current = 0;
     if (tabSilenceTimerRef.current) {
       clearInterval(tabSilenceTimerRef.current);
@@ -603,6 +612,7 @@ export function useRealtimeTranscription(opts?: {
         }
         clientSecret = json.client_secret.value;
         sessionIdRef.current = json.session_id ?? null;
+        setSessionId(json.session_id ?? null);
         heartbeatTickRef.current = 0;
         // start-lump 차감 성공 — 위젯 헤더 -N fly-up + topbar pulse.
         notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
@@ -874,5 +884,5 @@ export function useRealtimeTranscription(opts?: {
     };
   }, [cleanup]);
 
-  return { status, segments, error, renewing, start, stop };
+  return { status, segments, error, renewing, sessionId, start, stop };
 }

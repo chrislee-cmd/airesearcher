@@ -151,6 +151,7 @@ function ExpandedBody() {
     segments: rawSegments,
     error: sessionError,
     renewing: sessionRenewing,
+    sessionId,
     start: startSession,
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
@@ -774,15 +775,31 @@ function ExpandedBody() {
               ? confidenceRaw
               : 'insufficient';
           const hasContent = summary.trim().length > 0 || signals.length > 0;
-          if (hasContent) {
+          // RC-2 (회귀 금지): 이미 채워진 패널을 새 insufficient 값이 덮어
+          // "단서 부족" 으로 다운그레이드하지 못하게 막는다. reflection 은
+          // tail window (최근 REFLECTION_MAX_CHARS) 만 보므로 대화가 길어지면
+          // 초기에 패널을 채운 발화가 window 밖으로 밀려 LLM 이 그 패널을
+          // insufficient 로 재보고한다 — 이를 무시하고 기존 값을 유지한다.
+          // "채워짐" = confidence 가 insufficient 가 아니고 summary/signals 존재
+          // (persona-panel 의 isInsufficient 판정과 정합).
+          const existing = mergedRec[canonical];
+          const existingFilled =
+            !!existing &&
+            existing.confidence !== 'insufficient' &&
+            (existing.summary.trim().length > 0 ||
+              existing.signals.length > 0);
+          const wouldDowngrade =
+            existingFilled && confidence === 'insufficient';
+          if (hasContent && !wouldDowngrade) {
             mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
             // reflection 이 이 커스텀 섹션을 채웠으면 더는 우선 질문 대상 아님.
             emptyCustomRef.current.delete(canonical);
-          } else if (!mergedRec[canonical]) {
+          } else if (!existing) {
             mergedRec[canonical] = { summary, signals, confidence };
             anyChange = true;
           }
+          // wouldDowngrade === true → 기존 채워진 슬롯 그대로 유지 (덮지 않음).
         }
         const hasAnyKey = Object.keys(mergedRec).some(
           (k) => mergedRec[k] !== undefined,
@@ -902,10 +919,19 @@ function ExpandedBody() {
   }, [rawSegments, cumulativeChars, isLive]);
 
   // 새 세션 시작 → in-memory 상태 리셋 (research_context 는 DB 라 유지).
-  const prevLiveRef = useRef(false);
+  //
+  // RC-1 (회귀 금지): 리셋을 isLive boolean edge (`!prev && isLive`) 가 아니라
+  // **새 server session id 등장** 에 게이트한다. boolean edge 는 WebRTC 재연결·
+  // 위젯 swap 재마운트·renew 로 live 를 잠깐 벗어났다 복귀하는 모든 경로를
+  // "새 세션" 으로 오인해 누적 페르소나 전체를 wipe 했다. session id 는 start()
+  // 성공 시에만 새로 발급되고 renew(30분 cap 재연결)는 같은 id 를 재사용하므로,
+  // "직전과 다른 새 id 로 시작(idle→start)" 한 진짜 새 세션에만 초기화한다.
+  // stop → id null 로의 전이는 리셋 트리거가 아니다 (정지 후에도 페르소나는
+  // 화면/PDF export 에 남는다). 다음 start 가 새 id 를 발급하면 그때 초기화.
+  const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const prev = prevLiveRef.current;
-    if (!prev && isLive) {
+    const prev = prevSessionIdRef.current;
+    if (sessionId && sessionId !== prev) {
       setReflection(null);
       setReflectionStatus('idle');
       setReflectionLastUpdatedAt(null);
@@ -917,8 +943,8 @@ function ExpandedBody() {
       emptyCustomRef.current.clear();
       showBackfillFeedback(null);
     }
-    prevLiveRef.current = isLive;
-  }, [isLive, showBackfillFeedback]);
+    prevSessionIdRef.current = sessionId;
+  }, [sessionId, showBackfillFeedback]);
 
   // 세션 stop 시 진행 중 think SSE abort.
   useEffect(() => {
