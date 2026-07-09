@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import {
   isToplineGeneratingStale,
   type ToplineBlock,
@@ -67,6 +68,13 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  // 위젯별 동시사용 게이트 (#512) — 탑라인 생성(POST)이 인터뷰 위젯의 비싼
+  // 작업 kick 지점이다. generate 시 슬롯 획득, 서버 잡이 종점(done/error)에
+  // 닿으면 반납. 이 hook 은 canvas fullview(게이트 provider 있음)와 detail
+  // 페이지(provider 없음 → no-op) 양쪽에서 쓰여 두 경로를 한 곳에서 커버한다.
+  const gate = useWidgetGate('interviews');
+
   // 언마운트 후 setState 방지 (탭 전환/모달 닫힘).
   const aliveRef = useRef(true);
   useEffect(() => {
@@ -186,6 +194,9 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   const generate = useCallback(
     async (force: boolean, outputLang?: string, userDirection?: string) => {
       if (!projectId) return;
+      // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
+      const admitted = await gate.acquire();
+      if (!admitted) return;
       setGenerating(true);
       // 낙관적으로 generating 표시 — realtime/refetch 가 곧 확정.
       setData((prev) => (prev ? { ...prev, status: 'generating' } : prev));
@@ -212,6 +223,8 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
               ? json.error
               : `HTTP ${res.status}`,
           );
+          // 잡이 시작 못 함 — 슬롯 즉시 반납(서버 잡 종점 신호가 안 오므로).
+          gate.release();
           // 실패 시 실제 상태로 되돌린다.
           await refetch();
           return;
@@ -222,12 +235,26 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
       } catch (e) {
         if (!aliveRef.current) return;
         setFetchError(e instanceof Error ? e.message : 'network_error');
+        // 네트워크 실패 — 잡 미시작, 슬롯 반납.
+        gate.release();
       } finally {
         if (aliveRef.current) setGenerating(false);
       }
     },
-    [projectId, refetch],
+    [projectId, refetch, gate],
   );
+
+  // 탑라인 생성 잡이 종점(done/error)에 닿으면 게이트 슬롯 반납 → 대기자 승격.
+  // 성공 kick 후 서버 잡이 realtime 으로 status 를 굴려 여기서 반납된다.
+  const prevGateStatusRef = useRef<ToplineStatus | null>(null);
+  useEffect(() => {
+    const prev = prevGateStatusRef.current;
+    const cur = data?.status ?? null;
+    prevGateStatusRef.current = cur;
+    if (prev === 'generating' && (cur === 'done' || cur === 'error')) {
+      gate.release();
+    }
+  }, [data?.status, gate]);
 
   // 낙관적 블록 md 교체 — 인라인 편집이 저장 성공/실패 확정 전에 즉시 화면에
   // 반영하거나(저장) 원문으로 되돌리는(롤백) 데 쓴다. 블록 타입/구조는 유지.

@@ -13,6 +13,7 @@ import {
 } from '@/components/transcript-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { useToast } from '@/components/toast-provider';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
@@ -160,6 +161,15 @@ export function QuotesCardBody() {
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
   const toast = useToast();
+  // 위젯별 동시사용 게이트 (#512) — 전사 잡 시작 시 슬롯 획득, 큐가 모두 끝나
+  // isWorking 이 false 로 떨어지면 반납.
+  const gate = useWidgetGate('quotes');
+  const prevWorkingRef = useRef(false);
+  useEffect(() => {
+    const prev = prevWorkingRef.current;
+    prevWorkingRef.current = job.isWorking;
+    if (prev && !job.isWorking) gate.release();
+  }, [job.isWorking, gate]);
 
   const [busyUpload, setBusyUpload] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -443,6 +453,9 @@ export function QuotesCardBody() {
   // busyUpload 는 호출자(uploadToStorage / startTranscription)가 관리한다.
   async function startTranscriptionFor(files: ReadyTranscriptFile[]) {
     if (files.length === 0) return;
+    // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
+    const admitted = await gate.acquire();
+    if (!admitted) return;
     setUploadError(null);
     const queue = [...files];
     try {

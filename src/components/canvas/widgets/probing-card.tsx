@@ -39,6 +39,7 @@ import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import type {
   HistoryQuestion,
   PopupQuestion,
@@ -202,6 +203,19 @@ function ExpandedBody() {
   const { isCurrent, renderInSlot, close } = useFullview('probing');
 
   const isLive = sessionStatus === 'live';
+
+  // 위젯별 동시사용 게이트 (#512) — 세션 start 시 슬롯 획득, 종료 시 반납.
+  const gate = useWidgetGate('probing');
+  // 세션이 종료(idle) 되거나 실패(error) 하면 슬롯 반납. 정지 버튼 · PDF export
+  // 종료 · 시작 실패(live 미도달) · 언마운트 모두 sessionStatus 전환으로 커버.
+  const prevSessionStatusRef = useRef(sessionStatus);
+  useEffect(() => {
+    const prev = prevSessionStatusRef.current;
+    prevSessionStatusRef.current = sessionStatus;
+    if (prev !== sessionStatus && (sessionStatus === 'idle' || sessionStatus === 'error')) {
+      gate.release();
+    }
+  }, [sessionStatus, gate]);
 
   const { setState: setWidgetState } = useWidgetState();
   useEffect(() => {
@@ -1053,9 +1067,13 @@ function ExpandedBody() {
 
   // 세션 시작 / 정지.
   const handleStartSession = useCallback(async () => {
+    // 슬롯 획득 — 정원 초과면 카드에 국소 대기 UI 가 뜨고 admitted 로 바뀔
+    // 때까지 여기서 보류된다. 취소/이탈 시 false → 세션 시작 안 함.
+    const admitted = await gate.acquire();
+    if (!admitted) return;
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
-  }, [startSession, source]);
+  }, [gate, startSession, source]);
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
