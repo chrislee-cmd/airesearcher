@@ -105,6 +105,25 @@ export function ModeButton({
   variant = 'default',
 }: ModeButtonProps) {
   const radio = selection === 'single';
+
+  // flat variant (persona multi 토글) = <label> + 실제 Checkbox primitive.
+  // 카드 전체가 라벨이라 어디를 눌러도 native 로 checkbox 가 토글되고
+  // onChange → onSelect 로 상태가 확실히 반영된다. 선택 표시(checkbox)는
+  // 텍스트 아래 중앙. (이전엔 <input> 을 <button> 안에 둬서 — 무효 중첩 —
+  // 클릭이 체크로 반영되지 않던 버그.)
+  if (variant === 'flat') {
+    return (
+      <label className={cardClassName(selected, variant) + ' cursor-pointer'}>
+        <CardInner option={option} />
+        <Checkbox
+          checked={selected}
+          onChange={() => onSelect(option.key)}
+          disabled={option.disabled}
+        />
+      </label>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -117,24 +136,12 @@ export function ModeButton({
       className={cardClassName(selected, variant)}
     >
       {/* default variant: 우상단 ✓ (desk/quotes/enhance 기존 유지). */}
-      {selected && variant !== 'flat' ? (
+      {selected ? (
         <span aria-hidden className="absolute right-2 top-2 text-amore">
           ✓
         </span>
       ) : null}
       <CardInner option={option} />
-      {/* flat variant: 선택 표시를 디자인 시스템 Checkbox primitive 로, 텍스트
-          아래 중앙. 카드 전체가 토글 버튼이라 여기 checkbox 는 상태 표시 전용
-          (pointer-events-none · tabIndex -1 · aria-hidden · readOnly). */}
-      {variant === 'flat' ? (
-        <Checkbox
-          checked={selected}
-          readOnly
-          tabIndex={-1}
-          aria-hidden
-          className="pointer-events-none"
-        />
-      ) : null}
     </button>
   );
 }
