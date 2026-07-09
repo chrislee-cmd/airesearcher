@@ -839,6 +839,7 @@
     "downloadDocx": ".docx 다운로드",
     "thinkingActive": "지금 진행 중",
     "thinkingDone": "진행 기록",
+    "thinkingDetails": "진행 기록 자세히",
     "stop": "중지",
     "stopRequested": "중지 중…",
     "stopAndRefund": "중지하고 환불받기",
@@ -896,6 +897,14 @@
       "expanding": "유사 키워드 확장",
       "crawling": "자료 수집",
       "summarizing": "요약 정리"
+    },
+    "stageFlow": {
+      "expand": "확장",
+      "scope": "스코핑",
+      "crawl": "크롤링",
+      "extract": "추출",
+      "synthesize": "종합",
+      "summarize": "요약"
     },
     "region": {
       "KR": "한국",

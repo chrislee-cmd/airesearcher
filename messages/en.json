@@ -839,6 +839,7 @@
     "downloadDocx": "Download .docx",
     "thinkingActive": "Working on it",
     "thinkingDone": "Activity",
+    "thinkingDetails": "Activity details",
     "stop": "Stop",
     "stopRequested": "Stopping…",
     "stopAndRefund": "Stop and refund",
@@ -896,6 +897,14 @@
       "expanding": "Expanding keywords",
       "crawling": "Crawling sources",
       "summarizing": "Summarizing"
+    },
+    "stageFlow": {
+      "expand": "Expand",
+      "scope": "Scope",
+      "crawl": "Crawl",
+      "extract": "Extract",
+      "synthesize": "Synthesize",
+      "summarize": "Summarize"
     },
     "region": {
       "KR": "Korea",

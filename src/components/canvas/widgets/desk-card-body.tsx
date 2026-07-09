@@ -38,15 +38,10 @@ import { Select } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
-import { JobProgress } from '@/components/ui/job-progress';
 import { BrandLoader } from '@/components/ui/brand-loader';
-import {
-  ProcessTimeline,
-  buildLinearPhases,
-} from '@/components/ui/process-timeline';
+import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Button } from '@/components/ui/button';
 import { ModeCardGroup } from '@/components/ui/mode-button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
@@ -54,7 +49,6 @@ import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
-import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
@@ -660,29 +654,62 @@ export function DeskCardBody() {
   // 완료(showResult)면 "완료됐어요! + 전체 보기" 블록이 대체한다. 데스크는
   // 유일하게 세분화된 progress.phase 를 노출해 단일-잡 타임라인에 잘 맞는다.
   const deskRunning = submitting || !!pendingJobId || isWorking;
-  const DESK_TIMELINE_PHASES = [
-    'expanding',
-    'scoping',
-    'crawling',
-    'extracting',
-    'drafting',
-    'critiquing',
-    'synthesizing',
-    'summarizing',
-  ] as const;
-  const deskTimelinePhases = buildLinearPhases(
-    DESK_TIMELINE_PHASES.map((k) => ({
-      key: k,
-      label: tProcess(`desk.${k}` as never),
-      detail:
-        k === 'crawling'
-          ? `${job?.progress?.crawl_done ?? 0}/${job?.progress?.crawl_total ?? 0}`
-          : undefined,
-    })),
-    // phase 미보고(제출 직후/queued)면 첫 단계를 active 로 — 빈 타임라인 회피.
-    job?.progress?.phase ?? (deskRunning ? 'expanding' : null),
-    { allDone: job?.status === 'done' },
+
+  // ─── phase → 정규 공정 단계(6) 매핑 (사용자 결정 1) ─────────────────────────
+  // 백엔드 8 phase(expanding·scoping·crawling·extracting·drafting·critiquing·
+  // synthesizing·summarizing)를 사용자에게 보일 6개 ordered 단계로 통합한다.
+  // drafting/critiquing/synthesizing 은 사용자 눈엔 하나의 "종합" 공정 —
+  // widget-progress 의 누적 % 구간(65~100)과도 정합. 현재 phase 가 속한 단계 =
+  // active, 앞 = done, 뒤 = pending. 크롤링 단계엔 "N/M" hint 를 얹는다.
+  const DESK_STAGE_DEFS = useMemo(
+    () =>
+      [
+        { id: 'expand', phases: ['expanding'] },
+        { id: 'scope', phases: ['scoping'] },
+        { id: 'crawl', phases: ['crawling'] },
+        { id: 'extract', phases: ['extracting'] },
+        {
+          id: 'synthesize',
+          phases: ['drafting', 'critiquing', 'synthesizing'],
+        },
+        { id: 'summarize', phases: ['summarizing'] },
+      ] as const,
+    [],
   );
+  const deskStages: Stage[] = useMemo(() => {
+    // phase 미보고(제출 직후/queued)면 첫 단계를 active 로 — 빈 플로우 회피.
+    const phase = job?.progress?.phase ?? (deskRunning ? 'expanding' : null);
+    const activeIdx = phase
+      ? DESK_STAGE_DEFS.findIndex((s) =>
+          (s.phases as readonly string[]).includes(phase),
+        )
+      : -1;
+    const errored = job?.status === 'error';
+    return DESK_STAGE_DEFS.map((s, i) => {
+      let status: Stage['status'];
+      if (i < activeIdx) status = 'done';
+      else if (i === activeIdx) status = errored ? 'error' : 'active';
+      else status = 'pending';
+      return {
+        id: s.id,
+        label: tDesk(`stageFlow.${s.id}` as never),
+        status,
+        // 크롤링 active 단계에만 진행 세부(N/M) — StageFlow 가 hint 로 노출.
+        hint:
+          s.id === 'crawl' && status === 'active'
+            ? `${job?.progress?.crawl_done ?? 0}/${job?.progress?.crawl_total ?? 0}`
+            : undefined,
+      };
+    });
+  }, [
+    DESK_STAGE_DEFS,
+    deskRunning,
+    job?.progress?.phase,
+    job?.progress?.crawl_done,
+    job?.progress?.crawl_total,
+    job?.status,
+    tDesk,
+  ]);
 
   // 로컬 error state (제출 전/제출 실패) 배너 — phase 무관하게 노출해야
   // idle 로 되돌아간 실패도 사용자가 본다.
@@ -843,30 +870,50 @@ export function DeskCardBody() {
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
         <ControlBoardPanel active={active}>
           {deskRunning ? (
-              // active: 컨트롤+CTA 완전 대체 → 공정 과정 타임라인.
-              <ProcessTimeline phases={deskTimelinePhases} />
+              // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
+              // (사용자 결정 2). 좁은 카드 대응 vertical. 진행 로그(이벤트)는
+              // 아래 산출물 영역의 "자세히" 접기로 강등한다. 중복 진행 막대
+              // (JobProgress) 는 제거 — 크롤링 노드 hint 로 흡수.
+              <div className="flex flex-col items-center gap-5 py-6">
+                <StageFlow
+                  stages={deskStages}
+                  orientation="vertical"
+                  className="w-full max-w-[13rem]"
+                />
+                {/* STOP — 제거된 JobProgress 막대의 취소 버튼을 흡수. */}
+                {job &&
+                  (job.cancel_requested ? (
+                    <span className="text-xs text-mute-soft">
+                      {tDesk('stopRequested')}
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void cancelJob(job.id)}
+                    >
+                      {tDesk('stop')}
+                    </Button>
+                  ))}
+              </div>
             ) : showResult && !forceControls ? (
-              // done: "완료됐어요! + 전체 보기" (+ 재실행용 새 리서치).
-              <div className="flex flex-col items-center gap-6 py-8">
-                <p className="text-lg font-semibold text-ink-2">
-                  ✅ {tProcess('completeTitle')}
-                </p>
-                <div className="flex items-center gap-3">
-                  <ChromeButton
-                    variant="default"
-                    size="lg"
-                    onClick={handleDeskFullview}
-                  >
-                    {tWidgets('viewAll')}
-                  </ChromeButton>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setForceControls(true)}
-                  >
-                    {tProcess('newResearch')}
-                  </Button>
-                </div>
+              // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
+              // fullview 진입. 재실행용 "새 리서치" 는 hero 아래 secondary 유지.
+              <div className="flex flex-col items-center gap-2 py-2">
+                <StageFlow
+                  stages={deskStages}
+                  complete
+                  completeLabel={tProcess('completeTitle')}
+                  onResult={handleDeskFullview}
+                  resultLabel={tWidgets('viewAll')}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setForceControls(true)}
+                >
+                  {tProcess('newResearch')}
+                </Button>
               </div>
             ) : (
               <>
@@ -880,64 +927,31 @@ export function DeskCardBody() {
         {active && (
           <>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {/* Streaming panel — running 또는 events 있을 때 */}
-        {showStream && (
+              {/* 진행 로그 — StageFlow 가 hero(위 컨트롤 영역)라, 이벤트 리스트업은
+            "자세히" 접기(secondary)로 강등(사용자 결정 2). 디버깅/투명성 위해
+            보존하되 기본 접힘. 실행 중 진행 상태·크롤 카운트는 StageFlow 가
+            노출하므로 여기선 raw 로그만. */}
+        {showStream && events.length > 0 && (
           <WidgetOutputRegion scroll={false} padY="lg" className="border-t border-line-soft bg-paper">
-            {isWorking ? (
-              <JobProgress
-                value={
-                  job?.progress?.crawl_total
-                    ? Math.round(
-                        ((job.progress.crawl_done ?? 0) /
-                          job.progress.crawl_total) *
-                          100,
-                      )
-                    : undefined
-                }
-                label={(() => {
-                  const phase = job?.progress?.phase;
-                  if (phase) {
-                    try {
-                      return tDesk(`phaseLabel.${phase}` as never);
-                    } catch {
-                      return tDesk('thinkingActive');
-                    }
-                  }
-                  return tDesk('thinkingActive');
-                })()}
-                hint={
-                  job?.progress?.crawl_total
-                    ? `${job.progress.crawl_done ?? 0}/${job.progress.crawl_total}`
-                    : undefined
-                }
-                onCancel={
-                  job
-                    ? job.cancel_requested
-                      ? undefined
-                      : () => void cancelJob(job.id)
-                    : undefined
-                }
-                cancelLabel={
-                  job?.cancel_requested ? tDesk('stopRequested') : tDesk('stop')
-                }
-              />
-            ) : (
-              <div className="mb-2 flex items-center justify-between">
-                <SectionLabel>{tDesk('thinkingDone')}</SectionLabel>
-                <span className="text-xs text-mute-soft">{events.length} 이벤트</span>
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-xs uppercase tracking-[.18em] text-mute-soft">
+                <span>{tDesk('thinkingDetails')}</span>
+                <span className="tabular-nums normal-case tracking-normal">
+                  {events.length} 이벤트
+                </span>
+              </summary>
+              <div
+                ref={thoughtsScroller}
+                className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-white px-4 py-3 text-md leading-[1.7]"
+              >
+                {events.map((line, i) => (
+                  <div key={i} className="py-0.5 text-ink-2">
+                    <span className="mr-2 text-amore">›</span>
+                    {line}
+                  </div>
+                ))}
               </div>
-            )}
-            <div
-              ref={thoughtsScroller}
-              className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-white px-4 py-3 text-md leading-[1.7]"
-            >
-              {events.map((line, i) => (
-                <div key={i} className="py-0.5 text-ink-2">
-                  <span className="mr-2 text-amore">›</span>
-                  {line}
-                </div>
-              ))}
-            </div>
+            </details>
           </WidgetOutputRegion>
         )}
 
