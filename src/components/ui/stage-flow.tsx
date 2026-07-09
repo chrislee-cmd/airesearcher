@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 
 // ─── StageFlow — 공정 플로우차트 아티팩트 primitive ───────────────────────────
@@ -28,6 +29,12 @@ export type Stage = {
   status: StageStatus;
   // active 단계의 진행 세부 (예: "47/240 수집중"). active 에서만 노출.
   hint?: string;
+  // 단계 정체성 이모지/글리프 — 카드 좌측에 크게 노출(모드 카드 룩). 없으면
+  // 상태 마커만 렌더된다. active/done 은 풀 컬러, pending 은 흐리게.
+  icon?: ReactNode;
+  // "이 단계가 지금 뭘 하는지" 한두 줄 설명. active 카드에서만 펼쳐져(expand)
+  // 보이고, 다음 단계로 넘어가면 접힌다(fold). 없으면 펼침 영역 자체가 없음.
+  description?: ReactNode;
 };
 
 export type StageFlowProps = {
@@ -44,12 +51,13 @@ export type StageFlowProps = {
 };
 
 // 상태별 노드 chrome — 색(border/bg/text)은 여기서만 소유(BASE 는 색 없음,
-// PROJECT.md §7.11 primitive BASE 색 금지 함정 회피). 채워진 노드 = amore-bg
-// tint(done) / warning-bg tint(error).
+// PROJECT.md §7.11 primitive BASE 색 금지 함정 회피). 카드형 스텝(모노크롬):
+// 미래(pending)=회색, 현재(active)=검정 보더 + 흰 배경(아웃라인) + glow,
+// 과거(done)=line 아웃라인 + ✓, 에러=warning. 배경은 전부 흰색(paper).
 const NODE_TONE: Record<StageStatus, string> = {
   pending: 'border-line-soft bg-paper text-mute-soft',
-  active: 'border-amore bg-paper text-ink stage-flow-node-active',
-  done: 'border-amore bg-amore-bg text-ink',
+  active: 'border-ink bg-paper text-ink stage-flow-node-active',
+  done: 'border-line bg-paper text-ink-2',
   error: 'border-warning bg-warning-bg text-warning',
 };
 
@@ -59,7 +67,7 @@ function StageMarker({ status }: { status: StageStatus }) {
       <svg
         aria-hidden
         viewBox="0 0 16 16"
-        className="h-3.5 w-3.5 shrink-0 text-amore"
+        className="h-3.5 w-3.5 shrink-0 text-ink"
         fill="none"
         stroke="currentColor"
         strokeWidth="2.4"
@@ -90,7 +98,7 @@ function StageMarker({ status }: { status: StageStatus }) {
     return (
       <span
         aria-hidden
-        className="h-2 w-2 shrink-0 rounded-full bg-amore"
+        className="h-2 w-2 shrink-0 rounded-full bg-ink"
       />
     );
   }
@@ -103,19 +111,58 @@ function StageMarker({ status }: { status: StageStatus }) {
   );
 }
 
-function StageNode({ stage }: { stage: Stage }) {
+// 카드형 스텝 노드 — 좌측 이모지(정체성) + 라벨/펼침 컬럼 + 우측 상태 마커.
+// fill=true(세로 플로우)면 컨테이너 폭을 채우고, false(가로 플로우)면 내용 폭.
+// active 단계는 hint·description 을 펼치고(open), 나머지는 접는다 — grid-rows
+// 0fr↔1fr 트랜지션으로 auto-height 를 부드럽게 여닫는다(모션 축소 존중).
+function StageNode({ stage, fill }: { stage: Stage; fill?: boolean }) {
+  const dim = stage.status === 'pending';
+  const open = stage.status === 'active';
+  const expandable = stage.hint != null || stage.description != null;
   return (
     <div
-      className={`inline-flex shrink-0 items-center gap-2 rounded-xs border px-3 py-2 text-sm ${NODE_TONE[stage.status]}`}
+      className={`flex items-center gap-3 rounded-sm border-[2px] px-3.5 py-2.5 transition-colors ${
+        fill ? 'w-full' : 'shrink-0'
+      } ${NODE_TONE[stage.status]}`}
     >
+      {stage.icon != null ? (
+        <span
+          aria-hidden
+          className={`text-2xl leading-none ${dim ? 'opacity-40' : ''}`}
+        >
+          {stage.icon}
+        </span>
+      ) : null}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={`whitespace-nowrap text-sm ${
+            stage.status === 'pending' ? '' : 'font-semibold'
+          }`}
+        >
+          {stage.label}
+        </span>
+        {expandable ? (
+          <div
+            className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+              open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            }`}
+          >
+            <div className="overflow-hidden">
+              {stage.hint ? (
+                <span className="mt-1 block whitespace-nowrap text-xs tabular-nums text-mute-soft">
+                  {stage.hint}
+                </span>
+              ) : null}
+              {stage.description ? (
+                <p className="mt-1 text-xs leading-[1.5] text-mute">
+                  {stage.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
       <StageMarker status={stage.status} />
-      <span
-        className={
-          stage.status === 'pending' ? 'whitespace-nowrap' : 'whitespace-nowrap font-medium'
-        }
-      >
-        {stage.label}
-      </span>
     </div>
   );
 }
@@ -161,28 +208,41 @@ function CompleteHero({
   className?: string;
 }) {
   return (
+    // stagger: 배지 → 라벨 → CTA 가 아래에서 순차로 떠오르며 등장(fade-in-up).
     <div
-      className={`flex flex-col items-center gap-4 py-8 text-center ${className ?? ''}`}
+      className={`stagger flex flex-col items-center gap-5 py-8 text-center ${className ?? ''}`}
     >
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-amore bg-amore-bg text-amore">
+      {/* 완료 배지 — 스테이지 active 카드와 같은 디자인 언어(rounded-sm · 2px
+          border · amore 채움)로 통일(기존 외톨이 원형 폐기). pop-in 으로 튕겨
+          등장 + amore ring 이 한 번 퍼지고(ping) + 체크가 그려지듯 나타난다
+          (check-draw). 모든 모션은 prefers-reduced-motion 존중. */}
+      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border-[2px] border-ink bg-paper text-ink">
+        <span
+          aria-hidden
+          className="stage-flow-complete-ping pointer-events-none absolute inset-0 rounded-sm border-[2px] border-ink"
+        />
         <svg
           aria-hidden
           viewBox="0 0 24 24"
-          className="h-7 w-7"
+          className="relative h-8 w-8"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2.4"
+          strokeWidth="2.6"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M5 12.5l4.5 4.5L19 6.5" />
+          <path className="check-draw" pathLength={1} d="M5 12.5l4.5 4.5L19 6.5" />
         </svg>
       </span>
       {completeLabel ? (
         <p className="text-lg font-semibold text-ink">{completeLabel}</p>
       ) : null}
       {onResult ? (
-        <Button size="cta" onClick={onResult} className="completed-cta-pulse">
+        <Button
+          size="cta"
+          onClick={onResult}
+          className="completed-cta-pulse press-scale"
+        >
           {resultLabel}
         </Button>
       ) : null}
@@ -215,21 +275,15 @@ export function StageFlow({
   if (stages.length === 0) return null;
 
   const isVertical = orientation === 'vertical';
-  const activeHint = stages.find((s) => s.status === 'active' && s.hint)?.hint;
 
   if (isVertical) {
-    // node·hint·edge 를 같은 column 의 직속 형제로 배치 — 엣지는 mx-auto 로
-    // column 중앙에 정렬(노드도 items-center 라 노드 아래 중앙에 옴).
+    // node·edge 를 같은 column 의 직속 형제로 배치 — 카드는 폭을 채우고(fill),
+    // 엣지는 mx-auto 로 column 중앙에 정렬. hint 는 노드 카드 안으로 흡수됨.
     return (
-      <div className={`flex flex-col items-center ${className ?? ''}`}>
+      <div className={`flex flex-col items-stretch ${className ?? ''}`}>
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">
-            <StageNode stage={stage} />
-            {stage.status === 'active' && stage.hint ? (
-              <span className="mt-1 whitespace-nowrap text-xs tabular-nums text-mute-soft">
-                {stage.hint}
-              </span>
-            ) : null}
+            <StageNode stage={stage} fill />
             {i < stages.length - 1 ? (
               <VerticalEdge
                 flowing={edgeFlowing(stage.status, stages[i + 1].status)}
@@ -242,12 +296,12 @@ export function StageFlow({
   }
 
   // horizontal — 노드·엣지를 flex row 의 직속 형제로 두어야 엣지 flex-1 이 남는
-  // 폭을 고르게 나눈다(wrapper 로 감싸면 분배가 깨짐). items-center 로 엣지가
-  // 노드 세로 중앙에 정렬. active hint 는 노드 아래로 흐르지 않도록 flow 전체
-  // 아래 한 줄로 모아 표시(overflow-x 안전).
+  // 폭을 고르게 나눈다(wrapper 로 감싸면 분배가 깨짐). items-stretch 로 카드
+  // 높이를 맞추고, 엣지는 self-center 로 세로 중앙 정렬. hint 는 노드 안으로
+  // 흡수돼 overflow-x 안전.
   return (
     <div className={className}>
-      <div className="flex items-center overflow-x-auto">
+      <div className="flex items-stretch overflow-x-auto">
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">
             <StageNode stage={stage} />
@@ -259,9 +313,6 @@ export function StageFlow({
           </div>
         ))}
       </div>
-      {activeHint ? (
-        <p className="mt-2 text-xs tabular-nums text-mute-soft">{activeHint}</p>
-      ) : null}
     </div>
   );
 }

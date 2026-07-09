@@ -839,6 +839,7 @@
     "downloadDocx": "Download .docx",
     "thinkingActive": "Working on it",
     "thinkingDone": "Activity",
+    "thinkingDetails": "Activity details",
     "stop": "Stop",
     "stopRequested": "Stopping…",
     "stopAndRefund": "Stop and refund",
@@ -896,6 +897,22 @@
       "expanding": "Expanding keywords",
       "crawling": "Crawling sources",
       "summarizing": "Summarizing"
+    },
+    "stageFlow": {
+      "expand": "Expand",
+      "scope": "Scope",
+      "crawl": "Crawl",
+      "extract": "Extract",
+      "synthesize": "Synthesize",
+      "summarize": "Summarize"
+    },
+    "stageFlowDesc": {
+      "expand": "Broadening your keywords with related search terms to find more sources.",
+      "scope": "Deciding which sources and time range to research.",
+      "crawl": "Collecting related material from sources like news, blogs, and reports.",
+      "extract": "Pulling the main text and key points from the collected documents.",
+      "synthesize": "Drafting, refining, and synthesizing the findings into a report.",
+      "summarize": "Summarizing everything and finalizing the report."
     },
     "region": {
       "KR": "Korea",

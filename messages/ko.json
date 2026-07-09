@@ -839,6 +839,7 @@
     "downloadDocx": ".docx 다운로드",
     "thinkingActive": "지금 진행 중",
     "thinkingDone": "진행 기록",
+    "thinkingDetails": "진행 기록 자세히",
     "stop": "중지",
     "stopRequested": "중지 중…",
     "stopAndRefund": "중지하고 환불받기",
@@ -896,6 +897,22 @@
       "expanding": "유사 키워드 확장",
       "crawling": "자료 수집",
       "summarizing": "요약 정리"
+    },
+    "stageFlow": {
+      "expand": "확장",
+      "scope": "스코핑",
+      "crawl": "크롤링",
+      "extract": "추출",
+      "synthesize": "종합",
+      "summarize": "요약"
+    },
+    "stageFlowDesc": {
+      "expand": "입력하신 키워드와 뜻이 가까운 검색어를 넓혀 더 많은 자료를 찾아요.",
+      "scope": "어떤 소스와 기간을 조사할지 검색 범위를 정해요.",
+      "crawl": "뉴스·블로그·리포트 등 소스에서 관련 자료를 수집하고 있어요.",
+      "extract": "수집한 문서에서 본문과 핵심 내용을 뽑아내요.",
+      "synthesize": "핵심 근거를 모아 초안을 쓰고 다듬어 리포트로 종합해요.",
+      "summarize": "전체 내용을 요약하고 마무리 정리를 해요."
     },
     "region": {
       "KR": "한국",
