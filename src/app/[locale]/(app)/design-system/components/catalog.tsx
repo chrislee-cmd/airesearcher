@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { ChapterHeader } from '@/components/editorial';
+import { CanvasUsages } from './canvas-usages';
 import { DesignSystemSidebar } from './sidebar';
 import {
   DEFAULT_SECTION_ID,
@@ -46,7 +47,10 @@ export function DesignSystemCatalog() {
       />
       <div className="flex gap-8">
         <DesignSystemSidebar activeId={activeId} onSelect={handleSelect} />
-        <main className="min-w-0 flex-1">{entry.render()}</main>
+        <main className="min-w-0 flex-1">
+          {entry.render()}
+          <CanvasUsages id={activeId} />
+        </main>
       </div>
     </div>
   );
