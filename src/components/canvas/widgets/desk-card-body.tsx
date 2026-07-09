@@ -677,19 +677,64 @@ export function DeskCardBody() {
       ] as const,
     [],
   );
-  const deskStages: Stage[] = useMemo(() => {
-    // phase 미보고(제출 직후/queued)면 첫 단계를 active 로 — 빈 플로우 회피.
+  const stageCount = DESK_STAGE_DEFS.length;
+
+  // ─── 타임드 스테이지 리빌 (UI 전용, 사용자 요청) ──────────────────────────
+  // 백엔드에선 extract/synthesize 가 순식간에 지나가 유저가 단계·설명을 못 본다.
+  // 실제 공정과 무관하게, "표시되는" active 단계를 순서대로 한 번에 하나씩,
+  // 각 최소 STAGE_DWELL_MS(≈5s) 머물게 걸어 올린다. 표시 인덱스는 백엔드 실제
+  // 단계(realActiveIdx)를 앞지르지 않되, 리포트가 준비되면(showResult) 남은
+  // 단계까지 걸어 보여준 뒤 완료 화면으로 넘어간다.
+  const STAGE_DWELL_MS = 5000;
+  const realActiveIdx = useMemo(() => {
+    // phase 미보고(제출 직후/queued)면 첫 단계를 target 으로 — 빈 플로우 회피.
     const phase = job?.progress?.phase ?? (deskRunning ? 'expanding' : null);
-    const activeIdx = phase
+    return phase
       ? DESK_STAGE_DEFS.findIndex((s) =>
           (s.phases as readonly string[]).includes(phase),
         )
       : -1;
+  }, [DESK_STAGE_DEFS, deskRunning, job?.progress?.phase]);
+  // 리빌 target: 실행 중엔 백엔드 단계까지만, 완료(결과 준비)면 끝까지.
+  const revealTarget = showResult ? stageCount : Math.max(realActiveIdx, 0);
+
+  const [displayIdx, setDisplayIdx] = useState(0);
+  const stageEnteredAtRef = useRef(0);
+  const revealJobRef = useRef<string | null>(null);
+  // 새 잡(또는 잡 없음)으로 바뀌면 리빌을 0 단계부터 다시 시작.
+  useEffect(() => {
+    const id = job?.id ?? null;
+    if (revealJobRef.current === id) return;
+    revealJobRef.current = id;
+    setDisplayIdx(0);
+    stageEnteredAtRef.current = Date.now();
+  }, [job?.id]);
+  // 한 번에 한 단계씩, 진입 후 최소 STAGE_DWELL_MS 지난 뒤에만 다음 단계로.
+  // 자연히 오래 걸리는 단계(크롤링)는 target 이 안 올라가 그 자리에 머물고,
+  // 순식간에 지나간 단계는 여기서 5s 씩 붙잡혀 노출된다.
+  useEffect(() => {
+    if (displayIdx >= revealTarget) return;
+    const wait = Math.max(
+      0,
+      STAGE_DWELL_MS - (Date.now() - stageEnteredAtRef.current),
+    );
+    const t = setTimeout(() => {
+      stageEnteredAtRef.current = Date.now();
+      setDisplayIdx((i) => i + 1);
+    }, wait);
+    return () => clearTimeout(t);
+  }, [displayIdx, revealTarget]);
+
+  // 리빌이 아직 끝까지 안 걸어갔으면(완료여도) 플로우를 계속 보여준다.
+  const revealFlowActive = deskRunning || (showResult && displayIdx < stageCount);
+
+  const deskStages: Stage[] = useMemo(() => {
+    // status 는 실제 phase 가 아니라 "표시" 인덱스(displayIdx) 기준 — 리빌.
     const errored = job?.status === 'error';
     return DESK_STAGE_DEFS.map((s, i) => {
       let status: Stage['status'];
-      if (i < activeIdx) status = 'done';
-      else if (i === activeIdx) status = errored ? 'error' : 'active';
+      if (i < displayIdx) status = 'done';
+      else if (i === displayIdx) status = errored ? 'error' : 'active';
       else status = 'pending';
       return {
         id: s.id,
@@ -707,8 +752,7 @@ export function DeskCardBody() {
     });
   }, [
     DESK_STAGE_DEFS,
-    deskRunning,
-    job?.progress?.phase,
+    displayIdx,
     job?.progress?.crawl_done,
     job?.progress?.crawl_total,
     job?.status,
@@ -873,19 +917,22 @@ export function DeskCardBody() {
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
         <ControlBoardPanel active={active}>
-          {deskRunning ? (
+          {revealFlowActive ? (
               // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
               // (사용자 결정 2). 좁은 카드 대응 vertical. 진행 로그(이벤트)는
               // 아래 산출물 영역의 "자세히" 접기로 강등한다. 중복 진행 막대
-              // (JobProgress) 는 제거 — 크롤링 노드 hint 로 흡수.
+              // (JobProgress) 는 제거 — 크롤링 노드 hint 로 흡수. 완료 후에도
+              // 리빌이 끝까지 안 걸어갔으면 이 플로우를 계속 보여준다.
               <div className="flex flex-col items-center gap-5 py-6">
                 <StageFlow
                   stages={deskStages}
                   orientation="vertical"
                   className="w-full max-w-xs"
                 />
-                {/* STOP — 제거된 JobProgress 막대의 취소 버튼을 흡수. */}
-                {job &&
+                {/* STOP — 제거된 JobProgress 막대의 취소 버튼을 흡수. 실제
+                    실행 중일 때만(완료 후 리빌 구간에선 숨김). */}
+                {deskRunning &&
+                  job &&
                   (job.cancel_requested ? (
                     <span className="text-xs text-mute-soft">
                       {tDesk('stopRequested')}
