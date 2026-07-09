@@ -856,21 +856,6 @@ export function QuotesCardBody() {
     // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
     // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single. */}
-      <Field label={tWidgets('transcriptModeLabel')}>
-        <ModeCardGroup
-          ariaLabel={tWidgets('transcriptModeLabel')}
-          options={MODE_OPTIONS.map((opt) => ({
-            key: opt.key,
-            icon: opt.icon,
-            label: modeTitle[opt.key],
-            description: modeDesc[opt.key],
-          }))}
-          value={mode}
-          onChange={(key) => setMode(key as TranscriptMode)}
-        />
-      </Field>
-
       {/* 언어 + 발화자 수 — 나란히. 발화자 수는 diarization hint 로 배선. */}
       <div className="grid grid-cols-2 gap-3">
         <Field label="언어">
@@ -905,6 +890,21 @@ export function QuotesCardBody() {
           />
         </Field>
       </div>
+
+      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single. */}
+      <Field label={tWidgets('transcriptModeLabel')}>
+        <ModeCardGroup
+          ariaLabel={tWidgets('transcriptModeLabel')}
+          options={MODE_OPTIONS.map((opt) => ({
+            key: opt.key,
+            icon: opt.icon,
+            label: modeTitle[opt.key],
+            description: modeDesc[opt.key],
+          }))}
+          value={mode}
+          onChange={(key) => setMode(key as TranscriptMode)}
+        />
+      </Field>
 
       {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
           업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
