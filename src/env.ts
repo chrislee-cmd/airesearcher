@@ -8,7 +8,7 @@
 //
 // Why fail-closed:
 //   - cron auth (`CRON_SECRET` missing → previously skipped auth entirely)
-//   - rate limit (`UPSTASH_REDIS_REST_*` missing → previously allowed all)
+//   - rate limit (`KV_REST_API_*` missing → previously allowed all)
 //   - silent prod regressions ("env line dropped" with zero log signal)
 //
 // Rules for adding a new env:
@@ -47,14 +47,16 @@ export const env = createEnv({
     GMAIL_USER: z.string().email(),
     GMAIL_APP_PASSWORD: z.string().min(8),
 
-    // Upstash Redis — required (fail-closed). rate-limit.ts enforces the
-    // app-level cost-abuse cap on every LLM/STT route, so a missing var must
-    // fail the build rather than silently disable the limiter. The Vercel
-    // Marketplace Upstash integration must be provisioned (prod/preview/dev)
-    // before deploying — see PR "rate limit fail-closed 전환". (Was
-    // `.optional()` under PR-SEC4b's temporary fail-open window.)
-    UPSTASH_REDIS_REST_URL: z.string().url(),
-    UPSTASH_REDIS_REST_TOKEN: z.string().min(20),
+    // Upstash Redis (Vercel Marketplace) — required (fail-closed). The
+    // integration injects the REST endpoint under the `KV_REST_API_*` names
+    // (Vercel KV / Upstash marketplace convention); @upstash/redis consumes
+    // them directly. rate-limit.ts enforces the app-level cost-abuse cap on
+    // every LLM/STT route, so a missing var must fail the build rather than
+    // silently disable the limiter. The integration must be provisioned
+    // (prod/preview/dev) before deploying. (Was the optional
+    // `UPSTASH_REDIS_REST_*` pair under PR-SEC4b's temporary fail-open window.)
+    KV_REST_API_URL: z.string().url(),
+    KV_REST_API_TOKEN: z.string().min(20),
 
     // ── Optional providers (graceful degradation at call site) ───────
     ELEVENLABS_API_KEY: z.string().min(20).optional(),
@@ -202,8 +204,8 @@ export const env = createEnv({
     VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
 
     CRON_SECRET: process.env.CRON_SECRET,
-    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    KV_REST_API_URL: process.env.KV_REST_API_URL,
+    KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

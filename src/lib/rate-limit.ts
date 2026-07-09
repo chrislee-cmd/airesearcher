@@ -6,10 +6,11 @@ import { env } from '@/env';
 // of network/CDN — Upstash Redis is shared across Vercel regions so the
 // counter doesn't drift between Fluid Compute instances.
 //
-// Fail-closed: UPSTASH_REDIS_REST_URL/TOKEN are required in env.ts, so the
-// build fails without them rather than silently disabling the limiter. The
-// former PR-SEC4b temporary fail-open gate (skip-when-env-missing) has been
-// removed now that Upstash is provisioned — every call hits Redis.
+// Fail-closed: KV_REST_API_URL/TOKEN (the Vercel Marketplace Upstash REST
+// creds) are required in env.ts, so the build fails without them rather than
+// silently disabling the limiter. The former PR-SEC4b temporary fail-open
+// gate (skip-when-env-missing) has been removed now that Upstash is
+// provisioned — every call hits Redis.
 
 type Window = `${number} s` | `${number} m` | `${number} h` | `${number} d`;
 
@@ -18,8 +19,8 @@ let redis: Redis | null = null;
 function getRedis(): Redis {
   if (redis) return redis;
   redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL,
-    token: env.UPSTASH_REDIS_REST_TOKEN,
+    url: env.KV_REST_API_URL,
+    token: env.KV_REST_API_TOKEN,
   });
   return redis;
 }

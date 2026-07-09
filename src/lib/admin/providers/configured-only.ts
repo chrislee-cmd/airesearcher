@@ -92,7 +92,7 @@ const SPECS: Spec[] = [
   {
     id: 'upstash',
     name: 'Upstash Redis',
-    envKeys: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+    envKeys: ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
     dashboardUrl: 'https://console.upstash.com/redis',
     note: 'rate limit (application-rate-limit, #422) — 사용량 = req / 10k',
   },
