@@ -6,8 +6,9 @@
    PR (widget-remove-subheader-persistent-controls): 옛 서브헤더 slim bar
    (⚙ 요약 ▼ 로 접었다 펴는) 구조를 완전 폐기. 컨트롤(조사 목적 / 입력 소스 /
    언어)은 phase 무관 항상 카드 상단에 노출되고, CTA 만 세션 상태에 따라
-   🚀 세션 시작 ↔ 정지 로 바뀐다. 라이브 중에도 컨트롤이 그대로 보여 조사
-   목적은 즉시(다음 think tick) 반영된다.
+   🚀 세션 시작 ↔ 정지 로 바뀐다. 라이브 중에도 컨트롤이 그대로 보여, 조사
+   목적을 편집한 뒤 "적용" 을 누르면 다음 think tick 에 반영된다 (자동저장 →
+   명시적 버튼 커밋 — research-context.tsx 전체보기와 동일 패턴).
 
    입력 소스 / 언어 dropdown 은 ui SelectMenu primitive (위젯 컨트롤 primitive
    통일 spec — 옛 SourcePicker / OutputLangPicker local 함수 폐기). 세션 진행
@@ -15,8 +16,10 @@
    라이브 중에도 편집 가능.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
@@ -64,6 +67,27 @@ function ControlFields({
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
 }) {
+  // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와
+  // 동일 패턴). 타이핑은 goalDraft 만 갱신하고 (키 입력마다 자동저장하지 않음),
+  // "적용" 클릭 시에만 onResearchGoalChange 를 1회 호출한다. 외부 로드/세션
+  // 전환으로 researchGoal prop 이 바뀌면 render 중 감지로 draft 동기
+  // (effect 내 동기 setState 를 막는 design-system lint 룰 회피).
+  const [goalDraft, setGoalDraft] = useState(researchGoal);
+  const [syncedGoal, setSyncedGoal] = useState(researchGoal);
+  if (researchGoal !== syncedGoal) {
+    setSyncedGoal(researchGoal);
+    setGoalDraft(researchGoal);
+  }
+  const goalDirty = goalDraft !== researchGoal;
+  const canApplyGoal = goalDirty && !goalDisabled;
+
+  function applyGoal() {
+    if (!canApplyGoal) return;
+    const value = goalDraft.trim().slice(0, GOAL_MAX);
+    onResearchGoalChange(value);
+    setGoalDraft(value);
+  }
+
   return (
     <>
       {/* 입력 소스 / 언어 드롭다운 = 최상단 (전사록 언어 · 인터뷰 프로젝트
@@ -109,14 +133,28 @@ function ControlFields({
           fullWidth 로 이미 클러스터를 채운다. */}
       <Field label="조사 목적" description="이 인터뷰로 알고자 하는 것 (1~2 문장)">
         <Textarea
-          value={researchGoal}
-          onChange={(e) => onResearchGoalChange(e.target.value.slice(0, GOAL_MAX))}
+          value={goalDraft}
+          onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
           rows={3}
           maxLength={GOAL_MAX}
           disabled={goalDisabled}
           placeholder="예: 가성비 vs 프리미엄 선택 기준 이해"
           className="resize-none text-md"
         />
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="text-xs text-mute" aria-live="polite">
+            {goalDirty ? "미적용 변경 — '적용' 을 눌러 반영" : ''}
+          </p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={applyGoal}
+            disabled={!canApplyGoal}
+            title="입력한 조사 목적을 지금 반영"
+          >
+            적용
+          </Button>
+        </div>
       </Field>
     </>
   );
