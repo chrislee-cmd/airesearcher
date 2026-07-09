@@ -50,7 +50,6 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
-import { Input } from '@/components/ui/input';
 import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
@@ -150,10 +149,6 @@ export function DeskCardBody() {
   const [keywordDraft, setKeywordDraft] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  // 사용자 자유 텍스트 — LLM 분석 시 어떤 관점으로 정리할지 hint. 현재
-  // 백엔드 wiring 없음 (zod schema / DB column 미존재) — 후속 PR 에서
-  // /api/desk POST body 에 `user_intent` 로 추가 + prompts 에 inject 예정.
-  const [analysisDirection, setAnalysisDirection] = useState<string>('');
   // 멀티 region 선택 — 최소 1개 보장 (모두 해제 X, API 가 region 을 필요로 함).
   const [regions, setRegions] = useState<Set<DeskRegion>>(
     () => new Set(['KR']),
@@ -696,8 +691,9 @@ export function DeskCardBody() {
     </Banner>
   ) : null;
 
-  // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 주제·키워드 입력,
-  // 세부 옵션(지역/기간/분석 방향성), 범위 견적, 실행 CTA.
+  // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 순서는 위→아래로
+  // 세부 옵션(지역/기간) → 주제·키워드 입력 → 리서치 목적 mode. 범위 견적,
+  // 실행 CTA 가 그 아래 따른다.
   // 리서치 목적 2 mode 카드 — 라디오 2개 모두 enabled + 실행 가능. `soon`
   // 배지는 아직 미구현 mode 를 위한 자리로 남겨 두되, 현재 2 mode 는 모두
   // 라이브라 아무도 켜지 않는다. (custom mode 는 제거됨.)
@@ -724,8 +720,43 @@ export function DeskCardBody() {
 
   const controlsForm = (
     <div className="space-y-5">
-      {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
-      <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
+      {/* 세부 옵션 — 지역 / 기간.
+          밸런스 튜닝(desk 예시): 필드 높이를 h-8 → h-10 으로 확대해 넓어진
+          클러스터(max-w-2xl) 대비 왜소함을 해소. SelectMenu/DateRangePopover 는
+          공유 primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬
+          오버라이드로 데스크 안에서만 키운다 (타 위젯 영향 0 = "데스크 단독"
+          제약). 최종 px 는 preview 로 조정 (spec 결정 3). */}
+      <Field label={tDesk('boardOptionsLabel')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SelectMenu
+            multi
+            options={DESK_REGIONS.map((r) => ({
+              value: r,
+              label: tDesk(`region.${r}`),
+            }))}
+            value={Array.from(regions)}
+            onChange={(next) => {
+              if (next.length === 0) return; // 최소 1개 보장
+              // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
+              setRegions(new Set(next as DeskRegion[]));
+            }}
+            placeholder={tDesk('regionLabel')}
+            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
+          />
+
+          <DateRangePopover
+            value={{ from: dateFrom, to: dateTo }}
+            onChange={(next) => {
+              setDateFrom(next.from);
+              setDateTo(next.to);
+            }}
+            presets={rangePresets}
+            placeholder={tDesk('range_all')}
+            locale={locale}
+            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
+          />
+        </div>
+      </Field>
 
       {/* 주제 · 키워드 (핵심 입력) */}
       <Field label={tDesk('boardTopicLabel')}>
@@ -763,52 +794,8 @@ export function DeskCardBody() {
         </div>
       </Field>
 
-      {/* 세부 옵션 — 지역 / 기간 / 분석 방향성.
-          밸런스 튜닝(desk 예시): 3 필드 높이를 h-8 → h-10 으로 확대해 넓어진
-          클러스터(max-w-2xl) 대비 왜소함을 해소. SelectMenu/DateRangePopover 는
-          공유 primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬
-          오버라이드로 데스크 안에서만 키운다 (타 위젯 영향 0 = "데스크 단독"
-          제약). 최종 px 는 preview 로 조정 (spec 결정 3). */}
-      <Field label={tDesk('boardOptionsLabel')}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <SelectMenu
-            multi
-            options={DESK_REGIONS.map((r) => ({
-              value: r,
-              label: tDesk(`region.${r}`),
-            }))}
-            value={Array.from(regions)}
-            onChange={(next) => {
-              if (next.length === 0) return; // 최소 1개 보장
-              // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
-              setRegions(new Set(next as DeskRegion[]));
-            }}
-            placeholder={tDesk('regionLabel')}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
-
-          <DateRangePopover
-            value={{ from: dateFrom, to: dateTo }}
-            onChange={(next) => {
-              setDateFrom(next.from);
-              setDateTo(next.to);
-            }}
-            presets={rangePresets}
-            placeholder={tDesk('range_all')}
-            locale={locale}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
-
-          <Input
-            size="sm"
-            fullWidth
-            className="h-10"
-            value={analysisDirection}
-            onChange={(e) => setAnalysisDirection(e.target.value)}
-            placeholder="예: 시장 성장률 + 주요 플레이어 위주"
-          />
-        </div>
-      </Field>
+      {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
+      <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
 
       {/* 수집 소스 — trend / market 모두 서버가 목적 기반으로 자동 선정한다.
           trend 는 어떤 소스가 쓰이는지 안내 문구만 노출. */}
