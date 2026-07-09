@@ -4208,11 +4208,17 @@ export function TranslateConsole({
         // (tts 차단·에러)만 상단 고정. gap = 'field'(gap-4).
         <ControlBoardPanel
           gap="field"
+          // ⚠️ 실제 배너가 있을 때만 넘긴다. `<>{null}{null}</>` 프래그먼트는
+          // 항상 truthy 라, 그대로 넘기면 ControlBoardPanel 이 idle·무에러에도
+          // 빈 banners 래퍼(mb-6=24px)를 렌더해 컨트롤이 24px 밀린다 — 통역만
+          // banners 를 쓰던 탓에 "통역 혼자 상단 여백" outlier 의 진짜 원인.
           banners={
-            <>
-              {ttsBlockedBanner}
-              {errorBanner}
-            </>
+            ttsBlockedBanner || errorBanner ? (
+              <>
+                {ttsBlockedBanner}
+                {errorBanner}
+              </>
+            ) : undefined
           }
         >
           {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
