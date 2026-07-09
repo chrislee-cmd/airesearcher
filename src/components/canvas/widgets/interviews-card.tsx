@@ -6,6 +6,7 @@ import type { WidgetContent } from '../widget-types';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { Field } from '@/components/canvas/shell/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -267,7 +268,9 @@ function ToplineAmbientProgress({
   // 를 증분 스트리밍하므로 "작성 중(N블록)" 으로 전환(팝업 밖에서도 무반응 0).
   const inReduce = !!mapTotal && (mapDone ?? 0) >= mapTotal;
   return (
-    <div className="shrink-0 border-t border-line-soft px-4 py-3">
+    // 진행률 밴드 = shrink-0 고정 바 + 전폭 border-t, 콘텐츠는 컨트롤/산출물과
+    // 동일 컬럼(중앙 정렬 max-w-2xl)에 정렬 — WidgetOutputRegion SSOT.
+    <WidgetOutputRegion scroll={false} className="border-t border-line-soft">
       <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
         {t('toplineGenerating')}
@@ -277,7 +280,7 @@ function ToplineAmbientProgress({
       ) : (
         <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
       )}
-    </div>
+    </WidgetOutputRegion>
   );
 }
 
@@ -567,9 +570,7 @@ function ActiveBody({
           done=핵심 요약 abstract / generating=파일 목록(+아래 진행률 밴드) /
           미생성=분석 프롬프트. 파일 목록은 abstract·프롬프트 모드에서 "파일 N개 ▸"
           토글로 접근 보존(사용자 결정 1). 상세/검색은 전체 보기(fullview). */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {projectBody}
-      </div>
+      <WidgetOutputRegion padY="sm">{projectBody}</WidgetOutputRegion>
 
       {/* 팝업 밖 ambient 탑라인 진행률 — 전체보기를 닫아도 생성 진행률이
           카드에 계속 보이고, 완료/실패 시 toast 로 알림 (card #434). CTA
