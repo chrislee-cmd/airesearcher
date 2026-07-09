@@ -44,6 +44,8 @@ function UploadStatusPill({ status }: { status: UploadFileStatus }) {
     indexing: { key: 'statusIndexing', cls: 'text-amore' },
     done: { key: 'statusDone', cls: 'text-mute' },
     error: { key: 'statusError', cls: 'text-warning' },
+    // Duplicate — skipped, not an error. Muted so it reads as a quiet no-op.
+    duplicate: { key: 'statusDuplicate', cls: 'text-mute-soft' },
   };
   const p = map[status];
   return (
@@ -65,12 +67,19 @@ export function UploadModal({
   onUploaded,
   onSubmit,
   initialFiles,
+  existingFilenames,
 }: {
   open: boolean;
   onClose: () => void;
   // Preset project (project-detail entry) → Step 2 is skipped. Omitted / null
   // (project-list entry) → Step 2 is a required gate before upload.
   projectId?: string | null;
+  // Filenames already in the preset project — feeds the client-side duplicate
+  // pre-filter (skip converting a file whose name already exists). Optional:
+  // the server's content-hash dedupe is the real guarantee, so callers without
+  // a loaded document list (e.g. project-list, where the project isn't chosen
+  // yet) can omit it.
+  existingFilenames?: string[];
   // Files handed in from an inline FileDropZone outside the modal (the widget
   // card control). Pre-staged when the modal opens so a drop on the card
   // carries its files straight into the wizard instead of asking the user to
@@ -194,8 +203,16 @@ export function UploadModal({
       return;
     }
 
-    const changed = await uploadMany(staged, pid);
+    const { changed, skipped } = await uploadMany(
+      staged,
+      pid,
+      existingFilenames ?? [],
+    );
     if (changed) onUploaded?.(pid);
+    // Surface the dedupe result so filtered files aren't a silent no-op.
+    if (skipped > 0) {
+      push(t('uploadSkippedSummary', { count: skipped }), { tone: 'info' });
+    }
   };
 
   const canUpload =

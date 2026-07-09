@@ -1246,6 +1246,8 @@
     "statusDone": "인덱싱 완료",
     "statusError": "인덱싱 실패",
     "statusConverting": "변환 중",
+    "statusDuplicate": "중복",
+    "uploadSkippedSummary": "중복 {count}개 건너뜀",
     "uploadTitle": "파일 업로드",
     "uploadDropLabel": "파일을 여기에 놓기",
     "uploadDropHelper": "여러 개를 한꺼번에 올릴 수 있어요 · 텍스트/문서/PDF/오디오/영상 · 최대 25MB",

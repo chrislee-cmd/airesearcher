@@ -368,6 +368,7 @@ export function ProjectDetail({
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         projectId={projectId}
+        existingFilenames={documents.map((d) => d.filename)}
         onUploaded={() => void mutate()}
       />
     </div>

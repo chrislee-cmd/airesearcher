@@ -1246,6 +1246,8 @@
     "statusDone": "Indexed",
     "statusError": "Index failed",
     "statusConverting": "Converting",
+    "statusDuplicate": "Duplicate",
+    "uploadSkippedSummary": "Skipped {count} duplicate file(s)",
     "uploadTitle": "Upload files",
     "uploadDropLabel": "Drop files here",
     "uploadDropHelper": "Upload several at once · text/docs/PDF/audio/video · up to 25MB",
