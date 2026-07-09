@@ -664,15 +664,16 @@ export function DeskCardBody() {
   const DESK_STAGE_DEFS = useMemo(
     () =>
       [
-        { id: 'expand', phases: ['expanding'] },
-        { id: 'scope', phases: ['scoping'] },
-        { id: 'crawl', phases: ['crawling'] },
-        { id: 'extract', phases: ['extracting'] },
+        { id: 'expand', icon: '🔍', phases: ['expanding'] },
+        { id: 'scope', icon: '🎯', phases: ['scoping'] },
+        { id: 'crawl', icon: '🕸️', phases: ['crawling'] },
+        { id: 'extract', icon: '📄', phases: ['extracting'] },
         {
           id: 'synthesize',
+          icon: '🧩',
           phases: ['drafting', 'critiquing', 'synthesizing'],
         },
-        { id: 'summarize', phases: ['summarizing'] },
+        { id: 'summarize', icon: '📝', phases: ['summarizing'] },
       ] as const,
     [],
   );
@@ -694,6 +695,7 @@ export function DeskCardBody() {
         id: s.id,
         label: tDesk(`stageFlow.${s.id}` as never),
         status,
+        icon: s.icon,
         // 크롤링 active 단계에만 진행 세부(N/M) — StageFlow 가 hint 로 노출.
         hint:
           s.id === 'crawl' && status === 'active'
@@ -878,7 +880,7 @@ export function DeskCardBody() {
                 <StageFlow
                   stages={deskStages}
                   orientation="vertical"
-                  className="w-full max-w-[13rem]"
+                  className="w-full max-w-xs"
                 />
                 {/* STOP — 제거된 JobProgress 막대의 취소 버튼을 흡수. */}
                 {job &&
