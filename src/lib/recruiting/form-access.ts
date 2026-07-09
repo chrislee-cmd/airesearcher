@@ -10,6 +10,7 @@ import {
   getAdminEmail,
   isAdminProxyConfigured,
 } from '@/lib/google-oauth-admin';
+import { decryptStoredRefreshToken } from '@/lib/crypto/oauth-token-store';
 
 // Resolves a Google API access token for reading a recruiting form's
 // responses, proving that `userId` owns the form first. Extracted as a shared
@@ -122,7 +123,12 @@ export async function resolveFormAccess(
     return { ok: false, status: 412, error: 'reconsent_required' };
   }
   try {
-    const { access_token } = await refreshAccessToken(oauth.refresh_token);
+    const refreshToken = await decryptStoredRefreshToken(
+      admin,
+      oauth.refresh_token,
+      { user_id: userId },
+    );
+    const { access_token } = await refreshAccessToken(refreshToken);
     return { ok: true, accessToken: access_token };
   } catch (e) {
     // Revoked/expired refresh_token — only the user can fix this, by

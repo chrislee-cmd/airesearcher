@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { decryptToken } from '@/lib/crypto/token-cipher';
 
 // Removes the stored Google OAuth tokens for the current user so they
 // can reconnect with a different account (e.g. switching from a
@@ -27,8 +28,10 @@ export async function POST() {
     // consent screen again on reconnect (and so we don't leak a still-
     // valid token if the row resurfaces).
     try {
+      // Row is deleted right after, so decrypt in place (no re-encrypt needed).
+      const refreshToken = decryptToken(row.refresh_token);
       await fetch(
-        `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(row.refresh_token)}`,
+        `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(refreshToken)}`,
         { method: 'POST' },
       );
     } catch {

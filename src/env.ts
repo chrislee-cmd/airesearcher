@@ -97,6 +97,14 @@ export const env = createEnv({
     GOOGLE_ADMIN_REFRESH_TOKEN: z.string().min(20).optional(),
     GOOGLE_ADMIN_EMAIL: z.string().email().optional(),
 
+    // AES-256-GCM key for at-rest encryption of stored Google OAuth
+    // refresh_tokens (user_google_oauth.refresh_token). 32 bytes,
+    // base64-encoded (`openssl rand -base64 32` → 44 chars). Required
+    // (fail-closed): a missing/short key must fail the build rather than
+    // silently degrade to plaintext storage. Human action — register in
+    // Vercel production / preview / development before merge.
+    OAUTH_TOKEN_ENC_KEY: z.string().min(44),
+
     LIVEKIT_API_KEY: z.string().min(8).optional(),
     LIVEKIT_API_SECRET: z.string().min(8).optional(),
     LIVEKIT_URL: z.string().url().optional(),
@@ -252,6 +260,7 @@ export const env = createEnv({
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
     GOOGLE_ADMIN_REFRESH_TOKEN: process.env.GOOGLE_ADMIN_REFRESH_TOKEN,
     GOOGLE_ADMIN_EMAIL: process.env.GOOGLE_ADMIN_EMAIL,
+    OAUTH_TOKEN_ENC_KEY: process.env.OAUTH_TOKEN_ENC_KEY,
 
     LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY,
     LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,
