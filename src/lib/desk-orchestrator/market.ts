@@ -16,12 +16,21 @@ import {
   type DeskRegion,
   type DeskSourceId,
 } from '@/lib/desk-sources';
+import { env } from '@/env';
+import { cleanApiKey } from '@/lib/desk-sources/helpers';
 import { warmDartCorps } from '@/lib/desk-sources/dart-corp';
 import { warmDartFinancials } from '@/lib/desk-sources/dart-financials';
 import { warmWorldBank } from '@/lib/desk-sources/worldbank';
 import { warmOecd } from '@/lib/desk-sources/oecd';
 import { resolveSecCik, warmSecCorps } from '@/lib/desk-sources/sec-edgar-corp';
 import { warmSecFinancials } from '@/lib/desk-sources/sec-edgar-financials';
+import {
+  resolveEdinetCorp,
+  resolveEdinetDoc,
+  warmEdinetCorps,
+  warmEdinetDocIndex,
+} from '@/lib/desk-sources/edinet-corp';
+import { warmEdinetFinancials } from '@/lib/desk-sources/edinet-financials';
 import { parseDeskQuery } from '@/lib/desk-query-parse';
 import {
   MACRO_ANCHORS,
@@ -54,6 +63,8 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
   'kosis',
   'atfis',
   'boj_ecos',
+  'estat',
+  'edinet',
   'world_bank',
   'oecd',
   'dart',
@@ -69,6 +80,8 @@ const ATFIS: DeskSourceId = 'atfis';
 const DART: DeskSourceId = 'dart';
 const SEC_EDGAR: DeskSourceId = 'sec_edgar';
 const ECOS: DeskSourceId = 'boj_ecos';
+const ESTAT: DeskSourceId = 'estat';
+const EDINET: DeskSourceId = 'edinet';
 const WORLD_BANK: DeskSourceId = 'world_bank';
 const OECD: DeskSourceId = 'oecd';
 
@@ -100,6 +113,10 @@ export async function runMarket(
   // (regionOnly:['US']) 여기 포함되면 US 축이 확정된 것 — 별도 region gate 불필요.
   const hasSecEdgar = effectiveSources.includes(SEC_EDGAR);
   const hasEcos = effectiveSources.includes(ECOS);
+  // e-Stat = KOSIS 의 일본 등가(통계 카탈로그) / EDINET = DART 의 일본 등가(회사 공시).
+  // effectiveSources 가 이미 JP region + env 키를 강제하므로 포함되면 JP 축이 확정된 것.
+  const hasEstat = effectiveSources.includes(ESTAT);
+  const hasEdinet = effectiveSources.includes(EDINET);
   const hasWorldBank = effectiveSources.includes(WORLD_BANK);
   const hasOecd = effectiveSources.includes(OECD);
   // 뉴스형 phrase 로 검색하는 소스(학술·뉴스)만 (원+phrase) 키워드로 crawl.
@@ -113,6 +130,8 @@ export async function runMarket(
       id !== DART &&
       id !== SEC_EDGAR &&
       id !== ECOS &&
+      id !== ESTAT &&
+      id !== EDINET &&
       id !== WORLD_BANK &&
       id !== OECD,
   );
@@ -132,13 +151,23 @@ export async function runMarket(
   // 간헐 502 로 crawl task(15s) 안 라이브 조회가 조용히 0건이 되던 문제(P3 "국내 vs
   // G7 대비" 무데이터 회귀)를 DART corpCode 와 동일한 warm-up+캐시 패턴으로 막는다.
   // 결과 카운트는 사용하지 않지만(캐시가 SSOT), Promise.all 로 병렬 완료를 기다린다.
-  const [parsed, dartCorpCount, secCorpCount] = await Promise.all([
-    parseDeskQuery(keywords, locale),
-    hasDart ? warmDartCorps() : Promise.resolve(0),
-    hasSecEdgar ? warmSecCorps() : Promise.resolve(0),
-    hasWorldBank ? warmWorldBank().catch(() => 0) : Promise.resolve(0),
-    hasOecd ? warmOecd().catch(() => 0) : Promise.resolve(0),
-  ]);
+  // EDINET(일본 공시)도 DART/SEC 와 동일 이유로 warm-up 이 필요하다: (1) 제출자 코드
+  // 명부(Edinetcode.zip) 다운로드, (2) 최근 공시 창 스윕으로 EDINETコード→docID 인덱스
+  // 구축 — 둘 다 crawl task 15s 벽 안엔 무리라 task cap 밖에서 미리 받아 캐시에 실는다.
+  // 코드/인덱스 warm 은 companies 와 독립이라 여기 병렬에 얹는다(키가 있을 때만).
+  const edinetKey = hasEdinet ? cleanApiKey(env.EDINET_API_KEY) : '';
+  const [parsed, dartCorpCount, secCorpCount, , , edinetCorpCount, edinetDocCount] =
+    await Promise.all([
+      parseDeskQuery(keywords, locale),
+      hasDart ? warmDartCorps() : Promise.resolve(0),
+      hasSecEdgar ? warmSecCorps() : Promise.resolve(0),
+      hasWorldBank ? warmWorldBank().catch(() => 0) : Promise.resolve(0),
+      hasOecd ? warmOecd().catch(() => 0) : Promise.resolve(0),
+      hasEdinet ? warmEdinetCorps().catch(() => 0) : Promise.resolve(0),
+      hasEdinet && edinetKey
+        ? warmEdinetDocIndex(edinetKey).catch(() => 0)
+        : Promise.resolve(0),
+    ]);
   const { statTerms, companies, intent } = parsed;
 
   // 재무제표 warm-up — 회사 축이 정해진 뒤(명부 준비 후) 각 상장사의 재무제표를
@@ -165,6 +194,27 @@ export async function runMarket(
     }
   }
 
+  // EDINET 재무 warm-up — 회사명을 EDINETコード로 해석한 뒤(명부 준비 후) docIndex 에서
+  // 최신 정기報告書 docRef 를 찾아 무거운 CSV(XBRL_TO_CSV) ZIP 을 task cap 밖에서 미리
+  // 받아 캐시에 실는다. 인덱스가 준비돼야(docCount>0) docRef 를 특정할 수 있다. 창 밖
+  // 회사는 docRef 가 없어 skip — crawl 이 링크 degrade 한다.
+  if (hasEdinet && edinetKey && companies.length && edinetCorpCount > 0 && edinetDocCount > 0) {
+    const corps = (
+      await Promise.all(companies.map((name) => resolveEdinetCorp(name).catch(() => null)))
+    ).filter((c): c is NonNullable<typeof c> => c !== null);
+    const targets = (
+      await Promise.all(
+        corps.map(async (c) => {
+          const doc = await resolveEdinetDoc(c.edinetCode);
+          return doc ? { doc, edinetCode: c.edinetCode } : null;
+        }),
+      )
+    ).filter((t): t is NonNullable<typeof t> => t !== null);
+    if (targets.length) {
+      await warmEdinetFinancials(targets, edinetKey).catch(() => 0);
+    }
+  }
+
   // KOSIS 검색어 = stat_terms + 결정론 fallback 토큰(첫 명사). stat_terms 가
   // 비어도(파싱 실패/불명확) 최소한 fallback 으로 1회는 시도한다 (spec C —
   // "전부 0건 → 첫 명사 토큰 1회"를 upfront 결정론 포함으로 실현: KOSIS crawl 은
@@ -185,11 +235,16 @@ export async function runMarket(
       ];
       // 소스별 검색어 재작성 내역을 항상 노출한다 — 유저가 "무슨 말로 검색됐는지"
       // 를 인지하고, 0건이어도 시도어를 병기해 정직하게 보이게 한다.
-      if (hasKosis || hasAtfis || hasEcos) {
+      if (hasKosis || hasAtfis || hasEcos || hasEstat) {
         events.push(
           kosisQueries.length
-            ? `🧠 통계 검색용 변환 = ${kosisQueries.map((k) => `‘${k}’`).join(' · ')} — KOSIS·aTFIS 통계 카탈로그는 조사·수식어를 뗀 짧은 산업 명사로 검색합니다 (뉴스형 문장으로는 0건).`
+            ? `🧠 통계 검색용 변환 = ${kosisQueries.map((k) => `‘${k}’`).join(' · ')} — KOSIS·aTFIS·e-Stat 통계 카탈로그는 조사·수식어를 뗀 짧은 산업 명사로 검색합니다 (뉴스형 문장으로는 0건).`
             : `🧠 통계 검색용 명사를 뽑지 못했어요 — 통계 소스는 원 키워드로만 시도합니다.`,
+        );
+      }
+      if (hasEstat) {
+        events.push(
+          `🇯🇵 e-Stat 일본통계 = 일본 정부 통계포털(총무성 등) 통계표를 통계 명사로 검색해 최신값을 근거로 씁니다 — KOSIS 의 일본 등가로 한·일 시장 대비를 뒷받침합니다.`,
         );
       }
       if (hasAtfis) {
@@ -233,6 +288,15 @@ export async function runMarket(
             : secCorpCount > 0
               ? `🧠 SEC EDGAR 상장사 명부 ${secCorpCount.toLocaleString()}건 준비 완료 — 회사명→CIK→companyfacts XBRL 로 매출·영업이익·순이익 3개년(USD)을 직접 조회합니다 (DART 의 미국 등가).`
               : `🚫 SEC EDGAR 명부 준비 실패 — 미국 회사 재무 조회 정확도가 낮아질 수 있습니다.`,
+        );
+      }
+      if (hasEdinet) {
+        events.push(
+          !companies.length
+            ? `🚫 EDINET = 조회할 일본 상장사가 없어 이번엔 재무 공시 수집을 건너뜁니다 (회사명 없이는 EDINETコード를 해석할 수 없습니다).`
+            : edinetCorpCount > 0
+              ? `🧠 EDINET 제출자 명부 ${edinetCorpCount.toLocaleString()}건 · 최근 공시 인덱스 ${edinetDocCount.toLocaleString()}건 준비 — 회사명→EDINETコード→XBRL(CSV)로 매출·영업이익·순이익 3개년(JPY 원값+USD 근사, YoY)을 직접 조회합니다 (DART 의 일본 등가). ⚠️ 최근 공시 스윕 창 밖에 최신 보고서가 있는 회사는 공시 링크로 대체합니다.`
+              : `🚫 EDINET 명부/인덱스 준비 실패 — 일본 회사 재무 조회 정확도가 낮아지거나 공시 링크로 대체됩니다.`,
         );
       }
       events.push(
@@ -298,6 +362,25 @@ export async function runMarket(
       if (hasSecEdgar && companies.length) {
         for (const q of companies) {
           tasks.push({ source: SEC_EDGAR, keyword: q, region: 'US' });
+        }
+      }
+
+      // e-Stat = 일본 통계 카탈로그(KOSIS 의 일본 등가). KOSIS 와 동일하게 짧은 산업
+      // 명사(stat_terms + fallback 토큰)로 getStatsList 를 검색한다 — 문장형 phrase 는
+      // 전달하지 않는다. JP 전용(regionOnly:['JP']). 검색어 언어에 따라 recall 이
+      // 달라지는 건 KOSIS 와 같은 구조적 한계.
+      if (hasEstat) {
+        for (const q of kosisQueries) {
+          tasks.push({ source: ESTAT, keyword: q, region: 'JP' });
+        }
+      }
+
+      // EDINET = 일본 상장사 공시(DART 의 일본 등가). DART 와 동일하게 회사 축을
+      // 검색어로 쓰되 region 은 JP 고정. 회사가 없으면 건너뛴다 — 회사명 없이
+      // EDINETコード를 해석할 방법이 없다.
+      if (hasEdinet && companies.length) {
+        for (const q of companies) {
+          tasks.push({ source: EDINET, keyword: q, region: 'JP' });
         }
       }
 

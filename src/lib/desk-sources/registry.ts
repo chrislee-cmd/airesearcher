@@ -23,6 +23,8 @@ import { kci } from './kci';
 import { semanticScholar } from './semantic-scholar';
 import { arxiv } from './arxiv';
 import { bojEcos } from './boj-ecos';
+import { estat } from './estat';
+import { edinet } from './edinet';
 import { kosis } from './kosis';
 import { atfis } from './atfis';
 import { worldBank } from './worldbank';
@@ -50,6 +52,8 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   semantic_scholar: semanticScholar,
   arxiv: arxiv,
   boj_ecos: bojEcos,
+  estat: estat,
+  edinet: edinet,
   kosis: kosis,
   atfis: atfis,
   world_bank: worldBank,

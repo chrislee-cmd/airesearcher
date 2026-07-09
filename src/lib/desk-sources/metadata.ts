@@ -76,6 +76,16 @@ export const DESK_SOURCE_GROUPS: Record<
     labelEn: 'Bank of Korea',
     hint: 'ECOS_API_KEY 필요',
   },
+  estat: {
+    label: 'e-Stat 일본통계',
+    labelEn: 'e-Stat (Japan Statistics)',
+    hint: 'ESTAT_APP_ID 필요 (일본 시장 통계, KOSIS 의 일본 등가)',
+  },
+  edinet: {
+    label: 'EDINET 공시',
+    labelEn: 'EDINET (Japan Filings)',
+    hint: 'EDINET_API_KEY 필요 (일본 상장사 재무 XBRL, DART 의 일본 등가)',
+  },
   kosis: {
     label: '통계청 KOSIS',
     labelEn: 'KOSIS (Korea Statistics)',

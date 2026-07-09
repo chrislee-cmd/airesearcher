@@ -12,8 +12,9 @@
 
 import type { DeskSourceId } from '@/lib/desk-sources';
 
-// 통계 카탈로그 검색(searchNm) 소스 — stat_terms(짧은 명사)로만 crawl 한다.
-export const STAT_CATALOG_SOURCES = new Set<DeskSourceId>(['kosis']);
+// 통계 카탈로그 검색(searchNm/searchWord) 소스 — stat_terms(짧은 명사)로만 crawl.
+// e-Stat 은 KOSIS 의 일본 등가(getStatsList 서버사이드 검색) — 같은 클래스.
+export const STAT_CATALOG_SOURCES = new Set<DeskSourceId>(['kosis', 'estat']);
 
 // 거시 경제통계 소스 — 시장 키워드로는 매칭 0 이라 고정 anchor 로 조회한다.
 export const MACRO_STAT_SOURCES = new Set<DeskSourceId>(['boj_ecos']);
@@ -33,8 +34,8 @@ export const GLOBAL_MACRO_ANCHORS = ['gdp', 'industry', 'population'];
 // no-op skip 하지만 불필요한 task 를 줄인다). World Bank 는 전 앵커를 받는다.
 export const OECD_ANCHORS = ['gdp'];
 
-// 전자공시 소스 — 회사명(companies)으로만 crawl 한다.
-export const COMPANY_SOURCES = new Set<DeskSourceId>(['dart']);
+// 전자공시 소스 — 회사명(companies)으로만 crawl 한다. EDINET 은 DART 의 일본 등가.
+export const COMPANY_SOURCES = new Set<DeskSourceId>(['dart', 'edinet']);
 
 // ECOS(한국은행)는 거시 경제통계(환율/GDP/물가)라 시장 키워드("스킨케어 시장")
 // 로는 매칭이 0 이다. STAT_NAME.includes(anchor) 필터라 아래 substring 이 관련
