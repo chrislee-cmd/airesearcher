@@ -1,47 +1,33 @@
 import { getTranslations } from 'next-intl/server';
 import type { ShareResource } from '@/lib/share/viewer-resource';
+import type { ToplineBlock } from '@/lib/interview-v2/types';
+import { ReadonlyToplineBlocks } from '@/components/interviews-v2/topline-blocks';
+import { SharePersonaView } from './share-persona-view';
 
 // 공유 뷰어 read-only 프레임 — 사이드바·편집 컨트롤 없는 최소 헤더 + 메인
 // 패널 슬롯. (app) 셸 밖이라 편집/드래그/자유검색 진입점이 아예 존재하지
 // 않는다(결정 1·3).
 //
-// 실제 resource_type 별 리치 렌더(위젯/우측 패널)는 #476 이 이 슬롯을 대체.
-// 이 PR 은 프레임 + 게이트까지라, 여기서는 로드된 페이로드를 read-only 텍스트로
-// 방어적으로 표시한다.
+// resource_type 별 리치 렌더(#476):
+//   - interview_topline → 탑라인 보고서 블록(topline-blocks 재사용, 편집/
+//     드래그/재생성/자유검색 없음). 자유검색은 공유 대상 아님.
+//   - probing_persona → 리서치 컨텍스트(goal/KRQ/가설) + 페르소나 그리드
+//     (PersonaPanel 재사용) + 생성 질문 리스트. 데이터는 #493 스냅샷.
 
-/** 블록(jsonb, shape 미상)에서 표시 가능한 텍스트를 방어적으로 추출. */
-function blockText(block: unknown): string {
-  if (typeof block === 'string') return block;
-  if (!block || typeof block !== 'object') return '';
-  const b = block as Record<string, unknown>;
-  for (const key of ['title', 'heading', 'text', 'content', 'body', 'summary']) {
-    const v = b[key];
-    if (typeof v === 'string' && v.trim()) return v;
-  }
-  return '';
-}
-
-function ToplineBody({ blocks }: { blocks: unknown[] }) {
-  const lines = blocks.map(blockText).filter((s) => s.trim().length > 0);
-  if (lines.length === 0) return null;
-  return (
-    <div className="space-y-4">
-      {lines.map((line, i) => (
-        <p key={i} className="text-md leading-[1.75] text-ink">
-          {line}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function PersonaBody({
+// 프로빙 리서치 컨텍스트 — probing_sessions row 에 있는 goal/KRQ/가설. 스냅샷
+// 유무와 무관하게 항상 있으면 표시(페르소나 그리드의 헤더 맥락).
+function ResearchContextBody({
   resource,
   labels,
 }: {
   resource: Extract<ShareResource, { type: 'probing_persona' }>;
   labels: { goal: string; krq: string; hypotheses: string };
 }) {
+  const hasAny =
+    resource.researchGoal.trim() ||
+    resource.keyResearchQuestion.trim() ||
+    resource.hypotheses.length > 0;
+  if (!hasAny) return null;
   return (
     <div className="space-y-6">
       {resource.researchGoal.trim() && (
@@ -80,6 +66,46 @@ function PersonaBody({
   );
 }
 
+function PersonaBody({
+  resource,
+  labels,
+}: {
+  resource: Extract<ShareResource, { type: 'probing_persona' }>;
+  labels: {
+    goal: string;
+    krq: string;
+    hypotheses: string;
+    grid: string;
+    questions: string;
+    questionsEmpty: string;
+    snapshotMissing: string;
+  };
+}) {
+  const snapshot = resource.snapshot;
+  const hasSnapshotContent =
+    !!snapshot && (snapshot.reflection.length > 0 || snapshot.questions.length > 0);
+
+  return (
+    <div className="space-y-8">
+      <ResearchContextBody resource={resource} labels={labels} />
+      {hasSnapshotContent ? (
+        <SharePersonaView
+          snapshot={snapshot}
+          labels={{
+            grid: labels.grid,
+            questions: labels.questions,
+            questionsEmpty: labels.questionsEmpty,
+          }}
+        />
+      ) : (
+        // 구 세션(공유 전 스냅샷 미저장) 또는 미지원 버전 — 데이터 노출 0,
+        // 방어적 안내(결정 2). goal/KRQ 만 있으면 위에서 이미 표시됐다.
+        <p className="text-md text-mute">{labels.snapshotMissing}</p>
+      )}
+    </div>
+  );
+}
+
 export async function ShareViewerFrame({
   resource,
 }: {
@@ -93,11 +119,14 @@ export async function ShareViewerFrame({
 
   const hasContent =
     resource.type === 'interview_topline'
-      ? resource.blocks.map(blockText).some((s) => s.trim().length > 0)
+      ? resource.blocks.length > 0
       : Boolean(
           resource.researchGoal.trim() ||
             resource.keyResearchQuestion.trim() ||
-            resource.hypotheses.length > 0,
+            resource.hypotheses.length > 0 ||
+            (resource.snapshot &&
+              (resource.snapshot.reflection.length > 0 ||
+                resource.snapshot.questions.length > 0)),
         );
 
   return (
@@ -115,7 +144,9 @@ export async function ShareViewerFrame({
       <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
         {hasContent ? (
           resource.type === 'interview_topline' ? (
-            <ToplineBody blocks={resource.blocks} />
+            <ReadonlyToplineBlocks
+              blocks={resource.blocks as ToplineBlock[]}
+            />
           ) : (
             <PersonaBody
               resource={resource}
@@ -123,6 +154,10 @@ export async function ShareViewerFrame({
                 goal: t('personaGoal'),
                 krq: t('personaKrq'),
                 hypotheses: t('personaHypotheses'),
+                grid: t('personaGrid'),
+                questions: t('personaQuestions'),
+                questionsEmpty: t('personaQuestionsEmpty'),
+                snapshotMissing: t('personaSnapshotMissing'),
               }}
             />
           )

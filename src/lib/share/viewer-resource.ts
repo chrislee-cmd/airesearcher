@@ -8,6 +8,10 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ShareResourceType } from './shared-views';
+import {
+  probingPersonaSnapshotSchema,
+  type ProbingPersonaSnapshot,
+} from '@/lib/probing-persona-snapshot';
 
 export type ShareResource =
   | {
@@ -20,6 +24,10 @@ export type ShareResource =
       researchGoal: string;
       keyResearchQuestion: string;
       hypotheses: string[];
+      // 공유 시점 스냅샷(#493) — 페르소나 reflection 그리드 + 생성 질문.
+      // 구 세션(공유 전 스냅샷 미저장)이나 미지원 버전이면 null → 뷰어가
+      // 방어적 빈/안내 상태로 렌더(결정 2).
+      snapshot: ProbingPersonaSnapshot | null;
     };
 
 /**
@@ -47,10 +55,18 @@ export async function loadShareResource(
 
   const { data, error } = await admin
     .from('probing_sessions')
-    .select('research_goal, key_research_question, hypotheses')
+    .select(
+      'research_goal, key_research_question, hypotheses, persona_snapshot',
+    )
     .eq('id', resourceId)
     .maybeSingle();
   if (error || !data) return null;
+
+  // 스냅샷(#493)은 shape 계약(probing-persona-snapshot.ts)으로 방어적 파싱.
+  // 미저장(구 세션)·미지원 버전·손상 payload 는 safeParse 실패 → null 로
+  // 떨궈 뷰어가 안내 상태를 그린다(데이터 노출 0, 크래시 0).
+  const parsed = probingPersonaSnapshotSchema.safeParse(data.persona_snapshot);
+
   return {
     type: 'probing_persona',
     researchGoal: (data.research_goal as string | null) ?? '',
@@ -58,5 +74,6 @@ export async function loadShareResource(
     hypotheses: Array.isArray(data.hypotheses)
       ? (data.hypotheses as string[])
       : [],
+    snapshot: parsed.success ? parsed.data : null,
   };
 }
