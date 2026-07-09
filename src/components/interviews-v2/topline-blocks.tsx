@@ -15,7 +15,6 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useMemo } from 'react';
-import { useTranslations } from 'next-intl';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -192,7 +191,6 @@ function ToplineChartBlock({
 // 표시). data-block-id 는 편집 뷰의 drag-to-ask anchor 계약이라 유지하지만,
 // 공유 뷰어처럼 drag 훅이 없는 곳에서는 단순 DOM 속성이라 무해하다.
 export function ToplineBlockView({ block }: { block: ToplineBlock }) {
-  const tView = useTranslations('InterviewsV2');
   const common = { 'data-block-id': block.id } as const;
 
   if (block.type === 'executive_summary') {
@@ -204,23 +202,14 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
     return (
       <section
         {...common}
-        className="mb-6 rounded-sm border border-line-soft border-l-2 border-l-amore bg-paper-soft px-5 py-4"
+        className="mb-6 rounded-sm border border-line-soft bg-paper-soft px-5 py-4"
       >
-        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
-          {tView('toplineExecSummaryLabel')}
-        </div>
         {summary && <Prose md={summary} citations={block.citations} />}
         {keyPoints.length > 0 && (
-          <ul className="mt-2.5 space-y-1.5">
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-md leading-[1.7] text-ink-2 marker:text-mute-soft">
             {keyPoints.map((point, i) => (
-              <li
-                key={i}
-                className="flex gap-2 text-md leading-[1.6] text-ink-2"
-              >
-                <span aria-hidden className="mt-[0.1em] shrink-0 text-amore">
-                  ▪
-                </span>
-                <span className="min-w-0">{point}</span>
+              <li key={i} className="text-ink-2">
+                {point}
               </li>
             ))}
           </ul>

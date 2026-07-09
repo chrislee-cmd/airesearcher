@@ -474,48 +474,56 @@ export function ToplineView({ projectId }: { projectId: string }) {
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-mute-soft">
             {t('toplineReportLabel')}
           </span>
-          <div className="flex items-center gap-2">
-            {/* 분석 언어 — 재생성 시 이 언어로 강제(입력 파일 언어 독립). 언어를
-                바꾸고 🔄 재생성하면 캐시 안 걸리고 새 언어로 재생성된다. */}
-            <div className="w-[132px]">
-              <SelectMenu
-                value={outputLang}
-                onChange={setOutputLang}
-                options={TOPLINE_LANG_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-                disabled={!canGenerate}
-                aria-label={t('toplineLangLabel')}
+          <div className="flex items-center gap-3">
+            {/* 내보내기 / 공유 — 전부 부 액션이라 한 묶음(quiet chrome 통일).
+                Word 다운로드 + Google Docs 공유 + 링크로 공유(#477, export 와
+                구분되는 초대 게이트 링크, toplineId 생성 후 활성화). 톤 일치 →
+                주 조작(재생성)과 시각 위계로 분리. */}
+            <div className="flex items-center gap-1.5">
+              <ChromeButton size="sm" onClick={downloadWord} title={t('toplineExportWord')}>
+                ⬇ {t('toplineExportWord')}
+              </ChromeButton>
+              <ChromeButton
+                size="sm"
+                onClick={() => void shareGoogleDocs()}
+                disabled={sharing}
+                title={t('toplineShareGdoc')}
+              >
+                {sharing ? `⏳ ${t('toplineSharing')}` : `📄 ${t('toplineShareGdoc')}`}
+              </ChromeButton>
+              <ShareInviteButton
+                resourceType="interview_topline"
+                resourceId={toplineId}
               />
             </div>
-            {/* export — 주 CTA 아님(quiet chrome). Word 다운로드 + Google Docs 공유. */}
-            <ChromeButton size="sm" onClick={downloadWord} title={t('toplineExportWord')}>
-              ⬇ {t('toplineExportWord')}
-            </ChromeButton>
-            <ChromeButton
-              size="sm"
-              onClick={() => void shareGoogleDocs()}
-              disabled={sharing}
-              title={t('toplineShareGdoc')}
-            >
-              {sharing ? `⏳ ${t('toplineSharing')}` : `📄 ${t('toplineShareGdoc')}`}
-            </ChromeButton>
-            {/* 링크로 공유(#477) — export(Google Docs) 와 구분되는 초대 게이트
-                링크. 탑라인 row 가 생성된 뒤(toplineId) 활성화. */}
-            <ShareInviteButton
-              resourceType="interview_topline"
-              resourceId={toplineId}
-            />
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={requestRegenerate}
-              disabled={!canGenerate}
-              title={t('toplineRegenerate')}
-            >
-              🔄 {t('toplineRegenerate')}
-            </Button>
+            {/* 그룹 구분선 — 내보내기/공유 vs 생성 제어 위계 분리. */}
+            <div className="h-5 w-px bg-line-soft" aria-hidden />
+            {/* 생성 제어 — 분석 언어 + 🔄 재생성(이 화면 주 조작). 재생성 시 이
+                언어로 강제(입력 파일 언어 독립). 언어를 바꾸고 재생성하면 캐시
+                안 걸리고 새 언어로 재생성된다. */}
+            <div className="flex items-center gap-2">
+              <div className="w-[132px]">
+                <SelectMenu
+                  value={outputLang}
+                  onChange={setOutputLang}
+                  options={TOPLINE_LANG_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                  disabled={!canGenerate}
+                  aria-label={t('toplineLangLabel')}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={requestRegenerate}
+                disabled={!canGenerate}
+                title={t('toplineRegenerate')}
+              >
+                🔄 {t('toplineRegenerate')}
+              </Button>
+            </div>
           </div>
         </div>
       )}
