@@ -101,7 +101,7 @@ export function EchoOnboarding({
 
   if (dismissed) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-xs border border-line-soft bg-paper px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xs border-l-[3px] border-amore bg-amore-bg px-3 py-2">
         {voiceToggle}
         <span className="text-sm text-mute">
           {audible ? t('stateOn') : t('stateOff')}
@@ -115,8 +115,13 @@ export function EchoOnboarding({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xs border border-line bg-paper px-4 py-3">
-      <h3 className="text-md font-bold text-ink">{t('title')}</h3>
+    <section className="flex flex-col gap-3 rounded-xs border-l-[3px] border-amore bg-amore-bg px-4 py-3">
+      <div className="flex flex-col gap-1.5">
+        <span className="w-fit rounded-xs bg-amore px-2 py-[2px] text-xs font-semibold uppercase tracking-[0.18em] text-paper">
+          {t('importantBadge')}
+        </span>
+        <h3 className="text-lg font-bold text-ink">{t('title')}</h3>
+      </div>
       <ol className="flex flex-col gap-2 text-sm text-mute">
         <li className="flex flex-wrap items-center gap-2">
           <span className="tabular-nums text-mute-soft" aria-hidden>

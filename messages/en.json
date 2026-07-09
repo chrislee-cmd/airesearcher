@@ -962,6 +962,7 @@
       "off": "Audio off (tap to enable)"
     },
     "onboarding": {
+      "importantBadge": "Essential setup",
       "title": "🎧 How to avoid echo",
       "voiceOn": "🔊 Voice on",
       "voiceOff": "🔇 Voice off",

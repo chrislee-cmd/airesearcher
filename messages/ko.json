@@ -962,6 +962,7 @@
       "off": "음성 OFF (탭하면 켜짐)"
     },
     "onboarding": {
+      "importantBadge": "필수 설정",
       "title": "🎧 에코 없이 쓰는 법",
       "voiceOn": "🔊 음성 켜짐",
       "voiceOff": "🔇 음성 꺼짐",
