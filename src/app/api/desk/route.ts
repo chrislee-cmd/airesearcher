@@ -32,7 +32,9 @@ import {
   runOrchestrator,
   NotImplementedYet,
   TREND_SOURCE_IDS,
+  DEFAULT_COUNTRY_SCOPE,
   type DeskMode,
+  type DeskCountryScope,
   type OrchestratorPlan,
 } from '@/lib/desk-orchestrator';
 import { buildComparisonCharts } from '@/lib/global-macro/comparison';
@@ -76,6 +78,10 @@ const Body = z.object({
   // 리서치 목적 mode (데스크 v2). 누락 시 'trend' — 기본 경로. (custom mode 는
   // 제거됨 — fix/desk-remove-custom-mode.)
   mode: z.enum(['trend', 'market']).optional(),
+  // 국가 범위 (세부 옵션). 누락 시 'kr'(국내 only) — 현행 동작 보존(회귀 0).
+  // 'global' 이면 market 이 글로벌 공시/매크로 소스를 켜고 보고서에 해외·대비
+  // 섹션을 붙인다. trend 은 이 값을 무시한다.
+  country_scope: z.enum(['kr', 'global']).optional(),
   // legacy: 옛 custom flow 가 소스를 직접 보냈다. custom 제거 후 trend/market 은
   // 서버가 소스를 자동 선정하므로 무시된다 — 옛 클라이언트 호환 위해 스키마만 유지.
   sources: z.array(z.enum(SOURCE_IDS)).min(1).max(MAX_SOURCES).optional(),
@@ -240,6 +246,8 @@ export async function POST(request: Request) {
   }
   const { keywords, locale = 'ko', regions: regionsInput, region: regionInput, dateFrom, dateTo, project_id } = parsed.data;
   const mode: DeskMode = parsed.data.mode ?? 'trend';
+  const countryScope: DeskCountryScope =
+    parsed.data.country_scope ?? DEFAULT_COUNTRY_SCOPE;
   // Default region from locale: Korean researchers default to KR sources,
   // English researchers default to GLOBAL (Google News will use US/en).
   // 멀티 region 입력이 있으면 그대로, 아니면 단일 region (legacy) 또는 locale
@@ -355,6 +363,7 @@ export async function POST(request: Request) {
       orgId: org.org_id,
       userId: user.id,
       mode,
+      countryScope,
       keywords: cleanKeywords,
       usable,
       preSkipped: skipped,
@@ -415,6 +424,7 @@ async function runJob(args: {
   orgId: string;
   userId: string;
   mode: DeskMode;
+  countryScope: DeskCountryScope;
   keywords: string[];
   usable: DeskSourceId[];
   // Sources skipped before the crawl for a missing env key ('no_key'). Runtime
@@ -425,7 +435,7 @@ async function runJob(args: {
   range: DeskDateRange;
   initialEvents: string[];
 }) {
-  const { jobId, orgId, userId, mode, keywords, usable, preSkipped, locale, regions, range, initialEvents } = args;
+  const { jobId, orgId, userId, mode, countryScope, keywords, usable, preSkipped, locale, regions, range, initialEvents } = args;
   const admin = createAdminClient();
   const events: string[] = [...initialEvents];
   let crawlDone = 0;
@@ -536,6 +546,7 @@ async function runJob(args: {
         locale,
         regions,
         range,
+        countryScope,
       });
     } catch (err) {
       if (err instanceof NotImplementedYet) {
@@ -741,7 +752,7 @@ async function runJob(args: {
           org_id: orgId,
           user_id: userId,
           feature: 'desk',
-          input: JSON.stringify({ mode, keywords, sources: usable, locale, range }),
+          input: JSON.stringify({ mode, country_scope: countryScope, keywords, sources: usable, locale, range }),
           output,
           credits_spent: FEATURE_COSTS.desk,
         })
@@ -806,7 +817,7 @@ async function runJob(args: {
           org_id: orgId,
           user_id: userId,
           feature: 'desk',
-          input: JSON.stringify({ mode, keywords, sources: usable, locale, range }),
+          input: JSON.stringify({ mode, country_scope: countryScope, keywords, sources: usable, locale, range }),
           output,
           credits_spent: FEATURE_COSTS.desk,
         })

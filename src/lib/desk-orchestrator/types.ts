@@ -17,6 +17,19 @@ export type DeskMode = 'trend' | 'market';
 
 export const DESK_MODES: DeskMode[] = ['trend', 'market'];
 
+// 국가 범위 (세부 옵션) — 소스 게이팅 + market 보고서 구조 분기의 SSOT.
+//   'kr'     = 국내 자료만(KOSIS·DART·국내 뉴스). 글로벌 공시/매크로 소스 제외.
+//              범위 개념이 없던 기존 동작과 동일 = 회귀 0. **default.**
+//   'global' = 국내 + 글로벌 공시(SEC EDGAR·EDINET·e-Stat·World Bank·OECD).
+//              market 보고서에 해외 섹션 + 국내 vs G7 대비 섹션/차트가 붙는다.
+// client(desk-card-body)에서도 import 되므로 server 전용 모듈을 끌어오지 않는다.
+export type DeskCountryScope = 'kr' | 'global';
+
+export const DESK_COUNTRY_SCOPES: DeskCountryScope[] = ['kr', 'global'];
+
+// 컨트롤 미선택/누락 시 기본값 — 현행(국내 only) 동작을 보존한다.
+export const DEFAULT_COUNTRY_SCOPE: DeskCountryScope = 'kr';
+
 // 아직 orchestrator 실 로직이 없는 mode 를 실행하려 할 때 던진다. route 의
 // runner 가 이 에러를 잡아 크레딧 환불 + `not_implemented_yet:<mode>` 로
 // 마무리한다 (일반 runtime_error 와 구분).
@@ -78,6 +91,9 @@ export type OrchestratorInput = {
   locale: 'ko' | 'en';
   regions: DeskRegion[];
   range: DeskDateRange;
+  // 국가 범위 — market 이 글로벌 소스 게이팅 + 보고서 구조 분기에 사용한다.
+  // trend 은 글로벌 공시/매크로 소스를 쓰지 않으므로 이 값을 무시한다(회귀 0).
+  countryScope: DeskCountryScope;
 };
 
 // 리포트 합성 시점에 mode 별 user 메시지를 만들기 위한 컨텍스트.

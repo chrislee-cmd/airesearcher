@@ -33,6 +33,7 @@ import { DeskResultView } from '@/components/canvas/widgets/desk-result';
 import {
   TREND_SOURCE_IDS,
   type DeskMode,
+  type DeskCountryScope,
 } from '@/lib/desk-orchestrator/types';
 import { Select } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/ui/download-menu';
@@ -140,6 +141,10 @@ export function DeskCardBody() {
   // 주 경로. trend / market 모두 서버가 소스를 목적 기반으로 자동 선정한다
   // (옛 소스 직접 선택 custom mode 는 제거됨).
   const [mode, setMode] = useState<DeskMode>('trend');
+  // 국가 범위 (세부 옵션) — 한국 only(default) / 글로벌. market 보고서 구조를
+  // 국내 only ↔ 국내+해외+대비로 분기한다. trend 은 이 값을 쓰지 않아 컨트롤도
+  // market mode 에서만 노출한다(무의미한 dead 컨트롤 방지).
+  const [countryScope, setCountryScope] = useState<DeskCountryScope>('kr');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordDraft, setKeywordDraft] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -327,6 +332,8 @@ export function DeskCardBody() {
         body: JSON.stringify({
           keywords: finalKeywords,
           mode,
+          // 국가 범위 — market 만 사용(trend 은 서버에서 무시). default 'kr'.
+          country_scope: countryScope,
           // trend / market 모두 서버가 소스를 목적 기반으로 자동 선정한다.
           locale: locale === 'ko' ? 'ko' : 'en',
           regions: Array.from(regions),
@@ -832,6 +839,37 @@ export function DeskCardBody() {
             buttonClassName={DESK_OPTION_TRIGGER_CLASS}
           />
         </div>
+
+        {/* 국가 범위 — 한국 only / 글로벌. market 보고서 구조를 국내 only ↔
+            국내+해외+대비로 가른다. trend 은 이 값을 안 쓰므로 market 에서만
+            노출(dead 컨트롤 방지). default = 한국 only(현행 동작 보존). */}
+        {mode === 'market' && (
+          <div className="mt-4 space-y-1.5">
+            <span className="text-xs font-medium text-mute">
+              {tDesk('countryScopeLabel')}
+            </span>
+            <ModeCardGroup
+              ariaLabel={tDesk('countryScopeLabel')}
+              columns={2}
+              options={[
+                {
+                  key: 'kr',
+                  icon: '🇰🇷',
+                  label: tDesk('countryScopeTitle.kr'),
+                  description: tDesk('countryScopeDesc.kr'),
+                },
+                {
+                  key: 'global',
+                  icon: '🌐',
+                  label: tDesk('countryScopeTitle.global'),
+                  description: tDesk('countryScopeDesc.global'),
+                },
+              ]}
+              value={countryScope}
+              onChange={(key) => setCountryScope(key as DeskCountryScope)}
+            />
+          </div>
+        )}
       </Field>
 
       {/* 주제 · 키워드 (핵심 입력) */}

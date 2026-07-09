@@ -922,6 +922,15 @@
       "TH": "Thailand",
       "JP": "Japan",
       "GLOBAL": "Global"
+    },
+    "countryScopeLabel": "Country scope",
+    "countryScopeTitle": {
+      "kr": "Korea only",
+      "global": "Global"
+    },
+    "countryScopeDesc": {
+      "kr": "Domestic sources only (KOSIS·DART·Korean news). Report covers the domestic market only.",
+      "global": "Domestic + global filings (SEC·EDINET·World Bank·OECD). Adds overseas & Korea-vs-G7 comparison sections."
     }
   },
   "TranslateConsole": {

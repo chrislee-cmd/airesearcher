@@ -922,6 +922,15 @@
       "TH": "태국",
       "JP": "일본",
       "GLOBAL": "글로벌"
+    },
+    "countryScopeLabel": "국가 범위",
+    "countryScopeTitle": {
+      "kr": "한국 only",
+      "global": "글로벌"
+    },
+    "countryScopeDesc": {
+      "kr": "국내 자료만 (KOSIS·DART·국내 뉴스). 보고서는 국내 시장 섹션만.",
+      "global": "국내 + 글로벌 공시 (SEC·EDINET·World Bank·OECD). 보고서에 해외·국내 vs G7 대비 추가."
     }
   },
   "TranslateConsole": {

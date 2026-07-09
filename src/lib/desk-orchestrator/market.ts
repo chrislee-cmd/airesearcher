@@ -39,7 +39,7 @@ import {
   firstNounToken,
 } from '@/lib/desk-source-classes';
 import {
-  MARKET_REPORT_SYSTEM,
+  buildMarketReportSystem,
   buildMarketReportUserMsg,
 } from '@/lib/desk-market-prompt';
 import {
@@ -75,6 +75,25 @@ const MARKET_SOURCE_IDS: DeskSourceId[] = [
   'naver_news',
 ];
 
+// 글로벌(비국내) 소스 판별 — 국가 범위 게이팅의 SSOT. 문자열 하드코딩 대신
+// registry 메타데이터에서 파생해, 새 글로벌 소스가 추가돼도 자동으로 잡힌다:
+//   - group 'global_macro' = World Bank · OECD (초국가 매크로, region 무관).
+//   - regionOnly 에 'KR' 이 없는 소스 = SEC EDGAR(US) · EDINET/e-Stat(JP) 등 해외 공시·통계.
+// 국내 소스(KOSIS·DART·aTFIS·ECOS = regionOnly ['KR'])는 여기 걸리지 않아
+// 'kr' scope 에서도 그대로 남는다.
+function isGlobalSource(id: DeskSourceId): boolean {
+  const def = DESK_SOURCE_REGISTRY[id];
+  if (def?.group === 'global_macro') return true;
+  if (def?.regionOnly && !def.regionOnly.includes('KR')) return true;
+  return false;
+}
+
+// 'global' scope 일 때 해외 공시 소스(SEC=US, EDINET/e-Stat=JP)의 regionOnly
+// 게이트를 통과시키기 위해 소스 판정에만 더해 주는 지역. 실제 뉴스 crawl 지역
+// (사용자 선택 regions)은 건드리지 않아 crawl 폭발/ MAX_REGIONS 초과가 없다 —
+// SEC/EDINET/e-Stat 의 crawl task 는 각자 US/JP 를 하드코딩한다.
+const GLOBAL_DISCLOSURE_REGIONS: DeskRegion[] = ['US', 'JP'];
+
 const KOSIS: DeskSourceId = 'kosis';
 const ATFIS: DeskSourceId = 'atfis';
 const DART: DeskSourceId = 'dart';
@@ -88,8 +107,16 @@ const OECD: DeskSourceId = 'oecd';
 export async function runMarket(
   input: OrchestratorInput,
 ): Promise<OrchestratorPlan> {
-  const { keywords, regions, locale } = input;
+  const { keywords, regions, locale, countryScope } = input;
   const primaryRegion: DeskRegion = regions[0] ?? 'KR';
+  const isGlobal = countryScope === 'global';
+
+  // 소스 판정 전용 지역 — 'global' scope 면 해외 공시 소스의 regionOnly 게이트를
+  // 통과시키려 US/JP 를 더한다(뉴스 crawl 지역과는 분리 — GLOBAL_DISCLOSURE_REGIONS
+  // 주석 참고). 'kr' scope 면 사용자 선택 regions 그대로.
+  const gateRegions: DeskRegion[] = isGlobal
+    ? Array.from(new Set<DeskRegion>([...regions, ...GLOBAL_DISCLOSURE_REGIONS]))
+    : regions;
 
   // env 키가 갖춰진 소스만. KR 미포함 지역 조합이면 KR 전용 소스(통계·공시·
   // 국내 학술·네이버)는 결과가 0 이라 제외 (trend 의 effectiveSources 와 동일
@@ -97,11 +124,17 @@ export async function runMarket(
   const enabled = new Set(getEnabledSources());
   const effectiveSources = MARKET_SOURCE_IDS.filter((id) => {
     if (!enabled.has(id)) return false;
+    // 국가 범위 게이팅 — 'kr' scope 는 글로벌(해외 공시·매크로) 소스를 전부 제외해
+    // 국내 자료만 남긴다. 범위 개념이 없던 기존 동작(국내 only)과 동일 = 회귀 0.
+    // World Bank/OECD 는 region 무관이라 KR 선택만으로도 예전엔 켜졌는데, 이제
+    // 'global' 을 골라야만 켜진다(대비 섹션이 default 로 뜨지 않게).
+    if (!isGlobal && isGlobalSource(id)) return false;
     const def = DESK_SOURCE_REGISTRY[id];
     // regionOnly 소스는 대상 region 과 교집합이 있을 때만 (SEC=US 전용, DART=KR
-    // 전용 등). KR_ONLY_GROUPS 와 중복 커버되지만, US 전용 SEC 처럼 KR 축이 아닌
+    // 전용 등). 'global' scope 에서는 gateRegions 가 US/JP 를 포함해 해외 공시가
+    // 켜진다. KR_ONLY_GROUPS 와 중복 커버되지만, US 전용 SEC 처럼 KR 축이 아닌
     // region-gated 소스를 일반적으로 걸러낸다.
-    if (def?.regionOnly && !def.regionOnly.some((r) => regions.includes(r))) return false;
+    if (def?.regionOnly && !def.regionOnly.some((r) => gateRegions.includes(r))) return false;
     if (regions.includes('KR')) return true;
     return !def?.group || !KR_ONLY_GROUPS.includes(def.group);
   });
@@ -232,6 +265,9 @@ export async function runMarket(
       const events: string[] = [
         `🎯 시장조사 mode — 통계·공시 위주로 시장 규모(TAM/SAM) 참고 데이터를 수집합니다. 수치는 확정값이 아닌 근거 데이터로만 제공합니다.`,
         `🔍 원 키워드: ${keywords.map((k) => `‘${k}’`).join(', ')}${intent ? ` (의도: ${intent})` : ''}`,
+        isGlobal
+          ? `🌐 국가 범위 = 글로벌 — 국내 자료에 더해 해외 공시(SEC EDGAR·EDINET)·글로벌 매크로(World Bank·OECD)를 함께 수집하고, 보고서에 해외 섹션과 "국내 vs G7 대비"를 추가합니다. 해당 소스가 없는 도메인은 국내 근거만으로 정직하게 정리합니다.`
+          : `🎯 국가 범위 = 한국 only — 국내 자료(KOSIS·aTFIS·DART·국내 뉴스)만 수집합니다. 해외 공시·글로벌 대비 섹션은 제외합니다(글로벌은 세부 옵션에서 선택).`,
       ];
       // 소스별 검색어 재작성 내역을 항상 노출한다 — 유저가 "무슨 말로 검색됐는지"
       // 를 인지하고, 0건이어도 시도어를 병기해 정직하게 보이게 한다.
@@ -408,8 +444,8 @@ export async function runMarket(
       }
       return tasks;
     },
-    reportSystem: MARKET_REPORT_SYSTEM,
+    reportSystem: buildMarketReportSystem(countryScope),
     buildReportUserMsg: (ctx: ReportContext) =>
-      buildMarketReportUserMsg(ctx, companies),
+      buildMarketReportUserMsg(ctx, companies, countryScope),
   };
 }
