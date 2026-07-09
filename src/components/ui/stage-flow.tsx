@@ -32,6 +32,9 @@ export type Stage = {
   // 단계 정체성 이모지/글리프 — 카드 좌측에 크게 노출(모드 카드 룩). 없으면
   // 상태 마커만 렌더된다. active/done 은 풀 컬러, pending 은 흐리게.
   icon?: ReactNode;
+  // "이 단계가 지금 뭘 하는지" 한두 줄 설명. active 카드에서만 펼쳐져(expand)
+  // 보이고, 다음 단계로 넘어가면 접힌다(fold). 없으면 펼침 영역 자체가 없음.
+  description?: ReactNode;
 };
 
 export type StageFlowProps = {
@@ -108,10 +111,14 @@ function StageMarker({ status }: { status: StageStatus }) {
   );
 }
 
-// 카드형 스텝 노드 — 좌측 이모지(정체성) + 라벨/hint 컬럼 + 우측 상태 마커.
+// 카드형 스텝 노드 — 좌측 이모지(정체성) + 라벨/펼침 컬럼 + 우측 상태 마커.
 // fill=true(세로 플로우)면 컨테이너 폭을 채우고, false(가로 플로우)면 내용 폭.
+// active 단계는 hint·description 을 펼치고(open), 나머지는 접는다 — grid-rows
+// 0fr↔1fr 트랜지션으로 auto-height 를 부드럽게 여닫는다(모션 축소 존중).
 function StageNode({ stage, fill }: { stage: Stage; fill?: boolean }) {
   const dim = stage.status === 'pending';
+  const open = stage.status === 'active';
+  const expandable = stage.hint != null || stage.description != null;
   return (
     <div
       className={`flex items-center gap-3 rounded-sm border-[2px] px-3.5 py-2.5 transition-colors ${
@@ -134,10 +141,25 @@ function StageNode({ stage, fill }: { stage: Stage; fill?: boolean }) {
         >
           {stage.label}
         </span>
-        {stage.status === 'active' && stage.hint ? (
-          <span className="whitespace-nowrap text-xs tabular-nums text-mute-soft">
-            {stage.hint}
-          </span>
+        {expandable ? (
+          <div
+            className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+              open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            }`}
+          >
+            <div className="overflow-hidden">
+              {stage.hint ? (
+                <span className="mt-1 block whitespace-nowrap text-xs tabular-nums text-mute-soft">
+                  {stage.hint}
+                </span>
+              ) : null}
+              {stage.description ? (
+                <p className="mt-1 text-xs leading-[1.5] text-mute">
+                  {stage.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </div>
       <StageMarker status={stage.status} />

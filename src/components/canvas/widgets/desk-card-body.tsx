@@ -696,6 +696,8 @@ export function DeskCardBody() {
         label: tDesk(`stageFlow.${s.id}` as never),
         status,
         icon: s.icon,
+        // "이 단계가 지금 뭘 하는지" 설명 — active 카드에서만 펼쳐짐.
+        description: tDesk(`stageFlowDesc.${s.id}` as never),
         // 크롤링 active 단계에만 진행 세부(N/M) — StageFlow 가 hint 로 노출.
         hint:
           s.id === 'crawl' && status === 'active'
