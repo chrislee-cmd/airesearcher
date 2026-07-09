@@ -600,6 +600,7 @@ function ActiveBody({
           setPendingFiles(null);
         }}
         projectId={projectId}
+        existingFilenames={documents.map((d) => d.filename)}
         initialFiles={pendingFiles ?? undefined}
         onUploaded={() => void mutate()}
       />

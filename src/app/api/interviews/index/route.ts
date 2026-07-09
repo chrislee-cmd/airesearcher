@@ -87,51 +87,81 @@ export async function POST(req: Request) {
   try {
     let totalDocs = 0;
     let totalChunks = 0;
+    let skippedDocs = 0;
 
     for (const doc of documents) {
       const contentHash = hashString(doc.markdown);
+      // The project this document lands in. content_hash is the hash of the
+      // normalized markdown, so an identical file always hashes the same — a
+      // true content match even across batches, jobs, or renamed files.
+      const resolvedProjectId =
+        project_id ?? jobRow.project_id ?? doc.project_id ?? null;
 
-      // Upsert the document. ON CONFLICT (interview_job_id, content_hash)
-      // is enforced by interview_documents_job_hash_uq — so the same file
-      // re-uploaded in the same job doesn't produce a duplicate row, and
-      // re-running the indexer is safe.
-      const { data: existing } = await admin
-        .from('interview_documents')
-        .select('id')
-        .eq('interview_job_id', interview_job_id)
-        .eq('content_hash', contentHash)
-        .maybeSingle();
+      const row = {
+        org_id: org.org_id,
+        project_id: resolvedProjectId,
+        interview_job_id,
+        filename: doc.filename,
+        mime: doc.mime ?? null,
+        markdown: doc.markdown,
+        content_hash: contentHash,
+        char_count: doc.markdown.length,
+      };
 
       let documentId: string;
-      if (existing) {
-        documentId = existing.id;
-        // Skip re-chunking and re-embedding entirely — content_hash means
-        // the markdown is byte-identical, so existing chunks are still
-        // valid. This is the dedupe path the spec calls out.
-        totalDocs += 1;
-        continue;
-      }
 
-      const { data: inserted, error: insErr } = await admin
-        .from('interview_documents')
-        .insert({
-          org_id: org.org_id,
-          project_id: project_id ?? jobRow.project_id ?? doc.project_id ?? null,
-          interview_job_id,
-          filename: doc.filename,
-          mime: doc.mime ?? null,
-          markdown: doc.markdown,
-          content_hash: contentHash,
-          char_count: doc.markdown.length,
-        })
-        .select('id')
-        .single();
-      if (insErr || !inserted) {
-        console.error('[interviews/index] document insert failed', insErr);
-        throw new Error('document_insert_failed');
+      if (resolvedProjectId) {
+        // Project-scoped dedupe (the fix). An atomic, race-safe insert-or-skip
+        // via interview_documents_project_hash_uq (project_id, content_hash):
+        // ON CONFLICT DO NOTHING. An empty result means an identical document
+        // already lives in this project — possibly from an earlier upload
+        // batch under a different interview_job — so skip re-chunk / re-embed
+        // entirely (no duplicate row, no wasted embedding cost).
+        const { data: insertedRows, error: insErr } = await admin
+          .from('interview_documents')
+          .upsert(row, {
+            onConflict: 'project_id,content_hash',
+            ignoreDuplicates: true,
+          })
+          .select('id');
+        if (insErr) {
+          console.error('[interviews/index] document upsert failed', insErr);
+          throw new Error('document_insert_failed');
+        }
+        if (!insertedRows || insertedRows.length === 0) {
+          skippedDocs += 1;
+          continue;
+        }
+        documentId = insertedRows[0].id;
+        totalDocs += 1;
+      } else {
+        // Legacy project-less path — keep the original job-scoped dedupe
+        // (interview_documents_job_hash_uq). Same file re-uploaded in the same
+        // job doesn't produce a duplicate row, and re-running the indexer is
+        // safe. Multiple NULL-project rows are allowed by the project index
+        // (NULLs are distinct), so job scope is the only guard here.
+        const { data: existing } = await admin
+          .from('interview_documents')
+          .select('id')
+          .eq('interview_job_id', interview_job_id)
+          .eq('content_hash', contentHash)
+          .maybeSingle();
+        if (existing) {
+          skippedDocs += 1;
+          continue;
+        }
+        const { data: inserted, error: insErr } = await admin
+          .from('interview_documents')
+          .insert(row)
+          .select('id')
+          .single();
+        if (insErr || !inserted) {
+          console.error('[interviews/index] document insert failed', insErr);
+          throw new Error('document_insert_failed');
+        }
+        documentId = inserted.id;
+        totalDocs += 1;
       }
-      documentId = inserted.id;
-      totalDocs += 1;
 
       const chunks = chunkMarkdown(doc.markdown, {
         filename: doc.filename,
@@ -208,6 +238,7 @@ export async function POST(req: Request) {
       ok: true,
       document_count: totalDocs,
       chunk_count: totalChunks,
+      skipped_count: skippedDocs,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'index_failed';

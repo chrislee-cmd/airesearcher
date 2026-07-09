@@ -39,7 +39,20 @@ export type UploadFileStatus =
   | 'converting'
   | 'indexing'
   | 'done'
-  | 'error';
+  | 'error'
+  // Filtered out before convert (client pre-filter) — the file is a duplicate
+  // of another file in the same selection or one already in the project. Shown
+  // as "중복 — 건너뜀", never silently dropped.
+  | 'duplicate';
+
+export type UploadResult = {
+  // True when at least one file made it through indexing (or a partial server
+  // failure leaves the list needing reconciliation) — the caller refetches.
+  changed: boolean;
+  // Total files skipped as duplicates: client pre-filter + server-side
+  // content-hash dedupe. Drives the completion summary.
+  skipped: number;
+};
 
 export type UploadFileState = {
   name: string;
@@ -70,8 +83,8 @@ export function useInterviewV2Upload() {
     );
   }, []);
 
-  // Returns true when at least one file made it through indexing, so the
-  // caller knows to refetch the document list.
+  // Returns { changed, skipped }. changed drives the caller's refetch; skipped
+  // is the duplicate count for the completion summary.
   //
   // projectId is REQUIRED — this is the whole point of the project-setup
   // gate. Without it the indexed rows would land with a null
@@ -79,16 +92,57 @@ export function useInterviewV2Upload() {
   // (which filters by project). The UI gate (upload modal Step 2) makes
   // this unreachable; the guard is a last-resort net that refuses the
   // batch rather than silently orphaning the files.
+  //
+  // existingFilenames — filenames already in the project (from the loaded
+  // document list). Used only for the client pre-filter below; the server's
+  // project-scoped content-hash dedupe is the real guarantee, so callers that
+  // don't have the list can omit it and correctness is unaffected.
   const uploadMany = useCallback(
-    async (files: File[], projectId: string): Promise<boolean> => {
-      if (!projectId || files.length === 0 || busy) return false;
+    async (
+      files: File[],
+      projectId: string,
+      existingFilenames: string[] = [],
+    ): Promise<UploadResult> => {
+      if (!projectId || files.length === 0 || busy)
+        return { changed: false, skipped: 0 };
       setBusy(true);
-      setItems(files.map((f) => ({ name: f.name, status: 'converting' })));
 
-      // 1. Convert each file to markdown in parallel. A per-file failure is
-      //    isolated — mark it 'error' and drop it, never reject the batch.
+      // Client pre-filter (UX + convert cost). Marks a file 'duplicate' — and
+      // skips converting it — when it's an obvious duplicate:
+      //   1. selection-internal: same (name+size+lastModified) picked twice.
+      //   2. filename collision with a file already in the project.
+      // Content-based matches the client can't see (same content, different
+      // name) are still caught server-side. Indices stay aligned with `files`
+      // so the per-file status pills map 1:1.
+      const existing = new Set(existingFilenames);
+      const seenKeys = new Set<string>();
+      const plan = files.map((f) => {
+        const key = `${f.name}::${f.size}::${f.lastModified}`;
+        const duplicate = existing.has(f.name) || seenKeys.has(key);
+        seenKeys.add(key);
+        return { file: f, duplicate };
+      });
+      let skipped = plan.filter((p) => p.duplicate).length;
+
+      setItems(
+        plan.map((p) => ({
+          name: p.file.name,
+          status: p.duplicate ? 'duplicate' : 'converting',
+        })),
+      );
+
+      if (plan.every((p) => p.duplicate)) {
+        // Nothing new to upload — all picks were duplicates.
+        setBusy(false);
+        return { changed: false, skipped };
+      }
+
+      // 1. Convert each non-duplicate file to markdown in parallel. A per-file
+      //    failure is isolated — mark it 'error' and drop it, never reject the
+      //    batch. Duplicates are left as-is (already marked 'duplicate').
       const converted = await Promise.all(
-        files.map(async (file, index): Promise<ConvertResult | null> => {
+        plan.map(async ({ file, duplicate }, index): Promise<ConvertResult | null> => {
+          if (duplicate) return null;
           if (file.size === 0 || file.size > MAX_BYTES) {
             setStatusAt(index, 'error');
             return null;
@@ -124,7 +178,7 @@ export function useInterviewV2Upload() {
       const ok = converted.filter((c): c is ConvertResult => c !== null);
       if (ok.length === 0) {
         setBusy(false);
-        return false;
+        return { changed: false, skipped };
       }
 
       // Flip the successfully-converted files to 'indexing' before the
@@ -176,13 +230,30 @@ export function useInterviewV2Upload() {
         });
         if (!indexRes.ok) throw new Error(`index_${indexRes.status}`);
 
+        // Server-side project-scoped content-hash dedupe may have skipped some
+        // converted files (same content, possibly renamed — undetectable by the
+        // client pre-filter). The response only carries an aggregate count, not
+        // which rows, so we fold it into the summary total. If the server
+        // skipped everything we sent, mark those files 'duplicate'; otherwise
+        // they flip to 'done' (we can't pin the aggregate to specific rows).
+        const idxJson = (await indexRes.json().catch(() => ({}))) as {
+          skipped_count?: number;
+        };
+        const serverSkipped = idxJson.skipped_count ?? 0;
+        skipped += serverSkipped;
+        const allServerSkipped = serverSkipped >= ok.length;
+
         setItems((prev) =>
           prev.map((it, i) =>
-            ok.some((c) => c.index === i) ? { ...it, status: 'done' } : it,
+            ok.some((c) => c.index === i)
+              ? { ...it, status: allServerSkipped ? 'duplicate' : 'done' }
+              : it,
           ),
         );
         setBusy(false);
-        return true;
+        // changed only when at least one file was actually indexed (not all
+        // skipped) — no point refetching when nothing landed.
+        return { changed: !allServerSkipped, skipped };
       } catch {
         setItems((prev) =>
           prev.map((it, i) =>
@@ -192,7 +263,7 @@ export function useInterviewV2Upload() {
         setBusy(false);
         // Some files may still have been indexed on a partial server failure,
         // but we can't know which — signal a refetch so the list reconciles.
-        return true;
+        return { changed: true, skipped };
       }
     },
     [busy, setStatusAt],
