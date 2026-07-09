@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Checkbox } from './checkbox';
 
 // Shared <ModeButton> / <ModeCardGroup> primitive — extracts the inline
 // "리서치 목적" mode cards from desk-card-body.tsx into a reusable, selectable
@@ -115,12 +116,25 @@ export function ModeButton({
       onClick={() => onSelect(option.key)}
       className={cardClassName(selected, variant)}
     >
-      {selected ? (
+      {/* default variant: 우상단 ✓ (desk/quotes/enhance 기존 유지). */}
+      {selected && variant !== 'flat' ? (
         <span aria-hidden className="absolute right-2 top-2 text-amore">
           ✓
         </span>
       ) : null}
       <CardInner option={option} />
+      {/* flat variant: 선택 표시를 디자인 시스템 Checkbox primitive 로, 텍스트
+          아래 중앙. 카드 전체가 토글 버튼이라 여기 checkbox 는 상태 표시 전용
+          (pointer-events-none · tabIndex -1 · aria-hidden · readOnly). */}
+      {variant === 'flat' ? (
+        <Checkbox
+          checked={selected}
+          readOnly
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none"
+        />
+      ) : null}
     </button>
   );
 }
