@@ -24,10 +24,12 @@ const IMPORTANCE_DOT_COLOR: Record<ProbingThinkImportance, string> = {
   low: 'text-mute',
 };
 
-const IMPORTANCE_DOTS: Record<ProbingThinkImportance, string> = {
-  high: '●●●',
-  medium: '●●○',
-  low: '●○○',
+// 중요도는 반복 리스트라 3-글리프(●●●/●●○/●○○)가 시각 노이즈 →
+// 단색 dot 1개로 축소. 높음/보통/낮음 의미는 색 + label(title/aria) 로 보존.
+const IMPORTANCE_LABEL: Record<ProbingThinkImportance, string> = {
+  high: '중요도 높음',
+  medium: '중요도 보통',
+  low: '중요도 낮음',
 };
 
 function formatRelativeKo(epochMs: number, nowMs: number): string {
@@ -67,7 +69,7 @@ export function ProbingQuestionHistory({
   const starredCount = history.filter((q) => q.is_starred).length;
 
   return (
-    <section className="shrink-0 border-t-[2px] border-line-soft">
+    <section className="shrink-0 border-t border-line-soft">
       {/* eslint-disable-next-line react/forbid-elements -- accordion header full-width toggle; Button primitive forces capsule shape and centered text incompatible with left-aligned w-full row. */}
       <button
         type="button"
@@ -139,7 +141,7 @@ function HistoryRow({
     question.technique && question.technique in PROBING_TECHNIQUE_LABEL
       ? PROBING_TECHNIQUE_LABEL[question.technique as ProbingTechnique]
       : question.technique || 'probe';
-  const dots = IMPORTANCE_DOTS[question.importance];
+  const importanceLabel = IMPORTANCE_LABEL[question.importance];
   const dotColor = IMPORTANCE_DOT_COLOR[question.importance];
   const rel = formatRelativeKo(question.emitted_at, nowMs);
   return (
@@ -147,8 +149,12 @@ function HistoryRow({
       className={`rounded-xs border bg-paper px-3 py-2 ${question.is_starred ? 'border-amore border-l-[3px]' : 'border-line-soft'}`}
     >
       <div className="mb-1 flex items-center gap-2">
-        <span className={`text-xs tracking-[0.18em] ${dotColor}`} aria-hidden>
-          {dots}
+        <span
+          className={`text-xs leading-none ${dotColor}`}
+          aria-label={importanceLabel}
+          title={importanceLabel}
+        >
+          ●
         </span>
         <span className="text-xs uppercase tracking-[0.18em] text-mute-soft">
           {techniqueLabel}

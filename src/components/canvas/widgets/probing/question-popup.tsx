@@ -83,12 +83,6 @@ const IMPORTANCE_MAX_W: Record<ProbingThinkImportance, string> = {
   low: 'max-w-[min(400px,calc(100vw-3rem))]',
 };
 
-const IMPORTANCE_DOTS: Record<ProbingThinkImportance, string> = {
-  high: '●●●',
-  medium: '●●○',
-  low: '●○○',
-};
-
 const IMPORTANCE_DOT_COLOR: Record<ProbingThinkImportance, string> = {
   high: 'text-warning',
   medium: 'text-amore',
@@ -201,7 +195,6 @@ function ProbingQuestionPopupInner({
   }, []);
 
   const visual = IMPORTANCE_CARD[popup.importance];
-  const dots = IMPORTANCE_DOTS[popup.importance];
   const dotColor = IMPORTANCE_DOT_COLOR[popup.importance];
   const techniqueLabel =
     popup.technique && popup.technique in PROBING_TECHNIQUE_LABEL
@@ -233,13 +226,10 @@ function ProbingQuestionPopupInner({
     >
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span
-            className={`text-xs tracking-[0.18em] ${dotColor}`}
-            aria-hidden
-          >
-            {dots}
+          <span className={`text-xs leading-none ${dotColor}`} aria-hidden>
+            ●
           </span>
-          <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+          <span className="text-xs uppercase tracking-wider text-mute-soft">
             {visual.label}
           </span>
         </div>
