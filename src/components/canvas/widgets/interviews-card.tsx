@@ -8,6 +8,7 @@ import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import {
   ControlBoardPanel,
   WIDGET_FRAME_INSET_X,
+  WIDGET_FRAME_CLUSTER_W,
 } from '@/components/canvas/shell/control-board-panel';
 import { Field } from '@/components/canvas/shell/field';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -273,15 +274,18 @@ function ToplineAmbientProgress({
     <div
       className={`shrink-0 border-t border-line-soft ${WIDGET_FRAME_INSET_X} py-3`}
     >
-      <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-        {t('toplineGenerating')}
+      {/* 밴드 내용도 컨트롤/산출물과 동일 컬럼(중앙 정렬 max-w-2xl)에 정렬. */}
+      <div className={`mx-auto ${WIDGET_FRAME_CLUSTER_W}`}>
+        <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amore">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+          {t('toplineGenerating')}
+        </div>
+        {inReduce ? (
+          <ToplineReduceProgress blockCount={blockCount} />
+        ) : (
+          <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
+        )}
       </div>
-      {inReduce ? (
-        <ToplineReduceProgress blockCount={blockCount} />
-      ) : (
-        <ToplineMapProgress mapTotal={mapTotal} mapDone={mapDone} />
-      )}
     </div>
   );
 }
@@ -573,9 +577,9 @@ function ActiveBody({
           미생성=분석 프롬프트. 파일 목록은 abstract·프롬프트 모드에서 "파일 N개 ▸"
           토글로 접근 보존(사용자 결정 1). 상세/검색은 전체 보기(fullview). */}
       <div
-        className={`min-h-0 flex-1 overflow-y-auto ${WIDGET_FRAME_INSET_X} py-3`}
+        className={`flex min-h-0 flex-1 flex-col items-center overflow-y-auto ${WIDGET_FRAME_INSET_X} py-3`}
       >
-        {projectBody}
+        <div className={WIDGET_FRAME_CLUSTER_W}>{projectBody}</div>
       </div>
 
       {/* 팝업 밖 ambient 탑라인 진행률 — 전체보기를 닫아도 생성 진행률이
