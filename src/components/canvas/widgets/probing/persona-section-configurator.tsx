@@ -25,8 +25,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { ModeCardGroup, type ModeOption } from '@/components/ui/mode-button';
-import { DEFAULT_PERSONA_SECTIONS } from '@/lib/probing-prompts';
+import {
+  ModeCardGroup,
+  ModeActionCard,
+  type ModeOption,
+} from '@/components/ui/mode-button';
 import type { ProbingCustomSection } from '../probing-types';
 import {
   DEFAULT_PERSONA_PANELS,
@@ -36,11 +39,10 @@ import {
 const CUSTOM_TITLE_MAX = 120;
 const CUSTOM_DESC_MAX = 1_000;
 
-// 기본 섹션 key → prompt description. 카드 서브텍스트 (line-clamp-2) 로
-// "이 위젯이 무엇을 담는지" 를 보여준다. probing-prompts SSOT 에서 파생.
-const DEFAULT_DESC_BY_KEY = new Map(
-  DEFAULT_PERSONA_SECTIONS.map((d) => [d.key, d.description]),
-);
+// custom 섹션 카드의 짧은 서브텍스트 — 사용자 입력 description 은 길어서 작은
+// 정사각형 카드에서 잘리므로("…"), 카드에는 고정 힌트만. 원본 description 은
+// 여전히 프롬프트로 전달된다.
+const CUSTOM_PANEL_BLURB = '추가 섹션';
 
 export function PersonaSectionConfigurator({
   customSections,
@@ -89,13 +91,13 @@ export function PersonaSectionConfigurator({
       key: p.key,
       label: p.title,
       icon: p.icon,
-      description: DEFAULT_DESC_BY_KEY.get(p.key),
+      description: p.blurb,
     })),
     ...customSections.map((c) => ({
       key: c.key,
       label: c.title,
       icon: CUSTOM_PANEL_ICON,
-      description: c.description,
+      description: CUSTOM_PANEL_BLURB,
     })),
   ];
 
@@ -124,26 +126,26 @@ export function PersonaSectionConfigurator({
       label="페르소나 섹션 구성"
       description="켜진 섹션만 전체보기 위젯 · 데이터 적재 대상 (끄면 제외, 기본은 재활성 가능 · 추가 섹션은 재추가 시 재생성)"
     >
-      <div className="flex flex-col gap-2">
-        <ModeCardGroup
-          selection="multi"
-          columns={6}
-          variant="flat"
-          ariaLabel="페르소나 섹션 구성"
-          options={options}
-          selected={activeKeys}
-          onToggle={handleToggle}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          fullWidth
-          onClick={() => setAddOpen(true)}
-          disabled={disabled || customFull}
-        >
-          {customFull ? '섹션 한도 도달' : '+ 섹션 추가'}
-        </Button>
-      </div>
+      <ModeCardGroup
+        selection="multi"
+        columns={6}
+        variant="flat"
+        ariaLabel="페르소나 섹션 구성"
+        options={options}
+        selected={activeKeys}
+        onToggle={handleToggle}
+        // "+ 섹션 추가" = 토글이 아닌 액션 카드. 기타 · custom 카드 다음(그리드
+        // 마지막 셀) 에 동일한 정사각형으로 붙는다.
+        append={
+          <ModeActionCard
+            variant="flat"
+            icon="＋"
+            label={customFull ? '한도 도달' : '섹션 추가'}
+            onClick={() => setAddOpen(true)}
+            disabled={disabled || customFull}
+          />
+        }
+      />
 
       <Modal
         open={addOpen}

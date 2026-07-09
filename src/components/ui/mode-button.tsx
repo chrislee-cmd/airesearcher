@@ -125,6 +125,42 @@ export function ModeButton({
   );
 }
 
+/**
+ * 비선택 액션 카드 — 토글(✓) 이 아닌 클릭 동작용 (예: "+ 섹션 추가").
+ * ModeButton 과 동일한 카드 shell(cardClassName) 을 써서 그리드 안에서 다른
+ * 카드와 시각적으로 동일한 정사각형(flat) 으로 보인다. icon + label 만 —
+ * 서브텍스트 없음(짤림 0).
+ */
+export function ModeActionCard({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+  variant = 'default',
+}: {
+  icon?: ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: ModeVariant;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cardClassName(false, variant)}
+    >
+      {icon != null ? (
+        <span aria-hidden className="text-xl leading-none">
+          {icon}
+        </span>
+      ) : null}
+      <span className="text-sm font-semibold text-ink">{label}</span>
+    </button>
+  );
+}
+
 type CommonProps = {
   options: ModeOption[];
   /** Accessible name for the radiogroup / group. */
@@ -133,6 +169,8 @@ type CommonProps = {
   columns?: 1 | 2 | 3 | 6;
   /** 'flat' → 정사각형 카드 (persona 한정). 기본 'default'. */
   variant?: ModeVariant;
+  /** 그리드 마지막 셀에 붙는 추가 노드 (예: <ModeActionCard>). */
+  append?: ReactNode;
   className?: string;
 };
 
@@ -156,7 +194,8 @@ export type ModeCardGroupProps = SingleProps | MultiProps;
  * - multi:            group of toggles — `selected[]` / `onToggle`.
  */
 export function ModeCardGroup(props: ModeCardGroupProps) {
-  const { options, ariaLabel, columns = 2, variant = 'default', className } = props;
+  const { options, ariaLabel, columns = 2, variant = 'default', append, className } =
+    props;
   const multi = props.selection === 'multi';
   const gridClass = ['grid gap-2', COLS[columns], className ?? '']
     .filter(Boolean)
@@ -183,6 +222,7 @@ export function ModeCardGroup(props: ModeCardGroupProps) {
           />
         );
       })}
+      {append}
     </div>
   );
 }
