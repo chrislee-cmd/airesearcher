@@ -142,6 +142,7 @@ export function SharePersonaCollab({
           <ProbingInjectField
             onInject={onInject}
             placeholder="응답자에게 즉시 던질 질문을 입력하세요"
+            confirmLabel="✓ 질문을 보냈어요 — 곧 좌측 위젯과 사고 흐름에 반영됩니다"
           />
           <p className="text-xs leading-relaxed text-mute-soft">
             {labels.inject}

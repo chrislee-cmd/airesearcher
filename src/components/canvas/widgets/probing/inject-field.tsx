@@ -16,7 +16,7 @@
    호스트 엔진 상태를 모르므로 넘기지 않는다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { ChipInput } from '@/components/ui/chip-input';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export function ProbingInjectField({
   disabled = false,
   backfillFeedback = null,
   placeholder = '예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?',
+  confirmLabel,
 }: {
   // "주입" 버튼 (또는 Enter) 클릭 시 1회 호출. 갱신과 무관.
   onInject: (question: string) => void;
@@ -42,15 +43,27 @@ export function ProbingInjectField({
   // 신규 위젯 backfill 진행/결과 (없으면 미표시).
   backfillFeedback?: ProbingBackfillFeedback | null;
   placeholder?: string;
+  // 제출 직후 잠깐 노출할 확인 문구. 토스트가 없는 공유 뷰어가 "보냈다" 를
+  // 즉시 알 수 있게 한다(호스트는 토스트를 쓰므로 미전달).
+  confirmLabel?: string;
 }) {
   const [draft, setDraft] = useState('');
+  // 제출 시각 — confirmLabel 노출 게이트. 재제출마다 새 값으로 타이머 리셋.
+  const [sentAt, setSentAt] = useState<number | null>(null);
   const canInject = draft.trim().length > 0 && !disabled;
+
+  useEffect(() => {
+    if (sentAt === null) return;
+    const t = setTimeout(() => setSentAt(null), 2600);
+    return () => clearTimeout(t);
+  }, [sentAt]);
 
   function inject() {
     const value = draft.trim().slice(0, PROBING_INJECT_QUESTION_MAX);
     if (!value) return;
     onInject(value);
     setDraft('');
+    if (confirmLabel) setSentAt(Date.now());
   }
 
   return (
@@ -97,6 +110,12 @@ export function ProbingInjectField({
               ⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다
             </span>
           )}
+        </p>
+      )}
+
+      {confirmLabel && sentAt !== null && (
+        <p className="mt-1.5 text-xs text-amore" aria-live="polite">
+          {confirmLabel}
         </p>
       )}
     </Field>

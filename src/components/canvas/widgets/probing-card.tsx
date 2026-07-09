@@ -949,6 +949,14 @@ function ExpandedBody() {
   // "직전과 다른 새 id 로 시작(idle→start)" 한 진짜 새 세션에만 초기화한다.
   // stop → id null 로의 전이는 리셋 트리거가 아니다 (정지 후에도 페르소나는
   // 화면/PDF export 에 남는다). 다음 start 가 새 id 를 발급하면 그때 초기화.
+  // 공유 실시간화: 새 세션이 시작되면 공유 스냅샷(DB + 연결된 뷰어)도 리셋한다.
+  // probing_sessions 는 user 당 1 row(공유 링크 재사용)라, 새 인터뷰를 시작해도
+  // 과거 persona_snapshot 이 DB 에 남아 뷰어가 과거 기록을 본다(빈 상태는
+  // buildPersonaSnapshot 이 null 을 반환해 broadcast 가 skip → 덮이지 않음).
+  // 그래서 새 세션 트리거(아래 RC-1 effect)에서 명시적으로 빈 스냅샷을 뿌린다.
+  // liveChannelRef 는 이 아래에서 선언되므로 ref-held 클로저로 감싼다.
+  const resetSharedSnapshotRef = useRef<() => void>(() => {});
+
   const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = prevSessionIdRef.current;
@@ -963,6 +971,8 @@ function ExpandedBody() {
       setHistory([]);
       emptyCustomRef.current.clear();
       showBackfillFeedback(null);
+      // 진짜 새 세션에만 실행(renew·remount 아님) → 공유 뷰어/ DB 도 초기화.
+      resetSharedSnapshotRef.current();
     }
     prevSessionIdRef.current = sessionId;
   }, [sessionId, showBackfillFeedback]);
@@ -1205,11 +1215,24 @@ function ExpandedBody() {
       });
       const DESC = '즉시 던질 질문';
       const key = addCustomSection(question, DESC);
-      // 신규 위젯 = 누적 대화 backfill 시도. 생성 실패(상한 도달)면 skip.
-      if (key) void runBackfillRef.current(key, question, DESC);
+      // 위젯 추가 시각 피드백 — 좌 grid 에 새 위젯이 붙었는지 즉시 알 수 있게
+      // 토스트로 알린다(호스트 자기 주입 + 뷰어 원격 주입 모두 이 경로).
+      const label =
+        question.length > 24 ? `${question.slice(0, 24)}…` : question;
+      if (key) {
+        toast.push(`위젯 추가됨 — '${label}'`, { tone: 'info', ttlMs: 2400 });
+        // 신규 위젯 = 누적 대화 backfill 시도.
+        void runBackfillRef.current(key, question, DESC);
+      } else {
+        // 상한 도달 = 위젯 생성 실패. 질문 자체는 think 로 계속 주입된다.
+        toast.push(
+          `위젯이 가득 찼어요 (최대 ${CUSTOM_SECTION_MAX}개) — 기존 위젯을 지우고 다시 시도해 주세요`,
+          { tone: 'warn' },
+        );
+      }
       void runThinkRef.current([question]);
     },
-    [addCustomSection],
+    [addCustomSection, toast],
   );
 
   // 협업화: 뷰어 inject 수신 → 호스트 자기 주입 핸들러를 그대로 호출하기 위한
@@ -1457,6 +1480,43 @@ function ExpandedBody() {
     }, LIVE_BROADCAST_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [thinkingEvents, thinkingStreaming, probingSessionId]);
+
+  // ─── 공유 스냅샷 리셋 클로저 (새 세션 트리거가 호출) ───
+  // 채널이 열려 있을 때만(=공유 대상 row 존재) 동작. ① 연결된 뷰어에 빈 persona +
+  // 빈 think 를 즉시 송출(과거 그리드/사고흐름 즉시 클리어), ② DB persona_snapshot
+  // 도 빈 스냅샷으로 덮어 mid-join 뷰어가 과거 기록을 로드하지 않게 한다.
+  useEffect(() => {
+    resetSharedSnapshotRef.current = () => {
+      const ch = liveChannelRef.current;
+      if (!ch) return; // 공유 채널/row 없으면 리셋할 것도 없음
+      const emptySnapshot: ProbingPersonaSnapshot = {
+        version: PROBING_PERSONA_SNAPSHOT_VERSION,
+        reflection: [],
+        questions: [],
+      };
+      ch.send({
+        type: 'broadcast',
+        event: PROBING_LIVE_PERSONA_EVENT,
+        payload: emptySnapshot,
+      }).catch(() => {});
+      ch.send({
+        type: 'broadcast',
+        event: PROBING_LIVE_THINK_EVENT,
+        payload: { events: [], streaming: false },
+      }).catch(() => {});
+      void (async () => {
+        try {
+          await fetchWithAuth('/api/probing/persona-snapshot', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(emptySnapshot),
+          });
+        } catch {
+          // best-effort — 실패해도 live broadcast 로 연결된 뷰어는 이미 비워졌다.
+        }
+      })();
+    };
+  }, []);
 
   // 좌/우 패널 props.
   const reflectionPaneProps = {

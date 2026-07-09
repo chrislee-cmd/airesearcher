@@ -58,10 +58,7 @@ export function ProbingResearchContext({
 }) {
   return (
     <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
-      <Field
-        label="조사 목적"
-        description="이 인터뷰로 알고자 하는 것 (1~2 문장)"
-      >
+      <Field label="조사 목적">
         <Textarea
           value={researchGoal}
           onChange={(e) =>
