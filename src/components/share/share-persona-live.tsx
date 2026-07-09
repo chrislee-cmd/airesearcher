@@ -1,30 +1,46 @@
 'use client';
 
-// 공유 뷰어 프로빙 페르소나 — 초기 스냅샷(#493) 위에 실시간 broadcast 를 얹는
-// read-only 라이브 래퍼(probing-persona-share-live-broadcast).
+// 공유 협업 뷰어 — 초기 스냅샷(#493) 위에 실시간 broadcast 를 얹고, 우패널의
+// 주입 필드로 호스트에 질문을 되쏘는 양방향 래퍼
+// (probing-share-collaborative-injection, #507 위 확장).
 //
-// 초기 = 서버가 넘긴 #493 스냅샷(mid-join 즉시 표시). 그 위에
-// probing-live:<sessionId> broadcast 채널을 구독해 호스트의 페르소나 갱신마다
-// 그리드/질문을 live 재렌더한다. broadcast 채널이라 sb-* 세션 없는 익명 뷰어도
-// 수신 가능(동시통역 translate-viewer.tsx:212 구독 패턴 이식 — postgres_changes
-// 아님).
+// 구독(호스트 → 뷰어):
+//   - `persona`: 페르소나 스냅샷(위젯 그리드 + 제안 질문). 전체 스냅샷이라
+//     delta 병합 없이 통째로 교체(멱등, mid-join 안전).
+//   - `think`: AI 사고 흐름 라인. 최근 tail 을 통째로 교체.
+// 송출(뷰어 → 호스트):
+//   - `inject`: 주입 필드 제출 → 호스트가 자기 주입 파이프라인을 그대로 실행 →
+//     위젯 생성·가중치·think 가 persona/think 재브로드캐스트로 되돌아온다.
 //
-// read-only 불변: SharePersonaView 는 순수 표시 컴포넌트라 편집/드래그/생성
-// 액션 props 자체가 없다(결정 2). 여기서도 상태를 setSnapshot 으로만 갱신하고
-// 어떤 mutation 진입점도 노출하지 않는다.
+// broadcast 채널이라 sb-* 세션 없는 익명 뷰어도 송수신 가능(동시통역
+// translate-viewer 패턴). read-only 불변: 유일한 write = 주입 필드.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import {
   probingPersonaSnapshotSchema,
+  PROBING_PERSONA_SNAPSHOT_VERSION,
   type ProbingPersonaSnapshot,
 } from '@/lib/probing-persona-snapshot';
+import type { ThinkingEvent } from '@/components/canvas/widgets/probing-types';
 import {
   probingLiveChannelName,
   PROBING_LIVE_PERSONA_EVENT,
+  PROBING_LIVE_THINK_EVENT,
+  PROBING_LIVE_INJECT_EVENT,
+  probingLiveThinkSchema,
+  PROBING_INJECT_QUESTION_MAX,
 } from '@/lib/probing/live-channel';
-import { SharePersonaView } from './share-persona-view';
+import { SharePersonaCollab } from './share-persona-collab';
+
+// 빈 스냅샷 — 초기 미저장/구 세션이어도 협업 우패널(주입 필드)을 항상 노출하기
+// 위해 그리드/질문만 빈 상태로 렌더한다. live delta 가 도착하면 채워진다.
+const EMPTY_SNAPSHOT: ProbingPersonaSnapshot = {
+  version: PROBING_PERSONA_SNAPSHOT_VERSION,
+  reflection: [],
+  questions: [],
+};
 
 export function SharePersonaLive({
   sessionId,
@@ -38,57 +54,92 @@ export function SharePersonaLive({
     questions: string;
     questionsEmpty: string;
     snapshotMissing: string;
+    inject: string;
+    thinking: string;
   };
 }) {
   const [snapshot, setSnapshot] = useState<ProbingPersonaSnapshot | null>(
     initialSnapshot,
   );
+  const [thinkingEvents, setThinkingEvents] = useState<ThinkingEvent[]>([]);
+  const [thinkingStreaming, setThinkingStreaming] = useState(false);
 
-  // probing-live:<sessionId> broadcast 구독. 호스트가 persona 갱신마다 전체
-  // 스냅샷을 보내므로 delta 병합 없이 통째로 교체한다(멱등, 순서 뒤섞임 무해).
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  // 채널 구독 — persona + think. self:true 는 뷰어 자신이 보낸 inject 를 되받는
+  // 것과 무관(뷰어는 inject 를 구독하지 않음). #507 동작 유지.
   useEffect(() => {
     const supa = createBrowserSupabase();
-    let ch: RealtimeChannel | null = supa.channel(
-      probingLiveChannelName(sessionId),
-      { config: { broadcast: { self: true } } },
-    );
+    const ch: RealtimeChannel = supa.channel(probingLiveChannelName(sessionId), {
+      config: { broadcast: { self: true } },
+    });
     ch.on('broadcast', { event: PROBING_LIVE_PERSONA_EVENT }, ({ payload }) => {
-      // 채널 계약(#493 스냅샷 스키마) 으로 방어적 파싱 — 미지원 버전/손상
-      // payload 는 무시하고 기존 스냅샷 유지(데이터 노출 0, 크래시 0).
-      // translate-viewer 의 방어적 gate 미러.
+      // 채널 계약(#493 스냅샷 스키마)으로 방어적 파싱 — 미지원 버전/손상 payload
+      // 는 무시하고 기존 스냅샷 유지(데이터 노출 0, 크래시 0).
       const parsed = probingPersonaSnapshotSchema.safeParse(payload);
       if (parsed.success) setSnapshot(parsed.data);
     });
-    // 채널 끊김 후 supabase-js 가 자동 재연결/재구독한다(재연결 시 호스트의
-    // 다음 tick 이 최신 전체 스냅샷을 다시 보내므로 별도 backfill 불필요).
+    ch.on('broadcast', { event: PROBING_LIVE_THINK_EVENT }, ({ payload }) => {
+      const parsed = probingLiveThinkSchema.safeParse(payload);
+      if (parsed.success) {
+        setThinkingEvents(parsed.data.events);
+        setThinkingStreaming(parsed.data.streaming);
+      }
+    });
     ch.subscribe();
+    channelRef.current = ch;
     return () => {
       try {
-        ch?.unsubscribe();
+        ch.unsubscribe();
       } catch {
         // ignore
       }
-      ch = null;
+      channelRef.current = null;
     };
   }, [sessionId]);
 
-  if (
-    !snapshot ||
-    (snapshot.reflection.length === 0 && snapshot.questions.length === 0)
-  ) {
-    // 초기 스냅샷 미저장(구 세션) 또는 세션이 아직 페르소나를 못 채운 상태.
-    // live delta 가 도착하면 위 setSnapshot 이 콘텐츠 뷰로 전환한다.
-    return <p className="text-md text-mute">{labels.snapshotMissing}</p>;
-  }
+  // 주입 필드 제출 → 호스트에 inject 송출. 채널 없거나 빈 질문이면 no-op.
+  const handleInject = useCallback((question: string) => {
+    const q = question.trim().slice(0, PROBING_INJECT_QUESTION_MAX);
+    if (!q) return;
+    channelRef.current
+      ?.send({
+        type: 'broadcast',
+        event: PROBING_LIVE_INJECT_EVENT,
+        payload: { question: q },
+      })
+      .catch(() => {
+        // best-effort — 호스트가 못 받으면 재입력. 협업 편의 기능.
+      });
+  }, []);
+
+  const view = snapshot ?? EMPTY_SNAPSHOT;
+  const isEmpty =
+    view.reflection.length === 0 &&
+    view.questions.length === 0 &&
+    thinkingEvents.length === 0;
 
   return (
-    <SharePersonaView
-      snapshot={snapshot}
-      labels={{
-        grid: labels.grid,
-        questions: labels.questions,
-        questionsEmpty: labels.questionsEmpty,
-      }}
-    />
+    <div className="space-y-3">
+      {isEmpty && (
+        // 초기 스냅샷 미저장(구 세션) 또는 세션이 아직 페르소나를 못 채운 상태.
+        // 주입 필드는 아래 협업 뷰에 그대로 노출된다(호스트가 라이브면 주입이
+        // 위젯/사고 흐름을 트리거).
+        <p className="text-sm text-mute-soft">{labels.snapshotMissing}</p>
+      )}
+      <SharePersonaCollab
+        snapshot={view}
+        thinkingEvents={thinkingEvents}
+        thinkingStreaming={thinkingStreaming}
+        onInject={handleInject}
+        labels={{
+          grid: labels.grid,
+          questions: labels.questions,
+          questionsEmpty: labels.questionsEmpty,
+          inject: labels.inject,
+          thinking: labels.thinking,
+        }}
+      />
+    </div>
   );
 }

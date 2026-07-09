@@ -583,6 +583,24 @@ html, body {
   animation: probingPopupPulse 1.2s ease-out 1;
 }
 
+/* probing-widget-added — 주입/추가로 새 페르소나 위젯 카드가 생길 때 마운트
+   시 1회 재생되는 ephemeral 엔트런스(amore 링 + 살짝 pop). 재생 후 원상 복귀.
+   패널 인라인 box-shadow 와 충돌 안 하도록 outline 만 애니메이션. */
+@keyframes probingWidgetAdded {
+  0%   { outline-color: var(--color-amore); transform: scale(0.97); }
+  45%  { outline-color: var(--color-amore); transform: scale(1); }
+  75%  { outline-color: var(--color-amore); }
+  100% { outline-color: transparent; transform: scale(1); }
+}
+.probing-widget-added {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: probingWidgetAdded 1.9s ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .probing-widget-added { animation: none; }
+}
+
 /* completed-cta-pulse — 위젯 완료 CTA 가 처음 노출되는 순간(마운트) 3초간
    mint outline 이 은은히 맥동. 버튼 자체 offset box-shadow 와 충돌하지
    않도록 outline 만 애니메이션 (box-shadow 는 그대로 유지). 3회 반복 =

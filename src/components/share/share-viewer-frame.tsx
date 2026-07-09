@@ -79,6 +79,8 @@ function PersonaBody({
     questions: string;
     questionsEmpty: string;
     snapshotMissing: string;
+    inject: string;
+    thinking: string;
   };
 }) {
   // 실시간화: 초기 = #493 스냅샷(mid-join 즉시 표시), 그 위에
@@ -96,6 +98,8 @@ function PersonaBody({
           questions: labels.questions,
           questionsEmpty: labels.questionsEmpty,
           snapshotMissing: labels.snapshotMissing,
+          inject: labels.inject,
+          thinking: labels.thinking,
         }}
       />
     </div>
@@ -108,17 +112,18 @@ export async function ShareViewerFrame({
   resource: ShareResource;
 }) {
   const t = await getTranslations('ShareViewer');
-  const title =
-    resource.type === 'interview_topline'
-      ? t('toplineTitle')
-      : t('personaTitle');
+  const isProbing = resource.type === 'probing_persona';
+  const title = isProbing ? t('personaTitle') : t('toplineTitle');
 
-  // 인터뷰 탑라인은 정적 스냅샷이라 빈 상태를 안내로 막는다. 프로빙 페르소나는
-  // 실시간화(broadcast) 대상이라 초기 스냅샷이 비어 있어도 항상 PersonaBody 를
-  // 마운트해야 한다 — 그래야 mid-join 후 도착하는 live delta 로 채워진다(빈→라이브
-  // 전환은 SharePersonaLive 가 방어적으로 처리).
+  // 프로빙 협업 뷰는 3컬럼 위젯 그리드 + 우패널이라 탑라인(정적 보고서)보다 넓은
+  // 컨테이너가 필요하다. 탑라인은 기존 narrow 카드 유지.
+  // 프로빙은 뷰어가 질문을 주입할 수 있으므로 "읽기 전용" 대신 협업 힌트를 쓴다.
   return (
-    <main className="mx-auto w-full max-w-[860px] flex-1 px-5 pb-16 pt-10">
+    <main
+      className={`mx-auto w-full flex-1 px-5 pb-16 pt-10 ${
+        isProbing ? 'max-w-[1400px]' : 'max-w-[860px]'
+      }`}
+    >
       <header className="mb-8 border-b border-line-soft pb-5">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-mute-soft">
           {t('eyebrow')}
@@ -126,31 +131,35 @@ export async function ShareViewerFrame({
         <h1 className="mt-1.5 text-2xl font-bold tracking-[-0.01em] text-ink">
           {title}
         </h1>
-        <p className="mt-1 text-sm text-mute">{t('readOnlyHint')}</p>
+        <p className="mt-1 text-sm text-mute">
+          {isProbing ? t('personaCollabHint') : t('readOnlyHint')}
+        </p>
       </header>
 
-      <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
-        {resource.type === 'interview_topline' ? (
-          resource.blocks.length > 0 ? (
+      {resource.type === 'interview_topline' ? (
+        <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
+          {resource.blocks.length > 0 ? (
             <ReadonlyToplineBlocks blocks={resource.blocks as ToplineBlock[]} />
           ) : (
             <p className="text-md text-mute">{t('emptyContent')}</p>
-          )
-        ) : (
-          <PersonaBody
-            resource={resource}
-            labels={{
-              goal: t('personaGoal'),
-              krq: t('personaKrq'),
-              hypotheses: t('personaHypotheses'),
-              grid: t('personaGrid'),
-              questions: t('personaQuestions'),
-              questionsEmpty: t('personaQuestionsEmpty'),
-              snapshotMissing: t('personaSnapshotMissing'),
-            }}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <PersonaBody
+          resource={resource}
+          labels={{
+            goal: t('personaGoal'),
+            krq: t('personaKrq'),
+            hypotheses: t('personaHypotheses'),
+            grid: t('personaGrid'),
+            questions: t('personaQuestions'),
+            questionsEmpty: t('personaQuestionsEmpty'),
+            snapshotMissing: t('personaSnapshotMissing'),
+            inject: t('personaInjectHint'),
+            thinking: t('personaThinking'),
+          }}
+        />
+      )}
     </main>
   );
 }

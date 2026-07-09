@@ -72,6 +72,7 @@ export function PersonaPanel({
   title,
   section,
   onRemove,
+  highlight = false,
 }: {
   icon: string;
   title: string;
@@ -81,6 +82,9 @@ export function PersonaPanel({
   // — PR: probing-default-persona-widgets-hide) 을 연결한다. undefined 면 ×
   // 미노출. aria-label 은 "위젯 제거" 로 두 경우를 공통 표현.
   onRemove?: () => void;
+  // 주입/추가로 방금 생성된 위젯 — 마운트 시 ephemeral 엔트런스 애니메이션
+  // (probing-widget-added) 을 1회 재생. 몇 초 뒤 부모가 false 로 되돌린다.
+  highlight?: boolean;
 }) {
   const confidence: Confidence = section?.confidence ?? 'insufficient';
   const summary = section?.summary?.trim() ?? '';
@@ -92,7 +96,9 @@ export function PersonaPanel({
 
   return (
     <section
-      className="flex min-h-[120px] flex-col gap-2 bg-paper p-3"
+      className={`flex min-h-[120px] flex-col gap-2 bg-paper p-3${
+        highlight ? ' probing-widget-added' : ''
+      }`}
       style={isInsufficient ? insufficientStyle : panelStyle}
     >
       <header className="flex items-center justify-between gap-2">

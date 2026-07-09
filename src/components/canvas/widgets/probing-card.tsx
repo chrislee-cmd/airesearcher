@@ -82,6 +82,9 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import {
   probingLiveChannelName,
   PROBING_LIVE_PERSONA_EVENT,
+  PROBING_LIVE_THINK_EVENT,
+  PROBING_LIVE_INJECT_EVENT,
+  probingLiveInjectSchema,
 } from '@/lib/probing/live-channel';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
@@ -95,6 +98,21 @@ const DEBOUNCE_MS = 5_000;
 // 공유 실시간화: persona 갱신 → broadcast 송출 debounce. reflection/질문 state 가
 // 연달아 바뀔 때(스트리밍 머지) 매 tick 송출하지 않고 짧게 합쳐 한 번만 보낸다.
 const LIVE_BROADCAST_DEBOUNCE_MS = 700;
+// 협업화: think broadcast 로 보낼 최근 사고 흐름 라인 상한(스키마 max 200 이하).
+// thinkingEvents 는 무한 누적되므로 tail 만 송출(뷰어는 통째로 교체 — live 흐름
+// 이라 오래된 라인 유실 무해). mid-join 뷰어는 다음 tick 에 이 tail 을 받는다.
+const LIVE_THINK_BROADCAST_MAX = 120;
+// 공유 링크 DB 지속 저장 throttle. broadcast 는 실시간(연결된 뷰어)이지만 DB
+// persona_snapshot 도 최신으로 유지해야 mid-join·reload·세션 종료 후 링크가
+// 최신 페르소나를 로드한다(스펙 §D 정적 소스). 매 tick 저장은 과하니 최소 간격.
+const LIVE_PERSIST_MIN_GAP_MS = 4_000;
+// 협업화: 뷰어 inject 수신 rate-limit. 여러 뷰어가 동시/연속 주입해도 호스트는
+// 단일 엔진이라 최소 간격으로 순차 처리한다(스팸 폭주 방어, 협업 취지는 유지).
+const INJECT_MIN_GAP_MS = 2_500;
+// 대기 큐 상한 — 초과 주입은 드롭(과부하 방어). 협업 규모상 충분.
+const INJECT_QUEUE_MAX = 12;
+// 주입/추가로 생긴 위젯의 ephemeral 하이라이트 지속(ms) — CSS 애니메이션 길이와 정합.
+const WIDGET_HIGHLIGHT_MS = 2_000;
 // history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
 const HISTORY_MAX = 100;
 
@@ -937,6 +955,14 @@ function ExpandedBody() {
   // "직전과 다른 새 id 로 시작(idle→start)" 한 진짜 새 세션에만 초기화한다.
   // stop → id null 로의 전이는 리셋 트리거가 아니다 (정지 후에도 페르소나는
   // 화면/PDF export 에 남는다). 다음 start 가 새 id 를 발급하면 그때 초기화.
+  // 공유 실시간화: 새 세션이 시작되면 공유 스냅샷(DB + 연결된 뷰어)도 리셋한다.
+  // probing_sessions 는 user 당 1 row(공유 링크 재사용)라, 새 인터뷰를 시작해도
+  // 과거 persona_snapshot 이 DB 에 남아 뷰어가 과거 기록을 본다(빈 상태는
+  // buildPersonaSnapshot 이 null 을 반환해 broadcast 가 skip → 덮이지 않음).
+  // 그래서 새 세션 트리거(아래 RC-1 effect)에서 명시적으로 빈 스냅샷을 뿌린다.
+  // liveChannelRef 는 이 아래에서 선언되므로 ref-held 클로저로 감싼다.
+  const resetSharedSnapshotRef = useRef<() => void>(() => {});
+
   const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = prevSessionIdRef.current;
@@ -951,11 +977,14 @@ function ExpandedBody() {
       setHistory([]);
       emptyCustomRef.current.clear();
       showBackfillFeedback(null);
+      // 진짜 새 세션에만 실행(renew·remount 아님) → 공유 뷰어/ DB 도 초기화.
+      resetSharedSnapshotRef.current();
     }
     prevSessionIdRef.current = sessionId;
   }, [sessionId, showBackfillFeedback]);
 
-  // 세션 stop 시 진행 중 think SSE abort.
+  // 세션 stop 시 진행 중 think SSE abort. (최종 스냅샷 DB 저장은 buildPersonaSnapshot
+  // 선언 뒤의 별도 effect 에서 — 여기선 use-before-declaration 회피.)
   useEffect(() => {
     if (sessionStatus === 'idle' || sessionStatus === 'stopping') {
       thinkAbortRef.current?.abort();
@@ -1168,6 +1197,27 @@ function ExpandedBody() {
 
   const customSectionsFull = customSections.length >= CUSTOM_SECTION_MAX;
 
+  // 주입/추가로 방금 생성된 위젯 key — 좌 grid 에서 ephemeral 하이라이트 대상.
+  // 몇 초 뒤 해제해 애니메이션이 한 번만 재생되게 한다.
+  const [recentWidgetKeys, setRecentWidgetKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const markWidgetAdded = useCallback((key: string) => {
+    setRecentWidgetKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    setTimeout(() => {
+      setRecentWidgetKeys((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }, WIDGET_HIGHLIGHT_MS);
+  }, []);
+
   // Analytics — custom 위젯(섹션) 추가 계측. add 원본을 감싸 발화 후 위임.
   const handleAddCustomSection = useCallback(
     (...args: Parameters<typeof addCustomSection>) => {
@@ -1175,9 +1225,11 @@ function ExpandedBody() {
         widget: 'probing',
         action: 'custom_section_add',
       });
-      return addCustomSection(...args);
+      const key = addCustomSection(...args);
+      if (key) markWidgetAdded(key);
+      return key;
     },
-    [addCustomSection],
+    [addCustomSection, markWidgetAdded],
   );
 
   // 우패널 "주입" 버튼 → 1회 동작 (갱신과 무관). 두 가지를 함께 처리:
@@ -1193,11 +1245,77 @@ function ExpandedBody() {
       });
       const DESC = '즉시 던질 질문';
       const key = addCustomSection(question, DESC);
-      // 신규 위젯 = 누적 대화 backfill 시도. 생성 실패(상한 도달)면 skip.
-      if (key) void runBackfillRef.current(key, question, DESC);
+      // 위젯 추가 시각 피드백 — 좌 grid 에 새 위젯이 붙었는지 즉시 알 수 있게
+      // 토스트로 알린다(호스트 자기 주입 + 뷰어 원격 주입 모두 이 경로).
+      const label =
+        question.length > 24 ? `${question.slice(0, 24)}…` : question;
+      if (key) {
+        toast.push(`위젯 추가됨 — '${label}'`, { tone: 'info', ttlMs: 2400 });
+        markWidgetAdded(key);
+        // 신규 위젯 = 누적 대화 backfill 시도.
+        void runBackfillRef.current(key, question, DESC);
+      } else {
+        // 상한 도달 = 위젯 생성 실패. 질문 자체는 think 로 계속 주입된다.
+        toast.push(
+          `위젯이 가득 찼어요 (최대 ${CUSTOM_SECTION_MAX}개) — 기존 위젯을 지우고 다시 시도해 주세요`,
+          { tone: 'warn' },
+        );
+      }
       void runThinkRef.current([question]);
     },
-    [addCustomSection],
+    [addCustomSection, toast, markWidgetAdded],
+  );
+
+  // 협업화: 뷰어 inject 수신 → 호스트 자기 주입 핸들러를 그대로 호출하기 위한
+  // ref. 채널 구독 effect(probingSessionId 만 dep)가 stable 하게 최신 핸들러를
+  // 읽는다.
+  const handleInjectQuestionRef = useRef(handleInjectQuestion);
+  useEffect(() => {
+    handleInjectQuestionRef.current = handleInjectQuestion;
+  }, [handleInjectQuestion]);
+
+  // ─── 협업화: 뷰어 inject rate-limit 큐 ───
+  // 뷰어가 채널로 보낸 주입을 호스트가 단일 엔진으로 순차 처리한다. 최소 간격
+  // (INJECT_MIN_GAP_MS)으로 드레인해 여러 뷰어 동시 주입이 LLM 호출을 폭주시키지
+  // 않게 한다. 큐 상한 초과분은 드롭. handleInjectQuestion 은 호스트가 직접
+  // 입력한 것과 동일 코드경로(위젯 생성 + priority_sections 가중치 + think).
+  const injectQueueRef = useRef<string[]>([]);
+  const injectLastAtRef = useRef<number>(0);
+  const injectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 드레인/enqueue 는 자기 자신을 재참조(self-scheduling)하므로 useCallback 대신
+  // ref-held 클로저로 둔다(순환 참조 lint 회피 + 매 렌더 안정).
+  const scheduleDrainRef = useRef<() => void>(() => {});
+  const enqueueInjectRef = useRef<(question: string) => void>(() => {});
+  useEffect(() => {
+    scheduleDrainRef.current = () => {
+      if (injectTimerRef.current) return; // 이미 예약됨
+      const since = Date.now() - injectLastAtRef.current;
+      const wait = Math.max(0, INJECT_MIN_GAP_MS - since);
+      injectTimerRef.current = setTimeout(() => {
+        injectTimerRef.current = null;
+        const next = injectQueueRef.current.shift();
+        if (next !== undefined) {
+          handleInjectQuestionRef.current(next);
+          injectLastAtRef.current = Date.now();
+        }
+        if (injectQueueRef.current.length > 0) scheduleDrainRef.current();
+      }, wait);
+    };
+    enqueueInjectRef.current = (question: string) => {
+      const q = question.trim();
+      if (!q) return;
+      if (injectQueueRef.current.length >= INJECT_QUEUE_MAX) return; // 폭주 드롭
+      injectQueueRef.current.push(q);
+      scheduleDrainRef.current();
+    };
+  }, []);
+
+  // 언마운트 시 드레인 타이머 정리.
+  useEffect(
+    () => () => {
+      if (injectTimerRef.current) clearTimeout(injectTimerRef.current);
+    },
+    [],
   );
 
   // ─── 공유 스냅샷 (PR: probing-persona-share-snapshot-persist) ───
@@ -1271,13 +1389,10 @@ function ExpandedBody() {
       };
     }, []);
 
-  // 공유 버튼 클릭 직전 훅 — 현재 스냅샷을 자기 probing_sessions row 에 PUT.
-  // best-effort: 실패해도 공유 자체는 막지 않는다(뷰어가 이전 스냅샷/빈 화면
-  // 으로 degrade). 데이터 없으면 build 가 null → no-op.
-  const snapshotPersonaForShare = useCallback(() => {
-    const snapshot = buildPersonaSnapshot();
-    if (!snapshot) return;
-    void (async () => {
+  // 스냅샷을 자기 probing_sessions row 에 PUT (best-effort). 공유 버튼 훅 +
+  // 라이브 지속 저장 + 세션 종료 저장이 공유한다.
+  const putPersonaSnapshot = useCallback(
+    async (snapshot: ProbingPersonaSnapshot) => {
       try {
         await fetchWithAuth('/api/probing/persona-snapshot', {
           method: 'PUT',
@@ -1287,8 +1402,20 @@ function ExpandedBody() {
       } catch {
         // silent — 공유 UX 를 막지 않는다.
       }
-    })();
-  }, [buildPersonaSnapshot]);
+    },
+    [],
+  );
+
+  // DB 지속 저장 throttle 시각(LIVE_PERSIST_MIN_GAP_MS). 세션 종료 저장은 우회.
+  const lastPersistAtRef = useRef(0);
+
+  // 공유 버튼 클릭 직전 훅 — 현재 스냅샷을 즉시 저장. 데이터 없으면 null → no-op.
+  const snapshotPersonaForShare = useCallback(() => {
+    const snapshot = buildPersonaSnapshot();
+    if (!snapshot) return;
+    lastPersistAtRef.current = Date.now();
+    void putPersonaSnapshot(snapshot);
+  }, [buildPersonaSnapshot, putPersonaSnapshot]);
 
   // ─── 공유 실시간화: 호스트 broadcast (probing-persona-share-live-broadcast) ───
   // 요구 변경: 공유는 스냅샷 1회가 아니라 실시간. 라이브 세션 중 페르소나가
@@ -1310,8 +1437,18 @@ function ExpandedBody() {
     if (!id) return;
     const supa = createBrowserSupabase();
     const ch = supa.channel(probingLiveChannelName(id), {
-      // 뷰어에게만 tunnel 하면 되고 호스트는 자기 송출을 되받을 필요가 없다.
+      // 뷰어에게만 tunnel 하면 되고 호스트는 자기 송출(persona/think)을 되받을
+      // 필요가 없다. self:false 는 자기 outbound echo 만 막을 뿐 뷰어가 보낸
+      // inject 수신에는 영향 없다.
       config: { broadcast: { self: false } },
+    });
+    // 협업화: 뷰어 → 호스트 inject 구독. 익명 송신자라 스키마로 방어적 파싱 후
+    // rate-limit 큐로 넘긴다. 수신 시 호스트가 자기 주입 핸들러를 그대로 호출 →
+    // 위젯 생성·priority_sections·think 가 호스트 직접 주입과 동일하게 실행되고,
+    // 결과가 persona/think 재브로드캐스트로 호스트+전 뷰어에 동기화된다.
+    ch.on('broadcast', { event: PROBING_LIVE_INJECT_EVENT }, ({ payload }) => {
+      const parsed = probingLiveInjectSchema.safeParse(payload);
+      if (parsed.success) enqueueInjectRef.current(parsed.data.question);
     });
     ch.subscribe();
     liveChannelRef.current = ch;
@@ -1348,6 +1485,13 @@ function ExpandedBody() {
         .catch(() => {
           // best-effort — 다음 tick 이 다시 송출한다. DB 스냅샷이 초기/영속 백업.
         });
+      // DB 지속 저장(throttle) — 링크가 mid-join·reload·세션 종료 후에도 최신
+      // 페르소나를 로드하도록. broadcast=연결된 뷰어 실시간, DB=그 외 모든 진입.
+      const now = Date.now();
+      if (now - lastPersistAtRef.current >= LIVE_PERSIST_MIN_GAP_MS) {
+        lastPersistAtRef.current = now;
+        void putPersonaSnapshot(snapshot);
+      }
     }, LIVE_BROADCAST_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [
@@ -1358,7 +1502,73 @@ function ExpandedBody() {
     activePopup,
     probingSessionId,
     buildPersonaSnapshot,
+    putPersonaSnapshot,
   ]);
+
+  // ─── 협업화: AI 사고 흐름(think) broadcast ───
+  // persona 스냅샷엔 없는 thinkingEvents 를 뷰어 우패널에 실시간 노출한다.
+  // 사고 라인이 바뀌거나 streaming 상태가 토글될 때마다 짧게 debounce 해 최근
+  // tail 을 전량 송출(뷰어는 통째로 교체 — 멱등, mid-join 안전). 빈 흐름은 skip.
+  useEffect(() => {
+    if (!liveChannelRef.current) return;
+    if (thinkingEvents.length === 0) return;
+    const t = setTimeout(() => {
+      liveChannelRef.current
+        ?.send({
+          type: 'broadcast',
+          event: PROBING_LIVE_THINK_EVENT,
+          payload: {
+            events: thinkingEvents.slice(-LIVE_THINK_BROADCAST_MAX),
+            streaming: thinkingStreaming,
+          },
+        })
+        .catch(() => {
+          // best-effort — 다음 tick 이 다시 송출한다.
+        });
+    }, LIVE_BROADCAST_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [thinkingEvents, thinkingStreaming, probingSessionId]);
+
+  // ─── 세션 종료 시 최종 스냅샷 DB 확정 저장 ───
+  // 종료 후 링크(reload/mid-join)가 마지막 페르소나를 정적으로 로드하도록(스펙 §D).
+  // 라이브 마지막 tick 이 throttle 창에 걸려 누락됐을 수 있어 우회 저장한다.
+  // 새 세션 시작 시엔 리셋 클로저가 빈 스냅샷을 먼저 PUT 하므로 stale 걱정 없음.
+  useEffect(() => {
+    if (sessionStatus !== 'idle' && sessionStatus !== 'stopping') return;
+    const finalSnapshot = buildPersonaSnapshot();
+    if (!finalSnapshot) return;
+    lastPersistAtRef.current = Date.now();
+    void putPersonaSnapshot(finalSnapshot);
+  }, [sessionStatus, buildPersonaSnapshot, putPersonaSnapshot]);
+
+  // ─── 공유 스냅샷 리셋 클로저 (새 세션 트리거가 호출) ───
+  // 채널이 열려 있을 때만(=공유 대상 row 존재) 동작. ① 연결된 뷰어에 빈 persona +
+  // 빈 think 를 즉시 송출(과거 그리드/사고흐름 즉시 클리어), ② DB persona_snapshot
+  // 도 빈 스냅샷으로 덮어 mid-join 뷰어가 과거 기록을 로드하지 않게 한다.
+  useEffect(() => {
+    resetSharedSnapshotRef.current = () => {
+      const ch = liveChannelRef.current;
+      if (!ch) return; // 공유 채널/row 없으면 리셋할 것도 없음
+      const emptySnapshot: ProbingPersonaSnapshot = {
+        version: PROBING_PERSONA_SNAPSHOT_VERSION,
+        reflection: [],
+        questions: [],
+      };
+      ch.send({
+        type: 'broadcast',
+        event: PROBING_LIVE_PERSONA_EVENT,
+        payload: emptySnapshot,
+      }).catch(() => {});
+      ch.send({
+        type: 'broadcast',
+        event: PROBING_LIVE_THINK_EVENT,
+        payload: { events: [], streaming: false },
+      }).catch(() => {});
+      // DB 도 빈 스냅샷으로 덮는다(mid-join 뷰어가 과거 기록을 로드하지 않게).
+      lastPersistAtRef.current = Date.now();
+      void putPersonaSnapshot(emptySnapshot);
+    };
+  }, [putPersonaSnapshot]);
 
   // 좌/우 패널 props.
   const reflectionPaneProps = {
@@ -1376,6 +1586,8 @@ function ExpandedBody() {
     customSections,
     hiddenKeys: hiddenDefaultKeys,
     gridRef: personaGridRef,
+    // 방금 주입/추가된 위젯 — ephemeral 엔트런스 하이라이트.
+    recentKeys: recentWidgetKeys,
   };
 
   const questionPaneProps = {

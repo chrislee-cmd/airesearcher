@@ -28,22 +28,18 @@
    (one-shot), 부모가 좌 위젯 + think 로 흘려보낸다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
-import { ChipInput } from '@/components/ui/chip-input';
-import { Button } from '@/components/ui/button';
+import {
+  ProbingInjectField,
+  type ProbingBackfillFeedback,
+} from './inject-field';
+
+// 주입 필드는 inject-field 로 추출(호스트·공유 뷰어 공유). 타입은 기존 import
+// 경로(이 모듈)를 깨지 않도록 re-export.
+export type { ProbingBackfillFeedback };
 
 const GOAL_MAX = 2_000;
-const QUESTION_MAX = 500;
-
-// PR (probing-custom-widget-backfill-and-priority-question): "주입" 으로 새
-// 커스텀 위젯을 만들면 부모가 누적 대화 backfill 을 시도한다. 그 진행/결과를
-// 입력창 아래 한 줄로 노출한다.
-export type ProbingBackfillFeedback = {
-  status: 'running' | 'backfilled' | 'empty';
-  count: number;
-};
 
 export function ProbingResearchContext({
   researchGoal,
@@ -60,22 +56,9 @@ export function ProbingResearchContext({
   backfillFeedback?: ProbingBackfillFeedback | null;
   disabled?: boolean;
 }) {
-  const [draft, setDraft] = useState('');
-  const canInject = draft.trim().length > 0 && !disabled;
-
-  function inject() {
-    const value = draft.trim().slice(0, QUESTION_MAX);
-    if (!value) return;
-    onInject(value);
-    setDraft('');
-  }
-
   return (
     <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
-      <Field
-        label="조사 목적"
-        description="이 인터뷰로 알고자 하는 것 (1~2 문장)"
-      >
+      <Field label="조사 목적">
         <Textarea
           value={researchGoal}
           onChange={(e) =>
@@ -89,50 +72,11 @@ export function ProbingResearchContext({
         />
       </Field>
 
-      <Field
-        label="추가 질문 주입"
-        description="응답자에게 즉시 던질 질문 — '주입' 을 눌러 AI 질문 popup + 좌측 위젯으로 1회 반영"
-      >
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-            <ChipInput
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.slice(0, QUESTION_MAX))}
-              onCommit={inject}
-              disabled={disabled}
-              placeholder="예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?"
-              className="min-w-[140px] flex-1"
-            />
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={inject}
-            disabled={!canInject}
-            title="입력한 질문을 지금 주입 (AI popup + 좌측 위젯)"
-          >
-            주입
-          </Button>
-        </div>
-
-        {backfillFeedback && (
-          <p className="mt-1.5 text-xs" aria-live="polite">
-            {backfillFeedback.status === 'running' && (
-              <span className="text-mute">🔍 관련 내용 찾는 중…</span>
-            )}
-            {backfillFeedback.status === 'backfilled' && (
-              <span className="text-amore">
-                ✓ 대화에서 {backfillFeedback.count}개 발화 자동 채움
-              </span>
-            )}
-            {backfillFeedback.status === 'empty' && (
-              <span className="text-warning">
-                ⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다
-              </span>
-            )}
-          </p>
-        )}
-      </Field>
+      <ProbingInjectField
+        onInject={onInject}
+        disabled={disabled}
+        backfillFeedback={backfillFeedback}
+      />
     </section>
   );
 }
