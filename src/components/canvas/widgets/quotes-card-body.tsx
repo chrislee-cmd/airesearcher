@@ -39,6 +39,7 @@ import {
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
@@ -994,8 +995,10 @@ export function QuotesCardBody() {
         {phase === 'active' && (
           <>
             {/* 업로드 진행 + 큐. flex-1 로 산출물을 채우고, 길어지면 자체
-                스크롤. */}
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                스크롤. 수평 여백·클러스터(컨트롤 좌측 정합)는 WidgetOutputRegion
+                SSOT 소유 — 손코딩 px 금지. */}
+            <WidgetOutputRegion padY="lg">
+              <div className="space-y-5">
               {hasUploads && (
                 <div>
                   <SectionLabel>{tCommon('uploading')}</SectionLabel>
@@ -1035,7 +1038,8 @@ export function QuotesCardBody() {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            </WidgetOutputRegion>
 
             {/* 상태 푸터 — 진행중(업로드/전사 시작/전사 inflight)이면 "전사가
                 진행중", 완료본만 있으면 "전사가 완료되었습니다"(클릭 → fullview).

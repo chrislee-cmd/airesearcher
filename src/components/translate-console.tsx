@@ -42,6 +42,7 @@ import { DropdownMenu } from './ui/dropdown-menu';
 import { ControlTrigger } from './ui/control-trigger';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
+import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
@@ -4285,9 +4286,12 @@ export function TranslateConsole({
               )}
           </ControlBoardPanel>
 
-          {/* 컨트롤 아래 출력부 — 부모 패딩이 사라졌으므로 좌우 여백(px-5)을
-              자체 소유(데스크/쿼트 출력부 미러). pb-5 로 하단 여백 유지. */}
-          <div className="space-y-4 px-5 pb-5">
+          {/* 컨트롤 아래 출력부 — 수평 여백(px-5)은 WidgetOutputRegion SSOT.
+              PrompterPane(스트림, mx-auto max-w-[760px]) · listener rail ·
+              다운로드 패널 등 넓은 산출물이라 bleed(풀폭 유지 = 정렬 대상 아님,
+              클러스터로 감싸면 프롬프터 폭이 줄어 회귀). 세로는 데스크/쿼트
+              산출부 미러(py-5). */}
+          <WidgetOutputRegion bleed scroll={false} padY="lg" className="space-y-4">
           {ttsBlockedBanner}
 
           {echoBanner}
@@ -4405,7 +4409,7 @@ export function TranslateConsole({
           onRevise={() => void triggerRevision()}
         />
       ) : null}
-          </div>
+          </WidgetOutputRegion>
         </>
       )}
 
