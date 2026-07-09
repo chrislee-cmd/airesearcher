@@ -39,11 +39,6 @@ import {
 const CUSTOM_TITLE_MAX = 120;
 const CUSTOM_DESC_MAX = 1_000;
 
-// custom 섹션 카드의 짧은 서브텍스트 — 사용자 입력 description 은 길어서 작은
-// 정사각형 카드에서 잘리므로("…"), 카드에는 고정 힌트만. 원본 description 은
-// 여전히 프롬프트로 전달된다.
-const CUSTOM_PANEL_BLURB = '추가 섹션';
-
 export function PersonaSectionConfigurator({
   customSections,
   hiddenKeys,
@@ -87,17 +82,16 @@ export function PersonaSectionConfigurator({
   // 분기 (기본=숨김/복원, custom=삭제) 에 사용.
   const customKeySet = new Set(customSections.map((c) => c.key));
   const options: ModeOption[] = [
+    // 서브텍스트 제거 — 6열 작은 정사각형 카드는 아이콘 + 제목만.
     ...DEFAULT_PERSONA_PANELS.map((p) => ({
       key: p.key,
       label: p.title,
       icon: p.icon,
-      description: p.blurb,
     })),
     ...customSections.map((c) => ({
       key: c.key,
       label: c.title,
       icon: CUSTOM_PANEL_ICON,
-      description: CUSTOM_PANEL_BLURB,
     })),
   ];
 
