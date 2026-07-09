@@ -208,28 +208,41 @@ function CompleteHero({
   className?: string;
 }) {
   return (
+    // stagger: 배지 → 라벨 → CTA 가 아래에서 순차로 떠오르며 등장(fade-in-up).
     <div
-      className={`flex flex-col items-center gap-4 py-8 text-center ${className ?? ''}`}
+      className={`stagger flex flex-col items-center gap-5 py-8 text-center ${className ?? ''}`}
     >
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-amore bg-amore-bg text-amore">
+      {/* 완료 배지 — 스테이지 active 카드와 같은 디자인 언어(rounded-sm · 2px
+          border · amore 채움)로 통일(기존 외톨이 원형 폐기). pop-in 으로 튕겨
+          등장 + amore ring 이 한 번 퍼지고(ping) + 체크가 그려지듯 나타난다
+          (check-draw). 모든 모션은 prefers-reduced-motion 존중. */}
+      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border-[2px] border-amore bg-amore-bg text-amore">
+        <span
+          aria-hidden
+          className="stage-flow-complete-ping pointer-events-none absolute inset-0 rounded-sm border-[2px] border-amore"
+        />
         <svg
           aria-hidden
           viewBox="0 0 24 24"
-          className="h-7 w-7"
+          className="relative h-8 w-8"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2.4"
+          strokeWidth="2.6"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M5 12.5l4.5 4.5L19 6.5" />
+          <path className="check-draw" pathLength={1} d="M5 12.5l4.5 4.5L19 6.5" />
         </svg>
       </span>
       {completeLabel ? (
         <p className="text-lg font-semibold text-ink">{completeLabel}</p>
       ) : null}
       {onResult ? (
-        <Button size="cta" onClick={onResult} className="completed-cta-pulse">
+        <Button
+          size="cta"
+          onClick={onResult}
+          className="completed-cta-pulse press-scale"
+        >
           {resultLabel}
         </Button>
       ) : null}
