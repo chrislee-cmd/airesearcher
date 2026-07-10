@@ -130,16 +130,18 @@ const ACCEPT =
 // 직전에 순서대로 노출한다(데스크 STAGE_DWELL_MS 패턴 — 가짜 active 조작 없이
 // "표시" 인덱스만 걸어 올림). label = Widgets.transcriptStage*, description =
 // Process.transcripts.* 재사용. 정적 정의라 모듈 스코프.
-// 순서 = 실제 파이프라인 흐름: 업로드 → 전사(음성→텍스트) → 화자 분리 →
-// 오탈자 수정 → 표현 보정 → 문서 정리(전사 텍스트를 최종 마크다운 문서로
-// 패키징하는 마지막 단계 — 입력 변환이 아니라 산출물 정리라 맨 끝).
+// 순서 = 실제 백엔드 파이프라인(poll/route.ts · webhook/elevenlabs/route.ts 실측):
+//   전사(ElevenLabs) → mergeSpeakers(화자 분리) → elevenlabsToMarkdown(문서 변환,
+//   여기서 markdown 저장 & job done) → [after() 백그라운드] cleanupTranscript(오탈자)
+//   → term/number-normalize(표현 보정).
+// 즉 문서 변환은 화자 분리 직후 중간 단계이고, 오탈자·표현 보정이 그 뒤에 온다.
 const TX_STAGE_DEFS = [
   { id: 'upload', icon: '📤', phase: 'uploading', label: 'transcriptStageUpload' },
   { id: 'transcribe', icon: '🎧', phase: 'transcribing', label: 'transcriptStageTranscribe' },
   { id: 'speaker', icon: '🗣️', phase: 'speaker_diarization', label: 'transcriptStageSpeaker' },
+  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
   { id: 'typo', icon: '✍️', phase: 'typo_correction', label: 'transcriptStageTypo' },
   { id: 'phrasing', icon: '✨', phase: 'phrasing_polish', label: 'transcriptStagePhrasing' },
-  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
 ] as const;
 const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
