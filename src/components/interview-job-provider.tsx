@@ -13,6 +13,7 @@ import { parsePartialJson } from 'ai';
 import { useRouter } from '@/i18n/navigation';
 import { useRequireAuth } from './auth-provider';
 import { track } from './mixpanel-provider';
+import { track as trackEvent } from '@/lib/analytics/events';
 import { buildArtifactFilename } from '@/lib/filename';
 import { peekActiveProjectId } from './active-project-provider';
 import { useCreditDeduction } from './credit-deduction-provider';
@@ -750,6 +751,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     setAnalyzeError(null);
     setAnalysis(null);
     setIndexStatus('idle');
+    const analyzeStartedAt = Date.now();
+    trackEvent('job_started', {
+      widget: 'interviews',
+      job_type: 'analyze',
+      cost_credits: FEATURE_COSTS.interviews,
+    });
     const ac = new AbortController();
     analyzeAbortRef.current = ac;
     try {
@@ -768,11 +775,21 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
       const json = await res.json();
       if (!res.ok) {
         setAnalyzeError(json.error ?? 'analyze_failed');
+        trackEvent('job_failed', {
+          widget: 'interviews',
+          job_type: 'analyze',
+          error: json.error ?? `http_${res.status}`,
+        });
         return;
       }
       const result = normalizePartial(json) ?? { questions: [], rows: [] };
       setAnalysis(result);
       setLastRunAt(new Date());
+      trackEvent('job_completed', {
+        widget: 'interviews',
+        job_type: 'analyze',
+        duration_ms: Date.now() - analyzeStartedAt,
+      });
       pushThinking({ type: 'aggregate_done', rows: result.rows.length });
       // 차감 broadcast — 인터뷰 분석 완료 시점에 위젯 헤더 -N + topbar pulse.
       notifyDeduction('interviews', FEATURE_COSTS.interviews);
@@ -801,6 +818,12 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         setAnalyzeError(e instanceof Error ? e.message : 'network_error');
+        // AbortError 는 사용자 취소라 실패로 계측하지 않는다.
+        trackEvent('job_failed', {
+          widget: 'interviews',
+          job_type: 'analyze',
+          error: e instanceof Error ? e.message : 'network_error',
+        });
       }
     } finally {
       setAnalyzing(false);
