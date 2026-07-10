@@ -89,6 +89,7 @@ import {
   PROBING_LIVE_INJECT_EVENT,
   probingLiveInjectSchema,
 } from '@/lib/probing/live-channel';
+import { ProbingEmitGuard } from '@/lib/probing/emit-guard';
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
@@ -119,6 +120,14 @@ const WIDGET_HIGHLIGHT_MS = 2_000;
 // history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
 const HISTORY_MAX = 100;
 
+// PR (probing-question-dedup-cadence) under-supply 방어 — 라이브 중 transcript
+// 가 자라는데 오래 think 가 안 돌면(연속 발화로 debounce 가 계속 리셋되는 경우)
+// 주기적으로 한 번 유도. 내용 로직·emit cadence 는 그대로라 표출은 여전히
+// ProbingEmitGuard 가 캡한다(초반 과잉↔후반 과소 리듬 완화). 중복/cadence/웜업
+// 상수·판정 로직은 @/lib/probing/emit-guard 로 분리(테스트 가능 + immutability
+// 룰 회피 — 메서드 mutation).
+const RETHINK_INTERVAL_MS = 45_000;
+
 // transcript 가 멈춰 있을 때도 popup 카운트다운 / history 시간 표시가 흐르도록
 // 1초마다 강제 리렌더.
 function useNowTick(intervalMs = 1000): number {
@@ -135,6 +144,11 @@ function segmentsText(segments: TranscriptionSegment[]): string {
     .map((s) => s.text.trim())
     .filter(Boolean)
     .join('\n');
+}
+
+// 누적 transcript 문자 수 — 웜업(emit 가드) / 최소 길이 게이트 판정용.
+function cumulativeCharsOf(segments: TranscriptionSegment[]): number {
+  return segments.reduce((sum, s) => sum + s.text.trim().length, 0);
 }
 
 // 좌패널 페르소나 → 우패널 think prompt 에 직접 안 들어감 (think 는 사용자
@@ -499,9 +513,12 @@ function ExpandedBody() {
   );
 
   const persistEmittedQuestion = useCallback(
-    async (popup: PopupQuestion) => {
+    async (popup: PopupQuestion, transcriptCutoff?: string) => {
       // probing_questions DB 에 백그라운드 기록 — account-export 가 그대로
       // 동작하도록. 실패는 무시 (위젯 UX 에 영향 X).
+      // PR (probing-question-dedup-cadence): transcript_cutoff = 이 질문을 만든
+      // think 호출 시점의 transcript window 끝 오프셋. 그동안 insert 에서 누락돼
+      // 전 행이 빈 값이었다(중복 방지 근거 + 사후 진단력 부재). 이제 채운다.
       try {
         await fetchWithAuth('/api/probing/questions', {
           method: 'POST',
@@ -510,6 +527,8 @@ function ExpandedBody() {
             text: popup.text,
             technique: popup.technique,
             why: popup.rationale,
+            // undefined 면 JSON.stringify 가 키를 생략 → 서버는 null 저장(옛 동작).
+            transcript_cutoff: transcriptCutoff,
           }),
         });
       } catch {
@@ -519,17 +538,38 @@ function ExpandedBody() {
     [],
   );
 
-  // 새 emit 도착 → popup 큐 처리. 기존 popup 살아 있으면 즉시 history 로 push
-  // ('replaced') + 새 popup 표시. 스펙 명시: "새거 즉시 표시 + 옛것 history".
+  // 새 emit 도착 → 중복 가드 + cadence 가드 → popup 큐 처리. 기존 popup 살아
+  // 있으면 즉시 history 로 push('replaced') + 새 popup 표시.
+  //
+  // PR (probing-question-dedup-cadence): auto emit 은 세 게이트를 통과해야 표출·
+  // 저장된다 — (A) 이미 낸 질문과 유사하면 drop, (B) 웜업(발화 전) 오프닝 1건
+  // 초과 drop, (C) 최소 간격/분당 상한 초과 drop(폭주분 큐 누적 X). 주입 질문
+  // (isInjection)은 사용자 명시 행동이라 모든 게이트를 우회한다(스펙 §D 예외).
   const handleEmit = useCallback(
-    (popup: PopupQuestion) => {
+    (
+      popup: PopupQuestion,
+      opts: {
+        cutoff?: string;
+        isInjection?: boolean;
+        cumulativeChars?: number;
+      } = {},
+    ) => {
+      const { cutoff, isInjection = false, cumulativeChars = 0 } = opts;
+      // 중복 + 웜업 + cadence 판정(통과 시 내부 기록). drop 이면 표시/저장 안 함.
+      const admitted = emitGuardRef.current.admit(popup.text, {
+        isInjection,
+        cumulativeChars,
+        now: Date.now(),
+      });
+      if (!admitted) return;
+
       setActivePopup((current) => {
         if (current) {
           pushHistoryFromPopup(current, 'replaced');
         }
         return popup;
       });
-      void persistEmittedQuestion(popup);
+      void persistEmittedQuestion(popup, cutoff);
     },
     [pushHistoryFromPopup, persistEmittedQuestion],
   );
@@ -542,14 +582,28 @@ function ExpandedBody() {
   }, [rawSegments]);
 
   const cumulativeChars = useMemo(
-    () => rawSegments.reduce((sum, s) => sum + s.text.trim().length, 0),
+    () => cumulativeCharsOf(rawSegments),
     [rawSegments],
   );
+
+  // ─── PR (probing-question-dedup-cadence): emit 가드 ───
+  // 중복 + cadence + 웜업 판정을 캡슐화. 상태 변경은 전부 메서드로만(admit /
+  // markThink / reset) — ref 객체의 메서드 mutation 은 react-hooks/immutability
+  // 예외라 여러 hook(handleEmit / runThink / 리셋 effect)에서 호출해도 통과한다
+  // (emptyCustomRef Map 의 .set/.clear 과 동형).
+  const emitGuardRef = useRef(new ProbingEmitGuard());
 
   // think route 응답 (NDJSON-like 라인 스트림) 을 줄 단위로 dispatch.
   // THINK → 사고 흐름 append, EMIT → popup queue. 자동 think 와 주입 both 사용.
   const consumeThinkStream = useCallback(
-    async (body: ReadableStream<Uint8Array>) => {
+    async (
+      body: ReadableStream<Uint8Array>,
+      opts: {
+        cutoff?: string;
+        isInjection?: boolean;
+        cumulativeChars?: number;
+      } = {},
+    ) => {
       const reader = body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -572,7 +626,7 @@ function ExpandedBody() {
           const popup = parseEmit(raw, (alias) =>
             widgetAliasLabelRef.current.get(alias),
           );
-          if (popup) handleEmit(popup);
+          if (popup) handleEmit(popup, opts);
         }
       };
 
@@ -611,6 +665,14 @@ function ExpandedBody() {
         fullText.length > THINK_MAX_CHARS
           ? fullText.slice(fullText.length - THINK_MAX_CHARS)
           : fullText;
+      // PR (probing-question-dedup-cadence): 이 think 호출 시점의 transcript
+      // window 끝 오프셋 = 전체 transcript 문자 수. 이번 스트림의 모든 emit 이
+      // 이 값을 transcript_cutoff 로 공유해 저장한다.
+      const cutoff = String(fullText.length);
+      // 이번 think 시점 누적 문자 수 — emit 가드 웜업 판정에 넘긴다(이 think 가
+      // 생성한 emit 들이 공유). think 호출 시각도 기록(heartbeat 간격 계산용).
+      const cumulative = cumulativeCharsOf(segs);
+      emitGuardRef.current.markThink(Date.now());
 
       if (!isInjection) thinkInFlightRef.current = true;
       setThinkingStreaming(true);
@@ -666,6 +728,11 @@ function ExpandedBody() {
             key_research_question: contextRef.current.key_research_question,
             output_lang: outputLangRef.current,
             injected_questions: injectedQuestions,
+            // 이미 낸 질문 이력 → "반복 금지" 프롬프트 축. 주입 호출엔 안 실어
+            // (주입은 반드시 emit 돼야 하므로) 이력에 억제되지 않게 한다.
+            recent_questions: isInjection
+              ? []
+              : emitGuardRef.current.recentQuestions(),
             widget_status: widgetStatus,
             // backfill 후에도 비어 있는 커스텀 위젯 = 채우는 질문 우선 제안.
             priority_sections: Array.from(
@@ -678,7 +745,11 @@ function ExpandedBody() {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error ?? `think_failed_${res.status}`);
         }
-        await consumeThinkStream(res.body);
+        await consumeThinkStream(res.body, {
+          cutoff,
+          isInjection,
+          cumulativeChars: cumulative,
+        });
       } catch (e) {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : 'think_failed';
@@ -966,6 +1037,23 @@ function ExpandedBody() {
     return () => clearTimeout(id);
   }, [rawSegments, cumulativeChars, isLive]);
 
+  // ─── PR (probing-question-dedup-cadence): under-supply 방어 heartbeat ───
+  // 연속 발화로 위 debounce 가 계속 리셋되면 think 가 굶어 후반 질문이 급감한다
+  // (실측: 후반 32분 2건). 라이브 중 transcript 가 충분하고 마지막 think 이후
+  // RETHINK_INTERVAL_MS 이상 지났으면 한 번 유도. inFlight 가드 + emit cadence
+  // 가 표출을 캡하므로 폭주 위험은 없다(안전 범위, 내용 로직 무변경).
+  useEffect(() => {
+    if (!isLive) return;
+    const id = setInterval(() => {
+      if (cumulativeCharsOf(rawSegmentsRef.current) < MIN_TRANSCRIPT_CHARS)
+        return;
+      if (Date.now() - emitGuardRef.current.lastThinkAt < RETHINK_INTERVAL_MS)
+        return;
+      void runThinkRef.current();
+    }, RETHINK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [isLive]);
+
   // 새 세션 시작 → in-memory 상태 리셋 (research_context 는 DB 라 유지).
   //
   // RC-1 (회귀 금지): 리셋을 isLive boolean edge (`!prev && isLive`) 가 아니라
@@ -997,6 +1085,9 @@ function ExpandedBody() {
       setActivePopup(null);
       setHistory([]);
       emptyCustomRef.current.clear();
+      // PR (probing-question-dedup-cadence): 중복/ cadence 가드도 리셋 —
+      // 새 인터뷰는 이력·간격 카운터를 깨끗이 시작.
+      emitGuardRef.current.reset();
       showBackfillFeedback(null);
       // 진짜 새 세션에만 실행(renew·remount 아님) → 공유 뷰어/ DB 도 초기화.
       resetSharedSnapshotRef.current();
