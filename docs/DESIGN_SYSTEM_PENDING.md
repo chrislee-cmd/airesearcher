@@ -42,6 +42,6 @@ PROJECT.md §5.4 의 `docs/PROJECT_PENDING.md` 와 동일 패턴.
 - 2026-07-02 · PR #501 · §4.2 · translate-console hex 6건 sweep → 139→133
 -->
 
-- 2026-07-10 · PR (chipfield-migrate-inject-field) · §3 · inject-field = non-chip 단발 입력(draft→주입 버튼/Enter→onInject 1회→clear, 칩 누적 없음), ChipField(values[]/칩 리스트) 비대상 판정 — ChipInput(bare IME-safe input) 유지가 정답. 컨테이너는 이미 border-[2px] border-ink 로 ChipField bordered 와 동일 토큰(정합 완료). "단발 입력+액션 버튼" 반복 패턴 늘면 InlineActionInput 후속 검토(YAGNI, 현재 1곳)
+- 2026-07-10 · PR (chipfield-migrate-inject-field) · §3 · inject-field 를 다른 칩 인풋과 인터랙션 통일 — 별도 "주입" 버튼 제거, ChipInput onCommit(IME-safe Enter)로만 커밋. inject 는 칩 누적이 아닌 one-shot(onInject 1회 → draft clear)이라 ChipField(values[]/칩 pill)로는 안 바꾸고 bare ChipInput 유지. 컨테이너는 border-[2px] border-ink focus-within:border-amore 로 ChipField bordered variant 와 동일 토큰
 - 2026-07-10 · PR (chipfield-primitive) · §3 · ChipField primitive 추가 — 칩 컨테이너 SSOT (프레임 + 칩 pill + plain × + 내부 ChipInput). variant bordered(default)/subtle · API values/onChange/maxItems/maxLength/commitOnComma/disabled/chipRemoveLabel/inputType · IME-safe commit 내장. Phase 2 에서 desk/translate/tags/invite 4곳 정합
 - 2026-07-10 · PR (iconbutton-plain-variant) · §3 · IconButton `plain` variant 추가 — bare glyph (border/bg/shadow 무, hover 색만 text-mute→ink-2)

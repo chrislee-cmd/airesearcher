@@ -5,8 +5,10 @@
 
    호스트 우패널(research-context)과 공유 협업 뷰어(share-persona-collab)가
    같은 write 진입점을 공유하도록 research-context 에서 추출
-   (probing-share-collaborative-injection). 입력 후 "주입" 버튼(또는 Enter,
-   ChipInput 의 IME-safe onCommit)으로 `onInject(question)` 를 1회 호출한다.
+   (probing-share-collaborative-injection). 다른 칩 인풋과 통일 — 별도 "주입"
+   버튼 없이, 입력 후 Enter(ChipInput 의 IME-safe onCommit)로
+   `onInject(question)` 를 1회 호출한다. inject 는 칩 누적이 아닌 one-shot
+   (호출 후 draft clear) 이라 칩을 렌더하지 않고 bare ChipInput 을 유지한다.
 
    호스트: onInject = handleInjectQuestion (좌 grid 위젯 생성 + AI think
    one-shot 주입). 뷰어: onInject = 채널 `inject` 이벤트 송출 → 호스트가
@@ -19,7 +21,6 @@
 import { useEffect, useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { ChipInput } from '@/components/ui/chip-input';
-import { Button } from '@/components/ui/button';
 import { PROBING_INJECT_QUESTION_MAX } from '@/lib/probing/live-channel';
 
 // PR (probing-custom-widget-backfill-and-priority-question): "주입" 으로 새
@@ -50,7 +51,6 @@ export function ProbingInjectField({
   const [draft, setDraft] = useState('');
   // 제출 시각 — confirmLabel 노출 게이트. 재제출마다 새 값으로 타이머 리셋.
   const [sentAt, setSentAt] = useState<number | null>(null);
-  const canInject = draft.trim().length > 0 && !disabled;
 
   useEffect(() => {
     if (sentAt === null) return;
@@ -69,30 +69,19 @@ export function ProbingInjectField({
   return (
     <Field
       label="추가 질문 주입"
-      description="응답자에게 즉시 던질 질문 — '주입' 을 눌러 AI 질문 popup + 좌측 위젯으로 1회 반영"
+      description="응답자에게 즉시 던질 질문 — 입력 후 Enter 로 AI 질문 popup + 좌측 위젯에 1회 반영"
     >
-      <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
-          <ChipInput
-            value={draft}
-            onChange={(e) =>
-              setDraft(e.target.value.slice(0, PROBING_INJECT_QUESTION_MAX))
-            }
-            onCommit={inject}
-            disabled={disabled}
-            placeholder={placeholder}
-            className="min-w-[140px] flex-1"
-          />
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={inject}
-          disabled={!canInject}
-          title="입력한 질문을 지금 주입 (AI popup + 좌측 위젯)"
-        >
-          주입
-        </Button>
+      <div className="flex items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+        <ChipInput
+          value={draft}
+          onChange={(e) =>
+            setDraft(e.target.value.slice(0, PROBING_INJECT_QUESTION_MAX))
+          }
+          onCommit={inject}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="min-w-[140px] flex-1"
+        />
       </div>
 
       {backfillFeedback && (
