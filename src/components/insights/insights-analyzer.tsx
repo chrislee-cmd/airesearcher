@@ -13,6 +13,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
+import { track as trackEvent } from '@/lib/analytics/events';
 
 // Union of the two legacy tabs' accept lists. Browsers vary on whether
 // they classify a .docx by MIME or extension — we list both forms so the
@@ -141,6 +142,45 @@ export function InsightsAnalyzer({
   );
 
   const supabase = useMemo(() => createClient(), []);
+
+  // Analytics — 위젯 진입 1회. insights 는 카드+전체보기 구조가 아니라
+  // 전용 페이지라 fullview 구분 없이 진입만 계측.
+  useEffect(() => {
+    trackEvent('widget_viewed', { widget: 'insights' });
+  }, []);
+
+  // job_started 발화 시점(ms)을 기억해 완료 시 duration 계산. 새로고침으로
+  // 재수화된 잡은 이 ref 가 비어 있어 duration 0 (desk 의 elapsed 폴백과 동일).
+  const jobStartedAtRef = useRef<number | null>(null);
+  // 잡 종료(완료/실패) 이벤트를 실제 status 전이에서만 1회 발화. 마운트
+  // 시점의 historical ready/failed 잡은 prev 가 없어 발화하지 않는다
+  // (새로고침 false-positive 방지 — desk-card-body 패턴).
+  const jobPhaseRef = useRef<{ id: string; phase: JobStatus | 'idle' } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!jobId) return;
+    const prev =
+      jobPhaseRef.current?.id === jobId ? jobPhaseRef.current.phase : null;
+    jobPhaseRef.current = { id: jobId, phase };
+    if (!prev || prev === phase) return;
+    const duration_ms = jobStartedAtRef.current
+      ? Date.now() - jobStartedAtRef.current
+      : 0;
+    if (phase === 'ready') {
+      trackEvent('job_completed', {
+        widget: 'insights',
+        job_type: 'analyze',
+        duration_ms,
+      });
+    } else if (phase === 'failed') {
+      trackEvent('job_failed', {
+        widget: 'insights',
+        job_type: 'analyze',
+        error: job?.failure_reason ?? 'unknown_error',
+      });
+    }
+  }, [jobId, phase, job]);
 
   // Client-side cluster fetch for the root URL flow (no initialClusters):
   //   1) localStorage resume of a ready job
@@ -344,6 +384,11 @@ export function InsightsAnalyzer({
     if (files.length === 0 || starting || isRunning) return;
     setError(null);
     setStarting(true);
+    trackEvent('widget_action', {
+      widget: 'insights',
+      action: 'analyze_start',
+      metadata: { file_count: files.length },
+    });
     try {
       const metadata = files.map((r) => ({
         filename: r.file.name,
@@ -367,6 +412,12 @@ export function InsightsAnalyzer({
       } catch {}
       setJobId(jid);
       setPhase('pending');
+      jobStartedAtRef.current = Date.now();
+      trackEvent('job_started', {
+        widget: 'insights',
+        job_type: 'analyze',
+        cost_credits: FEATURE_COSTS.insights_analyzer,
+      });
       // 차감 broadcast — 위젯 헤더 -N + topbar pulse.
       notifyDeduction('insights_analyzer', FEATURE_COSTS.insights_analyzer);
 
@@ -382,6 +433,17 @@ export function InsightsAnalyzer({
       if (!finalRes.ok) {
         setError(finalJson.error ?? 'finalize_failed');
       } else if (finalJson.status === 'ready') {
+        // job_completed — 여기서 발화. 아래 router.push 로 [jobId] 페이지로
+        // 이동하며 언마운트되므로 phase 전이 effect 가 'ready' 를 못 본다
+        // (그 페이지는 prev=null 로 재마운트 → 발화 안 함). 이 fast-path 만
+        // 명시 발화하고 async/failed 경로는 전이 effect 가 담당한다.
+        trackEvent('job_completed', {
+          widget: 'insights',
+          job_type: 'analyze',
+          duration_ms: jobStartedAtRef.current
+            ? Date.now() - jobStartedAtRef.current
+            : 0,
+        });
         // Hand off to the [jobId] page so the URL is shareable and the
         // server-rendered initialJob/initialClusters hydrate the ready
         // state without a second round trip. Mirrors loadPastJob().
@@ -420,6 +482,10 @@ export function InsightsAnalyzer({
   // state reset isn't needed — the [jobId] page hydrates initialJob
   // and the component re-mounts.
   function loadPastJob(past: PastJob) {
+    trackEvent('widget_action', {
+      widget: 'insights',
+      action: 'past_job_open',
+    });
     try {
       window.localStorage.setItem(ACTIVE_JOB_KEY, past.id);
     } catch {}

@@ -6,7 +6,14 @@ import { posthog } from './posthog-client';
 //   job_*     = 백그라운드 job 이벤트
 //   session_* = 사용자 세션 (login/logout/etc)
 //   admin_*   = 관리자 액션
-type WidgetKey = 'desk' | 'probing' | 'quotes' | 'interviews' | 'recruiting' | 'translate';
+type WidgetKey =
+  | 'desk'
+  | 'probing'
+  | 'quotes'
+  | 'interviews'
+  | 'recruiting'
+  | 'translate'
+  | 'insights';
 
 type EventMap = {
   widget_viewed: { widget: WidgetKey; fullview?: boolean };
