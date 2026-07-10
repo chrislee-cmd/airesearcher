@@ -1,7 +1,51 @@
 {
-  "generatedAt": "2026-07-10T16:24:50.903Z",
+  "generatedAt": "2026-07-10T16:37:36.110Z",
   "sinceDays": 30,
   "entries": [
+    {
+      "kind": "component",
+      "name": "catalog",
+      "file": "src/app/[locale]/(app)/design-system/components/catalog.tsx",
+      "line": 1,
+      "prNumber": null,
+      "mergedAt": "2026-07-11T01:30:01+09:00",
+      "oneLine": "feat: /design Recently Changed 탭 — 최근 변경 UI 갤러리 (git codegen)",
+      "catalogKey": null,
+      "previewPath": null
+    },
+    {
+      "kind": "component",
+      "name": "recently-changed",
+      "file": "src/app/[locale]/(app)/design-system/components/recently-changed.tsx",
+      "line": 1,
+      "prNumber": null,
+      "mergedAt": "2026-07-11T01:30:01+09:00",
+      "oneLine": "feat: /design Recently Changed 탭 — 최근 변경 UI 갤러리 (git codegen)",
+      "catalogKey": null,
+      "previewPath": null
+    },
+    {
+      "kind": "component",
+      "name": "sections",
+      "file": "src/app/[locale]/(app)/design-system/components/sections.tsx",
+      "line": 1,
+      "prNumber": null,
+      "mergedAt": "2026-07-11T01:30:01+09:00",
+      "oneLine": "feat: /design Recently Changed 탭 — 최근 변경 UI 갤러리 (git codegen)",
+      "catalogKey": null,
+      "previewPath": null
+    },
+    {
+      "kind": "component",
+      "name": "sidebar",
+      "file": "src/app/[locale]/(app)/design-system/components/sidebar.tsx",
+      "line": 1,
+      "prNumber": null,
+      "mergedAt": "2026-07-11T01:30:01+09:00",
+      "oneLine": "feat: /design Recently Changed 탭 — 최근 변경 UI 갤러리 (git codegen)",
+      "catalogKey": null,
+      "previewPath": null
+    },
     {
       "kind": "route",
       "name": "/admin/analytics",
@@ -10,7 +54,8 @@
       "prNumber": 945,
       "mergedAt": "2026-07-11T00:43:05+09:00",
       "oneLine": "feat: 트랙A /admin/analytics 네이티브 행동 대시보드 (credit_transactions + job status) (#945)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/analytics"
     },
     {
       "kind": "component",
@@ -20,7 +65,8 @@
       "prNumber": 945,
       "mergedAt": "2026-07-11T00:43:05+09:00",
       "oneLine": "feat: 트랙A /admin/analytics 네이티브 행동 대시보드 (credit_transactions + job status) (#945)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -30,7 +76,8 @@
       "prNumber": 944,
       "mergedAt": "2026-07-11T00:42:58+09:00",
       "oneLine": "feat: OBS-3 리크루팅 라이프사이클 status FSM (생성/발행/추출 퍼널) (#944)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -40,17 +87,8 @@
       "prNumber": 944,
       "mergedAt": "2026-07-11T00:42:58+09:00",
       "oneLine": "feat: OBS-3 리크루팅 라이프사이클 status FSM (생성/발행/추출 퍼널) (#944)",
-      "catalogKey": null
-    },
-    {
-      "kind": "component",
-      "name": "sections",
-      "file": "src/app/[locale]/(app)/design-system/components/sections.tsx",
-      "line": 1,
-      "prNumber": 941,
-      "mergedAt": "2026-07-10T23:52:33+09:00",
-      "oneLine": "chore: DS-8 카탈로그 미등재 9 프리미티브 등재 (커버리지 64%→100%) (#941)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -60,7 +98,8 @@
       "prNumber": 941,
       "mergedAt": "2026-07-10T23:52:33+09:00",
       "oneLine": "chore: DS-8 카탈로그 미등재 9 프리미티브 등재 (커버리지 64%→100%) (#941)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "style",
@@ -70,7 +109,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -80,7 +120,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "button"
+      "catalogKey": "button",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -90,7 +131,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "checkbox"
+      "catalogKey": "checkbox",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -100,7 +142,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "citation-popover"
+      "catalogKey": "citation-popover",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -110,7 +153,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -120,7 +164,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "date-range-popover"
+      "catalogKey": "date-range-popover",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -130,7 +175,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "dropdown-menu"
+      "catalogKey": "dropdown-menu",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -140,7 +186,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "icon-button"
+      "catalogKey": "icon-button",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -150,7 +197,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "job-progress"
+      "catalogKey": "job-progress",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -160,7 +208,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "modal"
+      "catalogKey": "modal",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -170,7 +219,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "onboarding-tooltip"
+      "catalogKey": "onboarding-tooltip",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -180,7 +230,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -190,7 +241,8 @@
       "prNumber": 943,
       "mergedAt": "2026-07-10T23:52:27+09:00",
       "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
-      "catalogKey": "tooltip"
+      "catalogKey": "tooltip",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -200,7 +252,8 @@
       "prNumber": 942,
       "mergedAt": "2026-07-10T23:52:20+09:00",
       "oneLine": "feat: OBS-2 프로빙 세션 라이프사이클 테이블 (시작/완료/이탈 퍼널) (#942)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -210,7 +263,8 @@
       "prNumber": 940,
       "mergedAt": "2026-07-10T23:52:14+09:00",
       "oneLine": "feat: OBS-1 인사이트/인터뷰 잡 행동 이벤트 wire (PostHog job/widget) (#940)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -220,7 +274,8 @@
       "prNumber": 940,
       "mergedAt": "2026-07-10T23:52:14+09:00",
       "oneLine": "feat: OBS-1 인사이트/인터뷰 잡 행동 이벤트 wire (PostHog job/widget) (#940)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -230,7 +285,8 @@
       "prNumber": 938,
       "mergedAt": "2026-07-10T22:09:12+09:00",
       "oneLine": "fix: 전사록 로그인 StageFlow 잔상 — 완료 잡 세션 스코프 + 헤더 raw done 라벨 정합 (#938)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -240,7 +296,8 @@
       "prNumber": 936,
       "mergedAt": "2026-07-10T18:23:35+09:00",
       "oneLine": "fix: P0 위젯 게이트 acquire 타임아웃+fail-open — org 전역 전사 차단 즉시 해소 (#936)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -250,7 +307,8 @@
       "prNumber": 937,
       "mergedAt": "2026-07-10T18:23:26+09:00",
       "oneLine": "fix: 프로빙 가설 유령 주입 근절 — hypotheses 은퇴(전송/표시/수화 제거) (#937)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -260,7 +318,8 @@
       "prNumber": 937,
       "mergedAt": "2026-07-10T18:23:26+09:00",
       "oneLine": "fix: 프로빙 가설 유령 주입 근절 — hypotheses 은퇴(전송/표시/수화 제거) (#937)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -270,7 +329,8 @@
       "prNumber": 935,
       "mergedAt": "2026-07-10T17:17:07+09:00",
       "oneLine": "feat: 동시통역 프로젝트별 용어집 (ProjectPicker + DB) (#935)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -280,7 +340,8 @@
       "prNumber": 934,
       "mergedAt": "2026-07-10T17:17:00+09:00",
       "oneLine": "feat: 프로빙 프로젝트별 페르소나 섹션 구성 (ProjectPicker + DB) (#934)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -290,7 +351,8 @@
       "prNumber": 933,
       "mergedAt": "2026-07-10T15:56:20+09:00",
       "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -300,7 +362,8 @@
       "prNumber": 933,
       "mergedAt": "2026-07-10T15:56:20+09:00",
       "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -310,7 +373,8 @@
       "prNumber": 933,
       "mergedAt": "2026-07-10T15:56:20+09:00",
       "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -320,7 +384,8 @@
       "prNumber": 930,
       "mergedAt": "2026-07-10T14:54:50+09:00",
       "oneLine": "fix: 전사록 row-first 핸드오프 — per-file row 선생성 (조용한 사라짐 근본 제거) (#930)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -330,7 +395,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -340,7 +406,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -350,7 +417,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -360,7 +428,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -370,7 +439,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -380,7 +450,8 @@
       "prNumber": 929,
       "mergedAt": "2026-07-10T14:54:44+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -390,7 +461,8 @@
       "prNumber": 928,
       "mergedAt": "2026-07-10T13:06:26+09:00",
       "oneLine": "feat: 프로빙 위젯뷰 사고 흐름/질문 팝업 제거 → 전체보기로 이전 (#928)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -400,7 +472,8 @@
       "prNumber": 926,
       "mergedAt": "2026-07-10T12:41:42+09:00",
       "oneLine": "feat: 동시통역 언어 드롭다운 통합 — 단일 언어 2컬럼 패널 (인풋|아웃풋) (#926)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -410,7 +483,8 @@
       "prNumber": 923,
       "mergedAt": "2026-07-10T12:09:11+09:00",
       "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/qa-feedback"
     },
     {
       "kind": "component",
@@ -420,7 +494,8 @@
       "prNumber": 923,
       "mergedAt": "2026-07-10T12:09:11+09:00",
       "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -430,7 +505,8 @@
       "prNumber": 923,
       "mergedAt": "2026-07-10T12:09:11+09:00",
       "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -440,7 +516,8 @@
       "prNumber": 923,
       "mergedAt": "2026-07-10T12:09:11+09:00",
       "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -450,7 +527,8 @@
       "prNumber": 921,
       "mergedAt": "2026-07-10T12:08:59+09:00",
       "oneLine": "feat: ModeButton default selected = 보더만 (배경색·체크마크 제거) (#921)",
-      "catalogKey": "mode-button"
+      "catalogKey": "mode-button",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -460,7 +538,8 @@
       "prNumber": 915,
       "mergedAt": "2026-07-10T10:51:41+09:00",
       "oneLine": "feat: ChipField 마이그레이션 — 프로젝트 태그 편집 (#915)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -470,7 +549,8 @@
       "prNumber": 910,
       "mergedAt": "2026-07-10T09:44:55+09:00",
       "oneLine": "feat: 프로빙 페르소나 섹션 카드 3컬럼+정사각형 + 조사목적 설명 문구 제거 (#910)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -480,7 +560,8 @@
       "prNumber": 911,
       "mergedAt": "2026-07-10T09:44:44+09:00",
       "oneLine": "feat: ChipField 마이그레이션 — 공유 초대 이메일 칩 (#911)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -490,17 +571,8 @@
       "prNumber": 913,
       "mergedAt": "2026-07-10T09:44:19+09:00",
       "oneLine": "feat: 디자인 시스템 — 컴포넌트별 캔버스 사용처 표시 (usage map codegen) (#913)",
-      "catalogKey": null
-    },
-    {
-      "kind": "component",
-      "name": "catalog",
-      "file": "src/app/[locale]/(app)/design-system/components/catalog.tsx",
-      "line": 1,
-      "prNumber": 913,
-      "mergedAt": "2026-07-10T09:44:19+09:00",
-      "oneLine": "feat: 디자인 시스템 — 컴포넌트별 캔버스 사용처 표시 (usage map codegen) (#913)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -510,7 +582,8 @@
       "prNumber": 908,
       "mergedAt": "2026-07-10T04:08:40+09:00",
       "oneLine": "feat: 캔버스 개별 위젯 hide/show visibility 토글 (localStorage 영속) (#908)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -520,7 +593,8 @@
       "prNumber": 908,
       "mergedAt": "2026-07-10T04:08:40+09:00",
       "oneLine": "feat: 캔버스 개별 위젯 hide/show visibility 토글 (localStorage 영속) (#908)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -530,7 +604,8 @@
       "prNumber": 907,
       "mergedAt": "2026-07-10T04:08:33+09:00",
       "oneLine": "feat: ChipField 프리미티브 신설 — 칩 컨테이너 SSOT (배경 없는 plain × 버튼) (#907)",
-      "catalogKey": "chip-field"
+      "catalogKey": "chip-field",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -540,7 +615,8 @@
       "prNumber": 905,
       "mergedAt": "2026-07-10T03:38:01+09:00",
       "oneLine": "feat: 위젯별 동시사용 게이트 client — 앱 진입 게이트 제거 + 위젯 국소 대기 (#905)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -550,7 +626,8 @@
       "prNumber": 905,
       "mergedAt": "2026-07-10T03:38:01+09:00",
       "oneLine": "feat: 위젯별 동시사용 게이트 client — 앱 진입 게이트 제거 + 위젯 국소 대기 (#905)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -560,7 +637,8 @@
       "prNumber": 897,
       "mergedAt": "2026-07-10T02:18:02+09:00",
       "oneLine": "feat: 데스크 스트리밍 = StageFlow 공정 플로우 아티팩트 연결 (#897)",
-      "catalogKey": "stage-flow"
+      "catalogKey": "stage-flow",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -570,7 +648,8 @@
       "prNumber": 901,
       "mergedAt": "2026-07-10T02:09:05+09:00",
       "oneLine": "feat: 인터뷰 V2 탑라인 화면 디자인 밸런스 정리 — 불릿 통일·중복 제거·툴바 위계·강조 리듬 (#901)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -580,7 +659,8 @@
       "prNumber": 901,
       "mergedAt": "2026-07-10T02:09:05+09:00",
       "oneLine": "feat: 인터뷰 V2 탑라인 화면 디자인 밸런스 정리 — 불릿 통일·중복 제거·툴바 위계·강조 리듬 (#901)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -590,7 +670,8 @@
       "prNumber": 896,
       "mergedAt": "2026-07-10T02:08:55+09:00",
       "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -600,7 +681,8 @@
       "prNumber": 896,
       "mergedAt": "2026-07-10T02:08:55+09:00",
       "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -610,7 +692,8 @@
       "prNumber": 896,
       "mergedAt": "2026-07-10T02:08:55+09:00",
       "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -620,7 +703,8 @@
       "prNumber": 896,
       "mergedAt": "2026-07-10T02:08:55+09:00",
       "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -630,7 +714,8 @@
       "prNumber": 896,
       "mergedAt": "2026-07-10T02:08:55+09:00",
       "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -640,7 +725,8 @@
       "prNumber": 895,
       "mergedAt": "2026-07-10T01:00:35+09:00",
       "oneLine": "feat: 주요 기업 매출 = 차트 + wide 테이블 (회사당 3행 폐기) (#895)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -650,7 +736,8 @@
       "prNumber": 895,
       "mergedAt": "2026-07-10T01:00:35+09:00",
       "oneLine": "feat: 주요 기업 매출 = 차트 + wide 테이블 (회사당 3행 폐기) (#895)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -660,7 +747,8 @@
       "prNumber": 892,
       "mergedAt": "2026-07-09T18:48:12+09:00",
       "oneLine": "feat: 신규 위젯 rename — AI 모더레이터→AI UT, PPT 보고서→영상 분석기 (#892)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -670,7 +758,8 @@
       "prNumber": 892,
       "mergedAt": "2026-07-09T18:48:12+09:00",
       "oneLine": "feat: 신규 위젯 rename — AI 모더레이터→AI UT, PPT 보고서→영상 분석기 (#892)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -680,7 +769,8 @@
       "prNumber": 886,
       "mergedAt": "2026-07-09T17:47:45+09:00",
       "oneLine": "fix: 동시통역 컨트롤 상단 여백 정합 — unpadParent 특수 경로 제거 (#886)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -690,7 +780,8 @@
       "prNumber": 886,
       "mergedAt": "2026-07-09T17:47:45+09:00",
       "oneLine": "fix: 동시통역 컨트롤 상단 여백 정합 — unpadParent 특수 경로 제거 (#886)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -700,7 +791,8 @@
       "prNumber": 887,
       "mergedAt": "2026-07-09T17:40:35+09:00",
       "oneLine": "feat: 인터뷰 V2 업로드 중복 파일 자동 필터 — 프로젝트 범위 content-hash dedup (#887)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -710,7 +802,8 @@
       "prNumber": 887,
       "mergedAt": "2026-07-09T17:40:35+09:00",
       "oneLine": "feat: 인터뷰 V2 업로드 중복 파일 자동 필터 — 프로젝트 범위 content-hash dedup (#887)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -720,7 +813,8 @@
       "prNumber": 876,
       "mergedAt": "2026-07-09T16:35:55+09:00",
       "oneLine": "feat: 산출물 영역 규칙화 — WidgetOutputRegion 프리미티브 + 인터뷰 좌측 정렬 (#876)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -730,7 +824,8 @@
       "prNumber": 874,
       "mergedAt": "2026-07-09T11:14:01+09:00",
       "oneLine": "feat: 전사록 생성기 음성 녹음 입력 — 위젯에서 바로 녹음 → 전사 (#874)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -740,7 +835,8 @@
       "prNumber": 873,
       "mergedAt": "2026-07-09T05:23:42+09:00",
       "oneLine": "feat: 인터뷰 결과 생성기 — 탑라인 前 처리 진행 표시 + 현재 파일 하이라이트 (#873)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -750,7 +846,8 @@
       "prNumber": 867,
       "mergedAt": "2026-07-09T04:48:45+09:00",
       "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -760,7 +857,8 @@
       "prNumber": 867,
       "mergedAt": "2026-07-09T04:48:45+09:00",
       "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -770,7 +868,8 @@
       "prNumber": 867,
       "mergedAt": "2026-07-09T04:48:45+09:00",
       "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
-      "catalogKey": "chip-input"
+      "catalogKey": "chip-input",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -780,7 +879,8 @@
       "prNumber": 867,
       "mergedAt": "2026-07-09T04:48:45+09:00",
       "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -790,7 +890,8 @@
       "prNumber": 864,
       "mergedAt": "2026-07-09T04:03:29+09:00",
       "oneLine": "fix: 공유 뷰어 매직링크 차단 — 코드 전용 OTP (앱 세션 생성 방지) (#864)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -800,7 +901,8 @@
       "prNumber": 865,
       "mergedAt": "2026-07-09T04:03:22+09:00",
       "oneLine": "feat: 프로빙 공유 스냅샷 persist — 페르소나 reflection + 질문 DB 저장 (#865)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -810,7 +912,8 @@
       "prNumber": 859,
       "mergedAt": "2026-07-09T01:56:47+09:00",
       "oneLine": "feat: QA 마이크 녹음 중 동적 피드백 강화 — pulse/blink + 아이콘·색상 전환 (#859)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -820,7 +923,8 @@
       "prNumber": 849,
       "mergedAt": "2026-07-09T01:42:48+09:00",
       "oneLine": "feat: 글로벌 소스 P3 — 국내 vs G7 대비 섹션 + 차트 (#849)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -830,7 +934,8 @@
       "prNumber": 858,
       "mergedAt": "2026-07-09T01:03:43+09:00",
       "oneLine": "feat: ControlDropzone primitive — 컨트롤 dropzone 규격 박제 (override 차단) (#858)",
-      "catalogKey": "control-dropzone"
+      "catalogKey": "control-dropzone",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -840,7 +945,8 @@
       "prNumber": 853,
       "mergedAt": "2026-07-09T00:05:20+09:00",
       "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -850,7 +956,8 @@
       "prNumber": 853,
       "mergedAt": "2026-07-09T00:05:20+09:00",
       "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -860,7 +967,8 @@
       "prNumber": 853,
       "mergedAt": "2026-07-09T00:05:20+09:00",
       "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -870,7 +978,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -880,7 +989,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -890,7 +1000,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -900,7 +1011,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -910,7 +1022,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -920,7 +1033,8 @@
       "prNumber": 838,
       "mergedAt": "2026-07-08T13:33:36+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
-      "catalogKey": "input"
+      "catalogKey": "input",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -930,7 +1044,8 @@
       "prNumber": 840,
       "mergedAt": "2026-07-08T12:43:33+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave2 — 리스트/칩/탭/드롭다운/모달 (#840)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -940,7 +1055,8 @@
       "prNumber": 840,
       "mergedAt": "2026-07-08T12:43:33+09:00",
       "oneLine": "feat: 마이크로인터랙션 Wave2 — 리스트/칩/탭/드롭다운/모달 (#840)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -950,7 +1066,8 @@
       "prNumber": 831,
       "mergedAt": "2026-07-08T02:44:53+09:00",
       "oneLine": "fix: 데스크 리서치 커스텀 모드 완전 제거 (#831)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -960,7 +1077,8 @@
       "prNumber": 831,
       "mergedAt": "2026-07-08T02:44:53+09:00",
       "oneLine": "fix: 데스크 리서치 커스텀 모드 완전 제거 (#831)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -970,7 +1088,8 @@
       "prNumber": 826,
       "mergedAt": "2026-07-08T01:45:31+09:00",
       "oneLine": "feat: 마이크로인터랙션 Foundation — 모션 토큰 + 공용 유틸/훅 (#826)",
-      "catalogKey": "chrome-button"
+      "catalogKey": "chrome-button",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -980,7 +1099,8 @@
       "prNumber": 813,
       "mergedAt": "2026-07-07T13:16:09+09:00",
       "oneLine": "feat: 탑라인 드래그 추가질문 웹 검색 모드 (인터뷰 근거 ↔ 웹 토글) (#813)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -990,7 +1110,8 @@
       "prNumber": 812,
       "mergedAt": "2026-07-07T13:16:05+09:00",
       "oneLine": "fix: 컨트롤 드롭다운 트리거 + dropzone height 통일 (ControlTrigger + py SSOT) (#812)",
-      "catalogKey": "file-drop-zone"
+      "catalogKey": "file-drop-zone",
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1000,7 +1121,8 @@
       "prNumber": 814,
       "mergedAt": "2026-07-07T13:16:02+09:00",
       "oneLine": "feat: 인터뷰 RAG 평가 하네스 — Recall/Coverage/Faithfulness/Citation 4 메트릭 (#814)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/rag-eval"
     },
     {
       "kind": "component",
@@ -1010,7 +1132,8 @@
       "prNumber": 814,
       "mergedAt": "2026-07-07T13:16:02+09:00",
       "oneLine": "feat: 인터뷰 RAG 평가 하네스 — Recall/Coverage/Faithfulness/Citation 4 메트릭 (#814)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1020,7 +1143,8 @@
       "prNumber": 803,
       "mergedAt": "2026-07-06T23:37:22+09:00",
       "oneLine": "feat: 위젯 컨트롤 드롭다운 전면 통일 — 인터뷰 DropdownMenu 스타일 (#803)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1030,7 +1154,8 @@
       "prNumber": 796,
       "mergedAt": "2026-07-06T22:15:47+09:00",
       "oneLine": "feat: 인터뷰 프로젝트 태그 부착 + 태그별 필터 (#796)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1040,7 +1165,8 @@
       "prNumber": 794,
       "mergedAt": "2026-07-06T22:04:46+09:00",
       "oneLine": "fix: 위젯 주 CTA 하단 액션 바 전환 — 위치 싱크 + 콘텐츠 겹침 해소 (#794)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1050,7 +1176,8 @@
       "prNumber": 790,
       "mergedAt": "2026-07-06T19:47:09+09:00",
       "oneLine": "feat: 리크루팅 전체보기 — 부합도 판단 리스트 + 응답자 drawer (#790)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1060,7 +1187,8 @@
       "prNumber": 790,
       "mergedAt": "2026-07-06T19:47:09+09:00",
       "oneLine": "feat: 리크루팅 전체보기 — 부합도 판단 리스트 + 응답자 drawer (#790)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1070,7 +1198,8 @@
       "prNumber": 788,
       "mergedAt": "2026-07-06T19:44:32+09:00",
       "oneLine": "fix: 랜딩 헤더 로고 워드마크 SVG 자산화 (#788)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1080,7 +1209,8 @@
       "prNumber": 773,
       "mergedAt": "2026-07-06T16:10:11+09:00",
       "oneLine": "feat: 시장조사 보고서 표준 포맷 — KPI 히어로 + 기업 매출 표 + 숫자 가독성 (#773)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1090,7 +1220,8 @@
       "prNumber": 767,
       "mergedAt": "2026-07-06T13:47:30+09:00",
       "oneLine": "feat: 동시통역 에코-free 온보딩 UX + 음성 OFF 디폴트 (#767)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1100,7 +1231,8 @@
       "prNumber": 750,
       "mergedAt": "2026-07-06T09:07:55+09:00",
       "oneLine": "chore: 랜딩 tagline 'Your research workflow, in one place' (4 언어) (#750)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1110,7 +1242,8 @@
       "prNumber": 747,
       "mergedAt": "2026-07-05T22:47:05+09:00",
       "oneLine": "feat: 3 신 위젯 fullview coming soon hero (가이드라인/AI모더레이터/PPT) (#747)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1120,7 +1253,8 @@
       "prNumber": 747,
       "mergedAt": "2026-07-05T22:47:05+09:00",
       "oneLine": "feat: 3 신 위젯 fullview coming soon hero (가이드라인/AI모더레이터/PPT) (#747)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1130,7 +1264,8 @@
       "prNumber": 744,
       "mergedAt": "2026-07-05T21:51:00+09:00",
       "oneLine": "feat: 위젯 공정 과정 타임라인 (데스크/전사록/인터뷰V2) (#744)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1140,7 +1275,8 @@
       "prNumber": 739,
       "mergedAt": "2026-07-05T21:04:32+09:00",
       "oneLine": "feat: 브랜딩 자산 교체 (신 로고/mascot/favicon → public/branding 킷) (#739)",
-      "catalogKey": "brand-loader"
+      "catalogKey": "brand-loader",
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1150,7 +1286,8 @@
       "prNumber": 737,
       "mergedAt": "2026-07-05T18:17:56+09:00",
       "oneLine": "feat: canvas 3 신 위젯 추가 (가이드라인/AI모더레이터/PPT) → 3x3 grid (#737)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1160,7 +1297,8 @@
       "prNumber": 735,
       "mergedAt": "2026-07-05T18:15:10+09:00",
       "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1170,7 +1308,8 @@
       "prNumber": 735,
       "mergedAt": "2026-07-05T18:15:10+09:00",
       "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1180,7 +1319,8 @@
       "prNumber": 735,
       "mergedAt": "2026-07-05T18:15:10+09:00",
       "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1190,7 +1330,8 @@
       "prNumber": 735,
       "mergedAt": "2026-07-05T18:15:10+09:00",
       "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1200,7 +1341,8 @@
       "prNumber": 720,
       "mergedAt": "2026-07-05T02:28:34+09:00",
       "oneLine": "hotfix: 리크루팅 질문 필터 dropdown max-width 480 + 질문 truncate (#720)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1210,7 +1352,8 @@
       "prNumber": 714,
       "mergedAt": "2026-07-05T01:39:12+09:00",
       "oneLine": "feat: 전사록 전체보기 일괄 선택 → 일괄 삭제 + ZIP 다운로드 (#714)",
-      "catalogKey": "canvas-widget-primitives"
+      "catalogKey": "canvas-widget-primitives",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1220,7 +1363,8 @@
       "prNumber": 711,
       "mergedAt": "2026-07-05T01:39:01+09:00",
       "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1230,7 +1374,8 @@
       "prNumber": 711,
       "mergedAt": "2026-07-05T01:39:01+09:00",
       "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1240,7 +1385,8 @@
       "prNumber": 711,
       "mergedAt": "2026-07-05T01:39:01+09:00",
       "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1250,7 +1396,8 @@
       "prNumber": 702,
       "mergedAt": "2026-07-05T00:03:18+09:00",
       "oneLine": "feat: 인터뷰 V2 검색 artifacts Phase 2 (Recharts bar/pie 차트) (#702)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1260,7 +1407,8 @@
       "prNumber": 698,
       "mergedAt": "2026-07-04T18:31:42+09:00",
       "oneLine": "feat: /admin/recruiting-invitations super admin 뷰어 (요청 리스트 + 연락처 조회 + 상태 변경) (#698)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/recruiting-invitations"
     },
     {
       "kind": "component",
@@ -1270,7 +1418,8 @@
       "prNumber": 698,
       "mergedAt": "2026-07-04T18:31:42+09:00",
       "oneLine": "feat: /admin/recruiting-invitations super admin 뷰어 (요청 리스트 + 연락처 조회 + 상태 변경) (#698)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1280,7 +1429,8 @@
       "prNumber": 686,
       "mergedAt": "2026-07-04T16:42:21+09:00",
       "oneLine": "feat: 프로빙 custom 위젯 backfill + empty 시 우선 질문 (#686)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "route",
@@ -1290,7 +1440,8 @@
       "prNumber": 684,
       "mergedAt": "2026-07-04T16:26:46+09:00",
       "oneLine": "feat: QA tester 계정 관리 UI (super admin) — /admin/qa-testers (#684)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/qa-testers"
     },
     {
       "kind": "component",
@@ -1300,7 +1451,8 @@
       "prNumber": 684,
       "mergedAt": "2026-07-04T16:26:46+09:00",
       "oneLine": "feat: QA tester 계정 관리 UI (super admin) — /admin/qa-testers (#684)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1310,7 +1462,8 @@
       "prNumber": 682,
       "mergedAt": "2026-07-04T16:26:39+09:00",
       "oneLine": "feat: 프로빙 custom 위젯 = 제안 질문 가중치 우선 (#682)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1320,7 +1473,8 @@
       "prNumber": 672,
       "mergedAt": "2026-07-04T14:40:49+09:00",
       "oneLine": "feat: QA mode flag — profiles.is_qa_tester + auth context isQaTester (voice-agent PR2) (#672)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1330,7 +1484,8 @@
       "prNumber": 672,
       "mergedAt": "2026-07-04T14:40:49+09:00",
       "oneLine": "feat: QA mode flag — profiles.is_qa_tester + auth context isQaTester (voice-agent PR2) (#672)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1340,7 +1495,8 @@
       "prNumber": 663,
       "mergedAt": "2026-07-04T02:15:29+09:00",
       "oneLine": "feat: 세션 만료 modal 재디자인 — 아이콘 + 진행 bar 카운트다운 (#663)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1350,7 +1506,8 @@
       "prNumber": 659,
       "mergedAt": "2026-07-04T01:42:05+09:00",
       "oneLine": "hotfix: 인터뷰 V2 업로드 = 프로젝트 설정 gate + fullview 동기화 (#659)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1360,7 +1517,8 @@
       "prNumber": 650,
       "mergedAt": "2026-07-03T15:20:56+09:00",
       "oneLine": "hotfix: 리크루팅 fullview 참여자 조건 서버 저장 — 옛 폼/refresh 후에도 노출 (#650)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1370,7 +1528,8 @@
       "prNumber": 642,
       "mergedAt": "2026-07-03T14:04:02+09:00",
       "oneLine": "feat: PostHog UTM attribution stamp — landing 시 set_once person property + register super property (#642)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1380,7 +1539,8 @@
       "prNumber": 630,
       "mergedAt": "2026-07-03T00:03:24+09:00",
       "oneLine": "feat: 인터뷰 V2 검색 chat UI — streaming 답변 + inline citation 카드 (#630)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1390,7 +1550,8 @@
       "prNumber": 630,
       "mergedAt": "2026-07-03T00:03:24+09:00",
       "oneLine": "feat: 인터뷰 V2 검색 chat UI — streaming 답변 + inline citation 카드 (#630)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1400,7 +1561,8 @@
       "prNumber": 628,
       "mergedAt": "2026-07-02T23:24:17+09:00",
       "oneLine": "hotfix: (프로빙) PDF 내보내기 = 좌 페르소나 grid 만 캡쳐 (fullview 전체 X) (#628)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1410,7 +1572,8 @@
       "prNumber": 618,
       "mergedAt": "2026-07-02T17:34:49+09:00",
       "oneLine": "feat: 서브헤더 CTA 게이팅 온보딩 (미완료 hint + 설정/업로드 pulse + 첫사용 툴팁) (#618)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1420,7 +1583,8 @@
       "prNumber": 618,
       "mergedAt": "2026-07-02T17:34:49+09:00",
       "oneLine": "feat: 서브헤더 CTA 게이팅 온보딩 (미완료 hint + 설정/업로드 pulse + 첫사용 툴팁) (#618)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1430,7 +1594,8 @@
       "prNumber": 620,
       "mergedAt": "2026-07-02T17:34:22+09:00",
       "oneLine": "hotfix: (app) 세션 만료 (API 401) 감지 → 명시 modal + auto redirect (#620)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1440,7 +1605,8 @@
       "prNumber": 609,
       "mergedAt": "2026-07-02T16:42:04+09:00",
       "oneLine": "feat: 프로빙 전체보기 PDF 내보내기 (docx 대체) (#609)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1450,7 +1616,8 @@
       "prNumber": 603,
       "mergedAt": "2026-07-01T16:08:38+09:00",
       "oneLine": "feat: 전사록/인터뷰/리크루팅 서브헤더 통일 확장 — 입력 dropzone 팝업 이동 + height ↓ (#603)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1460,7 +1627,8 @@
       "prNumber": 598,
       "mergedAt": "2026-07-01T15:31:57+09:00",
       "oneLine": "feat: 3 위젯 (데스크/동시통역/프로빙) 서브헤더 통일 — 설정 버튼 + CTA (#598)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1470,7 +1638,8 @@
       "prNumber": 598,
       "mergedAt": "2026-07-01T15:31:57+09:00",
       "oneLine": "feat: 3 위젯 (데스크/동시통역/프로빙) 서브헤더 통일 — 설정 버튼 + CTA (#598)",
-      "catalogKey": "canvas-widget-primitives"
+      "catalogKey": "canvas-widget-primitives",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1480,7 +1649,8 @@
       "prNumber": 597,
       "mergedAt": "2026-07-01T13:24:47+09:00",
       "oneLine": "hotfix: (app) route auth guard — 로그아웃 시 유령 세션 대신 /login 자동 redirect (#597)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1490,7 +1660,8 @@
       "prNumber": 596,
       "mergedAt": "2026-07-01T13:11:46+09:00",
       "oneLine": "feat: 위젯 산출물 완료 시 하단 CompletedCTA 푸터 (전사록/데스크/인터뷰) (#596)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1500,7 +1671,8 @@
       "prNumber": 596,
       "mergedAt": "2026-07-01T13:11:46+09:00",
       "oneLine": "feat: 위젯 산출물 완료 시 하단 CompletedCTA 푸터 (전사록/데스크/인터뷰) (#596)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1510,7 +1682,8 @@
       "prNumber": 594,
       "mergedAt": "2026-07-01T13:02:53+09:00",
       "oneLine": "hotfix: 동시통역 fullview 진입 시 세션 종료 fix — read-only fullview view (세션 소유 카드 유지) (#594)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1520,7 +1693,8 @@
       "prNumber": 594,
       "mergedAt": "2026-07-01T13:02:53+09:00",
       "oneLine": "hotfix: 동시통역 fullview 진입 시 세션 종료 fix — read-only fullview view (세션 소유 카드 유지) (#594)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1530,7 +1704,8 @@
       "prNumber": 595,
       "mergedAt": "2026-07-01T12:37:32+09:00",
       "oneLine": "feat: /admin/api-usage 누적 사용량 snapshot 저장/리셋 + 예상 청구액 baseline 차감 (#595)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/api-usage"
     },
     {
       "kind": "component",
@@ -1540,7 +1715,8 @@
       "prNumber": 595,
       "mergedAt": "2026-07-01T12:37:32+09:00",
       "oneLine": "feat: /admin/api-usage 누적 사용량 snapshot 저장/리셋 + 예상 청구액 baseline 차감 (#595)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1550,7 +1726,8 @@
       "prNumber": 588,
       "mergedAt": "2026-07-01T11:47:59+09:00",
       "oneLine": "chore: 리크루팅 admin-proxy 활성화 runbook + refresh 실패 Sentry alarm + privacy 문구 (#588)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1560,7 +1737,8 @@
       "prNumber": 583,
       "mergedAt": "2026-07-01T01:00:39+09:00",
       "oneLine": "feat: AI 동시통역 fullview 우측 청취자 리스트 패널 — Supabase Realtime Presence (#583)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1570,7 +1748,8 @@
       "prNumber": 583,
       "mergedAt": "2026-07-01T01:00:39+09:00",
       "oneLine": "feat: AI 동시통역 fullview 우측 청취자 리스트 패널 — Supabase Realtime Presence (#583)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1580,7 +1759,8 @@
       "prNumber": 572,
       "mergedAt": "2026-06-30T19:33:49+09:00",
       "oneLine": "feat: 랜딩 hero canvas 6번째 위젯 교체 — 인터뷰 결과 → 리크루팅 (#572)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1590,7 +1770,8 @@
       "prNumber": 571,
       "mergedAt": "2026-06-30T19:24:08+09:00",
       "oneLine": "feat: 랜딩 보안 섹션 신규 — SAFE BY DESIGN (4 카드 + Privacy link) (#571)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1600,7 +1781,8 @@
       "prNumber": 569,
       "mergedAt": "2026-06-30T19:05:03+09:00",
       "oneLine": "feat: 랜딩 hero.lead 제거 + 6 위젯 body 친근 톤 v2 교체 (PR #561 후속) (#569)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1610,7 +1792,8 @@
       "prNumber": 565,
       "mergedAt": "2026-06-30T18:26:26+09:00",
       "oneLine": "feat: 위젯 공유 전체보기 모달 + 좌측 사이드바 nav + 세션 백그라운드 보존 (PR-D) (#565)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1620,7 +1803,8 @@
       "prNumber": 555,
       "mergedAt": "2026-06-30T14:56:33+09:00",
       "oneLine": "feat: WidgetFullviewModal primitive — 프로빙 fullview chrome 일반화 (제목+부제+닫기 / 본문 slot / 옵션 footer) + /design-system 카탈로그 (#555)",
-      "catalogKey": "widget-fullview-modal"
+      "catalogKey": "widget-fullview-modal",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1630,7 +1814,8 @@
       "prNumber": 554,
       "mergedAt": "2026-06-30T14:56:30+09:00",
       "oneLine": "hotfix: 프로빙 popup·history 액션 아이콘 vanish — canvas-body button cascade opt-out (PR #552 회귀) (#554)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1640,7 +1825,8 @@
       "prNumber": 553,
       "mergedAt": "2026-06-30T14:56:27+09:00",
       "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1650,7 +1836,8 @@
       "prNumber": 553,
       "mergedAt": "2026-06-30T14:56:27+09:00",
       "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1660,7 +1847,8 @@
       "prNumber": 553,
       "mergedAt": "2026-06-30T14:56:27+09:00",
       "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1670,7 +1858,8 @@
       "prNumber": 553,
       "mergedAt": "2026-06-30T14:56:27+09:00",
       "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1680,7 +1869,8 @@
       "prNumber": 553,
       "mergedAt": "2026-06-30T14:56:27+09:00",
       "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1690,7 +1880,8 @@
       "prNumber": 547,
       "mergedAt": "2026-06-30T00:59:09+09:00",
       "oneLine": "feat: 리크루팅 표준 영역 template 캐싱 — LLM 생성 회피 + 일관 100% (#547)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1700,7 +1891,8 @@
       "prNumber": 542,
       "mergedAt": "2026-06-30T00:36:11+09:00",
       "oneLine": "feat: 위젯 SubHeader primitive — 캡처/언어/세션 CTA 규격화 (동시통역 + 프로빙 + 데스크) (#542)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1710,7 +1902,8 @@
       "prNumber": 533,
       "mergedAt": "2026-06-29T23:00:11+09:00",
       "oneLine": "feat: 데스크 리서치 — Navigator progress 단계별 누적 % 표시 (#533)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1720,7 +1913,8 @@
       "prNumber": 524,
       "mergedAt": "2026-06-29T15:36:43+09:00",
       "oneLine": "feat: Widget Control Board — 4-layer 공통 primitive + 5 위젯 마이그 (#524)",
-      "catalogKey": "canvas-widget-primitives"
+      "catalogKey": "canvas-widget-primitives",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1730,7 +1924,8 @@
       "prNumber": 523,
       "mergedAt": "2026-06-29T15:06:54+09:00",
       "oneLine": "feat: probing 1시간/25 단위 + 위젯 시각 통일 + recruiting/desk CTA ChromeButton (#523)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1740,7 +1935,8 @@
       "prNumber": 522,
       "mergedAt": "2026-06-29T14:43:55+09:00",
       "oneLine": "feat: LemonSqueezy 국내/외환 dual payout — currency-routed checkout + webhook (#522)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/credits"
     },
     {
       "kind": "component",
@@ -1750,7 +1946,8 @@
       "prNumber": 522,
       "mergedAt": "2026-06-29T14:43:55+09:00",
       "oneLine": "feat: LemonSqueezy 국내/외환 dual payout — currency-routed checkout + webhook (#522)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1760,7 +1957,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1770,7 +1968,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1780,7 +1979,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1790,7 +1990,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1800,7 +2001,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1810,7 +2012,8 @@
       "prNumber": 518,
       "mergedAt": "2026-06-29T14:20:06+09:00",
       "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1820,7 +2023,8 @@
       "prNumber": 511,
       "mergedAt": "2026-06-29T11:19:15+09:00",
       "oneLine": "feat: 랜딩페이지 Canvas Era 리뉴얼 (사이드바 → 캔버스 + 신규 위젯 노출) (#511)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1830,7 +2034,8 @@
       "prNumber": 511,
       "mergedAt": "2026-06-29T11:19:15+09:00",
       "oneLine": "feat: 랜딩페이지 Canvas Era 리뉴얼 (사이드바 → 캔버스 + 신규 위젯 노출) (#511)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1840,7 +2045,8 @@
       "prNumber": 509,
       "mergedAt": "2026-06-29T11:19:09+09:00",
       "oneLine": "feat: interviews 전체 보기 모드 + 코퍼스 substring 검색 (pg_trgm) (#509)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1850,17 +2056,8 @@
       "prNumber": 508,
       "mergedAt": "2026-06-29T11:19:06+09:00",
       "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
-      "catalogKey": null
-    },
-    {
-      "kind": "component",
-      "name": "sidebar",
-      "file": "src/app/[locale]/(app)/design-system/components/sidebar.tsx",
-      "line": 1,
-      "prNumber": 508,
-      "mergedAt": "2026-06-29T11:19:06+09:00",
-      "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -1870,7 +2067,8 @@
       "prNumber": 508,
       "mergedAt": "2026-06-29T11:19:06+09:00",
       "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1880,7 +2078,8 @@
       "prNumber": 506,
       "mergedAt": "2026-06-29T11:19:02+09:00",
       "oneLine": "feat: 위젯 헤더 크레딧 시각 강화 + 차감 마이크로 인터랙션 (#506)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1890,7 +2089,8 @@
       "prNumber": 506,
       "mergedAt": "2026-06-29T11:19:02+09:00",
       "oneLine": "feat: 위젯 헤더 크레딧 시각 강화 + 차감 마이크로 인터랙션 (#506)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1900,7 +2100,8 @@
       "prNumber": 494,
       "mergedAt": "2026-06-29T10:41:40+09:00",
       "oneLine": "feat: canvas 위젯 일관성 — Field / Banner / SectionLabel SSOT 추출 (#494)",
-      "catalogKey": "canvas-widget-primitives"
+      "catalogKey": "canvas-widget-primitives",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1910,7 +2111,8 @@
       "prNumber": 494,
       "mergedAt": "2026-06-29T10:41:40+09:00",
       "oneLine": "feat: canvas 위젯 일관성 — Field / Banner / SectionLabel SSOT 추출 (#494)",
-      "catalogKey": "canvas-widget-primitives"
+      "catalogKey": "canvas-widget-primitives",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1920,7 +2122,8 @@
       "prNumber": 490,
       "mergedAt": "2026-06-29T00:45:48+09:00",
       "oneLine": "feat: 헤더 버튼 톤 subtle — Button/IconButton 'subtle' variant + Topbar 적용 (#490)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1930,7 +2133,8 @@
       "prNumber": 490,
       "mergedAt": "2026-06-29T00:45:48+09:00",
       "oneLine": "feat: 헤더 버튼 톤 subtle — Button/IconButton 'subtle' variant + Topbar 적용 (#490)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1940,7 +2144,8 @@
       "prNumber": 492,
       "mergedAt": "2026-06-29T00:45:27+09:00",
       "oneLine": "fix: Google 로그인 버튼 단색 G + ghost Memphis 톤 충돌 정리 (#492)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1950,7 +2155,8 @@
       "prNumber": 480,
       "mergedAt": "2026-06-28T22:50:44+09:00",
       "oneLine": "fix: share token refresh 401 redirect + dropdown portal z-overlay (#480)",
-      "catalogKey": "share-menu"
+      "catalogKey": "share-menu",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1960,7 +2166,8 @@
       "prNumber": 474,
       "mergedAt": "2026-06-27T22:07:27+09:00",
       "oneLine": "feat: 위젯 헤더 색을 위젯별 사용자 토글 가능하게 (#474)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -1970,7 +2177,8 @@
       "prNumber": 472,
       "mergedAt": "2026-06-27T21:20:04+09:00",
       "oneLine": "feat: DownloadMenu/ShareMenu trigger 를 Button primitive 로 통일 (#472)",
-      "catalogKey": "download-menu"
+      "catalogKey": "download-menu",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1980,7 +2188,8 @@
       "prNumber": 470,
       "mergedAt": "2026-06-27T21:19:58+09:00",
       "oneLine": "feat: LoginDialog 카드 Memphis pop 톤 (3px ink border + 6px offset shadow) (#470)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -1990,7 +2199,8 @@
       "prNumber": 467,
       "mergedAt": "2026-06-27T20:53:02+09:00",
       "oneLine": "feat: cookie banner Memphis pop 톤 — 3px ink + offset shadow (#467)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2000,7 +2210,8 @@
       "prNumber": 457,
       "mergedAt": "2026-06-27T02:24:07+09:00",
       "oneLine": "feat: PR-D14 — 캔버스 outer 패딩 제거 + 위젯 내부 bg pop 정합 (#457)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2010,7 +2221,8 @@
       "prNumber": 455,
       "mergedAt": "2026-06-27T02:24:00+09:00",
       "oneLine": "feat: PR-D17 — 크레딧 페이지 (/credits) pop 톤 적용 (#455)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2020,7 +2232,8 @@
       "prNumber": 453,
       "mergedAt": "2026-06-27T02:23:53+09:00",
       "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/members"
     },
     {
       "kind": "component",
@@ -2030,7 +2243,8 @@
       "prNumber": 453,
       "mergedAt": "2026-06-27T02:23:53+09:00",
       "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2040,7 +2254,8 @@
       "prNumber": 453,
       "mergedAt": "2026-06-27T02:23:53+09:00",
       "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2050,7 +2265,8 @@
       "prNumber": 452,
       "mergedAt": "2026-06-27T01:57:03+09:00",
       "oneLine": "feat: env validation (fail-open → fail-closed, build-time assert) (#452)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2060,7 +2276,8 @@
       "prNumber": 446,
       "mergedAt": "2026-06-27T01:02:28+09:00",
       "oneLine": "chore: dead 토큰 / dead CSS 청소 (D9 — D8 audit 권장) (#446)",
-      "catalogKey": "slider"
+      "catalogKey": "slider",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2070,7 +2287,8 @@
       "prNumber": 447,
       "mergedAt": "2026-06-27T01:02:25+09:00",
       "oneLine": "chore: shadow / rounded 일관성 (D8 followups D10) (#447)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2080,7 +2298,8 @@
       "prNumber": 435,
       "mergedAt": "2026-06-26T14:31:08+09:00",
       "oneLine": "fix: replace xlsx (SheetJS) with exceljs (PR-SEC17, P0 HIGH) (#435)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2090,7 +2309,8 @@
       "prNumber": 435,
       "mergedAt": "2026-06-26T14:31:08+09:00",
       "oneLine": "fix: replace xlsx (SheetJS) with exceljs (PR-SEC17, P0 HIGH) (#435)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2100,7 +2320,8 @@
       "prNumber": 428,
       "mergedAt": "2026-06-26T12:22:34+09:00",
       "oneLine": "feat: account delete (GDPR Art. 17) + daily retention cron (PR-SEC5) (#428)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/settings"
     },
     {
       "kind": "route",
@@ -2110,7 +2331,8 @@
       "prNumber": 428,
       "mergedAt": "2026-06-26T12:22:34+09:00",
       "oneLine": "feat: account delete (GDPR Art. 17) + daily retention cron (PR-SEC5) (#428)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/settings"
     },
     {
       "kind": "component",
@@ -2120,7 +2342,8 @@
       "prNumber": 427,
       "mergedAt": "2026-06-26T11:58:15+09:00",
       "oneLine": "feat: account data export (GDPR Art. 15/20) — /api/account/export + /settings UI (#427)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/settings"
     },
     {
       "kind": "component",
@@ -2130,7 +2353,8 @@
       "prNumber": 421,
       "mergedAt": "2026-06-26T11:31:44+09:00",
       "oneLine": "feat: explicit consent + audit_log infra (PR-SEC7) (#421)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2140,7 +2364,8 @@
       "prNumber": 413,
       "mergedAt": "2026-06-26T10:56:35+09:00",
       "oneLine": "feat: /canvas pop 잠금 디자인 production 적용 (PR-D2 재정의) (#413)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2150,7 +2375,8 @@
       "prNumber": 407,
       "mergedAt": "2026-06-25T07:39:54+00:00",
       "oneLine": "feat: autocontents 네이티브 마이그 PR-1 — foundation (deps + visibility + API shells + placeholder) (#407)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2160,7 +2386,8 @@
       "prNumber": 384,
       "mergedAt": "2026-06-24T14:54:00+09:00",
       "oneLine": "feat: interview 코퍼스 채팅 — RAG streaming API + 결과 화면 탭 (#384)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2170,7 +2397,8 @@
       "prNumber": 383,
       "mergedAt": "2026-06-24T14:48:20+09:00",
       "oneLine": "feat: desk research multi-pass synthesis + 6-section pyramid report (75cr) (#383)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2180,7 +2408,8 @@
       "prNumber": 381,
       "mergedAt": "2026-06-24T13:11:52+09:00",
       "oneLine": "feat: probing assistant infra + transcript provider (#381)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2190,7 +2419,8 @@
       "prNumber": 365,
       "mergedAt": "2026-06-22T18:46:13+09:00",
       "oneLine": "feat: /canvas 에 리크루팅 위젯 통합 + /recruiting deep-link redirect (#365)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/recruiting"
     },
     {
       "kind": "component",
@@ -2200,7 +2430,8 @@
       "prNumber": 362,
       "mergedAt": "2026-06-22T18:15:42+09:00",
       "oneLine": "feat: canvas 위젯 자유 배치 (5×5 절대 좌표 그리드 + cell snap + localStorage) (#362)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2210,7 +2441,8 @@
       "prNumber": 362,
       "mergedAt": "2026-06-22T18:15:42+09:00",
       "oneLine": "feat: canvas 위젯 자유 배치 (5×5 절대 좌표 그리드 + cell snap + localStorage) (#362)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2220,7 +2452,8 @@
       "prNumber": 360,
       "mergedAt": "2026-06-22T16:02:26+09:00",
       "oneLine": "feat: /canvas 에 AI 동시통역 위젯 통합 + /live deep-link redirect + preview gate (#360)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/live"
     },
     {
       "kind": "route",
@@ -2230,7 +2463,8 @@
       "prNumber": 359,
       "mergedAt": "2026-06-22T15:58:10+09:00",
       "oneLine": "feat: /canvas 에 인터뷰 결과 생성기 위젯 통합 + /interviews deep-link redirect (#359)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/interviews"
     },
     {
       "kind": "component",
@@ -2240,7 +2474,8 @@
       "prNumber": 355,
       "mergedAt": "2026-06-22T00:43:10+09:00",
       "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2250,7 +2485,8 @@
       "prNumber": 355,
       "mergedAt": "2026-06-22T00:43:10+09:00",
       "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "component",
@@ -2260,7 +2496,8 @@
       "prNumber": 355,
       "mergedAt": "2026-06-22T00:43:10+09:00",
       "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/canvas"
     },
     {
       "kind": "route",
@@ -2270,7 +2507,8 @@
       "prNumber": 354,
       "mergedAt": "2026-06-22T00:26:54+09:00",
       "oneLine": "feat: /canvas 본문 통합 — desk/quotes widget body + deep-link redirect (#354)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/desk"
     },
     {
       "kind": "route",
@@ -2280,7 +2518,8 @@
       "prNumber": 354,
       "mergedAt": "2026-06-22T00:26:54+09:00",
       "oneLine": "feat: /canvas 본문 통합 — desk/quotes widget body + deep-link redirect (#354)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/quotes"
     },
     {
       "kind": "component",
@@ -2290,7 +2529,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2300,7 +2540,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2310,7 +2551,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2320,7 +2562,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2330,7 +2573,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2340,7 +2584,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2350,7 +2595,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2360,7 +2606,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2370,7 +2617,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2380,7 +2628,8 @@
       "prNumber": 342,
       "mergedAt": "2026-06-20T23:57:48+09:00",
       "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2390,7 +2639,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2400,7 +2650,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2410,7 +2661,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2420,7 +2672,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2430,7 +2683,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2440,7 +2694,8 @@
       "prNumber": 334,
       "mergedAt": "2026-06-19T10:06:35+09:00",
       "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2450,7 +2705,8 @@
       "prNumber": 331,
       "mergedAt": "2026-06-19T01:59:43+00:00",
       "oneLine": "feat: SlideGen pyramid 도식 추가 (계층 피라미드) (#331)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2460,7 +2716,8 @@
       "prNumber": 324,
       "mergedAt": "2026-06-19T01:51:25+00:00",
       "oneLine": "feat: SlideGen 뼈대 — 사이드바 탭 + 결정론 파이프라인 (PR1) (#324)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/slidegen"
     },
     {
       "kind": "component",
@@ -2470,7 +2727,8 @@
       "prNumber": 324,
       "mergedAt": "2026-06-19T01:51:25+00:00",
       "oneLine": "feat: SlideGen 뼈대 — 사이드바 탭 + 결정론 파이프라인 (PR1) (#324)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2480,7 +2738,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/admin/payments"
     },
     {
       "kind": "route",
@@ -2490,7 +2749,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/affinity-bubble"
     },
     {
       "kind": "route",
@@ -2500,7 +2760,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/dashboard"
     },
     {
       "kind": "route",
@@ -2510,7 +2771,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/moderator"
     },
     {
       "kind": "route",
@@ -2520,7 +2782,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2530,7 +2793,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/projects"
     },
     {
       "kind": "route",
@@ -2540,7 +2804,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2550,7 +2815,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2560,7 +2826,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2570,7 +2837,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2580,7 +2848,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2590,7 +2859,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2600,7 +2870,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2610,7 +2881,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2620,7 +2892,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2630,7 +2903,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2640,7 +2914,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2650,7 +2925,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2660,7 +2936,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2670,7 +2947,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2680,7 +2958,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2690,7 +2969,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2700,7 +2980,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2710,7 +2991,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2720,7 +3002,8 @@
       "prNumber": 326,
       "mergedAt": "2026-06-19T01:00:26+09:00",
       "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2730,7 +3013,8 @@
       "prNumber": 325,
       "mergedAt": "2026-06-19T00:48:12+09:00",
       "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
-      "catalogKey": "chrome-input"
+      "catalogKey": "chrome-input",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2740,7 +3024,8 @@
       "prNumber": 325,
       "mergedAt": "2026-06-19T00:48:12+09:00",
       "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
-      "catalogKey": "feature-page"
+      "catalogKey": "feature-page",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2750,7 +3035,8 @@
       "prNumber": 325,
       "mergedAt": "2026-06-19T00:48:12+09:00",
       "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
-      "catalogKey": "label"
+      "catalogKey": "label",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2760,7 +3046,8 @@
       "prNumber": 325,
       "mergedAt": "2026-06-19T00:48:12+09:00",
       "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
-      "catalogKey": "select"
+      "catalogKey": "select",
+      "previewPath": null
     },
     {
       "kind": "component",
@@ -2770,7 +3057,8 @@
       "prNumber": 325,
       "mergedAt": "2026-06-19T00:48:12+09:00",
       "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
-      "catalogKey": "textarea"
+      "catalogKey": "textarea",
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2780,7 +3068,8 @@
       "prNumber": 281,
       "mergedAt": "2026-06-12T23:43:52+09:00",
       "oneLine": "feat: insights ClusterView — render 5a clusters in dashboard (PR 6a, ClusterView slice) (#281)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": null
     },
     {
       "kind": "route",
@@ -2790,7 +3079,8 @@
       "prNumber": 258,
       "mergedAt": "2026-06-11T10:20:06+09:00",
       "oneLine": "feat: insights — \"이전 분석\" list on idle state (#258)",
-      "catalogKey": null
+      "catalogKey": null,
+      "previewPath": "/insights-analyzer"
     }
   ]
 }

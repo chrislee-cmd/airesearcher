@@ -124,6 +124,29 @@ function classify(file) {
   return null; // UI 대상 아님
 }
 
+// UI 파일 → 실제로 렌더되는 앱 라우트(iframe 미리보기 대상).
+//   - (app) 라우트/콜로케이트 컴포넌트 → 그 라우트 dir (`/admin/analytics`)
+//   - 캔버스 위젯/shell → `/canvas` (모든 위젯이 캔버스에서 렌더)
+//   - 동적 세그먼트([id]/[token]) · design-system 자기 자신 → null (미리보기 불가)
+//   - 그 외(standalone 컴포넌트 · globals.css) → null (링크만)
+// catalogKey 가 있으면 인라인 라이브 렌더가 있으므로 iframe 미리보기 안 함.
+const APP_PREFIX = /^src\/app\/\[locale\]\/\(app\)\/(.+)$/;
+
+function previewPathFor(file, catalogKey) {
+  if (catalogKey) return null;
+  const appMatch = file.match(APP_PREFIX);
+  if (appMatch) {
+    let rest = appMatch[1].replace(/\/?[^/]*\.tsx$/, ''); // 파일명 제거 → 라우트 dir
+    rest = rest.replace(/\([^)]+\)\/?/g, '').replace(/\/+/g, '/').replace(/\/$/, '');
+    const path = `/${rest}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
+    // '/' = (app) 루트 layout/loading — 라우트 아님, 미리보기 제외.
+    if (path === '/' || path.includes('[') || path.startsWith('/design-system')) return null;
+    return path;
+  }
+  if (file.startsWith('src/components/canvas/')) return '/canvas';
+  return null;
+}
+
 function main() {
   const fileToKey = buildCatalogMap();
   const commits = readCommits();
@@ -136,6 +159,7 @@ function main() {
       const cls = classify(file);
       if (!cls) continue;
       if (!fileExists(join(ROOT, file))) continue; // 삭제된 파일 제외
+      const catalogKey = fileToKey.get(file) ?? null;
       byFile.set(file, {
         kind: cls.kind,
         name: cls.name,
@@ -144,7 +168,8 @@ function main() {
         prNumber: c.prNumber,
         mergedAt: c.mergedAt,
         oneLine: c.subject,
-        catalogKey: fileToKey.get(file) ?? null,
+        catalogKey,
+        previewPath: previewPathFor(file, catalogKey),
       });
     }
   }
@@ -161,8 +186,9 @@ function main() {
   writeFile(OUT_FILE, `${JSON.stringify(out, null, 2)}\n`);
 
   const live = entries.filter((e) => e.catalogKey).length;
+  const screens = new Set(entries.filter((e) => e.previewPath).map((e) => e.previewPath)).size;
   console.log(
-    `gen:changed-ui — 최근 ${SINCE_DAYS}일 · ${entries.length} 변경 UI (${live} 카탈로그 등록/라이브 렌더 가능) → ${OUT_FILE.replace(`${ROOT}/`, '')}`,
+    `gen:changed-ui — 최근 ${SINCE_DAYS}일 · ${entries.length} 변경 UI · ${screens} 화면 미리보기 · ${live} 프리미티브 라이브 렌더 → ${OUT_FILE.replace(`${ROOT}/`, '')}`,
   );
 }
 
