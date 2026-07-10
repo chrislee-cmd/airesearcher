@@ -5,8 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ClipboardEvent,
-  type KeyboardEvent,
 } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { track } from '@/components/mixpanel-provider';
@@ -44,10 +42,9 @@ import { BrandLoader } from '@/components/ui/brand-loader';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Button } from '@/components/ui/button';
 import { ModeCardGroup } from '@/components/ui/mode-button';
-import { IconButton } from '@/components/ui/icon-button';
+import { ChipField } from '@/components/ui/chip-field';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
-import { ChipInput } from '@/components/ui/chip-input';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
@@ -149,7 +146,6 @@ export function DeskCardBody() {
   // market mode 에서만 노출한다(무의미한 dead 컨트롤 방지).
   const [countryScope, setCountryScope] = useState<DeskCountryScope>('kr');
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordDraft, setKeywordDraft] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   // 멀티 region 선택 — 최소 1개 보장 (모두 해제 X, API 가 region 을 필요로 함).
@@ -250,6 +246,19 @@ export function DeskCardBody() {
   }, []);
 
   // ─── keyword tag input ────────────────────────────────────────────────────
+  // The keyword container/chips/extender-input is now the shared <ChipField>
+  // primitive (add / remove / Enter·comma commit / Backspace-pop / maxItems /
+  // dedup are all built-in). `pushKeywords` survives only as the merge helper
+  // for the workspace "send to" prefill below — it splits an incoming blob into
+  // deduped, capped chips and writes them straight into `keywords`.
+  //
+  // NOTE: the old in-field multi-keyword paste-split (`onKeywordPaste`, split on
+  // ,\n\t、·) was desk-specific and has no equivalent in ChipField's standard
+  // API. Dropped here to keep this PR scoped to desk-card-body — pasting a
+  // comma list into the field now lands as a single draft. The prefill path
+  // below still splits, so "send to desk" of a keyword list is unaffected.
+  // Re-add as a ChipField extension (e.g. `pasteSeparators` prop) in a follow-up
+  // if in-field paste-split proves valuable.
   function pushKeywords(parts: string[]) {
     if (parts.length === 0) return;
     setKeywords((prev) => {
@@ -264,47 +273,6 @@ export function DeskCardBody() {
       return out;
     });
   }
-  function removeKeyword(idx: number) {
-    setKeywords(keywords.filter((_, i) => i !== idx));
-  }
-  function commitDraft(raw?: string): string[] {
-    const source = raw ?? keywordDraft;
-    const parts = splitKeywords(source);
-    pushKeywords(parts);
-    setKeywordDraft('');
-    const seen = new Set(keywords);
-    const merged = [...keywords];
-    for (const p of parts) {
-      if (!p || seen.has(p)) continue;
-      if (merged.length >= 10) break;
-      merged.push(p);
-      seen.add(p);
-    }
-    return merged;
-  }
-  function onKeywordKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
-      if (keywordDraft.trim()) {
-        e.preventDefault();
-        commitDraft();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-      }
-    } else if (e.key === 'Backspace' && !keywordDraft && keywords.length) {
-      setKeywords(keywords.slice(0, -1));
-    }
-  }
-  function onKeywordPaste(e: ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData('text');
-    if (/[,\n\t、·]/.test(pasted)) {
-      e.preventDefault();
-      const merged = (keywordDraft + pasted).trim();
-      const parts = splitKeywords(merged);
-      pushKeywords(parts);
-      setKeywordDraft('');
-    }
-  }
 
   // ─── submit ──────────────────────────────────────────────────────────────
   function onClickRun() {
@@ -314,7 +282,10 @@ export function DeskCardBody() {
     // market mode = 실 로직 구현 완료 (market PR) — 이제 trend 와 동일하게
     // 서버가 소스를 자동 선정하고 TAM/SAM 참고 데이터를 생성한다. shell 이
     // 남겨 둔 '곧 제공' 실행 차단은 이 PR 에서 해제한다.
-    const finalKeywords = commitDraft();
+    // Committed chips are the source of truth — ChipField commits a pending
+    // draft on blur (clicking Run blurs the input first), so `keywords` is up
+    // to date by submit time. No separate draft to flush.
+    const finalKeywords = keywords;
     if (finalKeywords.length === 0) {
       setError(tDesk('errorNoKeyword'));
       return;
@@ -540,7 +511,7 @@ export function DeskCardBody() {
     }
   }
 
-  const hasKeywords = keywords.length > 0 || keywordDraft.trim().length > 0;
+  const hasKeywords = keywords.length > 0;
   // trend / market 모두 서버가 소스를 자동 선정하므로 키워드만 있으면 실행 가능.
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords;
@@ -550,7 +521,7 @@ export function DeskCardBody() {
   // server-side, so treat 1 keyword as 5. The product (kw × sources × regions)
   // is an upper bound — region-only-aware sources don't truly multiply by
   // regions — but it tracks the crawl cap math closely enough for guidance.
-  const kwCountForEstimate = keywords.length + (keywordDraft.trim() ? 1 : 0);
+  const kwCountForEstimate = keywords.length;
   const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
   // trend / market 은 서버 자동 선정 소스 수 기준 (trend 의 부정 filter 나
   // market 의 소스 세트 차이는 소량이라 견적에선 trend 소스 수로 근사).
@@ -885,38 +856,15 @@ export function DeskCardBody() {
 
       {/* 주제 · 키워드 (핵심 입력) */}
       <Field label={tDesk('boardTopicLabel')}>
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore">
-          {keywords.map((k, idx) => (
-            <span
-              key={`${k}-${idx}`}
-              className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-            >
-              {k}
-              <IconButton
-                variant="ghost-brand"
-                onClick={() => removeKeyword(idx)}
-                aria-label={`remove ${k}`}
-              >
-                ×
-              </IconButton>
-            </span>
-          ))}
-          <ChipInput
-            value={keywordDraft}
-            onChange={(e) => setKeywordDraft(e.target.value)}
-            onKeyDown={onKeywordKeyDown}
-            onPaste={onKeywordPaste}
-            onBlur={() => {
-              if (keywordDraft.trim()) commitDraft();
-            }}
-            placeholder={
-              keywords.length === 0
-                ? tDesk('keywordPlaceholder')
-                : tDesk('keywordAddMore')
-            }
-            className="min-w-[140px] flex-1"
-          />
-        </div>
+        <ChipField
+          variant="bordered"
+          values={keywords}
+          onChange={setKeywords}
+          maxItems={10}
+          commitOnComma
+          placeholderEmpty={tDesk('keywordPlaceholder')}
+          placeholderAdd={tDesk('keywordAddMore')}
+        />
       </Field>
 
       {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
