@@ -10,10 +10,25 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 export async function POST(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
+  // OBS-4: an optional `{ reason }` body flips the terminal state to
+  // 'error' (+ error_message) instead of 'ended'. The console fires this
+  // from its failure teardown paths (connect timeout / mic / LiveKit /
+  // WebRTC), so failed sessions become countable in the admin dashboard
+  // instead of dying as a phantom 'idle'/'ended'. No body ⇒ normal stop.
+  let reason: string | null = null;
+  try {
+    const body = (await req.json()) as { reason?: unknown } | null;
+    if (body && typeof body.reason === 'string' && body.reason.trim()) {
+      reason = body.reason.trim().slice(0, 500);
+    }
+  } catch {
+    // No/invalid body (the normal stop path sends none) → plain 'ended'.
+  }
+  const targetStatus = reason ? 'error' : 'ended';
   // Wrap the whole handler: the host fires /end from a `pagehide`/stop
   // path where an unhandled throw (cookie/Supabase client init, network
   // blip) surfaced as an opaque 500 with no detail in the console. Catch
@@ -44,14 +59,19 @@ export async function POST(
     if (row.host_user_id !== user.id) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
-    if (row.status === 'ended') return NextResponse.json({ ok: true });
+    // Terminal is terminal — never overwrite a settled 'ended'/'error' row
+    // (e.g. a late error teardown after a normal stop, or a duplicate fire).
+    if (row.status === 'ended' || row.status === 'error') {
+      return NextResponse.json({ ok: true });
+    }
 
     const { error } = await supabase
       .from('translate_sessions')
       .update({
-        status: 'ended',
+        status: targetStatus,
         ended_at: new Date().toISOString(),
-        share_token: null, // revoke viewer URL on end
+        share_token: null, // revoke viewer URL on end (error included)
+        ...(reason ? { error_message: reason } : {}),
       })
       .eq('id', id);
     if (error) {

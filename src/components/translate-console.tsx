@@ -1327,13 +1327,26 @@ export function TranslateConsole({
   // can match a stray `disconnect from room` cycle back to whichever
   // path tore the session down (start error vs stop vs unmount vs
   // re-entry guard). No behaviour difference between values.
-  const cleanup = useCallback((caller: CleanupCaller) => {
+  const cleanup = useCallback((caller: CleanupCaller, errorReason?: string) => {
+    const sid = sessionIdRef.current;
     console.info('[translate] cleanup', {
       caller,
-      sessionId: sessionIdRef.current,
+      sessionId: sid,
       hasRoom: !!roomRef.current,
       hasPc: !!(pcRef.current.mic || pcRef.current.tab),
     });
+    // OBS-4: when a start path failed (connect timeout / mic / LiveKit /
+    // WebRTC), persist a terminal 'error' state + reason so the failed
+    // session is countable in the admin dashboard instead of dying as a
+    // phantom row. Fire-and-forget — teardown must not block on the
+    // network, and /end is idempotent (won't overwrite a settled row).
+    if (errorReason && sid) {
+      void fetch(`/api/translate/sessions/${sid}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: errorReason }),
+      }).catch(() => {});
+    }
     try {
       channelRef.current?.unsubscribe();
     } catch {}
@@ -2451,7 +2464,7 @@ export function TranslateConsole({
       });
       setError('translate_timeout');
       setStatus('error');
-      cleanup('start_error_webrtc');
+      cleanup('start_error_webrtc', 'translate_timeout');
       startInFlightRef.current = false;
     }, CONNECT_TIMEOUT_MS);
 
@@ -2637,17 +2650,15 @@ export function TranslateConsole({
     if (slotsToStart.includes('mic') && micAcquired) liveSlots.push('mic');
     if (slotsToStart.includes('tab') && tabAcquired) liveSlots.push('tab');
     if (liveSlots.length === 0) {
-      if (captureModeAtStart === 'tab-only') {
-        // setSlotError already pinned the precise failure; promote the
-        // tab slot's error to the top-level error so the user sees it.
-        setError('tab_audio_failed');
-      } else if (captureModeAtStart === 'mic-only') {
-        setError('microphone_denied');
-      } else {
-        setError('microphone_denied');
-      }
+      // setSlotError already pinned the precise failure; promote the tab
+      // slot's error to the top-level error so the user sees it.
+      const reason =
+        captureModeAtStart === 'tab-only'
+          ? 'tab_audio_failed'
+          : 'microphone_denied';
+      setError(reason);
       setStatus('error');
-      cleanup('start_error_mic');
+      cleanup('start_error_mic', reason);
       startInFlightRef.current = false;
       return;
     }
@@ -2670,7 +2681,7 @@ export function TranslateConsole({
       console.warn('[translate] audioCtx construction failed', err);
       setError('webrtc_failed');
       setStatus('error');
-      cleanup('start_error_webrtc');
+      cleanup('start_error_webrtc', 'webrtc_failed');
       startInFlightRef.current = false;
       return;
     }
@@ -2891,9 +2902,10 @@ export function TranslateConsole({
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'livekit_failed');
+      const reason = e instanceof Error ? e.message : 'livekit_failed';
+      setError(reason);
       setStatus('error');
-      cleanup('start_error_livekit');
+      cleanup('start_error_livekit', reason);
       startInFlightRef.current = false;
       return;
     }
@@ -3331,7 +3343,7 @@ export function TranslateConsole({
     if (!anySlotUp) {
       setError('webrtc_failed');
       setStatus('error');
-      cleanup('start_error_webrtc');
+      cleanup('start_error_webrtc', 'webrtc_failed');
       startInFlightRef.current = false;
       return;
     }
