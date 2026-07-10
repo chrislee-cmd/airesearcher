@@ -1153,7 +1153,7 @@
     "transcripts": {
       "uploading": "Uploading files",
       "transcribing": "Converting speech to text",
-      "md_conversion": "Converting to a document",
+      "md_conversion": "Structuring the transcript into a document",
       "speaker_diarization": "Separating speakers",
       "typo_correction": "Fixing typos",
       "phrasing_polish": "Polishing phrasing"
@@ -1170,6 +1170,13 @@
     "viewAll": "View all →",
     "transcriptRunning": "Transcription in progress",
     "transcriptDone": "Transcription complete",
+    "transcriptStageUpload": "Upload",
+    "transcriptStageTranscribe": "Transcribe",
+    "transcriptStageMd": "Document",
+    "transcriptStageSpeaker": "Speakers",
+    "transcriptStageTypo": "Typos",
+    "transcriptStagePhrasing": "Polish",
+    "transcriptStageDetails": "Per-file details",
     "deskRunning": "Research in progress",
     "deskDone": "Research complete",
     "interviewRunning": "Analysis in progress",

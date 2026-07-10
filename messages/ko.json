@@ -1153,7 +1153,7 @@
     "transcripts": {
       "uploading": "파일 업로드 중이에요",
       "transcribing": "음성 → 텍스트 변환 중이에요",
-      "md_conversion": "문서로 변환 중이에요",
+      "md_conversion": "전사 결과를 문서 형식으로 구성하고 있어요",
       "speaker_diarization": "화자 나누는 중이에요",
       "typo_correction": "오탈자 수정 중이에요",
       "phrasing_polish": "어색한 표현 보정 중이에요"
@@ -1170,6 +1170,13 @@
     "viewAll": "전체 보기 →",
     "transcriptRunning": "전사가 진행중입니다",
     "transcriptDone": "전사가 완료되었습니다",
+    "transcriptStageUpload": "업로드",
+    "transcriptStageTranscribe": "전사",
+    "transcriptStageMd": "문서 변환",
+    "transcriptStageSpeaker": "화자 분리",
+    "transcriptStageTypo": "오탈자 수정",
+    "transcriptStagePhrasing": "표현 보정",
+    "transcriptStageDetails": "파일별 상세",
     "deskRunning": "리서치가 진행중입니다",
     "deskDone": "리서치가 완료되었습니다",
     "interviewRunning": "분석이 진행중입니다",
