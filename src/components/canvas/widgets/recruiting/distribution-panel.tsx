@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BrandLoader } from '@/components/ui/brand-loader';
@@ -122,8 +123,9 @@ export function RecruitingDistributionPanel({
   );
 }
 
-// 활성 필터 시각화 — 선택된 셀 + 질문 답변을 제거 가능한 chip 으로. 각 chip 의
-// "×" 는 해당 항목만 토글 해제, 우측 "전체 초기화" 는 필터 전체를 비운다.
+// 활성 필터 시각화 — 선택된 셀 + 질문 답변을 제거 가능한 Badge(표시용 chip
+// primitive, variant=subtle + onDismiss)로. 각 Badge 의 "×" 는 해당 항목만
+// 토글 해제, 우측 "전체 초기화" 는 필터 전체를 비운다.
 function FilterChips({
   filter,
   filterableQuestions,
@@ -139,19 +141,27 @@ function FilterChips({
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b-[1.5px] border-ink/15 px-4 py-2">
       {filter.cells.map((c) => (
-        <Chip
+        <Badge
           key={`c-${c.gender}-${c.ageBucket}`}
-          label={`${c.gender} × ${c.ageBucket}`}
-          onRemove={() => onFilterChange?.(toggleCell(filter, c))}
-        />
+          variant="subtle"
+          className="max-w-[180px] text-xs-soft"
+          onDismiss={() => onFilterChange?.(toggleCell(filter, c))}
+          dismissLabel="필터 제거"
+        >
+          {`${c.gender} × ${c.ageBucket}`}
+        </Badge>
       ))}
       {filter.questions.flatMap((q) =>
         q.answers.map((ans) => (
-          <Chip
+          <Badge
             key={`q-${q.field}-${ans}`}
-            label={`${qTitle(q.field)}: ${ans}`}
-            onRemove={() => onFilterChange?.(toggleAnswer(filter, q.field, ans))}
-          />
+            variant="subtle"
+            className="max-w-[180px] text-xs-soft"
+            onDismiss={() => onFilterChange?.(toggleAnswer(filter, q.field, ans))}
+            dismissLabel="필터 제거"
+          >
+            {`${qTitle(q.field)}: ${ans}`}
+          </Badge>
         )),
       )}
       <Button
@@ -163,23 +173,6 @@ function FilterChips({
         전체 초기화
       </Button>
     </div>
-  );
-}
-
-function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    // eslint-disable-next-line react/forbid-elements -- 제거 가능한 필터 chip; Button chrome 은 밀집 태그에 부적합
-    <button
-      type="button"
-      onClick={onRemove}
-      className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-ink/25 bg-paper-soft px-2 py-0.5 text-xs-soft text-ink-2 transition-colors hover:border-ink hover:text-ink"
-    >
-      <span className="truncate">{label}</span>
-      <span aria-hidden className="text-mute-soft">
-        ×
-      </span>
-      <span className="sr-only">필터 제거</span>
-    </button>
   );
 }
 
@@ -256,7 +249,7 @@ function DistributionGrid({
     <table className="w-full border-collapse text-md tabular-nums">
       <thead>
         <tr>
-          <th className="border-b border-line-soft px-2 py-1.5 text-left text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
+          <th className="border-b border-line-soft px-2 py-1.5 text-left text-xs-soft uppercase tracking-[0.22em] text-mute-soft">
             성별 \ 연령
           </th>
           {yLabels.map((y) => (
