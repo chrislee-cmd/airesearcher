@@ -271,16 +271,28 @@ function ExpandedBody() {
     if (sessionStatus === 'live') {
       if (sessionStartAtRef.current === null) {
         sessionStartAtRef.current = Date.now();
+        // OBS-2 퍼널 이벤트 짝 — DB(probing_session_runs) 는 정확 집계용,
+        // PostHog widget_action 은 퍼널 시각화용 (이중 계측).
+        trackEvent('widget_action', {
+          widget: 'probing',
+          action: 'session_started',
+        });
       }
       return;
     }
     if (sessionStartAtRef.current !== null) {
       const startedAt = sessionStartAtRef.current;
       sessionStartAtRef.current = null;
+      const durationMs = Math.max(0, Date.now() - startedAt);
       trackEvent('job_completed', {
         widget: 'probing',
         job_type: 'session',
-        duration_ms: Math.max(0, Date.now() - startedAt),
+        duration_ms: durationMs,
+      });
+      trackEvent('widget_action', {
+        widget: 'probing',
+        action: 'session_ended',
+        metadata: { duration_ms: durationMs },
       });
     }
   }, [sessionStatus]);

@@ -263,6 +263,11 @@ export function useRealtimeTranscription(opts?: {
   // start() 중복 방지. setStatus('starting') 는 batched 라 같은 microtask
   // 안 두 번째 클릭은 closure 로 idle 을 본다 — ref 가 진짜 가드.
   const startInFlightRef = useRef(false);
+  // 세션 종료 계측(OBS-2) 사유. teardown(cleanup) 이 이 값으로
+  // probing_session_runs 를 'ended'/'error' 로 마감한다. 기본 'ended'(정상 stop
+  // /언마운트), 에러 경로가 cleanup 직전에 'error' 로 세팅. 탭 닫힘/크래시로
+  // cleanup 이 아예 안 돌면 row 는 'active' 로 남아 퍼널의 "이탈" 버킷이 된다.
+  const endReasonRef = useRef<'ended' | 'error'>('ended');
   // auto-renewal 상태. startedAt = 현재 OpenAI 세션이 붙은 시각 (renewal 마다
   // 갱신). sourceRef = 재연결 시 tab/mic 분기 재현용. renewTimer = 25분 폴링.
   // renewInFlight = 재연결 중복 방지 (실패 시 10초 뒤 자동 재시도).
@@ -281,6 +286,24 @@ export function useRealtimeTranscription(opts?: {
 
   // cleanup — start 의 어느 단계에서 실패해도 안전하게 모든 리소스 해제.
   const cleanup = useCallback(() => {
+    // 세션 종료 계측(OBS-2) — session_id 가 있으면(= 서버 run row 가 있으면)
+    // 마감 beacon. sessionIdRef 를 null 로 지우기 전에 먼저 발사한다.
+    // keepalive 로 언마운트/네비게이션에도 요청이 살아남는다. best-effort:
+    // 실패해도 무시(퍼널 계측이 세션 정리를 막지 않음). 두 번째 cleanup 은
+    // sessionIdRef 가 이미 null 이라 중복 발사 없음.
+    const endingSid = sessionIdRef.current;
+    if (endingSid) {
+      const reason = endReasonRef.current;
+      void fetch('/api/probing/sessions/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: endingSid, status: reason }),
+        keepalive: true,
+      }).catch(() => {
+        /* best-effort 계측 — 무시 */
+      });
+    }
+    endReasonRef.current = 'ended';
     if (connectWatchdogRef.current) {
       clearTimeout(connectWatchdogRef.current);
       connectWatchdogRef.current = null;
@@ -594,7 +617,9 @@ export function useRealtimeTranscription(opts?: {
           res = await fetch('/api/probing/sessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
+            // source 는 probing_session_runs 계측용 (mic/tab). 신규 start 에만
+            // 의미 — renewal 은 renewSession() 이 별도로 처리한다.
+            body: JSON.stringify({ source }),
             signal: fetchController.signal,
           });
         } finally {
@@ -673,6 +698,7 @@ export function useRealtimeTranscription(opts?: {
             // 의 window/screen surface 도 보통 여기 (네이티브 앱 audio 미캡처).
             display.getTracks().forEach((tr) => tr.stop());
             setError('tab_audio_unavailable');
+            endReasonRef.current = 'error';
             setStatus('error');
             cleanup();
             startInFlightRef.current = false;
@@ -702,6 +728,7 @@ export function useRealtimeTranscription(opts?: {
             name === 'NotAllowedError' ? 'microphone_denied' : 'microphone_failed',
           );
         }
+        endReasonRef.current = 'error';
         setStatus('error');
         cleanup();
         startInFlightRef.current = false;
@@ -750,6 +777,7 @@ export function useRealtimeTranscription(opts?: {
           dcReadyState: wdc?.readyState ?? null,
         });
         setError('probing_connect_timeout');
+        endReasonRef.current = 'error';
         setStatus('error');
         cleanup();
         startInFlightRef.current = false;
@@ -803,6 +831,7 @@ export function useRealtimeTranscription(opts?: {
           error: e instanceof Error ? e.message : String(e),
         });
         setError(e instanceof Error ? e.message : 'webrtc_failed');
+        endReasonRef.current = 'error';
         setStatus('error');
         cleanup();
         startInFlightRef.current = false;
