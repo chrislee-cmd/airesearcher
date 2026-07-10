@@ -281,6 +281,41 @@ export function QuotesCardBody() {
   // 신호가 새로 생기면 해제된다. 뷰 상태 전용 ref — DB 산출물은 보존된다.
   const dismissedToIdleRef = useRef(false);
 
+  // ── 완료 표면 세션 스코프 (#187 데스크 latestJob 동형) ─────────────────────
+  // 과거 완료 잡을 fresh 로그인마다 완료 StageFlow 로 영원히 재상영하던 회귀
+  // (prod 실측 2026-07-10 — DB 는 전부 done, 표시 로직 문제)를 제거한다. "이
+  // 브라우저 세션에서 non-done → done 으로 전이한" 잡 id 만 여기 쌓이고, 아래
+  // 승격 effect 의 완료 표면 승격은 이 집합에 걸린다. 마운트 시 이미 done 인
+  // 과거 잡은 전이가 아니라 첫 관측(seed)이므로 제외 → 과거 done 만 존재하면
+  // idle 컨트롤 보드로 남는다. 과거 결과물 접근은 그대로(doneJobs 리스트/전체
+  // 보기/다운로드 — 휴식 얼굴만 바뀐다). 다른 디바이스에서 완료돼 realtime 으로
+  // 넘어온 잡도 이 세션에선 전이를 못 봤으므로 idle 유지(보수적 — 결과는 접근
+  // 가능). 업로드→완료 실시간 전이(세션 내)는 전이를 관측하므로 완료 연출 유지.
+  const sessionStatusRef = useRef<Map<string, TranscriptJobStatus>>(new Map());
+  const [sessionCompletedIds, setSessionCompletedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    let added: string[] | null = null;
+    for (const j of job.jobs) {
+      const prev = sessionStatusRef.current.get(j.id);
+      sessionStatusRef.current.set(j.id, j.status);
+      // 전이만 카운트 — 첫 관측(prev 없음: 마운트 시 로드된 과거 잡)과 동일
+      // status 재관측은 무시. non-done → done 전이만 "세션 내 완료" 로 기록.
+      if (!prev || prev === j.status) continue;
+      if (j.status === 'done') (added ??= []).push(j.id);
+    }
+    if (added) {
+      const ids = added;
+       
+      setSessionCompletedIds((prevSet) => {
+        const next = new Set(prevSet);
+        for (const id of ids) next.add(id);
+        return next;
+      });
+    }
+  }, [job.jobs]);
+
   // 실행 신호(진행/완료 잡, 로컬 업로드, 시작 대기 파일)가 하나라도 있으면
   // active 로 승격. 새로고침/다른 디바이스에서 이미 잡이 있는 경우(realtime
   // 로 늦게 로드)도 이 effect 가 idle→active 를 처리한다. 단, 완료분만 남고
@@ -297,9 +332,16 @@ export function QuotesCardBody() {
       setPhase('active');
       return;
     }
-    // 완료분만 있는 상태: fullview 확인 후 idle 로 되돌린 게 아니면
-    // (첫 로드/새로고침 등) active 로 승격.
+    // 완료분만 남은 상태: 세션 스코프 게이트(#187) — 이 세션에서 완료로 전이한
+    // 잡이 있을 때만 완료 표면으로 승격한다. fresh 로그인(과거 done 만 존재,
+    // 세션 완료 0)은 승격하지 않고 idle 컨트롤 보드로 남겨 "과거 완료 잡 영원히
+    // 재상영"(StageFlow 잔상)을 제거한다.
     if (job.jobs.length > 0) {
+      const hasSessionCompletion = job.jobs.some(
+        (j) => j.status === 'done' && sessionCompletedIds.has(j.id),
+      );
+      if (!hasSessionCompletion) return;
+      // 세션 내 완료분 존재 — fullview 확인 후 idle 로 되돌린 게 아니면 승격.
       // 영속 dismissal 복원 — 새로고침/리마운트로 ref 가 초기화됐어도, 저장된
       // 시그니처가 현재 완료 job-set 과 일치하면 사용자가 이미 확인·idle 로
       // 되돌린 job-set 이므로 재승격하지 않는다. 시그니처가 다르면(새 완료분)
@@ -314,7 +356,7 @@ export function QuotesCardBody() {
         setPhase('active');
       }
     }
-  }, [job.jobs, job.localUploads, readyFiles.length, userId]);
+  }, [job.jobs, job.localUploads, readyFiles.length, userId, sessionCompletedIds]);
 
   // `startUploads` is wrapped in useCallback with empty deps, so the closure
   // around `uploadToStorage` is captured once. We mirror live state into a
@@ -977,7 +1019,12 @@ export function QuotesCardBody() {
       });
       return;
     }
-    if (doneJobs.length > 0) {
+    // 완료 표면 세션 스코프(#187) 정합 — body 가 idle 휴식 얼굴(과거 done 만,
+    // 세션 완료 0 → phase 'idle')이면 헤더도 idle 로 둔다. phase 가 active(세션
+    // 내 완료/진행)일 때만 done 상태(및 raw 영문 'DONE' pill)를 노출해, fresh
+    // 로그인 시 idle 컨트롤 보드 위에 헤더만 'DONE' 이 떠 어긋나던 잔상을 없앤다.
+    // (widget-shell 공용 pill 은 무변경 — 이 위젯의 상태 보고만 세션 스코프.)
+    if (doneJobs.length > 0 && phase === 'active') {
       setState({ kind: 'done' });
       return;
     }
@@ -990,6 +1037,7 @@ export function QuotesCardBody() {
     stuckMessage,
     doneJobs.length,
     nowTick,
+    phase,
   ]);
 
   // Analytics — 전사 잡의 완료/실패 전이 계측. 잡별 prev status 를 추적해
