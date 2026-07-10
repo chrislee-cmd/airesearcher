@@ -175,7 +175,7 @@ export function Modal({
           // size 는 edge-to-edge 라 그림자/모서리 잘림 회피 위해 둘 다 끈다.
           size === 'full'
             ? 'rounded-none'
-            : 'rounded-sm shadow-[8px_8px_0_var(--color-ink)]',
+            : 'rounded-sm shadow-memphis-2xl',
           // Enter/leave: gentle scale+fade (origin center). reduced-motion
           // drops the transition so it snaps to the final state instantly.
           reduced ? '' : 'transition-[transform,opacity] duration-[180ms] ease-out',

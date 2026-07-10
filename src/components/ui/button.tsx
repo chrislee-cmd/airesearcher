@@ -54,20 +54,20 @@ const BASE =
 // on active. link/destructive-link stay flat (text-only identity).
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    'border-[2.5px] border-ink bg-ink text-paper shadow-[3px_3px_0_black] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black] ' +
-    'active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]',
+    'border-[2.5px] border-ink bg-ink text-paper shadow-memphis-md ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-memphis-lg ' +
+    'active:translate-x-0 active:translate-y-0 active:shadow-memphis-2xs',
   secondary:
-    'border-[2.5px] border-ink bg-paper text-ink shadow-[3px_3px_0_black] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black] hover:bg-paper-soft ' +
-    'active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]',
+    'border-[2.5px] border-ink bg-paper text-ink shadow-memphis-md ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-memphis-lg hover:bg-paper-soft ' +
+    'active:translate-x-0 active:translate-y-0 active:shadow-memphis-2xs',
   ghost:
-    'border-[2.5px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-[3px_3px_0_black]',
+    'border-[2.5px] border-line bg-paper text-ink shadow-memphis-sm-faint ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-memphis-md',
   destructive:
-    'border-[2.5px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'border-[2.5px] border-line bg-paper text-ink shadow-memphis-sm-faint ' +
     'hover:-translate-x-px hover:-translate-y-px hover:border-warning hover:text-warning ' +
-    'hover:shadow-[3px_3px_0_var(--color-warning)]',
+    'hover:shadow-memphis-md-warning',
   // Text-only neutral action (e.g. "switch to sign up", inline cancels).
   link:
     'border-transparent bg-transparent text-mute hover:text-ink-2 ' +

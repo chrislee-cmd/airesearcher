@@ -42,5 +42,6 @@ PROJECT.md §5.4 의 `docs/PROJECT_PENDING.md` 와 동일 패턴.
 - 2026-07-02 · PR #501 · §4.2 · translate-console hex 6건 sweep → 139→133
 -->
 
+- 2026-07-10 · PR (ds-memphis-shadow-tokens) · §1.2/§1.4 · Memphis hard offset shadow 토큰화 — raw offset 스케일 `--raw-memphis-{2xs,xs,sm,md,lg,2xl}`(pop+editorial 동기화) + @theme `--shadow-memphis-*` 11개(색 조합: base black / -faint rgba15% / -warning / -amore / -card / 2xl=ink). ui/ 프리미티브 32곳 `shadow-[Npx_Npx_0_*]` arbitrary → 토큰 순수 치환(diff-0). 6px(xl) 등 미사용 스케일은 미신설. canvas/widgets sweep 은 DS-2 별도
 - 2026-07-10 · PR (chipfield-primitive) · §3 · ChipField primitive 추가 — 칩 컨테이너 SSOT (프레임 + 칩 pill + plain × + 내부 ChipInput). variant bordered(default)/subtle · API values/onChange/maxItems/maxLength/commitOnComma/disabled/chipRemoveLabel/inputType · IME-safe commit 내장. Phase 2 에서 desk/translate/tags/invite 4곳 정합
 - 2026-07-10 · PR (iconbutton-plain-variant) · §3 · IconButton `plain` variant 추가 — bare glyph (border/bg/shadow 무, hover 색만 text-mute→ink-2)

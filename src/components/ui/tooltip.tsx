@@ -40,7 +40,7 @@ export function Tooltip({ content, children }: TooltipProps) {
         <span
           role="tooltip"
           id={id}
-          className="absolute bottom-full left-1/2 z-fab mb-2 w-64 -translate-x-1/2 rounded-sm border border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-2 shadow-[3px_3px_0_black]"
+          className="absolute bottom-full left-1/2 z-fab mb-2 w-64 -translate-x-1/2 rounded-sm border border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-2 shadow-memphis-md"
         >
           {content}
         </span>

@@ -77,7 +77,7 @@ export function OnboardingTooltip({
       <div onClickCapture={dismiss}>{children}</div>
       <div
         role="note"
-        className="absolute left-0 top-full z-fab mt-2 flex items-center gap-2 rounded-sm border-[2px] border-ink bg-amore-bg px-3 py-2 shadow-[3px_3px_0_black]"
+        className="absolute left-0 top-full z-fab mt-2 flex items-center gap-2 rounded-sm border-[2px] border-ink bg-amore-bg px-3 py-2 shadow-memphis-md"
       >
         <span className="whitespace-nowrap text-sm text-ink-2">{message}</span>
         <button

@@ -191,7 +191,7 @@ export function DropdownMenu({
               role="menu"
               aria-labelledby={triggerId}
               onKeyDown={onMenuKeyDown}
-              className="menu-in z-overlay border-[2px] border-ink bg-paper py-1 rounded-sm shadow-[3px_3px_0_black]"
+              className="menu-in z-overlay border-[2px] border-ink bg-paper py-1 rounded-sm shadow-memphis-md"
               style={menuStyle}
             >
               {label ? (

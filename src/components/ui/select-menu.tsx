@@ -136,7 +136,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
             ref={panelRef}
             role="listbox"
             aria-multiselectable={props.multi}
-            className="menu-in fixed z-overlay max-h-72 overflow-y-auto rounded-xs border-[2px] border-ink bg-paper shadow-[3px_3px_0_var(--canvas-card-border)]"
+            className="menu-in fixed z-overlay max-h-72 overflow-y-auto rounded-xs border-[2px] border-ink bg-paper shadow-memphis-md-card"
             style={{
               left: rect.left,
               top: rect.bottom + 4,
