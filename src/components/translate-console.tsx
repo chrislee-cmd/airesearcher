@@ -45,6 +45,7 @@ import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
+import { LangDualDropdown } from './translate/lang-dual-dropdown';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
   listenersFromPresence,
@@ -4098,57 +4099,25 @@ export function TranslateConsole({
           중엔 disabled (opacity 로 read-only 신호). 라벨은 Field primitive 로
           정합 — 전사록/인터뷰와 동일 SectionLabel 타이포·간격(mb-1.5), 인라인
           재현 0 (spec 결정 2). */}
-      {/* 컨트롤 드롭다운 통일 — native <select> ×3 → DropdownMenu(인터뷰 기준).
-          항목/value/onChange 불변, 껍데기만 교체 (spec 결정 3). controlFields 는
-          idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. live/busy 중엔
-          trigger disabled (옛 select disabled 동작 유지). */}
+      {/* 컨트롤 드롭다운 통일 — native <select> → DropdownMenu(인터뷰 기준).
+          원어/대상어 두 언어 DropdownMenu 는 단일 "언어" LangDualDropdown 으로
+          통합 (2컬럼 인풋|아웃풋, 사용자 2026-07-10). state(sourceLang/targetLang)·
+          게이트(canStart)·payload(source_lang/target_lang)·번역 로직 전부 무변경 —
+          UI 포장만 (spec 결정 3). controlFields 는 idle 센터 보드와 live 상단 바가
+          공유 → 양쪽 동시 반영. live/busy 중엔 trigger disabled. */}
       <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
-        <Field label={t('sourceLang')}>
-          <DropdownMenu
-            items={langOptions.map((l) => ({
-              key: l.value,
-              label: l.label,
-              onSelect: () => setSourceLang(l.value),
-            }))}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                disabled={busy || live}
-                aria-label={t('sourceLang')}
-                className="min-w-32"
-              >
-                {sourceLang
-                  ? (langOptions.find((l) => l.value === sourceLang)?.label ??
-                    sourceLang)
-                  : t('select')}
-              </ControlTrigger>
-            )}
-          />
-        </Field>
-        <Field label={t('targetLang')}>
-          <DropdownMenu
-            items={langOptions.map((l) => ({
-              key: l.value,
-              label: l.label,
-              onSelect: () => setTargetLang(l.value),
-            }))}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                disabled={busy || live}
-                aria-label={t('targetLang')}
-                className="min-w-32"
-              >
-                {targetLang
-                  ? (langOptions.find((l) => l.value === targetLang)?.label ??
-                    targetLang)
-                  : t('select')}
-              </ControlTrigger>
-            )}
+        <Field label={t('lang')}>
+          <LangDualDropdown
+            langs={langOptions}
+            sourceLang={sourceLang}
+            targetLang={targetLang}
+            onSelectSource={setSourceLang}
+            onSelectTarget={setTargetLang}
+            placeholder={t('select')}
+            inputLabel={t('inputLang')}
+            outputLabel={t('outputLang')}
+            triggerLabel={t('lang')}
+            disabled={busy || live}
           />
         </Field>
         <Field label={t('captureMode.label')}>

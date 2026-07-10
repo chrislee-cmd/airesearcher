@@ -944,6 +944,9 @@
   "TranslateConsole": {
     "sourceLang": "원어",
     "targetLang": "번역 언어",
+    "lang": "언어",
+    "inputLang": "인풋 언어",
+    "outputLang": "아웃풋 언어",
     "select": "선택",
     "inputSource": {
       "label": "입력 소스",
