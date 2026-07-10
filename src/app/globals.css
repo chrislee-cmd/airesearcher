@@ -57,6 +57,16 @@
   --raw-shadow-chrome: 4px 4px 0 #000000;
   --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 
+  /* memphis offset scale — 시그니처 hard offset shadow 의 기하값(offset-x/y)만.
+     색은 @theme --shadow-memphis-* 에서 조합(offset atom + 색 토큰). 톤 조정(예:
+     md 3px→2px) 은 이 한 곳만 수정하면 전 ui/ 프리미티브가 따라감. blur 는 항상 0. */
+  --raw-memphis-2xs: 1px 1px;
+  --raw-memphis-xs: 1.5px 1.5px;
+  --raw-memphis-sm: 2px 2px;
+  --raw-memphis-md: 3px 3px;
+  --raw-memphis-lg: 4px 4px;
+  --raw-memphis-2xl: 8px 8px;
+
   /* accent */
   --raw-accent-pink: #ff5c8a;
   --raw-accent-pink-soft: #ff96b6;
@@ -137,6 +147,16 @@
   --raw-shadow-hard-xs: 0 1px 2px rgba(29, 27, 32, 0.04);
   --raw-shadow-chrome: 0 1px 2px rgba(29, 27, 32, 0.04), 0 4px 12px rgba(29, 27, 32, 0.04);
   --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
+
+  /* memphis offset scale — pop 과 동일 기하값 유지(순수 치환: 기존 ui/ 하드코드가
+     테마 무관하게 hard offset 이었으므로 diff-0 위해 동일 px). editorial 전용
+     softening 은 DS-2+ 에서 별도 판단(현재 editorial 은 dormant, layout=pop 고정). */
+  --raw-memphis-2xs: 1px 1px;
+  --raw-memphis-xs: 1.5px 1.5px;
+  --raw-memphis-sm: 2px 2px;
+  --raw-memphis-md: 3px 3px;
+  --raw-memphis-lg: 4px 4px;
+  --raw-memphis-2xl: 8px 8px;
 
   /* accent — mono (액센트 제거) */
   --raw-accent-pink: #1d1b20;
@@ -370,6 +390,23 @@
 
   /* Single shadow token (bento soft elevation) */
   --shadow-bento: var(--raw-shadow-soft);
+
+  /* Memphis hard offset shadows — ui/ 프리미티브 시그니처 그림자 SSOT.
+     offset atom(--raw-memphis-*) + 색 토큰 조합. 실 사용 분포(ui/ 32곳)에서
+     확정한 최소 집합 — 미사용 스케일(6px 등)·색은 만들지 않음(과잉 토큰 금지).
+     `shadow-memphis-md` 처럼 Tailwind utility 로 소비. 색 기본은 black(기존
+     하드코드 그대로, diff-0), 변형은 -faint/-warning/-amore/-card 접미. */
+  --shadow-memphis-2xs: var(--raw-memphis-2xs) 0 black;
+  --shadow-memphis-xs: var(--raw-memphis-xs) 0 black;
+  --shadow-memphis-xs-amore: var(--raw-memphis-xs) 0 var(--color-amore);
+  --shadow-memphis-sm: var(--raw-memphis-sm) 0 black;
+  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(0, 0, 0, 0.15);
+  --shadow-memphis-md: var(--raw-memphis-md) 0 black;
+  --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
+  --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
+  --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
+  --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
+  --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
 }
 
 /* =========================================================================

@@ -67,19 +67,19 @@ const BASE =
 // loudest treatment (filled ink border + black shadow).
 const VARIANT: Record<IconButtonVariant, string> = {
   ghost:
-    'border-[2px] border-line bg-paper text-ink shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-[3px_3px_0_black]',
+    'border-[2px] border-line bg-paper text-ink shadow-memphis-sm-faint ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-memphis-md',
   'ghost-danger':
-    'border-[2px] border-line bg-paper text-mute shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'border-[2px] border-line bg-paper text-mute shadow-memphis-sm-faint ' +
     'hover:-translate-x-px hover:-translate-y-px hover:border-warning hover:text-warning ' +
-    'hover:shadow-[3px_3px_0_var(--color-warning)]',
+    'hover:shadow-memphis-md-warning',
   'ghost-brand':
-    'border-[2px] border-line bg-paper text-mute shadow-[2px_2px_0_rgba(0,0,0,0.15)] ' +
+    'border-[2px] border-line bg-paper text-mute shadow-memphis-sm-faint ' +
     'hover:-translate-x-px hover:-translate-y-px hover:border-amore hover:text-amore ' +
-    'hover:shadow-[3px_3px_0_var(--color-amore)]',
+    'hover:shadow-memphis-md-amore',
   bordered:
-    'border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_black] ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_black] rounded-xs',
+    'border-[2px] border-ink bg-paper text-ink shadow-memphis-sm ' +
+    'hover:-translate-x-px hover:-translate-y-px hover:shadow-memphis-md rounded-xs',
   // Subtle tone for header bands (yellow Topbar banner) — circular chip
   // with soft ink fill, no border/shadow. Pairs with Button `subtle` (pill
   // form) so the gear inside the account pill or alongside SignIn reads as

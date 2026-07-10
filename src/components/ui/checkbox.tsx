@@ -39,8 +39,8 @@ const CHECK_SIZE = {
 const BASE =
   'peer appearance-none cursor-pointer shrink-0 ' +
   'border-2 border-ink rounded-xs bg-paper ' +
-  'shadow-[1.5px_1.5px_0_black] ' +
-  'checked:bg-amore checked:border-ink checked:shadow-[1.5px_1.5px_0_var(--color-amore)] ' +
+  'shadow-memphis-xs ' +
+  'checked:bg-amore checked:border-ink checked:shadow-memphis-xs-amore ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore ' +
   'disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ' +
   'transition-[background-color,box-shadow,border-color] duration-[120ms]';

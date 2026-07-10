@@ -32,8 +32,8 @@ export function JobProgress({
   const labelTone = isError ? 'text-warning' : 'text-ink';
   const dotTone = isError ? 'bg-warning' : 'bg-ink';
   const containerTone = isError
-    ? 'border-warning shadow-[3px_3px_0_var(--color-warning)]'
-    : 'border-ink shadow-[3px_3px_0_black]';
+    ? 'border-warning shadow-memphis-md-warning'
+    : 'border-ink shadow-memphis-md';
 
   // inline: outer border/shadow/bg 제거 — 이미 border 컨테이너 (예:
   // WidgetOutputRow) 안에서 mount 될 때 이중 컨테이너 시각을 피함. padding 만 최소.
