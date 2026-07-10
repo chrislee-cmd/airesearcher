@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
+import { ProjectPicker } from '@/components/project-picker';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 import { PersonaSectionConfigurator } from './persona-section-configurator';
 import type { ProbingCustomSection } from '../probing-types';
@@ -193,6 +194,8 @@ export function ProbingControlPanel({
   onAddCustomSection,
   customSectionsFull,
   sectionConfigDisabled,
+  projectId,
+  onProjectChange,
 }: {
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
@@ -217,6 +220,11 @@ export function ProbingControlPanel({
   onAddCustomSection: (title: string, description?: string) => void;
   customSectionsFull: boolean;
   sectionConfigDisabled: boolean;
+  // ─── 프로젝트 설정 (#542) — 페르소나 섹션 구성의 프로젝트별 소스 ───
+  // 선택된 projectId(없으면 null=로컬 fallback). 위젯별 독립 선택
+  // (ProjectSelectionProvider 의 'probing' 슬롯) — 통역 등 타 위젯과 강제 sync X.
+  projectId: string | null;
+  onProjectChange: (projectId: string | null) => void;
 }) {
   // 프레임(외곽 padding/폭/정렬/세로채움)은 ControlBoardPanel SSOT 소유 —
   // 여기서 px-5 py-4 / shrink-0 를 직접 지정하지 않는다 (idle=active 프레임
@@ -224,6 +232,23 @@ export function ProbingControlPanel({
   // 리듬(gap-5)만 소유. idle·active 모두 <ControlBoardPanel> 경유.
   return (
     <div className="flex flex-col gap-5">
+      {/* 프로젝트 설정 드롭다운 (#542) — 페르소나 섹션 구성을 프로젝트별로
+          분리. 위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
+          에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write. */}
+      <Field
+        label="프로젝트"
+        description={
+          projectId
+            ? undefined
+            : '미선택 — 페르소나 섹션 구성은 이 기기에만 저장돼요. 프로젝트를 고르면 계정에 저장돼 어디서든 이어집니다.'
+        }
+      >
+        <ProjectPicker
+          widget="probing"
+          value={projectId}
+          onChange={onProjectChange}
+        />
+      </Field>
       <ControlFields
         researchGoal={researchGoal}
         onResearchGoalChange={onResearchGoalChange}
