@@ -46,6 +46,9 @@ import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
 import { LangDualDropdown } from './translate/lang-dual-dropdown';
+import { ProjectPicker } from '@/components/project-picker';
+import { useProjectSelection } from '@/components/project-selection-provider';
+import { useProjectWidgetSettings } from '@/hooks/use-project-widget-settings';
 import { useTranslateSessionPublisher } from './translate/translate-session-context';
 import {
   listenersFromPresence,
@@ -717,6 +720,57 @@ export function TranslateConsole({
   // endpoint can't take a hint (openai-realtime.ts), so glossary only
   // feeds the post-process (Layer D) and revise (Layer C) LLM passes.
   const [glossary, setGlossary] = useState<string[]>([]);
+  // 프로젝트별 용어집 (#543). 통역 위젯 슬롯의 독립 선택(ProjectSelectionProvider
+  // 의 'translate' 슬롯) — 다른 위젯(프로빙 등) 선택과 무관, 강제 sync 없음.
+  // 선택 프로젝트가 있으면 glossary 를 그 프로젝트의 project_widget_settings
+  // ('translate', { glossary }) 로 hydrate/save(DB 영속). 미선택이면 로컬/빈 값
+  // (하위호환) — 세션 start payload(:2418)는 어느 쪽이든 이 glossary state 를 그대로 씀.
+  const { getSelection, setSelection } = useProjectSelection();
+  const projectId = getSelection('translate');
+  const {
+    settings: widgetSettings,
+    save: saveWidgetSettings,
+    loading: widgetSettingsLoading,
+    error: widgetSettingsError,
+  } = useProjectWidgetSettings(projectId, 'translate');
+  // 선택 프로젝트의 DB 설정이 로드 완료되면(loading true→false) glossary 를 그
+  // 프로젝트 값으로 hydrate. loading 트랜지션에만 반응해 (a) 프로젝트 전환 중
+  // 이전 프로젝트의 stale settings 로 덮어쓰는 것과 (b) save 직후 settings 갱신이
+  // 편집 중인 로컬 값을 되돌리는 것을 둘 다 피한다. 미선택(projectId null)이면
+  // load 가 loading 을 안 올리므로 트랜지션이 없어 로컬 값을 그대로 유지(하위호환).
+  const prevWidgetLoadingRef = useRef(false);
+  useEffect(() => {
+    const wasLoading = prevWidgetLoadingRef.current;
+    prevWidgetLoadingRef.current = widgetSettingsLoading;
+    if (!wasLoading || widgetSettingsLoading || !projectId) return;
+    // 방금 이 프로젝트의 fetch 가 끝났다 — 실패면 cross-project 누출을 막게 빈
+    // 값으로, 성공이면 DB glossary 로 hydrate.
+    const raw = widgetSettingsError
+      ? []
+      : (widgetSettings as { glossary?: unknown }).glossary;
+    const next = Array.isArray(raw)
+      ? raw.filter((s): s is string => typeof s === 'string')
+      : [];
+    setGlossary(next);
+  }, [widgetSettingsLoading, projectId, widgetSettings, widgetSettingsError]);
+  // glossary 편집 핸들러 — 로컬 state 갱신 + 프로젝트 선택 시 DB save(영속).
+  // 미선택이면 로컬만(하위호환). 다른 위젯 설정 키가 생겨도 보존하도록 spread.
+  const handleGlossaryChange = useCallback(
+    (next: string[]) => {
+      setGlossary(next);
+      if (projectId) {
+        void saveWidgetSettings({ ...widgetSettings, glossary: next });
+      }
+    },
+    [projectId, saveWidgetSettings, widgetSettings],
+  );
+  // 프로젝트 전환 — live 중엔 잠금(결정 3: 세션 중 언어·모드·Glossary 불변).
+  const handleProjectChange = useCallback(
+    (nextId: string | null) => {
+      setSelection('translate', nextId);
+    },
+    [setSelection],
+  );
   // Capture mode picker. Default '' (미선택) — 프로빙(#536)과 동작 통일.
   // picker 옵션은 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
   // 2개뿐 — 'both'(mic+tab 병렬)은 사용자 명시로 옵션에서 제거됐다. 'both'
@@ -4094,6 +4148,23 @@ export function TranslateConsole({
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
     <>
+      {/* 프로젝트 (#543) — 통역 위젯 슬롯의 독립 선택. 고른 프로젝트의
+          용어집(glossary)이 DB(project_widget_settings)에서 로드/저장된다.
+          미선택이면 로컬/빈 값(하위호환). live 중엔 잠금(결정 3: 세션 중
+          Glossary/언어/모드 불변) — pointer-events 차단 + opacity 로 신호,
+          onChange 도 무시. */}
+      <Field label={t('project')}>
+        <div
+          className={live ? 'pointer-events-none opacity-60' : undefined}
+          aria-disabled={live || undefined}
+        >
+          <ProjectPicker
+            widget="translate"
+            value={projectId}
+            onChange={live ? () => {} : handleProjectChange}
+          />
+        </div>
+      </Field>
       {/* 원어 / 대상어 / 입력 모드 — 드롭다운 3종을 컨트롤 최상단에 먼저
           배치 (전사록/인터뷰 dropdown-first 미러). 한 줄 (좁으면 wrap), live
           중엔 disabled (opacity 로 read-only 신호). 라벨은 Field primitive 로
@@ -4155,7 +4226,7 @@ export function TranslateConsole({
       <Field label={t('glossary.label')}>
         <GlossaryField
           values={glossary}
-          onChange={setGlossary}
+          onChange={handleGlossaryChange}
           disabled={busy || live}
           placeholderEmpty={t('glossary.placeholderEmpty')}
           placeholderAdd={t('glossary.placeholderAdd')}
