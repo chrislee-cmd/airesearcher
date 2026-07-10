@@ -4,7 +4,8 @@
    프로빙 어시스턴트 — canvas widget.
 
    PR (probing-question-thinking-flow): 우패널을 4-layer 로 재편 —
-     A. 사용자 입력 (조사 목적 / 핵심 가설 / KRQ) — DB 영속화
+     A. 사용자 입력 (조사 목적 / KRQ) — DB 영속화
+        (옛 "핵심 가설" 은 은퇴 — probing-hypotheses-retire-ghost-injection)
      B. AI self-thinking 스트리밍 — `/api/probing/think` 의 NDJSON 라인
      C. 비주기적 질문 popup (15s 자동 dismiss + importance visual)
      D. 누적 history 패널 (핀 / 복사 / 삭제)
@@ -273,7 +274,6 @@ function ExpandedBody() {
   // ─── 우패널 입력 — research_context (DB upsert) ───
   const [context, setContext] = useState<ResearchContext>({
     research_goal: '',
-    hypotheses: [],
     key_research_question: '',
   });
   const [contextHydrated, setContextHydrated] = useState(false);
@@ -298,18 +298,15 @@ function ExpandedBody() {
           row?: {
             id?: string | null;
             research_goal?: string;
-            hypotheses?: string[];
             key_research_question?: string;
           };
         };
         if (cancelled) return;
         if (j.row) {
           setProbingSessionId(j.row.id ?? null);
+          // hypotheses 는 수화하지 않는다 (은퇴 — 유령 재주입 근절).
           setContext({
             research_goal: j.row.research_goal ?? '',
-            hypotheses: Array.isArray(j.row.hypotheses)
-              ? j.row.hypotheses.filter((h) => typeof h === 'string')
-              : [],
             key_research_question: j.row.key_research_question ?? '',
           });
         }
@@ -335,7 +332,6 @@ function ExpandedBody() {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
               research_goal: contextRef.current.research_goal,
-              hypotheses: contextRef.current.hypotheses,
               key_research_question:
                 contextRef.current.key_research_question,
             }),
@@ -666,7 +662,7 @@ function ExpandedBody() {
           body: JSON.stringify({
             transcript_window: transcript,
             research_goal: contextRef.current.research_goal,
-            hypotheses: contextRef.current.hypotheses,
+            // hypotheses 는 전송하지 않는다 (은퇴 — 프롬프트 유령 주입 근절).
             key_research_question: contextRef.current.key_research_question,
             output_lang: outputLangRef.current,
             injected_questions: injectedQuestions,
@@ -1855,7 +1851,7 @@ export const probingCard: WidgetContent = {
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
     description:
-      '좌측은 응답자 페르소나 9 패널(기타 포함), 우측은 사용자가 입력한 조사 목적·핵심 가설·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
+      '좌측은 응답자 페르소나 9 패널(기타 포함), 우측은 사용자가 입력한 조사 목적·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
     expandedCols: 3,
   },
   state: 'idle',
