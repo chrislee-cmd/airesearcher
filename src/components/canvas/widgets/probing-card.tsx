@@ -56,8 +56,9 @@ import {
   ProbingControlPanel,
   type SourceKind,
 } from './probing/control-board';
-import { useCustomSections, CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
-import { useHiddenDefaults } from './probing/use-hidden-defaults';
+import { CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
+import { useProbingPersonaConfig } from './probing/use-probing-persona-config';
+import { useProjectSelection } from '@/components/project-selection-provider';
 import {
   DEFAULT_PERSONA_SECTIONS,
   PROBING_TECHNIQUES,
@@ -354,15 +355,27 @@ function ExpandedBody() {
     return () => clearTimeout(handle);
   }, [context, contextHydrated]);
 
-  // ─── custom 섹션 (PR: probing-custom-section-ui) — localStorage 영속 ───
-  // 우패널 "+ 위젯 추가" 로 정의, 좌패널 페르소나 grid 에 8 기본 뒤 append.
+  // ─── 프로젝트 설정 (#542) — 페르소나 섹션 구성의 프로젝트별 소스 ───
+  // 프로빙 위젯 슬롯의 독립 선택(ProjectSelectionProvider 'probing'). 미선택이면
+  // null → 아래 useProbingPersonaConfig 가 로컬 localStorage fallback 으로 동작.
+  const { getSelection, setSelection } = useProjectSelection();
+  const selectedProjectId = getSelection('probing');
+
+  // ─── 페르소나 섹션 구성 (PR: probing-custom-section-ui / #542) ───
+  // custom 섹션 정의 + 기본 8 개별 숨김을 선택 프로젝트별 DB(미선택 시
+  // localStorage) 에 read/write. 반환 shape 은 옛 useCustomSections +
+  // useHiddenDefaults 합집합과 동일 — 소비 로직 무변경, 소스만 프로젝트별로 스위칭.
   // reflection 자동 호출은 useCallback 안에서 ref 로 최신 값을 읽는다.
   const {
-    sections: customSections,
-    hydrated: customSectionsHydrated,
-    add: addCustomSection,
-    remove: removeCustomSection,
-  } = useCustomSections();
+    customSections,
+    customSectionsHydrated,
+    hiddenDefaultKeys,
+    hiddenDefaultsHydrated,
+    addCustomSection,
+    removeCustomSection,
+    hideDefault,
+    restoreDefault,
+  } = useProbingPersonaConfig(selectedProjectId);
   const customSectionsRef = useRef(customSections);
   useEffect(() => {
     customSectionsRef.current = customSections;
@@ -409,14 +422,9 @@ function ExpandedBody() {
   );
 
   // ─── 기본 8 위젯 개별 숨김 (PR: probing-default-persona-widgets-hide) ───
-  // UI-only hide — backend 는 여전히 기본 8 을 required 로 채우고, 여기선
-  // 렌더 필터만. localStorage 영속, restore 로 즉시 재노출.
-  const {
-    hiddenKeys: hiddenDefaultKeys,
-    hydrated: hiddenDefaultsHydrated,
-    hide: hideDefault,
-    restore: restoreDefault,
-  } = useHiddenDefaults();
+  // UI-only hide — backend 는 여전히 기본 8 을 required 로 채우고, 여기선 렌더
+  // 필터만. hide/restore 는 위 useProbingPersonaConfig 가 제공(프로젝트별 DB /
+  // 미선택 시 localStorage). restore 로 즉시 재노출.
   // think 자동 호출 (useCallback, ref 로 최신값 읽음) 에서 숨긴 기본 위젯을
   // 우선순위 대상에서 제외하기 위한 ref.
   const hiddenDefaultKeysRef = useRef(hiddenDefaultKeys);
@@ -1681,6 +1689,9 @@ function ExpandedBody() {
               sectionConfigDisabled={
                 !customSectionsHydrated || !hiddenDefaultsHydrated
               }
+              // 프로젝트 설정 (#542) — 위젯 슬롯 'probing' 독립 선택.
+              projectId={selectedProjectId}
+              onProjectChange={(id) => setSelection('probing', id)}
             />
           );
 
