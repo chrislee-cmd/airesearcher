@@ -41,6 +41,7 @@ import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-p
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
+import { uploadResumable } from '@/lib/transcripts/resumable-upload';
 
 function readActiveProjectId(): string | null {
   try {
@@ -389,7 +390,9 @@ export function QuotesCardBody() {
         try {
           job.setUploadProgress(tempId, 0);
 
-          // 1) ask server for a signed upload URL
+          // 1) 서버에서 objectKey 발급 (userId 프리픽스 + safe filename).
+          //    resumable 업로드는 서명 URL 이 아니라 사용자 세션 토큰으로 올려
+          //    RLS(audio_user_insert) 를 통과하므로 upload_url/token 은 안 쓴다.
           const urlRes = await fetch('/api/transcripts/upload-url', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -399,40 +402,18 @@ export function QuotesCardBody() {
             const err = await urlRes.json().catch(() => ({}));
             throw new Error(err.error ?? `upload-url ${urlRes.status}`);
           }
-          const { upload_url, storage_key } = (await urlRes.json()) as {
-            upload_url: string;
+          const { storage_key } = (await urlRes.json()) as {
             storage_key: string;
           };
 
-          // 2) PUT the file to Supabase Storage with progress
-          await new Promise<void>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('PUT', upload_url);
-            if (file.type) xhr.setRequestHeader('content-type', file.type);
-            xhr.upload.onprogress = (e) => {
-              if (e.lengthComputable) {
-                job.setUploadProgress(
-                  tempId,
-                  Math.round((e.loaded / e.total) * 100),
-                );
-              }
-            };
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
-                return;
-              }
-              const detail = (xhr.responseText || '').slice(0, 300);
-              reject(
-                new Error(
-                  detail
-                    ? `storage upload ${xhr.status}: ${detail}`
-                    : `storage upload ${xhr.status}`,
-                ),
-              );
-            };
-            xhr.onerror = () => reject(new Error('upload network error'));
-            xhr.send(file);
+          // 2) resumable(TUS) 업로드 — 6MB 청크 + 자동 재시도/이어받기로
+          //    대용량 영상도 네트워크 끊김(ERR_CONNECTION_RESET)에 견딘다.
+          //    (단일 PUT 은 큰 파일 전송 중 한 번만 끊겨도 전체 리셋됐다.)
+          await uploadResumable({
+            file,
+            objectKey: storage_key,
+            contentType: file.type || undefined,
+            onProgress: (pct) => job.setUploadProgress(tempId, pct),
           });
           job.setUploadProgress(tempId, 100);
 
