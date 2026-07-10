@@ -107,6 +107,10 @@ type TranscriptMode = 'research' | 'meeting';
 type SpeakerCount = 1 | 2 | 3;
 
 type ReadyTranscriptFile = {
+  // Row-first: the transcript_jobs row is created at upload start, so every
+  // ready file already carries its DB row id. /api/transcripts/start reuses it
+  // (uploading → submitting) instead of inserting a second row.
+  job_id: string;
   storage_key: string;
   filename: string;
   mime_type?: string;
@@ -160,12 +164,23 @@ const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 // updated_at 이 now() 로 갱신돼 stuck 버킷에서 즉시 벗어난다 — created_at 기준이면
 // 오래된 잡이 재시도 직후에도 계속 stuck 으로 오표시된다.
 const STUCK_THRESHOLD_MS = 30 * 60 * 1000; // 30분
+// 'uploading' row-first 잡은 별도(넉넉한) 임계값. 대용량 파일은 업로드 자체가
+// 길어질 수 있어(5GB @ 느린 회선 수십 분~시간) 30분 룰을 쓰면 정상 업로드를
+// "멈춤" 으로 오표시한다. 업로드 중엔 어차피 localUploads progress 로 노출되고,
+// row 는 항상 리스트에 보이므로("조용히 사라짐" 제거 목표 달성) 여기서는 오직
+// 진짜 방치된(탭 종료 등으로 몇 시간째 uploading 인) row 만 재시도 버킷으로
+// 승격시킨다.
+const UPLOADING_STUCK_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6시간
 
 function isStuckJob(j: TranscriptJob, nowMs: number): boolean {
   if (j.status === 'error') return true;
   if (j.status === 'submitting' || j.status === 'transcribing') {
     const lastProgress = new Date(j.updated_at ?? j.created_at).getTime();
     return nowMs - lastProgress > STUCK_THRESHOLD_MS;
+  }
+  if (j.status === 'uploading') {
+    const lastProgress = new Date(j.updated_at ?? j.created_at).getTime();
+    return nowMs - lastProgress > UPLOADING_STUCK_THRESHOLD_MS;
   }
   return false;
 }
@@ -411,6 +426,10 @@ export function QuotesCardBody() {
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID()
             : `${Date.now()}-${Math.random()}`;
+        // Row-first: the DB row for this file, created BEFORE the upload runs.
+        // Held out here so the catch can flip it to 'error' if the upload
+        // fails (row stays visible instead of orphaning the file).
+        let jobId: string | null = null;
         try {
           job.setUploadProgress(tempId, 0);
 
@@ -430,7 +449,33 @@ export function QuotesCardBody() {
             storage_key: string;
           };
 
-          // 2) resumable(TUS) 업로드 — 6MB 청크 + 자동 재시도/이어받기로
+          // 2) row-first — 업로드 시작 시점에 per-file transcript_jobs row 선생성
+          //    (status 'uploading'). 이 시점에 실패해도 아직 파일은 스토리지에
+          //    안 올라갔으므로 고아가 없다. 성공하면 row 가 즉시 리스트에 떠서
+          //    이후 업로드/전사가 어디서 멈추든 "조용히 사라짐" 이 불가능해진다.
+          const createRes = await fetch('/api/transcripts/create', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              storage_key,
+              filename: file.name,
+              mime_type: file.type || undefined,
+              size_bytes: file.size,
+              language: languageRef.current,
+              project_id: readActiveProjectId(),
+              mode: modeRef.current,
+              speaker_count: speakerCountRef.current,
+            }),
+          });
+          if (!createRes.ok) {
+            const err = await createRes.json().catch(() => ({}));
+            throw new Error(err.error ?? `create ${createRes.status}`);
+          }
+          jobId = ((await createRes.json()) as { id: string }).id;
+          // 선생성 row 를 즉시 표면화 (realtime 이 늦거나 누락돼도 리스트에 뜨게).
+          await job.refreshJobs();
+
+          // 3) resumable(TUS) 업로드 — 6MB 청크 + 자동 재시도/이어받기로
           //    대용량 영상도 네트워크 끊김(ERR_CONNECTION_RESET)에 견딘다.
           //    (단일 PUT 은 큰 파일 전송 중 한 번만 끊겨도 전체 리셋됐다.)
           await uploadResumable({
@@ -441,9 +486,10 @@ export function QuotesCardBody() {
           });
           job.setUploadProgress(tempId, 100);
 
-          // 3) 업로드 성공 — 언어는 확인 시점 값으로 고정해 적재. 루프 종료 후
-          //    한꺼번에 자동 전사 시작.
+          // 4) 업로드 성공 — 언어는 확인 시점 값으로 고정해 적재. 루프 종료 후
+          //    한꺼번에 자동 전사 시작(선생성 row 를 job_id 로 재사용).
           uploaded.push({
+            job_id: jobId,
             storage_key,
             filename: file.name,
             mime_type: file.type || undefined,
@@ -455,6 +501,15 @@ export function QuotesCardBody() {
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'upload_failed';
           setUploadError(msg);
+          // row-first: 업로드/핸드오프가 실패했고 이미 row 를 만들었다면 error 로
+          // 표시해 리스트에 남긴다(고아 대신 재시도/삭제 가능한 실패 행).
+          if (jobId) {
+            await fetch(`/api/transcripts/jobs/${jobId}/fail`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ message: msg }),
+            }).catch(() => {});
+          }
         } finally {
           job.clearUploadProgress(tempId);
         }
@@ -479,11 +534,11 @@ export function QuotesCardBody() {
     // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
     const admitted = await gate.acquire();
     if (!admitted) {
-      // 게이트가 슬롯을 안 줬는데(정원 대기 중 취소 등) 여기서 그냥 return 하면,
-      // 업로드까지 끝난 파일이 잡 생성 없이 흔적 없이 사라진다 — 전체보기에도
-      // 안 뜨고 에러도 없는 "조용히 사라짐"(prod 대용량 실측 회귀). 버리지 말고
-      // 재시도 버킷(readyFiles)에 남기고 에러를 표면화해, 사용자가 하단 "전사
-      // 시작" CTA 로 복구할 수 있게 한다(false "처리됨" 방지 — 스펙 결정 3).
+      // 게이트가 슬롯을 안 줬을 때(정원 대기 중 취소 등). row-first 라 이 파일들의
+      // transcript_jobs row 는 이미 존재('uploading')하므로 리스트에서 사라지지
+      // 않는다(게이트가 row 생성을 막지 못함 — 스펙 결정 2). 여기서는 전사 시작만
+      // 지연하고, 재시도 버킷(readyFiles)에도 남겨 하단 "전사 시작" CTA 로 즉시
+      // 복구할 수 있게 한다(false "처리됨" 방지 — 스펙 결정 3).
       setReadyFiles((prev) => {
         const keys = new Set(prev.map((r) => r.storage_key));
         return [...prev, ...files.filter((r) => !keys.has(r.storage_key))];
@@ -502,6 +557,9 @@ export function QuotesCardBody() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
+            // row-first: 선생성 row 를 재사용(uploading → submitting). 두 번째
+            // row insert 없음.
+            job_id: rf.job_id,
             storage_key: rf.storage_key,
             filename: rf.filename,
             mime_type: rf.mime_type,
@@ -897,11 +955,13 @@ export function QuotesCardBody() {
     }
     if (inflightJob) {
       const label =
-        inflightJob.status === 'queued'
-          ? 'QUEUED'
-          : inflightJob.status === 'submitting'
-            ? 'SUBMITTING'
-            : 'TRANSCRIBING';
+        inflightJob.status === 'uploading'
+          ? 'UPLOADING'
+          : inflightJob.status === 'queued'
+            ? 'QUEUED'
+            : inflightJob.status === 'submitting'
+              ? 'SUBMITTING'
+              : 'TRANSCRIBING';
       const progress = estimateTranscribeProgress(
         inflightJob.created_at,
         inflightJob.size_bytes,
@@ -2016,6 +2076,8 @@ function formatClock(seconds: number) {
 
 function pillFor(status: TranscriptJobStatus): { text: string; cls: string } {
   switch (status) {
+    case 'uploading':
+      return { text: '업로드 중', cls: 'text-amore' };
     case 'queued':
       return { text: '대기', cls: 'text-mute-soft' };
     case 'submitting':

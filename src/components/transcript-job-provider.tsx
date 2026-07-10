@@ -12,6 +12,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from './auth-provider';
 
 export type TranscriptJobStatus =
+  // 'uploading' — row-first handoff: the row is inserted at UPLOAD START so a
+  // per-file job always exists (before upload finishes / before the gate). It
+  // transitions to 'submitting' on upload success or 'error' on failure.
+  | 'uploading'
   | 'queued'
   | 'submitting'
   | 'transcribing'
@@ -55,6 +59,7 @@ export function useTranscriptJobs() {
 }
 
 const ACTIVE_STATUSES: TranscriptJobStatus[] = [
+  'uploading',
   'queued',
   'submitting',
   'transcribing',
