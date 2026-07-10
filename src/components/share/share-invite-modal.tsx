@@ -5,14 +5,12 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
-import { ChipInput } from '@/components/ui/chip-input';
-import { IconButton } from '@/components/ui/icon-button';
+import { ChipField } from '@/components/ui/chip-field';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
 
@@ -371,9 +369,11 @@ export function ShareInviteModal({
   );
 }
 
-// 이메일 chip 편집기 — project-tag-editor.tsx 의 chip 컨테이너 규격 재사용
-// (border-2 border-ink frame + focus-within:border-amore + amore pill chip +
-// ChipInput extender). 이메일 형식 선제 검증 + 대소문자 무시 중복 제거.
+// 이메일 chip 편집기 — 컨테이너/칩/×/입력은 <ChipField> 프리미티브(#524)에
+// 위임하고, 이 어댑터는 (1) 이메일 형식 선제 검증 + 대소문자 무시 중복 제거,
+// (2) ChipField 의 onChange(next) 계약을 부모의 onAdd/onRemove(관리 모드는
+// 이메일 단건 서버 반영)로 되돌리는 역할만 남긴다. ChipField 는 형식 검증을
+// 하지 않으므로(중복/공백/max 만 — 결정 2) 검증은 부모 쪽에 유지한다.
 function EmailChips({
   emails,
   onAdd,
@@ -387,26 +387,24 @@ function EmailChips({
 }) {
   const t = useTranslations('Share');
   const toast = useToast();
-  const [draft, setDraft] = useState('');
 
-  const commit = (raw: string) => {
-    const value = normEmail(raw);
-    setDraft('');
-    if (!value) return;
-    if (!EMAIL_RE.test(value)) {
-      toast.push(t('invalidEmail'), { tone: 'warn' });
-      return;
-    }
-    if (emails.some((e) => normEmail(e) === value)) return;
-    onAdd(value);
-  };
-
-  // Enter / "," commit lives in <ChipInput onCommit commitOnComma> (IME-guarded
-  // — harmless for Latin email but keeps the guard uniform). Only Backspace
-  // (pop last chip) stays here.
-  const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !draft && emails.length) {
-      onRemove(emails[emails.length - 1]);
+  // ChipField 는 한 번에 칩 하나만 추가/삭제하므로 next 와 현재 목록의 차이는
+  // 항상 ±1. 추가면 형식 검증 + 소문자 정규화 + 대소문자 무시 중복 가드 후
+  // onAdd, 삭제면 빠진 이메일로 onRemove. (형식 위반/중복은 여기서 흡수 →
+  // 부모 state 미변경 → ChipField 가 draft 만 비우고 칩은 안 생김.)
+  const handleChange = (next: string[]) => {
+    if (next.length > emails.length) {
+      const value = normEmail(next[next.length - 1]);
+      if (!value) return;
+      if (!EMAIL_RE.test(value)) {
+        toast.push(t('invalidEmail'), { tone: 'warn' });
+        return;
+      }
+      if (emails.some((e) => normEmail(e) === value)) return;
+      onAdd(value);
+    } else if (next.length < emails.length) {
+      const removed = emails.find((e) => !next.includes(e));
+      if (removed) onRemove(removed);
     }
   };
 
@@ -415,39 +413,16 @@ function EmailChips({
       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
         {t('invitesLabel')}
       </span>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xs border-2 border-ink bg-paper px-2.5 py-1.5 focus-within:border-amore">
-        {emails.map((email) => (
-          <span
-            key={email}
-            className="inline-flex items-center gap-1 rounded-pill border border-amore bg-paper px-2.5 py-0.5 text-xs text-amore"
-          >
-            {email}
-            <IconButton
-              variant="ghost-brand"
-              size="compact"
-              onClick={() => onRemove(email)}
-              disabled={disabled}
-              aria-label={t('removeInvite', { email })}
-            >
-              <span aria-hidden>×</span>
-            </IconButton>
-          </span>
-        ))}
-        <ChipInput
-          type="email"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onCommit={commit}
-          commitOnComma
-          onKeyDown={onKeyDown}
-          onBlur={() => {
-            if (draft.trim()) commit(draft);
-          }}
-          disabled={disabled}
-          placeholder={emails.length === 0 ? t('invitesPlaceholder') : ''}
-          className="min-w-[140px] flex-1 text-xs"
-        />
-      </div>
+      <ChipField
+        values={emails}
+        onChange={handleChange}
+        commitOnComma
+        inputType="email"
+        disabled={disabled}
+        placeholderEmpty={t('invitesPlaceholder')}
+        chipRemoveLabel={(email) => t('removeInvite', { email })}
+        inputClassName="min-w-[140px]"
+      />
       <span className="text-xs text-mute-soft">{t('invitesHint')}</span>
     </div>
   );
