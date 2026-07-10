@@ -23,6 +23,7 @@ import {
   judgeRespondents,
   type ResponseJudgment,
 } from '@/lib/recruiting/persona-fit';
+import { setRecruitingFormStatus } from '@/lib/recruiting/form-status';
 
 // Batch LLM calls (~20 respondents each) can run long on the first, cold judge
 // of a large form. Cap at the plan max; incremental loads after that judge only
@@ -133,10 +134,16 @@ export async function GET(
       return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
     }
     const anthropic = createAnthropic({ apiKey });
+    // OBS-3 lifecycle FSM: this is the 추출(extraction) leg. Only flip status
+    // when there's real work to do (new/stale rows) — an all-cached load leaves
+    // the form's existing 'extracted' state untouched. Best-effort throughout;
+    // a status write never blocks the judging the user is waiting on.
+    await setRecruitingFormStatus(admin, formId, 'extracting');
     let fresh: ResponseJudgment[];
     try {
       fresh = await judgeRespondents(anthropic, criteria, columns, toJudge);
     } catch (e) {
+      await setRecruitingFormStatus(admin, formId, 'error');
       const msg = e instanceof Error ? e.message : 'judge_failed';
       return NextResponse.json({ error: msg }, { status: 502 });
     }
@@ -165,6 +172,8 @@ export async function GET(
         });
       }
     }
+    // Extraction leg complete for this response set → 'extracted'.
+    await setRecruitingFormStatus(admin, formId, 'extracted');
   }
 
   // Assemble the full judged list in response order. PII (name/phone) is never
