@@ -459,6 +459,12 @@
     "noActiveOrg": "Loading workspace, or sign-in required.",
     "delete": "Delete"
   },
+  "ProjectPicker": {
+    "placeholder": "Select a project",
+    "newProject": "+ New project",
+    "applyToAll": "Apply to all widgets",
+    "menu": "Project menu"
+  },
   "ComingSoon": {
     "eyebrow": "Coming soon",
     "toast": "This feature is on the way",

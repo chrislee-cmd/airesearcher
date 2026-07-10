@@ -14,6 +14,7 @@ import { WorkspaceProvider } from '@/components/workspace-provider';
 import { GenerationJobProvider } from '@/components/generation-job-provider';
 import { CreditDeductionProvider } from '@/components/credit-deduction-provider';
 import { ActiveProjectProvider } from '@/components/active-project-provider';
+import { ProjectSelectionProvider } from '@/components/project-selection-provider';
 import { VideoJobProvider } from '@/components/video-job-provider';
 import { PaywallProvider } from '@/components/paywall-provider';
 import { ToastProvider } from '@/components/toast-provider';
@@ -80,6 +81,10 @@ export default async function AppLayout({
        <DeskJobProvider>
         <GenerationJobProvider>
          <ActiveProjectProvider projects={projects.map((p) => ({ id: p.id, name: p.name }))}>
+         {/* 위젯별 프로젝트 선택 축(#541 통합 프로젝트 기반). ActiveProjectProvider
+             (워크스페이스 단일 활성 프로젝트)와 별개 — 프로빙/통역이 각자 독립적으로
+             프로젝트를 고르는 상태를 담는다. 아직 소비 위젯 없음(피커/훅만 존재). */}
+         <ProjectSelectionProvider>
          <WorkspaceProvider>
          <div className={`${outfit.variable} flex flex-1 flex-col overflow-hidden`}>
            <Topbar
@@ -106,6 +111,7 @@ export default async function AppLayout({
              re-login. Complements AuthStateListener above. */}
          <SessionExpiredModal />
          </WorkspaceProvider>
+         </ProjectSelectionProvider>
          </ActiveProjectProvider>
         </GenerationJobProvider>
        </DeskJobProvider>
