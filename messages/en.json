@@ -941,7 +941,7 @@
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
     "captureMode": {
-      "label": "Capture",
+      "label": "Input source",
       "both": "Mic + tab (online meeting)",
       "micOnly": "Device microphone",
       "tabOnly": "Browser audio input",
