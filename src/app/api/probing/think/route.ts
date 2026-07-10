@@ -65,6 +65,15 @@ const Body = z.object({
     .max(16)
     .optional()
     .default([]),
+  // PR (probing-question-dedup-cadence): 이번 세션에서 이미 emit 한 질문 텍스트
+  // (최근 N건). 프롬프트에 "반복 금지" 이력으로 실어 같은 취지 재질문(paraphrase)
+  // 을 억제한다 — 초반 폭주(67초 21건, 동일 오프닝 8변형)의 근본 가드. 미전달 /
+  // 빈 배열이면 옛 동작 (이력 블록 생략).
+  recent_questions: z
+    .array(z.string().min(1).max(500))
+    .max(20)
+    .optional()
+    .default([]),
   // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
   // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
   output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
@@ -112,6 +121,7 @@ export async function POST(request: Request) {
     injected_questions,
     widget_status,
     priority_sections,
+    recent_questions,
   } = parsed.data;
 
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -129,6 +139,9 @@ export async function POST(request: Request) {
   const prioritySections = priority_sections
     .map((s) => ({ title: s.title.trim(), description: s.description.trim() }))
     .filter((s) => s.title.length > 0);
+  const recentQuestions = recent_questions
+    .map((q) => q.trim())
+    .filter((q) => q.length > 0);
 
   const sanitizeCtx = {
     endpoint: '/api/probing/think',
@@ -177,6 +190,17 @@ export async function POST(request: Request) {
         ),
       )
     : [];
+  const recentSan = recentQuestions.length
+    ? await Promise.all(
+        recentQuestions.map((q, idx) =>
+          sanitizeUserInput(q, 'recent_question', {
+            ...sanitizeCtx,
+            input_length: q.length,
+            input_label: `recent_question_${idx + 1}`,
+          }),
+        ),
+      )
+    : [];
   const prioritySan = prioritySections.length
     ? await Promise.all(
         prioritySections.map(async (s, idx) => {
@@ -218,6 +242,19 @@ export async function POST(request: Request) {
 ${injectedSan.map((s, idx) => `${idx + 1}. ${s.wrapped}`).join('\n')}
 
 위 각 질문은 인터뷰어가 **지금 즉시 던지려고 직접 밀어 넣은** 것입니다. 일반 emit 판단 룰(신호 강도)과 무관하게, 각 질문을 이번 응답에서 반드시 \`EMIT:\` 라인으로 즉시 노출하세요. transcript 맥락에 맞게 문장을 자연스럽게 다듬는 것은 허용하되 의도는 보존하고, importance 는 high 로, rationale 에는 "사용자 직접 주입" 임을 명시하세요.
+
+`
+    : '';
+
+  // PR (probing-question-dedup-cadence): 이미 낸 질문 이력 → "반복 금지" 블록.
+  // client 가 이번 세션에서 실제 emit 한 질문 텍스트(최근 N건)를 보낸다. 같은
+  // 취지·표현만 바꾼 재질문을 억제하는 프롬프트 축(하드가드는 client emit 직전
+  // 에 별도로 정규화 유사도로 drop). 빈 배열이면 블록 생략 → 옛 동작.
+  const recentBlock = recentSan.length
+    ? `## 이미 낸 질문 (반복 금지)
+아래는 이번 인터뷰에서 **이미 인터뷰어에게 emit 한 질문들**입니다. 같은 취지·같은 대상을 다시 묻지 마세요. 표현만 바꾼 재질문(paraphrase)도 금지입니다. 응답자의 **새로운 발화 신호**가 없으면 억지로 새 질문을 만들지 말고 THINK 로만 흐르세요.
+
+${recentSan.map((s, idx) => `${idx + 1}. ${s.wrapped}`).join('\n')}
 
 `
     : '';
@@ -273,7 +310,7 @@ ${prioritySan
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: buildProbingThinkSystem(parsed.data.output_lang),
-    prompt: `${contextBlock}${widgetBlock}${injectedBlock}${priorityBlock}## 누적 transcript
+    prompt: `${contextBlock}${recentBlock}${widgetBlock}${injectedBlock}${priorityBlock}## 누적 transcript
 ${transcriptSan.wrapped}
 
 ---
@@ -290,6 +327,7 @@ ${transcriptSan.wrapped}
       'x-probing-goal-length': String(goalText.length),
       'x-probing-krq-length': String(krqText.length),
       'x-probing-injected-count': String(injected.length),
+      'x-probing-recent-count': String(recentQuestions.length),
       'x-probing-priority-count': String(prioritySections.length),
       'x-probing-window-chars': String(transcript_window.length),
     },
