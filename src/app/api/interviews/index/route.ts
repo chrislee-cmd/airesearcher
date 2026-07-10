@@ -248,7 +248,10 @@ export async function POST(req: Request) {
     try {
       await admin
         .from('interview_jobs')
-        .update({ index_status: 'error' })
+        // OBS-4: also stamp error_message so the admin dashboard can group
+        // interview failures by cause (previously index_status='error' was
+        // recorded with no reason).
+        .update({ index_status: 'error', error_message: msg.slice(0, 500) })
         .eq('id', interview_job_id)
         .eq('org_id', org.org_id);
     } catch {
