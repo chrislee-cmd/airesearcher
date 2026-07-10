@@ -192,6 +192,11 @@ export const SECTION_INDEX: Record<SectionId, SectionEntry> = SECTION_GROUPS.red
 
 export const DEFAULT_SECTION_ID: SectionId = 'color';
 
+// "Recently Changed" 탭 — 프리미티브 섹션이 아니라 특수 뷰. SectionId union 에
+// 넣지 않는다(gen-ds-usage.mjs 가 union 을 파싱해 카탈로그 모듈을 강제하므로).
+export const RECENTLY_CHANGED_ID = 'recently-changed' as const;
+export type ViewId = SectionId | typeof RECENTLY_CHANGED_ID;
+
 export function isSectionId(value: string): value is SectionId {
   return value in SECTION_INDEX;
 }

@@ -1,0 +1,2796 @@
+{
+  "generatedAt": "2026-07-10T16:24:50.903Z",
+  "sinceDays": 30,
+  "entries": [
+    {
+      "kind": "route",
+      "name": "/admin/analytics",
+      "file": "src/app/[locale]/(app)/admin/analytics/page.tsx",
+      "line": 1,
+      "prNumber": 945,
+      "mergedAt": "2026-07-11T00:43:05+09:00",
+      "oneLine": "feat: 트랙A /admin/analytics 네이티브 행동 대시보드 (credit_transactions + job status) (#945)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "admin-analytics",
+      "file": "src/components/admin-analytics.tsx",
+      "line": 1,
+      "prNumber": 945,
+      "mergedAt": "2026-07-11T00:43:05+09:00",
+      "oneLine": "feat: 트랙A /admin/analytics 네이티브 행동 대시보드 (credit_transactions + job status) (#945)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "judged-list-table",
+      "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
+      "line": 1,
+      "prNumber": 944,
+      "mergedAt": "2026-07-11T00:42:58+09:00",
+      "oneLine": "feat: OBS-3 리크루팅 라이프사이클 status FSM (생성/발행/추출 퍼널) (#944)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "wizard",
+      "file": "src/components/recruiting-wizard/wizard.tsx",
+      "line": 1,
+      "prNumber": 944,
+      "mergedAt": "2026-07-11T00:42:58+09:00",
+      "oneLine": "feat: OBS-3 리크루팅 라이프사이클 status FSM (생성/발행/추출 퍼널) (#944)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "sections",
+      "file": "src/app/[locale]/(app)/design-system/components/sections.tsx",
+      "line": 1,
+      "prNumber": 941,
+      "mergedAt": "2026-07-10T23:52:33+09:00",
+      "oneLine": "chore: DS-8 카탈로그 미등재 9 프리미티브 등재 (커버리지 64%→100%) (#941)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "demos",
+      "file": "src/app/[locale]/(app)/design-system/demos.tsx",
+      "line": 1,
+      "prNumber": 941,
+      "mergedAt": "2026-07-10T23:52:33+09:00",
+      "oneLine": "chore: DS-8 카탈로그 미등재 9 프리미티브 등재 (커버리지 64%→100%) (#941)",
+      "catalogKey": null
+    },
+    {
+      "kind": "style",
+      "name": "globals.css",
+      "file": "src/app/globals.css",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "button",
+      "file": "src/components/ui/button.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "button"
+    },
+    {
+      "kind": "component",
+      "name": "checkbox",
+      "file": "src/components/ui/checkbox.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "checkbox"
+    },
+    {
+      "kind": "component",
+      "name": "citation-popover",
+      "file": "src/components/ui/citation-popover.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "citation-popover"
+    },
+    {
+      "kind": "component",
+      "name": "control-trigger",
+      "file": "src/components/ui/control-trigger.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "date-range-popover",
+      "file": "src/components/ui/date-range-popover.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "date-range-popover"
+    },
+    {
+      "kind": "component",
+      "name": "dropdown-menu",
+      "file": "src/components/ui/dropdown-menu.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "dropdown-menu"
+    },
+    {
+      "kind": "component",
+      "name": "icon-button",
+      "file": "src/components/ui/icon-button.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "icon-button"
+    },
+    {
+      "kind": "component",
+      "name": "job-progress",
+      "file": "src/components/ui/job-progress.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "job-progress"
+    },
+    {
+      "kind": "component",
+      "name": "modal",
+      "file": "src/components/ui/modal.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "modal"
+    },
+    {
+      "kind": "component",
+      "name": "onboarding-tooltip",
+      "file": "src/components/ui/onboarding-tooltip.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "onboarding-tooltip"
+    },
+    {
+      "kind": "component",
+      "name": "select-menu",
+      "file": "src/components/ui/select-menu.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "tooltip",
+      "file": "src/components/ui/tooltip.tsx",
+      "line": 1,
+      "prNumber": 943,
+      "mergedAt": "2026-07-10T23:52:27+09:00",
+      "oneLine": "chore: DS-1 Memphis 그림자 토큰화 — shadow-memphis-* + ui/ 프리미티브 치환 (#943)",
+      "catalogKey": "tooltip"
+    },
+    {
+      "kind": "component",
+      "name": "probing-card",
+      "file": "src/components/canvas/widgets/probing-card.tsx",
+      "line": 1,
+      "prNumber": 942,
+      "mergedAt": "2026-07-10T23:52:20+09:00",
+      "oneLine": "feat: OBS-2 프로빙 세션 라이프사이클 테이블 (시작/완료/이탈 퍼널) (#942)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "insights-analyzer",
+      "file": "src/components/insights/insights-analyzer.tsx",
+      "line": 1,
+      "prNumber": 940,
+      "mergedAt": "2026-07-10T23:52:14+09:00",
+      "oneLine": "feat: OBS-1 인사이트/인터뷰 잡 행동 이벤트 wire (PostHog job/widget) (#940)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "interview-job-provider",
+      "file": "src/components/interview-job-provider.tsx",
+      "line": 1,
+      "prNumber": 940,
+      "mergedAt": "2026-07-10T23:52:14+09:00",
+      "oneLine": "feat: OBS-1 인사이트/인터뷰 잡 행동 이벤트 wire (PostHog job/widget) (#940)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "quotes-card-body",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1,
+      "prNumber": 938,
+      "mergedAt": "2026-07-10T22:09:12+09:00",
+      "oneLine": "fix: 전사록 로그인 StageFlow 잔상 — 완료 잡 세션 스코프 + 헤더 raw done 라벨 정합 (#938)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-gate-provider",
+      "file": "src/components/widget-gate-provider.tsx",
+      "line": 1,
+      "prNumber": 936,
+      "mergedAt": "2026-07-10T18:23:35+09:00",
+      "oneLine": "fix: P0 위젯 게이트 acquire 타임아웃+fail-open — org 전역 전사 차단 즉시 해소 (#936)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "research-context",
+      "file": "src/components/canvas/widgets/probing/research-context.tsx",
+      "line": 1,
+      "prNumber": 937,
+      "mergedAt": "2026-07-10T18:23:26+09:00",
+      "oneLine": "fix: 프로빙 가설 유령 주입 근절 — hypotheses 은퇴(전송/표시/수화 제거) (#937)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-viewer-frame",
+      "file": "src/components/share/share-viewer-frame.tsx",
+      "line": 1,
+      "prNumber": 937,
+      "mergedAt": "2026-07-10T18:23:26+09:00",
+      "oneLine": "fix: 프로빙 가설 유령 주입 근절 — hypotheses 은퇴(전송/표시/수화 제거) (#937)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "translate-console",
+      "file": "src/components/translate-console.tsx",
+      "line": 1,
+      "prNumber": 935,
+      "mergedAt": "2026-07-10T17:17:07+09:00",
+      "oneLine": "feat: 동시통역 프로젝트별 용어집 (ProjectPicker + DB) (#935)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "control-board",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 1,
+      "prNumber": 934,
+      "mergedAt": "2026-07-10T17:17:00+09:00",
+      "oneLine": "feat: 프로빙 프로젝트별 페르소나 섹션 구성 (ProjectPicker + DB) (#934)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/[locale]/(app)/layout.tsx",
+      "line": 1,
+      "prNumber": 933,
+      "mergedAt": "2026-07-10T15:56:20+09:00",
+      "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "project-picker",
+      "file": "src/components/project-picker.tsx",
+      "line": 1,
+      "prNumber": 933,
+      "mergedAt": "2026-07-10T15:56:20+09:00",
+      "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "project-selection-provider",
+      "file": "src/components/project-selection-provider.tsx",
+      "line": 1,
+      "prNumber": 933,
+      "mergedAt": "2026-07-10T15:56:20+09:00",
+      "oneLine": "feat: 통합 프로젝트 기반 — project_widget_settings + 공용 ProjectPicker (#933)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "transcript-job-provider",
+      "file": "src/components/transcript-job-provider.tsx",
+      "line": 1,
+      "prNumber": 930,
+      "mergedAt": "2026-07-10T14:54:50+09:00",
+      "oneLine": "fix: 전사록 row-first 핸드오프 — per-file row 선생성 (조용한 사라짐 근본 제거) (#930)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-card-body",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-report-view",
+      "file": "src/components/canvas/widgets/desk-result/desk-report-view.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "thinking-stream",
+      "file": "src/components/canvas/widgets/probing/thinking-stream.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "quote-search-panel",
+      "file": "src/components/insights/quote-search-panel.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topline-view",
+      "file": "src/components/interviews-v2/topline-view.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "thinking-panel",
+      "file": "src/components/thinking-panel.tsx",
+      "line": 1,
+      "prNumber": 929,
+      "mergedAt": "2026-07-10T14:54:44+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave1 — 스트리밍 fade-in + 결과 stagger + count-up (#929)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "canvas-card-body",
+      "file": "src/components/canvas/widgets/probing/canvas-card-body.tsx",
+      "line": 1,
+      "prNumber": 928,
+      "mergedAt": "2026-07-10T13:06:26+09:00",
+      "oneLine": "feat: 프로빙 위젯뷰 사고 흐름/질문 팝업 제거 → 전체보기로 이전 (#928)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "lang-dual-dropdown",
+      "file": "src/components/translate/lang-dual-dropdown.tsx",
+      "line": 1,
+      "prNumber": 926,
+      "mergedAt": "2026-07-10T12:41:42+09:00",
+      "oneLine": "feat: 동시통역 언어 드롭다운 통합 — 단일 언어 2컬럼 패널 (인풋|아웃풋) (#926)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/admin/qa-feedback",
+      "file": "src/app/[locale]/(app)/admin/qa-feedback/page.tsx",
+      "line": 1,
+      "prNumber": 923,
+      "mergedAt": "2026-07-10T12:09:11+09:00",
+      "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "qa-feedback-cluster",
+      "file": "src/components/qa/qa-feedback-cluster.tsx",
+      "line": 1,
+      "prNumber": 923,
+      "mergedAt": "2026-07-10T12:09:11+09:00",
+      "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "qa-feedback-list",
+      "file": "src/components/qa/qa-feedback-list.tsx",
+      "line": 1,
+      "prNumber": 923,
+      "mergedAt": "2026-07-10T12:09:11+09:00",
+      "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topbar",
+      "file": "src/components/topbar.tsx",
+      "line": 1,
+      "prNumber": 923,
+      "mergedAt": "2026-07-10T12:09:11+09:00",
+      "oneLine": "feat: QA 텍스트 피드백 — 노트 아이콘 + 상단 인풋 + 피드백 남기기 라벨 (#923)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "mode-button",
+      "file": "src/components/ui/mode-button.tsx",
+      "line": 1,
+      "prNumber": 921,
+      "mergedAt": "2026-07-10T12:08:59+09:00",
+      "oneLine": "feat: ModeButton default selected = 보더만 (배경색·체크마크 제거) (#921)",
+      "catalogKey": "mode-button"
+    },
+    {
+      "kind": "component",
+      "name": "project-tag-editor",
+      "file": "src/components/interviews-v2/project-tag-editor.tsx",
+      "line": 1,
+      "prNumber": 915,
+      "mergedAt": "2026-07-10T10:51:41+09:00",
+      "oneLine": "feat: ChipField 마이그레이션 — 프로젝트 태그 편집 (#915)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "persona-section-configurator",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 1,
+      "prNumber": 910,
+      "mergedAt": "2026-07-10T09:44:55+09:00",
+      "oneLine": "feat: 프로빙 페르소나 섹션 카드 3컬럼+정사각형 + 조사목적 설명 문구 제거 (#910)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-invite-modal",
+      "file": "src/components/share/share-invite-modal.tsx",
+      "line": 1,
+      "prNumber": 911,
+      "mergedAt": "2026-07-10T09:44:44+09:00",
+      "oneLine": "feat: ChipField 마이그레이션 — 공유 초대 이메일 칩 (#911)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "canvas-usages",
+      "file": "src/app/[locale]/(app)/design-system/components/canvas-usages.tsx",
+      "line": 1,
+      "prNumber": 913,
+      "mergedAt": "2026-07-10T09:44:19+09:00",
+      "oneLine": "feat: 디자인 시스템 — 컴포넌트별 캔버스 사용처 표시 (usage map codegen) (#913)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "catalog",
+      "file": "src/app/[locale]/(app)/design-system/components/catalog.tsx",
+      "line": 1,
+      "prNumber": 913,
+      "mergedAt": "2026-07-10T09:44:19+09:00",
+      "oneLine": "feat: 디자인 시스템 — 컴포넌트별 캔버스 사용처 표시 (usage map codegen) (#913)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "canvas-board",
+      "file": "src/app/[locale]/(app)/canvas/canvas-board.tsx",
+      "line": 1,
+      "prNumber": 908,
+      "mergedAt": "2026-07-10T04:08:40+09:00",
+      "oneLine": "feat: 캔버스 개별 위젯 hide/show visibility 토글 (localStorage 영속) (#908)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-navigator",
+      "file": "src/app/[locale]/(app)/canvas/widget-navigator.tsx",
+      "line": 1,
+      "prNumber": 908,
+      "mergedAt": "2026-07-10T04:08:40+09:00",
+      "oneLine": "feat: 캔버스 개별 위젯 hide/show visibility 토글 (localStorage 영속) (#908)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "chip-field",
+      "file": "src/components/ui/chip-field.tsx",
+      "line": 1,
+      "prNumber": 907,
+      "mergedAt": "2026-07-10T04:08:33+09:00",
+      "oneLine": "feat: ChipField 프리미티브 신설 — 칩 컨테이너 SSOT (배경 없는 plain × 버튼) (#907)",
+      "catalogKey": "chip-field"
+    },
+    {
+      "kind": "component",
+      "name": "widget-shell",
+      "file": "src/components/canvas/shell/widget-shell.tsx",
+      "line": 1,
+      "prNumber": 905,
+      "mergedAt": "2026-07-10T03:38:01+09:00",
+      "oneLine": "feat: 위젯별 동시사용 게이트 client — 앱 진입 게이트 제거 + 위젯 국소 대기 (#905)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-gate-overlay",
+      "file": "src/components/widget-gate-overlay.tsx",
+      "line": 1,
+      "prNumber": 905,
+      "mergedAt": "2026-07-10T03:38:01+09:00",
+      "oneLine": "feat: 위젯별 동시사용 게이트 client — 앱 진입 게이트 제거 + 위젯 국소 대기 (#905)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "stage-flow",
+      "file": "src/components/ui/stage-flow.tsx",
+      "line": 1,
+      "prNumber": 897,
+      "mergedAt": "2026-07-10T02:18:02+09:00",
+      "oneLine": "feat: 데스크 스트리밍 = StageFlow 공정 플로우 아티팩트 연결 (#897)",
+      "catalogKey": "stage-flow"
+    },
+    {
+      "kind": "component",
+      "name": "project-detail",
+      "file": "src/components/interviews-v2/project-detail.tsx",
+      "line": 1,
+      "prNumber": 901,
+      "mergedAt": "2026-07-10T02:09:05+09:00",
+      "oneLine": "feat: 인터뷰 V2 탑라인 화면 디자인 밸런스 정리 — 불릿 통일·중복 제거·툴바 위계·강조 리듬 (#901)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topline-blocks",
+      "file": "src/components/interviews-v2/topline-blocks.tsx",
+      "line": 1,
+      "prNumber": 901,
+      "mergedAt": "2026-07-10T02:09:05+09:00",
+      "oneLine": "feat: 인터뷰 V2 탑라인 화면 디자인 밸런스 정리 — 불릿 통일·중복 제거·툴바 위계·강조 리듬 (#901)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "inject-field",
+      "file": "src/components/canvas/widgets/probing/inject-field.tsx",
+      "line": 1,
+      "prNumber": 896,
+      "mergedAt": "2026-07-10T02:08:55+09:00",
+      "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "persona-panel",
+      "file": "src/components/canvas/widgets/probing/persona-panel.tsx",
+      "line": 1,
+      "prNumber": 896,
+      "mergedAt": "2026-07-10T02:08:55+09:00",
+      "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "reflection-pane",
+      "file": "src/components/canvas/widgets/probing/reflection-pane.tsx",
+      "line": 1,
+      "prNumber": 896,
+      "mergedAt": "2026-07-10T02:08:55+09:00",
+      "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-persona-collab",
+      "file": "src/components/share/share-persona-collab.tsx",
+      "line": 1,
+      "prNumber": 896,
+      "mergedAt": "2026-07-10T02:08:55+09:00",
+      "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-persona-live",
+      "file": "src/components/share/share-persona-live.tsx",
+      "line": 1,
+      "prNumber": 896,
+      "mergedAt": "2026-07-10T02:08:55+09:00",
+      "oneLine": "feat: 프로빙 공유 협업화 — 3컬럼 위젯 + 우패널 + 양방향 질문 주입 (#896)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "revenue-chart",
+      "file": "src/components/canvas/widgets/desk-result/revenue-chart.tsx",
+      "line": 1,
+      "prNumber": 895,
+      "mergedAt": "2026-07-10T01:00:35+09:00",
+      "oneLine": "feat: 주요 기업 매출 = 차트 + wide 테이블 (회사당 3행 폐기) (#895)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-job-provider",
+      "file": "src/components/desk-job-provider.tsx",
+      "line": 1,
+      "prNumber": 895,
+      "mergedAt": "2026-07-10T01:00:35+09:00",
+      "oneLine": "feat: 주요 기업 매출 = 차트 + wide 테이블 (회사당 3행 폐기) (#895)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "moderator-ai-card",
+      "file": "src/components/canvas/widgets/moderator-ai-card.tsx",
+      "line": 1,
+      "prNumber": 892,
+      "mergedAt": "2026-07-09T18:48:12+09:00",
+      "oneLine": "feat: 신규 위젯 rename — AI 모더레이터→AI UT, PPT 보고서→영상 분석기 (#892)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "ppt-report-card",
+      "file": "src/components/canvas/widgets/ppt-report-card.tsx",
+      "line": 1,
+      "prNumber": 892,
+      "mergedAt": "2026-07-09T18:48:12+09:00",
+      "oneLine": "feat: 신규 위젯 rename — AI 모더레이터→AI UT, PPT 보고서→영상 분석기 (#892)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "control-board-panel",
+      "file": "src/components/canvas/shell/control-board-panel.tsx",
+      "line": 1,
+      "prNumber": 886,
+      "mergedAt": "2026-07-09T17:47:45+09:00",
+      "oneLine": "fix: 동시통역 컨트롤 상단 여백 정합 — unpadParent 특수 경로 제거 (#886)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "translate-card",
+      "file": "src/components/canvas/widgets/translate-card.tsx",
+      "line": 1,
+      "prNumber": 886,
+      "mergedAt": "2026-07-09T17:47:45+09:00",
+      "oneLine": "fix: 동시통역 컨트롤 상단 여백 정합 — unpadParent 특수 경로 제거 (#886)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "interviews-card",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 1,
+      "prNumber": 887,
+      "mergedAt": "2026-07-09T17:40:35+09:00",
+      "oneLine": "feat: 인터뷰 V2 업로드 중복 파일 자동 필터 — 프로젝트 범위 content-hash dedup (#887)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "upload-modal",
+      "file": "src/components/interviews-v2/upload-modal.tsx",
+      "line": 1,
+      "prNumber": 887,
+      "mergedAt": "2026-07-09T17:40:35+09:00",
+      "oneLine": "feat: 인터뷰 V2 업로드 중복 파일 자동 필터 — 프로젝트 범위 content-hash dedup (#887)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-output-region",
+      "file": "src/components/canvas/shell/widget-output-region.tsx",
+      "line": 1,
+      "prNumber": 876,
+      "mergedAt": "2026-07-09T16:35:55+09:00",
+      "oneLine": "feat: 산출물 영역 규칙화 — WidgetOutputRegion 프리미티브 + 인터뷰 좌측 정렬 (#876)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "transcript-record-button",
+      "file": "src/components/canvas/widgets/transcript-record-button.tsx",
+      "line": 1,
+      "prNumber": 874,
+      "mergedAt": "2026-07-09T11:14:01+09:00",
+      "oneLine": "feat: 전사록 생성기 음성 녹음 입력 — 위젯에서 바로 녹음 → 전사 (#874)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "file-card",
+      "file": "src/components/interviews-v2/file-card.tsx",
+      "line": 1,
+      "prNumber": 873,
+      "mergedAt": "2026-07-09T05:23:42+09:00",
+      "oneLine": "feat: 인터뷰 결과 생성기 — 탑라인 前 처리 진행 표시 + 현재 파일 하이라이트 (#873)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "create-project-modal",
+      "file": "src/components/interviews-v2/create-project-modal.tsx",
+      "line": 1,
+      "prNumber": 867,
+      "mergedAt": "2026-07-09T04:48:45+09:00",
+      "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "rename-project-modal",
+      "file": "src/components/interviews-v2/rename-project-modal.tsx",
+      "line": 1,
+      "prNumber": 867,
+      "mergedAt": "2026-07-09T04:48:45+09:00",
+      "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "chip-input",
+      "file": "src/components/ui/chip-input.tsx",
+      "line": 1,
+      "prNumber": 867,
+      "mergedAt": "2026-07-09T04:48:45+09:00",
+      "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
+      "catalogKey": "chip-input"
+    },
+    {
+      "kind": "component",
+      "name": "workspace-panel",
+      "file": "src/components/workspace-panel.tsx",
+      "line": 1,
+      "prNumber": 867,
+      "mergedAt": "2026-07-09T04:48:45+09:00",
+      "oneLine": "fix: 한글 IME 조합 Enter 이중 커밋 총체 fix — ChipInput onCommit 가드 박제 (#867)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-email-gate",
+      "file": "src/components/share/share-email-gate.tsx",
+      "line": 1,
+      "prNumber": 864,
+      "mergedAt": "2026-07-09T04:03:29+09:00",
+      "oneLine": "fix: 공유 뷰어 매직링크 차단 — 코드 전용 OTP (앱 세션 생성 방지) (#864)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-invite-button",
+      "file": "src/components/share/share-invite-button.tsx",
+      "line": 1,
+      "prNumber": 865,
+      "mergedAt": "2026-07-09T04:03:22+09:00",
+      "oneLine": "feat: 프로빙 공유 스냅샷 persist — 페르소나 reflection + 질문 DB 저장 (#865)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "qa-voice-agent-button",
+      "file": "src/components/qa/qa-voice-agent-button.tsx",
+      "line": 1,
+      "prNumber": 859,
+      "mergedAt": "2026-07-09T01:56:47+09:00",
+      "oneLine": "feat: QA 마이크 녹음 중 동적 피드백 강화 — pulse/blink + 아이콘·색상 전환 (#859)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-analytics-panel",
+      "file": "src/components/desk-analytics-panel.tsx",
+      "line": 1,
+      "prNumber": 849,
+      "mergedAt": "2026-07-09T01:42:48+09:00",
+      "oneLine": "feat: 글로벌 소스 P3 — 국내 vs G7 대비 섹션 + 차트 (#849)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "control-dropzone",
+      "file": "src/components/ui/control-dropzone.tsx",
+      "line": 1,
+      "prNumber": 858,
+      "mergedAt": "2026-07-09T01:03:43+09:00",
+      "oneLine": "feat: ControlDropzone primitive — 컨트롤 dropzone 규격 박제 (override 차단) (#858)",
+      "catalogKey": "control-dropzone"
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/[locale]/share/[token]/layout.tsx",
+      "line": 1,
+      "prNumber": 853,
+      "mergedAt": "2026-07-09T00:05:20+09:00",
+      "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/share/[token]",
+      "file": "src/app/[locale]/share/[token]/page.tsx",
+      "line": 1,
+      "prNumber": 853,
+      "mergedAt": "2026-07-09T00:05:20+09:00",
+      "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-notice",
+      "file": "src/components/share/share-notice.tsx",
+      "line": 1,
+      "prNumber": 853,
+      "mergedAt": "2026-07-09T00:05:20+09:00",
+      "oneLine": "feat: 공유 뷰어 라우트 — 사이드바 제외 read-only + 이메일 인증 게이트 (#853)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "sidebar-nav",
+      "file": "src/components/canvas/shell/sidebar-nav.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "cross-project-picker",
+      "file": "src/components/interviews-v2/cross-project-picker.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "toast-provider",
+      "file": "src/components/toast-provider.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topbar-account",
+      "file": "src/components/topbar-account.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "empty-state",
+      "file": "src/components/ui/empty-state.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "input",
+      "file": "src/components/ui/input.tsx",
+      "line": 1,
+      "prNumber": 838,
+      "mergedAt": "2026-07-08T13:33:36+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave3 — 주의 환기 + 미세 delight (#838)",
+      "catalogKey": "input"
+    },
+    {
+      "kind": "component",
+      "name": "project-list",
+      "file": "src/components/interviews-v2/project-list.tsx",
+      "line": 1,
+      "prNumber": 840,
+      "mergedAt": "2026-07-08T12:43:33+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave2 — 리스트/칩/탭/드롭다운/모달 (#840)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "tabs",
+      "file": "src/components/ui/tabs.tsx",
+      "line": 1,
+      "prNumber": 840,
+      "mergedAt": "2026-07-08T12:43:33+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Wave2 — 리스트/칩/탭/드롭다운/모달 (#840)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "ai-judgment-log",
+      "file": "src/components/canvas/widgets/desk-result/ai-judgment-log.tsx",
+      "line": 1,
+      "prNumber": 831,
+      "mergedAt": "2026-07-08T02:44:53+09:00",
+      "oneLine": "fix: 데스크 리서치 커스텀 모드 완전 제거 (#831)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "index",
+      "file": "src/components/canvas/widgets/desk-result/index.tsx",
+      "line": 1,
+      "prNumber": 831,
+      "mergedAt": "2026-07-08T02:44:53+09:00",
+      "oneLine": "fix: 데스크 리서치 커스텀 모드 완전 제거 (#831)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "chrome-button",
+      "file": "src/components/ui/chrome-button.tsx",
+      "line": 1,
+      "prNumber": 826,
+      "mergedAt": "2026-07-08T01:45:31+09:00",
+      "oneLine": "feat: 마이크로인터랙션 Foundation — 모션 토큰 + 공용 유틸/훅 (#826)",
+      "catalogKey": "chrome-button"
+    },
+    {
+      "kind": "component",
+      "name": "topline-selection",
+      "file": "src/components/interviews-v2/topline-selection.tsx",
+      "line": 1,
+      "prNumber": 813,
+      "mergedAt": "2026-07-07T13:16:09+09:00",
+      "oneLine": "feat: 탑라인 드래그 추가질문 웹 검색 모드 (인터뷰 근거 ↔ 웹 토글) (#813)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "file-drop-zone",
+      "file": "src/components/ui/file-drop-zone.tsx",
+      "line": 1,
+      "prNumber": 812,
+      "mergedAt": "2026-07-07T13:16:05+09:00",
+      "oneLine": "fix: 컨트롤 드롭다운 트리거 + dropzone height 통일 (ControlTrigger + py SSOT) (#812)",
+      "catalogKey": "file-drop-zone"
+    },
+    {
+      "kind": "route",
+      "name": "/admin/rag-eval",
+      "file": "src/app/[locale]/(app)/admin/rag-eval/page.tsx",
+      "line": 1,
+      "prNumber": 814,
+      "mergedAt": "2026-07-07T13:16:02+09:00",
+      "oneLine": "feat: 인터뷰 RAG 평가 하네스 — Recall/Coverage/Faithfulness/Citation 4 메트릭 (#814)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "admin-rag-eval",
+      "file": "src/components/admin-rag-eval.tsx",
+      "line": 1,
+      "prNumber": 814,
+      "mergedAt": "2026-07-07T13:16:02+09:00",
+      "oneLine": "feat: 인터뷰 RAG 평가 하네스 — Recall/Coverage/Faithfulness/Citation 4 메트릭 (#814)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "recruiting-card",
+      "file": "src/components/canvas/widgets/recruiting-card.tsx",
+      "line": 1,
+      "prNumber": 803,
+      "mergedAt": "2026-07-06T23:37:22+09:00",
+      "oneLine": "feat: 위젯 컨트롤 드롭다운 전면 통일 — 인터뷰 DropdownMenu 스타일 (#803)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "tag-filter-bar",
+      "file": "src/components/interviews-v2/tag-filter-bar.tsx",
+      "line": 1,
+      "prNumber": 796,
+      "mergedAt": "2026-07-06T22:15:47+09:00",
+      "oneLine": "feat: 인터뷰 프로젝트 태그 부착 + 태그별 필터 (#796)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-primary-cta",
+      "file": "src/components/canvas/shell/widget-primary-cta.tsx",
+      "line": 1,
+      "prNumber": 794,
+      "mergedAt": "2026-07-06T22:04:46+09:00",
+      "oneLine": "fix: 위젯 주 CTA 하단 액션 바 전환 — 위치 싱크 + 콘텐츠 겹침 해소 (#794)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "respondent-drawer",
+      "file": "src/components/canvas/widgets/recruiting/respondent-drawer.tsx",
+      "line": 1,
+      "prNumber": 790,
+      "mergedAt": "2026-07-06T19:47:09+09:00",
+      "oneLine": "feat: 리크루팅 전체보기 — 부합도 판단 리스트 + 응답자 drawer (#790)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "responses-spreadsheet",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 1,
+      "prNumber": 790,
+      "mergedAt": "2026-07-06T19:47:09+09:00",
+      "oneLine": "feat: 리크루팅 전체보기 — 부합도 판단 리스트 + 응답자 drawer (#790)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "landing-page",
+      "file": "src/components/landing/landing-page.tsx",
+      "line": 1,
+      "prNumber": 788,
+      "mergedAt": "2026-07-06T19:44:32+09:00",
+      "oneLine": "fix: 랜딩 헤더 로고 워드마크 SVG 자산화 (#788)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "market-dataset",
+      "file": "src/components/canvas/widgets/desk-result/market-dataset.tsx",
+      "line": 1,
+      "prNumber": 773,
+      "mergedAt": "2026-07-06T16:10:11+09:00",
+      "oneLine": "feat: 시장조사 보고서 표준 포맷 — KPI 히어로 + 기업 매출 표 + 숫자 가독성 (#773)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "echo-onboarding",
+      "file": "src/components/translate/echo-onboarding.tsx",
+      "line": 1,
+      "prNumber": 767,
+      "mergedAt": "2026-07-06T13:47:30+09:00",
+      "oneLine": "feat: 동시통역 에코-free 온보딩 UX + 음성 OFF 디폴트 (#767)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "opengraph-image",
+      "file": "src/app/[locale]/opengraph-image.tsx",
+      "line": 1,
+      "prNumber": 750,
+      "mergedAt": "2026-07-06T09:07:55+09:00",
+      "oneLine": "chore: 랜딩 tagline 'Your research workflow, in one place' (4 언어) (#750)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "coming-soon-body",
+      "file": "src/components/canvas/widgets/coming-soon-body.tsx",
+      "line": 1,
+      "prNumber": 747,
+      "mergedAt": "2026-07-05T22:47:05+09:00",
+      "oneLine": "feat: 3 신 위젯 fullview coming soon hero (가이드라인/AI모더레이터/PPT) (#747)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "guideline-card",
+      "file": "src/components/canvas/widgets/guideline-card.tsx",
+      "line": 1,
+      "prNumber": 747,
+      "mergedAt": "2026-07-05T22:47:05+09:00",
+      "oneLine": "feat: 3 신 위젯 fullview coming soon hero (가이드라인/AI모더레이터/PPT) (#747)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "process-timeline",
+      "file": "src/components/ui/process-timeline.tsx",
+      "line": 1,
+      "prNumber": 744,
+      "mergedAt": "2026-07-05T21:51:00+09:00",
+      "oneLine": "feat: 위젯 공정 과정 타임라인 (데스크/전사록/인터뷰V2) (#744)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "brand-loader",
+      "file": "src/components/ui/brand-loader.tsx",
+      "line": 1,
+      "prNumber": 739,
+      "mergedAt": "2026-07-05T21:04:32+09:00",
+      "oneLine": "feat: 브랜딩 자산 교체 (신 로고/mascot/favicon → public/branding 킷) (#739)",
+      "catalogKey": "brand-loader"
+    },
+    {
+      "kind": "route",
+      "name": "/canvas",
+      "file": "src/app/[locale]/(app)/canvas/page.tsx",
+      "line": 1,
+      "prNumber": 737,
+      "mergedAt": "2026-07-05T18:17:56+09:00",
+      "oneLine": "feat: canvas 3 신 위젯 추가 (가이드라인/AI모더레이터/PPT) → 3x3 grid (#737)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "loading",
+      "file": "src/app/[locale]/(app)/loading.tsx",
+      "line": 1,
+      "prNumber": 735,
+      "mergedAt": "2026-07-05T18:15:10+09:00",
+      "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "distribution-panel",
+      "file": "src/components/canvas/widgets/recruiting/distribution-panel.tsx",
+      "line": 1,
+      "prNumber": 735,
+      "mergedAt": "2026-07-05T18:15:10+09:00",
+      "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "feature-placeholder",
+      "file": "src/components/feature-placeholder.tsx",
+      "line": 1,
+      "prNumber": 735,
+      "mergedAt": "2026-07-05T18:15:10+09:00",
+      "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "attendee-review-modal",
+      "file": "src/components/recruiting-wizard/attendee-review-modal.tsx",
+      "line": 1,
+      "prNumber": 735,
+      "mergedAt": "2026-07-05T18:15:10+09:00",
+      "oneLine": "feat: 브랜딩 mochi 흔적 code cleanup (rename) (#735)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "question-filter-menu",
+      "file": "src/components/canvas/widgets/recruiting/question-filter-menu.tsx",
+      "line": 1,
+      "prNumber": 720,
+      "mergedAt": "2026-07-05T02:28:34+09:00",
+      "oneLine": "hotfix: 리크루팅 질문 필터 dropdown max-width 480 + 질문 truncate (#720)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-outputs",
+      "file": "src/components/canvas/shell/widget-outputs.tsx",
+      "line": 1,
+      "prNumber": 714,
+      "mergedAt": "2026-07-05T01:39:12+09:00",
+      "oneLine": "feat: 전사록 전체보기 일괄 선택 → 일괄 삭제 + ZIP 다운로드 (#714)",
+      "catalogKey": "canvas-widget-primitives"
+    },
+    {
+      "kind": "component",
+      "name": "qa-pair",
+      "file": "src/components/interviews-v2/qa-pair.tsx",
+      "line": 1,
+      "prNumber": 711,
+      "mergedAt": "2026-07-05T01:39:01+09:00",
+      "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "search-chat",
+      "file": "src/components/interviews-v2/search-chat.tsx",
+      "line": 1,
+      "prNumber": 711,
+      "mergedAt": "2026-07-05T01:39:01+09:00",
+      "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "search-phase",
+      "file": "src/components/interviews-v2/search-phase.tsx",
+      "line": 1,
+      "prNumber": 711,
+      "mergedAt": "2026-07-05T01:39:01+09:00",
+      "oneLine": "hotfix: 인터뷰 V2 검색 phase 상태 피드백 (artifact 정리 무음 fix) (#711)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "answer-artifact-renderer",
+      "file": "src/components/interviews-v2/answer-artifact-renderer.tsx",
+      "line": 1,
+      "prNumber": 702,
+      "mergedAt": "2026-07-05T00:03:18+09:00",
+      "oneLine": "feat: 인터뷰 V2 검색 artifacts Phase 2 (Recharts bar/pie 차트) (#702)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/admin/recruiting-invitations",
+      "file": "src/app/[locale]/(app)/admin/recruiting-invitations/page.tsx",
+      "line": 1,
+      "prNumber": 698,
+      "mergedAt": "2026-07-04T18:31:42+09:00",
+      "oneLine": "feat: /admin/recruiting-invitations super admin 뷰어 (요청 리스트 + 연락처 조회 + 상태 변경) (#698)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "invitations-list",
+      "file": "src/components/admin/invitations-list.tsx",
+      "line": 1,
+      "prNumber": 698,
+      "mergedAt": "2026-07-04T18:31:42+09:00",
+      "oneLine": "feat: /admin/recruiting-invitations super admin 뷰어 (요청 리스트 + 연락처 조회 + 상태 변경) (#698)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "question-pane",
+      "file": "src/components/canvas/widgets/probing/question-pane.tsx",
+      "line": 1,
+      "prNumber": 686,
+      "mergedAt": "2026-07-04T16:42:21+09:00",
+      "oneLine": "feat: 프로빙 custom 위젯 backfill + empty 시 우선 질문 (#686)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/admin/qa-testers",
+      "file": "src/app/[locale]/(app)/admin/qa-testers/page.tsx",
+      "line": 1,
+      "prNumber": 684,
+      "mergedAt": "2026-07-04T16:26:46+09:00",
+      "oneLine": "feat: QA tester 계정 관리 UI (super admin) — /admin/qa-testers (#684)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "qa-tester-list",
+      "file": "src/components/qa/qa-tester-list.tsx",
+      "line": 1,
+      "prNumber": 684,
+      "mergedAt": "2026-07-04T16:26:46+09:00",
+      "oneLine": "feat: QA tester 계정 관리 UI (super admin) — /admin/qa-testers (#684)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "question-popup",
+      "file": "src/components/canvas/widgets/probing/question-popup.tsx",
+      "line": 1,
+      "prNumber": 682,
+      "mergedAt": "2026-07-04T16:26:39+09:00",
+      "oneLine": "feat: 프로빙 custom 위젯 = 제안 질문 가중치 우선 (#682)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/[locale]/layout.tsx",
+      "line": 1,
+      "prNumber": 672,
+      "mergedAt": "2026-07-04T14:40:49+09:00",
+      "oneLine": "feat: QA mode flag — profiles.is_qa_tester + auth context isQaTester (voice-agent PR2) (#672)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "auth-provider",
+      "file": "src/components/auth-provider.tsx",
+      "line": 1,
+      "prNumber": 672,
+      "mergedAt": "2026-07-04T14:40:49+09:00",
+      "oneLine": "feat: QA mode flag — profiles.is_qa_tester + auth context isQaTester (voice-agent PR2) (#672)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "session-expired-modal",
+      "file": "src/components/auth/session-expired-modal.tsx",
+      "line": 1,
+      "prNumber": 663,
+      "mergedAt": "2026-07-04T02:15:29+09:00",
+      "oneLine": "feat: 세션 만료 modal 재디자인 — 아이콘 + 진행 bar 카운트다운 (#663)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "interview-v2-fullview",
+      "file": "src/components/interviews-v2/interview-v2-fullview.tsx",
+      "line": 1,
+      "prNumber": 659,
+      "mergedAt": "2026-07-04T01:42:05+09:00",
+      "oneLine": "hotfix: 인터뷰 V2 업로드 = 프로젝트 설정 gate + fullview 동기화 (#659)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "conditions-panel",
+      "file": "src/components/canvas/widgets/recruiting/conditions-panel.tsx",
+      "line": 1,
+      "prNumber": 650,
+      "mergedAt": "2026-07-03T15:20:56+09:00",
+      "oneLine": "hotfix: 리크루팅 fullview 참여자 조건 서버 저장 — 옛 폼/refresh 후에도 노출 (#650)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "posthog-provider",
+      "file": "src/components/analytics/posthog-provider.tsx",
+      "line": 1,
+      "prNumber": 642,
+      "mergedAt": "2026-07-03T14:04:02+09:00",
+      "oneLine": "feat: PostHog UTM attribution stamp — landing 시 set_once person property + register super property (#642)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "citation-card",
+      "file": "src/components/interviews-v2/citation-card.tsx",
+      "line": 1,
+      "prNumber": 630,
+      "mergedAt": "2026-07-03T00:03:24+09:00",
+      "oneLine": "feat: 인터뷰 V2 검색 chat UI — streaming 답변 + inline citation 카드 (#630)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "question-input",
+      "file": "src/components/interviews-v2/question-input.tsx",
+      "line": 1,
+      "prNumber": 630,
+      "mergedAt": "2026-07-03T00:03:24+09:00",
+      "oneLine": "feat: 인터뷰 V2 검색 chat UI — streaming 답변 + inline citation 카드 (#630)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "full-view",
+      "file": "src/components/canvas/widgets/probing/full-view.tsx",
+      "line": 1,
+      "prNumber": 628,
+      "mergedAt": "2026-07-02T23:24:17+09:00",
+      "oneLine": "hotfix: (프로빙) PDF 내보내기 = 좌 페르소나 grid 만 캡쳐 (fullview 전체 X) (#628)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-settings-button",
+      "file": "src/components/canvas/shell/widget-settings-button.tsx",
+      "line": 1,
+      "prNumber": 618,
+      "mergedAt": "2026-07-02T17:34:49+09:00",
+      "oneLine": "feat: 서브헤더 CTA 게이팅 온보딩 (미완료 hint + 설정/업로드 pulse + 첫사용 툴팁) (#618)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-upload-button",
+      "file": "src/components/canvas/shell/widget-upload-button.tsx",
+      "line": 1,
+      "prNumber": 618,
+      "mergedAt": "2026-07-02T17:34:49+09:00",
+      "oneLine": "feat: 서브헤더 CTA 게이팅 온보딩 (미완료 hint + 설정/업로드 pulse + 첫사용 툴팁) (#618)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "workspace-provider",
+      "file": "src/components/workspace-provider.tsx",
+      "line": 1,
+      "prNumber": 620,
+      "mergedAt": "2026-07-02T17:34:22+09:00",
+      "oneLine": "hotfix: (app) 세션 만료 (API 401) 감지 → 명시 modal + auto redirect (#620)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-fullview-panel",
+      "file": "src/components/canvas/shell/widget-fullview-panel.tsx",
+      "line": 1,
+      "prNumber": 609,
+      "mergedAt": "2026-07-02T16:42:04+09:00",
+      "oneLine": "feat: 프로빙 전체보기 PDF 내보내기 (docx 대체) (#609)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-upload-modal",
+      "file": "src/components/canvas/shell/widget-upload-modal.tsx",
+      "line": 1,
+      "prNumber": 603,
+      "mergedAt": "2026-07-01T16:08:38+09:00",
+      "oneLine": "feat: 전사록/인터뷰/리크루팅 서브헤더 통일 확장 — 입력 dropzone 팝업 이동 + height ↓ (#603)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-settings-modal",
+      "file": "src/components/canvas/shell/widget-settings-modal.tsx",
+      "line": 1,
+      "prNumber": 598,
+      "mergedAt": "2026-07-01T15:31:57+09:00",
+      "oneLine": "feat: 3 위젯 (데스크/동시통역/프로빙) 서브헤더 통일 — 설정 버튼 + CTA (#598)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-subheader",
+      "file": "src/components/canvas/shell/widget-subheader.tsx",
+      "line": 1,
+      "prNumber": 598,
+      "mergedAt": "2026-07-01T15:31:57+09:00",
+      "oneLine": "feat: 3 위젯 (데스크/동시통역/프로빙) 서브헤더 통일 — 설정 버튼 + CTA (#598)",
+      "catalogKey": "canvas-widget-primitives"
+    },
+    {
+      "kind": "component",
+      "name": "auth-state-listener",
+      "file": "src/components/auth-state-listener.tsx",
+      "line": 1,
+      "prNumber": 597,
+      "mergedAt": "2026-07-01T13:24:47+09:00",
+      "oneLine": "hotfix: (app) route auth guard — 로그아웃 시 유령 세션 대신 /login 자동 redirect (#597)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "fullview-shell-context",
+      "file": "src/components/canvas/shell/fullview-shell-context.tsx",
+      "line": 1,
+      "prNumber": 596,
+      "mergedAt": "2026-07-01T13:11:46+09:00",
+      "oneLine": "feat: 위젯 산출물 완료 시 하단 CompletedCTA 푸터 (전사록/데스크/인터뷰) (#596)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-status-footer",
+      "file": "src/components/canvas/shell/widget-status-footer.tsx",
+      "line": 1,
+      "prNumber": 596,
+      "mergedAt": "2026-07-01T13:11:46+09:00",
+      "oneLine": "feat: 위젯 산출물 완료 시 하단 CompletedCTA 푸터 (전사록/데스크/인터뷰) (#596)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "fullview-view",
+      "file": "src/components/translate/fullview-view.tsx",
+      "line": 1,
+      "prNumber": 594,
+      "mergedAt": "2026-07-01T13:02:53+09:00",
+      "oneLine": "hotfix: 동시통역 fullview 진입 시 세션 종료 fix — read-only fullview view (세션 소유 카드 유지) (#594)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "translate-session-context",
+      "file": "src/components/translate/translate-session-context.tsx",
+      "line": 1,
+      "prNumber": 594,
+      "mergedAt": "2026-07-01T13:02:53+09:00",
+      "oneLine": "hotfix: 동시통역 fullview 진입 시 세션 종료 fix — read-only fullview view (세션 소유 카드 유지) (#594)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/admin/api-usage",
+      "file": "src/app/[locale]/(app)/admin/api-usage/page.tsx",
+      "line": 1,
+      "prNumber": 595,
+      "mergedAt": "2026-07-01T12:37:32+09:00",
+      "oneLine": "feat: /admin/api-usage 누적 사용량 snapshot 저장/리셋 + 예상 청구액 baseline 차감 (#595)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "admin-api-usage",
+      "file": "src/components/admin-api-usage.tsx",
+      "line": 1,
+      "prNumber": 595,
+      "mergedAt": "2026-07-01T12:37:32+09:00",
+      "oneLine": "feat: /admin/api-usage 누적 사용량 snapshot 저장/리셋 + 예상 청구액 baseline 차감 (#595)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/privacy",
+      "file": "src/app/[locale]/privacy/page.tsx",
+      "line": 1,
+      "prNumber": 588,
+      "mergedAt": "2026-07-01T11:47:59+09:00",
+      "oneLine": "chore: 리크루팅 admin-proxy 활성화 runbook + refresh 실패 Sentry alarm + privacy 문구 (#588)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "translate-viewer",
+      "file": "src/components/translate-viewer.tsx",
+      "line": 1,
+      "prNumber": 583,
+      "mergedAt": "2026-07-01T01:00:39+09:00",
+      "oneLine": "feat: AI 동시통역 fullview 우측 청취자 리스트 패널 — Supabase Realtime Presence (#583)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "listener-panel",
+      "file": "src/components/translate/listener-panel.tsx",
+      "line": 1,
+      "prNumber": 583,
+      "mergedAt": "2026-07-01T01:00:39+09:00",
+      "oneLine": "feat: AI 동시통역 fullview 우측 청취자 리스트 패널 — Supabase Realtime Presence (#583)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "canvas-hero",
+      "file": "src/components/landing/canvas-hero.tsx",
+      "line": 1,
+      "prNumber": 572,
+      "mergedAt": "2026-06-30T19:33:49+09:00",
+      "oneLine": "feat: 랜딩 hero canvas 6번째 위젯 교체 — 인터뷰 결과 → 리크루팅 (#572)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "security-section",
+      "file": "src/components/landing/security-section.tsx",
+      "line": 1,
+      "prNumber": 571,
+      "mergedAt": "2026-06-30T19:24:08+09:00",
+      "oneLine": "feat: 랜딩 보안 섹션 신규 — SAFE BY DESIGN (4 카드 + Privacy link) (#571)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "feature-grid",
+      "file": "src/components/landing/feature-grid.tsx",
+      "line": 1,
+      "prNumber": 569,
+      "mergedAt": "2026-06-30T19:05:03+09:00",
+      "oneLine": "feat: 랜딩 hero.lead 제거 + 6 위젯 body 친근 톤 v2 교체 (PR #561 후속) (#569)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "full-view",
+      "file": "src/components/canvas/widgets/interviews/full-view.tsx",
+      "line": 1,
+      "prNumber": 565,
+      "mergedAt": "2026-06-30T18:26:26+09:00",
+      "oneLine": "feat: 위젯 공유 전체보기 모달 + 좌측 사이드바 nav + 세션 백그라운드 보존 (PR-D) (#565)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-fullview-modal",
+      "file": "src/components/canvas/shell/widget-fullview-modal.tsx",
+      "line": 1,
+      "prNumber": 555,
+      "mergedAt": "2026-06-30T14:56:33+09:00",
+      "oneLine": "feat: WidgetFullviewModal primitive — 프로빙 fullview chrome 일반화 (제목+부제+닫기 / 본문 slot / 옵션 footer) + /design-system 카탈로그 (#555)",
+      "catalogKey": "widget-fullview-modal"
+    },
+    {
+      "kind": "component",
+      "name": "question-history",
+      "file": "src/components/canvas/widgets/probing/question-history.tsx",
+      "line": 1,
+      "prNumber": 554,
+      "mergedAt": "2026-06-30T14:56:30+09:00",
+      "oneLine": "hotfix: 프로빙 popup·history 액션 아이콘 vanish — canvas-body button cascade opt-out (PR #552 회귀) (#554)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-markdown",
+      "file": "src/components/canvas/widgets/desk-result/desk-markdown.tsx",
+      "line": 1,
+      "prNumber": 553,
+      "mergedAt": "2026-06-30T14:56:27+09:00",
+      "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "rq-card",
+      "file": "src/components/canvas/widgets/desk-result/rq-card.tsx",
+      "line": 1,
+      "prNumber": 553,
+      "mergedAt": "2026-06-30T14:56:27+09:00",
+      "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "section-card",
+      "file": "src/components/canvas/widgets/desk-result/section-card.tsx",
+      "line": 1,
+      "prNumber": 553,
+      "mergedAt": "2026-06-30T14:56:27+09:00",
+      "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "section-nav",
+      "file": "src/components/canvas/widgets/desk-result/section-nav.tsx",
+      "line": 1,
+      "prNumber": 553,
+      "mergedAt": "2026-06-30T14:56:27+09:00",
+      "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topic-card",
+      "file": "src/components/canvas/widgets/desk-result/topic-card.tsx",
+      "line": 1,
+      "prNumber": 553,
+      "mergedAt": "2026-06-30T14:56:27+09:00",
+      "oneLine": "feat: 데스크 결과 모달 — markdown 문서 → 토픽별 위젯 grid (섹션별 Memphis 카드) (#553)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "views",
+      "file": "src/components/recruiting-wizard/views.tsx",
+      "line": 1,
+      "prNumber": 547,
+      "mergedAt": "2026-06-30T00:59:09+09:00",
+      "oneLine": "feat: 리크루팅 표준 영역 template 캐싱 — LLM 생성 회피 + 일관 100% (#547)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "interview-analyzer",
+      "file": "src/components/interview-analyzer.tsx",
+      "line": 1,
+      "prNumber": 542,
+      "mergedAt": "2026-06-30T00:36:11+09:00",
+      "oneLine": "feat: 위젯 SubHeader primitive — 캡처/언어/세션 CTA 규격화 (동시통역 + 프로빙 + 데스크) (#542)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-state-context",
+      "file": "src/components/canvas/shell/widget-state-context.tsx",
+      "line": 1,
+      "prNumber": 533,
+      "mergedAt": "2026-06-29T23:00:11+09:00",
+      "oneLine": "feat: 데스크 리서치 — Navigator progress 단계별 누적 % 표시 (#533)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "control-board",
+      "file": "src/components/canvas/shell/control-board.tsx",
+      "line": 1,
+      "prNumber": 524,
+      "mergedAt": "2026-06-29T15:36:43+09:00",
+      "oneLine": "feat: Widget Control Board — 4-layer 공통 primitive + 5 위젯 마이그 (#524)",
+      "catalogKey": "canvas-widget-primitives"
+    },
+    {
+      "kind": "component",
+      "name": "credits-usage-predictor",
+      "file": "src/components/credits-usage-predictor.tsx",
+      "line": 1,
+      "prNumber": 523,
+      "mergedAt": "2026-06-29T15:06:54+09:00",
+      "oneLine": "feat: probing 1시간/25 단위 + 위젯 시각 통일 + recruiting/desk CTA ChromeButton (#523)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/credits",
+      "file": "src/app/[locale]/(app)/credits/page.tsx",
+      "line": 1,
+      "prNumber": 522,
+      "mergedAt": "2026-06-29T14:43:55+09:00",
+      "oneLine": "feat: LemonSqueezy 국내/외환 dual payout — currency-routed checkout + webhook (#522)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "credits-bundles",
+      "file": "src/components/credits-bundles.tsx",
+      "line": 1,
+      "prNumber": 522,
+      "mergedAt": "2026-06-29T14:43:55+09:00",
+      "oneLine": "feat: LemonSqueezy 국내/외환 dual payout — currency-routed checkout + webhook (#522)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "canvas-mock",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/canvas-mock.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/login",
+      "file": "src/app/[locale]/login/page.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/terms",
+      "file": "src/app/[locale]/terms/page.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/use-policy",
+      "file": "src/app/[locale]/use-policy/page.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/live/layout.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "legal-shell",
+      "file": "src/components/legal-shell.tsx",
+      "line": 1,
+      "prNumber": 518,
+      "mergedAt": "2026-06-29T14:20:06+09:00",
+      "oneLine": "feat: Research-mochi → Research-Canvas rebrand + research-canvas.io domain refs (#518)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/",
+      "file": "src/app/[locale]/page.tsx",
+      "line": 1,
+      "prNumber": 511,
+      "mergedAt": "2026-06-29T11:19:15+09:00",
+      "oneLine": "feat: 랜딩페이지 Canvas Era 리뉴얼 (사이드바 → 캔버스 + 신규 위젯 노출) (#511)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "workflow-section",
+      "file": "src/components/landing/workflow-section.tsx",
+      "line": 1,
+      "prNumber": 511,
+      "mergedAt": "2026-06-29T11:19:15+09:00",
+      "oneLine": "feat: 랜딩페이지 Canvas Era 리뉴얼 (사이드바 → 캔버스 + 신규 위젯 노출) (#511)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "search-panel",
+      "file": "src/components/canvas/widgets/interviews/search-panel.tsx",
+      "line": 1,
+      "prNumber": 509,
+      "mergedAt": "2026-06-29T11:19:09+09:00",
+      "oneLine": "feat: interviews 전체 보기 모드 + 코퍼스 substring 검색 (pg_trgm) (#509)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "primitive-page",
+      "file": "src/app/[locale]/(app)/design-system/components/primitive-page.tsx",
+      "line": 1,
+      "prNumber": 508,
+      "mergedAt": "2026-06-29T11:19:06+09:00",
+      "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "sidebar",
+      "file": "src/app/[locale]/(app)/design-system/components/sidebar.tsx",
+      "line": 1,
+      "prNumber": 508,
+      "mergedAt": "2026-06-29T11:19:06+09:00",
+      "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/design-system",
+      "file": "src/app/[locale]/(app)/design-system/page.tsx",
+      "line": 1,
+      "prNumber": 508,
+      "mergedAt": "2026-06-29T11:19:06+09:00",
+      "oneLine": "feat: /design-system 사이드바 + 한 탭에 한 primitive (URL hash navigation) (#508)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "credit-deduction-provider",
+      "file": "src/components/credit-deduction-provider.tsx",
+      "line": 1,
+      "prNumber": 506,
+      "mergedAt": "2026-06-29T11:19:02+09:00",
+      "oneLine": "feat: 위젯 헤더 크레딧 시각 강화 + 차감 마이크로 인터랙션 (#506)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "generation-job-provider",
+      "file": "src/components/generation-job-provider.tsx",
+      "line": 1,
+      "prNumber": 506,
+      "mergedAt": "2026-06-29T11:19:02+09:00",
+      "oneLine": "feat: 위젯 헤더 크레딧 시각 강화 + 차감 마이크로 인터랙션 (#506)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "banner",
+      "file": "src/components/canvas/shell/banner.tsx",
+      "line": 1,
+      "prNumber": 494,
+      "mergedAt": "2026-06-29T10:41:40+09:00",
+      "oneLine": "feat: canvas 위젯 일관성 — Field / Banner / SectionLabel SSOT 추출 (#494)",
+      "catalogKey": "canvas-widget-primitives"
+    },
+    {
+      "kind": "component",
+      "name": "field",
+      "file": "src/components/canvas/shell/field.tsx",
+      "line": 1,
+      "prNumber": 494,
+      "mergedAt": "2026-06-29T10:41:40+09:00",
+      "oneLine": "feat: canvas 위젯 일관성 — Field / Banner / SectionLabel SSOT 추출 (#494)",
+      "catalogKey": "canvas-widget-primitives"
+    },
+    {
+      "kind": "component",
+      "name": "sign-in-button",
+      "file": "src/components/sign-in-button.tsx",
+      "line": 1,
+      "prNumber": 490,
+      "mergedAt": "2026-06-29T00:45:48+09:00",
+      "oneLine": "feat: 헤더 버튼 톤 subtle — Button/IconButton 'subtle' variant + Topbar 적용 (#490)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topbar-tabs",
+      "file": "src/components/topbar-tabs.tsx",
+      "line": 1,
+      "prNumber": 490,
+      "mergedAt": "2026-06-29T00:45:48+09:00",
+      "oneLine": "feat: 헤더 버튼 톤 subtle — Button/IconButton 'subtle' variant + Topbar 적용 (#490)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "google-signin-button",
+      "file": "src/components/google-signin-button.tsx",
+      "line": 1,
+      "prNumber": 492,
+      "mergedAt": "2026-06-29T00:45:27+09:00",
+      "oneLine": "fix: Google 로그인 버튼 단색 G + ghost Memphis 톤 충돌 정리 (#492)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "share-menu",
+      "file": "src/components/ui/share-menu.tsx",
+      "line": 1,
+      "prNumber": 480,
+      "mergedAt": "2026-06-28T22:50:44+09:00",
+      "oneLine": "fix: share token refresh 401 redirect + dropdown portal z-overlay (#480)",
+      "catalogKey": "share-menu"
+    },
+    {
+      "kind": "component",
+      "name": "widget-header-color",
+      "file": "src/components/canvas/shell/widget-header-color.tsx",
+      "line": 1,
+      "prNumber": 474,
+      "mergedAt": "2026-06-27T22:07:27+09:00",
+      "oneLine": "feat: 위젯 헤더 색을 위젯별 사용자 토글 가능하게 (#474)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "download-menu",
+      "file": "src/components/ui/download-menu.tsx",
+      "line": 1,
+      "prNumber": 472,
+      "mergedAt": "2026-06-27T21:20:04+09:00",
+      "oneLine": "feat: DownloadMenu/ShareMenu trigger 를 Button primitive 로 통일 (#472)",
+      "catalogKey": "download-menu"
+    },
+    {
+      "kind": "component",
+      "name": "login-dialog",
+      "file": "src/components/login-dialog.tsx",
+      "line": 1,
+      "prNumber": 470,
+      "mergedAt": "2026-06-27T21:19:58+09:00",
+      "oneLine": "feat: LoginDialog 카드 Memphis pop 톤 (3px ink border + 6px offset shadow) (#470)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "cookie-consent-banner",
+      "file": "src/components/cookie-consent-banner.tsx",
+      "line": 1,
+      "prNumber": 467,
+      "mergedAt": "2026-06-27T20:53:02+09:00",
+      "oneLine": "feat: cookie banner Memphis pop 톤 — 3px ink + offset shadow (#467)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "recruiting-card-outputs",
+      "file": "src/components/canvas/widgets/recruiting-card-outputs.tsx",
+      "line": 1,
+      "prNumber": 457,
+      "mergedAt": "2026-06-27T02:24:07+09:00",
+      "oneLine": "feat: PR-D14 — 캔버스 outer 패딩 제거 + 위젯 내부 bg pop 정합 (#457)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "credits-status-banner",
+      "file": "src/components/credits-status-banner.tsx",
+      "line": 1,
+      "prNumber": 455,
+      "mergedAt": "2026-06-27T02:24:00+09:00",
+      "oneLine": "feat: PR-D17 — 크레딧 페이지 (/credits) pop 톤 적용 (#455)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/members",
+      "file": "src/app/[locale]/(app)/members/page.tsx",
+      "line": 1,
+      "prNumber": 453,
+      "mergedAt": "2026-06-27T02:23:53+09:00",
+      "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "invite-member-form",
+      "file": "src/components/invite-member-form.tsx",
+      "line": 1,
+      "prNumber": 453,
+      "mergedAt": "2026-06-27T02:23:53+09:00",
+      "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "member-row",
+      "file": "src/components/member-row.tsx",
+      "line": 1,
+      "prNumber": 453,
+      "mergedAt": "2026-06-27T02:23:53+09:00",
+      "oneLine": "feat: PR-D16 — 멤버 페이지 (/members) pop 톤 적용 (#453)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "mixpanel-provider",
+      "file": "src/components/mixpanel-provider.tsx",
+      "line": 1,
+      "prNumber": 452,
+      "mergedAt": "2026-06-27T01:57:03+09:00",
+      "oneLine": "feat: env validation (fail-open → fail-closed, build-time assert) (#452)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "slider",
+      "file": "src/components/ui/slider.tsx",
+      "line": 1,
+      "prNumber": 446,
+      "mergedAt": "2026-06-27T01:02:28+09:00",
+      "oneLine": "chore: dead 토큰 / dead CSS 청소 (D9 — D8 audit 권장) (#446)",
+      "catalogKey": "slider"
+    },
+    {
+      "kind": "component",
+      "name": "editorial",
+      "file": "src/components/editorial.tsx",
+      "line": 1,
+      "prNumber": 447,
+      "mergedAt": "2026-06-27T01:02:25+09:00",
+      "oneLine": "chore: shadow / rounded 일관성 (D8 followups D10) (#447)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "quant-analyzer",
+      "file": "src/components/quant-analyzer.tsx",
+      "line": 1,
+      "prNumber": 435,
+      "mergedAt": "2026-06-26T14:31:08+09:00",
+      "oneLine": "fix: replace xlsx (SheetJS) with exceljs (PR-SEC17, P0 HIGH) (#435)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "attendees-panel",
+      "file": "src/components/scheduler/attendees-panel.tsx",
+      "line": 1,
+      "prNumber": 435,
+      "mergedAt": "2026-06-26T14:31:08+09:00",
+      "oneLine": "fix: replace xlsx (SheetJS) with exceljs (PR-SEC17, P0 HIGH) (#435)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "danger-zone",
+      "file": "src/app/[locale]/(app)/settings/danger-zone.tsx",
+      "line": 1,
+      "prNumber": 428,
+      "mergedAt": "2026-06-26T12:22:34+09:00",
+      "oneLine": "feat: account delete (GDPR Art. 17) + daily retention cron (PR-SEC5) (#428)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/settings",
+      "file": "src/app/[locale]/(app)/settings/page.tsx",
+      "line": 1,
+      "prNumber": 428,
+      "mergedAt": "2026-06-26T12:22:34+09:00",
+      "oneLine": "feat: account delete (GDPR Art. 17) + daily retention cron (PR-SEC5) (#428)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "export-data",
+      "file": "src/app/[locale]/(app)/settings/export-data.tsx",
+      "line": 1,
+      "prNumber": 427,
+      "mergedAt": "2026-06-26T11:58:15+09:00",
+      "oneLine": "feat: account data export (GDPR Art. 15/20) — /api/account/export + /settings UI (#427)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "email-password-form",
+      "file": "src/components/email-password-form.tsx",
+      "line": 1,
+      "prNumber": 421,
+      "mergedAt": "2026-06-26T11:31:44+09:00",
+      "oneLine": "feat: explicit consent + audit_log infra (PR-SEC7) (#421)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/[locale]/(app)/canvas/layout.tsx",
+      "line": 1,
+      "prNumber": 413,
+      "mergedAt": "2026-06-26T10:56:35+09:00",
+      "oneLine": "feat: /canvas pop 잠금 디자인 production 적용 (PR-D2 재정의) (#413)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "autocontents-card",
+      "file": "src/components/canvas/widgets/autocontents-card.tsx",
+      "line": 1,
+      "prNumber": 407,
+      "mergedAt": "2026-06-25T07:39:54+00:00",
+      "oneLine": "feat: autocontents 네이티브 마이그 PR-1 — foundation (deps + visibility + API shells + placeholder) (#407)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "interview-chat",
+      "file": "src/components/interview-chat.tsx",
+      "line": 1,
+      "prNumber": 384,
+      "mergedAt": "2026-06-24T14:54:00+09:00",
+      "oneLine": "feat: interview 코퍼스 채팅 — RAG streaming API + 결과 화면 탭 (#384)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk-card",
+      "file": "src/components/canvas/widgets/desk-card.tsx",
+      "line": 1,
+      "prNumber": 383,
+      "mergedAt": "2026-06-24T14:48:20+09:00",
+      "oneLine": "feat: desk research multi-pass synthesis + 6-section pyramid report (75cr) (#383)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "realtime-transcript-provider",
+      "file": "src/components/realtime-transcript-provider.tsx",
+      "line": 1,
+      "prNumber": 381,
+      "mergedAt": "2026-06-24T13:11:52+09:00",
+      "oneLine": "feat: probing assistant infra + transcript provider (#381)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/recruiting",
+      "file": "src/app/[locale]/(app)/recruiting/page.tsx",
+      "line": 1,
+      "prNumber": 365,
+      "mergedAt": "2026-06-22T18:46:13+09:00",
+      "oneLine": "feat: /canvas 에 리크루팅 위젯 통합 + /recruiting deep-link redirect (#365)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "quotes-card",
+      "file": "src/components/canvas/widgets/quotes-card.tsx",
+      "line": 1,
+      "prNumber": 362,
+      "mergedAt": "2026-06-22T18:15:42+09:00",
+      "oneLine": "feat: canvas 위젯 자유 배치 (5×5 절대 좌표 그리드 + cell snap + localStorage) (#362)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "reset-password-form",
+      "file": "src/components/reset-password-form.tsx",
+      "line": 1,
+      "prNumber": 362,
+      "mergedAt": "2026-06-22T18:15:42+09:00",
+      "oneLine": "feat: canvas 위젯 자유 배치 (5×5 절대 좌표 그리드 + cell snap + localStorage) (#362)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/live",
+      "file": "src/app/[locale]/(app)/live/page.tsx",
+      "line": 1,
+      "prNumber": 360,
+      "mergedAt": "2026-06-22T16:02:26+09:00",
+      "oneLine": "feat: /canvas 에 AI 동시통역 위젯 통합 + /live deep-link redirect + preview gate (#360)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/interviews",
+      "file": "src/app/[locale]/(app)/interviews/page.tsx",
+      "line": 1,
+      "prNumber": 359,
+      "mergedAt": "2026-06-22T15:58:10+09:00",
+      "oneLine": "feat: /canvas 에 인터뷰 결과 생성기 위젯 통합 + /interviews deep-link redirect (#359)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "moderator-card",
+      "file": "src/components/canvas/widgets/moderator-card.tsx",
+      "line": 1,
+      "prNumber": 355,
+      "mergedAt": "2026-06-22T00:43:10+09:00",
+      "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "slidegen-card",
+      "file": "src/components/canvas/widgets/slidegen-card.tsx",
+      "line": 1,
+      "prNumber": 355,
+      "mergedAt": "2026-06-22T00:43:10+09:00",
+      "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topline-card",
+      "file": "src/components/canvas/widgets/topline-card.tsx",
+      "line": 1,
+      "prNumber": 355,
+      "mergedAt": "2026-06-22T00:43:10+09:00",
+      "oneLine": "feat: 캔버스 카드 polish — amore-tint 톤 + desk 패턴 헤더 + 부제 + 4 썸네일 (#355)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/desk",
+      "file": "src/app/[locale]/(app)/desk/page.tsx",
+      "line": 1,
+      "prNumber": 354,
+      "mergedAt": "2026-06-22T00:26:54+09:00",
+      "oneLine": "feat: /canvas 본문 통합 — desk/quotes widget body + deep-link redirect (#354)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/quotes",
+      "file": "src/app/[locale]/(app)/quotes/page.tsx",
+      "line": 1,
+      "prNumber": 354,
+      "mergedAt": "2026-06-22T00:26:54+09:00",
+      "oneLine": "feat: /canvas 본문 통합 — desk/quotes widget body + deep-link redirect (#354)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "primitives",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/shell/primitives.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "queue-panel",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/shell/queue-panel.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "widget-shell",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/shell/widget-shell.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "desk",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/desk.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "moderator",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/moderator.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "slidegen",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/slidegen.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "topline",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/topline.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "transcripts",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/transcripts.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "translate",
+      "file": "src/app/[locale]/(canvas-lab)/canvas/widgets/translate.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "layout",
+      "file": "src/app/[locale]/(canvas-lab)/layout.tsx",
+      "line": 1,
+      "prNumber": 342,
+      "mergedAt": "2026-06-20T23:57:48+09:00",
+      "oneLine": "feat: bootstrap canvas-lab mock + shell/content separation (#342)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "active-project-provider",
+      "file": "src/components/active-project-provider.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "report-generator",
+      "file": "src/components/report-generator.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "enhance-panel",
+      "file": "src/components/reports/enhance-panel.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "booking-links-panel",
+      "file": "src/components/scheduler/booking-links-panel.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "scheduler-page",
+      "file": "src/components/scheduler/scheduler-page.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "video-job-provider",
+      "file": "src/components/video-job-provider.tsx",
+      "line": 1,
+      "prNumber": 334,
+      "mergedAt": "2026-06-19T10:06:35+09:00",
+      "oneLine": "chore: suppress 23 set-state-in-effect sites with categorized reasons (#334)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "slidegen-console",
+      "file": "src/components/slidegen/slidegen-console.tsx",
+      "line": 1,
+      "prNumber": 331,
+      "mergedAt": "2026-06-19T01:59:43+00:00",
+      "oneLine": "feat: SlideGen pyramid 도식 추가 (계층 피라미드) (#331)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/slidegen",
+      "file": "src/app/[locale]/(app)/slidegen/page.tsx",
+      "line": 1,
+      "prNumber": 324,
+      "mergedAt": "2026-06-19T01:51:25+00:00",
+      "oneLine": "feat: SlideGen 뼈대 — 사이드바 탭 + 결정론 파이프라인 (PR1) (#324)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "slide-canvas",
+      "file": "src/components/slidegen/slide-canvas.tsx",
+      "line": 1,
+      "prNumber": 324,
+      "mergedAt": "2026-06-19T01:51:25+00:00",
+      "oneLine": "feat: SlideGen 뼈대 — 사이드바 탭 + 결정론 파이프라인 (PR1) (#324)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/admin/payments",
+      "file": "src/app/[locale]/(app)/admin/payments/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/affinity-bubble",
+      "file": "src/app/[locale]/(app)/affinity-bubble/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/dashboard",
+      "file": "src/app/[locale]/(app)/dashboard/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/moderator",
+      "file": "src/app/[locale]/(app)/moderator/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/projects/[id]",
+      "file": "src/app/[locale]/(app)/projects/[id]/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/projects",
+      "file": "src/app/[locale]/(app)/projects/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/forgot-password",
+      "file": "src/app/[locale]/forgot-password/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/reset-password",
+      "file": "src/app/[locale]/reset-password/page.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "admin-payments",
+      "file": "src/components/admin-payments.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "artifact-assign-menu",
+      "file": "src/components/artifact-assign-menu.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "background-job-pill",
+      "file": "src/components/background-job-pill.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "coming-soon-card",
+      "file": "src/components/coming-soon-card.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "forgot-password-form",
+      "file": "src/components/forgot-password-form.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "cluster-view",
+      "file": "src/components/insights/cluster-view.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "language-switcher",
+      "file": "src/components/language-switcher.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "moderator-services-carousel",
+      "file": "src/components/moderator-services-carousel.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "paywall-provider",
+      "file": "src/components/paywall-provider.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "projects-view",
+      "file": "src/components/projects-view.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "version-selector",
+      "file": "src/components/reports/version-selector.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "calendar-view",
+      "file": "src/components/scheduler/calendar-view.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "date-range-calendar",
+      "file": "src/components/scheduler/date-range-calendar.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "public-booking-client",
+      "file": "src/components/scheduler/public-booking-client.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "requirements-form",
+      "file": "src/components/scheduler/requirements-form.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "sign-out-button",
+      "file": "src/components/sign-out-button.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "video-analyzer",
+      "file": "src/components/video-analyzer.tsx",
+      "line": 1,
+      "prNumber": 326,
+      "mergedAt": "2026-06-19T01:00:26+09:00",
+      "oneLine": "chore: migrate consumer files to font-size tokens (B-1 step 4-9) (#326)",
+      "catalogKey": null
+    },
+    {
+      "kind": "component",
+      "name": "chrome-input",
+      "file": "src/components/ui/chrome-input.tsx",
+      "line": 1,
+      "prNumber": 325,
+      "mergedAt": "2026-06-19T00:48:12+09:00",
+      "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
+      "catalogKey": "chrome-input"
+    },
+    {
+      "kind": "component",
+      "name": "feature-page",
+      "file": "src/components/ui/feature-page.tsx",
+      "line": 1,
+      "prNumber": 325,
+      "mergedAt": "2026-06-19T00:48:12+09:00",
+      "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
+      "catalogKey": "feature-page"
+    },
+    {
+      "kind": "component",
+      "name": "label",
+      "file": "src/components/ui/label.tsx",
+      "line": 1,
+      "prNumber": 325,
+      "mergedAt": "2026-06-19T00:48:12+09:00",
+      "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
+      "catalogKey": "label"
+    },
+    {
+      "kind": "component",
+      "name": "select",
+      "file": "src/components/ui/select.tsx",
+      "line": 1,
+      "prNumber": 325,
+      "mergedAt": "2026-06-19T00:48:12+09:00",
+      "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
+      "catalogKey": "select"
+    },
+    {
+      "kind": "component",
+      "name": "textarea",
+      "file": "src/components/ui/textarea.tsx",
+      "line": 1,
+      "prNumber": 325,
+      "mergedAt": "2026-06-19T00:48:12+09:00",
+      "oneLine": "chore: migrate ui primitives to font-size tokens (B-1 step 3) (#325)",
+      "catalogKey": "textarea"
+    },
+    {
+      "kind": "route",
+      "name": "/insights-analyzer/[jobId]",
+      "file": "src/app/[locale]/(app)/insights-analyzer/[jobId]/page.tsx",
+      "line": 1,
+      "prNumber": 281,
+      "mergedAt": "2026-06-12T23:43:52+09:00",
+      "oneLine": "feat: insights ClusterView — render 5a clusters in dashboard (PR 6a, ClusterView slice) (#281)",
+      "catalogKey": null
+    },
+    {
+      "kind": "route",
+      "name": "/insights-analyzer",
+      "file": "src/app/[locale]/(app)/insights-analyzer/page.tsx",
+      "line": 1,
+      "prNumber": 258,
+      "mergedAt": "2026-06-11T10:20:06+09:00",
+      "oneLine": "feat: insights — \"이전 분석\" list on idle state (#258)",
+      "catalogKey": null
+    }
+  ]
+}
