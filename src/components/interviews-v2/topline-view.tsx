@@ -13,6 +13,7 @@ import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { useToast } from '@/components/toast-provider';
 import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
+import { useCountUp } from '@/hooks/use-count-up';
 import { Prose, ToplineBlockView } from './topline-blocks';
 
 // 출력 언어 선택 옵션 — SSOT 는 topline-prompt.ts 의 TOPLINE_OUTPUT_LANGS
@@ -226,13 +227,18 @@ export function ToplineMapProgress({
   mapDone?: number | null;
 }) {
   const t = useTranslations('InterviewsV2');
-  if (!mapTotal || mapTotal <= 0) return null;
-  const done = Math.max(0, Math.min(mapDone ?? 0, mapTotal));
-  const pct = Math.round((done / mapTotal) * 100);
+  const total = mapTotal ?? 0;
+  const rawDone = total > 0 ? Math.max(0, Math.min(mapDone ?? 0, total)) : 0;
+  // 문서 수 count-up — "N/M 문서 분석" 의 N 이 이전 값에서 새 진행 수까지
+  // 부드럽게 증가. reduced-motion 시 즉시 최종값(훅이 내부 존중). 진행 바(pct)
+  // 는 실제 진행값 기준이라 표시 수와 미세 lag 은 있어도 정확도 유지.
+  const displayDone = useCountUp(rawDone);
+  if (total <= 0) return null;
+  const pct = Math.round((rawDone / total) * 100);
   return (
     <div className="space-y-1.5">
       <div className="text-sm text-mute">
-        {t('toplineMapProgress', { done, total: mapTotal })}
+        {t('toplineMapProgress', { done: displayDone, total })}
       </div>
       <div className="h-1 w-full overflow-hidden rounded-full bg-line-soft">
         <div
@@ -576,7 +582,11 @@ export function ToplineView({ projectId }: { projectId: string }) {
                 stuck={generatingStale}
               />
             )}
-            <article>
+            {/* stagger — 완료 보고서 블록이 순차로 떠오르며 등장. 클래스만
+                추가(DOM 무변경)라 블록 간 margin collapse 보존. reduce 단계
+                스트리밍 중엔 새 블록만 마운트 1회 재생(기존 블록 재애니 없음).
+                reduced-motion 은 globals.css 가 독립 존중. */}
+            <article className="stagger">
               {blocks.map((b) => (
                 <Fragment key={b.id}>
                   {editingBlockId === b.id ? (
