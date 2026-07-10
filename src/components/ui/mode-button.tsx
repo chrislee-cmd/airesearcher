@@ -66,7 +66,7 @@ function cardClassName(selected: boolean, variant: ModeVariant): string {
     'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 ' +
     'text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ' +
     (selected
-      ? 'border-amore bg-amore-bg'
+      ? 'border-amore bg-paper'
       : 'border-line-soft bg-paper hover:bg-paper-soft')
   );
 }
@@ -141,12 +141,7 @@ export function ModeButton({
       onClick={() => onSelect(option.key)}
       className={cardClassName(selected, variant)}
     >
-      {/* default variant: 우상단 ✓ (desk/quotes/enhance 기존 유지). */}
-      {selected ? (
-        <span aria-hidden className="absolute right-2 top-2 text-amore">
-          ✓
-        </span>
-      ) : null}
+      {/* default variant selected = amore 보더만 (배경색·우상단 ✓ 제거). */}
       <CardInner option={option} />
     </button>
   );
