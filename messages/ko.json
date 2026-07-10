@@ -939,7 +939,8 @@
     "countryScopeDesc": {
       "kr": "국내 자료만 (KOSIS·DART·국내 뉴스). 보고서는 국내 시장 섹션만.",
       "global": "국내 + 글로벌 공시 (SEC·EDINET·World Bank·OECD). 보고서에 해외·국내 vs G7 대비 추가."
-    }
+    },
+    "countryScopeTrendHint": "시장조사 보고서에서 사용돼요. 트렌드에서는 적용되지 않아요."
   },
   "TranslateConsole": {
     "sourceLang": "원어",
