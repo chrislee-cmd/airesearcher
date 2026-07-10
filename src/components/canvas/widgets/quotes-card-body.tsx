@@ -933,38 +933,46 @@ export function QuotesCardBody() {
     // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
     // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      {/* 언어 + 발화자 수 — 나란히. 발화자 수는 diarization hint 로 배선. */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* 언어 + 발화자 수 — 프로빙 control-board(:108) 규격 미러:
+          flex flex-wrap gap-4 + 각 드롭다운 min-w-24 wrapper 로 두 드롭다운을
+          붙여 좌측 정렬. grid-cols-2 의 50% 강제 폭(가운데 빈 간격) 제거.
+          primitive 는 DropdownMenu 유지(전사록 통일 기준 — 프로빙 SelectMenu
+          와 의도된 차이). 발화자 수는 diarization hint 로 배선. */}
+      <div className="flex flex-wrap gap-4">
         <Field label="언어">
-          <DropdownMenu
-            items={languageItems}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                aria-label="언어"
-              >
-                {currentLanguageLabel}
-              </ControlTrigger>
-            )}
-          />
+          <div className="min-w-24">
+            <DropdownMenu
+              items={languageItems}
+              trigger={({ open, onClick, ...aria }) => (
+                <ControlTrigger
+                  {...aria}
+                  data-open={open}
+                  onClick={onClick}
+                  aria-label="언어"
+                >
+                  {currentLanguageLabel}
+                </ControlTrigger>
+              )}
+            />
+          </div>
         </Field>
 
         <Field label={tWidgets('transcriptSpeakerLabel')}>
-          <DropdownMenu
-            items={speakerItems}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                aria-label={tWidgets('transcriptSpeakerLabel')}
-              >
-                {currentSpeakerLabel}
-              </ControlTrigger>
-            )}
-          />
+          <div className="min-w-24">
+            <DropdownMenu
+              items={speakerItems}
+              trigger={({ open, onClick, ...aria }) => (
+                <ControlTrigger
+                  {...aria}
+                  data-open={open}
+                  onClick={onClick}
+                  aria-label={tWidgets('transcriptSpeakerLabel')}
+                >
+                  {currentSpeakerLabel}
+                </ControlTrigger>
+              )}
+            />
+          </div>
         </Field>
       </div>
 
