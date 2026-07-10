@@ -3,94 +3,63 @@
 /* ────────────────────────────────────────────────────────────────────
    ProbingCanvasCardBody — probing 위젯의 canvas card (preview) 본문.
 
-   PR (probing-canvas-card-simplify): canvas card 를 "최소 작업 영역" 으로
-   단순화. 3 section 만 노출 —
-     1. AI 사고 흐름 (thinking stream) — 상단
-     2. 제안 질문 popup — 중앙 절대 위치
-     3. 질문 기록 (history) — 하단 toggle
+   PR (probing-widgetview-strip-live-surfaces): 라이브 위젯뷰를 정리 —
+   **AI 사고 흐름 (ProbingThinkingStream) + 제안 질문 팝업 (ProbingQuestionPopup
+   + "질문 준비 중" placeholder)** 을 위젯뷰에서 제거. 이 둘은 전체보기
+   (ProbingFullView → QuestionPane) 에서만 노출된다 (사용자 요청: "라이브 중
+   위젯뷰에서 사고 흐름·질문 팝업 제거, 전체보기에서만").
 
-   페르소나 8 패널 + 조사 입력 (조사 목적/가설/KRQ) 은 canvas card 에서
-   사라지고 fullview modal (ProbingFullView) 에만 노출 — preview vs fullview
-   의 의미를 분리. 백그라운드 페르소나 분석은 계속 (세션 state 는 부모
-   probing-card.tsx ExpandedBody 가 단일 소유, 컴포넌트만 다르게 그림).
+   → 라이브 위젯뷰 = **컴팩트 진행 안내 + 전체보기 CTA** + 질문 기록 (history).
+   질문 기록은 라이브 busy surface 가 아니라 기록이므로 위젯뷰에 유지.
 
-   popup 은 placement="center" 로 카드 중앙에 띄운다 (fullview 의 우하단
-   floating 과 대비 — 좁은 카드는 사용자 시선이 중앙에 머무므로).
+   세션/think 엔진·질문 생성·popup 상태·thinkingEvents 데이터 로직은 전부
+   그대로 (부모 probing-card.tsx ExpandedBody 가 단일 소유) — 표시 위치만
+   이동한다. thinkingEvents/activePopup 는 전체보기 QuestionPane 이 이미
+   props 로 받아 렌더하므로 여기선 더 이상 전달받지 않는다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { ProbingThinkingStream } from './thinking-stream';
-import { ProbingQuestionPopup } from './question-popup';
+import { Button } from '@/components/ui/button';
 import { ProbingQuestionHistory } from './question-history';
-import type {
-  HistoryQuestion,
-  PopupQuestion,
-  ThinkingEvent,
-} from '../probing-types';
+import type { HistoryQuestion } from '../probing-types';
 
 export function ProbingCanvasCardBody({
-  thinkingEvents,
-  thinkingStreaming,
-  activePopup,
-  onPopupPin,
-  onPopupCopy,
-  onPopupDismiss,
-  onPopupAutoDismiss,
   history,
   nowMs,
   onHistoryCopy,
   onHistoryToggleStar,
   onHistoryDelete,
   isLive,
+  onFullview,
 }: {
-  // 1. 사고 흐름
-  thinkingEvents: ThinkingEvent[];
-  thinkingStreaming: boolean;
-  // 2. popup
-  activePopup: PopupQuestion | null;
-  onPopupPin: () => void;
-  onPopupCopy: () => void;
-  onPopupDismiss: () => void;
-  onPopupAutoDismiss: () => void;
-  // 3. history
+  // 질문 기록 (위젯뷰 유지)
   history: HistoryQuestion[];
   nowMs: number;
   onHistoryCopy: (text: string) => void;
   onHistoryToggleStar: (id: string) => void;
   onHistoryDelete: (id: string) => void;
-  // session 상태 — 중앙 placeholder 문구 분기
+  // session 상태 — 중앙 안내 문구 분기
   isLive: boolean;
+  // 전체보기 진입 CTA
+  onFullview: () => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* 1. AI 사고 흐름 — 상단 */}
-      <ProbingThinkingStream
-        events={thinkingEvents}
-        isStreaming={thinkingStreaming}
-      />
-
-      {/* 2. 제안 질문 popup — 중앙 영역 */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-3">
-        {!activePopup && (
-          <p className="text-center text-sm italic text-mute-soft">
-            {isLive
-              ? 'AI 가 질문을 준비 중입니다…'
-              : '세션을 시작하세요'}
-          </p>
-        )}
-        {activePopup && (
-          <ProbingQuestionPopup
-            popup={activePopup}
-            placement="center"
-            positioning="card"
-            onPin={onPopupPin}
-            onCopy={onPopupCopy}
-            onDismiss={onPopupDismiss}
-            onAutoDismiss={onPopupAutoDismiss}
-          />
+      {/* 진행 안내 — 사고 흐름·제안 질문 팝업은 전체보기로 이전됨. 위젯뷰는
+          컴팩트 진행 상태 + 전체보기 진입만 노출. */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-3 text-center">
+        <p className="text-sm italic text-mute-soft">
+          {isLive
+            ? '세션 진행 중 · 전체 보기에서 AI 사고 흐름과 제안 질문을 확인하세요'
+            : '세션을 시작하세요'}
+        </p>
+        {isLive && (
+          <Button variant="secondary" size="sm" onClick={onFullview}>
+            전체 보기 열기
+          </Button>
         )}
       </div>
 
-      {/* 3. 질문 기록 — 하단 toggle */}
+      {/* 질문 기록 — 하단 toggle (위젯뷰 유지) */}
       <ProbingQuestionHistory
         history={history}
         nowMs={nowMs}

@@ -202,7 +202,8 @@ function ExpandedBody() {
   // 카드(ExpandedBody)는 모달이 열려 있어도 항상 마운트되므로
   // useRealtimeTranscription 세션이 위젯 swap·모달 close 후에도 보존된다
   // (옛 위젯별 모달 + provider hoist 불필요).
-  const { isCurrent, renderInSlot, close } = useFullview('probing');
+  const { isCurrent, renderInSlot, openFullview, close } =
+    useFullview('probing');
 
   const isLive = sessionStatus === 'live';
 
@@ -1689,7 +1690,9 @@ function ExpandedBody() {
             return <ControlBoardPanel>{controlPanel}</ControlBoardPanel>;
           }
 
-          // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(사고흐름 or placeholder).
+          // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(진행 안내 + 질문 기록).
+          // 사고 흐름·제안 질문 팝업은 전체보기(QuestionPane)로 이전 — 위젯뷰는
+          // 컴팩트 진행 안내 + 전체보기 CTA 만 (PR: probing-widgetview-strip).
           // active 컨트롤도 idle 과 동일한 ControlBoardPanel 프레임 경유 (손코딩
           // 상단 바 제거) — idle→active 프레임/컨트롤 위치 불변, 본문은 아래 flex-1.
           return (
@@ -1701,19 +1704,13 @@ function ExpandedBody() {
                 </div>
               ) : (
                 <ProbingCanvasCardBody
-                  thinkingEvents={thinkingEvents}
-                  thinkingStreaming={thinkingStreaming}
-                  activePopup={activePopup}
-                  onPopupPin={handlePopupPin}
-                  onPopupCopy={handlePopupCopy}
-                  onPopupDismiss={handlePopupManualDismiss}
-                  onPopupAutoDismiss={handlePopupAutoDismiss}
                   history={history}
                   nowMs={now}
                   onHistoryCopy={handleHistoryCopy}
                   onHistoryToggleStar={handleHistoryToggleStar}
                   onHistoryDelete={handleHistoryDelete}
                   isLive={isLive}
+                  onFullview={openFullview}
                 />
               )}
             </>
