@@ -123,13 +123,20 @@ function safeFilename(title: string) {
 const ACCEPT =
   'audio/*,video/*,text/plain,text/markdown,.txt,.md,.markdown,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-// 전사록 집계 공정 단계 — 관측 신호(멀티파일 업로드 progress + 잡 status)를
-// 2 노드(업로드 → 전사)로 집계하고, 전 파일 done 이면 StageFlow complete hero
-// 로 넘어간다(3번째 "완료" 단계는 노드가 아니라 complete=true). 정적 정의라
-// 모듈 스코프 — 컴포넌트 안에서 재생성/메모이즈 불필요.
+// 전사록 공정 단계 — 데스크(6노드)와 미러. 백엔드는 coarse status
+// (queued/submitting/transcribing/done)만 노출하고 문서변환/화자분리/오탈자/
+// 표현보정 세부 phase 는 서버 내부에서만 일어난다. 따라서 관측 가능한
+// 업로드/전사만 실시간 active 로 두고, 후처리 4단계는 reveal dwell 로 완료
+// 직전에 순서대로 노출한다(데스크 STAGE_DWELL_MS 패턴 — 가짜 active 조작 없이
+// "표시" 인덱스만 걸어 올림). label = Widgets.transcriptStage*, description =
+// Process.transcripts.* 재사용. 정적 정의라 모듈 스코프.
 const TX_STAGE_DEFS = [
-  { id: 'upload', icon: '📤' },
-  { id: 'transcribe', icon: '🎧' },
+  { id: 'upload', icon: '📤', phase: 'uploading', label: 'transcriptStageUpload' },
+  { id: 'transcribe', icon: '🎧', phase: 'transcribing', label: 'transcriptStageTranscribe' },
+  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
+  { id: 'speaker', icon: '🗣️', phase: 'speaker_diarization', label: 'transcriptStageSpeaker' },
+  { id: 'typo', icon: '✍️', phase: 'typo_correction', label: 'transcriptStageTypo' },
+  { id: 'phrasing', icon: '✨', phase: 'phrasing_polish', label: 'transcriptStagePhrasing' },
 ] as const;
 const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
@@ -703,11 +710,12 @@ export function QuotesCardBody() {
         j.status === 'submitting' ||
         j.status === 'transcribing',
     ) ?? null;
-  // ─── StageFlow 공정 플로우 (데스크 미러) ──────────────────────────────────
+  // ─── StageFlow 공정 플로우 (데스크 6노드 미러) ────────────────────────────
   // 전사록은 멀티파일 — N 파일 각자 status(queued/submitting/transcribing/done)
-  // + 로컬 업로드 progress. 데스크(단일 잡 6단계)와 달리 관측 신호를 집계 2노드
-  // (업로드 → 전사) + 완료 hero 로 매핑한다. hint 로 진행 세부(업로드 %, 전사
-  // 완료 N/M)를 노출. 전 파일 done 이면 StageFlow complete=true 로 완료 hero.
+  // + 로컬 업로드 progress. 관측 가능한 업로드/전사만 실시간 active 로 두고,
+  // 후처리 4단계(문서변환·화자분리·오탈자·표현보정)는 백엔드 세부 신호가 없어
+  // reveal dwell 로 완료 직전 순서대로 노출한다(TX_STAGE_DEFS 참고). hint 로
+  // 진행 세부(업로드 %, 전사 완료 N/M). 전 파일 done → complete=true 완료 hero.
   const uploadValues = Object.values(job.localUploads);
   const uploadingAvgPct =
     uploadValues.length > 0
@@ -773,6 +781,8 @@ export function QuotesCardBody() {
     if (i < displayIdx) status = 'done';
     else if (i === displayIdx) status = anyError ? 'error' : 'active';
     else status = 'pending';
+    // hint 는 관측 가능한 단계에만 — 업로드 % / 전사 완료 N/M. 후처리 4단계는
+    // 백엔드 세부 신호가 없어 hint 없음(active glow + description 으로 안내).
     const hint =
       status !== 'active'
         ? undefined
@@ -780,23 +790,17 @@ export function QuotesCardBody() {
           ? uploadingAvgPct != null
             ? `${uploadingAvgPct}%`
             : undefined
-          : job.jobs.length > 0
-            ? `${doneJobs.length}/${job.jobs.length}`
+          : s.id === 'transcribe'
+            ? job.jobs.length > 0
+              ? `${doneJobs.length}/${job.jobs.length}`
+              : undefined
             : undefined;
     return {
       id: s.id,
-      label: tWidgets(
-        s.id === 'upload'
-          ? 'transcriptStageUpload'
-          : 'transcriptStageTranscribe',
-      ),
+      label: tWidgets(s.label as never),
       status,
       icon: s.icon,
-      description: tWidgets(
-        s.id === 'upload'
-          ? 'transcriptStageUploadDesc'
-          : 'transcriptStageTranscribeDesc',
-      ),
+      description: tProcess(`transcripts.${s.phase}` as never),
       hint,
     };
   });
