@@ -944,6 +944,9 @@
   "TranslateConsole": {
     "sourceLang": "Source",
     "targetLang": "Target",
+    "lang": "Language",
+    "inputLang": "Input language",
+    "outputLang": "Output language",
     "select": "Select",
     "inputSource": {
       "label": "Input source",
