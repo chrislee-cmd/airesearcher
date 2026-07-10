@@ -141,9 +141,10 @@ export function DeskCardBody() {
   // 주 경로. trend / market 모두 서버가 소스를 목적 기반으로 자동 선정한다
   // (옛 소스 직접 선택 custom mode 는 제거됨).
   const [mode, setMode] = useState<DeskMode>('trend');
-  // 국가 범위 (세부 옵션) — 한국 only(default) / 글로벌. market 보고서 구조를
-  // 국내 only ↔ 국내+해외+대비로 분기한다. trend 은 이 값을 쓰지 않아 컨트롤도
-  // market mode 에서만 노출한다(무의미한 dead 컨트롤 방지).
+  // 국가 범위 — 한국 only(default) / 글로벌. market 보고서 구조를 국내 only ↔
+  // 국내+해외+대비로 분기하는 시장조사 전용 값. trend 은 서버가 이 값을 안
+  // 쓰므로 컨트롤은 market 선택 시에만 노출한다(trend 은 완전히 숨김). 위치는
+  // 리서치 목적 Field 바로 아래 — 등장/변화해도 위 필드를 밀지 않는다.
   const [countryScope, setCountryScope] = useState<DeskCountryScope>('kr');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -821,37 +822,6 @@ export function DeskCardBody() {
             buttonClassName={DESK_OPTION_TRIGGER_CLASS}
           />
         </div>
-
-        {/* 국가 범위 — 한국 only / 글로벌. market 보고서 구조를 국내 only ↔
-            국내+해외+대비로 가른다. trend 은 이 값을 안 쓰므로 market 에서만
-            노출(dead 컨트롤 방지). default = 한국 only(현행 동작 보존). */}
-        {mode === 'market' && (
-          <div className="mt-4 space-y-1.5">
-            <span className="text-xs font-medium text-mute">
-              {tDesk('countryScopeLabel')}
-            </span>
-            <ModeCardGroup
-              ariaLabel={tDesk('countryScopeLabel')}
-              columns={2}
-              options={[
-                {
-                  key: 'kr',
-                  icon: '🇰🇷',
-                  label: tDesk('countryScopeTitle.kr'),
-                  description: tDesk('countryScopeDesc.kr'),
-                },
-                {
-                  key: 'global',
-                  icon: '🌐',
-                  label: tDesk('countryScopeTitle.global'),
-                  description: tDesk('countryScopeDesc.global'),
-                },
-              ]}
-              value={countryScope}
-              onChange={(key) => setCountryScope(key as DeskCountryScope)}
-            />
-          </div>
-        )}
       </Field>
 
       {/* 주제 · 키워드 (핵심 입력) */}
@@ -869,6 +839,37 @@ export function DeskCardBody() {
 
       {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
       <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
+
+      {/* 국가 범위 — 한국 only / 글로벌. 국가 범위는 market 보고서 구조를
+          국내 only ↔ 국내+해외+대비로 가르는 시장조사 전용 값이라, trend 에선
+          서버가 안 쓴다 → market 선택 시에만 노출(trend 은 완전히 숨김).
+          리서치 목적 Field 바로 아래에 두어, 등장/변화해도 위 필드(주제·목적)를
+          밀지 않는다(레이아웃 안정성). scope 값·payload 로직은 무변경 — 순수
+          배치/노출. default = 한국 only(현행 동작 보존). */}
+      {mode === 'market' && (
+        <Field label={tDesk('countryScopeLabel')}>
+          <ModeCardGroup
+            ariaLabel={tDesk('countryScopeLabel')}
+            columns={2}
+            options={[
+              {
+                key: 'kr',
+                icon: '🇰🇷',
+                label: tDesk('countryScopeTitle.kr'),
+                description: tDesk('countryScopeDesc.kr'),
+              },
+              {
+                key: 'global',
+                icon: '🌐',
+                label: tDesk('countryScopeTitle.global'),
+                description: tDesk('countryScopeDesc.global'),
+              },
+            ]}
+            value={countryScope}
+            onChange={(key) => setCountryScope(key as DeskCountryScope)}
+          />
+        </Field>
+      )}
 
       {/* 수집 소스 — trend / market 모두 서버가 목적 기반으로 자동 선정한다.
           trend 는 어떤 소스가 쓰이는지 안내 문구만 노출. */}
