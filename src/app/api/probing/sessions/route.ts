@@ -60,12 +60,20 @@ export async function POST(req: Request) {
   // again — the time-based billing is already covered by the original
   // start-lump + heartbeat ticks. A forged / unknown session_id has no prior
   // charge, so it just bills a normal start-lump (no free session).
-  const reqBody = (await req.json().catch(() => ({}))) as { session_id?: unknown };
+  const reqBody = (await req.json().catch(() => ({}))) as {
+    session_id?: unknown;
+    source?: unknown;
+  };
   const renewId =
     typeof reqBody?.session_id === 'string' && UUID_RE.test(reqBody.session_id)
       ? reqBody.session_id
       : null;
   const sessionId = renewId ?? randomUUID();
+  // 캡처 소스 (mic/tab) — probing_session_runs 계측용. 신규 start 에만 의미.
+  const source =
+    reqBody?.source === 'mic' || reqBody?.source === 'tab'
+      ? reqBody.source
+      : null;
 
   // Charge the start lump *before* allocating the OpenAI client_secret.
   // FEATURE_COSTS.probing = 25 — covers the first hour (one tick).
@@ -175,6 +183,28 @@ export async function POST(req: Request) {
       { error: 'openai_session_invalid_response' },
       { status: 502 },
     );
+  }
+
+  // 세션 라이프사이클 계측 (OBS-2) — 신규 start 만 'active' run row insert.
+  // renewal(같은 session_id 재전송)은 이미 row 가 있으므로 skip. best-effort:
+  // 계측 실패가 세션 시작(핵심 경로)을 막지 않는다. row 는 session_id 를 그대로
+  // 식별자로 써서 credit_transactions.generation_id 및 #554 녹음과 정합.
+  if (!renewId) {
+    const { error: runInsertError } = await supabase
+      .from('probing_session_runs')
+      .insert({
+        org_id: org.org_id,
+        user_id: user.id,
+        session_id: sessionId,
+        status: 'active',
+        source,
+      });
+    if (runInsertError) {
+      console.warn('[probing/sessions] session_run insert failed', {
+        session_id: sessionId,
+        error: runInsertError.message,
+      });
+    }
   }
 
   return NextResponse.json({
