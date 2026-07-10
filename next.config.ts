@@ -12,7 +12,10 @@ const baseSecurityHeaders = [
     value: 'max-age=63072000; includeSubDomains; preload',
   },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
+  // SAMEORIGIN (not DENY) so the app can frame its own pages — required by the
+  // /design-system "Recently Changed" live preview gallery, which iframes real
+  // app routes. Cross-origin framing (clickjacking) stays blocked.
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
@@ -55,7 +58,10 @@ const cspReportOnly = [
     'https://vitals.vercel-insights.com',
   ].join(' '),
   "frame-src 'self' https:",
-  "frame-ancestors 'none'",
+  // 'self' (not 'none') to keep parity with X-Frame-Options: SAMEORIGIN — the
+  // /design-system preview gallery frames same-origin app routes. Kept aligned
+  // now so the eventual enforced-CSP switch (stage 3) doesn't break it.
+  "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

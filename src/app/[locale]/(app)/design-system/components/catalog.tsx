@@ -3,16 +3,19 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { ChapterHeader } from '@/components/editorial';
 import { CanvasUsages } from './canvas-usages';
+import { RecentlyChanged } from './recently-changed';
 import { DesignSystemSidebar } from './sidebar';
 import {
   DEFAULT_SECTION_ID,
+  RECENTLY_CHANGED_ID,
   SECTION_INDEX,
   isSectionId,
-  type SectionId,
+  type ViewId,
 } from './sections';
 
-function readHash(): SectionId {
+function readHash(): ViewId {
   const raw = window.location.hash.replace(/^#/, '');
+  if (raw === RECENTLY_CHANGED_ID) return RECENTLY_CHANGED_ID;
   return raw && isSectionId(raw) ? raw : DEFAULT_SECTION_ID;
 }
 
@@ -22,13 +25,13 @@ function subscribeToHash(callback: () => void) {
 }
 
 export function DesignSystemCatalog() {
-  const activeId = useSyncExternalStore<SectionId>(
+  const activeId = useSyncExternalStore<ViewId>(
     subscribeToHash,
     readHash,
     () => DEFAULT_SECTION_ID,
   );
 
-  const handleSelect = useCallback((id: SectionId) => {
+  const handleSelect = useCallback((id: ViewId) => {
     if (window.location.hash.replace(/^#/, '') === id) return;
     window.history.pushState(null, '', `#${id}`);
     // pushState doesn't fire hashchange — synthesize so useSyncExternalStore
@@ -37,7 +40,7 @@ export function DesignSystemCatalog() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
-  const entry = SECTION_INDEX[activeId];
+  const isRecentlyChanged = activeId === RECENTLY_CHANGED_ID;
 
   return (
     <div className="mx-auto max-w-[1280px] px-2 pb-16 pt-6">
@@ -48,8 +51,14 @@ export function DesignSystemCatalog() {
       <div className="flex gap-8">
         <DesignSystemSidebar activeId={activeId} onSelect={handleSelect} />
         <main className="min-w-0 flex-1">
-          {entry.render()}
-          <CanvasUsages id={activeId} />
+          {isRecentlyChanged ? (
+            <RecentlyChanged />
+          ) : (
+            <>
+              {SECTION_INDEX[activeId].render()}
+              <CanvasUsages id={activeId} />
+            </>
+          )}
         </main>
       </div>
     </div>
