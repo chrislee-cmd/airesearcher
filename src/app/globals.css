@@ -926,6 +926,14 @@ html, body {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 #000;
 }
+/* ModeButton selected — canvas 안에서는 위 memphis 검정 border 가 .border-amore
+   를 덮으므로(specificity), selected 일 때 accent(=amore) border 로 선택을
+   표시한다. ✓ 글리프 제거 후 유일한 선택 신호. data-mode-card 로 좁혀 다른
+   canvas 토글 버튼(record/필터 칩/분포 셀 등 aria-pressed)엔 새지 않게 한다. */
+[data-canvas-body] [data-mode-card][aria-checked='true'],
+[data-canvas-body] [data-mode-card][aria-pressed='true'] {
+  border-color: var(--canvas-accent);
+}
 /* checkbox / radio 는 제외 — 자체 primitive(Checkbox) 스타일(appearance-none +
    checked:bg-amore + ✓ 글리프) 을 쓴다. 여기 background:#fff + padding 을
    씌우면 checked 배경이 흰색으로 덮여 체크가 안 보이는 회귀 발생. */

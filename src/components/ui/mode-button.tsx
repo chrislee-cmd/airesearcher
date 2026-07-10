@@ -136,6 +136,9 @@ export function ModeButton({
       role={radio ? 'radio' : undefined}
       aria-checked={radio ? selected : undefined}
       aria-pressed={radio ? undefined : selected}
+      // canvas([data-canvas-body]) 안에서 memphis 검정 border 가 .border-amore 를
+      // 덮으므로, globals.css 가 이 훅으로 selected 시 accent border 를 되살린다.
+      data-mode-card=""
       disabled={option.disabled}
       title={option.description}
       onClick={() => onSelect(option.key)}
