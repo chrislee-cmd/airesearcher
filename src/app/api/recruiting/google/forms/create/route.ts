@@ -17,6 +17,7 @@ import { createGoogleSheet } from '@/lib/share/google-sheets';
 import { surveySchema, type Survey } from '@/lib/survey-schema';
 import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
 import { recruitingBriefSchema } from '@/lib/recruiting-schema';
+import { setRecruitingFormStatus } from '@/lib/recruiting/form-status';
 
 export const maxDuration = 60;
 
@@ -252,6 +253,13 @@ export async function POST(request: Request) {
         }
       }
     }
+    // OBS-3 lifecycle FSM: mark the form 'published'. New rows already default
+    // to 'published' (migration 20260710145818), so this is only load-bearing
+    // for a *re-publish* (upsert onto an existing form_id that may have moved
+    // to extracting/extracted/error) — it resets the funnel state to the truth
+    // that a fresh Google Form was just created. Best-effort: never fails the
+    // publish (tolerant of the status column not yet applied — §7.5).
+    await setRecruitingFormStatus(admin, result.formId, 'published');
     return NextResponse.json({ ...result, sheetUrl, criteriaPersisted });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'forms_create_failed';

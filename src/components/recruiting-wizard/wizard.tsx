@@ -531,6 +531,15 @@ export function RecruitingWizard({
         window.dispatchEvent(new CustomEvent('recruiting:published'));
       }
       track('recruiting_publish_success', { feature: 'recruiting_publish' });
+      // OBS-1 짝: standardised widget_action for the 발행 leg of the OBS-3
+      // 생성→발행→추출 funnel (pairs with the server-side status='published'
+      // transition). metadata carries the form_id so PostHog can join a
+      // published event to its later extraction_completed event.
+      trackEvent('widget_action', {
+        widget: 'recruiting',
+        action: 'recruiting_form_published',
+        metadata: { form_id: pub.formId },
+      });
       // Register the published form as a workspace artifact.
       if (pub.formId) {
         const md = [

@@ -151,7 +151,18 @@ export function JudgedListTable({
           ('error' in j && j.error) || `judgments_failed: ${res.statusText}`,
         );
       }
-      setPayload(j as JudgmentsPayload);
+      const loaded = j as JudgmentsPayload;
+      setPayload(loaded);
+      // OBS-1 짝: fire the 추출 leg of the OBS-3 생성→발행→추출 funnel only when
+      // this load actually judged new rows (pairs with the server-side
+      // extracting→extracted transition — an all-cached load flips no status).
+      if (loaded.judged > 0) {
+        trackEvent('widget_action', {
+          widget: 'recruiting',
+          action: 'extraction_completed',
+          metadata: { form_id: id, total: loaded.total, judged: loaded.judged },
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'judgments_failed');
       setPayload(null);
