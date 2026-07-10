@@ -15,6 +15,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Label } from '@/components/ui/label';
+import { Tooltip } from '@/components/ui/tooltip';
+import { OnboardingTooltip } from '@/components/ui/onboarding-tooltip';
+import { CitationPopover } from '@/components/ui/citation-popover';
+import { JobProgress } from '@/components/ui/job-progress';
+import { BrandLoader } from '@/components/ui/brand-loader';
+import { FeaturePage } from '@/components/ui/feature-page';
+import { DownloadMenu } from '@/components/ui/download-menu';
+import { ShareMenu } from '@/components/ui/share-menu';
 import { Field } from '@/components/canvas/shell/field';
 import { Banner } from '@/components/canvas/shell/banner';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
@@ -31,6 +39,7 @@ import {
   ChipInputDemo,
   ChipFieldDemo,
   ModeButtonDemo,
+  DateRangePopoverDemo,
 } from '../demos';
 
 export type SectionId =
@@ -56,8 +65,17 @@ export type SectionId =
   | 'file-drop-zone'
   | 'control-dropzone'
   | 'dropdown-menu'
+  | 'download-menu'
+  | 'share-menu'
+  | 'feature-page'
   | 'label'
   | 'skeleton'
+  | 'tooltip'
+  | 'onboarding-tooltip'
+  | 'citation-popover'
+  | 'date-range-popover'
+  | 'job-progress'
+  | 'brand-loader'
   | 'stage-flow'
   | 'canvas-widget-primitives';
 
@@ -116,8 +134,39 @@ export const SECTION_GROUPS: SectionGroup[] = [
         render: () => <ControlDropzoneSection />,
       },
       { id: 'dropdown-menu', label: 'DropdownMenu', render: () => <MenuSection /> },
+      { id: 'download-menu', label: 'DownloadMenu', render: () => <DownloadMenuSection /> },
+      { id: 'share-menu', label: 'ShareMenu', render: () => <ShareMenuSection /> },
+      { id: 'feature-page', label: 'FeaturePage', render: () => <FeaturePageSection /> },
       { id: 'label', label: 'Label', render: () => <LabelSection /> },
       { id: 'skeleton', label: 'Skeleton', render: () => <SkeletonSection /> },
+    ],
+  },
+  {
+    title: 'Overlays',
+    sections: [
+      { id: 'tooltip', label: 'Tooltip', render: () => <TooltipSection /> },
+      {
+        id: 'onboarding-tooltip',
+        label: 'OnboardingTooltip',
+        render: () => <OnboardingTooltipSection />,
+      },
+      {
+        id: 'citation-popover',
+        label: 'CitationPopover',
+        render: () => <CitationPopoverSection />,
+      },
+      {
+        id: 'date-range-popover',
+        label: 'DateRangePopover',
+        render: () => <DateRangePopoverSection />,
+      },
+    ],
+  },
+  {
+    title: 'Feedback',
+    sections: [
+      { id: 'job-progress', label: 'JobProgress', render: () => <JobProgressSection /> },
+      { id: 'brand-loader', label: 'BrandLoader', render: () => <BrandLoaderSection /> },
     ],
   },
   {
@@ -1114,6 +1163,271 @@ function MenuSection() {
             </li>
           </ul>
         </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="11" x2="12" y2="16" />
+      <line x1="12" y1="8" x2="12" y2="8" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <IconButton variant="subtle" size="md" aria-label="설정 (데모)">
+      <svg
+        viewBox="0 0 24 24"
+        width="15"
+        height="15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </IconButton>
+  );
+}
+
+function TooltipSection() {
+  return (
+    <PrimitivePage
+      title="Tooltip"
+      hint="src/components/ui/tooltip.tsx · hover/focus 로 뜨는 최소 말풍선 (radix 무의존) · 키보드 접근(anchor tabIndex + aria-describedby) · 짧은 plain text · anchor 위쪽 렌더 · 소비처: 인터뷰 V2 trust 패널 ⓘ 마커 (환각 가드 레이어 설명)"
+    >
+      <Subsection label="Interactive (마우스 hover 또는 Tab 포커스)">
+        <div className="flex flex-wrap items-center gap-8 py-10">
+          <span className="inline-flex items-center gap-1.5 text-md text-ink">
+            검색 정확도
+            <Tooltip content="원문 청크와 질의 임베딩의 코사인 유사도를 0~100%로 환산한 값입니다. 70% 이상이면 근거로 신뢰할 만합니다.">
+              <span className="text-mute-soft hover:text-ink">
+                <InfoIcon />
+              </span>
+            </Tooltip>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-md text-ink">
+            환각 가드
+            <Tooltip content="답변의 각 문장을 근거 청크에 다시 매핑해, 출처 없는 주장을 걸러내는 검증 레이어입니다.">
+              <span className="text-mute-soft hover:text-ink">
+                <InfoIcon />
+              </span>
+            </Tooltip>
+          </span>
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function OnboardingTooltipSection() {
+  return (
+    <PrimitivePage
+      title="OnboardingTooltip"
+      hint="src/components/ui/onboarding-tooltip.tsx · 위젯 서브헤더 설정(⚙)/업로드(📤) 버튼에 처음 붙는 1회성 안내 말풍선 · id 별 localStorage(onboarding-dismissed:<id>) 로 dismiss 영속 — 이미 본 위젯은 다시 안 뜸 · × 또는 anchor 클릭 시 dismiss · SSR-safe(useSyncExternalStore) · 소비처: 데스크/프로빙 등 첫 사용 유도"
+    >
+      <Subsection label="Interactive (× 또는 버튼 클릭 시 dismiss — localStorage 영속)">
+        <div className="flex flex-wrap items-center gap-10 py-6">
+          <OnboardingTooltip
+            id="ds-catalog-demo"
+            message="여기를 눌러 시작 조건을 설정하세요"
+          >
+            <GearIcon />
+          </OnboardingTooltip>
+        </div>
+        <p className="text-sm text-mute-soft">
+          한 번 닫으면 <code className="font-mono">localStorage</code> 에 기록돼 이
+          데모(id=<code className="font-mono">ds-catalog-demo</code>)는 다시 안 뜹니다.
+          다시 보려면 해당 키를 지우세요.
+        </p>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function CitationPopoverSection() {
+  const citation = {
+    chunk_id: 'demo-chunk-1',
+    document_id: 'demo-doc-1',
+    filename: '2024_고객_인터뷰_03.docx',
+    project_name: '리텐션 리서치',
+    score: 0.87,
+    excerpt:
+      '“가격이 조금 올라도 배송이 빠르면 계속 쓸 것 같아요. 지난달에 하루 만에 온 걸 보고 신뢰가 생겼거든요.” — 재구매 의향을 배송 경험과 직접 연결한 대목.',
+  };
+  return (
+    <PrimitivePage
+      title="CitationPopover"
+      hint="src/components/ui/citation-popover.tsx · 답변 본문 안 inline [chunk_id] 뱃지를 trigger 로, 클릭 시 근거 원문(파일명·프로젝트·정확도·excerpt)을 popover 로 표시 · portal + position:fixed escape (좁은 chat 칼럼 overflow 밖) · 바깥 클릭/Esc 닫기 · 소비처: 인터뷰 V2 답변 근거"
+    >
+      <Subsection label="Interactive (뱃지 클릭 → 근거 popover)">
+        <p className="max-w-[560px] text-md leading-[1.9] text-ink-2">
+          배송 속도가 재구매 의향에 가장 큰 영향을 준다는 응답이 반복됐습니다{' '}
+          <CitationPopover citation={citation}>1</CitationPopover>. 특히 하루 배송을
+          경험한 고객군에서 신뢰 형성 언급이 두드러졌습니다.
+        </p>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function DateRangePopoverSection() {
+  return (
+    <PrimitivePage
+      title="DateRangePopover"
+      hint="src/components/ui/date-range-popover.tsx · 닫힘=단일 trigger, 열림=portal popover 안 preset quick-pick + 2개월 캘린더 · value {from,to} ISO 'YYYY-MM-DD' · onChange 라이브 반영 · presets(days=null → 전체 해제) · portal + position:fixed 로 서브헤더 overflow 밖 escape · 소비처: 데스크 리서치 수집 기간"
+    >
+      <Subsection label="Interactive (preset 또는 날짜 클릭으로 범위 구성)">
+        <DateRangePopoverDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function JobProgressSection() {
+  return (
+    <PrimitivePage
+      title="JobProgress"
+      hint="src/components/ui/job-progress.tsx · 잡 진행 막대 · determinate(value 0~100 → % 표시) | indeterminate(value 미지정 → sweep 애니메이션) · tone default|error(warning) · variant card(border+shadow) | inline(컨테이너 안 이중 프레임 회피) · onCancel 시 STOP 버튼 · 소비처: 위젯 산출물 생성 진행"
+    >
+      <Subsection label="variant=card · determinate / indeterminate / error">
+        <div className="space-y-4">
+          <JobProgress
+            variant="card"
+            label="리포트 생성 중"
+            value={64}
+            hint="47/240"
+            onCancel={() => {}}
+          />
+          <JobProgress variant="card" label="수집 중 (진행률 미상)" />
+          <JobProgress
+            variant="card"
+            tone="error"
+            label="크롤링 실패 — 재시도 대기"
+            value={30}
+          />
+        </div>
+      </Subsection>
+      <Subsection label="variant=inline (border/shadow 없음 — 이미 border 컨테이너 안에서)">
+        <div className="border border-line bg-paper rounded-sm px-4 py-2">
+          <JobProgress variant="inline" label="전사 중" value={82} hint="3분 12초" />
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function BrandLoaderSection() {
+  return (
+    <PrimitivePage
+      title="BrandLoader"
+      hint="src/components/ui/brand-loader.tsx · 브랜드 아이콘 idle sway(.brand-sway) 로딩 인디케이터 · size(px, 기본 56) + optional UPPERCASE 라벨 · 라우트/위젯 초기 로드에 사용 · ⚠︎ #189 브랜딩 rename 대기 — 확정 시 'Mochi(mochi-loader)' 로 개명 예정 (현재 export 명 BrandLoader 유지)"
+    >
+      <Subsection label="Sizes + label">
+        <div className="flex flex-wrap items-end gap-10 border border-line bg-paper rounded-sm p-8">
+          <BrandLoader size={40} />
+          <BrandLoader size={56} label="불러오는 중" />
+          <BrandLoader size={72} />
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function FeaturePageSection() {
+  return (
+    <PrimitivePage
+      title="FeaturePage"
+      hint="src/components/ui/feature-page.tsx · 피처 라우트 상단 페이지 셸 (제목 + 선택적 subtitle / headerRight + 본문 slot) · max-w-[1120px] 중앙 정렬 + border-b 헤더 구분선 · 전용 UI 를 갖는 피처 페이지의 표준 프레임 · FeaturePlaceholder 와 달리 자체 본문을 직접 렌더"
+    >
+      <Subsection label="제목 + subtitle + headerRight + 본문 slot">
+        <div className="border border-line-soft bg-paper rounded-sm overflow-hidden">
+          <FeaturePage
+            title="정량 분석"
+            subtitle="업로드한 설문 데이터를 교차표로 즉시 분석합니다. 서버 왕복 없이 브라우저에서 계산합니다."
+            headerRight="12 크레딧"
+          >
+            <div className="rounded-sm border border-dashed border-line px-4 py-8 text-center text-md text-mute-soft">
+              본문 slot — 실제 피처 UI (테이블 / 차트 / 컨트롤) 가 여기에 들어갑니다.
+            </div>
+          </FeaturePage>
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function DownloadMenuSection() {
+  const sampleHref =
+    'data:text/plain;charset=utf-8,' +
+    encodeURIComponent('디자인 시스템 카탈로그 데모 export.');
+  return (
+    <PrimitivePage
+      title="DownloadMenu"
+      hint="src/components/ui/download-menu.tsx · DropdownMenu 위 export 도메인 wrapper · items(ExportFormat 별 url | blob | action) → 포맷 라벨은 Common.export i18n · 1개면 plain Button fallback · tone ghost|primary · align/side · onExport 애널틱스 훅 · 직접 dropdown 작성 대신 이 wrapper 사용"
+    >
+      <Subsection label="Multiple items (dropdown)">
+        <DownloadMenu
+          items={[
+            { format: 'md', kind: 'url', href: sampleHref, filename: 'demo.md' },
+            { format: 'html', kind: 'url', href: sampleHref, filename: 'demo.html' },
+            { format: 'txt', kind: 'url', href: sampleHref, filename: 'demo.txt' },
+          ]}
+        />
+      </Subsection>
+      <Subsection label="Single item (plain Button fallback) · tone=primary">
+        <DownloadMenu
+          tone="primary"
+          items={[
+            { format: 'pdf', kind: 'url', href: sampleHref, filename: 'demo.pdf' },
+          ]}
+        />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function ShareMenuSection() {
+  return (
+    <PrimitivePage
+      title="ShareMenu"
+      hint="src/components/ui/share-menu.tsx · DropdownMenu 위 공유 도메인 wrapper · items(google-docs getText|getBlob / google-sheets getRows / notion getMarkdown) · 인증 끊기면 connect URL 로 redirect, 결과는 토스트 · 1개면 plain Button · 소비처: 전사록/데스크 산출물 외부 전송"
+    >
+      <Subsection label="Multiple destinations (dropdown) — 아이콘 + 라벨">
+        <ShareMenu
+          items={[
+            { destination: 'google-docs', title: 'demo', getText: () => '데모 문서 본문' },
+            {
+              destination: 'google-sheets',
+              title: 'demo',
+              getRows: () => [['헤더'], ['행']],
+            },
+            { destination: 'notion', title: 'demo', getMarkdown: () => '# 데모' },
+          ]}
+        />
+        <p className="mt-2 text-sm text-mute-soft">
+          클릭 시 실제 공유 API 를 호출합니다 (인증 없으면 connect 로 이동) — 데모에서는
+          메뉴 형태 확인용.
+        </p>
       </Subsection>
     </PrimitivePage>
   );
