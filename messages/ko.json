@@ -459,6 +459,12 @@
     "noActiveOrg": "조직 정보를 불러오는 중이거나 로그인이 필요합니다.",
     "delete": "삭제"
   },
+  "ProjectPicker": {
+    "placeholder": "프로젝트 선택",
+    "newProject": "+ 새 프로젝트",
+    "applyToAll": "전체 위젯에 적용",
+    "menu": "프로젝트 메뉴"
+  },
   "ComingSoon": {
     "eyebrow": "준비 중",
     "toast": "출시 준비중이에요",
