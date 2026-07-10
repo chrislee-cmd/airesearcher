@@ -926,7 +926,11 @@ html, body {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 #000;
 }
-[data-canvas-body] :is(input, textarea, select) {
+/* checkbox / radio 는 제외 — 자체 primitive(Checkbox) 스타일(appearance-none +
+   checked:bg-amore + ✓ 글리프) 을 쓴다. 여기 background:#fff + padding 을
+   씌우면 checked 배경이 흰색으로 덮여 체크가 안 보이는 회귀 발생. */
+[data-canvas-body]
+  :is(input:not([type='checkbox']):not([type='radio']), textarea, select) {
   border: 2px solid #000;
   border-radius: 6px;
   background: #fff;

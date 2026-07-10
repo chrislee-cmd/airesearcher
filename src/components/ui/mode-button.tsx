@@ -54,10 +54,17 @@ const COLS: Record<1 | 2 | 3 | 6, string> = {
 export type ModeVariant = 'default' | 'flat';
 
 function cardClassName(selected: boolean, variant: ModeVariant): string {
+  if (variant === 'flat') {
+    // 정사각형 카드 — 항상 흰(paper) 배경 + 얇은 테두리. 선택 표시는 카드 색이
+    // 아니라 내부 Checkbox 가 단독으로 담당한다 (카드는 안 바뀜).
+    return (
+      'relative flex aspect-square flex-col items-center justify-start gap-1.5 ' +
+      'overflow-hidden rounded-sm border-[2px] border-line-soft bg-paper p-3 text-center'
+    );
+  }
   return (
     'relative flex flex-col items-center gap-1.5 rounded-sm border-[2px] p-3 ' +
     'text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ' +
-    (variant === 'flat' ? 'aspect-square justify-start overflow-hidden ' : '') +
     (selected
       ? 'border-amore bg-amore-bg'
       : 'border-line-soft bg-paper hover:bg-paper-soft')
@@ -106,21 +113,20 @@ export function ModeButton({
 }: ModeButtonProps) {
   const radio = selection === 'single';
 
-  // flat variant (persona multi 토글) = <label> + 실제 Checkbox primitive.
-  // 카드 전체가 라벨이라 어디를 눌러도 native 로 checkbox 가 토글되고
-  // onChange → onSelect 로 상태가 확실히 반영된다. 선택 표시(checkbox)는
-  // 텍스트 아래 중앙. (이전엔 <input> 을 <button> 안에 둬서 — 무효 중첩 —
-  // 클릭이 체크로 반영되지 않던 버그.)
+  // flat variant (persona) = 흰 배경 카드(div, 클릭 대상 아님) + 내부 Checkbox.
+  // 토글·선택 표시는 이 Checkbox 가 단독 담당 (onChange → onSelect, 체크는
+  // 텍스트 아래 중앙). 카드 전체를 클릭 대상으로 만들지 않는다.
   if (variant === 'flat') {
     return (
-      <label className={cardClassName(selected, variant) + ' cursor-pointer'}>
+      <div className={cardClassName(selected, variant)}>
         <CardInner option={option} />
         <Checkbox
           checked={selected}
           onChange={() => onSelect(option.key)}
           disabled={option.disabled}
+          aria-label={option.label}
         />
-      </label>
+      </div>
     );
   }
 
