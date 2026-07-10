@@ -933,6 +933,7 @@
   "TranslateConsole": {
     "sourceLang": "Source",
     "targetLang": "Target",
+    "select": "Select",
     "inputSource": {
       "label": "Input source",
       "mic": "Microphone",
@@ -940,10 +941,10 @@
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only."
     },
     "captureMode": {
-      "label": "Capture",
+      "label": "Input source",
       "both": "Mic + tab (online meeting)",
-      "micOnly": "Mic only (in-person)",
-      "tabOnly": "Tab only (playback)",
+      "micOnly": "Device microphone",
+      "tabOnly": "Browser audio input",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
       "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)",
       "shortBoth": "mic + tab",
