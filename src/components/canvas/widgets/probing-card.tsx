@@ -184,12 +184,14 @@ function ExpandedBody() {
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
 
-  const [source, setSource] = useState<SourceKind>('mic');
+  // 기본 미선택('') — 사용자가 명시로 고르기 전엔 세션 시작 CTA 가 비활성
+  // (아래 startDisabled 게이트). 선택 후에만 실제 값이 start payload 로 발화.
+  const [source, setSource] = useState<SourceKind | ''>('');
 
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
-  // (영속화 X). default ko = 옛 동작 (한국어 분석). think / reflection 자동
+  // (영속화 X). 기본 미선택('') — 게이트로 선택 강제. think / reflection 자동
   // 호출은 useCallback 안에서 ref 로 최신 값을 읽는다 (deps 재생성 회피).
-  const [outputLang, setOutputLang] = useState<ProbingOutputLang>('ko');
+  const [outputLang, setOutputLang] = useState<ProbingOutputLang | ''>('');
   const outputLangRef = useRef(outputLang);
   useEffect(() => {
     outputLangRef.current = outputLang;
@@ -1067,13 +1069,17 @@ function ExpandedBody() {
 
   // 세션 시작 / 정지.
   const handleStartSession = useCallback(async () => {
+    // 미선택 게이트 — 언어/입력 소스 중 하나라도 안 골랐으면 시작 안 함
+    // (startDisabled 로 버튼도 비활성이지만 payload 안전을 위해 한 번 더 방어).
+    // 여기서 source 는 SourceKind 로 좁혀져 빈값이 start 로 새지 않는다.
+    if (!source || !outputLang) return;
     // 슬롯 획득 — 정원 초과면 카드에 국소 대기 UI 가 뜨고 admitted 로 바뀔
     // 때까지 여기서 보류된다. 취소/이탈 시 false → 세션 시작 안 함.
     const admitted = await gate.acquire();
     if (!admitted) return;
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
-  }, [gate, startSession, source]);
+  }, [gate, startSession, source, outputLang]);
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
@@ -1189,6 +1195,9 @@ function ExpandedBody() {
   })();
 
   const startDisabled =
+    // 언어·입력 소스 미선택('') 이면 세션 시작 불가 (온보딩 게이트).
+    !source ||
+    !outputLang ||
     sessionStatus === 'starting' ||
     sessionStatus === 'live' ||
     sessionStatus === 'stopping';

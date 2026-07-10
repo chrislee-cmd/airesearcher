@@ -31,9 +31,11 @@ export type SourceKind = 'mic' | 'tab';
 
 const GOAL_MAX = 2_000;
 
+// 라벨은 동시통역(#537)과 통일 — "기기 마이크" / "브라우저 오디오 인풋".
+// value(mic/tab)는 STT/분석 분기용이라 유지, 표시 라벨만 교체.
 const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
-  { value: 'mic', label: '마이크' },
-  { value: 'tab', label: '탭 오디오' },
+  { value: 'mic', label: '기기 마이크' },
+  { value: 'tab', label: '브라우저 오디오 인풋' },
 ];
 
 // 분석 출력 언어 옵션 — translate 의 LANGS 6종과 동일. 입력 (STT) 언어와
@@ -61,9 +63,10 @@ function ControlFields({
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
   goalDisabled: boolean;
-  source: SourceKind;
+  // 미선택('') 기본 — placeholder "선택" 노출. 선택 시에만 실제 value 발화.
+  source: SourceKind | '';
   onSourceChange: (next: SourceKind) => void;
-  outputLang: ProbingOutputLang;
+  outputLang: ProbingOutputLang | '';
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
 }) {
@@ -99,7 +102,23 @@ function ControlFields({
           CLASS = 전사록/인터뷰 ControlTrigger 와 동일 chrome)로 프로빙 안에서만
           키운다 (타 위젯 영향 0 = "프로빙 단독" 제약). 데스크 지역/기간
           드롭다운과 동일 h-10 규격. */}
+      {/* 순서: 언어 먼저 → 입력 소스 (동시통역 #537 과 통일 — 사용자 결정
+          2026-07-10). 둘 다 기본 미선택('') + placeholder "선택" — 하나라도
+          미선택이면 세션 시작 CTA 가 비활성(게이트는 부모 probing-card 소유). */}
       <div className="flex flex-wrap gap-4">
+        <Field label="언어">
+          <div className="min-w-24">
+            <SelectMenu
+              aria-label="분석 출력 언어"
+              value={outputLang}
+              placeholder="선택"
+              onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
+              options={OUTPUT_LANG_OPTIONS}
+              disabled={controlsDisabled}
+              buttonClassName={CONTROL_TRIGGER_CLASS}
+            />
+          </div>
+        </Field>
         <Field label="입력 소스">
           {/* min-w: 옛 native select 은 widest-option 고정폭 — 선택 값에 따라
               trigger 폭이 출렁이지 않도록 하한만 고정 */}
@@ -107,20 +126,9 @@ function ControlFields({
             <SelectMenu
               aria-label="입력 소스"
               value={source}
+              placeholder="선택"
               onChange={(next) => onSourceChange(next as SourceKind)}
               options={SOURCE_OPTIONS}
-              disabled={controlsDisabled}
-              buttonClassName={CONTROL_TRIGGER_CLASS}
-            />
-          </div>
-        </Field>
-        <Field label="언어">
-          <div className="min-w-24">
-            <SelectMenu
-              aria-label="분석 출력 언어"
-              value={outputLang}
-              onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
-              options={OUTPUT_LANG_OPTIONS}
               disabled={controlsDisabled}
               buttonClassName={CONTROL_TRIGGER_CLASS}
             />
@@ -189,9 +197,9 @@ export function ProbingControlPanel({
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
   goalDisabled: boolean;
-  source: SourceKind;
+  source: SourceKind | '';
   onSourceChange: (next: SourceKind) => void;
-  outputLang: ProbingOutputLang;
+  outputLang: ProbingOutputLang | '';
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
   isLive: boolean;
