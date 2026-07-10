@@ -187,7 +187,7 @@ export function LangDualDropdown({
         data-open={panelOpen}
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        className={className ?? 'min-w-64'}
+        className={className ?? 'min-w-44'}
       >
         {triggerText}
       </ControlTrigger>
