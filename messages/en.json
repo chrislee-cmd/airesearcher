@@ -950,6 +950,7 @@
   "TranslateConsole": {
     "sourceLang": "Source",
     "targetLang": "Target",
+    "project": "Project",
     "lang": "Language",
     "inputLang": "Input language",
     "outputLang": "Output language",

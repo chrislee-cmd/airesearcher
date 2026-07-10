@@ -950,6 +950,7 @@
   "TranslateConsole": {
     "sourceLang": "원어",
     "targetLang": "번역 언어",
+    "project": "프로젝트",
     "lang": "언어",
     "inputLang": "인풋 언어",
     "outputLang": "아웃풋 언어",
