@@ -26,6 +26,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import {
   PROBING_TECHNIQUE_LABEL,
   type ProbingTechnique,
@@ -243,16 +244,19 @@ function ProbingQuestionPopupInner({
             {visual.label}
           </span>
         </div>
-        <span className="rounded-pill border border-ink px-2 py-0.5 text-xs uppercase tracking-[0.18em] text-ink-2">
+        <Badge variant="neutral" className="uppercase tracking-[0.18em]">
           {techniqueLabel}
-        </span>
+        </Badge>
       </header>
 
       {popup.target_section_label && (
-        <div className="mb-2 inline-flex max-w-full items-center gap-1 rounded-pill border border-amore bg-paper-soft px-2 py-0.5 text-xs tracking-[0.14em] text-amore">
-          <span aria-hidden>◆</span>
-          <span className="truncate">{popup.target_section_label} 채우기</span>
-        </div>
+        <Badge
+          variant="amore"
+          leadingIcon="◆"
+          className="mb-2 tracking-[0.14em]"
+        >
+          {popup.target_section_label} 채우기
+        </Badge>
       )}
 
       <p className="mb-3 text-md font-medium leading-snug text-ink">

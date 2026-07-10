@@ -11,6 +11,7 @@ import { ChromeInput } from '@/components/ui/chrome-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge, type BadgeVariant, type BadgeSize } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
@@ -55,6 +56,7 @@ export type SectionId =
   | 'chrome-input'
   | 'chip-input'
   | 'chip-field'
+  | 'badge'
   | 'textarea'
   | 'select'
   | 'checkbox'
@@ -111,6 +113,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'chrome-input', label: 'ChromeInput', render: () => <ChromeInputSection /> },
       { id: 'chip-input', label: 'ChipInput', render: () => <ChipInputSection /> },
       { id: 'chip-field', label: 'ChipField', render: () => <ChipFieldSection /> },
+      { id: 'badge', label: 'Badge', render: () => <BadgeSection /> },
       { id: 'textarea', label: 'Textarea', render: () => <TextareaSection /> },
       { id: 'select', label: 'Select', render: () => <SelectSection /> },
       { id: 'checkbox', label: 'Checkbox', render: () => <CheckboxSection /> },
@@ -1107,6 +1110,75 @@ function ChipFieldSection() {
     >
       <Subsection label="Interactive (bordered / subtle / disabled · plain × 제거)">
         <ChipFieldDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function BadgeSection() {
+  const variants: BadgeVariant[] = ['neutral', 'subtle', 'amore'];
+  const sizes: BadgeSize[] = ['sm', 'md'];
+  const [chips, setChips] = useState<string[]>([
+    '여성 × 20대',
+    '거주지: 서울',
+    '직업: 마케터',
+  ]);
+  return (
+    <PrimitivePage
+      title="Badge"
+      hint="src/components/ui/badge.tsx · 표시용(DISPLAY) chip primitive — 상태/라벨/필터 pill. variant=neutral(투명+ink 보더) | subtle(ink/25+paper-soft) | amore(브랜드 액센트) · size=sm(default)/md · leadingIcon(선행 글리프) · onDismiss(× 제거, ChipField 계열 × 패턴과 동일) · 역할 구분: Badge=표시, ChipInput/ChipField=입력. 소비처: 리크루팅 분포 필터칩 · 프로빙 팝업 technique/target 뱃지"
+    >
+      <Subsection label="Variants (size=sm)">
+        <div className="flex flex-wrap items-center gap-2">
+          {variants.map((v) => (
+            <Badge key={v} variant={v}>
+              {v}
+            </Badge>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="Sizes (variant=neutral)">
+        <div className="flex flex-wrap items-center gap-2">
+          {sizes.map((s) => (
+            <Badge key={s} size={s}>
+              size={s}
+            </Badge>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="leadingIcon + tracking (프로빙 target 뱃지 재현)">
+        <Badge variant="amore" leadingIcon="◆" className="tracking-[0.14em]">
+          도입부 채우기
+        </Badge>
+      </Subsection>
+
+      <Subsection label="onDismiss (× 제거 — 리크루팅 필터칩 재현)">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {chips.map((c) => (
+            <Badge
+              key={c}
+              variant="subtle"
+              className="max-w-[180px] text-xs-soft"
+              onDismiss={() => setChips((prev) => prev.filter((x) => x !== c))}
+              dismissLabel={`${c} 필터 제거`}
+            >
+              {c}
+            </Badge>
+          ))}
+          {chips.length === 0 && (
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={() =>
+                setChips(['여성 × 20대', '거주지: 서울', '직업: 마케터'])
+              }
+            >
+              다시 채우기
+            </Button>
+          )}
+        </div>
       </Subsection>
     </PrimitivePage>
   );

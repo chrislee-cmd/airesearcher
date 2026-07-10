@@ -53,7 +53,7 @@ export function RecruitingConditionsPanel({
                   }
                   title={c.detail || undefined}
                 >
-                  <span className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
+                  <span className="text-xs-soft uppercase tracking-[0.22em] text-mute-soft">
                     {c.category}
                   </span>
                   <span className="font-medium">{c.label}</span>
