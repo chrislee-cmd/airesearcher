@@ -20,6 +20,7 @@ const CANVAS_DIR = join(SRC, 'components/canvas');
 const WIDGETS_DIR = join(CANVAS_DIR, 'widgets');
 const DS_DIR = join(SRC, 'app/[locale]/(app)/design-system');
 const SECTIONS_FILE = join(DS_DIR, 'components/sections.tsx');
+const VISIBILITY_FILE = join(SRC, 'lib/canvas/visibility.ts');
 const OUT_FILE = join(DS_DIR, 'usage-map.generated.json');
 
 // Foundation(token) 섹션은 부품이 아니라 usage 대상이 아니다. 나머지가 component 섹션.
@@ -63,8 +64,23 @@ function buildModuleToSection(sections) {
   return moduleToSection;
 }
 
-// ── 3. 위젯 파일 → 라벨 lookup: *-card.tsx 의 meta.label 로 prefix 매핑
-function buildWidgetPrefixes() {
+// ── 3a. 캔버스에 실제 렌더되는(visibility=true) 위젯 key 집합 — deep-link focus 대상.
+//    hidden 위젯(moderator/topline/slidegen)은 focus 방어되므로 링크 미부여.
+function readVisibleCanvasKeys() {
+  const src = readFileSync(VISIBILITY_FILE, 'utf8');
+  const m = src.match(/CANVAS_VISIBILITY[^{]*{([\s\S]*?)}/);
+  if (!m) throw new Error('visibility.ts 에서 CANVAS_VISIBILITY 를 못 찾음');
+  const keys = new Set();
+  for (const line of m[1].split('\n')) {
+    const lm = line.match(/^\s*([a-z_]+):\s*true\b/);
+    if (lm) keys.add(lm[1]);
+  }
+  return keys;
+}
+
+// ── 3b. 위젯 파일 → { label, key } lookup: *-card.tsx 의 meta.label + WidgetContent.key.
+//    key = meta: 직전의 top-level key (focusable 위젯이면 값, 아니면 null).
+function buildWidgetPrefixes(visibleKeys) {
   const prefixes = [];
   for (const f of readdirSync(WIDGETS_DIR)) {
     if (!f.endsWith('-card.tsx')) continue;
@@ -72,23 +88,29 @@ function buildWidgetPrefixes() {
     const src = readFileSync(join(WIDGETS_DIR, f), 'utf8');
     const metaIdx = src.indexOf('meta:');
     let label = prefix;
+    let key = null;
     if (metaIdx !== -1) {
       const lm = src.slice(metaIdx).match(/label:\s*'([^']+)'/);
       if (lm) label = lm[1];
+      // WidgetContent.key = meta: 직전 마지막 `key: '...'`
+      const keyMatches = [...src.slice(0, metaIdx).matchAll(/key:\s*'([^']+)'/g)];
+      const rawKey = keyMatches.length ? keyMatches[keyMatches.length - 1][1] : null;
+      if (rawKey && visibleKeys.has(rawKey)) key = rawKey; // 렌더되는 위젯만 focusable
     }
-    prefixes.push({ prefix, label });
+    prefixes.push({ prefix, label, key });
   }
   // 긴 prefix 우선 (moderator-ai 가 moderator 보다 먼저 매칭돼야 함)
   prefixes.sort((a, b) => b.prefix.length - a.prefix.length);
   return prefixes;
 }
 
-function widgetLabelFor(relFromCanvas, prefixes) {
-  if (!relFromCanvas.startsWith('widgets/')) return null; // shell 등 공용 — 파일경로 그대로
+// 반환: { label, key } (위젯 매핑) | null (shell 등 공용)
+function widgetLookup(relFromCanvas, prefixes) {
+  if (!relFromCanvas.startsWith('widgets/')) return null; // shell 등 공용
   const rel = relFromCanvas.slice('widgets/'.length);
-  for (const { prefix, label } of prefixes) {
+  for (const { prefix, label, key } of prefixes) {
     if (rel === `${prefix}.tsx` || rel.startsWith(`${prefix}-`) || rel.startsWith(`${prefix}/`)) {
-      return label;
+      return { label, key };
     }
   }
   return null;
@@ -130,7 +152,8 @@ function resolveSpecifier(spec, fromFile) {
 function main() {
   const sections = readComponentSections();
   const moduleToSection = buildModuleToSection(sections);
-  const prefixes = buildWidgetPrefixes();
+  const visibleKeys = readVisibleCanvasKeys();
+  const prefixes = buildWidgetPrefixes(visibleKeys);
 
   const result = {};
   for (const id of sections) result[id] = [];
@@ -173,8 +196,11 @@ function main() {
       if (best !== Infinity) usageLine = best;
 
       seen.add(key);
+      const w = widgetLookup(relFromCanvas, prefixes);
+      // 위젯 매핑되면 라벨+focus key, shell/공용은 '캔버스 공용'(key 없음).
       result[sectionId].push({
-        widget: widgetLabelFor(relFromCanvas, prefixes) ?? relFile,
+        widget: w ? w.label : '캔버스 공용',
+        key: w ? w.key : null,
         file: relFile,
         line: usageLine,
       });
