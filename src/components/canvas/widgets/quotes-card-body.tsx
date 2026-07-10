@@ -910,10 +910,6 @@ export function QuotesCardBody() {
     research: tWidgets('transcriptModeResearch'),
     meeting: tWidgets('transcriptModeMeeting'),
   };
-  const modeDesc: Record<TranscriptMode, string> = {
-    research: tWidgets('transcriptModeResearchDesc'),
-    meeting: tWidgets('transcriptModeMeetingDesc'),
-  };
 
   // 발화자 수 드롭다운 (언어 옆). 1/2/3("3명 이상"). ControlTrigger 통일.
   const speakerOptions: { value: SpeakerCount; label: string }[] = [
@@ -980,7 +976,6 @@ export function QuotesCardBody() {
             key: opt.key,
             icon: opt.icon,
             label: modeTitle[opt.key],
-            description: modeDesc[opt.key],
           }))}
           value={mode}
           onChange={(key) => setMode(key as TranscriptMode)}
