@@ -1177,6 +1177,8 @@
     "transcriptStageTypo": "오탈자 수정",
     "transcriptStagePhrasing": "표현 보정",
     "transcriptStageDetails": "파일별 상세",
+    "transcriptStuckSection": "멈춤 / 실패",
+    "transcriptStuckHint": "업로드는 됐지만 전사가 멈췄거나 실패했어요. 재시도하거나 삭제하세요.",
     "deskRunning": "리서치가 진행중입니다",
     "deskDone": "리서치가 완료되었습니다",
     "interviewRunning": "분석이 진행중입니다",
