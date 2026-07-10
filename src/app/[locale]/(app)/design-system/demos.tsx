@@ -12,6 +12,10 @@ import { ChipInput } from '@/components/ui/chip-input';
 import { ChipField } from '@/components/ui/chip-field';
 import { IconButton } from '@/components/ui/icon-button';
 import { ModeCardGroup, type ModeOption } from '@/components/ui/mode-button';
+import {
+  DateRangePopover,
+  type DateRangeValue,
+} from '@/components/ui/date-range-popover';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -437,6 +441,34 @@ export function ChipInputDemo() {
         placeholder={chips.length === 0 ? '키워드 입력 후 Enter' : '추가 키워드…'}
         className="min-w-[140px] flex-1"
       />
+    </div>
+  );
+}
+
+export function DateRangePopoverDemo() {
+  const [value, setValue] = useState<DateRangeValue>({ from: '', to: '' });
+  return (
+    <div className="max-w-[280px] space-y-3">
+      <DateRangePopover
+        value={value}
+        onChange={setValue}
+        placeholder="전체 기간"
+        presets={[
+          { label: '전체', days: null },
+          { label: '1주', days: 7 },
+          { label: '1개월', days: 30 },
+          { label: '3개월', days: 90 },
+        ]}
+      />
+      <p className="text-sm text-mute">
+        선택:{' '}
+        <code className="font-mono text-ink-2">
+          {value.from || value.to ? `${value.from || '…'} ~ ${value.to || '…'}` : '전체 (미설정)'}
+        </code>
+      </p>
+      <p className="text-sm text-mute-soft">
+        preset quick-pick + 2개월 캘린더. portal + position:fixed 로 서브헤더 overflow 밖으로 escape.
+      </p>
     </div>
   );
 }
