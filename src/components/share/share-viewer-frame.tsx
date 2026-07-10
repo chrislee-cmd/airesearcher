@@ -11,22 +11,21 @@ import { SharePersonaLive } from './share-persona-live';
 // resource_type 별 리치 렌더(#476):
 //   - interview_topline → 탑라인 보고서 블록(topline-blocks 재사용, 편집/
 //     드래그/재생성/자유검색 없음). 자유검색은 공유 대상 아님.
-//   - probing_persona → 리서치 컨텍스트(goal/KRQ/가설) + 페르소나 그리드
+//   - probing_persona → 리서치 컨텍스트(goal/KRQ) + 페르소나 그리드
 //     (PersonaPanel 재사용) + 생성 질문 리스트. 데이터는 #493 스냅샷.
 
-// 프로빙 리서치 컨텍스트 — probing_sessions row 에 있는 goal/KRQ/가설. 스냅샷
+// 프로빙 리서치 컨텍스트 — probing_sessions row 에 있는 goal/KRQ. 스냅샷
 // 유무와 무관하게 항상 있으면 표시(페르소나 그리드의 헤더 맥락).
+// (옛 "가설" 은 은퇴 — probing-hypotheses-retire-ghost-injection.)
 function ResearchContextBody({
   resource,
   labels,
 }: {
   resource: Extract<ShareResource, { type: 'probing_persona' }>;
-  labels: { goal: string; krq: string; hypotheses: string };
+  labels: { goal: string; krq: string };
 }) {
   const hasAny =
-    resource.researchGoal.trim() ||
-    resource.keyResearchQuestion.trim() ||
-    resource.hypotheses.length > 0;
+    resource.researchGoal.trim() || resource.keyResearchQuestion.trim();
   if (!hasAny) return null;
   return (
     <div className="space-y-6">
@@ -48,20 +47,6 @@ function ResearchContextBody({
           </p>
         </section>
       )}
-      {resource.hypotheses.length > 0 && (
-        <section className="space-y-1.5">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-mute-soft">
-            {labels.hypotheses}
-          </h2>
-          <ul className="list-disc space-y-1 pl-5">
-            {resource.hypotheses.map((h, i) => (
-              <li key={i} className="text-md leading-[1.7] text-ink">
-                {h}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }
@@ -74,7 +59,6 @@ function PersonaBody({
   labels: {
     goal: string;
     krq: string;
-    hypotheses: string;
     grid: string;
     questions: string;
     questionsEmpty: string;
@@ -150,7 +134,6 @@ export async function ShareViewerFrame({
           labels={{
             goal: t('personaGoal'),
             krq: t('personaKrq'),
-            hypotheses: t('personaHypotheses'),
             grid: t('personaGrid'),
             questions: t('personaQuestions'),
             questionsEmpty: t('personaQuestionsEmpty'),

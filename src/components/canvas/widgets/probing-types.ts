@@ -55,9 +55,13 @@ export type ProbingQuestionRow = {
 // 제거됐지만 DB row / think 프롬프트 계약을 깨지 않기 위해 타입/state 에는
 // 그대로 남긴다 (신규 세션은 빈 문자열로 흐름). custom section 위젯이 KRQ 의
 // UX 역할을 대체.
+//
+// hypotheses 는 은퇴됨 (PR: probing-hypotheses-retire-ghost-injection). 옛
+// "핵심 가설" 입력은 "추가 질문 주입" 으로 재편됐으나 probing_sessions.hypotheses
+// 잔존값이 매 think 에 재주입돼 유령 맥락을 오염시켰다. 클라이언트는 더 이상
+// 이 필드를 수화·전송하지 않는다. DB 컬럼은 dormant 로 남는다 (파괴적 migration X).
 export type ResearchContext = {
   research_goal: string;
-  hypotheses: string[];
   key_research_question: string;
 };
 

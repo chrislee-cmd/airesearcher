@@ -693,7 +693,6 @@ export function buildProbingThinkSystem(outputLang?: string): string {
 
 ## 사용자 입력 (research_context) 활용
 - **research_goal** — 이 인터뷰의 최상위 목적. 모든 사고와 emit 의 1순위 기준.
-- **hypotheses** — 검증 / 반증 대상. 응답자의 발화가 어느 가설을 지지 / 반박 하는지 항상 점검.
 - **key_research_question (KRQ)** — 이 인터뷰가 답해야 할 핵심 질문. 응답자의 답이 KRQ 의 어느 부분을 channel 하는지 본 뒤, 부족한 부분을 emit 으로 메우는 흐름이 이상적.
 
 조사 컨텍스트가 비어 있으면 transcript 만 보고 진행하되, 그 경우에도 emit 은 sharp 질문만 — 일반론 금지.

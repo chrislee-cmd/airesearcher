@@ -36,19 +36,16 @@ export const maxDuration = 60;
 const Body = z.object({
   transcript_window: z.string().min(30).max(60_000),
   research_goal: z.string().max(2_000).optional().default(''),
-  // 가설은 client 에서 string[] 로 보낸다. cap 은 항목 20개 / 항목 길이 500.
-  hypotheses: z
-    .array(z.string().min(1).max(500))
-    .max(20)
-    .optional()
-    .default([]),
+  // hypotheses 는 은퇴됨 (PR: probing-hypotheses-retire-ghost-injection). 클라는
+  // 더 이상 전송하지 않고, 옛 클라가 보내도 zod 가 unknown key 로 strip → 프롬프트
+  // 에 핵심가설 블록이 붙지 않는다 (유령 주입 근절). 스키마에서 완전 제거.
   key_research_question: z.string().max(2_000).optional().default(''),
   // 기존 자유 가이드 텍스트도 같이 받아 호환성 유지 (사용자가 옛 가이드를
   // 그대로 두고 새 3 필드만 채우는 마이그 경로).
   interview_guide: z.string().max(20_000).optional().default(''),
   // PR (probing-question-injection-input-to-widget): 사용자가 "주입" 버튼으로
-  // **이번 turn 에만** 밀어 넣는 즉시 질문. hypotheses (영구 컨텍스트) 와 달리
-  // one-shot — 이 호출에서만 프롬프트에 들어가고 다음 자동 think 엔 안 실린다.
+  // **이번 turn 에만** 밀어 넣는 즉시 질문. one-shot — 이 호출에서만 프롬프트에
+  // 들어가고 다음 자동 think 엔 안 실린다 (옛 영구 재주입 hypotheses 를 대체).
   injected_questions: z
     .array(z.string().min(1).max(500))
     .max(10)
@@ -110,7 +107,6 @@ export async function POST(request: Request) {
   const {
     transcript_window,
     research_goal,
-    hypotheses,
     key_research_question,
     interview_guide,
     injected_questions,
@@ -126,9 +122,6 @@ export async function POST(request: Request) {
 
   const goalText = research_goal.trim();
   const krqText = key_research_question.trim();
-  const hyps = hypotheses
-    .map((h) => h.trim())
-    .filter((h) => h.length > 0);
   const guideText = interview_guide.trim();
   const injected = injected_questions
     .map((q) => q.trim())
@@ -166,19 +159,6 @@ export async function POST(request: Request) {
         input_label: 'key_research_question',
       })
     : null;
-  // 가설은 항목 단위 sanitize 후 묶어서 wrap. (한 묶음으로 wrap 해도 OK 였지만
-  // 항목별 길이 / 잠재적 injection 패턴 점검을 위해 개별 호출.)
-  const hypothesesSan = hyps.length
-    ? await Promise.all(
-        hyps.map((h, idx) =>
-          sanitizeUserInput(h, 'hypothesis', {
-            ...sanitizeCtx,
-            input_length: h.length,
-            input_label: `hypothesis_${idx + 1}`,
-          }),
-        ),
-      )
-    : [];
   const guideSan = guideText
     ? await sanitizeUserInput(guideText, 'interview_guide', {
         ...sanitizeCtx,
@@ -219,12 +199,8 @@ export async function POST(request: Request) {
 
   const contextLines: string[] = [];
   if (goalSan) contextLines.push(`### 조사 목적\n${goalSan.wrapped}`);
-  if (hypothesesSan.length) {
-    const block = hypothesesSan
-      .map((s, idx) => `${idx + 1}. ${s.wrapped}`)
-      .join('\n');
-    contextLines.push(`### 핵심 가설 (검증 / 반증 대상)\n${block}`);
-  }
+  // hypotheses 는 은퇴 — 프롬프트에 "핵심 가설" 블록을 삽입하지 않는다
+  // (유령 주입 근절, PR: probing-hypotheses-retire-ghost-injection).
   if (krqSan) contextLines.push(`### Key Research Question\n${krqSan.wrapped}`);
   if (guideSan)
     contextLines.push(
@@ -312,7 +288,6 @@ ${transcriptSan.wrapped}
   return result.toTextStreamResponse({
     headers: {
       'x-probing-goal-length': String(goalText.length),
-      'x-probing-hypotheses-count': String(hyps.length),
       'x-probing-krq-length': String(krqText.length),
       'x-probing-injected-count': String(injected.length),
       'x-probing-priority-count': String(prioritySections.length),

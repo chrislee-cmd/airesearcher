@@ -23,6 +23,11 @@
    갱신마다 hypotheses 재전송) 동작은 제거됐다 — 주입은 갱신과 무관하게 사용자
    행동 시점에만 일어난다.
 
+   PR (probing-hypotheses-retire-ghost-injection): 위 재편으로 입력 UI 는
+   사라졌으나 probing_sessions.hypotheses 잔존값이 계속 재수화·재전송돼 프롬프트
+   에 유령 주입되고 있었다. 이제 클라(수화/think 전송)·API(GET/PUT 노출)·프롬프트
+   블록·공유 뷰어에서 hypotheses 를 완전 은퇴시켰다 (DB 컬럼은 dormant).
+
    영속화: research_context (research_goal 등) 는 부모 (probing-card) 가 GET/PUT
    `/api/probing/research-context`. 주입 질문은 여기서 state 로 안 들고 있고
    (one-shot), 부모가 좌 위젯 + think 로 흘려보낸다.

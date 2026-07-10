@@ -28,7 +28,6 @@ export type ShareResource =
       sessionId: string;
       researchGoal: string;
       keyResearchQuestion: string;
-      hypotheses: string[];
       // 공유 시점 스냅샷(#493) — 페르소나 reflection 그리드 + 생성 질문.
       // 구 세션(공유 전 스냅샷 미저장)이나 미지원 버전이면 null → 뷰어가
       // 방어적 빈/안내 상태로 렌더(결정 2). 실시간화 뒤엔 broadcast 로 갱신되는
@@ -61,9 +60,8 @@ export async function loadShareResource(
 
   const { data, error } = await admin
     .from('probing_sessions')
-    .select(
-      'research_goal, key_research_question, hypotheses, persona_snapshot',
-    )
+    // hypotheses 는 은퇴 — 공유 뷰어도 미노출 (probing-hypotheses-retire-ghost-injection).
+    .select('research_goal, key_research_question, persona_snapshot')
     .eq('id', resourceId)
     .maybeSingle();
   if (error || !data) return null;
@@ -78,9 +76,6 @@ export async function loadShareResource(
     sessionId: resourceId,
     researchGoal: (data.research_goal as string | null) ?? '',
     keyResearchQuestion: (data.key_research_question as string | null) ?? '',
-    hypotheses: Array.isArray(data.hypotheses)
-      ? (data.hypotheses as string[])
-      : [],
     snapshot: parsed.success ? parsed.data : null,
   };
 }

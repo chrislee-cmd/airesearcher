@@ -1,7 +1,8 @@
 // probing_sessions — research_context persistence (PR: probing-question-thinking-flow).
 //
 // GET — 위젯 mount 시 사용자가 마지막으로 입력한 조사 컨텍스트 (조사 목적 /
-// 핵심 가설 / KRQ) 를 가져온다. RLS 가 user_id gate. Row 없으면 빈 컨텍스트.
+// KRQ) 를 가져온다. RLS 가 user_id gate. Row 없으면 빈 컨텍스트.
+// (옛 "핵심 가설" 은 은퇴 — probing-hypotheses-retire-ghost-injection.)
 // PUT — upsert. user_id 가 unique 라 같은 row 가 갱신된다 (updated_at trigger
 // 가 자동 bump). 새 인터뷰를 시작할 때마다 같은 row 가 덮어 쓰여 가장 최근
 // 컨텍스트만 보존.
@@ -20,12 +21,13 @@ export const maxDuration = 15;
 // 입력 한도 — server-side cap. UI 도 같은 한도를 채택.
 const GOAL_MAX = 2_000;
 const KRQ_MAX = 2_000;
-const HYPOTHESIS_MAX = 500;
-const HYPOTHESES_COUNT_MAX = 20;
 
+// hypotheses 는 은퇴됨 (PR: probing-hypotheses-retire-ghost-injection). GET 은
+// 노출하지 않고 PUT 은 받아도 무시한다 (옛 클라가 보내도 zod 가 unknown key 로
+// strip → 400 없음). probing_sessions.hypotheses 컬럼은 dormant 로 남는다
+// (파괴적 migration X — 데이터 보존/롤백 여지).
 const PutBody = z.object({
   research_goal: z.string().max(GOAL_MAX),
-  hypotheses: z.array(z.string().max(HYPOTHESIS_MAX)).max(HYPOTHESES_COUNT_MAX),
   key_research_question: z.string().max(KRQ_MAX),
 });
 
@@ -42,7 +44,8 @@ export async function GET() {
   const { data, error } = await supabase
     .from('probing_sessions')
     // id 포함 — 공유 링크(#477)의 resource_id(probing_persona). 미저장이면 null.
-    .select('id, research_goal, hypotheses, key_research_question, updated_at')
+    // hypotheses 는 은퇴 — select 하지 않는다 (유령 재수화 근절).
+    .select('id, research_goal, key_research_question, updated_at')
     .maybeSingle();
   if (error) {
     // probing_sessions 마이그가 아직 prod 미적용인 prod-preview 차이 등을
@@ -52,7 +55,6 @@ export async function GET() {
       row: {
         id: null,
         research_goal: '',
-        hypotheses: [],
         key_research_question: '',
         updated_at: null,
       },
@@ -62,7 +64,6 @@ export async function GET() {
     row: data ?? {
       id: null,
       research_goal: '',
-      hypotheses: [],
       key_research_question: '',
       updated_at: null,
     },
@@ -86,12 +87,10 @@ export async function PUT(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { research_goal, hypotheses, key_research_question } = parsed.data;
-  // Trim 후 빈 가설은 제거 — DB 에 빈 문자열이 들어가지 않도록.
-  const cleanedHypotheses = hypotheses
-    .map((h) => h.trim())
-    .filter((h) => h.length > 0);
+  const { research_goal, key_research_question } = parsed.data;
 
+  // hypotheses 는 은퇴 — upsert 객체에 넣지 않는다. 기존 row 의 hypotheses
+  // 컬럼은 dormant 로 그대로 남는다 (upsert 는 제공된 컬럼만 갱신).
   const { data, error } = await supabase
     .from('probing_sessions')
     .upsert(
@@ -99,13 +98,12 @@ export async function PUT(req: Request) {
         org_id: org.org_id,
         user_id: user.id,
         research_goal: research_goal.trim(),
-        hypotheses: cleanedHypotheses,
         key_research_question: key_research_question.trim(),
       },
       { onConflict: 'user_id' },
     )
     // id 포함 — 저장 직후 클라이언트가 공유 링크(#477) resource_id 를 얻는다.
-    .select('id, research_goal, hypotheses, key_research_question, updated_at')
+    .select('id, research_goal, key_research_question, updated_at')
     .single();
   if (error || !data) {
     console.error('[probing/research-context] upsert failed', error);
