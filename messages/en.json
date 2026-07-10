@@ -1152,7 +1152,7 @@
     "transcripts": {
       "uploading": "Uploading files",
       "transcribing": "Converting speech to text",
-      "md_conversion": "Converting to a document",
+      "md_conversion": "Formatting the finished transcript into a document",
       "speaker_diarization": "Separating speakers",
       "typo_correction": "Fixing typos",
       "phrasing_polish": "Polishing phrasing"
@@ -1171,7 +1171,7 @@
     "transcriptDone": "Transcription complete",
     "transcriptStageUpload": "Upload",
     "transcriptStageTranscribe": "Transcribe",
-    "transcriptStageMd": "Document",
+    "transcriptStageMd": "Finalize",
     "transcriptStageSpeaker": "Speakers",
     "transcriptStageTypo": "Typos",
     "transcriptStagePhrasing": "Polish",

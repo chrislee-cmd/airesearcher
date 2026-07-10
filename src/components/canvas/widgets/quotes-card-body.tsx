@@ -130,13 +130,16 @@ const ACCEPT =
 // 직전에 순서대로 노출한다(데스크 STAGE_DWELL_MS 패턴 — 가짜 active 조작 없이
 // "표시" 인덱스만 걸어 올림). label = Widgets.transcriptStage*, description =
 // Process.transcripts.* 재사용. 정적 정의라 모듈 스코프.
+// 순서 = 실제 파이프라인 흐름: 업로드 → 전사(음성→텍스트) → 화자 분리 →
+// 오탈자 수정 → 표현 보정 → 문서 정리(전사 텍스트를 최종 마크다운 문서로
+// 패키징하는 마지막 단계 — 입력 변환이 아니라 산출물 정리라 맨 끝).
 const TX_STAGE_DEFS = [
   { id: 'upload', icon: '📤', phase: 'uploading', label: 'transcriptStageUpload' },
   { id: 'transcribe', icon: '🎧', phase: 'transcribing', label: 'transcriptStageTranscribe' },
-  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
   { id: 'speaker', icon: '🗣️', phase: 'speaker_diarization', label: 'transcriptStageSpeaker' },
   { id: 'typo', icon: '✍️', phase: 'typo_correction', label: 'transcriptStageTypo' },
   { id: 'phrasing', icon: '✨', phase: 'phrasing_polish', label: 'transcriptStagePhrasing' },
+  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
 ] as const;
 const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
