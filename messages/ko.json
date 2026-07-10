@@ -338,6 +338,17 @@
       "settings": "설정"
     }
   },
+  "QaFeedback": {
+    "label": "피드백 남기기",
+    "noteAria": "텍스트 피드백",
+    "title": "텍스트 피드백",
+    "placeholder": "이 화면에 대한 피드백을 적어주세요.",
+    "submit": "제출",
+    "cancel": "닫기",
+    "submitDone": "피드백 제출 완료",
+    "submitError": "저장 실패: {message}",
+    "loginRequired": "로그인이 필요합니다"
+  },
   "Sidebar": {
     "dashboard": "대시보드",
     "quotes": "전사록 생성기",

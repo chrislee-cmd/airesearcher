@@ -45,11 +45,14 @@ export type QaFeedbackRow = {
   id: string;
   user_id: string;
   session_id: string;
-  audio_storage_key: string;
+  // Text feedback carries no audio → this is null (migration
+  // 20260710015918 dropped the NOT NULL). Voice feedback still has a key.
+  audio_storage_key: string | null;
   transcript: string | null;
   page_url: string | null;
   duration_seconds: number | null;
   status: string;
+  source: string; // 'voice' | 'text' (default 'voice' for legacy rows)
   meta: Record<string, unknown>;
   created_at: string;
   user_email: string;
@@ -244,6 +247,11 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
                     >
                       {f.status}
                     </span>
+                    {/* source 뱃지 — 음성/텍스트 구분. audio_storage_key 로도
+                        판별 가능하지만 source 컬럼이 SSOT. */}
+                    <span className="px-1.5 py-0.5 rounded-pill border border-line-soft text-xs-soft text-mute">
+                      {f.source === 'text' ? '📝 텍스트' : '🎙 음성'}
+                    </span>
                     {/* 무음 뱃지 — 무음 hard-block 도입 전 저장된 empty-audio
                         row (meta.silent=true) 를 시각 경고. 신규 row 는 이제
                         submit 시 차단되어 이 플래그가 안 붙는다. */}
@@ -266,17 +274,25 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
                         ))}
                       </div>
                     )}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="link"
-                      size="xs"
-                      onClick={() => getSignedUrl(f.id, f.audio_storage_key)}
-                      className="whitespace-nowrap"
-                    >
-                      🔊 재생
-                    </Button>
-                    {audioUrls[f.id] && <FeedbackAudio src={audioUrls[f.id]} />}
-                  </div>
+                  {/* 오디오 재생 — 음성 피드백(audio_storage_key 존재)만.
+                      텍스트 피드백은 오디오가 없어 재생 UI 를 숨긴다. */}
+                  {f.audio_storage_key && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="link"
+                        size="xs"
+                        onClick={() =>
+                          getSignedUrl(f.id, f.audio_storage_key as string)
+                        }
+                        className="whitespace-nowrap"
+                      >
+                        🔊 재생
+                      </Button>
+                      {audioUrls[f.id] && (
+                        <FeedbackAudio src={audioUrls[f.id]} />
+                      )}
+                    </div>
+                  )}
                   {f.transcript ? (
                     <p className="text-sm text-ink-2 bg-paper-soft p-3 rounded-sm whitespace-pre-wrap">
                       {f.transcript}

@@ -338,6 +338,17 @@
       "settings": "Settings"
     }
   },
+  "QaFeedback": {
+    "label": "Leave feedback",
+    "noteAria": "Text feedback",
+    "title": "Text feedback",
+    "placeholder": "Tell us what you think about this screen.",
+    "submit": "Submit",
+    "cancel": "Close",
+    "submitDone": "Feedback submitted",
+    "submitError": "Save failed: {message}",
+    "loginRequired": "Please sign in"
+  },
   "Sidebar": {
     "dashboard": "Dashboard",
     "quotes": "Transcript Generator",

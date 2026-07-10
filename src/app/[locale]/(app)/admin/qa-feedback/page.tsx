@@ -31,7 +31,7 @@ export default async function Page({
   const { data: feedbacks } = await supabase
     .from('qa_feedbacks')
     .select(
-      'id, user_id, session_id, audio_storage_key, transcript, page_url, duration_seconds, status, meta, created_at',
+      'id, user_id, session_id, audio_storage_key, transcript, page_url, duration_seconds, status, source, meta, created_at',
     )
     .order('created_at', { ascending: false })
     .limit(500);
