@@ -478,7 +478,21 @@ export function QuotesCardBody() {
     if (files.length === 0) return;
     // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
     const admitted = await gate.acquire();
-    if (!admitted) return;
+    if (!admitted) {
+      // 게이트가 슬롯을 안 줬는데(정원 대기 중 취소 등) 여기서 그냥 return 하면,
+      // 업로드까지 끝난 파일이 잡 생성 없이 흔적 없이 사라진다 — 전체보기에도
+      // 안 뜨고 에러도 없는 "조용히 사라짐"(prod 대용량 실측 회귀). 버리지 말고
+      // 재시도 버킷(readyFiles)에 남기고 에러를 표면화해, 사용자가 하단 "전사
+      // 시작" CTA 로 복구할 수 있게 한다(false "처리됨" 방지 — 스펙 결정 3).
+      setReadyFiles((prev) => {
+        const keys = new Set(prev.map((r) => r.storage_key));
+        return [...prev, ...files.filter((r) => !keys.has(r.storage_key))];
+      });
+      setUploadError(
+        '전사 시작 슬롯을 얻지 못해 대기 중입니다 — 업로드된 파일은 아래 "전사 시작"으로 다시 시작할 수 있어요.',
+      );
+      return;
+    }
     setUploadError(null);
     const queue = [...files];
     try {
