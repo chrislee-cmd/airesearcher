@@ -1,0 +1,543 @@
+{
+  "button": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 990
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting-card-outputs.tsx",
+      "line": 185
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting-card.tsx",
+      "line": 221
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/distribution-panel.tsx",
+      "line": 157
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
+      "line": 259
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/respondent-drawer.tsx",
+      "line": 202
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 452
+    },
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews/search-panel.tsx",
+      "line": 175
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1209
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-header-color.tsx",
+      "line": 235
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-outputs.tsx",
+      "line": 68
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-settings-modal.tsx",
+      "line": 43
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-shell.tsx",
+      "line": 342
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-upload-modal.tsx",
+      "line": 44
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/widgets/transcript-record-button.tsx",
+      "line": 159
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing-card.tsx",
+      "line": 1758
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 148
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/inject-field.tsx",
+      "line": 87
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 136
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/question-pane.tsx",
+      "line": 86
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/reflection-pane.tsx",
+      "line": 118
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/research-context.tsx",
+      "line": 98
+    }
+  ],
+  "icon-button": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 895
+    },
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-result/section-card.tsx",
+      "line": 90
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/respondent-drawer.tsx",
+      "line": 116
+    },
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews/full-view.tsx",
+      "line": 83
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1551
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-fullview-modal.tsx",
+      "line": 64
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-fullview-panel.tsx",
+      "line": 49
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-header-color.tsx",
+      "line": 148
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-settings-button.tsx",
+      "line": 60
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-upload-button.tsx",
+      "line": 61
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-panel.tsx",
+      "line": 116
+    }
+  ],
+  "chrome-button": [
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 500
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 975
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-primary-cta.tsx",
+      "line": 30
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 253
+    }
+  ],
+  "input": [
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews/search-panel.tsx",
+      "line": 213
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1145
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 164
+    }
+  ],
+  "chrome-input": [],
+  "chip-input": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 904
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/inject-field.tsx",
+      "line": 76
+    }
+  ],
+  "chip-field": [],
+  "textarea": [
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 135
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 175
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/research-context.tsx",
+      "line": 85
+    }
+  ],
+  "select": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1324
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 152
+    }
+  ],
+  "checkbox": [
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/question-filter-menu.tsx",
+      "line": 174
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 685
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1184
+    }
+  ],
+  "slider": [],
+  "mode-button": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 800
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 910
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 128
+    }
+  ],
+  "modal": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1242
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting-card-outputs.tsx",
+      "line": 223
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 614
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1258
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-fullview-modal.tsx",
+      "line": 12
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-settings-modal.tsx",
+      "line": 37
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-upload-modal.tsx",
+      "line": 38
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing-card.tsx",
+      "line": 1783
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 147
+    }
+  ],
+  "widget-fullview-modal": [],
+  "file-drop-zone": [
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews/full-view.tsx",
+      "line": 116
+    }
+  ],
+  "control-dropzone": [
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 185
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 926
+    }
+  ],
+  "dropdown-menu": [
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting-card.tsx",
+      "line": 290
+    },
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 107
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 876
+    }
+  ],
+  "label": [],
+  "skeleton": [
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
+      "line": 430
+    },
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 443
+    }
+  ],
+  "stage-flow": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 976
+    }
+  ],
+  "canvas-widget-primitives": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 823
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting-card.tsx",
+      "line": 242
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
+      "line": 288
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 483
+    },
+    {
+      "widget": "인터뷰 결과 생성기",
+      "key": "interviews",
+      "file": "src/components/canvas/widgets/interviews-card.tsx",
+      "line": 171
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1017
+    },
+    {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/field.tsx",
+      "line": 50
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 103
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/inject-field.tsx",
+      "line": 70
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
+      "line": 123
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/question-pane.tsx",
+      "line": 84
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/reflection-pane.tsx",
+      "line": 115
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/research-context.tsx",
+      "line": 84
+    }
+  ]
+}
