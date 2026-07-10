@@ -47,7 +47,12 @@ export function ThinkingPanel() {
         className="max-h-[320px] overflow-y-auto px-4 py-3 font-mono text-md leading-[1.7]"
       >
         {thinkingLog.map((evt) => (
-          <EventLine key={evt.id} evt={evt} />
+          // fade-in-up — 새 사고 이벤트가 도착할 때만 마운트되며 1회 재생.
+          // 빈 wrapper 라 자식 margin 이 collapse 되어 기존 간격 보존. 자동
+          // 스크롤과 무충돌(위치 변화 없음). reduced-motion 은 CSS 가 존중.
+          <div key={evt.id} className="fade-in-up">
+            <EventLine evt={evt} />
+          </div>
         ))}
       </div>
     </section>

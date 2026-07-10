@@ -994,7 +994,10 @@ export function DeskCardBody() {
                 className="mt-2 h-[240px] overflow-y-auto rounded-xs border border-line bg-white px-4 py-3 text-md leading-[1.7]"
               >
                 {events.map((line, i) => (
-                  <div key={i} className="py-0.5 text-ink-2">
+                  // fade-in-up — 새 크롤/진행 라인이 도착할 때만 마운트되며 1회
+                  // 재생(index key + append-only 라 기존 라인 재애니 없음).
+                  // reduced-motion 은 globals.css 가 독립 존중.
+                  <div key={i} className="fade-in-up py-0.5 text-ink-2">
                     <span className="mr-2 text-amore">›</span>
                     {line}
                   </div>

@@ -126,7 +126,10 @@ export function DeskReportView({
         )}
 
         {parsed.ok ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          // stagger — 완료 결과 섹션 카드가 순차로 떠오르며 등장(마운트 1회).
+          // 스트리밍으로 섹션이 증분 도착해도 key=section.id 로 기존 카드는
+          // 재애니 없이 새 카드만 등장. reduced-motion 은 globals.css 가 존중.
+          <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2">
             {parsed.sections.map((section) => (
               <SectionRenderer
                 key={section.id}
@@ -145,7 +148,7 @@ export function DeskReportView({
           </div>
         ) : (
           // ── fallback — 인식 섹션 0. raw markdown 한 덩이 + 구조화 카드. ──
-          <div className="grid grid-cols-1 gap-4">
+          <div className="stagger grid grid-cols-1 gap-4">
             <SectionCard
               id="desk-sec-report"
               icon="📄"

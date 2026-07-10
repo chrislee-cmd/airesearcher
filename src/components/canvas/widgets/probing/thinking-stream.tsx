@@ -54,7 +54,10 @@ export function ProbingThinkingStream({
         ) : (
           <ul className="space-y-1">
             {events.map((ev) => (
-              <li key={ev.id} className="whitespace-pre-wrap">
+              // fade-in-up — 새 사고 라인이 도착할 때만 마운트되며 1회 재생
+              // (기존 라인은 key 로 DOM 재사용 → 재애니 없음). reduced-motion
+              // 은 globals.css 가 독립 존중. 자동 스크롤과 무충돌(위치 변화 없음).
+              <li key={ev.id} className="fade-in-up whitespace-pre-wrap">
                 <span className="mr-1.5 text-mute-soft" aria-hidden>
                   ›
                 </span>

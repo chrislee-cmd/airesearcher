@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCountUp } from '@/hooks/use-count-up';
 
 type Quote = {
   id: number;
@@ -62,6 +63,9 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  // 결과 카운트 count-up — "N개 일치" 의 N 이 새 검색 결과 수까지 부드럽게
+  // 증가/감소. reduced-motion 시 즉시 최종값(훅이 내부 존중).
+  const displayCount = useCountUp(results.length);
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -169,7 +173,7 @@ export function QuoteSearchPanel({ jobId }: { jobId: string }) {
             ? '검색 중…'
             : results.length === 0 && hasSearched
               ? '일치하는 인용구가 없습니다'
-              : `${results.length}개${cursor != null ? '+' : ''} 일치`}
+              : `${displayCount}개${cursor != null ? '+' : ''} 일치`}
         </div>
       )}
 
