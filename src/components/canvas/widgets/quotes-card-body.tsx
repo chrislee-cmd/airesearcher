@@ -146,6 +146,30 @@ const TX_STAGE_DEFS = [
 ] as const;
 const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
+// ── 멈춤/실패 잡 감지 ──────────────────────────────────────────────────────
+// prod 실측(2026-07-10): stuck 3건 = 전부 status='submitting'(5월, error NULL).
+// 진짜 멈춤 지점 = 업로드→잡생성/submitting 핸드오프. 현재는 status!=='done' 을
+// 전부 "진행 중" 으로 렌더해 오래된 submitting 이 영원히 "진행 중" 으로 남는다
+// (완료 리스트에도 없고 실패 표시도 없어 유저 눈엔 "사라짐").
+//
+// stuck = error(명시적 실패) OR 비종료 상태(submitting/transcribing)로 30분+
+// 진전 없음. 판정 기준을 created_at 이 아니라 updated_at 으로 두는 이유: (1)
+// updated_at 은 touch 트리거가 매 UPDATE 마다 갱신 = "마지막 진전" 신호이고,
+// submitting 에서 멈춘 잡은 insert 이후 UPDATE 가 없어 updated_at≈created_at 이라
+// 실제 stuck 3건 감지 결과가 동일하다. (2) 재시도가 성공해 다시 진행되면
+// updated_at 이 now() 로 갱신돼 stuck 버킷에서 즉시 벗어난다 — created_at 기준이면
+// 오래된 잡이 재시도 직후에도 계속 stuck 으로 오표시된다.
+const STUCK_THRESHOLD_MS = 30 * 60 * 1000; // 30분
+
+function isStuckJob(j: TranscriptJob, nowMs: number): boolean {
+  if (j.status === 'error') return true;
+  if (j.status === 'submitting' || j.status === 'transcribing') {
+    const lastProgress = new Date(j.updated_at ?? j.created_at).getTime();
+    return nowMs - lastProgress > STUCK_THRESHOLD_MS;
+  }
+  return false;
+}
+
 function formatBytes(n: number | null) {
   if (n === null || n === undefined) return '';
   if (n < 1024) return `${n} B`;
@@ -454,7 +478,21 @@ export function QuotesCardBody() {
     if (files.length === 0) return;
     // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
     const admitted = await gate.acquire();
-    if (!admitted) return;
+    if (!admitted) {
+      // 게이트가 슬롯을 안 줬는데(정원 대기 중 취소 등) 여기서 그냥 return 하면,
+      // 업로드까지 끝난 파일이 잡 생성 없이 흔적 없이 사라진다 — 전체보기에도
+      // 안 뜨고 에러도 없는 "조용히 사라짐"(prod 대용량 실측 회귀). 버리지 말고
+      // 재시도 버킷(readyFiles)에 남기고 에러를 표면화해, 사용자가 하단 "전사
+      // 시작" CTA 로 복구할 수 있게 한다(false "처리됨" 방지 — 스펙 결정 3).
+      setReadyFiles((prev) => {
+        const keys = new Set(prev.map((r) => r.storage_key));
+        return [...prev, ...files.filter((r) => !keys.has(r.storage_key))];
+      });
+      setUploadError(
+        '전사 시작 슬롯을 얻지 못해 대기 중입니다 — 업로드된 파일은 아래 "전사 시작"으로 다시 시작할 수 있어요.',
+      );
+      return;
+    }
     setUploadError(null);
     const queue = [...files];
     try {
@@ -564,6 +602,28 @@ export function QuotesCardBody() {
     await job.refreshJobs();
   }
 
+  // 멈춤/실패 잡 재시도 — 기존 storage_key 로 서버가 같은 row 를 재전사(핸드오프
+  // 재시도). 새 row/재업로드/중복 과금 없음. 성공 시 status 가 submitting→
+  // transcribing 으로 바뀌고 updated_at 이 now() 로 갱신돼 stuck 버킷에서 벗어난다.
+  async function retryJob(id: string) {
+    setUploadError(null);
+    try {
+      const res = await fetch(`/api/transcripts/jobs/${id}/retry`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `retry ${res.status}`);
+      }
+      toast.push('전사를 다시 시작했어요', { tone: 'info' });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'retry_failed';
+      toast.push(`재시도 실패: ${msg}`, { tone: 'warn' });
+    } finally {
+      await job.refreshJobs();
+    }
+  }
+
   // ── fullview 일괄 선택/액션 ────────────────────────────────────────────
   // 선택된 잡 id 집합. fullview("전체 보기") 안에서만 노출/사용된다. 카드
   // 본문 큐/산출물 목록엔 체크박스가 없어 개별 삭제/다운로드 회귀 없음.
@@ -658,10 +718,28 @@ export function QuotesCardBody() {
     track('quotes_bulk_download_click', { count: ids.length });
   }
 
-  // Group jobs for the canvas card layout: in-flight 큐 vs 완료된 산출물.
-  // pillFor 가 보는 status 5종 중 'done' 만 recents 로, 나머지는 queue 로.
-  const queueJobs = job.jobs.filter((j) => j.status !== 'done');
+  // stuck 판정용 now — 30초마다 tick. stuck 잡은 30분+ 오래된 것이라 초 단위
+  // 정밀도는 불필요. SSR/hydration: 첫 렌더엔 job.jobs 가 비어 있어(effect 로
+  // 늦게 로드) 서버·클라 now 차이로 인한 불일치가 없다.
+  const [stuckNow, setStuckNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setStuckNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Group jobs for the canvas card layout: in-flight 큐 vs 멈춤/실패 vs 완료.
+  // 오래된 submitting/transcribing + 모든 error 는 stuck 으로 분리해 "진행 중"
+  // 이 아니라 "멈춤/실패" 뱃지 + 재시도/삭제로 노출한다(무한 "진행 중" 제거).
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
+  const stuckJobs = job.jobs.filter(
+    (j) => j.status !== 'done' && isStuckJob(j, stuckNow),
+  );
+  const stuckIds = new Set(stuckJobs.map((j) => j.id));
+  // 신선한(≤30분) queued/submitting/transcribing 만 "진행 중" 큐로.
+  const queueJobs = job.jobs.filter(
+    (j) => j.status !== 'done' && !stuckIds.has(j.id),
+  );
+  const anyStuck = stuckJobs.length > 0;
   const hasUploads = Object.keys(job.localUploads).length > 0;
   // '시작' CTA — 업로드+언어확인까지 끝난 준비 파일이 있어야 활성.
   const readyCount = readyFiles.length;
@@ -673,29 +751,22 @@ export function QuotesCardBody() {
   // 일어난다(§주의). 따라서 관측 가능한 upload/transcribe 만 active 로 두고,
   // 후처리 단계는 pending → 완료 시 done 으로 넘어가는 frontend estimate 를
   // 쓴다(가짜 active 상태 조작 없음). 멀티-파일 큐 UI 는 아래에 그대로 보존.
-  const anyInflight = job.jobs.some(
-    (j) =>
-      j.status === 'queued' ||
-      j.status === 'submitting' ||
-      j.status === 'transcribing',
-  );
-  const anyError = job.jobs.some((j) => j.status === 'error');
+  // 신선한 inflight 만(stuck 제외 — queueJobs 는 이미 stuck/done 제외). stuck 은
+  // 더 이상 "진행 중" 으로 세지 않아 StageFlow 가 멈춘 잡 때문에 영원히 돌지 않는다.
+  const anyInflight = queueJobs.length > 0;
   // 진행 중(업로드/전사) — 컨트롤+CTA 자리를 타임라인이 대체.
   const txInflight = hasUploads || busyUpload || anyInflight;
-  // 완료 — 진행 중 없음 + 재시도 대기 없음 + 에러 없음 + 완료본 존재.
+  // 완료 — 진행 중 없음 + 재시도 대기 없음 + 멈춤/실패 없음 + 완료본 존재.
+  // stuck 이 하나라도 있으면 무음 "완료" 로 넘어가지 않는다(완료 판정에 stuck 반영).
   const txDone =
-    !txInflight && readyFiles.length === 0 && !anyError && doneJobs.length > 0;
+    !txInflight && readyFiles.length === 0 && !anyStuck && doneJobs.length > 0;
   // fullview 후 idle 복귀(spec B) — idle 로 되돌린 뒤엔 완료 배너(✅ + 전체
   // 보기)를 접고 idle 컨트롤(언어 + 드롭존)만 노출한다. 완료 산출물은
   // DB/fullview 에 보존. phase 가 active 일 때만 done 프리젠테이션을 렌더.
   const showDone = txDone && phase === 'active';
-  const primaryInflight =
-    job.jobs.find(
-      (j) =>
-        j.status === 'queued' ||
-        j.status === 'submitting' ||
-        j.status === 'transcribing',
-    ) ?? null;
+  // 신선 inflight 중 대표 1건(StageFlow active idx). queueJobs 는 stuck 제외라
+  // 멈춘 잡이 대표로 잡혀 플로우가 갇히는 회귀가 없다.
+  const primaryInflight = queueJobs[0] ?? null;
   // ─── StageFlow 공정 플로우 (데스크 6노드 미러) ────────────────────────────
   // 전사록은 멀티파일 — N 파일 각자 status(queued/submitting/transcribing/done)
   // + 로컬 업로드 progress. 관측 가능한 업로드/전사만 실시간 active 로 두고,
@@ -765,7 +836,7 @@ export function QuotesCardBody() {
   const txStages: Stage[] = TX_STAGE_DEFS.map((s, i) => {
     let status: Stage['status'];
     if (i < displayIdx) status = 'done';
-    else if (i === displayIdx) status = anyError ? 'error' : 'active';
+    else if (i === displayIdx) status = anyStuck ? 'error' : 'active';
     else status = 'pending';
     // hint 는 관측 가능한 단계에만 — 업로드 % / 전사 완료 N/M. 후처리 4단계는
     // 백엔드 세부 신호가 없어 hint 없음(active glow + description 으로 안내).
@@ -793,16 +864,19 @@ export function QuotesCardBody() {
 
   // 헤더 pill 로 push 할 live state. 우선순위:
   //   1) 로컬 업로드 진행 중 → "UPLOADING NN%"
-  //   2) 전사 잡 inflight (submitting/transcribing/queued) → 가장 최근
+  //   2) 신선 전사 잡 inflight (submitting/transcribing/queued) → 가장 최근
   //      잡의 ETA 추정 진행률 + 라벨
-  //   3) 가장 최근 잡이 error → 'error'
+  //   3) 멈춤/실패 잡 존재 → 'error'(warning 톤) — 무한 "진행 중" 오표시 제거
   //   4) 그 외 + done 잡 있음 → 'done'
   //   5) 그 외 → 'idle'
   const { setState } = useWidgetState();
   // uploadValues/uploadingAvgPct 는 StageFlow 블록에서 이미 계산 (헤더 pill 과
   // StageFlow 업로드 hint 가 같은 평균 진행률을 공유).
   const inflightJob = queueJobs[0] ?? null;
-  const errorJob = job.jobs.find((j) => j.status === 'error') ?? null;
+  // 멈춤/실패 대표 1건 — 헤더 pill 을 error 톤으로. 오래된 submitting(error 아님)
+  // 도 여기서 잡아 헤더가 "진행 중" 으로 거짓 표시되지 않게 한다.
+  const stuckJob = stuckJobs[0] ?? null;
+  const stuckMessage = stuckJob?.error_message ?? null;
   // 1초마다 강제 tick — ETA 가 시간 기반이라 잡이 그대로여도 헤더 진행률이
   // 올라가야 한다. ProgressEstimate 와 동일 패턴 (별도 hook 으로 분리하면
   // 의존성 늘어 복잡 — 같은 컴포넌트 안에서 두 번 사용도 안전).
@@ -836,10 +910,10 @@ export function QuotesCardBody() {
       setState({ kind: 'running', label, progress });
       return;
     }
-    if (errorJob) {
+    if (stuckJob) {
       setState({
         kind: 'error',
-        message: errorJob.error_message ?? undefined,
+        message: stuckMessage ?? undefined,
       });
       return;
     }
@@ -852,7 +926,8 @@ export function QuotesCardBody() {
     setState,
     uploadingAvgPct,
     inflightJob,
-    errorJob,
+    stuckJob,
+    stuckMessage,
     doneJobs.length,
     nowTick,
   ]);
@@ -1085,6 +1160,33 @@ export function QuotesCardBody() {
             노출되고 이 영역은 렌더되지 않는다. */}
         {phase === 'active' && (
           <>
+            {/* 멈춤 / 실패 — 오래된 submitting/transcribing + error. 접힘 상세가
+                아니라 항상 펼쳐 노출한다(조용한 실패 = 유저 데이터 유실 인지 불가
+                라 눈에 띄어야 함). 각 행은 warning 뱃지 + 재시도(기존 storage_key
+                재전사) / 삭제. */}
+            {stuckJobs.length > 0 && (
+              <WidgetOutputRegion padY="lg">
+                <div className="mb-2 flex items-center justify-between">
+                  <SectionLabel>{tWidgets('transcriptStuckSection')}</SectionLabel>
+                  <span className="text-xs text-warning">{stuckJobs.length}건</span>
+                </div>
+                <p className="mb-3 text-xs text-mute-soft">
+                  {tWidgets('transcriptStuckHint')}
+                </p>
+                <ul className="space-y-3">
+                  {stuckJobs.map((j) => (
+                    <JobRow
+                      key={j.id}
+                      job={j}
+                      stuck
+                      onRetry={() => void retryJob(j.id)}
+                      onDelete={() => deleteJob(j.id)}
+                    />
+                  ))}
+                </ul>
+              </WidgetOutputRegion>
+            )}
+
             {/* 업로드 진행 + 큐. flex-1 로 산출물을 채우고, 길어지면 자체
                 스크롤. 수평 여백·클러스터(컨트롤 좌측 정합)는 WidgetOutputRegion
                 SSOT 소유 — 손코딩 px 금지. */}
@@ -1158,13 +1260,9 @@ export function QuotesCardBody() {
                 대기분이 있으면(pending-retry) 완료로 오인시키지 않고 푸터를
                 숨긴다 — slim bar 재확장의 재시도 CTA + 에러 hint 가 신호를 담당. */}
             {(() => {
-              const inflight = job.jobs.some(
-                (j) =>
-                  j.status === 'submitting' ||
-                  j.status === 'transcribing' ||
-                  j.status === 'queued',
-              );
-              const running = hasUploads || busyUpload || inflight;
+              // 신선 inflight 만(queueJobs = stuck/done 제외). 멈춘 잡이 "진행중"
+              // 푸터를 무한히 띄우던 회귀를 막는다.
+              const running = hasUploads || busyUpload || queueJobs.length > 0;
               if (running) {
                 return (
                   <WidgetStatusFooter
@@ -1180,7 +1278,9 @@ export function QuotesCardBody() {
               // done 블록(컨트롤 영역)이 이미 "전체 보기" CTA 를 제공하므로
               // 하단 완료 푸터는 생략 — 중복 CTA 회피.
               if (txDone) return null;
-              // pending-retry 중엔 완료로 오인시키지 않는다.
+              // 멈춤/실패 잡이 있으면 완료로 오인시키지 않는다 — 위 멈춤 섹션이
+              // 신호를 담당(재시도/삭제). pending-retry 도 동일.
+              if (anyStuck) return null;
               if (readyFiles.length > 0 || doneJobs.length === 0) return null;
               return (
                 <WidgetStatusFooter
@@ -1232,7 +1332,10 @@ export function QuotesCardBody() {
       {renderInSlot(
         <WidgetFullviewPanel
           title="전사록 — 전체 보기"
-          subtitle={`완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건`}
+          subtitle={
+            `완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건` +
+            (stuckJobs.length > 0 ? ` · 멈춤 ${stuckJobs.length}건` : '')
+          }
           onClose={closeFullview}
         >
         <div className="mx-auto flex h-full min-h-0 w-full max-w-[1100px] flex-col px-6 py-6">
@@ -1333,6 +1436,8 @@ export function QuotesCardBody() {
                       <JobRow
                         key={j.id}
                         job={j}
+                        stuck={isStuckJob(j, stuckNow)}
+                        onRetry={() => void retryJob(j.id)}
                         onDelete={() => deleteJob(j.id)}
                         previewMode="inline"
                         selectable
@@ -1511,6 +1616,8 @@ type TranscriptSource = 'clean' | 'raw';
 function JobRow({
   job,
   onDelete,
+  onRetry,
+  stuck = false,
   previewMode = 'modal',
   selectable = false,
   selected = false,
@@ -1518,6 +1625,11 @@ function JobRow({
 }: {
   job: TranscriptJob;
   onDelete: () => void;
+  // 멈춤/실패 잡 재시도. stuck=true 일 때만 렌더된다.
+  onRetry?: () => void;
+  // 멈춤/실패(오래된 submitting/transcribing + error). 뱃지를 warning 톤 "멈춤"
+  // 으로 바꾸고 재시도 버튼을 노출하며, 거짓 진행률(ProgressEstimate)을 숨긴다.
+  stuck?: boolean;
   // 'modal' = 카드 안 (default) — 미리보기 클릭 시 Modal 팝업.
   // 'inline' = "더보기" 모달 안 — 기존 expand 동작 유지 (nested modal 회피).
   previewMode?: 'modal' | 'inline';
@@ -1540,8 +1652,17 @@ function JobRow({
     hasInferredSpeakers: boolean;
     diarizationAudit: PreviewDiarizationAudit | null;
   } | null>(null);
-  const pill = pillFor(job.status);
-  const inFlight = job.status === 'submitting' || job.status === 'transcribing';
+  // 멈춤이면 status pill 을 warning 톤 "멈춤" 으로. 실제 error 는 pillFor 가 이미
+  // "오류"(warning) 라 그대로, 오래된 submitting/transcribing 은 amore "제출 중/
+  // 전사 중" 대신 "멈춤" 으로 덮어 무한 진행 오표시를 없앤다.
+  const pill =
+    stuck && job.status !== 'error'
+      ? { text: '멈춤', cls: 'text-warning' }
+      : pillFor(job.status);
+  // 멈춘 잡은 실제로 진전이 없으므로 거짓 ETA 막대(ProgressEstimate)를 숨긴다.
+  const inFlight =
+    !stuck &&
+    (job.status === 'submitting' || job.status === 'transcribing');
   // Only thread the source query through the download URL when the user has
   // explicitly switched to raw — keeps existing share links / bookmarks valid.
   const downloadSuffix = source === 'raw' ? '?source=raw' : '';
@@ -1642,6 +1763,16 @@ function JobRow({
                 {previewMode === 'inline' && previewOpen ? '접기' : '미리보기'}
               </Button>
             </div>
+          )}
+          {stuck && onRetry && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onRetry}
+              className="uppercase tracking-[0.18em]"
+            >
+              재시도
+            </Button>
           )}
           <IconButton
             variant="ghost-danger"
