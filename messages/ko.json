@@ -933,6 +933,7 @@
   "TranslateConsole": {
     "sourceLang": "원어",
     "targetLang": "번역 언어",
+    "select": "선택",
     "inputSource": {
       "label": "입력 소스",
       "mic": "마이크",
@@ -942,8 +943,8 @@
     "captureMode": {
       "label": "캡처 방식",
       "both": "mic + 탭 (온라인 미팅)",
-      "micOnly": "mic 만 (대면)",
-      "tabOnly": "탭 만 (재생 청취)",
+      "micOnly": "기기 마이크",
+      "tabOnly": "브라우저 오디오 인풋",
       "tabHint": "공유 창에서 탭을 고른 뒤 \"탭 오디오 공유\"를 체크하세요. Chrome 데스크톱만 지원합니다.",
       "bothCostHint": "양쪽 캡처 = OpenAI 실시간 비용 2배 (mic + 탭 각각 1세션)",
       "shortBoth": "mic + 탭",

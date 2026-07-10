@@ -704,21 +704,25 @@ export function TranslateConsole({
   }, [status, gate]);
 
   const [error, setError] = useState<string | null>(null);
-  const [sourceLang, setSourceLang] = useState('ko');
-  const [targetLang, setTargetLang] = useState('en');
+  // 원어/번역 언어 — 미선택('')이 기본. 프로빙(#536)과 동작 통일: 사용자가
+  // 명시로 고르기 전엔 통역 시작 CTA 가 비활성(아래 idle CTA 게이트). 세션
+  // 시작(start) 전까지는 picker placeholder("선택")만 렌더하고, 실제 값 소비는
+  // start() 이후(create route body·세션 핸들러)라 idle 빈값 부작용 없음.
+  const [sourceLang, setSourceLang] = useState('');
+  const [targetLang, setTargetLang] = useState('');
   // Glossary (Layer B) — host-entered canonical spellings of names /
   // proper nouns / acronyms, captured before the session starts. Sent to
   // the create route and stored on the session; the realtime translations
   // endpoint can't take a hint (openai-realtime.ts), so glossary only
   // feeds the post-process (Layer D) and revise (Layer C) LLM passes.
   const [glossary, setGlossary] = useState<string[]>([]);
-  // Capture mode picker. Default 'both' — the common online-interview
-  // shape (host on mic + interviewee on tab). 'mic-only' is the
-  // face-to-face fallback when no tab audio is involved. 'tab-only'
-  // keeps the legacy single-source tab path for solo-listening flows.
-  // Both 'both' and 'tab-only' rely on getDisplayMedia which requires
-  // a user gesture, so the picker only writes state until Start fires.
-  const [captureMode, setCaptureMode] = useState<CaptureMode>('both');
+  // Capture mode picker. Default '' (미선택) — 프로빙(#536)과 동작 통일.
+  // picker 옵션은 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
+  // 2개뿐 — 'both'(mic+tab 병렬)은 사용자 명시로 옵션에서 제거됐다. 'both'
+  // 타입/코드경로는 dormant 로 남아 있으나 picker 로는 도달 불가.
+  // 'tab-only' 은 getDisplayMedia 를 쓰므로 user gesture 가 필요 — picker 는
+  // Start 전까지 state 만 기록한다. 미선택('')이면 아래 idle CTA 가 비활성.
+  const [captureMode, setCaptureMode] = useState<CaptureMode | ''>('');
   // Per-slot live indicator. Flips true once the slot's RTCPeerConnection
   // reaches `connected` (or the slot's recorder starts, whichever first)
   // so the topbar can show "🎤 진행자 · 📺 응답자" with active dots.
@@ -2271,6 +2275,10 @@ export function TranslateConsole({
   );
 
   const start = useCallback(async () => {
+    // 미선택 게이트 — 원어/번역/캡처 중 하나라도 안 골랐으면 시작 금지
+    // (프로빙 #536 미러). CTA 는 이미 disabled 지만 키보드/재진입 대비 방어.
+    // 이 가드가 통과하면 아래에서 captureMode 가 CaptureMode 로 narrow 된다.
+    if (!captureMode || !sourceLang || !targetLang) return;
     // Two-layer guard: (1) the status closure may be stale across rapid
     // invocations (React batches the setStatus('starting') below so a
     // second click within the same microtask still sees 'idle'); (2) the
@@ -4077,6 +4085,10 @@ export function TranslateConsole({
   const idlePhase =
     status === 'idle' || status === 'starting' || status === 'error';
 
+  // 통역 시작 게이트 — 원어/번역/캡처 3개 모두 선택돼야 CTA 활성 (프로빙 #536
+  // 미러). 미선택('')이면 비활성. busy 는 각 CTA 에서 별도 OR.
+  const canStart = Boolean(captureMode && sourceLang && targetLang);
+
   // 원어/대상어/입력 모드 + Glossary — idle 센터 보드와 live 상단 고정 바가
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
@@ -4107,8 +4119,10 @@ export function TranslateConsole({
                 aria-label={t('sourceLang')}
                 className="min-w-32"
               >
-                {langOptions.find((l) => l.value === sourceLang)?.label ??
-                  sourceLang}
+                {sourceLang
+                  ? (langOptions.find((l) => l.value === sourceLang)?.label ??
+                    sourceLang)
+                  : t('select')}
               </ControlTrigger>
             )}
           />
@@ -4129,8 +4143,10 @@ export function TranslateConsole({
                 aria-label={t('targetLang')}
                 className="min-w-32"
               >
-                {langOptions.find((l) => l.value === targetLang)?.label ??
-                  targetLang}
+                {targetLang
+                  ? (langOptions.find((l) => l.value === targetLang)?.label ??
+                    targetLang)
+                  : t('select')}
               </ControlTrigger>
             )}
           />
@@ -4138,7 +4154,6 @@ export function TranslateConsole({
         <Field label={t('captureMode.label')}>
           <DropdownMenu
             items={[
-              { key: 'both', label: t('captureMode.both'), mode: 'both' },
               { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
               { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
             ].map((o) => ({
@@ -4155,11 +4170,11 @@ export function TranslateConsole({
                 aria-label={t('captureMode.label')}
                 className="min-w-32"
               >
-                {captureMode === 'both'
-                  ? t('captureMode.both')
-                  : captureMode === 'mic-only'
-                    ? t('captureMode.micOnly')
-                    : t('captureMode.tabOnly')}
+                {captureMode === 'mic-only'
+                  ? t('captureMode.micOnly')
+                  : captureMode === 'tab-only'
+                    ? t('captureMode.tabOnly')
+                    : t('select')}
               </ControlTrigger>
             )}
           />
@@ -4305,7 +4320,7 @@ export function TranslateConsole({
                   variant="default"
                   size="lg"
                   onClick={() => void start()}
-                  disabled={busy}
+                  disabled={busy || !canStart}
                 >
                   {busy ? t('starting') : `🚀 ${t('start')}`}
                 </ChromeButton>
@@ -4451,7 +4466,7 @@ export function TranslateConsole({
           label={t('start')}
           busyLabel={t('starting')}
           busy={busy}
-          disabled={busy}
+          disabled={busy || !canStart}
           onClick={() => void start()}
         />
       )}
