@@ -2,7 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
-import { getAdminAnalytics } from '@/lib/admin/analytics';
+import { getAdminAnalytics, listAllSignupEmails } from '@/lib/admin/analytics';
 import { AdminAnalytics } from '@/components/admin-analytics';
 import { env } from '@/env';
 
@@ -21,16 +21,18 @@ export default async function AdminAnalyticsPage({
   const user = await getCurrentUser();
   if (!isSuperAdminEmail(user?.email)) notFound();
 
-  // Default view: last 30 days, internal accounts excluded.
-  const report = await getAdminAnalytics({
-    period: '30d',
-    excludeInternal: true,
-  });
+  // Default view: last 30 days, internal accounts excluded. The signup
+  // roster is filter-independent (전수), so it's fetched once alongside.
+  const [report, signups] = await Promise.all([
+    getAdminAnalytics({ period: '30d', excludeInternal: true }),
+    listAllSignupEmails(),
+  ]);
 
   return (
     <div className="px-2 py-6">
       <AdminAnalytics
         initialReport={report}
+        initialSignups={signups}
         embedUrl={env.POSTHOG_EMBED_URL ?? null}
       />
     </div>

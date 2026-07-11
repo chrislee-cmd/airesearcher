@@ -1,6 +1,6 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { superAdminEmails } from './superadmin';
+import { isSuperAdminEmail, superAdminEmails } from './superadmin';
 
 /* ────────────────────────────────────────────────────────────────────
    Native behavioural analytics aggregator (Track A).
@@ -439,3 +439,72 @@ export function parseAnalyticsQuery(params: URLSearchParams): AdminAnalyticsQuer
 }
 
 export const REASON_SEGMENT_ORDER = REASON_SEGMENTS;
+
+/* ────────────────────────────────────────────────────────────────────
+   Signup account roster (auth.users) — super-admin only.
+
+   Full census of registered accounts, independent of the behavioural
+   dashboard's period/exclude filters (the roster is 전수 — every account,
+   with internal/super accounts *badged* rather than dropped). Uses the
+   service-role admin API `listUsers` paginated sweep and returns only the
+   minimal display fields — never the raw GoTrue user object, tokens, or
+   app_metadata blob.
+   ──────────────────────────────────────────────────────────────────── */
+
+export type SignupAccount = {
+  email: string;
+  createdAt: string;
+  lastSignInAt: string | null;
+  // Sign-in provider (email / google / …) from app_metadata.provider.
+  provider: string | null;
+  // True for super-admin, unlimited-org members/owners, QA testers — shown
+  // as a badge (roster is 전수, so these are surfaced, not excluded).
+  isInternal: boolean;
+};
+
+export type SignupRoster = {
+  total: number;
+  accounts: SignupAccount[];
+};
+
+// admin.auth.admin.listUsers caps perPage at 1000. We sweep every page and
+// stop when a short page signals the end, so the roster is complete without
+// a separate count query.
+const LIST_USERS_PER_PAGE = 1000;
+// Backstop so a runaway account table can't loop forever (1000 pages =
+// 1,000,000 accounts — far past any realistic size).
+const LIST_USERS_MAX_PAGES = 1000;
+
+export async function listAllSignupEmails(): Promise<SignupRoster> {
+  const db = createAdminClient();
+  const internal = await internalUserIds(db);
+
+  const accounts: SignupAccount[] = [];
+  for (let page = 1; page <= LIST_USERS_MAX_PAGES; page++) {
+    const { data, error } = await db.auth.admin.listUsers({
+      page,
+      perPage: LIST_USERS_PER_PAGE,
+    });
+    if (error) throw new Error(`listUsers: ${error.message}`);
+    const users = data?.users ?? [];
+    for (const u of users) {
+      const provider =
+        typeof u.app_metadata?.provider === 'string'
+          ? u.app_metadata.provider
+          : null;
+      accounts.push({
+        email: u.email ?? '—',
+        createdAt: u.created_at,
+        lastSignInAt: u.last_sign_in_at ?? null,
+        provider,
+        isInternal: internal.has(u.id) || isSuperAdminEmail(u.email),
+      });
+    }
+    if (users.length < LIST_USERS_PER_PAGE) break;
+  }
+
+  accounts.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  return { total: accounts.length, accounts };
+}
