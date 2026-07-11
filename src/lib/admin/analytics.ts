@@ -121,11 +121,25 @@ export type LandingTraffic = {
   available: boolean;
 };
 
+// Cumulative, period/filter-independent headline totals (card #583). Both
+// are 전수 aggregate figures — a plain signup census and paid-revenue sum —
+// so they carry no PII and render in the public /status view too.
+export type CumulativeTotals = {
+  // Every registered profile (전수) — the internal-account exclusion never
+  // applies here (this is the raw "총 가입자 수").
+  users: number;
+  // Sum of payments.amount_krw where status='paid' (KRW). amount_krw is
+  // always stamped in KRW list price even for USD-rail charges, so this is a
+  // currency-clean total. Refunded/cancelled/failed are excluded.
+  revenueKrwPaid: number;
+};
+
 export type AdminAnalyticsReport = {
   generatedAt: string;
   period: AnalyticsPeriod;
   excludeInternal: boolean;
   internalAccountCount: number;
+  totals: CumulativeTotals;
   activity: {
     dauToday: number;
     wau7d: number;
@@ -682,19 +696,49 @@ async function computeLandingTraffic(
   };
 }
 
+// Cumulative headline totals: 전수 signup count + paid-revenue sum. Both are
+// filter/period-independent, so this takes no query. Each figure degrades to
+// 0 (rather than failing the whole dashboard) if its table is unreachable.
+async function computeTotals(db: Db): Promise<CumulativeTotals> {
+  // 전수 signup census — head+exact count, no rows returned.
+  let users = 0;
+  const usersRes = await db
+    .from('profiles')
+    .select('*', { count: 'exact', head: true });
+  if (!usersRes.error) users = usersRes.count ?? 0;
+
+  // Paid revenue — sum amount_krw over status='paid' only. payments is tiny
+  // (per-purchase rows), so summing in JS mirrors the file's fetch+reduce
+  // pattern rather than reaching for a SQL aggregate.
+  let revenueKrwPaid = 0;
+  const payRes = await db
+    .from('payments')
+    .select('amount_krw')
+    .eq('status', 'paid');
+  if (!payRes.error) {
+    for (const r of payRes.data ?? []) {
+      const v = (r as { amount_krw: number | null }).amount_krw;
+      if (typeof v === 'number') revenueKrwPaid += v;
+    }
+  }
+
+  return { users, revenueKrwPaid };
+}
+
 export async function getAdminAnalytics(
   query: AdminAnalyticsQuery,
 ): Promise<AdminAnalyticsReport> {
   const db = createAdminClient();
   const internal = await internalUserIds(db);
 
-  const [activity, featureUsage, widgetHealth, interviewFunnel, landing] =
+  const [activity, featureUsage, widgetHealth, interviewFunnel, landing, totals] =
     await Promise.all([
       computeActivity(db, query, internal),
       computeFeatureUsage(db, query, internal),
       computeWidgetHealth(db, query, internal),
       computeInterviewFunnel(db, query, internal),
       computeLandingTraffic(db, query, internal),
+      computeTotals(db),
     ]);
 
   return {
@@ -702,6 +746,7 @@ export async function getAdminAnalytics(
     period: query.period,
     excludeInternal: query.excludeInternal,
     internalAccountCount: internal.size,
+    totals,
     activity,
     featureUsage,
     widgetHealth,
