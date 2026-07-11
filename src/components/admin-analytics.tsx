@@ -231,6 +231,7 @@ export function AdminAnalytics({
             </div>
           )}
 
+          <CumulativeTotalsCard report={report} />
           <ActivityCard report={report} />
           <FeatureUsageCard rows={report.featureUsage} />
           <WidgetHealthCard rows={report.widgetHealth} />
@@ -282,6 +283,38 @@ function Stat({ label, value }: { label: string; value: string }) {
         {value}
       </div>
     </div>
+  );
+}
+
+// KRW currency — "₩200,000". No decimals (won has no minor unit in practice).
+const krwFormat = new Intl.NumberFormat('ko-KR', {
+  style: 'currency',
+  currency: 'KRW',
+  maximumFractionDigits: 0,
+});
+
+// #583 — cumulative headline totals: 전수 signup count + paid-revenue sum.
+// Period/filter-independent, so it renders identically in every view. Shown
+// in the public /status wall too (both figures are aggregates, not PII).
+// ⚠️ 누적 결제금액(매출)이 토큰 URL 로 공개됨 — 토큰 게이트가 유일 방어(사용자 명시 요청).
+function CumulativeTotalsCard({ report }: { report: AdminAnalyticsReport }) {
+  const { totals } = report;
+  return (
+    <Card
+      title="누적 지표"
+      hint="가입 유저 전수 · 결제 완료(paid) 금액 누적 — 기간·필터 무관, 환불/취소 제외"
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Stat
+          label="누적 가입 유저"
+          value={`${totals.users.toLocaleString()}명`}
+        />
+        <Stat
+          label="누적 결제금액"
+          value={krwFormat.format(totals.revenueKrwPaid)}
+        />
+      </div>
+    </Card>
   );
 }
 
