@@ -42,17 +42,8 @@ import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { uploadResumable } from '@/lib/transcripts/resumable-upload';
-
-function readActiveProjectId(): string | null {
-  try {
-    const raw = window.localStorage.getItem('active_project:v1');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { id?: string } | null;
-    return parsed?.id ?? null;
-  } catch {
-    return null;
-  }
-}
+import { ProjectPicker } from '@/components/project-picker';
+import { useProjectSelection } from '@/components/project-selection-provider';
 
 // ── idle 복귀(dismissal) 영속화 ────────────────────────────────────────────
 // #805 는 "완료분만 남은 카드를 fullview 로 확인 후 닫으면 idle 로 되돌린다"를
@@ -219,6 +210,11 @@ export function QuotesCardBody() {
   const job = useTranscriptJobs();
   const workspace = useWorkspace();
   const toast = useToast();
+  // 프로젝트 귀속 (#588) — 위젯 슬롯 'quotes' 의 독립 선택(프로빙/통역과 동일
+  // ProjectSelectionProvider). 미선택(null) 허용 — 프로젝트 없이도 전사 생성.
+  // 선택값을 create/start 페이로드의 project_id 로 전달한다.
+  const { getSelection, setSelection } = useProjectSelection();
+  const projectId = getSelection('quotes');
   // 위젯별 동시사용 게이트 (#512) — 전사 잡 시작 시 슬롯 획득, 큐가 모두 끝나
   // isWorking 이 false 로 떨어지면 반납.
   const gate = useWidgetGate('quotes');
@@ -375,6 +371,12 @@ export function QuotesCardBody() {
   useEffect(() => {
     speakerCountRef.current = speakerCount;
   }, [speakerCount]);
+  // 선택 프로젝트도 같은 이유로 ref 미러 — 업로드/전사 시작 시점의 최신 선택을
+  // create/start 페이로드에 안정적으로 실어 보낸다(미선택=null).
+  const projectIdRef = useRef<string | null>(projectId);
+  useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
 
   // Default the selector to the browser locale on mount. SSR-safe — initial
   // value is "multi" so the server and first client render agree.
@@ -504,7 +506,7 @@ export function QuotesCardBody() {
               mime_type: file.type || undefined,
               size_bytes: file.size,
               language: languageRef.current,
-              project_id: readActiveProjectId(),
+              project_id: projectIdRef.current,
               mode: modeRef.current,
               speaker_count: speakerCountRef.current,
             }),
@@ -607,7 +609,7 @@ export function QuotesCardBody() {
             mime_type: rf.mime_type,
             size_bytes: rf.size_bytes,
             language: rf.language,
-            project_id: readActiveProjectId(),
+            project_id: projectIdRef.current,
             mode: rf.mode,
             // 사용자 선택값(1/2/3)을 그대로 저장. 서버가 1·2 만 ElevenLabs
             // num_speakers hint 로 매핑하고 3("3명 이상")은 auto 로 둔다.
@@ -1116,12 +1118,23 @@ export function QuotesCardBody() {
     // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
     // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      {/* 언어 + 발화자 수 — 프로빙 control-board(:108) 규격 미러:
-          flex flex-wrap gap-4 + 각 드롭다운 min-w-24 wrapper 로 두 드롭다운을
-          붙여 좌측 정렬. grid-cols-2 의 50% 강제 폭(가운데 빈 간격) 제거.
-          primitive 는 DropdownMenu 유지(전사록 통일 기준 — 프로빙 SelectMenu
-          와 의도된 차이). 발화자 수는 diarization hint 로 배선. */}
+      {/* 프로젝트 + 언어 + 발화자 수 — 한 행(#588). flex flex-wrap gap-4 로
+          세 컨트롤을 좌측 정렬하고 좁은 폭에서 wrap 허용. 프로젝트는 위젯 슬롯
+          'quotes' 의 독립 선택(프로빙/통역과 동일 ProjectPicker). 미선택(null)
+          허용 — 프로젝트 없이도 전사 생성. 프로빙과 달리 "이 기기에만 저장" 안내
+          카피는 넣지 않는다(#586 — 사용자가 그 문구를 싫어함). 각 드롭다운은
+          min-w wrapper 로 붙여 정렬. 발화자 수는 diarization hint 로 배선. */}
       <div className="flex flex-wrap gap-4">
+        <Field label="프로젝트">
+          <div className="min-w-44">
+            <ProjectPicker
+              widget="quotes"
+              value={projectId}
+              onChange={(id) => setSelection('quotes', id)}
+            />
+          </div>
+        </Field>
+
         <Field label="언어">
           <div className="min-w-24">
             <DropdownMenu
