@@ -11,6 +11,7 @@ import {
   PUBLIC_STATUS_LAYOUT_KEY,
 } from '@/lib/admin/dashboard-layout';
 import { StatusWidgetBoard } from '@/components/status-widget-board';
+import { StatusThemeShell } from '@/components/status-theme-shell';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { env } from '@/env';
 
@@ -99,13 +100,13 @@ export default async function StatusPage({
   const canEdit = isSuperAdminEmail(user?.email);
 
   return (
-    <div className="px-2 py-6">
+    <StatusThemeShell>
       <AutoRefresh intervalMs={60000} />
       <StatusWidgetBoard
         report={report}
         initialLayout={layout}
         canEdit={canEdit}
       />
-    </div>
+    </StatusThemeShell>
   );
 }

@@ -1033,3 +1033,74 @@ html, body {
     animation: none;
   }
 }
+
+/* =========================================================================
+   /status 공개 대시보드 다크 테마 — status 뷰 한정 스코프 (전역 오염 0).
+
+   사용자 결정(2026-07-12): (1) 적용=사용자 토글(localStorage), (2) 팔레트=전면
+   재조정. 다크는 오직 `[data-status-theme="dark"]` 서브트리 안에서만 활성 —
+   status 루트 래퍼(StatusThemeShell)에만 이 attribute 가 붙으므로 전역 <html>
+   (data-theme="pop") 와 다른 라우트(/admin/analytics 등)는 불변.
+
+   메커니즘: 디자인 시스템은 Tailwind color 유틸(bg-paper/text-ink/border-line…)이
+   `var(--color-*)` 를 소비하고, 이 var() 는 사용 지점(하위 요소)에서 해석된다.
+   따라서 status 래퍼에서 소비되는 --color-* 를 재선언하면 하위 카드/차트/텍스트로
+   정상 cascade 된다(:root 의 semantic layer 를 건드리지 않아 전역 안전).
+   [data-canvas] 스코프 규칙과 동일 원리.
+   ========================================================================= */
+[data-status-theme='dark'] {
+  /* surfaces — 딥 뉴트럴 위 카드 한 단계 밝게 */
+  --color-paper: #1b1b22;        /* 카드 표면 */
+  --color-paper-soft: #24242e;   /* stat 셀 등 elevated */
+
+  /* text — 다크 대비 고대비 스케일 */
+  --color-ink: #f3f3f7;
+  --color-ink-2: #dcdce4;
+  --color-mute: #a6a4b2;
+  --color-mute-soft: #78767f;
+
+  /* lines — 다크 위 라이트 헤어라인 */
+  --color-line: rgba(255, 255, 255, 0.13);
+  --color-line-soft: rgba(255, 255, 255, 0.08);
+
+  /* 브랜드 액센트(핑크) — 다크 대비에 맞춰 명도 상향, 액센트로 유지 */
+  --color-amore: #ff6f9c;
+  --color-amore-soft: #ffa1c0;
+  --color-amore-bg: rgba(255, 111, 156, 0.16);
+
+  /* signal — 다크 배경에서 읽히게 상향 */
+  --color-success: #34d17a;
+  --color-warning: #fba94c;
+  --color-warning-bg: rgba(251, 146, 60, 0.16);
+  --color-warning-line: rgba(251, 146, 60, 0.32);
+
+  /* 셸 루트 자체 = 카드 뒤 페이지 캔버스(가장 어두운 단계) */
+  background-color: #0e0e13;
+  color: var(--color-ink);
+}
+
+/* recharts 재조정 — 축/그리드/툴팁이 라이브러리 기본 회색(#666/#fff)이라 다크
+   배경에서 저대비. CSS `fill`/`stroke` 는 SVG presentation attribute 를 이기므로
+   위젯 TSX 를 건드리지 않고 다크 스코프 안에서만 재색칠(라이트는 불변). */
+[data-status-theme='dark'] .recharts-cartesian-axis-tick-value,
+[data-status-theme='dark'] .recharts-cartesian-axis-tick-value tspan {
+  fill: var(--color-mute);
+}
+[data-status-theme='dark'] .recharts-cartesian-axis-line,
+[data-status-theme='dark'] .recharts-cartesian-axis-tick-line {
+  stroke: var(--color-line);
+}
+[data-status-theme='dark'] .recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.06);
+}
+/* recharts 기본 툴팁은 인라인 스타일(흰 박스 + 검정 텍스트)이라 !important 로만
+   덮인다 — 서드파티 인라인 override 의 정당한 용례. */
+[data-status-theme='dark'] .recharts-default-tooltip {
+  background-color: #1b1b22 !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  color: var(--color-ink);
+}
+[data-status-theme='dark'] .recharts-default-tooltip .recharts-tooltip-label,
+[data-status-theme='dark'] .recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--color-ink) !important;
+}
