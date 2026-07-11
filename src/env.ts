@@ -198,6 +198,16 @@ export const env = createEnv({
     // gated to super-admins. Optional so local dev / previews without the
     // URL render the "not configured" notice instead of 500-ing.
     POSTHOG_EMBED_URL: z.string().url().optional(),
+
+    // Secret token that unlocks the public read-only metrics view at
+    // `/[locale]/status?key=<token>`. That route lives OUTSIDE the (app)
+    // auth layer (login-independent, always-on wall/phone monitor) and
+    // exposes the PII-free aggregate dashboard — so this token is its ONLY
+    // gate. Optional so the route stays fail-closed: when unset the page
+    // always notFound()s (no accidental public exposure before a real token
+    // is provisioned). Human action — register a 24+ char random value in
+    // Vercel production / preview / development via the /api skill.
+    PUBLIC_DASHBOARD_TOKEN: z.string().min(24).optional(),
   },
 
   client: {
@@ -321,6 +331,7 @@ export const env = createEnv({
     LLM_ZERO_RETENTION: process.env.LLM_ZERO_RETENTION,
     CONCURRENCY_CAP: process.env.CONCURRENCY_CAP,
     POSTHOG_EMBED_URL: process.env.POSTHOG_EMBED_URL,
+    PUBLIC_DASHBOARD_TOKEN: process.env.PUBLIC_DASHBOARD_TOKEN,
 
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
