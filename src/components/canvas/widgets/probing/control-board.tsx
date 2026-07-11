@@ -235,14 +235,7 @@ export function ProbingControlPanel({
       {/* 프로젝트 설정 드롭다운 (#542) — 페르소나 섹션 구성을 프로젝트별로
           분리. 위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
           에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write. */}
-      <Field
-        label="프로젝트"
-        description={
-          projectId
-            ? undefined
-            : '미선택 — 페르소나 섹션 구성은 이 기기에만 저장돼요. 프로젝트를 고르면 계정에 저장돼 어디서든 이어집니다.'
-        }
-      >
+      <Field label="프로젝트">
         <ProjectPicker
           widget="probing"
           value={projectId}
