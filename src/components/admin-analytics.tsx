@@ -12,7 +12,7 @@
    already established in interviews-v2/topline-blocks.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -29,9 +29,12 @@ import type {
   AnalyticsPeriod,
   FeatureUsageRow,
   ReasonSegment,
+  SignupRoster,
 } from '@/lib/admin/analytics';
 import { ChromeButton } from './ui/chrome-button';
 import { Checkbox } from './ui/checkbox';
+import { Badge } from './ui/badge';
+import { Input } from './ui/input';
 
 type Tab = 'native' | 'posthog';
 
@@ -60,10 +63,15 @@ const REASON_ORDER: ReasonSegment[] = [
 
 type Props = {
   initialReport: AdminAnalyticsReport;
+  initialSignups: SignupRoster;
   embedUrl: string | null;
 };
 
-export function AdminAnalytics({ initialReport, embedUrl }: Props) {
+export function AdminAnalytics({
+  initialReport,
+  initialSignups,
+  embedUrl,
+}: Props) {
   const [tab, setTab] = useState<Tab>('native');
   const [report, setReport] = useState(initialReport);
   const [period, setPeriod] = useState<AnalyticsPeriod>(initialReport.period);
@@ -195,6 +203,7 @@ export function AdminAnalytics({ initialReport, embedUrl }: Props) {
           <FeatureUsageCard rows={report.featureUsage} />
           <WidgetHealthCard rows={report.widgetHealth} />
           <FunnelCard stages={report.interviewFunnel} />
+          <SignupAccountsCard roster={initialSignups} />
         </>
       )}
     </div>
@@ -439,6 +448,122 @@ function FunnelCard({
         </div>
       ) : (
         <EmptyChart />
+      )}
+    </Card>
+  );
+}
+
+// YYYY-MM-DD HH:mm in Asia/Seoul — compact, operator-clock aligned.
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+// Signup roster — full census of auth.users. Filter-independent (전수);
+// internal/super accounts are badged, never dropped. Optional email
+// substring search narrows a long roster client-side.
+function SignupAccountsCard({ roster }: { roster: SignupRoster }) {
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return roster.accounts;
+    return roster.accounts.filter((a) => a.email.toLowerCase().includes(q));
+  }, [query, roster.accounts]);
+
+  return (
+    <Card
+      title="가입 계정"
+      hint="auth.users 전수 — 기간/필터 무관. 내부·운영 계정은 뱃지 표기"
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-md text-mute">
+          총{' '}
+          <span className="font-semibold tabular-nums text-ink">
+            {roster.total.toLocaleString()}
+          </span>
+          명
+          {query.trim() && (
+            <span className="text-xs-soft text-mute-soft">
+              {' '}
+              · {filtered.length.toLocaleString()}건 표시
+            </span>
+          )}
+        </span>
+        <div className="w-full sm:w-64">
+          <Input
+            size="sm"
+            placeholder="이메일 검색"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {roster.total === 0 ? (
+        <div className="flex h-32 items-center justify-center text-md text-mute-soft">
+          가입 계정이 없습니다.
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex h-24 items-center justify-center text-md text-mute-soft">
+          검색 결과가 없습니다.
+        </div>
+      ) : (
+        <div className="max-h-[28rem] overflow-auto rounded-sm border border-line-soft">
+          <table className="w-full text-md">
+            <thead className="sticky top-0 bg-paper-soft">
+              <tr className="border-b border-line-soft text-left">
+                <th className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute-soft">
+                  이메일
+                </th>
+                <th className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute-soft">
+                  provider
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-mute-soft">
+                  가입일
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-[0.14em] text-mute-soft">
+                  최근 로그인
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((a, i) => (
+                <tr
+                  key={`${a.email}-${a.createdAt}-${i}`}
+                  className="border-b border-line-soft last:border-b-0"
+                >
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-ink">{a.email}</span>
+                      {a.isInternal && (
+                        <Badge variant="subtle" size="sm">
+                          내부
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-mute">{a.provider ?? '—'}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-mute">
+                    {fmtDateTime(a.createdAt)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-mute">
+                    {fmtDateTime(a.lastSignInAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );
