@@ -268,20 +268,37 @@ ${sampleLines}`;
 }
 
 /**
+ * Localized generic speaker label — the fallback used when a turn has no role
+ * classification. Keeps the transcript in one language: Korean jobs render
+ * "화자 N" instead of leaking the canonical English "Speaker N" (the raw markdown
+ * always stores "Speaker N"; role classification is frequently skipped for short
+ * or monologue jobs, so this fallback is the common case, not an edge case).
+ * The number and the `[HH:MM:SS] … :` skeleton are identical across languages —
+ * only the word changes — so ko/en documents keep the same output shape.
+ */
+export function genericSpeakerLabel(
+  oneIndexed: number,
+  language: TranscriptLanguage,
+): string {
+  return language === 'en' ? `Speaker ${oneIndexed}:` : `화자 ${oneIndexed}:`;
+}
+
+/**
  * Render-time helper: substitute "Speaker N:" tokens inside markdown / HTML
- * with role labels using a `speaker_roles` map. Safe to call with a
- * null/undefined map — returns the input unchanged. Used by preview, download,
- * and docx generation. Labels are rendered in the transcript's source language
- * ("질문자 1" / "응답자 1" for Korean, "Interviewer 1" / "Interviewee 1" for
- * English) — pass the job's STT language so downstream tools can read each
- * transcript in the same language as the audio.
+ * with role labels using a `speaker_roles` map. Used by preview, download,
+ * bulk-download and workspace registration. Labels are rendered in the
+ * transcript's source language ("질문자 1" / "응답자 1" for Korean, "Interviewer 1"
+ * / "Interviewee 1" for English) — pass the job's STT language so downstream
+ * tools read each transcript in the same language as the audio. Turns without a
+ * role (map null, speaker absent, or role 'unknown') fall back to the localized
+ * generic label so a Korean document never retains the English "Speaker N".
  */
 export function applySpeakerLabels(
   text: string,
   roles: SpeakerRolesMap | null | undefined,
   language: TranscriptLanguage = 'ko',
 ): string {
-  if (!roles || !text) return text;
+  if (!text) return text;
 
   // The markdown shape emitted by elevenlabsToMarkdown / deepgramToMarkdown is
   // `[HH:MM:SS] Speaker N: ...` (1-indexed N). Build a single replacer over
@@ -289,14 +306,13 @@ export function applySpeakerLabels(
   return text.replace(/Speaker (\d+):/g, (match, raw: string) => {
     const oneIndexed = Number(raw);
     if (!Number.isFinite(oneIndexed) || oneIndexed < 1) return match;
-    const entry = roles[`speaker_${oneIndexed - 1}`];
-    if (!entry) return match;
-    if (entry.role === 'interviewer') {
+    const entry = roles?.[`speaker_${oneIndexed - 1}`];
+    if (entry?.role === 'interviewer') {
       return language === 'en' ? `Interviewer ${entry.n}:` : `질문자 ${entry.n}:`;
     }
-    if (entry.role === 'interviewee') {
+    if (entry?.role === 'interviewee') {
       return language === 'en' ? `Interviewee ${entry.n}:` : `응답자 ${entry.n}:`;
     }
-    return match;
+    return genericSpeakerLabel(oneIndexed, language);
   });
 }

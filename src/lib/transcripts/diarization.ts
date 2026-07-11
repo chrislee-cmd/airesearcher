@@ -9,7 +9,7 @@ import {
 } from './diarization-schema';
 import type { ElevenLabsWord } from './elevenlabs';
 import type { DeepgramResult } from './format';
-import { serializeLlmError } from './speaker-roles';
+import { genericSpeakerLabel, serializeLlmError } from './speaker-roles';
 
 // Q&A 문맥 기반 LLM diarization.
 //
@@ -251,11 +251,12 @@ ${sampleLines}
  * inferred.roles 의 순서대로 host/guest 라벨로 치환.
  *
  * 매칭 규칙: body 의 N-번째 `Speaker M:` 토큰이 roles[N-1] 와 대응.
- * 라벨 부족 (roles.length < 라인 수) 시 남는 라인은 원본 "Speaker N" 유지 —
- * truncated 잡에서 안전한 fallback. unknown 라벨도 원본 유지.
+ * 라벨 부족 (roles.length < 라인 수) 시 남는 라인은 localized generic 라벨로
+ * fallback — truncated / unknown 잡에서도 한국어 문서에 영어 "Speaker N" 이
+ * 남지 않도록 `화자 N` 으로 치환 (en 은 "Speaker N" 그대로, 골격 동일).
  *
- * - language='ko' → 진행자 / 응답자
- * - language='en' → Host / Guest
+ * - language='ko' → 진행자 / 응답자 (미분류: 화자 N)
+ * - language='en' → Host / Guest (미분류: Speaker N)
  *
  * speakerRoles (음향 화자 기준 LLM 분류) 와 함께 쓰일 때는 inferred 우선 —
  * preview/download 라우터가 이 함수 먼저 호출 후 applySpeakerLabels 는 skip.
@@ -265,18 +266,21 @@ export function applyInferredSpeakerLabels(
   inferred: InferredSpeakersPayload | null | undefined,
   language: 'ko' | 'en' = 'ko',
 ): string {
-  if (!inferred || inferred.roles.length === 0 || !text) return text;
+  if (!text) return text;
   const labels: Record<DiarizationRoleEntry['role'], string> =
     language === 'en'
       ? { host: 'Host', guest: 'Guest', unknown: '' }
       : { host: '진행자', guest: '응답자', unknown: '' };
 
+  const roles = inferred?.roles ?? [];
   let i = 0;
-  return text.replace(/Speaker \d+:/g, (match) => {
-    const entry = inferred.roles[i];
+  return text.replace(/Speaker (\d+):/g, (match, raw: string) => {
+    const entry = roles[i];
     i += 1;
-    if (!entry) return match;
-    const label = labels[entry.role];
-    return label ? `${label}:` : match;
+    const label = entry ? labels[entry.role] : '';
+    if (label) return `${label}:`;
+    const oneIndexed = Number(raw);
+    if (!Number.isFinite(oneIndexed) || oneIndexed < 1) return match;
+    return genericSpeakerLabel(oneIndexed, language);
   });
 }
