@@ -28,8 +28,10 @@ import type {
   AdminAnalyticsReport,
   AnalyticsPeriod,
   FeatureUsageRow,
+  LandingTraffic,
   ReasonSegment,
   SignupRoster,
+  SourceBucketKey,
 } from '@/lib/admin/analytics';
 import { ChromeButton } from './ui/chrome-button';
 import { Checkbox } from './ui/checkbox';
@@ -59,6 +61,21 @@ const REASON_ORDER: ReasonSegment[] = [
   'unlimited_use',
   'feature_refund',
   'other',
+];
+
+// Landing source buckets → { label, color }. Same topline palette as the
+// reason stack so the two dashboards read consistently.
+const SOURCE_META: Record<SourceBucketKey, { label: string; color: string }> = {
+  direct: { label: '직접', color: 'var(--color-mute)' },
+  organic: { label: '검색(오가닉)', color: 'var(--color-amore)' },
+  referral: { label: '리퍼럴', color: '#f97316' },
+  campaign: { label: '캠페인', color: '#a855f7' },
+};
+const SOURCE_ORDER: SourceBucketKey[] = [
+  'direct',
+  'organic',
+  'referral',
+  'campaign',
 ];
 
 type Props = {
@@ -203,6 +220,14 @@ export function AdminAnalytics({
           <FeatureUsageCard rows={report.featureUsage} />
           <WidgetHealthCard rows={report.widgetHealth} />
           <FunnelCard stages={report.interviewFunnel} />
+
+          <div className="pt-2 text-xs font-semibold uppercase tracking-[0.22em] text-amore">
+            랜딩 트래픽 · #574 landing_visits
+          </div>
+          <LandingTrafficCard landing={report.landing} />
+          <LandingSourceCard landing={report.landing} />
+          <RetentionFunnelCard landing={report.landing} />
+
           <SignupAccountsCard roster={initialSignups} />
         </>
       )}
@@ -448,6 +473,221 @@ function FunnelCard({
         </div>
       ) : (
         <EmptyChart />
+      )}
+    </Card>
+  );
+}
+
+// Shown inside a landing card when landing_visits isn't reachable yet
+// (migration not applied on this env → capture 대기).
+function LandingUnavailable() {
+  return (
+    <div className="flex h-32 flex-col items-center justify-center gap-1 text-center text-md text-mute-soft">
+      <span>landing_visits 캡처 대기 중</span>
+      <span className="text-xs-soft">
+        마이그레이션 적용 후 방문 데이터가 쌓이면 표시됩니다.
+      </span>
+    </div>
+  );
+}
+
+// #575-1 — 랜딩 접속자 추이: 일별 고유 세션, 신규 vs 재방문 스택.
+function LandingTrafficCard({ landing }: { landing: LandingTraffic }) {
+  const hasData = landing.trend.some((p) => p.newVisitors + p.returning > 0);
+  return (
+    <Card
+      title="랜딩 접속자 추이"
+      hint="landing_visits 고유 session_id — 익명 전수(내부계정 제외 미적용). 신규=최초 방문일, 재방문=이전 방문 이력"
+    >
+      {!landing.available ? (
+        <LandingUnavailable />
+      ) : (
+        <>
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Stat
+              label="기간 방문자"
+              value={landing.periodVisitors.toLocaleString()}
+            />
+            <Stat
+              label="신규 방문자"
+              value={landing.periodNewVisitors.toLocaleString()}
+            />
+            <Stat
+              label="재방문자"
+              value={landing.periodReturning.toLocaleString()}
+            />
+          </div>
+          {hasData ? (
+            <>
+              <div className="mb-2 flex flex-wrap gap-3">
+                <span className="flex items-center gap-1.5 text-xs-soft text-mute">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-xs"
+                    style={{ background: 'var(--color-amore)' }}
+                  />
+                  신규
+                </span>
+                <span className="flex items-center gap-1.5 text-xs-soft text-mute">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-xs"
+                    style={{ background: 'var(--color-mute)' }}
+                  />
+                  재방문
+                </span>
+              </div>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={landing.trend}>
+                    <CartesianGrid
+                      stroke="var(--color-line-soft)"
+                      vertical={false}
+                    />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 12 }}
+                      width={32}
+                    />
+                    <Tooltip />
+                    <Bar
+                      dataKey="newVisitors"
+                      name="신규"
+                      stackId="visits"
+                      fill="var(--color-amore)"
+                    />
+                    <Bar
+                      dataKey="returning"
+                      name="재방문"
+                      stackId="visits"
+                      fill="var(--color-mute)"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : (
+            <EmptyChart />
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+// #575-2 — 유입 소스: referrer_host + utm_source 를 4버킷으로 그룹 + top-N.
+function LandingSourceCard({ landing }: { landing: LandingTraffic }) {
+  const { totalVisits, buckets } = landing.sources;
+  const ordered = SOURCE_ORDER.map(
+    (key) => buckets.find((b) => b.bucket === key),
+  ).filter((b): b is NonNullable<typeof b> => Boolean(b));
+  return (
+    <Card
+      title="랜딩 유입 소스"
+      hint="referrer_host + utm_source → 직접 / 검색(오가닉) / 리퍼럴 / 캠페인 버킷. 버킷 합 = 총 방문"
+    >
+      {!landing.available ? (
+        <LandingUnavailable />
+      ) : totalVisits > 0 ? (
+        <div className="space-y-3">
+          <div className="text-xs-soft tabular-nums text-mute-soft">
+            총 방문 {totalVisits.toLocaleString()}
+          </div>
+          {ordered.map((b) => {
+            const pct = totalVisits > 0 ? (b.total / totalVisits) * 100 : 0;
+            const meta = SOURCE_META[b.bucket];
+            return (
+              <div key={b.bucket}>
+                <div className="mb-1 flex items-baseline justify-between text-md">
+                  <span className="flex items-center gap-1.5 font-semibold text-ink-2">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-xs"
+                      style={{ background: meta.color }}
+                    />
+                    {meta.label}
+                  </span>
+                  <span className="text-xs-soft tabular-nums text-mute-soft">
+                    {b.total.toLocaleString()}건 · {pct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-line-soft">
+                  <span
+                    className="block h-full"
+                    style={{ width: `${pct}%`, background: meta.color }}
+                  />
+                </div>
+                {b.top.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs-soft text-mute-soft">
+                    {b.top.map((item) => (
+                      <span key={item.label} className="tabular-nums">
+                        {item.label}{' '}
+                        <span className="text-mute">
+                          {item.count.toLocaleString()}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyChart />
+      )}
+    </Card>
+  );
+}
+
+// #575-3 — 리텐션 퍼널: 방문 → 가입 → 활성. 집계 기준(코호트 아님).
+function RetentionFunnelCard({ landing }: { landing: LandingTraffic }) {
+  const stages = landing.retention;
+  const max = Math.max(1, ...stages.map((s) => s.count));
+  const any = stages.some((s) => s.count > 0);
+  return (
+    <Card
+      title="랜딩 → 활성 리텐션 퍼널"
+      hint="방문(landing_visits 세션) → 가입(profiles) → 활성(credit_transactions 첫 사용). 가입·활성 단계만 내부계정 제외 적용"
+    >
+      {!landing.available ? (
+        <LandingUnavailable />
+      ) : (
+        <>
+          <div className="mb-3 border border-line-soft bg-paper-soft px-3 py-2 text-xs-soft text-mute rounded-sm">
+            ⚠️ 집계 기준(코호트 아님) — 익명 session_id(방문)와 식별된
+            사용자(가입·활성)는 직접 조인이 불가하여, 전환율은 단계별 집계
+            비율입니다(per-visitor 코호트 추적 아님).
+          </div>
+          {any ? (
+            <div className="space-y-3">
+              {stages.map((s) => (
+                <div key={s.stage}>
+                  <div className="mb-1 flex items-baseline justify-between text-md">
+                    <span className="font-semibold text-ink-2">{s.label}</span>
+                    <span className="text-xs-soft tabular-nums text-mute-soft">
+                      {s.count.toLocaleString()}
+                      {s.conversion !== null && (
+                        <span className="text-amore">
+                          {' '}
+                          · 전환 {(s.conversion * 100).toFixed(1)}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-6 w-full rounded-sm bg-line-soft">
+                    <div
+                      className="flex h-full min-w-[2%] items-center justify-end rounded-sm bg-amore px-2 text-xs font-semibold tabular-nums text-paper"
+                      style={{ width: `${(s.count / max) * 100}%` }}
+                    >
+                      {s.count.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyChart />
+          )}
+        </>
       )}
     </Card>
   );
