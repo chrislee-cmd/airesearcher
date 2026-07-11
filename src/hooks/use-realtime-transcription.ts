@@ -49,6 +49,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
+import { createClient } from '@/lib/supabase/client';
 
 export type TranscriptionStatus =
   | 'idle'
@@ -78,6 +79,26 @@ export type TranscriptionSegment = {
 
 export type StartOpts = { source?: TranscriptionSource };
 
+// 세션 원본 녹음(#554) 표면 상태. STT 와 독립된 부가 경로 — MediaRecorder 가
+// capture 스트림에 병렬로 붙어 녹음하고, 종료 시 blob 을 업로드한다.
+//  - idle: 녹음 없음(세션 시작 전 또는 캡처된 오디오 0).
+//  - uploading: 종료 후 blob 업로드/서명 중.
+//  - ready: downloadUrl(signed) 발급 완료 — 다운로드 버튼 노출.
+//  - error: 업로드/서명 실패(비블로킹 — 세션 종료는 정상). toast 표면화용.
+export type SessionRecordingState = {
+  status: 'idle' | 'uploading' | 'ready' | 'error';
+  downloadUrl: string | null;
+  durationSeconds: number | null;
+  error: string | null;
+};
+
+const IDLE_RECORDING: SessionRecordingState = {
+  status: 'idle',
+  downloadUrl: null,
+  durationSeconds: null,
+  error: null,
+};
+
 export type UseRealtimeTranscriptionResult = {
   status: TranscriptionStatus;
   segments: TranscriptionSegment[];
@@ -90,6 +111,8 @@ export type UseRealtimeTranscriptionResult = {
   // 소비자가 "새 세션 vs 같은 세션 재진입" 을 구별할 수 있다. 채워진 페르소나를
   // 재연결/renew 로 지우지 않기 위한 게이트 (probing-card 리셋 effect).
   sessionId: string | null;
+  // 세션 원본 녹음(#554) 상태 — 종료 후 다운로드 표면용. STT 무간섭 부가 경로.
+  recording: SessionRecordingState;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -146,6 +169,27 @@ const RENEW_CHECK_INTERVAL_MS = 10_000;
 // 새 PC 로 swap 후 옛 PC 를 즉시 닫지 않고 마지막 transcript delta 를
 // 흘려보낼 유예. 이 안에 in-flight utterance 의 completed 이벤트가 들어온다.
 const RENEW_OLD_PC_GRACE_MS = 2000;
+
+// ─── 세션 원본 녹음(#554) — MediaRecorder 병렬 탭 ───
+// timeslice 단위 in-memory chunk 축적. QA voice(qa-voice-agent-button) 패턴
+// 재사용. STT WebRTC 경로와는 완전히 무간섭 — 같은 capture 스트림을 공유할 뿐.
+const RECORD_TIMESLICE_MS = 2000;
+// 종료 직후 다운로드용 signed URL 유효 시간(초).
+const RECORDING_SIGNED_URL_TTL_S = 60 * 60;
+
+// 녹음 컨테이너 선택 — webm/opus 우선, Safari 등 미지원 시 mp4 폴백
+// (qa-voice-agent-button:29-39 와 동일).
+function pickRecorderMime(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return '';
+}
+
+function extForRecorderMime(mime: string): string {
+  return mime.includes('mp4') ? 'm4a' : 'webm';
+}
 
 type OaiEvent = {
   type?: string;
@@ -227,6 +271,22 @@ export function useRealtimeTranscription(opts?: {
   // sessionIdRef 의 reactive 미러 — 소비자에게 노출. ref 는 비동기 콜백용,
   // state 는 리셋 게이트 같은 렌더/effect 의존용.
   const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // ─── 세션 원본 녹음(#554) ───
+  // Supabase 브라우저 싱글턴 — storage 업로드 + signed URL 발급용.
+  const supabase = createClient();
+  const [recording, setRecording] =
+    useState<SessionRecordingState>(IDLE_RECORDING);
+  // capture 스트림에 병렬로 붙는 MediaRecorder + in-memory chunk buffer.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordMimeRef = useRef<string>('audio/webm');
+  // 녹음 시작 시각 — 종료 시 duration 계산. renewal 을 걸쳐도 갱신 안 함
+  // (같은 capture 스트림이라 recorder 가 연속 → 전체 세션 길이).
+  const recordStartedAtRef = useRef<number>(0);
+  // 녹음이 속한 세션 id 스냅샷 — cleanup 이 sessionIdRef 를 null 로 지우기 전에
+  // 잡아둬서 업로드 경로가 올바른 storage prefix/row 를 쓰게 한다.
+  const recordingSessionIdRef = useRef<string | null>(null);
 
   // 차감 broadcast — start-lump + 각 heartbeat 성공 시 위젯 헤더 -N
   // fly-up + topbar pulse 트리거. ref 로 잡아둬서 비동기 콜백 안에서
@@ -352,6 +412,20 @@ export function useRealtimeTranscription(opts?: {
       }
       pcRef.current = null;
     }
+    // 녹음 recorder 정리 (best-effort, 업로드 없음). 정상 stop 은
+    // finalizeRecording 이 이미 recorderRef 를 null 로 비웠으므로 여기 안 걸린다
+    // — 여기 걸리는 건 unmount/error/renewal-실패 경로다. 부분 녹음은 버린다
+    // (비블로킹 부가물 — 완주한 세션만 업로드).
+    const rec = recorderRef.current;
+    if (rec) {
+      try {
+        if (rec.state !== 'inactive') rec.stop();
+      } catch {
+        /* already stopped */
+      }
+      recorderRef.current = null;
+    }
+    recordChunksRef.current = [];
     const cap = captureStreamRef.current;
     if (cap) {
       cap.getTracks().forEach((t) => {
@@ -567,12 +641,168 @@ export function useRealtimeTranscription(opts?: {
     }
   }, [handleOaiEvent]);
 
+  // ─── 세션 원본 녹음(#554) ───
+
+  // capture 스트림에 MediaRecorder 를 병렬로 붙인다. STT 의 RTCPeerConnection
+  // 경로와 무간섭 — 같은 트랙을 읽기만 할 뿐. renewal 은 같은 capture 스트림을
+  // 재사용(renewSession 이 captureStreamRef 를 안 바꾸고, 옛 PC close 도 트랙을
+  // stop 하지 않음)하므로 recorder 는 renewal 을 걸쳐 연속 녹음한다 → 재바인딩
+  // 불필요. 따라서 이 함수는 신규 start() 에서 한 번만 호출한다.
+  const startRecorder = useCallback((stream: MediaStream) => {
+    if (typeof MediaRecorder === 'undefined') return;
+    if (recorderRef.current) return; // 중복 방지 (renewal 은 여기 안 옴)
+    try {
+      const mime = pickRecorderMime();
+      recordMimeRef.current = mime || 'audio/webm';
+      const recorder = new MediaRecorder(
+        stream,
+        mime ? { mimeType: mime, audioBitsPerSecond: 128000 } : undefined,
+      );
+      recordChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordChunksRef.current.push(e.data);
+      };
+      recorder.start(RECORD_TIMESLICE_MS);
+      recorderRef.current = recorder;
+      recordStartedAtRef.current = Date.now();
+      recordingSessionIdRef.current = sessionIdRef.current;
+    } catch (e) {
+      // 녹음은 부가물 — 실패해도 세션(STT)은 정상 진행. recorder 만 비활성.
+      console.warn('[probing] recorder start failed (recording disabled)', e);
+      recorderRef.current = null;
+    }
+  }, []);
+
+  // 업로드 — blob 을 probing-session-audio 버킷에 올리고, 메타 row 를 서버
+  // 라우트로 남긴 뒤, 즉시 다운로드용 signed URL 을 발급한다. 전 과정
+  // 비블로킹: 실패하면 recording.status='error' 로만 표면화(세션 종료는 이미
+  // 끝났다). fire-and-forget 으로 호출돼 stop() 을 막지 않는다.
+  const uploadRecording = useCallback(
+    async (
+      blob: Blob,
+      mime: string,
+      durationSeconds: number,
+      sid: string | null,
+    ) => {
+      setRecording({
+        status: 'uploading',
+        downloadUrl: null,
+        durationSeconds,
+        error: null,
+      });
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error('unauthorized');
+        // storage key 는 반드시 user.id prefix — 버킷 self-upload RLS 매칭.
+        const effectiveSid = sid ?? crypto.randomUUID();
+        const key = `${user.id}/${effectiveSid}/${Date.now()}-${crypto
+          .randomUUID()
+          .slice(0, 8)}.${extForRecorderMime(mime)}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('probing-session-audio')
+          .upload(key, blob, { contentType: mime });
+        if (uploadErr) throw uploadErr;
+
+        // 메타 row insert — org_id 는 서버(getActiveOrg)만 신뢰 가능하므로
+        // 라우트에서 해석. row 가 없어도 다운로드는 storage signed URL 로
+        // 동작하니 여기 실패는 non-fatal(경고만). sid 가 있을 때만 기록.
+        if (sid) {
+          void fetch('/api/probing/recordings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: sid,
+              storage_key: key,
+              mime,
+              size_bytes: blob.size,
+              duration_seconds: durationSeconds,
+            }),
+          }).catch((e) => {
+            console.warn('[probing] recording row insert failed (non-fatal)', e);
+          });
+        }
+
+        // 즉시 다운로드용 signed URL. download 옵션으로
+        // content-disposition=attachment 강제 → 클릭 시 파일 저장.
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('probing-session-audio')
+          .createSignedUrl(key, RECORDING_SIGNED_URL_TTL_S, {
+            download: `probing-recording-${effectiveSid.slice(
+              0,
+              8,
+            )}.${extForRecorderMime(mime)}`,
+          });
+        if (signErr || !signed?.signedUrl) {
+          throw signErr ?? new Error('sign_failed');
+        }
+
+        setRecording({
+          status: 'ready',
+          downloadUrl: signed.signedUrl,
+          durationSeconds,
+          error: null,
+        });
+      } catch (e) {
+        console.error('[probing] recording upload failed', e);
+        setRecording({
+          status: 'error',
+          downloadUrl: null,
+          durationSeconds,
+          error: e instanceof Error ? e.message : 'recording_upload_failed',
+        });
+      }
+    },
+    [supabase],
+  );
+
+  // 종료 시 녹음 마감 — recorder 를 멈추고 마지막 청크까지 조립한 뒤 업로드를
+  // 킥한다. cleanup 이 capture 트랙을 stop 하기 전에 호출해야 마지막 flush 를
+  // 잃지 않는다(그래서 stop() 이 이 함수를 await). 업로드 자체는 fire-and-forget.
+  const finalizeRecording = useCallback(async () => {
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (!recorder) return;
+    const mime = recordMimeRef.current || 'audio/webm';
+    const blob = await new Promise<Blob | null>((resolve) => {
+      const assemble = () =>
+        recordChunksRef.current.length
+          ? new Blob(recordChunksRef.current, { type: mime })
+          : null;
+      // recorder.stop() → 마지막 dataavailable → onstop 순. onstop 에서 조립.
+      if (recorder.state === 'inactive') {
+        resolve(assemble());
+        return;
+      }
+      recorder.onstop = () => resolve(assemble());
+      try {
+        recorder.stop();
+      } catch {
+        resolve(assemble());
+      }
+    });
+    recordChunksRef.current = [];
+    if (!blob || blob.size === 0) {
+      // 캡처된 오디오 0 — 다운로드 표면 생략 (과설계 금지).
+      return;
+    }
+    const durationSeconds = recordStartedAtRef.current
+      ? Math.max(1, Math.round((Date.now() - recordStartedAtRef.current) / 1000))
+      : 0;
+    const sid = recordingSessionIdRef.current;
+    // fire-and-forget — stop() 을 막지 않는다 (비블로킹 부가물).
+    void uploadRecording(blob, mime, durationSeconds, sid);
+  }, [uploadRecording]);
+
   const stop = useCallback(async () => {
     if (status === 'idle') return;
     setStatus('stopping');
+    // 녹음 마감(blob 조립 + 업로드 킥) 을 cleanup 이 트랙을 멈추기 전에.
+    await finalizeRecording();
     cleanup();
     setStatus('idle');
-  }, [cleanup, status]);
+  }, [cleanup, finalizeRecording, status]);
 
   const start = useCallback(
     async (startOpts?: StartOpts) => {
@@ -585,6 +815,8 @@ export function useRealtimeTranscription(opts?: {
       setSegments([]);
       itemStartedAtRef.current.clear();
       lastTextRef.current.clear();
+      // 새 세션 — 이전 녹음 표면 리셋 (다운로드 버튼/에러 초기화).
+      setRecording(IDLE_RECORDING);
       setStatus('starting');
 
       // start() 전체 경과의 기준점 — 실패/타임아웃 로그의 elapsed_ms 는
@@ -735,6 +967,11 @@ export function useRealtimeTranscription(opts?: {
         return;
       }
       captureStreamRef.current = captureStream;
+
+      // 세션 원본 녹음(#554) — capture 스트림에 MediaRecorder 를 병렬로 붙인다.
+      // STT WebRTC(아래 pc.addTrack)와 무간섭. 실패해도 STT 는 정상 진행.
+      // renewal 은 같은 스트림 재사용이라 여기서 한 번만 시작하면 연속 녹음된다.
+      startRecorder(captureStream);
 
       // tab 모드 silence injection — 3초마다 400ms track.enabled=false 로
       // OpenAI server_vad 가 end-of-speech 를 잡아 utterance 를 commit 하게
@@ -903,7 +1140,7 @@ export function useRealtimeTranscription(opts?: {
         }, HEARTBEAT_INTERVAL_MS);
       }
     },
-    [cleanup, handleOaiEvent, renewSession, status],
+    [cleanup, handleOaiEvent, renewSession, startRecorder, status],
   );
 
   // unmount 시 누수 방지. 세션이 살아 있으면 정리.
@@ -913,5 +1150,14 @@ export function useRealtimeTranscription(opts?: {
     };
   }, [cleanup]);
 
-  return { status, segments, error, renewing, sessionId, start, stop };
+  return {
+    status,
+    segments,
+    error,
+    renewing,
+    sessionId,
+    recording,
+    start,
+    stop,
+  };
 }
