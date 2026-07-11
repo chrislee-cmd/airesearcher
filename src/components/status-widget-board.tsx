@@ -175,6 +175,50 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
     if (availableIds.length <= 1) setPaletteOpen(false);
   };
 
+  // ── 드래그 이동 (pointer + elementFromPoint) ─────────────────────────────
+  // HTML5 DnD 대신 pointer 이벤트로 통일 — recharts SVG / absolute 툴바 / backdrop
+  // 과 섞여도 안정적이고 리사이즈와 같은 모델(HTML5 DnD 는 dataTransfer 미설정 시
+  // Firefox 에서 시작조차 안 되고 Chrome 에서도 잘 취소됨). 핸들이 pointer 를
+  // capture 하고, 매 move 마다 포인터 아래 셀(data-widget-index)을 드롭 대상으로
+  // 하이라이트한 뒤 up 에서 재배치한다.
+  const dragRef = useRef<{ from: number } | null>(null);
+
+  const cellIndexAtPoint = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y);
+    const cell = el?.closest('[data-widget-cell]') as HTMLElement | null;
+    const idx = cell?.dataset.widgetIndex;
+    return idx != null ? Number(idx) : null;
+  };
+
+  const onDragHandleDown = (
+    e: React.PointerEvent<HTMLElement>,
+    index: number,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = { from: index };
+    setDragIndex(index);
+    setDropIndex(index);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onDragHandleMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!dragRef.current) return;
+    const over = cellIndexAtPoint(e.clientX, e.clientY);
+    if (over !== null) setDropIndex(over);
+  };
+
+  const onDragHandleUp = (e: React.PointerEvent<HTMLElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    const to = cellIndexAtPoint(e.clientX, e.clientY);
+    if (to !== null && to !== d.from) reorder(d.from, to);
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
   // ── 모서리 드래그 리사이즈 (pointer) ────────────────────────────────────
   const resizeRef = useRef<{
     index: number;
@@ -293,44 +337,26 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
             <div
               key={w.id}
               data-widget-cell
+              data-widget-index={i}
               style={{ gridColumn: `span ${w.span} / span ${w.span}` }}
               className={cx(
                 'relative min-w-0',
                 editing && 'rounded-sm ring-1 ring-line-soft',
-                dropIndex === i && editing && 'ring-2 ring-amore',
-                dragIndex === i && 'opacity-50',
+                dropIndex === i && editing && dragIndex !== null && 'ring-2 ring-amore',
+                dragIndex === i && 'opacity-40',
               )}
-              onDragOver={
-                editing
-                  ? (e) => {
-                      e.preventDefault();
-                      setDropIndex(i);
-                    }
-                  : undefined
-              }
-              onDrop={
-                editing
-                  ? () => {
-                      if (dragIndex !== null) reorder(dragIndex, i);
-                      setDragIndex(null);
-                      setDropIndex(null);
-                    }
-                  : undefined
-              }
             >
               {editing && (
                 <div className="absolute right-2 top-2 z-resize flex items-center gap-1 border border-line bg-paper/95 px-1.5 py-1 rounded-sm backdrop-blur-sm">
                   <span
-                    draggable
-                    onDragStart={() => setDragIndex(i)}
-                    onDragEnd={() => {
-                      setDragIndex(null);
-                      setDropIndex(null);
-                    }}
+                    onPointerDown={(e) => onDragHandleDown(e, i)}
+                    onPointerMove={onDragHandleMove}
+                    onPointerUp={onDragHandleUp}
+                    onPointerCancel={onDragHandleUp}
                     role="button"
                     aria-label="위젯 이동"
                     tabIndex={0}
-                    className="cursor-grab select-none px-1 text-md leading-none text-mute active:cursor-grabbing hover:text-ink-2"
+                    className="cursor-grab touch-none select-none px-1 text-md leading-none text-mute active:cursor-grabbing hover:text-ink-2"
                     title="드래그로 이동"
                   >
                     ⠿
