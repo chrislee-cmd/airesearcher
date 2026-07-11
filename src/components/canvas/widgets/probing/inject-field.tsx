@@ -72,7 +72,7 @@ export function ProbingInjectField({
       description="응답자에게 즉시 던질 질문 — '주입' 을 눌러 AI 질문 popup + 좌측 위젯으로 1회 반영"
     >
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-center rounded-xs border-[2px] border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+        <div className="flex flex-1 items-center rounded-xs border-2 border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
           <ChipInput
             value={draft}
             onChange={(e) =>

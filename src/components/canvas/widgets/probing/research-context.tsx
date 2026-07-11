@@ -85,7 +85,7 @@ export function ProbingResearchContext({
   }
 
   return (
-    <section className="space-y-3 border-b-[2px] border-line-soft bg-paper px-4 py-3">
+    <section className="space-y-3 border-b-2 border-line-soft bg-paper px-4 py-3">
       <Field label="조사 목적">
         <Textarea
           value={goalDraft}

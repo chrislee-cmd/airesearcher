@@ -114,12 +114,12 @@ export function QuestionPane({
         />
 
         {!isLive && thinkingEvents.length === 0 && history.length === 0 && (
-          <div className="mx-4 my-4 rounded-xs border-[2px] border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
+          <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
             세션을 시작하면 AI 가 사고 흐름과 즉시 질문을 보내기 시작합니다.
           </div>
         )}
         {isLive && !hasTranscript && thinkingEvents.length === 0 && (
-          <div className="mx-4 my-4 rounded-xs border-[2px] border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
+          <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
             발화가 들어오면 AI 가 즉시 사고하기 시작합니다.
           </div>
         )}

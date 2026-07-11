@@ -62,7 +62,7 @@ const IMPORTANCE_CARD: Record<
   },
   low: {
     container:
-      'border-[2px] border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
+      'border-2 border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
     label: '여유 있을 때',
     ring: 'stroke-mute',
     pulse: false,
@@ -423,7 +423,7 @@ function ActionButton({
       title={label}
       onClick={onClick}
       data-canvas-action
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-[2px] border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore"
     >
       {children}
     </button>
