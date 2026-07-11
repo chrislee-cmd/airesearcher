@@ -1,9 +1,22 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { ImageResponse } from 'next/og';
 import { getTranslations } from 'next-intl/server';
 
 export const alt = 'Research-Canvas — Your research workflow, in one place';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+
+// Satori (next/og) can't fetch /public assets by URL — read the file and inline
+// it as a base64 data URI. PNG is used instead of the SVG lockup because Satori
+// rasterizes SVG without the app fonts, dropping the wordmark text. The self-
+// contained full-color icon carries the mark; the wordmark is a real text node.
+async function loadBrandIcon() {
+  const bytes = await readFile(
+    join(process.cwd(), 'public/branding/icons/03_ICON_FULL_COLOR.png'),
+  );
+  return `data:image/png;base64,${bytes.toString('base64')}`;
+}
 
 export default async function OpengraphImage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -16,6 +29,8 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
     ? '리서치 캔버스'
     : 'on one canvas';
   const tagline = t('hero.tagline');
+
+  const iconSrc = await loadBrandIcon();
 
   return new ImageResponse(
     (
@@ -33,14 +48,14 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
           position: 'relative',
         }}
       >
-        {/* pink dot accent */}
+        {/* corner accents — parked in the top-right corner, clear of all text */}
         <div
           style={{
             position: 'absolute',
-            top: 70,
-            right: 110,
-            width: 110,
-            height: 110,
+            top: 60,
+            right: 90,
+            width: 108,
+            height: 108,
             borderRadius: '50%',
             background: '#ff5c8a',
             border: '6px solid #000',
@@ -51,10 +66,10 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
         <div
           style={{
             position: 'absolute',
-            top: 220,
-            right: 240,
-            width: 64,
-            height: 64,
+            top: 96,
+            right: 236,
+            width: 58,
+            height: 58,
             borderRadius: '12px',
             background: '#cdebd9',
             border: '5px solid #000',
@@ -78,24 +93,24 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
             boxShadow: '6px 6px 0 #000',
             transform: 'rotate(-2deg)',
             alignSelf: 'flex-start',
-            marginBottom: 40,
+            marginBottom: 44,
           }}
         >
           {tagline}
         </div>
 
-        {/* headline */}
+        {/* headline — constrained width keeps it clear of the corner accents */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
+            gap: 10,
             color: '#000',
             fontWeight: 800,
-            fontSize: 96,
+            fontSize: 88,
             lineHeight: 1.04,
             letterSpacing: '-0.035em',
-            maxWidth: 950,
+            maxWidth: 820,
           }}
         >
           <div style={{ display: 'flex' }}>{title}</div>
@@ -116,28 +131,20 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
           </div>
         </div>
 
-        {/* brand bottom */}
+        {/* brand lockup — real icon (PNG) + wordmark */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 14,
+            gap: 16,
             marginTop: 'auto',
-            fontSize: 28,
+            fontSize: 34,
             fontWeight: 800,
             color: '#000',
           }}
         >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              background: '#ff5c8a',
-              border: '4px solid #000',
-              borderRadius: '10px',
-              boxShadow: '4px 4px 0 #000',
-            }}
-          />
+          { }
+          <img src={iconSrc} width={60} height={60} alt="Research-Canvas" />
           Research-Canvas
         </div>
       </div>
