@@ -88,7 +88,7 @@ PROJECT.md는 7가지 종류의 내용이 섞여 있습니다. 자기 작업에 
 - 무엇이 바뀌었는지 1~3 bullet
 
 ## Test plan
-- [ ] 로컬 빌드 통과
+- [ ] 로컬 lint/typecheck 통과 (build 는 Vercel preview 가 검증 — 로컬 next build 스킵)
 - [ ] Vercel preview에서 해당 화면 확인
 - [ ] 회귀 가능 영역 점검
 ```
@@ -99,6 +99,19 @@ PROJECT.md는 7가지 종류의 내용이 섞여 있습니다. 자기 작업에 
 3. **main과 충돌 없음** — 필요하면 자기 브랜치에서 rebase 후 force-push (`git push --force-with-lease`)
 4. **secrets/.env 파일 미포함** — `.env*`는 절대 커밋 금지
 5. **commit 직전 `git diff --cached` 검증** — 본인 변경만 들어갔는지 확인 (특히 `messages/*.json`)
+
+> **로컬 검증 정책 — build 는 로컬에서 돌리지 말 것.** 로컬 검증은 `pnpm lint` +
+> `pnpm typecheck` **만** 돌린다 (가볍고 빠른 피드백). `pnpm build`(next build)는
+> **로컬에서 돌리지 말 것** — 워커당 전 코어를 먹어 동시 워커 부하를 유발한다
+> (메모리 `worker-terminal-cap-4` 사고). 빌드 검증은 **Vercel preview 빌드(hard
+> gate, §3.8)**가 담당하며, preview 빌드가 green 이어야 머지 가능하다. 근거:
+> lint/typecheck/build 모두 이미 CI/Vercel hard gate 라 로컬 build 는 순수 중복.
+>
+> **트레이드오프**: next build 는 tsc/lint 가 못 잡는 RSC 서버/클라이언트 경계·
+> serialization 에러를 잡는다. 로컬 스킵 시 이런 에러는 몇 분 뒤 Vercel preview
+> 에서 드러나지만, preview 가 hard gate 라 **깨진 빌드는 main 에 절대 유입되지
+> 않는다.** 단 `pnpm lint` / `pnpm typecheck` 는 절대 로컬에서 빼지 말 것 —
+> 이번 스킵 대상은 오직 `pnpm build`(next build) 다.
 
 ### 3.6 머지 방식
 - 기본 **Squash merge** (히스토리 깔끔하게)
