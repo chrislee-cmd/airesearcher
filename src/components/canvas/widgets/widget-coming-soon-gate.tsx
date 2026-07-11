@@ -12,6 +12,11 @@
      (user_id, widget_key) → 감사 토스트 + 선택 표시. 재투표는 덮어쓰기 허용.
    - 색/타이포는 design-system 토큰만. dashed 박스는 기존 placeholder 관례 재사용.
 
+   전체보기(fullview): 카드 body 만 채우면 공유 전체보기 모달의 우측 slot 이
+   텅 비어 "완성 안 된 느낌" (#572 갭). ComingSoonBody 관례대로 이 게이트가
+   자기 key 일 때 준비중 hero(+동일 수요투표)를 renderInSlot 으로 slot 에
+   portal 한다 — 카드는 항상 마운트돼 있으므로 세션 걱정 없이 안전.
+
    집계 대시보드(수요 리포트)는 후속 spec — 이 컴포넌트는 캡처까지만 담당.
    ──────────────────────────────────────────────────────────────────── */
 
@@ -19,6 +24,8 @@ import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
+import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 
 type Vote = 'want' | 'skip';
 
@@ -33,6 +40,7 @@ export function WidgetComingSoonGate({
   orgId?: string | null;
 }) {
   const { push } = useToast();
+  const { renderInSlot, close } = useFullview(widgetKey);
   const [selected, setSelected] = useState<Vote | null>(null);
   const [submitting, setSubmitting] = useState<Vote | null>(null);
 
@@ -73,19 +81,10 @@ export function WidgetComingSoonGate({
     [submitting, orgId, widgetKey, push],
   );
 
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <span className="text-4xl" aria-hidden>
-        🚧
-      </span>
-      <div className="space-y-1">
-        <p className="text-lg font-semibold text-ink">준비중입니다</p>
-        <p className="text-sm text-mute-soft">
-          <strong className="text-ink-2">{label}</strong> 는 아직 준비 중이에요.
-          이 도구가 필요하신가요?
-        </p>
-      </div>
-
+  // want/skip 버튼 + 안내문 — 카드 body 와 전체보기 hero 가 공유(동일 vote
+  // 핸들러·selected 상태). 재투표 시 want↔skip 덮어쓰기.
+  const voteCluster = (
+    <>
       <div className="mt-2 flex w-full max-w-xs flex-col gap-2">
         <Button
           variant={selected === 'want' ? 'primary' : 'secondary'}
@@ -114,6 +113,43 @@ export function WidgetComingSoonGate({
           의견을 반영했어요. 다시 눌러 바꿀 수 있어요.
         </p>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* 카드 body — 짧은 준비중 + 수요투표 (기존 그대로) */}
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+        <span className="text-4xl" aria-hidden>
+          🚧
+        </span>
+        <div className="space-y-1">
+          <p className="text-lg font-semibold text-ink">준비중입니다</p>
+          <p className="text-sm text-mute-soft">
+            <strong className="text-ink-2">{label}</strong> 는 아직 준비 중이에요.
+            이 도구가 필요하신가요?
+          </p>
+        </div>
+        {voteCluster}
+      </div>
+
+      {/* 전체보기 slot — locked 위젯이 current 면 빈 패널 대신 준비중 hero.
+          renderInSlot 은 isCurrent && slot 있을 때만 portal (아니면 null). */}
+      {renderInSlot(
+        <WidgetFullviewPanel title={label} subtitle="준비 중" onClose={close}>
+          <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 p-10 text-center">
+            <span className="text-6xl" aria-hidden>
+              🚧
+            </span>
+            <h2 className="text-3xl font-bold text-ink">준비중입니다</h2>
+            <p className="text-lg leading-relaxed text-ink-2">
+              <strong className="text-ink">{label}</strong> 는 아직 준비 중이에요.
+              이 도구가 필요하신가요? 의견을 남겨주시면 우선순위에 반영할게요.
+            </p>
+            {voteCluster}
+          </div>
+        </WidgetFullviewPanel>,
+      )}
+    </>
   );
 }

@@ -1138,6 +1138,7 @@ export function CanvasBoard({
           widgets={widgets}
           current={currentWidgetKey}
           onSwitch={switchFullview}
+          lockedKeys={lockedKeys}
         />
         <div
           ref={setFullviewSlotEl}
