@@ -82,12 +82,19 @@ type Props = {
   initialReport: AdminAnalyticsReport;
   initialSignups: SignupRoster;
   embedUrl: string | null;
+  // Read-only public mode (the /status token-gated wall monitor). When true:
+  // the signup roster (PII) is not rendered, the period/internal controls are
+  // hidden, and the client refetch (which hits the super-admin-gated API) is
+  // skipped — the server-provided initialReport is shown as a static snapshot.
+  // Default false → the super-admin /admin/analytics view is 100% unchanged.
+  publicView?: boolean;
 };
 
 export function AdminAnalytics({
   initialReport,
   initialSignups,
   embedUrl,
+  publicView = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>('native');
   const [report, setReport] = useState(initialReport);
@@ -125,12 +132,16 @@ export function AdminAnalytics({
   // already gave us a matching report).
   const firstRender = useRef(true);
   useEffect(() => {
+    // Public read-only view never refetches — the gated /api/admin/analytics
+    // would 404 for anonymous visitors, and the controls that drive this are
+    // hidden anyway. Stay on the server-provided static snapshot.
+    if (publicView) return;
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
     void load(period, excludeInternal);
-  }, [period, excludeInternal, load]);
+  }, [period, excludeInternal, load, publicView]);
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-6">
@@ -179,31 +190,35 @@ export function AdminAnalytics({
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1">
-              {PERIODS.map((p) => (
-                <ChromeButton
-                  key={p.key}
-                  variant={period === p.key ? 'primary' : 'default'}
-                  size="sm"
-                  disabled={loading}
-                  onClick={() => setPeriod(p.key)}
-                >
-                  {p.label}
-                </ChromeButton>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex cursor-pointer items-center gap-2 text-md text-mute">
-                <Checkbox
-                  checked={excludeInternal}
-                  disabled={loading}
-                  onChange={(e) => setExcludeInternal(e.target.checked)}
-                />
-                내부계정 제외
-                <span className="text-xs-soft text-mute-soft tabular-nums">
-                  ({report.internalAccountCount})
-                </span>
-              </label>
+            {!publicView && (
+              <div className="flex items-center gap-1">
+                {PERIODS.map((p) => (
+                  <ChromeButton
+                    key={p.key}
+                    variant={period === p.key ? 'primary' : 'default'}
+                    size="sm"
+                    disabled={loading}
+                    onClick={() => setPeriod(p.key)}
+                  >
+                    {p.label}
+                  </ChromeButton>
+                ))}
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-3">
+              {!publicView && (
+                <label className="flex cursor-pointer items-center gap-2 text-md text-mute">
+                  <Checkbox
+                    checked={excludeInternal}
+                    disabled={loading}
+                    onChange={(e) => setExcludeInternal(e.target.checked)}
+                  />
+                  내부계정 제외
+                  <span className="text-xs-soft text-mute-soft tabular-nums">
+                    ({report.internalAccountCount})
+                  </span>
+                </label>
+              )}
               <span className="text-xs-soft tabular-nums text-mute-soft">
                 {new Date(report.generatedAt).toLocaleString('ko-KR')}
               </span>
@@ -228,7 +243,7 @@ export function AdminAnalytics({
           <LandingSourceCard landing={report.landing} />
           <RetentionFunnelCard landing={report.landing} />
 
-          <SignupAccountsCard roster={initialSignups} />
+          {!publicView && <SignupAccountsCard roster={initialSignups} />}
         </>
       )}
     </div>
