@@ -4160,35 +4160,28 @@ export function TranslateConsole({
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
     <>
-      {/* 프로젝트 (#543) — 통역 위젯 슬롯의 독립 선택. 고른 프로젝트의
-          용어집(glossary)이 DB(project_widget_settings)에서 로드/저장된다.
-          미선택이면 로컬/빈 값(하위호환). live 중엔 잠금(결정 3: 세션 중
-          Glossary/언어/모드 불변) — pointer-events 차단 + opacity 로 신호,
-          onChange 도 무시. */}
-      <Field label={t('project')}>
-        <div
-          className={live ? 'pointer-events-none opacity-60' : undefined}
-          aria-disabled={live || undefined}
-        >
-          <ProjectPicker
-            widget="translate"
-            value={projectId}
-            onChange={live ? () => {} : handleProjectChange}
-          />
-        </div>
-      </Field>
-      {/* 원어 / 대상어 / 입력 모드 — 드롭다운 3종을 컨트롤 최상단에 먼저
-          배치 (전사록/인터뷰 dropdown-first 미러). 한 줄 (좁으면 wrap), live
-          중엔 disabled (opacity 로 read-only 신호). 라벨은 Field primitive 로
-          정합 — 전사록/인터뷰와 동일 SectionLabel 타이포·간격(mb-1.5), 인라인
-          재현 0 (spec 결정 2). */}
-      {/* 컨트롤 드롭다운 통일 — native <select> → DropdownMenu(인터뷰 기준).
-          원어/대상어 두 언어 DropdownMenu 는 단일 "언어" LangDualDropdown 으로
-          통합 (2컬럼 인풋|아웃풋, 사용자 2026-07-10). state(sourceLang/targetLang)·
-          게이트(canStart)·payload(source_lang/target_lang)·번역 로직 전부 무변경 —
-          UI 포장만 (spec 결정 3). controlFields 는 idle 센터 보드와 live 상단 바가
-          공유 → 양쪽 동시 반영. live/busy 중엔 trigger disabled. */}
+      {/* 프로젝트 / 언어 / 입력 소스 — 한 행 배치. flex flex-wrap items-end
+          gap-4 로 세 컨트롤을 좌측 정렬하고 좁은 폭에서 wrap 허용(전사록 #964
+          미러). live 중엔 행 전체 잠금(결정 3: 세션 중 Glossary/언어/모드 불변)
+          — 행 opacity-60 으로 read-only 신호, 프로젝트는 pointer-events 차단
+          (#543 위젯 슬롯 독립 선택 — 고른 프로젝트의 glossary 를 DB 에서
+          로드/저장, onChange 무시), 언어/입력 소스는 trigger disabled.
+          원어/대상어는 단일 "언어" LangDualDropdown 으로 통합(2컬럼 인풋|아웃풋,
+          2026-07-10) — state·게이트·payload·번역 로직 전부 무변경, UI 포장만.
+          controlFields 는 idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. */}
       <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
+        <Field label={t('project')}>
+          <div
+            className={live ? 'pointer-events-none' : undefined}
+            aria-disabled={live || undefined}
+          >
+            <ProjectPicker
+              widget="translate"
+              value={projectId}
+              onChange={live ? () => {} : handleProjectChange}
+            />
+          </div>
+        </Field>
         <Field label={t('lang')}>
           <LangDualDropdown
             langs={langOptions}
