@@ -34,6 +34,7 @@ import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
 import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
 import { Modal } from '@/components/ui/modal';
 import type { WidgetContent } from '@/components/canvas/widget-types';
+import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
 import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
@@ -174,12 +175,47 @@ function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
 }
 
 export function CanvasBoard({
-  widgets,
+  widgets: rawWidgets,
   initialFocus,
+  lockedKeys,
+  orgId,
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
+  // 일반계정에서 준비중 게이트로 막을 위젯 key 목록 (서버 page 가 계산해 전달).
+  // 비었으면(unlimited) 치환 없음 → 전부 라이브.
+  lockedKeys?: string[];
+  // vote 저장 컨텍스트 — 활성 org id (nullable).
+  orgId?: string | null;
 }) {
+  // lockedKeys 에 든 위젯의 ExpandedBody 를 WidgetComingSoonGate 로 치환.
+  // 서버 page 는 직렬화 가능한 key 목록만 넘기고 실제 컴포넌트 치환은 여기(클라)
+  // 에서 — 서버→클라 closure 전달 제약 회피. 나머지 필드(meta/state/dimmed)는
+  // 원본 유지. lockedKeys 가 비면 rawWidgets 를 그대로 사용 → 회귀 0.
+  const widgets = useMemo(() => {
+    if (!lockedKeys || lockedKeys.length === 0) return rawWidgets;
+    const locked = new Set(lockedKeys);
+    return rawWidgets.map((w) =>
+      locked.has(w.key)
+        ? {
+            ...w,
+            // "준비중" 게이트 위젯은 dim 처리 — board 가 dimmed 플래그를 보고
+            // 셸 전체를 opacity-50 wrapper 로 감싸 라이브 위젯과 시각 구분.
+            dimmed: true,
+            ExpandedBody: function LockedGate() {
+              return (
+                <WidgetComingSoonGate
+                  widgetKey={w.key}
+                  label={w.meta.label}
+                  orgId={orgId}
+                />
+              );
+            },
+          }
+        : w,
+    );
+  }, [rawWidgets, lockedKeys, orgId]);
+
   const [positions, setPositions] = useState<Record<string, Coords>>(() =>
     defaultPositions(widgets),
   );

@@ -39,14 +39,26 @@ const CARD_REGISTRY: Record<CanvasWidgetKey, WidgetContent> = {
   ppt_report: pptReportCard,
 };
 
-// preview-gated widgets — 일반 유저에게는 숨김, is_unlimited org 만 노출.
-// CanvasWidgetKey 와 FeatureKey 가 같은 문자열일 때만 게이트 발동 (topline 처럼
-// FeatureKey 에 없는 키는 미체크 — 단순 visibility map 만 적용).
-async function hasPreviewAccess(): Promise<boolean> {
+// 일반(비-unlimited) 계정에게 라이브로 열리는 canvas 위젯. OPEN 외의 visible
+// 위젯은 body 를 WidgetComingSoonGate 로 치환해 "준비중 + 수요투표" 로 렌더한다
+// (unlimited 계정은 lockedKeys 가 비어 전부 라이브 — 회귀 0). hidden 위젯
+// (moderator/topline/slidegen) 은 CANVAS_VISIBILITY=false 로 이미 제외돼 범위 밖.
+const OPEN_FOR_NORMAL: ReadonlySet<CanvasWidgetKey> = new Set<CanvasWidgetKey>([
+  'probing',
+  'translate',
+  'quotes', // 전사록
+]);
+
+// org gate 를 한 번만 해석 — preview 게이트(isUnlimited)와 vote 저장 컨텍스트
+// (orgId)를 함께 반환. org 미소속이면 비-unlimited + orgId null.
+async function resolveOrgGate(): Promise<{
+  isUnlimited: boolean;
+  orgId: string | null;
+}> {
   const org = await getActiveOrg();
-  if (!org) return false;
+  if (!org) return { isUnlimited: false, orgId: null };
   const flags = await getOrgFlags(org.org_id);
-  return flags.isUnlimited;
+  return { isUnlimited: flags.isUnlimited, orgId: org.org_id };
 }
 
 export default async function CanvasPage({
@@ -60,23 +72,34 @@ export default async function CanvasPage({
   const { focus } = await searchParams;
   setRequestLocale(locale);
 
-  const previewOk = await hasPreviewAccess();
+  const { isUnlimited, orgId } = await resolveOrgGate();
 
   // server-side visibility resolve — hard-coded map + preview gate.
   // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
-  const widgets = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k])
-    .filter(
-      (k) =>
-        !PREVIEW_FEATURES.has(k as FeatureKey) || previewOk,
-    )
-    .map((k) => CARD_REGISTRY[k]);
+  const visibleKeys = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k]).filter(
+    (k) => !PREVIEW_FEATURES.has(k as FeatureKey) || isUnlimited,
+  );
+  const widgets = visibleKeys.map((k) => CARD_REGISTRY[k]);
+
+  // 일반계정 게이트 대상 = visible 중 OPEN 아닌 키. unlimited 는 빈 배열 →
+  // board 가 body 를 그대로 렌더 (회귀 0). 직렬화 가능한 string[] 로 넘겨
+  // 클라(board)에서 ExpandedBody 를 WidgetComingSoonGate 로 치환한다
+  // (서버→클라 closure 전달 불가 회피).
+  const lockedKeys = isUnlimited
+    ? []
+    : visibleKeys.filter((k) => !OPEN_FOR_NORMAL.has(k));
 
   // RealtimeTranscriptProvider — translate 위젯이 publisher, probing 등
   // 다른 위젯이 consumer. canvas 안에서만 의미 있어 layout 이 아니라 page
   // 레벨에서 마운트. /live 페이지에는 영향 없음.
   return (
     <RealtimeTranscriptProvider>
-      <CanvasBoard widgets={widgets} initialFocus={focus} />
+      <CanvasBoard
+        widgets={widgets}
+        initialFocus={focus}
+        lockedKeys={lockedKeys}
+        orgId={orgId}
+      />
     </RealtimeTranscriptProvider>
   );
 }
