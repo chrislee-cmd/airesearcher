@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { LandingPage } from '@/components/landing/landing-page';
+import { LandingBeacon } from '@/components/landing/landing-beacon';
 
 export async function generateMetadata({
   params,
@@ -33,5 +34,10 @@ export default async function LocaleIndexPage({
   if (user) {
     redirect({ href: '/canvas', locale });
   }
-  return <LandingPage locale={locale} />;
+  return (
+    <>
+      <LandingBeacon />
+      <LandingPage locale={locale} />
+    </>
+  );
 }
