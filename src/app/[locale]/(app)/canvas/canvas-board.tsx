@@ -199,6 +199,9 @@ export function CanvasBoard({
       locked.has(w.key)
         ? {
             ...w,
+            // "준비중" 게이트 위젯은 dim 처리 — board 가 dimmed 플래그를 보고
+            // 셸 전체를 opacity-50 wrapper 로 감싸 라이브 위젯과 시각 구분.
+            dimmed: true,
             ExpandedBody: function LockedGate() {
               return (
                 <WidgetComingSoonGate
