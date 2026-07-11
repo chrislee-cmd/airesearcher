@@ -182,11 +182,19 @@ const RECORD_TIMESLICE_MS = 2000;
 // 종료 직후 다운로드용 signed URL 유효 시간(초).
 const RECORDING_SIGNED_URL_TTL_S = 60 * 60;
 
-// 녹음 컨테이너 선택 — webm/opus 우선, Safari 등 미지원 시 mp4 폴백
-// (qa-voice-agent-button:29-39 와 동일).
+// 녹음 컨테이너 선택 — mp4/AAC(.m4a) 우선, 미지원 시 webm/opus 폴백.
+// 다운로드 파일이 브라우저 밖(QuickTime·Apple Music·Windows 미디어 플레이어)
+// 에서도 오디오로 열리게 하려면 .m4a 가 안전하다. webm/opus 는 재생 자체는
+// 되지만 많은 데스크톱 플레이어가 오디오로 인식 못 한다 → 지원 브라우저
+// (Safari·최신 Chrome)에선 mp4 를 먼저 고른다 (#582 후속, 사용자 요청).
 function pickRecorderMime(): string {
   if (typeof MediaRecorder === 'undefined') return '';
-  for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
+  for (const t of [
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/webm;codecs=opus',
+    'audio/webm',
+  ]) {
     if (MediaRecorder.isTypeSupported(t)) return t;
   }
   return '';
