@@ -71,7 +71,7 @@ export function SectionCard({
       className={`scroll-mt-4 rounded-sm border-[3px] border-ink bg-paper shadow-[4px_4px_0_var(--color-ink)] ${EMPHASIS_WRAP[emphasis]} ${EMPHASIS_PAD[emphasis]}`}
     >
       <header
-        className={`flex items-center gap-2.5 ${bodyVisible ? 'mb-3 border-b-[2px] border-line pb-2.5' : ''}`}
+        className={`flex items-center gap-2.5 ${bodyVisible ? 'mb-3 border-b-2 border-line pb-2.5' : ''}`}
       >
         <span
           aria-hidden

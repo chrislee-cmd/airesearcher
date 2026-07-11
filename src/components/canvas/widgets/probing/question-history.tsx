@@ -67,7 +67,7 @@ export function ProbingQuestionHistory({
   const starredCount = history.filter((q) => q.is_starred).length;
 
   return (
-    <section className="shrink-0 border-t-[2px] border-line-soft">
+    <section className="shrink-0 border-t-2 border-line-soft">
       {/* eslint-disable-next-line react/forbid-elements -- accordion header full-width toggle; Button primitive forces capsule shape and centered text incompatible with left-aligned w-full row. */}
       <button
         type="button"

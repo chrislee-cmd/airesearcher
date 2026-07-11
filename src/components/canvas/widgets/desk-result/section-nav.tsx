@@ -72,7 +72,7 @@ export function SectionNav({
   }
 
   return (
-    <nav className="flex w-[220px] shrink-0 flex-col gap-1 overflow-y-auto border-r-[2px] border-ink/15 p-4">
+    <nav className="flex w-[220px] shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-ink/15 p-4">
       <span className="mb-2 px-2 text-xs uppercase tracking-[.18em] text-mute-soft">
         섹션
       </span>

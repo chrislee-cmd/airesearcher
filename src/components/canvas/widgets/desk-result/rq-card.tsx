@@ -27,7 +27,7 @@ export function RQCard({
   tDesk: TDesk;
 }) {
   return (
-    <article className="scroll-mt-4 rounded-sm border-[2px] border-ink bg-paper-soft p-3.5 shadow-[2px_2px_0_var(--color-ink)]">
+    <article className="scroll-mt-4 rounded-sm border-2 border-ink bg-paper-soft p-3.5 shadow-[2px_2px_0_var(--color-ink)]">
       <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
         <span>{rq.id}</span>
         <span className="text-amore">{rq.category}</span>

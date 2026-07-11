@@ -652,7 +652,7 @@ export function ResponsesSpreadsheet({
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="rounded-sm border-[2px] border-warning-line bg-warning-bg p-3 text-md text-ink-2 shadow-[2px_2px_0_var(--color-warning)]">
+    <div className="rounded-sm border-2 border-warning-line bg-warning-bg p-3 text-md text-ink-2 shadow-[2px_2px_0_var(--color-warning)]">
       {message}
     </div>
   );
