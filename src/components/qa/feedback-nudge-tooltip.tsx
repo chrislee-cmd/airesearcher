@@ -10,8 +10,8 @@ import { IconButton } from '@/components/ui/icon-button';
 // callout, so it owns its own anchoring + CSS-keyframe motion (globals.css:
 // feedbackNudge*) — no new dependency.
 //
-// Flow (spec §A): mount → wait ~0.8s → appear → hold ~5s → fade out. Any of
-// {5s timeout, clicking the wrapped button, the ✕ close} dismisses it and sets
+// Flow (spec §A): mount → wait ~0.8s → appear → hold ~7s → fade out. Any of
+// {timeout, clicking the wrapped button, the ✕ close} dismisses it and sets
 // a sessionStorage flag so it shows at most ONCE per session (survives client
 // navigation, re-appears in a fresh session). prefers-reduced-motion is honored
 // by the CSS (motion off, show/hide only).
@@ -23,7 +23,7 @@ import { IconButton } from '@/components/ui/icon-button';
 
 const SESSION_FLAG = 'qa-feedback-nudge-seen';
 const APPEAR_DELAY_MS = 800;
-const VISIBLE_MS = 5000;
+const VISIBLE_MS = 7000;
 // Matches feedbackNudgeOut duration (var(--dur-fast) = 120ms) with headroom.
 const EXIT_MS = 200;
 
@@ -94,7 +94,7 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
         <span
           role="status"
           aria-live="polite"
-          className={`pointer-events-none absolute right-0 top-full z-fab mt-2 flex w-56 items-start gap-2 px-3 py-2 ${
+          className={`pointer-events-none absolute right-0 top-full z-fab mt-2 flex w-max max-w-[15rem] items-center gap-2 py-2 pl-3 pr-2 ${
             phase === 'out' ? 'feedback-nudge-out' : 'feedback-nudge-in'
           }`}
           style={{
@@ -110,7 +110,7 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
               (animation off) still renders a diamond. */}
           <span
             aria-hidden
-            className="feedback-nudge-caret absolute -top-1 right-4 h-2 w-2 rotate-45"
+            className="feedback-nudge-caret absolute -top-1 right-2.5 h-2 w-2 rotate-45"
             style={{
               background: 'var(--sidebar-nav-bg)',
               borderTop:
@@ -119,7 +119,7 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
                 'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
             }}
           />
-          <span className="text-xs font-medium leading-relaxed text-ink">
+          <span className="whitespace-nowrap text-xs font-medium text-ink">
             {t('nudge')}
           </span>
           <IconButton
