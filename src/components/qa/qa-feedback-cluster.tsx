@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
 import { QaVoiceAgentButton } from './qa-voice-agent-button';
+import { FeedbackNudgeTooltip } from './feedback-nudge-tooltip';
 
 // QA feedback cluster — groups the voice mic (QaVoiceAgentButton) with a new
 // TEXT note trigger and a "피드백 남기기" label so testers recognise this corner
@@ -93,7 +94,9 @@ export function QaFeedbackCluster() {
       <span className="hidden text-xs font-medium text-ink sm:inline">
         {t('label')}
       </span>
-      <QaVoiceAgentButton />
+      <FeedbackNudgeTooltip>
+        <QaVoiceAgentButton />
+      </FeedbackNudgeTooltip>
       <IconButton
         variant="subtle"
         size="md"

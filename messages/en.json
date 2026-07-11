@@ -347,7 +347,9 @@
     "cancel": "Close",
     "submitDone": "Feedback submitted",
     "submitError": "Save failed: {message}",
-    "loginRequired": "Please sign in"
+    "loginRequired": "Please sign in",
+    "nudge": "We'd love your feedback 🎤",
+    "nudgeDismiss": "Dismiss nudge"
   },
   "Sidebar": {
     "dashboard": "Dashboard",

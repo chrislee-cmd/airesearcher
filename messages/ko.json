@@ -347,7 +347,9 @@
     "cancel": "닫기",
     "submitDone": "피드백 제출 완료",
     "submitError": "저장 실패: {message}",
-    "loginRequired": "로그인이 필요합니다"
+    "loginRequired": "로그인이 필요합니다",
+    "nudge": "의견을 들려주세요 🎤",
+    "nudgeDismiss": "넛지 닫기"
   },
   "Sidebar": {
     "dashboard": "대시보드",
