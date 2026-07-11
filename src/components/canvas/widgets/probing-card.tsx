@@ -91,6 +91,29 @@ import {
 } from '@/lib/probing/live-channel';
 import { ProbingEmitGuard } from '@/lib/probing/emit-guard';
 
+// 세션 원본 녹음(#554/#582) 실패 사유 코드 → 사람이 읽을 안내. empty/error 표면
+// 노티스에서 "왜 다운로드가 없는지" 를 사용자에게 알려주는 매핑. 세션 종료는
+// 이미 정상 — 이건 비블로킹 부가물의 상태 표면화일 뿐.
+function recordingNotSavedReason(
+  status: 'empty' | 'error',
+  code: string | null,
+): string {
+  if (status === 'empty') {
+    switch (code) {
+      case 'no_audio_track':
+      case 'no_audio_captured':
+        return '오디오가 캡처되지 않았어요. 탭 공유 세션이라면 "탭 오디오 공유"를 켰는지 확인해 주세요.';
+      case 'recorder_unsupported':
+        return '이 브라우저는 세션 녹음을 지원하지 않아요.';
+      case 'recorder_start_failed':
+        return '녹음을 시작하지 못했어요.';
+      default:
+        return '오디오가 캡처되지 않았어요.';
+    }
+  }
+  return '녹음 파일 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.';
+}
+
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
 // 우패널 think 가 보낼 transcript 상한.
@@ -1225,6 +1248,12 @@ function ExpandedBody() {
         '세션 녹음 업로드에 실패했어요. 인터뷰는 정상 종료됐습니다.',
         { tone: 'warn', ttlMs: 6000 },
       );
+    } else if (recording.status === 'empty') {
+      // 캡처된 오디오 0 — 조용히 넘기지 않고 왜 다운로드가 없는지 알린다(#582).
+      toast.push(
+        '이번 세션은 녹음이 저장되지 않았어요 (오디오가 캡처되지 않음). 인터뷰는 정상 종료됐습니다.',
+        { tone: 'warn', ttlMs: 6000 },
+      );
     } else if (recording.status === 'ready') {
       toast.push('세션 녹음이 준비됐어요 — 다운로드할 수 있습니다.', {
         tone: 'info',
@@ -1907,6 +1936,24 @@ function ExpandedBody() {
                   녹음 저장 중…
                 </Button>
               )}
+            </div>
+          )}
+        {/* 세션 원본 녹음 미저장 표면(#582) — 조용한 생략 대신 "왜 다운로드가
+            없는지" 를 quiet 하게 남긴다. empty(캡처 0) / error(업로드 실패) 모두
+            비블로킹 — 세션·transcript·결과는 정상. */}
+        {!isLive &&
+          (recording.status === 'empty' || recording.status === 'error') && (
+            <div className="px-4 pb-2">
+              <div
+                className="bg-paper px-3 py-2 text-sm text-mute"
+                style={{
+                  border: '1px solid var(--color-line)',
+                  borderRadius: 'var(--sidebar-nav-radius)',
+                }}
+              >
+                이번 세션은 녹음이 저장되지 않았어요 —{' '}
+                {recordingNotSavedReason(recording.status, recording.error)}
+              </div>
             </div>
           )}
         {/* 주 CTA(세션 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle

@@ -81,12 +81,17 @@ export type StartOpts = { source?: TranscriptionSource };
 
 // 세션 원본 녹음(#554) 표면 상태. STT 와 독립된 부가 경로 — MediaRecorder 가
 // capture 스트림에 병렬로 붙어 녹음하고, 종료 시 blob 을 업로드한다.
-//  - idle: 녹음 없음(세션 시작 전 또는 캡처된 오디오 0).
+//  - idle: 녹음 없음(세션 시작 전).
 //  - uploading: 종료 후 blob 업로드/서명 중.
 //  - ready: downloadUrl(signed) 발급 완료 — 다운로드 버튼 노출.
-//  - error: 업로드/서명 실패(비블로킹 — 세션 종료는 정상). toast 표면화용.
+//  - empty: 캡처된 오디오 0(오디오 트랙 없음 / blob 0 / recorder 미지원). #582
+//    이전엔 '조용히 생략'했으나, 왜 다운로드가 없는지 사용자에게 표면화한다.
+//  - error: 업로드/서명 실패(비블로킹 — 세션 종료는 정상). toast + 표면화용.
+// empty/error 의 `error` 필드는 사유 코드(no_audio_track / no_audio_captured /
+// recorder_unsupported / recorder_start_failed / 업로드 예외 메시지)를 담아
+// probing-card 가 사람이 읽을 안내로 매핑한다.
 export type SessionRecordingState = {
-  status: 'idle' | 'uploading' | 'ready' | 'error';
+  status: 'idle' | 'uploading' | 'ready' | 'empty' | 'error';
   downloadUrl: string | null;
   durationSeconds: number | null;
   error: string | null;
@@ -279,6 +284,10 @@ export function useRealtimeTranscription(opts?: {
     useState<SessionRecordingState>(IDLE_RECORDING);
   // capture 스트림에 병렬로 붙는 MediaRecorder + in-memory chunk buffer.
   const recorderRef = useRef<MediaRecorder | null>(null);
+  // recorder 전용 클론 스트림 — tab silence-injection(원본 트랙 enabled 토글)이
+  // 녹음 chunk 에 새지 않게 별도 트랙에서 녹음한다(#582). 원본 capture 는
+  // captureStreamRef 가 소유, 이 클론은 recorder 종료/정리 시 별도로 stop.
+  const recordStreamRef = useRef<MediaStream | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
   const recordMimeRef = useRef<string>('audio/webm');
   // 녹음 시작 시각 — 종료 시 duration 계산. renewal 을 걸쳐도 갱신 안 함
@@ -426,6 +435,19 @@ export function useRealtimeTranscription(opts?: {
       recorderRef.current = null;
     }
     recordChunksRef.current = [];
+    // recorder 클론 스트림 정리 — 원본 capture 와 별개로 stop 해야 mic/tab
+    // 소스가 계속 hot 으로 남지 않는다.
+    const recStream = recordStreamRef.current;
+    if (recStream) {
+      recStream.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* already stopped */
+        }
+      });
+      recordStreamRef.current = null;
+    }
     const cap = captureStreamRef.current;
     if (cap) {
       cap.getTracks().forEach((t) => {
@@ -649,27 +671,86 @@ export function useRealtimeTranscription(opts?: {
   // stop 하지 않음)하므로 recorder 는 renewal 을 걸쳐 연속 녹음한다 → 재바인딩
   // 불필요. 따라서 이 함수는 신규 start() 에서 한 번만 호출한다.
   const startRecorder = useCallback((stream: MediaStream) => {
-    if (typeof MediaRecorder === 'undefined') return;
+    if (typeof MediaRecorder === 'undefined') {
+      console.warn('[probing][rec] MediaRecorder unsupported — recording disabled');
+      setRecording({
+        status: 'empty',
+        downloadUrl: null,
+        durationSeconds: null,
+        error: 'recorder_unsupported',
+      });
+      return;
+    }
     if (recorderRef.current) return; // 중복 방지 (renewal 은 여기 안 옴)
+
+    // recorder 를 붙이기 전, capture 스트림에 실제로 재생 가능한 오디오 트랙이
+    // 있는지 확인한다(#582). 없으면 '조용히 생략'하지 말고 'empty' 로 표면화 —
+    // 왜 다운로드가 안 생기는지 사용자가 인지하게 한다(예: 탭 오디오 미공유).
+    const srcTracks = stream.getAudioTracks();
+    const liveTracks = srcTracks.filter((t) => t.readyState === 'live');
+    console.info('[probing][rec] startRecorder', {
+      audio_tracks: srcTracks.length,
+      live_tracks: liveTracks.length,
+      session_id: sessionIdRef.current,
+    });
+    if (liveTracks.length === 0) {
+      setRecording({
+        status: 'empty',
+        downloadUrl: null,
+        durationSeconds: null,
+        error: 'no_audio_track',
+      });
+      return;
+    }
+
     try {
       const mime = pickRecorderMime();
       recordMimeRef.current = mime || 'audio/webm';
+      // 트랙을 clone 해서 별도 스트림으로 녹음한다. tab 모드 silence-injection 은
+      // 원본 트랙의 `enabled` 를 3초마다 토글(server_vad commit 강제)하는데, 같은
+      // 트랙을 recorder 가 읽으면 그 강제 무음이 녹음에 섞이거나 chunk 산출에
+      // 영향을 줄 수 있다. 클론은 독립 트랙이라 STT(원본) 와 녹음(클론) 이 서로
+      // 간섭하지 않는다(#582).
+      const recordStream = new MediaStream(liveTracks.map((t) => t.clone()));
+      recordStreamRef.current = recordStream;
       const recorder = new MediaRecorder(
-        stream,
+        recordStream,
         mime ? { mimeType: mime, audioBitsPerSecond: 128000 } : undefined,
       );
       recordChunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordChunksRef.current.push(e.data);
       };
+      recorder.onerror = (ev) => {
+        console.warn('[probing][rec] recorder error event', ev);
+      };
       recorder.start(RECORD_TIMESLICE_MS);
       recorderRef.current = recorder;
       recordStartedAtRef.current = Date.now();
       recordingSessionIdRef.current = sessionIdRef.current;
+      console.info('[probing][rec] recorder started', {
+        mime: recordMimeRef.current,
+        timeslice_ms: RECORD_TIMESLICE_MS,
+      });
     } catch (e) {
       // 녹음은 부가물 — 실패해도 세션(STT)은 정상 진행. recorder 만 비활성.
-      console.warn('[probing] recorder start failed (recording disabled)', e);
+      // 조용히 넘기지 않고 'empty' 로 사유를 남긴다(#582).
+      console.warn('[probing][rec] recorder start failed (recording disabled)', e);
       recorderRef.current = null;
+      recordStreamRef.current?.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* already stopped */
+        }
+      });
+      recordStreamRef.current = null;
+      setRecording({
+        status: 'empty',
+        downloadUrl: null,
+        durationSeconds: null,
+        error: 'recorder_start_failed',
+      });
     }
   }, []);
 
@@ -700,10 +781,16 @@ export function useRealtimeTranscription(opts?: {
         const key = `${user.id}/${effectiveSid}/${Date.now()}-${crypto
           .randomUUID()
           .slice(0, 8)}.${extForRecorderMime(mime)}`;
+        console.info('[probing][rec] upload start', {
+          key,
+          bytes: blob.size,
+          mime,
+        });
         const { error: uploadErr } = await supabase.storage
           .from('probing-session-audio')
           .upload(key, blob, { contentType: mime });
         if (uploadErr) throw uploadErr;
+        console.info('[probing][rec] upload ok', { key });
 
         // 메타 row insert — org_id 는 서버(getActiveOrg)만 신뢰 가능하므로
         // 라우트에서 해석. row 가 없어도 다운로드는 storage signed URL 로
@@ -763,6 +850,8 @@ export function useRealtimeTranscription(opts?: {
   const finalizeRecording = useCallback(async () => {
     const recorder = recorderRef.current;
     recorderRef.current = null;
+    // recorder 가 애초에 안 붙은 경우(no_audio_track / recorder_unsupported 등)
+    // startRecorder 가 이미 'empty' 로 표면화했으므로 여기서 덮어쓰지 않는다.
     if (!recorder) return;
     const mime = recordMimeRef.current || 'audio/webm';
     const blob = await new Promise<Blob | null>((resolve) => {
@@ -782,9 +871,39 @@ export function useRealtimeTranscription(opts?: {
         resolve(assemble());
       }
     });
+    const chunkCount = recordChunksRef.current.length;
     recordChunksRef.current = [];
-    if (!blob || blob.size === 0) {
-      // 캡처된 오디오 0 — 다운로드 표면 생략 (과설계 금지).
+    // 녹음 클론 스트림 정리 — 원본 capture 는 cleanup 이 별도로 stop 한다.
+    recordStreamRef.current?.getTracks().forEach((t) => {
+      try {
+        t.stop();
+      } catch {
+        /* already stopped */
+      }
+    });
+    recordStreamRef.current = null;
+    const blobSize = blob?.size ?? 0;
+    console.info('[probing][rec] finalize', {
+      chunks: chunkCount,
+      blob_bytes: blobSize,
+      mime,
+    });
+    if (!blob || blobSize === 0) {
+      // 캡처된 오디오 0 — '조용히 생략'하지 않고 'empty' 로 표면화(#582).
+      // recorder 는 붙었지만 chunk 가 하나도 안 나온 경우(무음 트랙/짧은 세션/
+      // silence-injection 간섭 등). 세션 종료는 그대로 정상.
+      const durationSeconds = recordStartedAtRef.current
+        ? Math.max(
+            0,
+            Math.round((Date.now() - recordStartedAtRef.current) / 1000),
+          )
+        : 0;
+      setRecording({
+        status: 'empty',
+        downloadUrl: null,
+        durationSeconds,
+        error: 'no_audio_captured',
+      });
       return;
     }
     const durationSeconds = recordStartedAtRef.current
