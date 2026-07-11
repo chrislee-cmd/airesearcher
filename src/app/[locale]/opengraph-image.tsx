@@ -143,7 +143,7 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
             color: '#000',
           }}
         >
-          { }
+          {/* Satori (next/og) requires a raw <img>; next/image is unavailable in ImageResponse. */}
           <img src={iconSrc} width={60} height={60} alt="Research-Canvas" />
           Research-Canvas
         </div>
