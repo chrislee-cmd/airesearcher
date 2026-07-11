@@ -45,6 +45,21 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
   );
 }
 
+// locked(준비중) 위젯 행에 붙는 정적 배지. state badge 자리를 재사용 —
+// locked 위젯은 idle 이라 WidgetStateBadge 가 null 이므로 자리 충돌 없음.
+// 색은 design-system 토큰만 (중립 line-soft 테두리 + mute 텍스트) — 라이브
+// 위젯의 amore/mint 강조와 시각 구분.
+function WidgetLockedBadge() {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-xs border-[2px] border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs font-semibold text-mute-soft"
+      aria-label="준비중"
+    >
+      준비중
+    </span>
+  );
+}
+
 function badgeVisual(
   state: WidgetStateInfo,
 ): { label: string; background: string; color: string; border: string } | null {
@@ -82,11 +97,16 @@ export function SidebarNav({
   widgets,
   current,
   onSwitch,
+  lockedKeys,
 }: {
   widgets: WidgetContent[];
   current: string | null;
   onSwitch: (key: string) => void;
+  // 준비중(gated) 위젯 key 목록. 해당 행은 "준비중" 배지 + dim 톤.
+  // 비었으면(unlimited) 전부 라이브 → 회귀 0.
+  lockedKeys?: string[];
 }) {
+  const locked = lockedKeys && lockedKeys.length > 0 ? new Set(lockedKeys) : null;
   return (
     <nav
       aria-label="위젯 전체보기 네비게이션"
@@ -94,6 +114,7 @@ export function SidebarNav({
     >
       {widgets.map((w) => {
         const active = w.key === current;
+        const isLocked = locked?.has(w.key) ?? false;
         return (
           // eslint-disable-next-line react/forbid-elements -- 좌측 nav 항목은 Button primitive 의 어떤 variant 와도 맞지 않는 rich 레이아웃(accent 도트 + 라벨 + state badge + Memphis 활성 박스)이라 native <button> 사용. 전용 nav primitive 는 별 PR.
           <button
@@ -107,14 +128,20 @@ export function SidebarNav({
                 : 'border-transparent text-mute-soft hover:bg-paper hover:text-ink'
             }`}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span
+              className={`flex min-w-0 flex-1 items-center gap-2 ${
+                // locked 행은 dim — 라이브 위젯과 시각 구분. active 여도 dim
+                // 유지(준비중이라 강조 대상 아님). reduced-motion 무관(정적).
+                isLocked && !active ? 'opacity-60' : ''
+              }`}
+            >
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[w.meta.accent]}`}
                 aria-hidden
               />
               <span className="truncate">{w.meta.label}</span>
             </span>
-            <WidgetStateBadge widgetKey={w.key} />
+            {isLocked ? <WidgetLockedBadge /> : <WidgetStateBadge widgetKey={w.key} />}
           </button>
         );
       })}
