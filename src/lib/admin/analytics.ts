@@ -65,6 +65,62 @@ export type FunnelStage = {
   conversion: number | null;
 };
 
+/* ── Landing traffic (card #575) ──────────────────────────────────────────
+   Native landing-page traffic surfaced from `landing_visits` (#574). Three
+   sub-sections: visitor trend (new vs returning), source breakdown (bucketed
+   referrer/utm), and a visit→signup→active retention funnel.
+
+   ⚠️ The funnel is an *aggregate stage count*, NOT a per-visitor cohort:
+   anonymous session_ids (landing_visits) can't be joined to identified
+   auth.users (signup doesn't stamp the landing session), so the conversions
+   are cross-unit ratios (sessions → users). The UI must label this. */
+
+// One day in the visitor trend, split by whether each distinct session is
+// making its first-ever appearance (new) or has been seen on an earlier day.
+export type LandingTrendPoint = {
+  name: string;
+  newVisitors: number;
+  returning: number;
+};
+
+// Referrer/utm buckets. `campaign` wins whenever a utm_source is present
+// (paid/campaign attribution); otherwise we classify by referrer host.
+export type SourceBucketKey = 'direct' | 'organic' | 'referral' | 'campaign';
+
+export type SourceItem = { label: string; count: number };
+
+export type SourceBucket = {
+  bucket: SourceBucketKey;
+  total: number;
+  top: SourceItem[]; // top-N referrer hosts / utm sources within the bucket
+};
+
+export type RetentionStage = {
+  stage: 'visit' | 'signup' | 'active';
+  label: string;
+  count: number;
+  // Conversion from the previous stage (0..1). null on the first stage.
+  // Cross-unit (sessions → users) — an aggregate ratio, not a cohort rate.
+  conversion: number | null;
+};
+
+export type LandingTraffic = {
+  // Distinct landing sessions over the period. Anonymous → 전수 (the internal
+  // account exclusion never applies to the visit stage).
+  periodVisitors: number;
+  periodNewVisitors: number;
+  periodReturning: number;
+  trend: LandingTrendPoint[];
+  sources: {
+    totalVisits: number;
+    buckets: SourceBucket[];
+  };
+  retention: RetentionStage[];
+  // False when landing_visits isn't reachable on this env (migration not yet
+  // applied) — the UI shows a "capture 대기" hint instead of empty charts.
+  available: boolean;
+};
+
 export type AdminAnalyticsReport = {
   generatedAt: string;
   period: AnalyticsPeriod;
@@ -79,6 +135,7 @@ export type AdminAnalyticsReport = {
   featureUsage: FeatureUsageRow[];
   widgetHealth: WidgetHealthRow[];
   interviewFunnel: FunnelStage[];
+  landing: LandingTraffic;
 };
 
 const REASON_SEGMENTS: ReasonSegment[] = [
@@ -401,18 +458,243 @@ async function computeInterviewFunnel(
   ];
 }
 
+// Referrer hosts we treat as organic search. Matched as a substring so
+// locale/subdomain variants (google.co.kr, www.bing.com, m.search.naver.com)
+// all resolve to the same bucket.
+const SEARCH_ENGINE_HOSTS = [
+  'google.',
+  'bing.',
+  'naver.',
+  'daum.',
+  'yahoo.',
+  'duckduckgo.',
+  'baidu.',
+  'yandex.',
+  'ecosia.',
+  'kagi.',
+  'search.brave.',
+];
+
+function isSearchHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return SEARCH_ENGINE_HOSTS.some((s) => h.includes(s));
+}
+
+// Trim to a non-empty string or null — landing_visits stores '' and null both.
+function nonEmpty(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+}
+
+function sourceBucket(row: Record<string, unknown>): SourceBucketKey {
+  if (nonEmpty(row.utm_source)) return 'campaign';
+  const host = nonEmpty(row.referrer_host);
+  if (!host) return 'direct';
+  if (isSearchHost(host)) return 'organic';
+  return 'referral';
+}
+
+const SOURCE_BUCKET_ORDER: SourceBucketKey[] = [
+  'direct',
+  'organic',
+  'referral',
+  'campaign',
+];
+
+// Landing traffic (#575): visitor trend + source breakdown + retention funnel.
+// The whole section degrades to `available: false` (rather than 500-ing the
+// dashboard) when landing_visits is missing on this env.
+async function computeLandingTraffic(
+  db: Db,
+  q: AdminAnalyticsQuery,
+  internal: Set<string>,
+): Promise<LandingTraffic> {
+  const cutoff = periodCutoff(q.period);
+  const cutoffTs = cutoff?.getTime() ?? -Infinity;
+  const trendDays = q.period === '7d' ? 7 : 30;
+  const trendCutoffTs = Date.now() - trendDays * 24 * 60 * 60 * 1000;
+
+  const empty: LandingTraffic = {
+    periodVisitors: 0,
+    periodNewVisitors: 0,
+    periodReturning: 0,
+    trend: [],
+    sources: { totalVisits: 0, buckets: [] },
+    retention: [],
+    available: false,
+  };
+
+  let all: Record<string, unknown>[];
+  try {
+    // All-time visits (minimal cols) so new-vs-returning is judged against
+    // each session's *global* first appearance, not just the window.
+    all = await fetchRows(
+      db,
+      'landing_visits',
+      'session_id, created_at, referrer_host, utm_source',
+      null,
+    );
+  } catch {
+    return empty; // table not applied on this env → capture 대기
+  }
+
+  // Global first-seen timestamp per session_id.
+  const firstSeen = new Map<string, number>();
+  for (const r of all) {
+    const sid = nonEmpty(r.session_id);
+    if (!sid) continue;
+    const ts = new Date(r.created_at as string).getTime();
+    const prev = firstSeen.get(sid);
+    if (prev === undefined || ts < prev) firstSeen.set(sid, ts);
+  }
+
+  // Daily distinct-session buckets over the trend window, split new/returning.
+  const byDayNew = new Map<string, Set<string>>();
+  const byDayRet = new Map<string, Set<string>>();
+  const periodSessions = new Set<string>();
+  const periodNew = new Set<string>();
+
+  for (const r of all) {
+    const sid = nonEmpty(r.session_id);
+    if (!sid) continue;
+    const iso = r.created_at as string;
+    const ts = new Date(iso).getTime();
+    const first = firstSeen.get(sid)!;
+    if (ts >= cutoffTs) {
+      periodSessions.add(sid);
+      if (first >= cutoffTs) periodNew.add(sid);
+    }
+    if (ts < trendCutoffTs) continue;
+    const day = seoulDay(iso);
+    // First-ever visit day → 신규 for that day; any later day → 재방문.
+    const isNewToday = seoulDay(new Date(first).toISOString()) === day;
+    const target = isNewToday ? byDayNew : byDayRet;
+    if (!target.has(day)) target.set(day, new Set());
+    target.get(day)!.add(sid);
+  }
+
+  // Continuous series so zero-visit days still render.
+  const trend: LandingTrendPoint[] = [];
+  for (let i = trendDays - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const key = seoulDay(d.toISOString());
+    trend.push({
+      name: key.slice(5),
+      newVisitors: byDayNew.get(key)?.size ?? 0,
+      returning: byDayRet.get(key)?.size ?? 0,
+    });
+  }
+
+  // Source breakdown over the window (visit counts, 전수 anonymous).
+  const bucketAgg = new Map<SourceBucketKey, Map<string, number>>();
+  const bucketTotal = new Map<SourceBucketKey, number>();
+  let totalVisits = 0;
+  for (const r of all) {
+    const ts = new Date(r.created_at as string).getTime();
+    if (ts < cutoffTs) continue;
+    totalVisits += 1;
+    const bucket = sourceBucket(r);
+    bucketTotal.set(bucket, (bucketTotal.get(bucket) ?? 0) + 1);
+    const label =
+      bucket === 'direct'
+        ? '직접 유입'
+        : bucket === 'campaign'
+          ? (nonEmpty(r.utm_source) ?? '캠페인')
+          : (nonEmpty(r.referrer_host) ?? '기타');
+    if (!bucketAgg.has(bucket)) bucketAgg.set(bucket, new Map());
+    const m = bucketAgg.get(bucket)!;
+    m.set(label, (m.get(label) ?? 0) + 1);
+  }
+  const buckets: SourceBucket[] = SOURCE_BUCKET_ORDER.map((key) => {
+    const m = bucketAgg.get(key) ?? new Map<string, number>();
+    const top = [...m.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+    return { bucket: key, total: bucketTotal.get(key) ?? 0, top };
+  });
+
+  // Retention funnel: 방문(sessions, 전수) → 가입(profiles created in window) →
+  // 활성(users whose *first* credit_transaction lands in the window). Internal
+  // exclusion applies to signup/active only — never to the anonymous visit.
+  const visitCount = periodSessions.size;
+
+  let signupCount = 0;
+  try {
+    const profiles = await fetchRows(db, 'profiles', 'id, created_at', cutoff);
+    for (const p of profiles) {
+      if (!keep(p.id, internal, q.excludeInternal)) continue;
+      signupCount += 1;
+    }
+  } catch {
+    // profiles unreachable → leave 0 rather than failing the section.
+  }
+
+  let activeCount = 0;
+  try {
+    const tx = await fetchRows(
+      db,
+      'credit_transactions',
+      'user_id, created_at',
+      null,
+    );
+    const firstTx = new Map<string, number>();
+    for (const t of tx) {
+      const uid = nonEmpty(t.user_id);
+      if (!uid) continue;
+      const ts = new Date(t.created_at as string).getTime();
+      const prev = firstTx.get(uid);
+      if (prev === undefined || ts < prev) firstTx.set(uid, ts);
+    }
+    for (const [uid, ts] of firstTx) {
+      if (ts < cutoffTs) continue;
+      if (!keep(uid, internal, q.excludeInternal)) continue;
+      activeCount += 1;
+    }
+  } catch {
+    // credit_transactions unreachable → leave 0.
+  }
+
+  const conv = (n: number, d: number): number | null => (d > 0 ? n / d : null);
+  const retention: RetentionStage[] = [
+    { stage: 'visit', label: '방문', count: visitCount, conversion: null },
+    {
+      stage: 'signup',
+      label: '가입',
+      count: signupCount,
+      conversion: conv(signupCount, visitCount),
+    },
+    {
+      stage: 'active',
+      label: '활성',
+      count: activeCount,
+      conversion: conv(activeCount, signupCount),
+    },
+  ];
+
+  return {
+    periodVisitors: periodSessions.size,
+    periodNewVisitors: periodNew.size,
+    periodReturning: periodSessions.size - periodNew.size,
+    trend,
+    sources: { totalVisits, buckets },
+    retention,
+    available: true,
+  };
+}
+
 export async function getAdminAnalytics(
   query: AdminAnalyticsQuery,
 ): Promise<AdminAnalyticsReport> {
   const db = createAdminClient();
   const internal = await internalUserIds(db);
 
-  const [activity, featureUsage, widgetHealth, interviewFunnel] =
+  const [activity, featureUsage, widgetHealth, interviewFunnel, landing] =
     await Promise.all([
       computeActivity(db, query, internal),
       computeFeatureUsage(db, query, internal),
       computeWidgetHealth(db, query, internal),
       computeInterviewFunnel(db, query, internal),
+      computeLandingTraffic(db, query, internal),
     ]);
 
   return {
@@ -424,6 +706,7 @@ export async function getAdminAnalytics(
     featureUsage,
     widgetHealth,
     interviewFunnel,
+    landing,
   };
 }
 
