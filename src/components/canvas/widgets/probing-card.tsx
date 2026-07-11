@@ -196,6 +196,7 @@ function ExpandedBody() {
     error: sessionError,
     renewing: sessionRenewing,
     sessionId,
+    recording,
     start: startSession,
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
@@ -1192,6 +1193,46 @@ function ExpandedBody() {
     await stopSession();
   }, [stopSession]);
 
+  // ─── 세션 원본 녹음(#554) 다운로드 ───
+  // 종료 후 녹음이 업로드되면(recording.status==='ready') signed URL 로 다운로드.
+  // 녹음은 비블로킹 부가물 — 세션 종료/결과와 독립.
+  const handleDownloadRecording = useCallback(() => {
+    const url = recording.downloadUrl;
+    if (!url) return;
+    // signed URL 이 content-disposition=attachment 를 실어주므로 앵커 클릭으로
+    // 새 탭 없이 파일 저장. download 속성은 보조 힌트.
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener';
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    trackEvent('widget_action', {
+      widget: 'probing',
+      action: 'recording_download',
+    });
+  }, [recording.downloadUrl]);
+
+  // 녹음 상태 전이 toast — ready 안내 + error 경고(세션은 이미 정상 종료).
+  const prevRecordingStatusRef = useRef(recording.status);
+  useEffect(() => {
+    const prev = prevRecordingStatusRef.current;
+    prevRecordingStatusRef.current = recording.status;
+    if (prev === recording.status) return;
+    if (recording.status === 'error') {
+      toast.push(
+        '세션 녹음 업로드에 실패했어요. 인터뷰는 정상 종료됐습니다.',
+        { tone: 'warn', ttlMs: 6000 },
+      );
+    } else if (recording.status === 'ready') {
+      toast.push('세션 녹음이 준비됐어요 — 다운로드할 수 있습니다.', {
+        tone: 'info',
+        ttlMs: 4000,
+      });
+    }
+  }, [recording.status, toast]);
+
   // ─── 페르소나 PDF 내보내기 (전체보기 전용) ─────────────────────────
   // 전체보기(fullview) 헤더 버튼에서만 동작한다. 좌 페르소나 grid (기본 8 +
   // custom 섹션) 만 캡쳐해 PDF 로 저장 — 우패널(질문/사고 흐름) · 서브헤더 ·
@@ -1839,6 +1880,35 @@ function ExpandedBody() {
             AI 사고 흐름 실패: {thinkingError}
           </div>
         )}
+        {/* 세션 원본 녹음(#554) — 종료 후 다운로드 표면. 비라이브에서만, 녹음이
+            업로드 중/완료일 때 노출. 부가물이라 세션 시작 CTA 위에 quiet 하게. */}
+        {!isLive &&
+          (recording.status === 'ready' || recording.status === 'uploading') && (
+            <div className="px-4 pb-2">
+              {recording.status === 'ready' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                  onClick={handleDownloadRecording}
+                  title="세션 원본 오디오 다운로드"
+                >
+                  세션 녹음 다운로드
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                  loading
+                  loadingLabel="녹음 저장 중…"
+                  disabled
+                >
+                  녹음 저장 중…
+                </Button>
+              )}
+            </div>
+          )}
         {/* 주 CTA(세션 시작) — 바디 최하단 고정 액션 바 (6 위젯 통일). idle
             (비-라이브) 에서만 노출: 라이브 중 정지 CTA 는 컨트롤 패널에 그대로
             유지. */}
@@ -1864,6 +1934,29 @@ function ExpandedBody() {
           onClose={close}
           headerAction={
             <>
+              {/* 세션 원본 녹음(#554) 다운로드 — 녹음이 준비되면 노출. STT/PDF
+                  와 독립된 부가물. 업로드 중엔 비활성 로딩 상태. */}
+              {recording.status === 'ready' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleDownloadRecording}
+                  title="세션 원본 오디오 다운로드"
+                >
+                  세션 녹음 다운로드
+                </Button>
+              )}
+              {recording.status === 'uploading' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading
+                  loadingLabel="녹음 저장 중…"
+                  disabled
+                >
+                  녹음 저장 중…
+                </Button>
+              )}
               {/* 링크로 공유(#477) — 초대 게이트 링크. PDF 내보내기와 구분되는
                   quiet chrome. 컨텍스트가 저장돼야(probingSessionId) 활성화. */}
               <ShareInviteButton
