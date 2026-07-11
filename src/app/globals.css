@@ -996,3 +996,40 @@ html, body {
 [data-canvas-body] :is(h1, .text-3xl, .text-display) {
   font-size: 32px;
 }
+
+/* ============================================================================
+   feedback-nudge — 우상단 피드백(🎤) 버튼 아래로 ~0.8s 뒤 등장했다가 ~5s 후
+   사라지는 넛지 콜아웃. 신규 dep 없이 CSS keyframe 만으로 동적 효과를 낸다:
+   등장(fade + slide-down + 살짝 bounce) · 상시(caret bob 로 🎤 를 가리키며 시선
+   유도) · 퇴장(fade + slide-up). prefers-reduced-motion 시 모든 모션 off —
+   표시/사라짐만(등장은 즉시 최종 상태, caret 정지). qa-mic-recording-pulse 와
+   동일한 reduced-motion 존중 패턴. */
+@keyframes feedbackNudgeIn {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  65%  { opacity: 1; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes feedbackNudgeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes feedbackNudgeCaretBob {
+  0%, 100% { transform: translateY(0) rotate(45deg); }
+  50%      { transform: translateY(-2px) rotate(45deg); }
+}
+.feedback-nudge-in {
+  animation: feedbackNudgeIn var(--dur-slow) var(--ease-emphasized) both;
+}
+.feedback-nudge-out {
+  animation: feedbackNudgeOut var(--dur-fast) var(--ease-out) both;
+}
+.feedback-nudge-caret {
+  animation: feedbackNudgeCaretBob 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-nudge-in,
+  .feedback-nudge-out,
+  .feedback-nudge-caret {
+    animation: none;
+  }
+}
