@@ -23,11 +23,14 @@ function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
 }
 
+// 신 수량 팩 id → Credits 로케일 라벨 키. bundleMini/Plus/Pro/Max 문자열은
+// messages 갱신(A2)에서 추가된다 — 그 전까지는 raw 키로 렌더된다.
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
+  mini: 'bundleMini',
   starter: 'bundleStarter',
-  team: 'bundleTeam',
-  studio: 'bundleStudio',
-  enterprise: 'bundleEnterprise',
+  plus: 'bundlePlus',
+  pro: 'bundlePro',
+  max: 'bundleMax',
 };
 
 // PR-D17 pop 톤: Outfit display stack + Memphis CTA / 카드. /credits 라우트는
@@ -358,19 +361,6 @@ export function CreditsBundles({
                 {b.perCreditKrw !== null && (
                   <span>
                     {formatPrice(b.perCreditKrw)} {t('perCredit')}
-                  </span>
-                )}
-                {b.discountPct > 0 && (
-                  <span
-                    style={{
-                      background: 'var(--color-sun)',
-                      border: '2px solid var(--canvas-card-border)',
-                      boxShadow: '2px 2px 0 var(--canvas-card-border)',
-                      fontFamily: outfitStack,
-                    }}
-                    className="rounded-xs px-1.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] text-ink-2"
-                  >
-                    {t('discountOff', { percent: b.discountPct })}
                   </span>
                 )}
               </div>

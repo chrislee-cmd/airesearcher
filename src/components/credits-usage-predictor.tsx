@@ -16,11 +16,14 @@ import { Slider } from '@/components/ui/slider';
 // 로직 (budget / clamp / slider) 은 변경 없음.
 const outfitStack = 'var(--font-outfit), var(--font-sans)';
 
+// 신 수량 팩 id → Credits 로케일 라벨 키. bundleMini/Plus/Pro/Max 문자열은
+// messages 갱신(A2)에서 추가된다.
 const BUNDLE_LABEL_KEY: Record<CreditBundleId, string> = {
+  mini: 'bundleMini',
   starter: 'bundleStarter',
-  team: 'bundleTeam',
-  studio: 'bundleStudio',
-  enterprise: 'bundleEnterprise',
+  plus: 'bundlePlus',
+  pro: 'bundlePro',
+  max: 'bundleMax',
 };
 
 // Curated list shown in the simulator — the chargeable headline features only.
@@ -45,8 +48,9 @@ const PREDICTOR_FEATURES = PREDICTOR_FEATURE_KEYS.map((key) => ({
   cost: PREDICTOR_COST_OVERRIDES[key] ?? FEATURE_COSTS[key],
 })).sort((a, b) => b.cost - a.cost);
 
-// "Enterprise" is contact-sales (priceKrw=null) and bundle-size 5,000 dwarfs the
-// rest of the UI; restrict the predictor to bundles with a real price.
+// Simulator only handles bundles with a real price. 현 수량 팩 5종은 전부
+// 실가격이라 전부 포함되지만, contact-sales(priceKrw=null) 팩이 다시 생겨도
+// 안전하도록 필터는 유지한다.
 const PREDICTOR_BUNDLES = CREDIT_BUNDLES.filter((b) => b.priceKrw != null);
 
 function defaultBundleId(): CreditBundleId {

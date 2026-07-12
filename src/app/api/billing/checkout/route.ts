@@ -115,7 +115,7 @@ const TaxInvoiceSchema = z.object({
 });
 
 const Body = z.object({
-  bundleId: z.enum(['starter', 'team', 'studio']),
+  bundleId: z.enum(['mini', 'starter', 'plus', 'pro', 'max']),
   method: z.enum(['lemonsqueezy', 'bank_transfer']),
   // Locale propagated from the client (next-intl). Drives the Lemon
   // Squeezy checkout UI language. Default to 'en' for anything unknown.
