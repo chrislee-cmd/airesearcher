@@ -18,6 +18,7 @@ import { buildArtifactFilename } from '@/lib/filename';
 import { peekActiveProjectId } from './active-project-provider';
 import { useCreditDeduction } from './credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
+import { fetchWithRateLimitRetry } from '@/lib/upload-queue';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 export const MAX_FILES = 25;
@@ -917,7 +918,11 @@ export function InterviewJobProvider({ children }: { children: React.ReactNode }
     if (activeProjectId) fd.append('project_id', activeProjectId);
 
     try {
-      const res = await fetch('/api/interviews/convert', {
+      // runConvertAll already drives this sequentially (concurrency 1), so the
+      // burst risk is low — but a fast run can still hit the per-user LLM cap.
+      // Auto-retry on 429 (honouring Retry-After) so a rate limit backs off
+      // and recovers instead of dropping the file to 'error'.
+      const res = await fetchWithRateLimitRetry('/api/interviews/convert', {
         method: 'POST',
         body: fd,
       });
