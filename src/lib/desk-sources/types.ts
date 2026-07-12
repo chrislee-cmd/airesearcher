@@ -46,7 +46,10 @@ export type DeskSourceId =
   | 'world_bank'
   | 'oecd'
   // Korean research institutes (RSS aggregate)
-  | 'institutes_kr';
+  | 'institutes_kr'
+  // Web search (Tavily) — 공식 소스 미검출 시 웹 근거 보강용 보조 소스(D 하이브리드
+  // fallback 기반, #597). tier 는 classifyTier 가 도메인으로 자동 부여.
+  | 'web_search';
 
 export type DeskSourceGroup =
   | 'naver'

@@ -30,6 +30,7 @@ import { atfis } from './atfis';
 import { worldBank } from './worldbank';
 import { oecd } from './oecd';
 import { institutesRss } from './institutes-rss';
+import { webSearch } from './web-search';
 
 // Insertion order here defines UI ordering (via `DESK_SOURCES` below). Keep it
 // stable — the source picker and the report's per-channel sections read it.
@@ -59,6 +60,8 @@ export const DESK_SOURCE_REGISTRY: Record<DeskSourceId, DeskSourceDefinition> = 
   world_bank: worldBank,
   oecd: oecd,
   institutes_kr: institutesRss,
+  // 보조 소스 — 공식 소스 미검출 시 웹 근거 보강. UI 순서상 맨 끝.
+  web_search: webSearch,
 };
 
 export const DESK_SOURCES: DeskSourceDefinition[] = Object.values(DESK_SOURCE_REGISTRY);
