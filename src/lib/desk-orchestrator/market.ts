@@ -13,6 +13,7 @@ import {
   DESK_SOURCE_REGISTRY,
   KR_ONLY_GROUPS,
   getEnabledSources,
+  type DeskArticle,
   type DeskRegion,
   type DeskSourceId,
 } from '@/lib/desk-sources';
@@ -103,6 +104,34 @@ const ESTAT: DeskSourceId = 'estat';
 const EDINET: DeskSourceId = 'edinet';
 const WORLD_BANK: DeskSourceId = 'world_bank';
 const OECD: DeskSourceId = 'oecd';
+const WEB_SEARCH: DeskSourceId = 'web_search';
+
+// D 하이브리드 fallback 상한 — 웹서치 보강 crawl 은 축당 최대 이 개수만큼의 원
+// 쿼리를 던진다. 과발동·불필요 비용·crawl budget 잠식을 막는 절제 상한이다.
+const FALLBACK_QUERY_CAP = 4;
+
+// "사유 article"(실데이터 없음) 판별 마커. DART/KOSIS 등 구조화 소스는 "무음 0건
+// 금지" 정책상 0건일 때 조용히 비우지 않고 제목에 사유를 남긴 article 을 흘려
+// 보낸다(dart.ts "DART 공시 없음(비상장)"/"데이터 확보 실패"/"계정 미매핑" 등).
+// fallback 트리거는 이 마커로 "실데이터"와 "사유"를 가른다 — 축이 전부 사유
+// article 이면 그 축은 실데이터 0(=빈 축)이다.
+const REASON_ARTICLE_MARKERS = [
+  '확보 실패',
+  '공시 없음',
+  '계정 미매핑',
+  '데이터 없음',
+  '자료 없음',
+];
+
+// article 이 실데이터 근거인지(=사유 article 이 아닌지). kind==='metric'(DART 매출·
+// KOSIS 통계행)은 무조건 실데이터. 그 외엔 제목에 사유 마커가 없으면 실데이터로
+// 본다(공시 목록 링크·통계 카탈로그 링크 등). 판정을 보수적으로: 애매하면
+// "실데이터 있음"으로 봐 fallback 을 과발동하지 않는다.
+function isRealEvidence(a: DeskArticle): boolean {
+  if (a.kind === 'metric') return true;
+  const title = a.title ?? '';
+  return !REASON_ARTICLE_MARKERS.some((m) => title.includes(m));
+}
 
 export async function runMarket(
   input: OrchestratorInput,
@@ -443,6 +472,84 @@ export async function runMarket(
         }
       }
       return tasks;
+    },
+    // D 하이브리드 핵심 — 구조화 축(공시·통계)이 실데이터 0(전부 사유 article 또는
+    // error)일 때만, 그 축의 원 쿼리를 web_search 로 보강한다. 구조화 값이 있으면
+    // 빈 배열 → 미발동(과발동·비용·순수도). 웹서치 근거는 kind 미설정이라 수치
+    // pin/재무표에 안 들어가고 news bucket(보조 근거)로만 접혀 수치 ground-truth
+    // 격리가 유지된다. 발동 사유는 🔍 마커로 판단 로그에 투명 노출.
+    buildFallbackTasks: ({ collected }) => {
+      const tasks: CrawlTask[] = [];
+      const events: string[] = [];
+
+      // web_search 어댑터가 가용(TAVILY 키)할 때만 fallback 가능. 없으면 조용히
+      // 미발동 — 보강 없이 기존 "확보 실패" 정직 표기 경로 그대로.
+      if (!enabled.has(WEB_SEARCH)) return { tasks, events };
+
+      // 축이 attempt 됐는데(원 쿼리로 crawl 함) 실데이터 근거가 0인지.
+      const axisHasReal = (sources: DeskSourceId[]) =>
+        collected.some((a) => sources.includes(a.source) && isRealEvidence(a));
+      const axisEmpty = (sources: DeskSourceId[], attempted: boolean) =>
+        attempted && sources.length > 0 && !axisHasReal(sources);
+
+      const webQueries = new Set<string>();
+
+      // 1. 공시 축(DART·SEC·EDINET) — companies 로 조회했는데 실데이터 0.
+      //    → 회사명을 웹서치로 맥락 보강(비상장·자회사·니치 산업 케이스).
+      const disclosureSources = [DART, SEC_EDGAR, EDINET].filter((s) =>
+        effectiveSources.includes(s),
+      );
+      const disclosureAttempted =
+        companies.length > 0 && disclosureSources.length > 0;
+      if (axisEmpty(disclosureSources, disclosureAttempted)) {
+        const qs = companies.slice(0, FALLBACK_QUERY_CAP);
+        for (const q of qs) webQueries.add(q);
+        events.push(
+          `🔍 구조화 공시(DART·SEC·EDINET) 실데이터 0건 — 회사 축(${qs
+            .map((q) => `‘${q}’`)
+            .join(' · ')})을 웹 검색으로 맥락 보강합니다 (수치 아님, tier 명시 정성 근거).`,
+        );
+      }
+
+      // 2. 통계 축(KOSIS·aTFIS·e-Stat) — 통계 명사로 조회했는데 실데이터 0.
+      //    → 통계품목(없으면 원 키워드)을 웹서치로 맥락 보강. ECOS(고정 거시
+      //    앵커)는 시장 키워드와 무관해 이 축에서 제외한다.
+      const statSources = [KOSIS, ATFIS, ESTAT].filter((s) =>
+        effectiveSources.includes(s),
+      );
+      const statAttempted = kosisQueries.length > 0 && statSources.length > 0;
+      if (axisEmpty(statSources, statAttempted)) {
+        const base = statTerms.length ? statTerms : keywords;
+        const qs = base.slice(0, FALLBACK_QUERY_CAP);
+        for (const q of qs) webQueries.add(q);
+        events.push(
+          `🔍 구조화 통계(KOSIS·aTFIS·e-Stat) 실데이터 0건 — 통계 축(${qs
+            .map((q) => `‘${q}’`)
+            .join(' · ')})을 웹 검색으로 맥락 보강합니다 (시장규모 수치 출처로는 쓰지 않음).`,
+        );
+      }
+
+      // 3. 빈 벙 방어(최후) — 아직 보강 쿼리가 없고, 두 구조화 축 모두 실데이터가
+      //    전무하면(예: 회사 추출 실패 + 통계 소스 미가용) 원 키워드로 최소 맥락을
+      //    확보해 보고서가 "확보 실패"만 남는 빈 벙으로 끝나지 않게 한다.
+      if (
+        webQueries.size === 0 &&
+        !axisHasReal(disclosureSources) &&
+        !axisHasReal(statSources)
+      ) {
+        const qs = keywords.slice(0, FALLBACK_QUERY_CAP);
+        for (const q of qs) webQueries.add(q);
+        events.push(
+          `🔍 구조화 소스(공시·통계) 근거 미확보 — 원 키워드(${qs
+            .map((q) => `‘${q}’`)
+            .join(' · ')})를 웹 검색으로 맥락 보강해 보고서가 빈 벙으로 끝나지 않게 합니다 (수치는 여전히 구조화 전용).`,
+        );
+      }
+
+      for (const q of Array.from(webQueries).slice(0, FALLBACK_QUERY_CAP)) {
+        tasks.push({ source: WEB_SEARCH, keyword: q, region: primaryRegion });
+      }
+      return { tasks, events };
     },
     reportSystem: buildMarketReportSystem(countryScope),
     buildReportUserMsg: (ctx: ReportContext) =>
