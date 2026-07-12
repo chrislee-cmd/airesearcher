@@ -50,7 +50,7 @@ const OUTPUT_LANG_OPTIONS: { value: ProbingOutputLang; label: string }[] = [
   { value: 'th', label: 'ไทย' },
 ];
 
-// 조사 목적 + 소스/언어 필드 묶음 — idle 보드와 active slim bar 가 공유.
+// 조사 목적 + 프로젝트/소스/언어 필드 묶음 — idle 보드와 active slim bar 가 공유.
 function ControlFields({
   researchGoal,
   onResearchGoalChange,
@@ -60,6 +60,8 @@ function ControlFields({
   outputLang,
   onOutputLangChange,
   controlsDisabled,
+  projectId,
+  onProjectChange,
 }: {
   researchGoal: string;
   onResearchGoalChange: (next: string) => void;
@@ -70,6 +72,10 @@ function ControlFields({
   outputLang: ProbingOutputLang | '';
   onOutputLangChange: (next: ProbingOutputLang) => void;
   controlsDisabled: boolean;
+  // 프로젝트 설정 (#542) — 언어/입력소스와 같은 flex 행 첫 필드로 합류(#593,
+  // 동시통역 #587 통일). value/onChange 는 부모(probing-card) 소유.
+  projectId: string | null;
+  onProjectChange: (projectId: string | null) => void;
 }) {
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와
   // 동일 패턴). 타이핑은 goalDraft 만 갱신하고 (키 입력마다 자동저장하지 않음),
@@ -103,10 +109,24 @@ function ControlFields({
           CLASS = 전사록/인터뷰 ControlTrigger 와 동일 chrome)로 프로빙 안에서만
           키운다 (타 위젯 영향 0 = "프로빙 단독" 제약). 데스크 지역/기간
           드롭다운과 동일 h-10 규격. */}
-      {/* 순서: 언어 먼저 → 입력 소스 (동시통역 #537 과 통일 — 사용자 결정
-          2026-07-10). 둘 다 기본 미선택('') + placeholder "선택" — 하나라도
-          미선택이면 세션 시작 CTA 가 비활성(게이트는 부모 probing-card 소유). */}
+      {/* 순서: 프로젝트 → 언어 → 입력 소스 한 행 (동시통역 #587 과 통일 —
+          사용자 결정 2026-07-12, #593). 옛 별도 프로젝트 행을 이 flex 행 첫
+          필드로 합류. flex flex-wrap gap-4 유지 → 데스크 3열 한 줄, 좁은 폭
+          자연 wrap. 언어/입력소스는 기본 미선택('') + placeholder "선택" —
+          하나라도 미선택이면 세션 시작 CTA 가 비활성(게이트는 부모 probing-card
+          소유). 프로젝트는 미선택=로컬 fallback 이라 게이트 대상 아님. */}
       <div className="flex flex-wrap gap-4">
+        {/* 프로젝트 설정 (#542) — 페르소나 섹션 구성을 프로젝트별로 분리.
+            위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
+            에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write.
+            세션 중 disabled 게이트 없음 — 기존 동작 그대로(레이아웃만 변경). */}
+        <Field label="프로젝트">
+          <ProjectPicker
+            widget="probing"
+            value={projectId}
+            onChange={onProjectChange}
+          />
+        </Field>
         <Field label="언어">
           <div className="min-w-24">
             <SelectMenu
@@ -232,16 +252,8 @@ export function ProbingControlPanel({
   // 리듬(gap-5)만 소유. idle·active 모두 <ControlBoardPanel> 경유.
   return (
     <div className="flex flex-col gap-5">
-      {/* 프로젝트 설정 드롭다운 (#542) — 페르소나 섹션 구성을 프로젝트별로
-          분리. 위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
-          에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write. */}
-      <Field label="프로젝트">
-        <ProjectPicker
-          widget="probing"
-          value={projectId}
-          onChange={onProjectChange}
-        />
-      </Field>
+      {/* 프로젝트/언어/입력소스는 ControlFields 안의 한 flex 행으로 통합
+          (#593, 동시통역 #587 통일). 옛 별도 프로젝트 행은 제거. */}
       <ControlFields
         researchGoal={researchGoal}
         onResearchGoalChange={onResearchGoalChange}
@@ -251,6 +263,8 @@ export function ProbingControlPanel({
         outputLang={outputLang}
         onOutputLangChange={onOutputLangChange}
         controlsDisabled={controlsDisabled}
+        projectId={projectId}
+        onProjectChange={onProjectChange}
       />
       {controlsDisabled && (
         <p className="text-xs text-mute-soft">
