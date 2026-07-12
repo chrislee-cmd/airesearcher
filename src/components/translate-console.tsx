@@ -4777,7 +4777,7 @@ function GlossaryField({
         aria-label={ariaLabel}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        rows={4}
+        rows={3}
         disabled={disabled}
         placeholder={placeholder}
         className="resize-none text-md"
