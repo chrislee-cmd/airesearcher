@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { streamObject } from 'ai';
+import { generateObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
@@ -45,8 +45,13 @@ const Body = z.object({
   // 새 섹션을 만들 자연어 지시(예: "이 사람의 취미 섹션 추가").
   prompt: z.string().trim().min(1).max(2_000),
   top_k: z.number().int().min(1).max(50).optional().default(16),
-  // ask 와 동일한 floor(교차언어 유사도가 구조적으로 낮아 0.2 가 바닥).
-  score_threshold: z.number().min(0).max(1).optional().default(0.2),
+  // drag-to-ask(0.2 floor)와 달리 섹션 생성은 코퍼스 전체를 근거로 삼으므로
+  // **절대 유사도 floor 를 두지 않고 top-k 최근접을 항상 가져온다**(0). ask 는
+  // 보고서에서 드래그한 코퍼스-파생 텍스트로 시드해 유사도가 높지만, 섹션은
+  // 자연어 지시("취미 섹션 추가")로 시드해 유사도가 구조적으로 낮다 — 0.2 floor
+  // 면 관련 청크까지 잘려 "근거 없음" 으로 오탈락한다. 무관 청크가 섞여도 모델의
+  // 환각 금지 + no_answer 가드가 처리한다(청크 있으면 no_answer 오발 방지).
+  score_threshold: z.number().min(0).max(1).optional().default(0),
 });
 
 export async function POST(req: Request) {
@@ -135,8 +140,11 @@ export async function POST(req: Request) {
 
   let answerMd = '';
   let citationIds: string[] = [];
+  let noAnswer = false;
   try {
-    const result = streamObject({
+    // 비스트리밍 — 섹션은 keep/discard 없이 "제출 → 로딩 → 삽입" 이라 완성 객체
+    // 하나만 필요하다(generateObject 가 스키마 검증된 최종 객체를 반환).
+    const { object: obj } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: askAnswerSchema,
       system: systemPrompt,
@@ -146,23 +154,32 @@ export async function POST(req: Request) {
       maxRetries: 1,
       providerOptions: ZERO_RETENTION,
     });
-    const obj = await result.object;
     answerMd = obj?.answer_md ?? '';
+    noAnswer = obj?.no_answer === true;
     // 검색된 청크 집합에 대해 1차 필터(최종 재검증은 keep 시 PATCH 가 수행).
     const hitIds = new Set(hits.map((h) => String(h.chunk_id)));
     citationIds = Array.from(
       new Set((obj?.citations ?? []).map((c) => String(c.chunk_id))),
     ).filter((id) => hitIds.has(id));
-    if (obj?.no_answer) {
-      return NextResponse.json({
-        answer_md: answerMd || SECTION_NO_CONTENT_MD,
-        citation_ids: [],
-        no_answer: true,
-      });
-    }
   } catch (e) {
     console.error('[v2/topline/section] generation failed', e);
     return NextResponse.json({ error: 'section_failed' }, { status: 500 });
+  }
+
+  console.log('[v2/topline/section] generated', {
+    project_id: project_id.slice(0, 8),
+    chunks_count: hits.length,
+    no_answer: noAnswer,
+    md_len: answerMd.length,
+    citations: citationIds.length,
+  });
+
+  if (noAnswer) {
+    return NextResponse.json({
+      answer_md: answerMd || SECTION_NO_CONTENT_MD,
+      citation_ids: [],
+      no_answer: true,
+    });
   }
 
   if (!answerMd.trim()) {
