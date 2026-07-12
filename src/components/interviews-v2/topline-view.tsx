@@ -45,6 +45,7 @@ import {
   type PendingQa,
 } from '@/hooks/use-topline-drag-to-ask';
 import { useToplineEdit } from '@/hooks/use-topline-edit';
+import { useToplineImport } from '@/hooks/use-topline-import';
 import {
   useToplineSectionInsert,
   type PendingSection,
@@ -442,10 +443,13 @@ export function ToplineView({ projectId }: { projectId: string }) {
     generatingStale,
     savedLang,
     savedDirection,
+    source,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
   const hasBlocks = blocks.length > 0;
+  // 편집전용 모드 — 업로드된 외부 보고서인지. 재생성 덮어쓰기 경고 판단에 쓴다.
+  const isUploaded = source === 'uploaded';
   // 재생성 버튼 활성 = 인덱싱 완료 & POST in-flight 아님 & (생성 중 아님 OR
   // 생성이 멈춰 stuck). stuck('generating' 인데 updated_at 오래됨 = 함수 사망)이면
   // 재생성/추가질문 잠금을 푼다(결정 A). 정상 진행 중(non-stale generating)은
@@ -473,11 +477,18 @@ export function ToplineView({ projectId }: { projectId: string }) {
     if (savedLang) setOutputLang(savedLang);
   }, [savedLang]);
 
-  // drag-to-ask — 보고서가 done 으로 렌더 중일 때만 선택 활성.
-  const askEnabled =
-    hasBlocks && !loading && !fetchError && indexed && status !== 'generating';
+  // 편집(인라인 텍스트 수정)은 코퍼스가 필요 없다 — 이미 렌더된 블록의 md 만
+  // 바꾼다. 그래서 indexed 와 무관하게 보고서가 렌더 중이면 활성한다. 편집전용
+  // (외부 보고서 업로드) 프로젝트는 인터뷰 문서가 아예 없을 수 있는데(indexed=
+  // false), 그래도 업로드한 보고서를 편집할 수 있어야 한다(사용자 핵심 요구).
+  const editEnabled =
+    hasBlocks && !loading && !fetchError && status !== 'generating';
+  // drag-to-ask / 섹션 삽입은 인터뷰 근거(코퍼스)로 답을 생성하므로 indexed 필수.
+  // 코퍼스가 없으면(편집전용 doc-less) 이 두 기능은 숨기고 인라인 편집만 남긴다.
+  const askEnabled = editEnabled && indexed;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { selection, clear } = useToplineSelection(scrollRef, askEnabled);
+  // 선택(→ 팝업)은 편집만으로도 의미가 있으므로 editEnabled 로 활성.
+  const { selection, clear } = useToplineSelection(scrollRef, editEnabled);
   const dta = useToplineDragToAsk({ projectId, onMerged: refetch });
 
   // 인라인 편집 — 현재 편집 중인 블록 id + 저장 오케스트레이션(낙관 + 롤백).
@@ -499,6 +510,32 @@ export function ToplineView({ projectId }: { projectId: string }) {
   // 현재 명령 패널이 열린 gap 키('top' = 최상단 gap, 그 외 = anchor 블록 id).
   // null = 열린 패널 없음.
   const [openGapKey, setOpenGapKey] = useState<string | null>(null);
+
+  // 편집전용 모드 — 외부 보고서(Markdown) 업로드 → md→blocks 파싱·저장 후 편집
+  // 모드로 진입. 진입 2버튼("자체 보고서 업로드")과 숨은 file input 이 짝을 이룬다.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importReport = useToplineImport({
+    projectId,
+    onImported: async () => {
+      // 저장된 보고서를 다시 읽어 편집 모드로 열고 성공을 알린다.
+      await refetch();
+      toast.push(t('toplineImported'), { tone: 'amore' });
+    },
+    onError: (code) =>
+      toast.push(
+        code === 'empty_report'
+          ? t('toplineImportEmpty')
+          : `${t('toplineImportError')} (${code})`,
+        { tone: 'warn' },
+      ),
+  });
+  const openReportPicker = () => fileInputRef.current?.click();
+  const handleReportFile = (file: File | undefined) => {
+    if (!file) return;
+    void (async () => {
+      await importReport.importFile(file);
+    })();
+  };
 
   // 팝업 "편집" 액션 가용성 — 선택 블록이 텍스트 블록일 때만(table/chart/pie 제외).
   const selectionBlock = selection
@@ -639,6 +676,21 @@ export function ToplineView({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* 편집전용 모드 진입용 숨은 file input — 진입 2버튼의 "자체 보고서 업로드"
+          가 ref 로 연다. 시각 컨트롤은 <Button> 이라 이 native input 은 화면에
+          없다(디자인 시스템 위반 아님 — 파일 선택 primitive 부재로 hidden input
+          은 표준 패턴, credits-usage-predictor 의 range input 처럼 disable 명시). */}
+      {/* eslint-disable-next-line react/forbid-elements -- 숨은 파일 선택 input; 가시 컨트롤은 <Button>, 파일 피커 primitive 미존재 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          handleReportFile(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
       {/* 탭 헤더 우측 = 재생성 버튼 (명시적 — Opus 비용). blocks 가 이미 있을
           때만 노출(최초 생성은 본문 CTA 가 담당). */}
       {hasBlocks && (
@@ -709,8 +761,6 @@ export function ToplineView({ projectId }: { projectId: string }) {
             title={t('toplineLoadError')}
             description={fetchError}
           />
-        ) : !indexed ? (
-          <EmptyState tone="subtle" title={t('toplineNotIndexed')} />
         ) : status === 'generating' && !hasBlocks && !generatingStale ? (
           // 살아 있는 첫 생성만 무한 스켈레톤. stuck(함수 사망)이면 아래 CTA 로
           // 떨어져 재생성 버튼을 노출한다(데드엔드 해제 — 결정 A/C).
@@ -809,10 +859,12 @@ export function ToplineView({ projectId }: { projectId: string }) {
             </article>
           </>
         ) : (
-          // none / error / idle / stuck generating & 블록 없음 → 생성/복구 CTA.
-          // stuck(첫 생성이 멈춰 블록 0)이면 "멈춤" 안내 + 재생성으로 데드엔드 해제.
+          // 빈 상태 진입 2버튼 — ① 탑라인 생성(기존 파이프라인) / ② 자체 보고서
+          // 업로드(편집전용). 사용자가 최초 1회 명시 선택한다(자동 생성 없음 —
+          // 기존과 동일). none/error/idle/stuck generating & 블록 없음 + 미인덱싱
+          // (업로드는 인덱싱 없이도 가능)을 모두 이 화면이 커버한다.
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="max-w-[420px]">
+            <div className="max-w-[460px]">
               <h3 className="text-lg font-semibold text-ink-2">
                 {generatingStale
                   ? t('toplineStuckTitle')
@@ -825,10 +877,12 @@ export function ToplineView({ projectId }: { projectId: string }) {
                   ? t('toplineStuckHint')
                   : status === 'error'
                     ? t('toplineErrorHint')
-                    : t('toplineIntroHint')}
+                    : !indexed
+                      ? t('toplineNotIndexed')
+                      : t('toplineIntroHint')}
               </p>
-              {/* 분석 언어 선택 — 입력 파일 언어와 독립(전사록 언어 트리거 미러
-                  primitive = SelectMenu/ControlTrigger). 생성 CTA 바로 위에 둔다. */}
+              {/* 분석 언어 선택 — 입력 파일 언어와 독립. 생성(①) 전용이라 업로드
+                  버튼과 무관. 미인덱싱 시엔 생성이 불가라 disabled. */}
               <div className="mx-auto mt-5 flex max-w-[240px] flex-col items-start gap-1.5 text-left">
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
                   {t('toplineLangLabel')}
@@ -844,26 +898,45 @@ export function ToplineView({ projectId }: { projectId: string }) {
                   aria-label={t('toplineLangLabel')}
                 />
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                className="mt-5"
-                onClick={() => void generate(false, outputLang)}
-                disabled={!canGenerate}
-              >
-                {t('toplineGenerateCta')}
-              </Button>
+              {/* 두 버튼 나란히 — ① 생성(primary) / ② 업로드(secondary). */}
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void generate(false, outputLang)}
+                  disabled={!canGenerate}
+                >
+                  {t('toplineGenerateCta')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={openReportPicker}
+                  disabled={importReport.importing}
+                >
+                  {importReport.importing
+                    ? `⏳ ${t('toplineImporting')}`
+                    : `⬆ ${t('toplineUploadCta')}`}
+                </Button>
+              </div>
+              {/* 편집전용 모드 안내 — 업로드는 생성을 건너뛰고 편집만 함을 명시. */}
+              <p className="mx-auto mt-3 max-w-[380px] text-xs-soft text-mute-soft">
+                {t('toplineUploadModeHint')}
+              </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* 선택 → 질문 입력 팝업. key 로 새 선택마다 입력 초기화. */}
-      {askEnabled && selection && (
+      {/* 선택 → 질문/편집 팝업. key 로 새 선택마다 입력 초기화. 코퍼스가 없는
+          편집전용(doc-less) 에선 추가질문(askEnabled=false)을 숨기고 편집만 남긴다
+          — 편집도 불가한 블록(table/chart)이면 팝업 자체를 띄우지 않는다. */}
+      {editEnabled && selection && (askEnabled || selectionEditable) && (
         <ToplineAskPopup
           key={`${selection.anchorBlockId}:${selection.text}`}
           selection={selection}
           busy={false}
+          askEnabled={askEnabled}
           editable={selectionEditable}
           onEdit={() => {
             setEditingBlockId(selection.anchorBlockId);
@@ -910,6 +983,13 @@ export function ToplineView({ projectId }: { projectId: string }) {
             placeholder={t('toplineRegenDirectionPlaceholder')}
             aria-label={t('toplineRegenDirectionLabel')}
           />
+          {/* 편집전용(업로드) 보고서 덮어쓰기 경고 — 재생성은 인터뷰 데이터로
+              새 보고서를 만들어 업로드 원본을 대체한다(사용자 결정 §B/D). */}
+          {isUploaded && (
+            <p className="rounded-sm border border-warning bg-warning-bg px-3 py-2 text-sm text-warning">
+              {t('toplineRegenUploadedNote')}
+            </p>
+          )}
           {hasInsertedBlocks && (
             <p className="text-sm text-mute">{t('toplineRegenPreserveNote')}</p>
           )}
