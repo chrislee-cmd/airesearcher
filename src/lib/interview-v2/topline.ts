@@ -100,6 +100,17 @@ export type ToplineBlock =
       // 결정 §D). 없어도 렌더는 동작(구버전 블록 호환).
       selected_excerpt?: string;
       citations: string[];
+    }
+  | {
+      id: string;
+      type: 'inserted_section';
+      md: string;
+      // 사용자가 준 자연어 지시(예: "취미 섹션 추가") — 섹션 라벨/디버깅 문맥.
+      prompt?: string;
+      // 삽입 지점 바로 위 블록 id(최상단 삽입이면 null). 재생성 시 best-effort
+      // 재배치용 문맥(현 구현은 보고서 끝에 append — extractInsertedBlocks 주석).
+      anchor_block_id?: string | null;
+      citations: string[];
     };
 
 export type ToplineChunk = {
@@ -339,17 +350,65 @@ export function insertQaAfterAnchor(
     citations: string[];
   },
 ): ToplineBlock[] | null {
-  const idx = blocks.findIndex((b) => b.id === anchorId);
-  if (idx === -1) return null;
-  const inserted: ToplineBlock = {
+  return insertBlockAfterAnchor(blocks, anchorId, {
     id: qa.id,
     type: 'inserted_qa',
     md: qa.md,
     question: qa.question,
     selected_excerpt: qa.selected_excerpt,
     citations: qa.citations,
-  };
-  return [...blocks.slice(0, idx + 1), inserted, ...blocks.slice(idx + 1)];
+  });
+}
+
+/**
+ * anchor 블록 바로 뒤에 임의 블록을 끼운 새 blocks 배열을 만든다 —
+ * insertQaAfterAnchor(inserted_qa)와 insert_section(inserted_section)이 공유하는
+ * 삽입 primitive. anchorId 가 null 이면 맨 앞에 unshift(섹션 사이 삽입 UX 의
+ * "최상단 gap"). anchorId 가 주어졌는데 그 블록이 없으면 null (호출측이 409 로
+ * 응답 — 그 사이 재생성 등으로 anchor 소실). 순수 함수 — 검증/영속은 route 책임.
+ */
+export function insertBlockAfterAnchor(
+  blocks: ToplineBlock[],
+  anchorId: string | null,
+  block: ToplineBlock,
+): ToplineBlock[] | null {
+  if (anchorId === null) return [block, ...blocks];
+  const idx = blocks.findIndex((b) => b.id === anchorId);
+  if (idx === -1) return null;
+  return [...blocks.slice(0, idx + 1), block, ...blocks.slice(idx + 1)];
+}
+
+// 사용자가 삽입한 블록 계열(드래그→Q&A · 섹션 사이 삽입). 생성 블록(blk_NN)과
+// 달리 사용자 자산이라 재생성(force)에도 보존한다.
+const INSERTED_BLOCK_TYPES: ReadonlySet<string> = new Set([
+  'inserted_qa',
+  'inserted_section',
+]);
+
+/**
+ * blocks 배열에서 사용자 삽입 블록(inserted_qa / inserted_section)만 순서대로
+ * 추린다. 재생성 시 이들을 보존하려고 새 보고서에 다시 합치는 데 쓴다
+ * (mergeInsertedBlocks).
+ */
+export function extractInsertedBlocks(blocks: ToplineBlock[]): ToplineBlock[] {
+  return blocks.filter((b) => INSERTED_BLOCK_TYPES.has(b.type));
+}
+
+/**
+ * 새로 생성된 보고서 블록 뒤에 보존 대상 삽입 블록을 붙여 재생성 후에도 사용자
+ * 삽입분이 살아남게 한다. 재생성된 보고서는 blk_NN id 를 새로 발급하므로 원래
+ * anchor(옛 blk_NN)로의 정확한 재배치는 의미가 없다 — 삽입 블록들의 상호 순서만
+ * 지켜 보고서 말미에 append 한다(보수적·예측가능). id 중복은 방어적으로 제거한다.
+ */
+export function mergeInsertedBlocks(
+  generated: ToplineBlock[],
+  inserted: ToplineBlock[],
+): ToplineBlock[] {
+  if (inserted.length === 0) return generated;
+  const genIds = new Set(generated.map((b) => b.id));
+  const carry = inserted.filter((b) => !genIds.has(b.id));
+  if (carry.length === 0) return generated;
+  return [...generated, ...carry];
 }
 
 /**
@@ -723,6 +782,17 @@ export async function runTopline(
     }
     const resumeCount = row.resume_count ?? 0;
 
+    // 재생성 보존 — 현재 row 의 사용자 삽입 블록(inserted_qa/inserted_section)을
+    // 스냅샷해, 새 보고서로 blocks 를 덮어쓸 때(부분 flush + 최종 write) 다시
+    // 합친다. upsertGenerating 은 이전 blocks 를 지우지 않고, map 단계는 blocks
+    // 를 안 건드리므로 이 시점의 row.blocks = 직전 완료 보고서(삽입 포함)다.
+    // reduce 의 매 flush 가 삽입 블록을 계속 포함시켜, 스트리밍 중에도 보이고
+    // 재개 홉이 row 를 다시 읽어도 삽입분이 살아 있는다(누락 방지). 근거: 사용자
+    // 핵심 요구 = 삽입 섹션이 재생성 후에도 유지.
+    const preservedInserted = extractInsertedBlocks(
+      (row.blocks ?? []) as ToplineBlock[],
+    );
+
     // 홉 상한 초과 — 병리적 재개 루프(정상 프로젝트는 절대 도달 안 함). 무한
     // kick 을 끊고 error 로 명시 종료(사용자는 재생성으로 캐시 위에서 복구 가능).
     if (resumeCount > MAX_RESUME_HOPS) {
@@ -919,7 +989,11 @@ export async function runTopline(
       }
       lastWriteAt = now;
       lastWrittenCount = complete.length;
-      const partial = verifyBlockCitations(complete, validIds);
+      // 새 생성 블록 + 보존 삽입 블록(끝에 append) — 스트리밍 내내 삽입분 유지.
+      const partial = mergeInsertedBlocks(
+        verifyBlockCitations(complete, validIds),
+        preservedInserted,
+      );
       const { error } = await admin
         .from('interview_toplines')
         .update({ blocks: partial as unknown as object })
@@ -973,11 +1047,13 @@ export async function runTopline(
       finishReason,
     });
 
+    // 최종 blocks = 새 생성분 + 보존 삽입분(재생성해도 사용자 삽입 유지).
+    const finalBlocks = mergeInsertedBlocks(blocks, preservedInserted);
     await admin
       .from('interview_toplines')
       .update({
         status: 'done',
-        blocks: blocks as unknown as object,
+        blocks: finalBlocks as unknown as object,
         error_message: null,
         generated_at: new Date().toISOString(),
       })

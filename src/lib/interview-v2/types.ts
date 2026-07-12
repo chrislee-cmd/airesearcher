@@ -106,7 +106,10 @@ export type ToplineBlockType =
   | 'table'
   | 'chart'
   | 'pie'
-  | 'inserted_qa';
+  | 'inserted_qa'
+  // 섹션 사이 hover→+ 로 자연어 프롬프트를 주고 생성한 삽입 섹션. inserted_qa 와
+  // 같은 "사용자 삽입" 계열이라 재생성에도 보존된다(topline.ts extractInsertedBlocks).
+  | 'inserted_section';
 
 /**
  * 인라인 텍스트 편집이 가능한 블록 타입 — 순수 텍스트(md)를 담는 것만. table/
@@ -115,7 +118,16 @@ export type ToplineBlockType =
  * 공유해 목록이 어긋나지 않게 한다.
  */
 export const EDITABLE_TOPLINE_BLOCK_TYPES: ReadonlySet<ToplineBlockType> =
-  new Set(['heading', 'subheading', 'paragraph', 'insight', 'quote', 'inserted_qa']);
+  new Set([
+    'heading',
+    'subheading',
+    'paragraph',
+    'insight',
+    'quote',
+    'inserted_qa',
+    // 삽입 섹션도 순수 md 프로즈라 인라인 편집(edit_block) 대상.
+    'inserted_section',
+  ]);
 
 /** 이 블록이 인라인 텍스트 편집 대상인지(md 를 교체할 수 있는지). */
 export function isEditableToplineBlockType(type: ToplineBlockType): boolean {
@@ -135,6 +147,9 @@ export type ToplineBlock = {
   // inserted_qa(drag-to-ask 병합) 에서만 — 사용자가 드래그로 선택한 원문
   // 발췌. Q 라벨에 문맥으로 표시된다.
   selected_excerpt?: string;
+  // inserted_section 에서만 — 사용자가 준 자연어 지시(예: "취미 섹션 추가").
+  // 섹션 라벨/디버깅 문맥용. 렌더는 md 프로즈가 담당.
+  prompt?: string;
   table?: { headers: string[]; rows: string[][] };
   // executive_summary 블록 전용 — 리치 요약 문단 + 핵심 포인트 3~5. 카드
   // abstract 와 fullview 리드가 공용 소비(pr-interview-topline-executive-summary-field).

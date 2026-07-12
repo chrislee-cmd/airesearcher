@@ -1,6 +1,13 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
@@ -38,6 +45,10 @@ import {
   type PendingQa,
 } from '@/hooks/use-topline-drag-to-ask';
 import { useToplineEdit } from '@/hooks/use-topline-edit';
+import {
+  useToplineSectionInsert,
+  type PendingSection,
+} from '@/hooks/use-topline-section-insert';
 import { useToplineSelection, ToplineAskPopup } from './topline-selection';
 
 // 인터뷰 탑라인 보고서 — 우측 패널 탭1. interview_toplines.blocks 를 보고서
@@ -182,6 +193,115 @@ function BlockEditor({
           {t('toplineEditSave')}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// 섹션 사이 삽입 — 블록 gap 의 hover 존. 평소엔 얇은 여백이다가 hover(또는
+// 패널 열림) 시 중앙에 "＋ 섹션 추가" 가 fade-in 한다. 클릭하면 인라인 명령
+// 입력 패널로 바뀌어 자연어 지시를 받아 그 자리에 새 섹션을 생성·삽입한다.
+// anchor = gap 바로 위 블록 id(최상단 gap 이면 null). 트리거 UX 는 fungible
+// (spec §C) 이나 요청과 정합해 1안으로 채택.
+function SectionGap({
+  open,
+  busy,
+  onOpen,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  busy: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onSubmit: (prompt: string) => void;
+}) {
+  const t = useTranslations('InterviewsV2');
+  const [draft, setDraft] = useState('');
+
+  const submit = () => {
+    const p = draft.trim();
+    if (!p || busy) return;
+    onSubmit(p);
+    setDraft('');
+  };
+
+  if (open) {
+    return (
+      <div className="my-2 rounded-sm border border-ink bg-paper p-3">
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === 'Enter' &&
+              !e.shiftKey &&
+              !(
+                e.nativeEvent as KeyboardEvent['nativeEvent'] & {
+                  isComposing?: boolean;
+                }
+              ).isComposing
+            ) {
+              e.preventDefault();
+              submit();
+            }
+            if (e.key === 'Escape') onClose();
+          }}
+          rows={2}
+          autoFocus
+          disabled={busy}
+          placeholder={t('toplineSectionPlaceholder')}
+          aria-label={t('toplineSectionAdd')}
+        />
+        <div className="mt-2 flex items-center justify-end gap-2 border-t border-line-soft pt-2">
+          <Button variant="ghost" size="xs" onClick={onClose} disabled={busy}>
+            {t('toplineSectionCancel')}
+          </Button>
+          <Button
+            variant="primary"
+            size="xs"
+            onClick={submit}
+            disabled={busy || draft.trim().length === 0}
+          >
+            {t('toplineSectionSubmit')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group relative flex h-6 items-center justify-center">
+      {/* hover 시 드러나는 중앙 구분선 — gap 임을 시각화(평소 숨김). */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-line-soft opacity-0 transition-opacity group-hover:opacity-100"
+      />
+      <div className="relative bg-paper px-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <Button variant="ghost" size="xs" onClick={onOpen}>
+          ＋ {t('toplineSectionAdd')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// 섹션 생성 중 로딩 카드 — 명령 제출 후 생성+영속이 끝날 때까지 그 gap 에
+// 렌더된다(낙관적 자리표시). 성공 시 refetch 가 실제 inserted_section 으로
+// 대체하고, 실패 시 제거된다(hook 이 롤백 + toast).
+function PendingSectionCard({ section }: { section: PendingSection }) {
+  const t = useTranslations('InterviewsV2');
+  return (
+    <div
+      aria-busy
+      className="my-3 rounded-sm border border-dashed border-line bg-paper-soft px-4 py-3"
+    >
+      <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+        {t('toplineSectionGenerating')}
+      </div>
+      <p className="mt-1 line-clamp-2 text-xs-soft italic text-mute">
+        “{section.prompt}”
+      </p>
     </div>
   );
 }
@@ -364,6 +484,22 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const edit = useToplineEdit({ projectId, applyBlockMd, onSaved: refetch });
 
+  // 섹션 사이 삽입 — gap 명령 프롬프트 → 생성+영속. 실패 시 toast 안내(롤백).
+  const section = useToplineSectionInsert({
+    projectId,
+    onInserted: refetch,
+    onError: (code) =>
+      toast.push(
+        code === 'no_answer'
+          ? t('toplineSectionNoContent')
+          : `${t('toplineSectionError')} (${code})`,
+        { tone: 'warn' },
+      ),
+  });
+  // 현재 명령 패널이 열린 gap 키('top' = 최상단 gap, 그 외 = anchor 블록 id).
+  // null = 열린 패널 없음.
+  const [openGapKey, setOpenGapKey] = useState<string | null>(null);
+
   // 팝업 "편집" 액션 가용성 — 선택 블록이 텍스트 블록일 때만(table/chart/pie 제외).
   const selectionBlock = selection
     ? blocks.find((b) => b.id === selection.anchorBlockId)
@@ -394,7 +530,11 @@ export function ToplineView({ projectId }: { projectId: string }) {
   // 재생성 방향 모달 — 🔄 재생성 버튼/stale 배너에서 열린다. 방향은 자유 텍스트
   // 입력(선택 — 빈 값이면 방향 없이 재생성). 삽입 Q&A 유실 경고(사용자 결정 3)도
   // 별도 모달이 아니라 이 모달 안에 함께 노출한다(inserted_qa 가 있을 때만).
-  const hasInsertedQa = blocks.some((b) => b.type === 'inserted_qa');
+  // 재생성해도 보존되는 사용자 삽입 블록(추가질문 Q&A + 삽입 섹션) 존재 여부 —
+  // 재생성 모달에 "보존됨" 안내를 노출할지 판단.
+  const hasInsertedBlocks = blocks.some(
+    (b) => b.type === 'inserted_qa' || b.type === 'inserted_section',
+  );
   const [regenOpen, setRegenOpen] = useState(false);
   const [direction, setDirection] = useState('');
   // 저장된 방향을 모달 입력 초기값으로 반영 — 마지막에 지정한 방향을 다시 보여줘
@@ -469,6 +609,32 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const blockIds = useMemo(() => new Set(blocks.map((b) => b.id)), [blocks]);
   const orphanPending = dta.pending.filter(
     (p) => !blockIds.has(p.anchorBlockId),
+  );
+
+  // 섹션 삽입 가용 = drag-to-ask 와 동일 조건(보고서 done + blocks 있음). 생성/
+  // 로딩 중엔 gap 을 숨긴다. 최상단 gap(anchor=null) pending 은 맨 앞에, anchor
+  // 소실(그 사이 재생성 등) pending 은 말미에 렌더한다.
+  const sectionEnabled = askEnabled;
+  const topPendingSections = section.pending.filter(
+    (p) => p.anchorBlockId === null,
+  );
+  const orphanPendingSections = section.pending.filter(
+    (p) => p.anchorBlockId !== null && !blockIds.has(p.anchorBlockId),
+  );
+
+  // gap 렌더 헬퍼 — anchor(gap 위 블록 id, null=최상단) + 고유 key 로 SectionGap
+  // 을 만든다. 제출 시 그 anchor 로 섹션 생성·삽입을 kick 하고 패널을 닫는다.
+  const renderGap = (anchorBlockId: string | null, gapKey: string) => (
+    <SectionGap
+      open={openGapKey === gapKey}
+      busy={false}
+      onOpen={() => setOpenGapKey(gapKey)}
+      onClose={() => setOpenGapKey((k) => (k === gapKey ? null : k))}
+      onSubmit={(prompt) => {
+        void section.insert(anchorBlockId, prompt);
+        setOpenGapKey(null);
+      }}
+    />
   );
 
   return (
@@ -587,6 +753,11 @@ export function ToplineView({ projectId }: { projectId: string }) {
                 스트리밍 중엔 새 블록만 마운트 1회 재생(기존 블록 재애니 없음).
                 reduced-motion 은 globals.css 가 독립 존중. */}
             <article className="stagger">
+              {/* 최상단 gap(맨 앞 삽입) + 그 자리 pending 로딩. */}
+              {sectionEnabled && renderGap(null, 'top')}
+              {topPendingSections.map((p) => (
+                <PendingSectionCard key={p.id} section={p} />
+              ))}
               {blocks.map((b) => (
                 <Fragment key={b.id}>
                   {editingBlockId === b.id ? (
@@ -613,6 +784,14 @@ export function ToplineView({ projectId }: { projectId: string }) {
                         onDiscard={() => dta.discard(p.id)}
                       />
                     ))}
+                  {/* 이 블록 뒤 gap 의 섹션 생성 로딩(성공 시 실제 블록으로 대체). */}
+                  {section.pending
+                    .filter((p) => p.anchorBlockId === b.id)
+                    .map((p) => (
+                      <PendingSectionCard key={p.id} section={p} />
+                    ))}
+                  {/* 블록 사이 gap — hover +버튼 → 섹션 삽입. */}
+                  {sectionEnabled && renderGap(b.id, b.id)}
                 </Fragment>
               ))}
               {/* anchor 를 못 찾은 orphan(그 사이 재생성 등) — 말미에. */}
@@ -623,6 +802,9 @@ export function ToplineView({ projectId }: { projectId: string }) {
                   onKeep={() => void dta.keep(p)}
                   onDiscard={() => dta.discard(p.id)}
                 />
+              ))}
+              {orphanPendingSections.map((p) => (
+                <PendingSectionCard key={p.id} section={p} />
               ))}
             </article>
           </>
@@ -728,8 +910,8 @@ export function ToplineView({ projectId }: { projectId: string }) {
             placeholder={t('toplineRegenDirectionPlaceholder')}
             aria-label={t('toplineRegenDirectionLabel')}
           />
-          {hasInsertedQa && (
-            <p className="text-sm text-warning">{t('toplineRegenWarnBody')}</p>
+          {hasInsertedBlocks && (
+            <p className="text-sm text-mute">{t('toplineRegenPreserveNote')}</p>
           )}
         </div>
       </Modal>
