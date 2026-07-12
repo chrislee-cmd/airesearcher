@@ -1,6 +1,10 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import {
+  mapWithConcurrency,
+  fetchWithRateLimitRetry,
+} from '@/lib/upload-queue';
 
 // Interview V2 — client-side upload pipeline for the project-detail view.
 //
@@ -8,14 +12,20 @@ import { useCallback, useState } from 'react';
 // batch flow, injecting the current project_id so each file lands in
 // interview_documents scoped to the project:
 //
-//   files → POST /api/interviews/convert (per-file, parallel) → markdown
-//         → POST /api/interviews/jobs    (one job for the batch)  → job id
-//         → POST /api/interviews/index   (project_id + markdown)  → chunk+embed
+//   files → POST /api/interviews/convert (per-file, bounded queue) → markdown
+//         → POST /api/interviews/jobs    (one job for the batch)    → job id
+//         → POST /api/interviews/index   (project_id + markdown)    → chunk+embed
 //
 // The hook owns per-file progress so the upload modal can render a status
-// pill per file. Convert runs in parallel; a file that fails to convert is
-// marked 'error' and excluded from the (single, batched) index call so the
-// rest of the batch still indexes.
+// pill per file. Convert runs through a bounded-concurrency queue (not
+// Promise.all) so a big batch never fires N convert POSTs at once — that
+// burst tripped the app's own per-user LLM rate limit (30/min) and 429'd the
+// overflow, self-DoSing normal use. On top of the concurrency cap every call
+// (convert/jobs/index) auto-retries on 429, honouring the server's Retry-After
+// so a batch larger than the per-minute cap simply drains over a few minutes
+// instead of failing. A file that still fails to convert is marked 'error' and
+// excluded from the (single, batched) index call so the rest of the batch
+// still indexes.
 //
 // Note on the jobs API: /api/interviews/jobs is the interview-analysis
 // snapshot endpoint (requires inputs/extractions/matrix, returns { id }).
@@ -36,7 +46,14 @@ import { useCallback, useState } from 'react';
 // project-less (which is also the legacy behaviour they already handle).
 
 export type UploadFileStatus =
+  // Accepted for upload but still behind the bounded-concurrency queue —
+  // waiting for a convert slot. Shown so a large batch reads as "처리 중,
+  // 순차 진행" rather than looking frozen.
+  | 'queued'
   | 'converting'
+  // Hit the app's per-user rate limit (429) and is backing off before an
+  // automatic retry. Distinct from 'error' — nothing failed, it's just pacing.
+  | 'retrying'
   | 'indexing'
   | 'done'
   | 'error'
@@ -67,6 +84,12 @@ type ConvertResult = {
 };
 
 const MAX_BYTES = 25 * 1024 * 1024;
+
+// Max convert POSTs in flight at once. Deliberately well under the server's
+// per-user LLM cap (30/min) so a normal small batch still converts near-
+// instantly while a large one can't burst past the limit. Bigger batches lean
+// on the 429 retry-after backoff below to drain the remainder.
+const CONVERT_CONCURRENCY = 3;
 
 export function useInterviewV2Upload() {
   const [items, setItems] = useState<UploadFileState[]>([]);
@@ -127,7 +150,11 @@ export function useInterviewV2Upload() {
       setItems(
         plan.map((p) => ({
           name: p.file.name,
-          status: p.duplicate ? 'duplicate' : 'converting',
+          // Non-duplicates start 'queued' (waiting for a convert slot); the
+          // worker flips each to 'converting' when it actually starts, so the
+          // UI shows the queue draining a few at a time instead of every file
+          // claiming to convert at once.
+          status: p.duplicate ? 'duplicate' : 'queued',
         })),
       );
 
@@ -137,25 +164,35 @@ export function useInterviewV2Upload() {
         return { changed: false, skipped };
       }
 
-      // 1. Convert each non-duplicate file to markdown in parallel. A per-file
-      //    failure is isolated — mark it 'error' and drop it, never reject the
-      //    batch. Duplicates are left as-is (already marked 'duplicate').
-      const converted = await Promise.all(
-        plan.map(async ({ file, duplicate }, index): Promise<ConvertResult | null> => {
+      // 1. Convert each non-duplicate file to markdown through a bounded queue
+      //    (CONVERT_CONCURRENCY at a time) instead of Promise.all — the old
+      //    all-at-once fan-out is what tripped the per-user rate limit. A
+      //    per-file failure is isolated — mark it 'error' and drop it, never
+      //    reject the batch. Duplicates are left as-is ('duplicate').
+      const converted = await mapWithConcurrency(
+        plan,
+        CONVERT_CONCURRENCY,
+        async ({ file, duplicate }, index): Promise<ConvertResult | null> => {
           if (duplicate) return null;
           if (file.size === 0 || file.size > MAX_BYTES) {
             setStatusAt(index, 'error');
             return null;
           }
+          // Leaving the queue — actually converting now.
+          setStatusAt(index, 'converting');
           try {
             // No project_id here: convert writes generations.project_id,
             // which FKs the legacy projects table (not interview_projects).
             const fd = new FormData();
             fd.append('file', file);
-            const res = await fetch('/api/interviews/convert', {
-              method: 'POST',
-              body: fd,
-            });
+            // 429 (per-user LLM cap) is not a failure — back off for the
+            // server's Retry-After and retry. Surface 'retrying' so the file
+            // reads as "재시도 대기", not stuck.
+            const res = await fetchWithRateLimitRetry(
+              '/api/interviews/convert',
+              { method: 'POST', body: fd },
+              { onRetry: () => setStatusAt(index, 'retrying') },
+            );
             if (!res.ok) throw new Error(`convert_${res.status}`);
             const j = (await res.json()) as {
               markdown?: string;
@@ -172,7 +209,7 @@ export function useInterviewV2Upload() {
             setStatusAt(index, 'error');
             return null;
           }
-        }),
+        },
       );
 
       const ok = converted.filter((c): c is ConvertResult => c !== null);
@@ -196,7 +233,7 @@ export function useInterviewV2Upload() {
         //    inputs.mime is omitted when the browser reports no type (empty
         //    string): the jobs schema's mime is `z.string().optional()`, which
         //    rejects null and would 400 the whole batch (common for .md/.txt).
-        const jobRes = await fetch('/api/interviews/jobs', {
+        const jobRes = await fetchWithRateLimitRetry('/api/interviews/jobs', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -215,19 +252,35 @@ export function useInterviewV2Upload() {
 
         // 3. Index — project_id injected so interview_documents rows are
         //    scoped to this project. Chunk + embed happens server-side.
-        const indexRes = await fetch('/api/interviews/index', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            interview_job_id: interviewJobId,
-            project_id: projectId,
-            documents: ok.map((c) => ({
-              filename: c.filename,
-              mime: c.mime,
-              markdown: c.markdown,
-            })),
-          }),
-        });
+        const indexRes = await fetchWithRateLimitRetry(
+          '/api/interviews/index',
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              interview_job_id: interviewJobId,
+              project_id: projectId,
+              documents: ok.map((c) => ({
+                filename: c.filename,
+                mime: c.mime,
+                markdown: c.markdown,
+              })),
+            }),
+          },
+          {
+            // Index is a single batched call, but it shares the per-user LLM
+            // budget the convert burst just spent — a 429 here is likely.
+            // Back off and surface 'retrying' on the in-flight files.
+            onRetry: () =>
+              setItems((prev) =>
+                prev.map((it, i) =>
+                  ok.some((c) => c.index === i)
+                    ? { ...it, status: 'retrying' }
+                    : it,
+                ),
+              ),
+          },
+        );
         if (!indexRes.ok) throw new Error(`index_${indexRes.status}`);
 
         // Server-side project-scoped content-hash dedupe may have skipped some
