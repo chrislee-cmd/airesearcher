@@ -118,6 +118,7 @@ function popupStyle(rect: ToplineSelection['rect']): CSSProperties {
 export function ToplineAskPopup({
   selection,
   busy,
+  askEnabled = true,
   editable,
   onSubmit,
   onEdit,
@@ -125,6 +126,9 @@ export function ToplineAskPopup({
 }: {
   selection: ToplineSelection;
   busy: boolean;
+  // 추가 질문(drag-to-ask)이 가능한지 — 인터뷰 코퍼스가 있을 때만. false 면
+  // (편집전용 doc-less 보고서) 질문 UI 를 숨기고 편집 액션만 노출한다.
+  askEnabled?: boolean;
   // 선택 블록이 인라인 편집 가능한 텍스트 블록인지(false 면 편집 액션 비활성).
   editable: boolean;
   onSubmit: (question: string, mode: AskMode) => void;
@@ -209,14 +213,17 @@ export function ToplineAskPopup({
           “{selection.text}”
         </p>
       </div>
-      {/* 액션 2개 — 추가 질문(기본, 아래 입력) / 편집(선택 블록 인라인 수정).
-          편집은 텍스트 블록일 때만 활성(table/chart/pie 는 disabled). */}
+      {/* 액션 — 추가 질문(코퍼스 있을 때만) / 편집(선택 블록 인라인 수정).
+          편집은 텍스트 블록일 때만 활성(table/chart/pie 는 disabled). 편집전용
+          doc-less(askEnabled=false)면 질문 라벨을 숨기고 편집을 주 액션으로. */}
       <div className="mb-2 flex items-center gap-1.5">
-        <span className="rounded-xs border border-ink bg-ink px-2 py-1 text-xs-soft font-semibold text-paper">
-          💬 {t('toplineAskAction')}
-        </span>
+        {askEnabled && (
+          <span className="rounded-xs border border-ink bg-ink px-2 py-1 text-xs-soft font-semibold text-paper">
+            💬 {t('toplineAskAction')}
+          </span>
+        )}
         <Button
-          variant="ghost"
+          variant={askEnabled ? 'ghost' : 'primary'}
           size="xs"
           onClick={onEdit}
           disabled={!editable}
@@ -225,50 +232,54 @@ export function ToplineAskPopup({
           ✏️ {t('toplineEditAction')}
         </Button>
       </div>
-      {/* 근거 소스 토글 — 인터뷰 근거(기본) / 웹 검색. 선택 모드는 submit 시
-          함께 넘어간다. 선택 = primary(ink), 비선택 = ghost. */}
-      <div className="mb-2 flex items-center gap-1.5">
-        <Button
-          variant={mode === 'interview' ? 'primary' : 'ghost'}
-          size="xs"
-          onClick={() => setMode('interview')}
-          disabled={busy}
-          aria-pressed={mode === 'interview'}
-        >
-          📚 {t('toplineAskModeInterview')}
-        </Button>
-        <Button
-          variant={mode === 'web' ? 'primary' : 'ghost'}
-          size="xs"
-          onClick={() => setMode('web')}
-          disabled={busy}
-          aria-pressed={mode === 'web'}
-        >
-          🌐 {t('toplineAskModeWeb')}
-        </Button>
-      </div>
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <Textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={onKeyDown}
-            rows={2}
-            autoFocus
-            placeholder={t('toplineAskPlaceholder')}
-            disabled={busy}
-          />
-        </div>
-        <IconButton
-          aria-label={t('toplineAskSend')}
-          variant="bordered"
-          size="lg"
-          onClick={submit}
-          disabled={busy || value.trim().length === 0}
-        >
-          →
-        </IconButton>
-      </div>
+      {/* 추가 질문 입력 — 코퍼스가 있을 때만. 근거 소스 토글(인터뷰/웹) + 입력.
+          편집전용 doc-less 에선 근거가 없어 통째로 숨긴다(편집만 남음). */}
+      {askEnabled && (
+        <>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Button
+              variant={mode === 'interview' ? 'primary' : 'ghost'}
+              size="xs"
+              onClick={() => setMode('interview')}
+              disabled={busy}
+              aria-pressed={mode === 'interview'}
+            >
+              📚 {t('toplineAskModeInterview')}
+            </Button>
+            <Button
+              variant={mode === 'web' ? 'primary' : 'ghost'}
+              size="xs"
+              onClick={() => setMode('web')}
+              disabled={busy}
+              aria-pressed={mode === 'web'}
+            >
+              🌐 {t('toplineAskModeWeb')}
+            </Button>
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={onKeyDown}
+                rows={2}
+                autoFocus
+                placeholder={t('toplineAskPlaceholder')}
+                disabled={busy}
+              />
+            </div>
+            <IconButton
+              aria-label={t('toplineAskSend')}
+              variant="bordered"
+              size="lg"
+              onClick={submit}
+              disabled={busy || value.trim().length === 0}
+            >
+              →
+            </IconButton>
+          </div>
+        </>
+      )}
     </div>
   );
 }

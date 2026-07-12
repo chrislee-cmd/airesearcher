@@ -1430,7 +1430,14 @@
     "toplineShareCopied": "Link copied — opening in a new tab.",
     "toplineShareOpened": "Opened Google Docs in a new tab.",
     "toplineShareError": "Couldn't share to Google Docs",
-    "toplineShareUnavailable": "Google Docs sharing isn't available right now. Please try again shortly."
+    "toplineShareUnavailable": "Google Docs sharing isn't available right now. Please try again shortly.",
+    "toplineUploadCta": "Upload your own report",
+    "toplineUploadModeHint": "Already have a finished report (Markdown) from Claude, NotebookLM, etc.? Upload it to skip generation and go straight to editing.",
+    "toplineImporting": "Loading report…",
+    "toplineImported": "Report loaded — you can edit it now.",
+    "toplineImportError": "Couldn't load the report",
+    "toplineImportEmpty": "Couldn't find any content in the report — make sure it's Markdown with headings/paragraphs.",
+    "toplineRegenUploadedNote": "This report was uploaded by you. Regenerating will discard the uploaded content and build a new report from your interview data."
   },
   "Workspace": {
     "eyebrow": "Workspace",

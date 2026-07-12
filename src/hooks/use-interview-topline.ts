@@ -42,6 +42,9 @@ export type ToplineState = {
   // 마지막 재생성에 쓰인 분석 방향. null = 방향 없음/레거시/미생성 → 재생성
   // 모달을 빈 입력으로 시작. 재생성 방향 textarea 의 초기값 소스.
   savedDirection: string | null;
+  // 산출물 출처 — 'uploaded'(편집전용 외부 보고서) | 'generated'/null(풀
+  // 파이프라인). 재생성 덮어쓰기 경고를 업로드 보고서일 때만 노출하는 데 쓴다.
+  source: string | null;
   // 초기 GET 로딩 중.
   loading: boolean;
   // GET/POST 자체가 실패(네트워크/서버).
@@ -316,6 +319,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     generatingStale,
     savedLang: data?.output_lang ?? null,
     savedDirection: data?.user_direction ?? null,
+    source: data?.source ?? null,
     loading,
     fetchError,
     generating,
