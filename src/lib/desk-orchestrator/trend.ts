@@ -7,6 +7,7 @@
 import {
   DESK_SOURCE_REGISTRY,
   KR_ONLY_GROUPS,
+  getEnabledSources,
   type DeskRegion,
   type DeskSourceId,
 } from '@/lib/desk-sources';
@@ -160,6 +161,29 @@ export async function runTrend(
         }
       }
       return tasks;
+    },
+    // trend 은 뉴스·SNS 소스가 많아 빈 벙 위험이 낮으므로 fallback 은 최소만
+    // 적용한다(설계 D "market 우선, trend 는 최소"). 전체 수집이 완전 void(0건)일
+    // 때 — 즉 원 키워드 축이 모든 소스에서 0건일 때 — 만 원 키워드를 web_search 로
+    // 보강해 보고서가 완전 빈 벙으로 끝나지 않게 한다. 조금이라도 수집됐으면
+    // 미발동(과발동 없음). web_search 근거는 tier 자동 부여되어 격리된다.
+    buildFallbackTasks: ({ collected }) => {
+      const tasks: CrawlTask[] = [];
+      const events: string[] = [];
+      // TAVILY 키가 있어야(web_search 가용) 보강 가능. TREND_SOURCE_IDS 엔 없어
+      // usableSources 로는 안 오므로 여기서 별도 게이트.
+      if (!getEnabledSources().includes('web_search')) return { tasks, events };
+      if (collected.length > 0) return { tasks, events };
+      const qs = keywords.slice(0, 3);
+      for (const q of qs) {
+        tasks.push({ source: 'web_search', keyword: q, region: primaryRegion });
+      }
+      events.push(
+        `🔍 모든 트렌드 소스에서 수집 0건 — 원 키워드(${qs
+          .map((q) => `‘${q}’`)
+          .join(' · ')})를 웹 검색으로 최소 맥락 보강합니다 (tier 명시 근거).`,
+      );
+      return { tasks, events };
     },
     reportSystem: TREND_REPORT_SYSTEM,
     buildReportUserMsg: (ctx: ReportContext) => {
