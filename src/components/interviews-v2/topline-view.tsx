@@ -525,7 +525,11 @@ export function ToplineView({ projectId }: { projectId: string }) {
       toast.push(
         code === 'empty_report'
           ? t('toplineImportEmpty')
-          : `${t('toplineImportError')} (${code})`,
+          : code === 'unsupported_file_type'
+            ? t('toplineImportUnsupported')
+            : code === 'file_too_large'
+              ? t('toplineImportTooLarge')
+              : `${t('toplineImportError')} (${code})`,
         { tone: 'warn' },
       ),
   });
@@ -684,7 +688,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
+        accept=".md,.markdown,.txt,.docx,.pdf,.html,.htm,text/markdown,text/plain,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
         onChange={(e) => {
           handleReportFile(e.target.files?.[0]);

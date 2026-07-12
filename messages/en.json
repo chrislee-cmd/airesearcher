@@ -1432,11 +1432,13 @@
     "toplineShareError": "Couldn't share to Google Docs",
     "toplineShareUnavailable": "Google Docs sharing isn't available right now. Please try again shortly.",
     "toplineUploadCta": "Upload your own report",
-    "toplineUploadModeHint": "Already have a finished report (Markdown) from Claude, NotebookLM, etc.? Upload it to skip generation and go straight to editing.",
+    "toplineUploadModeHint": "Already have a finished report (Markdown, DOCX, PDF, or HTML) from Claude, NotebookLM, etc.? Upload it to skip generation and go straight to editing.",
     "toplineImporting": "Loading report…",
     "toplineImported": "Report loaded — you can edit it now.",
     "toplineImportError": "Couldn't load the report",
-    "toplineImportEmpty": "Couldn't find any content in the report — make sure it's Markdown with headings/paragraphs.",
+    "toplineImportEmpty": "Couldn't find any content in the report — make sure it's a document with headings/paragraphs.",
+    "toplineImportUnsupported": "Unsupported file type — please upload Markdown, DOCX, PDF, or HTML.",
+    "toplineImportTooLarge": "That file is too large — please keep it under 25MB.",
     "toplineRegenUploadedNote": "This report was uploaded by you. Regenerating will discard the uploaded content and build a new report from your interview data."
   },
   "Workspace": {
