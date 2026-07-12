@@ -16,6 +16,7 @@ import {
   DateRangePopover,
   type DateRangeValue,
 } from '@/components/ui/date-range-popover';
+import { SelectMenu, type SelectMenuOption } from '@/components/ui/select-menu';
 
 // Client-side wrappers for catalog primitives that need interaction
 // (open/close state for Modal, drag/click state for FileDropZone).
@@ -469,6 +470,61 @@ export function DateRangePopoverDemo() {
       <p className="text-sm text-mute-soft">
         preset quick-pick + 2개월 캘린더. portal + position:fixed 로 서브헤더 overflow 밖으로 escape.
       </p>
+    </div>
+  );
+}
+
+export function SelectMenuDemo() {
+  // 단일 선택 — 선택 즉시 닫힘 (radio-like).
+  const [region, setRegion] = useState('KR');
+  // 다중 선택 — 체크박스 토글, 열린 상태 유지. renderSummary 로 "N개" 요약.
+  const [sources, setSources] = useState<string[]>(['news', 'blog']);
+
+  const regionOptions: SelectMenuOption[] = [
+    { value: 'KR', label: '한국' },
+    { value: 'US', label: '미국' },
+    { value: 'JP', label: '일본' },
+    { value: 'GLOBAL', label: '글로벌' },
+  ];
+  const sourceOptions: SelectMenuOption[] = [
+    { value: 'news', label: '뉴스' },
+    { value: 'blog', label: '블로그' },
+    { value: 'community', label: '커뮤니티' },
+    { value: 'sns', label: 'SNS', disabled: true },
+  ];
+
+  return (
+    <div className="grid max-w-[520px] gap-5 sm:grid-cols-2">
+      <div className="space-y-2">
+        <p className="text-sm text-mute">single — 선택 즉시 닫힘</p>
+        <SelectMenu
+          options={regionOptions}
+          value={region}
+          onChange={setRegion}
+          placeholder="지역 선택…"
+          aria-label="지역 선택"
+        />
+        <p className="text-sm text-mute-soft">
+          선택: <code className="font-mono text-ink-2">{region}</code>
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm text-mute">multi — 체크박스 토글 · disabled 옵션 · renderSummary</p>
+        <SelectMenu
+          multi
+          options={sourceOptions}
+          value={sources}
+          onChange={setSources}
+          placeholder="수집 소스…"
+          aria-label="수집 소스 선택"
+          renderSummary={(vals) =>
+            vals.length === 0 ? '수집 소스…' : `${vals.length}개 소스`
+          }
+        />
+        <p className="text-sm text-mute-soft">
+          선택: <code className="font-mono text-ink-2">{sources.join(', ') || '없음'}</code>
+        </p>
+      </div>
     </div>
   );
 }

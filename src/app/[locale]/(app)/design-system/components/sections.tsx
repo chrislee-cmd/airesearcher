@@ -41,6 +41,7 @@ import {
   ChipFieldDemo,
   ModeButtonDemo,
   DateRangePopoverDemo,
+  SelectMenuDemo,
 } from '../demos';
 
 export type SectionId =
@@ -59,6 +60,7 @@ export type SectionId =
   | 'badge'
   | 'textarea'
   | 'select'
+  | 'select-menu'
   | 'checkbox'
   | 'slider'
   | 'mode-button'
@@ -116,6 +118,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'badge', label: 'Badge', render: () => <BadgeSection /> },
       { id: 'textarea', label: 'Textarea', render: () => <TextareaSection /> },
       { id: 'select', label: 'Select', render: () => <SelectSection /> },
+      { id: 'select-menu', label: 'SelectMenu', render: () => <SelectMenuSection /> },
       { id: 'checkbox', label: 'Checkbox', render: () => <CheckboxSection /> },
       { id: 'slider', label: 'Slider', render: () => <SliderSection /> },
       { id: 'mode-button', label: 'ModeButton', render: () => <ModeButtonSection /> },
@@ -855,6 +858,19 @@ function SelectSection() {
   );
 }
 
+function SelectMenuSection() {
+  return (
+    <PrimitivePage
+      title="SelectMenu"
+      hint="src/components/ui/select-menu.tsx · 값 선택(single/multi) listbox 팝오버 · portal + position:fixed 로 위젯 카드 overflow 밖으로 escape · 바깥 클릭 / Esc 닫기 · multi=true → 체크박스 토글(열린 상태 유지), single → 선택 즉시 닫힘 · renderSummary / placeholder / buttonClassName · aria(listbox/option) 내장 → 소비처 eslint-disable 불필요. 역할 구분: SelectMenu=값 선택(폼 컨트롤) vs DropdownMenu=액션 실행(메뉴 항목) vs Select=native <select> 단일선택. 소비처: 데스크 지역 필터 · 프로빙 · 인터뷰V2"
+    >
+      <Subsection label="Interactive (single 즉시닫힘 · multi 체크박스 토글 · disabled 옵션)">
+        <SelectMenuDemo />
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
 function CheckboxSection() {
   return (
     <PrimitivePage
@@ -1219,7 +1235,7 @@ function MenuSection() {
   return (
     <PrimitivePage
       title="DropdownMenu"
-      hint="src/components/ui/dropdown-menu.tsx · headless menu primitive (render-prop trigger) · 키보드 ↑↓ Enter Esc · click-outside 자동 닫기 · align (start|end) · side (top|bottom) · hint 가능 · optional label"
+      hint="src/components/ui/dropdown-menu.tsx · headless menu primitive (render-prop trigger) · 키보드 ↑↓ Enter Esc · click-outside 자동 닫기 · align (start|end) · side (top|bottom) · hint 가능 · optional label · 역할 구분: DropdownMenu=액션 실행(항목 클릭 → 동작) vs SelectMenu=값 선택(single/multi)"
     >
       <Subsection label="Interactive (align / side / label)">
         <DropdownMenuDemo />
