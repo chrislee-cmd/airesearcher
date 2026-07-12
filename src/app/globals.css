@@ -945,23 +945,27 @@ html, body {
    primitive, probing-card 의 fixed-size action 버튼) 은 제외 — globals
    의 padding 0.4rem 0.85rem 가 28×28/32×32 박스의 content area 를 음수로
    만들어 SVG 글리프가 사라지는 회귀 (PR #466 후) 발생. */
+/* 값은 3-layer 토큰 참조 — pop 테마에서 기존 리터럴과 diff-0
+   (2.5px/#000/#fff/8px/3px·4px·1px shadow 그대로), [data-theme] swap 시
+   canvas 컨트롤도 Layer 1 을 따라간다(과거 하드코드가 swap 을 막던 원인 해소).
+   shadow 는 offset 이 1/3/4px 를 정확히 커버하는 @theme memphis 패밀리로. */
 [data-canvas-body] button:not([data-canvas-action]) {
-  border: 2.5px solid #000;
-  border-radius: 8px;
-  background: #fff;
-  color: #000;
+  border: var(--raw-border-width-strong) solid var(--raw-border-strong);
+  border-radius: var(--raw-radius-canvas-button);
+  background: var(--surface-card);
+  color: var(--fg-primary);
   font-weight: 700;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: var(--shadow-memphis-md);
   padding: 0.4rem 0.85rem;
   transition: transform 0.12s, box-shadow 0.12s;
 }
 [data-canvas-body] button:not([data-canvas-action]):hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: var(--shadow-memphis-lg);
 }
 [data-canvas-body] button:not([data-canvas-action]):active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 #000;
+  box-shadow: var(--shadow-memphis-2xs);
 }
 /* ModeButton selected — canvas 안에서는 위 memphis 검정 border 가 .border-amore
    를 덮으므로(specificity), selected 일 때 accent(=amore) border 로 선택을
@@ -976,10 +980,10 @@ html, body {
    씌우면 checked 배경이 흰색으로 덮여 체크가 안 보이는 회귀 발생. */
 [data-canvas-body]
   :is(input:not([type='checkbox']):not([type='radio']), textarea, select) {
-  border: 2px solid #000;
-  border-radius: 6px;
-  background: #fff;
-  color: #000;
+  border: var(--raw-border-width-medium) solid var(--raw-border-strong);
+  border-radius: var(--raw-radius-canvas-input);
+  background: var(--surface-card);
+  color: var(--fg-primary);
   padding: 0.5rem 0.75rem;
 }
 [data-canvas-body] :is(input, textarea, select):focus {
