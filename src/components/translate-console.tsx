@@ -31,10 +31,11 @@ import { env } from '@/env';
 import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { ChromeButton } from './ui/chrome-button';
+import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
-import { ChipInput } from './ui/chip-input';
+import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import { FileDropZone } from './ui/file-drop-zone';
@@ -4226,16 +4227,19 @@ export function TranslateConsole({
         </Field>
       </div>
 
-      {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기를 Enter 로 chip
-          추가. 세션 시작 전에만 편집 (live 중 disabled). */}
+      {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 한 줄에 하나씩
+          입력 후 "적용" 으로 반영(프로빙 조사목적 패턴). 세션 시작 전에만
+          편집 (live 중 disabled). */}
       <Field label={t('glossary.label')}>
         <GlossaryField
           values={glossary}
           onChange={handleGlossaryChange}
           disabled={busy || live}
-          placeholderEmpty={t('glossary.placeholderEmpty')}
-          placeholderAdd={t('glossary.placeholderAdd')}
-          removeAria={t('glossary.removeAria')}
+          ariaLabel={t('glossary.label')}
+          placeholder={t('glossary.placeholder')}
+          applyLabel={t('glossary.apply')}
+          applyTitle={t('glossary.applyTitle')}
+          dirtyNotice={t('glossary.dirtyNotice')}
         />
       </Field>
     </>
@@ -4701,81 +4705,97 @@ function RecordingDownloadPanel({
   );
 }
 
-// ── Layer B: glossary chip editor ──
-// Bare chip container + ChipInput extender (research-context.tsx 패턴).
-// Enter / blur 로 chip 추가, Backspace (빈 draft) 로 마지막 chip 제거.
+// ── Layer B: glossary editor ──
+// Textarea + 명시적 "적용" 버튼 (프로빙 control-board.tsx 조사목적 패턴 미러).
+// 한 줄 = 용어 1개. 타이핑은 로컬 draft(string) 만 갱신하고, "적용" 클릭
+// 시에만 라인 파싱 → onChange(string[]) 1회 호출(= 영속화). glossary 의
+// 저장/세션 payload 계약은 여전히 string[] — Textarea 는 표현 계층만 담당.
+const GLOSSARY_MAX_TERMS = 200;
+const GLOSSARY_MAX_LEN = 200;
+
+// draft(string) → string[]: 라인 분리 → trim → 빈 줄 제거 → 중복 제거
+// (순서 보존) → 각 항목 MAX_LEN slice → 전체 MAX_TERMS 제한.
+function parseGlossary(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of raw.split('\n')) {
+    const term = line.trim().slice(0, GLOSSARY_MAX_LEN);
+    if (!term || seen.has(term)) continue;
+    seen.add(term);
+    out.push(term);
+    if (out.length >= GLOSSARY_MAX_TERMS) break;
+  }
+  return out;
+}
+
 function GlossaryField({
   values,
   onChange,
   disabled,
-  placeholderEmpty,
-  placeholderAdd,
-  removeAria,
+  ariaLabel,
+  placeholder,
+  applyLabel,
+  applyTitle,
+  dirtyNotice,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
-  placeholderEmpty: string;
-  placeholderAdd: string;
-  removeAria: string;
+  ariaLabel: string;
+  placeholder: string;
+  applyLabel: string;
+  applyTitle: string;
+  dirtyNotice: string;
 }) {
-  const [draft, setDraft] = useState('');
-  const MAX_TERMS = 200;
-  const MAX_LEN = 200;
+  // 외부 hydrate(프로젝트 전환/설정 로드)로 values 가 바뀌면 draft 를 재시드.
+  // 프로빙의 draft-vs-synced 리셋 패턴(render 중 감지) 을 준용 — effect 내
+  // 동기 setState 를 막는 design-system lint 룰 회피.
+  const synced = values.join('\n');
+  const [draft, setDraft] = useState(synced);
+  const [syncedSnapshot, setSyncedSnapshot] = useState(synced);
+  if (synced !== syncedSnapshot) {
+    setSyncedSnapshot(synced);
+    setDraft(synced);
+  }
 
-  function commitDraft() {
-    const trimmed = draft.trim();
-    setDraft('');
-    if (!trimmed) return;
-    if (values.length >= MAX_TERMS) return;
-    if (values.includes(trimmed)) return;
-    onChange([...values, trimmed.slice(0, MAX_LEN)]);
+  // 적용해도 저장값이 달라질 때만 dirty(파싱 결과 기준 — 순수 공백/빈 줄
+  // 편집은 no-op 이라 버튼을 켜지 않는다).
+  const dirty = parseGlossary(draft).join('\n') !== synced;
+  const canApply = dirty && !disabled;
+
+  function apply() {
+    if (!canApply) return;
+    const next = parseGlossary(draft);
+    onChange(next);
+    // 정규화된 형태로 draft 재시드 — 후행 공백/중복/빈 줄 정리 반영.
+    setDraft(next.join('\n'));
   }
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-1.5 rounded-xs border-[2px] border-ink bg-paper px-3 py-2.5 min-h-[52px] focus-within:border-amore ${
-        disabled ? 'opacity-50' : ''
-      }`}
-    >
-      {values.map((v, idx) => (
-        <span
-          key={`${idx}-${v}`}
-          className="inline-flex items-center gap-1 rounded-pill border border-amore bg-white px-2.5 py-0.5 text-xs text-amore"
-        >
-          {v}
-          <IconButton
-            variant="ghost-brand"
-            onClick={() => onChange(values.filter((_, i) => i !== idx))}
-            aria-label={`${removeAria}: ${v}`}
-            disabled={disabled}
-          >
-            ×
-          </IconButton>
-        </span>
-      ))}
-      <ChipInput
-        aria-label={placeholderEmpty}
-        className="min-w-[120px] flex-1 text-md"
+    <div>
+      <Textarea
+        aria-label={ariaLabel}
         value={draft}
-        onChange={(e) => setDraft(e.target.value.slice(0, MAX_LEN))}
-        onCommit={commitDraft}
-        onKeyDown={(e) => {
-          if (
-            e.key === 'Backspace' &&
-            draft.length === 0 &&
-            values.length > 0
-          ) {
-            e.preventDefault();
-            onChange(values.slice(0, -1));
-          }
-        }}
-        onBlur={() => {
-          if (draft.trim()) commitDraft();
-        }}
-        disabled={disabled || values.length >= MAX_TERMS}
-        placeholder={values.length === 0 ? placeholderEmpty : placeholderAdd}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={3}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="resize-none text-md"
       />
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <p className="text-xs text-mute" aria-live="polite">
+          {dirty ? dirtyNotice : ''}
+        </p>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={apply}
+          disabled={!canApply}
+          title={applyTitle}
+        >
+          {applyLabel}
+        </Button>
+      </div>
     </div>
   );
 }

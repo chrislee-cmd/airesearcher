@@ -1086,9 +1086,10 @@
     "glossary": {
       "label": "고유 용어/맥락 주입",
       "hint": "인명·도구명·약어의 정규 표기. 같은 사람·고유명사의 음차 흔들림을 통일해요 (사후 보정·재번역에 반영).",
-      "placeholderEmpty": "고유 용어/맥락 주입",
-      "placeholderAdd": "+ 용어 추가",
-      "removeAria": "용어 제거"
+      "placeholder": "한 줄에 용어 하나씩 (예: SDK, 온프레미스)",
+      "apply": "적용",
+      "applyTitle": "입력한 용어집을 지금 반영",
+      "dirtyNotice": "미적용 변경 — '적용' 을 눌러 반영"
     },
     "postProcess": {
       "eyebrow": "출력 품질 보정 (사후 LLM)",
