@@ -201,7 +201,7 @@ export function DateRangePopover({
   }
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative" data-ds-primitive="DateRangePopover">
       <button
         type="button"
         data-canvas-action

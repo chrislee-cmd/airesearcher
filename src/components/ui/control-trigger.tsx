@@ -64,6 +64,7 @@ export function ControlTrigger({
           : CONTROL_TRIGGER_CLASS
       }
       {...rest}
+      data-ds-primitive="ControlTrigger"
     >
       <span className="truncate">{children}</span>
       <ControlTriggerChevron />

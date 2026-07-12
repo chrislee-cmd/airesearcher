@@ -188,7 +188,11 @@ export function DropdownMenu({
     typeof document !== 'undefined' ? document.body : null;
 
   return (
-    <div className="relative inline-block" ref={wrapRef}>
+    <div
+      className="relative inline-block"
+      ref={wrapRef}
+      data-ds-primitive="DropdownMenu"
+    >
       {trigger({
         open,
         onClick: onTriggerClick,

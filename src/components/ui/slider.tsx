@@ -16,5 +16,13 @@ export const Slider = forwardRef<HTMLInputElement, Props>(function Slider(
     .filter(Boolean)
     .join(' ');
 
-  return <input ref={ref} type="range" className={cls} {...rest} />;
+  return (
+    <input
+      ref={ref}
+      type="range"
+      className={cls}
+      {...rest}
+      data-ds-primitive="Slider"
+    />
+  );
 });

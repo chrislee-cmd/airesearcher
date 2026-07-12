@@ -280,7 +280,10 @@ export function StageFlow({
     // node·edge 를 같은 column 의 직속 형제로 배치 — 카드는 폭을 채우고(fill),
     // 엣지는 mx-auto 로 column 중앙에 정렬. hint 는 노드 카드 안으로 흡수됨.
     return (
-      <div className={`flex flex-col items-stretch ${className ?? ''}`}>
+      <div
+        className={`flex flex-col items-stretch ${className ?? ''}`}
+        data-ds-primitive="StageFlow"
+      >
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">
             <StageNode stage={stage} fill />
@@ -300,7 +303,7 @@ export function StageFlow({
   // 높이를 맞추고, 엣지는 self-center 로 세로 중앙 정렬. hint 는 노드 안으로
   // 흡수돼 overflow-x 안전.
   return (
-    <div className={className}>
+    <div className={className} data-ds-primitive="StageFlow">
       <div className="flex items-stretch overflow-x-auto">
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">

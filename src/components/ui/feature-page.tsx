@@ -14,7 +14,10 @@ export function FeaturePage({
   children,
 }: FeaturePageProps) {
   return (
-    <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-8">
+    <div
+      className="mx-auto max-w-[1120px] px-2 pb-16 pt-8"
+      data-ds-primitive="FeaturePage"
+    >
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
         <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
           {title}

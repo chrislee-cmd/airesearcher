@@ -53,7 +53,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
     .join(' ');
 
   return (
-    <div className={fullWidth ? 'w-full' : 'inline-block'}>
+    <div
+      className={fullWidth ? 'w-full' : 'inline-block'}
+      data-ds-primitive="Textarea"
+    >
       {label ? (
         <Label htmlFor={inputId} required={required} className="mb-1.5">
           {label}

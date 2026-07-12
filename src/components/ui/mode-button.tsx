@@ -118,7 +118,10 @@ export function ModeButton({
   // 텍스트 아래 중앙). 카드 전체를 클릭 대상으로 만들지 않는다.
   if (variant === 'flat') {
     return (
-      <div className={cardClassName(selected, variant)}>
+      <div
+        className={cardClassName(selected, variant)}
+        data-ds-primitive="ModeButton"
+      >
         <CardInner option={option} />
         <Checkbox
           checked={selected}
@@ -143,6 +146,7 @@ export function ModeButton({
       title={option.description}
       onClick={() => onSelect(option.key)}
       className={cardClassName(selected, variant)}
+      data-ds-primitive="ModeButton"
     >
       {/* default variant selected = amore 보더만 (배경색·우상단 ✓ 제거). */}
       <CardInner option={option} />

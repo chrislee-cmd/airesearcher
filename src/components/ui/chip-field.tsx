@@ -137,7 +137,7 @@ export function ChipField({
     .join(' ');
 
   return (
-    <div className={containerCls}>
+    <div className={containerCls} data-ds-primitive="ChipField">
       {values.map((value, idx) => (
         <span key={`${idx}-${value}`} className={CHIP}>
           {value}

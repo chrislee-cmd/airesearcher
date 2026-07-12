@@ -163,6 +163,7 @@ export function Modal({
       />
       <div
         ref={panelRef}
+        data-ds-primitive="Modal"
         className={[
           // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
