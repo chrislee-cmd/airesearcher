@@ -1303,6 +1303,7 @@
     "statusDone": "Indexed",
     "statusError": "Index failed",
     "statusConverting": "Converting",
+    "statusRetrying": "Retrying",
     "statusDuplicate": "Duplicate",
     "uploadSkippedSummary": "Skipped {count} duplicate file(s)",
     "uploadTitle": "Upload files",

@@ -40,7 +40,11 @@ const ACCEPT =
 function UploadStatusPill({ status }: { status: UploadFileStatus }) {
   const t = useTranslations('InterviewsV2');
   const map: Record<UploadFileStatus, { key: string; cls: string }> = {
+    // Waiting behind the bounded-concurrency queue — muted, not active yet.
+    queued: { key: 'statusPending', cls: 'text-mute-soft' },
     converting: { key: 'statusConverting', cls: 'text-amore' },
+    // Backing off after a 429 before auto-retry — pacing, not a failure.
+    retrying: { key: 'statusRetrying', cls: 'text-mute' },
     indexing: { key: 'statusIndexing', cls: 'text-amore' },
     done: { key: 'statusDone', cls: 'text-mute' },
     error: { key: 'statusError', cls: 'text-warning' },
