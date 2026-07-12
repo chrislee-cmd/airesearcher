@@ -334,6 +334,25 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
     );
   }
 
+  if (block.type === 'inserted_section') {
+    // 섹션 사이 삽입 UX 로 생성한 섹션 — 좌 amore 보더 + ✚ 칩으로 사용자 삽입임을
+    // 표시(inserted_qa 와 같은 계열, 디자인 토큰 내). 본문은 생성된 md 프로즈
+    // (첫 줄 굵은 제목 포함). i18n 미사용 — 공유 뷰어 재사용 위해 로케일 중립 칩.
+    return (
+      <section
+        {...common}
+        className="my-3 rounded-sm border border-line border-l-2 border-l-amore bg-paper px-4 py-3"
+      >
+        <div className="mb-1.5">
+          <span className="inline-block rounded-xs bg-amore-bg px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
+            ✚
+          </span>
+        </div>
+        <Prose md={block.md ?? ''} citations={block.citations} />
+      </section>
+    );
+  }
+
   // paragraph · insight (기본) — insight 는 교차분석 대조라 살짝 강조.
   const isInsight = block.type === 'insight';
   return (
