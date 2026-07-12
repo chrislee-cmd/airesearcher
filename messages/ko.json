@@ -1303,6 +1303,7 @@
     "statusDone": "인덱싱 완료",
     "statusError": "인덱싱 실패",
     "statusConverting": "변환 중",
+    "statusRetrying": "재시도 대기",
     "statusDuplicate": "중복",
     "uploadSkippedSummary": "중복 {count}개 건너뜀",
     "uploadTitle": "파일 업로드",
