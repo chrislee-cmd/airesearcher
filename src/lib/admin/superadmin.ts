@@ -4,6 +4,7 @@
 // future migration that touches profiles wouldn't open the door.
 const SUPER_ADMIN_EMAILS: ReadonlySet<string> = new Set([
   'chris.lee@meteor-research.com',
+  'lee880728@gmail.com',
 ]);
 
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
