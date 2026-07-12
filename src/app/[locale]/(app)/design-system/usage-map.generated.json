@@ -4,7 +4,7 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 990
+      "line": 939
     },
     {
       "widget": "리크루팅",
@@ -22,13 +22,13 @@
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/distribution-panel.tsx",
-      "line": 157
+      "line": 167
     },
     {
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
-      "line": 259
+      "line": 270
     },
     {
       "widget": "리크루팅",
@@ -52,7 +52,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1209
+      "line": 1529
     },
     {
       "widget": "캔버스 공용",
@@ -91,16 +91,28 @@
       "line": 159
     },
     {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/widgets/widget-coming-soon-gate.tsx",
+      "line": 89
+    },
+    {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing-card.tsx",
-      "line": 1758
+      "line": 1919
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/canvas-card-body.tsx",
+      "line": 56
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 148
+      "line": 157
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -112,7 +124,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 136
+      "line": 184
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -130,16 +142,10 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/research-context.tsx",
-      "line": 98
+      "line": 103
     }
   ],
   "icon-button": [
-    {
-      "widget": "데스크 리서치",
-      "key": "desk",
-      "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 895
-    },
     {
       "widget": "데스크 리서치",
       "key": "desk",
@@ -162,7 +168,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1551
+      "line": 1900
     },
     {
       "widget": "캔버스 공용",
@@ -209,12 +215,6 @@
       "line": 500
     },
     {
-      "widget": "전사록 생성기",
-      "key": "quotes",
-      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 975
-    },
-    {
       "widget": "캔버스 공용",
       "key": null,
       "file": "src/components/canvas/shell/widget-primary-cta.tsx",
@@ -224,7 +224,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 253
+      "line": 279
     }
   ],
   "input": [
@@ -238,23 +238,17 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1145
+      "line": 1465
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 164
+      "line": 161
     }
   ],
   "chrome-input": [],
   "chip-input": [
-    {
-      "widget": "데스크 리서치",
-      "key": "desk",
-      "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 904
-    },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
@@ -262,25 +256,46 @@
       "line": 76
     }
   ],
-  "chip-field": [],
+  "chip-field": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 250
+    }
+  ],
+  "badge": [
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/distribution-panel.tsx",
+      "line": 144
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/question-popup.tsx",
+      "line": 247
+    }
+  ],
   "textarea": [
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 135
+      "line": 144
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 175
+      "line": 172
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/research-context.tsx",
-      "line": 85
+      "line": 90
     }
   ],
   "select": [
@@ -288,13 +303,33 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 1324
+      "line": 1276
     },
     {
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
       "line": 152
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1079
+    }
+  ],
+  "select-menu": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 797
+    },
+    {
+      "widget": "프로빙 어시스턴트",
+      "key": "probing",
+      "file": "src/components/canvas/widgets/probing/control-board.tsx",
+      "line": 112
     }
   ],
   "checkbox": [
@@ -314,7 +349,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1184
+      "line": 1504
     }
   ],
   "slider": [],
@@ -323,19 +358,19 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 800
+      "line": 772
     },
     {
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 910
+      "line": 1178
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 128
+      "line": 123
     }
   ],
   "modal": [
@@ -343,7 +378,7 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 1242
+      "line": 1194
     },
     {
       "widget": "리크루팅",
@@ -361,7 +396,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1258
+      "line": 1580
     },
     {
       "widget": "캔버스 공용",
@@ -385,13 +420,13 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing-card.tsx",
-      "line": 1783
+      "line": 2040
     },
     {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 147
+      "line": 144
     }
   ],
   "widget-fullview-modal": [],
@@ -414,7 +449,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 926
+      "line": 1193
     }
   ],
   "dropdown-menu": [
@@ -434,16 +469,45 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 876
+      "line": 1141
     }
   ],
+  "download-menu": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1202
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1836
+    }
+  ],
+  "share-menu": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1223
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1860
+    }
+  ],
+  "feature-page": [],
   "label": [],
   "skeleton": [
     {
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
-      "line": 430
+      "line": 441
     },
     {
       "widget": "인터뷰 결과 생성기",
@@ -452,12 +516,57 @@
       "line": 443
     }
   ],
+  "tooltip": [],
+  "onboarding-tooltip": [],
+  "citation-popover": [],
+  "date-range-popover": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 813
+    }
+  ],
+  "job-progress": [
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1338
+    }
+  ],
+  "brand-loader": [
+    {
+      "widget": "데스크 리서치",
+      "key": "desk",
+      "file": "src/components/canvas/widgets/desk-card-body.tsx",
+      "line": 1328
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/distribution-panel.tsx",
+      "line": 196
+    },
+    {
+      "widget": "리크루팅",
+      "key": "recruiting",
+      "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
+      "line": 421
+    }
+  ],
   "stage-flow": [
     {
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 976
+      "line": 925
+    },
+    {
+      "widget": "전사록 생성기",
+      "key": "quotes",
+      "file": "src/components/canvas/widgets/quotes-card-body.tsx",
+      "line": 1239
     }
   ],
   "canvas-widget-primitives": [
@@ -465,7 +574,7 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-card-body.tsx",
-      "line": 823
+      "line": 795
     },
     {
       "widget": "리크루팅",
@@ -477,7 +586,7 @@
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/judged-list-table.tsx",
-      "line": 288
+      "line": 299
     },
     {
       "widget": "리크루팅",
@@ -495,7 +604,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1017
+      "line": 1292
     },
     {
       "widget": "캔버스 공용",
@@ -507,7 +616,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 103
+      "line": 110
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -519,7 +628,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/persona-section-configurator.tsx",
-      "line": 123
+      "line": 119
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -537,7 +646,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/research-context.tsx",
-      "line": 84
+      "line": 89
     }
   ]
 }

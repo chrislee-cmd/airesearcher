@@ -17,6 +17,11 @@ import { CONTROL_TRIGGER_CLASS, ControlTriggerChevron } from './control-trigger'
 // widget-shell 의 `overflow:hidden` 안에서 absolute 패널이 잘리므로 portal +
 // position:fixed 로 escape. 기존 `ui/select.tsx` (native <select> 계열) 과는
 // 별개 — 이쪽은 multi/체크박스/커스텀 옵션 렌더가 필요한 listbox 계열.
+//
+// 역할 구분 (3 계보): SelectMenu = 값 선택(single/multi, listbox/option aria),
+// DropdownMenu(ui/dropdown-menu.tsx) = 액션 실행(항목 클릭 → 동작, menu/menuitem
+// aria, 선택 시 자동 닫힘), Select(ui/select.tsx) = native <select> 단일선택.
+// 새 "값 선택" 컨트롤은 이 프리미티브를 쓰고 자체 포털 드롭다운을 만들지 말 것.
 
 export type SelectMenuOption = {
   value: string;
