@@ -1,0 +1,172 @@
+name: Apply migrations on merge
+
+# Root-cause fix for migration drift (PROJECT.md §7.5). Vercel auto-deploys code
+# on merge to main, but Supabase migrations were applied by hand
+# (`supabase db push`) — that gap caused repeated prod incidents (2026-06-28
+# translate data loss, 2026-07-06 desk 500). This workflow closes the gap: when
+# a merge to main adds new migrations, it applies them to prod automatically.
+#
+# It talks to the Supabase Management API directly (NOT `supabase db push`) so
+# it sidesteps the legacy 4-digit prefix ledger collisions (§7.9) — no
+# parking-trick needed.
+#
+# Safety gate: only ADDITIVE migrations auto-apply. Anything matching a
+# destructive pattern (drop table/column, type change, rename, truncate,
+# delete from) is SKIPPED and the job ends red so a human applies it manually.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+
+# Never run two apply jobs concurrently — migrations must land in commit order.
+concurrency:
+  group: apply-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: write # required to post a commit comment summarizing the run
+
+jobs:
+  apply:
+    name: Apply new migrations to prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: qdhfbvppeilzyihzlusj
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need history to diff the pushed range (before → after)
+
+      - name: Guard — access token present
+        run: |
+          if [ -z "${SUPABASE_ACCESS_TOKEN}" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN repo secret is not set. Register it in Settings → Secrets and variables → Actions (value = env-ssot token, PROJECT.md §7.5)."
+            exit 1
+          fi
+
+      - name: Apply new migrations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.event.after }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          set -uo pipefail
+
+          API="https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query"
+
+          # ---- 1. Determine which 14-digit migrations THIS push added ----------
+          # Squash merges produce a single commit on main; before→after is the
+          # exact range. If `before` is missing / the all-zero sentinel (new
+          # branch, force push), fall back to the parent of `after`.
+          if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            RANGE_ARGS="${AFTER}~1 ${AFTER}"
+          else
+            RANGE_ARGS="${BEFORE} ${AFTER}"
+          fi
+
+          # Only newly ADDED files (diff-filter=A), only 14-digit timestamp
+          # migrations — legacy 4-digit files never auto-apply (§7.9).
+          FILES=$(git diff --diff-filter=A --name-only ${RANGE_ARGS} -- 'supabase/migrations/*.sql' \
+            | grep -E '/[0-9]{14}_[^/]*\.sql$' || true)
+
+          if [ -z "${FILES}" ]; then
+            echo "No newly-added 14-digit migrations in this push. Nothing to apply."
+            exit 0
+          fi
+
+          echo "New migrations in this push:"
+          echo "${FILES}" | sed 's/^/  - /'
+
+          # Destructive patterns — data-loss risk stays a human decision.
+          DESTRUCTIVE_RE='drop[[:space:]]+table|drop[[:space:]]+column|alter[[:space:]]+column[[:space:]]+[^;]*[[:space:]]type|set[[:space:]]+data[[:space:]]+type|[[:space:]]rename[[:space:]]|truncate|delete[[:space:]]+from'
+
+          APPLIED=""
+          SKIPPED=""
+          FAILED=""
+
+          # run_query <json-payload> → sets globals HTTP (status) and BODY
+          run_query() {
+            local resp
+            resp=$(curl -sS -w $'\n%{http_code}' -X POST "${API}" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data-binary "$1")
+            HTTP="${resp##*$'\n'}"
+            BODY="${resp%$'\n'*}"
+          }
+
+          # ---- 2. Apply each migration -----------------------------------------
+          while IFS= read -r f; do
+            [ -z "${f}" ] && continue
+            base=$(basename "${f}")
+            version="${base%%_*}"
+            name="${base#*_}"; name="${name%.sql}"
+            echo "── ${base} (version=${version})"
+
+            # Strip `--` line comments before scanning so prose like
+            # "WITHOUT deleting the record" can't trigger a false positive.
+            scan=$(sed 's/--.*$//' "${f}" | tr '[:upper:]' '[:lower:]')
+            if echo "${scan}" | grep -Eq "${DESTRUCTIVE_RE}"; then
+              echo "::warning file=${f}::Destructive pattern detected — SKIPPING auto-apply. Apply manually after review (§7.5)."
+              SKIPPED="${SKIPPED}- \`${base}\` — destructive pattern, needs manual apply"$'\n'
+              continue
+            fi
+
+            # Apply the migration SQL. jq -Rs safely JSON-encodes the whole file.
+            payload=$(jq -Rs '{query: .}' "${f}")
+            run_query "${payload}"
+            if [ "${HTTP}" -ge 400 ] || [ "${HTTP}" -lt 200 ]; then
+              echo "::error file=${f}::Apply failed (HTTP ${HTTP}): ${BODY}"
+              FAILED="${FAILED}- \`${base}\` — apply failed (HTTP ${HTTP})"$'\n'
+              continue
+            fi
+            echo "  ✓ applied (HTTP ${HTTP})"
+
+            # Register in the prod ledger so `supabase migration list` stays in
+            # sync. Idempotent — re-running never double-inserts.
+            ledger_sql="insert into supabase_migrations.schema_migrations (version, name) values ('${version}', '${name}') on conflict (version) do nothing;"
+            ledger_payload=$(jq -n --arg q "${ledger_sql}" '{query: $q}')
+            run_query "${ledger_payload}"
+            if [ "${HTTP}" -ge 400 ] || [ "${HTTP}" -lt 200 ]; then
+              echo "::warning file=${f}::Applied to prod but ledger insert failed (HTTP ${HTTP}): ${BODY}"
+            fi
+
+            APPLIED="${APPLIED}- \`${base}\`"$'\n'
+          done <<< "${FILES}"
+
+          # ---- 3. Summarize (step summary + commit comment) --------------------
+          {
+            echo "## Migration apply — merge to main"
+            echo ""
+            [ -n "${APPLIED}" ] && { echo "### ✅ Applied"; echo ""; echo "${APPLIED}"; }
+            [ -n "${SKIPPED}" ] && { echo "### ⚠️ Skipped (destructive — apply manually)"; echo ""; echo "${SKIPPED}"; }
+            [ -n "${FAILED}" ]  && { echo "### ❌ Failed"; echo ""; echo "${FAILED}"; }
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          # Post a commit comment only when a human needs to act (skip / fail).
+          if [ -n "${SKIPPED}${FAILED}" ]; then
+            body=$'⚠️ **마이그 자동 적용 — 사람 조치 필요**\n\n'
+            [ -n "${APPLIED}" ] && body="${body}✅ 자동 적용됨:"$'\n'"${APPLIED}"$'\n'
+            [ -n "${SKIPPED}" ] && body="${body}⚠️ 파괴적 패턴 감지 → 스킵 (수동 적용 필요):"$'\n'"${SKIPPED}"$'\n'
+            [ -n "${FAILED}" ]  && body="${body}❌ 적용 실패:"$'\n'"${FAILED}"$'\n'
+            gh api "repos/${REPO}/commits/${COMMIT_SHA}/comments" -f body="${body}" >/dev/null 2>&1 \
+              || echo "::warning::Could not post commit comment (continuing)."
+          fi
+
+          # ---- 4. Fail the job red if anything needs attention -----------------
+          if [ -n "${FAILED}" ]; then
+            echo "::error::One or more migrations failed to apply. See logs and the commit comment."
+            exit 1
+          fi
+          if [ -n "${SKIPPED}" ]; then
+            echo "::error::Destructive migrations were skipped and need manual apply. See the commit comment."
+            exit 1
+          fi
+
+          echo "All new migrations applied and ledgered."
