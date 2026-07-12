@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
-import { IconButton } from '@/components/ui/icon-button';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
@@ -12,8 +11,9 @@ import { CreateProjectModal } from '@/components/interviews-v2/create-project-mo
 // 통합 프로젝트 기반 — 공용 ProjectPicker.
 //
 // 프로젝트 목록(interview_projects SSOT, useInterviewV2Projects)을 드롭다운으로
-// 고르고, 인라인으로 "+ 새 프로젝트" 생성, 그리고 kebab 메뉴의 "전체 위젯에 적용"
-// (1회성 applyToAll) 을 제공한다. 인터뷰 결과 생성기의 프로젝트 드롭다운 톤
+// 고르고, 같은 드롭다운 안에서 "+ 새 프로젝트" 생성과 "전체 위젯에 적용"
+// (1회성 applyToAll) 을 제공한다. (별도 kebab ⋯ 버튼은 제거 — 액션을 단일
+// 드롭다운으로 통합.) 인터뷰 결과 생성기의 프로젝트 드롭다운 톤
 // (ControlTrigger = Memphis ghost)에 정합.
 //
 // value/onChange 는 caller 소유 — 위젯은 보통 이걸 useProjectSelection 의
@@ -45,7 +45,9 @@ export function ProjectPicker({
   const selected = projects.find((p) => p.id === value) ?? null;
   const label = selected?.name ?? t('placeholder');
 
-  // 목록 아이템 + 맨 아래 "+ 새 프로젝트" 액션. 선택된 프로젝트엔 ✓ hint.
+  // 목록 아이템 + "+ 새 프로젝트" 생성 + "전체 위젯에 적용" 액션을 한 드롭다운에.
+  // 선택된 프로젝트엔 ✓ hint. "전체 위젯에 적용" 은 현재 선택 프로젝트를 모든
+  // 위젯에 1회성 반영하며, 선택이 없으면 적용 대상이 없으므로 비활성.
   const items: DropdownItem[] = [
     ...projects.map((p) => ({
       key: p.id,
@@ -58,13 +60,8 @@ export function ProjectPicker({
       label: t('newProject'),
       onSelect: () => setCreateOpen(true),
     },
-  ];
-
-  // "전체 위젯에 적용" — 현재 선택 프로젝트를 모든 위젯에 1회성 반영. 선택이
-  // 없으면 적용할 대상이 없으므로 비활성.
-  const applyItems: DropdownItem[] = [
     {
-      key: 'apply-all',
+      key: '__apply_all__',
       label: t('applyToAll'),
       disabled: !value,
       onSelect: () => {
@@ -75,38 +72,14 @@ export function ProjectPicker({
 
   return (
     <div className={className} data-widget={widget}>
-      <div className="flex items-center gap-1.5">
-        <div className="min-w-0 flex-1">
-          <DropdownMenu
-            items={items}
-            trigger={({ onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                onClick={onClick}
-                disabled={isLoading}
-              >
-                {label}
-              </ControlTrigger>
-            )}
-          />
-        </div>
-        <DropdownMenu
-          align="end"
-          items={applyItems}
-          trigger={({ open, onClick, ...aria }) => (
-            <IconButton
-              {...aria}
-              data-open={open}
-              aria-label={t('menu')}
-              variant="ghost"
-              size="md"
-              onClick={onClick}
-            >
-              <span aria-hidden>⋯</span>
-            </IconButton>
-          )}
-        />
-      </div>
+      <DropdownMenu
+        items={items}
+        trigger={({ onClick, ...aria }) => (
+          <ControlTrigger {...aria} onClick={onClick} disabled={isLoading}>
+            {label}
+          </ControlTrigger>
+        )}
+      />
 
       <CreateProjectModal
         open={createOpen}
