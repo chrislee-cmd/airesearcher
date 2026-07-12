@@ -31,6 +31,7 @@ export function EmptyState({
       className={`flex flex-col items-center justify-center border px-6 py-10 text-center rounded-sm ${container}${
         className ? ` ${className}` : ''
       }`}
+      data-ds-primitive="EmptyState"
     >
       {icon ? (
         <div className="mb-3 text-mute-soft">{icon}</div>

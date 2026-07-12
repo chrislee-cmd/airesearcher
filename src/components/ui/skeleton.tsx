@@ -53,6 +53,7 @@ export function Skeleton({
     <span
       aria-hidden="true"
       className={cls}
+      data-ds-primitive="Skeleton"
       style={{
         width: toSize(width),
         height: toSize(height),

@@ -79,6 +79,7 @@ export function Tabs<T extends string>({
       ref={listRef}
       role="tablist"
       aria-label={ariaLabel}
+      data-ds-primitive="Tabs"
       className={['relative flex items-center gap-1', className ?? '']
         .filter(Boolean)
         .join(' ')}

@@ -25,7 +25,7 @@ export function Label({
     .filter(Boolean)
     .join(' ');
   return (
-    <label className={cls} {...rest}>
+    <label className={cls} {...rest} data-ds-primitive="Label">
       {children}
       {required ? <span className="ml-1 text-warning">*</span> : null}
     </label>

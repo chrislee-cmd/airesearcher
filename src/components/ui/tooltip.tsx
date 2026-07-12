@@ -28,6 +28,7 @@ export function Tooltip({ content, children }: TooltipProps) {
   return (
     <span
       className="relative inline-flex"
+      data-ds-primitive="Tooltip"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}

@@ -91,6 +91,7 @@ export function CitationPopover({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
+        data-ds-primitive="CitationPopover"
         className="mx-0.5 inline-flex cursor-pointer select-none items-center rounded-xs border border-amore bg-amore-bg px-1 align-baseline text-xs-soft font-semibold text-amore transition-colors hover:bg-amore hover:text-paper"
       >
         {children}

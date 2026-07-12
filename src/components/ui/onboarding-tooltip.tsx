@@ -71,7 +71,7 @@ export function OnboardingTooltip({
   if (dismissed) return <>{children}</>;
 
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex" data-ds-primitive="OnboardingTooltip">
       {/* anchor 클릭 = "설정을 열었다" 로 간주 → dismiss. 버튼 자체 onClick 은
           그대로 전파되므로 설정 모달 오픈 + dismiss 가 함께 일어난다. */}
       <div onClickCapture={dismiss}>{children}</div>

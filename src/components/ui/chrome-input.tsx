@@ -43,5 +43,7 @@ export const ChromeInput = forwardRef<HTMLInputElement, Props>(function ChromeIn
   const cls = [BASE, SIZE[size], className ?? '']
     .filter(Boolean)
     .join(' ');
-  return <input ref={ref} className={cls} {...rest} />;
+  return (
+    <input ref={ref} className={cls} {...rest} data-ds-primitive="ChromeInput" />
+  );
 });

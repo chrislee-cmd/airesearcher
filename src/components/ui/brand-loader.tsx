@@ -5,7 +5,7 @@ type Props = {
 
 export function BrandLoader({ size = 56, label }: Props) {
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4" data-ds-primitive="BrandLoader">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/branding/icons/03_ICON_FULL_COLOR.svg"

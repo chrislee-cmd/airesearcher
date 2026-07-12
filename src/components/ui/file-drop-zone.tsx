@@ -30,6 +30,9 @@ export type FileDropZoneProps = {
   // Return true to indicate the drop was consumed and the default
   // file-handling path should be skipped.
   onDropRaw?: (e: DragEvent<HTMLDivElement>) => boolean;
+  // 슈퍼어드민 DS 인스펙터용 primitive 이름. 기본 'FileDropZone'. ControlDropzone
+  // 이 FileDropZone 을 감싸 쓰므로 자기 이름('ControlDropzone')으로 덮어쓴다.
+  dsPrimitive?: string;
 };
 
 export function FileDropZone({
@@ -44,6 +47,7 @@ export function FileDropZone({
   children,
   className,
   onDropRaw,
+  dsPrimitive = 'FileDropZone',
   ...rest
 }: FileDropZoneProps) {
   const [dragOver, setDragOver] = useState(false);
@@ -128,6 +132,7 @@ export function FileDropZone({
         boxShadow: memphisShadow,
       }}
       {...rest}
+      data-ds-primitive={dsPrimitive}
     >
       <input
         ref={inputRef}

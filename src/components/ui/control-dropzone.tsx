@@ -29,6 +29,13 @@ import { FileDropZone, FILE_DROP_ZONE_PY, type FileDropZoneProps } from './file-
 export type ControlDropzoneProps = Omit<FileDropZoneProps, 'className'>;
 
 export function ControlDropzone(props: ControlDropzoneProps) {
-  // 폭 + 세로 패딩을 여기서 박제 — 위젯은 이 값을 바꿀 수 없다.
-  return <FileDropZone {...props} className={`w-full ${FILE_DROP_ZONE_PY}`} />;
+  // 폭 + 세로 패딩을 여기서 박제 — 위젯은 이 값을 바꿀 수 없다. 인스펙터에는
+  // 내부 FileDropZone 이 아니라 이 primitive('ControlDropzone')로 노출.
+  return (
+    <FileDropZone
+      {...props}
+      className={`w-full ${FILE_DROP_ZONE_PY}`}
+      dsPrimitive="ControlDropzone"
+    />
+  );
 }

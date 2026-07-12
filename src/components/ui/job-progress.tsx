@@ -43,7 +43,7 @@ export function JobProgress({
       : `border-[2px] bg-paper px-4 py-3 rounded-sm ${containerTone}`;
 
   return (
-    <div className={containerCls}>
+    <div className={containerCls} data-ds-primitive="JobProgress">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span

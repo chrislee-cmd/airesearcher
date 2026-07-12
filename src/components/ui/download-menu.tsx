@@ -109,6 +109,7 @@ export function DownloadMenu({
         size="sm"
         disabled={disabled || busy !== null}
         onClick={() => handleSelect(only)}
+        dsPrimitive="DownloadMenu"
       >
         {triggerLabel}
       </Button>
@@ -129,6 +130,7 @@ export function DownloadMenu({
           onClick={onClick}
           rightIcon={<Caret open={open} />}
           {...aria}
+          dsPrimitive="DownloadMenu"
         >
           {triggerLabel}
         </Button>
