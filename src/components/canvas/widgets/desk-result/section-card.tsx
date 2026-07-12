@@ -68,6 +68,7 @@ export function SectionCard({
     <article
       id={id}
       // scroll-margin 으로 sidebar anchor 점프 시 상단이 잘리지 않게.
+      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       className={`scroll-mt-4 rounded-sm border-[3px] border-ink bg-paper shadow-[4px_4px_0_var(--color-ink)] ${EMPHASIS_WRAP[emphasis]} ${EMPHASIS_PAD[emphasis]}`}
     >
       <header

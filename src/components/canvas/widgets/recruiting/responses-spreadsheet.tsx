@@ -652,6 +652,7 @@ export function ResponsesSpreadsheet({
 
 function ErrorBanner({ message }: { message: string }) {
   return (
+    // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(warning 색 오프셋 shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
     <div className="rounded-sm border-2 border-warning-line bg-warning-bg p-3 text-md text-ink-2 shadow-[2px_2px_0_var(--color-warning)]">
       {message}
     </div>

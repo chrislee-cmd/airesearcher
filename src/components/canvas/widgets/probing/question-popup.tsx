@@ -48,6 +48,7 @@ const IMPORTANCE_CARD: Record<
 > = {
   high: {
     container:
+      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(warning 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-[3px] border-warning bg-warning-bg shadow-[8px_8px_0_var(--color-warning)]',
     label: '지금 던지세요',
     ring: 'stroke-warning',
@@ -55,6 +56,7 @@ const IMPORTANCE_CARD: Record<
   },
   medium: {
     container:
+      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-[3px] border-ink bg-paper shadow-[6px_6px_0_var(--color-ink)]',
     label: '다음 질문 후보',
     ring: 'stroke-ink',
@@ -62,6 +64,7 @@ const IMPORTANCE_CARD: Record<
   },
   low: {
     container:
+      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(mute 색 오프셋 shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-2 border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
     label: '여유 있을 때',
     ring: 'stroke-mute',
@@ -423,6 +426,7 @@ function ActionButton({
       title={label}
       onClick={onClick}
       data-canvas-action
+      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 default/hover shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore"
     >
       {children}
