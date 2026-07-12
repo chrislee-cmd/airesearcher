@@ -2,6 +2,83 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+// Tokenized-arbitrary-value selectors, shared so a path-scoped block can
+// LAYER extra rules on top without dropping these. ESLint flat config
+// replaces (not merges) a rule's config per file when two config objects
+// set the same key, so any scoped `no-restricted-syntax` block must
+// re-list every selector it wants active — otherwise the global set below
+// goes dark for that path. (Same same-key hazard the react/forbid-elements
+// note documents.) We check both bare string literals and template-literal
+// fragments so `<div className={`z-[80] ${flag}`}>` is caught too.
+const RADIUS_Z_FONT_SELECTORS = [
+  {
+    selector: "Literal[value=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+    message:
+      "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+  },
+  {
+    selector:
+      "TemplateElement[value.raw=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+    message:
+      "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+  },
+  {
+    selector: "Literal[value=/\\bz-\\[\\d+\\]/]",
+    message:
+      "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
+  },
+  {
+    selector: "TemplateElement[value.raw=/\\bz-\\[\\d+\\]/]",
+    message:
+      "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
+  },
+  // Font-size literals (B-1): 781-site baseline being migrated to
+  // text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display}.
+  {
+    selector: "Literal[value=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
+    message:
+      "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
+  },
+  {
+    selector: "TemplateElement[value.raw=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
+    message:
+      "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
+  },
+];
+
+// Bracket border/shadow selectors (DS-6). Memphis drop shadows and thick
+// borders had NO lint rule, so 82 sites accreted before DS-1/DS-2 swept the
+// token-matching ones. These seal `shadow-[Npx_Npx…]` and `border-[Npx]` the
+// same AST way radius/z-index are sealed (bare + template fragment). Applied
+// as a hard error only where baseline is 0 (canvas/widgets — DS-2 #969); the
+// intentional no-exact-token residuals DS-2 kept ("DS-6 lint gate baseline")
+// carry a per-line eslint-disable with a reason. Other surfaces (ui/ still
+// has 16 border-[2px]→border-2 pending a follow-up sweep, canvas/shell, the
+// feature areas) stay unsealed and are tracked in docs/DESIGN_SYSTEM.md for a
+// staged expansion — same phased approach radius/z-index took.
+const BRACKET_SELECTORS = [
+  {
+    selector: "Literal[value=/\\bshadow-\\[\\d+px_\\d+px/]",
+    message:
+      "Use shadow-memphis-{2xs,xs,sm,md,lg,2xl} (+ -amore/-warning/-card color variants) instead of shadow-[Npx_Npx_…]. See globals.css @theme --shadow-memphis-*. No exact-match token (color offset / negative)? Keep it with `// eslint-disable-next-line no-restricted-syntax -- <reason>` (DS-2 convention).",
+  },
+  {
+    selector: "TemplateElement[value.raw=/\\bshadow-\\[\\d+px_\\d+px/]",
+    message:
+      "Use shadow-memphis-{2xs,xs,sm,md,lg,2xl} (+ -amore/-warning/-card color variants) instead of shadow-[Npx_Npx_…]. See globals.css @theme --shadow-memphis-*. No exact-match token (color offset / negative)? Keep it with `// eslint-disable-next-line no-restricted-syntax -- <reason>` (DS-2 convention).",
+  },
+  {
+    selector: "Literal[value=/\\bborder-\\[\\d+px\\]/]",
+    message:
+      "Use border / border-2 (or directional border-{t,b,l,r}-2) instead of border-[Npx]. No native match (e.g. 3px)? Keep it with `// eslint-disable-next-line no-restricted-syntax -- <reason>` (DS-2 convention).",
+  },
+  {
+    selector: "TemplateElement[value.raw=/\\bborder-\\[\\d+px\\]/]",
+    message:
+      "Use border / border-2 (or directional border-{t,b,l,r}-2) instead of border-[Npx]. No native match (e.g. 3px)? Keep it with `// eslint-disable-next-line no-restricted-syntax -- <reason>` (DS-2 convention).",
+  },
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -82,44 +159,27 @@ const eslintConfig = defineConfig([
     name: "design-system/no-hardcoded-tokens",
     files: ["src/**/*.{ts,tsx}"],
     rules: {
+      "no-restricted-syntax": ["error", ...RADIUS_Z_FONT_SELECTORS],
+    },
+  },
+  // Bracket border/shadow gate (DS-6) — hard(error) scope. canvas/widgets is
+  // the one surface DS-2 (#969) drove to baseline 0 for the token-matching
+  // patterns, so it can hard-flip today. This block LAYERS the bracket
+  // selectors on top of the global token set; because a scoped
+  // no-restricted-syntax replaces (not merges) the global one for these
+  // files, we spread RADIUS_Z_FONT_SELECTORS back in so radius/z/font stay
+  // enforced here too. The CI "Design-system lint (blocking)" job selects by
+  // ruleId (no-restricted-syntax), so it picks these up automatically — no
+  // ci.yml change needed. Residual no-exact-token brackets carry per-line
+  // eslint-disable + reason (see the 9 sites DS-2 flagged as DS-6 baseline).
+  {
+    name: "design-system/no-bracket-hardcodes",
+    files: ["src/components/canvas/widgets/**/*.{ts,tsx}"],
+    rules: {
       "no-restricted-syntax": [
         "error",
-        {
-          selector:
-            "Literal[value=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
-          message:
-            "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
-        },
-        {
-          selector:
-            "TemplateElement[value.raw=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
-          message:
-            "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
-        },
-        {
-          selector: "Literal[value=/\\bz-\\[\\d+\\]/]",
-          message:
-            "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
-        },
-        {
-          selector: "TemplateElement[value.raw=/\\bz-\\[\\d+\\]/]",
-          message:
-            "Use z-{table-sticky,table-cell-sticky,table-resize,fab,modal,toast,overlay} instead of z-[N]. See globals.css @utility z-*.",
-        },
-        // Font-size literals (B-1): 781-site baseline being migrated to
-        // text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display}. CI lint is soft
-        // (§3.8 continue-on-error: true) so these errors are visible
-        // tracking, not merge blockers. Hard-flip happens after baseline=0.
-        {
-          selector: "Literal[value=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
-          message:
-            "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
-        },
-        {
-          selector: "TemplateElement[value.raw=/\\btext-\\[\\d+(?:\\.\\d+)?px\\]/]",
-          message:
-            "Use text-{xs,xs-soft,sm,md,lg,xl,2xl,3xl,display} instead of text-[Npx]. See globals.css @theme --text-*. Mapping in /design-system catalog.",
-        },
+        ...RADIUS_Z_FONT_SELECTORS,
+        ...BRACKET_SELECTORS,
       ],
     },
   },
