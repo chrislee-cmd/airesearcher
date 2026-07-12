@@ -15,15 +15,10 @@
    토큰만 사용.
    ──────────────────────────────────────────────────────────────────── */
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
+import { usePopoverBase } from '@/components/ui/use-popover-base';
 import type { Citation } from '@/lib/interview-v2/types';
 
 // 패널 폭 — 뷰포트가 좁으면 좌우 0.5rem 여백만 남기고 축소.
@@ -39,49 +34,22 @@ export function CitationPopover({
 }) {
   const t = useTranslations('InterviewsV2');
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const close = useCallback(() => setOpen(false), []);
+  // 포털 mount + escape/외부클릭 + trigger rect 추적은 공통 훅. 배치 계산만 로컬.
+  const { triggerRef, panelRef, anchorRect } = usePopoverBase<
+    HTMLButtonElement,
+    HTMLDivElement
+  >({ open, onClose: close });
 
-  // 열려 있는 동안 trigger 위치를 추적해 패널을 재배치 (스크롤/리사이즈 대응).
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const update = () => {
-      const r = triggerRef.current!.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const w = Math.min(PANEL_W, vw - 16);
-      // 좌우 클램프 — trigger 좌측 정렬 기준, 뷰포트 넘침 방지.
-      const left = Math.max(8, Math.min(r.left, vw - w - 8));
-      setPos({ left, top: r.bottom + GAP });
-    };
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
-
-  // 바깥 클릭 / Escape 로 닫기.
-  useEffect(() => {
-    if (!open) return;
-    function down(e: MouseEvent) {
-      const node = e.target as Node;
-      if (triggerRef.current?.contains(node)) return;
-      if (panelRef.current?.contains(node)) return;
-      setOpen(false);
-    }
-    function esc(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', esc as EventListener);
-    return () => {
-      document.removeEventListener('mousedown', down);
-      document.removeEventListener('keydown', esc as EventListener);
-    };
-  }, [open]);
+  // trigger 좌측 정렬 기준 배치 — 뷰포트 넘침 방지로 left 클램프.
+  const pos = anchorRect
+    ? (() => {
+        const vw = window.innerWidth;
+        const w = Math.min(PANEL_W, vw - 16);
+        const left = Math.max(8, Math.min(anchorRect.left, vw - w - 8));
+        return { left, top: anchorRect.bottom + GAP };
+      })()
+    : null;
 
   return (
     <>

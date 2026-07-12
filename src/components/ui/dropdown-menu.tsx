@@ -6,11 +6,11 @@ import {
   useCallback,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { usePopoverBase } from '@/components/ui/use-popover-base';
 
 // Self-built headless menu primitive. Mirrors the SidebarAccount popover
 // pattern (mousedown-outside + Esc) so visual + interaction language
@@ -59,9 +59,6 @@ export function DropdownMenu({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const triggerId = useId();
 
@@ -70,37 +67,18 @@ export function DropdownMenu({
     setActiveIndex(-1);
   }, []);
 
-  const updateRect = useCallback(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    setAnchorRect(el.getBoundingClientRect());
-  }, []);
-
-  // Recompute anchor on open + on scroll/resize while open. position:fixed
-  // means scrolling the page would otherwise leave the menu glued in place.
-  useLayoutEffect(() => {
-    if (!open) return;
-    updateRect();
-    window.addEventListener('scroll', updateRect, true);
-    window.addEventListener('resize', updateRect);
-    return () => {
-      window.removeEventListener('scroll', updateRect, true);
-      window.removeEventListener('resize', updateRect);
-    };
-  }, [open, updateRect]);
-
-  // Click outside — check BOTH wrapper (trigger) and menu (portal'd to body).
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (wrapRef.current?.contains(target)) return;
-      if (menuRef.current?.contains(target)) return;
-      close();
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open, close]);
+  // Anchor rect tracking + outside-click via the shared popover base. Escape
+  // stays in onMenuKeyDown (below) — it drives arrow-nav too — so we opt out of
+  // the base's document-level Escape to keep behavior identical.
+  const {
+    triggerRef: wrapRef,
+    panelRef: menuRef,
+    anchorRect,
+  } = usePopoverBase<HTMLDivElement, HTMLDivElement>({
+    open,
+    onClose: close,
+    closeOnEscape: false,
+  });
 
   // Focus the active item as it changes (keyboard nav).
   useEffect(() => {
