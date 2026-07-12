@@ -18,17 +18,12 @@
 
 'use client';
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { IconButton } from '@/components/ui/icon-button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { ControlTriggerChevron } from '@/components/ui/control-trigger';
+import { usePopoverBase } from '@/components/ui/use-popover-base';
 
 export type DateRangeValue = { from: string; to: string };
 export type DateRangePreset = { label: string; days: number | null };
@@ -96,9 +91,13 @@ export function DateRangePopover({
   buttonClassName,
 }: DateRangePopoverProps) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const close = useCallback(() => setOpen(false), []);
+  // 포털 mount + escape/외부클릭 + trigger rect 추적은 공통 훅. 배치 계산만 로컬.
+  const {
+    triggerRef: wrapRef,
+    panelRef,
+    anchorRect: rect,
+  } = usePopoverBase<HTMLDivElement, HTMLDivElement>({ open, onClose: close });
 
   const today = useMemo(() => todayLocal(), []);
   const todayStr = fmt(today);
@@ -116,37 +115,6 @@ export function DateRangePopover({
     setView({ year: anchor.getFullYear(), month: anchor.getMonth() });
     setOpen(true);
   }
-
-  useLayoutEffect(() => {
-    if (!open || !wrapRef.current) return;
-    const update = () => setRect(wrapRef.current!.getBoundingClientRect());
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function down(e: MouseEvent) {
-      const t = e.target as Node;
-      if (wrapRef.current?.contains(t)) return;
-      if (panelRef.current?.contains(t)) return;
-      setOpen(false);
-    }
-    function esc(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', esc as EventListener);
-    return () => {
-      document.removeEventListener('mousedown', down);
-      document.removeEventListener('keydown', esc as EventListener);
-    };
-  }, [open]);
 
   // ─── 닫힘 라벨 ───────────────────────────────────────────────────────────
   const summary =
