@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       custom_data?: Record<string, string>;
       store_id?: number | string;
     };
-    data?: { id?: string; type?: string };
+    data?: { id?: string; type?: string; attributes?: { test_mode?: boolean } };
   };
   try {
     event = JSON.parse(raw);
@@ -73,7 +73,13 @@ export async function POST(request: Request) {
     // update + idempotent on the grant RPC.
     const orderId = event.data?.id ?? null;
     if (orderId) {
-      const patch: Record<string, string> = { lemonsqueezy_order_id: orderId };
+      const patch: Record<string, string | boolean> = {
+        lemonsqueezy_order_id: orderId,
+        // LS stamps test_mode on orders placed via a store's test mode. Persist
+        // it so these charges self-exclude from revenue (analytics.ts) — no
+        // manual marking needed. Real orders carry test_mode=false.
+        is_test: event.data?.attributes?.test_mode === true,
+      };
       if (storeId) patch.lemonsqueezy_store_id = storeId;
       if (currency) patch.currency = currency;
       await admin

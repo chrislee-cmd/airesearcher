@@ -130,7 +130,8 @@ export type CumulativeTotals = {
   users: number;
   // Sum of payments.amount_krw where status='paid' (KRW). amount_krw is
   // always stamped in KRW list price even for USD-rail charges, so this is a
-  // currency-clean total. Refunded/cancelled/failed are excluded.
+  // currency-clean total. Refunded/cancelled/failed and is_test rows are
+  // excluded.
   revenueKrwPaid: number;
 };
 
@@ -707,14 +708,17 @@ async function computeTotals(db: Db): Promise<CumulativeTotals> {
     .select('*', { count: 'exact', head: true });
   if (!usersRes.error) users = usersRes.count ?? 0;
 
-  // Paid revenue — sum amount_krw over status='paid' only. payments is tiny
+  // Paid revenue — sum amount_krw over status='paid' only, excluding rows
+  // flagged is_test (test/non-real charges never reflect actual revenue).
+  // `is_test IS NOT TRUE` keeps false + any legacy null. payments is tiny
   // (per-purchase rows), so summing in JS mirrors the file's fetch+reduce
   // pattern rather than reaching for a SQL aggregate.
   let revenueKrwPaid = 0;
   const payRes = await db
     .from('payments')
     .select('amount_krw')
-    .eq('status', 'paid');
+    .eq('status', 'paid')
+    .not('is_test', 'is', true);
   if (!payRes.error) {
     for (const r of payRes.data ?? []) {
       const v = (r as { amount_krw: number | null }).amount_krw;
