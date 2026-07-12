@@ -124,55 +124,110 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
 
 // Single source of truth for credit pricing — read by both the
 // purchase page and the sidebar copy.
-export const CREDIT_PRICE_KRW = 2000;
+//
+// 2026-07-13 리프라이스: ₩2,000/cr → ₩500/cr (4배 인하). 위젯 크레딧 비용
+// (FEATURE_COSTS) 자체는 불변이라 체감 가격만 1/4 로 떨어진다. 이 상수가
+// 가격 SSOT — 팩(CREDIT_BUNDLES)·구독(SUBSCRIPTION_TIERS)·플로어(MIN_CREDITS)
+// 가 모두 여기 ₩500/cr 기준을 따른다.
+export const CREDIT_PRICE_KRW = 500;
 
-export type CreditBundleId = 'starter' | 'team' | 'studio' | 'enterprise';
+// 무할인 수량 팩 5종. 할인율 차등을 폐지하고 전 팩 ₩500/cr 균일가로 재편.
+// LS variant 매핑(billing.ts resolveLemonSqueezyTarget)이 이 id 를 신 env 키
+// `LEMONSQUEEZY_VARIANT_PACK_{MINI,STARTER,PLUS,PRO,MAX}_{KRW,USD}` 로 정합.
+export type CreditBundleId = 'mini' | 'starter' | 'plus' | 'pro' | 'max';
 
 export type CreditBundle = {
   id: CreditBundleId;
   credits: number;
-  // Total list price in KRW (null = "contact sales").
+  // Total list price in KRW (null = "contact sales"). 현 팩은 전부 실가격.
   priceKrw: number | null;
-  // Effective per-credit price (computed). Convenience.
+  // Effective per-credit price (computed). 전 팩 ₩500 균일 — 무할인.
   perCreditKrw: number | null;
-  discountPct: number;
   popular?: boolean;
 };
 
 export const CREDIT_BUNDLES: CreditBundle[] = [
   {
-    id: 'starter',
-    credits: 100,
-    priceKrw: 200_000,
-    perCreditKrw: 2_000,
-    discountPct: 0,
+    id: 'mini',
+    credits: 50,
+    priceKrw: 25_000,
+    perCreditKrw: 500,
   },
   {
-    id: 'team',
-    credits: 500,
-    priceKrw: 900_000,
-    perCreditKrw: 1_800,
-    discountPct: 10,
+    id: 'starter',
+    credits: 100,
+    priceKrw: 50_000,
+    perCreditKrw: 500,
     popular: true,
   },
   {
-    id: 'studio',
-    credits: 1_500,
-    priceKrw: 2_550_000,
-    perCreditKrw: 1_700,
-    discountPct: 15,
+    id: 'plus',
+    credits: 300,
+    priceKrw: 150_000,
+    perCreditKrw: 500,
   },
   {
-    id: 'enterprise',
-    credits: 5_000,
-    priceKrw: null,
-    perCreditKrw: null,
-    discountPct: 25,
+    id: 'pro',
+    credits: 600,
+    priceKrw: 300_000,
+    perCreditKrw: 500,
   },
+  {
+    id: 'max',
+    credits: 1_500,
+    priceKrw: 750_000,
+    perCreditKrw: 500,
+  },
+];
+
+// 구독 티어 — B1(결제/지급 wiring)이 소비. 여기선 상수/타입만 정의한다.
+// 전 티어 ₩500/cr 무할인 (monthlyPriceKrw / includedCredits = 500).
+// LS 구독 variant 는 env 키 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_{KRW,USD}` 규약.
+export type SubscriptionTierId = 'solo' | 'plus' | 'pro';
+
+export type SubscriptionTier = {
+  id: SubscriptionTierId;
+  monthlyPriceKrw: number;
+  includedCredits: number;
+};
+
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+  { id: 'solo', monthlyPriceKrw: 10_000, includedCredits: 20 },
+  { id: 'plus', monthlyPriceKrw: 30_000, includedCredits: 60 },
+  { id: 'pro', monthlyPriceKrw: 80_000, includedCredits: 160 },
 ];
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, f.cost]),
+) as Record<FeatureKey, number>;
+
+// ── 위젯 최소 크레딧 플로어 (75% 마진 불변식) ──────────────────────────────
+//
+// 각 위젯의 크레딧 비용이 절대 내려가면 안 되는 하한선. 공식:
+//   MIN_CREDITS[f] = ceil(COGS_f / 95)
+// 유도: ₩500/cr 명목가에서 결제수수료·부가세를 빼면 순수취 ≈ ₩380/cr.
+// 목표 마진 75% → COGS 는 순매출의 25% = 순매출당 ₩95/cr 이하여야 한다.
+// 따라서 어떤 위젯이 원가 COGS_f(₩)를 태우면 최소 ceil(COGS_f/95) 크레딧을
+// 받아야 75% 를 지킨다. SSOT 는 docs/pricing-scheme.md 의 COGS 표.
+//
+// ⚠️ 보수적 구현 노트 (spec writer 지목 SSOT docs/pricing-scheme.md 가 현재
+// 리포 트리에 부재 → 전-위젯 COGS 표를 직접 못 읽음). 질문 금지 룰에 따라
+// 가장 보수적으로 해석: 명시 앵커가 있는 위젯만 override 로 계산된 플로어를
+// 두고, 나머지는 현재 FEATURE_COSTS 값을 플로어로 채택("현 비용이 이미 75%
+// 불변식을 만족한다"는 가정 — 현 비용이 곧 상한이자 하한). COGS 표가 확정되면
+// 이 override 맵만 갱신하면 된다. D1(min-credit-floor-guard)이 cost < floor
+// 위젯을 감지하고, translate 는 E1 이 실오디오-분 기준으로 강제한다.
+const MIN_CREDIT_OVERRIDES: Partial<Record<FeatureKey, number>> = {
+  // interviews: COGS ≈ ₩950–1,045 가정 → ceil(≈1000/95) = 11. 현 비용 10cr 은
+  // 이 플로어를 1 밑돎 → 문서화된 경계 예외(코스트는 10 유지, D1 이 감지).
+  interviews: 11,
+  // translate: 실오디오-분 종속이라 정적 플로어를 여기서 확정 못 한다.
+  // placeholder 0(=플로어 미설정 플래그) — E1 이 실측 분 기준으로 강제한다.
+  translate: 0,
+};
+
+export const MIN_CREDITS: Record<FeatureKey, number> = Object.fromEntries(
+  FEATURES.map((f) => [f.key, MIN_CREDIT_OVERRIDES[f.key] ?? f.cost]),
 ) as Record<FeatureKey, number>;
 
 // 위젯별 동시사용 게이트(/api/gate/*) 가 body 의 widget 파라미터가 실제

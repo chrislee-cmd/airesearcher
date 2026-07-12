@@ -17,25 +17,25 @@ export type PaymentCurrency = 'KRW' | 'USD';
 // Each bundle maps to a pre-created Lemon Squeezy product variant.
 // Standard pricing model auto-creates one variant per product, so the
 // variant ID is what we attach to the checkout (not the product ID).
-const LS_VARIANT_BY_BUNDLE_LEGACY: Record<CreditBundleId, string | undefined> = {
-  starter: env.LEMONSQUEEZY_VARIANT_STARTER,
-  team: env.LEMONSQUEEZY_VARIANT_TEAM,
-  studio: env.LEMONSQUEEZY_VARIANT_STUDIO,
-  enterprise: env.LEMONSQUEEZY_VARIANT_ENTERPRISE,
-};
-
+//
+// 2026-07-13 리프라이스: 신 수량 팩 5종(mini/starter/plus/pro/max) ↔ 신 env 키
+// 규약 `LEMONSQUEEZY_VARIANT_PACK_{MINI,STARTER,PLUS,PRO,MAX}_{KRW,USD}`. 441
+// LS 상품생성 스크립트가 이 키명으로 variant id 를 출력한다. 구 팩(starter/
+// team/studio/enterprise) 단일-스토어 legacy 폴백은 팩 id 재편으로 폐지됐다.
 const LS_VARIANT_BY_BUNDLE_KRW: Record<CreditBundleId, string | undefined> = {
-  starter: env.LEMONSQUEEZY_VARIANT_STARTER_KRW,
-  team: env.LEMONSQUEEZY_VARIANT_TEAM_KRW,
-  studio: env.LEMONSQUEEZY_VARIANT_STUDIO_KRW,
-  enterprise: env.LEMONSQUEEZY_VARIANT_ENTERPRISE_KRW,
+  mini: env.LEMONSQUEEZY_VARIANT_PACK_MINI_KRW,
+  starter: env.LEMONSQUEEZY_VARIANT_PACK_STARTER_KRW,
+  plus: env.LEMONSQUEEZY_VARIANT_PACK_PLUS_KRW,
+  pro: env.LEMONSQUEEZY_VARIANT_PACK_PRO_KRW,
+  max: env.LEMONSQUEEZY_VARIANT_PACK_MAX_KRW,
 };
 
 const LS_VARIANT_BY_BUNDLE_USD: Record<CreditBundleId, string | undefined> = {
-  starter: env.LEMONSQUEEZY_VARIANT_STARTER_USD,
-  team: env.LEMONSQUEEZY_VARIANT_TEAM_USD,
-  studio: env.LEMONSQUEEZY_VARIANT_STUDIO_USD,
-  enterprise: env.LEMONSQUEEZY_VARIANT_ENTERPRISE_USD,
+  mini: env.LEMONSQUEEZY_VARIANT_PACK_MINI_USD,
+  starter: env.LEMONSQUEEZY_VARIANT_PACK_STARTER_USD,
+  plus: env.LEMONSQUEEZY_VARIANT_PACK_PLUS_USD,
+  pro: env.LEMONSQUEEZY_VARIANT_PACK_PRO_USD,
+  max: env.LEMONSQUEEZY_VARIANT_PACK_MAX_USD,
 };
 
 // Resolve store + variant for a (bundle, currency) pair. Falls back to the
@@ -47,7 +47,7 @@ export function resolveLemonSqueezyTarget(
 ): { storeId: string; variantId: string } | null {
   if (currency === 'KRW') {
     const storeId = env.LEMONSQUEEZY_STORE_ID_KRW ?? env.LEMONSQUEEZY_STORE_ID;
-    const variantId = LS_VARIANT_BY_BUNDLE_KRW[bundleId] ?? LS_VARIANT_BY_BUNDLE_LEGACY[bundleId];
+    const variantId = LS_VARIANT_BY_BUNDLE_KRW[bundleId];
     if (!storeId || !variantId) return null;
     return { storeId, variantId };
   }
