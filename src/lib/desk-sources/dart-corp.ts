@@ -37,13 +37,44 @@ export type DartRevenueResult =
 // 상장사만 추려 캐시한다. 'v1' 은 파싱 스키마 버전 — 구조 바뀌면 bump.
 const LISTED_CACHE_KEY = 'dart:corpcode:listed:v1';
 
-// 사명 매칭용 정규화 — 법인 접두/공백 제거 + 소문자.
+// 라틴↔한글 브랜드 이니셜 음차 정규화 (spec B). DART 로스터는 **정식 한글 사명**
+// ("엘지생활건강")을 담는데, 유저·LLM 은 라틴 표기("LG생활건강")로 던지는 일이
+// 잦아 exact/partial 둘 다 미스 → "비상장 추정" 오행이 났다. 로스터와 쿼리 양쪽에
+// 같은 치환을 적용하므로 "LG생활건강"·"엘지생활건강"·"LG생활건강(주)" 가 모두 같은
+// 정규형("엘지생활건강")으로 수렴한다. 치환은 소문자 라틴이 있을 때만 발화하므로
+// (순수 한글 사명엔 무영향) 오검출 위험이 낮다 — 완전 유사도 매칭이 아니라 표기
+// 정규화 수준(과설계 회피). 대표 국내 그룹 이니셜만 큐레이션. **specific-first
+// 순서 필수** — "skc"·"kt&g" 를 "sk"·"kt" 보다 먼저 치환해야 접두 오염이 없다.
+const BRAND_ALIASES: [RegExp, string][] = [
+  [/skc/g, '에스케이씨'],
+  [/sk/g, '에스케이'],
+  [/kt&g/g, '케이티앤지'],
+  [/kt/g, '케이티'],
+  [/lg/g, '엘지'],
+  [/gs/g, '지에스'],
+  [/cj/g, '씨제이'],
+  [/ls/g, '엘에스'],
+  [/posco/g, '포스코'],
+  [/hd/g, '에이치디'],
+  [/dl/g, '디엘'],
+  [/kb/g, '케이비'],
+  [/nhn/g, '엔에이치엔'],
+  [/nh/g, '엔에이치'],
+];
+
+// 사명 매칭용 정규화 — 괄호 병기·법인격·구두점·공백 제거 + 소문자 + 브랜드 이니셜
+// 음차. 로스터·쿼리 양쪽에 동일 적용해 표기 변형(공백/㈜·(주)·주식회사/영문병기/
+// 라틴 이니셜)이 같은 정규형으로 모이게 한다.
 function normName(s: string): string {
-  return s
-    .replace(/주식회사|\(주\)|㈜/g, '')
-    .replace(/\s+/g, '')
-    .toLowerCase()
-    .trim();
+  let out = s.toLowerCase();
+  // 괄호 병기 통째 제거 — "(주)", "(유)", "lg생활건강(영문병기)" 등.
+  out = out.replace(/\([^)]*\)/g, '');
+  // 법인격 어구 제거 (괄호 없는 형태 + ㈜ 합자).
+  out = out.replace(/주식회사|유한책임회사|유한회사|합자회사|합명회사|㈜/g, '');
+  for (const [re, to] of BRAND_ALIASES) out = out.replace(re, to);
+  // 공백·구두점 제거 ("L.G." → "lg" → 위 alias 로 "엘지").
+  out = out.replace(/[\s.·・,'"`\-&]/g, '');
+  return out.trim();
 }
 
 // 한 serverless 실행 안에서 여러 DART task(회사 5개)가 상장사 map 을 공유하도록
@@ -145,9 +176,11 @@ export async function warmDartCorps(
   return corps.length;
 }
 
-// 회사명 → 상장사 corp_code. 정확 일치 우선, 없으면 포함 관계(짧은 사명 우선 —
-// "코스맥스" 가 "코스맥스비티아이" 보다 먼저). 매칭 실패 시 null → 호출부가
-// 옛 방식(공시 피드 필터)으로 fallback.
+// 회사명 → 상장사 corp_code. normName(괄호병기·법인격·구두점·공백 제거 + 라틴↔한글
+// 이니셜 음차) 로 정규화한 뒤 정확 일치 우선, 없으면 포함 관계(짧은 사명 우선 —
+// "코스맥스" 가 "코스맥스비티아이" 보다 먼저). 정규화 덕에 "LG생활건강"·"엘지생활건강"·
+// "LG생활건강(주)" 가 모두 로스터의 "엘지생활건강" 으로 해석된다. 매칭 실패 시 null →
+// 호출부가 옛 방식(공시 피드 필터)으로 fallback.
 export async function resolveDartCorp(
   name: string,
   key: string = cleanApiKey(env.DART_API_KEY),

@@ -60,3 +60,20 @@ export function firstNounToken(keyword: string): string {
   }
   return token.length > 1 ? token : first;
 }
+
+// stat_term 이 KOSIS 카탈로그에서 0건일 때 한 번 더 시도할 **상위 카테고리어**를
+// 만든다 (broaden-on-empty). statTerm 은 이미 짧은 명사지만, parseDeskQuery 가
+// 가끔 "스킨케어 시장"/"화장품산업현황" 처럼 수식·범주 접미어가 붙은 채 컴파일해
+// 통계 카탈로그에서 0건이 나는 게 빈값의 직접 원인이다. 문자열 끝의 범주/수식
+// 접미어를 통째로 떼어 더 넓은 명사(→ 카탈로그 매칭 가능성 ↑)를 반환한다.
+// LLM 재호출 X — 순수 결정론. 변화가 없거나 너무 짧아지면 null(재시도 안 함 =
+// KOSIS daily-quota 낭비 방지).
+const STAT_BROADEN_SUFFIX =
+  /(\s*(시장규모|시장|규모|산업|업계|현황|동향|전망|서비스업|서비스|부문|분야))+$/;
+
+export function broadenStatTerm(term: string): string | null {
+  const t = term.trim();
+  const stripped = t.replace(STAT_BROADEN_SUFFIX, '').trim();
+  if (stripped === t || stripped.length <= 1) return null;
+  return stripped;
+}
