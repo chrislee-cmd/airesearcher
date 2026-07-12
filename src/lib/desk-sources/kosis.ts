@@ -5,6 +5,7 @@ import type {
   DeskSourceErrorReason,
 } from './types';
 import { cleanApiKey, classifyHttpStatus, safeFetch } from './helpers';
+import { broadenStatTerm } from '@/lib/desk-source-classes';
 
 // KOSIS answers 200 with `{ err, errMsg }` on any problem. Classify the err code
 // so the crawl can distinguish a bad key from a genuine "no data" (2026-07-06
@@ -190,81 +191,121 @@ export const kosis: DeskSourceDefinition = {
   async fetch({ keyword, limit }) {
     const key = cleanApiKey(env.KOSIS_API_KEY);
     if (!key) return [];
-    const params = new URLSearchParams({
-      method: 'getList',
-      apiKey: key,
-      format: 'json',
-      jsonVD: 'Y',
-      searchNm: keyword,
-      startCount: '1',
-      resultCount: String(Math.min(100, Math.max(1, limit))),
-    });
-    const res = await safeFetch(
-      `https://kosis.kr/openapi/statisticsSearch.do?${params}`,
-      undefined,
-      SEARCH_TIMEOUT_MS,
-    );
-    if (!res.ok) {
-      return { articles: [], error: classifyHttpStatus(res.status) };
-    }
-    // KOSIS answers 200 with an `{ err, errMsg }` object (not an array) on a bad
-    // key or empty result. Guard the parse and the shape so a bad response can't
-    // poison the whole job.
-    const text = await res.text();
-    let json: unknown;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      return { articles: [], error: 'fetch_failed' };
-    }
-    if (!Array.isArray(json)) {
-      // KOSIS 는 무효 키/파라미터 오류도 200 + {err, errMsg} 로 답한다. 조용히
-      // 삼키면 "0건"과 구분이 안 돼 키 문제가 은폐된다 (2026-07-06 market
-      // 회귀에서 err=11 무효 키가 이 경로로 잠복). 이제 분류된 error 로
-      // job 리포트까지 전달한다 (함수 로그도 유지).
-      const errObj = json as { err?: string; errMsg?: string };
-      if (errObj?.err) {
-        // 구조화 디버그 로그(2026-07-08): 컴파일된 검색어 + err 코드 + 분류를
-        // 함께 남긴다. err=30/31(자료 없음)은 genuine empty 라 error=undefined 로
-        // 조용히 비지만, 무슨 검색어가 어떤 err 로 0건인지는 로그로 추적 가능.
-        // 키/한도 오류는 error-level(Vercel 알림), 자료 없음은 info. 키는 로그에 없음.
-        const reason = classifyKosisErr(errObj.err);
-        const log = reason ? console.error : console.info;
-        log(
-          `[desk-debug] kosis — searchNm=${keyword} err=${errObj.err} reason=${reason ?? 'no_data'} msg=${errObj.errMsg ?? ''}`,
-        );
-        return { articles: [], error: reason };
+
+    type BuiltPair = { item: KosisItem; article: DeskArticle };
+    // 한 검색어로 statisticsSearch.do 를 1회 조회한다. hardStop=true 는 "broaden
+    // 재시도가 무의미" 신호 — http 오류 / 파싱 실패 / 무효 키·한도 초과(재시도해도
+    // 같은 오류)거나, 이미 결과가 잡힌 경우다. genuine 0건(err=30/31 또는 빈 배열)
+    // 만 hardStop=false 라 상위어 재시도로 넘어간다.
+    const searchOnce = async (
+      q: string,
+    ): Promise<{ built: BuiltPair[]; error?: DeskSourceErrorReason; hardStop: boolean }> => {
+      const params = new URLSearchParams({
+        method: 'getList',
+        apiKey: key,
+        format: 'json',
+        jsonVD: 'Y',
+        searchNm: q,
+        startCount: '1',
+        resultCount: String(Math.min(100, Math.max(1, limit))),
+      });
+      const res = await safeFetch(
+        `https://kosis.kr/openapi/statisticsSearch.do?${params}`,
+        undefined,
+        SEARCH_TIMEOUT_MS,
+      );
+      if (!res.ok) {
+        return { built: [], error: classifyHttpStatus(res.status), hardStop: true };
       }
-      return { articles: [] };
+      // KOSIS answers 200 with an `{ err, errMsg }` object (not an array) on a bad
+      // key or empty result. Guard the parse and the shape so a bad response can't
+      // poison the whole job.
+      const text = await res.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return { built: [], error: 'fetch_failed', hardStop: true };
+      }
+      if (!Array.isArray(json)) {
+        // KOSIS 는 무효 키/파라미터 오류도 200 + {err, errMsg} 로 답한다. 조용히
+        // 삼키면 "0건"과 구분이 안 돼 키 문제가 은폐된다 (2026-07-06 market
+        // 회귀에서 err=11 무효 키가 이 경로로 잠복). 이제 분류된 error 로
+        // job 리포트까지 전달한다 (함수 로그도 유지).
+        const errObj = json as { err?: string; errMsg?: string };
+        if (errObj?.err) {
+          // 구조화 디버그 로그(2026-07-08): 컴파일된 검색어 + err 코드 + 분류를
+          // 함께 남긴다. err=30/31(자료 없음)은 genuine empty 라 error=undefined 로
+          // 조용히 비지만, 무슨 검색어가 어떤 err 로 0건인지는 로그로 추적 가능.
+          // 키/한도 오류는 error-level(Vercel 알림), 자료 없음은 info. 키는 로그에 없음.
+          const reason = classifyKosisErr(errObj.err);
+          const log = reason ? console.error : console.info;
+          log(
+            `[desk-debug] kosis — searchNm=${q} err=${errObj.err} reason=${reason ?? 'no_data'} msg=${errObj.errMsg ?? ''}`,
+          );
+          // 키/한도/미지 오류(reason 존재)면 재시도 무의미 = hardStop. 자료 없음
+          // (reason undefined)만 broaden 재시도 대상.
+          return { built: [], error: reason, hardStop: reason !== undefined };
+        }
+        return { built: [], hardStop: false };
+      }
+      const items = json as KosisItem[];
+      // Build (article, source-item) pairs so the top-K value enrichment can reach
+      // ORG_ID/TBL_ID after filtering — the DeskArticle itself doesn't carry them.
+      const built = items
+        .map((item) => ({
+          item,
+          article: {
+            source: 'kosis' as const,
+            title: item.TBL_NM ?? '',
+            url:
+              item.ORG_ID && item.TBL_ID
+                ? `https://kosis.kr/statHtml/statHtml.do?orgId=${item.ORG_ID}&tblId=${item.TBL_ID}`
+                : '',
+            // MT_ATITLE = classification path ("보건 > 화장품산업현황 > …") — carries
+            // more table context than the period unit did. statisticsSearch.do has no
+            // last-changed date field, so publishedAt is omitted (STRT/END_PRD_DE are
+            // data-coverage years, not a publish date — intentionally not mapped).
+            snippet:
+              [item.ORG_NM, item.MT_ATITLE].filter(Boolean).join(' · ') || undefined,
+            origin: item.ORG_NM,
+            keyword: q,
+            // 통계 primary 근거 — market mode 샘플링이 통계 테이블 행을 뉴스 사이에서
+            // dropout 시키지 않도록 pin 대상으로 표시 ("시장 통계" 섹션 생존 보장).
+            kind: 'metric' as const,
+          } satisfies DeskArticle,
+        }))
+        .filter((b) => b.article.title && b.article.url)
+        .slice(0, limit);
+      // 구조화 디버그 로그: 컴파일된 검색어당 raw 응답 건수 vs url/title 필터 후
+      // 최종 건수. 배열은 왔는데 0건이면 "카탈로그에 있으나 필터로 다 빠짐"인지
+      // "애초에 매칭 0"인지 이 로그로 구분한다 (무음 0건 추적).
+      console.info(
+        `[desk-debug] kosis — searchNm=${q} raw=${items.length} kept=${built.length}`,
+      );
+      return { built, hardStop: built.length > 0 };
+    };
+
+    const first = await searchOnce(keyword);
+    let built = first.built;
+    let error = first.error;
+    // broaden-on-empty (spec A): statTerm 이 genuine 0건이면 상위 카테고리어로
+    // **최대 1회** 재시도해 recall 을 올린다. parseDeskQuery 가 가끔 "스킨케어
+    // 시장"/"…산업현황" 처럼 수식·범주 접미어가 붙은 채 컴파일해 카탈로그에서
+    // 0건 나는 게 빈값의 직접 원인 — 접미어를 뗀 넓은 명사로 한 번 더 시도한다.
+    // 추가 LLM 콜 X. 재시도는 딱 1회로 제한(KOSIS daily-quota 낭비 방지).
+    if (!built.length && !first.hardStop) {
+      const broader = broadenStatTerm(keyword);
+      if (broader && broader !== keyword) {
+        console.info(`[desk-debug] kosis — broaden searchNm=${keyword} → ${broader}`);
+        const retry = await searchOnce(broader);
+        built = retry.built;
+        error = retry.error;
+      }
     }
-    const items = json as KosisItem[];
-    // Build (article, source-item) pairs so the top-K value enrichment can reach
-    // ORG_ID/TBL_ID after filtering — the DeskArticle itself doesn't carry them.
-    const built = items
-      .map((item) => ({
-        item,
-        article: {
-          source: 'kosis' as const,
-          title: item.TBL_NM ?? '',
-          url:
-            item.ORG_ID && item.TBL_ID
-              ? `https://kosis.kr/statHtml/statHtml.do?orgId=${item.ORG_ID}&tblId=${item.TBL_ID}`
-              : '',
-          // MT_ATITLE = classification path ("보건 > 화장품산업현황 > …") — carries
-          // more table context than the period unit did. statisticsSearch.do has no
-          // last-changed date field, so publishedAt is omitted (STRT/END_PRD_DE are
-          // data-coverage years, not a publish date — intentionally not mapped).
-          snippet:
-            [item.ORG_NM, item.MT_ATITLE].filter(Boolean).join(' · ') || undefined,
-          origin: item.ORG_NM,
-          keyword,
-          // 통계 primary 근거 — market mode 샘플링이 통계 테이블 행을 뉴스 사이에서
-          // dropout 시키지 않도록 pin 대상으로 표시 ("시장 통계" 섹션 생존 보장).
-          kind: 'metric' as const,
-        } satisfies DeskArticle,
-      }))
-      .filter((b) => b.article.title && b.article.url)
-      .slice(0, limit);
+    if (!built.length) {
+      return error ? { articles: [], error } : { articles: [] };
+    }
 
     // 2단: 상위 K개 표에 실제 최신값을 병렬로 당겨 snippet 에 담는다. 실패는
     // null 로 degrade → 카탈로그 링크만 유지(회귀 0). 병렬이라 값 조회가 wall-clock
@@ -289,12 +330,7 @@ export const kosis: DeskSourceDefinition = {
     }
 
     const out = built.map((b) => b.article);
-    // 구조화 디버그 로그: 컴파일된 검색어당 raw 응답 건수 vs url/title 필터 후
-    // 최종 건수 + 값 enrich 대상 수. 배열은 왔는데 0건이면 "카탈로그에 있으나
-    // 필터로 다 빠짐"인지 "애초에 매칭 0"인지 이 로그로 구분한다 (무음 0건 추적).
-    console.info(
-      `[desk-debug] kosis — searchNm=${keyword} raw=${items.length} kept=${out.length} valued=${targets.length}`,
-    );
+    console.info(`[desk-debug] kosis — kept=${out.length} valued=${targets.length}`);
     return out;
   },
 };
