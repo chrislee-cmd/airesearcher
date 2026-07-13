@@ -1309,7 +1309,6 @@
     "statusRetrying": "Retrying",
     "statusDuplicate": "Duplicate",
     "uploadSkippedSummary": "Skipped {count} duplicate file(s)",
-    "uploadArtifactTitle": "Interview upload",
     "uploadArtifactComplete": "Upload complete",
     "uploadArtifactRestoredNote": "Indexing still in progress",
     "uploadArtifactFailedTitle": "Failed files",

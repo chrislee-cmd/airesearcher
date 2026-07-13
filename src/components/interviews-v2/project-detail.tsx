@@ -22,6 +22,7 @@ import {
 import { FileCard } from './file-card';
 import { UploadModal } from './upload-modal';
 import { CrossProjectPicker } from './cross-project-picker';
+import { InlineUploadProgress } from './upload-progress-artifact';
 
 // 우측 패널 2탭 — 탑라인 보고서(default) / 자유 검색. 사용자 결정 #1.
 type RightTab = 'topline' | 'search';
@@ -296,6 +297,9 @@ export function ProjectDetail({
             </ChromeButton>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          {/* 백그라운드 업로드 진행 — 변환 단계(문서 row 생성 전)에도 이 프로젝트로
+              올린 파일의 진행을 보인다. 배치 없으면 null. */}
+          <InlineUploadProgress projectId={projectId} className="mb-3" />
           {isLoading ? (
             <div className="grid grid-cols-5 gap-3">
               <Skeleton className="h-16 rounded-sm" />

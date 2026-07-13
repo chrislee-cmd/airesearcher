@@ -9,20 +9,21 @@ import {
   type UploadFileStatus,
 } from '@/components/interview-upload-provider';
 
-// Interview V2 — persistent, non-modal upload progress surface
+// Interview V2 — inline upload progress surface
 // (pr-interview-upload-background-progress-artifact).
 //
-// Mounted once in the (app) layout, this docks bottom-right and renders the
-// background upload provider's live batches: N/M, stage counts, an aggregate
-// progress bar, and per-file failures. It NEVER blocks the app — the wrapper is
-// pointer-events-none so only the cards themselves are interactive, and it's a
-// small docked panel (not a modal/overlay). Progress survives navigation (the
-// provider lives in the layout) and a refresh re-surfaces still-indexing
-// batches from the DB (see InterviewUploadProvider restore path).
+// The upload used to run inside <UploadModal>, blocking the app and dropping
+// all progress when the modal closed. The convert/index pipeline now lives in
+// the app-level InterviewUploadProvider (survives modal close + navigation),
+// and its progress renders HERE — inline, in the widget card's control-board
+// slot (사용자 결정: 우측 하단 플로팅 패널이 아니라 ControlDropzone 자리에 아티팩트
+// 처럼 배치). While a batch is in flight for the active project the card swaps
+// its dropzone for this progress (업로드 뷰에선 dropzone 불필요).
 //
-// Completion: a clean batch (all done, no error) auto-dismisses after a short
-// delay; a batch with any failure stays until the user dismisses it, so the
-// failed filenames don't vanish before they're seen (#1007 parity).
+// Data: the provider's per-file status (N/M · stage counts · aggregate %) plus
+// per-file failures (#1007). A clean batch auto-dismisses after a short delay;
+// a batch with failures stays until the user dismisses it so the failed
+// filenames don't vanish before they're seen.
 
 const AUTO_DISMISS_MS = 6000;
 
@@ -45,7 +46,15 @@ function groupOf(status: UploadFileStatus): Group {
   }
 }
 
-function BatchCard({ batch }: { batch: UploadBatch }) {
+// Is there any (non-dismissed) upload batch for this project? The card uses
+// this to swap its dropzone for the inline progress while a batch runs.
+export function useHasInterviewUploadFor(projectId: string | null): boolean {
+  const { batches } = useInterviewUpload();
+  if (!projectId) return false;
+  return batches.some((b) => b.projectId === projectId);
+}
+
+function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   const t = useTranslations('InterviewsV2');
   const { dismissBatch } = useInterviewUpload();
 
@@ -69,8 +78,8 @@ function BatchCard({ batch }: { batch: UploadBatch }) {
   const complete = batch.done;
   const cleanComplete = complete && !hasError;
 
-  // Auto-dismiss a clean completion after a short delay so the artifact
-  // doesn't pile up. Failures stick until manually dismissed.
+  // Auto-dismiss a clean completion after a short delay so the slot returns to
+  // the dropzone. Failures stick until manually dismissed.
   useEffect(() => {
     if (!cleanComplete) return;
     const id = setTimeout(() => dismissBatch(batch.id), AUTO_DISMISS_MS);
@@ -121,13 +130,8 @@ function BatchCard({ batch }: { batch: UploadBatch }) {
     });
   }
 
-  const title =
-    batch.projectName && batch.projectName.trim().length > 0
-      ? batch.projectName
-      : t('uploadArtifactTitle');
-
   return (
-    <div className="pointer-events-auto w-[320px] rounded-sm border border-line bg-paper px-4 py-3 shadow-memphis-sm">
+    <div className="w-full rounded-sm border border-line bg-paper px-4 py-3">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
@@ -135,18 +139,16 @@ function BatchCard({ batch }: { batch: UploadBatch }) {
               <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amore" />
             )}
             <span className="truncate text-md font-semibold text-ink-2">
-              {title}
+              {t('upload')}
             </span>
-          </div>
-          <div className="mt-0.5 text-xs text-mute-soft tabular-nums">
-            {cleanComplete
-              ? t('uploadArtifactComplete')
-              : `${resolved}/${total}`}
             {batch.restored && (
-              <span className="ml-1.5 text-mute-soft">
+              <span className="shrink-0 text-xs text-mute-soft">
                 · {t('uploadArtifactRestoredNote')}
               </span>
             )}
+          </div>
+          <div className="mt-0.5 text-xs text-mute-soft tabular-nums">
+            {cleanComplete ? t('uploadArtifactComplete') : `${resolved}/${total}`}
           </div>
         </div>
         <IconButton
@@ -206,13 +208,26 @@ function BatchCard({ batch }: { batch: UploadBatch }) {
   );
 }
 
-export function InterviewUploadArtifact() {
+// Inline progress for one project — rendered in the control-board slot where
+// the dropzone normally sits. Returns null when the project has no batches (the
+// caller then shows its dropzone instead).
+export function InlineUploadProgress({
+  projectId,
+  className,
+}: {
+  projectId: string;
+  className?: string;
+}) {
   const { batches } = useInterviewUpload();
-  if (batches.length === 0) return null;
+  const mine = useMemo(
+    () => batches.filter((b) => b.projectId === projectId),
+    [batches, projectId],
+  );
+  if (mine.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-toast flex flex-col gap-2">
-      {batches.map((b) => (
-        <BatchCard key={b.id} batch={b} />
+    <div className={`w-full space-y-2${className ? ` ${className}` : ''}`}>
+      {mine.map((b) => (
+        <BatchProgressCard key={b.id} batch={b} />
       ))}
     </div>
   );

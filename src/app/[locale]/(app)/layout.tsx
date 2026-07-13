@@ -9,7 +9,6 @@ import { listProjects } from '@/lib/projects';
 import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
 import { InterviewUploadProvider } from '@/components/interview-upload-provider';
-import { InterviewUploadArtifact } from '@/components/interviews-v2/upload-progress-artifact';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
@@ -80,7 +79,8 @@ export default async function AppLayout({
      {/* Background interview-upload orchestration lives here (app-level, never
          unmounts) so the convert/index pipeline + progress survive the upload
          modal closing and navigation. Inside ToastProvider for skip/dedupe
-         toasts; the docked <InterviewUploadArtifact> renders its progress. */}
+         toasts; progress renders inline in the widget card's control slot
+         (<InlineUploadProgress>). */}
      <InterviewUploadProvider>
      <CreditDeductionProvider>
      <VideoJobProvider>
@@ -122,9 +122,6 @@ export default async function AppLayout({
              primitive 이름 오버레이. 서버 게이트(isSuperAdminEmail)라 비-어드민은
              완전 no-op(리스너/렌더 0). */}
          <SuperadminInspectorProvider isSuperAdmin={isSuperAdminEmail(user?.email)} />
-         {/* Persistent, non-modal upload progress — docked bottom-right,
-             pointer-events-none wrapper so it never blocks the app. */}
-         <InterviewUploadArtifact />
          </WorkspaceProvider>
          </ProjectSelectionProvider>
          </ActiveProjectProvider>
