@@ -1434,9 +1434,20 @@ export async function runTopline(
 }
 
 /**
- * index 완료 auto-kick 용. 캐시 히트(해시 동일 & done)이거나 이미 생성 중이면
- * skip. 그 외에는 'generating' 마킹 후 runTopline 을 await 한다(after() 안에서
- * 실행되도록 호출측이 스케줄). chunk 가 아직 없으면 skip.
+ * index 완료 auto-kick 용. **최초 생성(보고서 없음) 또는 직전 실패(error) 재시도**
+ * 일 때만 'generating' 마킹 후 runTopline 을 await 한다(after() 안에서 실행되도록
+ * 호출측이 스케줄). chunk 가 아직 없으면 skip.
+ *
+ * ⚠️ **완성 보고서(done)가 이미 있으면 hash 가 달라도 자동 재생성하지 않는다.**
+ * 파일 추가/삭제/재업로드로 문서셋 hash 가 바뀌면 클라이언트 GET 이 stale 로 판정해
+ * 배너를 띄우고, **재생성 여부는 사용자가 결정**한다(topline-view 의 "기존 보고서
+ * 유지 + stale 배너" UX). 예전엔 여기서 done+hash변경을 곧장 덮어써서 (a) 사용자가
+ * 아끼던 이전 보고서가 확인 없이 사라지고 (b) upsertGenerating 을 언어/방향 없이
+ * 불러 output_lang·user_direction 이 리셋됐다. auto-kick 을 최초 생성/에러 재시도로
+ * 좁혀 이 자동 덮어쓰기를 없앤다.
+ *
+ * error 재시도 등 기존 row 위에서 재생성할 때는 사용자가 고른 output_lang·
+ * user_direction 을 **보존**해서 넘긴다(리셋 방지).
  */
 export async function maybeKickTopline(
   admin: AdminClient,
@@ -1448,8 +1459,26 @@ export async function maybeKickTopline(
 
   const existing = await getTopline(admin, projectId);
   if (existing?.status === 'generating') return; // 이미 진행 중.
-  if (existing?.status === 'done' && existing.content_hash === hash) return; // 캐시 히트 → 비용 0.
+  // 완성 보고서 존재 — 파일 변경은 stale 배너로 사용자 결정에 맡긴다(자동 덮어쓰기
+  // 금지). hash 동일 캐시 히트도 자연히 여기서 skip.
+  if (existing?.status === 'done') return;
 
-  const toplineId = await upsertGenerating(admin, { orgId, projectId, hash });
-  await runTopline(admin, { toplineId, orgId, projectId });
+  // 여기 도달 = 보고서 없음(최초) 또는 error(재시도)뿐. 기존 row 가 있으면 사용자가
+  // 마지막에 고른 언어/방향을 보존해 리셋되지 않게 한다.
+  const outputLang = existing?.output_lang ?? undefined;
+  const userDirection = existing?.user_direction ?? undefined;
+  const toplineId = await upsertGenerating(admin, {
+    orgId,
+    projectId,
+    hash,
+    outputLang,
+    userDirection,
+  });
+  await runTopline(admin, {
+    toplineId,
+    orgId,
+    projectId,
+    outputLang,
+    userDirection,
+  });
 }
