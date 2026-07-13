@@ -10,6 +10,10 @@ export type CreditsStatus = {
   trialEndsAt: string | null;
   isUnlimited: boolean;
   isTrialActive: boolean;
+  // 만료되는 무료 grant 버킷 (docs/pricing-scheme.md §5.4). /api/credits/status
+  // (lib/credits.getCreditsStatus)가 만료 지난 grant 를 이미 0 으로 정규화.
+  grantCredits: number;
+  grantExpiresAt: string | null;
 };
 
 type Ctx = {

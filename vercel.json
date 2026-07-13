@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/transcript-reconcile",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/monthly-grant",
+      "schedule": "0 0 1 * *"
     }
   ]
 }

@@ -100,6 +100,19 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
 
   const displayCredits = clientCredits ?? credits;
 
+  // 만료되는 무료 grant (docs/pricing-scheme.md §5.4) — 비만료 잔액과 구분 표시.
+  // status.grantCredits 는 만료 지난 grant 를 이미 0 으로 정규화. unlimited/
+  // trial 사용자는 grant 를 아직 소진하지 않으므로 라인을 감춘다.
+  const grantCredits = status?.grantCredits ?? 0;
+  const showGrant =
+    grantCredits > 0 && !isUnlimited && !status?.isTrialActive;
+  const grantExpiryLabel =
+    status?.grantExpiresAt != null
+      ? new Date(
+          new Date(status.grantExpiresAt).getTime() - 86_400_000,
+        ).toLocaleDateString(locale, { month: '2-digit', day: '2-digit' })
+      : null;
+
   function changeLocale(next: 'ko' | 'en') {
     if (next === locale) return;
     track('settings_locale_change_click', { from: locale, to: next });
@@ -195,6 +208,21 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
               </span>
             </div>
           ) : null}
+          {showGrant && grantExpiryLabel && (
+            <div
+              className="truncate text-xs-soft tabular-nums"
+              style={{
+                fontFamily: outfitStack,
+                fontWeight: 600,
+                color: 'var(--canvas-accent)',
+              }}
+            >
+              {tCommon('freeCreditsRemaining', {
+                count: grantCredits,
+                date: grantExpiryLabel,
+              })}
+            </div>
+          )}
         </div>
         <IconButton
           variant="subtle"
