@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/widget-error-sweep",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/topline-resume-sweep",
+      "schedule": "* * * * *"
     }
   ]
 }
