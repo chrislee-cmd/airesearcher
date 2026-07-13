@@ -19,10 +19,24 @@
 // 그대로 지키되, 불가능한 "API create" 를 다음으로 대체합니다:
 //
 //   1) RECONCILE (기본, read-only, 멱등): features.ts → desired 16 을 계산하고
-//      각 스토어의 기존 Product/Variant 를 GET 으로 나열 → **안정 이름 규약**으로
-//      매칭 → 각 항목을 OK(variant id 확보) / MISSING(대시보드 생성 필요) /
-//      DRIFT(가격·주기 불일치 → 대시보드 수정) 로 판정. read-only 라 재실행해도
-//      결과 동일(멱등). 매칭된 variant id 를 A1 env 키명으로 paste-ready 출력.
+//      각 스토어의 기존 Product/Variant 를 GET 으로 나열 → **variant SKU 정확일치**
+//      로 매칭(레거시 상품은 `AIR • kind • id` 이름 토큰 폴백) → 각 항목을
+//      OK(variant id 확보) / MISSING(대시보드 생성 필요) / DRIFT(가격·주기 불일치
+//      → 대시보드 수정) 로 판정. read-only 라 재실행해도 결과 동일(멱등). 매칭된
+//      variant id 를 A1 env 키명으로 paste-ready 출력.
+//
+//   ── 네이밍 B안: 브랜드 표시명 + variant SKU 매칭키 분리 (2026-07-13) ──────────
+//   과거 `AIR • pack • mini` 규약은 **표시명 + 매칭키를 한 필드에 혼합** → 결제창·
+//   영수증·인보이스·세무기록에 `AIR •` 가 그대로 노출됐다. 정식 제품명은
+//   **Research Canvas**. 두 관심사를 분리한다:
+//     · Product Name (노출용)  = 브랜드 표시명. 예: "Research Canvas — 크레딧 팩 Mini (50)"
+//     · variant SKU (매칭키)   = 안정 키. 예: "rc-pack-mini" (표시명 바뀌어도 불변)
+//   ⚠️ LS API v1 은 Variant/Price 어디에도 **native `sku` 필드가 없다**(2026-07
+//   문서 확인). 따라서 SKU 는 운영자가 제어 가능하고 표시명과 독립인 **Variant
+//   Name** 필드에 넣는다(단일 variant 상품에서 체크아웃은 Product Name 을 노출,
+//   Variant Name 은 매칭 전용). 매칭은 `variant.attributes.sku`(향후/일부 스토어가
+//   노출할 수 있어 방어적으로 우선) → `variant.attributes.name` 순으로 정규화
+//   정확일치. SKU prefix `rc-`(research canvas). 확정 규약표는 `docs/lemonsqueezy-naming.md`.
 //
 //   2) WEBHOOK upsert (--webhook, API 로 실제 write 가능한 유일 리소스):
 //      각 스토어의 웹훅을 URL 로 매칭 → 없으면 create / 이벤트 누락 시 events union
@@ -87,7 +101,9 @@ type Desired = {
   priceKrw: number; // SSOT KRW amount (one-time for packs, monthly for subs)
   interval: 'one_time' | 'month';
   envKey: string; // A1 mapping key (env.ts)
-  productName: string; // stable idempotent match key
+  displayName: string; // brand Product Name (exposed on checkout/receipts)
+  sku: string; // stable variant SKU = machine match key (display-independent)
+  legacyMatchName: string; // old `AIR • kind • id` — name-token fallback only
 };
 
 // A1 env-key convention (must match src/env.ts exactly):
@@ -100,10 +116,38 @@ function envKeyFor(kind: Kind, id: string, currency: Currency): string {
     : `LEMONSQUEEZY_SUB_${idUpper}_${currency}`;
 }
 
-// Stable product-name convention = the idempotent match key. This exact string
-// is what the operator names the product in the Lemon Squeezy dashboard; the
-// script matches on it (normalized) on every re-run.
-function productNameFor(kind: Kind, id: string): string {
+// Capitalized tier label for the display name (mini → Mini). Matches the app
+// i18n bundle labels (messages.Credits.bundle{Mini,Starter,Plus,Pro,Max}) so
+// the LS product name stays consistent with in-app copy.
+function tierLabel(id: string): string {
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+// Brand display name = the LS Product Name the operator sets in the dashboard.
+// This is what shows on hosted checkout / receipts / invoices / tax records.
+// Quantity is derived from the SSOT credits so the copy never drifts.
+//   pack → "Research Canvas — 크레딧 팩 Mini (50)"
+//   sub  → "Research Canvas — 구독 Plus (월 60cr)"
+function displayNameFor(kind: Kind, id: string, credits: number): string {
+  const label = tierLabel(id);
+  return kind === 'pack'
+    ? `Research Canvas — 크레딧 팩 ${label} (${credits.toLocaleString('en-US')})`
+    : `Research Canvas — 구독 ${label} (월 ${credits}cr)`;
+}
+
+// Stable variant SKU = the machine match key, independent of the marketing
+// display name. Set as the *Variant Name* in the dashboard (LS has no native
+// `sku` attribute — see header). `rc-` = Research Canvas. The pack/sub segment
+// is REQUIRED: `plus`/`pro` exist as both a pack and a sub, so the discriminator
+// keeps `rc-pack-plus` (300cr one-time) distinct from `rc-sub-plus` (60cr/mo).
+function skuFor(kind: Kind, id: string): string {
+  return `rc-${kind}-${id}`;
+}
+
+// Legacy `AIR • kind • id` product-name convention — kept ONLY as a matching
+// fallback so pre-existing products without a SKU still reconcile. New products
+// match by SKU; this never appears on any new display name.
+function legacyMatchNameFor(kind: Kind, id: string): string {
   return `AIR • ${kind} • ${id}`;
 }
 
@@ -133,7 +177,9 @@ function buildDesired(fx: number): Desired[] {
         priceKrw: b.priceKrw ?? 0,
         interval: 'one_time',
         envKey: envKeyFor('pack', b.id, currency),
-        productName: productNameFor('pack', b.id),
+        displayName: displayNameFor('pack', b.id, b.credits),
+        sku: skuFor('pack', b.id),
+        legacyMatchName: legacyMatchNameFor('pack', b.id),
       });
     }
     for (const t of SUBSCRIPTION_TIERS as SubscriptionTier[]) {
@@ -145,7 +191,9 @@ function buildDesired(fx: number): Desired[] {
         priceKrw: t.monthlyPriceKrw,
         interval: 'month',
         envKey: envKeyFor('sub', t.id, currency),
-        productName: productNameFor('sub', t.id),
+        displayName: displayNameFor('sub', t.id, t.includedCredits),
+        sku: skuFor('sub', t.id),
+        legacyMatchName: legacyMatchNameFor('sub', t.id),
       });
     }
   }
@@ -219,6 +267,7 @@ type StoreVariant = {
   productId: string;
   productName: string;
   variantName: string;
+  sku: string | null; // explicit `sku` attribute if the store exposes one
   priceCents: number | null;
   interval: string | null; // 'month' | 'year' | null (one-time)
   isSubscription: boolean;
@@ -244,11 +293,19 @@ async function fetchStoreVariants(
       const a = v.attributes;
       const priceRaw = a.price;
       const interval = a.interval;
+      // LS variants have no native `sku` attribute (API v1). Read it defensively
+      // anyway — a store/plan may expose one — and fall back to the variant name
+      // (where the operator stores the SKU by convention) at match time.
+      const skuRaw = a.sku;
       result.push({
         variantId: v.id,
         productId: p.id,
         productName,
         variantName: String(a.name ?? ''),
+        sku:
+          typeof skuRaw === 'string' && skuRaw.trim() !== ''
+            ? skuRaw.trim()
+            : null,
         priceCents:
           typeof priceRaw === 'number'
             ? priceRaw
@@ -274,21 +331,20 @@ type Reconciled = {
   notes: string[];
 };
 
+// The stable SKU carried by a store variant. LS has no native `sku` attribute,
+// so the convention stores it as the Variant Name; we still prefer an explicit
+// `sku` attribute when present. Normalized so "rc-pack-mini" == "rc pack mini".
+function variantSku(v: StoreVariant): string | null {
+  const raw = v.sku ?? v.variantName;
+  const n = normalizeName(raw ?? '');
+  return n === '' ? null : n;
+}
+
 function reconcileOne(
   d: Desired,
   storeVariants: StoreVariant[],
   fx: number,
 ): Reconciled {
-  const wantNorm = normalizeName(d.productName);
-  const wantTokens = wantNorm.split(' '); // ['air', kind, id]
-  // Primary: exact normalized product-name match. Secondary: product name
-  // contains all tokens (air + kind + id) — tolerant to added suffixes.
-  const candidates = storeVariants.filter((v) => {
-    const pn = normalizeName(v.productName);
-    if (pn === wantNorm) return true;
-    return wantTokens.every((t) => pn.split(' ').includes(t));
-  });
-
   const notes: string[] = [];
   if (d.priceKrw === 0) {
     notes.push(
@@ -296,13 +352,43 @@ function reconcileOne(
     );
   }
 
+  // Primary: exact variant-SKU match. Display/product name can change freely
+  // (brand copy) without breaking the match — the whole point of B안.
+  const wantSku = normalizeName(d.sku);
+  let candidates = storeVariants.filter((v) => variantSku(v) === wantSku);
+  let matchedBy: 'sku' | 'legacy-name' = 'sku';
+
+  // Fallback: legacy `AIR • kind • id` product-name token match, for products
+  // created before the SKU convention. Only consulted when SKU matched nothing,
+  // so a correctly-SKU'd store never depends on the brittle name path.
+  if (candidates.length === 0) {
+    const wantNorm = normalizeName(d.legacyMatchName);
+    const wantTokens = wantNorm.split(' '); // ['air', kind, id]
+    candidates = storeVariants.filter((v) => {
+      const pn = normalizeName(v.productName);
+      if (pn === wantNorm) return true;
+      return wantTokens.every((t) => pn.split(' ').includes(t));
+    });
+    matchedBy = 'legacy-name';
+    if (candidates.length > 0) {
+      notes.push(
+        `matched by legacy name (AIR • …) — set variant SKU "${d.sku}" in the dashboard so matching no longer depends on the product name.`,
+      );
+    }
+  }
+
   if (candidates.length === 0) {
     return { desired: d, status: 'missing', notes };
   }
   if (candidates.length > 1) {
+    const key = matchedBy === 'sku' ? `SKU "${d.sku}"` : `"${d.legacyMatchName}"`;
     notes.push(
-      `${candidates.length} products matched "${d.productName}" — narrow the naming so exactly one matches. Candidates: ${candidates
-        .map((c) => `${c.productName}#${c.variantId}`)
+      `${candidates.length} variants matched ${key} — ${
+        matchedBy === 'sku'
+          ? 'each SKU must be unique across the store.'
+          : 'narrow the naming so exactly one matches.'
+      } Candidates: ${candidates
+        .map((c) => `${c.productName}/${c.variantName}#${c.variantId}`)
         .join(', ')}`,
     );
     return { desired: d, status: 'ambiguous', notes };
@@ -581,7 +667,7 @@ async function main() {
       const want = expectedCents(d, fx);
       const price = formatMoney(want, currency);
       const intervalLabel = d.interval === 'month' ? '/월' : ' 일회성';
-      const idPart = `${STATUS_ICON[r.status]} ${d.productName.padEnd(18)} ${price}${intervalLabel} (${d.credits}cr)`;
+      const idPart = `${STATUS_ICON[r.status]} ${d.sku.padEnd(16)} ${price}${intervalLabel} (${d.credits}cr)`;
       console.log(`  ${idPart}${r.variantId ? ` → variant ${r.variantId}` : ''}`);
       for (const n of r.notes) console.log(`       · ${n}`);
     }
@@ -604,12 +690,12 @@ async function main() {
     console.log(
       '\n  ⓘ MISSING/AMBIGUOUS/DRIFT 은 대시보드 액션 필요 (LS API 로 상품 생성 불가).',
     );
-    console.log('    대시보드에서 아래 이름·가격·주기로 생성/수정 후 이 스크립트를 재실행하세요:');
+    console.log('    대시보드에서 아래 Product Name(표시명) · Variant SKU · 가격 · 주기로 생성/수정 후 재실행:');
     for (const r of reconciled.filter((x) => x.status !== 'ok')) {
       const d = r.desired;
       const want = expectedCents(d, fx);
       console.log(
-        `      [${r.status}] "${d.productName}" (${d.currency}) — ${formatMoney(want, d.currency)}${
+        `      [${r.status}] name="${d.displayName}" · SKU=${d.sku} (${d.currency}) — ${formatMoney(want, d.currency)}${
           d.interval === 'month' ? ' / month (subscription)' : ' one-time'
         } · ${d.credits}cr`,
       );
@@ -623,7 +709,7 @@ async function main() {
       console.log(`${r.desired.envKey}=${r.variantId}`);
     } else {
       console.log(
-        `# ${r.desired.envKey}=  # ${r.status}: 대시보드에서 "${r.desired.productName}" (${r.desired.currency}) 생성 후 재실행`,
+        `# ${r.desired.envKey}=  # ${r.status}: 대시보드에서 name="${r.desired.displayName}" · SKU=${r.desired.sku} (${r.desired.currency}) 생성 후 재실행`,
       );
     }
   }
