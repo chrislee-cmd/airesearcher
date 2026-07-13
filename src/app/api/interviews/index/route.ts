@@ -1,4 +1,4 @@
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
@@ -8,7 +8,6 @@ import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { hashString } from '@/lib/cache';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
-import { maybeKickTopline } from '@/lib/interview-v2/topline';
 import { logError } from '@/lib/observability/log-error';
 
 // PR-1 — background corpus indexing for interview jobs.
@@ -300,21 +299,11 @@ export async function POST(req: Request) {
       .eq('id', interview_job_id)
       .eq('org_id', org.org_id);
 
-    // 인덱싱 완료 → 탑라인 자동 생성(fire-and-forget). content_hash 동일하면
-    // maybeKickTopline 내부에서 skip(재업로드 없는 재방문 = 비용 0). 프로젝트에
-    // 소속된 문서일 때만 — 프로젝트 미지정(legacy) 업로드는 탑라인 대상 아님.
-    const toplineProjectId = project_id ?? jobRow.project_id ?? null;
-    if (toplineProjectId) {
-      after(() =>
-        maybeKickTopline(admin, {
-          orgId: org.org_id,
-          projectId: toplineProjectId,
-        }).catch((e) =>
-          console.error('[interviews/index] topline kick failed', e),
-        ),
-      );
-    }
-
+    // 인덱싱은 문서·청크 적재까지만 — 탑라인 생성은 여기서 자동으로 kick 하지
+    // 않는다(카드 #474). 업로드/인덱싱 후 탑라인 status 는 idle 로 남아, 사용자가
+    // 명시적으로 "탑라인 생성" CTA(POST /api/interviews/v2/topline)를 누를 때까지
+    // Opus 를 안 돌린다(원치 않는 자동 과금 + 강제 생성뷰 진입 제거). 수동 생성·
+    // 재생성 경로는 그대로 동작한다.
     return NextResponse.json({
       ok: true,
       document_count: totalDocs,
