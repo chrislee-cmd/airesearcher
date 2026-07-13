@@ -36,7 +36,7 @@ export function ProbingThinkingStream({
   }, [events.length]);
 
   return (
-    <section className="flex flex-col border-b-[2px] border-line-soft bg-paper">
+    <section className="flex flex-col border-b-2 border-line-soft bg-paper">
       <header className="flex items-center justify-between px-4 pb-1 pt-2.5">
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
           AI 의 사고 흐름

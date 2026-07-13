@@ -27,7 +27,8 @@ export function RQCard({
   tDesk: TDesk;
 }) {
   return (
-    <article className="scroll-mt-4 rounded-sm border-[2px] border-ink bg-paper-soft p-3.5 shadow-[2px_2px_0_var(--color-ink)]">
+    // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
+    <article className="scroll-mt-4 rounded-sm border-2 border-ink bg-paper-soft p-3.5 shadow-[2px_2px_0_var(--color-ink)]">
       <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[.18em] text-mute">
         <span>{rq.id}</span>
         <span className="text-amore">{rq.category}</span>

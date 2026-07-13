@@ -25,6 +25,7 @@ import { TranscriptRecordButton } from '@/components/canvas/widgets/transcript-r
 import { JobProgress } from '@/components/ui/job-progress';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
 import { ModeCardGroup } from '@/components/ui/mode-button';
@@ -1671,19 +1672,20 @@ function LanguageConfirmDialog({
 
         <div className="mt-6">
           <Field label={t('languageLabel')} htmlFor="transcript-language-confirm">
-            <select
+            {/* Select 프리미티브 — 표피 통일(DS-3). Field 가 라벨을 소유하므로
+                프리미티브 자체 label 은 미전달(중복 방지). id 는 Field 의
+                htmlFor 연결 유지. md 사이즈 = 옛 native px-3 py-2 text-lg
+                rounded-sm border-line/focus:border-ink 와 동치. */}
+            <Select
               id="transcript-language-confirm"
               value={language}
               onChange={(e) => onLanguageChange(e.target.value)}
               autoFocus
-              className="w-full border border-line bg-paper px-3 py-2 text-lg text-ink-2 rounded-sm focus:border-ink focus:outline-none"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.flag} {l.label} ({l.code})
-                </option>
-              ))}
-            </select>
+              options={LANGUAGES.map((l) => ({
+                value: l.code,
+                label: `${l.flag} ${l.label} (${l.code})`,
+              }))}
+            />
           </Field>
         </div>
 

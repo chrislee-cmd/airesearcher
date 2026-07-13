@@ -328,6 +328,7 @@ function KpiHero({ table }: { table: MarketTable }) {
         return (
           <div
             key={i}
+            // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
             className="rounded-sm border-[3px] border-ink bg-paper p-4 shadow-[4px_4px_0_var(--color-ink)]"
           >
             <div className="text-xs font-semibold uppercase tracking-[.16em] text-mute">

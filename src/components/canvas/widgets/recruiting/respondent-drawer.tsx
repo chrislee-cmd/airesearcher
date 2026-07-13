@@ -84,7 +84,7 @@ export function RespondentDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`응답자 ${label} 상세`}
-        className="flex h-full w-full flex-col border-l-[2px] border-ink bg-paper shadow-[-4px_0_0_var(--color-line-soft)] sm:w-[420px]"
+        className="flex h-full w-full flex-col border-l-2 border-ink bg-paper shadow-[-4px_0_0_var(--color-line-soft)] sm:w-[420px]"
       >
         {/* 헤더 = 응답자 요약 */}
         <header className="shrink-0 border-b border-line-soft px-5 py-4">
