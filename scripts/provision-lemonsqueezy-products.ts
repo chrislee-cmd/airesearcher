@@ -203,16 +203,22 @@ function buildDesired(fx: number): Desired[] {
   return out;
 }
 
-// Expected price in Lemon Squeezy's integer minor unit ("cents"). For KRW (a
-// zero-decimal currency) LS stores the whole-won amount; for USD it is cents.
+// Expected price in Lemon Squeezy's integer minor unit ("cents"). LS stores
+// EVERY currency in 2-decimal minor units — including KRW, a real-world
+// zero-decimal currency: a ₩25,000 product comes back as `2500000` (won × 100).
+// (Empirically verified against store 393383 — every KRW variant returned ×100.
+// The earlier "zero-decimal → won == unit" assumption was wrong and made the
+// DRIFT check false-positive on every KRW product.) So multiply by 100 for both.
 function expectedCents(d: Desired, fx: number): number {
-  if (d.currency === 'KRW') return d.priceKrw; // zero-decimal → won == unit
+  if (d.currency === 'KRW') return d.priceKrw * 100; // won × 100 minor units
   return Math.round((d.priceKrw / fx) * 100); // USD cents, derived via FX
 }
 
-function formatMoney(cents: number, currency: Currency): string {
-  if (currency === 'KRW') return `₩${cents.toLocaleString('en-US')}`;
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// `minor` is LS's 2-decimal minor unit. KRW shows as whole won (no decimals),
+// USD as dollars with cents.
+function formatMoney(minor: number, currency: Currency): string {
+  if (currency === 'KRW') return `₩${(minor / 100).toLocaleString('en-US')}`;
+  return `$${(minor / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // ── Lemon Squeezy read API (plain fetch, JSON:API) ──────────────────────────
