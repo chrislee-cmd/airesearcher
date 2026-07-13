@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { sweepWidgetErrors } from '@/lib/observability/widget-error-sweep';
+import { sweepInterviewExtras } from '@/lib/observability/interview-extras-sweep';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -29,5 +30,11 @@ export async function GET(request: Request) {
 
   const results = await sweepWidgetErrors();
   const ingested = results.reduce((sum, r) => sum + r.newFails, 0);
-  return NextResponse.json({ ok: true, ingested, results });
+
+  // 인터뷰 stuck-pending / topline-error 는 status 컬럼만으로 못 잡아 위 스윕이
+  // 놓친다 — #1008 이 대체되며 이관된 감지를 여기서 error_events 로 적재한다
+  // (interview-extras-sweep.ts). best-effort — 실패해도 위 결과는 반환.
+  const interviewExtras = await sweepInterviewExtras();
+
+  return NextResponse.json({ ok: true, ingested, results, interviewExtras });
 }

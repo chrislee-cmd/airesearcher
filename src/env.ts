@@ -174,6 +174,11 @@ export const env = createEnv({
     // here) so the route can split + trim; empty entries are dropped there.
     INTERVIEW_ALERT_EMAILS: z.string().optional(),
 
+    // Recipients for the product-wide error digest (comma-separated). Generalises
+    // INTERVIEW_ALERT_EMAILS — the digest reads this first and falls back to
+    // INTERVIEW_ALERT_EMAILS (backward-compat), then the super-admin allowlist.
+    ERROR_ALERT_EMAILS: z.string().optional(),
+
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
 
@@ -342,6 +347,7 @@ export const env = createEnv({
     INQUIRY_TO_EMAIL: process.env.INQUIRY_TO_EMAIL,
     QUOTE_TO_EMAIL: process.env.QUOTE_TO_EMAIL,
     INTERVIEW_ALERT_EMAILS: process.env.INTERVIEW_ALERT_EMAILS,
+    ERROR_ALERT_EMAILS: process.env.ERROR_ALERT_EMAILS,
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
