@@ -53,8 +53,23 @@ export async function POST(req: Request) {
   const limited = await checkLlmRateLimit(user.id, org.org_id);
   if (limited) return limited;
 
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+  const raw: unknown = await req.json().catch(() => null);
+  const parsed = Body.safeParse(raw);
   if (!parsed.success) {
+    // Distinguish the batch-size ceiling from generic validation failures so
+    // the client can react (re-split) and logs show the real cause. The client
+    // already chunks under this limit (INDEX_CHUNK_SIZE); this is a defensive
+    // signal — the batch stays a 400, just a self-describing one.
+    const docs =
+      raw && typeof raw === 'object' && 'documents' in raw
+        ? (raw as { documents?: unknown }).documents
+        : undefined;
+    if (Array.isArray(docs) && docs.length > 50) {
+      return NextResponse.json(
+        { error: 'too_many_documents', max: 50, got: docs.length },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
   const { interview_job_id, project_id, documents } = parsed.data;

@@ -91,6 +91,15 @@ const MAX_BYTES = 25 * 1024 * 1024;
 // on the 429 retry-after backoff below to drain the remainder.
 const CONVERT_CONCURRENCY = 3;
 
+// Max documents per index POST. The server caps /api/interviews/index at
+// `documents.max(50)` (see src/app/api/interviews/index/route.ts Body schema),
+// so a batch over 50 sent as one POST fails zod validation with a 400 and the
+// whole batch reads as "인덱싱 실패" — the production incident this fixes. Split
+// `ok` into chunks under that ceiling and POST each chunk. 40 keeps a margin
+// below 50 and eases per-call embedding load within the route's
+// maxDuration=300 budget. KEEP IN SYNC with the server's Body.documents.max(50).
+const INDEX_CHUNK_SIZE = 40;
+
 export function useInterviewV2Upload() {
   const [items, setItems] = useState<UploadFileState[]>([]);
   const [busy, setBusy] = useState(false);
@@ -252,70 +261,104 @@ export function useInterviewV2Upload() {
 
         // 3. Index — project_id injected so interview_documents rows are
         //    scoped to this project. Chunk + embed happens server-side.
-        const indexRes = await fetchWithRateLimitRetry(
-          '/api/interviews/index',
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              interview_job_id: interviewJobId,
-              project_id: projectId,
-              documents: ok.map((c) => ({
-                filename: c.filename,
-                mime: c.mime,
-                markdown: c.markdown,
-              })),
-            }),
-          },
-          {
-            // Index is a single batched call, but it shares the per-user LLM
-            // budget the convert burst just spent — a 429 here is likely.
-            // Back off and surface 'retrying' on the in-flight files.
-            onRetry: () =>
-              setItems((prev) =>
-                prev.map((it, i) =>
-                  ok.some((c) => c.index === i)
-                    ? { ...it, status: 'retrying' }
-                    : it,
-                ),
+        //    The server caps documents at 50 per POST, so split `ok` into
+        //    chunks under that ceiling and POST each one sequentially, all
+        //    sharing this batch's interview_job_id / project_id. A single
+        //    chunk failing marks only that chunk's files 'error'; the rest
+        //    keep going so one bad chunk can't fail the whole batch.
+        const chunks: ConvertResult[][] = [];
+        for (let i = 0; i < ok.length; i += INDEX_CHUNK_SIZE) {
+          chunks.push(ok.slice(i, i + INDEX_CHUNK_SIZE));
+        }
+
+        // At least one file actually indexed (not all-skipped) → refetch.
+        let anyIndexed = false;
+        // A chunk failed partway → the list needs reconciling even if other
+        // chunks all-skipped, so force a refetch.
+        let anyError = false;
+
+        for (const chunk of chunks) {
+          const chunkIdx = new Set(chunk.map((c) => c.index));
+          try {
+            const indexRes = await fetchWithRateLimitRetry(
+              '/api/interviews/index',
+              {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  interview_job_id: interviewJobId,
+                  project_id: projectId,
+                  documents: chunk.map((c) => ({
+                    filename: c.filename,
+                    mime: c.mime,
+                    markdown: c.markdown,
+                  })),
+                }),
+              },
+              {
+                // Index shares the per-user LLM budget the convert burst just
+                // spent — a 429 here is likely. Back off and surface
+                // 'retrying' on this chunk's in-flight files.
+                onRetry: () =>
+                  setItems((prev) =>
+                    prev.map((it, i) =>
+                      chunkIdx.has(i) ? { ...it, status: 'retrying' } : it,
+                    ),
+                  ),
+              },
+            );
+            if (!indexRes.ok) throw new Error(`index_${indexRes.status}`);
+
+            // Server-side project-scoped content-hash dedupe may have skipped
+            // some converted files (same content, possibly renamed —
+            // undetectable by the client pre-filter). The response only carries
+            // an aggregate count, not which rows, so we fold it into the summary
+            // total. If the server skipped everything in this chunk, mark those
+            // files 'duplicate'; otherwise they flip to 'done' (we can't pin the
+            // aggregate to specific rows).
+            const idxJson = (await indexRes.json().catch(() => ({}))) as {
+              skipped_count?: number;
+            };
+            const serverSkipped = idxJson.skipped_count ?? 0;
+            skipped += serverSkipped;
+            const allChunkSkipped = serverSkipped >= chunk.length;
+            if (!allChunkSkipped) anyIndexed = true;
+
+            setItems((prev) =>
+              prev.map((it, i) =>
+                chunkIdx.has(i)
+                  ? { ...it, status: allChunkSkipped ? 'duplicate' : 'done' }
+                  : it,
               ),
-          },
-        );
-        if (!indexRes.ok) throw new Error(`index_${indexRes.status}`);
+            );
+          } catch {
+            anyError = true;
+            // Isolate the failure to this chunk — the other chunks already
+            // committed their status and must not be reverted.
+            setItems((prev) =>
+              prev.map((it, i) =>
+                chunkIdx.has(i) ? { ...it, status: 'error' } : it,
+              ),
+            );
+          }
+        }
 
-        // Server-side project-scoped content-hash dedupe may have skipped some
-        // converted files (same content, possibly renamed — undetectable by the
-        // client pre-filter). The response only carries an aggregate count, not
-        // which rows, so we fold it into the summary total. If the server
-        // skipped everything we sent, mark those files 'duplicate'; otherwise
-        // they flip to 'done' (we can't pin the aggregate to specific rows).
-        const idxJson = (await indexRes.json().catch(() => ({}))) as {
-          skipped_count?: number;
-        };
-        const serverSkipped = idxJson.skipped_count ?? 0;
-        skipped += serverSkipped;
-        const allServerSkipped = serverSkipped >= ok.length;
-
-        setItems((prev) =>
-          prev.map((it, i) =>
-            ok.some((c) => c.index === i)
-              ? { ...it, status: allServerSkipped ? 'duplicate' : 'done' }
-              : it,
-          ),
-        );
         setBusy(false);
-        // changed only when at least one file was actually indexed (not all
-        // skipped) — no point refetching when nothing landed.
-        return { changed: !allServerSkipped, skipped };
+        // changed when at least one file actually indexed, or a chunk failed
+        // partway (the list needs reconciling to reflect what did land). All
+        // chunks all-skipped with no error → nothing new, no refetch.
+        return { changed: anyIndexed || anyError, skipped };
       } catch {
+        // Reached only when job creation (or something before the chunk loop)
+        // throws — none of the files could be indexed, so mark them all 'error'.
         setItems((prev) =>
           prev.map((it, i) =>
             ok.some((c) => c.index === i) ? { ...it, status: 'error' } : it,
           ),
         );
         setBusy(false);
-        // Some files may still have been indexed on a partial server failure,
-        // but we can't know which — signal a refetch so the list reconciles.
+        // Nothing landed, but signal a refetch so the list reconciles in case
+        // a prior partial attempt left rows behind.
         return { changed: true, skipped };
       }
     },
