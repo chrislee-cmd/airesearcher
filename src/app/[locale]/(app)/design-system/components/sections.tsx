@@ -27,6 +27,7 @@ import { ShareMenu } from '@/components/ui/share-menu';
 import { Field } from '@/components/canvas/shell/field';
 import { Banner } from '@/components/canvas/shell/banner';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetCreditBadge } from '@/components/canvas/shell/widget-credit-badge';
@@ -1668,6 +1669,111 @@ function CanvasWidgetPrimitivesSection() {
             적용 위젯: Desk / Recruiting / Quotes / Probing / Translate. 위젯 별
             element 종류는 자유 — outer layout 만 통일. Field / SectionLabel /
             Banner 와 함께 사용.
+          </p>
+        </div>
+      </Subsection>
+
+      <Subsection label="ControlBoardPanel — 전 위젯 컨트롤 레이아웃 SSOT · 상태 불변 프레임 (control-board-panel.tsx)">
+        <div className="space-y-3">
+          <p className="text-md text-mute">
+            desk / interviews / quotes / probing / translate 위젯이 실제로 쓰는
+            컨트롤 프레임. props:{' '}
+            <code className="font-mono text-ink-2">active</code> (idle launcher ↔
+            산출물 상단 바) /{' '}
+            <code className="font-mono text-ink-2">gap</code>{' '}
+            (<code className="font-mono">none</code> ·{' '}
+            <code className="font-mono">field</code>=gap-4 ·{' '}
+            <code className="font-mono">section</code>=gap-6 열거형) /{' '}
+            <code className="font-mono text-ink-2">banners</code> (클러스터 위 고정
+            슬롯) / children=<code className="font-mono text-ink-2">&lt;Field&gt;</code>{' '}
+            클러스터. 외곽 padding/폭/정렬(<code className="font-mono">px-5 pt-10
+            pb-6</code> · 상단정렬 · <code className="font-mono">max-w-2xl</code>{' '}
+            수평 중앙)은 <strong>idle=active 픽셀 고정</strong> — active 는 프레임이
+            아니라 세로 채움 정책(flex-1 ↔ shrink-0 상단 바 + border-b divider)만
+            바꾼다. wrapper/gap/폭을 위젯이 직접 지정할 수 없다(임의 layout 클래스는
+            리뷰 reject).
+          </p>
+
+          <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+            active=false (idle launcher · gap=&ldquo;field&rdquo;)
+          </div>
+          {/* idle — flex-1 로 카드를 채우고 컨트롤은 상단정렬. 실제 위젯 카드
+              높이를 흉내내기 위해 고정 높이 프레임 안에서 렌더한다. */}
+          <div className="flex h-80 flex-col overflow-hidden border border-line bg-paper rounded-sm">
+            <ControlBoardPanel gap="field">
+              <Field label="검색 지역">
+                <div className="flex flex-wrap gap-1.5">
+                  <Button size="xs" variant="primary">KR</Button>
+                  <Button size="xs" variant="ghost">US</Button>
+                  <Button size="xs" variant="ghost">JP</Button>
+                </div>
+              </Field>
+              <Field label="키워드">
+                <Input placeholder="예: 광고, 재구매, 가격" />
+              </Field>
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <span className="text-sm tabular-nums text-mute-soft">25 크레딧</span>
+                <ChromeButton variant="primary" size="lg">검색</ChromeButton>
+              </div>
+            </ControlBoardPanel>
+          </div>
+
+          <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+            active=true (컨트롤 = 상단 shrink-0 바 + border-b · 아래 산출물 flex-1)
+          </div>
+          {/* active — 컨트롤이 자연 높이 상단 바(shrink-0 + border-b)로 고정되고
+              형제 산출물 영역이 flex-1 로 아래를 채운다. justify-start 라 컨트롤은
+              idle 과 동일한 상단 제자리 = 안 튐. */}
+          <div className="flex h-80 flex-col overflow-hidden border border-line bg-paper rounded-sm">
+            <ControlBoardPanel active gap="field">
+              <Field label="검색 지역">
+                <div className="flex flex-wrap gap-1.5">
+                  <Button size="xs" variant="primary">KR</Button>
+                  <Button size="xs" variant="ghost">US</Button>
+                  <Button size="xs" variant="ghost">JP</Button>
+                </div>
+              </Field>
+              <Field label="키워드">
+                <Input placeholder="예: 광고, 재구매, 가격" />
+              </Field>
+            </ControlBoardPanel>
+            <div className="flex flex-1 flex-col items-center overflow-y-auto px-5 py-6">
+              <div className="w-full max-w-2xl">
+                <SectionLabel>산출물</SectionLabel>
+                <div className="mt-2 text-md text-mute-soft">
+                  active 진입 시 컨트롤은 상단 바로 고정되고(border-b divider), 이
+                  산출물 영역이 아래를 채운다. 컨트롤 좌측 픽셀은 idle 과 동일
+                  (WIDGET_FRAME_CLUSTER_W 공유).
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+            gap=&ldquo;section&rdquo; (gap-6 · 컨트롤 그룹 + CTA 등 섹션 리듬)
+          </div>
+          {/* gap 열거형 — field(gap-4) vs section(gap-6). 위젯이 임의 space-y 를
+              쓰지 못하게 세로 리듬을 이 prop 으로만 허용한다. */}
+          <div className="flex h-64 flex-col overflow-hidden border border-line bg-paper rounded-sm">
+            <ControlBoardPanel gap="section">
+              <Field label="수집 기간">
+                <div className="flex flex-wrap gap-1.5">
+                  <Button size="xs" variant="primary">전체</Button>
+                  <Button size="xs" variant="ghost">1주</Button>
+                  <Button size="xs" variant="ghost">1개월</Button>
+                </div>
+              </Field>
+              <div className="flex items-center justify-end gap-3">
+                <span className="text-sm tabular-nums text-mute-soft">25 크레딧</span>
+                <ChromeButton variant="primary" size="lg">검색</ChromeButton>
+              </div>
+            </ControlBoardPanel>
+          </div>
+
+          <p className="text-sm text-mute-soft">
+            컴파운드 ControlBoard(위 항목)는 내부 4-layer 정렬 규격, ControlBoardPanel
+            은 위젯 카드 전체를 감싸는 상태 불변 프레임 — 서로 다른 층위. 실 위젯은
+            모두 ControlBoardPanel 을 쓴다.
           </p>
         </div>
       </Subsection>

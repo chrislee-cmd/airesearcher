@@ -101,7 +101,7 @@ export function ControlBoardPanel({
   const clusterWidth = WIDGET_FRAME_CLUSTER_W;
 
   return (
-    <div className={wrapper}>
+    <div className={wrapper} data-ds-primitive="ControlBoardPanel">
       {banners && (
         <div className={cx('flex flex-col gap-4', clusterWidth, 'mb-6')}>
           {banners}
