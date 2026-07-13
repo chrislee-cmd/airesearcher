@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logError } from '@/lib/observability/log-error';
 import { SUBSCRIPTION_TIERS, type SubscriptionTierId } from '@/lib/features';
 import {
   currencyForStoreId,
@@ -189,6 +190,13 @@ export async function POST(request: Request) {
     });
     if (error) {
       console.error('[lemonsqueezy webhook] grant failed', paymentId, error);
+      // 관측: 결제는 됐는데 크레딧 지급이 실패 — 사용자 자산 손실 직결(P0급).
+      await logError({
+        feature: 'billing',
+        code: 'order_grant_failed',
+        message: error.message,
+        context: { event: name, payment_id: paymentId, order_id: orderId, currency },
+      });
       return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
     }
     return NextResponse.json({ received: true, currency });
@@ -257,7 +265,13 @@ export async function POST(request: Request) {
     try {
       const granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier);
       return NextResponse.json({ received: true, granted, tier, period });
-    } catch {
+    } catch (e) {
+      await logError({
+        feature: 'billing',
+        code: 'subscription_grant_failed',
+        message: e instanceof Error ? e.message : 'grant_failed',
+        context: { event: name, sub_id: subId, org_id: org.id, period, tier },
+      });
       return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
     }
   }
@@ -297,7 +311,13 @@ export async function POST(request: Request) {
       if (period) {
         try {
           granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier);
-        } catch {
+        } catch (e) {
+          await logError({
+            feature: 'billing',
+            code: 'subscription_grant_failed',
+            message: e instanceof Error ? e.message : 'grant_failed',
+            context: { event: name, sub_id: subId, org_id: org.id, period, tier },
+          });
           return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
         }
       }

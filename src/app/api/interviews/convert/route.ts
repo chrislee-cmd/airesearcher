@@ -16,6 +16,7 @@ import {
 import { hashBytes, getCache, setCache } from '@/lib/cache';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { ISOLATION_NOTICE, sanitizeUserInput } from '@/lib/llm/sanitize';
+import { logError } from '@/lib/observability/log-error';
 
 export const maxDuration = 300;
 
@@ -181,6 +182,14 @@ export async function POST(request: Request) {
   } catch (e) {
     const err = e instanceof Error ? e : new Error('extraction_failed');
     logConvertFail({ name: file.name, stage, reason: err.message, status: 502 });
+    // 중앙 관측: 파일 추출 실패(502)는 서버측 진짜 실패 — 로그 기록과 병행 적재.
+    // rate_limited(429)·no_text(422) 같은 기대/사용자 오류는 제외(코스 저노이즈).
+    await logError({
+      feature: 'interview',
+      code: 'convert_extract_failed',
+      message: err.message,
+      context: { stage, mime: file.type, org_id: org.org_id },
+    });
     return NextResponse.json(
       { error: err.message, stage, name: file.name, mime: file.type },
       { status: 502 },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { logError } from '@/lib/observability/log-error';
 import { SUBSCRIPTION_TIERS } from '@/lib/features';
 import {
   createLemonSqueezyCheckout,
@@ -66,6 +67,12 @@ export async function POST(request: Request) {
     console.error(
       `[billing/subscription] lemonsqueezy target missing currency=${currency} tier=${tier}`,
     );
+    await logError({
+      feature: 'billing',
+      code: 'subscription_checkout_503',
+      message: `lemonsqueezy subscription target missing (currency=${currency} tier=${tier})`,
+      context: { currency, tier, org_id: org.org_id },
+    });
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
@@ -91,6 +98,12 @@ export async function POST(request: Request) {
       checkoutUrl: checkout.url,
     });
   } catch (err) {
+    await logError({
+      feature: 'billing',
+      code: 'subscription_checkout_failed',
+      message: (err as Error)?.message ?? 'lemonsqueezy_error',
+      context: { tier, currency, org_id: org.org_id },
+    });
     return NextResponse.json(
       { error: (err as Error).message ?? 'lemonsqueezy_error' },
       { status: 500 },

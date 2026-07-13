@@ -23,6 +23,14 @@
     {
       "path": "/api/cron/interview-failure-alert",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/error-log-poll",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/widget-error-sweep",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
