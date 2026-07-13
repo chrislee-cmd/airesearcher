@@ -178,11 +178,19 @@ export type WidgetHealthSource = {
   success: string[];
   fail: string[];
   statusColumn?: string;
+  // Free-text failure-cause column, read by the job-fail sweep
+  // (widget-error-sweep.ts) to split error_events by cause. Defaults to
+  // 'error_message'; set explicitly when the table names it differently
+  // (insights_jobs → failure_reason). Set null to opt out (coarse only).
+  errorColumn?: string | null;
 };
 
 export const WIDGET_HEALTH_SOURCES: WidgetHealthSource[] = [
-  { table: 'desk_jobs', label: '데스크 리서치', feature: 'desk', success: ['done'], fail: ['error', 'cancelled'] },
-  { table: 'insights_jobs', label: '인사이트 분석기', feature: 'insights', success: ['ready'], fail: ['failed'] },
+  // 'cancelled' is a user cancel (not a failure) → 'other', per the convention
+  // above. Keeping it in `fail` inflated both the dashboard errorRate and the
+  // job-sweep (cancelled false-positive incidents).
+  { table: 'desk_jobs', label: '데스크 리서치', feature: 'desk', success: ['done'], fail: ['error'] },
+  { table: 'insights_jobs', label: '인사이트 분석기', feature: 'insights', success: ['ready'], fail: ['failed'], errorColumn: 'failure_reason' },
   { table: 'transcript_jobs', label: '전사록', feature: 'transcript', success: ['done'], fail: ['error'] },
   // OBS-4: interview V2 (use-interview-v2-upload → /interviews/index) drives
   // the batch lifecycle on `index_status` (pending/indexing/done/error) and
