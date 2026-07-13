@@ -58,7 +58,7 @@ export function ComingSoonBody({
             <h2 className="text-3xl font-bold text-ink">{title}</h2>
             <p className="text-lg leading-relaxed text-ink-2">{description}</p>
 
-            <div className="mt-4 w-full rounded-xs border-[2px] border-line-soft bg-paper-soft p-6">
+            <div className="mt-4 w-full rounded-xs border-2 border-line-soft bg-paper-soft p-6">
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-mute">
                 준비 중인 기능
               </h3>

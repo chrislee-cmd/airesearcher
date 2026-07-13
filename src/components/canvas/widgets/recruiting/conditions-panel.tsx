@@ -20,7 +20,7 @@ export function RecruitingConditionsPanel({
   const summary = brief?.summary?.trim() ?? '';
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-sm border-[2px] border-ink bg-paper shadow-[2px_2px_0_black]">
+    <section className="flex h-full min-h-0 flex-col rounded-sm border-2 border-ink bg-paper shadow-memphis-sm">
       <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-ink/15 px-4 py-2.5">
         <h3 className="text-md font-semibold text-ink">🎯 참여자 조건</h3>
         {criteria.length > 0 && (

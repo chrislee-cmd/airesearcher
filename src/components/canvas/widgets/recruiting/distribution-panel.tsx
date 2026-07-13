@@ -82,7 +82,7 @@ export function RecruitingDistributionPanel({
   };
 
   return (
-    <section className="flex min-h-[200px] flex-col rounded-sm border-[2px] border-ink bg-paper shadow-[2px_2px_0_black]">
+    <section className="flex min-h-[200px] flex-col rounded-sm border-2 border-ink bg-paper shadow-memphis-sm">
       <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-ink/15 px-4 py-2.5">
         <h3 className="text-md font-semibold text-ink">📊 분포 통계</h3>
         {table && table.grandTotal > 0 && (
