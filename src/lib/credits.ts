@@ -20,6 +20,11 @@ export type CreditsStatus = {
   trialEndsAt: string | null; // ISO; null after backfill (legacy orgs)
   isUnlimited: boolean;
   isTrialActive: boolean;
+  // 만료되는 무료 grant 버킷 (docs/pricing-scheme.md §5.4). `grantCredits` 는
+  // **유효분** — 만료가 지났으면 잔액이 남아 있어도 0 으로 노출한다(레이지
+  // 만료). `grantExpiresAt` 은 미만료일 때만 ISO 문자열, 그 외 null.
+  grantCredits: number;
+  grantExpiresAt: string | null;
 };
 
 /** Status snapshot the UI uses to render the trial badge / paywall gating. */
@@ -27,17 +32,23 @@ export async function getCreditsStatus(orgId: string): Promise<CreditsStatus> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('organizations')
-    .select('credit_balance, trial_ends_at, is_unlimited')
+    .select('credit_balance, trial_ends_at, is_unlimited, grant_credits, grant_expires_at')
     .eq('id', orgId)
     .single();
   const trialEndsAt = (data?.trial_ends_at as string | null) ?? null;
   const isTrialActive =
     trialEndsAt != null && new Date(trialEndsAt).getTime() > Date.now();
+  const rawGrantExpiresAt = (data?.grant_expires_at as string | null) ?? null;
+  const grantValid =
+    rawGrantExpiresAt != null &&
+    new Date(rawGrantExpiresAt).getTime() > Date.now();
   return {
     balance: (data?.credit_balance as number | null) ?? 0,
     trialEndsAt,
     isUnlimited: Boolean(data?.is_unlimited),
     isTrialActive,
+    grantCredits: grantValid ? ((data?.grant_credits as number | null) ?? 0) : 0,
+    grantExpiresAt: grantValid ? rawGrantExpiresAt : null,
   };
 }
 

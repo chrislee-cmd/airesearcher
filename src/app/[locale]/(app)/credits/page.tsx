@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { getActiveOrg } from '@/lib/org';
-import { getOrgCredits } from '@/lib/credits';
+import { getOrgCredits, getCreditsStatus } from '@/lib/credits';
 import { CreditsBundles } from '@/components/credits-bundles';
 import { CreditsUsagePredictor } from '@/components/credits-usage-predictor';
 import { CreditsStatusBanner } from '@/components/credits-status-banner';
@@ -30,6 +30,18 @@ export default async function CreditsPage({
   const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
+
+  // 만료되는 무료 grant (docs/pricing-scheme.md §5.4) — 비만료 잔액과 구분
+  // 표시. getCreditsStatus 는 만료 지난 grant 를 이미 0 으로 정규화한다.
+  const creditsStatus = org ? await getCreditsStatus(org.org_id) : null;
+  const grantCredits = creditsStatus?.grantCredits ?? 0;
+  // 만료 시각(다음달 1일 0시) 하루 전 = 마지막 사용 가능일 로 표기.
+  const grantExpiryLabel =
+    creditsStatus?.grantExpiresAt != null
+      ? new Date(
+          new Date(creditsStatus.grantExpiresAt).getTime() - 86_400_000,
+        ).toLocaleDateString(locale, { month: '2-digit', day: '2-digit' })
+      : null;
 
   const rawStatus = sp.status;
   const status: 'success' | 'cancelled' | null =
@@ -106,6 +118,25 @@ export default async function CreditsPage({
                 {t('creditsUnit')}
               </span>
             </div>
+            {grantCredits > 0 && grantExpiryLabel && (
+              <div className="mt-2 sm:text-right">
+                <span
+                  style={{
+                    fontFamily: outfitStack,
+                    background: 'var(--canvas-accent)',
+                    border: '2px solid var(--canvas-card-border)',
+                    boxShadow: 'var(--memphis-shadow-xs)',
+                    color: '#fff',
+                  }}
+                  className="inline-block rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"
+                >
+                  {t('freeGrantBadge', {
+                    count: grantCredits,
+                    date: grantExpiryLabel,
+                  })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </header>
