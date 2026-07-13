@@ -83,7 +83,64 @@ type ConvertResult = {
   mime: string | null;
 };
 
+// Per-file outcome of the convert stage. 'skip' is a duplicate (not a
+// failure); 'fail' carries a machine-readable reason so a batch that never
+// reaches indexing can still record WHY in the job's error_message (the whole
+// point of this observability pass — no more silent 'pending'+0 residue).
+type ConvertOutcome =
+  | (ConvertResult & { kind: 'ok' })
+  | { kind: 'fail'; index: number; reason: string }
+  | { kind: 'skip'; index: number };
+
 const MAX_BYTES = 25 * 1024 * 1024;
+
+// Read a coded failure reason from a non-ok response body ({ error: '<code>' }
+// — the shape every interviews route returns, incl. rate_limitResponse's
+// { error: 'rate_limited' }). Falls back to the HTTP status so a reason is
+// always greppable even when the body is empty/unparseable.
+async function readFailReason(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    if (typeof body?.error === 'string' && body.error) return body.error;
+  } catch {
+    // fall through to status-based reason
+  }
+  return `http_${res.status}`;
+}
+
+// Fold per-file convert failures into one grep-friendly line, e.g.
+// `convert_failed: 23/61 (rate_limited×20, unsupported_file_type×3)`.
+function summarizeConvertFailures(
+  reasons: string[],
+  attempted: number,
+): string {
+  const counts = new Map<string, number>();
+  for (const r of reasons) counts.set(r, (counts.get(r) ?? 0) + 1);
+  const parts = [...counts.entries()].map(([r, n]) => `${r}×${n}`);
+  return `convert_failed: ${reasons.length}/${attempted} (${parts.join(', ')})`;
+}
+
+// Best-effort observability write: stamp a job index_status='error' + reason
+// when the batch failed before the index route ever ran. The route restricts
+// this to rows still 'pending', so it can never overwrite a status the index
+// route owns. Never throws — a failed marker must not break the upload flow.
+async function markJobIndexError(
+  jobId: string,
+  message: string,
+): Promise<void> {
+  try {
+    await fetch(`/api/interviews/jobs/${jobId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        index_status: 'error',
+        error_message: message.slice(0, 500),
+      }),
+    });
+  } catch {
+    // swallow — observability, not correctness
+  }
+}
 
 // Max convert POSTs in flight at once. Deliberately well under the server's
 // per-user LLM cap (30/min) so a normal small batch still converts near-
@@ -181,11 +238,15 @@ export function useInterviewV2Upload() {
       const converted = await mapWithConcurrency(
         plan,
         CONVERT_CONCURRENCY,
-        async ({ file, duplicate }, index): Promise<ConvertResult | null> => {
-          if (duplicate) return null;
-          if (file.size === 0 || file.size > MAX_BYTES) {
+        async ({ file, duplicate }, index): Promise<ConvertOutcome> => {
+          if (duplicate) return { kind: 'skip', index };
+          if (file.size === 0) {
             setStatusAt(index, 'error');
-            return null;
+            return { kind: 'fail', index, reason: 'empty_file' };
+          }
+          if (file.size > MAX_BYTES) {
+            setStatusAt(index, 'error');
+            return { kind: 'fail', index, reason: 'file_too_large' };
           }
           // Leaving the queue — actually converting now.
           setStatusAt(index, 'converting');
@@ -202,13 +263,24 @@ export function useInterviewV2Upload() {
               { method: 'POST', body: fd },
               { onRetry: () => setStatusAt(index, 'retrying') },
             );
-            if (!res.ok) throw new Error(`convert_${res.status}`);
+            if (!res.ok) {
+              // Capture the server's coded reason (rate_limited after retries
+              // exhausted, unsupported_file_type, no_text_extracted, …) so the
+              // batch's error_message names the real cause.
+              const reason = await readFailReason(res);
+              setStatusAt(index, 'error');
+              return { kind: 'fail', index, reason };
+            }
             const j = (await res.json()) as {
               markdown?: string;
               filename?: string;
             };
-            if (!j.markdown) throw new Error('convert_empty');
+            if (!j.markdown) {
+              setStatusAt(index, 'error');
+              return { kind: 'fail', index, reason: 'convert_empty' };
+            }
             return {
+              kind: 'ok',
               index,
               filename: j.filename ?? file.name,
               markdown: j.markdown,
@@ -216,13 +288,57 @@ export function useInterviewV2Upload() {
             };
           } catch {
             setStatusAt(index, 'error');
-            return null;
+            return { kind: 'fail', index, reason: 'network' };
           }
         },
       );
 
-      const ok = converted.filter((c): c is ConvertResult => c !== null);
+      const ok = converted.filter(
+        (c): c is ConvertResult & { kind: 'ok' } => c.kind === 'ok',
+      );
+      const failReasons = converted
+        .filter((c): c is { kind: 'fail'; index: number; reason: string } =>
+          c.kind === 'fail',
+        )
+        .map((c) => c.reason);
+      // Non-duplicate files actually attempted through convert — the
+      // denominator for the failure summary.
+      const attempted = plan.filter((p) => !p.duplicate).length;
+
       if (ok.length === 0) {
+        // Every non-duplicate file failed to convert → the index route is
+        // never called, so historically NO interview_jobs row existed and the
+        // failure left zero DB trace ('pending 무증상'). Create a job row and
+        // stamp it index_status='error' + the aggregated reason so the failure
+        // — and its cause — is visible in DB/admin. Guarded by failReasons so a
+        // pure all-duplicate batch (already returned above) can't reach here.
+        if (failReasons.length > 0) {
+          try {
+            const jobRes = await fetch('/api/interviews/jobs', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                project_id: null,
+                inputs: plan
+                  .filter((p) => !p.duplicate)
+                  .map((p) => ({ filename: p.file.name })),
+                extractions: {},
+                matrix: {},
+              }),
+            });
+            if (jobRes.ok) {
+              const { id } = (await jobRes.json()) as { id?: string };
+              if (id) {
+                await markJobIndexError(
+                  id,
+                  summarizeConvertFailures(failReasons, attempted),
+                );
+              }
+            }
+          } catch {
+            // best-effort — never let the observability write break the flow
+          }
+        }
         setBusy(false);
         return { changed: false, skipped };
       }
@@ -276,9 +392,19 @@ export function useInterviewV2Upload() {
         // A chunk failed partway → the list needs reconciling even if other
         // chunks all-skipped, so force a refetch.
         let anyError = false;
+        // Whether the index route ever ran its body for this job. The route
+        // sets index_status='indexing' the moment a request clears auth +
+        // rate-limit + validation, then 'done' (200) or 'error' (500, OBS-4).
+        // A 200/500 therefore means the route OWNS the status — leave it alone.
+        // A 429 / 4xx / network failure never reaches that write, so the job
+        // stays 'pending': that's the residue we stamp below.
+        let reachedIndexRoute = false;
+        // Reason of the most recent index failure, for the pending stamp.
+        let lastIndexReason = 'network';
 
         for (const chunk of chunks) {
           const chunkIdx = new Set(chunk.map((c) => c.index));
+          let chunkReason = 'network';
           try {
             const indexRes = await fetchWithRateLimitRetry(
               '/api/interviews/index',
@@ -307,7 +433,15 @@ export function useInterviewV2Upload() {
                   ),
               },
             );
-            if (!indexRes.ok) throw new Error(`index_${indexRes.status}`);
+            // 200 (done) or 500 (route stamped 'error' via OBS-4) both mean the
+            // route ran and now owns index_status — never post-mark those.
+            if (indexRes.status === 200 || indexRes.status === 500) {
+              reachedIndexRoute = true;
+            }
+            if (!indexRes.ok) {
+              chunkReason = await readFailReason(indexRes);
+              throw new Error(`index_${indexRes.status}`);
+            }
 
             // Server-side project-scoped content-hash dedupe may have skipped
             // some converted files (same content, possibly renamed —
@@ -333,6 +467,7 @@ export function useInterviewV2Upload() {
             );
           } catch {
             anyError = true;
+            lastIndexReason = chunkReason;
             // Isolate the failure to this chunk — the other chunks already
             // committed their status and must not be reverted.
             setItems((prev) =>
@@ -341,6 +476,20 @@ export function useInterviewV2Upload() {
               ),
             );
           }
+        }
+
+        // If the index route never ran for ANY chunk (all 429'd / errored
+        // before its 'indexing' write), the job row is still 'pending' — the
+        // silent residue this pass removes. Stamp it 'error' with the cause so
+        // DB/admin shows what happened. The PATCH only writes while the row is
+        // still 'pending', so a racing route write always wins (no double-mark,
+        // respects OBS-4). Skipped entirely once the route owns the status.
+        if (!reachedIndexRoute) {
+          const msg =
+            failReasons.length > 0
+              ? `${summarizeConvertFailures(failReasons, attempted)}; index_unreached: ${lastIndexReason}`
+              : `index_unreached: ${lastIndexReason}`;
+          await markJobIndexError(interviewJobId, msg);
         }
 
         setBusy(false);
