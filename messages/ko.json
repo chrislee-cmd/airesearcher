@@ -1435,11 +1435,13 @@
     "toplineShareError": "Google Docs 공유에 실패했어요",
     "toplineShareUnavailable": "지금은 Google Docs 공유를 사용할 수 없어요. 잠시 후 다시 시도해 주세요.",
     "toplineUploadCta": "자체 보고서 업로드",
-    "toplineUploadModeHint": "Claude·NotebookLM 등에서 이미 완성한 보고서(Markdown)를 올리면 생성을 건너뛰고 바로 편집만 합니다.",
+    "toplineUploadModeHint": "Claude·NotebookLM 등에서 이미 완성한 보고서(Markdown·DOCX·PDF·HTML)를 올리면 생성을 건너뛰고 바로 편집만 합니다.",
     "toplineImporting": "보고서 불러오는 중…",
     "toplineImported": "보고서를 불러왔어요 — 이제 편집할 수 있어요.",
     "toplineImportError": "보고서를 불러오지 못했어요",
-    "toplineImportEmpty": "보고서에서 내용을 찾지 못했어요 — 제목·문단이 있는 Markdown 인지 확인해 주세요.",
+    "toplineImportEmpty": "보고서에서 내용을 찾지 못했어요 — 제목·문단이 있는 문서인지 확인해 주세요.",
+    "toplineImportUnsupported": "지원하지 않는 파일 형식이에요 — Markdown·DOCX·PDF·HTML 을 올려 주세요.",
+    "toplineImportTooLarge": "파일이 너무 커요 — 25MB 이하로 올려 주세요.",
     "toplineRegenUploadedNote": "이 보고서는 직접 업로드한 원본입니다. 재생성하면 업로드 내용이 사라지고 인터뷰 데이터로 새 보고서가 만들어집니다."
   },
   "Workspace": {
