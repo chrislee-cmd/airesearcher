@@ -709,9 +709,9 @@ function verifyBlockCitations(
 // 이 soft-deadline 을 넘기면 진행 중 호출만 마치고 다음 홉으로 넘긴다 — 나머지
 // (self-kick fetch + 최종 DB write)에 ~70s 여유를 남긴다.
 const MAP_SOFT_DEADLINE_MS = 230_000;
-// reduce(단일 Opus streamObject, ~100~140s)를 이 홉 안에서 시작하려면 남아 있어야
-// 하는 최소 예산. 이보다 적으면 map 완료 후 reduce 를 다음 홉(신선한 300s)으로
-// 미뤄 reduce 가 함수 킬에 잘리지 않게 한다.
+// reduce(단일 Opus streamObject) 의 abort 타임아웃 하한(레버 2). reduce 는 레버 1
+// 로 늘 fresh 홉 초반에 시작하므로 실제 예산은 통상 ~265s 지만, 홉 상한 강행 등
+// reduce 가 늦게 시작하는 경우에도 최소 이만큼은 스트리밍을 시도하도록 하한을 둔다.
 const REDUCE_MIN_BUDGET_MS = 180_000;
 // 홉의 하드 예산(참고) — 이 시각을 넘기면 새 무거운 작업(reduce)을 시작 안 함.
 const HOP_HARD_BUDGET_MS = 290_000;
@@ -845,6 +845,11 @@ export async function runTopline(
       return;
     }
     const resumeCount = row.resume_count ?? 0;
+    // 이 홉이 이미 reduce 단계로 진입했는가(= 직전 홉이 map 완료 후 reduce 를
+    // fresh 홉으로 미룬 결과). true 면 map 은 캐시로 전수 완료 상태라 map 을
+    // 건너뛰고 reduce 를 바로 실행한다. false(=map 단계로 진입)면 map 완료 직후
+    // reduce 를 무조건 fresh 홉으로 미룬다(레버 1 — 무한 defer 는 이 플래그가 차단).
+    const enteredReducePhase = row.phase === 'reduce';
 
     // 재생성 보존 — 현재 row 의 사용자 삽입 블록(inserted_qa/inserted_section)을
     // 스냅샷해, 새 보고서로 blocks 를 덮어쓸 때(부분 flush + 최종 write) 다시
@@ -976,12 +981,16 @@ export async function runTopline(
       }
     }
 
-    // map 전수 완료(또는 상한 강행) — reduce 로. 남은 예산이 reduce 최소치보다
-    // 적으면 reduce 를 신선한 홉으로 미뤄 함수 킬 잘림을 피한다.
-    const remaining = HOP_HARD_BUDGET_MS - (Date.now() - startMs);
-    if (remaining < REDUCE_MIN_BUDGET_MS && resumeCount < MAX_RESUME_HOPS) {
+    // map 전수 완료(또는 상한 강행) — reduce 로. **레버 1**: 이 홉이 map 단계로
+    // 진입해 방금 map 을 마친 경우엔 남은 예산과 무관하게 reduce 를 항상 fresh 홉
+    // 으로 미룬다. 61-doc Opus 종합은 남은 ~180–200s 를 마지널하게 초과해 300s 벽
+    // 에서 kill 되곤 했다(수동 재생성이 성공하던 이유 = reduce 가 캐시 위 fresh
+    // 홉에서 거의 t=0 부터 시작). 그 조건을 자동화한다. 이미 reduce 단계로 진입한
+    // 재개 홉(enteredReducePhase)은 여기서 곧장 reduce 를 실행해 무한 defer 를 막고,
+    // 홉 상한 강행(map 미완 at cap)도 여기 fall-through 로 same-hop reduce 를 돈다.
+    if (!enteredReducePhase && resumeCount < MAX_RESUME_HOPS) {
       console.log(`${tag} map complete — reduce deferred to fresh hop`, {
-        remaining_ms: remaining,
+        remaining_ms: HOP_HARD_BUDGET_MS - (Date.now() - startMs),
         hop: resumeCount,
       });
       await updateMapProgress(admin, toplineId, {
@@ -1019,6 +1028,19 @@ export async function runTopline(
     // partialObjectStream 으로 블록이 완성되는 대로 interview_toplines.blocks 에
     // throttle 증분 upsert → realtime 이 부분 보고서를 push, 클라가 점진 렌더한다.
     const reduceEvidence = formatExtractsForReduce(extracts);
+
+    // ── REDUCE abort 가드 (레버 2) — 300s 벽 앞에서 스스로 중단 ──
+    // 이 fresh 홉의 하드 예산(HOP_HARD_BUDGET_MS)에서 SAFETY_MARGIN 만큼 앞서
+    // abort → 이미 throttle flush 된 부분 블록을 남긴 채 다음 fresh 홉으로 재개.
+    // 레버 1 덕에 reduce 는 늘 홉 초반에 시작하므로 예산은 통상 ~265s 로 넉넉하나,
+    // 느린 reduce 조차 벽 kill 대신 우아하게 이어지게 해 stale-detector 의존을 없앤다.
+    const REDUCE_SAFETY_MARGIN_MS = 20_000;
+    const reduceBudgetMs = Math.max(
+      REDUCE_MIN_BUDGET_MS,
+      HOP_HARD_BUDGET_MS - (Date.now() - startMs) - REDUCE_SAFETY_MARGIN_MS,
+    );
+    const reduceAbort = AbortSignal.timeout(reduceBudgetMs);
+
     const stream = streamObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
@@ -1030,6 +1052,8 @@ export async function runTopline(
       maxOutputTokens: 32_000,
       maxRetries: 1,
       providerOptions: ZERO_RETENTION,
+      // 벽 도달 전 스스로 중단 — abort 시 부분 블록 보존 + 다음 fresh 홉 재개.
+      abortSignal: reduceAbort,
     });
 
     // 부분 블록 증분 upsert — realtime/DB 쓰기 폭주를 막으려 throttle 한다.
@@ -1066,14 +1090,36 @@ export async function runTopline(
       if (error) console.warn(`${tag} partial blocks upsert failed`, error.message);
     };
 
-    for await (const partial of stream.partialObjectStream) {
-      const rawBlocks = Array.isArray(partial?.blocks) ? partial.blocks : [];
-      await flushPartialBlocks(rawBlocks);
+    // reduce 스트림 소비 + 최종 확정. abort(예산 초과)로 예외가 나면 벽 kill 이
+    // 아니라 우아한 재개로 처리한다 — 이미 flush 된 부분 블록은 DB 에 남아 있고,
+    // phase='reduce' 를 유지한 채 다음 fresh 홉으로 넘겨 reduce 를 재시도한다.
+    let finalObject: Awaited<typeof stream.object> | undefined;
+    let finishReason: Awaited<typeof stream.finishReason> | undefined;
+    try {
+      for await (const partial of stream.partialObjectStream) {
+        const rawBlocks = Array.isArray(partial?.blocks) ? partial.blocks : [];
+        await flushPartialBlocks(rawBlocks);
+      }
+      // 스트림 종료 — 검증된 최종 객체 + finishReason 확보.
+      finalObject = await stream.object;
+      finishReason = await stream.finishReason;
+    } catch (e) {
+      // 예산 초과 self-abort — row 를 error 로 떨구지 않고(자동 재개 유지) 다음
+      // fresh 홉으로 넘긴다. abort 가 아닌 진짜 오류/홉 상한은 상위 catch 로 전파.
+      if (reduceAbort.aborted && resumeCount < MAX_RESUME_HOPS) {
+        console.warn(`${tag} reduce aborted at budget — deferring to fresh hop`, {
+          reduce_budget_ms: reduceBudgetMs,
+          hop: resumeCount,
+        });
+        await admin
+          .from('interview_toplines')
+          .update({ resume_count: resumeCount + 1 })
+          .eq('id', toplineId);
+        await kickResume(toplineId, tag);
+        return;
+      }
+      throw e;
     }
-
-    // 스트림 종료 — 검증된 최종 객체 + finishReason 확보(예외는 상위 catch 로).
-    const finalObject = await stream.object;
-    const finishReason = await stream.finishReason;
 
     const blocks = verifyBlockCitations(finalObject?.blocks ?? [], validIds);
     const citedTotal = blocks.reduce(
