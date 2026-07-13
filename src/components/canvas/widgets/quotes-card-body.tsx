@@ -1119,21 +1119,23 @@ export function QuotesCardBody() {
     // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
     // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      {/* 프로젝트 + 언어 + 발화자 수 — 한 행(#588). flex flex-wrap gap-3(12px) 로
-          세 컨트롤을 좌측 정렬하고 좁은 폭에서 wrap 허용. 프로젝트는 위젯 슬롯
-          'quotes' 의 독립 선택(프로빙/통역과 동일 ProjectPicker). 미선택(null)
+      {/* 프로젝트 + 언어 + 발화자 수 — 한 행(#588). 프로빙 어시스턴트를 컨트롤
+          간격 표준으로 통일(사용자 결정 2026-07-14): flex flex-wrap gap-4(16px) +
+          프로젝트는 min-w 래퍼 없이 ProjectPicker 를 직접 배치해 콘텐츠 폭으로
+          붙인다(옛 min-w-44 래퍼가 프로젝트 뒤 ~56px 빈 공간을 만들어 간격이
+          벌어졌던 원인 — probing/control-board.tsx 와 동일 구조). 프로젝트는 위젯
+          슬롯 'quotes' 의 독립 선택(프로빙/통역과 동일 ProjectPicker). 미선택(null)
           허용 — 프로젝트 없이도 전사 생성. 프로빙과 달리 "이 기기에만 저장" 안내
-          카피는 넣지 않는다(#586 — 사용자가 그 문구를 싫어함). 각 드롭다운은
-          min-w wrapper 로 붙여 정렬. 발화자 수는 diarization hint 로 배선. */}
-      <div className="flex flex-wrap gap-3">
+          카피는 넣지 않는다(#586 — 사용자가 그 문구를 싫어함). 언어/발화자수는
+          프로빙과 동일하게 min-w-24 wrapper 로 하한폭 고정. 발화자 수는
+          diarization hint 로 배선. */}
+      <div className="flex flex-wrap gap-4">
         <Field label="프로젝트">
-          <div className="min-w-44">
-            <ProjectPicker
-              widget="quotes"
-              value={projectId}
-              onChange={(id) => setSelection('quotes', id)}
-            />
-          </div>
+          <ProjectPicker
+            widget="quotes"
+            value={projectId}
+            onChange={(id) => setSelection('quotes', id)}
+          />
         </Field>
 
         <Field label="언어">
