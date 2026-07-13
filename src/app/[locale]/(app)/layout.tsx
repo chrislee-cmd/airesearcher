@@ -8,6 +8,7 @@ import { getOrgCredits } from '@/lib/credits';
 import { listProjects } from '@/lib/projects';
 import { Topbar } from '@/components/topbar';
 import { InterviewJobProvider } from '@/components/interview-job-provider';
+import { InterviewUploadProvider } from '@/components/interview-upload-provider';
 import { TranscriptJobProvider } from '@/components/transcript-job-provider';
 import { DeskJobProvider } from '@/components/desk-job-provider';
 import { WorkspaceProvider } from '@/components/workspace-provider';
@@ -75,6 +76,12 @@ export default async function AppLayout({
     // 발동한다(WidgetGateProvider 는 canvas-board 에서 위젯 카드들을 감싼다).
     <PaywallProvider>
      <ToastProvider>
+     {/* Background interview-upload orchestration lives here (app-level, never
+         unmounts) so the convert/index pipeline + progress survive the upload
+         modal closing and navigation. Inside ToastProvider for skip/dedupe
+         toasts; progress renders inline in the widget card's control slot
+         (<InlineUploadProgress>). */}
+     <InterviewUploadProvider>
      <CreditDeductionProvider>
      <VideoJobProvider>
      <InterviewJobProvider>
@@ -124,6 +131,7 @@ export default async function AppLayout({
      </InterviewJobProvider>
      </VideoJobProvider>
      </CreditDeductionProvider>
+     </InterviewUploadProvider>
      </ToastProvider>
     </PaywallProvider>
   );

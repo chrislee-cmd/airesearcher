@@ -33,6 +33,10 @@ import {
 import { useToast } from '@/components/toast-provider';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
 import { UploadModal } from '@/components/interviews-v2/upload-modal';
+import {
+  InlineUploadProgress,
+  useHasInterviewUploadFor,
+} from '@/components/interviews-v2/upload-progress-artifact';
 import { InterviewV2Fullview } from '@/components/interviews-v2/interview-v2-fullview';
 import { track as trackEvent } from '@/lib/analytics/events';
 
@@ -321,6 +325,9 @@ function ActiveBody({
   const [uploadOpen, setUploadOpen] = useState(false);
   // 카드 인라인 dropzone 이 드롭/선택한 파일 — 모달을 열며 pre-stage 로 넘긴다.
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  // 이 프로젝트로 백그라운드 업로드가 진행 중이면 dropzone 자리를 인라인 진행
+  // 아티팩트로 교체 (사용자 결정: 업로드 뷰에선 dropzone 불필요).
+  const hasUpload = useHasInterviewUploadFor(projectId);
 
   const openWithFiles = (files: File[]) => {
     setPendingFiles(files);
@@ -555,15 +562,20 @@ function ActiveBody({
           />
         </Field>
         {/* 인라인 업로드 — 프로젝트가 이미 정해졌으므로 모달이 Step 2 를
-            건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles). */}
-        <ControlDropzone
-          accept={UPLOAD_ACCEPT}
-          multiple
-          maxSizeBytes={UPLOAD_MAX_BYTES}
-          onFiles={openWithFiles}
-          label={t('uploadDropLabel')}
-          helperText={t('uploadDropHelper')}
-        />
+            건너뛰고 바로 업로드+인덱싱 (dropzone 이 드롭한 파일 = initialFiles).
+            업로드가 진행 중이면 같은 자리에 진행 아티팩트를 노출한다. */}
+        {hasUpload ? (
+          <InlineUploadProgress projectId={projectId} />
+        ) : (
+          <ControlDropzone
+            accept={UPLOAD_ACCEPT}
+            multiple
+            maxSizeBytes={UPLOAD_MAX_BYTES}
+            onFiles={openWithFiles}
+            label={t('uploadDropLabel')}
+            helperText={t('uploadDropHelper')}
+          />
+        )}
       </ControlBoardPanel>
 
       {/* 프로젝트 선택 시 하단 영역 — 탑라인 status 로 분기(위 projectBody):
