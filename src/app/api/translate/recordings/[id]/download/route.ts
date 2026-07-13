@@ -270,10 +270,12 @@ export async function GET(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
   // Default-save: downloads are free once the recording is finalized
-  // ('uploaded'). The 통역 시작 75-credit lump already covers save +
-  // download, so there's no separate unlock charge. 'unlocked' is still
-  // accepted for rows finalized under the old paid scheme. 'recording'
-  // (still uploading) and 'failed' stay gated.
+  // ('uploaded'). The session's real-audio-minute charge is settled at
+  // finalize (recording PATCH → spend keyed by this recording id, see
+  // docs/pricing-scheme.md §6 E1), which covers save + download, so
+  // there's no separate unlock charge here. 'unlocked' is still accepted
+  // for rows finalized under the old paid scheme. 'recording' (still
+  // uploading) and 'failed' stay gated.
   if (row.status !== 'uploaded' && row.status !== 'unlocked') {
     return NextResponse.json({ error: 'locked' }, { status: 402 });
   }

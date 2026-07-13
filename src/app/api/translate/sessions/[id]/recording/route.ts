@@ -22,6 +22,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
+import { spendCreditsAdminAmount } from '@/lib/credits';
+import { translateCreditsForAudioSeconds } from '@/lib/features';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -259,7 +261,7 @@ export async function PATCH(
   // this session.
   const { data: row, error: readErr } = await admin
     .from('translate_recordings')
-    .select('id, status, host_user_id, session_id')
+    .select('id, status, host_user_id, session_id, org_id')
     .eq('id', recording_id)
     .maybeSingle();
   if (readErr) return NextResponse.json({ error: readErr.message }, { status: 500 });
@@ -279,11 +281,16 @@ export async function PATCH(
   // Fetch current values to merge.
   const current = await admin
     .from('translate_recordings')
-    .select('size_bytes, duration_sec')
+    .select('size_bytes, duration_sec, credits_spent')
     .eq('id', recording_id)
-    .maybeSingle<{ size_bytes: number | null; duration_sec: number | null }>();
+    .maybeSingle<{
+      size_bytes: number | null;
+      duration_sec: number | null;
+      credits_spent: number | null;
+    }>();
   const prevSize = current.data?.size_bytes ?? 0;
   const prevDur = current.data?.duration_sec ?? 0;
+  const prevCredits = current.data?.credits_spent ?? 0;
   const nextSize = prevSize + size_bytes;
   const nextDur = Math.max(prevDur, duration_sec);
 
@@ -296,6 +303,50 @@ export async function PATCH(
     })
     .eq('id', recording_id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ── 실오디오-분 과금 (E1, docs/pricing-scheme.md §6) ─────────────────────
+  // finalize 는 duration_sec 가 확정되는 유일한 지점이라 여기서 세션의 실
+  // 오디오 길이 기준으로 과금한다(wall-clock 미사용 → 좀비/침묵 세션이 매출을
+  // 부풀리지 않음). generation_id = recording id 로 멱등 — download 라우트의
+  // 410 refund 도 같은 recording id 를 쓰므로 charge/refund 가 정합한다.
+  //
+  // PATCH 는 트랙(input/output)당 한 번씩 최대 2회 호출된다. 첫 호출이
+  // credits_spent 를 stamp 하면 이후 호출은 skip 한다(멱등 spend 가 재과금을
+  // 막지만, 두 트랙의 duration 이 사실상 동일해 first-PATCH-wins 로 충분).
+  // 실 오디오가 없으면(nextDur≤0) 0cr → 과금 skip.
+  //
+  // best-effort: 세션은 이미 실시간 통역을 전달했으므로, 잔액 부족이어도
+  // finalize(status='uploaded') 는 되돌리지 않는다(transcripts/video 사후
+  // 과금과 동일 패턴). 잔액 부족은 로그로만 남긴다.
+  if (prevCredits <= 0) {
+    const credits = translateCreditsForAudioSeconds(nextDur);
+    if (credits > 0) {
+      const spend = await spendCreditsAdminAmount(
+        row.org_id,
+        row.host_user_id,
+        'translate',
+        credits,
+        recording_id,
+      );
+      if (spend.ok) {
+        await admin
+          .from('translate_recordings')
+          .update({
+            credits_spent: credits,
+            unlocked_at: new Date().toISOString(),
+          })
+          .eq('id', recording_id);
+      } else {
+        console.warn('[translate/recording] audio-minute charge failed', {
+          session_id: sessionId,
+          recording_id,
+          duration_sec: nextDur,
+          credits,
+          reason: spend.reason,
+        });
+      }
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

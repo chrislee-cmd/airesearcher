@@ -68,14 +68,16 @@ export const FEATURES: { key: FeatureKey; href: string; cost: number }[] = [
   // video is priced dynamically by duration (2 credits per started 10min);
   // the value here is the minimum charge surfaced in sidebar / cost pills.
   { key: 'video', href: '/video', cost: 2 },
-  // AI 동시통역. Lump 75 credits (₩150k) covers the first 10 minutes; each
-  // additional 10-minute window adds 10 credits (₩20k). Sidebar shows the
-  // lump as the headline number; the per-10-minute surcharge lives in the
-  // locale `Features.translate.cost` string.
+  // AI 동시통역. 실 오디오-분 과금(E1, docs/pricing-scheme.md §6): 실 녹음
+  // 오디오 길이(`translate_recordings.duration_sec`) 기준으로 75cr(첫 10분
+  // 포함) + 실 오디오 10분당 10cr, 여기에 75% 마진 floor 클램프
+  // (`translateCreditsForAudioSeconds` · `TRANSLATE_METERING`). wall-clock
+  // 이 아니라 실 오디오라 좀비/침묵 세션이 과금을 부풀리지 않는다. 과금은
+  // 세션 종료 후 recording finalize(PATCH) 시점에 정산된다.
   //
-  // 75 = 통역 시작(50) + 녹음 저장·다운로드(25) 통합 단일가. 저장은 항상 ON
-  // (체크박스 제거) 이고 다운로드는 무료라, 옛 다운로드 잠금해제 +25 를 시작
-  // 비용에 흡수했다 (PR translate-row-layout-default-save).
+  // `cost` 75 는 sidebar/cost pill 헤드라인(첫 블록 = base 65 + 1블록 10)
+  // 이고, 분당 세부는 locale `Features.translate.cost` 문자열에 있다. 저장은
+  // 항상 ON(체크박스 제거) · 다운로드 무료 — 시작가가 저장+다운로드를 흡수.
   { key: 'translate', href: '/live', cost: 75 },
   // probing — canvas widget (no dedicated page route). cost 25 is the
   // *per-hour* unit price (₩50,000/hr); the session start charges one
@@ -222,13 +224,66 @@ const MIN_CREDIT_OVERRIDES: Partial<Record<FeatureKey, number>> = {
   // 이 플로어를 1 밑돎 → 문서화된 경계 예외(코스트는 10 유지, D1 이 감지).
   interviews: 11,
   // translate: 실오디오-분 종속이라 정적 플로어를 여기서 확정 못 한다.
-  // placeholder 0(=플로어 미설정 플래그) — E1 이 실측 분 기준으로 강제한다.
+  // placeholder 0(=정적 플로어 미설정 플래그) — E1 이 실측 분 기준으로 강제.
+  // 실제 분당 floor 는 `TRANSLATE_METERING.floorCogsKrwPerMinute` +
+  // `translateCreditsForAudioSeconds()` 가 finalize 시점에 동적 강제한다.
   translate: 0,
 };
 
 export const MIN_CREDITS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, MIN_CREDIT_OVERRIDES[f.key] ?? f.cost]),
 ) as Record<FeatureKey, number>;
+
+// ── 동시통역 실오디오-분 메터링 (E1 가드레일) ─────────────────────────────
+//
+// SSOT: docs/pricing-scheme.md §6. 통역은 realtime 원가가 변동비 대부분이라
+// ₩500/cr 에서 순마진 ~72–81%(75% 경계선). 그래서 두 겹의 가드로 마진을
+// 자동 보장한다:
+//
+//   1) 실 오디오-분 과금 (wall-clock 아님) — `translate_recordings.duration_sec`
+//      기반. 좀비 세션 · 침묵 구간으로 새는 매출/원가를 실 오디오에 정렬.
+//   2) 분당 cr floor = ceil(audioMin × COGS_per_min / 95) — 어떤 세션도
+//      75% 마진선(§3.1) 아래로 못 내려가게 상향 클램프.
+//
+// 과금식: credits = max(metered, floor)
+//   metered = baseCredits + ceil(audioMin / blockMinutes) × blockCredits
+//   floor   = ceil(audioMin × floorCogsKrwPerMinute / 95)
+//
+// baseCredits(65) + 첫 블록(10) = 75 = 현행 헤드라인("시작 75cr"). 60분 =
+// 65 + 6×10 = 125cr(=125cr/hr), docs §4.1 "125cr/hr 수준"과 일치.
+//
+// floorCogsKrwPerMinute: docs §4.1/§6 실측 COGS 미확정 → **보수적 상한**
+// $13/hr(전액 통역 귀속 극단 가정) = ₩18,000/hr = ₩300/min 채택. 이 값에서
+// 60분 floor = ceil(60 × 300 / 95) = 190cr, docs §6 "상한 ~180–190cr/hr =
+// $13/hr 대응"과 일치. 실측이 들어오면 이 한 상수만 갱신하면 된다(마진
+// floor 의 목적이 마진 보호이므로 미확정 구간에서는 높은 COGS 가 보수적).
+export const TRANSLATE_METERING = {
+  baseCredits: 65,
+  blockMinutes: 10,
+  blockCredits: 10,
+  floorCogsKrwPerMinute: 300,
+} as const;
+
+/**
+ * 통역 세션 1건의 실 오디오 길이(초)를 크레딧 비용으로 환산한다.
+ * `translate_recordings.duration_sec`(실 녹음 오디오 길이) 를 입력으로 받아
+ * wall-clock 이 아닌 실 오디오-분으로 과금한다.
+ *
+ * - 실 오디오가 없으면(≤0) 0 크레딧 — 좀비/침묵 세션이 base 로 부풀지 않게.
+ * - metered(base + 블록) 와 마진 floor 중 큰 값을 취해 75% 불변식을 강제.
+ * - floor 는 분당 ceil 이 아니라 총량에 한 번만 ceil — docs §6 의 시간당
+ *   floor(~190cr/hr)와 일치시키기 위함(분당 ceil 은 과도 상향).
+ */
+export function translateCreditsForAudioSeconds(durationSec: number): number {
+  const minutes = durationSec / 60;
+  if (!(minutes > 0)) return 0;
+  const { baseCredits, blockMinutes, blockCredits, floorCogsKrwPerMinute } =
+    TRANSLATE_METERING;
+  const metered =
+    baseCredits + Math.ceil(minutes / blockMinutes) * blockCredits;
+  const floor = Math.ceil((minutes * floorCogsKrwPerMinute) / 95);
+  return Math.max(metered, floor);
+}
 
 // 위젯별 동시사용 게이트(/api/gate/*) 가 body 의 widget 파라미터가 실제
 // FeatureKey 인지 서버 검증할 때 사용. 임의 문자열이 widget_active_uses/
