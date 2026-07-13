@@ -6,7 +6,12 @@ import { FeatureGrid } from './feature-grid';
 import { WorkflowSection } from './workflow-section';
 import { SecuritySection } from './security-section';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
-import { CREDIT_BUNDLES, type CreditBundleId } from '@/lib/features';
+import {
+  CREDIT_BUNDLES,
+  SUBSCRIPTION_TIERS,
+  type CreditBundleId,
+  type SubscriptionTierId,
+} from '@/lib/features';
 import './landing.css';
 
 // 랜딩 가격 카드 → CREDIT_BUNDLES 파생 (드리프트 차단). 카피는 messages 에
@@ -20,6 +25,13 @@ const landingBundle = (id: CreditBundleId) => {
     credits: krw(b.credits),
     perCredit: krw(b.perCreditKrw ?? 0),
   };
+};
+
+// 구독 티어도 같은 원리로 SUBSCRIPTION_TIERS 에서 파생 — B1 백엔드 SSOT 와
+// 드리프트 0. 월 요금·포함 크레딧만 주입하고 카피는 messages 에 둔다.
+const landingSub = (id: SubscriptionTierId) => {
+  const s = SUBSCRIPTION_TIERS.find((x) => x.id === id)!;
+  return { price: krw(s.monthlyPriceKrw), credits: krw(s.includedCredits) };
 };
 
 const outfit = Outfit({
@@ -51,6 +63,11 @@ export async function LandingPage({ locale }: { locale: string }) {
   const priceStarter = landingBundle('mini');
   const priceTeam = landingBundle('starter');
   const priceStudio = landingBundle('plus');
+
+  // 월 구독 3티어 — 일회성 팩과 병치 노출 (접근성 톤).
+  const subSolo = landingSub('solo');
+  const subPlus = landingSub('plus');
+  const subPro = landingSub('pro');
 
   const heroLabels = {
     tagline: t('hero.tagline'),
@@ -220,6 +237,50 @@ export async function LandingPage({ locale }: { locale: string }) {
                 <li>{t('pricing.tiers.enterprise.f3')}</li>
               </ul>
               <a className="btn" href="mailto:chris.lee@meteor-research.com">{t('pricing.tiers.enterprise.cta')}</a>
+            </div>
+          </div>
+
+          <div className="sec-head" style={{ marginTop: '4rem' }}>
+            <span className="meta">{t('pricing.sub.meta')}</span>
+            <h2>{t.rich('pricing.sub.title', richTags)}</h2>
+            <p>{t('pricing.sub.subtitle')}</p>
+          </div>
+          <div className="price-grid">
+            <div className="price">
+              <span className="meta">{t('pricing.sub.tiers.solo.meta')}</span>
+              <h4>{t('pricing.sub.tiers.solo.name')}</h4>
+              <div className="num">{t('pricing.sub.tiers.solo.price', { price: subSolo.price })}<small>{t('pricing.sub.tiers.solo.priceNote', { credits: subSolo.credits })}</small></div>
+              <ul>
+                <li>{t('pricing.sub.tiers.solo.f1')}</li>
+                <li>{t('pricing.sub.tiers.solo.f2')}</li>
+                <li>{t('pricing.sub.tiers.solo.f3')}</li>
+              </ul>
+              <Link className="btn" href={ctaCredits}>{t('pricing.sub.tiers.solo.cta')}</Link>
+            </div>
+
+            <div className="price featured">
+              <span className="badge">{t('pricing.sub.tiers.plus.badge')}</span>
+              <span className="meta">{t('pricing.sub.tiers.plus.meta')}</span>
+              <h4>{t('pricing.sub.tiers.plus.name')}</h4>
+              <div className="num">{t('pricing.sub.tiers.plus.price', { price: subPlus.price })}<small>{t('pricing.sub.tiers.plus.priceNote', { credits: subPlus.credits })}</small></div>
+              <ul>
+                <li>{t('pricing.sub.tiers.plus.f1')}</li>
+                <li>{t('pricing.sub.tiers.plus.f2')}</li>
+                <li>{t('pricing.sub.tiers.plus.f3')}</li>
+              </ul>
+              <Link className="btn primary white" href={ctaCredits}>{t('pricing.sub.tiers.plus.cta')}</Link>
+            </div>
+
+            <div className="price">
+              <span className="meta">{t('pricing.sub.tiers.pro.meta')}</span>
+              <h4>{t('pricing.sub.tiers.pro.name')}</h4>
+              <div className="num">{t('pricing.sub.tiers.pro.price', { price: subPro.price })}<small>{t('pricing.sub.tiers.pro.priceNote', { credits: subPro.credits })}</small></div>
+              <ul>
+                <li>{t('pricing.sub.tiers.pro.f1')}</li>
+                <li>{t('pricing.sub.tiers.pro.f2')}</li>
+                <li>{t('pricing.sub.tiers.pro.f3')}</li>
+              </ul>
+              <Link className="btn" href={ctaCredits}>{t('pricing.sub.tiers.pro.cta')}</Link>
             </div>
           </div>
         </div>

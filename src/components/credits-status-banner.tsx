@@ -5,7 +5,11 @@ import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { IconButton } from './ui/icon-button';
 
-export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled' | null }) {
+export function CreditsStatusBanner({
+  status,
+}: {
+  status: 'success' | 'cancelled' | 'subscribed' | null;
+}) {
   const t = useTranslations('Credits');
   const router = useRouter();
   const pathname = usePathname();
@@ -17,9 +21,10 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
     const url = new URL(window.location.href);
     url.searchParams.delete('status');
     url.searchParams.delete('payment_id');
+    url.searchParams.delete('tier');
     router.replace(url.pathname + (url.search || ''), { scroll: false });
-    // Auto-dismiss after 6 s for the success case.
-    if (status === 'success') {
+    // Auto-dismiss after 6 s for the success / subscribed cases.
+    if (status === 'success' || status === 'subscribed') {
       const id = window.setTimeout(() => setVisible(false), 6000);
       return () => window.clearTimeout(id);
     }
@@ -28,7 +33,13 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
 
   if (!visible || status == null) return null;
 
-  const isSuccess = status === 'success';
+  const isSuccess = status === 'success' || status === 'subscribed';
+  const message =
+    status === 'subscribed'
+      ? t('subscribeSuccess')
+      : status === 'success'
+      ? t('paymentSuccess')
+      : t('paymentCancelled');
 
   // PR-D17 pop 톤: 3px black border + 4px offset shadow. 성공=노랑 wash,
   // 취소=흰 paper. Outfit display 로 한 줄 강조.
@@ -45,9 +56,7 @@ export function CreditsStatusBanner({ status }: { status: 'success' | 'cancelled
       }}
       className="mb-4 flex items-center justify-between gap-4 px-4 py-3 text-md rounded-sm"
     >
-      <span className="font-bold text-ink-2">
-        {isSuccess ? t('paymentSuccess') : t('paymentCancelled')}
-      </span>
+      <span className="font-bold text-ink-2">{message}</span>
       <IconButton
         variant="ghost"
         onClick={() => setVisible(false)}

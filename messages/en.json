@@ -224,6 +224,44 @@
           "f3": "Korean account lead",
           "cta": "Request a quote"
         }
+      },
+      "sub": {
+        "meta": "SUBSCRIPTION · Auto top-up monthly",
+        "title": "Credits that <hlMint>refill themselves</hlMint>.",
+        "subtitle": "Included credits never expire · priority processing · team seats. For steady, ongoing research.",
+        "tiers": {
+          "solo": {
+            "meta": "Solo",
+            "name": "Solo, steadily",
+            "price": "₩{price}/mo",
+            "priceNote": "{credits} credits monthly · never expire",
+            "f1": "Included credits never expire",
+            "f2": "Priority processing",
+            "f3": "Email support",
+            "cta": "Subscribe"
+          },
+          "plus": {
+            "badge": "Popular",
+            "meta": "Plus",
+            "name": "Together as a team",
+            "price": "₩{price}/mo",
+            "priceNote": "{credits} credits monthly · never expire",
+            "f1": "Included credits never expire",
+            "f2": "Priority processing",
+            "f3": "Shared team seats",
+            "cta": "Subscribe →"
+          },
+          "pro": {
+            "meta": "Pro",
+            "name": "Full research team",
+            "price": "₩{price}/mo",
+            "priceNote": "{credits} credits monthly · never expire",
+            "f1": "Generous monthly credits",
+            "f2": "Priority channel support",
+            "f3": "Shared team seats",
+            "cta": "Subscribe"
+          }
+        }
       }
     },
     "faq": {
@@ -785,7 +823,31 @@
     "done": "Done",
     "paymentSuccess": "Credits have been added to your account.",
     "paymentCancelled": "Payment was cancelled.",
-    "errorServiceUnavailable": "Payment service is temporarily unavailable. Please try again later."
+    "errorServiceUnavailable": "Payment service is temporarily unavailable. Please try again later.",
+    "purchaseTabsLabel": "Choose a purchase option",
+    "tabPacks": "One-time",
+    "tabSubscription": "Monthly",
+    "subSectionTitle": "Monthly subscription",
+    "subSectionSubtitle": "Credits top up automatically every month. Included credits never expire, plus you get priority processing and team seats.",
+    "subTier_solo": "Solo",
+    "subTier_plus": "Plus",
+    "subTier_pro": "Pro",
+    "subPerMonth": "/ mo",
+    "subIncludedCredits": "{count} credits included monthly",
+    "subBenefitNoExpiry": "Included credits never expire",
+    "subBenefitPriority": "Priority processing",
+    "subBenefitSeats": "Team seats",
+    "subCta": "Subscribe",
+    "subChangePlan": "Change plan",
+    "subManage": "Manage subscription",
+    "subCurrentPlan": "Current subscription",
+    "subCurrentBadge": "Current plan",
+    "subRenewsOn": "Renews {date}",
+    "subCancelledNote": "Access until {date} (cancelled)",
+    "subUnavailableToast": "Subscriptions are being set up. Please try again shortly.",
+    "subUnavailableNote": "Subscriptions are being set up and will be available soon.",
+    "subUnavailableCta": "Coming soon",
+    "subscribeSuccess": "Your subscription is active. Credits have been added."
   },
   "Canvas": {
     "navigator": {

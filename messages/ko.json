@@ -224,6 +224,44 @@
           "f3": "한국어 전담",
           "cta": "견적 요청"
         }
+      },
+      "sub": {
+        "meta": "SUBSCRIPTION · 매달 자동 충전",
+        "title": "매달 <hlMint>알아서 채워지는</hlMint> 크레딧.",
+        "subtitle": "포함 크레딧은 만료 없음 · 생성 우선 처리 · 팀 시트. 꾸준히 쓰는 분께.",
+        "tiers": {
+          "solo": {
+            "meta": "Solo",
+            "name": "혼자서 꾸준히",
+            "price": "₩{price}/월",
+            "priceNote": "매달 {credits} 크레딧 · 무만료",
+            "f1": "포함 크레딧 무만료",
+            "f2": "생성 우선 처리",
+            "f3": "이메일 지원",
+            "cta": "구독 시작"
+          },
+          "plus": {
+            "badge": "인기",
+            "meta": "Plus",
+            "name": "팀으로 함께",
+            "price": "₩{price}/월",
+            "priceNote": "매달 {credits} 크레딧 · 무만료",
+            "f1": "포함 크레딧 무만료",
+            "f2": "생성 우선 처리",
+            "f3": "팀 시트 공유",
+            "cta": "구독 시작 →"
+          },
+          "pro": {
+            "meta": "Pro",
+            "name": "본격 리서치팀",
+            "price": "₩{price}/월",
+            "priceNote": "매달 {credits} 크레딧 · 무만료",
+            "f1": "넉넉한 월 크레딧",
+            "f2": "우선 채널 지원",
+            "f3": "팀 시트 공유",
+            "cta": "구독 시작"
+          }
+        }
       }
     },
     "faq": {
@@ -785,7 +823,31 @@
     "done": "확인",
     "paymentSuccess": "크레딧이 성공적으로 적립되었습니다.",
     "paymentCancelled": "결제가 취소되었습니다.",
-    "errorServiceUnavailable": "결제 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."
+    "errorServiceUnavailable": "결제 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.",
+    "purchaseTabsLabel": "결제 방식 선택",
+    "tabPacks": "일회성 충전",
+    "tabSubscription": "월 구독",
+    "subSectionTitle": "월 구독 플랜",
+    "subSectionSubtitle": "매달 크레딧이 자동으로 충전됩니다. 포함 크레딧은 만료되지 않고, 생성 우선 처리와 팀 시트가 함께 제공됩니다.",
+    "subTier_solo": "Solo",
+    "subTier_plus": "Plus",
+    "subTier_pro": "Pro",
+    "subPerMonth": "/ 월",
+    "subIncludedCredits": "매달 {count} 크레딧 포함",
+    "subBenefitNoExpiry": "포함 크레딧 무만료",
+    "subBenefitPriority": "생성 우선 처리",
+    "subBenefitSeats": "팀 시트 공유",
+    "subCta": "구독하기",
+    "subChangePlan": "플랜 변경",
+    "subManage": "구독 관리",
+    "subCurrentPlan": "현재 구독 중",
+    "subCurrentBadge": "현재 플랜",
+    "subRenewsOn": "다음 갱신 {date}",
+    "subCancelledNote": "{date}까지 이용 가능 (취소됨)",
+    "subUnavailableToast": "구독 상품을 준비 중입니다. 잠시만 기다려주세요.",
+    "subUnavailableNote": "구독 상품을 준비 중입니다. 곧 이용하실 수 있습니다.",
+    "subUnavailableCta": "준비 중",
+    "subscribeSuccess": "구독이 시작되었습니다. 크레딧이 지급되었습니다."
   },
   "Canvas": {
     "navigator": {

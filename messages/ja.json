@@ -100,6 +100,44 @@
           "f3": "韓国語対応担当者",
           "cta": "見積を依頼"
         }
+      },
+      "sub": {
+        "meta": "SUBSCRIPTION · 毎月自動チャージ",
+        "title": "毎月 <hlMint>自動で満たされる</hlMint> クレジット。",
+        "subtitle": "付与クレジットは無期限 · 生成の優先処理 · チームシート。継続して使う方へ。",
+        "tiers": {
+          "solo": {
+            "meta": "Solo",
+            "name": "ひとりでコツコツ",
+            "price": "₩{price}/月",
+            "priceNote": "毎月 {credits} クレジット · 無期限",
+            "f1": "付与クレジットは無期限",
+            "f2": "生成の優先処理",
+            "f3": "メールサポート",
+            "cta": "登録する"
+          },
+          "plus": {
+            "badge": "人気",
+            "meta": "Plus",
+            "name": "チームで一緒に",
+            "price": "₩{price}/月",
+            "priceNote": "毎月 {credits} クレジット · 無期限",
+            "f1": "付与クレジットは無期限",
+            "f2": "生成の優先処理",
+            "f3": "チームシート共有",
+            "cta": "登録する →"
+          },
+          "pro": {
+            "meta": "Pro",
+            "name": "本格リサーチチーム",
+            "price": "₩{price}/月",
+            "priceNote": "毎月 {credits} クレジット · 無期限",
+            "f1": "たっぷりの月間クレジット",
+            "f2": "優先チャネルサポート",
+            "f3": "チームシート共有",
+            "cta": "登録する"
+          }
+        }
       }
     },
     "voice": {
@@ -552,7 +590,31 @@
     "done": "完了",
     "paymentSuccess": "クレジットがアカウントに追加されました。",
     "paymentCancelled": "決済はキャンセルされました。",
-    "errorServiceUnavailable": "決済サービスが一時的にご利用いただけません。しばらくしてからもう一度お試しください。"
+    "errorServiceUnavailable": "決済サービスが一時的にご利用いただけません。しばらくしてからもう一度お試しください。",
+    "purchaseTabsLabel": "購入方法を選択",
+    "tabPacks": "都度購入",
+    "tabSubscription": "月額プラン",
+    "subSectionTitle": "月額サブスクリプション",
+    "subSectionSubtitle": "毎月クレジットが自動でチャージされます。付与クレジットは無期限で、生成の優先処理とチームシートが利用できます。",
+    "subTier_solo": "Solo",
+    "subTier_plus": "Plus",
+    "subTier_pro": "Pro",
+    "subPerMonth": "/ 月",
+    "subIncludedCredits": "毎月 {count} クレジット付与",
+    "subBenefitNoExpiry": "付与クレジットは無期限",
+    "subBenefitPriority": "生成の優先処理",
+    "subBenefitSeats": "チームシート共有",
+    "subCta": "登録する",
+    "subChangePlan": "プラン変更",
+    "subManage": "サブスク管理",
+    "subCurrentPlan": "現在利用中",
+    "subCurrentBadge": "現在のプラン",
+    "subRenewsOn": "次回更新 {date}",
+    "subCancelledNote": "{date} まで利用可能（解約済み）",
+    "subUnavailableToast": "サブスクリプションを準備中です。しばらくしてからお試しください。",
+    "subUnavailableNote": "サブスクリプションを準備中です。まもなくご利用いただけます。",
+    "subUnavailableCta": "準備中",
+    "subscribeSuccess": "サブスクリプションが有効になりました。クレジットが付与されました。"
   },
   "Desk": {
     "keywordLabel": "キーワード",
