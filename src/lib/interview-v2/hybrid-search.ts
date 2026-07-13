@@ -33,7 +33,10 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 //   whole_org_multi — the _multi RPC with [] (legacy null-project docs).
 //   per_project    — an explicit set; loop each + merge (anti flat-top-K).
 export type HybridScope =
-  | { kind: 'single'; projectId: string | null }
+  // single — one project (uuid) or whole-org (null). documentId, when set,
+  // narrows further to a single interview document (file-detail search); it is
+  // only meaningful on this single-project path.
+  | { kind: 'single'; projectId: string | null; documentId?: string | null }
   | { kind: 'whole_org_multi' }
   | { kind: 'per_project'; projectIds: string[] };
 
@@ -103,13 +106,16 @@ async function retrievePair(
     };
   }
 
-  // single / whole_org_multi — one call each, run in parallel.
+  // single / whole_org_multi — one call each, run in parallel. On the single
+  // path a documentId (file-detail search) narrows both halves to one file, so
+  // keyword can't leak other-file chunks past the fusion.
   const single = scope.kind === 'single';
+  const documentId = scope.kind === 'single' ? scope.documentId ?? null : null;
   const [vector, keyword] = await Promise.all([
     searchInterviewV2Chunks({
       client: admin,
       orgId,
-      ...(single ? { projectId: scope.projectId } : { projectIds: [] }),
+      ...(single ? { projectId: scope.projectId, documentId } : { projectIds: [] }),
       query,
       k: poolK,
       scoreThreshold,
@@ -117,7 +123,7 @@ async function retrievePair(
     searchInterviewV2Keyword({
       client: admin,
       orgId,
-      ...(single ? { projectId: scope.projectId } : { projectIds: [] }),
+      ...(single ? { projectId: scope.projectId, documentId } : { projectIds: [] }),
       query,
       k: poolK,
     }),

@@ -57,6 +57,10 @@ const Body = z.object({
   // Multi-select cross-project scope. undefined/null ⇒ fall back to
   // project_id; [] ⇒ all projects (whole-org); [id...] ⇒ that set.
   project_ids: z.array(z.string().uuid()).max(100).optional().nullable(),
+  // Single-document scope (file-detail search). When present, retrieval is
+  // narrowed to this one interview document — supersedes any project scope
+  // (a file always lives in a single project). Wins over project_ids.
+  document_id: z.string().uuid().optional(),
   top_k: z.number().int().min(1).max(50).optional().default(12),
   // Was 0.7, which returned zero chunks despite a 200 (prod incident
   // 2026-07-03). Measured against real prod data the cosine scores top out
@@ -213,13 +217,16 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { question, project_id, project_ids, top_k, score_threshold } =
+  const { question, project_id, project_ids, top_k, score_threshold, document_id } =
     parsed.data;
 
-  // project_ids present (not undefined/null) ⇒ multi-project cross-search.
-  // The audit row's single project_id column can't represent a set, so it's
-  // stored null in that mode (matches the cross-project semantics).
-  const useMultiProject = project_ids !== undefined && project_ids !== null;
+  // A document_id (file-detail search) forces single-document scope regardless
+  // of any project_ids — a file lives in exactly one project, so the narrower
+  // scope wins. project_ids present (not undefined/null) ⇒ multi-project
+  // cross-search. The audit row's single project_id column can't represent a
+  // set, so it's stored null in that mode (matches the cross-project semantics).
+  const useMultiProject =
+    !document_id && project_ids !== undefined && project_ids !== null;
   const auditProjectId = useMultiProject ? null : project_id ?? null;
 
   const apiKey = env.ANTHROPIC_API_KEY;
@@ -265,8 +272,12 @@ export async function POST(req: Request) {
       projectsScanned = targetIds.length;
     }
   } else {
-    scope = { kind: 'single', projectId: project_id ?? null };
-    strategy = 'single';
+    scope = {
+      kind: 'single',
+      projectId: project_id ?? null,
+      documentId: document_id ?? null,
+    };
+    strategy = document_id ? 'single_document' : 'single';
     projectsScanned = 1;
   }
 
@@ -300,6 +311,7 @@ export async function POST(req: Request) {
     top_k,
     project_id: project_id ?? null,
     project_ids: project_ids ?? null,
+    document_id: document_id ?? null,
     chunks_count: hits.length,
     ...hybridDebug,
     question_preview: question.slice(0, 40),

@@ -12,9 +12,12 @@ import { IconButton } from '@/components/ui/icon-button';
 export function QuestionInput({
   onSubmit,
   disabled = false,
+  placeholder,
 }: {
   onSubmit: (question: string) => void;
   disabled?: boolean;
+  // Override the default composer placeholder (e.g. single-file search).
+  placeholder?: string;
 }) {
   const t = useTranslations('InterviewsV2');
   const [value, setValue] = useState('');
@@ -52,7 +55,7 @@ export function QuestionInput({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           rows={2}
-          placeholder={t('searchPlaceholder')}
+          placeholder={placeholder ?? t('searchPlaceholder')}
           disabled={disabled}
         />
       </div>

@@ -341,6 +341,8 @@ export function ProjectDetail({
                     <FileCard
                       key={d.id}
                       file={d}
+                      projectId={projectId}
+                      projectName={projectName}
                       reading={reading}
                       readDone={readDone}
                       analyzing={analyzing}

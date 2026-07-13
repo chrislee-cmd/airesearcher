@@ -21,6 +21,9 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { SearchChat } from './search-chat';
 import type {
   InterviewDocument,
   InterviewDocumentStatus,
@@ -45,12 +48,17 @@ const STATUS_KEY: Record<InterviewDocumentStatus, string> = {
 
 export function FileCard({
   file,
+  projectId,
+  projectName,
   reading,
   readDone,
   analyzing,
   analyzed,
 }: {
   file: InterviewDocument;
+  // 이 파일이 속한 프로젝트 — 단일 파일 스코프 검색의 audit/scope 용.
+  projectId: string;
+  projectName: string;
   // 검색 sweep 진행 중 이 카드가 지금 "읽는 중" 인지.
   reading?: boolean;
   // 검색 sweep 에서 이미 "읽음" 처리됐는지.
@@ -63,6 +71,11 @@ export function FileCard({
 }) {
   const t = useTranslations('InterviewsV2');
   const [open, setOpen] = useState(false);
+  // 단일 파일 스코프 LLM 검색 모달. popover 는 좁아(288px) 답변+citation 이
+  // 안 들어가므로, 검색은 Modal(lg)로 펼쳐 읽을 공간을 확보한다.
+  const [searchOpen, setSearchOpen] = useState(false);
+  // 인덱싱이 끝난 파일만 검색 가능(청크가 있어야 근거를 찾는다).
+  const canSearch = file.index_status === 'done';
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -239,9 +252,41 @@ export function FileCard({
                 {new Date(file.created_at).toLocaleString('ko-KR')}
               </dd>
             </dl>
+            {canSearch && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => {
+                  setOpen(false);
+                  setSearchOpen(true);
+                }}
+              >
+                {t('fileSearchButton')}
+              </Button>
+            )}
           </div>,
           document.body,
         )}
+
+      {/* 단일 파일 스코프 검색 — 답변 스트림 + citation 을 읽을 공간이
+          필요하므로 좁은 popover 가 아니라 Modal 로 펼친다. SearchChat 에
+          documentId 를 넘겨 이 파일 chunk 만 근거로 삼는다. */}
+      <Modal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        title={file.filename}
+        size="lg"
+      >
+        <div className="h-[70vh] min-h-0">
+          <SearchChat
+            projectIds={null}
+            currentProject={{ id: projectId, name: projectName }}
+            documentId={file.id}
+            documentName={file.filename}
+          />
+        </div>
+      </Modal>
     </>
   );
 }
