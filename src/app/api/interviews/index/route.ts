@@ -300,9 +300,10 @@ export async function POST(req: Request) {
       .eq('id', interview_job_id)
       .eq('org_id', org.org_id);
 
-    // 인덱싱 완료 → 탑라인 자동 생성(fire-and-forget). content_hash 동일하면
-    // maybeKickTopline 내부에서 skip(재업로드 없는 재방문 = 비용 0). 프로젝트에
-    // 소속된 문서일 때만 — 프로젝트 미지정(legacy) 업로드는 탑라인 대상 아님.
+    // 인덱싱 완료 → 탑라인 자동 생성(fire-and-forget). **최초 생성/에러 재시도일
+    // 때만** 실제 kick 하고, 완성 보고서(done)가 이미 있으면 파일이 바뀌어도
+    // 자동 덮어쓰지 않는다(stale 배너로 사용자 결정 — maybeKickTopline docstring).
+    // 프로젝트에 소속된 문서일 때만 — 프로젝트 미지정(legacy) 업로드는 대상 아님.
     const toplineProjectId = project_id ?? jobRow.project_id ?? null;
     if (toplineProjectId) {
       after(() =>
