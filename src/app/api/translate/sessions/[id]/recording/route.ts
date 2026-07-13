@@ -22,8 +22,13 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
-import { spendCreditsAdminAmount } from '@/lib/credits';
-import { translateCreditsForAudioSeconds } from '@/lib/features';
+import { spendCreditsAdminAmount, refundCredits } from '@/lib/credits';
+import {
+  translateCreditsForAudioSeconds,
+  TRANSLATE_METERING,
+  TRANSLATE_START_LUMP_CREDITS,
+} from '@/lib/features';
+import { deriveTranslateTickGenerationId } from '@/lib/translate-billing';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -304,48 +309,100 @@ export async function PATCH(
     .eq('id', recording_id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // ── 실오디오-분 과금 (E1, docs/pricing-scheme.md §6) ─────────────────────
-  // finalize 는 duration_sec 가 확정되는 유일한 지점이라 여기서 세션의 실
-  // 오디오 길이 기준으로 과금한다(wall-clock 미사용 → 좀비/침묵 세션이 매출을
-  // 부풀리지 않음). generation_id = recording id 로 멱등 — download 라우트의
-  // 410 refund 도 같은 recording id 를 쓰므로 charge/refund 가 정합한다.
+  // ── 종료 시 실오디오 정산·보정 (하이브리드 C, docs/pricing-scheme.md §6) ──
+  // 진행 중엔 /start(start lump) + /heartbeat(10분 tick)가 wall-clock 기준으로
+  // 낙관적 차감을 해뒀다(우측 상단 실시간 count-down). finalize 는 duration_sec
+  // 가 확정되는 유일한 지점이라, 여기서 **실오디오 기준 최종 청구(target)** 와
+  // **진행 중 이미 차감된 누적(charged)** 을 비교해 정산한다:
   //
-  // PATCH 는 트랙(input/output)당 한 번씩 최대 2회 호출된다. 첫 호출이
-  // credits_spent 를 stamp 하면 이후 호출은 skip 한다(멱등 spend 가 재과금을
-  // 막지만, 두 트랙의 duration 이 사실상 동일해 first-PATCH-wins 로 충분).
-  // 실 오디오가 없으면(nextDur≤0) 0cr → 과금 skip.
+  //   target  = translateCreditsForAudioSeconds(duration_sec)  // 실오디오 최종 청구
+  //   charged = translate_sessions.credits_charged             // start lump + Σ tick
+  //   target > charged  → 부족분(remainder)을 recording_id 로 추가 과금(실오디오
+  //                        floor 상향 등 언더차지 보정)
+  //   target < charged  → 초과 tick 들을 높은 tick 부터 환불(좀비/침묵 보정) 후,
+  //                        floor 잔여분이 있으면 recording_id 로 소액 top-up
   //
-  // best-effort: 세션은 이미 실시간 통역을 전달했으므로, 잔액 부족이어도
-  // finalize(status='uploaded') 는 되돌리지 않는다(transcripts/video 사후
-  // 과금과 동일 패턴). 잔액 부족은 로그로만 남긴다.
+  // 결과적으로 세션의 순-차감 = target (실오디오 기준). 좀비/침묵 세션은 진행
+  // 중 wall-clock 으로 낙관 차감됐다가 여기서 실오디오 기준으로 환불돼 E1 의
+  // "좀비 무영향" 마진 불변식이 최종 결과에서 유지된다.
+  //
+  // 멱등: charge/refund 모두 deterministic generation_id + partial UNIQUE 로
+  // 멱등. target>0 이면 첫 finalize 가 credits_spent(=target)>0 을 stamp 해
+  // prevCredits<=0 가드가 재진입을 막고, target==0(순수 좀비)이면 재진입해도
+  // 환불이 멱등이라 잔액 왕복이 없다. PATCH 는 트랙당 최대 2회 호출되지만
+  // first-PATCH-wins(prevCredits 가드) + 멱등으로 정산은 1회다.
+  //
+  // best-effort: 세션은 이미 실시간 통역을 전달했으므로, 추가 과금이 잔액
+  // 부족이어도 finalize(status='uploaded')는 되돌리지 않는다(로그만).
+  // download 라우트의 410 refund 는 recording_id charge(= 정산 remainder)를
+  // 환불한다 — 진행 중 heartbeat 차감은 별도 tick genId 라 그대로 유지된다.
   if (prevCredits <= 0) {
-    const credits = translateCreditsForAudioSeconds(nextDur);
-    if (credits > 0) {
+    const target = translateCreditsForAudioSeconds(nextDur);
+
+    // 진행 중 누적 차감액(start lump + Σ tick). service-role 로 채워지는 관측/
+    // 정산 기준 컬럼(0022). 없으면 0(구세션/미과금 — #1001 이전 동작과 동일).
+    const { data: sess } = await admin
+      .from('translate_sessions')
+      .select('credits_charged')
+      .eq('id', sessionId)
+      .maybeSingle<{ credits_charged: number | null }>();
+    const charged = sess?.credits_charged ?? 0;
+
+    const block = TRANSLATE_METERING.blockCredits;
+    const lump = TRANSLATE_START_LUMP_CREDITS;
+
+    // 초과분 환불: 유지할 최상위 tick(keepUpToTick) 위의 tick 들을 되돌린다.
+    // target==0(순수 좀비) → keepUpToTick=-1(start lump tick 0 까지 환불).
+    // target>0 → keepUpToTick=floor((target-lump)/block) (metered target 은
+    // lump+j×block 형태라 정확히 떨어짐; floor-지배 target 의 소수 잔여는 아래
+    // remainder top-up 이 흡수).
+    const highestTick = Math.max(0, Math.round((charged - lump) / block));
+    const keepUpToTick = target <= 0 ? -1 : Math.floor((target - lump) / block);
+    let retained = charged;
+    if (keepUpToTick < highestTick) {
+      for (let n = highestTick; n > keepUpToTick; n--) {
+        const genId = deriveTranslateTickGenerationId(sessionId, n);
+        // best-effort — gap/미과금 tick 은 not_found 로 무해하게 스킵, 재진입은 멱등.
+        await refundCredits(row.org_id, row.host_user_id, 'translate', genId);
+      }
+      retained = keepUpToTick < 0 ? 0 : lump + keepUpToTick * block;
+    }
+
+    // 순-차감을 정확히 target 으로 맞추는 잔여 과금(언더차지/floor 잔여).
+    // generation_id = recording_id (download 410 refund 와 정합).
+    const remainder = target - retained;
+    if (remainder > 0) {
       const spend = await spendCreditsAdminAmount(
         row.org_id,
         row.host_user_id,
         'translate',
-        credits,
+        remainder,
         recording_id,
       );
-      if (spend.ok) {
-        await admin
-          .from('translate_recordings')
-          .update({
-            credits_spent: credits,
-            unlocked_at: new Date().toISOString(),
-          })
-          .eq('id', recording_id);
-      } else {
-        console.warn('[translate/recording] audio-minute charge failed', {
+      if (!spend.ok) {
+        console.warn('[translate/recording] reconcile top-up failed', {
           session_id: sessionId,
           recording_id,
           duration_sec: nextDur,
-          credits,
+          target,
+          charged,
+          retained,
+          remainder,
           reason: spend.reason,
         });
       }
     }
+
+    // 최종 청구액을 stamp + unlock. target==0(좀비)이면 credits_spent 는 0 으로
+    // 남고 unlocked_at 도 찍지 않는다(청구 없음 → 잠금해제 대상 아님).
+    const stamp: { credits_spent: number; unlocked_at?: string } = {
+      credits_spent: target,
+    };
+    if (target > 0) stamp.unlocked_at = new Date().toISOString();
+    await admin
+      .from('translate_recordings')
+      .update(stamp)
+      .eq('id', recording_id);
   }
 
   return NextResponse.json({ ok: true });

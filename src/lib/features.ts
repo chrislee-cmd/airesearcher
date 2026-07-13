@@ -285,6 +285,27 @@ export function translateCreditsForAudioSeconds(durationSec: number): number {
   return Math.max(metered, floor);
 }
 
+// ── 하이브리드 C: 진행 중 wall-clock heartbeat 과금 상수 (docs §6) ──────────
+//
+// 진행 중엔 wall-clock 10분 블록으로 낙관적(optimistic) 차감해 우측 상단 잔액을
+// 실시간 count-down 시키고, 종료 시 finalize 가 실오디오 기준(위 함수)으로 정산·
+// 보정한다. 좀비/침묵 세션은 종료 정산에서 환불돼 E1 마진 불변식이 최종 결과에서
+// 유지된다. 아래는 클라이언트(우측 상단 표시)·서버(과금)가 공유하는 순수 상수 —
+// deterministic genId 유도는 node:crypto 를 쓰는 `@/lib/translate-billing`(서버
+// 전용) 에 둔다(features.ts 는 클라이언트 번들에도 들어가므로 crypto 금지).
+
+/** 세션 go-live 시 1회 차감하는 start lump. base(첫 사용) + 첫 10분 블록.
+ *  현행 FEATURE_COSTS.translate(75) 헤드라인과 동일. */
+export const TRANSLATE_START_LUMP_CREDITS =
+  TRANSLATE_METERING.baseCredits + TRANSLATE_METERING.blockCredits;
+
+/** 진행 중 heartbeat 과금 상한(안전망). tick 1..N 각 blockCredits(10) 차감,
+ *  N 초과 시 **진행 중 과금만 정지**하고 세션은 계속 — 종료 시 finalize 가
+ *  실오디오 기준으로 최종 청구한다(cap 은 표시/현금흐름 상한일 뿐 최종
+ *  정산 아님). 12 tick ≈ 2시간+(start lump 첫 10분 + 12×10분). 보수적
+ *  기본값 — 실 세션 길이 분포 확인 후 조정(PR 본문에 명시). */
+export const TRANSLATE_MAX_BILLABLE_TICK = 12;
+
 // 위젯별 동시사용 게이트(/api/gate/*) 가 body 의 widget 파라미터가 실제
 // FeatureKey 인지 서버 검증할 때 사용. 임의 문자열이 widget_active_uses/
 // widget_use_queue 에 쓰레기 키로 쌓이는 것을 라우트에서 차단한다.
