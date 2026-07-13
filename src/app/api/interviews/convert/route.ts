@@ -36,8 +36,19 @@ export async function POST(request: Request) {
   const org = await getActiveOrg();
   if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
 
-  const limited = await checkLlmRateLimit(user.id, org.org_id);
-  if (limited) return limited;
+  // NOTE: the per-user/per-org LLM rate limit is applied lazily, only on the
+  // paths that actually call an LLM (audio/video transcription, or the Sonnet
+  // markdown-format fallback) — see checkLlmRateLimit calls below. It used to
+  // run unconditionally here, which charged an LLM token for EVERY convert,
+  // including .txt/.md files that go through the regex/passthrough formatter
+  // (no LLM) and content-cache hits (no LLM). A batch of N text interviews
+  // thus burned N of the 30/min per-user budget doing zero LLM work, starving
+  // the follow-up /api/interviews/index call (1 LLM call for embeddings) — it
+  // 429'd at its own rate gate before flipping index_status off 'pending', so
+  // the whole batch failed to index ("인덱싱 실패", 0 documents landed). Charging
+  // only real LLM usage frees the budget for index and the app's other LLM
+  // features. Abuse of the pure-extraction path stays bounded by the credit
+  // spend (spendCredits) below.
 
   const formData = await request.formData();
   const file = formData.get('file');
@@ -109,6 +120,9 @@ export async function POST(request: Request) {
     const kind = classifyFile(file);
     if (kind === 'audio' || kind === 'video') {
       stage = 'transcribe';
+      // Real LLM work (OpenAI transcription) — apply the LLM rate limit here.
+      const limited = await checkLlmRateLimit(user.id, org.org_id);
+      if (limited) return limited;
       // Re-wrap the buffered bytes since we already consumed file.arrayBuffer()
       // for hashing — the original File instance is still usable but reading
       // its body twice would re-stream. Build a fresh File from the buffer.
@@ -178,6 +192,12 @@ export async function POST(request: Request) {
       console.warn('[interviews/convert] no anthropic key, using raw fallback', file.name);
       markdown = `---\nfile: ${file.name}\n---\n\n${rawText.replace(/\r\n?/g, '\n').trim()}\n`;
     } else {
+      // Real LLM work (Sonnet markdown formatting) — apply the LLM rate limit
+      // here, only on the unstructured-transcript path that actually calls it.
+      // No DB writes have happened yet, so returning 429 is clean and the
+      // client's retry-after backoff drains it.
+      const limited = await checkLlmRateLimit(user.id, org.org_id);
+      if (limited) return limited;
       try {
         const anthropic = createAnthropic({ apiKey: anthropicKey });
         const rawTextSan = await sanitizeUserInput(rawText, 'raw_transcript', {
