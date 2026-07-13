@@ -9,6 +9,7 @@ import {
   getTopline,
   upsertGenerating,
   runTopline,
+  selfHealStaleTopline,
   TOPLINE_MODEL,
 } from '@/lib/interview-v2/topline';
 import {
@@ -98,24 +99,22 @@ export async function GET(req: Request) {
 
   const existing = await getTopline(admin, projectId);
 
-  // stuck 'generating' on-read 정리 (결정 C) — maxDuration(300s) 타임아웃/크래시로
-  // 백그라운드 함수가 죽으면 runTopline catch 가 안 돌아 status 가 영구
-  // 'generating' 에 갇힌다(재생성·추가질문 데드락). updated_at 이 STALE 창을
-  // 넘긴 'generating' 은 여기서 'error' 로 flip 해 잠금을 푼다. status 조건부
-  // update 로 그 사이 done 된 경합은 no-op. 실패해도 아래 응답은 클라 stuck
-  // 판정(동일 updated_at 기준)으로 여전히 재생성 가능하므로 best-effort.
+  // stuck 'generating' on-read 정리 (결정 C + 카드 #468) — maxDuration(300s)
+  // 타임아웃/크래시나 self-kick 체인 단절로 백그라운드 함수가 죽으면 updated_at
+  // 이 정체돼 status 가 영구 'generating' 에 갇힌다(재생성·추가질문 데드락).
+  // updated_at 이 STALE 창을 넘긴 'generating' 은 곧장 error 로 죽이지 않고
+  // selfHealStaleTopline 이 **재개 체인을 한 번 재점화**(resume_count bump +
+  // kickResume)해 자립 완주를 노린다. durable 상태가 없거나 홉 예산 소진이면 그때
+  // 비로소 진행도 포함 error(예: map_stalled(11/60, hop=30))로 종결한다. status
+  // 조건부 update 라 그 사이 done 된 경합은 no-op(best-effort).
   let readStatus = existing?.status ?? 'none';
   let readErrorMessage = existing?.error_message ?? null;
+  let readUpdatedAt = existing?.updated_at ?? null;
   if (existing && isToplineGeneratingStale(existing, Date.now())) {
-    const { error: flipErr } = await admin
-      .from('interview_toplines')
-      .update({ status: 'error', error_message: 'stuck_timeout' })
-      .eq('id', existing.id)
-      .eq('status', 'generating');
-    if (!flipErr) {
-      readStatus = 'error';
-      readErrorMessage = 'stuck_timeout';
-    }
+    const healed = await selfHealStaleTopline(admin, existing, Date.now());
+    readStatus = healed.status;
+    readErrorMessage = healed.error_message;
+    readUpdatedAt = healed.updated_at;
   }
 
   return NextResponse.json({
@@ -147,8 +146,9 @@ export async function GET(req: Request) {
     map_total: existing?.map_total ?? null,
     map_done: existing?.map_done ?? null,
     // 마지막 갱신 시각 — 클라가 stuck 'generating'(살아 있으면 bump 됨) 을
-    // 판정해 재생성을 활성화하는 기준(카드 #483).
-    updated_at: existing?.updated_at ?? null,
+    // 판정해 재생성을 활성화하는 기준(카드 #483). self-heal 재점화 시 now 로
+    // 갱신돼 클라가 곧바로 stuck 으로 오판하지 않는다(카드 #468).
+    updated_at: readUpdatedAt,
   });
 }
 

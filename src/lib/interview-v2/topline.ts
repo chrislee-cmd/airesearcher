@@ -34,10 +34,15 @@ import {
   runPoolUntil,
   formatExtractsForReduce,
   docExtractSchema,
+  classifyMapError,
+  mapRetryBackoffMs,
   MAP_CONCURRENCY,
+  MAP_MAX_ATTEMPTS,
+  MAP_RETRY_CAP_MS,
   TOPLINE_MAP_MODEL,
   type DocExtract,
   type DocExtractWithMeta,
+  type MapErrorClass,
 } from '@/lib/interview-v2/topline-map';
 import {
   isEditableToplineBlockType,
@@ -717,8 +722,17 @@ const REDUCE_MIN_BUDGET_MS = 180_000;
 const HOP_HARD_BUDGET_MS = 290_000;
 // self-kick 홉 최대 횟수 — 무한 재개 루프 방지 가드. 230s×30 ≈ 115분 총 예산이라
 // 현실적 규모(수백 문서)도 완주하고, 넘으면 병리적 상황이라 stale-sweep 이 아니라
-// 명시적 error 로 종료한다.
-const MAX_RESUME_HOPS = 30;
+// 명시적 error 로 종료한다. route GET 의 stale self-heal 도 이 상한 안에서만
+// 재-kick 하므로 export.
+export const MAX_RESUME_HOPS = 30;
+
+// 재개 kick 재시도 횟수(카드 #468) — self-fetch kickResume 가 조용히 실패하면
+// (cold start·fetch 타임아웃·과부하) 체인이 끊겨 stuck 으로 죽던 게 이번 사고의
+// 유력 원인. 몇 번 재시도해 체인 단절 확률을 낮춘다.
+const KICK_RESUME_ATTEMPTS = 3;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // 재개 홉을 kick 할 배포 base URL — preview 는 자기 자신으로 라우팅되게
 // deployment-specific VERCEL_URL 을 우선(transcripts/start 와 동일 패턴).
@@ -746,30 +760,133 @@ export async function getToplineById(
  * 다음 재개 홉을 kick — 새 Vercel 함수 호출(신선한 300s)로 생성을 이어간다.
  * CRON_SECRET Bearer 로 인증된 내부 엔드포인트(/resume)를 호출한다(세션 없이도
  * 동작). 요청이 접수(202)될 때까지만 await 해 현재 함수가 죽기 전에 다음 홉이
- * 스케줄됐음을 보장하고 곧장 반환한다. 실패해도 치명적이지 않다 — row 는
- * generating 으로 남고, GET on-read stale-sweep(360s)이 잠금을 풀어 사용자가
- * 재생성으로 복구할 수 있다(map 은 캐시라 재개 비용 0).
+ * 스케줄됐음을 보장하고 곧장 반환한다.
+ *
+ * 카드 #468: kick 이 조용히 실패하면(non-ok·fetch 타임아웃·cold start) 체인이
+ * 끊겨 updated_at 이 정체 → stale → stuck_timeout 으로 죽던 게 이번 사고의 유력
+ * 원인(hop=5 에서 단절). 그래서 **몇 번 재시도**해 체인 단절 확률을 낮춘다. 전부
+ * 실패하면 true 를 못 돌려주지만(호출측이 인지), row 는 generating 으로 남아
+ * GET stale self-heal(재-kick)이 마지막 백스톱으로 체인을 재점화한다.
+ *
+ * @returns 한 번이라도 202/ok 로 접수됐으면 true.
  */
-async function kickResume(toplineId: string, tag: string): Promise<void> {
+async function kickResume(
+  toplineId: string,
+  tag: string,
+  attempts = KICK_RESUME_ATTEMPTS,
+): Promise<boolean> {
   const base = getDeploymentBaseUrl();
-  try {
-    const res = await fetch(`${base}/api/interviews/v2/topline/resume`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${env.CRON_SECRET}`,
-      },
-      body: JSON.stringify({ topline_id: toplineId }),
-      // kick 은 202 를 빨리 받는 가벼운 호출 — 무한 대기 방지 타임아웃.
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) console.warn(`${tag} resume kick non-ok`, res.status);
-  } catch (e) {
-    console.error(
-      `${tag} resume kick failed`,
-      e instanceof Error ? e.message : e,
-    );
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${base}/api/interviews/v2/topline/resume`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${env.CRON_SECRET}`,
+        },
+        body: JSON.stringify({ topline_id: toplineId }),
+        // kick 은 202 를 빨리 받는 가벼운 호출 — 무한 대기 방지 타임아웃.
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (res.ok) return true;
+      console.warn(`${tag} resume kick non-ok`, res.status, `(${i + 1}/${attempts})`);
+    } catch (e) {
+      console.error(
+        `${tag} resume kick failed (${i + 1}/${attempts})`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+    if (i < attempts - 1) await sleep(1_000 * (i + 1)); // 1s, 2s 백오프.
   }
+  console.error(
+    `${tag} resume kick exhausted ${attempts} attempts — chain may stall; GET stale self-heal is backstop`,
+  );
+  return false;
+}
+
+/** row 의 map 진행도를 "cursor/total" 로 — error_message/로그에 실어 어느 단계
+ * 어디서 멈췄는지 드러낸다(카드 #468 Layer 3: generic stuck_timeout → 진행도 포함). */
+function progressLabel(row: {
+  map_cursor: number | null;
+  map_done: number | null;
+  map_total: number | null;
+}): string {
+  const cur = row.map_cursor ?? row.map_done ?? 0;
+  const total = row.map_total ?? '?';
+  return `${cur}/${total}`;
+}
+
+/**
+ * stuck 'generating' row 를 만났을 때 — **곧장 error 로 죽이지 않고** 재개 체인을
+ * 한 번 재점화(self-heal)한다(카드 #468 Layer 2). durable 재개가 진행 중
+ * (phase 설정됨)이고 홉 예산이 남았으면 resume_count 를 1 bump 하고 kickResume 를
+ * 재발사한다 — bump 가 updated_at 을 갱신(트리거)하므로 다음 stale 창(360s)
+ * 전까지는 재-heal 이 다시 트리거되지 않아 **kick 폭주 없이** 창당 최대 1회로
+ * 자연히 바운드된다. 재점화된 홉이 살아나면 runTopline 이 스스로 체인을 잇는다.
+ *
+ * 홉 예산 소진(resume_count>=cap) 또는 durable 상태 없음(레거시 phase=null)이면
+ * 진짜 stuck 이므로 error 로 종결하되, error_message 에 단계·진행도를 실어(예:
+ * `map_stalled(11/60, hop=30)`) generic stuck_timeout 을 대체한다.
+ *
+ * 모든 update 는 `.eq('status','generating')` 로 가드 — 그 사이 done/재생성으로
+ * 바뀐 경합은 no-op. best-effort(실패해도 현재 값 반환).
+ */
+export async function selfHealStaleTopline(
+  admin: AdminClient,
+  row: InterviewToplineRow,
+  nowMs: number,
+): Promise<{
+  status: 'generating' | 'error' | string;
+  error_message: string | null;
+  updated_at: string | null;
+}> {
+  const resumeCount = row.resume_count ?? 0;
+  const tag = `[v2/topline] self-heal ${row.project_id.slice(0, 8)}`;
+
+  // durable 재개 진행 중 + 홉 예산 남음 → 체인 재점화(죽이지 않음).
+  if (row.phase && resumeCount < MAX_RESUME_HOPS) {
+    const nowIso = new Date(nowMs).toISOString();
+    const { error } = await admin
+      .from('interview_toplines')
+      .update({ resume_count: resumeCount + 1 })
+      .eq('id', row.id)
+      .eq('status', 'generating');
+    if (error) {
+      // 경합(그 사이 done/error) — 현재 상태 그대로 보고.
+      return {
+        status: row.status,
+        error_message: row.error_message ?? null,
+        updated_at: row.updated_at ?? null,
+      };
+    }
+    console.warn(`${tag} stale → re-kick`, {
+      phase: row.phase,
+      progress: progressLabel(row),
+      hop: resumeCount,
+    });
+    // kick 은 접수만 기다림 — 실패해도 다음 stale 창에서 재시도되므로 삼킨다.
+    await kickResume(row.id, tag);
+    // bump 로 updated_at 갱신됨 — 클라 stuck 판정도 리셋되게 now 로 보고.
+    return { status: 'generating', error_message: row.error_message ?? null, updated_at: nowIso };
+  }
+
+  // 홉 예산 소진 또는 durable 상태 없음 → 진짜 stuck. 진행도 포함 error 로 종결.
+  const msg = row.phase
+    ? `${row.phase}_stalled(${progressLabel(row)}, hop=${resumeCount})`
+    : 'stuck_timeout';
+  const { error } = await admin
+    .from('interview_toplines')
+    .update({ status: 'error', error_message: msg })
+    .eq('id', row.id)
+    .eq('status', 'generating');
+  if (error) {
+    return {
+      status: row.status,
+      error_message: row.error_message ?? null,
+      updated_at: row.updated_at ?? null,
+    };
+  }
+  return { status: 'error', error_message: msg, updated_at: row.updated_at ?? null };
 }
 
 /**
@@ -865,10 +982,11 @@ export async function runTopline(
     // 홉 상한 초과 — 병리적 재개 루프(정상 프로젝트는 절대 도달 안 함). 무한
     // kick 을 끊고 error 로 명시 종료(사용자는 재생성으로 캐시 위에서 복구 가능).
     if (resumeCount > MAX_RESUME_HOPS) {
+      const msg = `resume_exhausted(${progressLabel(row)}, hop=${resumeCount})`;
       console.error(`${tag} resume hops exhausted (${resumeCount}) — error`);
       await admin
         .from('interview_toplines')
-        .update({ status: 'error', error_message: 'resume_exhausted' })
+        .update({ status: 'error', error_message: msg })
         .eq('id', toplineId);
       return;
     }
@@ -907,6 +1025,14 @@ export async function runTopline(
 
     const pending = docs.filter((d) => !cached.has(d.document_id));
     let mapFailures = 0;
+    // 이번 홉의 장애 상태 — 프로퍼티 홀더로 두어 클로저(핸들러/shouldStop) 안팎의
+    // 읽기가 선언 타입을 유지하게 한다. hard = 하드 장애(크레딧/인증) 감지 시 세팅
+    // → 새 문서 인출 중단(shouldStop) + 즉시 error 종결. last = 마지막으로 본 실패
+    // 분류(error_message 사유용). 카드 #468.
+    const fault: { hard: MapErrorClass | null; last: MapErrorClass | null } = {
+      hard: null,
+      last: null,
+    };
 
     if (pending.length > 0) {
       let liveDone = cached.size;
@@ -914,11 +1040,19 @@ export async function runTopline(
       await runPoolUntil<ToplineDocument, void>(
         pending,
         MAP_CONCURRENCY,
-        () => Date.now() >= mapDeadline,
+        // 예산 소진 **또는** 하드 장애 감지 시 새 문서를 안 꺼낸다.
+        () => fault.hard !== null || Date.now() >= mapDeadline,
         async (doc) => {
-          // 문서별 재시도 1회 — 일시 provider 오류 흡수. 성공분만 캐시에 영속
-          // (=커서 전진). 실패분은 캐시에 안 남겨 다음 홉에서 재시도되게 둔다.
-          for (let attempt = 0; attempt < 2; attempt++) {
+          // 문서별 다중 시도(MAP_MAX_ATTEMPTS) — 일시 provider 오류를 백오프로
+          // 흡수(429 Retry-After 존중). 하드 장애(크레딧/인증)는 재시도 무의미라
+          // 즉시 중단하고 fault.hard 를 세팅한다. 성공분만 캐시에 영속(=커서 전진),
+          // 실패분은 캐시에 안 남겨 다음 홉에서 재시도되게 둔다.
+          for (let attempt = 0; attempt < MAP_MAX_ATTEMPTS; attempt++) {
+            // 다른 워커가 이미 하드 장애를 봤으면 남은 시도를 아낀다.
+            if (fault.hard) {
+              mapFailures += 1;
+              return;
+            }
             try {
               const extract = await mapDocument(anthropic, doc);
               await saveExtract(admin, orgId, doc, {
@@ -927,12 +1061,23 @@ export async function runTopline(
               });
               return;
             } catch (e) {
-              if (attempt === 1) {
+              const cls = classifyMapError(e);
+              fault.last = cls;
+              if (cls.hardFault) {
+                fault.hard = cls;
                 mapFailures += 1;
-                console.warn(
-                  `${tag} map failed ${doc.filename}`,
-                  e instanceof Error ? e.message : e,
+                console.warn(`${tag} map hard fault ${doc.filename}`, cls.label);
+                return;
+              }
+              if (attempt === MAP_MAX_ATTEMPTS - 1) {
+                mapFailures += 1;
+                console.warn(`${tag} map failed ${doc.filename}`, cls.label);
+              } else {
+                const wait = Math.min(
+                  cls.retryAfterMs ?? mapRetryBackoffMs(attempt),
+                  MAP_RETRY_CAP_MS,
                 );
+                await sleep(wait);
               }
             }
           }
@@ -956,9 +1101,23 @@ export async function runTopline(
       });
 
       if (stillPending.length > 0) {
-        // map 미완 — 시간예산 소진(대형 프로젝트) 또는 일부 문서 영구 실패. 홉
-        // 상한 안이면 다음 홉으로 이어간다. 상한이면 남은 실패분을 빈 추출로 둔 채
-        // reduce 를 강행해 파이프라인을 완주시킨다(무한 루프 방지).
+        const progress = `${cached.size}/${docs.length}`;
+
+        // ── 하드 장애(크레딧/인증) — 재시도·체인 지속 무의미. 명확한 사유로 즉시
+        // 종결해 generic stuck_timeout 대신 DB/이메일에 진짜 원인을 노출한다
+        // (카드 #468 핵심: 크레딧 소진을 조용히 stuck 으로 죽이지 말 것). 성공분은
+        // 캐시에 남아 크레딧 복구 후 재생성 시 재사용(재map 0)된다.
+        if (fault.hard) {
+          const msg = `map_stalled(${progress}, hop=${resumeCount}): ${fault.hard.label}`;
+          console.error(`${tag} ${msg}`);
+          await admin
+            .from('interview_toplines')
+            .update({ status: 'error', error_message: msg })
+            .eq('id', toplineId);
+          return;
+        }
+
+        // map 미완(일시 장애/대형 프로젝트) — 홉 상한 안이면 다음 홉으로 이어간다.
         if (resumeCount < MAX_RESUME_HOPS) {
           console.log(`${tag} map hop`, {
             cursor: cached.size,
@@ -967,6 +1126,7 @@ export async function runTopline(
             hop: resumeCount,
             cache_hits: cacheHits,
             map_failures: mapFailures,
+            last_fault: fault.last?.label ?? null,
           });
           await admin
             .from('interview_toplines')
@@ -975,8 +1135,24 @@ export async function runTopline(
           await kickResume(toplineId, tag);
           return;
         }
+
+        // 홉 상한 강행 — 이 홉에서 **단 하나도 map 되지 않았고** 실패만 있었다면
+        // placeholder 뿐인 빈 보고서를 만들 이유가 없다. 진행도 포함 error 로
+        // 표면화한다. 하나라도 map 됐으면 아래로 fall-through 해 남은 실패분을
+        // placeholder 로 두고 reduce 를 강행(파이프라인 완주 — 무한 루프 방지).
+        if (cached.size === 0) {
+          const msg = `map_stalled(${progress}, hop=${resumeCount}): ${
+            fault.last?.label ?? 'no progress'
+          }`;
+          console.error(`${tag} ${msg}`);
+          await admin
+            .from('interview_toplines')
+            .update({ status: 'error', error_message: msg })
+            .eq('id', toplineId);
+          return;
+        }
         console.warn(
-          `${tag} map incomplete at hop cap — forcing reduce ${cached.size}/${docs.length}`,
+          `${tag} map incomplete at hop cap — forcing reduce ${progress}`,
         );
       }
     }
