@@ -168,6 +168,12 @@ export const env = createEnv({
     INQUIRY_TO_EMAIL: z.string().email().default('chris.lee@meteor-research.com'),
     QUOTE_TO_EMAIL: z.string().email().default('chris.lee@meteor-research.com'),
 
+    // Recipients for the interview failure-alert digest (comma-separated).
+    // Optional — when unset the cron falls back to the super-admin allowlist
+    // (src/lib/admin/superadmin.ts). Kept as a raw string (not email-validated
+    // here) so the route can split + trim; empty entries are dropped there.
+    INTERVIEW_ALERT_EMAILS: z.string().optional(),
+
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
 
@@ -335,6 +341,7 @@ export const env = createEnv({
 
     INQUIRY_TO_EMAIL: process.env.INQUIRY_TO_EMAIL,
     QUOTE_TO_EMAIL: process.env.QUOTE_TO_EMAIL,
+    INTERVIEW_ALERT_EMAILS: process.env.INTERVIEW_ALERT_EMAILS,
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
