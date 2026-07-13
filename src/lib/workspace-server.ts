@@ -522,7 +522,7 @@ export async function getArtifactContent(
       .from('recruiting_forms')
       .select('title, responder_uri, edit_uri')
       .eq('org_id', orgId)
-      .eq('id', dbId)
+      .eq('form_id', dbId)
       .maybeSingle();
     if (!data) return null;
     const title = (data.title as string | null) ?? 'Recruiting form';
