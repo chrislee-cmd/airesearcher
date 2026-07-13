@@ -76,7 +76,11 @@ import {
 } from '@/lib/translate-fidelity';
 import { useCreditDeduction } from './credit-deduction-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
-import { FEATURE_COSTS } from '@/lib/features';
+import {
+  TRANSLATE_METERING,
+  TRANSLATE_START_LUMP_CREDITS,
+  TRANSLATE_MAX_BILLABLE_TICK,
+} from '@/lib/features';
 import { track as trackEvent } from '@/lib/analytics/events';
 
 // Dev-mode trace gate. Enabled in non-prod builds so a designer running
@@ -106,6 +110,7 @@ type CleanupCaller =
   | 'start_error_mic'
   | 'start_error_livekit'
   | 'start_error_webrtc'
+  | 'start_error_credits'
   | 'start_reentry_guard'
   | 'stop'
   | 'unmount';
@@ -595,6 +600,19 @@ const SESSION_MAX_MS = 25 * 60_000; // 25 min (5 min margin under the 30 min cap
 const RENEW_CHECK_MS = 10_000;
 const RENEW_RETRY_MS = 60_000;
 
+// 🚨 진행 중 크레딧 heartbeat (하이브리드 C, docs §6). go-live 시 /start 가
+// start lump(tick 0)을 차감하고, 이후 이 간격마다 /heartbeat 를 tick 1,2,3…
+// 으로 호출해 blockCredits(10)씩 낙관적 차감 → 우측 상단 잔액 실시간 count-down.
+// 종료 시 finalize 가 실오디오 기준으로 정산·보정한다(좀비는 환불). 기본 10분;
+// preview 에서 짧게 관측하려면 NEXT_PUBLIC_TRANSLATE_HEARTBEAT_MS 로 낮춘다
+// (과금 로직은 불변 — 표시 검증용 knob).
+const HEARTBEAT_MS = (() => {
+  const raw = Number(process.env.NEXT_PUBLIC_TRANSLATE_HEARTBEAT_MS);
+  return Number.isFinite(raw) && raw >= 1_000
+    ? raw
+    : TRANSLATE_METERING.blockMinutes * 60_000; // 10 min
+})();
+
 // Chunk/word-boundary join (Layer A) now lives in
 // src/lib/translate-stream-join.ts so the heuristics are unit-testable
 // in isolation and reusable by the persist / export path. `joinDelta` is
@@ -1003,6 +1021,16 @@ export function TranslateConsole({
   // a ref avoids re-creating it every captureMode change.
   const runningCaptureModeRef = useRef<CaptureMode>('both');
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 🚨 진행 중 크레딧 heartbeat (하이브리드 C). `heartbeatTimerRef` = 10분
+  // 인터벌 핸들, `heartbeatTickRef` = 마지막으로 **과금 성공한** tick_index
+  // (0=start lump, 1..N=10분 블록). 성공 시에만 증가시켜 일시적 네트워크 실패는
+  // 다음 인터벌이 같은 tick 을 재시도(서버 멱등)하도록 한다. `heartbeatCappedRef`
+  // = cap 도달로 과금 정지된 상태(세션은 계속). renewal 은 같은 sessionId 를
+  // 유지하므로 이 tick 카운터가 그대로 이어져 재-start-lump 없이 누적된다.
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartbeatTickRef = useRef(0);
+  const heartbeatInFlightRef = useRef(false);
+  const heartbeatCappedRef = useRef(false);
   // Tab-audio mode only: periodic silence injection. Continuous tab
   // audio (YouTube, Meet, etc.) has no natural pauses, so the realtime
   // STT VAD never declares end-of-speech and the model keeps re-
@@ -1446,6 +1474,16 @@ export function TranslateConsole({
     sessionEpochRef.current = null;
     renewingRef.current = false;
     setRenewing(false);
+    // 🚨 진행 중 크레딧 heartbeat teardown — 인터벌 정지 + tick 카운터 리셋
+    // 이라 다음 세션이 tick 을 이어받지 않는다(status 전환 시 effect return 도
+    // clear 하지만, 동기 teardown 경로에서 즉시 끊어 잔여 firing 을 막는다).
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+    heartbeatTickRef.current = 0;
+    heartbeatInFlightRef.current = false;
+    heartbeatCappedRef.current = false;
     if (roomRef.current) {
       void roomRef.current.disconnect();
       roomRef.current = null;
@@ -2492,8 +2530,11 @@ export function TranslateConsole({
         throw new Error((json as { error: string }).error ?? 'session_failed');
       }
       bundle = json;
-      // 차감 broadcast — 세션 시작 시 lump 50 credit. 위젯 헤더 -N + topbar pulse.
-      notifyDeduction('translate', FEATURE_COSTS.translate);
+      // 차감 broadcast (optimistic) — 세션 생성 즉시 start lump(75) 만큼 우측
+      // 상단을 -N count-down (연결 대기 동안 즉각 피드백). 실제 과금은 go-live 의
+      // /start 가 하고, 그 응답 balance 로 아래에서 authoritative 재동기화한다
+      // (하이브리드 C). 연결 실패 시 서버는 미과금이라 다음 refresh 에 self-heal.
+      notifyDeduction('translate', TRANSLATE_START_LUMP_CREDITS);
       // Analytics — 통역 세션 시작. capture_mode 는 표준 job_started 스키마에
       // metadata 필드가 없어(spec 2/6 재사용, 미수정) 동반 widget_action 으로
       // 기록한다. 'mic-only'/'tab-only'/'both' → 'mic'/'tab'/'both' 정규화.
@@ -3375,21 +3416,51 @@ export function TranslateConsole({
     ch.subscribe();
     channelRef.current = ch;
 
-    // Flip status='live' + stamp started_at on the row (go-live). Routed
-    // through the server /start endpoint: the previous inline
-    // `supabase.from().update()` was a `void`-discarded thenable that
-    // never fired the PATCH, so status stayed 'idle' and started_at NULL
-    // for every session. fetch() sends immediately; fire-and-forget is
-    // fine — viewers flip live off the LiveKit tracks, not this row.
-    void fetch(`/api/translate/sessions/${bundle.session.id}/start`, {
-      method: 'POST',
-    }).catch(() => {});
-
     // Connect succeeded — disarm the watchdog before flipping live.
     if (connectWatchdogRef.current) {
       clearTimeout(connectWatchdogRef.current);
       connectWatchdogRef.current = null;
     }
+
+    // Flip status='live' + stamp started_at on the row (go-live). Routed
+    // through the server /start endpoint. 하이브리드 C: /start 는 go-live 이면서
+    // **start lump 과금 지점**이라, 이제 응답(balance)을 기다려 우측 상단 잔액을
+    // authoritative 값으로 재동기화한다(생성 시점 optimistic -75 를 확정값으로
+    // 정렬). 잔액 부족(402)이면 go-live 를 거부하고 세션을 정리한다.
+    try {
+      const sres = await fetch(
+        `/api/translate/sessions/${bundle.session.id}/start`,
+        { method: 'POST' },
+      );
+      const sjson = (await sres.json().catch(() => null)) as {
+        ok?: boolean;
+        balance?: number;
+        error?: string;
+      } | null;
+      if (sres.status === 402 || sjson?.error === 'insufficient_credits') {
+        setError('insufficient_credits');
+        setStatus('error');
+        cleanup('start_error_credits', 'insufficient_credits');
+        startInFlightRef.current = false;
+        return;
+      }
+      // start lump 차감을 authoritative balance 로 우측 상단에 반영.
+      notifyDeduction(
+        'translate',
+        TRANSLATE_START_LUMP_CREDITS,
+        typeof sjson?.balance === 'number' ? sjson.balance : undefined,
+      );
+    } catch {
+      // 네트워크 실패는 go-live 를 막지 않는다(best-effort). 표시만 잠시
+      // 어긋나고, heartbeat/finalize 정산이 실오디오 기준으로 보정한다.
+    }
+
+    // 🚨 heartbeat 카운터 리셋 — tick 0(start lump)은 위 /start 가 과금했다.
+    // 첫 10분 heartbeat 는 tick 1 로 시작한다.
+    heartbeatTickRef.current = 0;
+    heartbeatCappedRef.current = false;
+    heartbeatInFlightRef.current = false;
+
     startedAtRef.current = Date.now();
     // 🚨 Auto-renewal epoch — the current OpenAI session started now. The
     // renewal interval (below) watches this, not startedAtRef.
@@ -3552,6 +3623,73 @@ export function TranslateConsole({
     }, RENEW_CHECK_MS);
     return () => clearInterval(handle);
   }, [status, renewSession]);
+
+  // 🚨 진행 중 크레딧 heartbeat 드라이버 (하이브리드 C, docs §6). live 인 동안
+  // HEARTBEAT_MS(기본 10분)마다 /heartbeat 를 다음 tick 으로 POST → blockCredits
+  // 낙관적 차감 + 응답 balance 로 우측 상단 잔액 재동기화. 과금 성공에만 tick 을
+  // 전진시켜(멱등) 일시 실패는 다음 인터벌이 같은 tick 을 재시도한다. cap 도달/
+  // 세션 종료 응답이면 정지(세션은 계속 — finalize 가 실오디오로 최종 정산).
+  // renewal 은 같은 sessionId 라 tick 이 누적 이어진다(재-start-lump 없음).
+  useEffect(() => {
+    if (status !== 'live') return;
+    const handle = setInterval(() => {
+      const id = sessionIdRef.current;
+      if (!id) return;
+      if (heartbeatCappedRef.current || heartbeatInFlightRef.current) return;
+      const nextTick = heartbeatTickRef.current + 1;
+      if (nextTick > TRANSLATE_MAX_BILLABLE_TICK) {
+        heartbeatCappedRef.current = true; // 과금 상한 — 표시 정지, 세션 유지
+        return;
+      }
+      heartbeatInFlightRef.current = true;
+      void (async () => {
+        try {
+          const res = await fetch(
+            `/api/translate/sessions/${id}/heartbeat`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tick_index: nextTick }),
+            },
+          );
+          const json = (await res.json().catch(() => null)) as {
+            ok?: boolean;
+            capped?: boolean;
+            ended?: boolean;
+            balance?: number;
+            error?: string;
+          } | null;
+          if (res.ok && json?.ok) {
+            if (json.ended || json.capped) {
+              heartbeatCappedRef.current = true; // 서버가 정지 신호 → 이후 과금 중단
+              return;
+            }
+            // 과금 성공 — tick 전진 + 우측 상단 authoritative 반영.
+            heartbeatTickRef.current = nextTick;
+            notifyDeduction(
+              'translate',
+              TRANSLATE_METERING.blockCredits,
+              typeof json.balance === 'number' ? json.balance : undefined,
+            );
+          } else if (res.status === 402) {
+            // 잔액 부족 — 재시도해도 무의미하므로 tick 을 전진(같은 tick 무한
+            // 반복 방지). 세션은 계속되고 finalize 가 실오디오로 최종 정산한다.
+            heartbeatTickRef.current = nextTick;
+          }
+          // 그 외(네트워크/5xx) → tick 미전진, 다음 인터벌이 같은 tick 재시도(멱등).
+        } catch {
+          // 네트워크 실패 → tick 미전진, 다음 인터벌이 재시도(서버 멱등).
+        } finally {
+          heartbeatInFlightRef.current = false;
+        }
+      })();
+    }, HEARTBEAT_MS);
+    heartbeatTimerRef.current = handle;
+    return () => {
+      clearInterval(handle);
+      if (heartbeatTimerRef.current === handle) heartbeatTimerRef.current = null;
+    };
+  }, [status, notifyDeduction]);
 
   // Stop one MediaRecorder cleanly and wait for the final dataavailable
   // tick. Returns the assembled Blob, or null if no chunks were recorded.
