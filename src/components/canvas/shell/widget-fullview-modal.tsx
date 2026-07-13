@@ -51,7 +51,7 @@ export function WidgetFullviewModal({
   closeLabel = '닫기',
 }: WidgetFullviewModalProps) {
   return (
-    <Modal open={open} onClose={onClose} size={size}>
+    <Modal open={open} onClose={onClose} size={size} dsPrimitive="WidgetFullviewModal">
       <header className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3">
         <div className="min-w-0">
           <h2 className="truncate text-2xl font-semibold tracking-[-0.01em] text-ink-2">

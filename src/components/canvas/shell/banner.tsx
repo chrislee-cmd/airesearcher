@@ -48,6 +48,7 @@ export function Banner({
     <div
       role={tone === 'warning' ? 'alert' : 'status'}
       className={`${divCls} ${TONE_CLS[tone]} px-5 py-3 text-md`}
+      data-ds-primitive="Banner"
     >
       {title && <span className="font-semibold">{title}</span>}
       {title && children ? <span>{': '}</span> : null}

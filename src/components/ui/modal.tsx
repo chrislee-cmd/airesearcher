@@ -35,6 +35,11 @@ type Props = {
   size?: Size;
   dismissOnBackdrop?: boolean;
   labelledBy?: string;
+  // 슈퍼어드민 DS 인스펙터용 primitive 이름(카탈로그 label). 기본 'Modal'.
+  // Modal 을 자기 chrome 으로 감싸는 상위 primitive(WidgetFullviewModal 등)가
+  // 자기 이름으로 덮어써 인스펙터에 정확한 primitive 를 노출한다. Button 의
+  // dsPrimitive override 패턴과 동일.
+  dsPrimitive?: string;
 };
 
 const SIZE: Record<Size, string> = {
@@ -63,6 +68,7 @@ export function Modal({
   size = 'md',
   dismissOnBackdrop = true,
   labelledBy,
+  dsPrimitive = 'Modal',
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -163,7 +169,7 @@ export function Modal({
       />
       <div
         ref={panelRef}
-        data-ds-primitive="Modal"
+        data-ds-primitive={dsPrimitive}
         className={[
           // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가

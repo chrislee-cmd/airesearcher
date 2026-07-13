@@ -43,6 +43,7 @@ function ControlBoardRoot({ children, framed, className }: ControlBoardProps) {
         framed && 'border border-line bg-paper rounded-sm overflow-hidden',
         className,
       )}
+      data-ds-primitive="ControlBoard"
     >
       {children}
     </div>
