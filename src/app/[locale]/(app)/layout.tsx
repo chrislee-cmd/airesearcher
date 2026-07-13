@@ -21,6 +21,7 @@ import { ToastProvider } from '@/components/toast-provider';
 import { TrialInitializer } from '@/components/trial-initializer';
 import { AuthStateListener } from '@/components/auth-state-listener';
 import { SessionExpiredModal } from '@/components/auth/session-expired-modal';
+import { SuperadminInspectorProvider } from '@/components/dev/superadmin-inspector';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -110,6 +111,10 @@ export default async function AppLayout({
              auth event) — this modal catches the first one and forces a
              re-login. Complements AuthStateListener above. */}
          <SessionExpiredModal />
+         {/* 슈퍼어드민 전용 DS primitive 인스펙터 — Ctrl+Shift+hover 시 요소의
+             primitive 이름 오버레이. 서버 게이트(isSuperAdminEmail)라 비-어드민은
+             완전 no-op(리스너/렌더 0). */}
+         <SuperadminInspectorProvider isSuperAdmin={isSuperAdminEmail(user?.email)} />
          </WorkspaceProvider>
          </ProjectSelectionProvider>
          </ActiveProjectProvider>

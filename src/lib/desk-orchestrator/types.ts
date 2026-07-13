@@ -10,6 +10,7 @@ import type {
   DeskArticle,
   DeskDateRange,
   DeskRegion,
+  DeskSourceErrorReason,
   DeskSourceId,
 } from '@/lib/desk-sources';
 
@@ -130,6 +131,21 @@ export type OrchestratorPlan = {
   buildJudgmentEvents: (args: { similar: string[] }) => string[];
   // (원 키워드 + 유사 키워드) × 소스 × region 조합의 crawl task 목록.
   buildCrawlTasks: (args: { similar: string[] }) => CrawlTask[];
+  // D 하이브리드 fallback 훅 — 1차 crawl 완료 후(dedupe·안전망 직전) runner 가
+  // 호출한다. 구조화 축(공시·통계)이 실데이터 0(반환 article 이 전부 "사유
+  // article"이거나 source error)일 때, 그 축의 원 쿼리(회사명/통계품목/원 키워드)를
+  // web_search 로 보강할 2차 crawl task 를 돌려준다. runner 는 이 task 를 실행해
+  // 결과를 근거 풀(collected)에 합류시키고(dedupe 에서 tier 자동 부여), events 를
+  // 판단 로그(🔍 마커)로 push 한다.
+  //   - 구조화 축에 실데이터가 있으면 tasks=[] → 미발동(과발동·불필요 비용 없음).
+  //   - 웹서치 근거는 kind 미설정(수치 pin 대상 아님)이라 TAM/SAM·재무표·매출차트에
+  //     편입되지 않는다 = 수치 ground-truth 격리가 코드로 보장된다.
+  // 미설정이면(기본) fallback 없이 기존 경로 그대로 — trend 는 최소만 채운다.
+  buildFallbackTasks?: (args: {
+    collected: DeskArticle[];
+    sourceError: Map<DeskSourceId, DeskSourceErrorReason>;
+    similar: string[];
+  }) => { tasks: CrawlTask[]; events: string[] };
   // LLM 리포트 합성 system prompt (mode 별 보고서 shape 강제).
   reportSystem: string;
   // LLM 리포트 합성 user 메시지 (수집 항목 첨부 형식은 mode 소유).

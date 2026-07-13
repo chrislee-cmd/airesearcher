@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Self-built headless menu primitive. Mirrors the SidebarAccount popover
 // pattern (mousedown-outside + Esc) so visual + interaction language
@@ -29,6 +30,17 @@ export type DropdownItem = {
   hint?: ReactNode;
   onSelect: () => void | Promise<void>;
   disabled?: boolean;
+  // Optional trailing checkbox on the right of the row. Independent from
+  // onSelect — toggling it neither fires the row's onSelect nor closes the
+  // menu, so the user can watch the check move between rows. Used by
+  // ProjectPicker's per-row "전체 위젯에 적용" control. When set, the row is
+  // rendered as [menuitem button | checkbox] instead of a single button
+  // (a native checkbox can't nest inside the row <button>).
+  toggle?: {
+    checked: boolean;
+    onToggle: () => void;
+    ariaLabel: string;
+  };
 };
 
 type Props = {
@@ -176,7 +188,11 @@ export function DropdownMenu({
     typeof document !== 'undefined' ? document.body : null;
 
   return (
-    <div className="relative inline-block" ref={wrapRef}>
+    <div
+      className="relative inline-block"
+      ref={wrapRef}
+      data-ds-primitive="DropdownMenu"
+    >
       {trigger({
         open,
         onClick: onTriggerClick,
@@ -199,32 +215,60 @@ export function DropdownMenu({
                   {label}
                 </div>
               ) : null}
-              {items.map((item, i) => (
-                <button
-                  key={item.key}
-                  ref={(el) => {
-                    itemRefs.current[i] = el;
-                  }}
-                  type="button"
-                  role="menuitem"
-                  tabIndex={i === activeIndex ? 0 : -1}
-                  disabled={item.disabled}
-                  onMouseEnter={() => setActiveIndex(i)}
-                  onClick={() => onItemClick(item)}
-                  className={`flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
-                    item.disabled
-                      ? 'cursor-not-allowed text-mute-soft/60'
-                      : 'text-ink-2 hover:bg-line-soft/40 focus:bg-line-soft/40 focus:outline-none'
-                  }`}
-                >
-                  <span className="truncate">{item.label}</span>
-                  {item.hint ? (
-                    <span className="shrink-0 font-mono text-xs-soft tabular-nums text-mute-soft">
-                      {item.hint}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+              {items.map((item, i) => {
+                const rowBtn = (
+                  <button
+                    ref={(el) => {
+                      itemRefs.current[i] = el;
+                    }}
+                    type="button"
+                    role="menuitem"
+                    tabIndex={i === activeIndex ? 0 : -1}
+                    disabled={item.disabled}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    onClick={() => onItemClick(item)}
+                    className={`flex ${
+                      item.toggle ? 'flex-1' : 'w-full'
+                    } items-center justify-between gap-4 px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
+                      item.disabled
+                        ? 'cursor-not-allowed text-mute-soft/60'
+                        : 'text-ink-2 hover:bg-line-soft/40 focus:bg-line-soft/40 focus:outline-none'
+                    }`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    {item.hint ? (
+                      <span className="shrink-0 font-mono text-xs-soft tabular-nums text-mute-soft">
+                        {item.hint}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+                if (!item.toggle) {
+                  return (
+                    <div key={item.key} role="none">
+                      {rowBtn}
+                    </div>
+                  );
+                }
+                // Toggle row: menuitem button + trailing checkbox. The checkbox
+                // sits outside the button (siblings), so clicking it does NOT
+                // fire the row's onSelect; and being inside menuRef it doesn't
+                // trip the outside-click close — the menu stays open.
+                return (
+                  <div
+                    key={item.key}
+                    role="none"
+                    className="flex items-center pr-3"
+                  >
+                    {rowBtn}
+                    <Checkbox
+                      checked={item.toggle.checked}
+                      onChange={item.toggle.onToggle}
+                      aria-label={item.toggle.ariaLabel}
+                    />
+                  </div>
+                );
+              })}
             </div>,
             portalTarget,
           )

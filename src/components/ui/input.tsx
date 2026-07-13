@@ -83,7 +83,10 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
     .join(' ');
 
   return (
-    <div className={fullWidth ? 'w-full' : 'inline-block'}>
+    <div
+      className={fullWidth ? 'w-full' : 'inline-block'}
+      data-ds-primitive="Input"
+    >
       {label ? (
         <Label htmlFor={inputId} required={required} className="mb-1.5">
           {label}

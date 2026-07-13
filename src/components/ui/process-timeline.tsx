@@ -57,7 +57,10 @@ export function ProcessTimeline({
   padding?: string;
 }) {
   return (
-    <div className={`flex flex-col gap-3 ${padding}`}>
+    <div
+      className={`flex flex-col gap-3 ${padding}`}
+      data-ds-primitive="ProcessTimeline"
+    >
       {phases.map((p) => {
         const iconTone =
           p.status === 'done'

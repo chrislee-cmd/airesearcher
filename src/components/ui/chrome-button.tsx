@@ -101,7 +101,13 @@ export const ChromeButton = forwardRef<HTMLButtonElement, Props>(function Chrome
     .join(' ');
 
   return (
-    <button ref={ref} type={type} className={cls} {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={cls}
+      {...rest}
+      data-ds-primitive="ChromeButton"
+    >
       {leftIcon ? <span className="shrink-0">{leftIcon}</span> : null}
       {children}
       {rightIcon ? <span className="shrink-0">{rightIcon}</span> : null}

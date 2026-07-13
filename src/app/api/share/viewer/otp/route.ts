@@ -13,6 +13,12 @@ import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { assertInvitedViewer, normalizeEmail } from '@/lib/share/shared-views';
 import { createOtpClient } from '@/lib/share/otp-client';
+import {
+  rateLimit,
+  rateLimitResponse,
+  getClientIp,
+  LIMITS,
+} from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -35,6 +41,25 @@ export async function POST(req: Request) {
   const { token, locale = 'ko' } = parsed.data;
   const email = normalizeEmail(parsed.data.email);
 
+  // 요청자 단위 rate limit — Supabase 글로벌 이메일 캡에 도달하기 전에,
+  // 또 초대 여부를 확인하기 전에 먼저 막는다. 키는 (ip:token) 로 요청자
+  // 본인 빈도만 반영하고 email 을 넣지 않는다 → 초대된 이메일에만 다른
+  // 응답을 주는 leak 을 원천 차단(enumeration 보호). 초대/미초대 모두
+  // 동일하게 카운트되므로 429 응답도 초대 여부와 무관하게 동일하다.
+  const ip = getClientIp(req);
+  const [perLink, perIp] = await Promise.all([
+    rateLimit(`${ip}:${token}`, 'share-otp', LIMITS.shareOtp.limit, LIMITS.shareOtp.window),
+    rateLimit(ip, 'share-otp:ip', LIMITS.shareOtpHourly.limit, LIMITS.shareOtpHourly.window),
+  ]);
+  const limited = !perLink.success ? perLink : !perIp.success ? perIp : null;
+  if (limited) {
+    // 서버 로그 관측성 — 클라 응답 shape 은 불변.
+    console.warn('[share/otp] throttled', {
+      retryAfter: limited.retryAfter,
+    });
+    return rateLimitResponse(limited);
+  }
+
   // 초대·토큰 유효성을 먼저 확인 — 통과할 때만 실제로 코드를 보낸다.
   const admin = createAdminClient();
   const gate = await assertInvitedViewer(admin, token, email);
@@ -51,12 +76,24 @@ export async function POST(req: Request) {
     // shouldCreateUser: 외부 뷰어는 계정이 없을 수 있으므로 shadow user 허용.
     // (축소하면 계정 없는 뷰어에게 코드가 아예 안 발송되는 회귀 → 유지.)
     // 실패해도 응답은 generic — 재시도 유도 문구는 클라이언트가 처리.
+    //
+    // 관측성: 발송 실패를 삼키지 않고 서버 로그에 남긴다. status 로 Supabase
+    // 글로벌 rate limit(429) vs SMTP/기타 오류를 구분할 수 있어야 2026-07-09
+    // 사고("갑자기 안 옴 + 원인 불명")처럼 auth.users 타임스탬프를 뒤지지
+    // 않고도 진단 가능하다. 응답 shape 은 그대로 {ok:true} 라 enumeration
+    // 보호는 유지된다(초대된 이메일에서만 로그가 찍히지만 로그는 서버 전용).
     await otp.auth
       .signInWithOtp({
         email,
         options: { shouldCreateUser: true, emailRedirectTo },
       })
-      .catch(() => {});
+      .catch((e: unknown) => {
+        const err = e as { status?: number; message?: string } | null;
+        console.error('[share/otp] send failed', {
+          code: err?.status,
+          msg: err?.message,
+        });
+      });
   }
 
   // 초대 여부와 무관하게 동일 응답(enumeration 방지).

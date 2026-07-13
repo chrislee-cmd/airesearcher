@@ -181,6 +181,10 @@ export type ToplineReadResult = {
   // 마지막 재생성에 쓰인 분석 방향(자유 텍스트). null = 방향 없음/레거시/미생성 →
   // 재생성 모달을 빈 입력으로 시작.
   user_direction: string | null;
+  // 산출물 출처 — 'uploaded' = 편집전용(외부 보고서 업로드), 'generated'/null =
+  // 풀 파이프라인 생성물. 클라가 재생성 시 업로드 보고서 덮어쓰기 경고를 띄우는
+  // 판단 근거. null = 레거시/미생성(생성으로 취급).
+  source: string | null;
   // map-reduce 진행률(전 문서 순회) — generating 중 "N/M 문서 분석". map_total 이
   // null 이면 진행률 미노출(레거시 또는 아직 map 시작 전).
   map_total: number | null;

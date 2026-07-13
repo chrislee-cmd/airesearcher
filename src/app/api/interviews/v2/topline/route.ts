@@ -134,6 +134,9 @@ export async function GET(req: Request) {
     // 마지막 재생성에 쓰인 방향 — UI 재생성 모달 textarea 초기값(마지막에 지정한
     // 방향을 다시 보여줌). null(방향 없음/레거시/미생성)이면 빈 입력으로 시작.
     user_direction: existing?.user_direction ?? null,
+    // 산출물 출처 — 'uploaded' 면 편집전용(외부 보고서), null/'generated' 면
+    // 풀 파이프라인. 클라가 재생성 덮어쓰기 경고 판단에 쓴다.
+    source: existing?.source ?? null,
     // 인덱싱 전이면 생성 자체가 불가 — CTA 대신 안내 문구.
     indexed: chunkCount > 0,
     generated_at: existing?.generated_at ?? null,

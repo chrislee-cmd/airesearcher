@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,16 @@ import { Input } from '@/components/ui/input';
 // "초대되지 않음"으로 드러난다.
 
 type Step = 'email' | 'code';
+
+// 재전송 쿨다운(초). 스팸 클릭이 Supabase 이메일 캡을 소진하는 악순환을
+// 막는다 — 서버 rate limit(share-otp)의 클라이언트 측 짝. 서버가 429 로
+// 더 긴 대기를 요구하면 그 retryAfter 로 덮어쓴다.
+const RESEND_COOLDOWN_SEC = 60;
+
+type SendResult =
+  | { status: 'ok' }
+  | { status: 'throttled'; retryAfter: number }
+  | { status: 'error' };
 
 export function ShareEmailGate({
   token,
@@ -35,14 +45,20 @@ export function ShareEmailGate({
   const [email, setEmail] = useState(prefillEmail ?? '');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
 
-  async function requestCode(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const value = email.trim();
-    if (!value) return;
-    startTransition(async () => {
+  // 쿨다운 카운트다운. cooldown > 0 인 동안 매초 1씩 감소.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
+  // OTP 발송 요청. 응답은 초대 여부와 무관하게 동일하므로(enumeration 보호)
+  // 여기서 구분하는 신호는 오직 요청자 본인의 rate limit(429)뿐이다.
+  const sendOtp = useCallback(
+    async (value: string): Promise<SendResult> => {
       const res = await fetch('/api/share/viewer/otp', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -50,12 +66,61 @@ export function ShareEmailGate({
         // 리다이렉트되도록 서버가 emailRedirectTo 를 구성하는 데 쓴다.
         body: JSON.stringify({ token, email: value, locale }),
       }).catch(() => null);
-      if (!res || !res.ok) {
+      if (!res) return { status: 'error' };
+      if (res.status === 429) {
+        const data = (await res.json().catch(() => null)) as {
+          retry_after?: number;
+        } | null;
+        return {
+          status: 'throttled',
+          retryAfter: data?.retry_after ?? RESEND_COOLDOWN_SEC,
+        };
+      }
+      if (!res.ok) return { status: 'error' };
+      return { status: 'ok' };
+    },
+    [token, locale],
+  );
+
+  async function requestCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const value = email.trim();
+    if (!value) return;
+    startTransition(async () => {
+      const result = await sendOtp(value);
+      if (result.status === 'throttled') {
+        setCooldown(result.retryAfter);
+        setError(t('errorThrottled'));
+        return;
+      }
+      if (result.status === 'error') {
         setError(t('errorGeneric'));
         return;
       }
       // 초대 여부와 무관하게 코드 단계로 — 응답으로 초대 여부를 노출하지 않음.
+      setCooldown(RESEND_COOLDOWN_SEC);
       setStep('code');
+    });
+  }
+
+  function resendCode() {
+    if (cooldown > 0 || pending) return;
+    const value = email.trim();
+    if (!value) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await sendOtp(value);
+      if (result.status === 'throttled') {
+        setCooldown(result.retryAfter);
+        setError(t('errorThrottled'));
+        return;
+      }
+      if (result.status === 'error') {
+        setError(t('errorGeneric'));
+        return;
+      }
+      setCooldown(RESEND_COOLDOWN_SEC);
     });
   }
 
@@ -148,6 +213,9 @@ export function ShareEmailGate({
                 onChange={(e) => setCode(e.target.value)}
               />
               {error && <p className="text-sm text-amore">{error}</p>}
+              <p className="text-sm leading-[1.7] text-mute">
+                {t('resendHint')}
+              </p>
               <Button
                 type="submit"
                 variant="primary"
@@ -161,10 +229,22 @@ export function ShareEmailGate({
                 type="button"
                 variant="link"
                 fullWidth
+                disabled={cooldown > 0 || pending}
+                onClick={resendCode}
+              >
+                {cooldown > 0
+                  ? t('resendCountdown', { seconds: cooldown })
+                  : t('resend')}
+              </Button>
+              <Button
+                type="button"
+                variant="link"
+                fullWidth
                 onClick={() => {
                   setStep('email');
                   setCode('');
                   setError(null);
+                  setCooldown(0);
                 }}
               >
                 {t('changeEmail')}

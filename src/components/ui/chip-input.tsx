@@ -85,6 +85,12 @@ export const ChipInput = forwardRef<HTMLInputElement, Props>(function ChipInput(
       }
     : onKeyDown;
   return (
-    <input ref={ref} className={cls} onKeyDown={handleKeyDown} {...rest} />
+    <input
+      ref={ref}
+      className={cls}
+      onKeyDown={handleKeyDown}
+      {...rest}
+      data-ds-primitive="ChipInput"
+    />
   );
 });

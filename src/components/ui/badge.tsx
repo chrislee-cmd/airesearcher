@@ -82,7 +82,7 @@ export function Badge({
     .join(' ');
 
   return (
-    <span className={cls}>
+    <span className={cls} data-ds-primitive="Badge">
       {leadingIcon ? (
         <span className="shrink-0" aria-hidden>
           {leadingIcon}

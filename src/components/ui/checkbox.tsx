@@ -51,7 +51,10 @@ export const Checkbox = forwardRef<HTMLInputElement, Props>(function Checkbox(
 ) {
   const cls = [BASE, SIZE[size], className ?? ''].filter(Boolean).join(' ');
   return (
-    <span className="relative inline-flex items-center justify-center">
+    <span
+      className="relative inline-flex items-center justify-center"
+      data-ds-primitive="Checkbox"
+    >
       <input ref={ref} type="checkbox" className={cls} {...rest} />
       <svg
         aria-hidden="true"

@@ -734,6 +734,46 @@ async function runJob(args: {
       await pushAndPatch(lines[lines.length - 1], 'crawling');
     }
 
+    // ── D 하이브리드: 구조화 축 empty/fail → 웹서치 fallback 보강 ────────────
+    // 구조화 소스(공시·통계)가 실데이터 0(전부 사유 article + error)일 때, mode
+    // plan 이 그 축의 원 쿼리를 web_search 로 보강할 2차 crawl task 를 돌려준다.
+    // 구조화 값이 있으면 tasks=[] 라 미발동(과발동·불필요 비용 없음). 웹서치 근거는
+    // kind 미설정(수치 pin 대상 아님) + dedupe 에서 tier 자동 부여라 수치
+    // ground-truth 격리가 코드로 유지된다. 발동 사유는 판단 로그(🔍)에 투명 노출.
+    if (plan.buildFallbackTasks) {
+      const fb = plan.buildFallbackTasks({ collected, sourceError, similar });
+      if (fb.tasks.length > 0) {
+        crawlTotal += fb.tasks.length;
+        for (const line of fb.events.slice(0, -1)) pushEvent(line);
+        await pushAndPatch(
+          fb.events.length
+            ? fb.events[fb.events.length - 1]
+            : `구조화 근거가 비어 웹 검색으로 ${fb.tasks.length}건 보강합니다…`,
+          'crawling',
+        );
+        const fbTasks = fb.tasks.map(({ source: src, keyword: kw, region }) =>
+          crawlSourceWithTimeout(src, kw, region, range, perKwLimit)
+            .then(async (result) => {
+              crawlDone += 1;
+              collected.push(...result.articles);
+              await pushAndPatch(
+                `${sourceLabelKo(src)} (${region}) · ‘${kw}’ — ${result.articles.length}건 보강했어요. (${crawlDone}/${crawlTotal})`,
+                'crawling',
+              );
+            })
+            .catch(async (err) => {
+              crawlDone += 1;
+              await pushAndPatch(
+                `웹 검색 보강 ‘${kw}’ — 실패했어요 (${err instanceof Error ? err.message : 'unknown'}).`,
+                'crawling',
+              );
+            }),
+        );
+        await Promise.all(fbTasks);
+        await checkCancel();
+      }
+    }
+
     // Now that per-source pulls aim at 500, the dedupe pool can balloon to
     // a few thousand. Keep a generous global cap so the LLM still gets fed,
     // but bounded enough to fit the model context.

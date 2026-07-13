@@ -39,7 +39,10 @@ import {
   type DocExtract,
   type DocExtractWithMeta,
 } from '@/lib/interview-v2/topline-map';
-import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
+import {
+  isEditableToplineBlockType,
+  type ToplineBlock as ClientToplineBlock,
+} from '@/lib/interview-v2/types';
 
 export const TOPLINE_MODEL = 'claude-opus-4-8';
 
@@ -66,6 +69,10 @@ export type InterviewToplineRow = {
   // dedup 키의 일부 — 같은 문서셋·언어라도 방향이 다르면 재생성한다. reduce
   // system prompt 에 사용자 요청 방향으로 주입된다(근거 밖 생성은 여전히 금지).
   user_direction: string | null;
+  // 산출물 출처 — 'generated'(또는 null=레거시) = 풀 파이프라인 생성물,
+  // 'uploaded' = 편집전용 외부 보고서 업로드(Opus 호출 없이 md→blocks 파싱).
+  // 재생성 UI 가 업로드 보고서 덮어쓰기 경고를 띄우는 판단 근거.
+  source: string | null;
   blocks: ToplineBlock[];
   status: 'idle' | 'generating' | 'done' | 'error';
   error_message: string | null;
@@ -581,6 +588,9 @@ export async function upsertGenerating(
         // 이번 재생성의 사용자 방향 — 캐시 키의 일부. 빈 값/미지정이면 null
         // (방향 없음). 자동 kick(maybeKickTopline)은 방향을 안 넘겨 항상 null.
         user_direction: userDirection?.trim() || null,
+        // 생성 경로임을 명시 — 업로드(uploaded) 보고서를 재생성하면 이 upsert 를
+        // 타므로 source 가 다시 'generated' 로 뒤집혀 마커가 정확히 유지된다.
+        source: 'generated',
         status: 'generating',
         error_message: null,
         model: TOPLINE_MODEL,
@@ -602,6 +612,60 @@ export async function upsertGenerating(
     .single();
   if (error || !data) {
     throw new Error(`upsertGenerating: ${error?.message ?? 'no_row'}`);
+  }
+  return data.id as string;
+}
+
+/**
+ * 편집전용 모드 — 외부 보고서에서 파싱한 blocks 를 프로젝트 탑라인 row 에
+ * status='done', source='uploaded' 로 upsert(프로젝트당 1건). **생성 파이프라인
+ * (Opus) 호출 없음** — 사용자가 외부에서 완성한 보고서를 그대로 영속하고 이후
+ * 기존 편집 도구(edit_block/섹션 삽입/drag-to-ask)로 다듬는다.
+ *
+ * content_hash 는 현재 문서 셋 해시로 채워 stale 판정을 생성물과 정합시킨다
+ * (문서가 없어도 안정 해시). blocks 는 파서가 부여한 blk_NN id 를 그대로 쓴다.
+ * output_lang/user_direction/map_* 등 생성 전용 필드는 리셋(업로드는 무관).
+ * row id 반환.
+ */
+export async function upsertImported(
+  admin: AdminClient,
+  opts: {
+    orgId: string;
+    projectId: string;
+    hash: string;
+    blocks: ClientToplineBlock[];
+  },
+): Promise<string> {
+  const { orgId, projectId, hash, blocks } = opts;
+  const { data, error } = await admin
+    .from('interview_toplines')
+    .upsert(
+      {
+        org_id: orgId,
+        project_id: projectId,
+        content_hash: hash,
+        blocks: blocks as unknown as object,
+        status: 'done',
+        source: 'uploaded',
+        error_message: null,
+        // Opus 미호출 — 생성 모델 없음. 업로드 보고서임을 감사 로그에서 구분.
+        model: null,
+        generated_at: new Date().toISOString(),
+        // 생성 전용 필드 리셋 — 업로드는 언어/방향/map-reduce 진행률과 무관.
+        output_lang: null,
+        user_direction: null,
+        map_total: null,
+        map_done: 0,
+        phase: null,
+        map_cursor: 0,
+        resume_count: 0,
+      },
+      { onConflict: 'project_id' },
+    )
+    .select('id')
+    .single();
+  if (error || !data) {
+    throw new Error(`upsertImported: ${error?.message ?? 'no_row'}`);
   }
   return data.id as string;
 }

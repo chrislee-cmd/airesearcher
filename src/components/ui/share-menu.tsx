@@ -191,6 +191,7 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
         disabled={disabled || busy !== null}
         onClick={() => handleSelect(only)}
         leftIcon={DEST_ICON[only.destination]}
+        dsPrimitive="ShareMenu"
       >
         {busy ? '공유 중…' : '공유'}
       </Button>
@@ -211,6 +212,7 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
           onClick={onClick}
           rightIcon={<Caret open={open} />}
           {...aria}
+          dsPrimitive="ShareMenu"
         >
           {busy ? '공유 중…' : '공유'}
         </Button>

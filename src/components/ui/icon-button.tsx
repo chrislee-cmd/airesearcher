@@ -128,7 +128,15 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
     // canvas widget 안에서 IconButton 의 28×28 박스가 globals padding 으로
     // content area 가 음수가 돼 svg 글리프 vanish 했던 회귀 (translate
     // SpeakerMute 등) 해소.
-    <button ref={ref} type={type} className={cls} data-canvas-action {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={cls}
+      data-canvas-action
+      {...rest}
+      // 인스펙터 태그는 {...rest} 뒤 — 항상 존재(카탈로그 label = 'IconButton').
+      data-ds-primitive="IconButton"
+    >
       {children}
     </button>
   );

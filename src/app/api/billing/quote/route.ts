@@ -14,7 +14,7 @@ const TaxSchema = z.object({
 });
 
 const Body = z.object({
-  bundleId: z.enum(['starter', 'team', 'studio', 'enterprise']),
+  bundleId: z.enum(['mini', 'starter', 'plus', 'pro', 'max']),
   taxInvoice: TaxSchema.optional(),
 });
 

@@ -114,7 +114,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
         : `${values.length}개 선택`;
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative" data-ds-primitive="SelectMenu">
       {/* native <button> 허용 — src/components/ui/ 안 (primitive 내부).
           listbox trigger semantics + form-control border/chevron shape. */}
       <button

@@ -30,12 +30,21 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
   const autoId = useId();
   const inputId = id ?? autoId;
 
+  // resize: base defaults to vertical, but callers can override via className
+  // (e.g. `resize-none`). Tailwind v4 resolves resize utilities by compiled
+  // CSS source order — `.resize-y` in base would otherwise beat a caller's
+  // `.resize-none` regardless of className order (§7.11 base-owns-override
+  // trap). Guard: only emit the default when no resize util is present.
+  const hasResizeUtil = /(?:^|\s)resize(?:-(?:none|x|y))?(?=\s|$)/.test(
+    className ?? '',
+  );
+
   const taCls = [
     'border bg-paper px-3 py-2 text-lg leading-[1.6] text-ink placeholder:text-mute-soft',
     'focus:outline-none focus-visible:border-amore',
     'disabled:opacity-40 disabled:cursor-not-allowed',
     'rounded-sm',
-    'resize-y',
+    hasResizeUtil ? '' : 'resize-y',
     fullWidth ? 'w-full' : '',
     error ? 'border-warning focus:border-warning' : 'border-line focus:border-ink',
     className ?? '',
@@ -44,7 +53,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, Props>(function Textarea
     .join(' ');
 
   return (
-    <div className={fullWidth ? 'w-full' : 'inline-block'}>
+    <div
+      className={fullWidth ? 'w-full' : 'inline-block'}
+      data-ds-primitive="Textarea"
+    >
       {label ? (
         <Label htmlFor={inputId} required={required} className="mb-1.5">
           {label}

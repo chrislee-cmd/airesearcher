@@ -158,6 +158,16 @@ export const LIMITS = {
   // Public anonymous endpoints (scheduler booking page, translate
   // viewer). Higher cap because legitimate viewers poll.
   public: { limit: 30, window: '1 m' as Window },
+  // Share-viewer OTP send (anonymous). Requester-scoped so the throttle
+  // reflects the caller's own frequency, never invite status — the key is
+  // (ip:token), deliberately excluding email so enumeration stays hidden.
+  // Applied BEFORE the invite check and BEFORE Supabase's global email cap,
+  // so runaway resends are blocked here rather than silently swallowed by
+  // GoTrue (2026-07-09 incident). Minute cap allows an initial send plus a
+  // couple of email corrections; the per-IP hourly cap is a distributed
+  // backstop against enumeration sweeps across many tokens.
+  shareOtp: { limit: 3, window: '1 m' as Window },
+  shareOtpHourly: { limit: 20, window: '1 h' as Window },
   // Authenticated LLM calls per user-minute.
   llmPerUser: { limit: 30, window: '1 m' as Window },
   // Authenticated LLM calls per org-day. Catches a single org running

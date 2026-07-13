@@ -74,7 +74,10 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
     .join(' ');
 
   return (
-    <div className={fullWidth ? 'w-full' : 'inline-block'}>
+    <div
+      className={fullWidth ? 'w-full' : 'inline-block'}
+      data-ds-primitive="Select"
+    >
       {label ? (
         <Label htmlFor={selectId} required={required} className="mb-1.5">
           {label}

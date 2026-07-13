@@ -30,6 +30,10 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  // 슈퍼어드민 DS 인스펙터용 primitive 이름(카탈로그 label). 기본 'Button'.
+  // Button 을 자기 chrome 으로 재사용하는 상위 primitive(DownloadMenu/ShareMenu)가
+  // 자기 이름으로 덮어써 인스펙터에 정확한 primitive 를 노출한다.
+  dsPrimitive?: string;
 };
 
 // transition-all (not just transition-colors) so Memphis hover/active
@@ -109,6 +113,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     children,
     disabled,
     type = 'button',
+    dsPrimitive = 'Button',
     ...rest
   },
   ref,
@@ -140,6 +145,8 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       className={cls}
       data-canvas-action
       {...rest}
+      // 인스펙터 태그는 {...rest} 뒤 — consumer 가 실수로 덮지 못하게 항상 존재.
+      data-ds-primitive={dsPrimitive}
     >
       {leftIcon ? <span className="shrink-0">{leftIcon}</span> : null}
       <span>{loading && loadingLabel ? loadingLabel : children}</span>
