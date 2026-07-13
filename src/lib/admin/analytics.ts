@@ -166,16 +166,24 @@ const REASON_SEGMENTS: ReasonSegment[] = [
 // `statusColumn` overrides the default 'status' column when a table's
 // terminal lifecycle lives elsewhere (interview V2 advances index_status,
 // not the vestigial 'status' column — see below).
-const WIDGET_HEALTH_SOURCES: {
+//
+// `feature` is the error-observability key (docs/error-observability.md): the
+// widget job-fail sweep (src/lib/observability/widget-error-sweep.ts) reads
+// this same registry as SSOT and tags each error_event with it, so the two
+// surfaces (dashboard health + error_events) stay aligned by construction.
+export type WidgetHealthSource = {
   table: string;
   label: string;
+  feature: string;
   success: string[];
   fail: string[];
   statusColumn?: string;
-}[] = [
-  { table: 'desk_jobs', label: '데스크 리서치', success: ['done'], fail: ['error', 'cancelled'] },
-  { table: 'insights_jobs', label: '인사이트 분석기', success: ['ready'], fail: ['failed'] },
-  { table: 'transcript_jobs', label: '전사록', success: ['done'], fail: ['error'] },
+};
+
+export const WIDGET_HEALTH_SOURCES: WidgetHealthSource[] = [
+  { table: 'desk_jobs', label: '데스크 리서치', feature: 'desk', success: ['done'], fail: ['error', 'cancelled'] },
+  { table: 'insights_jobs', label: '인사이트 분석기', feature: 'insights', success: ['ready'], fail: ['failed'] },
+  { table: 'transcript_jobs', label: '전사록', feature: 'transcript', success: ['done'], fail: ['error'] },
   // OBS-4: interview V2 (use-interview-v2-upload → /interviews/index) drives
   // the batch lifecycle on `index_status` (pending/indexing/done/error) and
   // leaves the legacy `status` column stuck at 'queued' — so counting `status`
@@ -184,12 +192,13 @@ const WIDGET_HEALTH_SOURCES: {
   {
     table: 'interview_jobs',
     label: '인터뷰 결과',
+    feature: 'interview',
     success: ['done'],
     fail: ['error'],
     statusColumn: 'index_status',
   },
   // OBS-4: 'error' is new (migration 20260710155935). Was fail:[] → 노랑.
-  { table: 'translate_sessions', label: '동시통역', success: ['ended'], fail: ['error'] },
+  { table: 'translate_sessions', label: '동시통역', feature: 'translate', success: ['ended'], fail: ['error'] },
 ];
 
 type Db = ReturnType<typeof createAdminClient>;

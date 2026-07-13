@@ -5,6 +5,7 @@ import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
+import { logError } from '@/lib/observability/log-error';
 import { CREDIT_BUNDLES } from '@/lib/features';
 import {
   createLemonSqueezyCheckout,
@@ -247,6 +248,13 @@ export async function POST(request: Request) {
     console.error(
       `[billing/checkout] lemonsqueezy target missing currency=${currency} bundle=${bundleId}`,
     );
+    // 관측: 결제 레일 미설정(variant env 누락)은 사용자 결제를 막는 config 사고.
+    await logError({
+      feature: 'billing',
+      code: 'pack_checkout_503',
+      message: `lemonsqueezy target missing (currency=${currency} bundle=${bundleId})`,
+      context: { currency, bundle: bundleId, org_id: org.org_id },
+    });
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
@@ -300,6 +308,13 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     await admin.from('payments').update({ status: 'failed' }).eq('id', payment.id);
+    // 관측: 카드 체크아웃 생성 실패(LS API 오류/네트워크) — 결제 시작 자체가 깨짐.
+    await logError({
+      feature: 'billing',
+      code: 'pack_checkout_failed',
+      message: (err as Error)?.message ?? 'lemonsqueezy_error',
+      context: { payment_id: payment.id, org_id: org.org_id, currency, bundle: bundleId },
+    });
     return NextResponse.json(
       { error: (err as Error).message ?? 'lemonsqueezy_error' },
       { status: 500 },

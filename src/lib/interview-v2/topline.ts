@@ -22,6 +22,7 @@ import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { hashString } from '@/lib/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logError } from '@/lib/observability/log-error';
 import {
   buildToplineSystem,
   TOPLINE_REDUCE_NOTICE,
@@ -1355,6 +1356,13 @@ export async function runTopline(
     } catch {
       // ignore — best-effort failure marker.
     }
+    // 중앙 관측: 탑라인 생성 실패 — 기존 status='error'/error_message 기록과 병행.
+    await logError({
+      feature: 'interview',
+      code: 'topline_failed',
+      message: msg,
+      context: { topline_id: toplineId, project_id: projectId, org_id: orgId },
+    });
   }
 }
 

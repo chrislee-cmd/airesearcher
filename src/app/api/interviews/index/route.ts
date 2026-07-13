@@ -8,6 +8,7 @@ import { hashString } from '@/lib/cache';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
 import { maybeKickTopline } from '@/lib/interview-v2/topline';
+import { logError } from '@/lib/observability/log-error';
 
 // PR-1 — background corpus indexing for interview jobs.
 //
@@ -272,6 +273,13 @@ export async function POST(req: Request) {
     } catch {
       // ignore
     }
+    // 중앙 관측: 기존 index_status/error_message 기록과 병행 적재(회귀 0).
+    await logError({
+      feature: 'interview',
+      code: 'index_failed',
+      message: msg,
+      context: { interview_job_id, org_id: org.org_id },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
