@@ -28,6 +28,20 @@ const SYSTEM = `당신은 인터뷰 텍스트를 깔끔한 Markdown 인터뷰 �
 - 원문 의미를 임의로 요약하지 말고, 단순한 잡음(기침, 의미없는 추임새, "음", "어")만 제거합니다.
 - 출력은 순수한 Markdown 텍스트만, 코드펜스/추가 설명 없이.${ISOLATION_NOTICE}`;
 
+// Structured, greppable failure log. Every non-200 convert exit passes through
+// here so Vercel logs can be filtered by `[interviews/convert] fail` and the
+// reason/stage grouped — rate_limited (starvation), unsupported, no_text,
+// extract failures, etc. The client aggregates the same reasons into the job's
+// error_message; this is the log-side half of the same observability.
+function logConvertFail(info: {
+  name: string;
+  stage: string;
+  reason: string;
+  status: number;
+}): void {
+  console.error('[interviews/convert] fail', info);
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -53,6 +67,7 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get('file');
   if (!(file instanceof File)) {
+    logConvertFail({ name: 'unknown', stage: 'validate', reason: 'no_file', status: 400 });
     return NextResponse.json({ error: 'no_file' }, { status: 400 });
   }
   // Optional active project id from the client. Used so the resulting
@@ -64,9 +79,11 @@ export async function POST(request: Request) {
       ? projectIdRaw
       : null;
   if (file.size > MAX_BYTES) {
+    logConvertFail({ name: file.name, stage: 'validate', reason: 'file_too_large', status: 413 });
     return NextResponse.json({ error: 'file_too_large' }, { status: 413 });
   }
   if (file.size === 0) {
+    logConvertFail({ name: file.name, stage: 'validate', reason: 'empty_file', status: 400 });
     return NextResponse.json({ error: 'empty_file' }, { status: 400 });
   }
 
@@ -80,6 +97,7 @@ export async function POST(request: Request) {
     !status.isTrialActive &&
     status.balance < FEATURE_COSTS.quotes
   ) {
+    logConvertFail({ name: file.name, stage: 'preflight', reason: 'insufficient', status: 402 });
     return NextResponse.json({ error: 'insufficient' }, { status: 402 });
   }
 
@@ -122,7 +140,10 @@ export async function POST(request: Request) {
       stage = 'transcribe';
       // Real LLM work (OpenAI transcription) — apply the LLM rate limit here.
       const limited = await checkLlmRateLimit(user.id, org.org_id);
-      if (limited) return limited;
+      if (limited) {
+        logConvertFail({ name: file.name, stage, reason: 'rate_limited', status: 429 });
+        return limited;
+      }
       // Re-wrap the buffered bytes since we already consumed file.arrayBuffer()
       // for hashing — the original File instance is still usable but reading
       // its body twice would re-stream. Build a fresh File from the buffer.
@@ -136,6 +157,7 @@ export async function POST(request: Request) {
       });
       rawText = typeof tx === 'string' ? tx : (tx as { text?: string }).text ?? '';
     } else if (kind === 'unsupported') {
+      logConvertFail({ name: file.name, stage: 'classify', reason: 'unsupported_file_type', status: 415 });
       return NextResponse.json(
         { error: 'unsupported_file_type', mime: file.type, name: file.name },
         { status: 415 },
@@ -150,6 +172,7 @@ export async function POST(request: Request) {
       rawText = await extractDocText(docFile);
     }
     if (!rawText.trim()) {
+      logConvertFail({ name: file.name, stage, reason: 'no_text_extracted', status: 422 });
       return NextResponse.json(
         { error: 'no_text_extracted', stage, name: file.name },
         { status: 422 },
@@ -157,7 +180,7 @@ export async function POST(request: Request) {
     }
   } catch (e) {
     const err = e instanceof Error ? e : new Error('extraction_failed');
-    console.error('[interviews/convert] stage=%s name=%s', stage, file.name, err);
+    logConvertFail({ name: file.name, stage, reason: err.message, status: 502 });
     return NextResponse.json(
       { error: err.message, stage, name: file.name, mime: file.type },
       { status: 502 },
@@ -197,7 +220,10 @@ export async function POST(request: Request) {
       // No DB writes have happened yet, so returning 429 is clean and the
       // client's retry-after backoff drains it.
       const limited = await checkLlmRateLimit(user.id, org.org_id);
-      if (limited) return limited;
+      if (limited) {
+        logConvertFail({ name: file.name, stage: 'format', reason: 'rate_limited', status: 429 });
+        return limited;
+      }
       try {
         const anthropic = createAnthropic({ apiKey: anthropicKey });
         const rawTextSan = await sanitizeUserInput(rawText, 'raw_transcript', {
@@ -244,12 +270,14 @@ export async function POST(request: Request) {
     .single();
 
   if (insertErr || !gen) {
+    logConvertFail({ name: file.name, stage: 'persist', reason: insertErr?.message ?? 'db_error', status: 500 });
     return NextResponse.json({ error: insertErr?.message ?? 'db_error' }, { status: 500 });
   }
 
   const spend = await spendCredits(org.org_id, 'quotes', gen.id);
   if (!spend.ok) {
     await supabase.from('generations').delete().eq('id', gen.id);
+    logConvertFail({ name: file.name, stage: 'spend', reason: spend.reason, status: 402 });
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }
 
