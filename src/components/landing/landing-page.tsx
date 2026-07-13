@@ -6,7 +6,21 @@ import { FeatureGrid } from './feature-grid';
 import { WorkflowSection } from './workflow-section';
 import { SecuritySection } from './security-section';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
+import { CREDIT_BUNDLES, type CreditBundleId } from '@/lib/features';
 import './landing.css';
+
+// 랜딩 가격 카드 → CREDIT_BUNDLES 파생 (드리프트 차단). 카피는 messages 에
+// 두되 ₩ 숫자·크레딧 수·단가는 이 상수에서 주입한다 — messages 에 가격을
+// 하드코딩하지 않으므로 A1 리프라이스가 랜딩에 자동 반영된다.
+const krw = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
+const landingBundle = (id: CreditBundleId) => {
+  const b = CREDIT_BUNDLES.find((x) => x.id === id)!;
+  return {
+    price: krw(b.priceKrw ?? 0),
+    credits: krw(b.credits),
+    perCredit: krw(b.perCreditKrw ?? 0),
+  };
+};
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -31,6 +45,12 @@ export async function LandingPage({ locale }: { locale: string }) {
 
   const ctaStart = '/login?next=/canvas';
   const ctaCredits = '/login?next=/credits';
+
+  // 가격 카드별 팩 매핑 — mini/starter/plus 3팩을 랜딩 티저로 노출.
+  // enterprise 는 견적(상수 파생 없음).
+  const priceStarter = landingBundle('mini');
+  const priceTeam = landingBundle('starter');
+  const priceStudio = landingBundle('plus');
 
   const heroLabels = {
     tagline: t('hero.tagline'),
@@ -156,7 +176,7 @@ export async function LandingPage({ locale }: { locale: string }) {
             <div className="price">
               <span className="meta">{t('pricing.tiers.starter.meta')}</span>
               <h4>{t('pricing.tiers.starter.name')}</h4>
-              <div className="num">{t('pricing.tiers.starter.price')}<small>{t('pricing.tiers.starter.priceNote')}</small></div>
+              <div className="num">{t('pricing.tiers.starter.price', { price: priceStarter.price })}<small>{t('pricing.tiers.starter.priceNote', { credits: priceStarter.credits, perCredit: priceStarter.perCredit })}</small></div>
               <ul>
                 <li>{t('pricing.tiers.starter.f1')}</li>
                 <li>{t('pricing.tiers.starter.f2')}</li>
@@ -169,7 +189,7 @@ export async function LandingPage({ locale }: { locale: string }) {
               <span className="badge">{t('pricing.tiers.team.badge')}</span>
               <span className="meta">{t('pricing.tiers.team.meta')}</span>
               <h4>{t('pricing.tiers.team.name')}</h4>
-              <div className="num">{t('pricing.tiers.team.price')}<small>{t('pricing.tiers.team.priceNote')}</small></div>
+              <div className="num">{t('pricing.tiers.team.price', { price: priceTeam.price })}<small>{t('pricing.tiers.team.priceNote', { credits: priceTeam.credits, perCredit: priceTeam.perCredit })}</small></div>
               <ul>
                 <li>{t('pricing.tiers.team.f1')}</li>
                 <li>{t('pricing.tiers.team.f2')}</li>
@@ -181,7 +201,7 @@ export async function LandingPage({ locale }: { locale: string }) {
             <div className="price">
               <span className="meta">{t('pricing.tiers.studio.meta')}</span>
               <h4>{t('pricing.tiers.studio.name')}</h4>
-              <div className="num">{t('pricing.tiers.studio.price')}<small>{t('pricing.tiers.studio.priceNote')}</small></div>
+              <div className="num">{t('pricing.tiers.studio.price', { price: priceStudio.price })}<small>{t('pricing.tiers.studio.priceNote', { credits: priceStudio.credits, perCredit: priceStudio.perCredit })}</small></div>
               <ul>
                 <li>{t('pricing.tiers.studio.f1')}</li>
                 <li>{t('pricing.tiers.studio.f2')}</li>
