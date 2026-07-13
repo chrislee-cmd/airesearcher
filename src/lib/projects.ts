@@ -79,7 +79,7 @@ export async function getProjectArtifacts(
       .select('id, name, attendees, updated_at, created_at')
       .eq('org_id', orgId).eq('project_id', projectId),
     supabase.from('recruiting_forms')
-      .select('id, title, created_at')
+      .select('form_id, title, created_at')
       .eq('org_id', orgId).eq('project_id', projectId),
     supabase.from('generations')
       .select('id, feature, created_at')
@@ -139,7 +139,7 @@ export async function getProjectArtifacts(
   for (const r of recruiting ?? []) {
     out.push({
       feature: 'recruiting',
-      id: r.id as string,
+      id: r.form_id as string,
       title: (r.title as string | null) ?? 'Recruiting form',
       status: null,
       at: r.created_at as string,
