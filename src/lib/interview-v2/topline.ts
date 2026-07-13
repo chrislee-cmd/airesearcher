@@ -589,10 +589,10 @@ export async function upsertGenerating(
         project_id: projectId,
         content_hash: hash,
         // 이번 생성의 출력 언어 — 캐시 키의 일부. 미지정(undefined)이면 null 로
-        // 저장(레거시/자동 kick = 한국어 기본 취급).
+        // 저장(레거시/방향·언어 미지정 생성 = 한국어 기본 취급).
         output_lang: outputLang ?? null,
         // 이번 재생성의 사용자 방향 — 캐시 키의 일부. 빈 값/미지정이면 null
-        // (방향 없음). 자동 kick(maybeKickTopline)은 방향을 안 넘겨 항상 null.
+        // (방향 없음). 방향 없이 부르는 초기 생성은 항상 null.
         user_direction: userDirection?.trim() || null,
         // 생성 경로임을 명시 — 업로드(uploaded) 보고서를 재생성하면 이 upsert 를
         // 타므로 source 가 다시 'generated' 로 뒤집혀 마커가 정확히 유지된다.
@@ -1431,25 +1431,4 @@ export async function runTopline(
       context: { topline_id: toplineId, project_id: projectId, org_id: orgId },
     });
   }
-}
-
-/**
- * index 완료 auto-kick 용. 캐시 히트(해시 동일 & done)이거나 이미 생성 중이면
- * skip. 그 외에는 'generating' 마킹 후 runTopline 을 await 한다(after() 안에서
- * 실행되도록 호출측이 스케줄). chunk 가 아직 없으면 skip.
- */
-export async function maybeKickTopline(
-  admin: AdminClient,
-  opts: { orgId: string; projectId: string },
-): Promise<void> {
-  const { orgId, projectId } = opts;
-  const { hash, chunkCount } = await computeProjectCorpus(admin, orgId, projectId);
-  if (chunkCount === 0) return; // 인덱싱 전 — index 완료 시 재kick.
-
-  const existing = await getTopline(admin, projectId);
-  if (existing?.status === 'generating') return; // 이미 진행 중.
-  if (existing?.status === 'done' && existing.content_hash === hash) return; // 캐시 히트 → 비용 0.
-
-  const toplineId = await upsertGenerating(admin, { orgId, projectId, hash });
-  await runTopline(admin, { toplineId, orgId, projectId });
 }
