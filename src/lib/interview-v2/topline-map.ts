@@ -50,9 +50,24 @@ export type MapErrorClass = {
   label: string;
   // true 면 재시도/체인 지속이 무의미(크레딧/인증) — 즉시 error 로 종결.
   hardFault: boolean;
+  // true 면 일시 장애(429/529/5xx/타임아웃/네트워크) — 다음 홉/재시도로 회복 가능.
+  // false = 결정적 실패(재시도해도 동일 결과). no-progress 서킷브레이커(카드 #481)
+  // 가 "무진전 홉이 결정적 실패면 재kick 무의미 → 즉시 종결" 을 판정하는 축.
+  transient: boolean;
+  // true 면 구조화 출력 파싱/스키마 실패("No object generated"/스키마 불일치).
+  // 큰 문서의 context/출력 truncate 로 generateObject 가 유효 JSON 을 못 낸 경우.
+  // 매 홉 동일하게 실패해 map 을 영구 차단하므로(카드 #481), 시도 소진 후엔
+  // placeholder 로 마감해 커서를 전진시킨다.
+  parseFault: boolean;
   // provider 가 준 Retry-After(ms) — 있으면 백오프에 존중.
   retryAfterMs?: number;
 };
+
+// generateObject 파싱/스키마 실패 시그니처 — AI SDK 의 NoObjectGeneratedError /
+// TypeValidationError 는 statusCode 가 없어 메시지로 가른다. 이 패턴들은 재시도해도
+// (같은 입력이면) 동일하게 실패하는 결정적 오류라 placeholder 마감 대상이다.
+const PARSE_FAULT_RE =
+  /no object generated|could not parse|failed to parse|did not match schema|type validation|invalid json|response_format|schema/i;
 
 function parseRetryAfterMs(headers?: Record<string, string>): number | undefined {
   if (!headers) return undefined;
@@ -87,7 +102,12 @@ export function classifyMapError(e: unknown): MapErrorClass {
     status === 402 ||
     /credit|billing|insufficient|payment|quota|balance/.test(msg)
   ) {
-    return { label: 'Anthropic 크레딧/결제 소진(402)', hardFault: true };
+    return {
+      label: 'Anthropic 크레딧/결제 소진(402)',
+      hardFault: true,
+      transient: false,
+      parseFault: false,
+    };
   }
   // 인증 — 401/403 또는 api key/authentication.
   if (
@@ -95,28 +115,60 @@ export function classifyMapError(e: unknown): MapErrorClass {
     status === 403 ||
     /\bapi key\b|authentication|unauthor|permission/.test(msg)
   ) {
-    return { label: 'Anthropic 인증 실패(401/403)', hardFault: true };
+    return {
+      label: 'Anthropic 인증 실패(401/403)',
+      hardFault: true,
+      transient: false,
+      parseFault: false,
+    };
   }
   // rate limit / overloaded — 429/529.
   if (status === 429 || status === 529 || /rate limit|overloaded|too many/.test(msg)) {
     return {
       label: `Anthropic ${status ?? '429'} rate-limit/overloaded`,
       hardFault: false,
+      transient: true,
+      parseFault: false,
       retryAfterMs,
     };
   }
   // 서버측 일시 오류.
   if (status && status >= 500) {
-    return { label: `provider ${status}`, hardFault: false, retryAfterMs };
+    return {
+      label: `provider ${status}`,
+      hardFault: false,
+      transient: true,
+      parseFault: false,
+      retryAfterMs,
+    };
   }
   // 타임아웃 / 네트워크.
   if (/timeout|aborted|network|fetch failed|econn|socket/.test(msg)) {
-    return { label: 'map 호출 타임아웃/네트워크', hardFault: false };
+    return {
+      label: 'map 호출 타임아웃/네트워크',
+      hardFault: false,
+      transient: true,
+      parseFault: false,
+    };
   }
-  // 스키마/기타 — 재시도 가치는 낮지만 일시일 수 있어 soft.
+  // 파싱/스키마 실패 — 구조화 출력이 유효 JSON 이 아님(NoObjectGeneratedError 등).
+  // 결정적(재시도 무의미)이라 transient=false. 시도 소진 후 placeholder 로 마감해
+  // map 을 전진시킨다(카드 #481 — map 영구 차단의 root cause).
+  if (PARSE_FAULT_RE.test(msg)) {
+    return {
+      label: err?.message ? err.message.slice(0, 120) : 'map 구조화 출력 파싱 실패',
+      hardFault: false,
+      transient: false,
+      parseFault: true,
+    };
+  }
+  // 그 외 — 재시도 가치는 낮은 결정적 오류(4xx 등). transient=false 로 두어
+  // no-progress breaker 가 무의미한 재kick 을 조기 종결하게 한다.
   return {
     label: err?.message ? err.message.slice(0, 120) : 'map 호출 실패',
     hardFault: false,
+    transient: false,
+    parseFault: false,
     retryAfterMs,
   };
 }
@@ -154,6 +206,12 @@ export const docExtractSchema = z.object({
       }),
     )
     .default([]),
+  // 이 추출이 map 실패로 placeholder 마감된 것인지(카드 #481). 파싱실패 doc 을
+  // 무한 재시도하지 않으려 시도 소진 후 빈 추출 + failed:true 로 캐시에 영속해
+  // 커서를 전진시킨다. reduce 입력 재구성 시 ⚠️ "추출 실패" 로 표기된다. LLM 은
+  // 이 필드를 채우지 않으며(프롬프트 무관), placeholder write 만 세팅한다.
+  // optional 이라 기존 캐시 row(필드 없음)와 하위 호환 — jsonb 라 마이그 불필요.
+  failed: z.boolean().optional(),
 });
 
 export type DocExtract = z.infer<typeof docExtractSchema>;
@@ -184,14 +242,18 @@ const MAP_SYSTEM = `당신은 정성 인터뷰 **한 명의 응답자 전사록 
 // 느림/실패를 막는다. 첫 청크는 홀로 상한을 넘어도 반드시 포함(빈 입력 방지),
 // 이후 청크는 예산 안에서만. 생략된 청크는 통째로 빠지므로 남은 chunk_id 는
 // 여전히 유효하다.
-function formatDocEvidence(chunks: ToplineChunk[]): string {
+function formatDocEvidence(
+  chunks: ToplineChunk[],
+  inputCharCap: number = MAX_MAP_INPUT_CHARS,
+): string {
+  const cap = Math.max(1, inputCharCap);
   const parts: string[] = [];
   let used = 0;
   let omitted = 0;
   for (let i = 0; i < chunks.length; i++) {
     const c = chunks[i];
     const block = `[${c.chunk_id}]\n` + '```\n' + c.content + '\n```';
-    if (parts.length > 0 && used + block.length > MAX_MAP_INPUT_CHARS) {
+    if (parts.length > 0 && used + block.length > cap) {
       omitted = chunks.length - i;
       break;
     }
@@ -212,11 +274,14 @@ function formatDocEvidence(chunks: ToplineChunk[]): string {
 export async function mapDocument(
   anthropic: Anthropic,
   doc: { document_id: string; filename: string; chunks: ToplineChunk[] },
+  // 입력 문자 상한 override — 파싱실패 재시도 시 더 작은 캡으로 재호출해
+  // context/출력 truncate 로 인한 파싱실패를 줄인다(카드 #481). 미지정 시 기본 캡.
+  opts?: { inputCharCap?: number },
 ): Promise<DocExtractWithMeta> {
   const { object } = await generateObject({
     model: anthropic(TOPLINE_MAP_MODEL),
     schema: docExtractSchema,
-    system: `${MAP_SYSTEM}\n\n## 근거 청크 (응답자: ${doc.filename})\n${formatDocEvidence(doc.chunks)}`,
+    system: `${MAP_SYSTEM}\n\n## 근거 청크 (응답자: ${doc.filename})\n${formatDocEvidence(doc.chunks, opts?.inputCharCap)}`,
     prompt:
       '위 응답자 전사록에서 탑라인 종합에 쓸 themes 와 대표 quotes 를 빠짐없이 구조화 추출하세요. 근거 청크에 실제로 있는 내용만, 각 항목에 chunk_id 를 답니다.',
     temperature: 0.2,
