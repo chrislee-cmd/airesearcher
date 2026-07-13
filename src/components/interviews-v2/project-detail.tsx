@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import type { ToplineStatus } from '@/lib/interview-v2/types';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -158,6 +159,27 @@ export function ProjectDetail({
   // false — 상단 밴드는 일반 "생성 중" 문구만 그린다.
   const inMap = generating && mapT > 0 && mapD < mapT;
   const inReduce = generating && mapT > 0 && mapD >= mapT;
+
+  // 탑라인 생성이 방금 끝난 순간(generating → done) 좌측 파일 패널을 1회 자동
+  // 접는다 — 완성된 보고서가 우측을 채우면 파일 목록은 배경으로 물러나게 해
+  // 읽기 공간을 넓힌다. edge 전이에서만 fire 하므로 (a) 이후 사용자가 수동으로
+  // 펼치면 존중되고(다시 안 접힘), (b) 이미 done 인 프로젝트를 열거나 리마운트할
+  // 때는 전이가 없어 no-op — 사용자의 저장된 collapse 선호를 튀게 하지 않는다.
+  // error 종점은 "완료"가 아니라 제외. 이미 접혔거나 파일 0개면 아무 것도 안 함.
+  const prevToplineStatusRef = useRef<ToplineStatus | null>(null);
+  useEffect(() => {
+    const prev = prevToplineStatusRef.current;
+    prevToplineStatusRef.current = toplineStatus;
+    if (
+      prev === 'generating' &&
+      toplineStatus === 'done' &&
+      !collapsed &&
+      documents.length > 0
+    ) {
+      setCollapsed(true);
+      window.localStorage.setItem(FILE_PANEL_COLLAPSED_KEY, '1');
+    }
+  }, [toplineStatus, collapsed, documents.length]);
   // frontier 하이라이트는 인덱싱 완료(=map 대상) 문서에만. 백엔드 map 은
   // concurrent(6×)라 정확히 "이 파일 1개"가 아니지만, map_done 카운터를 그리드
   // 위치에 투영해 진행이 위→아래로 흐르는 걸 보인다(집계 진행 시각화). 그리드
