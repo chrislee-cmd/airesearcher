@@ -21,6 +21,7 @@ import {
 } from './topline-view';
 import { FileCard } from './file-card';
 import { UploadModal } from './upload-modal';
+import { CrossProjectPicker } from './cross-project-picker';
 
 // 우측 패널 2탭 — 탑라인 보고서(default) / 자유 검색. 사용자 결정 #1.
 type RightTab = 'topline' | 'search';
@@ -112,14 +113,21 @@ const FILE_PANEL_COLLAPSED_KEY = 'interview-v2-file-panel-collapsed';
 export function ProjectDetail({
   projectId,
   onBack,
+  onOpenCrossSearch,
 }: {
   projectId: string;
   onBack: () => void;
+  // Opt-in multi-project search from inside a single project's detail. When
+  // provided, a "🌐 전체 검색" affordance opens the CrossProjectPicker and hands
+  // the picked ids up to the fullview (which switches to the cross-search view,
+  // reusing the done cross-search backend). Omitted → the affordance is hidden.
+  onOpenCrossSearch?: (projectIds: string[]) => void;
 }) {
   const t = useTranslations('InterviewsV2');
   const { projects } = useInterviewV2Projects();
   const { documents, isLoading, mutate } = useInterviewV2Documents(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   // Left panel collapse. SSR default = expanded so server/client markup
   // match; the stored choice is restored post-hydration and written on
   // every toggle. Mirrors the localStorage-after-hydration pattern in
@@ -228,6 +236,20 @@ export function ProjectDetail({
             </span>
           )}
         </div>
+        {/* 멀티셀렉트 크로스 검색 진입 — 단일 프로젝트 상세에서도 여러 프로젝트를
+            골라 함께 검색(기존 CrossProjectPicker + 크로스검색 백엔드 재사용).
+            fullview 가 콜백을 주입할 때만 노출. */}
+        {onOpenCrossSearch && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto shrink-0"
+            onClick={() => setPickerOpen(true)}
+            leftIcon={<span aria-hidden>🌐</span>}
+          >
+            {t('crossSearch')}
+          </Button>
+        )}
       </div>
 
       {/* 본문 — 좌(파일 list, collapsible) + 우(검색 chat). 접힘 시 좌측은
@@ -397,6 +419,15 @@ export function ProjectDetail({
         existingFilenames={documents.map((d) => d.filename)}
         onUploaded={() => void mutate()}
       />
+
+      {/* Mount only while open so the selection resets on every reopen. */}
+      {pickerOpen && onOpenCrossSearch && (
+        <CrossProjectPicker
+          open
+          onClose={() => setPickerOpen(false)}
+          onConfirm={onOpenCrossSearch}
+        />
+      )}
     </div>
   );
 }

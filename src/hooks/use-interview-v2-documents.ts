@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useInterviewUploadSignal } from '@/components/interview-upload-provider';
 
 // Interview V2 — client hook over
 // /api/interviews/v2/projects/[id]/documents. Same plain-fetch shape as
@@ -81,6 +82,20 @@ export function useInterviewV2Documents(projectId: string | null) {
     const t = setInterval(() => void load({ silent: true }), 2000);
     return () => clearInterval(t);
   }, [projectId, hasIndexing, load]);
+
+  // Background uploads now run in InterviewUploadProvider (outside this
+  // component), so a batch adding NEW documents to this project wouldn't be
+  // reflected here on its own. The provider bumps a per-project signal on every
+  // batch transition + completion; refetch (silently) whenever it changes so
+  // freshly-indexing rows appear and the hasIndexing poll above then takes over
+  // the chunk-level progress. First render is skipped (initial load owns it).
+  const uploadSignal = useInterviewUploadSignal(projectId);
+  const prevSignalRef = useRef(uploadSignal);
+  useEffect(() => {
+    if (prevSignalRef.current === uploadSignal) return;
+    prevSignalRef.current = uploadSignal;
+    void load({ silent: true });
+  }, [uploadSignal, load]);
 
   return { documents, error, isLoading, mutate };
 }

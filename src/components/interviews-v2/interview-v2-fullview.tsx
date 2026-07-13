@@ -79,6 +79,9 @@ export function InterviewV2Fullview({
         <ProjectDetail
           projectId={view.id}
           onBack={() => setView({ kind: 'list' })}
+          onOpenCrossSearch={(projectIds) =>
+            setView({ kind: 'cross', projectIds })
+          }
         />
       ) : view.kind === 'cross' ? (
         <CrossSearch
