@@ -73,8 +73,19 @@ export async function searchInterviewV2Keyword(opts: {
   projectIds?: string[] | null;
   query: string;
   k?: number;
+  // Single-document scope (file-detail search). Honored only on the
+  // single-project path; null/undefined ⇒ no document narrowing.
+  documentId?: string | null;
 }): Promise<InterviewV2Hit[]> {
-  const { client: db, orgId, projectId = null, projectIds, query, k = 12 } = opts;
+  const {
+    client: db,
+    orgId,
+    projectId = null,
+    projectIds,
+    query,
+    k = 12,
+    documentId = null,
+  } = opts;
   const terms = tokenizeQuery(query);
   if (terms.length === 0) return [];
 
@@ -94,6 +105,7 @@ export async function searchInterviewV2Keyword(opts: {
         p_project_id: projectId,
         p_terms: terms,
         match_count: k,
+        p_document_id: documentId,
       };
 
   const rpcRes = await db.rpc(rpcName, rpcArgs);

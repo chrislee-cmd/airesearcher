@@ -58,6 +58,11 @@ function toVectorLiteral(v: number[]): string {
  *                   [] ⇒ all projects (whole-org), [id...] ⇒ that set.
  * @param scoreThreshold  Cosine-similarity floor (default 0.7). Chunks
  *                   below this are dropped inside the RPC.
+ * @param documentId  Narrow to a single interview_documents.id — the
+ *                   single-file search scope. Only honored on the
+ *                   single-project path (a file always lives in one project);
+ *                   ignored when projectIds is given. null/undefined ⇒ no
+ *                   document narrowing (backward compat).
  */
 export async function searchInterviewV2Chunks(opts: {
   client: RpcClient;
@@ -67,6 +72,7 @@ export async function searchInterviewV2Chunks(opts: {
   query: string;
   k?: number;
   scoreThreshold?: number;
+  documentId?: string | null;
 }): Promise<InterviewV2Hit[]> {
   const {
     client: db,
@@ -76,6 +82,7 @@ export async function searchInterviewV2Chunks(opts: {
     query,
     k = 12,
     scoreThreshold = 0.7,
+    documentId = null,
   } = opts;
   if (!query.trim()) return [];
   if (!env.OPENAI_API_KEY) {
@@ -113,6 +120,7 @@ export async function searchInterviewV2Chunks(opts: {
         p_project_id: projectId,
         match_count: k,
         score_threshold: scoreThreshold,
+        p_document_id: documentId,
       };
 
   const rpcRes = await db.rpc(rpcName, rpcArgs);

@@ -43,22 +43,29 @@ function readCitationsHeader(res: Response): Citation[] {
   }
 }
 
-function Intro({ cross }: { cross: boolean }) {
+function Intro({ cross, file }: { cross: boolean; file: boolean }) {
   const t = useTranslations('InterviewsV2');
   const examples = [
     t('searchExample1'),
     t('searchExample2'),
     t('searchExample3'),
   ];
+  // Precedence: single-file scope is the narrowest, so it wins over cross.
+  const titleKey = file
+    ? 'fileIntroTitle'
+    : cross
+      ? 'crossIntroTitle'
+      : 'searchIntroTitle';
+  const hintKey = file
+    ? 'fileIntroHint'
+    : cross
+      ? 'crossIntroHint'
+      : 'searchIntroHint';
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="max-w-[420px]">
-        <h3 className="text-lg font-semibold text-ink-2">
-          {t(cross ? 'crossIntroTitle' : 'searchIntroTitle')}
-        </h3>
-        <p className="mt-2 text-md text-mute">
-          {t(cross ? 'crossIntroHint' : 'searchIntroHint')}
-        </p>
+        <h3 className="text-lg font-semibold text-ink-2">{t(titleKey)}</h3>
+        <p className="mt-2 text-md text-mute">{t(hintKey)}</p>
         <ul className="mt-3 space-y-1.5 text-md italic text-mute-soft">
           {examples.map((q) => (
             <li key={q}>· {q}</li>
@@ -72,10 +79,17 @@ function Intro({ cross }: { cross: boolean }) {
 export function SearchChat({
   projectIds,
   currentProject,
+  documentId,
+  documentName,
   onSearchStart,
 }: {
   projectIds: string[] | null;
   currentProject?: CurrentProject;
+  // Single-file search scope (file-detail card). When set, retrieval is
+  // narrowed to this one document — the narrowest scope, taking precedence
+  // over projectIds. documentName drives the "이 파일에서 검색" label.
+  documentId?: string;
+  documentName?: string;
   // Fired the moment a query is submitted — lets the file list run its
   // per-search "reading" sweep. Optional so other callers are unaffected.
   onSearchStart?: () => void;
@@ -86,13 +100,16 @@ export function SearchChat({
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Single-file scope is the narrowest and wins over the project scope.
+  const file = !!documentId;
   // cross = the query spans more than a single project (either an explicit
   // pick set or the whole org). null ⇒ single-project (detail) chat.
-  const cross = projectIds !== null;
+  const cross = !file && projectIds !== null;
 
   // Read-only scope summary for the header.
-  const scopeLabel =
-    projectIds === null
+  const scopeLabel = file
+    ? t('scopeCurrentFile', { name: documentName ?? '' })
+    : projectIds === null
       ? t('scopeCurrentProject', { name: currentProject?.name ?? '' })
       : projectIds.length === 0
         ? t('scopeAll')
@@ -107,10 +124,12 @@ export function SearchChat({
     async (question: string) => {
       if (busy) return;
       onSearchStart?.();
-      // Analytics — 검색 실행 계측. scope: 단일 프로젝트(null) → 'single',
-      // 전체 org([]) → 'cross', 선택 집합([id,…]) → 'multi'.
-      const scope =
-        projectIds === null
+      // Analytics — 검색 실행 계측. scope: 단일 파일(documentId) → 'file',
+      // 단일 프로젝트(null) → 'single', 전체 org([]) → 'cross', 선택
+      // 집합([id,…]) → 'multi'.
+      const scope = file
+        ? 'file'
+        : projectIds === null
           ? 'single'
           : projectIds.length === 0
             ? 'cross'
@@ -141,6 +160,9 @@ export function SearchChat({
           // key that matches the active scope.
           body: JSON.stringify({
             question,
+            // Single-file scope sends document_id (+ the owning project_id so
+            // the audit row is attributed) and supersedes the project scope.
+            ...(documentId ? { document_id: documentId } : {}),
             ...(projectIds === null
               ? currentProject
                 ? { project_id: currentProject.id }
@@ -238,7 +260,7 @@ export function SearchChat({
         setBusy(false);
       }
     },
-    [busy, projectIds, currentProject, t, onSearchStart],
+    [busy, projectIds, currentProject, documentId, file, t, onSearchStart],
   );
 
   const empty = history.length === 0 && !pending;
@@ -255,7 +277,7 @@ export function SearchChat({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         {empty ? (
-          <Intro cross={cross} />
+          <Intro cross={cross} file={file} />
         ) : (
           <div className="space-y-6">
             {history.map((h, i) => (
@@ -267,7 +289,11 @@ export function SearchChat({
         <div ref={scrollRef} />
       </div>
       <div className="shrink-0 border-t border-line-soft px-4 py-3">
-        <QuestionInput onSubmit={submit} disabled={busy} />
+        <QuestionInput
+          onSubmit={submit}
+          disabled={busy}
+          placeholder={file ? t('fileSearchPlaceholder') : undefined}
+        />
       </div>
     </div>
   );
