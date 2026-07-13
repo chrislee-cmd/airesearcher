@@ -162,6 +162,33 @@ export async function fetchLemonSqueezySubscription(
   };
 }
 
+// Fetch the Lemon Squeezy customer-portal signed URL for a subscription.
+// This is the self-service page where the customer can update payment
+// method, change plan, or cancel — we delegate 관리/취소 to it instead of
+// building our own cancel UI (최소 스코프; 자체 취소 API 는 후속 PR). Any
+// failure (missing key, network, revoked sub) resolves to null so the
+// caller can degrade gracefully to a support-contact fallback.
+export async function fetchLemonSqueezyCustomerPortalUrl(
+  apiKey: string,
+  subscriptionId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${LS_API_BASE}/subscriptions/${subscriptionId}`, {
+      headers: {
+        Accept: 'application/vnd.api+json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json().catch(() => null)) as
+      | { data?: { attributes?: { urls?: { customer_portal?: string | null } } } }
+      | null;
+    return json?.data?.attributes?.urls?.customer_portal ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Billing-period key for idempotent grants: the date portion of `renews_at`
 // ('YYYY-MM-DD'). Monthly renewal → each period ends on a distinct date, and
 // truncating to the day absorbs sub-second format drift between the webhook

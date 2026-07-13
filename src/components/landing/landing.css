@@ -965,6 +965,12 @@
 /* ─── Pricing (Memphis cards) ──────────────────────────────── */
 .landing-root .pricing { padding: 80px 0; background: var(--paper); border-bottom: var(--mem-border); }
 .landing-root .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
+/* 구독 그리드는 카드 3장 — 4열 그리드에 3장을 넣으면 각 카드가 1/4 폭으로
+   좁아져 ₩30,000/월 이 2줄로 깨진다. 전용 3열 + max-width 중앙 정렬로 카드를
+   넓혀 가격을 한 줄에 고정. 태블릿/모바일은 아래 media query 의 2열/1열이 그대로 적용. */
+.landing-root .sub-price-grid { grid-template-columns: repeat(3, 1fr); max-width: 940px; margin-left: auto; margin-right: auto; }
+.landing-root .sub-price-grid .num { white-space: nowrap; }
+.landing-root .sub-price-grid .num small { white-space: normal; }
 .landing-root .price {
   padding: 26px 24px;
   border-radius: var(--mem-radius);

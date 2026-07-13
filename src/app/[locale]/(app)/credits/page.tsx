@@ -1,14 +1,20 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { getCurrentUser } from '@/lib/supabase/user';
+import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits, getCreditsStatus } from '@/lib/credits';
+import { env } from '@/env';
 import { CreditsBundles } from '@/components/credits-bundles';
 import { CreditsUsagePredictor } from '@/components/credits-usage-predictor';
 import { CreditsStatusBanner } from '@/components/credits-status-banner';
+import { CreditsPurchaseTabs } from '@/components/credits-purchase-tabs';
+import { SubscriptionPlans } from '@/components/subscription-plans';
+import type { SubscriptionTierId } from '@/lib/features';
 import {
   availableLemonSqueezyCurrencies,
   determineCurrency,
+  fetchLemonSqueezyCustomerPortalUrl,
 } from '@/lib/billing';
 
 // PR-D17 — pop 톤. 노랑 Memphis hero 카드 (3px border + 6px offset shadow)
@@ -20,7 +26,7 @@ export default async function CreditsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; payment_id?: string }>;
+  searchParams: Promise<{ status?: string; payment_id?: string; tier?: string }>;
 }) {
   const [{ locale }, sp] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
@@ -44,8 +50,52 @@ export default async function CreditsPage({
       : null;
 
   const rawStatus = sp.status;
-  const status: 'success' | 'cancelled' | null =
-    rawStatus === 'success' ? 'success' : rawStatus === 'cancelled' ? 'cancelled' : null;
+  // `subscribed` = returned from the LS subscription checkout redirect. It
+  // maps to a success banner with a subscription-specific message.
+  const status: 'success' | 'cancelled' | 'subscribed' | null =
+    rawStatus === 'success'
+      ? 'success'
+      : rawStatus === 'subscribed'
+      ? 'subscribed'
+      : rawStatus === 'cancelled'
+      ? 'cancelled'
+      : null;
+
+  // 구독 상태 (organizations 구독 컬럼, 마이그 20260713154738). 무구독이면
+  // 전 티어가 "구독하기" CTA. 활성 구독이면 현재플랜/갱신일 + 관리 링크.
+  let currentTier: SubscriptionTierId | null = null;
+  let currentStatus: string | null = null;
+  let currentPeriodEnd: string | null = null;
+  let managePortalUrl: string | null = null;
+  if (org) {
+    const supabase = await createClient();
+    const { data: subRow } = await supabase
+      .from('organizations')
+      .select('subscription_tier, subscription_status, ls_subscription_id, current_period_end')
+      .eq('id', org.org_id)
+      .single();
+    currentTier = (subRow?.subscription_tier as SubscriptionTierId | null) ?? null;
+    currentStatus = (subRow?.subscription_status as string | null) ?? null;
+    currentPeriodEnd = (subRow?.current_period_end as string | null) ?? null;
+    // Resolve the LS self-service portal URL only when a live sub exists —
+    // one external call, wrapped so any failure degrades to a mailto fallback.
+    const subId = (subRow?.ls_subscription_id as string | null) ?? null;
+    if (subId && env.LEMONSQUEEZY_API_KEY) {
+      managePortalUrl = await fetchLemonSqueezyCustomerPortalUrl(
+        env.LEMONSQUEEZY_API_KEY,
+        subId,
+      );
+    }
+  }
+
+  // Default the purchase view to the subscription tab when the user just
+  // subscribed or already holds a plan; otherwise lead with one-time packs.
+  const hasLiveSub =
+    currentTier != null &&
+    currentStatus != null &&
+    ['active', 'on_trial', 'cancelled', 'past_due'].includes(currentStatus);
+  const defaultTab: 'packs' | 'subscription' =
+    status === 'subscribed' || hasLiveSub ? 'subscription' : 'packs';
 
   // Dual-payout — pick the rail server-side (locale + Vercel geo header)
   // so the toggle defaults to the user's expected currency on first paint.
@@ -143,9 +193,25 @@ export default async function CreditsPage({
 
       {status && <div className="mt-5"><CreditsStatusBanner status={status} /></div>}
 
-      <CreditsBundles
-        availableCurrencies={available}
-        initialCurrency={initialCurrency}
+      <CreditsPurchaseTabs
+        defaultTab={defaultTab}
+        packs={
+          <CreditsBundles
+            availableCurrencies={available}
+            initialCurrency={initialCurrency}
+          />
+        }
+        subscription={
+          <SubscriptionPlans
+            availableCurrencies={available}
+            initialCurrency={initialCurrency}
+            currentTier={currentTier}
+            currentStatus={currentStatus}
+            currentPeriodEnd={currentPeriodEnd}
+            managePortalUrl={managePortalUrl}
+            supportEmail={t('contactEmail')}
+          />
+        }
       />
 
       <CreditsUsagePredictor />
