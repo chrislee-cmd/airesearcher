@@ -802,6 +802,17 @@ async function kickResume(
   console.error(
     `${tag} resume kick exhausted ${attempts} attempts — chain may stall; GET stale self-heal is backstop`,
   );
+  // 중앙 관측(카드 #469) — kick self-fetch 파단이 primary 체인 단절의 유력
+  // 원인이다. error_events/이메일 digest 에 사유를 드러내 "왜 ~15-20 docs 마다
+  // 끊기나" 를 다음번엔 데이터로 확인한다. cron/GET self-heal 이 백스톱이라
+  // 기능은 안 깨지므로 severity=warn.
+  await logError({
+    feature: 'interview',
+    code: 'topline_kick_failed',
+    message: `resume kick exhausted ${attempts} attempts`,
+    context: { topline_id: toplineId, tag },
+    severity: 'warn',
+  });
   return false;
 }
 
@@ -1068,11 +1079,45 @@ export async function runTopline(
                 fault.hard = cls;
                 mapFailures += 1;
                 console.warn(`${tag} map hard fault ${doc.filename}`, cls.label);
+                // 하드 장애(크레딧/인증)는 재시도 무의미 — 중앙 관측에 error 로.
+                await logError({
+                  feature: 'interview',
+                  code: 'topline_map_call_failed',
+                  message: cls.label,
+                  context: {
+                    topline_id: toplineId,
+                    project_id: projectId,
+                    org_id: orgId,
+                    filename: doc.filename,
+                    hop: resumeCount,
+                    hard: true,
+                  },
+                  severity: 'error',
+                });
                 return;
               }
               if (attempt === MAP_MAX_ATTEMPTS - 1) {
                 mapFailures += 1;
                 console.warn(`${tag} map failed ${doc.filename}`, cls.label);
+                // 2-attempt(MAP_MAX_ATTEMPTS) 소진 후에도 실패한 문서 —
+                // primary 체인 처리율 붕괴(429/timeout/5xx)의 사유를 관측에 남긴다
+                // (카드 #469). 이 홉은 실패분을 캐시에 안 남겨 다음 홉이 재시도하므로
+                // 기능은 안 깨진다 → severity=warn. logError signature dedup 이
+                // 문서별 반복을 한 시그니처로 collapse(flood 방지).
+                await logError({
+                  feature: 'interview',
+                  code: 'topline_map_call_failed',
+                  message: cls.label,
+                  context: {
+                    topline_id: toplineId,
+                    project_id: projectId,
+                    org_id: orgId,
+                    filename: doc.filename,
+                    hop: resumeCount,
+                    hard: false,
+                  },
+                  severity: 'warn',
+                });
               } else {
                 const wait = Math.min(
                   cls.retryAfterMs ?? mapRetryBackoffMs(attempt),
@@ -1133,6 +1178,28 @@ export async function runTopline(
             .from('interview_toplines')
             .update({ resume_count: resumeCount + 1 })
             .eq('id', toplineId);
+          // 함수 벽(230s soft-deadline) 도달로 map 이 미완된 채 다음 홉으로
+          // 이어짐 = primary 체인이 ~15-20 docs 마다 끊기는 정상 cadence 의
+          // 관측점(카드 #469). 정상 흐름이라 severity=warn — 고정 message 로
+          // signature dedup 이 홉마다의 반복을 한 시그니처로 뭉쳐 count 로
+          // "홉당 몇 docs 처리, 몇 홉 필요" 추세를 드러낸다. map_failures 를
+          // context 에 실어 순수 walltime vs 실패 유발 여부를 구분한다.
+          await logError({
+            feature: 'interview',
+            code: 'topline_hop_walltime',
+            message: 'map hop deferred at soft-deadline',
+            context: {
+              topline_id: toplineId,
+              project_id: projectId,
+              org_id: orgId,
+              progress: `${cached.size}/${docs.length}`,
+              still_pending: stillPending.length,
+              hop: resumeCount,
+              map_failures: mapFailures,
+              last_fault: fault.last?.label ?? null,
+            },
+            severity: 'warn',
+          });
           await kickResume(toplineId, tag);
           return;
         }

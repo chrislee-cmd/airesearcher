@@ -202,6 +202,15 @@ export type ToplineReadResult = {
 // 트리거로 bump 되므로, 살아 있는 생성은 이 창을 절대 넘기지 않는다.
 export const TOPLINE_GENERATING_STALE_MS = 360_000;
 
+// 서버 cron self-heal(카드 #469)이 재점화 대상으로 삼는 훨씬 짧은 창. GET
+// on-read self-heal(360s)은 사용자가 페이지를 볼 때만 발화하고 창도 넓어 stall
+// 당 최대 6분을 낭비했다. 백그라운드 cron 은 client 무관하게 90s 만 갱신이
+// 끊겨도 재-kick 해 완주를 가속한다. 살아 있는 홉은 map 진행/부분 flush 마다
+// updated_at 을 bump 하므로 이 창을 넘기지 않아 정상 진행을 방해하지 않는다.
+// (bump 가 updated_at 을 갱신 → 재-kick 후 다음 90s 전까지 재대상 제외 = 창당
+// 최대 1회로 kick 폭주가 자연 바운드 — selfHealStaleTopline 주석 참고.)
+export const TOPLINE_CRON_STALE_MS = 90_000;
+
 /**
  * row 가 stuck 'generating' 인지 — status='generating' 인데 updated_at 이
  * STALE_MS 넘게 갱신 안 됐으면 true. 타임아웃(300s 킬)은 JS 미실행이라 runTopline
