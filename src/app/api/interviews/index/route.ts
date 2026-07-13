@@ -1,4 +1,5 @@
 import { NextResponse, after } from 'next/server';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -20,6 +21,55 @@ import { logError } from '@/lib/observability/log-error';
 // Embedding + insert can take longer than the default Vercel timeout
 // for a multi-file batch, so we bump maxDuration to the platform max.
 export const maxDuration = 300;
+
+// Chunk insert tolerance (prod incident 2026-07-13: `chunk_insert_failed` on a
+// 61-file re-upload, root cause = Postgres `canceling statement due to
+// statement timeout` on the chunk insert — each row is a 1536-d pgvector +
+// HNSW index update, so a 100-row batch under DB load/contention blows the
+// role's statement_timeout). We make the insert resilient instead of letting a
+// single transient timeout fail the whole job:
+//   1) smaller batches → less work per statement → lower timeout probability
+//   2) retry with exponential backoff → absorb transient timeouts/contention
+// The happy path is unchanged (same embed/dedup/progress logic) — only the
+// batch size shrinks and a retry wraps the insert.
+const ROWS_PER_INSERT = 30;
+const CHUNK_INSERT_MAX_ATTEMPTS = 3;
+const CHUNK_INSERT_BACKOFF_MS = [250, 500, 1000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Transient DB errors worth retrying — statement timeout (57014), plus a few
+// contention/availability classes that clear on a short backoff. Constraint
+// violations (23xxx) and the like are permanent, so we let them throw straight
+// away rather than burning three attempts on a guaranteed failure.
+const RETRYABLE_PG_CODES = new Set([
+  '57014', // statement_timeout / canceling statement
+  '40001', // serialization_failure
+  '40P01', // deadlock_detected
+  '53300', // too_many_connections
+  '08006', // connection_failure
+  '08003', // connection_does_not_exist
+  'XX000', // internal_error (seen on transient pooler blips)
+]);
+
+function isRetryablePgError(err: PostgrestError | null): boolean {
+  if (!err) return false;
+  if (err.code && RETRYABLE_PG_CODES.has(err.code)) return true;
+  // Some pooler/timeout surfaces arrive without a stable code — fall back to
+  // the message text for the statement-timeout signal specifically.
+  return /statement timeout|canceling statement/i.test(err.message ?? '');
+}
+
+// Compact, log-free-diagnosable error string: cause + real PG code/message so
+// interview_jobs.error_message (OBS-4) and the failure-alert email (#1008)
+// carry the actual reason instead of a bare `chunk_insert_failed`.
+function describePgError(prefix: string, err: PostgrestError): string {
+  const parts = [err.message];
+  if (err.code) parts.push(`(${err.code})`);
+  return `${prefix}: ${parts.filter(Boolean).join(' ')}`;
+}
 
 const DocumentBody = z.object({
   filename: z.string().min(1).max(255),
@@ -193,12 +243,11 @@ export async function POST(req: Request) {
         .update({ total_chunks: chunks.length, processed_chunks: 0 })
         .eq('id', documentId);
 
-      // Embed + insert in batches — 100 rows per call balances HTTP overhead
-      // against PostgREST's per-request payload budget (HNSW index updates are
-      // cheap on the write side at this scale). Embedding per-batch (rather
-      // than all-at-once up front) is what lets processed_chunks advance
-      // mid-file so the progress bar actually moves.
-      const ROWS_PER_INSERT = 100;
+      // Embed + insert in ROWS_PER_INSERT batches — smaller batches keep each
+      // statement's HNSW/pgvector work below the role's statement_timeout, and
+      // the retry below absorbs the occasional transient timeout under load.
+      // Embedding per-batch (rather than all-at-once up front) is what lets
+      // processed_chunks advance mid-file so the progress bar actually moves.
       let processed = 0;
       for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
         const slice = chunks.slice(i, i + ROWS_PER_INSERT);
@@ -212,12 +261,28 @@ export async function POST(req: Request) {
           // pgvector accepts the literal string and casts implicitly.
           embedding: c.embedding_literal,
         }));
-        const { error: chunkErr } = await admin
-          .from('interview_chunks')
-          .insert(rows);
+        // Retry with exponential backoff — a single transient statement
+        // timeout (57014) or contention blip must not fail the whole job. The
+        // insert is idempotent to retry: a failed statement lands zero rows (a
+        // timeout cancels the whole statement), so a retry can't double-insert.
+        let chunkErr: PostgrestError | null = null;
+        for (let attempt = 0; attempt < CHUNK_INSERT_MAX_ATTEMPTS; attempt++) {
+          const { error } = await admin.from('interview_chunks').insert(rows);
+          chunkErr = error;
+          if (!error) break;
+          const willRetry =
+            attempt < CHUNK_INSERT_MAX_ATTEMPTS - 1 && isRetryablePgError(error);
+          console.error(
+            `[interviews/index] chunk insert failed (attempt ${attempt + 1}/${CHUNK_INSERT_MAX_ATTEMPTS}, ${willRetry ? 'retrying' : 'giving up'})`,
+            error,
+          );
+          if (!willRetry) break;
+          await sleep(CHUNK_INSERT_BACKOFF_MS[attempt]);
+        }
         if (chunkErr) {
-          console.error('[interviews/index] chunk insert failed', chunkErr);
-          throw new Error('chunk_insert_failed');
+          // Carry the real PG code/message so DB-only diagnosis (and the #1008
+          // alert email) shows the actual cause, not a bare marker.
+          throw new Error(describePgError('chunk_insert_failed', chunkErr));
         }
         processed += embedded.length;
         // Progress tick — best-effort; the client polls interview_documents.
