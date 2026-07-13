@@ -105,7 +105,10 @@ export async function searchInterviewV2Keyword(opts: {
         p_project_id: projectId,
         p_terms: terms,
         match_count: k,
-        p_document_id: documentId,
+        // Only send p_document_id when scoping to a file — keeps the arg set
+        // identical to the pre-migration signature so existing searches never
+        // 500 if this ships before the migration is applied (no ordering hazard).
+        ...(documentId ? { p_document_id: documentId } : {}),
       };
 
   const rpcRes = await db.rpc(rpcName, rpcArgs);

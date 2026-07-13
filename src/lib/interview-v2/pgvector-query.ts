@@ -120,7 +120,11 @@ export async function searchInterviewV2Chunks(opts: {
         p_project_id: projectId,
         match_count: k,
         score_threshold: scoreThreshold,
-        p_document_id: documentId,
+        // Only send p_document_id when actually scoping to a file. Omitting it
+        // otherwise keeps the arg set identical to the pre-migration signature,
+        // so existing project / whole-org searches never 500 if this ships
+        // before the p_document_id migration is applied (no ordering hazard).
+        ...(documentId ? { p_document_id: documentId } : {}),
       };
 
   const rpcRes = await db.rpc(rpcName, rpcArgs);
