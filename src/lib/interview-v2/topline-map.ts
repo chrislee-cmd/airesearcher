@@ -24,7 +24,107 @@ export const TOPLINE_MAP_MODEL = 'claude-sonnet-4-6';
 // 피하면서 벽시계 시간을 줄인다. maxDuration=300 안에서 안전한 폭.
 export const MAP_CONCURRENCY = 6;
 
+// 문서 1건을 Sonnet map 에 통째로 넣을 때의 입력 문자 상한(회복력 가드). 인터뷰
+// 1명 전사록은 보통 이 안에 들어오지만, 아주 긴 문서(수만 자)는 context 과대로
+// 호출이 느려지거나 스키마 재시도를 유발한다(카드 #468 처리율 붕괴 요인). 상한을
+// 넘으면 뒤쪽 청크를 생략하고 앞쪽(대표 구간)만 넣는다 — map 은 "빠짐없는 주제
+// 추출"이 목표라 앞부분+대다수 청크로 충분하고, 청크를 통째로 드롭하므로 남은
+// chunk_id 는 여전히 유효(잘린 청크를 인용할 수 없을 뿐). ~16k 토큰 상당.
+export const MAX_MAP_INPUT_CHARS = 48_000;
+
+// map 호출 문서별 최대 시도 횟수(일시 오류 백오프 흡수). 하드 장애(크레딧/인증)는
+// 이 루프 밖에서 즉시 단락(재시도 무의미)된다.
+export const MAP_MAX_ATTEMPTS = 3;
+// 백오프 대기 상한 — Retry-After 가 비정상적으로 크거나 지수 백오프가 커져도
+// 홉 예산(MAP_SOFT_DEADLINE)을 한 문서가 다 먹지 않게 캡.
+export const MAP_RETRY_CAP_MS = 20_000;
+
 type Anthropic = ReturnType<typeof createAnthropic>;
+
+// map 호출 실패 분류 — 하드 장애(크레딧 소진·인증)는 재시도·체인 지속이
+// 무의미하므로 즉시 표면화하고, 일시 장애(429/과부하/타임아웃/5xx)는 백오프로
+// 흡수한다. 카드 #468: 크레딧 소진(402)이 generic stuck_timeout 으로 묻히던 걸
+// 명확한 error_message 로 드러내는 게 이 fix 의 핵심.
+export type MapErrorClass = {
+  // error_message 에 실릴 사람이 읽는 사유(진행도와 결합돼 DB/이메일에 노출).
+  label: string;
+  // true 면 재시도/체인 지속이 무의미(크레딧/인증) — 즉시 error 로 종결.
+  hardFault: boolean;
+  // provider 가 준 Retry-After(ms) — 있으면 백오프에 존중.
+  retryAfterMs?: number;
+};
+
+function parseRetryAfterMs(headers?: Record<string, string>): number | undefined {
+  if (!headers) return undefined;
+  const raMs = headers['retry-after-ms'];
+  if (raMs) {
+    const n = Number(raMs);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  const ra = headers['retry-after'];
+  if (ra) {
+    const secs = Number(ra);
+    if (Number.isFinite(secs) && secs >= 0) return secs * 1_000;
+  }
+  return undefined;
+}
+
+export function classifyMapError(e: unknown): MapErrorClass {
+  const err = e as
+    | {
+        statusCode?: number;
+        status?: number;
+        message?: string;
+        responseHeaders?: Record<string, string>;
+      }
+    | undefined;
+  const status = err?.statusCode ?? err?.status;
+  const msg = (err?.message ?? String(e ?? '')).toLowerCase();
+  const retryAfterMs = parseRetryAfterMs(err?.responseHeaders);
+
+  // 크레딧 소진 / 결제 — 402 또는 메시지에 credit/billing/insufficient/quota.
+  if (
+    status === 402 ||
+    /credit|billing|insufficient|payment|quota|balance/.test(msg)
+  ) {
+    return { label: 'Anthropic 크레딧/결제 소진(402)', hardFault: true };
+  }
+  // 인증 — 401/403 또는 api key/authentication.
+  if (
+    status === 401 ||
+    status === 403 ||
+    /\bapi key\b|authentication|unauthor|permission/.test(msg)
+  ) {
+    return { label: 'Anthropic 인증 실패(401/403)', hardFault: true };
+  }
+  // rate limit / overloaded — 429/529.
+  if (status === 429 || status === 529 || /rate limit|overloaded|too many/.test(msg)) {
+    return {
+      label: `Anthropic ${status ?? '429'} rate-limit/overloaded`,
+      hardFault: false,
+      retryAfterMs,
+    };
+  }
+  // 서버측 일시 오류.
+  if (status && status >= 500) {
+    return { label: `provider ${status}`, hardFault: false, retryAfterMs };
+  }
+  // 타임아웃 / 네트워크.
+  if (/timeout|aborted|network|fetch failed|econn|socket/.test(msg)) {
+    return { label: 'map 호출 타임아웃/네트워크', hardFault: false };
+  }
+  // 스키마/기타 — 재시도 가치는 낮지만 일시일 수 있어 soft.
+  return {
+    label: err?.message ? err.message.slice(0, 120) : 'map 호출 실패',
+    hardFault: false,
+    retryAfterMs,
+  };
+}
+
+// map 호출 재시도 지수 백오프(ms) — 1s, 2s, 4s … MAP_RETRY_CAP_MS 상한.
+export function mapRetryBackoffMs(attempt: number): number {
+  return Math.min(MAP_RETRY_CAP_MS, 1_000 * 2 ** attempt);
+}
 
 // 문서 1개의 map 산출. themes = 탑라인에 쓸 주제별 발언 요약(+근거 chunk_id),
 // quotes = 그대로 인용 가능한 verbatim(+chunk_id). 둘 다 근거 chunk 밖 정보를
@@ -79,11 +179,30 @@ const MAP_SYSTEM = `당신은 정성 인터뷰 **한 명의 응답자 전사록 
 - 이 응답자가 어떤 주제를 **언급하지 않았으면** 그 주제를 만들지 마세요(없는 걸 채우지 않음). 빈 배열도 정상입니다.${ISOLATION_NOTICE}`;
 
 // 문서의 청크를 번호 매긴 근거 블록으로 렌더(map 입력). formatToplineEvidence
-// 와 동일 포맷이되 단일 문서라 filename 은 헤더 한 번만 노출.
+// 와 동일 포맷이되 단일 문서라 filename 은 헤더 한 번만 노출. 입력 크기 가드
+// (MAX_MAP_INPUT_CHARS): 아주 긴 문서는 앞쪽 청크만 넣어 context 과대로 인한
+// 느림/실패를 막는다. 첫 청크는 홀로 상한을 넘어도 반드시 포함(빈 입력 방지),
+// 이후 청크는 예산 안에서만. 생략된 청크는 통째로 빠지므로 남은 chunk_id 는
+// 여전히 유효하다.
 function formatDocEvidence(chunks: ToplineChunk[]): string {
-  return chunks
-    .map((c) => `[${c.chunk_id}]\n` + '```\n' + c.content + '\n```')
-    .join('\n\n');
+  const parts: string[] = [];
+  let used = 0;
+  let omitted = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    const c = chunks[i];
+    const block = `[${c.chunk_id}]\n` + '```\n' + c.content + '\n```';
+    if (parts.length > 0 && used + block.length > MAX_MAP_INPUT_CHARS) {
+      omitted = chunks.length - i;
+      break;
+    }
+    parts.push(block);
+    used += block.length + 2; // '\n\n' join 오버헤드 근사.
+  }
+  let out = parts.join('\n\n');
+  if (omitted > 0) {
+    out += `\n\n[…이 응답자 문서가 매우 길어 뒤쪽 청크 ${omitted}개는 생략됨. 위 청크만으로 주제·인용을 빠짐없이 추출하세요.]`;
+  }
+  return out;
 }
 
 /**
