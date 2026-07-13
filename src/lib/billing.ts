@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { env } from '@/env';
-import type { CreditBundleId } from '@/lib/features';
+import type { CreditBundleId, SubscriptionTierId } from '@/lib/features';
 
 // ── Lemon Squeezy ──────────────────────────────────────────────────────────
 //
@@ -69,6 +69,109 @@ export function availableLemonSqueezyCurrencies(): PaymentCurrency[] {
   return out;
 }
 
+// ── Subscriptions ───────────────────────────────────────────────────────────
+//
+// Recurring monthly tiers. Each (tier, currency) maps to a pre-created LS
+// subscription variant via env keys `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_{KRW,USD}`
+// (441 상품생성 스크립트가 이 키명으로 variant id 를 출력). 포함 크레딧 단가도
+// ₩500/cr — 할인이 아니라 편의(무만료·우선처리·시트)가 구독의 가치다.
+
+const LS_SUB_VARIANT_KRW: Record<SubscriptionTierId, string | undefined> = {
+  solo: env.LEMONSQUEEZY_SUB_SOLO_KRW,
+  plus: env.LEMONSQUEEZY_SUB_PLUS_KRW,
+  pro: env.LEMONSQUEEZY_SUB_PRO_KRW,
+};
+
+const LS_SUB_VARIANT_USD: Record<SubscriptionTierId, string | undefined> = {
+  solo: env.LEMONSQUEEZY_SUB_SOLO_USD,
+  plus: env.LEMONSQUEEZY_SUB_PLUS_USD,
+  pro: env.LEMONSQUEEZY_SUB_PRO_USD,
+};
+
+// Resolve store + variant for a (tier, currency) pair. Mirrors the credit
+// pack resolver — KRW falls back to the legacy single store, USD refuses
+// without a dedicated USD store so we never pay out to the wrong account.
+export function resolveLemonSqueezySubscriptionTarget(
+  tierId: SubscriptionTierId,
+  currency: PaymentCurrency,
+): { storeId: string; variantId: string } | null {
+  if (currency === 'KRW') {
+    const storeId = env.LEMONSQUEEZY_STORE_ID_KRW ?? env.LEMONSQUEEZY_STORE_ID;
+    const variantId = LS_SUB_VARIANT_KRW[tierId];
+    if (!storeId || !variantId) return null;
+    return { storeId, variantId };
+  }
+  const storeId = env.LEMONSQUEEZY_STORE_ID_USD;
+  const variantId = LS_SUB_VARIANT_USD[tierId];
+  if (!storeId || !variantId) return null;
+  return { storeId, variantId };
+}
+
+// Reverse map a LS subscription variant_id (from a webhook payload) back to
+// our tier id, across both currency rails. Used as a fallback when the
+// checkout custom_data tier is absent on a subscription lifecycle event.
+export function subscriptionTierForVariant(
+  variantId: string | number | null | undefined,
+): SubscriptionTierId | null {
+  if (variantId == null) return null;
+  const id = String(variantId);
+  const tiers: SubscriptionTierId[] = ['solo', 'plus', 'pro'];
+  for (const t of tiers) {
+    if (LS_SUB_VARIANT_KRW[t] === id || LS_SUB_VARIANT_USD[t] === id) return t;
+  }
+  return null;
+}
+
+// Shape of the LS subscription resource we care about — returned by the
+// GET /subscriptions/:id endpoint and echoed inside subscription webhook
+// payloads (`data.attributes`).
+export type LemonSqueezySubscriptionAttrs = {
+  status: string | null;         // active | cancelled | expired | past_due | ...
+  renews_at: string | null;      // ISO — end of the current billing period
+  ends_at: string | null;        // ISO — set once cancelled/expired
+  variant_id: string | number | null;
+  store_id: string | number | null;
+};
+
+// Fetch a subscription's current attributes from the LS API. Used by the
+// payment_success handler to read the authoritative `renews_at` (the
+// subscription-invoice payload doesn't carry it), so the period key stays
+// consistent with what the subscription_created/updated events compute.
+export async function fetchLemonSqueezySubscription(
+  apiKey: string,
+  subscriptionId: string,
+): Promise<LemonSqueezySubscriptionAttrs | null> {
+  const res = await fetch(`${LS_API_BASE}/subscriptions/${subscriptionId}`, {
+    headers: {
+      Accept: 'application/vnd.api+json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+  if (!res.ok) return null;
+  const json = (await res.json().catch(() => null)) as
+    | { data?: { attributes?: Partial<LemonSqueezySubscriptionAttrs> } }
+    | null;
+  const a = json?.data?.attributes;
+  if (!a) return null;
+  return {
+    status: a.status ?? null,
+    renews_at: a.renews_at ?? null,
+    ends_at: a.ends_at ?? null,
+    variant_id: a.variant_id ?? null,
+    store_id: a.store_id ?? null,
+  };
+}
+
+// Billing-period key for idempotent grants: the date portion of `renews_at`
+// ('YYYY-MM-DD'). Monthly renewal → each period ends on a distinct date, and
+// truncating to the day absorbs sub-second format drift between the webhook
+// payload and the API response.
+export function subscriptionPeriodKey(renewsAt: string | null | undefined): string | null {
+  if (!renewsAt) return null;
+  const d = renewsAt.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+}
+
 // Map a Lemon Squeezy store_id from a webhook payload back to the
 // currency rail that store belongs to. Returns null for unknown stores.
 export function currencyForStoreId(storeId: string | null | undefined): PaymentCurrency | null {
@@ -107,9 +210,10 @@ export type LemonSqueezyCheckoutParams = {
   email: string | null;
   locale: LemonSqueezyLocale;
   // Custom data threaded back to us via the webhook payload's
-  // `meta.custom_data`. We use payment_id to correlate the order with the
-  // `payments` row we inserted before redirecting.
-  custom: { payment_id: string; org_id: string };
+  // `meta.custom_data`. One-time orders use payment_id to correlate the
+  // `payments` row; subscriptions thread org_id + tier so the webhook can
+  // grant included credits without a pre-inserted row.
+  custom: Record<string, string>;
   redirectUrl: string;
 };
 

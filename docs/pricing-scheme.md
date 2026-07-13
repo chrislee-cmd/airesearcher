@@ -119,7 +119,14 @@ m = 0.94 − COGS/매출  ≥  0.75
 
 - 구독의 **가치 = 할인이 아니라 편의**: 크레딧 무만료(구독 중) · 우선 처리 · 시트(팀).
 - **오버리지** = 언제든 ₩500/cr 일회성 top-up.
-- 구독 크레딧의 **만료/롤오버 정책은 B1 에서 결정**(무만료 또는 제한 롤오버).
+- 구독 크레딧의 **만료/롤오버 정책 = 무만료 (B1 확정, 2026-07-13).** 매 결제주기마다
+  포함 크레딧을 비만료 `organizations.credit_balance` 에 적립한다(무료 grant 의 월-만료
+  `grant_credits` 버킷과 분리). 취소·만료 시에도 이미 지급된 크레딧은 회수하지 않고
+  구독 상태(`subscription_status`)만 해제한다. 근거: 위 "크레딧 무만료(구독 중)" 가치
+  선언과 정합, 기존 `grant_credits_from_payment`(=credit_balance 적립) 패턴 재사용으로
+  가장 단순. 멱등 지급은 `subscription_grants(ls_subscription_id, period)` 유니크로 강제
+  (billing period 당 1회). 구현: `grant_subscription_credits` RPC + webhook
+  `subscription_created`/`subscription_payment_success` 핸들러.
 
 ### 5.4 무료 grant
 
