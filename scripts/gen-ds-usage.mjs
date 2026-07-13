@@ -36,6 +36,8 @@ const MODULE_OVERRIDES = {
     'components/canvas/shell/control-board',
     'components/canvas/shell/widget-subheader',
     'components/canvas/shell/widget-outputs',
+    'components/canvas/shell/widget-credit-badge',
+    'components/canvas/shell/widget-state-pill',
   ],
 };
 

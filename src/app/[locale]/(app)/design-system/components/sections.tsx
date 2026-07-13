@@ -29,6 +29,8 @@ import { Banner } from '@/components/canvas/shell/banner';
 import { ControlBoard } from '@/components/canvas/shell/control-board';
 import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { WidgetCreditBadge } from '@/components/canvas/shell/widget-credit-badge';
+import { WidgetStatePill } from '@/components/canvas/shell/widget-state-pill';
 import { PrimitivePage, Subsection } from './primitive-page';
 import {
   ModalDemo,
@@ -1530,8 +1532,65 @@ function CanvasWidgetPrimitivesSection() {
   return (
     <PrimitivePage
       title="Canvas Widget Primitives"
-      hint="src/components/canvas/shell/* · canvas 위젯 5종 (quotes/desk/interviews/recruiting/probing) 본문에서 공통으로 쓰는 라벨/필드/배너 SSOT. 인라인 className 재현 금지 — 새 위젯도 여기에서 import."
+      hint="src/components/canvas/shell/* · canvas 위젯 헤더(크레딧 배지/상태 pill) + 본문(라벨/필드/배너) 공통 SSOT. 인라인 className 재현 금지 — 새 위젯도 여기에서 import."
     >
+      <Subsection label="WidgetCreditBadge — 헤더 좌측 크레딧 배지 (widget-credit-badge.tsx)">
+        <div className="space-y-3">
+          <p className="text-md text-mute">
+            props: <code className="font-mono text-ink-2">cost?</code> /{' '}
+            <code className="font-mono text-ink-2">costLabel?</code>. 세 갈래 —{' '}
+            <code className="font-mono">cost===0</code> → &ldquo;무료&rdquo; 텍스트,{' '}
+            <code className="font-mono">cost&gt;0</code> → 💎 숫자 Memphis pill,{' '}
+            <code className="font-mono">costLabel</code> → 그 문자열(probing 등
+            lifecycle 차감). costLabel 이 cost 보다 우선.
+          </p>
+          {/* 실제 노란 카드 헤더 위에서의 대비를 재현 — 흰 pill 이 배너 노랑
+              위에서도 또렷한지 확인. */}
+          <div
+            className="flex flex-wrap items-center gap-4 px-5 py-4 rounded-sm border-2 border-ink"
+            style={{ background: 'var(--canvas-card-header-bg)' }}
+          >
+            <WidgetCreditBadge cost={0} costLabel={undefined} />
+            <WidgetCreditBadge cost={75} costLabel={undefined} />
+            <WidgetCreditBadge cost={undefined} costLabel="시간당 차감" />
+          </div>
+          <p className="text-sm text-mute-soft">
+            좌: 무료(cost=0) · 중: 유료 pill(cost=75) · 우: costLabel(&ldquo;시간당
+            차감&rdquo; — probing lifecycle). cost·costLabel 모두 없으면 렌더 0.
+          </p>
+        </div>
+      </Subsection>
+
+      <Subsection label="WidgetStatePill — 헤더 우측 상태 pill (widget-state-pill.tsx)">
+        <div className="space-y-3">
+          <p className="text-md text-mute">
+            props: <code className="font-mono text-ink-2">state</code>{' '}
+            (WidgetStateInfo). idle→&ldquo;READY&rdquo; · running→&ldquo;
+            <code className="font-mono">LABEL NN%</code>&rdquo;(+깜빡이는 도트) ·
+            done→&ldquo;DONE&rdquo; · error→&ldquo;ERR&rdquo;(message 는 title).
+            widget-shell 이 WidgetStateContext 에서 읽어 이 primitive 에 넘긴다.
+          </p>
+          <div
+            className="flex flex-wrap items-center gap-3 px-5 py-4 rounded-sm border-2 border-ink"
+            style={{ background: 'var(--canvas-card-header-bg)' }}
+          >
+            <WidgetStatePill state={{ kind: 'idle' }} />
+            <WidgetStatePill
+              state={{ kind: 'running', label: 'TRANSCRIBING', progress: 72 }}
+            />
+            <WidgetStatePill state={{ kind: 'running', label: '통역' }} />
+            <WidgetStatePill state={{ kind: 'done' }} />
+            <WidgetStatePill
+              state={{ kind: 'error', message: 'network_timeout' }}
+            />
+          </div>
+          <p className="text-sm text-mute-soft">
+            READY(idle) · 진행률 있는 running(TRANSCRIBING 72%) · 진행률 없는
+            running(통역 — realtime) · DONE · ERR(hover 시 message tooltip).
+          </p>
+        </div>
+      </Subsection>
+
       <Subsection label="SectionLabel — UPPERCASE 라벨 SSOT (widget-outputs.tsx)">
         <div className="border border-line bg-paper p-6 rounded-sm">
           <SectionLabel>최근 산출물</SectionLabel>
