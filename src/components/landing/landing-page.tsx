@@ -245,7 +245,7 @@ export async function LandingPage({ locale }: { locale: string }) {
             <h2>{t.rich('pricing.sub.title', richTags)}</h2>
             <p>{t('pricing.sub.subtitle')}</p>
           </div>
-          <div className="price-grid">
+          <div className="price-grid sub-price-grid">
             <div className="price">
               <span className="meta">{t('pricing.sub.tiers.solo.meta')}</span>
               <h4>{t('pricing.sub.tiers.solo.name')}</h4>
