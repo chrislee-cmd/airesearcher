@@ -23,7 +23,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { useTranslations } from 'next-intl';
-import type { WidgetContent, WidgetStateInfo } from '../widget-types';
+import type { WidgetContent } from '../widget-types';
 import { Button } from '@/components/ui/button';
 import {
   WidgetHeaderColorPicker,
@@ -33,6 +33,8 @@ import {
   WidgetStateProvider,
   useWidgetState,
 } from './widget-state-context';
+import { WidgetStatePill } from './widget-state-pill';
+import { WidgetCreditBadge } from './widget-credit-badge';
 import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
@@ -47,132 +49,13 @@ export type DragHandleProps = {
   onMouseDown: (e: ReactMouseEvent<HTMLElement>) => void;
 };
 
-// pill 의 노출 텍스트. running 일 때 body 가 progress 를 push 하면
-// "<LABEL> NN%" 로 합쳐서 보여주고, label 만 있으면 라벨, 아무것도 없으면
-// 그냥 "RUNNING" — realtime 위젯 (translate 등) 의 progress-less 경로.
-function popStatePillLabel(state: WidgetStateInfo): string {
-  switch (state.kind) {
-    case 'running': {
-      const base = (state.label ?? 'RUNNING').toUpperCase();
-      if (typeof state.progress === 'number') {
-        const pct = Math.max(0, Math.min(100, Math.round(state.progress)));
-        return `${base} ${pct}%`;
-      }
-      return base;
-    }
-    case 'done':
-      return 'DONE';
-    case 'error':
-      return 'ERR';
-    case 'idle':
-    default:
-      return 'READY';
-  }
-}
-
-// state 별 시각. idle = 흰 bg + 검은 border (기본 Memphis pill).
-// running = amore 핑크 bg + 흰 텍스트 + 좌측 깜빡이는 도트.
-// done = mint bg + 검은 텍스트. error = warning bg + warning 텍스트 +
-//   warning border. 모두 design-system token 만.
-function pillVisual(kind: WidgetStateInfo['kind']): {
-  background: string;
-  color: string;
-  border: string;
-} {
-  switch (kind) {
-    case 'running':
-      return {
-        background: 'var(--color-amore)',
-        color: 'var(--canvas-card-bg)',
-        border: '2px solid var(--canvas-card-border)',
-      };
-    case 'done':
-      return {
-        background: 'var(--color-mint, var(--canvas-card-bg))',
-        color: 'var(--canvas-card-border)',
-        border: '2px solid var(--canvas-card-border)',
-      };
-    case 'error':
-      return {
-        background: 'var(--color-warning-bg)',
-        color: 'var(--color-warning)',
-        border: '2px solid var(--color-warning)',
-      };
-    case 'idle':
-    default:
-      return {
-        background: 'var(--canvas-card-bg)',
-        color: 'var(--canvas-card-border)',
-        border: '2px solid var(--canvas-card-border)',
-      };
-  }
-}
-
+// 헤더 우측 상태 pill. WidgetStateContext 에서 현재 위젯 상태를 읽어
+// WidgetStatePill primitive 에 넘기는 얇은 래퍼 — 라벨/톤/렌더 로직은
+// primitive 가 SSOT (widget-state-pill.tsx). shell ↔ body context 배선은
+// 여기서 유지, 카탈로그는 primitive 를 state prop 만 바꿔 standalone 데모.
 function PopStatePill() {
   const { state } = useWidgetState();
-  const visual = pillVisual(state.kind);
-  const title =
-    state.kind === 'error' && state.message ? state.message : undefined;
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
-      style={{
-        background: visual.background,
-        color: visual.color,
-        border: visual.border,
-        borderRadius: 4,
-        boxShadow: '2px 2px 0 var(--canvas-card-border)',
-      }}
-      title={title}
-      aria-live={state.kind === 'running' ? 'polite' : undefined}
-    >
-      {state.kind === 'running' && (
-        <span aria-hidden className="animate-pulse">
-          ●
-        </span>
-      )}
-      {popStatePillLabel(state)}
-    </span>
-  );
-}
-
-// 헤더 좌측에 박는 cost 표시.
-// - cost === 0     → "무료" 소형 텍스트
-// - cost > 0       → 💎 + 숫자 Memphis pill (검정 border + offset shadow +
-//                    흰 bg) — 배너 노랑 / pastel 위에서도 또렷.
-// - costLabel 있음 → 그 문자열 그대로 (probing 처럼 lifecycle 차감 도구).
-function CostBadge({
-  cost,
-  costLabel,
-}: {
-  cost: number | undefined;
-  costLabel: string | undefined;
-}) {
-  if (costLabel) {
-    return (
-      <span className="text-xs font-bold uppercase opacity-80">{costLabel}</span>
-    );
-  }
-  if (typeof cost !== 'number') return null;
-  if (cost === 0) {
-    return <span className="text-xs font-bold uppercase opacity-80">무료</span>;
-  }
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-bold tabular-nums"
-      style={{
-        background: 'var(--canvas-card-bg)',
-        color: 'var(--canvas-card-border)',
-        border: '2px solid var(--canvas-card-border)',
-        borderRadius: 4,
-        boxShadow: '2px 2px 0 var(--canvas-card-border)',
-      }}
-      aria-label={`${cost} 크레딧`}
-    >
-      <span aria-hidden>💎</span>
-      <span>{cost}</span>
-    </span>
-  );
+  return <WidgetStatePill state={state} />;
 }
 
 // 차감 신호 받으면 헤더 위쪽으로 -N 텍스트가 떠올라 사라진다.
@@ -323,7 +206,10 @@ function WidgetShellInner({
         }}
       >
         <div className="relative flex items-center gap-2 text-xs uppercase">
-          <CostBadge cost={content.meta.cost} costLabel={content.meta.costLabel} />
+          <WidgetCreditBadge
+            cost={content.meta.cost}
+            costLabel={content.meta.costLabel}
+          />
           {/* 컬러 팔레트는 cost 옆 (좌측 고정) — 우측 pill 이 state 에 따라
               너비가 변해도 (READY → TRANSCRIBING 72%) 팔레트 버튼 위치는
               움직이지 않는다. */}

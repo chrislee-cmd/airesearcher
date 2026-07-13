@@ -52,7 +52,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1529
+      "line": 1531
     },
     {
       "widget": "캔버스 공용",
@@ -64,7 +64,7 @@
       "widget": "캔버스 공용",
       "key": null,
       "file": "src/components/canvas/shell/widget-outputs.tsx",
-      "line": 68
+      "line": 71
     },
     {
       "widget": "캔버스 공용",
@@ -76,7 +76,7 @@
       "widget": "캔버스 공용",
       "key": null,
       "file": "src/components/canvas/shell/widget-shell.tsx",
-      "line": 342
+      "line": 228
     },
     {
       "widget": "캔버스 공용",
@@ -112,7 +112,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 157
+      "line": 177
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -150,7 +150,7 @@
       "widget": "데스크 리서치",
       "key": "desk",
       "file": "src/components/canvas/widgets/desk-result/section-card.tsx",
-      "line": 90
+      "line": 91
     },
     {
       "widget": "리크루팅",
@@ -168,7 +168,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1900
+      "line": 1902
     },
     {
       "widget": "캔버스 공용",
@@ -212,7 +212,7 @@
       "widget": "인터뷰 결과 생성기",
       "key": "interviews",
       "file": "src/components/canvas/widgets/interviews-card.tsx",
-      "line": 500
+      "line": 507
     },
     {
       "widget": "캔버스 공용",
@@ -224,7 +224,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 279
+      "line": 293
     }
   ],
   "input": [
@@ -238,7 +238,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1465
+      "line": 1467
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -275,7 +275,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/question-popup.tsx",
-      "line": 247
+      "line": 250
     }
   ],
   "textarea": [
@@ -283,7 +283,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 144
+      "line": 164
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -329,7 +329,7 @@
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 112
+      "line": 132
     }
   ],
   "checkbox": [
@@ -343,13 +343,13 @@
       "widget": "리크루팅",
       "key": "recruiting",
       "file": "src/components/canvas/widgets/recruiting/responses-spreadsheet.tsx",
-      "line": 685
+      "line": 686
     },
     {
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1504
+      "line": 1506
     }
   ],
   "slider": [],
@@ -364,7 +364,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1178
+      "line": 1180
     },
     {
       "widget": "프로빙 어시스턴트",
@@ -396,7 +396,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1580
+      "line": 1582
     },
     {
       "widget": "캔버스 공용",
@@ -443,13 +443,13 @@
       "widget": "인터뷰 결과 생성기",
       "key": "interviews",
       "file": "src/components/canvas/widgets/interviews-card.tsx",
-      "line": 185
+      "line": 189
     },
     {
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1193
+      "line": 1195
     }
   ],
   "dropdown-menu": [
@@ -463,13 +463,13 @@
       "widget": "인터뷰 결과 생성기",
       "key": "interviews",
       "file": "src/components/canvas/widgets/interviews-card.tsx",
-      "line": 107
+      "line": 111
     },
     {
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1141
+      "line": 1143
     }
   ],
   "download-menu": [
@@ -483,7 +483,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1836
+      "line": 1838
     }
   ],
   "share-menu": [
@@ -497,7 +497,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1860
+      "line": 1862
     }
   ],
   "feature-page": [],
@@ -513,7 +513,7 @@
       "widget": "인터뷰 결과 생성기",
       "key": "interviews",
       "file": "src/components/canvas/widgets/interviews-card.tsx",
-      "line": 443
+      "line": 450
     }
   ],
   "tooltip": [],
@@ -532,7 +532,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1338
+      "line": 1340
     }
   ],
   "brand-loader": [
@@ -566,7 +566,7 @@
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1239
+      "line": 1241
     }
   ],
   "canvas-widget-primitives": [
@@ -598,13 +598,13 @@
       "widget": "인터뷰 결과 생성기",
       "key": "interviews",
       "file": "src/components/canvas/widgets/interviews-card.tsx",
-      "line": 171
+      "line": 175
     },
     {
       "widget": "전사록 생성기",
       "key": "quotes",
       "file": "src/components/canvas/widgets/quotes-card-body.tsx",
-      "line": 1292
+      "line": 1294
     },
     {
       "widget": "캔버스 공용",
@@ -613,10 +613,16 @@
       "line": 50
     },
     {
+      "widget": "캔버스 공용",
+      "key": null,
+      "file": "src/components/canvas/shell/widget-shell.tsx",
+      "line": 58
+    },
+    {
       "widget": "프로빙 어시스턴트",
       "key": "probing",
       "file": "src/components/canvas/widgets/probing/control-board.tsx",
-      "line": 110
+      "line": 123
     },
     {
       "widget": "프로빙 어시스턴트",
