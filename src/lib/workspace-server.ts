@@ -215,19 +215,23 @@ function schedulerToItem(r: {
 }
 
 function recruitingToItem(r: {
-  id: string;
+  // recruiting_forms keys on `form_id text`, not the uuid `id` every other
+  // table uses. Selecting `id` here 400s prod on every folder-view load
+  // (`column recruiting_forms.id does not exist`). Read form_id, but keep
+  // item.id normalized so the shape matches the other features.
+  form_id: string;
   title: string | null;
   project_id: string | null;
   folder_id: string | null;
   created_at: string;
 }): WorkspaceArtifactListItem {
   return {
-    id: `rc_${r.id}`,
+    id: `rc_${r.form_id}`,
     featureKey: 'recruiting',
     title: r.title ?? 'Recruiting form',
     createdAt: r.created_at,
     dbFeature: 'recruiting',
-    dbId: r.id,
+    dbId: r.form_id,
     projectId: r.project_id,
     folderId: r.folder_id,
   };
@@ -301,7 +305,7 @@ export async function listWorkspaceArtifacts(
   const recruitingQ = applyProjectFilter(
     supabase
       .from('recruiting_forms')
-      .select('id, project_id, folder_id, title, created_at')
+      .select('form_id, project_id, folder_id, title, created_at')
       .eq('org_id', orgId),
     filter,
   );
