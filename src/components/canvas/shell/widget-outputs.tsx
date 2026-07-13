@@ -16,7 +16,10 @@ import { Button } from '@/components/ui/button';
 // 하지만 산출물 영역 의도를 명확히 하기 위해 별도 이름으로 export.
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="text-xs uppercase tracking-[0.22em] text-mute-soft">
+    <div
+      className="text-xs uppercase tracking-[0.22em] text-mute-soft"
+      data-ds-primitive="SectionLabel"
+    >
       {children}
     </div>
   );

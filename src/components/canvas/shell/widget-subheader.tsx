@@ -72,6 +72,7 @@ export function WidgetSubHeader({
     <header
       className={rowClassName}
       style={compact ? undefined : { minHeight: WIDGET_SUBHEADER_MIN_HEIGHT }}
+      data-ds-primitive="WidgetSubHeader"
     >
       <div
         className={[
