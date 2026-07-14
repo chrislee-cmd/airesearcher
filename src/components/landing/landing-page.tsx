@@ -13,26 +13,29 @@ import {
   type CreditBundleId,
   type SubscriptionTierId,
 } from '@/lib/features';
+import { formatUsd } from '@/lib/currency';
 import './landing.css';
 
 // 랜딩 가격 카드 → CREDIT_BUNDLES 파생 (드리프트 차단). 카피는 messages 에
-// 두되 ₩ 숫자·크레딧 수·단가는 이 상수에서 주입한다 — messages 에 가격을
-// 하드코딩하지 않으므로 A1 리프라이스가 랜딩에 자동 반영된다.
-const krw = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
+// 두되 $ 가격·크레딧 수·단가는 이 상수에서 주입한다 — messages 에 가격을
+// 하드코딩하지 않으므로 리프라이스가 랜딩에 자동 반영된다. dual-rail 전환
+// (2026-07-14)으로 표기 통화는 USD(LS 카드 rail, SSOT priceUsd). formatUsd 가
+// $ 기호를 붙이므로 messages 의 가격 문자열엔 통화 기호를 두지 않는다.
+const num = (n: number) => new Intl.NumberFormat('en-US').format(n);
 const landingBundle = (id: CreditBundleId) => {
   const b = CREDIT_BUNDLES.find((x) => x.id === id)!;
   return {
-    price: krw(b.priceKrw ?? 0),
-    credits: krw(b.credits),
-    perCredit: krw(b.perCreditKrw ?? 0),
+    price: formatUsd(b.priceUsd ?? 0),
+    credits: num(b.credits),
+    perCredit: formatUsd(b.perCreditUsd ?? 0),
   };
 };
 
-// 구독 티어도 같은 원리로 SUBSCRIPTION_TIERS 에서 파생 — B1 백엔드 SSOT 와
-// 드리프트 0. 월 요금·포함 크레딧만 주입하고 카피는 messages 에 둔다.
+// 구독 티어도 같은 원리로 SUBSCRIPTION_TIERS 에서 파생 — 백엔드 SSOT 와
+// 드리프트 0. 월 요금(USD)·포함 크레딧만 주입하고 카피는 messages 에 둔다.
 const landingSub = (id: SubscriptionTierId) => {
   const s = SUBSCRIPTION_TIERS.find((x) => x.id === id)!;
-  return { price: krw(s.monthlyPriceKrw), credits: krw(s.includedCredits) };
+  return { price: formatUsd(s.monthlyPriceUsd), credits: num(s.includedCredits) };
 };
 
 const outfit = Outfit({

@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   SUBSCRIPTION_TIERS,
+  includedCreditsFor,
   type SubscriptionTierId,
+  type SubscriptionInterval,
 } from '@/lib/features';
 import { track } from '@/components/mixpanel-provider';
-import { formatCurrency, type CurrencyCode } from '@/lib/currency';
-import type { PaymentCurrency } from '@/lib/billing';
+import { formatUsd } from '@/lib/currency';
 import { Button } from '@/components/ui/button';
 
 // Shared Outfit display stack — matches credits-bundles.tsx so the
@@ -43,11 +44,6 @@ function memphisGhost(active: boolean): CSSProperties {
   };
 }
 
-const CURRENCY_TO_DISPLAY: Record<PaymentCurrency, CurrencyCode> = {
-  KRW: 'KRW',
-  USD: 'USD',
-};
-
 // LS subscription statuses that mean the org currently holds a live plan.
 // `active` + `on_trial` are the "you have a plan right now" states; a
 // `cancelled` sub that's still inside its paid period also keeps access
@@ -58,10 +54,6 @@ const LIVE_STATUSES = new Set(['active', 'on_trial', 'cancelled', 'past_due']);
 const POPULAR_TIER: SubscriptionTierId = 'plus';
 
 type SubscriptionPlansProps = {
-  // Lemon Squeezy currencies the server can route — reused from the packs
-  // path so the toggle only appears when a USD store is provisioned.
-  availableCurrencies?: PaymentCurrency[];
-  initialCurrency?: PaymentCurrency;
   // Current org subscription state (organizations 구독 컬럼, 마이그
   // 20260713154738). null/무구독이면 전 티어가 "구독하기" CTA.
   currentTier?: SubscriptionTierId | null;
@@ -74,8 +66,6 @@ type SubscriptionPlansProps = {
 };
 
 export function SubscriptionPlans({
-  availableCurrencies,
-  initialCurrency,
   currentTier = null,
   currentStatus = null,
   currentPeriodEnd = null,
@@ -85,20 +75,12 @@ export function SubscriptionPlans({
   const t = useTranslations('Credits');
   const locale = useLocale();
 
-  const supported = useMemo<PaymentCurrency[]>(
-    () =>
-      availableCurrencies && availableCurrencies.length > 0
-        ? availableCurrencies
-        : ['KRW'],
-    [availableCurrencies],
-  );
-  const initial: PaymentCurrency =
-    initialCurrency && supported.includes(initialCurrency)
-      ? initialCurrency
-      : supported[0];
-  const [currency, setCurrency] = useState<PaymentCurrency>(initial);
-  const displayCurrency = CURRENCY_TO_DISPLAY[currency];
-  const formatPrice = (krw: number) => formatCurrency(krw, displayCurrency);
+  // Subscriptions are LS-card / USD only (계좌이체 미제공). The only pricing
+  // lever is monthly vs annual — annual = 1개월 무료 (ANNUAL_FREE_MONTHS),
+  // priced from the SSOT `annualPriceUsd`. Named `billingInterval` to avoid
+  // shadowing the global `setInterval`.
+  const [billingInterval, setBillingInterval] = useState<SubscriptionInterval>('month');
+  const isAnnual = billingInterval === 'year';
 
   const [submittingTier, setSubmittingTier] = useState<SubscriptionTierId | null>(null);
   // Once a checkout returns 503 (variant 미구성) we lock the CTAs and show a
@@ -126,10 +108,10 @@ export function SubscriptionPlans({
         })
       : null;
 
-  function selectCurrency(c: PaymentCurrency) {
-    if (c === currency) return;
-    setCurrency(c);
-    track('subscription_currency_toggle', { currency: c });
+  function selectInterval(next: SubscriptionInterval) {
+    if (next === billingInterval) return;
+    setBillingInterval(next);
+    track('subscription_interval_toggle', { interval: next });
   }
 
   function goToPortal() {
@@ -142,7 +124,7 @@ export function SubscriptionPlans({
   }
 
   async function subscribe(tier: SubscriptionTierId) {
-    track('subscription_subscribe_click', { tier });
+    track('subscription_subscribe_click', { tier, interval: billingInterval });
     setSubmittingTier(tier);
     try {
       const res = await fetch('/api/billing/subscription/checkout', {
@@ -151,7 +133,9 @@ export function SubscriptionPlans({
         body: JSON.stringify({
           tier,
           locale: locale === 'ko' ? 'ko' : 'en',
-          currency,
+          // 월/연 계약 — 연간은 annual variant(USD) 로 라우팅된다
+          // (resolveLemonSqueezySubscriptionTarget).
+          interval: billingInterval,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -178,8 +162,6 @@ export function SubscriptionPlans({
     }
   }
 
-  const showCurrencyToggle = supported.length > 1;
-
   return (
     <section aria-labelledby="subscription-heading">
       <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
@@ -195,37 +177,43 @@ export function SubscriptionPlans({
             {t('subSectionSubtitle')}
           </p>
         </div>
-        {showCurrencyToggle && (
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              style={{ fontFamily: outfitStack }}
-              className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft"
-            >
-              {t('currencyLabel')}
-            </span>
-            <div className="inline-flex gap-2">
-              {supported.map((c) => {
-                const active = c === currency;
-                return (
-                  <Button
-                    key={c}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => selectCurrency(c)}
-                    style={{
-                      ...memphisGhost(active),
-                      background: active ? '#fff0f4' : '#fff',
-                      color: '#000',
-                    }}
-                    className="px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em] rounded-sm"
-                  >
-                    {t(c === 'KRW' ? 'currencyKrw' : 'currencyUsd')}
-                  </Button>
-                );
-              })}
-            </div>
+        {/* 월/연 토글 — 연간 = 1개월 무료. 연 선택 시 카드 가격/포함
+            크레딧이 annual SSOT 로 전환되고 checkout 에 interval='year' 전달. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="group" aria-label={t('subIntervalLabel')} className="inline-flex gap-2">
+            {(['month', 'year'] as const).map((iv) => {
+              const active = iv === billingInterval;
+              return (
+                <Button
+                  key={iv}
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={active}
+                  onClick={() => selectInterval(iv)}
+                  style={{
+                    ...memphisGhost(active),
+                    background: active ? '#fff0f4' : '#fff',
+                    color: '#000',
+                  }}
+                  className="px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em] rounded-sm"
+                >
+                  {t(iv === 'month' ? 'subIntervalMonthly' : 'subIntervalAnnual')}
+                </Button>
+              );
+            })}
           </div>
-        )}
+          <span
+            style={{
+              background: 'var(--canvas-accent)',
+              border: '2px solid var(--canvas-card-border)',
+              boxShadow: 'var(--memphis-shadow-xs)',
+              fontFamily: outfitStack,
+            }}
+            className="rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
+          >
+            {t('subAnnualBadge')}
+          </span>
+        </div>
       </div>
 
       {/* Current-plan banner — shown only when the org holds a live sub. */}
@@ -279,7 +267,13 @@ export function SubscriptionPlans({
         {SUBSCRIPTION_TIERS.map((tier) => {
           const popular = tier.id === POPULAR_TIER;
           const isCurrent = isSubscribed && tier.id === currentTier;
-          const perCredit = Math.round(tier.monthlyPriceKrw / tier.includedCredits);
+          // All figures SSOT-derived per selected interval — annual reads the
+          // `annualPriceUsd` / `annualIncludedCredits` columns (1개월 무료 이미
+          // 반영), monthly reads the base columns. USD only (no FX, no KRW).
+          const priceUsd = isAnnual ? tier.annualPriceUsd : tier.monthlyPriceUsd;
+          const includedCredits = includedCreditsFor(tier, billingInterval);
+          const perCreditUsd = priceUsd / includedCredits;
+          const effectiveMonthlyUsd = tier.annualPriceUsd / 12;
           return (
             <div
               key={tier.id}
@@ -338,18 +332,31 @@ export function SubscriptionPlans({
                   }}
                   className="text-ink-2 tabular-nums"
                 >
-                  {formatPrice(tier.monthlyPriceKrw)}
+                  {formatUsd(priceUsd)}
                 </span>
                 <span className="text-sm font-semibold text-mute-soft">
-                  {t('subPerMonth')}
+                  {isAnnual ? t('subPerYear') : t('subPerMonth')}
                 </span>
               </div>
 
+              {/* 연간: "연 $88 = 월 $7.33" effective 표시 — 무만료 연 지급의
+                  월 환산가로 실 절약을 눈에 보이게. 월간엔 표시 안 함. */}
+              {isAnnual && (
+                <div className="mt-1 text-xs-soft font-semibold text-amore tabular-nums">
+                  {t('subAnnualEffective', {
+                    annual: formatUsd(tier.annualPriceUsd),
+                    monthly: formatUsd(effectiveMonthlyUsd),
+                  })}
+                </div>
+              )}
+
               <div className="mt-4 text-lg font-bold text-ink-2 tabular-nums">
-                {t('subIncludedCredits', { count: tier.includedCredits })}
+                {isAnnual
+                  ? t('subIncludedCreditsAnnual', { count: includedCredits })
+                  : t('subIncludedCredits', { count: includedCredits })}
               </div>
               <div className="mt-1 text-xs-soft text-mute tabular-nums">
-                {formatPrice(perCredit)} {t('perCredit')}
+                {formatUsd(perCreditUsd)} {t('perCredit')}
               </div>
 
               <ul className="mt-4 flex flex-col gap-2 text-md text-mute">

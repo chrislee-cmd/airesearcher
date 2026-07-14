@@ -1,24 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
   type CreditBundleId,
 } from '@/lib/features';
 import { track } from '@/components/mixpanel-provider';
-import { formatCurrency, type CurrencyCode } from '@/lib/currency';
+import { formatUsd } from '@/lib/currency';
 import type { PaymentCurrency } from '@/lib/billing';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 
-// Plain KRW formatter — used only for the bank-transfer "deposit this
-// exact amount" detail row, since that's the literal sum the customer
-// has to wire. All other prices on the page render through
-// `formatCurrency` keyed off the user's locale so foreign-locale users
-// see USD / JPY / THB display values.
+// Plain KRW formatter — used for the bank-transfer rail, since that's the
+// literal ₩ sum (features.ts `priceKrw`) the customer has to wire. The
+// dual-rail overhaul (2026-07-14) made the display currency follow the
+// payment rail rather than a free toggle: LS card renders USD (`priceUsd`),
+// bank transfer renders KRW (`priceKrw`) — both SSOT-direct, no FX.
 function formatKrw(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
 }
@@ -72,14 +72,13 @@ function memphisGhost(active: boolean): CSSProperties {
 
 type Method = 'lemonsqueezy' | 'bank_transfer';
 
-// Payment currency = which Lemon Squeezy payout rail to settle on.
-// KRW lands in 메테오 국내 KRW 계좌, USD lands in the 외환 계좌. The
-// display formatter (`formatCurrency`) follows this same value so the
-// user sees the price in the currency they're actually charged in.
-const CURRENCY_TO_DISPLAY: Record<PaymentCurrency, CurrencyCode> = {
-  KRW: 'KRW',
-  USD: 'USD',
-};
+// The payment rail decides the settlement currency: LS card → USD (외환
+// 계좌), bank transfer → KRW (국내 계좌). There is no free currency toggle
+// anymore — `currencyForMethod` derives the rail's currency so display and
+// the checkout payload can never disagree.
+function currencyForMethod(method: Method): PaymentCurrency {
+  return method === 'bank_transfer' ? 'KRW' : 'USD';
+}
 
 type TaxInvoiceState = {
   enabled: boolean;
@@ -109,39 +108,9 @@ type BankDetails = {
   amountKrw: number;
 };
 
-type CreditsBundlesProps = {
-  // Lemon Squeezy currencies the server can actually route. When only
-  // one is configured the toggle hides and we settle on that single rail.
-  availableCurrencies?: PaymentCurrency[];
-  // Default rail server-side picked from locale + Vercel geo header.
-  initialCurrency?: PaymentCurrency;
-};
-
-export function CreditsBundles({
-  availableCurrencies,
-  initialCurrency,
-}: CreditsBundlesProps = {}) {
+export function CreditsBundles() {
   const t = useTranslations('Credits');
   const locale = useLocale();
-
-  // Currency state — drives display formatting *and* the LS payout rail.
-  // The previous implementation drove display purely from `locale`; now
-  // the toggle is the source of truth so a Korean user shopping in USD
-  // sees USD prices that match the LS checkout they're about to land on.
-  const supported = useMemo<PaymentCurrency[]>(
-    () =>
-      availableCurrencies && availableCurrencies.length > 0
-        ? availableCurrencies
-        : ['KRW'],
-    [availableCurrencies],
-  );
-  const initial: PaymentCurrency =
-    initialCurrency && supported.includes(initialCurrency)
-      ? initialCurrency
-      : supported[0];
-  const [currency, setCurrency] = useState<PaymentCurrency>(initial);
-  const displayCurrency = CURRENCY_TO_DISPLAY[currency];
-  const formatPrice = (krw: number) => formatCurrency(krw, displayCurrency);
 
   const [selectedBundle, setSelectedBundle] = useState<CreditBundleId | null>(null);
   const [method, setMethod] = useState<Method>('lemonsqueezy');
@@ -150,17 +119,6 @@ export function CreditsBundles({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
-
-  // Bank transfer = 국내 KRW only. The currency toggle's onClick flips
-  // the method back to card when the user picks USD so they never end
-  // up submitting a bank_transfer the server would have to reject.
-
-  function selectCurrency(c: PaymentCurrency) {
-    if (c === currency) return;
-    setCurrency(c);
-    if (c === 'USD' && method === 'bank_transfer') setMethod('lemonsqueezy');
-    track('credits_currency_toggle', { currency: c });
-  }
 
   useEffect(() => {
     if (!toast) return;
@@ -184,6 +142,10 @@ export function CreditsBundles({
 
   async function submit() {
     if (!selected || selected.priceKrw == null) return;
+    // Rail decides currency: card → USD, bank → KRW. The server ignores this
+    // field (it derives currency from `method` too) but we thread it for
+    // analytics + forward-compat parity with the checkout contract.
+    const currency = currencyForMethod(method);
     track(
       method === 'lemonsqueezy' ? 'credits_pay_card_click' : 'credits_bank_transfer_click',
       {
@@ -267,45 +229,12 @@ export function CreditsBundles({
       tax.managerName.trim() &&
       /\S+@\S+\.\S+/.test(tax.managerEmail));
 
-  const showCurrencyToggle = supported.length > 1;
-
   return (
     <>
-      {showCurrencyToggle && (
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <span
-            style={{ fontFamily: outfitStack }}
-            className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft"
-          >
-            {t('currencyLabel')}
-          </span>
-          <div className="inline-flex gap-2">
-            {supported.map((c) => {
-              const active = c === currency;
-              return (
-                <Button
-                  key={c}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => selectCurrency(c)}
-                  style={{
-                    ...memphisGhost(active),
-                    background: active ? '#fff0f4' : '#fff',
-                    color: '#000',
-                  }}
-                  className="px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em] rounded-sm"
-                >
-                  {t(c === 'KRW' ? 'currencyKrw' : 'currencyUsd')}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      )}
       <div className="mt-10 grid grid-cols-1 gap-6 pt-3 sm:grid-cols-2 lg:grid-cols-4">
         {CREDIT_BUNDLES.map((b) => {
           const labelKey = BUNDLE_LABEL_KEY[b.id];
-          const isContact = b.priceKrw === null;
+          const isContact = b.priceUsd === null;
           return (
             <div
               key={b.id}
@@ -355,12 +284,27 @@ export function CreditsBundles({
                 </span>
               </div>
               <div className="mt-4 text-xl font-bold text-ink-2 tabular-nums">
-                {isContact ? '—' : formatPrice(b.priceKrw!)}
+                {isContact ? '—' : formatUsd(b.priceUsd!)}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs-soft text-mute tabular-nums">
-                {b.perCreditKrw !== null && (
+                {b.perCreditUsd !== null && (
                   <span>
-                    {formatPrice(b.perCreditKrw)} {t('perCredit')}
+                    {formatUsd(b.perCreditUsd)} {t('perCredit')}
+                  </span>
+                )}
+                {/* 볼륨할인 정직 노출 — SSOT discountPct 파생 절약 배지. 0%
+                    (mini/starter) 는 배지 없음, plus5/pro7.5/max10 만 노출. */}
+                {b.discountPct > 0 && (
+                  <span
+                    style={{
+                      background: 'var(--canvas-accent)',
+                      border: '2px solid var(--canvas-card-border)',
+                      boxShadow: 'var(--memphis-shadow-xs)',
+                      fontFamily: outfitStack,
+                    }}
+                    className="rounded-full px-2 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
+                  >
+                    {t('bundleSavings', { pct: b.discountPct })}
                   </span>
                 )}
               </div>
@@ -458,44 +402,35 @@ export function CreditsBundles({
                     {t(BUNDLE_LABEL_KEY[selected.id])} ·{' '}
                     {selected.credits.toLocaleString()} {t('creditsUnit')}
                   </h3>
+                  {/* Rail-aware price: card settles USD, bank settles KRW.
+                      Both SSOT-direct (priceUsd / priceKrw), no FX. */}
                   <p className="mt-1 text-md text-mute tabular-nums">
-                    {formatPrice(selected.priceKrw!)}
-                    {displayCurrency !== 'KRW' && (
-                      <span className="ml-2 text-mute-soft">
-                        ({t('billedInKrwNote', {
-                          krw: formatKrw(selected.priceKrw!),
-                        })})
-                      </span>
-                    )}
+                    {method === 'bank_transfer'
+                      ? formatKrw(selected.priceKrw!)
+                      : formatUsd(selected.priceUsd!)}
                   </p>
 
-                  {/* Method selection — bank_transfer is 국내 KRW only, so the
-                      toggle to USD hides it and locks the user into card. */}
+                  {/* Method selection — the two rails ARE the two currencies:
+                      card charges USD, bank transfer charges the equivalent KRW
+                      (same % volume discount). Both are always offered; picking
+                      bank flips the price above to ₩. */}
                   <div className="mt-5">
                     <p className="text-xs-soft font-semibold uppercase tracking-[0.22em] text-mute-soft">
                       {t('methodLabel')}
                     </p>
-                    <div
-                      className={
-                        currency === 'KRW'
-                          ? 'mt-2 grid grid-cols-2 gap-2'
-                          : 'mt-2 grid grid-cols-1 gap-2'
-                      }
-                    >
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       <MethodOption
                         active={method === 'lemonsqueezy'}
                         onClick={() => setMethod('lemonsqueezy')}
                         label={t('methodCard')}
                         hint={t('methodCardHint')}
                       />
-                      {currency === 'KRW' && (
-                        <MethodOption
-                          active={method === 'bank_transfer'}
-                          onClick={() => setMethod('bank_transfer')}
-                          label={t('methodBank')}
-                          hint={t('methodBankHint')}
-                        />
-                      )}
+                      <MethodOption
+                        active={method === 'bank_transfer'}
+                        onClick={() => setMethod('bank_transfer')}
+                        label={t('methodBank')}
+                        hint={t('methodBankHint')}
+                      />
                     </div>
                   </div>
 
