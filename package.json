@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "check:i18n": "node --experimental-strip-types scripts/check-i18n.ts",
     "prepare": "husky",
     "migration:new": "supabase migration new",
     "gen:ds-usage": "node scripts/gen-ds-usage.mjs",

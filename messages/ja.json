@@ -6,10 +6,7 @@
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "同じデスクに並ぶ8つの小さなツールが、急がないリサーチを支えます。",
     "nav": {
-      "demo": "デモ",
-      "why": "Canvasの理由",
       "pricing": "料金",
-      "story": "ストーリー",
       "faq": "よくある質問",
       "signIn": "サインイン",
       "freeStart": "無料で始める →"
@@ -21,38 +18,6 @@
       "ctaPrimary": "無料で始める →",
       "ctaSecondary": "デモを見る",
       "postscript": "<b>P.S.</b> すべてのツールが最初の24時間は使い放題。カード登録は不要です。"
-    },
-    "showcase": {
-      "meta": "ライブデモ",
-      "title": "実際にお試しください。<br></br><em>本物と同じように動きます。</em>",
-      "subtitle": "ツールを切り替えながら、ワークスペースに成果物が積み上がる様子をご覧ください。サインアップは不要です。",
-      "freeTrial": "無料トライアル",
-      "freeTrialTime": "23時間48分",
-      "groups": {
-        "design": "設計",
-        "conduct": "実施",
-        "analysis": "分析"
-      },
-      "tools": {
-        "desk": "デスクリサーチ",
-        "screener": "スクリーナー作成",
-        "guideline": "ガイドライン作成",
-        "moderator": "AIモデレーター",
-        "verbatim": "文字起こし生成",
-        "interview": "インタビュー分析",
-        "report": "リサーチレポート生成",
-        "quant": "定量分析",
-        "affinity": "アフィニティバブル"
-      },
-      "sideFoot": "Beauty UX 2026Q2",
-      "wsMeta": "ワークスペース",
-      "wsEmpty": "立ち寄ったツールから生まれた成果物がここに表示されます。サイドバーをクリックして始めましょう。",
-      "wsReset": "リセット",
-      "wsToReport": "レポートへ →",
-      "footMeta": "次へ",
-      "tip": "← / → で移動 · サイドバーをクリックでツール切替 · タブでステージ移動",
-      "tipMeta": "ヒント",
-      "fallbackNext": "レポートで仕上げる →"
     },
     "pricing": {
       "meta": "クレジット · 使った分だけお支払い",
@@ -139,10 +104,6 @@
           }
         }
       }
-    },
-    "voice": {
-      "quote": "「リサーチが雑用のように感じていました。<br></br>一日かかっていたインタビューのまとめが今では1時間で終わり、<br></br>ようやく本当に考える時間が持てるようになりました。」",
-      "by": "— Mathpresso UXリード"
     },
     "faq": {
       "meta": "よくある質問",
@@ -555,8 +516,7 @@
     "predictorUses": "{count}回",
     "predictorAtCap": "予算が不足しているため、これ以上増やせません。他の機能を減らしてください。",
     "predictorResetEven": "均等配分",
-    "predictorResetZero": "ゼロにリセット"
-,
+    "predictorResetZero": "ゼロにリセット",
     "comingSoonTitle": "決済機能は準備中です",
     "comingSoonBody": "ゲートウェイの統合までは、チャージは請求チーム経由で対応しております。必要なクレジット数をメールでお送りいただければ、1営業日以内に処理いたします。",
     "contactEmail": "billing@meteor-research.com",
@@ -688,10 +648,7 @@
       "eyebrow": "セッション成果物",
       "notAvailable": "このセッションの録音はありません。",
       "preparing": "録音を仕上げています…",
-      "audioInput": "元音声 (.m4a)",
       "audioOutput": "通訳音声 (.m4a)",
-      "txt": "字幕 (.txt)",
-      "docx": "字幕 (.docx)",
       "preparingFile": "ファイルを準備中…",
       "errors": {
         "recorder_failed": "録音を開始できませんでした。マイクまたはタブ音声の権限を確認してください。",

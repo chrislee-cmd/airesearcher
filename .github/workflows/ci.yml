@@ -63,6 +63,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # i18n locale key parity (i18n Phase 2). Hard gate: ko↔en must match
+      # exactly, ja/th must be a subset of en, and every messages/*.json must
+      # be valid JSON with no duplicate keys. Prevents raw-key regressions —
+      # the en-base merge in src/i18n/request.ts relies on ja/th ⊆ en.
+      - name: i18n locale parity
+        run: pnpm check:i18n
+
   secrets-scan:
     name: Secrets scan
     runs-on: ubuntu-latest
