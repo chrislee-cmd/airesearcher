@@ -70,3 +70,11 @@ export const CANVAS_ORDER: CanvasWidgetKey[] = [
 export function visibleCanvasWidgets(): CanvasWidgetKey[] {
   return CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k]);
 }
+
+// 순차 배포 후순위 — 일반(비-unlimited) 계정 캔버스에서 숨기는 placeholder
+// 위젯 키 (2026-07-14, card 600). 이 둘은 FeatureKey 가 아니라 캔버스 전용
+// placeholder 키라 PREVIEW_FEATURES 로는 못 가린다 → 키 레벨에서 제외한다.
+// canvas/page.tsx 의 visible 필터가 unlimited(관리자)는 우회하므로 관리자
+// 캔버스는 9개 그대로(회귀 0). 되돌리기 = 이 세트를 비우면 즉시 노출.
+export const CANVAS_NORMAL_HIDDEN: ReadonlySet<CanvasWidgetKey> =
+  new Set<CanvasWidgetKey>(['guideline', 'ppt_report']);

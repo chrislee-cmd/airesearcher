@@ -39,18 +39,22 @@ import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-
 import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
-// 3×3 row-major 배치 — 9 visible 위젯이 3열 × 3행에 정확히 채워짐
-// (Row1 recruiting|desk|guideline, Row2 probing|translate|moderator_ai,
-// Row3 quotes|interviews|ppt_report). visibility.ts CANVAS_ORDER 가 순서 정의.
-const GRID_COLS = 3;
-const GRID_ROWS = 3;
 // CELL_W 816 — 6×5 시절 expandedCols=3 위젯 한 장의 visual width
 // (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
 // 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
 const CELL_W = 816;
 const CELL_H = 950;
-const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP; // 3 × 816 + 2 × 48 = 2544
-const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
+
+// 그리드 컬럼/행은 **위젯 개수에 맞춰 파생**한다 — 4개 이하(일반계정:
+// 프로빙·동시통역·AI UT·전사록)면 2열 → 2×2, 5개 이상(관리자 9개)이면 3열 →
+// 3×3. 예전엔 GRID_COLS=3 고정이라 위젯 4개가 3+1(3컬럼 1행 + 잔여 1)로
+// 깨졌다. row-major 채움 순서는 visibility.ts CANVAS_ORDER 를 따른다. SURFACE
+// 크기(surfaceDims)도 이 파생값에서 계산돼 fit-to-view/pan 좌표계가 맞는다.
+function gridDimsFor(count: number): { cols: number; rows: number } {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: Math.ceil(count / 2) };
+  return { cols: 3, rows: Math.ceil(count / 3) };
+}
 // MIN_ZOOM 0.3 — fit-to-view (9 위젯 한눈) 가 작은 viewport (1440×900 +
 // 사이드바 280px → 본문 1160×800) 에서도 clamp 없이 안착하려면 0.3 까지
 // 허용해야 함. 이전 0.4 였으나 height 축에서 ~14% 잘렸음. 위젯 안 텍스트는
@@ -67,9 +71,10 @@ const FOCUS_THRESHOLD = 0.55;
 // 때만 클릭(=focus)으로 판정. 이보다 크면 드래그 pan 으로 보고 focus 안 함.
 const CLICK_MOVE_THRESHOLD = 5;
 // v1 = 6×5, v2 = 3×3 (1·2행 3+3), v3 = 2×3 row-major. v4 = 3×3 (9 위젯, 신
-// placeholder 3장 추가) 로 한 번 더 reset — 옛 커스텀 좌표를 버리고 신 layout 을
-// 강제 적용 (사용자 결정: 초기화 의도).
-const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v4';
+// placeholder 3장 추가). v5 = 그리드 컬럼을 위젯 개수에 맞춰 파생(일반계정 4개
+// → 2×2, 관리자 9개 → 3×3) 로 전환하며 옛 3열 고정 좌표를 버리고 재배치 강제
+// (사용자 결정: 초기화 의도 — 3+1 깨짐 수정).
+const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v5';
 // 개별 위젯 hide/show — 숨긴 위젯 key 목록. positions(v4) 와 분리된 신 키:
 // hide 는 렌더 필터일 뿐 positions 는 건드리지 않아 복원 시 원위치 재등장.
 // SSR-safe: 초기 빈 Set → mount 후 hydrate (probing use-hidden-defaults 패턴).
@@ -141,20 +146,24 @@ function spanOf(_w: WidgetContent | undefined): Span {
 
 // 좌측 상단부터 row-major 로 위젯을 채움 — 점유 셀을 추적해 multi-row
 // 위젯이 아래 row 를 미리 점유한 경우 그 셀들을 건너뜀.
-function defaultPositions(widgets: WidgetContent[]): Record<string, Coords> {
+function defaultPositions(
+  widgets: WidgetContent[],
+  gridCols: number,
+  gridRows: number,
+): Record<string, Coords> {
   const out: Record<string, Coords> = {};
   const occupied = new Set<string>();
   let col = 0;
   let row = 0;
   for (const w of widgets) {
     const { cols, rows } = spanOf(w);
-    while (row < GRID_ROWS) {
-      if (col + cols > GRID_COLS) {
+    while (row < gridRows) {
+      if (col + cols > gridCols) {
         col = 0;
         row += 1;
         continue;
       }
-      if (row + rows > GRID_ROWS) break;
+      if (row + rows > gridRows) break;
       let fits = true;
       for (let dc = 0; dc < cols && fits; dc += 1) {
         for (let dr = 0; dr < rows && fits; dr += 1) {
@@ -217,8 +226,15 @@ export function CanvasBoard({
     );
   }, [rawWidgets, lockedKeys, orgId]);
 
+  // 그리드/서피스 치수는 위젯 개수에서 파생 — 4개 이하 2×2, 9개 3×3. 원시
+  // 숫자라 매 렌더 재계산돼도 개수가 그대로면 값이 동일(Object.is stable) →
+  // 아래 effect deps 에 넣어도 불필요 재실행 없음.
+  const { cols: GRID_COLS, rows: GRID_ROWS } = gridDimsFor(widgets.length);
+  const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
+  const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
+
   const [positions, setPositions] = useState<Record<string, Coords>>(() =>
-    defaultPositions(widgets),
+    defaultPositions(widgets, GRID_COLS, GRID_ROWS),
   );
 
   useEffect(() => {
@@ -302,7 +318,7 @@ export function CanvasBoard({
     } catch {
       /* localStorage 접근 실패 — default 유지 */
     }
-  }, [widgets]);
+  }, [widgets, GRID_COLS, GRID_ROWS]);
 
   const persist = useCallback((next: Record<string, Coords>) => {
     try {
@@ -730,7 +746,7 @@ export function CanvasBoard({
         return next;
       });
     },
-    [dragKey, persist, widgetByKey, occupiedCells],
+    [dragKey, persist, widgetByKey, occupiedCells, GRID_COLS, GRID_ROWS],
   );
 
   const onHandleDragEnd = useCallback(() => {
@@ -814,7 +830,7 @@ export function CanvasBoard({
       setPan(targetPan);
       setFocusedKey(key);
     },
-    [widgetCenter, widgetByKey, hiddenWidgets],
+    [widgetCenter, widgetByKey, hiddenWidgets, SURFACE_W],
   );
 
   // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
@@ -922,7 +938,7 @@ export function CanvasBoard({
       didInitialFitRef.current = true;
     });
     return () => cancelAnimationFrame(id);
-  }, [initialFocus, widgets, positions, isList]);
+  }, [initialFocus, widgets, positions, isList, GRID_COLS, GRID_ROWS, SURFACE_W]);
 
   // 자동 갱신 — pan/zoom 가 바뀔 때마다 컨테이너 중심에 가장 가까운 위젯을
   // focusedKey 로 설정. 사용자가 wheel pan/zoom 으로 다른 위젯에 가면
@@ -951,7 +967,7 @@ export function CanvasBoard({
     if (bestKey && bestKey !== focusedKey) {
       setFocusedKey(bestKey);
     }
-  }, [pan, zoom, visibleWidgets, widgetCenter, focusedKey]);
+  }, [pan, zoom, visibleWidgets, widgetCenter, focusedKey, SURFACE_W]);
 
   // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
   // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker

@@ -3,6 +3,7 @@ import { CanvasBoard } from './canvas-board';
 import {
   CANVAS_ORDER,
   CANVAS_VISIBILITY,
+  CANVAS_NORMAL_HIDDEN,
   type CanvasWidgetKey,
 } from '@/lib/canvas/visibility';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
@@ -76,9 +77,14 @@ export default async function CanvasPage({
 
   // server-side visibility resolve — hard-coded map + preview gate.
   // 후속 PR 에서 org flags / per-widget db visibility 로 일반화 예정.
-  const visibleKeys = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k]).filter(
-    (k) => !PREVIEW_FEATURES.has(k as FeatureKey) || isUnlimited,
-  );
+  // 3단 필터: (1) hard-coded visibility → (2) preview 게이트(FeatureKey 인
+  // recruiting·desk·interviews·video 등 일반계정 숨김) → (3) 캔버스 전용
+  // placeholder 키(guideline·ppt_report) 일반계정 숨김. unlimited(관리자)는
+  // (2)(3) 모두 우회 → 9개 그대로(회귀 0). 일반계정 결과 = probing·translate·
+  // moderator_ai·quotes 정확히 4개.
+  const visibleKeys = CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k])
+    .filter((k) => !PREVIEW_FEATURES.has(k as FeatureKey) || isUnlimited)
+    .filter((k) => isUnlimited || !CANVAS_NORMAL_HIDDEN.has(k));
   const widgets = visibleKeys.map((k) => CARD_REGISTRY[k]);
 
   // 일반계정 게이트 대상 = visible 중 OPEN 아닌 키. unlimited 는 빈 배열 →
