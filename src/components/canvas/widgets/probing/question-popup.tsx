@@ -118,10 +118,22 @@ export type ProbingPopupPlacement = 'bottom-right' | 'center';
 //      (PROJECT.md §7.11 류 transform-containing-block 함정 없음).
 export type ProbingPopupPositioning = 'card' | 'viewport';
 
+// size — popup 의 시각 규모. 기능(카운트다운/hover-pause/핀·복사·닫기)은
+// 두 변주 모두 동일, **시각만** 다르다.
+//   'compact' (default) — 현행. 우하단 floating 소형 카드(importance별
+//      400~460px, 질문 text-md).
+//   'spotlight' — 전체보기 저시력 스포트라이트. 폭 ≈200%(단일 대형 920px),
+//      질문 초대형(text-display), rationale 축소·톤다운(text-xs text-mute),
+//      버튼/카운트다운 비례 확대(탭타깃 32→44px). center placement + scrim
+//      과 함께 써 화면 정중앙에서 흘끗 봐도 읽히도록. 사용자 요구: 진행자가
+//      인터뷰 중 실시간으로 제안 질문을 즉시 읽을 수 있어야 한다.
+export type ProbingPopupSize = 'compact' | 'spotlight';
+
 export function ProbingQuestionPopup({
   popup,
   placement = 'bottom-right',
   positioning = 'card',
+  size = 'compact',
   onPin,
   onCopy,
   onDismiss,
@@ -130,6 +142,7 @@ export function ProbingQuestionPopup({
   popup: PopupQuestion;
   placement?: ProbingPopupPlacement;
   positioning?: ProbingPopupPositioning;
+  size?: ProbingPopupSize;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -141,6 +154,7 @@ export function ProbingQuestionPopup({
       popup={popup}
       placement={placement}
       positioning={positioning}
+      size={size}
       onPin={onPin}
       onCopy={onCopy}
       onDismiss={onDismiss}
@@ -153,6 +167,7 @@ function ProbingQuestionPopupInner({
   popup,
   placement,
   positioning,
+  size,
   onPin,
   onCopy,
   onDismiss,
@@ -161,6 +176,7 @@ function ProbingQuestionPopupInner({
   popup: PopupQuestion;
   placement: ProbingPopupPlacement;
   positioning: ProbingPopupPositioning;
+  size: ProbingPopupSize;
   onPin: () => void;
   onCopy: () => void;
   onDismiss: () => void;
@@ -213,6 +229,7 @@ function ProbingQuestionPopupInner({
       : popup.technique || 'probe';
 
   const progress = secondsLeft / COUNTDOWN_SECONDS;
+  const spot = size === 'spotlight';
 
   // center: 중앙 (inset-x-4 로 좌우 여백 + mx-auto 로 max-w 중앙 정렬,
   // top-1/2 -translate-y-1/2 로 수직 중앙). bottom-right: 우하단 floating.
@@ -222,70 +239,102 @@ function ProbingQuestionPopupInner({
     placement === 'center'
       ? 'inset-x-4 top-1/2 -translate-y-1/2 mx-auto'
       : 'bottom-6 right-6';
-  const maxWClass = IMPORTANCE_MAX_W[popup.importance];
+  // spotlight: importance 무관 단일 대형(≈200%). calc(100vw-6rem) 로 좌우
+  // 잘림 0. compact: 현행 importance별 clamp.
+  const maxWClass = spot
+    ? 'max-w-[min(920px,calc(100vw-6rem))]'
+    : IMPORTANCE_MAX_W[popup.importance];
+  const padClass = spot ? 'p-8 sm:p-10' : 'p-4';
   // card → absolute (부모 카드 기준), viewport → fixed (viewport 우하단 고정).
   const positionClass = positioning === 'viewport' ? 'fixed' : 'absolute';
 
   return (
-    <div
-      role="dialog"
-      aria-live="polite"
-      aria-label="AI 가 제안한 즉시 질문"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      className={`pointer-events-auto ${positionClass} z-popup ${placementClass} ${maxWClass} ${visual.container} rounded-sm bg-paper p-4 ${visual.pulse ? 'probing-popup-pulse' : ''}`}
-    >
-      <header className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-xs tracking-[0.18em] ${dotColor}`}
-            aria-hidden
-          >
-            {dots}
-          </span>
-          <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-            {visual.label}
-          </span>
-        </div>
-        <Badge variant="neutral" className="uppercase tracking-[0.18em]">
-          {techniqueLabel}
-        </Badge>
-      </header>
-
-      {popup.target_section_label && (
-        <Badge
-          variant="amore"
-          leadingIcon="◆"
-          className="mb-2 tracking-[0.14em]"
-        >
-          {popup.target_section_label} 채우기
-        </Badge>
-      )}
-
-      <p className="mb-3 text-md font-medium leading-snug text-ink">
-        {popup.text}
-      </p>
-
-      {popup.rationale && (
-        <p className="mb-3 rounded-xs border-l-[3px] border-amore bg-paper-soft px-3 py-2 text-sm leading-relaxed text-ink-2">
-          {popup.rationale}
-        </p>
-      )}
-
-      <footer className="flex items-center justify-between border-t border-line-soft pt-2">
-        <CountdownRing
-          secondsLeft={secondsLeft}
-          total={COUNTDOWN_SECONDS}
-          progress={progress}
-          ringClass={visual.ring}
-          paused={paused}
+    <>
+      {/* spotlight scrim — 뒤 dim 으로 시선 집중(저시력 가독 보조). popup 은
+          DOM 상 scrim 뒤에 와 같은 z-popup 에서 위에 그려지므로 hover-pause
+          방해 없음. 백드롭 클릭 = dismiss(ESC/닫기와 동일 계약). */}
+      {spot && (
+        <div
+          aria-hidden
+          onClick={onDismiss}
+          className="pointer-events-auto fixed inset-0 z-popup bg-ink/30"
         />
-        <div className="flex gap-1.5">
-          <ActionButton
-            label="복사"
-            ariaLabel="질문 텍스트 복사"
-            onClick={onCopy}
+      )}
+      <div
+        role="dialog"
+        aria-live="polite"
+        aria-label="AI 가 제안한 즉시 질문"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        className={`pointer-events-auto ${positionClass} z-popup ${placementClass} ${maxWClass} ${visual.container} rounded-sm bg-paper ${padClass} ${visual.pulse ? 'probing-popup-pulse' : ''}`}
+      >
+        <header className={`${spot ? 'mb-4' : 'mb-2'} flex items-center justify-between`}>
+          <div className="flex items-center gap-2">
+            <span
+              className={`${spot ? 'text-sm' : 'text-xs'} tracking-[0.18em] ${dotColor}`}
+              aria-hidden
+            >
+              {dots}
+            </span>
+            <span className={`${spot ? 'text-sm' : 'text-xs'} uppercase tracking-[0.22em] text-mute-soft`}>
+              {visual.label}
+            </span>
+          </div>
+          <Badge variant="neutral" className="uppercase tracking-[0.18em]">
+            {techniqueLabel}
+          </Badge>
+        </header>
+
+        {popup.target_section_label && (
+          <Badge
+            variant="amore"
+            leadingIcon="◆"
+            className={`${spot ? 'mb-4' : 'mb-2'} tracking-[0.14em]`}
           >
+            {popup.target_section_label} 채우기
+          </Badge>
+        )}
+
+        {/* 질문 = 시각 1순위. spotlight 는 초대형(text-display)·굵게 —
+            진행자가 멀리서/흘끗 봐도 읽힘(저시력 UX). */}
+        <p
+          className={
+            spot
+              ? 'mb-5 text-2xl font-semibold leading-tight text-ink sm:text-display'
+              : 'mb-3 text-md font-medium leading-snug text-ink'
+          }
+        >
+          {popup.text}
+        </p>
+
+        {/* rationale = 보조. spotlight 는 축소·톤다운(사용자 의도: 의도는 작게).
+            길면 line-clamp 로 질문 시각 비중 보호. */}
+        {popup.rationale && (
+          <p
+            className={`mb-3 rounded-xs border-l-[3px] border-amore bg-paper-soft px-3 py-2 leading-relaxed ${
+              spot ? 'text-xs text-mute line-clamp-3' : 'text-sm text-ink-2'
+            }`}
+          >
+            {popup.rationale}
+          </p>
+        )}
+
+        <footer className={`flex items-center justify-between border-t border-line-soft ${spot ? 'pt-4' : 'pt-2'}`}>
+          <CountdownRing
+            secondsLeft={secondsLeft}
+            total={COUNTDOWN_SECONDS}
+            progress={progress}
+            ringClass={visual.ring}
+            paused={paused}
+            spotlight={spot}
+          />
+          <div className={spot ? 'flex gap-2' : 'flex gap-1.5'}>
+            <ActionButton
+              label="복사"
+              ariaLabel="질문 텍스트 복사"
+              onClick={onCopy}
+              spotlight={spot}
+            >
             <svg
               viewBox="0 0 24 24"
               width="14"
@@ -305,6 +354,7 @@ function ProbingQuestionPopupInner({
             label="핀"
             ariaLabel="핀 — 즉시 history 에 별표 저장"
             onClick={onPin}
+            spotlight={spot}
           >
             <svg
               viewBox="0 0 24 24"
@@ -325,6 +375,7 @@ function ProbingQuestionPopupInner({
             label="닫기"
             ariaLabel="이 popup 닫기"
             onClick={onDismiss}
+            spotlight={spot}
           >
             <svg
               viewBox="0 0 24 24"
@@ -341,9 +392,10 @@ function ProbingQuestionPopupInner({
               <line x1="18" y1="6" x2="6" y2="18" />
             </svg>
           </ActionButton>
-        </div>
-      </footer>
-    </div>
+          </div>
+        </footer>
+      </div>
+    </>
   );
 }
 
@@ -353,24 +405,28 @@ function CountdownRing({
   progress,
   ringClass,
   paused,
+  spotlight,
 }: {
   secondsLeft: number;
   total: number;
   progress: number;
   ringClass: string;
   paused: boolean;
+  spotlight: boolean;
 }) {
-  // 24px ring, stroke 3, circumference ≈ 65.97.
+  // 24px ring, stroke 3, circumference ≈ 65.97. spotlight 은 비례 확대(36px)
+  // 로 저시력 가독. viewBox 는 동일해 내부 좌표 그대로, width/height 만 확대.
   const radius = 10.5;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - progress);
   const display = Math.max(0, Math.ceil(secondsLeft));
+  const ringPx = spotlight ? 36 : 24;
   return (
     <div
-      className="flex items-center gap-2 text-xs text-mute"
+      className={`flex items-center gap-2 text-mute ${spotlight ? 'text-md' : 'text-xs'}`}
       aria-label={`자동 닫힘까지 ${display}초`}
     >
-      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
+      <svg width={ringPx} height={ringPx} viewBox="0 0 24 24" aria-hidden>
         <circle
           cx="12"
           cy="12"
@@ -404,11 +460,13 @@ function ActionButton({
   ariaLabel,
   label,
   onClick,
+  spotlight,
   children,
 }: {
   ariaLabel: string;
   label: string;
   onClick: () => void;
+  spotlight: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -426,8 +484,10 @@ function ActionButton({
       title={label}
       onClick={onClick}
       data-canvas-action
+      // spotlight: 저시력 탭타깃 44px + 아이콘 확대([&>svg] 로 14px attribute
+      // override). compact: 현행 32px / 14px.
       // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 default/hover shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore"
+      className={`flex ${spotlight ? 'h-11 w-11 [&>svg]:h-5 [&>svg]:w-5' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore`}
     >
       {children}
     </button>
