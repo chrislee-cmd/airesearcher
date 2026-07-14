@@ -63,6 +63,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # 한글 리터럴 ratchet 가드 — docs/WRITING.md 불변식 ①("디폴트 뷰 한글
+      # 노출 금지")의 CI 강제. 유저-facing 소스의 하드코딩 한글은 /en 뷰에도
+      # 노출되므로 근본 원인. .i18n-korean-baseline.json 대비 파일별 카운트가
+      # 초과하면 red(신규 유입 차단). 스윕 PR 은 baseline 을 단조 감소시킨다.
+      - name: Korean literal guard (ratchet)
+        run: pnpm check:korean
+
   secrets-scan:
     name: Secrets scan
     runs-on: ubuntu-latest
