@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { env } from '@/env';
@@ -11,6 +11,31 @@ import {
 } from '@/lib/rate-limit';
 
 const intl = createIntlMiddleware(routing);
+
+// i18n Phase 1 — global default = English. next-intl negotiates the locale
+// for unprefixed paths (`/`) in this order (see next-intl resolveLocale):
+//   Prio 1: locale prefix in the pathname
+//   Prio 2: NEXT_LOCALE cookie   (gated on routing.localeDetection)
+//   Prio 3: Accept-Language      (gated on routing.localeDetection)
+//   Prio 4: routing.defaultLocale ('en')
+//
+// The requirement: a first-time visitor lands on /en regardless of their
+// browser language, BUT an explicit choice (the switcher sets NEXT_LOCALE)
+// must still persist. Flipping `localeDetection: false` would satisfy the
+// first half but ALSO disables Prio 2 — killing cookie persistence. So
+// instead we keep detection on and neutralize only the Accept-Language
+// input: when there's no NEXT_LOCALE cookie, we hand next-intl a request
+// whose Accept-Language is 'en', so Prio 3 resolves to English. With a
+// cookie present we pass the request untouched, so Prio 2 (the explicit
+// choice) wins. Prefixed paths (/ko/..., /en/...) resolve at Prio 1 and
+// never consult Accept-Language, so this only affects the root redirect.
+const LOCALE_COOKIE = 'NEXT_LOCALE';
+
+function neutralizeAcceptLanguage(request: NextRequest): NextRequest {
+  const headers = new Headers(request.headers);
+  headers.set('accept-language', 'en');
+  return new NextRequest(request.url, { headers });
+}
 
 // SEC-003 / SEC-019 — anonymous IP-keyed limits applied at the edge,
 // before any handler runs. LLM endpoints add their own user/org-keyed
@@ -129,7 +154,12 @@ export async function proxy(request: NextRequest) {
   // landing for anonymous users and forwards authenticated users to
   // /dashboard.
   if (!pathname.startsWith('/auth/') && !pathname.startsWith('/live/')) {
-    const intlResponse = intl(request);
+    // Neutralize Accept-Language only when the user hasn't made an explicit
+    // choice yet (no NEXT_LOCALE cookie) — see the note above.
+    const reqForIntl = request.cookies.has(LOCALE_COOKIE)
+      ? request
+      : neutralizeAcceptLanguage(request);
+    const intlResponse = intl(reqForIntl);
     if (intlResponse.status >= 300 && intlResponse.status < 400) {
       return intlResponse;
     }

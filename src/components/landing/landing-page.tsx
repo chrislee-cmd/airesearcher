@@ -5,6 +5,7 @@ import { CanvasHero } from './canvas-hero';
 import { FeatureGrid } from './feature-grid';
 import { WorkflowSection } from './workflow-section';
 import { SecuritySection } from './security-section';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { companyInfoLinesKo, companyInfoLinesEn } from '@/lib/company';
 import {
   CREDIT_BUNDLES,
@@ -328,13 +329,15 @@ export async function LandingPage({ locale }: { locale: string }) {
       </section>
 
       <footer>
-        <div className="row">
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '18px' }}>
             <Link href="/terms">{t('footer.terms')}</Link>
             <Link href="/privacy">{t('footer.privacy')}</Link>
             <Link href="/use-policy">{t('footer.usePolicy')}</Link>
             <a href="mailto:chris.lee@meteor-research.com">{t('footer.contact')}</a>
           </div>
+          {/* 랜딩(로그아웃) 언어 스위처 — 마케팅 페이지에서도 명시 선택 가능. */}
+          <LanguageSwitcher />
         </div>
         <div className="biz-info">
           {(locale === 'ko' ? companyInfoLinesKo() : companyInfoLinesEn()).map((line) => (

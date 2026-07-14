@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
+import { routing } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -103,7 +104,7 @@ export function EmailPasswordForm() {
     startTransition(async () => {
       const supabase = createClient();
       if (mode === 'signIn') {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -127,7 +128,30 @@ export function EmailPasswordForm() {
         void supabase.auth.signOut({ scope: 'others' }).catch(() => {});
         reportLoginEvent({ event_type: 'login_success' });
         track('auth_signin_success');
-        router.replace(next);
+        // Cross-device language preference: apply the saved profiles.locale so
+        // a user who explicitly picked, say, Korean on another device lands on
+        // /ko here too. Mirrors the OAuth callback (auth/callback/route.ts).
+        // Password login bypasses that callback, so we apply it inline. DB
+        // preference wins over the current page locale; best-effort — any
+        // failure just falls through to `next` under the current locale.
+        let localeOpts: { locale: string } | undefined;
+        const userId = data.user?.id;
+        if (userId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('locale')
+            .eq('id', userId)
+            .maybeSingle();
+          const pref = profile?.locale;
+          if (
+            pref &&
+            (routing.locales as readonly string[]).includes(pref) &&
+            pref !== locale
+          ) {
+            localeOpts = { locale: pref };
+          }
+        }
+        router.replace(next, localeOpts);
         router.refresh();
       } else {
         const trimmedName = fullName.trim();

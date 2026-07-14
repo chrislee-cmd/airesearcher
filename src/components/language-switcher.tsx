@@ -4,6 +4,10 @@ import { usePathname, useRouter } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { useTransition } from 'react';
 import { routing } from '@/i18n/routing';
+import {
+  persistLocalePreference,
+  markLocaleSuggestDismissed,
+} from '@/lib/i18n/locale-preference';
 import { Button } from './ui/button';
 
 // Short uppercase label shown in the switcher. Falls back to the locale
@@ -25,6 +29,13 @@ export function LanguageSwitcher() {
 
   function change(next: string) {
     if (next === locale) return;
+    // An explicit choice: (1) stop nudging with the locale-suggest banner,
+    // (2) remember it in the DB for logged-in users so other devices pick it
+    // up (best-effort; 401 for logged-out is ignored). The NEXT_LOCALE cookie
+    // that persists the choice for THIS browser is set by next-intl's router
+    // below.
+    markLocaleSuggestDismissed();
+    void persistLocalePreference(next);
     startTransition(() => {
       router.replace(pathname, { locale: next });
     });
