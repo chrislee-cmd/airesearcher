@@ -17,7 +17,7 @@
   "src/app/[locale]/privacy/page.tsx": 46,
   "src/app/[locale]/terms/page.tsx": 47,
   "src/app/[locale]/use-policy/page.tsx": 38,
-  "src/components/admin-analytics.tsx": 21,
+  "src/components/admin-analytics.tsx": 24,
   "src/components/admin-payments.tsx": 24,
   "src/components/admin/invitations-list.tsx": 24,
   "src/components/analytics-widgets.tsx": 68,
