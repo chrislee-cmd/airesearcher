@@ -1201,7 +1201,13 @@ export async function runTopline(
         // (카드 #468 핵심: 크레딧 소진을 조용히 stuck 으로 죽이지 말 것). 성공분은
         // 캐시에 남아 크레딧 복구 후 재생성 시 재사용(재map 0)된다.
         if (fault.hard) {
-          const msg = `map_stalled(${progress}, hop=${resumeCount}): ${fault.hard.label}`;
+          // hard 장애(크레딧 402/인증 401)는 재시도·재개가 무의미 — generic
+          // map_stalled(=일시정체) 이 아니라 **전용 map_hard 마커**로 종결한다.
+          // 재개 경로 3곳(cron sweep·GET self-heal·POST resume)은 모두
+          // status='generating' 만 재개하므로 error 종결만으로 재-kick 이 차단되고,
+          // 마커를 분리해두면 인시던트에서 크레딧 소진을 transient 정체와 명확히
+          // grep 구분할 수 있다(카드 #483 — 402 재개 누수 차단).
+          const msg = `map_hard(${progress}, hop=${resumeCount}): ${fault.hard.label}`;
           console.error(`${tag} ${msg}`);
           await admin
             .from('interview_toplines')
@@ -1435,6 +1441,36 @@ export async function runTopline(
       finalObject = await stream.object;
       finishReason = await stream.finishReason;
     } catch (e) {
+      // reduce(Opus)도 map 과 동일한 hard 장애(크레딧 402/인증 401)를 맞을 수
+      // 있다 — 이때 재개는 순수 크레딧 소각이므로 **abort-defer 판정보다 먼저**
+      // 분류해 즉시 error 로 종결한다(재-kick 금지). map 경로의 fault.hard
+      // short-circuit 과 대칭이며, reduce 단계 402 를 generic topline_failed 로
+      // 묻지 않고 hard 로 표면화한다(카드 #483). abort(예산초과)/일시장애는
+      // classifyMapError 가 transient 로 분류하므로 아래 defer 로직이 그대로 처리.
+      const reduceFault = classifyMapError(e);
+      if (reduceFault.hardFault) {
+        const msg = `reduce_hard(${cached.size}/${docs.length}, hop=${resumeCount}): ${reduceFault.label}`;
+        console.error(`${tag} ${msg}`);
+        await logError({
+          feature: 'interview',
+          code: 'topline_map_call_failed',
+          message: reduceFault.label,
+          context: {
+            topline_id: toplineId,
+            project_id: projectId,
+            org_id: orgId,
+            phase: 'reduce',
+            hop: resumeCount,
+            hard: true,
+          },
+          severity: 'error',
+        });
+        await admin
+          .from('interview_toplines')
+          .update({ status: 'error', error_message: msg })
+          .eq('id', toplineId);
+        return;
+      }
       // 예산 초과 self-abort — row 를 error 로 떨구지 않고(자동 재개 유지) 다음
       // fresh 홉으로 넘긴다. abort 가 아닌 진짜 오류/홉 상한은 상위 catch 로 전파.
       if (reduceAbort.aborted && resumeCount < MAX_RESUME_HOPS) {
