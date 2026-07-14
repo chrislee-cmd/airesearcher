@@ -128,23 +128,52 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
 // purchase page and the sidebar copy.
 //
 // 2026-07-13 리프라이스: ₩2,000/cr → ₩500/cr (4배 인하). 위젯 크레딧 비용
-// (FEATURE_COSTS) 자체는 불변이라 체감 가격만 1/4 로 떨어진다. 이 상수가
-// 가격 SSOT — 팩(CREDIT_BUNDLES)·구독(SUBSCRIPTION_TIERS)·플로어(MIN_CREDITS)
-// 가 모두 여기 ₩500/cr 기준을 따른다.
-export const CREDIT_PRICE_KRW = 500;
+// (FEATURE_COSTS) 자체는 불변이라 체감 가격만 1/4 로 떨어진다.
+//
+// 2026-07-14 dual-rail 전환: 통화는 **결제 rail 이 결정**한다.
+//   · LS 카드 rail   = **USD** (볼륨할인가, 리스트 $0.40/cr)
+//   · 계좌이체 rail  = **KRW** (하나은행 flat, 리스트 ₩500/cr, 유지)
+//   · Toss(미래)     = KRW (지금 스펙 X — KRW SSOT 를 남겨 나중에 붙임)
+// 리스트 단가 두 개가 SSOT — 팩(CREDIT_BUNDLES)·구독(SUBSCRIPTION_TIERS)·
+// 플로어(MIN_CREDITS)·마진 불변식이 모두 여기 값을 따른다.
+export const CREDIT_PRICE_LIST_KRW = 500;
+export const CREDIT_PRICE_LIST_USD = 0.4;
 
-// 무할인 수량 팩 5종. 할인율 차등을 폐지하고 전 팩 ₩500/cr 균일가로 재편.
-// LS variant 매핑(billing.ts resolveLemonSqueezyTarget)이 이 id 를 신 env 키
+// 하위호환 alias — 기존 참조처(provisioning script 등)가 KRW 리스트가를
+// 이 이름으로 읽는다. 신 코드는 CREDIT_PRICE_LIST_KRW 를 쓴다.
+export const CREDIT_PRICE_KRW = CREDIT_PRICE_LIST_KRW;
+
+// ── 70% 순마진 floor 불변식 (2026-07-14, 기존 75% → 70% 하향) ──────────────
+//
+// 유도(결제수수료 6% 가정): m = 0.94 − COGS/revenue ≥ 0.70 → COGS/revenue ≤ 0.24.
+// 통역 COGS ≈ ₩95/cr(75%@₩500 proxy) → 70% floor = ₩95 / 0.24 ≈ ₩396/cr.
+// USD 등가 = ₩396 × ($0.40/₩500) ≈ $0.283/cr.
+// 어떤 결제 경로(팩·구독)의 실효 per-credit 도 이 floor 아래로 못 내려간다 —
+// CI(tests/pricing-margin-floor.test.ts)가 강제. 70% 로 낮춰 ₩500 리스트에
+// 볼륨할인 headroom 을 확보(양 rail 동일 %). floor 는 통역 실 COGS 검증 전
+// KRW-등가 proxy — max 할인 배포 전 재확인(spec §마진 floor).
+export const MARGIN_FLOOR_KRW_PER_CREDIT = 396;
+export const MARGIN_FLOOR_USD_PER_CREDIT = 0.283;
+
+// 수량 팩 5종. 볼륨할인율(discountPct)이 **양 rail 공통 SSOT** — priceKrw·
+// priceUsd 는 리스트가 × (1 − discountPct/100) 로 파생된다(KRW 는 ₩1,000 단위
+// 반올림). 이래야 "한쪽 rail 만 바뀌면 red"(파리티) 가 CI 로 강제된다.
+// LS variant 매핑(billing.ts resolveLemonSqueezyTarget)이 이 id 를 env 키
 // `LEMONSQUEEZY_VARIANT_PACK_{MINI,STARTER,PLUS,PRO,MAX}_{KRW,USD}` 로 정합.
 export type CreditBundleId = 'mini' | 'starter' | 'plus' | 'pro' | 'max';
 
 export type CreditBundle = {
   id: CreditBundleId;
   credits: number;
-  // Total list price in KRW (null = "contact sales"). 현 팩은 전부 실가격.
+  // 볼륨할인율(%) — 양 rail 공통. 0 = 무할인. plus5 / pro7.5 / max10.
+  discountPct: number;
+  // 계좌이체(KRW) rail 총액 (null = "contact sales"). ₩1,000 단위 반올림.
   priceKrw: number | null;
-  // Effective per-credit price (computed). 전 팩 ₩500 균일 — 무할인.
+  // LS 카드(USD) rail 총액 (null = "contact sales"). 달러(센트) 단위.
+  priceUsd: number | null;
+  // 실효 per-credit (파생, 표시용). KRW 는 반올림 정수, USD 는 소수.
   perCreditKrw: number | null;
+  perCreditUsd: number | null;
   popular?: boolean;
 };
 
@@ -152,77 +181,101 @@ export const CREDIT_BUNDLES: CreditBundle[] = [
   {
     id: 'mini',
     credits: 50,
+    discountPct: 0,
     priceKrw: 25_000,
+    priceUsd: 20,
     perCreditKrw: 500,
+    perCreditUsd: 0.4,
   },
   {
     id: 'starter',
     credits: 100,
+    discountPct: 0,
     priceKrw: 50_000,
+    priceUsd: 40,
     perCreditKrw: 500,
+    perCreditUsd: 0.4,
     popular: true,
   },
   {
     id: 'plus',
     credits: 300,
-    priceKrw: 150_000,
-    perCreditKrw: 500,
+    discountPct: 5,
+    // 300 × ₩500 × 0.95 = ₩142,500 → ₩1,000 반올림 = ₩143,000 (₩476.7/cr).
+    priceKrw: 143_000,
+    priceUsd: 114, // 300 × $0.40 × 0.95 ($0.38/cr).
+    perCreditKrw: 477,
+    perCreditUsd: 0.38,
   },
   {
     id: 'pro',
     credits: 600,
-    priceKrw: 300_000,
-    perCreditKrw: 500,
+    discountPct: 7.5,
+    // 600 × ₩500 × 0.925 = ₩277,500 → ₩1,000 반올림 = ₩278,000 (₩463.3/cr).
+    priceKrw: 278_000,
+    priceUsd: 222, // 600 × $0.40 × 0.925 ($0.37/cr).
+    perCreditKrw: 463,
+    perCreditUsd: 0.37,
   },
   {
     id: 'max',
     credits: 1_500,
-    priceKrw: 750_000,
-    perCreditKrw: 500,
+    discountPct: 10,
+    // 1,500 × ₩500 × 0.90 = ₩675,000 (이미 ₩1,000 단위, ₩450/cr).
+    priceKrw: 675_000,
+    priceUsd: 540, // 1,500 × $0.40 × 0.90 ($0.36/cr).
+    perCreditKrw: 450,
+    perCreditUsd: 0.36,
   },
 ];
 
 // 구독 티어 — B1(결제/지급 wiring)이 소비. 여기선 상수/타입만 정의한다.
-// 전 티어 ₩500/cr 무할인 (monthlyPriceKrw / includedCredits = 500).
+// 구독은 **LS 카드(USD) 전용**(계좌이체 미제공) — 월 리스트가는 $0.40/cr
+// 무할인(구독의 가치는 할인이 아니라 무만료·우선처리·시트 + 연간 레버).
+// monthlyPriceKrw 는 legacy/미래 Toss(KRW) 를 위한 SSOT 로 남겨 둔다.
 // LS 구독 variant 는 env 키 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_{KRW,USD}` 규약.
 export type SubscriptionTierId = 'solo' | 'plus' | 'pro';
 
 export type SubscriptionTier = {
   id: SubscriptionTierId;
+  // LS 카드(USD) rail — 구독의 실 결제 통화.
+  monthlyPriceUsd: number;
+  // legacy/미래 Toss(KRW) rail 참조가. 현재 구독 결제엔 미사용.
   monthlyPriceKrw: number;
   includedCredits: number;
 };
 
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  { id: 'solo', monthlyPriceKrw: 10_000, includedCredits: 20 },
-  { id: 'plus', monthlyPriceKrw: 30_000, includedCredits: 60 },
-  { id: 'pro', monthlyPriceKrw: 80_000, includedCredits: 160 },
+  { id: 'solo', monthlyPriceUsd: 8, monthlyPriceKrw: 10_000, includedCredits: 20 },
+  { id: 'plus', monthlyPriceUsd: 24, monthlyPriceKrw: 30_000, includedCredits: 60 },
+  { id: 'pro', monthlyPriceUsd: 64, monthlyPriceKrw: 80_000, includedCredits: 160 },
 ];
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, f.cost]),
 ) as Record<FeatureKey, number>;
 
-// ── 위젯 최소 크레딧 플로어 (75% 마진 불변식) ──────────────────────────────
+// ── 위젯 최소 크레딧 플로어 (70% 마진 불변식) ──────────────────────────────
 //
 // 각 위젯의 크레딧 비용이 절대 내려가면 안 되는 하한선. 공식:
-//   MIN_CREDITS[f] = ceil(COGS_f / 95)
-// 유도: ₩500/cr 명목가에서 결제수수료·부가세를 빼면 순수취 ≈ ₩380/cr.
-// 목표 마진 75% → COGS 는 순매출의 25% = 순매출당 ₩95/cr 이하여야 한다.
-// 따라서 어떤 위젯이 원가 COGS_f(₩)를 태우면 최소 ceil(COGS_f/95) 크레딧을
-// 받아야 75% 를 지킨다. SSOT 는 docs/pricing-scheme.md 의 COGS 표.
+//   MIN_CREDITS[f] = ceil(COGS_f / 120)
+// 유도(2026-07-14, 75% → 70% 하향): 결제수수료 6% → m = 0.94 − COGS/매출 ≥ 0.70
+// → COGS ≤ 0.24 × 매출. ₩500/cr 명목가에서 매출 = 500 × cr 이므로
+// COGS ≤ 120 × cr → cr ≥ COGS/120. 즉 어떤 위젯이 원가 COGS_f(₩)를 태우면
+// 최소 ceil(COGS_f/120) 크레딧을 받아야 70% 를 지킨다. 70% 하향으로 divisor 가
+// 95 → 120 이 되어 floor 가 완화됐다(팩 볼륨할인 headroom 과 동일 기준).
+// SSOT 는 docs/pricing-scheme.md 의 COGS 표.
 //
-// ⚠️ 보수적 구현 노트 (spec writer 지목 SSOT docs/pricing-scheme.md 가 현재
-// 리포 트리에 부재 → 전-위젯 COGS 표를 직접 못 읽음). 질문 금지 룰에 따라
-// 가장 보수적으로 해석: 명시 앵커가 있는 위젯만 override 로 계산된 플로어를
-// 두고, 나머지는 현재 FEATURE_COSTS 값을 플로어로 채택("현 비용이 이미 75%
-// 불변식을 만족한다"는 가정 — 현 비용이 곧 상한이자 하한). COGS 표가 확정되면
-// 이 override 맵만 갱신하면 된다. D1(min-credit-floor-guard)이 cost < floor
-// 위젯을 감지하고, translate 는 E1 이 실오디오-분 기준으로 강제한다.
+// ⚠️ 보수적 구현 노트: 전-위젯 실측 COGS 표가 미확정 → 명시 앵커가 있는
+// 위젯만 override 로 계산된 플로어를 두고, 나머지는 현재 FEATURE_COSTS 값을
+// 플로어로 채택("현 비용이 이미 70% 불변식을 만족한다"는 가정 — 현 비용이 곧
+// 상한이자 하한). COGS 표가 확정되면 이 override 맵만 갱신하면 된다.
+// D1(min-credit-floor-guard)이 cost < floor 위젯을 감지하고, translate 는
+// E1 이 실오디오-분 기준으로 강제한다.
 const MIN_CREDIT_OVERRIDES: Partial<Record<FeatureKey, number>> = {
-  // interviews: COGS ≈ ₩950–1,045 가정 → ceil(≈1000/95) = 11. 현 비용 10cr 은
-  // 이 플로어를 1 밑돎 → 문서화된 경계 예외(코스트는 10 유지, D1 이 감지).
-  interviews: 11,
+  // interviews: COGS ≈ ₩1,000 가정 → ceil(1000/120) = 9. 현 비용 10cr 은 이
+  // 플로어(9) 를 1 상회 → 70% 하향으로 경계 예외가 해소됐다(cost 10 ≥ floor 9).
+  interviews: 9,
   // translate: 실오디오-분 종속이라 정적 플로어를 여기서 확정 못 한다.
   // placeholder 0(=정적 플로어 미설정 플래그) — E1 이 실측 분 기준으로 강제.
   // 실제 분당 floor 는 `TRANSLATE_METERING.floorCogsKrwPerMinute` +
