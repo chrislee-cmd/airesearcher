@@ -9,13 +9,11 @@ import { logError } from '@/lib/observability/log-error';
 import { CREDIT_BUNDLES } from '@/lib/features';
 import {
   createLemonSqueezyCheckout,
-  determineCurrency,
   generateBankReference,
   getBankAccount,
   normalizeBizNo,
   resolveLemonSqueezyTarget,
   type LemonSqueezyLocale,
-  type PaymentCurrency,
   type TaxInvoiceRequest,
 } from '@/lib/billing';
 
@@ -121,9 +119,10 @@ const Body = z.object({
   // Locale propagated from the client (next-intl). Drives the Lemon
   // Squeezy checkout UI language. Default to 'en' for anything unknown.
   locale: z.enum(['ko', 'en']).optional(),
-  // Currency = payout rail. Optional — server falls back to locale/IP
-  // detection. Bank transfer ignores this (always KRW domestic).
-  currency: z.enum(['KRW', 'USD']).optional(),
+  // NOTE(dual-rail 2026-07-14): 통화는 더 이상 클라이언트/geo 가 아니라 **결제
+  // rail 이 결정**한다 — LS 카드 = USD, 계좌이체 = KRW. 구 `currency` 바디
+  // 파라미터는 무시된다(zod 가 미지정 키를 strip). 남긴 이유는 구 클라이언트가
+  // 여전히 보내도 400 이 안 나게 하기 위함 — 라우트는 참조하지 않는다.
   taxInvoice: TaxInvoiceSchema.optional(),
 });
 
@@ -145,11 +144,14 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input', details: parsed.error.format() }, { status: 400 });
   }
-  const { bundleId, method, locale, currency: requestedCurrency, taxInvoice } = parsed.data;
+  const { bundleId, method, locale, taxInvoice } = parsed.data;
   const bundle = CREDIT_BUNDLES.find((b) => b.id === bundleId);
-  if (!bundle || bundle.priceKrw == null) {
+  if (!bundle) {
     return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
   }
+  // Per-rail price presence is checked at each rail below: bank transfer needs
+  // priceKrw (KRW rail), LS card needs priceUsd (USD rail). A "contact sales"
+  // pack (null price) is simply not purchasable on that rail.
 
   const taxInvoicePayload: TaxInvoiceRequest | null = taxInvoice
     ? { ...taxInvoice, bizNo: normalizeBizNo(taxInvoice.bizNo) }
@@ -158,10 +160,13 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   // ── Bank transfer rail ──────────────────────────────────────────────────
-  // Bank transfer = 국내 KRW only (single account 하나은행). Foreign wire is
-  // a future spec — for now the UI gates this rail behind currency === KRW
-  // and we stamp the row as KRW for admin reconciliation.
+  // Bank transfer = 국내 KRW only (single account 하나은행), flat ₩500/cr 리스트
+  // 기준의 볼륨할인 총액(bundle.priceKrw). dual-rail 에서 계좌이체는 KRW rail 로
+  // 유지된다(제거 X). 미래 Toss(KRW) 도 이 rail 규약을 재사용한다.
   if (method === 'bank_transfer') {
+    if (bundle.priceKrw == null) {
+      return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
+    }
     let bankReference = generateBankReference();
     for (let attempt = 0; attempt < 3; attempt++) {
       const { data, error } = await admin
@@ -234,25 +239,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
-  // Currency = payout rail. Explicit body wins; otherwise locale + geo
-  // header decide (ko/KR → KRW, else USD). The picked currency selects
-  // the Lemon Squeezy store, which in turn picks the payout account.
-  const currency: PaymentCurrency = determineCurrency(
-    request.headers,
-    locale ?? 'en',
-    requestedCurrency,
-  );
+  // dual-rail (2026-07-14): LS 카드 rail 은 **USD 고정**이다. 통화를 고객 geo/
+  // locale 로 분기하지 않는다 — rail 이 곧 통화. LS 는 USD 스토어만 사용하고
+  // (KRW 스토어는 미사용), 국내 KRW 결제는 위 계좌이체 rail 이 담당한다.
+  const currency = 'USD' as const;
+  const priceUsd = bundle.priceUsd;
+  if (priceUsd == null) {
+    // priceUsd 없는 팩(=contact sales)은 카드로 구매 불가.
+    return NextResponse.json({ error: 'invalid_bundle' }, { status: 400 });
+  }
 
   const target = resolveLemonSqueezyTarget(bundleId, currency);
   if (!target) {
     console.error(
-      `[billing/checkout] lemonsqueezy target missing currency=${currency} bundle=${bundleId}`,
+      `[billing/checkout] lemonsqueezy USD target missing bundle=${bundleId}`,
     );
-    // 관측: 결제 레일 미설정(variant env 누락)은 사용자 결제를 막는 config 사고.
+    // 관측: USD 레일 미설정(store/variant env 누락)은 사용자 결제를 막는 config 사고.
     await logError({
       feature: 'billing',
       code: 'pack_checkout_503',
-      message: `lemonsqueezy target missing (currency=${currency} bundle=${bundleId})`,
+      message: `lemonsqueezy USD target missing (bundle=${bundleId})`,
       context: { currency, bundle: bundleId, org_id: org.org_id },
     });
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
@@ -262,9 +268,9 @@ export async function POST(request: Request) {
   const checkoutLocale: LemonSqueezyLocale = locale === 'ko' ? 'ko' : 'en';
 
   // Insert payment row first so the webhook can correlate via the
-  // payment_id we thread through `checkout_data.custom`. `currency` and
-  // `lemonsqueezy_store_id` get stamped so admin reconciliation can group
-  // payouts per rail without re-deriving from env.
+  // payment_id we thread through `checkout_data.custom`. USD rail: 실 결제
+  // 총액은 amount_usd 에 기록하고 amount_krw 는 0(currency='USD' 가 권위 통화).
+  // `lemonsqueezy_store_id` 로 admin 대사가 rail 을 재유도 없이 그룹핑한다.
   const { data: payment, error: insertErr } = await admin
     .from('payments')
     .insert({
@@ -272,7 +278,8 @@ export async function POST(request: Request) {
       user_id: user.id,
       bundle_id: bundle.id,
       credits: bundle.credits,
-      amount_krw: bundle.priceKrw,
+      amount_krw: 0,
+      amount_usd: priceUsd,
       currency,
       method: 'lemonsqueezy',
       status: 'pending',

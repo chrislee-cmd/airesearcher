@@ -7,10 +7,8 @@ import { logError } from '@/lib/observability/log-error';
 import { SUBSCRIPTION_TIERS } from '@/lib/features';
 import {
   createLemonSqueezyCheckout,
-  determineCurrency,
   resolveLemonSqueezySubscriptionTarget,
   type LemonSqueezyLocale,
-  type PaymentCurrency,
 } from '@/lib/billing';
 
 export const maxDuration = 60;
@@ -22,8 +20,9 @@ export const maxDuration = 60;
 const Body = z.object({
   tier: z.enum(['solo', 'plus', 'pro']),
   locale: z.enum(['ko', 'en']).optional(),
-  // Currency = payout rail. Optional — server falls back to locale/IP.
-  currency: z.enum(['KRW', 'USD']).optional(),
+  // NOTE(dual-rail 2026-07-14): 구독은 LS 카드(USD) 전용 — 계좌이체 미제공.
+  // 구 `currency` 파라미터는 무시된다(zod 가 미지정 키 strip). 구 클라이언트가
+  // 보내도 400 이 안 나게 스키마에 남기지 않고 그냥 drop 한다.
 });
 
 function originFromRequest(req: Request): string {
@@ -44,7 +43,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input', details: parsed.error.format() }, { status: 400 });
   }
-  const { tier, locale, currency: requestedCurrency } = parsed.data;
+  const { tier, locale } = parsed.data;
   // Validate the tier against the SSOT so an unknown tier can't slip past.
   if (!SUBSCRIPTION_TIERS.some((t) => t.id === tier)) {
     return NextResponse.json({ error: 'invalid_tier' }, { status: 400 });
@@ -56,12 +55,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
-  const currency: PaymentCurrency = determineCurrency(
-    request.headers,
-    locale ?? 'en',
-    requestedCurrency,
-  );
-
+  // dual-rail (2026-07-14): 구독은 LS 카드(USD) 전용. 통화 분기 없음.
+  const currency = 'USD' as const;
   const target = resolveLemonSqueezySubscriptionTarget(tier, currency);
   if (!target) {
     console.error(

@@ -1,9 +1,13 @@
-// Provision (reconcile) the new ₩500/cr pricing scheme on Lemon Squeezy —
-// 5 no-discount credit packs (mini/starter/plus/pro/max) + 3 monthly
+// Provision (reconcile) the dual-rail pricing scheme on Lemon Squeezy —
+// 5 volume-discounted credit packs (mini/starter/plus/pro/max) + 3 monthly
 // subscription tiers (solo/plus/pro), across the KRW and USD stores = 16
 // desired variants. Prices come *only* from `src/lib/features.ts`
-// (CREDIT_BUNDLES + SUBSCRIPTION_TIERS = docs/pricing-scheme.md §5), never
-// hardcoded here — the SSOT is the single source of truth.
+// (CREDIT_BUNDLES.priceUsd/priceKrw + SUBSCRIPTION_TIERS = docs/pricing-scheme.md
+// §5), never hardcoded here — the SSOT is the single source of truth.
+//
+// dual-rail (2026-07-14): LS 카드 rail = **USD**(priceUsd, 1급 SSOT), KRW 스토어는
+// 국내 계좌이체(LS 무관)로 대체돼 실질 미사용이지만 read-only 대조라 남겨 둔다.
+// USD 예상가는 더 이상 FX 파생이 아니라 priceUsd 를 그대로 쓴다.
 //
 // ── ⚠️ HARD CONSTRAINT: Lemon Squeezy has no create/update product API ──────
 //
@@ -80,11 +84,10 @@ const LS_HEADERS_READ = {
   Accept: 'application/vnd.api+json',
 } as const;
 
-// USD has no SSOT price (features.ts defines only KRW). We DERIVE an expected
-// USD figure from the KRW SSOT via this FX rate purely to flag drift and to
-// suggest a dashboard value — it is an *operational assumption*, not SSOT, and
-// is overridable with --fx. The real USD price is whatever the operator sets
-// in the USD store; the script only guides.
+// USD is now a first-class SSOT (features.ts `priceUsd`/`monthlyPriceUsd`), so
+// the expected USD figure comes straight from the SSOT — FX no longer derives
+// it. This rate survives only for the reference display / drift note and the
+// legacy --fx flag; it is NOT used to compute any expected price.
 const DEFAULT_KRW_PER_USD = 1400;
 
 type Currency = 'KRW' | 'USD';
@@ -98,7 +101,8 @@ type Desired = {
   id: string; // bundle/tier id, e.g. 'mini' | 'solo'
   currency: Currency;
   credits: number; // pack credits or subscription included credits/month
-  priceKrw: number; // SSOT KRW amount (one-time for packs, monthly for subs)
+  priceKrw: number; // SSOT KRW amount (계좌이체/legacy rail; one-time or monthly)
+  priceUsd: number; // SSOT USD amount (LS 카드 rail; one-time or monthly)
   interval: 'one_time' | 'month';
   envKey: string; // A1 mapping key (env.ts)
   displayName: string; // brand Product Name (exposed on checkout/receipts)
@@ -175,6 +179,7 @@ function buildDesired(fx: number): Desired[] {
         currency,
         credits: b.credits,
         priceKrw: b.priceKrw ?? 0,
+        priceUsd: b.priceUsd ?? 0,
         interval: 'one_time',
         envKey: envKeyFor('pack', b.id, currency),
         displayName: displayNameFor('pack', b.id, b.credits),
@@ -189,6 +194,7 @@ function buildDesired(fx: number): Desired[] {
         currency,
         credits: t.includedCredits,
         priceKrw: t.monthlyPriceKrw,
+        priceUsd: t.monthlyPriceUsd,
         interval: 'month',
         envKey: envKeyFor('sub', t.id, currency),
         displayName: displayNameFor('sub', t.id, t.includedCredits),
@@ -209,9 +215,14 @@ function buildDesired(fx: number): Desired[] {
 // (Empirically verified against store 393383 — every KRW variant returned ×100.
 // The earlier "zero-decimal → won == unit" assumption was wrong and made the
 // DRIFT check false-positive on every KRW product.) So multiply by 100 for both.
-function expectedCents(d: Desired, fx: number): number {
+//
+// dual-rail (2026-07-14): USD 는 이제 features.ts 의 **1급 SSOT**(priceUsd) 이라
+// FX 파생이 아니라 그 값을 직접 쓴다. fx 는 더 이상 USD 예상가 계산에 관여하지
+// 않는다(참고 표시용으로만 남김). LS 카드 rail = USD, KRW 스토어는 계좌이체
+// (LS 무관)로 대체돼 사실상 미사용이지만 대조는 read-only 라 남겨 둔다.
+function expectedCents(d: Desired): number {
   if (d.currency === 'KRW') return d.priceKrw * 100; // won × 100 minor units
-  return Math.round((d.priceKrw / fx) * 100); // USD cents, derived via FX
+  return Math.round(d.priceUsd * 100); // USD cents, SSOT priceUsd 직접
 }
 
 // `minor` is LS's 2-decimal minor unit. KRW shows as whole won (no decimals),
@@ -349,7 +360,6 @@ function variantSku(v: StoreVariant): string | null {
 function reconcileOne(
   d: Desired,
   storeVariants: StoreVariant[],
-  fx: number,
 ): Reconciled {
   const notes: string[] = [];
   if (d.priceKrw === 0) {
@@ -401,7 +411,7 @@ function reconcileOne(
   }
 
   const v = candidates[0];
-  const want = expectedCents(d, fx);
+  const want = expectedCents(d);
 
   // Interval drift (subscription vs one-time).
   const wantMonthly = d.interval === 'month';
@@ -420,9 +430,7 @@ function reconcileOne(
     const got = formatMoney(v.priceCents, d.currency);
     const exp = formatMoney(want, d.currency);
     notes.push(
-      d.currency === 'USD'
-        ? `price differs — LS ${got} vs derived ${exp} (FX ${fx}); USD has no SSOT, verify intended.`
-        : `price drift — LS ${got} vs SSOT ${exp}. Fix in dashboard.`,
+      `price drift — LS ${got} vs SSOT ${exp}. Fix in dashboard.`,
     );
   }
 
@@ -642,7 +650,7 @@ async function main() {
   console.log(
     `desired = ${desired.length} variants (팩 ${CREDIT_BUNDLES.length} + 구독 ${SUBSCRIPTION_TIERS.length}) × ${CURRENCIES.length} 통화`,
   );
-  console.log(`USD 예상가는 FX ${fx} KRW/USD 로 환산 (SSOT 아님 — 대시보드 실값 우선).\n`);
+  console.log(`USD 예상가는 features.ts priceUsd(SSOT) 직접 사용 (FX 미사용, 참고 rate=${fx}).\n`);
 
   const wantCurrencies: Currency[] =
     flags.store === 'krw' ? ['KRW'] : flags.store === 'usd' ? ['USD'] : CURRENCIES;
@@ -668,9 +676,9 @@ async function main() {
     const storeVariants = await fetchStoreVariants(apiKey, storeId);
     console.log(`  store=${storeId} · 기존 variant ${storeVariants.length}개 조회.`);
     for (const d of desired.filter((x) => x.currency === currency)) {
-      const r = reconcileOne(d, storeVariants, fx);
+      const r = reconcileOne(d, storeVariants);
       reconciled.push(r);
-      const want = expectedCents(d, fx);
+      const want = expectedCents(d);
       const price = formatMoney(want, currency);
       const intervalLabel = d.interval === 'month' ? '/월' : ' 일회성';
       const idPart = `${STATUS_ICON[r.status]} ${d.sku.padEnd(16)} ${price}${intervalLabel} (${d.credits}cr)`;
@@ -699,7 +707,7 @@ async function main() {
     console.log('    대시보드에서 아래 Product Name(표시명) · Variant SKU · 가격 · 주기로 생성/수정 후 재실행:');
     for (const r of reconciled.filter((x) => x.status !== 'ok')) {
       const d = r.desired;
-      const want = expectedCents(d, fx);
+      const want = expectedCents(d);
       console.log(
         `      [${r.status}] name="${d.displayName}" · SKU=${d.sku} (${d.currency}) — ${formatMoney(want, d.currency)}${
           d.interval === 'month' ? ' / month (subscription)' : ' one-time'
