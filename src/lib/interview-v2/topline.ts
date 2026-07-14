@@ -40,6 +40,7 @@ import {
   MAP_CONCURRENCY,
   MAP_MAX_ATTEMPTS,
   MAP_RETRY_CAP_MS,
+  MAX_MAP_INPUT_CHARS,
   TOPLINE_MAP_MODEL,
   type DocExtract,
   type DocExtractWithMeta,
@@ -1057,8 +1058,12 @@ export async function runTopline(
         async (doc) => {
           // 문서별 다중 시도(MAP_MAX_ATTEMPTS) — 일시 provider 오류를 백오프로
           // 흡수(429 Retry-After 존중). 하드 장애(크레딧/인증)는 재시도 무의미라
-          // 즉시 중단하고 fault.hard 를 세팅한다. 성공분만 캐시에 영속(=커서 전진),
-          // 실패분은 캐시에 안 남겨 다음 홉에서 재시도되게 둔다.
+          // 즉시 중단하고 fault.hard 를 세팅한다. **파싱실패**(구조화 출력 깨짐)는
+          // 재시도해도 동일하게 실패해 map 을 영구 차단하므로(카드 #481 root cause),
+          // 시도 소진 후 placeholder(빈 추출 + failed) 로 마감해 커서를 전진시킨다.
+          // 성공/placeholder 는 캐시에 영속(=커서 전진), 일시장애 실패분만 캐시에
+          // 안 남겨 다음 홉에서 재시도되게 둔다.
+          let sawParseFault = false;
           for (let attempt = 0; attempt < MAP_MAX_ATTEMPTS; attempt++) {
             // 다른 워커가 이미 하드 장애를 봤으면 남은 시도를 아낀다.
             if (fault.hard) {
@@ -1066,7 +1071,16 @@ export async function runTopline(
               return;
             }
             try {
-              const extract = await mapDocument(anthropic, doc);
+              // 파싱실패를 한 번 본 뒤엔 입력 캡을 반으로 줄여 재호출 —
+              // context/출력 truncate 로 인한 파싱실패 자체를 줄인다(입력 크기
+              // 가드, 카드 #481). 첫 시도는 기본 캡.
+              const extract = await mapDocument(
+                anthropic,
+                doc,
+                sawParseFault
+                  ? { inputCharCap: Math.floor(MAX_MAP_INPUT_CHARS / 2) }
+                  : undefined,
+              );
               await saveExtract(admin, orgId, doc, {
                 themes: extract.themes,
                 quotes: extract.quotes,
@@ -1096,28 +1110,61 @@ export async function runTopline(
                 });
                 return;
               }
+              if (cls.parseFault) sawParseFault = true;
               if (attempt === MAP_MAX_ATTEMPTS - 1) {
                 mapFailures += 1;
-                console.warn(`${tag} map failed ${doc.filename}`, cls.label);
-                // 2-attempt(MAP_MAX_ATTEMPTS) 소진 후에도 실패한 문서 —
-                // primary 체인 처리율 붕괴(429/timeout/5xx)의 사유를 관측에 남긴다
-                // (카드 #469). 이 홉은 실패분을 캐시에 안 남겨 다음 홉이 재시도하므로
-                // 기능은 안 깨진다 → severity=warn. logError signature dedup 이
-                // 문서별 반복을 한 시그니처로 collapse(flood 방지).
-                await logError({
-                  feature: 'interview',
-                  code: 'topline_map_call_failed',
-                  message: cls.label,
-                  context: {
-                    topline_id: toplineId,
-                    project_id: projectId,
-                    org_id: orgId,
-                    filename: doc.filename,
-                    hop: resumeCount,
-                    hard: false,
-                  },
-                  severity: 'warn',
-                });
+                if (cls.parseFault) {
+                  // 파싱실패 doc — 시도 소진. 매 홉 동일 실패로 map 을 영구 차단하던
+                  // root cause(카드 #481). placeholder(빈 추출 + failed:true) 로
+                  // 캐시에 영속해 **커서를 전진**시킨다 → 같은 doc 무한 재시도 종료,
+                  // map 50/50 도달 가능. reduce 가 "이 응답자 근거 없음" 으로 부분
+                  // 완주(기존 degrade 경로 — buildExtractsFromCache/formatExtractsForReduce).
+                  console.warn(
+                    `${tag} map parse-fail → placeholder ${doc.filename}`,
+                    cls.label,
+                  );
+                  await saveExtract(admin, orgId, doc, {
+                    themes: [],
+                    quotes: [],
+                    failed: true,
+                  });
+                  await logError({
+                    feature: 'interview',
+                    code: 'topline_map_placeholder',
+                    message: cls.label,
+                    context: {
+                      topline_id: toplineId,
+                      project_id: projectId,
+                      org_id: orgId,
+                      filename: doc.filename,
+                      hop: resumeCount,
+                      parse_fault: true,
+                    },
+                    severity: 'warn',
+                  });
+                } else {
+                  console.warn(`${tag} map failed ${doc.filename}`, cls.label);
+                  // 2-attempt(MAP_MAX_ATTEMPTS) 소진 후에도 실패한 문서 —
+                  // primary 체인 처리율 붕괴(429/timeout/5xx)의 사유를 관측에 남긴다
+                  // (카드 #469). 일시장애 실패분은 캐시에 안 남겨 다음 홉이 재시도하므로
+                  // 기능은 안 깨진다 → severity=warn. logError signature dedup 이
+                  // 문서별 반복을 한 시그니처로 collapse(flood 방지). 결정적(비-일시)
+                  // 실패로 커서가 못 늘면 아래 no-progress breaker 가 조기 종결한다.
+                  await logError({
+                    feature: 'interview',
+                    code: 'topline_map_call_failed',
+                    message: cls.label,
+                    context: {
+                      topline_id: toplineId,
+                      project_id: projectId,
+                      org_id: orgId,
+                      filename: doc.filename,
+                      hop: resumeCount,
+                      hard: false,
+                    },
+                    severity: 'warn',
+                  });
+                }
               } else {
                 const wait = Math.min(
                   cls.retryAfterMs ?? mapRetryBackoffMs(attempt),
@@ -1156,6 +1203,46 @@ export async function runTopline(
         if (fault.hard) {
           const msg = `map_stalled(${progress}, hop=${resumeCount}): ${fault.hard.label}`;
           console.error(`${tag} ${msg}`);
+          await admin
+            .from('interview_toplines')
+            .update({ status: 'error', error_message: msg })
+            .eq('id', toplineId);
+          return;
+        }
+
+        // ── no-progress 서킷브레이커 (카드 #481) — 코스트 누수 차단 ──
+        // 이 홉이 pending 문서를 처리하고도 커서를 전혀 못 늘렸고(madeProgress=false),
+        // 마지막 실패가 **결정적**(비-일시장애 — 4xx 등, 또는 placeholder/캐시 write
+        // 실패)이면, 다음 홉에서 재시도해도 동일하게 실패한다 → 재kick 은 순수 과금
+        // 낭비다. hardFault 와 같은 논리로 즉시 error 종결한다. 이게 이번 사고의
+        // 코스트 누수(map 무진전인데 MAX_RESUME_HOPS 까지 실패 호출 반복 과금)를
+        // 진행도 기반으로 조기 차단한다. 일시장애(429/5xx/timeout)는 회복 가능하므로
+        // 여기서 끊지 않고 아래 MAX_RESUME_HOPS 예산으로 재시도한다.
+        //
+        // Fix#1(파싱실패 placeholder)이 파싱실패 doc 을 전진시키므로, 여기 도달하는
+        // 무진전은 결정적 비-파싱 실패이거나 placeholder/캐시 write 실패(DB)뿐이다.
+        // GET self-heal(#1014)·cron(#1016) 재점화도 결국 kickResume → /resume →
+        // 이 runTopline 홉으로 수렴하므로, breaker 를 여기 한 곳에 두면 두 재점화
+        // 경로가 모두 보호된다(스펙 "양쪽에 적용" — 재kick 이 실제 LLM 호출로
+        // 이어지는 지점이 곧 이 홉).
+        const madeProgress = cached.size > cacheHits;
+        if (!madeProgress && fault.last && !fault.last.transient) {
+          const msg = `map_no_progress(${progress}, hops=${resumeCount})`;
+          console.error(`${tag} ${msg}`, { last_fault: fault.last.label });
+          await logError({
+            feature: 'interview',
+            code: 'topline_map_no_progress',
+            message: fault.last.label,
+            context: {
+              topline_id: toplineId,
+              project_id: projectId,
+              org_id: orgId,
+              progress,
+              hop: resumeCount,
+              map_failures: mapFailures,
+            },
+            severity: 'error',
+          });
           await admin
             .from('interview_toplines')
             .update({ status: 'error', error_message: msg })
