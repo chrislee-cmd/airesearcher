@@ -1,0 +1,21 @@
+-- 글로벌 디폴트 = 영어 (i18n Phase 1). profiles.locale 의 컬럼 default 를
+-- 'ko' → 'en' 으로 전환한다.
+--
+-- 배경 (사용자 결정 2026-07-14): 신규 유저는 브라우저 언어와 무관하게 영어로
+-- 진입해야 한다. auth callback(src/app/auth/callback/route.ts)은 로그인 시
+-- profiles.locale 을 읽어 그 로케일로 리다이렉트 + NEXT_LOCALE 쿠키를 세팅하는데,
+-- handle_new_user 트리거가 profiles row 를 (id,email,full_name,avatar_url) 만으로
+-- insert 하므로 신규 유저의 locale 은 컬럼 default 를 그대로 받는다. default 가
+-- 'ko' 인 한 신규 유저는 첫 로그인에 /ko 로 튕겨 나가 "전원 영어 진입" 계약을
+-- 위반한다. default 를 'en' 으로 바꿔 신규 유저가 /en 으로 진입하게 한다.
+--
+-- 기존 유저 불변: `set default` 는 신규 row 에만 적용된다. 이미 'ko'(또는 명시
+-- 선택값)를 가진 기존 유저의 row 는 건드리지 않으므로 그들의 /ko 경험은 그대로
+-- 보존된다 (스펙 제약: "기존 사용자 경험 파괴 없음"). 명시 선택은 스위처가
+-- /api/account/locale 로 profiles.locale 을 갱신해 기억한다.
+--
+-- additive(컬럼 추가/삭제 아님, 데이터 변형 없음) — `alter column ... set default`
+-- 는 §7.5 destructive 게이트(drop/type/rename/truncate/delete) 에 해당하지 않아
+-- 머지 시 자동 적용된다.
+alter table public.profiles
+  alter column locale set default 'en';
