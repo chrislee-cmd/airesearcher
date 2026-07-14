@@ -162,7 +162,15 @@ export type ToplineBlock = {
   description?: string;
 };
 
-export type ToplineStatus = 'none' | 'idle' | 'generating' | 'done' | 'error';
+export type ToplineStatus =
+  | 'none'
+  | 'idle'
+  | 'generating'
+  | 'done'
+  | 'error'
+  // 'cancelled' — user force-stop (terminal). Re-kick paths (resume/self-heal/
+  // cron) gate on 'generating' so a cancelled row is never revived.
+  | 'cancelled';
 
 /** GET /api/interviews/v2/topline 응답 shape (읽기 전용 조회). */
 export type ToplineReadResult = {

@@ -52,7 +52,9 @@ export async function POST(
   if (job.provider !== 'elevenlabs') {
     return NextResponse.json({ error: 'wrong_provider' }, { status: 400 });
   }
-  if (job.status === 'done' || job.status === 'error') {
+  if (job.status === 'done' || job.status === 'error' || job.status === 'cancelled') {
+    // 'cancelled' is terminal (user force-stop) — don't finalize a completion
+    // over it. The provider result, if any, is discarded.
     return NextResponse.json({ status: job.status });
   }
   if (!job.provider_request_id) {
@@ -181,7 +183,11 @@ export async function POST(
 
   const admin = createAdminClient();
   const rawWithMeta = { ...body, _speaker_merge: mergeDecision };
-  await admin
+  // Guard against a user force-stop that landed after we fetched the row:
+  // .neq('status','cancelled') makes the completion write a no-op on a
+  // cancelled row. `.select('id')` tells us whether it applied so we don't
+  // charge (or run post-passes for) a job the user cancelled.
+  const { data: doneRows } = await admin
     .from('transcript_jobs')
     .update({
       status: 'done',
@@ -191,7 +197,13 @@ export async function POST(
       raw_result: rawWithMeta as unknown as object,
       credits_spent: 1,
     })
-    .eq('id', job.id);
+    .eq('id', job.id)
+    .neq('status', 'cancelled')
+    .select('id');
+  if (!doneRows || doneRows.length === 0) {
+    // Cancelled between fetch and finalize — discard the provider result.
+    return NextResponse.json({ status: 'cancelled' });
+  }
 
   try {
     await spendCreditsAdmin(job.org_id, job.user_id, 'transcripts', job.id);

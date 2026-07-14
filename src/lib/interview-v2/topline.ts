@@ -81,7 +81,9 @@ export type InterviewToplineRow = {
   // 재생성 UI 가 업로드 보고서 덮어쓰기 경고를 띄우는 판단 근거.
   source: string | null;
   blocks: ToplineBlock[];
-  status: 'idle' | 'generating' | 'done' | 'error';
+  // 'cancelled' = 사용자 강제종료(terminal). 재개 경로(resume/self-heal/cron)는
+  // 'generating' 만 재kick 하므로 취소 후 되살아나지 않는다.
+  status: 'idle' | 'generating' | 'done' | 'error' | 'cancelled';
   error_message: string | null;
   model: string | null;
   generated_at: string | null;
@@ -1000,7 +1002,8 @@ export async function runTopline(
       await admin
         .from('interview_toplines')
         .update({ status: 'error', error_message: msg })
-        .eq('id', toplineId);
+        .eq('id', toplineId)
+        .eq('status', 'generating');
       return;
     }
 
@@ -1010,7 +1013,8 @@ export async function runTopline(
       await admin
         .from('interview_toplines')
         .update({ status: 'error', error_message: 'no_chunks' })
-        .eq('id', toplineId);
+        .eq('id', toplineId)
+        .eq('status', 'generating');
       return;
     }
 
@@ -1212,7 +1216,8 @@ export async function runTopline(
           await admin
             .from('interview_toplines')
             .update({ status: 'error', error_message: msg })
-            .eq('id', toplineId);
+            .eq('id', toplineId)
+            .eq('status', 'generating');
           return;
         }
 
@@ -1252,7 +1257,8 @@ export async function runTopline(
           await admin
             .from('interview_toplines')
             .update({ status: 'error', error_message: msg })
-            .eq('id', toplineId);
+            .eq('id', toplineId)
+            .eq('status', 'generating');
           return;
         }
 
@@ -1309,7 +1315,8 @@ export async function runTopline(
           await admin
             .from('interview_toplines')
             .update({ status: 'error', error_message: msg })
-            .eq('id', toplineId);
+            .eq('id', toplineId)
+            .eq('status', 'generating');
           return;
         }
         console.warn(
@@ -1422,7 +1429,9 @@ export async function runTopline(
       const { error } = await admin
         .from('interview_toplines')
         .update({ blocks: partial as unknown as object })
-        .eq('id', toplineId);
+        .eq('id', toplineId)
+        // 취소 정합 — cancelled(사용자 강제종료) row 엔 부분 블록도 쓰지 않는다.
+        .eq('status', 'generating');
       // 부분 upsert 는 best-effort — 실패해도 다음 flush/최종 done 이 만회한다.
       if (error) console.warn(`${tag} partial blocks upsert failed`, error.message);
     };
@@ -1468,7 +1477,8 @@ export async function runTopline(
         await admin
           .from('interview_toplines')
           .update({ status: 'error', error_message: msg })
-          .eq('id', toplineId);
+          .eq('id', toplineId)
+          .eq('status', 'generating');
         return;
       }
       // 예산 초과 self-abort — row 를 error 로 떨구지 않고(자동 재개 유지) 다음
@@ -1526,6 +1536,11 @@ export async function runTopline(
 
     // 최종 blocks = 새 생성분 + 보존 삽입분(재생성해도 사용자 삽입 유지).
     const finalBlocks = mergeInsertedBlocks(blocks, preservedInserted);
+    // 취소 정합 (이 스펙의 핵심 리스크) — cancelled row 를 done 으로 되살리지
+    // 않도록 status='generating' 가드. 정상 흐름에선 이 홉 내내 status 가
+    // 'generating' 이라 무변경, 사용자가 중간에 취소했을 때만 no-op 이 된다.
+    // 재개/GET self-heal/cron 은 이미 generating 만 재kick 하므로, 이 in-flight
+    // 홉의 terminal write 가 취소를 이길 수 있는 유일한 경합이었다.
     await admin
       .from('interview_toplines')
       .update({
@@ -1534,7 +1549,8 @@ export async function runTopline(
         error_message: null,
         generated_at: new Date().toISOString(),
       })
-      .eq('id', toplineId);
+      .eq('id', toplineId)
+      .eq('status', 'generating');
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'topline_failed';
     console.error(`${tag} failed`, msg);
@@ -1542,7 +1558,8 @@ export async function runTopline(
       await admin
         .from('interview_toplines')
         .update({ status: 'error', error_message: msg })
-        .eq('id', toplineId);
+        .eq('id', toplineId)
+        .eq('status', 'generating');
     } catch {
       // ignore — best-effort failure marker.
     }

@@ -397,18 +397,28 @@ function GeneratingSkeleton({
   mapDone,
   inReduce,
   blockCount,
+  onCancel,
 }: {
   mapTotal?: number | null;
   mapDone?: number | null;
   inReduce?: boolean;
   blockCount?: number | null;
+  // 생성 강제종료 — 제공되면 진행 표시 옆에 "생성 중단" 버튼을 노출한다.
+  onCancel?: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-        {t('toplineGenerating')}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+          {t('toplineGenerating')}
+        </div>
+        {onCancel && (
+          <Button variant="ghost" size="xs" onClick={onCancel}>
+            {t('toplineCancel')}
+          </Button>
+        )}
       </div>
       {/* map 순회 중이면 N/M, map 이 끝나고 reduce 스트리밍 중이면 "작성 중(N블록)". */}
       {inReduce ? (
@@ -437,6 +447,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
     generating,
     generate,
     refetch,
+    cancel,
     applyBlockMd,
     mapTotal,
     mapDone,
@@ -773,6 +784,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
             mapDone={mapDone}
             inReduce={inReduce}
             blockCount={blocks.length}
+            onCancel={() => void cancel()}
           />
         ) : hasBlocks ? (
           <>
@@ -782,9 +794,15 @@ export function ToplineView({ projectId }: { projectId: string }) {
                 graceful). stuck 이면 진행 표시 대신 아래 stuck 배너를 그린다. */}
             {status === 'generating' && !generatingStale && (
               <div className="mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-                  {t('toplineGenerating')}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-amore">
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
+                    {t('toplineGenerating')}
+                  </div>
+                  {/* 생성 강제종료 — 재생성 스트리밍(부분 블록 노출) 중에도 중단 가능. */}
+                  <Button variant="ghost" size="xs" onClick={() => void cancel()}>
+                    {t('toplineCancel')}
+                  </Button>
                 </div>
                 {inReduce ? (
                   <ToplineReduceProgress blockCount={blocks.length} />

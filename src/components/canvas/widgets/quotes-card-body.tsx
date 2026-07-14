@@ -727,6 +727,47 @@ export function QuotesCardBody() {
     }
   }
 
+  // 진행 중 전사 강제종료 (데스크 cooperative cancel 미러) — inflight 큐의 각
+  // 잡에 cancel 호출. 낙관적으로 status='cancelled' 를 반영해 프로그레스가 즉시
+  // 멈추고(큐/StageFlow 에서 빠짐), 서버는 terminal cancelled + 환불(차감분 있으면).
+  // 프로바이더 잡은 서버측 hard-kill 불가라 결과만 폐기(cooperative).
+  const [stopping, setStopping] = useState(false);
+  async function cancelInflight() {
+    if (stopping) return;
+    // 진행 중(제출/전사/대기) 잡만 취소 대상 — done/error/cancelled 는 제외.
+    // queueJobs(파생값)를 참조하지 않고 job.jobs 에서 직접 필터해 함수 정의
+    // 시점의 TDZ(하단 선언 파생값 참조)로 컴파일러가 바일아웃하는 것을 피한다.
+    const targets = job.jobs
+      .filter(
+        (j) =>
+          j.status === 'queued' ||
+          j.status === 'submitting' ||
+          j.status === 'transcribing',
+      )
+      .map((j) => j.id);
+    if (targets.length === 0) return;
+    setStopping(true);
+    try {
+      await Promise.allSettled(
+        targets.map((id) =>
+          fetch(`/api/transcripts/jobs/${id}/cancel`, { method: 'POST' }).then(
+            (r) => {
+              if (r.ok) {
+                // 낙관 반영 — realtime/refresh 가 곧 확정.
+                const j = job.jobs.find((x) => x.id === id);
+                if (j) job.upsertJob({ ...j, status: 'cancelled' });
+              }
+            },
+          ),
+        ),
+      );
+      trackEvent('widget_action', { widget: 'quotes', action: 'cancel' });
+    } finally {
+      setStopping(false);
+      await job.refreshJobs();
+    }
+  }
+
   // ── fullview 일괄 선택/액션 ────────────────────────────────────────────
   // 선택된 잡 id 집합. fullview("전체 보기") 안에서만 노출/사용된다. 카드
   // 본문 큐/산출물 목록엔 체크박스가 없어 개별 삭제/다운로드 회귀 없음.
@@ -835,12 +876,13 @@ export function QuotesCardBody() {
   // 이 아니라 "멈춤/실패" 뱃지 + 재시도/삭제로 노출한다(무한 "진행 중" 제거).
   const doneJobs = job.jobs.filter((j) => j.status === 'done');
   const stuckJobs = job.jobs.filter(
-    (j) => j.status !== 'done' && isStuckJob(j, stuckNow),
+    (j) => j.status !== 'done' && j.status !== 'cancelled' && isStuckJob(j, stuckNow),
   );
   const stuckIds = new Set(stuckJobs.map((j) => j.id));
-  // 신선한(≤30분) queued/submitting/transcribing 만 "진행 중" 큐로.
+  // 신선한(≤30분) queued/submitting/transcribing 만 "진행 중" 큐로. cancelled
+  // (사용자 강제종료)는 terminal 이라 큐에서 제외 — 진행 프로그레스가 즉시 멈춘다.
   const queueJobs = job.jobs.filter(
-    (j) => j.status !== 'done' && !stuckIds.has(j.id),
+    (j) => j.status !== 'done' && j.status !== 'cancelled' && !stuckIds.has(j.id),
   );
   const anyStuck = stuckJobs.length > 0;
   const hasUploads = Object.keys(job.localUploads).length > 0;
@@ -1250,6 +1292,18 @@ export function QuotesCardBody() {
                   orientation="vertical"
                   className="w-full max-w-xs"
                 />
+                {/* STOP — 진행 중 전사 강제종료 (데스크 미러). 실제 전사 잡이
+                    inflight 일 때만 노출(업로드-only 구간엔 취소 대상이 없음). */}
+                {queueJobs.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void cancelInflight()}
+                    disabled={stopping}
+                  >
+                    {stopping ? tWidgets('transcriptStopRequested') : tWidgets('transcriptStop')}
+                  </Button>
+                )}
               </div>
             ) : showDone ? (
               // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
@@ -2160,5 +2214,7 @@ function pillFor(status: TranscriptJobStatus): { text: string; cls: string } {
       return { text: '완료', cls: 'text-amore' };
     case 'error':
       return { text: '오류', cls: 'text-warning' };
+    case 'cancelled':
+      return { text: '중단됨', cls: 'text-mute-soft' };
   }
 }

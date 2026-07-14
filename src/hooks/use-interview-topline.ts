@@ -60,6 +60,9 @@ export type ToplineState = {
     userDirection?: string,
   ) => Promise<void>;
   refetch: () => Promise<void>;
+  // 생성 강제종료 — status='generating' 인 탑라인을 취소 종결(POST /cancel).
+  // durable resume/self-heal/cron 은 generating 만 재kick 하므로 취소 후 재개 X.
+  cancel: () => Promise<void>;
   // 인라인 편집의 낙관적 반영 — 특정 블록의 md 를 클라 상태에서 즉시 교체한다
   // (서버 PATCH 성공 시 refetch 로 확정, 실패 시 원문 md 로 되돌려 롤백).
   applyBlockMd: (blockId: string, md: string) => void;
@@ -182,8 +185,13 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
                 : prev,
             );
           }
-          // done/error 전이 시 stale·generated_at 을 정확히 맞추려 GET 재조회.
-          if (next?.status === 'done' || next?.status === 'error') {
+          // done/error/cancelled 전이 시 stale·generated_at 을 정확히 맞추려
+          // GET 재조회(cancelled 도 terminal — 슬롯 반납 트리거).
+          if (
+            next?.status === 'done' ||
+            next?.status === 'error' ||
+            next?.status === 'cancelled'
+          ) {
             void refetch();
           }
         },
@@ -254,10 +262,46 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     const prev = prevGateStatusRef.current;
     const cur = data?.status ?? null;
     prevGateStatusRef.current = cur;
-    if (prev === 'generating' && (cur === 'done' || cur === 'error')) {
+    if (
+      prev === 'generating' &&
+      (cur === 'done' || cur === 'error' || cur === 'cancelled')
+    ) {
       gate.release();
     }
   }, [data?.status, gate]);
+
+  // 생성 강제종료 — 낙관적으로 status='cancelled' 표시 후 POST /cancel. 서버가
+  // terminal cancelled 로 종결하고, in-flight 홉의 terminal write 는 이미
+  // status='generating' 가드로 막혀 취소를 되살리지 못한다. gate 반납은 위
+  // prevGateStatusRef effect 가 cancelled 전이에서 처리.
+  const cancel = useCallback(async () => {
+    if (!projectId) return;
+    setData((prev) => (prev ? { ...prev, status: 'cancelled' } : prev));
+    try {
+      const res = await fetch('/api/interviews/v2/topline/cancel', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        if (!aliveRef.current) return;
+        setFetchError(
+          json && typeof json.error === 'string'
+            ? json.error
+            : `HTTP ${res.status}`,
+        );
+      }
+    } catch (e) {
+      if (!aliveRef.current) return;
+      setFetchError(e instanceof Error ? e.message : 'network_error');
+    } finally {
+      // 실제 상태 확정(취소 성공/이미 종결).
+      await refetch();
+    }
+  }, [projectId, refetch]);
 
   // 낙관적 블록 md 교체 — 인라인 편집이 저장 성공/실패 확정 전에 즉시 화면에
   // 반영하거나(저장) 원문으로 되돌리는(롤백) 데 쓴다. 블록 타입/구조는 유지.
@@ -325,6 +369,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     generating,
     generate,
     refetch,
+    cancel,
     applyBlockMd,
   };
 }
