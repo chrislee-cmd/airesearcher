@@ -36,6 +36,11 @@ import { Input } from './ui/input';
 
 type Tab = 'native' | 'posthog';
 
+// Shared with LandingBeacon (landing-beacon.tsx). When this localStorage flag
+// is 'true' the beacon suppresses its POST, so the super-admin's own landing
+// visits (incognito / logged-out / other browsers) stay out of the count.
+const SKIP_BEACON_KEY = 'rc_landing_skip_beacon';
+
 const PERIODS: { key: AnalyticsPeriod; label: string }[] = [
   { key: '7d', label: '7일' },
   { key: '30d', label: '30일' },
@@ -204,6 +209,7 @@ export function AdminAnalytics({
           <div className="pt-2 text-xs font-semibold uppercase tracking-[0.22em] text-amore">
             랜딩 트래픽 · #574 landing_visits
           </div>
+          {!publicView && <LandingSelfVisitToggle />}
           <LandingTrafficCard landing={report.landing} />
           <LandingSourceCard landing={report.landing} />
           <RetentionFunnelCard landing={report.landing} />
@@ -211,6 +217,64 @@ export function AdminAnalytics({
           {!publicView && <SignupAccountsCard roster={initialSignups} />}
         </>
       )}
+    </div>
+  );
+}
+
+// Self-visit opt-out toggle. Writes the localStorage flag that LandingBeacon
+// reads to suppress its /api/track/landing POST — keeps the super-admin's own
+// landing visits (incognito / logged-out / other browsers) out of the count.
+// Per-browser by nature: the flag lives in this browser's localStorage, so
+// each browser / incognito window must be toggled independently. Admin-only
+// (rendered only in the super-admin /admin/analytics view, never in /status).
+function LandingSelfVisitToggle() {
+  // SSR renders unchecked (skip=false) so server/client markup matches; the
+  // real flag is read from localStorage post-hydration below.
+  const [skip, setSkip] = useState(false);
+
+  useEffect(() => {
+    // localStorage is client-only, so the checked state must be synced in from
+    // external storage after hydration — the legitimate case the
+    // set-state-in-effect rule allows.
+    let stored = false;
+    try {
+      stored = localStorage.getItem(SKIP_BEACON_KEY) === 'true';
+    } catch {
+      // private mode / storage disabled — leave unchecked
+    }
+    if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration external-storage probe (see comment above)
+      setSkip(true);
+    }
+  }, []);
+
+  const toggle = (next: boolean) => {
+    setSkip(next);
+    try {
+      if (next) localStorage.setItem(SKIP_BEACON_KEY, 'true');
+      else localStorage.removeItem(SKIP_BEACON_KEY);
+    } catch {
+      // private mode — best-effort, UI already reflects intent
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <label className="flex cursor-pointer items-center gap-2 text-md text-mute">
+        <Checkbox
+          checked={skip}
+          onChange={(e) => toggle(e.target.checked)}
+        />
+        이 브라우저에서 랜딩 추적 안 하기
+      </label>
+      {skip && (
+        <span className="text-xs-soft tabular-nums text-amore">
+          이후 방문부터 반영
+        </span>
+      )}
+      <span className="text-xs-soft text-mute-soft">
+        다른 브라우저·시크릿 창에서는 각각 설정해야 합니다
+      </span>
     </div>
   );
 }

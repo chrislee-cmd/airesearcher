@@ -11,6 +11,10 @@ import { useEffect } from 'react';
 // side from the Vercel header).
 
 const SESSION_KEY = 'rc_landing_session';
+// Self-visit opt-out: when this browser has set the skip flag (via the
+// /admin/analytics toggle), the beacon never fires — keeps super-admin's own
+// incognito / logged-out landing visits out of the count.
+const SKIP_KEY = 'rc_landing_skip_beacon';
 
 function getSessionId(): string {
   try {
@@ -33,6 +37,15 @@ export function LandingBeacon() {
   useEffect(() => {
     const send = () => {
       try {
+        // Self-visit opt-out: this browser opted out of landing tracking, so
+        // don't fire. Inside the existing try/catch so a storage failure
+        // (private mode) can never throw into the page.
+        if (
+          typeof window !== 'undefined' &&
+          localStorage.getItem(SKIP_KEY) === 'true'
+        ) {
+          return;
+        }
         const params = new URLSearchParams(window.location.search);
         const payload = {
           session_id: getSessionId(),
