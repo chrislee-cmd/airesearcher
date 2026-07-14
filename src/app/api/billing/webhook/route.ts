@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logError } from '@/lib/observability/log-error';
-import { SUBSCRIPTION_TIERS, type SubscriptionTierId } from '@/lib/features';
+import {
+  SUBSCRIPTION_TIERS,
+  includedCreditsFor,
+  type SubscriptionInterval,
+  type SubscriptionTierId,
+} from '@/lib/features';
 import {
   currencyForStoreId,
   fetchLemonSqueezySubscription,
+  subscriptionIntervalForVariant,
   subscriptionPeriodKey,
   subscriptionTierForVariant,
   verifyLemonSqueezySignatureAny,
@@ -30,35 +36,74 @@ const SUB_LIFECYCLE_EVENTS = new Set([
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-function includedCreditsForTier(tier: SubscriptionTierId | null): number | null {
+// 티어의 주기별 포함 크레딧 — 월간이면 includedCredits, 연간이면 연 포함크레딧
+// (월×12, 1개월 무료). 항상 SUBSCRIPTION_TIERS(서버 SSOT)에서 계산 — webhook
+// payload 의 금액/수량은 절대 신뢰하지 않는다.
+function includedCreditsForTierInterval(
+  tier: SubscriptionTierId | null,
+  interval: SubscriptionInterval,
+): number | null {
   if (!tier) return null;
-  return SUBSCRIPTION_TIERS.find((t) => t.id === tier)?.includedCredits ?? null;
+  const t = SUBSCRIPTION_TIERS.find((x) => x.id === tier);
+  return t ? includedCreditsFor(t, interval) : null;
+}
+
+// interval 해석 폴백 체인 (가장 신뢰순): checkout custom_data → variant→interval
+// 역매핑 → org 에 박아둔 subscription_interval → 'month'(가장 보수적). 연간
+// 갱신 시 custom_data 부재 + 연간 env 미등록이어도 persisted org 값이 월간
+// 오지급(20cr)을 막는다(spec §제약 — 무만료 대량지급이라 방향은 under-grant).
+function resolveInterval(
+  custom: string | undefined,
+  variantInterval: SubscriptionInterval | null,
+  orgInterval: SubscriptionInterval | null,
+): SubscriptionInterval {
+  if (custom === 'month' || custom === 'year') return custom;
+  return variantInterval ?? orgInterval ?? 'month';
 }
 
 // Locate the org for a subscription event. Prefer the org_id threaded through
 // checkout custom_data; fall back to the org already linked to this LS
 // subscription id. Returns the stored tier too so we can grant even when
 // custom_data is absent on a later lifecycle event.
+type OrgSubState = {
+  id: string;
+  subscription_tier: SubscriptionTierId | null;
+  subscription_interval: SubscriptionInterval | null;
+};
+
+function toOrgSubState(data: {
+  id: string;
+  subscription_tier: unknown;
+  subscription_interval: unknown;
+}): OrgSubState {
+  const iv = data.subscription_interval;
+  return {
+    id: data.id,
+    subscription_tier: (data.subscription_tier as SubscriptionTierId | null) ?? null,
+    subscription_interval: iv === 'month' || iv === 'year' ? iv : null,
+  };
+}
+
 async function orgForSubscription(
   admin: AdminClient,
   customOrgId: string | null | undefined,
   subId: string | null,
-): Promise<{ id: string; subscription_tier: SubscriptionTierId | null } | null> {
+): Promise<OrgSubState | null> {
   if (customOrgId) {
     const { data } = await admin
       .from('organizations')
-      .select('id, subscription_tier')
+      .select('id, subscription_tier, subscription_interval')
       .eq('id', customOrgId)
       .maybeSingle();
-    if (data) return { id: data.id, subscription_tier: (data.subscription_tier as SubscriptionTierId | null) ?? null };
+    if (data) return toOrgSubState(data);
   }
   if (subId) {
     const { data } = await admin
       .from('organizations')
-      .select('id, subscription_tier')
+      .select('id, subscription_tier, subscription_interval')
       .eq('ls_subscription_id', subId)
       .maybeSingle();
-    if (data) return { id: data.id, subscription_tier: (data.subscription_tier as SubscriptionTierId | null) ?? null };
+    if (data) return toOrgSubState(data);
   }
   return null;
 }
@@ -72,8 +117,9 @@ async function grantSubscriptionPeriod(
   subId: string,
   period: string,
   tier: SubscriptionTierId,
+  interval: SubscriptionInterval,
 ): Promise<boolean> {
-  const credits = includedCreditsForTier(tier);
+  const credits = includedCreditsForTierInterval(tier, interval);
   if (!credits) return false;
   const { data, error } = await admin.rpc('grant_subscription_credits', {
     p_org_id: orgId,
@@ -230,19 +276,21 @@ export async function POST(request: Request) {
     const apiKey = env.LEMONSQUEEZY_API_KEY;
     let renewsAt: string | null = null;
     let variantTier: SubscriptionTierId | null = null;
+    let variantInterval: SubscriptionInterval | null = null;
     if (apiKey) {
       const sub = await fetchLemonSqueezySubscription(apiKey, subId);
       if (sub) {
         renewsAt = sub.renews_at;
         variantTier = subscriptionTierForVariant(sub.variant_id);
-        await admin
-          .from('organizations')
-          .update({
-            subscription_status: sub.status,
-            current_period_end: sub.renews_at,
-            ls_subscription_id: subId,
-          })
-          .eq('id', org.id);
+        variantInterval = subscriptionIntervalForVariant(sub.variant_id);
+        const syncPatch: Record<string, string | null> = {
+          subscription_status: sub.status,
+          current_period_end: sub.renews_at,
+          ls_subscription_id: subId,
+        };
+        // 확정된 interval 이 있을 때만 갱신 — null 로 덮어 persisted 값을 잃지 않게.
+        if (variantInterval) syncPatch.subscription_interval = variantInterval;
+        await admin.from('organizations').update(syncPatch).eq('id', org.id);
       }
     }
 
@@ -254,6 +302,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, note: 'tier_unresolved' });
     }
 
+    const interval = resolveInterval(
+      event.meta?.custom_data?.interval,
+      variantInterval,
+      org.subscription_interval,
+    );
+
     // Period key = renews_at date. Fallback to the invoice id if the API
     // fetch was unavailable — still idempotent on LS retries of this event.
     const invoiceId = event.data?.id != null ? String(event.data.id) : null;
@@ -263,14 +317,14 @@ export async function POST(request: Request) {
     }
 
     try {
-      const granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier);
-      return NextResponse.json({ received: true, granted, tier, period });
+      const granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier, interval);
+      return NextResponse.json({ received: true, granted, tier, interval, period });
     } catch (e) {
       await logError({
         feature: 'billing',
         code: 'subscription_grant_failed',
         message: e instanceof Error ? e.message : 'grant_failed',
-        context: { event: name, sub_id: subId, org_id: org.id, period, tier },
+        context: { event: name, sub_id: subId, org_id: org.id, period, tier, interval },
       });
       return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
     }
@@ -290,40 +344,50 @@ export async function POST(request: Request) {
       subscriptionTierForVariant(attrs.variant_id) ??
       org.subscription_tier;
 
+    const interval = resolveInterval(
+      event.meta?.custom_data?.interval,
+      subscriptionIntervalForVariant(attrs.variant_id),
+      org.subscription_interval,
+    );
+
     // Sync org subscription state from the payload. status flows straight
     // from LS ('active' | 'cancelled' | 'expired' | 'past_due' | ...), so
     // cancel/expire naturally deactivate the org without clawing back the
-    // already-granted (non-expiring) credits.
+    // already-granted (non-expiring) credits. Persist the resolved interval so
+    // later renewals grant the right (monthly vs annual) amount even without
+    // custom_data — resolveInterval prefers the org value, so this stays stable.
     const patch: Record<string, string | null> = {
       subscription_status: attrs.status ?? null,
       ls_subscription_id: subId,
       current_period_end: attrs.renews_at ?? null,
+      subscription_interval: interval,
     };
     if (tier) patch.subscription_tier = tier;
     await admin.from('organizations').update(patch).eq('id', org.id);
 
     // On creation, grant the first period immediately. Keyed by the same
     // renews_at date the initial payment_success will compute, so exactly one
-    // of the two lands the grant and the other dedupes.
+    // of the two lands the grant and the other dedupes. Annual grants the full
+    // year's included credits (월×12, 무만료) in one shot.
     let granted = false;
     if (name === 'subscription_created' && tier) {
       const period = subscriptionPeriodKey(attrs.renews_at);
       if (period) {
         try {
-          granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier);
+          granted = await grantSubscriptionPeriod(admin, org.id, subId, period, tier, interval);
         } catch (e) {
           await logError({
             feature: 'billing',
             code: 'subscription_grant_failed',
             message: e instanceof Error ? e.message : 'grant_failed',
-            context: { event: name, sub_id: subId, org_id: org.id, period, tier },
+            context: { event: name, sub_id: subId, org_id: org.id, period, tier, interval },
           });
           return NextResponse.json({ error: 'grant_failed' }, { status: 500 });
         }
       }
     }
 
-    return NextResponse.json({ received: true, event: name, tier: tier ?? null, granted });
+    return NextResponse.json({ received: true, event: name, tier: tier ?? null, interval, granted });
   }
 
   // All other events acknowledged — Lemon Squeezy retries only on non-2xx.

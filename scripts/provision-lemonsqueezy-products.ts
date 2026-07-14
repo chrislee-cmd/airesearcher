@@ -102,8 +102,8 @@ type Desired = {
   currency: Currency;
   credits: number; // pack credits or subscription included credits/month
   priceKrw: number; // SSOT KRW amount (계좌이체/legacy rail; one-time or monthly)
-  priceUsd: number; // SSOT USD amount (LS 카드 rail; one-time or monthly)
-  interval: 'one_time' | 'month';
+  priceUsd: number; // SSOT USD amount (LS 카드 rail; one-time/monthly/annual)
+  interval: 'one_time' | 'month' | 'year';
   envKey: string; // A1 mapping key (env.ts)
   displayName: string; // brand Product Name (exposed on checkout/receipts)
   sku: string; // stable variant SKU = machine match key (display-independent)
@@ -201,6 +201,26 @@ function buildDesired(fx: number): Desired[] {
         sku: skuFor('sub', t.id),
         legacyMatchName: legacyMatchNameFor('sub', t.id),
       });
+    }
+    // Annual subscription variants — USD only (연간은 계좌이체/KRW 미제공). 1개월
+    // 무료 → priceUsd = annualPriceUsd, credits = annualIncludedCredits(월×12,
+    // 무만료). SKU `rc-sub-{tier}-annual`, env `LEMONSQUEEZY_SUB_{TIER}_ANNUAL_USD`.
+    if (currency === 'USD') {
+      for (const t of SUBSCRIPTION_TIERS as SubscriptionTier[]) {
+        out.push({
+          kind: 'sub',
+          id: t.id,
+          currency,
+          credits: t.annualIncludedCredits,
+          priceKrw: 0, // 연간 KRW rail 없음
+          priceUsd: t.annualPriceUsd,
+          interval: 'year',
+          envKey: `LEMONSQUEEZY_SUB_${t.id.toUpperCase()}_ANNUAL_USD`,
+          displayName: `Research Canvas — 구독 ${tierLabel(t.id)} (연 ${t.annualIncludedCredits.toLocaleString('en-US')}cr)`,
+          sku: `${skuFor('sub', t.id)}-annual`,
+          legacyMatchName: `${legacyMatchNameFor('sub', t.id)} • annual`,
+        });
+      }
     }
   }
   // fx only affects the *display/drift* of USD; keep it referenced so the
@@ -362,7 +382,9 @@ function reconcileOne(
   storeVariants: StoreVariant[],
 ): Reconciled {
   const notes: string[] = [];
-  if (d.priceKrw === 0) {
+  // Annual (USD-only) rows carry priceKrw=0 by design — only flag a 0 on the
+  // KRW rail, where it genuinely means "contact sales" (no fixed variant).
+  if (d.currency === 'KRW' && d.priceKrw === 0) {
     notes.push(
       'SSOT priceKrw is null/0 ("contact sales") — not a fixed provisionable variant.',
     );
@@ -413,12 +435,18 @@ function reconcileOne(
   const v = candidates[0];
   const want = expectedCents(d);
 
-  // Interval drift (subscription vs one-time).
-  const wantMonthly = d.interval === 'month';
-  const gotMonthly = v.isSubscription || v.interval === 'month';
-  if (wantMonthly !== gotMonthly) {
+  // Interval drift (one-time vs monthly vs annual subscription).
+  const gotInterval: 'one_time' | 'month' | 'year' =
+    v.interval === 'month'
+      ? 'month'
+      : v.interval === 'year'
+        ? 'year'
+        : v.isSubscription
+          ? 'month' // subscription with an unreadable interval → assume monthly
+          : 'one_time';
+  if (d.interval !== gotInterval) {
     notes.push(
-      `interval drift — SSOT wants ${d.interval}, LS variant is ${gotMonthly ? 'subscription/month' : 'one-time'}`,
+      `interval drift — SSOT wants ${d.interval}, LS variant is ${gotInterval}`,
     );
   }
 
@@ -648,7 +676,7 @@ async function main() {
 
   console.log('\n═══ Lemon Squeezy 상품 대조 (SSOT: features.ts, ₩' + CREDIT_PRICE_KRW + '/cr) ═══');
   console.log(
-    `desired = ${desired.length} variants (팩 ${CREDIT_BUNDLES.length} + 구독 ${SUBSCRIPTION_TIERS.length}) × ${CURRENCIES.length} 통화`,
+    `desired = ${desired.length} variants ((팩 ${CREDIT_BUNDLES.length} + 구독 ${SUBSCRIPTION_TIERS.length}) × ${CURRENCIES.length} 통화 + 연간구독 ${SUBSCRIPTION_TIERS.length} USD전용)`,
   );
   console.log(`USD 예상가는 features.ts priceUsd(SSOT) 직접 사용 (FX 미사용, 참고 rate=${fx}).\n`);
 

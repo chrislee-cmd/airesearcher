@@ -99,6 +99,10 @@ export const env = createEnv({
     LEMONSQUEEZY_SUB_SOLO_USD: z.string().min(1).optional(),
     LEMONSQUEEZY_SUB_PLUS_USD: z.string().min(1).optional(),
     LEMONSQUEEZY_SUB_PRO_USD: z.string().min(1).optional(),
+    // 연간 구독 variant — 연간은 USD 전용(계좌이체·KRW 미제공). 1개월 무료.
+    LEMONSQUEEZY_SUB_SOLO_ANNUAL_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_SUB_PLUS_ANNUAL_USD: z.string().min(1).optional(),
+    LEMONSQUEEZY_SUB_PRO_ANNUAL_USD: z.string().min(1).optional(),
 
     GOOGLE_CLIENT_ID: z.string().min(10).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(10).optional(),
@@ -302,6 +306,9 @@ export const env = createEnv({
     LEMONSQUEEZY_SUB_SOLO_USD: process.env.LEMONSQUEEZY_SUB_SOLO_USD,
     LEMONSQUEEZY_SUB_PLUS_USD: process.env.LEMONSQUEEZY_SUB_PLUS_USD,
     LEMONSQUEEZY_SUB_PRO_USD: process.env.LEMONSQUEEZY_SUB_PRO_USD,
+    LEMONSQUEEZY_SUB_SOLO_ANNUAL_USD: process.env.LEMONSQUEEZY_SUB_SOLO_ANNUAL_USD,
+    LEMONSQUEEZY_SUB_PLUS_ANNUAL_USD: process.env.LEMONSQUEEZY_SUB_PLUS_ANNUAL_USD,
+    LEMONSQUEEZY_SUB_PRO_ANNUAL_USD: process.env.LEMONSQUEEZY_SUB_PRO_ANNUAL_USD,
 
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

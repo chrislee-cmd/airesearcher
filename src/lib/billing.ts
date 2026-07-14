@@ -1,6 +1,10 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { env } from '@/env';
-import type { CreditBundleId, SubscriptionTierId } from '@/lib/features';
+import type {
+  CreditBundleId,
+  SubscriptionInterval,
+  SubscriptionTierId,
+} from '@/lib/features';
 
 // ── Lemon Squeezy ──────────────────────────────────────────────────────────
 //
@@ -88,28 +92,44 @@ const LS_SUB_VARIANT_USD: Record<SubscriptionTierId, string | undefined> = {
   pro: env.LEMONSQUEEZY_SUB_PRO_USD,
 };
 
-// Resolve store + variant for a (tier, currency) pair. Mirrors the credit
-// pack resolver — KRW falls back to the legacy single store, USD refuses
+// Annual variants — USD only (연간은 계좌이체/KRW 미제공, spec §제약). Maps to a
+// separate LS variant with a yearly billing interval + 1-month-free pricing.
+const LS_SUB_VARIANT_ANNUAL_USD: Record<SubscriptionTierId, string | undefined> = {
+  solo: env.LEMONSQUEEZY_SUB_SOLO_ANNUAL_USD,
+  plus: env.LEMONSQUEEZY_SUB_PLUS_ANNUAL_USD,
+  pro: env.LEMONSQUEEZY_SUB_PRO_ANNUAL_USD,
+};
+
+// Resolve store + variant for a (tier, currency, interval) triple. Mirrors the
+// credit pack resolver — KRW falls back to the legacy single store, USD refuses
 // without a dedicated USD store so we never pay out to the wrong account.
+// interval='year' selects the annual variant; annual is USD-only, so a yearly
+// KRW request has no target (returns null) rather than silently falling back.
 export function resolveLemonSqueezySubscriptionTarget(
   tierId: SubscriptionTierId,
   currency: PaymentCurrency,
+  interval: SubscriptionInterval = 'month',
 ): { storeId: string; variantId: string } | null {
   if (currency === 'KRW') {
+    // 연간 KRW 상품은 없다 — 월간만 KRW 폴백을 허용한다.
+    if (interval === 'year') return null;
     const storeId = env.LEMONSQUEEZY_STORE_ID_KRW ?? env.LEMONSQUEEZY_STORE_ID;
     const variantId = LS_SUB_VARIANT_KRW[tierId];
     if (!storeId || !variantId) return null;
     return { storeId, variantId };
   }
   const storeId = env.LEMONSQUEEZY_STORE_ID_USD;
-  const variantId = LS_SUB_VARIANT_USD[tierId];
+  const variantId =
+    interval === 'year'
+      ? LS_SUB_VARIANT_ANNUAL_USD[tierId]
+      : LS_SUB_VARIANT_USD[tierId];
   if (!storeId || !variantId) return null;
   return { storeId, variantId };
 }
 
 // Reverse map a LS subscription variant_id (from a webhook payload) back to
-// our tier id, across both currency rails. Used as a fallback when the
-// checkout custom_data tier is absent on a subscription lifecycle event.
+// our tier id, across both currency rails + monthly/annual variants. Used as a
+// fallback when the checkout custom_data tier is absent on a lifecycle event.
 export function subscriptionTierForVariant(
   variantId: string | number | null | undefined,
 ): SubscriptionTierId | null {
@@ -117,7 +137,31 @@ export function subscriptionTierForVariant(
   const id = String(variantId);
   const tiers: SubscriptionTierId[] = ['solo', 'plus', 'pro'];
   for (const t of tiers) {
-    if (LS_SUB_VARIANT_KRW[t] === id || LS_SUB_VARIANT_USD[t] === id) return t;
+    if (
+      LS_SUB_VARIANT_KRW[t] === id ||
+      LS_SUB_VARIANT_USD[t] === id ||
+      LS_SUB_VARIANT_ANNUAL_USD[t] === id
+    ) {
+      return t;
+    }
+  }
+  return null;
+}
+
+// Reverse map a LS subscription variant_id back to its billing interval. An
+// annual variant → 'year', a monthly variant → 'month', unknown → null (caller
+// falls back to custom_data / persisted org state / a conservative 'month').
+export function subscriptionIntervalForVariant(
+  variantId: string | number | null | undefined,
+): SubscriptionInterval | null {
+  if (variantId == null) return null;
+  const id = String(variantId);
+  const tiers: SubscriptionTierId[] = ['solo', 'plus', 'pro'];
+  for (const t of tiers) {
+    if (LS_SUB_VARIANT_ANNUAL_USD[t] === id) return 'year';
+    if (LS_SUB_VARIANT_KRW[t] === id || LS_SUB_VARIANT_USD[t] === id) {
+      return 'month';
+    }
   }
   return null;
 }
