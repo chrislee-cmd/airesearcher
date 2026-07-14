@@ -375,7 +375,12 @@ export function DeskCardBody() {
   // 으로 cancel 을 유도하던 사고 fix. 진짜 사고는 server-side budget timeout
   // (300s + 자동 환불) 이 자체 정리하므로 client 자동 cancel 은 제거.
   const STUCK_THRESHOLD_MS = 150_000; // 2.5분 — drafting 한 RQ 호출 평균보다 안전
-  const STUCK_CANCEL_HINT_MS = 270_000; // 4.5분 — 명시 cancel 버튼 노출 (자동 cancel 0)
+  // 명시 cancel 버튼 노출 게이트 — 생성 강제종료 스펙(card #479)으로 대폭 단축.
+  // 주 STOP 버튼은 이미 실행 시작(t=0)부터 StageFlow hero 에 상시 노출되므로,
+  // 이 stuck 배너의 "중지하고 환불" 버튼도 별도 4.5분 대기 없이 stuck 배너가
+  // 뜨는 즉시(=STUCK_THRESHOLD_MS) 함께 노출한다. 자동 cancel 은 여전히 0 —
+  // 사용자 클릭만(#375 사고 방지).
+  const STUCK_CANCEL_HINT_MS = STUCK_THRESHOLD_MS;
   const [now, setNow] = useState(() => Date.now());
   const eventCountRef = useRef<number>(0);
   const lastEventAtRef = useRef<number>(Date.now());

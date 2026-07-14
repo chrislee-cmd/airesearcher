@@ -20,7 +20,10 @@ export type TranscriptJobStatus =
   | 'submitting'
   | 'transcribing'
   | 'done'
-  | 'error';
+  | 'error'
+  // 'cancelled' — user force-stop (terminal). Not in ACTIVE_STATUSES so
+  // isWorking drops and the gate slot is released, same as done/error.
+  | 'cancelled';
 
 export type TranscriptJob = {
   id: string;
