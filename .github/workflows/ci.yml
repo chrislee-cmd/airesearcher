@@ -63,6 +63,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # i18n locale key parity (i18n Phase 2). Hard gate: ko↔en must match
+      # exactly, ja/th must be a subset of en, and every messages/*.json must
+      # be valid JSON with no duplicate keys. Prevents raw-key regressions —
+      # the en-base merge in src/i18n/request.ts relies on ja/th ⊆ en.
+      - name: i18n locale parity
+        run: pnpm check:i18n
+
       # 한글 리터럴 ratchet 가드 — docs/WRITING.md 불변식 ①("디폴트 뷰 한글
       # 노출 금지")의 CI 강제. 유저-facing 소스의 하드코딩 한글은 /en 뷰에도
       # 노출되므로 근본 원인. .i18n-korean-baseline.json 대비 파일별 카운트가
