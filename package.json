@@ -13,6 +13,7 @@
     "migration:new": "supabase migration new",
     "gen:ds-usage": "node scripts/gen-ds-usage.mjs",
     "gen:changed-ui": "node scripts/gen-changed-ui.mjs",
+    "check:korean": "node --experimental-strip-types scripts/check-korean-literals.ts",
     "qa:seed": "node --experimental-strip-types --env-file-if-exists=.env.local scripts/qa-seed-sample-project.ts",
     "e2e": "playwright test",
     "e2e:list": "playwright test --list",
