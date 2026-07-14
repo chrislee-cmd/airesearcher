@@ -138,8 +138,22 @@ floor_USD = ₩396 × ($0.40 / ₩500) ≈ $0.283/cr
 | Plus | 24 | 60 | ₩30,000 |
 | Pro | 64 | 160 | ₩80,000 |
 
-- 구독 결제 통화 = **USD(LS 카드)**. 월 리스트가는 $0.40/cr 무할인 — 할인 레버는 **연간**(별 스펙).
+- 구독 결제 통화 = **USD(LS 카드)**. 월 리스트가는 $0.40/cr 무할인 — 할인 레버는 **연간**(아래 §5.3.1).
 - `monthlyPriceKrw`(참고 KRW)는 미래 Toss(KRW) rail 을 위한 legacy SSOT 로 남겨 둔다 — 현재 구독 결제엔 미사용.
+
+#### 5.3.1 연간 구독 (USD · 1개월 무료) — 2026-07-14
+
+| 티어 | 연간($) | 연 포함 cr | 연 effective $/cr | 절약 |
+|---|--:|--:|--:|--:|
+| Solo | 88 | 240 | 0.367 | 1개월 |
+| Plus | 264 | 720 | 0.367 | 1개월 |
+| Pro | 704 | 1,920 | 0.367 | 1개월 |
+
+- **연간 = 1개월 무료** — `annualPriceUsd = monthlyPriceUsd × 11`, `annualIncludedCredits = includedCredits × 12`. 실효 8.3% off.
+- 연 effective **$0.367/cr > USD floor $0.283** → 마진 안전. 무료 개월을 2로 늘리면(16.7%) floor 근접·붕괴 위험이라 **1개월 고정**(SSOT `ANNUAL_FREE_MONTHS = 1`, floor 테스트가 강제).
+- 연간은 **USD 전용**(계좌이체/KRW 미제공). env 키 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_ANNUAL_USD` · SKU `rc-sub-{tier}-annual` (LS 대시보드 1회 생성 — Chris).
+- 지급 = **결제 시 연 포함크레딧 1회 일괄**(무만료 버킷). 멱등은 월간과 동일 `subscription_grants(ls_subscription_id, period)` 유니크(period=renews_at 날짜). checkout `interval: 'month'|'year'` 파라미터로 variant 선택, `organizations.subscription_interval` 에 주기 persist(갱신 시 오지급 방지).
+- **이연부채 인지**: 연 일괄 대량 크레딧 무만료 = 미소진 크레딧이 이연부채로 잡힌다(회계 관점).
 
 - 구독의 **가치 = 할인이 아니라 편의**: 크레딧 무만료(구독 중) · 우선 처리 · 시트(팀).
 - **오버리지** = 언제든 ₩500/cr 일회성 top-up.

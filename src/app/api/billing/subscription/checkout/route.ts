@@ -20,6 +20,8 @@ export const maxDuration = 60;
 const Body = z.object({
   tier: z.enum(['solo', 'plus', 'pro']),
   locale: z.enum(['ko', 'en']).optional(),
+  // month(기본) | year(연간, 1개월 무료). 미지정 구 클라이언트는 월간으로 처리.
+  interval: z.enum(['month', 'year']).optional(),
   // NOTE(dual-rail 2026-07-14): 구독은 LS 카드(USD) 전용 — 계좌이체 미제공.
   // 구 `currency` 파라미터는 무시된다(zod 가 미지정 키 strip). 구 클라이언트가
   // 보내도 400 이 안 나게 스키마에 남기지 않고 그냥 drop 한다.
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input', details: parsed.error.format() }, { status: 400 });
   }
   const { tier, locale } = parsed.data;
+  const interval = parsed.data.interval ?? 'month';
   // Validate the tier against the SSOT so an unknown tier can't slip past.
   if (!SUBSCRIPTION_TIERS.some((t) => t.id === tier)) {
     return NextResponse.json({ error: 'invalid_tier' }, { status: 400 });
@@ -57,16 +60,16 @@ export async function POST(request: Request) {
 
   // dual-rail (2026-07-14): 구독은 LS 카드(USD) 전용. 통화 분기 없음.
   const currency = 'USD' as const;
-  const target = resolveLemonSqueezySubscriptionTarget(tier, currency);
+  const target = resolveLemonSqueezySubscriptionTarget(tier, currency, interval);
   if (!target) {
     console.error(
-      `[billing/subscription] lemonsqueezy target missing currency=${currency} tier=${tier}`,
+      `[billing/subscription] lemonsqueezy target missing currency=${currency} tier=${tier} interval=${interval}`,
     );
     await logError({
       feature: 'billing',
       code: 'subscription_checkout_503',
-      message: `lemonsqueezy subscription target missing (currency=${currency} tier=${tier})`,
-      context: { currency, tier, org_id: org.org_id },
+      message: `lemonsqueezy subscription target missing (currency=${currency} tier=${tier} interval=${interval})`,
+      context: { currency, tier, interval, org_id: org.org_id },
     });
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
@@ -80,9 +83,11 @@ export async function POST(request: Request) {
       variantId: target.variantId,
       email: user.email ?? null,
       locale: checkoutLocale,
-      // Thread org + tier so the subscription webhook can grant included
-      // credits + stamp org state without a pre-inserted payments row.
-      custom: { org_id: org.org_id, tier },
+      // Thread org + tier + interval so the subscription webhook can grant the
+      // right (monthly vs annual) included credits + stamp org state without a
+      // pre-inserted payments row. interval also survives to renewals via the
+      // persisted org.subscription_interval when custom_data is absent.
+      custom: { org_id: org.org_id, tier, interval },
       redirectUrl: `${origin}/${checkoutLocale}/credits?status=subscribed&tier=${tier}`,
     });
 
@@ -90,6 +95,7 @@ export async function POST(request: Request) {
       method: 'lemonsqueezy_subscription',
       tier,
       currency,
+      interval,
       checkoutUrl: checkout.url,
     });
   } catch (err) {

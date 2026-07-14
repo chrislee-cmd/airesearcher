@@ -24,6 +24,8 @@ import {
   CREDIT_PRICE_LIST_USD,
   MARGIN_FLOOR_KRW_PER_CREDIT,
   MARGIN_FLOOR_USD_PER_CREDIT,
+  SUBSCRIPTION_TIERS,
+  ANNUAL_FREE_MONTHS,
   type FeatureKey,
 } from '../src/lib/features.ts';
 
@@ -251,6 +253,61 @@ describe('팩 볼륨할인 — 70% floor 불변식 (양 rail)', () => {
           `${b.id}: perCreditUsd 표시값이 priceUsd/credits 와 불일치`,
         );
       }
+    }
+  });
+});
+
+// ── (C) 연간 구독 — 1개월 무료 불변식 + floor (USD) ──────────────────────────
+
+describe('연간 구독 — 1개월 무료 불변식 + 70% floor (USD)', () => {
+  it('annualPriceUsd = monthlyPriceUsd × (12 − ANNUAL_FREE_MONTHS) — "무료 개월" 계약', () => {
+    // ANNUAL_FREE_MONTHS 를 2 로 올리면(16.7% off) 아래 floor 테스트가 red 로
+    // 무너진다 — "1개월 고정"(spec §제약) 이 코드로 강제됨.
+    const paidMonths = 12 - ANNUAL_FREE_MONTHS;
+    for (const t of SUBSCRIPTION_TIERS) {
+      assert.equal(
+        t.annualPriceUsd,
+        t.monthlyPriceUsd * paidMonths,
+        `${t.id}: annualPriceUsd(${t.annualPriceUsd}) ≠ monthlyPriceUsd(${t.monthlyPriceUsd}) × ${paidMonths}개월`,
+      );
+    }
+  });
+
+  it('annualIncludedCredits = includedCredits × 12 (연 포함크레딧, 무만료)', () => {
+    for (const t of SUBSCRIPTION_TIERS) {
+      assert.equal(
+        t.annualIncludedCredits,
+        t.includedCredits * 12,
+        `${t.id}: annualIncludedCredits(${t.annualIncludedCredits}) ≠ includedCredits(${t.includedCredits}) × 12`,
+      );
+    }
+  });
+
+  it('연 effective $/cr 이 70% USD floor 이상이다', () => {
+    const violations: string[] = [];
+    for (const t of SUBSCRIPTION_TIERS) {
+      const eff = t.annualPriceUsd / t.annualIncludedCredits;
+      if (eff < MARGIN_FLOOR_USD_PER_CREDIT) {
+        violations.push(
+          `  • ${t.id} 연간: $${eff.toFixed(3)}/cr < floor $${MARGIN_FLOOR_USD_PER_CREDIT}/cr`,
+        );
+      }
+    }
+    assert.equal(
+      violations.length,
+      0,
+      `\n연간 구독 70% floor 위반:\n${violations.join('\n')}\n`,
+    );
+  });
+
+  it('연 effective 가 월 effective 보다 싸다 (연납 할인이 실재)', () => {
+    for (const t of SUBSCRIPTION_TIERS) {
+      const annualEff = t.annualPriceUsd / t.annualIncludedCredits;
+      const monthlyEff = t.monthlyPriceUsd / t.includedCredits;
+      assert.ok(
+        annualEff < monthlyEff,
+        `${t.id}: 연 effective $${annualEff.toFixed(3)} 가 월 effective $${monthlyEff.toFixed(3)} 보다 싸야 한다`,
+      );
     }
   });
 });

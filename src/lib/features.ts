@@ -233,8 +233,18 @@ export const CREDIT_BUNDLES: CreditBundle[] = [
 // 구독은 **LS 카드(USD) 전용**(계좌이체 미제공) — 월 리스트가는 $0.40/cr
 // 무할인(구독의 가치는 할인이 아니라 무만료·우선처리·시트 + 연간 레버).
 // monthlyPriceKrw 는 legacy/미래 Toss(KRW) 를 위한 SSOT 로 남겨 둔다.
-// LS 구독 variant 는 env 키 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_{KRW,USD}` 규약.
+// LS 구독 variant 는 env 키 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_{KRW,USD}` 규약,
+// 연간은 `LEMONSQUEEZY_SUB_{SOLO,PLUS,PRO}_ANNUAL_USD` (연간은 USD 전용).
 export type SubscriptionTierId = 'solo' | 'plus' | 'pro';
+
+// 결제 주기 — 월/연. 연간은 "1개월 무료"(아래) 레버로만 존재한다.
+export type SubscriptionInterval = 'month' | 'year';
+
+// 연간 = 1개월 무료 (2026-07-14 사용자 결정). 이 상수 하나가 "1개월 무료" 계약을
+// 코드 불변식으로 만든다: annualPriceUsd = monthlyPriceUsd × (12 − ANNUAL_FREE_MONTHS),
+// annualIncludedCredits = includedCredits × 12. 무료 개월을 2로 늘리면(16.7% off)
+// 실효 단가가 floor 붕괴 → **1개월 고정**(spec §제약). floor 테스트가 강제한다.
+export const ANNUAL_FREE_MONTHS = 1;
 
 export type SubscriptionTier = {
   id: SubscriptionTierId;
@@ -243,13 +253,27 @@ export type SubscriptionTier = {
   // legacy/미래 Toss(KRW) rail 참조가. 현재 구독 결제엔 미사용.
   monthlyPriceKrw: number;
   includedCredits: number;
+  // 연간 총액(USD) = 월 × 11 (1개월 무료 = ~8.3% off). floor($0.283) 안전.
+  annualPriceUsd: number;
+  // 연 포함 크레딧 = 월 × 12 (무만료). 연 effective $/cr = annualPriceUsd /
+  // annualIncludedCredits = $0.367 > floor. 결제 시 연 1회 일괄 지급.
+  annualIncludedCredits: number;
 };
 
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  { id: 'solo', monthlyPriceUsd: 8, monthlyPriceKrw: 10_000, includedCredits: 20 },
-  { id: 'plus', monthlyPriceUsd: 24, monthlyPriceKrw: 30_000, includedCredits: 60 },
-  { id: 'pro', monthlyPriceUsd: 64, monthlyPriceKrw: 80_000, includedCredits: 160 },
+  // annualPriceUsd = monthlyPriceUsd × 11 · annualIncludedCredits = includedCredits × 12.
+  { id: 'solo', monthlyPriceUsd: 8, monthlyPriceKrw: 10_000, includedCredits: 20, annualPriceUsd: 88, annualIncludedCredits: 240 },
+  { id: 'plus', monthlyPriceUsd: 24, monthlyPriceKrw: 30_000, includedCredits: 60, annualPriceUsd: 264, annualIncludedCredits: 720 },
+  { id: 'pro', monthlyPriceUsd: 64, monthlyPriceKrw: 80_000, includedCredits: 160, annualPriceUsd: 704, annualIncludedCredits: 1_920 },
 ];
+
+// 티어의 주기별 포함 크레딧 — webhook 지급이 서버 SSOT 로 사용(payload 금액 불신뢰).
+export function includedCreditsFor(
+  tier: SubscriptionTier,
+  interval: SubscriptionInterval,
+): number {
+  return interval === 'year' ? tier.annualIncludedCredits : tier.includedCredits;
+}
 
 export const FEATURE_COSTS: Record<FeatureKey, number> = Object.fromEntries(
   FEATURES.map((f) => [f.key, f.cost]),
