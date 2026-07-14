@@ -35,6 +35,12 @@ type FullviewShellApi = {
   currentKey: string | null;
   /** 모달 open 여부. */
   open: boolean;
+  /**
+   * 셸 chrome 형태. 'modal'(기본) = 캔버스 뷰의 전체보기 모달 — 닫기 × 노출.
+   * 'page' = 리스트 뷰의 풀페이지 셸 — 좌 사이드바 + 우 상세가 본문 영역을
+   * 차지하고, 닫을 모달이 없으므로 상세 패널의 닫기 × 를 감춘다.
+   */
+  chrome?: 'modal' | 'page';
   /** 위젯 본문이 portal 할 대상 DOM. 모달이 열렸을 때만 non-null. */
   slotEl: HTMLElement | null;
   /** 위젯 전체보기 열기 (카드 "전체 보기" 버튼 / deep-link). */
@@ -81,4 +87,11 @@ export function useFullview(widgetKey: string): {
     openFullview: ctx ? () => ctx.openFullview(widgetKey) : () => {},
     close: ctx?.close ?? (() => {}),
   };
+}
+
+// 셸 chrome 형태 — WidgetFullviewPanel 이 닫기 × 노출 여부를 결정하는 데 쓴다.
+// provider 밖에서는 'modal'(기본) 로 폴백해 기존 동작을 보존한다.
+export function useFullviewChrome(): 'modal' | 'page' {
+  const ctx = useContext(FullviewShellContext);
+  return ctx?.chrome ?? 'modal';
 }

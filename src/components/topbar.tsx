@@ -6,6 +6,7 @@ import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
 import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
+import { ViewModeToggle } from './view-mode-toggle';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -66,6 +67,9 @@ export async function Topbar({
       <div className="flex shrink-0 items-center gap-3">
         {isAuthed ? (
           <>
+            {/* 뷰 모드 토글 (캔버스 ⇄ 리스트) — 캔버스 목적지에서만 자체
+                노출(다른 라우트에선 렌더 0). 라이트/다크 스위치 톤. */}
+            <ViewModeToggle />
             {/* QA feedback cluster (voice mic + text note + "피드백 남기기"
                 label) — shown to every signed-in account. */}
             <QaFeedbackCluster />
