@@ -10,12 +10,24 @@ import { track } from '@/components/mixpanel-provider';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { useCreditDeductionEvent } from '@/components/credit-deduction-provider';
+import { routing } from '@/i18n/routing';
+import { markLocaleSuggestDismissed } from '@/lib/i18n/locale-preference';
 
 type Props = {
   email: string | null;
   credits: number | null;
   isSuperAdmin?: boolean;
 };
+
+// 계정 패널 언어 스위처의 표시 순서 — 글로벌 디폴트가 영어라 EN 우선, 그다음
+// KO / JA / TH. routing.locales(협상/staticParams 순서)와 분리해 UI 순서만 제어.
+// 목록에 없는 새 로케일은 뒤에 붙어 추가만으로 노출된다.
+const LOCALE_DISPLAY_ORDER = ['en', 'ko', 'ja', 'th'];
+const supportedLocales = routing.locales as readonly string[];
+const localeOptions = [
+  ...LOCALE_DISPLAY_ORDER.filter((l) => supportedLocales.includes(l)),
+  ...supportedLocales.filter((l) => !LOCALE_DISPLAY_ORDER.includes(l)),
+];
 
 // PR-D7: 사이드바 → 헤더 탭 전환 후, 우측 끝의 account trigger. 기존
 // SidebarAccount 의 popover 동작을 가로 헤더용으로 정렬 — 트리거 = 아바타
@@ -113,9 +125,12 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
         ).toLocaleDateString(locale, { month: '2-digit', day: '2-digit' })
       : null;
 
-  function changeLocale(next: 'ko' | 'en') {
+  function changeLocale(next: string) {
     if (next === locale) return;
     track('settings_locale_change_click', { from: locale, to: next });
+    // 명시 선택이므로 언어 제안 배너는 다시 띄우지 않는다(영어를 고른 한국어
+    // 브라우저 유저 포함).
+    markLocaleSuggestDismissed();
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
@@ -258,7 +273,7 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
               {tCommon('language')}
             </div>
             <div className="mt-1.5 flex items-center gap-3 text-xs-soft font-semibold uppercase tracking-[0.18em]">
-              {(['ko', 'en'] as const).map((lng) => (
+              {localeOptions.map((lng) => (
                 <Button
                   key={lng}
                   variant="link"

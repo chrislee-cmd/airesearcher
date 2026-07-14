@@ -7,7 +7,6 @@ import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
 import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
 import { ViewModeToggle } from './view-mode-toggle';
-import { LanguageSwitcher } from './language-switcher';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -66,10 +65,6 @@ export async function Topbar({
       {isAuthed && <TopbarTabs tabs={tabs} />}
 
       <div className="flex shrink-0 items-center gap-3">
-        {/* 언어 스위처 — account 근처에 상시 노출(로그인 여부 무관). 명시 선택은
-            NEXT_LOCALE 쿠키 + (로그인 시) DB 에 기억된다. 영어 디폴트 진입을
-            유저가 언제든 되돌릴 수 있는 통로. */}
-        <LanguageSwitcher />
         {isAuthed ? (
           <>
             {/* 뷰 모드 토글 (캔버스 ⇄ 리스트) — 캔버스 목적지에서만 자체
