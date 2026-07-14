@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { createClient } from '@/lib/supabase/server';
-import { getActiveOrg } from '@/lib/org';
+import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { getOrgCredits, getCreditsStatus } from '@/lib/credits';
 import { env } from '@/env';
 import { CreditsBundles } from '@/components/credits-bundles';
@@ -36,6 +36,12 @@ export default async function CreditsPage({
   const user = await getCurrentUser();
   const org = user ? await getActiveOrg() : null;
   const credits = org ? await getOrgCredits(org.org_id) : null;
+
+  // 예측기 feature 목록도 preview 게이트를 따른다 — 일반(비-unlimited) 계정엔
+  // preview 위젯(recruiting·desk·interviews 등)을 시뮬레이터에서 숨긴다.
+  // 예측기는 PREVIEW_FEATURES 를 자체 소비하지 않는 정적 리스트라, 캔버스와
+  // 동일 게이트를 적용하도록 org flag 를 여기서 해석해 prop 으로 넘긴다.
+  const isUnlimited = org ? (await getOrgFlags(org.org_id)).isUnlimited : false;
 
   // 만료되는 무료 grant (docs/pricing-scheme.md §5.4) — 비만료 잔액과 구분
   // 표시. getCreditsStatus 는 만료 지난 grant 를 이미 0 으로 정규화한다.
@@ -214,7 +220,7 @@ export default async function CreditsPage({
         }
       />
 
-      <CreditsUsagePredictor />
+      <CreditsUsagePredictor isUnlimited={isUnlimited} />
     </div>
   );
 }

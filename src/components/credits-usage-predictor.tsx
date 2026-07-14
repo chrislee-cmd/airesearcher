@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   CREDIT_BUNDLES,
   FEATURE_COSTS,
+  PREVIEW_FEATURES,
   type CreditBundleId,
   type FeatureKey,
 } from '@/lib/features';
@@ -57,16 +58,31 @@ function defaultBundleId(): CreditBundleId {
   return PREDICTOR_BUNDLES.find((b) => b.popular)?.id ?? PREDICTOR_BUNDLES[0].id;
 }
 
-export function CreditsUsagePredictor() {
+export function CreditsUsagePredictor({
+  isUnlimited = false,
+}: {
+  isUnlimited?: boolean;
+}) {
   const t = useTranslations('Credits');
   const tSidebar = useTranslations('Sidebar');
+
+  // 일반(비-unlimited) 계정엔 preview 게이트 위젯(recruiting·desk·interviews
+  // 등)을 시뮬레이터에서 숨긴다 — 캔버스와 동일 게이트. unlimited(관리자)는
+  // 전체 리스트 그대로. budget-spread·rescale 계산도 이 가시 리스트에서만 돈다.
+  const features = useMemo(
+    () =>
+      isUnlimited
+        ? PREDICTOR_FEATURES
+        : PREDICTOR_FEATURES.filter((f) => !PREVIEW_FEATURES.has(f.key)),
+    [isUnlimited],
+  );
 
   const [bundleId, setBundleId] = useState<CreditBundleId>(defaultBundleId);
   const bundle = PREDICTOR_BUNDLES.find((b) => b.id === bundleId)!;
   const budget = bundle.credits;
 
   const [counts, setCounts] = useState<Record<FeatureKey, number>>(
-    () => initialCounts(budget),
+    () => initialCounts(features, budget),
   );
 
   // When user switches bundle, rescale proportionally so the picture stays
@@ -74,16 +90,13 @@ export function CreditsUsagePredictor() {
   function changeBundle(id: CreditBundleId) {
     const next = PREDICTOR_BUNDLES.find((b) => b.id === id)!;
     setBundleId(id);
-    setCounts((prev) => rescale(prev, next.credits));
+    setCounts((prev) => rescale(features, prev, next.credits));
   }
 
   const totalSpent = useMemo(
     () =>
-      PREDICTOR_FEATURES.reduce(
-        (sum, f) => sum + (counts[f.key] ?? 0) * f.cost,
-        0,
-      ),
-    [counts],
+      features.reduce((sum, f) => sum + (counts[f.key] ?? 0) * f.cost, 0),
+    [counts, features],
   );
   const remaining = Math.max(0, budget - totalSpent);
   const pctSpent = budget === 0 ? 0 : Math.min(100, (totalSpent / budget) * 100);
@@ -91,8 +104,8 @@ export function CreditsUsagePredictor() {
 
   function setCount(key: FeatureKey, raw: number) {
     setCounts((prev) => {
-      const cost = PREDICTOR_FEATURES.find((f) => f.key === key)!.cost;
-      const others = PREDICTOR_FEATURES.reduce(
+      const cost = features.find((f) => f.key === key)!.cost;
+      const others = features.reduce(
         (sum, f) => (f.key === key ? sum : sum + (prev[f.key] ?? 0) * f.cost),
         0,
       );
@@ -104,9 +117,9 @@ export function CreditsUsagePredictor() {
 
   function reset(mode: 'zero' | 'even') {
     if (mode === 'zero') {
-      setCounts(zeroCounts());
+      setCounts(zeroCounts(features));
     } else {
-      setCounts(initialCounts(budget));
+      setCounts(initialCounts(features, budget));
     }
   }
 
@@ -253,13 +266,13 @@ export function CreditsUsagePredictor() {
         }}
         className="mt-6 flex flex-col rounded-sm px-4 py-2"
       >
-        {PREDICTOR_FEATURES.map((f, idx) => {
+        {features.map((f, idx) => {
           const count = counts[f.key] ?? 0;
           const others = totalSpent - count * f.cost;
           const maxForThis = Math.floor(Math.max(0, budget - others) / f.cost);
           const absMax = Math.max(1, Math.floor(budget / f.cost));
           const spentHere = count * f.cost;
-          const isLast = idx === PREDICTOR_FEATURES.length - 1;
+          const isLast = idx === features.length - 1;
           return (
             <div
               key={f.key}
@@ -320,36 +333,46 @@ export function CreditsUsagePredictor() {
   );
 }
 
-function zeroCounts(): Record<FeatureKey, number> {
+// 헬퍼는 가시 feature 리스트(preview 게이트 적용 후)를 인자로 받아 그 위에서만
+// 계산한다 — 숨긴 위젯이 budget-spread·rescale 에 끼어들지 않게.
+type PredictorFeature = { key: FeatureKey; cost: number };
+
+function zeroCounts(
+  features: readonly PredictorFeature[],
+): Record<FeatureKey, number> {
   const out = {} as Record<FeatureKey, number>;
-  for (const f of PREDICTOR_FEATURES) out[f.key] = 0;
+  for (const f of features) out[f.key] = 0;
   return out;
 }
 
 // Default mix: spread the budget evenly across chargeable features so the bar
 // starts ~70-90% full and the user immediately sees the trade-off.
-function initialCounts(budget: number): Record<FeatureKey, number> {
-  const n = PREDICTOR_FEATURES.length;
-  const perFeatureBudget = Math.floor(budget / n);
+function initialCounts(
+  features: readonly PredictorFeature[],
+  budget: number,
+): Record<FeatureKey, number> {
+  const n = features.length;
+  const perFeatureBudget = n === 0 ? 0 : Math.floor(budget / n);
   const out = {} as Record<FeatureKey, number>;
-  for (const f of PREDICTOR_FEATURES) {
+  for (const f of features) {
     out[f.key] = Math.max(0, Math.floor(perFeatureBudget / f.cost));
   }
   return out;
 }
 
 function rescale(
+  features: readonly PredictorFeature[],
   prev: Record<FeatureKey, number>,
   newBudget: number,
 ): Record<FeatureKey, number> {
-  const prevSpent = PREDICTOR_FEATURES.reduce(
+  const prevSpent = features.reduce(
     (sum, f) => sum + (prev[f.key] ?? 0) * f.cost,
     0,
   );
-  if (prevSpent === 0) return initialCounts(newBudget);
+  if (prevSpent === 0) return initialCounts(features, newBudget);
   const factor = newBudget / prevSpent;
   const out = {} as Record<FeatureKey, number>;
-  for (const f of PREDICTOR_FEATURES) {
+  for (const f of features) {
     out[f.key] = Math.max(0, Math.floor((prev[f.key] ?? 0) * factor));
   }
   return out;
