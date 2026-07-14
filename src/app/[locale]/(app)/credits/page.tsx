@@ -1,5 +1,4 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
@@ -11,11 +10,7 @@ import { CreditsStatusBanner } from '@/components/credits-status-banner';
 import { CreditsPurchaseTabs } from '@/components/credits-purchase-tabs';
 import { SubscriptionPlans } from '@/components/subscription-plans';
 import type { SubscriptionTierId } from '@/lib/features';
-import {
-  availableLemonSqueezyCurrencies,
-  determineCurrency,
-  fetchLemonSqueezyCustomerPortalUrl,
-} from '@/lib/billing';
+import { fetchLemonSqueezyCustomerPortalUrl } from '@/lib/billing';
 
 // PR-D17 — pop 톤. 노랑 Memphis hero 카드 (3px border + 6px offset shadow)
 // + Outfit display 잔액 64-80px. 충전 흐름 / 잔액 데이터는 그대로 — 시각만.
@@ -103,11 +98,9 @@ export default async function CreditsPage({
   const defaultTab: 'packs' | 'subscription' =
     status === 'subscribed' || hasLiveSub ? 'subscription' : 'packs';
 
-  // Dual-payout — pick the rail server-side (locale + Vercel geo header)
-  // so the toggle defaults to the user's expected currency on first paint.
-  const hdrs = await headers();
-  const available = availableLemonSqueezyCurrencies();
-  const initialCurrency = determineCurrency(hdrs, locale);
+  // Dual-rail (2026-07-14): the payment rail decides the display currency
+  // (LS card → USD, bank transfer → KRW), so there is no server-picked
+  // currency / free toggle anymore. Each surface renders USD by default.
 
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
@@ -201,16 +194,9 @@ export default async function CreditsPage({
 
       <CreditsPurchaseTabs
         defaultTab={defaultTab}
-        packs={
-          <CreditsBundles
-            availableCurrencies={available}
-            initialCurrency={initialCurrency}
-          />
-        }
+        packs={<CreditsBundles />}
         subscription={
           <SubscriptionPlans
-            availableCurrencies={available}
-            initialCurrency={initialCurrency}
             currentTier={currentTier}
             currentStatus={currentStatus}
             currentPeriodEnd={currentPeriodEnd}

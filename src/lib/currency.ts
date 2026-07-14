@@ -76,3 +76,21 @@ export function formatCurrency(
 export function formatPriceForLocale(amountKrw: number, locale: string): string {
   return formatCurrency(amountKrw, currencyForLocale(locale));
 }
+
+// SSOT-direct USD formatter — renders a value that is *already denominated in
+// dollars* (features.ts `priceUsd` / `perCreditUsd` / `monthlyPriceUsd` …),
+// NOT an FX conversion from KRW like `formatCurrency`. The dual-rail pricing
+// overhaul (2026-07-14) made USD a first-class SSOT column, so display should
+// read those numbers verbatim rather than re-deriving them through the legacy
+// ₩→$ anchor (which would drift from the real LS charge).
+//
+// Whole-dollar amounts render with no decimals ($40); sub-dollar unit prices
+// and fractional effective rates render with two ($0.40, $7.33).
+export function formatUsd(amount: number): string {
+  const whole = Number.isInteger(amount);
+  const grouped = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  }).format(amount);
+  return `$${grouped}`;
+}
