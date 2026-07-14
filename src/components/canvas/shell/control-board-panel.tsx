@@ -31,6 +31,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
+import { Field } from './field';
 
 // 위젯 프레임 수평 inset SSOT — 컨트롤 클러스터와 산출물 영역이 공유하는 단일
 // 좌우 여백. 컨트롤(ControlBoardPanel wrapper)과 그 아래 형제 산출물 영역·진행률
@@ -60,6 +61,17 @@ const GAP_CLASS: Record<ClusterGap, string> = {
   field: 'gap-4',
   section: 'gap-6',
 };
+
+// 드롭다운 행(.Settings) 자식 간 간격 SSOT — 프레임 상수(px-5 / pt-10 pb-6 /
+// field=gap-4 / section=gap-6) 와 같은 층위의 잠금값. 위젯이 설정 행을
+// <div className="flex flex-wrap gap-4"> 로 손코딩하지 않고 .Settings 슬롯을
+// 거치게 해 4개 위젯의 드롭다운 간 간격이 px 단위로 일치한다.
+//   값 = gap-4(16px). spec 은 gap-3 을 제안했으나 그 근거("기존 리듬에 맞춰")와
+//   상충 — 실측 기존 리듬(probing/quotes/translate 설정 행) + quotes-card-body 의
+//   2026-07-14 사용자 결정 주석("gap-4(16px) 로 통일")이 모두 gap-4 라, 무회귀
+//   보수적 해석으로 기존 통일값을 형식화한다. 값 변경 시 이 한 줄만 고치면 4개
+//   위젯 전체 반영.
+export const SETTINGS_ROW_GAP = 'gap-4';
 
 type ControlBoardPanelProps = {
   // Field 클러스터. 폭/정렬/간격은 이 컴포넌트가 강제 — 위젯이 못 정한다.
@@ -113,5 +125,143 @@ export function ControlBoardPanel({
     </div>
   );
 }
+
+/* ── named 슬롯 계약 ──────────────────────────────────────────────────
+   ControlBoardPanel 의 cluster children 로 꽂는 세로 슬롯 4종. "슬롯의 바깥
+   규격(드롭다운 간 gap / 정렬 / 슬롯 자체 여백)은 SSOT 로 잠그고, 슬롯을 채우는
+   콘텐츠만 위젯 자유" — 사용자 원칙(2026-07-14). 슬롯 간 세로 리듬은 cluster
+   gap(prop) 이 소유하므로 슬롯은 자체 mt-/mb-/space-y- 를 두지 않는다. 위젯이
+   설정 행/입력/CTA 를 손코딩하지 않고 이 슬롯만 조합하게 해 픽셀 drift 를 막는다
+   (재발 방지 lint 가드 = eslint.config.mjs 의 control-frame 셀렉터).
+   ──────────────────────────────────────────────────────────────────── */
+
+type SlotProps = {
+  children: ReactNode;
+  // 상태 신호용(opacity/pointer-events 등) — layout 유틸은 넣지 말 것.
+  // 프레임/간격은 슬롯이 소유하므로 여기로 max-w-*/justify-*/gap-* 를 주입하면
+  // 슬롯 계약이 무의미해진다.
+  className?: string;
+};
+
+type LabeledSlotProps = SlotProps & {
+  // 주면 Field 로 래핑(라벨↔컨트롤 간격 = Field mb-1.5 SSOT), 없으면 passthrough.
+  label?: string;
+  description?: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+};
+
+// .Settings — 드롭다운/토글/체크박스가 한 줄로 앉는 행. 자식 간 간격 =
+// SETTINGS_ROW_GAP SSOT, items-end 로 라벨 높이가 달라도 컨트롤 baseline 정렬.
+// 위젯은 <Field>+SelectMenu/ControlTrigger 만 자식으로.
+function SettingsSlot({ children, className }: SlotProps) {
+  return (
+    <div
+      data-ds-slot="settings"
+      className={cx('flex flex-wrap items-end', SETTINGS_ROW_GAP, className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+// .Input — 메인 입력(textarea/dropzone/chip). label 주면 Field 래핑, 없으면
+// passthrough. 슬롯 자체 여백 없음(슬롯 간 리듬은 cluster gap 이 담당).
+function InputSlot({
+  label,
+  description,
+  required,
+  htmlFor,
+  children,
+  className,
+}: LabeledSlotProps) {
+  const inner = label ? (
+    <Field
+      label={label}
+      description={description}
+      required={required}
+      htmlFor={htmlFor}
+    >
+      {children}
+    </Field>
+  ) : (
+    children
+  );
+  return (
+    <div data-ds-slot="input" className={className}>
+      {inner}
+    </div>
+  );
+}
+
+// .Region — "규격 프레임 + 콘텐츠 자유". 선택적 라벨(Field) + 임의 children
+// (페르소나 그리드·리스트 등). 바깥 규격(cluster 폭 상속 + 슬롯 간 리듬)만 고정,
+// 안은 위젯 자유. 0~n개 배치 가능. 구조는 .Input 과 같고 의미(자유 콘텐츠)만 다름.
+function RegionSlot({
+  label,
+  description,
+  required,
+  htmlFor,
+  children,
+  className,
+}: LabeledSlotProps) {
+  const inner = label ? (
+    <Field
+      label={label}
+      description={description}
+      required={required}
+      htmlFor={htmlFor}
+    >
+      {children}
+    </Field>
+  ) : (
+    children
+  );
+  return (
+    <div data-ds-slot="region" className={className}>
+      {inner}
+    </div>
+  );
+}
+
+type ActionAlign = 'end' | 'between';
+
+// .Action — 핵심 CTA. 정렬 SSOT: 기본 우측(justify-end), between=양끝(상태/타이머
+// 좌 + 버튼 우). full=버튼이 폭 채움(flex-col stretch — 단일 primary CTA 용).
+// 자식 간 gap = SETTINGS_ROW_GAP. 위젯은 Button/ChromeButton 만.
+function ActionSlot({
+  children,
+  align = 'end',
+  full = false,
+  className,
+}: SlotProps & { align?: ActionAlign; full?: boolean }) {
+  if (full) {
+    return (
+      <div data-ds-slot="action" className={cx('flex flex-col', className)}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <div
+      data-ds-slot="action"
+      className={cx(
+        'flex flex-wrap items-center',
+        SETTINGS_ROW_GAP,
+        align === 'between' ? 'justify-between' : 'justify-end',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+// compound component — 위젯은 ControlBoardPanel.Settings/.Input/.Region/.Action
+// 로만 슬롯을 조합한다.
+ControlBoardPanel.Settings = SettingsSlot;
+ControlBoardPanel.Input = InputSlot;
+ControlBoardPanel.Region = RegionSlot;
+ControlBoardPanel.Action = ActionSlot;
 
 export type { ControlBoardPanelProps, ClusterGap };

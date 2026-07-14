@@ -79,6 +79,35 @@ const BRACKET_SELECTORS = [
   },
 ];
 
+// Control-frame selectors — control 패널 규격 SSOT 강제. ControlBoardPanel
+// (shell/control-board-panel.tsx) 이 컨트롤보드 아우터 프레임(cluster 폭
+// max-w-2xl / 프레임 padding pt-10·pb-6 / 상단정렬 justify-start)을 단독
+// 소유한다. 위젯 body 가 이 프레임 값을 손코딩하면 "상태 불변 프레임"·픽셀 정합이
+// 깨지므로, 캔버스 위젯에서 이 토큰들의 하드코드를 막고 ControlBoardPanel +
+// named 슬롯(.Settings/.Input/.Region/.Action) 조합으로 유도한다. 옛 프로즈-only
+// "리뷰 reject" 규칙(control-board-panel.tsx 주석)의 강제화.
+//   phase-1 seal — radius/z-index/DS-6 처럼 baseline 0 인 프레임 토큰부터 봉인.
+//   드롭다운/슬롯 내부 gap-*/space-y- 의 광역 금지는 90KB+ 레거시 위젯 body 가
+//   baseline 0 이 아니라 후속 단계로 미룸(값 자체는 SETTINGS_ROW_GAP + cluster
+//   gap 열거형으로 이미 SSOT lock). 불가피한 콘텐츠 예외(coming-soon hero 등)는
+//   per-line `// eslint-disable-next-line no-restricted-syntax -- <사유>`.
+const CONTROL_FRAME_TOKENS = ["max-w-2xl", "pt-10", "pb-6", "justify-start"];
+const CONTROL_FRAME_MESSAGE =
+  "컨트롤 프레임 규격(cluster 폭 max-w-2xl / 프레임 padding pt-10·pb-6 / 상단정렬 justify-start)은 ControlBoardPanel 이 단독 소유합니다. 위젯 body 에서 손코딩하지 말고 <ControlBoardPanel> + named 슬롯(.Settings/.Input/.Region/.Action) 을 조합하세요. 불가피한 콘텐츠 예외(coming-soon hero 등)는 `// eslint-disable-next-line no-restricted-syntax -- <사유>`.";
+const CONTROL_FRAME_SELECTORS = CONTROL_FRAME_TOKENS.flatMap((tok) => {
+  const esc = tok.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+  return [
+    {
+      selector: `Literal[value=/\\b${esc}\\b/]`,
+      message: CONTROL_FRAME_MESSAGE,
+    },
+    {
+      selector: `TemplateElement[value.raw=/\\b${esc}\\b/]`,
+      message: CONTROL_FRAME_MESSAGE,
+    },
+  ];
+});
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -172,6 +201,12 @@ const eslintConfig = defineConfig([
   // ruleId (no-restricted-syntax), so it picks these up automatically — no
   // ci.yml change needed. Residual no-exact-token brackets carry per-line
   // eslint-disable + reason (see the 9 sites DS-2 flagged as DS-6 baseline).
+  //
+  // This block ALSO carries the control-frame selectors (CONTROL_FRAME_
+  // SELECTORS) — same canvas/widgets scope, same no-restricted-syntax key, so
+  // they must live in the SAME block (a second block for the same files would
+  // replace, not merge, this rule and drop the bracket/radius selectors). The
+  // CI "Design-system lint (blocking)" job picks them up by ruleId.
   {
     name: "design-system/no-bracket-hardcodes",
     files: ["src/components/canvas/widgets/**/*.{ts,tsx}"],
@@ -180,6 +215,7 @@ const eslintConfig = defineConfig([
         "error",
         ...RADIUS_Z_FONT_SELECTORS,
         ...BRACKET_SELECTORS,
+        ...CONTROL_FRAME_SELECTORS,
       ],
     },
   },

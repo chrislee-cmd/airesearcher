@@ -1128,8 +1128,10 @@ export function QuotesCardBody() {
           허용 — 프로젝트 없이도 전사 생성. 프로빙과 달리 "이 기기에만 저장" 안내
           카피는 넣지 않는다(#586 — 사용자가 그 문구를 싫어함). 언어/발화자수는
           프로빙과 동일하게 min-w-24 wrapper 로 하한폭 고정. 발화자 수는
-          diarization hint 로 배선. */}
-      <div className="flex flex-wrap gap-4">
+          diarization hint 로 배선. 드롭다운 간 간격·정렬은
+          ControlBoardPanel.Settings 슬롯 SSOT(SETTINGS_ROW_GAP + items-end) —
+          손코딩 flex gap 제거. */}
+      <ControlBoardPanel.Settings>
         <Field label="프로젝트">
           <ProjectPicker
             widget="quotes"
@@ -1173,10 +1175,11 @@ export function QuotesCardBody() {
             />
           </div>
         </Field>
-      </div>
+      </ControlBoardPanel.Settings>
 
-      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single. */}
-      <Field label={tWidgets('transcriptModeLabel')}>
+      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single.
+          라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
+      <ControlBoardPanel.Input label={tWidgets('transcriptModeLabel')}>
         <ModeCardGroup
           ariaLabel={tWidgets('transcriptModeLabel')}
           options={MODE_OPTIONS.map((opt) => ({
@@ -1187,28 +1190,32 @@ export function QuotesCardBody() {
           value={mode}
           onChange={(key) => setMode(key as TranscriptMode)}
         />
-      </Field>
+      </ControlBoardPanel.Input>
 
       {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
           업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
-          드롭도 그대로 수용. */}
-      <ControlDropzone
-        accept={ACCEPT}
-        multiple
-        disabled={busyUpload}
-        onFiles={(files) => startUploads(files)}
-        onDropRaw={handleArtifactDrop}
-        label={tUp('dropHere')}
-        helperText={tUp('supported')}
-      />
+          드롭도 그대로 수용. .Region = 규격 프레임 + 콘텐츠(dropzone) 자유. */}
+      <ControlBoardPanel.Region>
+        <ControlDropzone
+          accept={ACCEPT}
+          multiple
+          disabled={busyUpload}
+          onFiles={(files) => startUploads(files)}
+          onDropRaw={handleArtifactDrop}
+          label={tUp('dropHere')}
+          helperText={tUp('supported')}
+        />
+      </ControlBoardPanel.Region>
 
       {/* 직접 녹음 — 파일 업로드 대신 위젯에서 바로 마이크 녹음 (#503).
           정지 시 Blob→File 로 래핑해 startUploads 로 투입 → 파일 업로드와
           동일한 언어확인·업로드·전사 흐름(mode/발화자/언어)이 재사용된다. */}
-      <TranscriptRecordButton
-        disabled={busyUpload}
-        onRecorded={(file) => startUploads([file])}
-      />
+      <ControlBoardPanel.Region>
+        <TranscriptRecordButton
+          disabled={busyUpload}
+          onRecorded={(file) => startUploads([file])}
+        />
+      </ControlBoardPanel.Region>
 
       {uploadError ? (
         <p className="text-sm text-warning">{uploadError}</p>

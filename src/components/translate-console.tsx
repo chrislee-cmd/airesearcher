@@ -4307,8 +4307,11 @@ export function TranslateConsole({
           로드/저장, onChange 무시), 언어/입력 소스는 trigger disabled.
           원어/대상어는 단일 "언어" LangDualDropdown 으로 통합(2컬럼 인풋|아웃풋,
           2026-07-10) — state·게이트·payload·번역 로직 전부 무변경, UI 포장만.
-          controlFields 는 idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영. */}
-      <div className={`flex flex-wrap items-end gap-4${live ? ' opacity-60' : ''}`}>
+          controlFields 는 idle 센터 보드와 live 상단 바가 공유 → 양쪽 동시 반영.
+          드롭다운 간 간격·정렬(items-end)은 ControlBoardPanel.Settings 슬롯 SSOT
+          (SETTINGS_ROW_GAP) — 손코딩 flex gap 제거. live opacity-60 은 상태
+          신호라 className 으로 슬롯에 전달(layout 아님). */}
+      <ControlBoardPanel.Settings className={live ? 'opacity-60' : undefined}>
         <Field label={t('project')}>
           <div
             className={live ? 'pointer-events-none' : undefined}
@@ -4363,12 +4366,12 @@ export function TranslateConsole({
             )}
           />
         </Field>
-      </div>
+      </ControlBoardPanel.Settings>
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 한 줄에 하나씩
           입력 후 "적용" 으로 반영(프로빙 조사목적 패턴). 세션 시작 전에만
-          편집 (live 중 disabled). */}
-      <Field label={t('glossary.label')}>
+          편집 (live 중 disabled). 라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
+      <ControlBoardPanel.Input label={t('glossary.label')}>
         <GlossaryField
           values={glossary}
           onChange={handleGlossaryChange}
@@ -4379,7 +4382,7 @@ export function TranslateConsole({
           applyTitle={t('glossary.applyTitle')}
           dirtyNotice={t('glossary.dirtyNotice')}
         />
-      </Field>
+      </ControlBoardPanel.Input>
     </>
   );
 
@@ -4485,9 +4488,10 @@ export function TranslateConsole({
               ) : null}
 
               {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음
-                  세션용 🚀 세션 시작. */}
+                  세션용 🚀 세션 시작. 정렬은 .Action SSOT — live=between(타이머 좌 +
+                  정지 우), ended=full(시작 버튼 폭 채움, 옛 flex-col stretch 유지). */}
               {live ? (
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <ControlBoardPanel.Action align="between">
                   <span className="text-md tabular-nums text-mute">
                     {formatElapsed(elapsed)}
                   </span>
@@ -4501,16 +4505,18 @@ export function TranslateConsole({
                       {t('stop')}
                     </ChromeButton>
                   </div>
-                </div>
+                </ControlBoardPanel.Action>
               ) : (
-                <ChromeButton
-                  variant="default"
-                  size="lg"
-                  onClick={() => void start()}
-                  disabled={busy || !canStart}
-                >
-                  {busy ? t('starting') : `🚀 ${t('start')}`}
-                </ChromeButton>
+                <ControlBoardPanel.Action full>
+                  <ChromeButton
+                    variant="default"
+                    size="lg"
+                    onClick={() => void start()}
+                    disabled={busy || !canStart}
+                  >
+                    {busy ? t('starting') : `🚀 ${t('start')}`}
+                  </ChromeButton>
+                </ControlBoardPanel.Action>
               )}
           </ControlBoardPanel>
 

@@ -1866,8 +1866,12 @@ function ExpandedBody() {
 
           // idle — 컨트롤만. (사고흐름/기록 본문은 라이브에서만 의미.)
           // 컨트롤보드 layout = ControlBoardPanel SSOT (px-4 → px-5 정합 포함).
+          // gap="field" — 슬롯 간 세로 리듬을 cluster gap 이 소유(옛 손코딩 gap-5
+          // 제거, translate/quotes 와 동일 field 리듬으로 통일).
           if (!isLive && !isCurrent) {
-            return <ControlBoardPanel>{controlPanel}</ControlBoardPanel>;
+            return (
+              <ControlBoardPanel gap="field">{controlPanel}</ControlBoardPanel>
+            );
           }
 
           // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(진행 안내 + 질문 기록).
@@ -1877,7 +1881,9 @@ function ExpandedBody() {
           // 상단 바 제거) — idle→active 프레임/컨트롤 위치 불변, 본문은 아래 flex-1.
           return (
             <>
-              <ControlBoardPanel active>{controlPanel}</ControlBoardPanel>
+              <ControlBoardPanel active gap="field">
+                {controlPanel}
+              </ControlBoardPanel>
               {isCurrent ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
                   전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
