@@ -17,6 +17,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
+import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -114,8 +115,10 @@ function ControlFields({
           필드로 합류. flex flex-wrap gap-4 유지 → 데스크 3열 한 줄, 좁은 폭
           자연 wrap. 언어/입력소스는 기본 미선택('') + placeholder "선택" —
           하나라도 미선택이면 세션 시작 CTA 가 비활성(게이트는 부모 probing-card
-          소유). 프로젝트는 미선택=로컬 fallback 이라 게이트 대상 아님. */}
-      <div className="flex flex-wrap gap-4">
+          소유). 프로젝트는 미선택=로컬 fallback 이라 게이트 대상 아님.
+          드롭다운 간 간격·정렬은 ControlBoardPanel.Settings 슬롯 SSOT
+          (SETTINGS_ROW_GAP + items-end) — 손코딩 flex gap 제거. */}
+      <ControlBoardPanel.Settings>
         {/* 프로젝트 설정 (#542) — 페르소나 섹션 구성을 프로젝트별로 분리.
             위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
             에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write.
@@ -155,12 +158,12 @@ function ControlFields({
             />
           </div>
         </Field>
-      </div>
+      </ControlBoardPanel.Settings>
       {/* 조사 목적 = 핵심 입력, 드롭다운 아래 배치. 밸런스 튜닝(desk 미러):
-          넓어진 클러스터 (max-w-2xl) 대비 왜소함을 해소하려 rows 2 → 3 으로
-          확대 — 데스크 키워드 input 확대(min-h 44→52) 와 같은 계열. 폭은
-          fullWidth 로 이미 클러스터를 채운다. */}
-      <Field label="조사 목적">
+          넓어진 클러스터 대비 왜소함을 해소하려 rows 2 → 3 으로 확대 — 데스크
+          키워드 input 확대(min-h 44→52) 와 같은 계열. 폭은 fullWidth 로 이미
+          클러스터를 채운다. 라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
+      <ControlBoardPanel.Input label="조사 목적">
         <Textarea
           value={goalDraft}
           onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
@@ -184,7 +187,7 @@ function ControlFields({
             적용
           </Button>
         </div>
-      </Field>
+      </ControlBoardPanel.Input>
     </>
   );
 }
@@ -248,10 +251,12 @@ export function ProbingControlPanel({
 }) {
   // 프레임(외곽 padding/폭/정렬/세로채움)은 ControlBoardPanel SSOT 소유 —
   // 여기서 px-5 py-4 / shrink-0 를 직접 지정하지 않는다 (idle=active 프레임
-  // 불변). 이 컴포넌트는 컨트롤 클러스터의 내부 3-구성(필드/안내/CTA) 세로
-  // 리듬(gap-5)만 소유. idle·active 모두 <ControlBoardPanel> 경유.
+  // 불변). 슬롯 간 세로 리듬도 손코딩(gap-5)하지 않고 cluster gap="field"
+  // (부모 probing-card 에서 지정) 이 소유한다. 이 컴포넌트는 named 슬롯
+  // (.Settings/.Input/.Region/.Action) 을 조합만 한다. idle·active 모두
+  // <ControlBoardPanel> 경유.
   return (
-    <div className="flex flex-col gap-5">
+    <>
       {/* 프로젝트/언어/입력소스는 ControlFields 안의 한 flex 행으로 통합
           (#593, 동시통역 #587 통일). 옛 별도 프로젝트 행은 제거. */}
       <ControlFields
@@ -274,27 +279,31 @@ export function ProbingControlPanel({
       {/* 페르소나 섹션 구성 — 옛 전체보기 좌패널 (× / 위젯 추가 / 숨김 복원)
           을 컨트롤 패널로 이전. 세션 중에도 편집 가능 (다음 갱신 tick 에 반영).
           data-canvas-body 밖 (컨트롤 패널) 이라 ModeButton 이 amore/paper
-          토큰 룩으로 렌더 (globals.css memphis chrome 미적용). */}
-      <PersonaSectionConfigurator
-        customSections={customSections}
-        hiddenKeys={hiddenSectionKeys}
-        onHideDefault={onHideSection}
-        onRestoreDefault={onRestoreSection}
-        onRemoveCustom={onRemoveCustomSection}
-        onAddCustom={onAddCustomSection}
-        customFull={customSectionsFull}
-        disabled={sectionConfigDisabled}
-      />
+          토큰 룩으로 렌더 (globals.css memphis chrome 미적용). .Region =
+          "규격 프레임 + 콘텐츠 자유" — 그리드 내부 레이아웃은 위젯 자유. */}
+      <ControlBoardPanel.Region>
+        <PersonaSectionConfigurator
+          customSections={customSections}
+          hiddenKeys={hiddenSectionKeys}
+          onHideDefault={onHideSection}
+          onRestoreDefault={onRestoreSection}
+          onRemoveCustom={onRemoveCustomSection}
+          onAddCustom={onAddCustomSection}
+          customFull={customSectionsFull}
+          disabled={sectionConfigDisabled}
+        />
+      </ControlBoardPanel.Region>
       {/* 세션 CTA — live: 정지 (여기 유지). idle: 세션 시작 은 WidgetPrimaryCta
-          (우측 중앙 고정 앵커) 로 이동 = 6 위젯 주 CTA 통일. */}
-      <div className="flex items-center justify-between gap-3">
+          (우측 중앙 고정 앵커) 로 이동 = 6 위젯 주 CTA 통일. 정렬은 .Action
+          SSOT(between: 상태 좌 + 버튼 우). */}
+      <ControlBoardPanel.Action align="between">
         <span className="text-xs text-mute">{statusLabel ?? ''}</span>
         {isLive && (
           <ChromeButton size="lg" onClick={onStop} disabled={stopDisabled}>
             정지
           </ChromeButton>
         )}
-      </div>
-    </div>
+      </ControlBoardPanel.Action>
+    </>
   );
 }

@@ -51,6 +51,7 @@ export function ComingSoonBody({
       {/* 전체보기 — 친절한 hero */}
       {renderInSlot(
         <WidgetFullviewPanel title={label} subtitle="준비 중" onClose={close}>
+          {/* eslint-disable-next-line no-restricted-syntax -- coming-soon hero 센터링(콘텐츠 폭), 컨트롤 cluster 아님 — cluster 폭은 WIDGET_FRAME_CLUSTER_W 소유 */}
           <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 p-10 text-center">
             <span className="text-6xl" aria-hidden>
               {icon}
