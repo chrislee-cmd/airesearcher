@@ -13,6 +13,7 @@
 
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
+import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import type {
   HistoryQuestion,
   PopupQuestion,
@@ -77,6 +78,11 @@ export function QuestionPane({
   isLive: boolean;
   hasTranscript: boolean;
 }) {
+  // 전체보기(fullview) 모달이 이 probing 위젯을 보여주는 중이면 제안 질문
+  // popup 을 화면 정중앙 대형 스포트라이트로. QuestionPane 은 현재 fullview
+  // slot 안에서만 렌더되지만, 혹여 다른 곳에 마운트돼도 isCurrent=false 로
+  // 안전하게 현행 compact/우하단으로 폴백한다(사용자 요구는 "전체보기" 한정).
+  const { isCurrent: isFullview } = useFullview('probing');
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
@@ -136,8 +142,9 @@ export function QuestionPane({
       {activePopup && (
         <ProbingQuestionPopup
           popup={activePopup}
-          placement="bottom-right"
+          placement={isFullview ? 'center' : 'bottom-right'}
           positioning="viewport"
+          size={isFullview ? 'spotlight' : 'compact'}
           onPin={onPopupPin}
           onCopy={onPopupCopy}
           onDismiss={onPopupDismiss}
