@@ -374,6 +374,11 @@
       "projects": "Projects",
       "members": "Members",
       "settings": "Settings"
+    },
+    "viewMode": {
+      "label": "View mode",
+      "canvas": "Canvas view",
+      "list": "List view"
     }
   },
   "QaFeedback": {

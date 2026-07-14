@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { IconButton } from '@/components/ui/icon-button';
+import { useFullviewChrome } from './fullview-shell-context';
 
 // WidgetFullviewPanel — 공유 전체보기 모달 안에서 한 위젯의 본문이
 // 차지하는 우측 패널. WidgetFullviewModal 의 inner chrome (title/subtitle
@@ -33,6 +34,9 @@ export function WidgetFullviewPanel({
   closeLabel = '닫기',
   headerAction,
 }: WidgetFullviewPanelProps) {
+  // 리스트 뷰(풀페이지 셸)에서는 닫을 모달이 없으므로 닫기 × 를 감춘다.
+  // 캔버스 뷰의 전체보기 모달('modal', 기본) 은 그대로 × 노출 → 회귀 0.
+  const chrome = useFullviewChrome();
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-paper">
       <header className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3">
@@ -46,14 +50,16 @@ export function WidgetFullviewPanel({
         </div>
         <div className="ml-4 flex shrink-0 items-center gap-2">
           {headerAction}
-          <IconButton
-            variant="bordered"
-            size="md"
-            onClick={onClose}
-            aria-label={closeLabel}
-          >
-            <CloseIcon />
-          </IconButton>
+          {chrome === 'modal' && (
+            <IconButton
+              variant="bordered"
+              size="md"
+              onClick={onClose}
+              aria-label={closeLabel}
+            >
+              <CloseIcon />
+            </IconButton>
+          )}
         </div>
       </header>
 

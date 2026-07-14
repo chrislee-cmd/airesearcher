@@ -32,6 +32,7 @@ import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
 import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
+import { useViewMode } from '@/components/view-mode-provider';
 import { Modal } from '@/components/ui/modal';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
@@ -390,6 +391,21 @@ export function CanvasBoard({
     null,
   );
 
+  // ── 뷰 모드 (캔버스 ⇄ 리스트) ────────────────────────────────────────
+  // 라이트/다크처럼 유저 선호 뷰. 'list' 면 캔버스 보드 대신 좌 SidebarNav +
+  // 우 단일 위젯 상세(fullview 셸의 풀페이지 버전)를 렌더한다.
+  //
+  // 세션 유지 핵심: board⇄list 토글이 위젯 트리를 remount 하면 라이브 세션
+  // (probing/translate)이 끊긴다. 그래서 리스트 모드에서도 캔버스 surface 를
+  // unmount 하지 않고 display:none 으로 숨기기만 한다 — 카드(ExpandedBody)는
+  // 계속 마운트돼 세션 hook 이 살아 있고, 선택된 위젯만 자기 본문을 리스트
+  // 상세 slot 으로 portal 한다(모달 slot 과 동형). 즉 always-mounted 카드 +
+  // portal 패턴을 그대로 리스트로 이식한다.
+  const { mode: viewMode } = useViewMode();
+  const isList = viewMode === 'list';
+  // 리스트 상세 pane(우측) DOM — 리스트 모드에서 위젯 본문이 portal 될 대상.
+  const [listSlotEl, setListSlotEl] = useState<HTMLElement | null>(null);
+
   const openFullview = useCallback((key: string) => {
     setCurrentWidgetKey(key);
     setFullviewOpen(true);
@@ -401,17 +417,28 @@ export function CanvasBoard({
     setFullviewOpen(false);
   }, []);
 
+  // 리스트 모드는 항상 한 위젯을 상세로 보여준다 — 아직 선택 이력이 없으면
+  // 첫 위젯으로 폴백(모든 위젯이 renderInSlot 을 구현하므로 locked 위젯이어도
+  // "준비중" hero 가 뜬다).
+  const effectiveCurrentKey =
+    currentWidgetKey ?? (isList ? (widgets[0]?.key ?? null) : null);
+
   const fullviewValue = useMemo(
     () => ({
-      currentKey: currentWidgetKey,
-      open: fullviewOpen,
-      slotEl: fullviewSlotEl,
+      currentKey: effectiveCurrentKey,
+      // 리스트 모드는 모달 open 여부와 무관하게 항상 상세를 노출한다.
+      open: isList ? true : fullviewOpen,
+      // 리스트 모드면 상세 slot, 캔버스 모드면 모달 slot.
+      slotEl: isList ? listSlotEl : fullviewSlotEl,
+      chrome: (isList ? 'page' : 'modal') as 'page' | 'modal',
       openFullview,
       switchTo: switchFullview,
       close: closeFullview,
     }),
     [
-      currentWidgetKey,
+      effectiveCurrentKey,
+      isList,
+      listSlotEl,
       fullviewOpen,
       fullviewSlotEl,
       openFullview,
@@ -835,6 +862,10 @@ export function CanvasBoard({
   const didInitialFitRef = useRef(false);
   useEffect(() => {
     if (didInitialFitRef.current) return;
+    // 리스트 모드로 진입하면 surface 가 display:none 이라 rect 가 0 → fit 계산
+    // 불가. latch 하지 않고 대기했다가, 캔버스로 전환되면 이 effect 가 다시
+    // 돌아 그때 fit 한다 (isList 를 deps 에 포함).
+    if (isList) return;
     if (initialFocus) {
       didInitialFitRef.current = true;
       return;
@@ -891,7 +922,7 @@ export function CanvasBoard({
       didInitialFitRef.current = true;
     });
     return () => cancelAnimationFrame(id);
-  }, [initialFocus, widgets, positions]);
+  }, [initialFocus, widgets, positions, isList]);
 
   // 자동 갱신 — pan/zoom 가 바뀔 때마다 컨테이너 중심에 가장 가까운 위젯을
   // focusedKey 로 설정. 사용자가 wheel pan/zoom 으로 다른 위젯에 가면
@@ -950,6 +981,10 @@ export function CanvasBoard({
       ref={containerRef}
       data-canvas
       className="relative h-full overflow-hidden"
+      // 리스트 모드에선 캔버스 surface 를 unmount 하지 않고 숨기기만 한다 —
+      // 카드(ExpandedBody)가 계속 마운트돼 라이브 세션이 보존된다. data-canvas
+      // 는 DOM 에 남아 layout 의 full-bleed(p-0) 규칙도 유지된다.
+      style={{ display: isList ? 'none' : undefined }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -1122,14 +1157,39 @@ export function CanvasBoard({
       </div>
     </div>
 
+    {/* ── 리스트 뷰 (풀페이지 셸) ─────────────────────────────────────
+        캔버스 보드 없이 좌 SidebarNav + 우 단일 위젯 상세. 상세 slot 은
+        위 surface 의 (숨겨졌지만 계속 마운트된) 카드 본문이 portal 되는
+        대상 — currentKey 위젯만 여기로 그려진다. 모달 chrome 이 아니라
+        본문 영역을 통째로 차지하는 풀페이지 레이아웃(닫기 × 는 page
+        chrome 이라 WidgetFullviewPanel 이 감춤). */}
+    {isList && (
+      <div
+        data-canvas-list
+        className="flex h-full min-h-0 overflow-hidden"
+      >
+        <SidebarNav
+          widgets={widgets}
+          current={effectiveCurrentKey}
+          onSwitch={switchFullview}
+          lockedKeys={lockedKeys}
+        />
+        <div
+          ref={setListSlotEl}
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+        />
+      </div>
+    )}
+
     {/* ── 공유 전체보기 모달 ─────────────────────────────────────────
         단일 Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재 위젯 본문이
         portal 됨). 헤더(제목/닫기×)는 각 위젯의 WidgetFullviewPanel 이
         소유 → 동적 subtitle 유지. size="wide" — 90vw×90vh, Memphis 팝업
         (backdrop 보이는 모달, 프로빙 어시스턴트 원래 톤). backdrop /
-        Esc 닫기는 Modal 이 처리. */}
+        Esc 닫기는 Modal 이 처리. 리스트 모드에선 상세가 이미 풀페이지라
+        모달은 열지 않는다. */}
     <Modal
-      open={fullviewOpen && !!currentWidgetKey}
+      open={!isList && fullviewOpen && !!currentWidgetKey}
       onClose={closeFullview}
       size="wide"
     >

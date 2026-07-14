@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 import { Outfit } from 'next/font/google';
-import { getCurrentUser } from '@/lib/supabase/user';
+import { getCurrentUser, getViewMode } from '@/lib/supabase/user';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 import { getActiveOrg } from '@/lib/org';
 import { getOrgCredits } from '@/lib/credits';
@@ -23,6 +23,7 @@ import { TrialInitializer } from '@/components/trial-initializer';
 import { AuthStateListener } from '@/components/auth-state-listener';
 import { SessionExpiredModal } from '@/components/auth/session-expired-modal';
 import { SuperadminInspectorProvider } from '@/components/dev/superadmin-inspector';
+import { ViewModeProvider } from '@/components/view-mode-provider';
 
 // Outfit display 폰트 — PR-D5 (shell pop) 에서 사이드바 로고 / 그룹
 // 헤딩 / topbar 로고가 사용. canvas/layout.tsx 도 같은 변수명을 정의
@@ -70,6 +71,10 @@ export default async function AppLayout({
       ])
     : [null, [] as Awaited<ReturnType<typeof listProjects>>];
 
+  // 유저 뷰 선호 (캔버스 ⇄ 리스트) — ViewModeProvider 초기값. org 유무와 무관한
+  // 유저 단위 설정이라 별도로 읽는다 (cache() 라 canvas page 재조회와 dedupe).
+  const initialViewMode = await getViewMode();
+
   return (
     // 동시사용 게이트는 앱 진입 축(#505)에서 위젯 축(#512)으로 이전됐다 — 앱/
     // 캔버스는 전원 즉시 입장하고, 게이트는 각 위젯이 비싼 작업을 시작할 때만
@@ -94,6 +99,9 @@ export default async function AppLayout({
              프로젝트를 고르는 상태를 담는다. 아직 소비 위젯 없음(피커/훅만 존재). */}
          <ProjectSelectionProvider>
          <WorkspaceProvider>
+         {/* 뷰 모드 선호 (캔버스 ⇄ 리스트) — Topbar 토글과 canvas board 가
+             공유. 초기값 = 서버가 읽은 DB profiles.view_mode. */}
+         <ViewModeProvider initialMode={initialViewMode}>
          <div className={`${outfit.variable} flex flex-1 flex-col overflow-hidden`}>
            <Topbar
              userEmail={user?.email ?? null}
@@ -109,6 +117,7 @@ export default async function AppLayout({
              <main className="flex-1 overflow-auto p-6 has-[[data-canvas]]:p-0 has-[[data-loading]]:p-0">{children}</main>
            </div>
          </div>
+         </ViewModeProvider>
 
          <TrialInitializer enabled={!!user} />
          {/* Layer 2 (live gate): redirect to /login the moment the session
