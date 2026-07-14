@@ -21,6 +21,18 @@ const LOCALE_LABEL: Record<string, string> = {
   th: 'TH',
 };
 
+// Display order for the switcher — English first (global default), then
+// KO / JA / TH. Kept separate from `routing.locales` (whose order feeds
+// static params / negotiation) so reordering the UI never touches routing.
+// Any locale in `routing.locales` not listed here is appended, so adding a
+// new locale still shows up without editing this file.
+const DISPLAY_ORDER = ['en', 'ko', 'ja', 'th'];
+const supportedLocales = routing.locales as readonly string[];
+const orderedLocales = [
+  ...DISPLAY_ORDER.filter((l) => supportedLocales.includes(l)),
+  ...supportedLocales.filter((l) => !DISPLAY_ORDER.includes(l)),
+];
+
 export function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
@@ -43,7 +55,7 @@ export function LanguageSwitcher() {
 
   return (
     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
-      {routing.locales.map((lng, i) => (
+      {orderedLocales.map((lng, i) => (
         <span key={lng} className="flex items-center gap-2">
           <Button
             variant="link"
@@ -58,7 +70,7 @@ export function LanguageSwitcher() {
           >
             {LOCALE_LABEL[lng] ?? lng.toUpperCase()}
           </Button>
-          {i < routing.locales.length - 1 && (
+          {i < orderedLocales.length - 1 && (
             <span className="h-3 w-px bg-line" />
           )}
         </span>
