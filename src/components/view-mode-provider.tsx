@@ -22,7 +22,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import type { ViewMode } from '@/lib/supabase/user';
@@ -43,28 +42,21 @@ export function ViewModeProvider({
   children: React.ReactNode;
 }) {
   const [mode, setModeState] = useState<ViewMode>(initialMode);
-  // 마지막으로 DB 에 커밋됐다고 아는 값 — PUT 실패 시 여기로 롤백. 초기값은
-  // 서버가 읽어온 initialMode (= DB 현재값).
-  const committedRef = useRef<ViewMode>(initialMode);
 
   const setMode = useCallback((next: ViewMode) => {
-    // 낙관적 즉시 스왑 — UI 는 기다리지 않는다. 라우트 이동 없이 클라 state 만
-    // 바꾸므로 위젯 트리는 remount 되지 않고 라이브 세션이 유지된다.
+    // 즉시 스왑 — 라우트 이동 없이 클라 state 만 바꿔 위젯 트리 remount 없이
+    // 라이브 세션을 유지한다.
     setModeState(next);
-    void (async () => {
-      try {
-        const res = await fetchWithAuth('/api/account/view-mode', {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ view_mode: next }),
-        });
-        if (!res.ok) throw new Error(`view_mode_write_${res.status}`);
-        committedRef.current = next;
-      } catch {
-        // 영속 실패 — 선호는 UX 이므로 조용히 이전 커밋 값으로 롤백.
-        setModeState(committedRef.current);
-      }
-    })();
+    // DB 영속은 best-effort. 유저가 명시로 고른 뷰라, 저장이 실패해도(네트워크
+    // blip · 마이그 미적용 등) 세션 내 선택은 유지하고 롤백하지 않는다 — 스냅백
+    // 은 명시적 사용자 행동을 무시하는 나쁜 UX 다. 저장 성공 시 다음 방문·다른
+    // 기기에서도 유지된다(실패 시 그 방문만 default 로 진입). 코드베이스의 다른
+    // 선호 저장(probing research-context 등)과 동일한 무음 best-effort 패턴.
+    void fetchWithAuth('/api/account/view-mode', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ view_mode: next }),
+    }).catch(() => {});
   }, []);
 
   const value = useMemo<Ctx>(() => ({ mode, setMode }), [mode, setMode]);
