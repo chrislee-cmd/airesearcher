@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetSettingsButton — canvas 위젯 서브헤더 좌측의 통일 "설정" 트리거.
 
@@ -10,6 +12,7 @@
    있으면 우상단 amore dot 으로 "설정됨" 을 명시 (hasChanges).
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import { IconButton } from '@/components/ui/icon-button';
 
 // feather "settings" gear — topbar-account 의 Gear 와 같은 path. 서브헤더
@@ -34,8 +37,8 @@ function SettingsGearIcon({ className }: { className?: string }) {
 
 export type WidgetSettingsButtonProps = {
   onClick: () => void;
-  // 버튼 aria-label / tooltip. 한국어 default (probing 처럼 로케일 무관
-  // 한국어 위젯) — desk / translate 는 next-intl 값을 넘긴다.
+  // 버튼 aria-label / tooltip. 미지정 시 로케일 default(Shell.settings) —
+  // desk / translate 등 커스텀 라벨이 필요한 호출부는 값을 넘긴다.
   label?: string;
   // default 와 다른 설정이 하나라도 있으면 우상단 amore dot 노출.
   hasChanges?: boolean;
@@ -47,11 +50,13 @@ export type WidgetSettingsButtonProps = {
 
 export function WidgetSettingsButton({
   onClick,
-  label = '설정',
+  label,
   hasChanges = false,
   disabled = false,
   pulse = false,
 }: WidgetSettingsButtonProps) {
+  const t = useTranslations('Shell');
+  const resolvedLabel = label ?? t('settings');
   return (
     // pulse halo 는 버튼 자체 Memphis hard-shadow 를 덮지 않도록 wrapper span
     // 에 얹는다 (globals.css .widget-gate-guide-pulse). pulse=false 여도
@@ -62,8 +67,8 @@ export function WidgetSettingsButton({
         size="md"
         onClick={onClick}
         disabled={disabled}
-        aria-label={label}
-        title={label}
+        aria-label={resolvedLabel}
+        title={resolvedLabel}
         className="relative"
       >
         <SettingsGearIcon className="h-4 w-4" />

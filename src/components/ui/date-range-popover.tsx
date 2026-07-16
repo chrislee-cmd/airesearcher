@@ -20,6 +20,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { IconButton } from '@/components/ui/icon-button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { ControlTriggerChevron } from '@/components/ui/control-trigger';
@@ -72,10 +73,12 @@ function monthCells(year: number, month: number): (Date | null)[] {
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
 }
+// 날짜 표기는 Intl 위임(WRITING.md §6 — 수동 문자열 조립 금지). ko → "2026년
+// 7월"(long), 그 외 → "Jul 2026"(short). 한글 리터럴 없이 로케일 정확.
 function monthTitle(year: number, month: number, locale: string): string {
-  if (locale.startsWith('ko')) return `${year}년 ${month + 1}월`;
-  return new Date(year, month, 1).toLocaleDateString('en', {
-    month: 'short',
+  const isKo = locale.startsWith('ko');
+  return new Date(year, month, 1).toLocaleDateString(isKo ? 'ko' : 'en', {
+    month: isKo ? 'long' : 'short',
     year: 'numeric',
   });
 }
@@ -90,6 +93,8 @@ export function DateRangePopover({
   disabled,
   buttonClassName,
 }: DateRangePopoverProps) {
+  const t = useTranslations('DateRange');
+  const tCommon = useTranslations('Common');
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   // 포털 mount + escape/외부클릭 + trigger rect 추적은 공통 훅. 배치 계산만 로컬.
@@ -119,7 +124,7 @@ export function DateRangePopover({
   // ─── 닫힘 라벨 ───────────────────────────────────────────────────────────
   const summary =
     !value.from && !value.to
-      ? (placeholder ?? '전체 기간')
+      ? (placeholder ?? t('allPeriod'))
       : `${value.from || '…'} ~ ${value.to || '…'}`;
 
   // ─── 선택 로직 — 클릭으로 from → to 범위 구성 ────────────────────────────
@@ -151,9 +156,14 @@ export function DateRangePopover({
     });
   }
 
-  const weekdays = locale.startsWith('ko')
-    ? ['일', '월', '화', '수', '목', '금', '토']
-    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  // 요일 헤더도 Intl 위임(§6). narrow → ko '일'…'토', en 'S'…'S'. 기준 주는
+  // 일요일 시작(2023-01-01 = Sun)으로 7칸 생성.
+  const weekdays = useMemo(() => {
+    const wf = new Intl.DateTimeFormat(locale.startsWith('ko') ? 'ko' : 'en', {
+      weekday: 'narrow',
+    });
+    return Array.from({ length: 7 }, (_, i) => wf.format(new Date(2023, 0, 1 + i)));
+  }, [locale]);
 
   const visibleMonths = Array.from({ length: months }, (_, i) => {
     const d = new Date(view.year, view.month + i, 1);
@@ -193,7 +203,7 @@ export function DateRangePopover({
           <div
             ref={panelRef}
             role="dialog"
-            aria-label={placeholder ?? '기간 선택'}
+            aria-label={placeholder ?? t('selectPeriod')}
             className="fixed z-overlay rounded-xs border-[2px] border-ink bg-paper p-3 shadow-memphis-md-card"
             style={{
               // 패널 폭 = months × 15rem(240) + gap-4(16)×(months-1) + p-3(24).
@@ -243,7 +253,7 @@ export function DateRangePopover({
               <IconButton
                 variant="ghost"
                 onClick={() => shiftMonth(-1)}
-                aria-label="이전 달"
+                aria-label={t('prevMonth')}
               >
                 ‹
               </IconButton>
@@ -255,7 +265,7 @@ export function DateRangePopover({
               <IconButton
                 variant="ghost"
                 onClick={() => shiftMonth(1)}
-                aria-label="다음 달"
+                aria-label={t('nextMonth')}
               >
                 ›
               </IconButton>
@@ -318,7 +328,7 @@ export function DateRangePopover({
                 size="xs"
                 onClick={() => setOpen(false)}
               >
-                완료
+                {tCommon('done')}
               </ChromeButton>
             </div>
           </div>,

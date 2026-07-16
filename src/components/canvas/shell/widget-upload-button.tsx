@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetUploadButton — canvas 위젯 서브헤더 좌측의 통일 "업로드" 트리거.
 
@@ -11,6 +13,7 @@
    (큐) 파일이 있으면 우상단 amore count 배지로 명시.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import { IconButton } from '@/components/ui/icon-button';
 
 // feather "upload" — 트레이 위로 화살표. 서브헤더 스케일에 맞춰 h-4 w-4.
@@ -35,8 +38,8 @@ function UploadIcon({ className }: { className?: string }) {
 
 export type WidgetUploadButtonProps = {
   onClick: () => void;
-  // 버튼 aria-label / tooltip. 한국어 default — 로케일 무관 위젯은 그대로,
-  // i18n 필요한 호출부는 next-intl 값을 넘긴다.
+  // 버튼 aria-label / tooltip. 미지정 시 로케일 default(Shell.uploadFile) —
+  // 커스텀 라벨이 필요한 호출부는 next-intl 값을 넘긴다.
   label?: string;
   // 대기 중 (큐) 파일 count. 0 이거나 미지정이면 배지 없음.
   count?: number;
@@ -48,11 +51,13 @@ export type WidgetUploadButtonProps = {
 
 export function WidgetUploadButton({
   onClick,
-  label = '파일 업로드',
+  label,
   count,
   disabled = false,
   pulse = false,
 }: WidgetUploadButtonProps) {
+  const t = useTranslations('Shell');
+  const resolvedLabel = label ?? t('uploadFile');
   const showBadge = typeof count === 'number' && count > 0;
   return (
     // pulse halo 는 버튼 Memphis hard-shadow 를 덮지 않도록 wrapper span 에
@@ -63,8 +68,8 @@ export function WidgetUploadButton({
         size="md"
         onClick={onClick}
         disabled={disabled}
-        aria-label={label}
-        title={label}
+        aria-label={resolvedLabel}
+        title={resolvedLabel}
         className="relative"
       >
         <UploadIcon className="h-4 w-4" />

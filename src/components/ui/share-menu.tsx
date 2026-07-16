@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/toast-provider';
 import { Button } from './button';
 import { DropdownMenu, type DropdownItem } from './dropdown-menu';
@@ -140,6 +141,8 @@ async function callShareApi(
 }
 
 export function ShareMenu({ items, disabled = false, align = 'start', side = 'bottom' }: Props) {
+  const t = useTranslations('ShareMenu');
+  const tCommon = useTranslations('Common');
   const toast = useToast();
   const pathname = usePathname();
   const [busy, setBusy] = useState<ShareDestination | null>(null);
@@ -158,13 +161,13 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
           window.location.assign(connectUrl(item.destination, pathname));
           return;
         }
-        toast.push(`공유 실패: ${result.error}`, { tone: 'warn' });
+        toast.push(t('shareFailed', { error: result.error }), { tone: 'warn' });
         return;
       }
       window.open(result.url, '_blank', 'noopener,noreferrer');
-      toast.push(`${DEST_LABEL[item.destination]}에 공유됐어요.`, { tone: 'amore' });
+      toast.push(t('sharedTo', { dest: DEST_LABEL[item.destination] }), { tone: 'amore' });
     } catch {
-      toast.push('공유 중 오류가 발생했어요.', { tone: 'warn' });
+      toast.push(t('shareError'), { tone: 'warn' });
     } finally {
       setBusy(null);
     }
@@ -193,7 +196,7 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
         leftIcon={DEST_ICON[only.destination]}
         dsPrimitive="ShareMenu"
       >
-        {busy ? '공유 중…' : '공유'}
+        {busy ? t('sharing') : tCommon('share')}
       </Button>
     );
   }
@@ -214,7 +217,7 @@ export function ShareMenu({ items, disabled = false, align = 'start', side = 'bo
           {...aria}
           dsPrimitive="ShareMenu"
         >
-          {busy ? '공유 중…' : '공유'}
+          {busy ? t('sharing') : tCommon('share')}
         </Button>
       )}
     />

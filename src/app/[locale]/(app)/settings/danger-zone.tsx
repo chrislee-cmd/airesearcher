@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ type Props = {
 };
 
 export function DangerZone({ email }: Props) {
+  const t = useTranslations('Settings.danger');
+  const tCommon = useTranslations('Common');
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -50,7 +53,7 @@ export function DangerZone({ email }: Props) {
         const body = (await res.json().catch(() => null)) as
           | { error?: string }
           | null;
-        toast.push(body?.error ?? '삭제에 실패했습니다.', { tone: 'warn' });
+        toast.push(body?.error ?? t('deleteFailed'), { tone: 'warn' });
         setBusy(false);
         return;
       }
@@ -63,7 +66,7 @@ export function DangerZone({ email }: Props) {
       router.replace('/');
       router.refresh();
     } catch {
-      toast.push('네트워크 오류가 발생했습니다.', { tone: 'warn' });
+      toast.push(t('networkError'), { tone: 'warn' });
       setBusy(false);
     }
   }
@@ -71,19 +74,17 @@ export function DangerZone({ email }: Props) {
   return (
     <section className="mt-12 border border-warning bg-paper p-6 rounded-sm">
       <div className="text-xs font-bold uppercase tracking-[0.18em] text-warning">
-        위험 구역
+        {t('zone')}
       </div>
       <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] text-ink-2">
-        계정 삭제
+        {t('deleteAccount')}
       </h2>
       <p className="mt-2 max-w-[640px] text-md leading-[1.7] text-mute">
-        계정과 연결된 모든 데이터를 영구적으로 삭제합니다. 워크스페이스, 업로드한 자료,
-        진행 중인 분석 결과를 포함하며 되돌릴 수 없습니다. 결제·환불·감사 기록은
-        법적 의무에 따라 비식별 상태로 보관됩니다.
+        {t('description')}
       </p>
       <div className="mt-5">
         <Button variant="destructive" size="md" onClick={openConfirm}>
-          계정 삭제…
+          {t('deleteCta')}
         </Button>
       </div>
 
@@ -91,8 +92,8 @@ export function DangerZone({ email }: Props) {
         open={open}
         onClose={closeConfirm}
         size="sm"
-        title="계정을 정말 삭제하시겠어요?"
-        description="이 작업은 되돌릴 수 없습니다. 확인을 위해 본인 이메일을 그대로 입력해 주세요."
+        title={t('confirmTitle')}
+        description={t('confirmDescription')}
         footer={
           <>
             <Button
@@ -101,7 +102,7 @@ export function DangerZone({ email }: Props) {
               onClick={closeConfirm}
               disabled={busy}
             >
-              취소
+              {tCommon('cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -109,18 +110,19 @@ export function DangerZone({ email }: Props) {
               onClick={handleDelete}
               disabled={!matches || busy}
               loading={busy}
-              loadingLabel="삭제 중…"
+              loadingLabel={t('deleting')}
             >
-              영구 삭제
+              {t('permanentDelete')}
             </Button>
           </>
         }
       >
         <div className="space-y-3">
           <p className="text-md leading-[1.65] text-ink-2">
-            계정 이메일{' '}
-            <span className="font-semibold text-ink">{email}</span> 을(를)
-            아래에 다시 입력해 주세요.
+            {t.rich('emailReentry', {
+              email,
+              b: (chunks) => <span className="font-semibold text-ink">{chunks}</span>,
+            })}
           </p>
           <Input
             type="email"
@@ -128,7 +130,7 @@ export function DangerZone({ email }: Props) {
             value={confirmEmail}
             onChange={(e) => setConfirmEmail(e.target.value)}
             placeholder={email}
-            aria-label="확인 이메일"
+            aria-label={t('confirmEmailLabel')}
             disabled={busy}
           />
         </div>

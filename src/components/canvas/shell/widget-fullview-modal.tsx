@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { IconButton } from '@/components/ui/icon-button';
 
@@ -36,7 +37,7 @@ type WidgetFullviewModalProps = {
   size?: 'wide' | 'full';
   footer?: ReactNode;
   children: ReactNode;
-  /** aria-label for the close button. i18n override; defaults to 닫기. */
+  /** aria-label for the close button. i18n override; defaults to Common.close. */
   closeLabel?: string;
 };
 
@@ -48,8 +49,10 @@ export function WidgetFullviewModal({
   size = 'wide',
   footer,
   children,
-  closeLabel = '닫기',
+  closeLabel,
 }: WidgetFullviewModalProps) {
+  const tCommon = useTranslations('Common');
+  const resolvedCloseLabel = closeLabel ?? tCommon('close');
   return (
     <Modal open={open} onClose={onClose} size={size} dsPrimitive="WidgetFullviewModal">
       <header className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3">
@@ -65,7 +68,7 @@ export function WidgetFullviewModal({
           variant="bordered"
           size="md"
           onClick={onClose}
-          aria-label={closeLabel}
+          aria-label={resolvedCloseLabel}
           className="ml-4 shrink-0"
         >
           <CloseIcon />

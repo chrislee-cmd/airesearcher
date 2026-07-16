@@ -23,6 +23,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 
@@ -90,6 +91,7 @@ export function WidgetHeaderColorPicker({
   value: string | null;
   onChange: (color: string | null) => void;
 }) {
+  const t = useTranslations('Shell');
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -147,7 +149,7 @@ export function WidgetHeaderColorPicker({
     <>
       <IconButton
         ref={triggerRef}
-        aria-label="헤더 색 선택"
+        aria-label={t('headerColorSelect')}
         variant="ghost"
         size="sm"
         // 트리거 자체가 dnd 핸들 안에 있어 mousedown 이 헤더 drag 를 시작
@@ -179,7 +181,7 @@ export function WidgetHeaderColorPicker({
               boxShadow: '4px 4px 0 var(--canvas-card-border)',
             }}
             role="dialog"
-            aria-label="헤더 색 팔레트"
+            aria-label={t('headerColorPalette')}
             // body 직속이라 헤더 drag 와 무관하지만, popover 안에서 native
             // HTML5 drag 가 우연히 시작되지 않도록 한 번 더 차단.
             draggable={false}
@@ -204,7 +206,7 @@ export function WidgetHeaderColorPicker({
                 position: 'relative',
               }}
               role="slider"
-              aria-label="색상 (hue) 선택"
+              aria-label={t('hueSelect')}
               aria-valuemin={0}
               aria-valuemax={360}
               aria-valuenow={currentHue ?? 0}
@@ -230,7 +232,7 @@ export function WidgetHeaderColorPicker({
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-xs uppercase tracking-wider opacity-70">
-                {value ? '사용자' : '기본'}
+                {value ? t('custom') : t('default')}
               </span>
               <Button
                 variant="ghost"
@@ -250,7 +252,7 @@ export function WidgetHeaderColorPicker({
                   />
                 }
               >
-                기본 노랑
+                {t('defaultYellow')}
               </Button>
             </div>
           </div>,

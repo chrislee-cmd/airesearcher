@@ -27,6 +27,9 @@
 
 **예외**(가드 화이트리스트):
 - `src/app/[locale]/(app)/admin/**`, `.../design-system/**` — 내부 도구. 한글 자유.
+- `src/app/[locale]/(canvas-lab)/**` — 라우팅되는 `page.tsx` 없는 내부 dev
+  샌드박스(레퍼런스 구현). production `/canvas` 는 `(app)/canvas` 라 별개.
+  admin·design-system 과 동급 내부 표면.
 - 코드 **주석** — 자유(AST 라 애초에 검출 안 됨).
 - **유저 입력 데이터**·fixture·`ko.json` 값 비교 코드·정규식 등 정당한 한글 — 같은 줄
   또는 윗줄에 `// i18n-allow-korean -- 사유` 지시자로 개별 예외.
@@ -190,8 +193,8 @@ en → ja/th 는 길이가 크게 달라집니다. **고정폭 버튼·배지에
   `pnpm check:korean --update` 로 baseline 을 조입니다(느슨해지는 방향 갱신 금지).
 
 ### 예외 처리 (2단계)
-1. **화이트리스트**(스크립트 상수) — 파일/디렉토리 통째 제외. admin·design-system·테스트·
-   `.d.ts`·언어 제안 배너. 새 내부 도구 표면은 여기 추가.
+1. **화이트리스트**(스크립트 상수) — 파일/디렉토리 통째 제외. admin·design-system·
+   (canvas-lab)·테스트·`.d.ts`·언어 제안 배너. 새 내부 도구 표면은 여기 추가.
 2. **라인 지시자** `// i18n-allow-korean -- <사유>` — 같은 줄 또는 바로 윗줄. 정당한
    한글(정규식·`ko.json` 값 비교·fixture) 한 줄만 예외. **사유 필수.**
 

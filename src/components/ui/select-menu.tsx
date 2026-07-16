@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from './checkbox';
 import { CONTROL_TRIGGER_CLASS, ControlTriggerChevron } from './control-trigger';
 
@@ -60,6 +61,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
     renderSummary,
     'aria-label': ariaLabel,
   } = props;
+  const tCommon = useTranslations('Common');
   const values = props.multi ? props.value : props.value ? [props.value] : [];
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -116,7 +118,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
         ? values
             .map((v) => options.find((o) => o.value === v)?.label ?? v)
             .join(', ')
-        : `${values.length}개 선택`;
+        : tCommon('nSelected', { count: values.length });
 
   return (
     <div ref={wrapRef} className="relative" data-ds-primitive="SelectMenu">

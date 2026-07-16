@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetOutputs — 위젯 본문 하단의 "최근 산출물" 영역 공통 컴포넌트.
 
@@ -9,6 +11,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 
 // 카드 셸의 라벨 패턴 — uppercase tracking-wider mute-soft. quotes 안에
@@ -35,7 +38,7 @@ export type WidgetOutputsProps<T> = {
   renderItem: (item: T) => ReactNode;
   // 2건 초과 시 "더보기 (N건 더)" 버튼 노출. 미지정 시 더보기 안 그림.
   onMoreClick?: () => void;
-  // items.length === 0 일 때 노출할 안내. 미지정 시 기본 메시지.
+  // items.length === 0 일 때 노출할 안내. 미지정 시 기본 메시지(Shell.outputsEmpty).
   emptyText?: string;
 };
 
@@ -47,8 +50,9 @@ export function WidgetOutputs<T>({
   items,
   renderItem,
   onMoreClick,
-  emptyText = '아직 생성된 산출물이 없습니다',
+  emptyText,
 }: WidgetOutputsProps<T>) {
+  const t = useTranslations('Shell');
   const isEmpty = items.length === 0;
   const shown = items.slice(0, VISIBLE_COUNT);
   const remaining = items.length - shown.length;
@@ -57,11 +61,11 @@ export function WidgetOutputs<T>({
     <div className="shrink-0 border-t border-line-soft px-5 py-5">
       <div className="mb-2 flex items-center justify-between">
         <SectionLabel>{label}</SectionLabel>
-        <span className="text-xs text-mute-soft">총 {items.length}건</span>
+        <span className="text-xs text-mute-soft">{t('outputsTotal', { count: items.length })}</span>
       </div>
       {isEmpty ? (
         <div className="rounded-xs border-[2px] border-dashed border-ink bg-paper px-4 py-6 text-center text-md text-mute-soft">
-          {emptyText}
+          {emptyText ?? t('outputsEmpty')}
         </div>
       ) : (
         <ul className="space-y-3">{shown.map((item) => renderItem(item))}</ul>
@@ -74,7 +78,7 @@ export function WidgetOutputs<T>({
             onClick={onMoreClick}
             className="uppercase tracking-[0.18em]"
           >
-            더보기 ({remaining}건 더)
+            {t('outputsMore', { count: remaining })}
           </Button>
         </div>
       )}

@@ -488,6 +488,7 @@
     "signIn": "Sign in"
   },
   "Projects": {
+    "emptyArtifacts": "No items in this project yet.",
     "title": "Projects",
     "description": "Group research outputs by project for cleaner organization.",
     "newProject": "New project",
@@ -521,6 +522,10 @@
     "positionAhead": "{count} ahead of you"
   },
   "Common": {
+    "close": "Close",
+    "done": "Done",
+    "viewResult": "View result",
+    "nSelected": "{count} selected",
     "language": "Language",
     "korean": "한국어",
     "english": "English",
@@ -764,6 +769,8 @@
     "inquiry": "Request a demo"
   },
   "Credits": {
+    "closeCheckout": "Close checkout",
+    "closeBankTransfer": "Close bank transfer info",
     "pageTitle": "Buy credits",
     "pageEyebrow": "BILLING",
     "pageSubtitle": "Top up the credits you spend on research generations.",
@@ -1576,6 +1583,10 @@
     "confirmDeleteFolder": "Delete the folder \"{name}\"? Artifacts inside move to the project root."
   },
   "Members": {
+    "authRequired": "Sign in to see your organization.",
+    "emptyTitle": "No members yet",
+    "emptyHintManage": "Enter an email in the invite form above to add a member.",
+    "emptyHintView": "Members will appear here once an owner or admin invites them.",
     "title": "Member management",
     "invite": "Invite member",
     "role": "Role",
@@ -1824,5 +1835,101 @@
     "creating": "Creating…",
     "createSuccess": "Share link created.",
     "createError": "Couldn't create the link."
+  },
+  "Shell": {
+    "locked": "Coming soon",
+    "navLabel": "Widget navigation",
+    "outputsTotal": "{count} total",
+    "outputsMore": "Show more ({count})",
+    "outputsEmpty": "No outputs yet",
+    "headerColorSelect": "Choose header color",
+    "headerColorPalette": "Header color palette",
+    "hueSelect": "Select hue",
+    "custom": "Custom",
+    "default": "Default",
+    "defaultYellow": "Default yellow",
+    "free": "Free",
+    "creditCost": "{count} credits",
+    "settings": "Settings",
+    "uploadFile": "Upload files"
+  },
+  "BackgroundJob": {
+    "converting": "Converting",
+    "extracting": "Extracting",
+    "analyzing": "Analyzing"
+  },
+  "LegalShell": {
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "usePolicy": "Acceptable Use"
+  },
+  "StatusTheme": {
+    "toLight": "Switch to light mode",
+    "toDark": "Switch to dark mode",
+    "light": "☀ Light",
+    "dark": "☾ Dark"
+  },
+  "DateRange": {
+    "allPeriod": "All time",
+    "selectPeriod": "Select date range",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
+  },
+  "ShareMenu": {
+    "shareFailed": "Share failed: {error}",
+    "sharedTo": "Shared to {dest}.",
+    "shareError": "Something went wrong while sharing.",
+    "sharing": "Sharing…"
+  },
+  "StatusBoard": {
+    "editBoard": "Edit board",
+    "exitEdit": "Done editing",
+    "addWidget": "Add widget",
+    "allPlaced": "All widgets are placed.",
+    "editHint": "Drag the handle (⠿) to move · drag the right edge (or header 1/2/3) to resize · × to remove. Changes save automatically and sync across all your devices.",
+    "moveWidget": "Move widget",
+    "dragToMove": "Drag to move",
+    "spanColumns": "Span {n} columns",
+    "removeWidget": "Remove widget",
+    "remove": "Remove",
+    "resize": "Resize",
+    "dragToResize": "Drag to resize",
+    "emptyBoard": "No widgets placed.",
+    "emptyBoardHint": "Use Edit board → + Add widget to place widgets.",
+    "saving": "Saving…",
+    "saved": "Saved · synced to all devices",
+    "saveError": "Save failed — will retry shortly"
+  },
+  "Settings": {
+    "title": "Settings",
+    "description": "Manage your account and privacy.",
+    "export": {
+      "title": "Export my data",
+      "description": "Download all data linked to your account as a ZIP file. Large attachments like transcripts, videos, and insights are included as download links valid for 24 hours. For security, OAuth refresh / access tokens are excluded.",
+      "preparing": "Preparing…",
+      "rateLimited": "Please try again later. (hourly export limit exceeded)",
+      "failed": "Export failed. Please try again later.",
+      "unknownError": "Unknown error",
+      "done": "Export complete — your download will start automatically.",
+      "filename": "Filename:",
+      "size": "Size:",
+      "expiry": "Link expires: {when} (24h)",
+      "tables": "Included tables: {rows} rows / {count} tables total",
+      "redownload": "Download again"
+    },
+    "danger": {
+      "zone": "Danger zone",
+      "deleteAccount": "Delete account",
+      "description": "Permanently delete all data linked to your account. This includes workspaces, uploaded materials, and in-progress analysis, and cannot be undone. Payment, refund, and audit records are retained in de-identified form as legally required.",
+      "deleteCta": "Delete account…",
+      "confirmTitle": "Delete your account?",
+      "confirmDescription": "This can't be undone. Type your email exactly to confirm.",
+      "deleting": "Deleting…",
+      "permanentDelete": "Delete permanently",
+      "emailReentry": "Re-enter your account email <b>{email}</b> below to confirm.",
+      "confirmEmailLabel": "Confirmation email",
+      "deleteFailed": "Failed to delete.",
+      "networkError": "A network error occurred."
+    }
   }
 }

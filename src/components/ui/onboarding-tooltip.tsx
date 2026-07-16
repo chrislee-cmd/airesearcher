@@ -18,6 +18,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 
 function dismissKey(id: string) {
   return `onboarding-dismissed:${id}`;
@@ -35,7 +36,7 @@ export type OnboardingTooltipProps = {
   children: ReactNode;
   // 안내 문구.
   message: string;
-  // × aria-label (i18n). default 한국어.
+  // × aria-label (i18n). 미지정 시 Common.close.
   dismissLabel?: string;
 };
 
@@ -43,8 +44,10 @@ export function OnboardingTooltip({
   id,
   children,
   message,
-  dismissLabel = '닫기',
+  dismissLabel,
 }: OnboardingTooltipProps) {
+  const tCommon = useTranslations('Common');
+  const resolvedDismissLabel = dismissLabel ?? tCommon('close');
   // 영속 dismiss (localStorage). 서버/첫 렌더 스냅샷 = true(숨김).
   const getSnapshot = useCallback(() => {
     try {
@@ -83,7 +86,7 @@ export function OnboardingTooltip({
         <button
           type="button"
           onClick={dismiss}
-          aria-label={dismissLabel}
+          aria-label={resolvedDismissLabel}
           className="shrink-0 leading-none text-mute transition-colors hover:text-ink"
         >
           <svg

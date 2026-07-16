@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 // payment rail rather than a free toggle: LS card renders USD (`priceUsd`),
 // bank transfer renders KRW (`priceKrw`) — both SSOT-direct, no FX.
 function formatKrw(n: number): string {
+  // i18n-allow-korean -- KRW 계좌이체 rail 통화 표기 (pricing-scheme.md carve-out). "1,000원" 관례 유지 (₩ 기호로 바꾸면 결제 표기 회귀).
   return new Intl.NumberFormat('ko-KR').format(n) + '원';
 }
 
@@ -388,7 +389,7 @@ export function CreditsBundles() {
               </div>
               <IconButton
                 onClick={close}
-                aria-label="결제 창 닫기"
+                aria-label={t('closeCheckout')}
                 className="text-2xl leading-none"
               >
                 ×
@@ -542,7 +543,7 @@ export function CreditsBundles() {
               </div>
               <IconButton
                 onClick={close}
-                aria-label="계좌이체 안내 닫기"
+                aria-label={t('closeBankTransfer')}
                 className="text-2xl leading-none"
               >
                 ×

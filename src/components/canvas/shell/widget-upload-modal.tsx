@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetUploadModal — 위젯 서브헤더 "업로드" 버튼이 여는 파일 업로드 모달.
 
@@ -13,15 +15,17 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 
 export type WidgetUploadModalProps = {
   open: boolean;
   onClose: () => void;
-  // 모달 헤더 타이틀. 한국어 default — i18n 필요한 호출부는 next-intl 값 주입.
+  // 모달 헤더 타이틀. 미지정 시 로케일 default(Shell.uploadFile) — 커스텀
+  // 타이틀이 필요한 호출부는 next-intl 값을 주입.
   title?: string;
-  // footer 닫기 버튼 라벨.
+  // footer 닫기 버튼 라벨. 미지정 시 Common.close.
   closeLabel?: string;
   // dropzone + 변환 큐 / language confirm 등 업로드 UI 묶음.
   children: ReactNode;
@@ -30,19 +34,21 @@ export type WidgetUploadModalProps = {
 export function WidgetUploadModal({
   open,
   onClose,
-  title = '파일 업로드',
-  closeLabel = '닫기',
+  title,
+  closeLabel,
   children,
 }: WidgetUploadModalProps) {
+  const t = useTranslations('Shell');
+  const tCommon = useTranslations('Common');
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={title}
+      title={title ?? t('uploadFile')}
       size="md"
       footer={
         <Button variant="ghost" size="sm" onClick={onClose}>
-          {closeLabel}
+          {closeLabel ?? tCommon('close')}
         </Button>
       }
     >
