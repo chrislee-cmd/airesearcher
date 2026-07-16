@@ -89,10 +89,66 @@ function localizeEvent(event: string): string {
   return event;
 }
 
+// Per-tab browser-session id, generated lazily and persisted in sessionStorage
+// so all events from one tab session share a correlation id server-side
+// (used by the #611 timeline to group a visit). Not identity — a fresh id per
+// tab session, cleared when the tab closes. Falls back to a null id if
+// sessionStorage/crypto are unavailable (private mode edge cases) — the
+// server column is nullable.
+function browserSessionId(): string | null {
+  try {
+    const KEY = 'ua_session_id';
+    const existing = window.sessionStorage.getItem(KEY);
+    if (existing) return existing;
+    const id =
+      typeof crypto?.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : String(Date.now()) + Math.random().toString(36).slice(2);
+    window.sessionStorage.setItem(KEY, id);
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+// Non-blocking server mirror of the event into public.user_activity via
+// /api/events. Best-effort telemetry: any failure is swallowed so UX is never
+// affected (spec: "실패는 무시"). Prefers navigator.sendBeacon (survives page
+// unload, never blocks the main thread); falls back to fetch keepalive.
+function sinkToServer(event: string, props?: Record<string, unknown>) {
+  try {
+    const payload = JSON.stringify({
+      event_key: event,
+      props: props ?? {},
+      path: window.location?.pathname,
+      session_id: browserSessionId(),
+    });
+    // sendBeacon queues the POST outside the request/response lifecycle. A
+    // JSON blob keeps the Content-Type so the route parses it like a fetch.
+    if (typeof navigator?.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' });
+      if (navigator.sendBeacon('/api/events', blob)) return;
+    }
+    // Fallback (sendBeacon unavailable or queue full). keepalive lets the
+    // request outlive a navigation; errors are ignored.
+    void fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Serialization / API access failure — telemetry is best-effort.
+  }
+}
+
 export function track(event: string, props?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
   if (!initialized) return;
   mixpanel.track(localizeEvent(event), { ...(props ?? {}), event_key: event });
+  // Mirror to our own DB. Runs after the consent gate above so it respects
+  // the same analytics-consent posture as the Mixpanel call.
+  sinkToServer(event, props);
 }
 
 // 이메일을 distinct_id 로 쓴다. uuid 보다 사람이 식별하기 쉬워 Mixpanel
