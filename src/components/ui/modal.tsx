@@ -33,6 +33,11 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   size?: Size;
+  // Panel placement. 'center' (default) is the classic centered dialog;
+  // 'right' turns it into a full-height drawer that slides in from the right
+  // edge (used by the admin user-observation timeline). All other behavior
+  // (Esc, backdrop, scroll-lock, focus) is shared.
+  side?: 'center' | 'right';
   dismissOnBackdrop?: boolean;
   labelledBy?: string;
   // 슈퍼어드민 DS 인스펙터용 primitive 이름(카탈로그 label). 기본 'Modal'.
@@ -58,6 +63,10 @@ const SIZE: Record<Size, string> = {
   full: 'w-screen h-screen max-h-screen max-w-none !rounded-none',
 };
 
+// Right-drawer width (side="right"). Full-height panel pinned to the right
+// edge; on narrow viewports it takes the full width.
+const DRAWER_WIDTH = 'w-full max-w-[520px]';
+
 export function Modal({
   open,
   onClose,
@@ -66,6 +75,7 @@ export function Modal({
   children,
   footer,
   size = 'md',
+  side = 'center',
   dismissOnBackdrop = true,
   labelledBy,
   dsPrimitive = 'Modal',
@@ -144,9 +154,12 @@ export function Modal({
   return createPortal(
     <div
       className={[
-        'fixed inset-0 z-modal flex items-center justify-center',
-        // Full-size needs zero padding so the panel covers edge-to-edge.
-        size === 'full' ? 'p-0' : 'p-4',
+        'fixed inset-0 z-modal flex',
+        side === 'right'
+          ? 'items-stretch justify-end'
+          : 'items-center justify-center',
+        // Full-size + right drawer hug the edge, so zero padding there.
+        size === 'full' || side === 'right' ? 'p-0' : 'p-4',
       ].join(' ')}
       role="dialog"
       aria-modal="true"
@@ -175,19 +188,29 @@ export function Modal({
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
           // 없어서 화면 위아래로 spill 한 버그)
           'relative flex w-full flex-col overflow-hidden border-[3px] border-ink bg-paper',
-          // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide 은
-          // 자체적으로 h-screen / h-[90vh] 를 SIZE 에서 직접 잡는다.
-          size === 'full' || size === 'wide' ? '' : 'max-h-[calc(100vh-2rem)]',
-          // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full
-          // size 는 edge-to-edge 라 그림자/모서리 잘림 회피 위해 둘 다 끈다.
-          size === 'full'
-            ? 'rounded-none'
-            : 'rounded-sm shadow-memphis-2xl',
-          // Enter/leave: gentle scale+fade (origin center). reduced-motion
-          // drops the transition so it snaps to the final state instantly.
+          // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide / 우측 드로어는
+          // 자체적으로 h-screen / h-[90vh] / h-full 을 직접 잡는다.
+          size === 'full' || size === 'wide' || side === 'right'
+            ? ''
+            : 'max-h-[calc(100vh-2rem)]',
+          // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full size 와
+          // 우측 드로어는 edge 에 붙어 모서리·그림자 잘림 회피 위해 각지게.
+          side === 'right'
+            ? 'h-full rounded-none'
+            : size === 'full'
+              ? 'rounded-none'
+              : 'rounded-sm shadow-memphis-2xl',
+          // Enter/leave: 우측 드로어는 오른쪽에서 슬라이드, 그 외는 중앙 scale+fade.
+          // reduced-motion drops the transition so it snaps to the final state.
           reduced ? '' : 'transition-[transform,opacity] duration-[180ms] ease-out',
-          entered ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
-          SIZE[size],
+          side === 'right'
+            ? entered
+              ? 'translate-x-0 opacity-100'
+              : 'translate-x-full opacity-0'
+            : entered
+              ? 'scale-100 opacity-100'
+              : 'scale-95 opacity-0',
+          side === 'right' ? DRAWER_WIDTH : SIZE[size],
         ].join(' ')}
       >
         {(title || description) && (

@@ -801,6 +801,10 @@ export const REASON_SEGMENT_ORDER = REASON_SEGMENTS;
    ──────────────────────────────────────────────────────────────────── */
 
 export type SignupAccount = {
+  // auth.users.id — powers the super-admin user-observation timeline drawer
+  // (/api/admin/users/[id]/timeline). Never rendered; used as the row key
+  // into the per-user activity reconstruction.
+  userId: string;
   email: string;
   createdAt: string;
   lastSignInAt: string | null;
@@ -842,6 +846,7 @@ export async function listAllSignupEmails(): Promise<SignupRoster> {
           ? u.app_metadata.provider
           : null;
       accounts.push({
+        userId: u.id,
         email: u.email ?? '—',
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,

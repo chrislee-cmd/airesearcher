@@ -33,6 +33,7 @@ import { ChromeButton } from './ui/chrome-button';
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
+import { UserTimelineDrawer } from './admin-user-timeline-drawer';
 
 type Tab = 'native' | 'posthog';
 
@@ -300,6 +301,12 @@ function fmtDateTime(iso: string | null): string {
 // rendered in the public /status view).
 function SignupAccountsCard({ roster }: { roster: SignupRoster }) {
   const [query, setQuery] = useState('');
+  // Selected row → opens the right-side user-observation drawer. Kept even
+  // while the drawer animates closed (selected != null) so the panel keeps
+  // its content through the exit transition.
+  const [selected, setSelected] = useState<{ userId: string; email: string } | null>(
+    null,
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -367,7 +374,17 @@ function SignupAccountsCard({ roster }: { roster: SignupRoster }) {
               {filtered.map((a, i) => (
                 <tr
                   key={`${a.email}-${a.createdAt}-${i}`}
-                  className="border-b border-line-soft last:border-b-0"
+                  className="cursor-pointer border-b border-line-soft last:border-b-0 hover:bg-paper-soft"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${a.email} 활동 타임라인 열기`}
+                  onClick={() => setSelected({ userId: a.userId, email: a.email })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelected({ userId: a.userId, email: a.email });
+                    }
+                  }}
                 >
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
@@ -392,6 +409,13 @@ function SignupAccountsCard({ roster }: { roster: SignupRoster }) {
           </table>
         </div>
       )}
+
+      <UserTimelineDrawer
+        userId={selected?.userId ?? null}
+        email={selected?.email ?? null}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+      />
     </Card>
   );
 }
