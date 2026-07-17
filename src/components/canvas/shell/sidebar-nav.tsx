@@ -11,6 +11,7 @@
    - 1~6 단축키 자체는 CanvasBoard 가 처리 (시각 kbd 힌트는 noise 라 제거).
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import type { WidgetContent, WidgetStateInfo } from '../widget-types';
 import { useWidgetStateOf } from './widget-state-context';
 import { ACCENT_BG } from './tokens';
@@ -50,12 +51,13 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
 // 색은 design-system 토큰만 (중립 line-soft 테두리 + mute 텍스트) — 라이브
 // 위젯의 amore/mint 강조와 시각 구분.
 function WidgetLockedBadge() {
+  const t = useTranslations('Shell');
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 rounded-xs border-[2px] border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs font-semibold text-mute-soft"
-      aria-label="준비중"
+      aria-label={t('locked')}
     >
-      준비중
+      {t('locked')}
     </span>
   );
 }
@@ -106,10 +108,11 @@ export function SidebarNav({
   // 비었으면(unlimited) 전부 라이브 → 회귀 0.
   lockedKeys?: string[];
 }) {
+  const t = useTranslations('Shell');
   const locked = lockedKeys && lockedKeys.length > 0 ? new Set(lockedKeys) : null;
   return (
     <nav
-      aria-label="위젯 전체보기 네비게이션"
+      aria-label={t('navLabel')}
       className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto border-r-[2px] border-ink bg-paper-soft p-3"
     >
       {widgets.map((w) => {

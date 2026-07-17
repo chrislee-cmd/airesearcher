@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 
 // ─── StageFlow — 공정 플로우차트 아티팩트 primitive ───────────────────────────
@@ -199,7 +200,7 @@ function VerticalEdge({ flowing }: { flowing: boolean }) {
 function CompleteHero({
   completeLabel,
   onResult,
-  resultLabel = '결과 보기',
+  resultLabel,
   className,
 }: {
   completeLabel?: string;
@@ -207,6 +208,8 @@ function CompleteHero({
   resultLabel?: string;
   className?: string;
 }) {
+  const tCommon = useTranslations('Common');
+  const resolvedResultLabel = resultLabel ?? tCommon('viewResult');
   return (
     // stagger: 배지 → 라벨 → CTA 가 아래에서 순차로 떠오르며 등장(fade-in-up).
     <div
@@ -243,7 +246,7 @@ function CompleteHero({
           onClick={onResult}
           className="completed-cta-pulse press-scale"
         >
-          {resultLabel}
+          {resolvedResultLabel}
         </Button>
       ) : null}
     </div>

@@ -97,7 +97,8 @@ function MembersHeader({ title }: { title: string }) {
   );
 }
 
-function EmptyAuthCard() {
+async function EmptyAuthCard() {
+  const t = await getTranslations('Members');
   return (
     <div
       className="p-6 text-md"
@@ -111,7 +112,7 @@ function EmptyAuthCard() {
         fontWeight: 600,
       }}
     >
-      로그인 후 조직 정보가 표시됩니다.
+      {t('authRequired')}
     </div>
   );
 }
@@ -217,7 +218,8 @@ async function MembersTable({
   );
 }
 
-function EmptyMembersCard({ canManage }: { canManage: boolean }) {
+async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
+  const t = await getTranslations('Members');
   return (
     <div
       className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center"
@@ -247,12 +249,10 @@ function EmptyMembersCard({ canManage }: { canManage: boolean }) {
           color: 'var(--sidebar-border)',
         }}
       >
-        아직 멤버가 없습니다
+        {t('emptyTitle')}
       </div>
       <p className="max-w-[420px] text-md text-mute">
-        {canManage
-          ? '위 초대 폼에서 이메일을 입력하면 멤버로 합류시킬 수 있습니다.'
-          : '오너 또는 관리자가 멤버를 초대하면 이곳에 표시됩니다.'}
+        {canManage ? t('emptyHintManage') : t('emptyHintView')}
       </p>
     </div>
   );

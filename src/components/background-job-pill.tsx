@@ -1,9 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import { useInterviewJob } from './interview-job-provider';
 
 export function BackgroundJobPill() {
+  const t = useTranslations('BackgroundJob');
   const job = useInterviewJob();
   const pathname = usePathname();
 
@@ -12,10 +14,10 @@ export function BackgroundJobPill() {
   const onInterviewsPage = pathname === '/interviews';
   const extracting = job.items.some((i) => i.extractStatus === 'extracting');
   const label = job.convertingAll
-    ? '변환 중'
+    ? t('converting')
     : extracting
-    ? '추출 중'
-    : '분석 중';
+    ? t('extracting')
+    : t('analyzing');
   const detail = job.analyzing && job.analysis
     ? `${job.analysis.rows.length} rows`
     : null;

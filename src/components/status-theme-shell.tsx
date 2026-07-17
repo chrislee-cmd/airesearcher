@@ -14,6 +14,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useState, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChromeButton } from './ui/chrome-button';
 
 const STORAGE_KEY = 'status-theme';
@@ -42,6 +43,7 @@ function readInitialTheme(): Theme {
 }
 
 export function StatusThemeShell({ children }: { children: ReactNode }) {
+  const t = useTranslations('StatusTheme');
   const [theme, setTheme] = useState<Theme>(readInitialTheme);
 
   const toggle = useCallback(() => {
@@ -71,10 +73,10 @@ export function StatusThemeShell({ children }: { children: ReactNode }) {
         <ChromeButton
           size="sm"
           onClick={toggle}
-          aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-          title={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+          aria-label={isDark ? t('toLight') : t('toDark')}
+          title={isDark ? t('toLight') : t('toDark')}
         >
-          {isDark ? '☀ 라이트' : '☾ 다크'}
+          {isDark ? t('light') : t('dark')}
         </ChromeButton>
       </div>
       {children}

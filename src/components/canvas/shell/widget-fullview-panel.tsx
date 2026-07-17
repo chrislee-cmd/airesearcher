@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { IconButton } from '@/components/ui/icon-button';
 import { useFullviewChrome } from './fullview-shell-context';
 
@@ -19,7 +20,7 @@ type WidgetFullviewPanelProps = {
   onClose: () => void;
   footer?: ReactNode;
   children: ReactNode;
-  /** aria-label for the close button. i18n override; defaults to 닫기. */
+  /** aria-label for the close button. i18n override; defaults to Common.close. */
   closeLabel?: string;
   /** 헤더 우측, 닫기 × 왼쪽에 놓이는 액션 (예: 내보내기 버튼). optional. */
   headerAction?: ReactNode;
@@ -31,11 +32,13 @@ export function WidgetFullviewPanel({
   onClose,
   footer,
   children,
-  closeLabel = '닫기',
+  closeLabel,
   headerAction,
 }: WidgetFullviewPanelProps) {
   // 리스트 뷰(풀페이지 셸)에서는 닫을 모달이 없으므로 닫기 × 를 감춘다.
   // 캔버스 뷰의 전체보기 모달('modal', 기본) 은 그대로 × 노출 → 회귀 0.
+  const tCommon = useTranslations('Common');
+  const resolvedCloseLabel = closeLabel ?? tCommon('close');
   const chrome = useFullviewChrome();
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-paper">
@@ -55,7 +58,7 @@ export function WidgetFullviewPanel({
               variant="bordered"
               size="md"
               onClick={onClose}
-              aria-label={closeLabel}
+              aria-label={resolvedCloseLabel}
             >
               <CloseIcon />
             </IconButton>

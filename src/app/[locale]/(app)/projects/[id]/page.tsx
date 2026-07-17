@@ -69,7 +69,7 @@ export default async function ProjectDetailPage({
         </h2>
         {artifacts.length === 0 ? (
           <div className="mt-3 border border-line bg-paper-soft p-6 text-md text-mute rounded-sm">
-            아직 이 프로젝트에 등록된 산출물이 없습니다.
+            {t('emptyArtifacts')}
           </div>
         ) : (
           <ul className="mt-3 border border-line bg-paper rounded-sm">

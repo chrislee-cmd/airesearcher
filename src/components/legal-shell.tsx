@@ -1,20 +1,19 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
-export function LegalShell({
+export async function LegalShell({
   locale,
   children,
 }: {
   locale: string;
   children: React.ReactNode;
 }) {
-  // Legal-shell nav labels: Korean only on /ko; every other locale uses
-  // the English labels because the legal page body itself also falls
-  // back to English for non-Korean.
-  const labels =
-    locale === 'ko'
-      ? { terms: '이용약관', privacy: '개인정보처리방침', usePolicy: '이용정책' }
-      : { terms: 'Terms', privacy: 'Privacy', usePolicy: 'Acceptable Use' };
+  // Legal-shell nav labels come from messages. Only /ko is localized; ja/th
+  // omit these keys and fall back to en, matching the legal page body which
+  // is also English for every non-Korean locale.
+  const t = await getTranslations({ locale, namespace: 'LegalShell' });
+  const labels = { terms: t('terms'), privacy: t('privacy'), usePolicy: t('usePolicy') };
 
   return (
     <main className="flex flex-1 flex-col bg-paper">

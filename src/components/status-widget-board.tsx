@@ -21,6 +21,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { AdminAnalyticsReport } from '@/lib/admin/analytics';
 import {
   DEFAULT_LAYOUT,
@@ -64,6 +65,7 @@ function clampSpan(n: number): number {
 }
 
 export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
+  const t = useTranslations('StatusBoard');
   const [layout, setLayout] = useState<DashboardLayout>(initialLayout);
   const [editing, setEditing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -282,7 +284,7 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                 setPaletteOpen(false);
               }}
             >
-              {editing ? '편집 종료' : '보드 편집'}
+              {editing ? t('exitEdit') : t('editBoard')}
             </ChromeButton>
             {editing && (
               <ChromeButton
@@ -290,7 +292,7 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                 disabled={availableIds.length === 0}
                 onClick={() => setPaletteOpen((v) => !v)}
               >
-                + 위젯 추가
+                + {t('addWidget')}
                 {availableIds.length > 0 && ` (${availableIds.length})`}
               </ChromeButton>
             )}
@@ -302,10 +304,10 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
       {canEdit && editing && paletteOpen && (
         <div className="mb-4 border border-line bg-paper-soft px-4 py-3 rounded-sm">
           <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
-            위젯 추가
+            {t('addWidget')}
           </div>
           {availableIds.length === 0 ? (
-            <p className="text-md text-mute-soft">모든 위젯이 배치되어 있습니다.</p>
+            <p className="text-md text-mute-soft">{t('allPlaced')}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {availableIds.map((id) => (
@@ -323,10 +325,7 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
       )}
 
       {editing && (
-        <p className="mb-3 text-xs-soft text-mute-soft">
-          드래그 핸들(⠿)로 이동 · 오른쪽 모서리(또는 헤더 1/2/3)로 폭 조절 ·
-          ×로 제거. 변경은 자동 저장되어 모든 기기에 공유됩니다.
-        </p>
+        <p className="mb-3 text-xs-soft text-mute-soft">{t('editHint')}</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -354,10 +353,10 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                     onPointerUp={onDragHandleUp}
                     onPointerCancel={onDragHandleUp}
                     role="button"
-                    aria-label="위젯 이동"
+                    aria-label={t('moveWidget')}
                     tabIndex={0}
                     className="cursor-grab touch-none select-none px-1 text-md leading-none text-mute active:cursor-grabbing hover:text-ink-2"
-                    title="드래그로 이동"
+                    title={t('dragToMove')}
                   >
                     ⠿
                   </span>
@@ -367,7 +366,7 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                         key={n}
                         size="sm"
                         variant={w.span === n ? 'primary' : 'default'}
-                        aria-label={`폭 ${n}컬럼`}
+                        aria-label={t('spanColumns', { n })}
                         onClick={() => setSpan(i, n)}
                       >
                         {n}
@@ -377,8 +376,8 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                   <IconButton
                     variant="ghost-danger"
                     size="sm"
-                    aria-label="위젯 제거"
-                    title="제거"
+                    aria-label={t('removeWidget')}
+                    title={t('remove')}
                     onClick={() => removeWidget(i)}
                   >
                     ×
@@ -395,9 +394,9 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                   onPointerUp={onResizePointerUp}
                   onPointerCancel={onResizePointerUp}
                   role="separator"
-                  aria-label="폭 조절"
+                  aria-label={t('resize')}
                   className="absolute right-0 top-1/2 z-resize h-12 w-2 -translate-y-1/2 cursor-ew-resize touch-none rounded-full bg-line-soft hover:bg-amore"
-                  title="드래그로 폭 조절"
+                  title={t('dragToResize')}
                 />
               )}
             </div>
@@ -407,8 +406,8 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
 
       {layout.widgets.length === 0 && (
         <div className="flex h-40 items-center justify-center text-md text-mute-soft">
-          배치된 위젯이 없습니다.
-          {canEdit && ' “보드 편집 → + 위젯 추가”로 위젯을 배치하세요.'}
+          {t('emptyBoard')}
+          {canEdit && ` ${t('emptyBoardHint')}`}
         </div>
       )}
     </div>
@@ -416,12 +415,13 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
 }
 
 function SaveStatus({ state }: { state: SaveState }) {
+  const t = useTranslations('StatusBoard');
   if (state === 'idle') return null;
   const map: Record<Exclude<SaveState, 'idle'>, { text: string; cls: string }> =
     {
-      saving: { text: '저장 중…', cls: 'text-mute-soft' },
-      saved: { text: '저장됨 · 모든 기기에 공유', cls: 'text-amore' },
-      error: { text: '저장 실패 — 잠시 후 다시 시도됩니다', cls: 'text-warning' },
+      saving: { text: t('saving'), cls: 'text-mute-soft' },
+      saved: { text: t('saved'), cls: 'text-amore' },
+      error: { text: t('saveError'), cls: 'text-warning' },
     };
   const { text, cls } = map[state];
   return <span className={cx('text-xs-soft tabular-nums', cls)}>{text}</span>;

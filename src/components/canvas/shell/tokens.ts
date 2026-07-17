@@ -25,16 +25,20 @@ export const ACCENT_ICON: Record<AccentColor, string> = {
   rose: '✦',
 };
 
+// 상태 라벨은 production 셸의 실제 pill(widget-state-pill.tsx)과 동일하게
+// 로케일 무관 영어 uppercase Memphis 배지 규약을 따른다 — statePill 은 현재
+// production 소비처가 없는 orphan(내부 canvas-lab 은 자체 tokens 사본 사용)
+// 이라 라벨을 영어로 정렬해도 렌더 회귀 0.
 export function statePill(state: WidgetState): { label: string; cls: string } {
   switch (state) {
     case 'running':
-      return { label: '진행 중', cls: 'bg-amore-bg text-amore' };
+      return { label: 'RUNNING', cls: 'bg-amore-bg text-amore' };
     case 'done':
-      return { label: '완료', cls: 'bg-mint text-ink' };
+      return { label: 'DONE', cls: 'bg-mint text-ink' };
     case 'error':
-      return { label: '오류', cls: 'bg-warning-bg text-warning' };
+      return { label: 'ERR', cls: 'bg-warning-bg text-warning' };
     case 'idle':
     default:
-      return { label: '대기', cls: 'bg-paper text-mute' };
+      return { label: 'READY', cls: 'bg-paper text-mute' };
   }
 }

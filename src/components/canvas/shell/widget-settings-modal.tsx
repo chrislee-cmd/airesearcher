@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetSettingsModal — 위젯 서브헤더 "설정" 버튼이 여는 세부 설정 모달.
 
@@ -12,15 +14,17 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 
 export type WidgetSettingsModalProps = {
   open: boolean;
   onClose: () => void;
-  // 모달 헤더 타이틀. 한국어 default — desk / translate 는 next-intl 값 주입.
+  // 모달 헤더 타이틀. 미지정 시 로케일 default(Shell.settings) — desk /
+  // translate 는 커스텀 값을 주입.
   title?: string;
-  // footer 닫기 버튼 라벨.
+  // footer 닫기 버튼 라벨. 미지정 시 Common.close.
   closeLabel?: string;
   // 각 위젯의 옛 필드 묶음 (Field / select / ChipInput 등).
   children: ReactNode;
@@ -29,19 +33,21 @@ export type WidgetSettingsModalProps = {
 export function WidgetSettingsModal({
   open,
   onClose,
-  title = '설정',
-  closeLabel = '닫기',
+  title,
+  closeLabel,
   children,
 }: WidgetSettingsModalProps) {
+  const t = useTranslations('Shell');
+  const tCommon = useTranslations('Common');
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={title}
+      title={title ?? t('settings')}
       size="md"
       footer={
         <Button variant="ghost" size="sm" onClick={onClose}>
-          {closeLabel}
+          {closeLabel ?? tCommon('close')}
         </Button>
       }
     >

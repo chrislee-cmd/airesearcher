@@ -1,3 +1,5 @@
+'use client';
+
 /* ────────────────────────────────────────────────────────────────────
    WidgetCreditBadge — 위젯 헤더 좌측의 크레딧(cost) 배지 primitive.
 
@@ -14,6 +16,8 @@
    radius) 을 그대로 보존.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
+
 export type WidgetCreditBadgeProps = {
   // 크레딧 비용. undefined 면 아무것도 안 그린다 (cost 없는 위젯).
   cost: number | undefined;
@@ -22,6 +26,7 @@ export type WidgetCreditBadgeProps = {
 };
 
 export function WidgetCreditBadge({ cost, costLabel }: WidgetCreditBadgeProps) {
+  const t = useTranslations('Shell');
   if (costLabel) {
     return (
       <span
@@ -39,7 +44,7 @@ export function WidgetCreditBadge({ cost, costLabel }: WidgetCreditBadgeProps) {
         data-ds-primitive="WidgetCreditBadge"
         className="text-xs font-bold uppercase opacity-80"
       >
-        무료
+        {t('free')}
       </span>
     );
   }
@@ -54,7 +59,7 @@ export function WidgetCreditBadge({ cost, costLabel }: WidgetCreditBadgeProps) {
         borderRadius: 4,
         boxShadow: '2px 2px 0 var(--canvas-card-border)',
       }}
-      aria-label={`${cost} 크레딧`}
+      aria-label={t('creditCost', { count: cost })}
     >
       <span aria-hidden>💎</span>
       <span>{cost}</span>

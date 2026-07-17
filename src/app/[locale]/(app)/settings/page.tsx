@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { ChapterHeader } from '@/components/editorial';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { ExportData } from './export-data';
@@ -18,11 +18,13 @@ export default async function SettingsPage({
     redirect(`/${locale}`);
   }
 
+  const t = await getTranslations({ locale, namespace: 'Settings' });
+
   return (
     <div className="mx-auto max-w-[1120px] px-2 pb-16 pt-6">
       <ChapterHeader
-        title="설정"
-        description="계정과 개인정보를 관리합니다."
+        title={t('title')}
+        description={t('description')}
       />
       <ExportData />
       <DangerZone email={user.email ?? ''} />

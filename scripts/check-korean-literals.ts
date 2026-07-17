@@ -35,10 +35,14 @@ const TARGET_DIRS = ['src/components', 'src/lib', 'src/app/[locale]'];
 
 // 화이트리스트 — 절대 스캔하지 않음(내부 도구·테스트).
 //  · admin / design-system: 내부 도구, 한글 유지 (WRITING.md 예외).
+//  · (canvas-lab): 라우팅되는 page.tsx 가 없는 내부 dev 샌드박스(레퍼런스
+//    구현). production /canvas 는 (app)/canvas 라 별개 — admin·design-system
+//    과 동급 내부 표면이라 스윕 대신 화이트리스트(Phase 4).
 //  · *.test.ts / tests: 테스트 fixture 는 원어 유지.
 const WHITELIST_DIR_SEGMENTS = [
   'src/app/[locale]/(app)/admin/',
   'src/app/[locale]/(app)/design-system/',
+  'src/app/[locale]/(canvas-lab)/',
 ];
 // 파일명 부분 일치 화이트리스트. Phase 1 언어 제안 배너(의도된 예외)는 아직
 // main 에 없을 수 있어 forward-compatible 하게 파일명으로 매칭한다.
