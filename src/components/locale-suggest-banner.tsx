@@ -93,8 +93,8 @@ export function LocaleSuggestBanner() {
   };
 
   return (
-    <div className="fixed inset-x-0 top-0 z-toast flex justify-center px-4 pt-3">
-      <div className="flex items-center gap-3 rounded-full border border-line bg-paper px-4 py-2 text-sm text-ink shadow-memphis-sm">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-toast flex justify-center px-4 pt-3">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-paper px-4 py-2 text-sm text-ink shadow-memphis-sm">
         <span className="whitespace-nowrap">
           <span aria-hidden className="mr-1">
             {copy.flag}
