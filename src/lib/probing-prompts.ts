@@ -284,6 +284,44 @@ export const DEFAULT_PERSONA_SECTIONS: ProbingPersonaSectionDef[] = [
   },
 ];
 
+/* ────────────────────────────────────────────────────────────────────
+   Contradiction-aware reflection (PR: probing-contradiction-aware-persona).
+
+   페르소나 패널을 무상태 overwrite-latest → **stateful 진화 레코드** 로 전환.
+   reflection 호출마다 새 transcript window 의 신호를 **기존 패널(prior_panels)**
+   과 비교해 세 갈래로 분류한다:
+     - refine     — 기존과 일관/보강. 조용히 누적(client 가 신호 union).
+     - contradict — 기존과 사실/방향이 충돌. conflicts 에 {prior, current} 쌍을
+                    기록해 ⚠ 로 가시화. 기존 값은 client 가 history 로 보존.
+     - none       — 이 섹션에 새 신호 없음. 기존 유지.
+
+   changeType/conflicts 는 **prior 가 제공된 stateful 호출에서만** 의미 있다.
+   prior 없는 첫 tick(무상태, backward compat)은 생략 → 옛 동작 100%.
+   ──────────────────────────────────────────────────────────────────── */
+
+export const PROBING_CHANGE_TYPES = ['refine', 'contradict', 'none'] as const;
+export type ProbingChangeType = (typeof PROBING_CHANGE_TYPES)[number];
+
+const personaConflictSchema = z.object({
+  field: z
+    .string()
+    .describe(
+      '충돌 지점 라벨 — 무엇이 어긋났는지 1~3 단어 (예: "연령대", "선호 브랜드", "가격 민감도").',
+    ),
+  prior: z.string().describe('기존 패널이 담고 있던 값/주장 (이전).'),
+  current: z
+    .string()
+    .describe('새 발화가 제시하는, 기존과 충돌하는 값/주장 (현재).'),
+  note: z
+    .string()
+    .optional()
+    .describe(
+      '왜 단순 표현 차이가 아니라 사실/방향의 충돌인지 짧게 (선택).',
+    ),
+});
+
+export type ProbingPersonaConflict = z.infer<typeof personaConflictSchema>;
+
 const personaSectionSchema = z.object({
   summary: z
     .string()
@@ -304,16 +342,45 @@ const personaSectionSchema = z.object({
           .describe('직접 인용한 transcript 구절 (있을 때만).'),
       }),
     )
-    .max(5)
+    // 캡 상향(≤5 → ≤12): stateful 누적에서 화면 truncation 0 이 목표라 per-tick
+    // 신호 상한을 넉넉히. client 는 tick 간 union(dedup)으로 더 누적한다.
+    .max(12)
     .describe(
-      '관찰 신호 0~5개. confidence=insufficient 면 빈 배열. 외엔 가능한 한 transcript 인용 포함.',
+      '관찰 신호 0~12개. confidence=insufficient 면 빈 배열. 외엔 가능한 한 transcript 인용 포함. refine 로 분류한 섹션은 기존에 없던 새 신호만 담아도 됨(기존은 시스템이 자동 보존).',
     ),
   confidence: z
     .enum(['high', 'medium', 'low', 'insufficient'])
     .describe(
       "신호 강도. high=다출처 일치 / medium=단일 발화 / low=추정 위주 / insufficient=transcript 신호 0.",
     ),
+  // stateful reflection 전용 — prior_panels 가 제공된 호출에서만 채운다.
+  changeType: z
+    .enum(PROBING_CHANGE_TYPES)
+    .optional()
+    .describe(
+      '기존 패널과 비교한 이 섹션의 변화 유형. refine=일관/보강, contradict=사실·방향 충돌, none=새 신호 없음. prior 가 없으면(첫 tick) 생략.',
+    ),
+  conflicts: z
+    .array(personaConflictSchema)
+    .max(8)
+    .optional()
+    .describe(
+      'changeType=contradict 일 때만 — 기존 값과 새 값이 어긋나는 {prior, current} 쌍. 사실/방향의 진짜 충돌만(단순 표현 차이는 refine). 없으면 생략.',
+    ),
 });
+
+// 신호 한 칸 (client/스냅샷 공용 타입).
+export type ProbingPersonaSignal = { bullet: string; quote?: string };
+
+// client 가 tick 별로 누적하는 이력 한 칸 — contradict 발생 시 직전 current 를
+// 여기로 밀어 "누락 0" 을 보장한다. LLM 출력이 아니라 client 상태.
+export type ProbingPersonaHistoryEntry = {
+  at: number;
+  summary: string;
+  signals: ProbingPersonaSignal[];
+  confidence: 'high' | 'medium' | 'low' | 'insufficient';
+  changeType?: ProbingChangeType;
+};
 
 export const probingPersonaSchema = z.object({
   demographics: personaSectionSchema.describe(
@@ -354,7 +421,11 @@ export const probingPersonaSchema = z.object({
   .catchall(personaSectionSchema);
 
 export type ProbingPersona = z.infer<typeof probingPersonaSchema>;
-export type ProbingPersonaSection = z.infer<typeof personaSectionSchema>;
+// LLM 출력(summary/signals/confidence/changeType/conflicts) + client 가 누적하는
+// history(이력 보존, 누락 0). history 는 스키마 밖 client 상태라 교집합으로 확장.
+export type ProbingPersonaSection = z.infer<typeof personaSectionSchema> & {
+  history?: ProbingPersonaHistoryEntry[];
+};
 
 /* ────────────────────────────────────────────────────────────────────
    동적 persona schema — request 별 custom 섹션 key 를 **명시적 named
@@ -383,6 +454,10 @@ export function buildProbingPersonaSchema(sections: ProbingPersonaSectionDef[]) 
 export function buildProbingPersonaSystem(
   sections: ProbingPersonaSectionDef[],
   outputLang?: string,
+  // stateful=true 면 사용자 프롬프트에 "## 기존 패널" 블록이 딸려 오며, 아래
+  // 비교 지시문(refine/contradict/none + 보수적 모순 분류)을 system 에 주입한다.
+  // false(첫 tick, prior 없음)면 옛 무상태 프롬프트 그대로 — backward compat.
+  opts?: { stateful?: boolean },
 ): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
@@ -421,6 +496,32 @@ export function buildProbingPersonaSystem(
         `  "${s.key}": {"summary": "...", "signals": [{"bullet": "...", "quote": "..."}], "confidence": "medium"}`,
     )
     .join(',\n')}\n}`;
+  // stateful reflection — "## 기존 패널" 이 제공된 호출에서만 붙는 비교 지시문.
+  const comparisonBlock = opts?.stateful
+    ? `
+
+## 기존 패널과 비교 (stateful — 사용자 프롬프트의 "## 기존 패널" 블록 참조)
+사용자 프롬프트에 **"## 기존 패널"** 블록이 있으면, 그건 직전까지 누적된 현재 페르소나입니다. 각 섹션에 대해 새 transcript window 의 신호를 그 기존 값과 **비교**하여 \`changeType\` 을 정하세요:
+- **refine** — 새 신호가 기존과 **일관되거나 보강**(더 구체화 / 근거 추가 / 같은 방향 확장 / 새로운 측면). **대부분의 갱신이 여기 해당.** \`conflicts\` 없음. signals 에는 기존에 없던 **새 신호만** 담아도 됩니다 — 기존 신호는 시스템이 자동 보존합니다.
+- **contradict** — 새 신호가 기존의 **사실 또는 방향과 정면으로 충돌**. 이때만 \`conflicts\` 에 어긋나는 지점을 {field, prior(이전 값), current(새 값), note?} 쌍으로 기록하고, confidence 를 재평가(대개 하향, 예: medium→low).
+- **none** — 이 섹션에 관한 **새 신호가 없음**. changeType='none', summary/signals 는 그대로.
+
+### contradict 는 보수적으로 (⚠ 남발 절대 금지 — 가장 중요한 룰)
+- **단순 표현 차이 / 어휘 변형 / 더 구체적 재진술 / 새로운 측면 추가**는 전부 **refine** 입니다. contradict 아님.
+- **기존 사실이 뒤집히거나(예: "20대"→"40대", "A 선호"→"A 싫어함"), 방향·입장이 반대로 바뀔 때만** contradict.
+- 애매하면 무조건 refine. **확실한 사실/방향 충돌만 ⚠.**
+
+예시:
+- 기존 "가성비 중시" → 새 "품질이면 비싸도 산다" = **contradict** (가격 vs 품질 우선순위 역전).
+- 기존 "SNS 를 자주 본다" → 새 "특히 인스타를 아침에 본다" = **refine** (같은 방향 구체화).
+- 기존 "차분한 성격" → 새 "결정은 빠르게 내린다" = **refine** (다른 측면, 충돌 아님).`
+    : '';
+  // 출력 모양 설명에 붙는 stateful 전용 필드 안내.
+  const outputShapeExtra = opts?.stateful
+    ? `
+- \`changeType\` — 기존 패널과 비교한 변화 유형 (refine / contradict / none). 위 "기존 패널과 비교" 룰 참조.
+- \`conflicts\` — changeType=contradict 일 때만. 어긋나는 지점의 {field, prior, current, note?} 쌍 배열. 그 외엔 생략.`
+    : '';
   return `당신은 질적 인터뷰의 응답자 페르소나 분석가입니다. 라이브 인터뷰의 누적 transcript 를 읽고 **이 응답자의 완성된 페르소나 한 판** 을 ${n} 섹션 (${keyList}) 으로 구조화합니다.
 
 ## 절대 원칙
@@ -442,13 +543,13 @@ ${exampleJson}
 - \`custom_\` 으로 시작하는 key 들은 사용자가 직접 지정한 조사 목적 (아래 신호 가이드의 description) 을 채우기 위한 것이므로 **특히 중요** — 기본 섹션과 동일한 성실도로 채우시오.
 
 ## 섹션별 신호 가이드
-${sectionGuide}${catchAllBlock}
+${sectionGuide}${catchAllBlock}${comparisonBlock}
 
 ## 각 섹션의 출력 모양
 - \`summary\` — 1~2문장. 이 섹션의 핵심 가설. confidence=insufficient 면 빈 문자열.
-- \`signals\` — 0~5개의 관찰. 각 신호:
+- \`signals\` — 0~12개의 관찰. 각 신호:
   - \`bullet\` — 한 줄로 "어떤 발화 / 어휘 / 망설임에서 어떤 가설이 나오는지". (필수)
-  - \`quote\` — transcript 의 짧은 직접 인용. 있을 때만 포함 (선택).
+  - \`quote\` — transcript 의 짧은 직접 인용. 있을 때만 포함 (선택).${outputShapeExtra}
 - \`confidence\` — 다음 룰:
   - **high** — 다출처 신호 일치 (직접 발화 + 간접 신호 모두 같은 방향)
   - **medium** — 단일 발화 또는 약한 신호

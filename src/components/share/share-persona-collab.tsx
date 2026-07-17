@@ -40,6 +40,10 @@ function toSection(
     summary: panel.summary,
     signals: panel.signals,
     confidence: panel.confidence,
+    // v2 — 모순(⚠)/이력을 뷰어가 read-only 로 렌더 (PersonaPanel 공유).
+    // 구버전(v1) 스냅샷엔 없으므로 optional spread.
+    ...(panel.conflicts ? { conflicts: panel.conflicts } : {}),
+    ...(panel.history ? { history: panel.history } : {}),
   };
 }
 
