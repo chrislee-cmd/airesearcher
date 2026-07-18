@@ -1386,7 +1386,10 @@
     "transcriptRecordError": "Microphone error",
     "onboardingSettings": "Click here to set up before you start",
     "onboardingUpload": "Click here to upload your file",
-    "onboardingDismiss": "Dismiss hint"
+    "onboardingDismiss": "Dismiss hint",
+    "probingConflictBadge": "Conflict",
+    "probingPrior": "Before",
+    "probingCurrent": "Now"
   },
   "InterviewsV2": {
     "fullviewTitle": "Interview Result Generator (V2)",
