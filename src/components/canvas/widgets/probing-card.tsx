@@ -33,6 +33,10 @@ import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
+import {
+  BrowserAudioNotice,
+  isBrowserAudioNoticeSuppressed,
+} from '@/components/browser-audio-notice';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
@@ -570,6 +574,8 @@ function ExpandedBody() {
   // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
+  // 브라우저 오디오 안내(blocking ack) — source='tab' 경로에서 시작 클릭 시 노출.
+  const [browserAudioNoticeOpen, setBrowserAudioNoticeOpen] = useState(false);
   // 좌 페르소나 grid DOM — PDF 캡쳐 대상 (PR: probing-pdf-export-persona-only).
   // 우패널 (질문 / 사고 흐름) · 서브헤더 · 모달 헤더는 캡쳐 범위 밖.
   const personaGridRef = useRef<HTMLDivElement | null>(null);
@@ -1358,7 +1364,7 @@ function ExpandedBody() {
   }, []);
 
   // 세션 시작 / 정지.
-  const handleStartSession = useCallback(async () => {
+  const runStartSession = useCallback(async () => {
     // 미선택 게이트 — 언어/입력 소스 중 하나라도 안 골랐으면 시작 안 함
     // (startDisabled 로 버튼도 비활성이지만 payload 안전을 위해 한 번 더 방어).
     // 여기서 source 는 SourceKind 로 좁혀져 빈값이 start 로 새지 않는다.
@@ -1370,6 +1376,21 @@ function ExpandedBody() {
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [gate, startSession, source, outputLang]);
+  // 시작 클릭 진입점 — source='tab'(브라우저 오디오 캡처) 경로는 캡처 직전
+  // 브라우저 오디오 안내를 blocking ack 로 띄운다. mic(기기 마이크)은 브라우저
+  // 설정 무관이라 바로 진행. "다시 보지 않기"로 억제됐으면 tab 도 바로 진행.
+  const handleStartSession = useCallback(() => {
+    if (!source || !outputLang) return;
+    if (source === 'tab' && !isBrowserAudioNoticeSuppressed()) {
+      setBrowserAudioNoticeOpen(true);
+      return;
+    }
+    void runStartSession();
+  }, [source, outputLang, runStartSession]);
+  const handleBrowserAudioConfirm = useCallback(() => {
+    setBrowserAudioNoticeOpen(false);
+    void runStartSession();
+  }, [runStartSession]);
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
@@ -2200,6 +2221,12 @@ function ExpandedBody() {
           />
         </WidgetFullviewPanel>,
       )}
+
+      <BrowserAudioNotice
+        open={browserAudioNoticeOpen}
+        onConfirm={handleBrowserAudioConfirm}
+        onCancel={() => setBrowserAudioNoticeOpen(false)}
+      />
 
       {exportConfirmOpen && (
         <Modal

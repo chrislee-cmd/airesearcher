@@ -62,6 +62,14 @@
   "Brand": {
     "name": "Research-Canvas"
   },
+  "BrowserAudioNotice": {
+    "title": "ブラウザのタブ音声を使用してください",
+    "body": "このセッションはブラウザのタブ音声をキャプチャします。会議やウェブサイトをネイティブのデスクトップアプリ（Zoom、Teams など）ではなくブラウザで開くと、その音声をキャプチャできます。",
+    "hint": "ネイティブアプリの音声はキャプチャできず、ブラウザのタブ音声のみ取得されます。",
+    "dontShowAgain": "今後表示しない",
+    "cancel": "キャンセル",
+    "confirm": "続行"
+  },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "同じデスクに並ぶ8つの小さなツールが、急がないリサーチを支えます。",
