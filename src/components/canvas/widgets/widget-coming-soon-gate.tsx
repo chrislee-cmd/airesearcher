@@ -27,6 +27,7 @@ import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
+import { resolveWidgetLabel } from '@/components/canvas/widget-types';
 
 type Vote = 'want' | 'skip';
 
@@ -37,15 +38,16 @@ export function WidgetComingSoonGate({
   orgId,
 }: {
   widgetKey: string;
-  /** 표시 라벨. labelKey 미지정 위젯용(레거시). */
+  /** 표시 라벨. labelKey 미지정 위젯용 + labelKey 해석 실패 시 폴백. */
   label?: string;
-  /** messages 키(full path). 지정 시 t(labelKey) 로 해석 — 라벨 i18n. */
+  /** messages 키(full path). 지정 시 t(labelKey) 해석값 우선, 실패 시 label. */
   labelKey?: string;
   /** 활성 org id (있으면 집계 컨텍스트로 저장, nullable). */
   orgId?: string | null;
 }) {
   const tRoot = useTranslations();
-  const displayLabel = labelKey ? tRoot(labelKey) : (label ?? '');
+  // labelKey 해석 우선, 실패 시 label 폴백 — blank 원천 차단 (#1051 회귀).
+  const displayLabel = resolveWidgetLabel(tRoot, { label, labelKey });
   const { push } = useToast();
   const { renderInSlot, close } = useFullview(widgetKey);
   const [selected, setSelected] = useState<Vote | null>(null);

@@ -23,7 +23,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { useTranslations } from 'next-intl';
-import type { WidgetContent } from '../widget-types';
+import { resolveWidgetLabel, type WidgetContent } from '../widget-types';
 import { Button } from '@/components/ui/button';
 import {
   WidgetHeaderColorPicker,
@@ -251,9 +251,7 @@ function WidgetShellInner({
             color: 'var(--canvas-card-header-text)',
           }}
         >
-          {content.meta.labelKey
-            ? tRoot(content.meta.labelKey)
-            : content.meta.label}
+          {resolveWidgetLabel(tRoot, content.meta)}
         </div>
       </div>
       {/* framed body — 2.5px 검은 inner frame + inset shadow. 그 안쪽
