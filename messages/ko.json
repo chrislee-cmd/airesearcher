@@ -504,6 +504,7 @@
     },
     "adminPayments": "결제 관리 (관리자)",
     "adminDesignSystem": "디자인 시스템 (관리자)",
+    "adminWritingSystem": "라이팅 시스템 (관리자)",
     "adminAnalytics": "분석 대시보드 (관리자)",
     "adminQaFeedback": "QA 피드백 (관리자)",
     "adminRecruitingInvitations": "리크루팅 요청 (관리자)"
