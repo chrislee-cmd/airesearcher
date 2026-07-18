@@ -14,6 +14,8 @@ import { UtSessionBody } from './moderator-ai/ut-session-body';
 export const moderatorAiCard: WidgetContent = {
   key: 'moderator_ai',
   meta: {
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051 회귀). 영문 기본 라벨.
+    label: 'AI UT',
     labelKey: 'Features.moderator_ai.title',
     accent: 'mint',
     cost: 0,

@@ -2280,6 +2280,8 @@ void PROBING_THINK_IMPORTANCE;
 export const probingCard: WidgetContent = {
   key: 'probing',
   meta: {
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051 회귀). 영문 기본 라벨.
+    label: 'Probing Assistant',
     labelKey: 'Features.probing.title',
     accent: 'sky',
     cost: 25,

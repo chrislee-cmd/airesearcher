@@ -37,10 +37,15 @@ export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
 export type WidgetContent = {
   key: string;
   meta: {
+    // 표시 라벨. `labelKey` 가 있으면 i18n 해석값이 우선하지만, label 은
+    // "무시"가 아니라 **해석 실패 시 폴백**이다 (resolveWidgetLabel 참고).
+    // labelKey 만 두고 label 을 비우면, 어떤 이유로든 labelKey 미해석 시
+    // 셸/사이드바가 완전 blank 로 렌더된다 (#1051 회귀). labelKey 를 쓰는
+    // 위젯은 반드시 폴백 label(영문 기본)을 함께 둘 것.
     label?: string;
     // 옵션: label 대신 messages 키(full path, 예: 'Features.quotes.title')로
-    // 헤더/사이드바 라벨을 i18n. 지정 시 셸/사이드바가 t(labelKey) 로 해석하고
-    // label 은 무시(레거시 fallback). 미지정 위젯은 기존대로 label 문자열 사용.
+    // 헤더/사이드바 라벨을 i18n. 지정 시 셸/사이드바가 t(labelKey) 로 해석해
+    // localized 라벨을 우선 노출하고, 해석 실패 시 label 로 폴백한다.
     labelKey?: string;
     accent: AccentColor;
     cost?: number;
@@ -80,3 +85,34 @@ export type WidgetContent = {
   // 플래그만 제거하면 즉시 정상 렌더.
   dimmed?: boolean;
 };
+
+// next-intl 의 `useTranslations()`(루트) 반환의 최소 구조 계약.
+// dotted full-path 를 받는 호출 시그니처 + `.has()` 존재 확인만 쓴다.
+type LabelTranslator = {
+  (key: string): string;
+  has(key: string): boolean;
+};
+
+/**
+ * 위젯 표시 라벨 해석 — 셸(헤더)·사이드바 nav·준비중 게이트가 공유하는 SSOT.
+ *
+ * 규칙: `labelKey` 가 있고 **실제로 해석되면** localized 값을 우선 노출,
+ * 아니면 하드코드 `label`(영문 폴백)로 내려간다. `t.has()` 로 먼저 존재를
+ * 확인하므로, 미해석 시 next-intl 의 getMessageFallback('')(request.ts) 이
+ * 반환하는 빈 문자열이 라벨 자리에 새어 blank 로 렌더되는 일을 원천 차단한다.
+ * 해석값이 (예상 밖으로) 빈 문자열이어도 label 로 폴백 — blank 불가.
+ *
+ * 배경(#1051 회귀): keep-4 카드가 하드코드 label 을 지우고 labelKey 만 남긴 뒤,
+ * labelKey 미해석 상황에서 폴백이 없어 fullview nav·헤더 라벨이 전부 blank 였다.
+ */
+export function resolveWidgetLabel(
+  t: LabelTranslator,
+  meta: Pick<WidgetContent['meta'], 'label' | 'labelKey'>,
+): string {
+  const { labelKey, label } = meta;
+  if (labelKey && t.has(labelKey)) {
+    const resolved = t(labelKey);
+    if (resolved) return resolved;
+  }
+  return label ?? '';
+}
