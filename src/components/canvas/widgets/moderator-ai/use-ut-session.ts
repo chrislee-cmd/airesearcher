@@ -22,6 +22,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 
@@ -130,6 +131,14 @@ export function useUtSession(): UseUtSession {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UtSessionResult | null>(null);
   const [isSupported, setIsSupported] = useState(false);
+
+  // 유저-facing 문자열은 messages(AiUt) — 흐름 함수들이 빈 deps 로 stable 하도록
+  // t 도 ref 로 읽는다(다른 refs 와 동형).
+  const t = useTranslations('AiUt');
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   // 콜백(MediaRecorder.onstop / 폴링) 이 최신 값을 refs 로 읽어 stale 클로저를
   // 피한다 — 이 훅의 흐름 함수들은 전부 stable(빈 deps) 이고 state 는 refs 로 읽음.
@@ -274,7 +283,7 @@ export function useUtSession(): UseUtSession {
           }
           if (s.status === 'error') {
             // 전사 실패라도 업로드된 녹화/오디오는 다운로드 가능.
-            setError('전사에 실패했어요. 화면녹화·오디오는 다운로드할 수 있어요.');
+            setError(tRef.current('error.transcribe'));
             setPhase('error');
             return;
           }
@@ -307,7 +316,7 @@ export function useUtSession(): UseUtSession {
         await uploadOne(id, 'recording', blobs.recording, supabase);
       }
     } catch {
-      setError('업로드에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      setError(tRef.current('error.upload'));
       setPhase('error');
       return;
     }
@@ -390,11 +399,7 @@ export function useUtSession(): UseUtSession {
         setError(null);
         return;
       }
-      const msg =
-        which === 'screen'
-          ? '화면 공유를 시작하지 못했어요. 브라우저가 화면 공유를 지원하는지 확인해 주세요.'
-          : '마이크 권한이 필요해요. 주소창 왼쪽 자물쇠 → 사이트 설정에서 마이크를 허용해 주세요.';
-      setError(msg);
+      setError(tRef.current(which === 'screen' ? 'error.screen' : 'error.mic'));
       setPhase('idle');
     },
     [],
@@ -452,7 +457,7 @@ export function useUtSession(): UseUtSession {
       } catch {
         screen.getTracks().forEach((t) => t.stop());
         mic.getTracks().forEach((t) => t.stop());
-        setError('세션을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+        setError(tRef.current('error.createSession'));
         setPhase('idle');
         return;
       }
@@ -582,13 +587,13 @@ export function useUtSession(): UseUtSession {
         `/api/ut/sessions/${id}/download?kind=${kind}`,
       );
       if (!res.ok) {
-        setError('다운로드 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
+        setError(tRef.current('error.downloadLink'));
         return;
       }
       const { url } = (await res.json()) as { url: string };
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
-      setError('다운로드 중 오류가 발생했어요.');
+      setError(tRef.current('error.download'));
     }
   }, []);
 

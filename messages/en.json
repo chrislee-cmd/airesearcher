@@ -1,4 +1,64 @@
 {
+  "AiUt": {
+    "consent": {
+      "title": "This session records your screen and voice",
+      "body": "This session records <b>the screen you share</b> and <b>your microphone</b>. Everything visible while recording is saved.",
+      "warning": "⚠ Sensitive information on screen — login passwords, card numbers — can be captured too. Choose the tab you share carefully and avoid screens where you enter sensitive data.",
+      "note": "The recording and audio are kept in a private location only you can access, and are downloaded only through signed links.",
+      "cancel": "Cancel",
+      "confirm": "Agree and start"
+    },
+    "url": {
+      "label": "Target site URL",
+      "description": "The site you want to test. It opens in a new tab when the session starts."
+    },
+    "siteAudio": {
+      "label": "Also record site audio",
+      "description": "Includes both your microphone and the site's audio in the video. Turn on \"Share tab audio\" in the screen-share dialog. (Default: microphone only.)"
+    },
+    "cta": {
+      "start": "Start session",
+      "stop": "End session",
+      "newSession": "Start a new session",
+      "retryUpload": "Retry upload"
+    },
+    "live": {
+      "recording": "Recording · {time}",
+      "hint": "Use the shared tab freely and think aloud. Your speech is transcribed once you end the session."
+    },
+    "subtitle": {
+      "live": "Session in progress",
+      "result": "Session result",
+      "idle": "Screen-share + voice usability testing"
+    },
+    "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
+    "result": {
+      "uploading": "Saving the recording…",
+      "transcribing": "Transcribing your speech…",
+      "logTitle": "Speech log",
+      "durationLabel": "Length {duration}",
+      "logPlaceholderTranscribing": "Your speech will appear here once transcription finishes.",
+      "logPlaceholderEmpty": "No speech was transcribed.",
+      "downloadTitle": "Downloads"
+    },
+    "download": {
+      "recording": "🎬 Screen recording",
+      "recordingTitle": "Download screen recording (with audio · mp4, webm on unsupported browsers)",
+      "audio": "🎙 Audio",
+      "audioTitle": "Download voice audio (m4a, webm on unsupported browsers)",
+      "transcript": "📄 Transcript",
+      "transcriptTitle": "Download transcript text"
+    },
+    "error": {
+      "transcribe": "Transcription failed. You can still download the screen recording and audio.",
+      "upload": "Upload failed. Please try again in a moment.",
+      "screen": "Couldn't start screen sharing. Check that your browser supports screen sharing.",
+      "mic": "Microphone access is required. Allow the microphone via the lock icon → site settings in your address bar.",
+      "createSession": "Couldn't start the session. Please try again in a moment.",
+      "downloadLink": "Couldn't create the download link. Please try again in a moment.",
+      "download": "An error occurred during download."
+    }
+  },
   "Brand": {
     "name": "Research-Canvas"
   },

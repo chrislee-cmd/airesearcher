@@ -10,8 +10,11 @@
    ⚠ 타임스탬프: 613 은 전사를 세션 단위 단일 텍스트로 저장(배치 Scribe) —
    발화별 타임스탬프는 없다. 그래서 로그는 전사 텍스트 + 세션 길이/시작시각
    메타로 구성한다(spec "발화 로그(전사, 타임스탬프)" 의 보수적 해석).
+
+   카피는 messages 의 `AiUt.result`/`AiUt.download`/`AiUt.cta` (en+ko).
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { UtPhase, UtSessionResult } from './use-ut-session';
 
@@ -44,6 +47,7 @@ export function UtResultView({
   onRetry,
   onReset,
 }: Props) {
+  const t = useTranslations('AiUt');
   const transcribing = phase === 'transcribing' || phase === 'uploading';
   const transcript = result?.transcript?.trim();
   const hasRecording = Boolean(result?.has_recording);
@@ -54,7 +58,7 @@ export function UtResultView({
       {/* 상태 배너 */}
       {transcribing && (
         <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
-          {phase === 'uploading' ? '녹화를 저장하는 중이에요…' : '발화를 전사하는 중이에요…'}
+          {phase === 'uploading' ? t('result.uploading') : t('result.transcribing')}
         </div>
       )}
       {phase === 'error' && error && (
@@ -62,7 +66,7 @@ export function UtResultView({
           <span>{error}</span>
           <div>
             <Button variant="secondary" size="sm" onClick={onRetry}>
-              업로드 다시 시도
+              {t('cta.retryUpload')}
             </Button>
           </div>
         </div>
@@ -72,11 +76,11 @@ export function UtResultView({
       <div className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-            발화 로그
+            {t('result.logTitle')}
           </h3>
           {result && (
             <span className="text-xs text-mute-soft">
-              길이 {formatDuration(result.duration_ms)}
+              {t('result.durationLabel', { duration: formatDuration(result.duration_ms) })}
             </span>
           )}
         </div>
@@ -88,8 +92,8 @@ export function UtResultView({
           ) : (
             <p className="text-sm text-mute-soft">
               {transcribing
-                ? '전사가 완료되면 여기에 발화가 표시돼요.'
-                : '전사된 발화가 없어요.'}
+                ? t('result.logPlaceholderTranscribing')
+                : t('result.logPlaceholderEmpty')}
             </p>
           )}
         </div>
@@ -98,7 +102,7 @@ export function UtResultView({
       {/* 다운로드 */}
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-          다운로드
+          {t('result.downloadTitle')}
         </h3>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -106,27 +110,27 @@ export function UtResultView({
             size="sm"
             onClick={onDownloadRecording}
             disabled={!hasRecording}
-            title="화면녹화 다운로드 (음성 포함 · mp4, 미지원 브라우저는 webm)"
+            title={t('download.recordingTitle')}
           >
-            🎬 화면녹화
+            {t('download.recording')}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={onDownloadAudio}
             disabled={!hasAudio}
-            title="음성 오디오 다운로드 (m4a, 미지원 브라우저는 webm)"
+            title={t('download.audioTitle')}
           >
-            🎙 오디오
+            {t('download.audio')}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={onDownloadTranscript}
             disabled={!transcript}
-            title="전사 텍스트 다운로드"
+            title={t('download.transcriptTitle')}
           >
-            📄 전사 텍스트
+            {t('download.transcript')}
           </Button>
         </div>
       </div>
@@ -134,7 +138,7 @@ export function UtResultView({
       {/* 새 세션 */}
       <div className="flex justify-end border-t border-line-soft pt-3">
         <Button variant="ghost" size="sm" onClick={onReset}>
-          새 세션 시작
+          {t('cta.newSession')}
         </Button>
       </div>
     </div>

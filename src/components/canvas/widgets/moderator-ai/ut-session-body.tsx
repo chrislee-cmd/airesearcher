@@ -18,6 +18,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -38,6 +39,7 @@ function formatElapsed(ms: number): string {
 }
 
 export function UtSessionBody() {
+  const t = useTranslations('AiUt');
   const session = useUtSession();
   const [targetUrl, setTargetUrl] = useState('');
   const [includeSiteAudio, setIncludeSiteAudio] = useState(false);
@@ -101,8 +103,7 @@ export function UtSessionBody() {
 
   const unsupportedNotice = !session.isSupported && (
     <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
-      이 브라우저는 화면 공유 녹화를 지원하지 않아요. 데스크톱 Chrome·Edge 등
-      최신 브라우저에서 이용해 주세요.
+      {t('unsupported')}
     </div>
   );
 
@@ -137,19 +138,16 @@ export function UtSessionBody() {
               <div className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2 text-sm font-semibold text-warning">
                   <span aria-hidden>🔴</span>
-                  녹화 중 · {formatElapsed(session.elapsedMs)}
+                  {t('live.recording', { time: formatElapsed(session.elapsedMs) })}
                 </span>
                 <Button variant="secondary" size="sm" onClick={session.stop}>
-                  세션 종료
+                  {t('cta.stop')}
                 </Button>
               </div>
             </ControlBoardPanel.Region>
             <ControlBoardPanel.Region>
               {previewFor(surface)}
-              <p className="mt-2 text-xs text-mute-soft">
-                공유한 탭에서 자유롭게 사용하며 소리 내어 생각을 말해 주세요.
-                종료하면 발화가 전사됩니다.
-              </p>
+              <p className="mt-2 text-xs text-mute-soft">{t('live.hint')}</p>
             </ControlBoardPanel.Region>
           </ControlBoardPanel>
         </div>
@@ -161,8 +159,8 @@ export function UtSessionBody() {
       <div className="flex h-full min-h-0 flex-col">
         <ControlBoardPanel gap="section" banners={unsupportedNotice || idleError || undefined}>
           <ControlBoardPanel.Input
-            label="대상 사이트 URL"
-            description="테스트할 사이트 주소예요. 세션을 시작하면 새 탭으로 열려요."
+            label={t('url.label')}
+            description={t('url.description')}
             htmlFor={`ut-url-${surface}`}
           >
             <Input
@@ -182,23 +180,22 @@ export function UtSessionBody() {
                 onChange={(e) => setIncludeSiteAudio(e.target.checked)}
                 disabled={!session.isSupported}
                 className="mt-[3px]"
-                aria-label="사이트 소리도 함께 녹음"
+                aria-label={t('siteAudio.label')}
               />
               <span>
                 <span className="font-semibold text-ink-2">
-                  사이트 소리도 함께 녹음
+                  {t('siteAudio.label')}
                 </span>
                 <br />
                 <span className="text-xs-soft text-mute-soft">
-                  영상에 마이크 음성과 사이트 소리를 함께 담아요. 화면 공유
-                  창에서 &quot;탭 오디오 공유&quot;를 켜 주세요. (기본: 마이크 음성만)
+                  {t('siteAudio.description')}
                 </span>
               </span>
             </label>
           </ControlBoardPanel.Settings>
         </ControlBoardPanel>
         <WidgetPrimaryCta
-          label="세션 시작"
+          label={t('cta.start')}
           disabled={startDisabled}
           onClick={handleStartClick}
         />
@@ -217,10 +214,10 @@ export function UtSessionBody() {
           title="AI UT"
           subtitle={
             isLive
-              ? '세션 진행 중'
+              ? t('subtitle.live')
               : isResult
-                ? '세션 결과'
-                : '화면공유 + 보이스 사용성 테스트'
+                ? t('subtitle.result')
+                : t('subtitle.idle')
           }
           onClose={close}
         >
