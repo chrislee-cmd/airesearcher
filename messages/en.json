@@ -62,6 +62,14 @@
   "Brand": {
     "name": "Research-Canvas"
   },
+  "BrowserAudioNotice": {
+    "title": "Use browser tab audio",
+    "body": "This session captures audio from your browser tab. Open the meeting or website in your browser — not the native desktop app (Zoom, Teams, etc.) — so its sound can be captured.",
+    "hint": "Native app audio can't be captured; only the browser tab's audio is picked up.",
+    "dontShowAgain": "Don't show this again",
+    "cancel": "Cancel",
+    "confirm": "Continue"
+  },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "All your research, on a single canvas. Transcription, live translation, probing, and insight analysis—flowing together in one place.",

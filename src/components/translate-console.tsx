@@ -38,6 +38,10 @@ import { IconButton } from './ui/icon-button';
 import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
+import {
+  BrowserAudioNotice,
+  isBrowserAudioNoticeSuppressed,
+} from './browser-audio-notice';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DropdownMenu } from './ui/dropdown-menu';
 import { ControlTrigger } from './ui/control-trigger';
@@ -798,6 +802,8 @@ export function TranslateConsole({
   // 'tab-only' 은 getDisplayMedia 를 쓰므로 user gesture 가 필요 — picker 는
   // Start 전까지 state 만 기록한다. 미선택('')이면 아래 idle CTA 가 비활성.
   const [captureMode, setCaptureMode] = useState<CaptureMode | ''>('');
+  // 브라우저 오디오 안내(blocking ack) — tab 슬롯 포함 캡처 모드에서 시작 시 노출.
+  const [browserAudioNoticeOpen, setBrowserAudioNoticeOpen] = useState(false);
   // Per-slot live indicator. Flips true once the slot's RTCPeerConnection
   // reaches `connected` (or the slot's recorder starts, whichever first)
   // so the topbar can show "🎤 진행자 · 📺 응답자" with active dots.
@@ -3483,6 +3489,23 @@ export function TranslateConsole({
     gate,
   ]);
 
+  // 시작 클릭 진입점 — tab 슬롯(브라우저 오디오 캡처)이 포함된 모드(both /
+  // tab-only)는 캡처 직전 브라우저 오디오 안내를 blocking ack 로 띄운다.
+  // mic-only(기기 마이크)는 브라우저 설정 무관이라 바로 진행. "다시 보지
+  // 않기"로 억제됐으면 tab 경로도 바로 진행.
+  const handleStartClick = useCallback(() => {
+    const usesTab = !!captureMode && activeSlots(captureMode).includes('tab');
+    if (usesTab && !isBrowserAudioNoticeSuppressed()) {
+      setBrowserAudioNoticeOpen(true);
+      return;
+    }
+    void start();
+  }, [captureMode, start]);
+  const handleBrowserAudioConfirm = useCallback(() => {
+    setBrowserAudioNoticeOpen(false);
+    void start();
+  }, [start]);
+
   // 🚨 Session auto-renewal (graceful handover). Called by the interval below
   // when the current OpenAI session epoch approaches the ~30 min server cap.
   // For each active slot: fetch a fresh ephemeral, boot a NEW RTCPeerConnection
@@ -4512,7 +4535,7 @@ export function TranslateConsole({
                   <ChromeButton
                     variant="default"
                     size="lg"
-                    onClick={() => void start()}
+                    onClick={handleStartClick}
                     disabled={busy || !canStart}
                   >
                     {busy ? t('starting') : `🚀 ${t('start')}`}
@@ -4661,9 +4684,15 @@ export function TranslateConsole({
           busyLabel={t('starting')}
           busy={busy}
           disabled={busy || !canStart}
-          onClick={() => void start()}
+          onClick={handleStartClick}
         />
       )}
+
+      <BrowserAudioNotice
+        open={browserAudioNoticeOpen}
+        onConfirm={handleBrowserAudioConfirm}
+        onCancel={() => setBrowserAudioNoticeOpen(false)}
+      />
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
           directly (see monitorAudioRefs). Hidden; audible unless the host
