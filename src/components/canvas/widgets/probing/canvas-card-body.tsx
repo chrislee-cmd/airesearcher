@@ -18,6 +18,7 @@
    props 로 받아 렌더하므로 여기선 더 이상 전달받지 않는다.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ProbingQuestionHistory } from './question-history';
 import type { HistoryQuestion } from '../probing-types';
@@ -42,19 +43,18 @@ export function ProbingCanvasCardBody({
   // 전체보기 진입 CTA
   onFullview: () => void;
 }) {
+  const t = useTranslations('Probing');
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* 진행 안내 — 사고 흐름·제안 질문 팝업은 전체보기로 이전됨. 위젯뷰는
           컴팩트 진행 상태 + 전체보기 진입만 노출. */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-3 text-center">
         <p className="text-sm italic text-mute-soft">
-          {isLive
-            ? '세션 진행 중 · 전체 보기에서 AI 사고 흐름과 제안 질문을 확인하세요'
-            : '세션을 시작하세요'}
+          {isLive ? t('canvasBody.liveHint') : t('canvasBody.startHint')}
         </p>
         {isLive && (
           <Button variant="secondary" size="sm" onClick={onFullview}>
-            전체 보기 열기
+            {t('canvasBody.openFullview')}
           </Button>
         )}
       </div>

@@ -34,6 +34,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ export function ProbingResearchContext({
   backfillFeedback?: ProbingBackfillFeedback | null;
   disabled?: boolean;
 }) {
+  const t = useTranslations('Probing');
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋. 타이핑은 goalDraft 만 갱신하고
   // (키 입력마다 자동저장하지 않음), "적용" 클릭 시에만 onResearchGoalChange 를
   // 1회 호출한다. 외부 로드/세션 전환으로 researchGoal prop 이 바뀌면 draft 동기 —
@@ -86,28 +88,28 @@ export function ProbingResearchContext({
 
   return (
     <section className="space-y-3 border-b-2 border-line-soft bg-paper px-4 py-3">
-      <Field label="조사 목적">
+      <Field label={t('control.fieldResearchGoal')}>
         <Textarea
           value={goalDraft}
           onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
           rows={2}
           maxLength={GOAL_MAX}
           disabled={disabled}
-          placeholder="예: 가성비 vs 프리미엄 선택 기준 이해"
+          placeholder={t('control.goalPlaceholder')}
           className="resize-none text-md"
         />
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <p className="text-xs text-mute" aria-live="polite">
-            {goalDirty ? "미적용 변경 — '적용' 을 눌러 반영" : ''}
+            {goalDirty ? t('control.unappliedChange') : ''}
           </p>
           <Button
             variant="primary"
             size="sm"
             onClick={applyGoal}
             disabled={!canApplyGoal}
-            title="입력한 조사 목적을 지금 반영"
+            title={t('control.applyGoalTitle')}
           >
-            적용
+            {t('control.apply')}
           </Button>
         </div>
       </Field>

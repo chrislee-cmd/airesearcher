@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { TranslateConsole } from '@/components/translate-console';
 import { TranslateSessionProvider } from '@/components/translate/translate-session-context';
@@ -44,6 +45,7 @@ function TranslateStatePush() {
 // 모달 portal 을 둘 다 감싸야 하므로 (둘은 형제) 여기서 wrap 한다.
 function ExpandedBody() {
   const { renderInSlot, close } = useFullview('translate');
+  const t = useTranslations('TranslateConsole');
   return (
     <TranslateSessionProvider>
       <TranslateStatePush />
@@ -60,8 +62,8 @@ function ExpandedBody() {
       </div>
       {renderInSlot(
         <WidgetFullviewPanel
-          title="AI 동시통역"
-          subtitle="마이크 음성을 실시간 STT + 동시통역"
+          title={t('fullviewTitle')}
+          subtitle={t('fullviewSubtitle')}
           onClose={close}
         >
           <TranslateFullviewView onGoToCard={close} />
@@ -74,11 +76,10 @@ function ExpandedBody() {
 export const translateCard: WidgetContent = {
   key: 'translate',
   meta: {
-    label: 'AI 동시통역',
+    labelKey: 'Features.translate.title',
     accent: 'mint',
     cost: 50,
     thumbnail: '/thumbnail/interpreter.png',
-    description: '마이크 음성을 실시간 STT + 동시통역. 공유 링크로 외부 청취',
     expandedCols: 3,
   },
   state: 'idle',

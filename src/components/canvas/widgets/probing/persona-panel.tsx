@@ -40,14 +40,15 @@ const conflictRowStyle = {
 type Confidence = ProbingPersonaSection['confidence'];
 
 function ConfidenceDot({ confidence }: { confidence: Confidence }) {
+  const t = useTranslations('Widgets');
   const label =
     confidence === 'high'
-      ? '신호 강함'
+      ? t('probingConfidenceHigh')
       : confidence === 'medium'
-        ? '신호 보통'
+        ? t('probingConfidenceMedium')
         : confidence === 'low'
-          ? '신호 약함'
-          : '단서 부족';
+          ? t('probingConfidenceLow')
+          : t('probingConfidenceInsufficient');
   const cls =
     confidence === 'high'
       ? 'text-success'
@@ -144,7 +145,7 @@ export function PersonaPanel({
             <IconButton
               variant="ghost-danger"
               onClick={onRemove}
-              aria-label={`위젯 제거: ${title}`}
+              aria-label={t('probingRemoveWidget', { title })}
               // 인터랙션 전용 — PDF 캡쳐 (페르소나 grid) 에서는 제외.
               data-export-hide
             >
@@ -156,7 +157,7 @@ export function PersonaPanel({
 
       {isInsufficient ? (
         <p className="text-xs italic text-mute-soft leading-snug">
-          단서 부족 — 발화 누적 후 표시
+          {t('probingInsufficientHint')}
         </p>
       ) : (
         <>

@@ -20,6 +20,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Field } from '@/components/canvas/shell/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,6 +62,7 @@ export function PersonaSectionConfigurator({
   // hydration 대기 등으로 구성 비활성 (localStorage 복원 전 깜빡임 방지).
   disabled?: boolean;
 }) {
+  const t = useTranslations('Probing');
   const [addOpen, setAddOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
@@ -85,7 +87,7 @@ export function PersonaSectionConfigurator({
     // 서브텍스트 제거 — 6열 작은 정사각형 카드는 아이콘 + 제목만.
     ...DEFAULT_PERSONA_PANELS.map((p) => ({
       key: p.key,
-      label: p.title,
+      label: t(`personaSection.${p.key}`),
       icon: p.icon,
     })),
     ...customSections.map((c) => ({
@@ -117,14 +119,14 @@ export function PersonaSectionConfigurator({
 
   return (
     <Field
-      label="페르소나 섹션 구성"
-      description="켜진 섹션만 전체보기 위젯 · 데이터 적재 대상 (끄면 제외, 기본은 재활성 가능 · 추가 섹션은 재추가 시 재생성)"
+      label={t('configurator.label')}
+      description={t('configurator.description')}
     >
       <ModeCardGroup
         selection="multi"
         columns={6}
         variant="flat"
-        ariaLabel="페르소나 섹션 구성"
+        ariaLabel={t('configurator.label')}
         options={options}
         selected={activeKeys}
         onToggle={handleToggle}
@@ -134,7 +136,7 @@ export function PersonaSectionConfigurator({
           <ModeActionCard
             variant="flat"
             icon="＋"
-            label={customFull ? '한도 도달' : '섹션 추가'}
+            label={customFull ? t('configurator.limitReached') : t('configurator.addSection')}
             onClick={() => setAddOpen(true)}
             disabled={disabled || customFull}
           />
@@ -152,11 +154,11 @@ export function PersonaSectionConfigurator({
             id="probing-persona-section-add-title"
             className="text-lg font-semibold tracking-[-0.01em] text-ink-2"
           >
-            페르소나 섹션 추가
+            {t('configurator.addModalTitle')}
           </h2>
           <Field
-            label="섹션 이름"
-            description="전체보기 위젯 · 구성 카드에 표시될 제목"
+            label={t('configurator.nameLabel')}
+            description={t('configurator.nameDesc')}
           >
             <Input
               value={titleDraft}
@@ -164,11 +166,11 @@ export function PersonaSectionConfigurator({
                 setTitleDraft(e.target.value.slice(0, CUSTOM_TITLE_MAX))
               }
               maxLength={CUSTOM_TITLE_MAX}
-              placeholder="예: 구매 여정 / 경쟁사 전환 이유"
+              placeholder={t('configurator.namePlaceholder')}
               size="sm"
             />
           </Field>
-          <Field label="조사 목적" description="이 섹션에서 알고 싶은 것 (선택)">
+          <Field label={t('configurator.goalLabel')} description={t('configurator.goalDesc')}>
             <Textarea
               value={descDraft}
               onChange={(e) =>
@@ -176,13 +178,13 @@ export function PersonaSectionConfigurator({
               }
               rows={3}
               maxLength={CUSTOM_DESC_MAX}
-              placeholder="예: 응답자가 기존 도구를 떠난 결정적 순간과 그 트리거"
+              placeholder={t('configurator.goalPlaceholder')}
               className="resize-none text-md"
             />
           </Field>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={closeAdd}>
-              취소
+              {t('configurator.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -190,7 +192,7 @@ export function PersonaSectionConfigurator({
               onClick={commitAdd}
               disabled={titleDraft.trim().length === 0}
             >
-              추가
+              {t('configurator.add')}
             </Button>
           </div>
         </div>

@@ -203,6 +203,7 @@ export function QuotesCardBody() {
   const tCommon = useTranslations('Common');
   const tWidgets = useTranslations('Widgets');
   const tProcess = useTranslations('Process');
+  const tView = useTranslations('Features.transcriptsView');
   const requireAuth = useRequireAuth();
   const { user } = useAuth();
   // 영속 dismissal 키 스코프 (계정별). 로그아웃/계정 전환 시 자동으로 다른
@@ -588,9 +589,7 @@ export function QuotesCardBody() {
         const keys = new Set(prev.map((r) => r.storage_key));
         return [...prev, ...files.filter((r) => !keys.has(r.storage_key))];
       });
-      setUploadError(
-        '전사 시작 슬롯을 얻지 못해 대기 중입니다 — 업로드된 파일은 아래 "전사 시작"으로 다시 시작할 수 있어요.',
-      );
+      setUploadError(tView('uploadSlotWaiting'));
       return;
     }
     setUploadError(null);
@@ -699,7 +698,7 @@ export function QuotesCardBody() {
   }
 
   async function deleteJob(id: string) {
-    if (!confirm('이 전사 작업을 삭제할까요?')) return;
+    if (!confirm(tView('deleteJobConfirm'))) return;
     const res = await fetch(`/api/transcripts/jobs/${id}`, { method: 'DELETE' });
     if (res.ok) job.removeJob(id);
     await job.refreshJobs();
@@ -718,10 +717,10 @@ export function QuotesCardBody() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? `retry ${res.status}`);
       }
-      toast.push('전사를 다시 시작했어요', { tone: 'info' });
+      toast.push(tView('retryStarted'), { tone: 'info' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'retry_failed';
-      toast.push(`재시도 실패: ${msg}`, { tone: 'warn' });
+      toast.push(tView('retryFailed', { msg }), { tone: 'warn' });
     } finally {
       await job.refreshJobs();
     }
@@ -841,9 +840,9 @@ export function QuotesCardBody() {
         if (r.status === 'fulfilled') job.removeJob(r.value);
       }
       if (failed === 0) {
-        toast.push(`${succeeded}개 삭제 완료`, { tone: 'info' });
+        toast.push(tView('bulkDeleteDone', { count: succeeded }), { tone: 'info' });
       } else {
-        toast.push(`${succeeded}개 성공 · ${failed}개 실패`, { tone: 'warn' });
+        toast.push(tView('bulkDeletePartial', { succeeded, failed }), { tone: 'warn' });
       }
     } finally {
       clearSelection();
@@ -1174,7 +1173,7 @@ export function QuotesCardBody() {
           ControlBoardPanel.Settings 슬롯 SSOT(SETTINGS_ROW_GAP + items-end) —
           손코딩 flex gap 제거. */}
       <ControlBoardPanel.Settings>
-        <Field label="프로젝트">
+        <Field label={tView('fieldProject')}>
           <ProjectPicker
             widget="quotes"
             value={projectId}
@@ -1182,7 +1181,7 @@ export function QuotesCardBody() {
           />
         </Field>
 
-        <Field label="언어">
+        <Field label={tView('fieldLanguage')}>
           <div className="min-w-24">
             <DropdownMenu
               items={languageItems}
@@ -1191,7 +1190,7 @@ export function QuotesCardBody() {
                   {...aria}
                   data-open={open}
                   onClick={onClick}
-                  aria-label="언어"
+                  aria-label={tView('fieldLanguage')}
                 >
                   {currentLanguageLabel}
                 </ControlTrigger>
@@ -1353,7 +1352,7 @@ export function QuotesCardBody() {
               <WidgetOutputRegion padY="lg">
                 <div className="mb-2 flex items-center justify-between">
                   <SectionLabel>{tWidgets('transcriptStuckSection')}</SectionLabel>
-                  <span className="text-xs text-warning">{stuckJobs.length}건</span>
+                  <span className="text-xs text-warning">{tView('countItems', { count: stuckJobs.length })}</span>
                 </div>
                 <p className="mb-3 text-xs text-mute-soft">
                   {tWidgets('transcriptStuckHint')}
@@ -1388,7 +1387,9 @@ export function QuotesCardBody() {
                   <summary className="flex cursor-pointer list-none items-center justify-between text-xs uppercase tracking-[.18em] text-mute-soft">
                     <span>{tWidgets('transcriptStageDetails')}</span>
                     <span className="tabular-nums normal-case tracking-normal">
-                      {Object.keys(job.localUploads).length + queueJobs.length}건
+                      {tView('countItems', {
+                        count: Object.keys(job.localUploads).length + queueJobs.length,
+                      })}
                     </span>
                   </summary>
                   <div className="mt-3 space-y-5">
@@ -1408,8 +1409,8 @@ export function QuotesCardBody() {
                     {queueJobs.length > 0 && (
                       <div>
                         <div className="mb-2 flex items-center justify-between">
-                          <SectionLabel>진행 중 / 대기</SectionLabel>
-                          <span className="text-xs text-mute-soft">{queueJobs.length}건</span>
+                          <SectionLabel>{tView('queueInProgress')}</SectionLabel>
+                          <span className="text-xs text-mute-soft">{tView('countItems', { count: queueJobs.length })}</span>
                         </div>
                         <ul className="space-y-3">
                           {queueJobs.map((j) => (
@@ -1425,7 +1426,7 @@ export function QuotesCardBody() {
                         (업로드 진행 중이거나 이미 큐에 잡이 뜬 경우는 제외). */}
                     {busyUpload && !hasUploads && queueJobs.length === 0 && (
                       <div>
-                        <SectionLabel>진행 중</SectionLabel>
+                        <SectionLabel>{tView('inProgress')}</SectionLabel>
                         <div className="mt-2">
                           <JobProgress label={tCommon('transcribing')} variant="inline" />
                         </div>
@@ -1516,10 +1517,15 @@ export function QuotesCardBody() {
           다운로드/공유/미리보기/삭제 모두 동작. 공유 모달 slot 으로 portal. */}
       {renderInSlot(
         <WidgetFullviewPanel
-          title="전사록 — 전체 보기"
+          title={tView('fullviewTitle')}
           subtitle={
-            `완료 ${doneJobs.length}건 · 진행 중 ${queueJobs.length}건` +
-            (stuckJobs.length > 0 ? ` · 멈춤 ${stuckJobs.length}건` : '')
+            tView('fullviewSubtitle', {
+              done: doneJobs.length,
+              queue: queueJobs.length,
+            }) +
+            (stuckJobs.length > 0
+              ? tView('fullviewSubtitleStuck', { stuck: stuckJobs.length })
+              : '')
           }
           onClose={closeFullview}
         >
@@ -1529,8 +1535,8 @@ export function QuotesCardBody() {
               fullWidth
               value={fullviewQuery}
               onChange={(e) => setFullviewQuery(e.target.value)}
-              placeholder="파일명으로 검색…"
-              aria-label="전사록 파일명 검색"
+              placeholder={tView('searchPlaceholder')}
+              aria-label={tView('searchAria')}
             />
           </div>
           {(() => {
@@ -1545,7 +1551,7 @@ export function QuotesCardBody() {
               return (
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   <p className="py-10 text-center text-md text-mute-soft">
-                    {q ? '검색 결과가 없습니다.' : '아직 전사 작업이 없습니다.'}
+                    {q ? tView('noSearchResults') : tView('noJobs')}
                   </p>
                 </div>
               );
@@ -1574,9 +1580,9 @@ export function QuotesCardBody() {
                           e.target.checked ? new Set(visibleIds) : new Set(),
                         )
                       }
-                      aria-label="전체 선택"
+                      aria-label={tView('selectAll')}
                     />
-                    전체 선택
+                    {tView('selectAll')}
                   </label>
                 </div>
 
@@ -1586,7 +1592,7 @@ export function QuotesCardBody() {
                 {selected.size > 0 && (
                   <div className="mb-3 flex shrink-0 items-center gap-3 border-2 border-line-soft bg-amore-bg px-4 py-2 rounded-sm">
                     <span className="text-sm font-semibold text-ink-2">
-                      {selected.size}개 선택
+                      {tView('nSelected', { count: selected.size })}
                     </span>
                     <div className="ml-auto flex items-center gap-2">
                       <Button
@@ -1594,14 +1600,14 @@ export function QuotesCardBody() {
                         size="sm"
                         onClick={clearSelection}
                       >
-                        선택 해제
+                        {tView('clearSelection')}
                       </Button>
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => bulkDownload(selectedList)}
                       >
-                        📥 ZIP 다운로드 ({selected.size})
+                        {tView('zipDownload', { count: selected.size })}
                       </Button>
                       <Button
                         variant="destructive"
@@ -1609,7 +1615,7 @@ export function QuotesCardBody() {
                         onClick={() => setBulkDeleteOpen(true)}
                         disabled={bulkBusy}
                       >
-                        🗑 일괄 삭제 ({selected.size})
+                        {tView('bulkDeleteBtn', { count: selected.size })}
                       </Button>
                     </div>
                   </div>
@@ -1643,13 +1649,17 @@ export function QuotesCardBody() {
       <Modal
         open={bulkDeleteOpen}
         onClose={() => (bulkBusy ? undefined : setBulkDeleteOpen(false))}
-        title="선택한 전사 작업 삭제"
+        title={tView('bulkDeleteModalTitle')}
         size="sm"
       >
         <div className="space-y-5">
           <p className="text-md leading-[1.7] text-mute">
-            선택한 <span className="font-semibold text-ink-2">{selected.size}개</span>{' '}
-            전사 작업을 삭제할까요? 되돌릴 수 없습니다.
+            {tView.rich('bulkDeleteConfirmBody', {
+              count: selected.size,
+              b: (chunks) => (
+                <span className="font-semibold text-ink-2">{chunks}</span>
+              ),
+            })}
           </p>
           <div className="flex items-center justify-end gap-2">
             <Button
@@ -1658,7 +1668,7 @@ export function QuotesCardBody() {
               onClick={() => setBulkDeleteOpen(false)}
               disabled={bulkBusy}
             >
-              취소
+              {tCommon('cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -1666,7 +1676,9 @@ export function QuotesCardBody() {
               onClick={() => void bulkDelete(Array.from(selected))}
               disabled={bulkBusy}
             >
-              {bulkBusy ? '삭제 중…' : `${selected.size}개 삭제`}
+              {bulkBusy
+                ? tView('deleting')
+                : tView('deleteCount', { count: selected.size })}
             </Button>
           </div>
         </div>
@@ -1825,6 +1837,7 @@ function JobRow({
   selected?: boolean;
   onToggleSelect?: (on: boolean) => void;
 }) {
+  const tView = useTranslations('Features.transcriptsView');
   const [previewOpen, setPreviewOpen] = useState(false);
   // Default to the cleaned version — preview/download routes also default to
   // 'clean' so behaviour matches when the toggle hasn't been touched.
@@ -1843,8 +1856,8 @@ function JobRow({
   // 전사 중" 대신 "멈춤" 으로 덮어 무한 진행 오표시를 없앤다.
   const pill =
     stuck && job.status !== 'error'
-      ? { text: '멈춤', cls: 'text-warning' }
-      : pillFor(job.status);
+      ? { text: tView('stuckPill'), cls: 'text-warning' }
+      : pillFor(job.status, tView);
   // 멈춘 잡은 실제로 진전이 없으므로 거짓 ETA 막대(ProgressEstimate)를 숨긴다.
   const inFlight =
     !stuck &&
@@ -1861,7 +1874,7 @@ function JobRow({
           <Checkbox
             checked={selected}
             onChange={(e) => onToggleSelect?.(e.target.checked)}
-            aria-label={`${job.filename} 선택`}
+            aria-label={tView('selectAria', { filename: job.filename })}
           />
         ) : undefined
       }
@@ -1925,7 +1938,7 @@ function JobRow({
                 items={[
                   {
                     destination: 'google-docs',
-                    title: job.filename || '전사록',
+                    title: job.filename || tView('transcriptFallbackTitle'),
                     // Reuse the server-built DOCX so Google Doc preserves
                     // the same rich layout users see in the .docx download.
                     getBlob: async () => {
@@ -1946,7 +1959,9 @@ function JobRow({
                 onClick={() => setPreviewOpen((v) => !v)}
                 className="uppercase tracking-[0.18em]"
               >
-                {previewMode === 'inline' && previewOpen ? '접기' : '미리보기'}
+                {previewMode === 'inline' && previewOpen
+                  ? tView('collapse')
+                  : tView('preview')}
               </Button>
             </div>
           )}
@@ -1957,12 +1972,12 @@ function JobRow({
               onClick={onRetry}
               className="uppercase tracking-[0.18em]"
             >
-              재시도
+              {tView('retry')}
             </Button>
           )}
           <IconButton
             variant="ghost-danger"
-            aria-label="전사 작업 삭제"
+            aria-label={tView('deleteJobAria')}
             onClick={onDelete}
             className="text-sm"
           >
@@ -2103,7 +2118,7 @@ function JobPreview({
               onClick={() => setSource('clean')}
               className="uppercase tracking-[0.18em]"
             >
-              정제본
+              {tView('cleanVersion')}
             </Button>
             <Button
               variant={source === 'raw' ? 'primary' : 'ghost'}
@@ -2111,12 +2126,12 @@ function JobPreview({
               onClick={() => setSource('raw')}
               className="uppercase tracking-[0.18em]"
             >
-              원본
+              {tView('rawVersion')}
             </Button>
           </div>
           {typeof touched === 'number' && typeof total === 'number' && (
             <div className="text-xs-soft text-mute-soft tabular-nums">
-              보정 {touched}/{total} turn
+              {tView('correctionCount', { touched, total })}
             </div>
           )}
         </div>
@@ -2124,7 +2139,7 @@ function JobPreview({
       {error ? (
         <div className="text-sm text-warning">{error}</div>
       ) : html === null ? (
-        <div className="text-sm text-mute-soft">불러오는 중…</div>
+        <div className="text-sm text-mute-soft">{tView('loadingPreview')}</div>
       ) : (
         <div
           className="docx-preview max-h-[400px] overflow-y-auto text-md leading-[1.7] text-ink-2"
@@ -2200,21 +2215,24 @@ function formatClock(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function pillFor(status: TranscriptJobStatus): { text: string; cls: string } {
+function pillFor(
+  status: TranscriptJobStatus,
+  t: ReturnType<typeof useTranslations>,
+): { text: string; cls: string } {
   switch (status) {
     case 'uploading':
-      return { text: '업로드 중', cls: 'text-amore' };
+      return { text: t('statusUploading'), cls: 'text-amore' };
     case 'queued':
-      return { text: '대기', cls: 'text-mute-soft' };
+      return { text: t('statusQueued'), cls: 'text-mute-soft' };
     case 'submitting':
-      return { text: '제출 중', cls: 'text-amore' };
+      return { text: t('statusSubmitting'), cls: 'text-amore' };
     case 'transcribing':
-      return { text: '전사 중', cls: 'text-amore' };
+      return { text: t('statusTranscribing'), cls: 'text-amore' };
     case 'done':
-      return { text: '완료', cls: 'text-amore' };
+      return { text: t('statusDone'), cls: 'text-amore' };
     case 'error':
-      return { text: '오류', cls: 'text-warning' };
+      return { text: t('statusError'), cls: 'text-warning' };
     case 'cancelled':
-      return { text: '중단됨', cls: 'text-mute-soft' };
+      return { text: t('statusCancelled'), cls: 'text-mute-soft' };
   }
 }

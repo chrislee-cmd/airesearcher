@@ -14,6 +14,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ThinkingEvent } from '../probing-types';
 
 export function ProbingThinkingStream({
@@ -23,6 +24,7 @@ export function ProbingThinkingStream({
   events: ThinkingEvent[];
   isStreaming: boolean;
 }) {
+  const t = useTranslations('Probing');
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // auto-scroll bottom — 새 라인이 도착할 때마다 가장 최근 사고를 보여준다.
@@ -39,7 +41,7 @@ export function ProbingThinkingStream({
     <section className="flex flex-col border-b-2 border-line-soft bg-paper">
       <header className="flex items-center justify-between px-4 pb-1 pt-2.5">
         <span className="text-xs uppercase tracking-[0.22em] text-mute-soft">
-          AI 의 사고 흐름
+          {t('thinking.header')}
         </span>
         <ThinkingPulse active={isStreaming} />
       </header>
@@ -49,7 +51,7 @@ export function ProbingThinkingStream({
       >
         {events.length === 0 ? (
           <span className="italic text-mute-soft">
-            발화가 누적되면 AI 의 사고 흐름이 표시됩니다…
+            {t('thinking.empty')}
           </span>
         ) : (
           <ul className="space-y-1">
@@ -72,6 +74,7 @@ export function ProbingThinkingStream({
 }
 
 function ThinkingPulse({ active }: { active: boolean }) {
+  const t = useTranslations('Probing');
   return (
     <span
       className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-mute-soft"
@@ -83,7 +86,7 @@ function ThinkingPulse({ active }: { active: boolean }) {
         }`}
         aria-hidden
       />
-      {active ? '생각 중' : '대기'}
+      {active ? t('thinking.pulseActive') : t('thinking.pulseIdle')}
     </span>
   );
 }

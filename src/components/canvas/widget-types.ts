@@ -37,7 +37,11 @@ export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
 export type WidgetContent = {
   key: string;
   meta: {
-    label: string;
+    label?: string;
+    // 옵션: label 대신 messages 키(full path, 예: 'Features.quotes.title')로
+    // 헤더/사이드바 라벨을 i18n. 지정 시 셸/사이드바가 t(labelKey) 로 해석하고
+    // label 은 무시(레거시 fallback). 미지정 위젯은 기존대로 label 문자열 사용.
+    labelKey?: string;
     accent: AccentColor;
     cost?: number;
     // 옵션: cost 의 1-line 표기를 통째로 override. 일반 위젯은 cost 만
