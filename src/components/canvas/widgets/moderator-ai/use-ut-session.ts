@@ -67,14 +67,19 @@ function pickAudio(): Picked {
   return { mime: '', ext: 'webm' };
 }
 
-// 화면 트랙 — mp4(H.264) 우선, webm(vp9→vp8) 폴백. 화면 레코더는 오디오
-// 트랙이 없어 비디오 코덱만 요청한다.
+// 화면 트랙 — mp4(H.264+AAC) 우선, webm(vp9/vp8+opus) 폴백. 화면 레코더는
+// 화면 비디오 + 마이크 음성을 합친 스트림을 녹으므로 오디오 코덱까지 포함한
+// mime 을 요청한다 → 영상 파일에 음성이 함께 담긴다.
 function pickVideo(): Picked {
   if (typeof MediaRecorder === 'undefined') return { mime: '', ext: 'webm' };
-  for (const t of ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4']) {
+  for (const t of [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
+  ]) {
     if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'mp4' };
   }
-  for (const t of ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']) {
+  for (const t of ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']) {
     if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'webm' };
   }
   return { mime: '', ext: 'webm' };
@@ -448,8 +453,15 @@ export function useUtSession(): UseUtSession {
       const video = pickVideo();
       videoMimeRef.current = video.mime || 'video/webm';
       videoExtRef.current = video.ext;
+      // 화면 비디오 + 마이크 음성을 한 스트림으로 합쳐 녹화 → 영상 파일에
+      // 발화가 함께 담긴다. 마이크 트랙은 별도 audioRecorder(전사·오디오
+      // 다운로드용)와 공유한다(같은 track 을 두 레코더가 읽어도 안전).
+      const combinedStream = new MediaStream([
+        ...screen.getVideoTracks(),
+        ...mic.getAudioTracks(),
+      ]);
       const screenRecorder = new MediaRecorder(
-        screen,
+        combinedStream,
         video.mime ? { mimeType: video.mime } : undefined,
       );
       screenChunksRef.current = [];

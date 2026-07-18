@@ -106,7 +106,7 @@ export function UtResultView({
             size="sm"
             onClick={onDownloadRecording}
             disabled={!hasRecording}
-            title="화면녹화 다운로드 (mp4, 미지원 브라우저는 webm)"
+            title="화면녹화 다운로드 (음성 포함 · mp4, 미지원 브라우저는 webm)"
           >
             🎬 화면녹화
           </Button>
