@@ -1,6 +1,16 @@
 import 'server-only';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  LOCALES,
+  type Locale,
+  type TokenRow,
+  type NamespaceStat,
+  type Coverage,
+  type GlossaryRow,
+  type WritingRule,
+  type WritingSystemData,
+} from './types';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Writing-system data collector (super-admin catalog).
@@ -15,54 +25,11 @@ import { join } from 'node:path';
 // that path (would fall back to en — the language-leak bug the parity gate
 // guards). leafKeys is re-implemented here (12 lines) rather than imported from
 // scripts/check-i18n.ts because scripts/ is excluded from the app tsconfig.
+//
+// Types + LOCALES live in ./types (no node:fs / server-only) so the client
+// catalog can import them without dragging this server-only module into the
+// browser bundle.
 // ─────────────────────────────────────────────────────────────────────────
-
-export const LOCALES = ['en', 'ko', 'ja', 'th'] as const;
-export type Locale = (typeof LOCALES)[number];
-
-export type TokenRow = {
-  /** Top-level namespace (screen/domain), e.g. "Sidebar". */
-  ns: string;
-  /** Full dotted leaf path, e.g. "Sidebar.transcripts". */
-  path: string;
-  /** Path with the namespace prefix stripped, e.g. "transcripts". */
-  subKey: string;
-  /** Rendered value per locale; null when the locale has no leaf at this path. */
-  values: Record<Locale, string | null>;
-  /** Locales missing this key relative to en (empty = full parity). */
-  missing: Locale[];
-};
-
-export type NamespaceStat = { ns: string; count: number };
-
-export type Coverage = {
-  locale: Locale;
-  have: number;
-  total: number;
-  pct: number;
-  missing: number;
-};
-
-export type GlossaryRow = {
-  concept: string;
-  en: string;
-  ko: string;
-  ja: string;
-  th: string;
-};
-
-export type WritingRule = { title: string; body: string };
-
-export type WritingSystemData = {
-  rows: TokenRow[];
-  namespaces: NamespaceStat[];
-  coverage: Coverage[];
-  totalKeys: number;
-  /** true once every locale hits exact parity with en (parity gate green). */
-  parityHolds: boolean;
-  glossary: GlossaryRow[];
-  rules: WritingRule[];
-};
 
 type Json = Record<string, unknown>;
 

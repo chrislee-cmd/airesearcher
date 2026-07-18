@@ -11,7 +11,7 @@ import {
   type Locale,
   type TokenRow,
   type WritingSystemData,
-} from '../lib/collect';
+} from '../lib/types';
 
 type ViewId = 'tokens' | 'glossary' | 'rules';
 
