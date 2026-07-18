@@ -350,6 +350,15 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
                 {t('adminDesignSystem')}
               </PopoverLink>
               <PopoverLink
+                href="/writing-system"
+                onClick={() => {
+                  track('admin_writing_system_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminWritingSystem')}
+              </PopoverLink>
+              <PopoverLink
                 href="/admin/qa-feedback"
                 onClick={() => {
                   track('admin_qa_feedback_open_click');

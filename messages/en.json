@@ -512,6 +512,7 @@
     },
     "adminPayments": "Payments (admin)",
     "adminDesignSystem": "Design system (admin)",
+    "adminWritingSystem": "Writing system (admin)",
     "adminAnalytics": "Analytics (admin)",
     "adminQaFeedback": "QA feedback (admin)",
     "adminRecruitingInvitations": "Recruiting requests (admin)"
