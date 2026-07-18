@@ -45,6 +45,31 @@ export async function buildHostToken(opts: {
   return at.toJwt();
 }
 
+// Publisher tokens can publish but NOT subscribe — issued to an anon AI-UT
+// participant who shares their screen + mic into the room. Publish-only keeps
+// the permission split clean (the participant pushes tracks, the researcher's
+// viewer token subscribes; neither can do the other's job), matching the
+// remote-session spec's participant=publish-only / researcher=subscribe-only.
+export async function buildPublisherToken(opts: {
+  roomName: string;
+  identity: string;
+  ttlSeconds?: number;
+}): Promise<string> {
+  const { apiKey, apiSecret } = requireEnv();
+  const at = new AccessToken(apiKey, apiSecret, {
+    identity: opts.identity,
+    ttl: opts.ttlSeconds ?? DEFAULT_TTL_SECONDS,
+  });
+  at.addGrant({
+    room: opts.roomName,
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: false,
+    canPublishData: true,
+  });
+  return at.toJwt();
+}
+
 export async function buildViewerToken(opts: {
   roomName: string;
   identity: string;

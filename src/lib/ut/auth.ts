@@ -23,6 +23,15 @@ export type UtSessionRow = {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  // Remote participant model (migration 20260718073700_ut_sessions_remote).
+  // Present on every row; 'local' self-capture sessions leave the token/room
+  // NULL and mode = 'local'.
+  mode: string;
+  task_goal: string | null;
+  participant_token: string | null;
+  livekit_room: string | null;
+  participant_joined_at: string | null;
+  session_kind: string;
 };
 
 export type UtAccess =

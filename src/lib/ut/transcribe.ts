@@ -19,15 +19,25 @@ export async function transcribeUtSession(
 ): Promise<UtTranscribeResult> {
   const { data: row, error: rowErr } = await admin
     .from('ut_sessions')
-    .select('id, audio_storage_key, status, meta')
+    .select('id, audio_storage_key, status, meta, task_goal, target_url')
     .eq('id', sessionId)
     .single();
   if (rowErr || !row) return { ok: false, error: 'not_found', status: 404 };
 
   // Preserve client-captured meta (user_agent, …) — error detail is merged in,
-  // never clobbered, since the table has no dedicated error column.
+  // never clobbered, since the table has no dedicated error column. The
+  // researcher-posed task_goal + target_url are stashed into meta.context so the
+  // downstream analysis (622 vision timeline, report gen) reads the intent that
+  // framed the session co-located with the transcript, without re-querying
+  // (spec §4 — task/goal = 분석 컨텍스트). Scribe is pure STT with no prompt
+  // slot, so the context lives with the result rather than steering the STT.
   const baseMeta =
     row.meta && typeof row.meta === 'object' ? (row.meta as Record<string, unknown>) : {};
+  const context: Record<string, unknown> = {};
+  if (row.task_goal) context.task_goal = row.task_goal;
+  if (row.target_url) context.target_url = row.target_url;
+  const withContext =
+    Object.keys(context).length > 0 ? { ...baseMeta, context } : baseMeta;
   const failWith = async (error: string) => {
     await admin
       .from('ut_sessions')
@@ -70,7 +80,7 @@ export async function transcribeUtSession(
 
   await admin
     .from('ut_sessions')
-    .update({ transcript: outcome.transcript, status: 'done' })
+    .update({ transcript: outcome.transcript, status: 'done', meta: withContext })
     .eq('id', sessionId);
   return { ok: true, transcript: outcome.transcript };
 }
