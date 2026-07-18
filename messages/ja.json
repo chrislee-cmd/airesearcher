@@ -594,6 +594,7 @@
     },
     "adminPayments": "決済管理（管理者）",
     "adminDesignSystem": "デザインシステム（管理者）",
+    "adminWritingSystem": "ライティングシステム（管理者）",
     "adminAnalytics": "アナリティクス（管理者）",
     "adminQaFeedback": "QAフィードバック（管理者）",
     "adminRecruitingInvitations": "リクルーティングリクエスト（管理者）"

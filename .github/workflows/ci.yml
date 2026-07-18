@@ -77,6 +77,15 @@ jobs:
       - name: Korean literal guard (ratchet)
         run: pnpm check:korean
 
+      # 디자인 토큰 하드코드 ratchet 가드 — PROJECT.md §9 디자인 시스템 불변식
+      # ("색/그림자/라디우스는 토큰만 사용")의 정적 CI 강제. 토큰 대상 속성의
+      # 하드코드(arbitrary shadow-[…]·인라인 hex·rounded-[Npx]·SVG fill)를
+      # .design-hardcode-baseline.json 대비 파일별 카운트로 비교, 초과하면 red
+      # (신규 유입 차단). burn-down PR 은 baseline 을 단조 감소시킨다. check:korean
+      # 의 형제 — 과탐 방지 위해 색/shadow/radius/font/border 만 엄격.
+      - name: Design hardcode guard (ratchet)
+        run: pnpm check:design
+
   secrets-scan:
     name: Secrets scan
     runs-on: ubuntu-latest
