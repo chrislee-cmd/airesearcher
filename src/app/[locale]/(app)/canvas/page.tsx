@@ -48,6 +48,7 @@ const OPEN_FOR_NORMAL: ReadonlySet<CanvasWidgetKey> = new Set<CanvasWidgetKey>([
   'probing',
   'translate',
   'quotes', // 전사록
+  'moderator_ai', // AI UT — placeholder 교체 후 실기능 활성(dimmed 제거 동반)
 ]);
 
 // org gate 를 한 번만 해석 — preview 게이트(isUnlimited)와 vote 저장 컨텍스트
