@@ -57,6 +57,32 @@ const Body = z.object({
   // 섹션만 prompt/schema 에 포함 → 꺼진 섹션은 데이터 적재 자체가 안 됨.
   // 빈 배열 = 모든 기본 제거 (custom 만으로 진행 — sections 0 이면 400).
   default_section_keys: z.array(z.string().min(1).max(64)).max(16).optional(),
+  // PR (probing-contradiction-aware-persona): stateful reflection — 직전까지
+  // 누적된 현재 패널. 제공되면 LLM 이 새 window 를 이것과 비교(refine/contradict/
+  // none)해 갱신한다. 미전달 시 옛 무상태 동작(첫 tick 이거나 backward compat).
+  // key 는 요청 섹션 key(활성 기본 key + custom alias)와 동일 인덱싱.
+  prior_panels: z
+    .array(
+      z.object({
+        key: z.string().min(1).max(64),
+        summary: z.string().max(4000).optional().default(''),
+        signals: z
+          .array(
+            z.object({
+              bullet: z.string().max(2000),
+              quote: z.string().max(2000).optional(),
+            }),
+          )
+          .max(64)
+          .optional()
+          .default([]),
+        confidence: z
+          .enum(['high', 'medium', 'low', 'insufficient'])
+          .optional(),
+      }),
+    )
+    .max(64)
+    .optional(),
 });
 
 export async function POST(request: Request) {
@@ -128,24 +154,59 @@ export async function POST(request: Request) {
   }
   const sectionKeyList = sections.map((s) => s.key).join(' / ');
 
+  // stateful reflection (PR: probing-contradiction-aware-persona) — 직전까지
+  // 누적된 패널을 비교 기준 블록으로 프롬프트에 싣는다. 내용 있는 패널만(빈
+  // insufficient 는 비교 의미 없음). prior_panels 는 client 가 자기 이전 LLM
+  // 출력에서 만든 구조화 데이터라 원문 sanitize 대상(직접 user 입력)이 아니고,
+  // 명확히 구획된 블록으로만 주입한다.
+  const priorPanels = parsed.data.prior_panels ?? [];
+  const filledPrior = priorPanels.filter(
+    (p) =>
+      (p.summary?.trim().length ?? 0) > 0 || (p.signals?.length ?? 0) > 0,
+  );
+  const hasPrior = filledPrior.length > 0;
+  const priorBlock = hasPrior
+    ? `## 기존 패널 (직전까지 누적된 현재 페르소나 — 비교 기준)
+${filledPrior
+  .map((p) => {
+    const sigs =
+      (p.signals ?? [])
+        .map((s) => `  - ${s.bullet}${s.quote ? ` ("${s.quote}")` : ''}`)
+        .join('\n') || '  (신호 없음)';
+    return `### ${p.key} [confidence=${p.confidence ?? 'insufficient'}]\n요약: ${
+      p.summary?.trim() || '(빈 요약)'
+    }\n${sigs}`;
+  })
+  .join('\n\n')}
+
+`
+    : '';
+  // stateful 이면 비교·갱신 지시, 아니면 옛 무상태 지시(첫 tick).
+  const fillInstruction = hasPrior
+    ? `위 "기존 패널" 과 아래 transcript window 를 함께 보고 각 섹션을 갱신하세요. 새 신호가 기존과 일관/보강이면 refine(신호 누적), 사실·방향이 충돌하면 contradict(+conflicts 기록·confidence 재평가), 새 신호가 없으면 none(기존 유지). 애매하면 refine 로 — 확실한 충돌만 contradict. 출력 JSON 의 각 섹션 key 는 이 목록(${sectionKeyList})과 정확히 일치해야 합니다.`
+    : `위 transcript 만 보고 응답자의 페르소나를 ${sections.length} 섹션 (${sectionKeyList}) 으로 채우세요. 출력 JSON 의 각 섹션 key 는 이 목록과 정확히 일치해야 합니다. transcript 가 빈약한 섹션은 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열로 두세요. 일반론으로 빈 칸을 채우지 마세요.`;
+
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),
     // 동적 schema — custom alias (custom_1..N) 를 명시적 required property 로
     // 넣어 모델이 기본 8 과 동일하게 반드시 채우게 한다. 정적 catchall schema
     // 는 custom key 를 optional (additionalProperties) 로만 노출해 누락됐다.
     schema: buildProbingPersonaSchema(sections),
-    system: buildProbingPersonaSystem(sections, parsed.data.output_lang),
-    prompt: `${guideBlock}## Transcript (누적)
+    system: buildProbingPersonaSystem(sections, parsed.data.output_lang, {
+      stateful: hasPrior,
+    }),
+    prompt: `${guideBlock}${priorBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
 
 ---
-위 transcript 만 보고 응답자의 페르소나를 ${sections.length} 섹션 (${sectionKeyList}) 으로 채우세요. 출력 JSON 의 각 섹션 key 는 이 목록과 정확히 일치해야 합니다. transcript 가 빈약한 섹션은 confidence='insufficient' + summary 빈 문자열 + signals 빈 배열로 두세요. 일반론으로 빈 칸을 채우지 마세요.`,
+${fillInstruction}`,
     // 0.3 — 같은 transcript 에서 호출마다 큰 흔들림 없도록. 0 은 너무
     // 동일한 문장을 반복, 0.4 (suggest) 보다는 보수적.
     temperature: 0.3,
-    // 섹션당 (summary + signals + confidence) ~500 token. 기본 8 섹션은 4000
-    // 유지, custom 섹션이 늘면 비례 상향 (cap 8000) 해 응답 절단 회피.
-    maxOutputTokens: Math.min(8000, Math.max(4000, sections.length * 500)),
+    // 섹션당 (summary + signals + confidence + stateful 시 changeType/conflicts)
+    // ~650 token. stateful 누적으로 신호/conflicts 가 늘 수 있어 cap·per-section
+    // 을 상향(8000→12000, 500→650)해 응답 절단(누락) 회피.
+    maxOutputTokens: Math.min(12_000, Math.max(5_000, sections.length * 650)),
     // structuredOutputMode: 'jsonTool' — Anthropic 의 기본 strict structured
     // output ('outputFormat') 은 schema 를 constrained-decoding grammar 로
     // 컴파일하는데, 섹션이 10개 (기본 8 + custom 2) 를 넘으면 "compiled grammar

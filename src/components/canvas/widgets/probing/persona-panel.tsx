@@ -15,6 +15,7 @@
    여기에 추가. 현재는 순수 표시.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import type { ProbingPersonaSection } from '@/lib/probing-prompts';
 import { IconButton } from '@/components/ui/icon-button';
 
@@ -26,6 +27,13 @@ const panelStyle = {
 
 const insufficientStyle = {
   border: '2px dashed var(--color-line)',
+  borderRadius: 'var(--sidebar-nav-radius)',
+} as const;
+
+// 모순(⚠) 인라인 행 — warning 톤 박스. 기존 panelStyle 처럼 인라인 style 로
+// 토큰 참조(className bracket 아님 → DS-6 bracket 게이트 무관).
+const conflictRowStyle = {
+  border: '2px solid var(--color-warning)',
   borderRadius: 'var(--sidebar-nav-radius)',
 } as const;
 
@@ -86,13 +94,24 @@ export function PersonaPanel({
   // (probing-widget-added) 을 1회 재생. 몇 초 뒤 부모가 false 로 되돌린다.
   highlight?: boolean;
 }) {
+  const t = useTranslations('Widgets');
   const confidence: Confidence = section?.confidence ?? 'insufficient';
   const summary = section?.summary?.trim() ?? '';
   const signals = (section?.signals ?? []).filter(
     (s) => typeof s?.bullet === 'string' && s.bullet.trim().length > 0,
   );
+  // 모순 쌍(⚠) — prior/current 중 하나라도 내용 있는 것만. 있으면 패널은
+  // insufficient 로 떨구지 않는다(모순은 곧 채워진 내용이 있다는 뜻).
+  const conflicts = (section?.conflicts ?? []).filter(
+    (c) =>
+      (c?.prior?.trim().length ?? 0) > 0 ||
+      (c?.current?.trim().length ?? 0) > 0,
+  );
+  const hasConflict = conflicts.length > 0;
   const isInsufficient =
-    confidence === 'insufficient' || (summary.length === 0 && signals.length === 0);
+    !hasConflict &&
+    (confidence === 'insufficient' ||
+      (summary.length === 0 && signals.length === 0));
 
   return (
     <section
@@ -111,6 +130,15 @@ export function PersonaPanel({
           </h4>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {hasConflict && (
+            <span
+              className="text-xs leading-none text-warning"
+              aria-label={t('probingConflictBadge')}
+              title={t('probingConflictBadge')}
+            >
+              ⚠
+            </span>
+          )}
           <ConfidenceDot confidence={confidence} />
           {onRemove && (
             <IconButton
@@ -136,6 +164,48 @@ export function PersonaPanel({
             <p className="text-sm font-medium leading-snug text-ink-2">
               {summary}
             </p>
+          )}
+          {/* 모순(⚠) 인라인 — '이전 ↔ 현재' 쌍. 이전값 흐리게+취소선, 현재값
+              강조. 기존 값은 지우지 않고(누락 0) 충돌만 가시화. */}
+          {hasConflict && (
+            <ul className="flex flex-col gap-1.5">
+              {conflicts.map((c, i) => (
+                <li
+                  key={i}
+                  className="flex flex-col gap-0.5 bg-paper px-2 py-1.5"
+                  style={conflictRowStyle}
+                >
+                  <div className="flex items-center gap-1">
+                    <span aria-hidden className="text-xs leading-none text-warning">
+                      ⚠
+                    </span>
+                    {c.field?.trim() && (
+                      <span className="text-xs uppercase tracking-[0.14em] text-warning">
+                        {c.field.trim()}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs leading-snug text-mute">
+                    <span className="text-mute-soft">{t('probingPrior')}:</span>{' '}
+                    <span className="text-mute-soft line-through">
+                      {c.prior.trim()}
+                    </span>
+                    <span aria-hidden className="px-1 text-mute-soft">
+                      ↔
+                    </span>
+                    <span className="text-mute-soft">{t('probingCurrent')}:</span>{' '}
+                    <span className="font-medium text-ink-2">
+                      {c.current.trim()}
+                    </span>
+                  </p>
+                  {c.note?.trim() && (
+                    <p className="text-xs italic leading-snug text-mute-soft">
+                      {c.note.trim()}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
           {signals.length > 0 && (
             <ul className="flex flex-col gap-1">

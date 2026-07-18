@@ -65,8 +65,12 @@ import {
   PROBING_TECHNIQUES,
   PROBING_THINK_IMPORTANCE,
   probingThinkEmitSchema,
+  type ProbingChangeType,
   type ProbingOutputLang,
+  type ProbingPersonaConflict,
+  type ProbingPersonaHistoryEntry,
   type ProbingPersonaSection,
+  type ProbingPersonaSignal,
 } from '@/lib/probing-prompts';
 import {
   CUSTOM_WEIGHT,
@@ -142,6 +146,40 @@ const INJECT_QUEUE_MAX = 12;
 const WIDGET_HIGHLIGHT_MS = 2_000;
 // history 보관 cap. 너무 오래 누적되면 메모리 / 표시 부담.
 const HISTORY_MAX = 100;
+
+// ─── stateful reflection 병합 헬퍼 (PR: probing-contradiction-aware-persona) ───
+// 신호 union(dedup by bullet) — 새 신호를 기존 뒤에 붙이되 같은 bullet 은 무시.
+// "누락 0" 의 핵심: 어떤 tick 도 기존 신호를 지우지 않는다.
+function mergePersonaSignals(
+  existing: ProbingPersonaSignal[],
+  incoming: ProbingPersonaSignal[],
+): ProbingPersonaSignal[] {
+  const seen = new Set(existing.map((s) => s.bullet.trim()));
+  const out = [...existing];
+  for (const s of incoming) {
+    const k = s.bullet.trim();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+  }
+  return out;
+}
+
+// conflicts dedup (field+prior+current 동일 쌍 1회만) — 여러 tick 에서 같은 모순이
+// 반복 보고돼도 ⚠ 가 중복 쌓이지 않게.
+function dedupePersonaConflicts(
+  conflicts: ProbingPersonaConflict[],
+): ProbingPersonaConflict[] {
+  const seen = new Set<string>();
+  const out: ProbingPersonaConflict[] = [];
+  for (const c of conflicts) {
+    const k = `${c.field} ${c.prior} ${c.current}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out;
+}
 
 // PR (probing-question-dedup-cadence) under-supply 방어 — 라이브 중 transcript
 // 가 자라는데 오래 think 가 안 돌면(연속 발화로 debounce 가 계속 리셋되는 경우)
@@ -857,6 +895,41 @@ function ExpandedBody() {
       return;
     }
 
+    // stateful reflection (PR: probing-contradiction-aware-persona) — 직전까지
+    // 누적된 현재 패널을 요청 key(활성 기본 key + custom alias)로 인덱싱해 함께
+    // 보낸다. custom 은 원본 UUID→alias 로 되돌려 LLM 이 요청 key 와 매칭되게.
+    // 내용 있는 패널만(빈 insufficient 는 비교 의미 없음). 첫 tick 은 빈 배열
+    // → 서버가 무상태 프롬프트로 폴백(옛 동작 100%).
+    const priorRec = (reflectionRef.current ?? {}) as Record<
+      string,
+      ProbingPersonaSection | undefined
+    >;
+    const priorPanels: {
+      key: string;
+      summary: string;
+      signals: ProbingPersonaSignal[];
+      confidence: ProbingPersonaSection['confidence'];
+    }[] = [];
+    const pushPrior = (requestKey: string, canonical: string) => {
+      const sec = priorRec[canonical];
+      if (!sec) return;
+      const filled =
+        (sec.summary?.trim().length ?? 0) > 0 || (sec.signals?.length ?? 0) > 0;
+      if (!filled) return;
+      priorPanels.push({
+        key: requestKey,
+        summary: sec.summary ?? '',
+        signals: (sec.signals ?? []).map((s) => ({
+          bullet: s.bullet,
+          ...(s.quote ? { quote: s.quote } : {}),
+        })),
+        confidence: sec.confidence,
+      });
+    };
+    for (const k of activeDefaultKeys) pushPrior(k, k);
+    for (const c of requestCustomSections)
+      pushPrior(c.key, aliasToKey.get(c.key) ?? c.key);
+
     try {
       const res = await fetchWithAuth('/api/probing/reflection', {
         method: 'POST',
@@ -870,6 +943,8 @@ function ExpandedBody() {
           default_section_keys: activeDefaultKeys,
           // 빈 배열이면 서버는 활성 기본만.
           custom_sections: requestCustomSections,
+          // 직전까지 누적된 패널 — stateful 비교 기준. 빈 배열이면 무상태.
+          prior_panels: priorPanels,
         }),
       });
       if (!res.ok || !res.body) {
@@ -929,32 +1004,109 @@ function ExpandedBody() {
             confidenceRaw === 'low'
               ? confidenceRaw
               : 'insufficient';
+          // stateful 필드 (PR: probing-contradiction-aware-persona) — prior 를
+          // 보낸 tick 에서만 채워진다. changeType 미상이면 undefined.
+          const changeTypeRaw = sec.changeType;
+          const changeType: ProbingChangeType | undefined =
+            changeTypeRaw === 'refine' ||
+            changeTypeRaw === 'contradict' ||
+            changeTypeRaw === 'none'
+              ? changeTypeRaw
+              : undefined;
+          const conflictsRaw = Array.isArray(sec.conflicts)
+            ? sec.conflicts
+            : [];
+          const conflicts: ProbingPersonaConflict[] = conflictsRaw
+            .filter(
+              (c): c is Record<string, unknown> => !!c && typeof c === 'object',
+            )
+            .map((c) => ({
+              field: typeof c.field === 'string' ? c.field : '',
+              prior: typeof c.prior === 'string' ? c.prior : '',
+              current: typeof c.current === 'string' ? c.current : '',
+              note: typeof c.note === 'string' ? c.note : undefined,
+            }))
+            .filter(
+              (c) =>
+                c.prior.trim().length > 0 || c.current.trim().length > 0,
+            );
           const hasContent = summary.trim().length > 0 || signals.length > 0;
-          // RC-2 (회귀 금지): 이미 채워진 패널을 새 insufficient 값이 덮어
-          // "단서 부족" 으로 다운그레이드하지 못하게 막는다. reflection 은
-          // tail window (최근 REFLECTION_MAX_CHARS) 만 보므로 대화가 길어지면
-          // 초기에 패널을 채운 발화가 window 밖으로 밀려 LLM 이 그 패널을
-          // insufficient 로 재보고한다 — 이를 무시하고 기존 값을 유지한다.
           // "채워짐" = confidence 가 insufficient 가 아니고 summary/signals 존재
           // (persona-panel 의 isInsufficient 판정과 정합).
           const existing = mergedRec[canonical];
           const existingFilled =
             !!existing &&
             existing.confidence !== 'insufficient' &&
-            (existing.summary.trim().length > 0 ||
-              existing.signals.length > 0);
-          const wouldDowngrade =
-            existingFilled && confidence === 'insufficient';
-          if (hasContent && !wouldDowngrade) {
-            mergedRec[canonical] = { summary, signals, confidence };
+            ((existing.summary?.trim().length ?? 0) > 0 ||
+              (existing.signals?.length ?? 0) > 0);
+          // 모순 = LLM 이 contradict 로 분류했거나 conflicts 를 실어 보낸 경우.
+          const isContradict =
+            changeType === 'contradict' || conflicts.length > 0;
+
+          if (!existing) {
+            // 첫 등장 — 그대로 채운다 (history 없음).
+            mergedRec[canonical] = {
+              summary,
+              signals,
+              confidence,
+              ...(conflicts.length > 0 ? { conflicts } : {}),
+            };
             anyChange = true;
-            // reflection 이 이 커스텀 섹션을 채웠으면 더는 우선 질문 대상 아님.
-            emptyCustomRef.current.delete(canonical);
-          } else if (!existing) {
-            mergedRec[canonical] = { summary, signals, confidence };
+            if (hasContent) emptyCustomRef.current.delete(canonical);
+          } else if (isContradict && existingFilled) {
+            // 모순 (A+B): 누락 0 — 기존 신호는 union 으로 화면에 유지, 충돌
+            // 지점만 conflicts 로 가시화(⚠), 직전 값을 history 로 밀어 보존.
+            const priorSnapshot: ProbingPersonaHistoryEntry = {
+              at: Date.now(),
+              summary: existing.summary ?? '',
+              signals: existing.signals ?? [],
+              confidence: existing.confidence,
+              changeType: 'contradict',
+            };
+            mergedRec[canonical] = {
+              // current 값 채택 — 단 새 summary 가 비면 기존 유지.
+              summary:
+                summary.trim().length > 0 ? summary : existing.summary ?? '',
+              signals: mergePersonaSignals(existing.signals ?? [], signals),
+              // 모순 시 새 confidence 로 재평가. 단 tail-window 손실로 인한
+              // insufficient 부당 하향은 막는다(RC-2 취지 보존).
+              confidence:
+                confidence === 'insufficient'
+                  ? existing.confidence
+                  : confidence,
+              conflicts: dedupePersonaConflicts([
+                ...(existing.conflicts ?? []),
+                ...conflicts,
+              ]),
+              history: [...(existing.history ?? []), priorSnapshot],
+            };
             anyChange = true;
+            if (hasContent) emptyCustomRef.current.delete(canonical);
+          } else if (hasContent) {
+            // refine (또는 changeType 미상 + 내용 있음) — 조용히 누적. 기존
+            // 신호에 새 신호를 union(dedup), summary 갱신. 기존 conflicts/history
+            // 는 보존. RC-2: 새 insufficient 는 기존 채움을 덮지 않는다.
+            const wouldDowngrade =
+              existingFilled && confidence === 'insufficient';
+            if (!wouldDowngrade) {
+              mergedRec[canonical] = {
+                ...existing,
+                summary:
+                  summary.trim().length > 0
+                    ? summary
+                    : existing.summary ?? '',
+                signals: mergePersonaSignals(existing.signals ?? [], signals),
+                confidence:
+                  confidence === 'insufficient'
+                    ? existing.confidence
+                    : confidence,
+              };
+              anyChange = true;
+              emptyCustomRef.current.delete(canonical);
+            }
+            // wouldDowngrade → 기존 유지 (덮지 않음).
           }
-          // wouldDowngrade === true → 기존 채워진 슬롯 그대로 유지 (덮지 않음).
+          // changeType='none' & 내용 없음 → 기존 그대로 (아무것도 안 함).
         }
         const hasAnyKey = Object.keys(mergedRec).some(
           (k) => mergedRec[k] !== undefined,
@@ -1548,6 +1700,14 @@ function ExpandedBody() {
             ...(s.quote ? { quote: s.quote } : {}),
           })),
           confidence: sec?.confidence ?? 'insufficient',
+          // v2 (PR: probing-contradiction-aware-persona) — 모순 쌍 + 이력을
+          // 뷰어가 read-only 로 렌더하도록 스냅샷에 실는다 (있을 때만).
+          ...(sec?.conflicts && sec.conflicts.length > 0
+            ? { conflicts: sec.conflicts }
+            : {}),
+          ...(sec?.history && sec.history.length > 0
+            ? { history: sec.history }
+            : {}),
         });
       };
       // 활성 섹션만 스냅샷 — 컨트롤 패널에서 끈 기본 섹션은 전체보기 렌더 ·
