@@ -58,7 +58,11 @@ export async function transcribeUtSession(
     return { ok: false, error: 'download_failed', status: 502 };
   }
 
-  const outcome = await scribeTranscribe(apiKey, audio, 'ut-audio.webm');
+  // Announce the real container to Scribe — the mic track may be m4a (AAC) on
+  // browsers that record mp4, not just webm. ElevenLabs sniffs the bytes but the
+  // filename extension is a hint, so keep it truthful to the stored object.
+  const audioExt = row.audio_storage_key.split('.').pop()?.toLowerCase() || 'webm';
+  const outcome = await scribeTranscribe(apiKey, audio, `ut-audio.${audioExt}`);
   if (!outcome.ok) {
     await failWith(outcome.error);
     return { ok: false, error: outcome.error, status: outcome.status };

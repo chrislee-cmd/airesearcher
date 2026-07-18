@@ -1,4 +1,64 @@
 {
+  "AiUt": {
+    "consent": {
+      "title": "화면과 음성을 녹화합니다",
+      "body": "이 세션은 <b>공유하는 화면</b> 과 <b>마이크 음성</b> 을 녹화합니다. 녹화가 진행되는 동안 표시되는 모든 화면이 저장돼요.",
+      "warning": "⚠ 로그인 비밀번호·카드번호 등 민감한 정보가 화면에 보이면 함께 녹화될 수 있어요. 공유할 탭을 신중히 고르고, 민감 정보 입력 화면은 피해 주세요.",
+      "note": "녹화본과 음성은 본인만 접근할 수 있는 안전한 저장소에 보관되며, 서명 링크로만 다운로드됩니다.",
+      "cancel": "취소",
+      "confirm": "동의하고 시작"
+    },
+    "url": {
+      "label": "대상 사이트 URL",
+      "description": "테스트할 사이트 주소예요. 세션을 시작하면 새 탭으로 열려요."
+    },
+    "siteAudio": {
+      "label": "사이트 소리도 함께 녹음",
+      "description": "영상에 마이크 음성과 사이트 소리를 함께 담아요. 화면 공유 창에서 \"탭 오디오 공유\"를 켜 주세요. (기본: 마이크 음성만)"
+    },
+    "cta": {
+      "start": "세션 시작",
+      "stop": "세션 종료",
+      "newSession": "새 세션 시작",
+      "retryUpload": "업로드 다시 시도"
+    },
+    "live": {
+      "recording": "녹화 중 · {time}",
+      "hint": "공유한 탭에서 자유롭게 사용하며 소리 내어 생각을 말해 주세요. 종료하면 발화가 전사됩니다."
+    },
+    "subtitle": {
+      "live": "세션 진행 중",
+      "result": "세션 결과",
+      "idle": "화면공유 + 보이스 사용성 테스트"
+    },
+    "unsupported": "이 브라우저는 화면 공유 녹화를 지원하지 않아요. 데스크톱 Chrome·Edge 등 최신 브라우저에서 이용해 주세요.",
+    "result": {
+      "uploading": "녹화를 저장하는 중이에요…",
+      "transcribing": "발화를 전사하는 중이에요…",
+      "logTitle": "발화 로그",
+      "durationLabel": "길이 {duration}",
+      "logPlaceholderTranscribing": "전사가 완료되면 여기에 발화가 표시돼요.",
+      "logPlaceholderEmpty": "전사된 발화가 없어요.",
+      "downloadTitle": "다운로드"
+    },
+    "download": {
+      "recording": "🎬 화면녹화",
+      "recordingTitle": "화면녹화 다운로드 (음성 포함 · mp4, 미지원 브라우저는 webm)",
+      "audio": "🎙 오디오",
+      "audioTitle": "음성 오디오 다운로드 (m4a, 미지원 브라우저는 webm)",
+      "transcript": "📄 전사 텍스트",
+      "transcriptTitle": "전사 텍스트 다운로드"
+    },
+    "error": {
+      "transcribe": "전사에 실패했어요. 화면녹화·오디오는 다운로드할 수 있어요.",
+      "upload": "업로드에 실패했어요. 잠시 후 다시 시도해 주세요.",
+      "screen": "화면 공유를 시작하지 못했어요. 브라우저가 화면 공유를 지원하는지 확인해 주세요.",
+      "mic": "마이크 권한이 필요해요. 주소창 왼쪽 자물쇠 → 사이트 설정에서 마이크를 허용해 주세요.",
+      "createSession": "세션을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      "downloadLink": "다운로드 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+      "download": "다운로드 중 오류가 발생했어요."
+    }
+  },
   "Brand": {
     "name": "Research-Canvas"
   },
