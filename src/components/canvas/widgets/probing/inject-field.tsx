@@ -17,6 +17,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Field } from '@/components/canvas/shell/field';
 import { ChipInput } from '@/components/ui/chip-input';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ export function ProbingInjectField({
   onInject,
   disabled = false,
   backfillFeedback = null,
-  placeholder = '예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?',
+  placeholder,
   confirmLabel,
 }: {
   // "주입" 버튼 (또는 Enter) 클릭 시 1회 호출. 갱신과 무관.
@@ -47,6 +48,7 @@ export function ProbingInjectField({
   // 즉시 알 수 있게 한다(호스트는 토스트를 쓰므로 미전달).
   confirmLabel?: string;
 }) {
+  const t = useTranslations('Probing');
   const [draft, setDraft] = useState('');
   // 제출 시각 — confirmLabel 노출 게이트. 재제출마다 새 값으로 타이머 리셋.
   const [sentAt, setSentAt] = useState<number | null>(null);
@@ -68,8 +70,8 @@ export function ProbingInjectField({
 
   return (
     <Field
-      label="추가 질문 주입"
-      description="응답자에게 즉시 던질 질문 — '주입' 을 눌러 AI 질문 popup + 좌측 위젯으로 1회 반영"
+      label={t('inject.label')}
+      description={t('inject.description')}
     >
       <div className="flex items-center gap-2">
         <div className="flex flex-1 items-center rounded-xs border-2 border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
@@ -80,7 +82,7 @@ export function ProbingInjectField({
             }
             onCommit={inject}
             disabled={disabled}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('inject.placeholder')}
             className="min-w-[140px] flex-1"
           />
         </div>
@@ -89,25 +91,25 @@ export function ProbingInjectField({
           size="sm"
           onClick={inject}
           disabled={!canInject}
-          title="입력한 질문을 지금 주입 (AI popup + 좌측 위젯)"
+          title={t('inject.injectTitle')}
         >
-          주입
+          {t('inject.inject')}
         </Button>
       </div>
 
       {backfillFeedback && (
         <p className="mt-1.5 text-xs" aria-live="polite">
           {backfillFeedback.status === 'running' && (
-            <span className="text-mute">🔍 관련 내용 찾는 중…</span>
+            <span className="text-mute">{t('inject.backfillRunning')}</span>
           )}
           {backfillFeedback.status === 'backfilled' && (
             <span className="text-amore">
-              ✓ 대화에서 {backfillFeedback.count}개 발화 자동 채움
+              {t('inject.backfillDone', { count: backfillFeedback.count })}
             </span>
           )}
           {backfillFeedback.status === 'empty' && (
             <span className="text-warning">
-              ⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다
+              {t('inject.backfillEmpty')}
             </span>
           )}
         </p>

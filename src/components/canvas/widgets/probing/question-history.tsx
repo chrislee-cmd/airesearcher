@@ -11,12 +11,19 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useMemo, useState } from 'react';
-import {
-  PROBING_TECHNIQUE_LABEL,
-  type ProbingTechnique,
-  type ProbingThinkImportance,
-} from '@/lib/probing-prompts';
+import { useTranslations } from 'next-intl';
+import { type ProbingThinkImportance } from '@/lib/probing-prompts';
 import type { HistoryQuestion } from '../probing-types';
+
+type ProbingT = ReturnType<typeof useTranslations>;
+
+// PROBING_TECHNIQUE_LABEL(한국어, probing-prompts.ts=P7 소유)을 UI 배지용으로
+// i18n 키(Probing.technique.*)로 해석. 매핑에 없는 값은 raw 노출(fallback).
+function techniqueLabelOf(technique: string | null | undefined, t: ProbingT): string {
+  if (!technique) return 'probe';
+  const known = ['contrast', 'devils_advocate', 'balance_game', 'clarification', 'timeline'];
+  return known.includes(technique) ? t(`technique.${technique}`) : technique;
+}
 
 const IMPORTANCE_DOT_COLOR: Record<ProbingThinkImportance, string> = {
   high: 'text-warning',
@@ -30,13 +37,15 @@ const IMPORTANCE_DOTS: Record<ProbingThinkImportance, string> = {
   low: '●○○',
 };
 
-function formatRelativeKo(epochMs: number, nowMs: number): string {
+function formatRelative(epochMs: number, nowMs: number, t: ProbingT): string {
   if (!Number.isFinite(epochMs)) return '';
   const diff = Math.max(0, nowMs - epochMs);
-  if (diff < 30_000) return '방금 전';
-  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}분 전`;
-  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
-  return `${Math.floor(diff / 86_400_000)}일 전`;
+  if (diff < 30_000) return t('history.justNow');
+  if (diff < 60 * 60_000)
+    return t('history.minutesAgo', { n: Math.floor(diff / 60_000) });
+  if (diff < 24 * 60 * 60_000)
+    return t('history.hoursAgo', { n: Math.floor(diff / 3_600_000) });
+  return t('history.daysAgo', { n: Math.floor(diff / 86_400_000) });
 }
 
 export function ProbingQuestionHistory({
@@ -53,6 +62,7 @@ export function ProbingQuestionHistory({
   onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations('Probing');
 
   // 핀 된 항목 위로 정렬 — 같은 group 안은 최신 dismissed_at 먼저.
   const sorted = useMemo(() => {
@@ -77,7 +87,7 @@ export function ProbingQuestionHistory({
         className="flex w-full items-center justify-between gap-2 bg-paper px-4 py-2.5 text-left hover:bg-paper-soft"
       >
         <span className="text-sm font-medium text-ink-2">
-          질문 기록 · {history.length}개
+          {t('history.title', { count: history.length })}
           {starredCount > 0 && (
             <span className="ml-2 text-xs text-amore">★ {starredCount}</span>
           )}
@@ -102,7 +112,7 @@ export function ProbingQuestionHistory({
         <ul className="max-h-[280px] space-y-1.5 overflow-y-auto border-t border-line-soft bg-paper-soft px-3 py-3">
           {sorted.length === 0 ? (
             <li className="py-4 text-center text-sm italic text-mute-soft">
-              아직 기록된 질문이 없습니다.
+              {t('history.empty')}
             </li>
           ) : (
             sorted.map((q) => (
@@ -110,6 +120,7 @@ export function ProbingQuestionHistory({
                 key={q.id}
                 question={q}
                 nowMs={nowMs}
+                t={t}
                 onCopy={() => onCopy(q.text)}
                 onToggleStar={() => onToggleStar(q.id)}
                 onDelete={() => onDelete(q.id)}
@@ -125,23 +136,22 @@ export function ProbingQuestionHistory({
 function HistoryRow({
   question,
   nowMs,
+  t,
   onCopy,
   onToggleStar,
   onDelete,
 }: {
   question: HistoryQuestion;
   nowMs: number;
+  t: ProbingT;
   onCopy: () => void;
   onToggleStar: () => void;
   onDelete: () => void;
 }) {
-  const techniqueLabel =
-    question.technique && question.technique in PROBING_TECHNIQUE_LABEL
-      ? PROBING_TECHNIQUE_LABEL[question.technique as ProbingTechnique]
-      : question.technique || 'probe';
+  const techniqueLabel = techniqueLabelOf(question.technique, t);
   const dots = IMPORTANCE_DOTS[question.importance];
   const dotColor = IMPORTANCE_DOT_COLOR[question.importance];
-  const rel = formatRelativeKo(question.emitted_at, nowMs);
+  const rel = formatRelative(question.emitted_at, nowMs, t);
   return (
     <li
       className={`rounded-xs border bg-paper px-3 py-2 ${question.is_starred ? 'border-amore border-l-[3px]' : 'border-line-soft'}`}
@@ -163,7 +173,7 @@ function HistoryRow({
       )}
       <div className="flex justify-end gap-1.5">
         <HistoryActionButton
-          label={question.is_starred ? '별표 해제' : '별표'}
+          label={question.is_starred ? t('history.unstar') : t('history.star')}
           onClick={onToggleStar}
           active={question.is_starred}
         >
@@ -181,7 +191,7 @@ function HistoryRow({
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
         </HistoryActionButton>
-        <HistoryActionButton label="복사" onClick={onCopy}>
+        <HistoryActionButton label={t('history.copy')} onClick={onCopy}>
           <svg
             viewBox="0 0 24 24"
             width="12"
@@ -197,7 +207,7 @@ function HistoryRow({
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
         </HistoryActionButton>
-        <HistoryActionButton label="삭제" onClick={onDelete}>
+        <HistoryActionButton label={t('history.delete')} onClick={onDelete}>
           <svg
             viewBox="0 0 24 24"
             width="12"

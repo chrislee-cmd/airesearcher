@@ -17,6 +17,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { Field } from '@/components/canvas/shell/field';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,16 +34,11 @@ export type SourceKind = 'mic' | 'tab';
 
 const GOAL_MAX = 2_000;
 
-// 라벨은 동시통역(#537)과 통일 — "기기 마이크" / "브라우저 오디오 인풋".
-// value(mic/tab)는 STT/분석 분기용이라 유지, 표시 라벨만 교체.
-const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
-  { value: 'mic', label: '기기 마이크' },
-  { value: 'tab', label: '브라우저 오디오 인풋' },
-];
-
 // 분석 출력 언어 옵션 — translate 의 LANGS 6종과 동일. 입력 (STT) 언어와
 // 독립적으로 분석 결과 언어를 선택 (예: 한국어 인터뷰 → 영어 분석).
+// 라벨은 언어 endonym (각 언어를 자국어 표기로 노출) — 번역하지 않는다.
 const OUTPUT_LANG_OPTIONS: { value: ProbingOutputLang; label: string }[] = [
+  // i18n-allow-korean -- 언어 선택기 endonym (자국어 표기 유지, 번역 안 함)
   { value: 'ko', label: '한국어' },
   { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },
@@ -78,6 +74,13 @@ function ControlFields({
   projectId: string | null;
   onProjectChange: (projectId: string | null) => void;
 }) {
+  const t = useTranslations('Probing');
+  // 라벨은 동시통역(#537)과 통일. value(mic/tab)는 STT/분석 분기용이라 유지,
+  // 표시 라벨만 로케일별로.
+  const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
+    { value: 'mic', label: t('control.sourceMic') },
+    { value: 'tab', label: t('control.sourceTab') },
+  ];
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와
   // 동일 패턴). 타이핑은 goalDraft 만 갱신하고 (키 입력마다 자동저장하지 않음),
   // "적용" 클릭 시에만 onResearchGoalChange 를 1회 호출한다. 외부 로드/세션
@@ -123,19 +126,19 @@ function ControlFields({
             위젯 슬롯 'probing' 의 독립 선택. 미선택이면 이 기기(localStorage)
             에만 저장되고, 프로젝트를 고르면 그 프로젝트의 DB 설정으로 read/write.
             세션 중 disabled 게이트 없음 — 기존 동작 그대로(레이아웃만 변경). */}
-        <Field label="프로젝트">
+        <Field label={t('control.fieldProject')}>
           <ProjectPicker
             widget="probing"
             value={projectId}
             onChange={onProjectChange}
           />
         </Field>
-        <Field label="언어">
+        <Field label={t('control.fieldLanguage')}>
           <div className="min-w-24">
             <SelectMenu
-              aria-label="분석 출력 언어"
+              aria-label={t('control.outputLangAria')}
               value={outputLang}
-              placeholder="선택"
+              placeholder={t('control.select')}
               onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
               options={OUTPUT_LANG_OPTIONS}
               disabled={controlsDisabled}
@@ -143,14 +146,14 @@ function ControlFields({
             />
           </div>
         </Field>
-        <Field label="입력 소스">
+        <Field label={t('control.fieldInputSource')}>
           {/* min-w: 옛 native select 은 widest-option 고정폭 — 선택 값에 따라
               trigger 폭이 출렁이지 않도록 하한만 고정 */}
           <div className="min-w-24">
             <SelectMenu
-              aria-label="입력 소스"
+              aria-label={t('control.fieldInputSource')}
               value={source}
-              placeholder="선택"
+              placeholder={t('control.select')}
               onChange={(next) => onSourceChange(next as SourceKind)}
               options={SOURCE_OPTIONS}
               disabled={controlsDisabled}
@@ -163,28 +166,28 @@ function ControlFields({
           넓어진 클러스터 대비 왜소함을 해소하려 rows 2 → 3 으로 확대 — 데스크
           키워드 input 확대(min-h 44→52) 와 같은 계열. 폭은 fullWidth 로 이미
           클러스터를 채운다. 라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
-      <ControlBoardPanel.Input label="조사 목적">
+      <ControlBoardPanel.Input label={t('control.fieldResearchGoal')}>
         <Textarea
           value={goalDraft}
           onChange={(e) => setGoalDraft(e.target.value.slice(0, GOAL_MAX))}
           rows={3}
           maxLength={GOAL_MAX}
           disabled={goalDisabled}
-          placeholder="예: 가성비 vs 프리미엄 선택 기준 이해"
+          placeholder={t('control.goalPlaceholder')}
           className="resize-none text-md"
         />
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <p className="text-xs text-mute" aria-live="polite">
-            {goalDirty ? "미적용 변경 — '적용' 을 눌러 반영" : ''}
+            {goalDirty ? t('control.unappliedChange') : ''}
           </p>
           <Button
             variant="primary"
             size="sm"
             onClick={applyGoal}
             disabled={!canApplyGoal}
-            title="입력한 조사 목적을 지금 반영"
+            title={t('control.applyGoalTitle')}
           >
-            적용
+            {t('control.apply')}
           </Button>
         </div>
       </ControlBoardPanel.Input>
@@ -249,6 +252,7 @@ export function ProbingControlPanel({
   projectId: string | null;
   onProjectChange: (projectId: string | null) => void;
 }) {
+  const t = useTranslations('Probing');
   // 프레임(외곽 padding/폭/정렬/세로채움)은 ControlBoardPanel SSOT 소유 —
   // 여기서 px-5 py-4 / shrink-0 를 직접 지정하지 않는다 (idle=active 프레임
   // 불변). 슬롯 간 세로 리듬도 손코딩(gap-5)하지 않고 cluster gap="field"
@@ -273,7 +277,7 @@ export function ProbingControlPanel({
       />
       {controlsDisabled && (
         <p className="text-xs text-mute-soft">
-          세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.
+          {t('control.controlsLockedNote')}
         </p>
       )}
       {/* 페르소나 섹션 구성 — 옛 전체보기 좌패널 (× / 위젯 추가 / 숨김 복원)
@@ -300,7 +304,7 @@ export function ProbingControlPanel({
         <span className="text-xs text-mute">{statusLabel ?? ''}</span>
         {isLive && (
           <ChromeButton size="lg" onClick={onStop} disabled={stopDisabled}>
-            정지
+            {t('control.stop')}
           </ChromeButton>
         )}
       </ControlBoardPanel.Action>

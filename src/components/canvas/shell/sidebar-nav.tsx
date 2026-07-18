@@ -109,6 +109,7 @@ export function SidebarNav({
   lockedKeys?: string[];
 }) {
   const t = useTranslations('Shell');
+  const tRoot = useTranslations();
   const locked = lockedKeys && lockedKeys.length > 0 ? new Set(lockedKeys) : null;
   return (
     <nav
@@ -142,7 +143,9 @@ export function SidebarNav({
                 className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[w.meta.accent]}`}
                 aria-hidden
               />
-              <span className="truncate">{w.meta.label}</span>
+              <span className="truncate">
+                {w.meta.labelKey ? tRoot(w.meta.labelKey) : w.meta.label}
+              </span>
             </span>
             {isLocked ? <WidgetLockedBadge /> : <WidgetStateBadge widgetKey={w.key} />}
           </button>

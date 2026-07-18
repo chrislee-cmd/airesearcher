@@ -173,6 +173,7 @@ function WidgetShellInner({
   const isDraggable = !!dragHandleProps?.draggable;
   const [headerColor, setHeaderColor] = useWidgetHeaderColor(content.key);
   const tWidgets = useTranslations('Widgets');
+  const tRoot = useTranslations();
 
   return (
     <div
@@ -250,7 +251,9 @@ function WidgetShellInner({
             color: 'var(--canvas-card-header-text)',
           }}
         >
-          {content.meta.label}
+          {content.meta.labelKey
+            ? tRoot(content.meta.labelKey)
+            : content.meta.label}
         </div>
       </div>
       {/* framed body — 2.5px 검은 inner frame + inset shadow. 그 안쪽

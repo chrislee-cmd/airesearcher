@@ -11,6 +11,7 @@
    컴포넌트는 layout + props pass-through 만.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
@@ -83,11 +84,12 @@ export function QuestionPane({
   // slot 안에서만 렌더되지만, 혹여 다른 곳에 마운트돼도 isCurrent=false 로
   // 안전하게 현행 compact/우하단으로 폴백한다(사용자 요구는 "전체보기" 한정).
   const { isCurrent: isFullview } = useFullview('probing');
+  const t = useTranslations('Probing');
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <SectionLabel>검증·probing 질문</SectionLabel>
+          <SectionLabel>{t('question.paneTitle')}</SectionLabel>
         </div>
         <Button
           variant="secondary"
@@ -95,11 +97,11 @@ export function QuestionPane({
           onClick={onManualThink}
           disabled={!thinkCanRun}
           loading={thinkingStreaming}
-          loadingLabel="생각 중…"
+          loadingLabel={t('question.thinkingShort')}
           className="uppercase tracking-[0.18em]"
-          title="지금 한 번 더 생각해줘"
+          title={t('question.thinkAgainTitle')}
         >
-          한 번 더 생각
+          {t('question.thinkAgain')}
         </Button>
       </div>
 
@@ -121,12 +123,12 @@ export function QuestionPane({
 
         {!isLive && thinkingEvents.length === 0 && history.length === 0 && (
           <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
-            세션을 시작하면 AI 가 사고 흐름과 즉시 질문을 보내기 시작합니다.
+            {t('question.emptyNotLive')}
           </div>
         )}
         {isLive && !hasTranscript && thinkingEvents.length === 0 && (
           <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
-            발화가 들어오면 AI 가 즉시 사고하기 시작합니다.
+            {t('question.emptyLiveNoTranscript')}
           </div>
         )}
       </div>

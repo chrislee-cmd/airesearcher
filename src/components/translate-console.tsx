@@ -512,6 +512,7 @@ function emptySlotRecord<T>(value: T): Record<SourceSlot, T> {
 }
 
 const LANGS: { value: string; label: string }[] = [
+  // i18n-allow-korean -- 언어 선택기 endonym (각 언어를 자국어 표기로 노출, 번역 안 함)
   { value: 'ko', label: '한국어' },
   { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },
