@@ -7,6 +7,7 @@ import { MixpanelProvider } from '@/components/mixpanel-provider';
 import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { CookieConsentBanner } from '@/components/cookie-consent-banner';
+import { DesignAuditToggle } from '@/components/design-audit-toggle';
 import { LocaleSuggestBanner } from '@/components/locale-suggest-banner';
 import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
@@ -71,6 +72,9 @@ export default async function LocaleLayout({
                   첫 방문에 1회성 언어 제안 배너(client-only, /en 에서만). */}
               <LocaleSuggestBanner />
               <CookieConsentBanner />
+              {/* 디자인 감사 테마 토글 — dev QA 전용. 프로덕션 빌드에선
+                  false && … 로 dead-code 라 유저 비노출(§audit sentinel). */}
+              {process.env.NODE_ENV !== 'production' && <DesignAuditToggle />}
             </PostHogProvider>
           </MixpanelProvider>
         </NextIntlClientProvider>
