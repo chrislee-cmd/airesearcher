@@ -1,5 +1,58 @@
 {
   "AiUt": {
+    "mode": {
+      "label": "Session mode",
+      "local": "Local (my screen)",
+      "remote": "Remote (invite a participant)"
+    },
+    "remote": {
+      "subtitle": {
+        "idle": "Remote participant session",
+        "live": "Monitoring participant live"
+      },
+      "task": {
+        "label": "Task for the participant",
+        "description": "What you want the participant to do. Shown to them and used as analysis context.",
+        "placeholder": "e.g. Sign up for a new account and add an item to the cart."
+      },
+      "url": {
+        "label": "Target site URL (optional)",
+        "description": "The site the participant will test. They can also open it themselves."
+      },
+      "kind": {
+        "label": "Session type",
+        "moderated": "Moderated (watch live)",
+        "unmoderated": "Unmoderated (review later)"
+      },
+      "cta": {
+        "create": "Create session · get link",
+        "creating": "Creating…"
+      },
+      "share": {
+        "label": "Participant link",
+        "description": "Share this link with the participant. They open it, share their screen once, and you monitor live. Keep it private.",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "waiting": {
+        "status": "Waiting for the participant to join…",
+        "cancel": "Cancel"
+      },
+      "live": {
+        "watching": "Watching live",
+        "stop": "Stop monitoring",
+        "hint": "You're watching the participant's shared screen in real time. They control their own session."
+      },
+      "review": {
+        "pending": "The participant is still in the session. Results appear here once they finish.",
+        "refresh": "Refresh"
+      },
+      "error": {
+        "create": "Couldn't create the session. Please try again in a moment.",
+        "unavailable": "Remote sessions are unavailable — live monitoring isn't configured. Use local mode instead.",
+        "monitor": "Couldn't connect to the live monitor. The session is still active; results will appear once the participant finishes."
+      }
+    },
     "consent": {
       "title": "This session records your screen and voice",
       "body": "This session records <b>the screen you share</b> and <b>your microphone</b>. Everything visible while recording is saved.",

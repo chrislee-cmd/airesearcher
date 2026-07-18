@@ -33,7 +33,9 @@ type Props = {
   onDownloadRecording: () => void;
   onDownloadAudio: () => void;
   onDownloadTranscript: () => void;
-  onRetry: () => void;
+  // 로컬 self-capture 에서만 업로드 재시도 가능(브라우저가 blob 을 들고 있음).
+  // 원격 모드는 참가자가 업로드/전사하므로 리서처가 재시도할 수 없다 → 생략.
+  onRetry?: () => void;
   onReset: () => void;
 };
 
@@ -64,11 +66,13 @@ export function UtResultView({
       {phase === 'error' && error && (
         <div className="flex flex-col gap-2 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
           <span>{error}</span>
-          <div>
-            <Button variant="secondary" size="sm" onClick={onRetry}>
-              {t('cta.retryUpload')}
-            </Button>
-          </div>
+          {onRetry && (
+            <div>
+              <Button variant="secondary" size="sm" onClick={onRetry}>
+                {t('cta.retryUpload')}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
