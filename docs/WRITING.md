@@ -81,7 +81,8 @@ top-level 네임스페이스 = 화면/도메인 단위. 현행: `Landing` · `Au
 
 - **en**: 미국 SaaS 톤 기준(§4).
 - **ko**: 한국어로 자연스럽게. en 을 옮긴 티가 나면 안 됨.
-- **ja / th**: 현재는 **en-tier**(en 기반 번역). 추후 네이티브 카피로 승격 가능.
+- **ja / th**: **LLM-tier** — `pnpm i18n:seed`(Sonnet + 용어집 §5 주입 + 2-pass)로
+  en 100% 백필, 자동 품질 게이트 통과분 반영. 추후 네이티브 검수로 승격 가능(선택).
 
 로케일별로 값이 달라도 **묶는 장치는 두 가지**:
 1. **Semantic parity** — 같은 키 = 같은 의도·같은 정보량. 한 로케일에만 있는 정보를
@@ -92,7 +93,12 @@ top-level 네임스페이스 = 화면/도메인 단위. 현행: `Landing` · `Au
 ### 신규 키 워크플로 (순서 강제)
 1. **en 원문 필수** — en 이 없으면 fallback 이 깨진다(불변식 ②).
 2. **ko 네이티브** — 직역이 아니라 한국어 최적.
-3. **ja / th** — en 기준 번역. 누락 시 en fallback 허용(단, 배포 전 채우기 권장).
+3. **ja / th 필수 — 누락 불가(Phase 8 hard-lock).** en/ko/ja/th 는 이제 4로케일
+   모두 **exact key parity** 를 CI 가 강제한다(`scripts/check-i18n.ts`, 옛
+   `SUBSET_OF_EN` 면제 제거). en fallback 은 더 이상 허용되지 않는다 —
+   누락 키는 CI red. 새 키를 en+ko 로 추가한 뒤 `pnpm i18n:seed` 로 ja/th 를
+   백필한다(용어집 §5 자동 주입 + 2-pass + ICU/빈값/한글잔류 게이트). 시드는
+   멱등이라 기존 ja/th 값은 보존하고 빈 키만 채운다. 네이티브 검수는 선택 상향 패스.
 
 ---
 

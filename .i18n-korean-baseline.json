@@ -46,7 +46,6 @@
   "src/components/interviews-v2/topline-view.tsx": 1,
   "src/components/mixpanel-provider.tsx": 48,
   "src/components/moderator-services-carousel.tsx": 12,
-  "src/components/projects-view.tsx": 1,
   "src/components/qa/qa-feedback-list.tsx": 11,
   "src/components/qa/qa-tester-list.tsx": 6,
   "src/components/qa/qa-voice-agent-button.tsx": 11,

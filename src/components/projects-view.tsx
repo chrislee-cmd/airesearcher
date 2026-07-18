@@ -23,6 +23,7 @@ export function ProjectsView({
   canManage: boolean;
 }) {
   const t = useTranslations('Projects');
+  const tc = useTranslations('Common');
   const router = useRouter();
   const requireAuth = useRequireAuth();
 
@@ -104,7 +105,7 @@ export function ProjectsView({
               type="button"
               onClick={() => setCreating(false)}
             >
-              취소
+              {tc('cancel')}
             </Button>
             <Button
               variant="primary"
