@@ -18,6 +18,8 @@ import {
   TOPLINE_DIRECTION_MAX,
 } from '@/lib/interview-v2/topline-prompt';
 import { isToplineGeneratingStale } from '@/lib/interview-v2/types';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 // 인터뷰 탑라인 보고서 — 생성/캐시 엔드포인트.
 //
@@ -170,8 +172,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { project_id, force, output_lang, user_direction } = parsed.data;
-  // 요청 언어 정규화 — 미지정 = 기본(한국어). 캐시 비교/저장 모두 이 값 기준.
-  const requestLang = output_lang ?? TOPLINE_DEFAULT_LANG;
+  // 요청 언어 정규화 — 위젯 명시 출력언어 선택 > 유저 로케일(NEXT_LOCALE) > en
+  // (i18n Phase 7 통일 규칙). 과거엔 미지정 시 한국어 고정이라 /en 유저 topline 이
+  // 한국어로 새어 나왔다. 캐시 비교/저장 모두 이 값 기준. resolveOutputLang 의
+  // 6-lang 집합은 TOPLINE_OUTPUT_LANGS 와 동일해 타입/값 드리프트 0.
+  const requestLang = resolveOutputLang(output_lang, await readRequestLocale());
   // 요청 방향 정규화 — trim 후 빈 문자열이면 null(방향 없음). 캐시 비교/저장
   // 모두 이 값 기준(레거시/방향 없음 row 의 user_direction 도 null 이라 정합).
   const requestDirection = user_direction?.trim() || null;

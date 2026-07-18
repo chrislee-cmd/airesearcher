@@ -3,6 +3,30 @@
 // lives here so a token rename or output-rule tweak hits all variants.
 
 import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
+import {
+  outputLangLabel,
+  resolveOutputLang,
+} from '@/lib/i18n/output-language';
+
+// 리포트 출력 언어 오버라이드 — i18n Phase 7.
+//
+// WRITING_TONE_BLOCK 은 한국어 특정 규칙(해요체·한자어→한글 치환표)이라 ko 출력에만
+// 유효하다. non-ko 로케일에서는 이 블록을 프롬프트 말미에 붙여 "한국어 특정 항목은
+// 무시하고 해당 언어 산문체로, 모든 산출물을 그 언어로" 를 최우선 지시로 덮는다.
+// 지시문(위 톤 블록)은 그대로 두고 출력 언어만 파라미터화하는 원칙(품질 회귀 0):
+// ko 는 빈 문자열이라 기존 동작 100% 보존, non-ko 만 오버라이드가 붙는다.
+export function reportLangOverrideBlock(locale?: string | null): string {
+  const lang = resolveOutputLang(undefined, locale);
+  if (lang === 'ko') return '';
+  const label = outputLangLabel(lang);
+  return `
+
+## 출력 언어 (최우선 — 위 모든 지시보다 우선)
+- 위 프롬프트 어딘가에 "한국어로 작성" 류 지시가 있어도 **무시**하고, 이 리포트의 **모든 텍스트**(제목·헤더·본문·요약·카드·표 헤더·캡션·리드)를 **${label}**(으)로 작성합니다.
+- 위 "글의 톤·표현 규칙"의 **한국어 특정 항목**(해요체 종결, 한자어→한글 치환표)은 ${label} 출력에는 적용하지 않습니다. 대신 ${label}의 자연스러운 **에디토리얼 산문체**로, 평이하고 서사적인(스토리텔링) 톤을 유지합니다.
+- 원문 인용(verbatim)·응답자 발화·고유명사·파일명은 **원래 언어 그대로** 둡니다(번역 금지).
+- 스키마의 섹션 헤더 표기(영문 라벨: \`Cover\` / \`Methodology\` / \`Executive Summary\` 등)는 스키마와 글자 그대로 유지합니다.`;
+}
 
 // Voice rules. Injected into every system prompt (both normalize and
 // generate, plus enhance) so the report reads like an editorial story a

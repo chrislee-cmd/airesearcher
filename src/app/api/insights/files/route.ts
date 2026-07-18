@@ -9,11 +9,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { convertFileToMarkdown } from '@/lib/insights/convert';
 import {
   insightsQuoteSchema,
-  INSIGHTS_EXTRACTION_SYSTEM,
+  buildInsightsExtractionSystem,
   type InsightsQuote,
 } from '@/lib/insights-schema';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 // Batch size for incremental INSERTs into insights_quotes while the LLM
 // streams. Small enough that the client's 2s poll picks up movement, large
@@ -74,6 +76,9 @@ export async function POST(request: Request) {
   // counts toward both limits.
   const limited = await checkLlmRateLimit(user.id, job.org_id ?? null);
   if (limited) return limited;
+
+  // theme 라벨 출력 언어 = 유저 로케일 > en. quote(text)는 verbatim 이라 원문 유지.
+  const lang = resolveOutputLang(undefined, await readRequestLocale());
 
   const admin = createAdminClient();
 
@@ -164,7 +169,7 @@ export async function POST(request: Request) {
       model: anthropic('claude-sonnet-4-6'),
       output: 'array',
       schema: insightsQuoteSchema,
-      system: INSIGHTS_EXTRACTION_SYSTEM,
+      system: buildInsightsExtractionSystem(lang),
       // 200k char cap matches the legacy extract route — within Sonnet's
       // input window and avoids paying for prompt tokens on outlier inputs.
       prompt: `파일명: ${file.name}\n\n마크다운:\n\n${markdownSan.wrapped}`,

@@ -10,6 +10,10 @@
 import { z } from 'zod';
 import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
 import type { InterviewV2Hit } from '@/lib/interview-v2/pgvector-query';
+import {
+  type OutputLang,
+  outputLangDirective,
+} from '@/lib/i18n/output-language';
 
 // streamObject schema. Kept loose on the citation sub-fields (the route
 // treats the retrieved chunks as authoritative and rebuilds the persisted
@@ -83,15 +87,20 @@ export const searchAnswerSchema = z.object({
 
 export type SearchAnswer = z.infer<typeof searchAnswerSchema>;
 
-export const NO_ANSWER_MD = '이 질문에 대한 근거를 찾지 못했습니다.';
+export function noAnswerMd(lang: OutputLang): string {
+  return lang === 'ko'
+    ? '이 질문에 대한 근거를 찾지 못했습니다.' // i18n-allow-korean -- LLM no_answer 폴백(ko 로케일)
+    : "Couldn't find evidence for this question.";
+}
 
-export const SEARCH_SYSTEM = `당신은 인터뷰 코퍼스 검색 답변자입니다. 아래 "근거 청크"만을 사실 근거로 사용해 한국어로 답합니다.
+export function buildSearchSystem(lang: OutputLang): string {
+  return `당신은 인터뷰 코퍼스 검색 답변자입니다. 아래 "근거 청크"만을 사실 근거로 사용해 답합니다.
 
 ## 절대 룰 (환각 금지)
 - 근거 청크 **밖의 정보는 절대 생성하지 마세요.** 일반 상식·추측·외부 지식 금지.
 - 모든 사실 주장 뒤에 반드시 \`[chunk_id]\` inline citation 을 붙입니다 (예: 응답자들은 가격에 민감했습니다 [12]). 한 문장이 여러 청크에 근거하면 [12][34] 처럼 이어 붙입니다.
 - \`citations\` 배열에는 answer_md 에서 실제로 인용한 청크만, 각 청크당 한 번씩 넣습니다. chunk_id / document_id / filename / project_name / score / excerpt 는 아래 청크 헤더에 주어진 값을 **그대로 복사**하세요. excerpt 는 인용 근거가 된 청크 원문의 핵심 문장을 발췌합니다.
-- 근거 청크로 질문에 답할 수 없으면 지어내지 말고 \`no_answer: true\` + \`answer_md: "${NO_ANSWER_MD}"\` + \`citations: []\` 로 응답하세요.
+- 근거 청크로 질문에 답할 수 없으면 지어내지 말고 \`no_answer: true\` + \`answer_md: "${noAnswerMd(lang)}"\` + \`citations: []\` 로 응답하세요.
 
 ## 형식
 - ChatGPT 스타일 markdown — 필요하면 소제목·불릿·표를 쓰되, 사실 없이 형식만 채우지 마세요.
@@ -115,7 +124,8 @@ answer_md 는 항상 채우고, 아래 신호가 잡히면 \`artifacts\` 에 구
   - 범주가 2개 이하이면 chart 를 만들지 말고 텍스트로만 답하세요.
 
 - artifact 는 **최대 2개** (예: 표 1 + 차트 1, 또는 표 1 + 인용 리스트 1). 근거가 3건 미만이면 그 artifact 는 만들지 마세요 — server 가 검증 실패 시 drop 합니다.
-- artifact 안의 모든 값은 근거 청크에서만 뽑습니다. 지어낸 응답자·수치·인용 금지.${ISOLATION_NOTICE}`;
+- artifact 안의 모든 값은 근거 청크에서만 뽑습니다. 지어낸 응답자·수치·인용 금지.${ISOLATION_NOTICE}${outputLangDirective(lang)}`;
+}
 
 /**
  * Render retrieved chunks as a numbered evidence block. Each header

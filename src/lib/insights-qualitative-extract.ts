@@ -3,11 +3,12 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { ZERO_RETENTION } from './llm/config';
 import {
-  INSIGHTS_QUALITATIVE_SYSTEM,
+  buildInsightsQualitativeSystem,
   insightsQualitativeExtractionSchema,
   type InsightsContradiction,
   type InsightsTension,
 } from './insights-qualitative-schema';
+import type { OutputLang } from './i18n/output-language';
 
 type QuoteRow = {
   id: number;
@@ -32,6 +33,7 @@ export type QualitativeResult = {
 // INSERT.
 export async function extractQualitative(
   quotes: QuoteRow[],
+  lang?: OutputLang,
 ): Promise<QualitativeResult> {
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
@@ -49,7 +51,7 @@ export async function extractQualitative(
   const result = await generateObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: insightsQualitativeExtractionSchema,
-    system: INSIGHTS_QUALITATIVE_SYSTEM,
+    system: buildInsightsQualitativeSystem(lang),
     prompt: `quotes (id 형식: [id]):\n\n${lines.slice(0, 200_000)}`,
     // 0.3 is a touch higher than clustering (0.2) because qualitative
     // pattern-spotting benefits from a bit more exploration. Still low

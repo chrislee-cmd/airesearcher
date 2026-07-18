@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeVideo } from '@/lib/twelvelabs';
 import { DEFAULT_ANALYSIS_PROMPT } from '@/lib/video-prompts';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import { computeVideoCredits } from '@/lib/video-credits';
 import { spendCreditsAdminAmount } from '@/lib/credits';
 
@@ -27,7 +28,9 @@ export async function POST(
   // users get the Korean directive; every other locale (ja and future
   // additions) is collapsed to English so non-Korean output is at least
   // in English rather than silently defaulting to Korean.
-  let locale: string = 'ko';
+  // 출력 언어 = 클라 명시 locale > 유저 로케일(NEXT_LOCALE) > en. 과거엔 body
+  // 미전달 시 'ko' 고정이라 /en 유저 영상 분석이 한국어로 나왔다(i18n Phase 7).
+  let locale: string = (await readRequestLocale()) === 'ko' ? 'ko' : 'en';
   try {
     const body = (await request.json()) as { prompt?: unknown; locale?: unknown };
     if (typeof body.prompt === 'string' && body.prompt.trim().length > 0) {
