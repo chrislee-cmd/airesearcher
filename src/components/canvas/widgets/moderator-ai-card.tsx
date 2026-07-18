@@ -14,10 +14,9 @@ import { UtSessionBody } from './moderator-ai/ut-session-body';
 export const moderatorAiCard: WidgetContent = {
   key: 'moderator_ai',
   meta: {
-    label: 'AI UT',
+    labelKey: 'Features.moderator_ai.title',
     accent: 'mint',
     cost: 0,
-    description: '실제 사이트를 보며 자유발화 → 화면녹화 + 음성 전사',
     expandedCols: 2,
     expandedRows: 2,
   },

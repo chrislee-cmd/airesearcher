@@ -217,6 +217,7 @@ export function CanvasBoard({
                 <WidgetComingSoonGate
                   widgetKey={w.key}
                   label={w.meta.label}
+                  labelKey={w.meta.labelKey}
                   orgId={orgId}
                 />
               );

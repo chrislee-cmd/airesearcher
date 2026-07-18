@@ -57,6 +57,7 @@ type Props = {
 };
 
 const LANG_LABEL: Record<string, string> = {
+  // i18n-allow-korean -- 언어 라벨 endonym (각 언어를 자국어 표기로 노출, 번역 안 함)
   ko: '한국어',
   en: 'English',
   ja: '日本語',

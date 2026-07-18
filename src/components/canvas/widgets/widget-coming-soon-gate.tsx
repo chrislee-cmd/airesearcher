@@ -21,6 +21,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/toast-provider';
 import { createClient } from '@/lib/supabase/client';
@@ -32,13 +33,19 @@ type Vote = 'want' | 'skip';
 export function WidgetComingSoonGate({
   widgetKey,
   label,
+  labelKey,
   orgId,
 }: {
   widgetKey: string;
-  label: string;
+  /** 표시 라벨. labelKey 미지정 위젯용(레거시). */
+  label?: string;
+  /** messages 키(full path). 지정 시 t(labelKey) 로 해석 — 라벨 i18n. */
+  labelKey?: string;
   /** 활성 org id (있으면 집계 컨텍스트로 저장, nullable). */
   orgId?: string | null;
 }) {
+  const tRoot = useTranslations();
+  const displayLabel = labelKey ? tRoot(labelKey) : (label ?? '');
   const { push } = useToast();
   const { renderInSlot, close } = useFullview(widgetKey);
   const [selected, setSelected] = useState<Vote | null>(null);
@@ -126,7 +133,7 @@ export function WidgetComingSoonGate({
         <div className="space-y-1">
           <p className="text-lg font-semibold text-ink">준비중입니다</p>
           <p className="text-sm text-mute-soft">
-            <strong className="text-ink-2">{label}</strong> 는 아직 준비 중이에요.
+            <strong className="text-ink-2">{displayLabel}</strong> 는 아직 준비 중이에요.
             이 도구가 필요하신가요?
           </p>
         </div>
@@ -136,7 +143,7 @@ export function WidgetComingSoonGate({
       {/* 전체보기 slot — locked 위젯이 current 면 빈 패널 대신 준비중 hero.
           renderInSlot 은 isCurrent && slot 있을 때만 portal (아니면 null). */}
       {renderInSlot(
-        <WidgetFullviewPanel title={label} subtitle="준비 중" onClose={close}>
+        <WidgetFullviewPanel title={displayLabel} subtitle="준비 중" onClose={close}>
           {/* eslint-disable-next-line no-restricted-syntax -- coming-soon hero 센터링(콘텐츠 폭), 컨트롤 cluster 아님 — cluster 폭은 WIDGET_FRAME_CLUSTER_W 소유 */}
           <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 p-10 text-center">
             <span className="text-6xl" aria-hidden>
@@ -144,7 +151,7 @@ export function WidgetComingSoonGate({
             </span>
             <h2 className="text-3xl font-bold text-ink">준비중입니다</h2>
             <p className="text-lg leading-relaxed text-ink-2">
-              <strong className="text-ink">{label}</strong> 는 아직 준비 중이에요.
+              <strong className="text-ink">{displayLabel}</strong> 는 아직 준비 중이에요.
               이 도구가 필요하신가요? 의견을 남겨주시면 우선순위에 반영할게요.
             </p>
             {voteCluster}

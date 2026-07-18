@@ -21,6 +21,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
 import {
@@ -98,24 +99,27 @@ import { ProbingEmitGuard } from '@/lib/probing/emit-guard';
 // 세션 원본 녹음(#554/#582) 실패 사유 코드 → 사람이 읽을 안내. empty/error 표면
 // 노티스에서 "왜 다운로드가 없는지" 를 사용자에게 알려주는 매핑. 세션 종료는
 // 이미 정상 — 이건 비블로킹 부가물의 상태 표면화일 뿐.
+type ProbingT = ReturnType<typeof useTranslations>;
+
 function recordingNotSavedReason(
   status: 'empty' | 'error',
   code: string | null,
+  t: ProbingT,
 ): string {
   if (status === 'empty') {
     switch (code) {
       case 'no_audio_track':
       case 'no_audio_captured':
-        return '오디오가 캡처되지 않았어요. 탭 공유 세션이라면 "탭 오디오 공유"를 켰는지 확인해 주세요.';
+        return t('card.recordingNoAudioTab');
       case 'recorder_unsupported':
-        return '이 브라우저는 세션 녹음을 지원하지 않아요.';
+        return t('card.recordingUnsupported');
       case 'recorder_start_failed':
-        return '녹음을 시작하지 못했어요.';
+        return t('card.recordingStartFailed');
       default:
-        return '오디오가 캡처되지 않았어요.';
+        return t('card.recordingNoAudio');
     }
   }
-  return '녹음 파일 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.';
+  return t('card.recordingUploadFailed');
 }
 
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
@@ -248,6 +252,8 @@ function parseEmit(
 }
 
 function ExpandedBody() {
+  const t = useTranslations('Probing');
+  const locale = useLocale();
   const toast = useToast();
   const now = useNowTick();
 
@@ -828,7 +834,7 @@ function ExpandedBody() {
         if (controller.signal.aborted) return;
         const msg = e instanceof Error ? e.message : 'think_failed';
         setThinkingError(msg);
-        toast.push('AI 사고 흐름 실패 — 잠시 후 다시 시도해 주세요', {
+        toast.push(t('card.thinkFailed'), {
           tone: 'warn',
         });
       } finally {
@@ -841,7 +847,7 @@ function ExpandedBody() {
         setThinkingStreaming(false);
       }
     },
-    [toast, consumeThinkStream],
+    [toast, consumeThinkStream, t],
   );
 
   const runThinkRef = useRef(runThink);
@@ -1131,14 +1137,14 @@ function ExpandedBody() {
       } else {
         setReflectionError(msg);
         setReflectionStatus('error');
-        toast.push('페르소나 생성 실패 — 잠시 후 다시 시도해 주세요', {
+        toast.push(t('card.personaFailed'), {
           tone: 'warn',
         });
       }
     } finally {
       reflectionInFlightRef.current = false;
     }
-  }, [toast]);
+  }, [toast, t]);
 
   const runReflectionRef = useRef(runReflection);
   useEffect(() => {
@@ -1303,9 +1309,9 @@ function ExpandedBody() {
   async function handleCopy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      toast.push('복사됨', { tone: 'info', ttlMs: 1800 });
+      toast.push(t('card.copied'), { tone: 'info', ttlMs: 1800 });
     } catch {
-      toast.push('복사 실패 — 직접 선택해서 복사해 주세요', { tone: 'warn' });
+      toast.push(t('card.copyFailed'), { tone: 'warn' });
     }
   }
 
@@ -1327,8 +1333,8 @@ function ExpandedBody() {
       if (cur) pushHistoryFromPopup(cur, 'pin');
       return null;
     });
-    toast.push('★ history 에 핀했어요', { tone: 'info', ttlMs: 1500 });
-  }, [pushHistoryFromPopup, toast]);
+    toast.push(t('card.pinnedToHistory'), { tone: 'info', ttlMs: 1500 });
+  }, [pushHistoryFromPopup, toast, t]);
   const handlePopupCopy = useCallback(() => {
     if (!activePopup) return;
     void handleCopy(activePopup.text);
@@ -1396,23 +1402,17 @@ function ExpandedBody() {
     prevRecordingStatusRef.current = recording.status;
     if (prev === recording.status) return;
     if (recording.status === 'error') {
-      toast.push(
-        '세션 녹음 업로드에 실패했어요. 인터뷰는 정상 종료됐습니다.',
-        { tone: 'warn', ttlMs: 6000 },
-      );
+      toast.push(t('card.recordingUploadError'), { tone: 'warn', ttlMs: 6000 });
     } else if (recording.status === 'empty') {
       // 캡처된 오디오 0 — 조용히 넘기지 않고 왜 다운로드가 없는지 알린다(#582).
-      toast.push(
-        '이번 세션은 녹음이 저장되지 않았어요 (오디오가 캡처되지 않음). 인터뷰는 정상 종료됐습니다.',
-        { tone: 'warn', ttlMs: 6000 },
-      );
+      toast.push(t('card.recordingEmptyNotice'), { tone: 'warn', ttlMs: 6000 });
     } else if (recording.status === 'ready') {
-      toast.push('세션 녹음이 준비됐어요 — 다운로드할 수 있습니다.', {
+      toast.push(t('card.recordingReady'), {
         tone: 'info',
         ttlMs: 4000,
       });
     }
-  }, [recording.status, toast]);
+  }, [recording.status, toast, t]);
 
   // ─── 페르소나 PDF 내보내기 (전체보기 전용) ─────────────────────────
   // 전체보기(fullview) 헤더 버튼에서만 동작한다. 좌 페르소나 grid (기본 8 +
@@ -1444,22 +1444,22 @@ function ExpandedBody() {
         hideSelector: '[data-export-hide]',
         columns: 2,
         header: {
-          eyebrow: '응답자 페르소나',
-          title: goal && goal.length > 0 ? goal : '프로빙 인터뷰',
-          subtitle: endedAt.toLocaleString('ko-KR', {
+          eyebrow: t('card.pdfEyebrow'),
+          title: goal && goal.length > 0 ? goal : t('card.pdfDefaultTitle'),
+          subtitle: endedAt.toLocaleString(locale, {
             dateStyle: 'long',
             timeStyle: 'short',
           }),
         },
       });
-      toast.push('페르소나 PDF 다운로드됨', { tone: 'info', ttlMs: 2200 });
+      toast.push(t('card.pdfDownloaded'), { tone: 'info', ttlMs: 2200 });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'export_failed';
-      toast.push(`PDF 내보내기 실패 — ${msg}`, { tone: 'warn' });
+      toast.push(t('card.pdfExportFailed', { msg }), { tone: 'warn' });
     } finally {
       setPdfExporting(false);
     }
-  }, [pdfExporting, isLive, stopSession, toast, context.research_goal]);
+  }, [pdfExporting, isLive, stopSession, toast, context.research_goal, locale, t]);
 
   const handlePdfExportClick = useCallback(() => {
     if (pdfExporting) return;
@@ -1487,22 +1487,22 @@ function ExpandedBody() {
     lastSessionErrorRef.current = sessionError;
     const human =
       sessionError === 'microphone_denied'
-        ? '마이크 권한이 거절되었습니다 — 브라우저 권한을 허용해 주세요'
+        ? t('card.errorMicDenied')
         : sessionError === 'microphone_failed'
-          ? '마이크 캡처에 실패했습니다 — 다른 앱이 사용 중인지 확인해 주세요'
+          ? t('card.errorMicFailed')
           : sessionError === 'tab_audio_denied'
-            ? '탭 공유가 취소되었습니다'
+            ? t('card.errorTabDenied')
             : sessionError === 'tab_audio_unavailable'
-              ? "Chrome picker 에서 '탭 오디오 공유' 를 체크해 주세요"
+              ? t('card.errorTabUnavailable')
               : sessionError === 'tab_audio_failed'
-                ? '탭 오디오 캡처에 실패했습니다 — 다른 탭에서 다시 시도해 주세요'
+                ? t('card.errorTabFailed')
                 : sessionError === 'session_timeout'
-                  ? '세션 준비가 지연되고 있습니다 — 잠시 후 다시 시작해 주세요'
+                  ? t('card.errorSessionTimeout')
                   : sessionError === 'probing_connect_timeout'
-                    ? '네트워크 확인 후 다시 시작해 주세요'
-                    : '세션 시작 실패 — 잠시 후 다시 시도해 주세요';
+                    ? t('card.errorConnectTimeout')
+                    : t('card.errorSessionStart');
     toast.push(human, { tone: 'warn' });
-  }, [sessionError, toast]);
+  }, [sessionError, toast, t]);
 
   useEffect(() => {
     if (sessionStatus === 'idle') {
@@ -1513,15 +1513,15 @@ function ExpandedBody() {
   // idle (!isLive) 상태는 status 텍스트를 노출하지 않는다 (null → hint gate).
   // 다른 status (연결/종료/오류/페르소나/사고 흐름/대기 중) 는 유지.
   const statusLabel: string | null = (() => {
-    if (sessionStatus === 'starting') return '세션 연결 중…';
-    if (sessionStatus === 'stopping') return '세션 종료 중…';
-    if (sessionStatus === 'error') return '세션 오류';
+    if (sessionStatus === 'starting') return t('card.statusConnecting');
+    if (sessionStatus === 'stopping') return t('card.statusStopping');
+    if (sessionStatus === 'error') return t('card.statusError');
     if (!isLive) return null;
     // 30분 cap 재연결 중 — transcript 는 계속 흐르므로 subtle 힌트만.
-    if (sessionRenewing) return '🔄 세션 갱신 중…';
-    if (reflectionStatus === 'streaming') return '응답자 페르소나 갱신 중…';
-    if (thinkingStreaming) return 'AI 사고 흐름 진행 중…';
-    return '대기 중';
+    if (sessionRenewing) return t('card.statusRenewing');
+    if (reflectionStatus === 'streaming') return t('card.statusPersonaUpdating');
+    if (thinkingStreaming) return t('card.statusThinking');
+    return t('card.statusWaiting');
   })();
 
   const startDisabled =
@@ -1600,27 +1600,26 @@ function ExpandedBody() {
         widget: 'probing',
         action: 'question_injection',
       });
-      const DESC = '즉시 던질 질문';
+      const DESC = t('card.injectDesc');
       const key = addCustomSection(question, DESC);
       // 위젯 추가 시각 피드백 — 좌 grid 에 새 위젯이 붙었는지 즉시 알 수 있게
       // 토스트로 알린다(호스트 자기 주입 + 뷰어 원격 주입 모두 이 경로).
       const label =
         question.length > 24 ? `${question.slice(0, 24)}…` : question;
       if (key) {
-        toast.push(`위젯 추가됨 — '${label}'`, { tone: 'info', ttlMs: 2400 });
+        toast.push(t('card.widgetAdded', { label }), { tone: 'info', ttlMs: 2400 });
         markWidgetAdded(key);
         // 신규 위젯 = 누적 대화 backfill 시도.
         void runBackfillRef.current(key, question, DESC);
       } else {
         // 상한 도달 = 위젯 생성 실패. 질문 자체는 think 로 계속 주입된다.
-        toast.push(
-          `위젯이 가득 찼어요 (최대 ${CUSTOM_SECTION_MAX}개) — 기존 위젯을 지우고 다시 시도해 주세요`,
-          { tone: 'warn' },
-        );
+        toast.push(t('card.widgetFull', { max: CUSTOM_SECTION_MAX }), {
+          tone: 'warn',
+        });
       }
       void runThinkRef.current([question]);
     },
-    [addCustomSection, toast, markWidgetAdded],
+    [addCustomSection, toast, markWidgetAdded, t],
   );
 
   // 협업화: 뷰어 inject 수신 → 호스트 자기 주입 핸들러를 그대로 호출하기 위한
@@ -2046,7 +2045,7 @@ function ExpandedBody() {
               </ControlBoardPanel>
               {isCurrent ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
-                  전체 보기에서 작업 중 — 모달을 닫으면 여기로 돌아옵니다.
+                  {t('card.workingInFullview')}
                 </div>
               ) : (
                 <ProbingCanvasCardBody
@@ -2073,7 +2072,7 @@ function ExpandedBody() {
               boxShadow: '2px 2px 0 var(--color-warning)',
             }}
           >
-            AI 사고 흐름 실패: {thinkingError}
+            {t('card.thinkFailedInline', { msg: thinkingError })}
           </div>
         )}
         {/* 세션 원본 녹음(#554) — 종료 후 다운로드 표면. 비라이브에서만, 녹음이
@@ -2087,9 +2086,9 @@ function ExpandedBody() {
                   size="sm"
                   fullWidth
                   onClick={handleDownloadRecording}
-                  title="세션 원본 오디오 다운로드"
+                  title={t('card.downloadRecordingTitle')}
                 >
-                  세션 녹음 다운로드
+                  {t('card.downloadRecording')}
                 </Button>
               ) : (
                 <Button
@@ -2097,10 +2096,10 @@ function ExpandedBody() {
                   size="sm"
                   fullWidth
                   loading
-                  loadingLabel="녹음 저장 중…"
+                  loadingLabel={t('card.savingRecording')}
                   disabled
                 >
-                  녹음 저장 중…
+                  {t('card.savingRecording')}
                 </Button>
               )}
             </div>
@@ -2118,8 +2117,8 @@ function ExpandedBody() {
                   borderRadius: 'var(--sidebar-nav-radius)',
                 }}
               >
-                이번 세션은 녹음이 저장되지 않았어요 —{' '}
-                {recordingNotSavedReason(recording.status, recording.error)}
+                {t('card.recordingNotSavedPrefix')}
+                {recordingNotSavedReason(recording.status, recording.error, t)}
               </div>
             </div>
           )}
@@ -2128,7 +2127,7 @@ function ExpandedBody() {
             유지. */}
         {!isLive && (
           <WidgetPrimaryCta
-            label="세션 시작"
+            label={t('card.startSession')}
             disabled={startDisabled}
             onClick={handleStartSession}
           />
@@ -2137,13 +2136,13 @@ function ExpandedBody() {
 
       {renderInSlot(
         <WidgetFullviewPanel
-          title="프로빙 어시스턴트"
+          title={t('card.fullviewTitle')}
           subtitle={
             context.research_goal?.trim()
               ? context.research_goal
               : isLive
-                ? '인터뷰 진행 중'
-                : '응답자 페르소나 + 프로빙 질문'
+                ? t('card.fullviewSubtitleLive')
+                : t('card.fullviewSubtitleIdle')
           }
           onClose={close}
           headerAction={
@@ -2155,9 +2154,9 @@ function ExpandedBody() {
                   variant="secondary"
                   size="sm"
                   onClick={handleDownloadRecording}
-                  title="세션 원본 오디오 다운로드"
+                  title={t('card.downloadRecordingTitle')}
                 >
-                  세션 녹음 다운로드
+                  {t('card.downloadRecording')}
                 </Button>
               )}
               {recording.status === 'uploading' && (
@@ -2165,10 +2164,10 @@ function ExpandedBody() {
                   variant="secondary"
                   size="sm"
                   loading
-                  loadingLabel="녹음 저장 중…"
+                  loadingLabel={t('card.savingRecording')}
                   disabled
                 >
-                  녹음 저장 중…
+                  {t('card.savingRecording')}
                 </Button>
               )}
               {/* 링크로 공유(#477) — 초대 게이트 링크. PDF 내보내기와 구분되는
@@ -2183,14 +2182,14 @@ function ExpandedBody() {
                 size="sm"
                 onClick={handlePdfExportClick}
                 loading={pdfExporting}
-                loadingLabel="내보내는 중…"
+                loadingLabel={t('card.exporting')}
                 title={
                   isLive
-                    ? '인터뷰 종료 + 페르소나 PDF 다운로드'
-                    : '페르소나 PDF 다운로드'
+                    ? t('card.pdfExportTitleLive')
+                    : t('card.pdfExportTitleIdle')
                 }
               >
-                {isLive ? '종료 + PDF 내보내기' : 'PDF 내보내기'}
+                {isLive ? t('card.pdfExportCtaLive') : t('card.pdfExportCtaIdle')}
               </Button>
             </>
           }
@@ -2214,12 +2213,10 @@ function ExpandedBody() {
               id="probing-export-confirm-title"
               className="text-lg font-semibold tracking-[-0.01em] text-ink-2"
             >
-              인터뷰를 종료하고 페르소나를 내보낼까요?
+              {t('card.exportConfirmTitle')}
             </h2>
             <p className="text-sm leading-snug text-mute">
-              현재 세션을 정지하고, 응답자 페르소나 그리드(기본 9 + 추가 위젯)를
-              PDF 파일로 다운로드합니다. 정지 후에는 이 세션을 다시 이어 받을 수
-              없습니다.
+              {t('card.exportConfirmBody')}
             </p>
             <div className="flex justify-end gap-2">
               <Button
@@ -2228,16 +2225,16 @@ function ExpandedBody() {
                 onClick={handleExportCancel}
                 disabled={pdfExporting}
               >
-                취소
+                {t('card.cancel')}
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleExportConfirm}
                 loading={pdfExporting}
-                loadingLabel="내보내는 중…"
+                loadingLabel={t('card.exporting')}
               >
-                종료 + PDF 내보내기
+                {t('card.pdfExportCtaLive')}
               </Button>
             </div>
           </div>
@@ -2256,12 +2253,10 @@ void PROBING_THINK_IMPORTANCE;
 export const probingCard: WidgetContent = {
   key: 'probing',
   meta: {
-    label: '프로빙 어시스턴트',
+    labelKey: 'Features.probing.title',
     accent: 'sky',
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
-    description:
-      '좌측은 응답자 페르소나 9 패널(기타 포함), 우측은 사용자가 입력한 조사 목적·KRQ 를 기반으로 AI 가 사고 흐름과 즉시 던질 질문 popup 을 보내줍니다.',
     expandedCols: 3,
   },
   state: 'idle',

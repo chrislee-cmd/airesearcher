@@ -26,13 +26,27 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import {
-  PROBING_TECHNIQUE_LABEL,
-  type ProbingTechnique,
-  type ProbingThinkImportance,
-} from '@/lib/probing-prompts';
+import { type ProbingThinkImportance } from '@/lib/probing-prompts';
 import type { PopupQuestion } from '../probing-types';
+
+type ProbingT = ReturnType<typeof useTranslations>;
+
+// PROBING_TECHNIQUE_LABEL(한국어, probing-prompts.ts=P7 소유)을 UI 배지용으로
+// i18n 키(Probing.technique.*)로 해석. 매핑에 없는 값은 raw 노출(fallback).
+function techniqueLabelOf(technique: string | null | undefined, t: ProbingT): string {
+  if (!technique) return 'probe';
+  const known = ['contrast', 'devils_advocate', 'balance_game', 'clarification', 'timeline'];
+  return known.includes(technique) ? t(`technique.${technique}`) : technique;
+}
+
+// importance → Probing.popup.importance* 키.
+const IMPORTANCE_LABEL_KEY: Record<ProbingThinkImportance, string> = {
+  high: 'popup.importanceHigh',
+  medium: 'popup.importanceMedium',
+  low: 'popup.importanceLow',
+};
 
 // Wrapper key 가 popup.id 로 바뀌면 React 가 컴포넌트를 완전히 다시 mount —
 // useState 초기값으로 카운트다운이 시작되므로 effect 안의 setState 가 필요
@@ -44,13 +58,12 @@ const TICK_INTERVAL_MS = 100;
 // importance → visual classes 매핑. 룰은 PR 스펙 §C 의 표 그대로.
 const IMPORTANCE_CARD: Record<
   ProbingThinkImportance,
-  { container: string; label: string; ring: string; pulse: boolean }
+  { container: string; ring: string; pulse: boolean }
 > = {
   high: {
     container:
       // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(warning 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-[3px] border-warning bg-warning-bg shadow-[8px_8px_0_var(--color-warning)]',
-    label: '지금 던지세요',
     ring: 'stroke-warning',
     pulse: true,
   },
@@ -58,7 +71,6 @@ const IMPORTANCE_CARD: Record<
     container:
       // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-[3px] border-ink bg-paper shadow-[6px_6px_0_var(--color-ink)]',
-    label: '다음 질문 후보',
     ring: 'stroke-ink',
     pulse: false,
   },
@@ -66,7 +78,6 @@ const IMPORTANCE_CARD: Record<
     container:
       // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(mute 색 오프셋 shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
       'border-2 border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
-    label: '여유 있을 때',
     ring: 'stroke-mute',
     pulse: false,
   },
@@ -182,6 +193,7 @@ function ProbingQuestionPopupInner({
   onDismiss: () => void;
   onAutoDismiss: () => void;
 }) {
+  const t = useTranslations('Probing');
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [paused, setPaused] = useState(false);
 
@@ -223,10 +235,8 @@ function ProbingQuestionPopupInner({
   const visual = IMPORTANCE_CARD[popup.importance];
   const dots = IMPORTANCE_DOTS[popup.importance];
   const dotColor = IMPORTANCE_DOT_COLOR[popup.importance];
-  const techniqueLabel =
-    popup.technique && popup.technique in PROBING_TECHNIQUE_LABEL
-      ? PROBING_TECHNIQUE_LABEL[popup.technique as ProbingTechnique]
-      : popup.technique || 'probe';
+  const importanceLabel = t(IMPORTANCE_LABEL_KEY[popup.importance]);
+  const techniqueLabel = techniqueLabelOf(popup.technique, t);
 
   const progress = secondsLeft / COUNTDOWN_SECONDS;
   const spot = size === 'spotlight';
@@ -263,7 +273,7 @@ function ProbingQuestionPopupInner({
       <div
         role="dialog"
         aria-live="polite"
-        aria-label="AI 가 제안한 즉시 질문"
+        aria-label={t('popup.dialogAria')}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         className={`pointer-events-auto ${positionClass} z-popup ${placementClass} ${maxWClass} ${visual.container} rounded-sm bg-paper ${padClass} ${visual.pulse ? 'probing-popup-pulse' : ''}`}
@@ -277,7 +287,7 @@ function ProbingQuestionPopupInner({
               {dots}
             </span>
             <span className={`${spot ? 'text-sm' : 'text-xs'} uppercase tracking-[0.22em] text-mute-soft`}>
-              {visual.label}
+              {importanceLabel}
             </span>
           </div>
           <Badge variant="neutral" className="uppercase tracking-[0.18em]">
@@ -291,7 +301,7 @@ function ProbingQuestionPopupInner({
             leadingIcon="◆"
             className={`${spot ? 'mb-4' : 'mb-2'} tracking-[0.14em]`}
           >
-            {popup.target_section_label} 채우기
+            {t('popup.fillSection', { label: popup.target_section_label })}
           </Badge>
         )}
 
@@ -330,8 +340,8 @@ function ProbingQuestionPopupInner({
           />
           <div className={spot ? 'flex gap-2' : 'flex gap-1.5'}>
             <ActionButton
-              label="복사"
-              ariaLabel="질문 텍스트 복사"
+              label={t('popup.copy')}
+              ariaLabel={t('popup.copyAria')}
               onClick={onCopy}
               spotlight={spot}
             >
@@ -351,8 +361,8 @@ function ProbingQuestionPopupInner({
             </svg>
           </ActionButton>
           <ActionButton
-            label="핀"
-            ariaLabel="핀 — 즉시 history 에 별표 저장"
+            label={t('popup.pin')}
+            ariaLabel={t('popup.pinAria')}
             onClick={onPin}
             spotlight={spot}
           >
@@ -372,8 +382,8 @@ function ProbingQuestionPopupInner({
             </svg>
           </ActionButton>
           <ActionButton
-            label="닫기"
-            ariaLabel="이 popup 닫기"
+            label={t('popup.close')}
+            ariaLabel={t('popup.closeAria')}
             onClick={onDismiss}
             spotlight={spot}
           >
@@ -414,6 +424,7 @@ function CountdownRing({
   paused: boolean;
   spotlight: boolean;
 }) {
+  const t = useTranslations('Probing');
   // 24px ring, stroke 3, circumference ≈ 65.97. spotlight 은 비례 확대(36px)
   // 로 저시력 가독. viewBox 는 동일해 내부 좌표 그대로, width/height 만 확대.
   const radius = 10.5;
@@ -424,7 +435,7 @@ function CountdownRing({
   return (
     <div
       className={`flex items-center gap-2 text-mute ${spotlight ? 'text-md' : 'text-xs'}`}
-      aria-label={`자동 닫힘까지 ${display}초`}
+      aria-label={t('popup.countdownAria', { n: display })}
     >
       <svg width={ringPx} height={ringPx} viewBox="0 0 24 24" aria-hidden>
         <circle
@@ -449,7 +460,7 @@ function CountdownRing({
         />
       </svg>
       <span className="tabular-nums">
-        {display}s {paused && <span className="text-mute-soft">(정지)</span>}
+        {display}s {paused && <span className="text-mute-soft">{t('popup.paused')}</span>}
         {!paused && total !== 15 && <span className="text-mute-soft">/{total}</span>}
       </span>
     </div>

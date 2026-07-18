@@ -13,6 +13,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { Ref } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import type {
@@ -42,13 +43,21 @@ const memphisPlaceholderStyle = {
   boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
-function formatRelativeKo(epochMs: number | null, nowMs: number): string {
+type ProbingT = ReturnType<typeof useTranslations>;
+
+function formatRelative(
+  epochMs: number | null,
+  nowMs: number,
+  t: ProbingT,
+): string {
   if (epochMs === null || !Number.isFinite(epochMs)) return '';
   const diff = Math.max(0, nowMs - epochMs);
-  if (diff < 30_000) return '방금 전 갱신';
-  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}분 전 갱신`;
-  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / 3_600_000)}시간 전 갱신`;
-  return `${Math.floor(diff / 86_400_000)}일 전 갱신`;
+  if (diff < 30_000) return t('persona.updatedJustNow');
+  if (diff < 60 * 60_000)
+    return t('persona.updatedMinutesAgo', { n: Math.floor(diff / 60_000) });
+  if (diff < 24 * 60 * 60_000)
+    return t('persona.updatedHoursAgo', { n: Math.floor(diff / 3_600_000) });
+  return t('persona.updatedDaysAgo', { n: Math.floor(diff / 86_400_000) });
 }
 
 function sectionOrNull(
@@ -98,11 +107,12 @@ export function ReflectionPane({
   // 방금 주입/추가된 위젯 key — 마운트 시 ephemeral 하이라이트 (없으면 미표시).
   recentKeys?: Set<string>;
 }) {
-  const stamp = formatRelativeKo(lastUpdatedAt, nowMs);
+  const t = useTranslations('Probing');
+  const stamp = formatRelative(lastUpdatedAt, nowMs, t);
   const headerLabel =
     status === 'streaming'
-      ? '갱신 중…'
-      : stamp || (status === 'error' ? '갱신 실패' : '대기 중');
+      ? t('persona.updating')
+      : stamp || (status === 'error' ? t('persona.updateFailed') : t('persona.waiting'));
 
   // data 가 있으면 그리드 표시. partial 스트림 동안에는 일부 섹션이 아직 빈
   // 객체일 수 있는데 sectionOrNull 가 그 경우 insufficient placeholder 로 떨군다.
@@ -112,7 +122,7 @@ export function ReflectionPane({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <SectionLabel>응답자 페르소나</SectionLabel>
+          <SectionLabel>{t('persona.heading')}</SectionLabel>
           <span className="text-xs text-mute-soft">· {headerLabel}</span>
         </div>
         <Button
@@ -121,10 +131,10 @@ export function ReflectionPane({
           onClick={onRefresh}
           disabled={!canRefresh}
           loading={status === 'streaming'}
-          loadingLabel="갱신 중…"
+          loadingLabel={t('persona.updating')}
           className="uppercase tracking-[0.18em]"
         >
-          지금 갱신
+          {t('persona.refreshNow')}
         </Button>
       </div>
 
@@ -138,7 +148,7 @@ export function ReflectionPane({
               <PersonaPanel
                 key={p.key}
                 icon={p.icon}
-                title={p.title}
+                title={t(`personaSection.${p.key}`)}
                 section={sectionOrNull(data, p.key)}
               />
             ))}
@@ -157,30 +167,28 @@ export function ReflectionPane({
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            페르소나 분석 생성 중…
+            {t('persona.generating')}
           </div>
         ) : !isLive ? (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            세션을 시작하면 발화에서 응답자 페르소나가 9 패널로 정리됩니다.
+            {t('persona.emptyNotLive')}
           </div>
         ) : !hasTranscript ? (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            transcript 가 들어오면 첫 페르소나 한판이 표시됩니다.
+            {t('persona.emptyNoTranscript')}
           </div>
         ) : (
           <div
             className="bg-paper px-4 py-6 text-center text-md text-ink-2"
             style={memphisPlaceholderStyle}
           >
-            발화가 더 모이면 자동으로 페르소나가 갱신됩니다.
-            <br />
-            &lsquo;지금 갱신&rsquo; 으로 즉시 시도할 수도 있어요.
+            {t('persona.emptyLive')}
           </div>
         )}
 
@@ -194,7 +202,7 @@ export function ReflectionPane({
               boxShadow: '2px 2px 0 var(--color-warning)',
             }}
           >
-            페르소나 생성 실패: {error}
+            {t('persona.generateFailed', { error })}
           </div>
         )}
       </div>
