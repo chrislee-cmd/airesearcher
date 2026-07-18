@@ -796,11 +796,13 @@ export function TranslateConsole({
     [setSelection],
   );
   // Capture mode picker. Default '' (미선택) — 프로빙(#536)과 동작 통일.
-  // picker 옵션은 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
-  // 2개뿐 — 'both'(mic+tab 병렬)은 사용자 명시로 옵션에서 제거됐다. 'both'
-  // 타입/코드경로는 dormant 로 남아 있으나 picker 로는 도달 불가.
-  // 'tab-only' 은 getDisplayMedia 를 쓰므로 user gesture 가 필요 — picker 는
-  // Start 전까지 state 만 기록한다. 미선택('')이면 아래 idle CTA 가 비활성.
+  // picker 옵션 3개: 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
+  // / 'both'(mic=진행자 + tab=응답자, 두 병렬 세션 — 브라우저 화상 인터뷰
+  // 양방향 캡처). 'both' 는 한때 옵션에서 제거돼 dormant 였다가 재노출(card
+  // #620) — 코드경로(activeSlots/SLOT_SPEAKER/슬롯 표시등/에코 억제/graceful
+  // degradation)는 그대로 살아 있었다. 'tab-only'/'both' 는 getDisplayMedia 를
+  // 쓰므로 user gesture 가 필요 — picker 는 Start 전까지 state 만 기록한다.
+  // 미선택('')이면 아래 idle CTA 가 비활성.
   const [captureMode, setCaptureMode] = useState<CaptureMode | ''>('');
   // 브라우저 오디오 안내(blocking ack) — tab 슬롯 포함 캡처 모드에서 시작 시 노출.
   const [browserAudioNoticeOpen, setBrowserAudioNoticeOpen] = useState(false);
@@ -4362,11 +4364,19 @@ export function TranslateConsole({
             disabled={busy || live}
           />
         </Field>
-        <Field label={t('captureMode.label')}>
+        <Field
+          label={t('captureMode.label')}
+          // both = mic + tab 두 병렬 세션 → OpenAI realtime 비용 2배. 선택 시에만
+          // 안내(다른 모드는 단일 세션이라 무관). bothCostHint 는 이 경고 전용 키.
+          description={captureMode === 'both' ? t('captureMode.bothCostHint') : undefined}
+        >
           <DropdownMenu
             items={[
               { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
               { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
+              // both(mic=진행자 + tab=응답자, 두 병렬 세션) 재노출 — 브라우저 화상
+              // 인터뷰 양방향 캡처. dormant 였던 코드경로를 picker 로 다시 도달 가능하게.
+              { key: 'both', label: t('captureMode.both'), mode: 'both' },
             ].map((o) => ({
               key: o.key,
               label: o.label,
@@ -4385,7 +4395,9 @@ export function TranslateConsole({
                   ? t('captureMode.micOnly')
                   : captureMode === 'tab-only'
                     ? t('captureMode.tabOnly')
-                    : t('select')}
+                    : captureMode === 'both'
+                      ? t('captureMode.both')
+                      : t('select')}
               </ControlTrigger>
             )}
           />
@@ -4509,6 +4521,54 @@ export function TranslateConsole({
               {/* 세션 중엔 언어·모드 변경 불가 안내 (결정 3). */}
               {live ? (
                 <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
+              ) : null}
+
+              {/* 슬롯별 라이브 표시등 — 실행 중인 캡처 모드의 각 슬롯을 화자
+                  역할(🎤 진행자=mic / 📺 응답자=tab)로 표시. `both` 면 두 배지가
+                  나란히, 단일 모드면 그 슬롯 하나만. `slotActive[slot]` = pc
+                  connected 여부 → 점 색으로 라이브(text-amore)/연결중
+                  (text-mute-soft) 구분. bit-rot 복구(card #620): slotActive 는
+                  기록만 되고 렌더가 없었다. */}
+              {live && captureMode ? (
+                <div
+                  className="flex flex-wrap items-center gap-3"
+                  role="group"
+                  aria-label={t('slotIndicator.groupAria')}
+                >
+                  {activeSlots(captureMode).map((slot) => {
+                    const on = slotActive[slot];
+                    const isHost = SLOT_SPEAKER[slot] === 'host';
+                    return (
+                      <span
+                        key={slot}
+                        className="inline-flex items-center gap-1.5 text-sm text-mute"
+                        aria-label={
+                          isHost
+                            ? t('slotIndicator.hostAria')
+                            : t('slotIndicator.guestAria')
+                        }
+                      >
+                        <span aria-hidden>{isHost ? '🎤' : '📺'}</span>
+                        <span>
+                          {isHost
+                            ? t('slotIndicator.host')
+                            : t('slotIndicator.guest')}
+                        </span>
+                        <span
+                          aria-hidden
+                          className={on ? 'text-amore' : 'text-mute-soft'}
+                          title={
+                            on
+                              ? t('slotIndicator.live')
+                              : t('slotIndicator.connecting')
+                          }
+                        >
+                          ●
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
               ) : null}
 
               {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음

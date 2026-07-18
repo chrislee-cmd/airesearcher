@@ -1181,7 +1181,12 @@
       "hostAria": "Host (mic) capture status",
       "guestAria": "Guest (tab) capture status",
       "degradedHost": "Host capture paused —",
-      "degradedGuest": "Guest capture paused —"
+      "degradedGuest": "Guest capture paused —",
+      "host": "Host",
+      "guest": "Guest",
+      "live": "Live",
+      "connecting": "Connecting…",
+      "groupAria": "Live capture status per speaker"
     },
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
