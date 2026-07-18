@@ -1233,7 +1233,12 @@
       "hostAria": "진행자 (mic) 캡처 상태",
       "guestAria": "응답자 (탭) 캡처 상태",
       "degradedHost": "진행자 캡처 일시 중단 —",
-      "degradedGuest": "응답자 캡처 일시 중단 —"
+      "degradedGuest": "응답자 캡처 일시 중단 —",
+      "host": "진행자",
+      "guest": "응답자",
+      "live": "실시간",
+      "connecting": "연결 중…",
+      "groupAria": "화자별 캡처 상태"
     },
     "monitorMute": {
       "muteAria": "번역 음성 끄기 (시청자에게는 그대로 전송됩니다)",

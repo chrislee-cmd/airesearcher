@@ -1326,7 +1326,12 @@
       "hostAria": "ホスト（マイク）キャプチャの状態",
       "guestAria": "ゲスト（タブ）キャプチャの状態",
       "degradedHost": "ホストのキャプチャが一時停止中 —",
-      "degradedGuest": "ゲストのキャプチャが一時停止中 —"
+      "degradedGuest": "ゲストのキャプチャが一時停止中 —",
+      "host": "ホスト",
+      "guest": "ゲスト",
+      "live": "ライブ",
+      "connecting": "接続中…",
+      "groupAria": "話者ごとのキャプチャ状態"
     },
     "monitorMute": {
       "muteAria": "翻訳音声をローカルでミュート（視聴者には引き続き聞こえます）",
