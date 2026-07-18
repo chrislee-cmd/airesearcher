@@ -10,6 +10,7 @@ import { spendCredits, getCreditsStatus } from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { REPORT_TYPES, DEFAULT_REPORT_TYPE } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 800;
@@ -50,7 +51,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { markdown, sources, reportType, skip_persist, project_id } = parsed.data;
-  const prompts = getReportPrompts(reportType);
+  // 산출물 출력 언어 = 유저 로케일(NEXT_LOCALE) > en. 리포트엔 출력언어 셀렉터 없음.
+  const prompts = getReportPrompts(reportType, await readRequestLocale());
 
   // Pre-flight balance check (skipped for the enhance re-render path,
   // which has already validated and charged its own version cost). Without

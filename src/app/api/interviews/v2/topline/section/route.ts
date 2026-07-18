@@ -15,10 +15,12 @@ import {
 } from '@/lib/interview-v2/pgvector-query';
 import { formatEvidence } from '@/lib/interview-v2/search-prompt';
 import {
-  SECTION_SYSTEM,
-  SECTION_NO_CONTENT_MD,
+  buildSectionSystem,
+  sectionNoContentMd,
   askAnswerSchema,
 } from '@/lib/interview-v2/ask-prompt';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 // 인터뷰 탑라인 섹션 삽입 — 자연어 지시로 보고서에 끼울 한 개 섹션을 생성한다.
 //
@@ -76,6 +78,9 @@ export async function POST(req: Request) {
   }
   const { project_id, prompt, top_k, score_threshold } = parsed.data;
 
+  // 출력 언어 = 유저 로케일(NEXT_LOCALE) > en. 섹션 삽입엔 출력언어 셀렉터 없음.
+  const lang = resolveOutputLang(undefined, await readRequestLocale());
+
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
@@ -129,14 +134,14 @@ export async function POST(req: Request) {
   // 근거 0 개 → 모델 호출 없이 no_answer.
   if (hits.length === 0) {
     return NextResponse.json({
-      answer_md: SECTION_NO_CONTENT_MD,
+      answer_md: sectionNoContentMd(lang),
       citation_ids: [],
       no_answer: true,
     });
   }
 
   const anthropic = createAnthropic({ apiKey });
-  const systemPrompt = `${SECTION_SYSTEM}\n\n## 근거 청크\n${formatEvidence(hits)}`;
+  const systemPrompt = `${buildSectionSystem(lang)}\n\n## 근거 청크\n${formatEvidence(hits)}`;
 
   let answerMd = '';
   let citationIds: string[] = [];
@@ -176,7 +181,7 @@ export async function POST(req: Request) {
 
   if (noAnswer) {
     return NextResponse.json({
-      answer_md: answerMd || SECTION_NO_CONTENT_MD,
+      answer_md: answerMd || sectionNoContentMd(lang),
       citation_ids: [],
       no_answer: true,
     });
@@ -184,7 +189,7 @@ export async function POST(req: Request) {
 
   if (!answerMd.trim()) {
     return NextResponse.json({
-      answer_md: SECTION_NO_CONTENT_MD,
+      answer_md: sectionNoContentMd(lang),
       citation_ids: [],
       no_answer: true,
     });

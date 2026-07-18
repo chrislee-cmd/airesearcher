@@ -8,6 +8,7 @@ import { getActiveOrg } from '@/lib/org';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import { coerceReportType } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { sanitizeUserInput } from '@/lib/llm/sanitize';
 
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const reportType = coerceReportType(formData.get('reportType'));
-  const prompts = getReportPrompts(reportType);
+  // 산출물 출력 언어 = 유저 로케일(NEXT_LOCALE) > en.
+  const prompts = getReportPrompts(reportType, await readRequestLocale());
   const entries = formData.getAll('files');
   const files: File[] = entries.filter((e): e is File => e instanceof File);
   if (files.length === 0) {

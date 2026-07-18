@@ -3,6 +3,7 @@ import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 export const maxDuration = 60;
 
@@ -41,7 +42,14 @@ export async function POST(req: Request) {
     auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, '') },
   });
 
-  const finalSubject = subject || '[Research-Canvas] 리크루팅 안내';
+  // 클라가 제목을 안 넘기면 로케일 기본 제목. body(초안)는 draft 라우트에서 이미
+  // 발송 맥락 로케일로 생성돼 넘어온다(i18n Phase 7).
+  const locale = await readRequestLocale();
+  const defaultSubject =
+    locale === 'ko'
+      ? '[Research-Canvas] 리크루팅 안내' // i18n-allow-korean -- 모집 메일 기본 제목(ko 로케일)
+      : '[Research-Canvas] Research participation invitation';
+  const finalSubject = subject || defaultSubject;
   const text = body;
 
   try {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { ISOLATION_NOTICE } from '@/lib/llm/sanitize';
+import {
+  type OutputLang,
+  outputLangLabel,
+} from '@/lib/i18n/output-language';
 
 // Qualitative viz-schema extraction for insights_analyzer (PR 5b).
 //
@@ -63,7 +67,8 @@ export type InsightsQualitativeExtraction = z.infer<
 //   • Tensions are axis-based (low vs high on a single dimension), not
 //     simple binary contradictions — encourage the LLM to articulate
 //     the axis name (e.g., "가격 민감도" with low/high anchors).
-export const INSIGHTS_QUALITATIVE_SYSTEM = `당신은 정성 분석가입니다. 한 인터뷰 분석의 인용구 묶음을 받아, 응답자별 **긴장(tensions)** 과 **모순(contradictions)** 을 추출하세요. 결과는 정의된 JSON 스키마만, 그 외 텍스트 금지.
+export function buildInsightsQualitativeSystem(lang?: OutputLang): string {
+  return `당신은 정성 분석가입니다. 한 인터뷰 분석의 인용구 묶음을 받아, 응답자별 **긴장(tensions)** 과 **모순(contradictions)** 을 추출하세요. 결과는 정의된 JSON 스키마만, 그 외 텍스트 금지.
 
 ## 긴장 (tensions) — 응답자가 한 축 위에서 양극단 사이를 오가는 패턴
 
@@ -100,5 +105,6 @@ export const INSIGHTS_QUALITATIVE_SYSTEM = `당신은 정성 분석가입니다.
 
 ## 공통
 
-- 출력은 입력 언어를 따릅니다 (한국어 데이터면 axis/label/insight 도 한국어).
+- 출력 언어: axis/label/insight/tag 등 **LLM 이 서술하는 텍스트는 ${lang ? outputLangLabel(lang) : '입력 언어'}(으)로** 작성합니다. lang 미지정이면 입력 언어를 따릅니다(한국어 데이터면 한국어). **quote 원문·인용은 항상 원래 언어 그대로** 둡니다.
 - 응답자가 적거나 데이터가 빈약해서 의미 있는 긴장/모순을 찾을 수 없다면 빈 배열을 돌려도 됩니다. **억지로 만들지 마세요.**${ISOLATION_NOTICE}`;
+}

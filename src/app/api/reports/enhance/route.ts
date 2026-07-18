@@ -21,6 +21,7 @@ import {
   nextVersionNumber,
 } from '@/lib/reports/versions';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 export const maxDuration = 800;
 
@@ -155,7 +156,7 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });
   const anthropic = createAnthropic({ apiKey });
 
-  const system = enhanceSystemPrompt(payload.mode);
+  const system = enhanceSystemPrompt(payload.mode, await readRequestLocale());
   const userPrompt = enhanceUserPrompt({
     mode: payload.mode,
     baseMarkdown: parent.markdown,

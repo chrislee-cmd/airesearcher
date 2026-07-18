@@ -1,5 +1,5 @@
 import type { EnhanceMode } from './context-payload';
-import { WRITING_TONE_BLOCK } from './prompts/_shared';
+import { WRITING_TONE_BLOCK, reportLangOverrideBlock } from './prompts/_shared';
 
 // System prompt for the Enhance pass. The model receives:
 //   - the previous version's canonical markdown (preserve structure)
@@ -47,14 +47,17 @@ const PERSPECTIVE = `${COMMON}
 - 본문 사실·수치·인용은 변경 금지. 관점은 해설과 강조 위주.
 `;
 
-export function enhanceSystemPrompt(mode: EnhanceMode): string {
+export function enhanceSystemPrompt(mode: EnhanceMode, locale?: string | null): string {
+  // 산출물 출력 언어 파라미터화(i18n Phase 7). non-ko 는 오버라이드 블록으로
+  // 강화 산출물을 유저 로케일로 강제. ko / 미전달은 기존 동작(빈 오버라이드).
+  const override = reportLangOverrideBlock(locale);
   switch (mode) {
     case 'trends':
-      return TRENDS;
+      return TRENDS + override;
     case 'logs':
-      return LOGS;
+      return LOGS + override;
     case 'perspective':
-      return PERSPECTIVE;
+      return PERSPECTIVE + override;
   }
 }
 

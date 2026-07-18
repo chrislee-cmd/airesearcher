@@ -3,10 +3,11 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { ZERO_RETENTION } from './llm/config';
 import {
-  INSIGHTS_CLUSTERS_SYSTEM,
+  buildInsightsClustersSystem,
   insightsClustersExtractionSchema,
   type InsightsCluster,
 } from './insights-clusters-schema';
+import type { OutputLang } from './i18n/output-language';
 
 type QuoteRow = {
   id: number;
@@ -24,6 +25,7 @@ type QuoteRow = {
 // so a hallucinated id can't reach the M:N table.
 export async function extractClusters(
   quotes: QuoteRow[],
+  lang?: OutputLang,
 ): Promise<InsightsCluster[]> {
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing_anthropic_key');
@@ -46,7 +48,7 @@ export async function extractClusters(
   const result = await generateObject({
     model: anthropic('claude-sonnet-4-6'),
     schema: insightsClustersExtractionSchema,
-    system: INSIGHTS_CLUSTERS_SYSTEM,
+    system: buildInsightsClustersSystem(lang),
     // 200k char cap matches the per-file extract route — well under
     // Sonnet's input window and bounds prompt cost for outlier jobs.
     prompt: `quotes (id 형식: [id]):\n\n${lines.slice(0, 200_000)}`,

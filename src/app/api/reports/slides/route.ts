@@ -9,6 +9,7 @@ import { getActiveOrg } from '@/lib/org';
 import { slideOutlineSchema } from '@/lib/reports-slides-schema';
 import { REPORT_TYPES, DEFAULT_REPORT_TYPE } from '@/lib/reports/types';
 import { getReportPrompts } from '@/lib/reports/prompts';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 800;
@@ -65,7 +66,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { markdown, reportType } = parsed.data;
-  const typePrompts = getReportPrompts(reportType);
+  // 슬라이드 텍스트 출력 언어 = 유저 로케일(NEXT_LOCALE) > en.
+  const typePrompts = getReportPrompts(reportType, await readRequestLocale());
 
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'missing_anthropic_key' }, { status: 500 });

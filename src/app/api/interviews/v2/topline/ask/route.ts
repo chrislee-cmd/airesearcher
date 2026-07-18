@@ -15,12 +15,14 @@ import {
 } from '@/lib/interview-v2/pgvector-query';
 import { formatEvidence } from '@/lib/interview-v2/search-prompt';
 import {
-  ASK_SYSTEM,
-  ASK_NO_ANSWER_MD,
-  ASK_WEB_SYSTEM,
-  ASK_WEB_NO_RESULTS_MD,
+  buildAskSystem,
+  askNoAnswerMd,
+  buildAskWebSystem,
+  askWebNoResultsMd,
   askAnswerSchema,
 } from '@/lib/interview-v2/ask-prompt';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import { searchWeb, formatWebEvidence } from '@/lib/web-search/tavily';
 import type { Citation } from '@/lib/interview-v2/types';
 
@@ -80,6 +82,10 @@ export async function POST(req: Request) {
   }
   const { project_id, anchor_block_id, selected_text, question, mode, top_k, score_threshold } =
     parsed.data;
+
+  // 출력 언어 = 유저 로케일(NEXT_LOCALE) > en. drag-to-ask 는 위젯 출력언어
+  // 셀렉터가 없으므로 명시 선택은 없다(#1038 로케일 폴백 축).
+  const lang = resolveOutputLang(undefined, await readRequestLocale());
 
   const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -154,7 +160,7 @@ export async function POST(req: Request) {
     if (results.length === 0) {
       return new Response(
         JSON.stringify({
-          answer_md: ASK_WEB_NO_RESULTS_MD,
+          answer_md: askWebNoResultsMd(lang),
           citations: [],
           no_answer: true,
         }),
@@ -168,7 +174,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const webSystem = `${ASK_WEB_SYSTEM}\n\n## 웹 검색 결과\n${formatWebEvidence(results)}`;
+    const webSystem = `${buildAskWebSystem(lang)}\n\n## 웹 검색 결과\n${formatWebEvidence(results)}`;
     const webResult = streamObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: askAnswerSchema,
@@ -224,7 +230,7 @@ export async function POST(req: Request) {
   // 근거 0 개 → 모델 호출 없이 no_answer. streamed 경로와 같은 JSON shape.
   if (hits.length === 0) {
     return new Response(
-      JSON.stringify({ answer_md: ASK_NO_ANSWER_MD, citations: [], no_answer: true }),
+      JSON.stringify({ answer_md: askNoAnswerMd(lang), citations: [], no_answer: true }),
       {
         status: 200,
         headers: {
@@ -235,7 +241,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const systemPrompt = `${ASK_SYSTEM}\n\n## 근거 청크\n${formatEvidence(hits)}`;
+  const systemPrompt = `${buildAskSystem(lang)}\n\n## 근거 청크\n${formatEvidence(hits)}`;
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),

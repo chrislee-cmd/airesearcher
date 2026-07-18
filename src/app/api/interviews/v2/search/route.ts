@@ -15,12 +15,14 @@ import {
   type HybridScope,
 } from '@/lib/interview-v2/hybrid-search';
 import {
-  SEARCH_SYSTEM,
-  NO_ANSWER_MD,
+  buildSearchSystem,
+  noAnswerMd,
   searchAnswerSchema,
   formatEvidence,
   type SearchAnswer,
 } from '@/lib/interview-v2/search-prompt';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 import type { Citation } from '@/lib/interview-v2/types';
 
 // Interview V2 search — retrieval-grounded, streamed markdown + citations.
@@ -220,6 +222,9 @@ export async function POST(req: Request) {
   const { question, project_id, project_ids, top_k, score_threshold, document_id } =
     parsed.data;
 
+  // 출력 언어 = 유저 로케일(NEXT_LOCALE) > en. 검색엔 출력언어 셀렉터 없음.
+  const lang = resolveOutputLang(undefined, await readRequestLocale());
+
   // A document_id (file-detail search) forces single-document scope regardless
   // of any project_ids — a file lives in exactly one project, so the narrower
   // scope wins. project_ids present (not undefined/null) ⇒ multi-project
@@ -340,7 +345,7 @@ export async function POST(req: Request) {
         user_id: user.id,
         project_id: auditProjectId,
         question,
-        answer_md: NO_ANSWER_MD,
+        answer_md: noAnswerMd(lang),
         citations: [],
       })
       .then(
@@ -348,7 +353,7 @@ export async function POST(req: Request) {
         (e) => console.error('[interviews/v2/search] audit insert failed', e),
       );
     return new Response(
-      JSON.stringify({ answer_md: NO_ANSWER_MD, citations: [], no_answer: true }),
+      JSON.stringify({ answer_md: noAnswerMd(lang), citations: [], no_answer: true }),
       {
         status: 200,
         headers: {
@@ -372,7 +377,7 @@ export async function POST(req: Request) {
   });
 
   const anthropic = createAnthropic({ apiKey });
-  const systemPrompt = `${SEARCH_SYSTEM}\n\n## 근거 청크\n${formatEvidence(hits)}`;
+  const systemPrompt = `${buildSearchSystem(lang)}\n\n## 근거 청크\n${formatEvidence(hits)}`;
 
   const result = streamObject({
     model: anthropic('claude-sonnet-4-6'),

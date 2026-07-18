@@ -6,6 +6,8 @@ import { refundCredits } from '@/lib/credits';
 import { extractClusters } from '@/lib/insights-clusters-extract';
 import { extractQualitative } from '@/lib/insights-qualitative-extract';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
+import { resolveOutputLang } from '@/lib/i18n/output-language';
+import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 // Bumped to 90s for the qualitative pass on top of clusters. Both
 // extractions are best-effort and round trips compound: clusters
@@ -125,9 +127,13 @@ export async function POST(request: Request) {
       .select('id, participant_name, theme, text')
       .eq('job_id', jobId);
 
+    // 산출물(cluster label·insight, tension/contradiction) 출력 언어 = 유저
+    // 로케일 > en. quote 원문은 verbatim 이라 그대로. 인사이트엔 출력언어 셀렉터 없음.
+    const lang = resolveOutputLang(undefined, await readRequestLocale());
+
     if (extractionQuotes && extractionQuotes.length > 0) {
       try {
-        const clusters = await extractClusters(extractionQuotes);
+        const clusters = await extractClusters(extractionQuotes, lang);
         if (clusters.length > 0) {
           const clusterRows = clusters.map((c) => ({
             job_id: jobId,
@@ -166,6 +172,7 @@ export async function POST(request: Request) {
       try {
         const { tensions, contradictions } = await extractQualitative(
           extractionQuotes,
+          lang,
         );
         if (tensions.length > 0) {
           const rows = tensions.map((t) => ({
