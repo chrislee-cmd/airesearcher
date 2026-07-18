@@ -1113,9 +1113,10 @@ export function QuotesCardBody() {
     }
   }, [job.jobs]);
 
+  const tLang = useTranslations('Languages');
   const languageOptions = LANGUAGES.map((l) => ({
     value: l.code,
-    label: `${l.flag} ${l.label}`,
+    label: `${l.flag} ${tLang(l.code)}`,
   }));
   // 컨트롤 드롭다운 통일 — native <Select> → DropdownMenu(인터뷰 기준).
   // 항목/value/onChange 로직 불변, 껍데기만 교체 (spec 결정 3).
@@ -1708,6 +1709,7 @@ function LanguageConfirmDialog({
   onCancel: () => void;
 }) {
   const t = useTranslations('Features.transcriptsView.languageConfirm');
+  const tLang = useTranslations('Languages');
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1758,7 +1760,7 @@ function LanguageConfirmDialog({
               autoFocus
               options={LANGUAGES.map((l) => ({
                 value: l.code,
-                label: `${l.flag} ${l.label} (${l.code})`,
+                label: `${l.flag} ${tLang(l.code)} (${l.code})`,
               }))}
             />
           </Field>
