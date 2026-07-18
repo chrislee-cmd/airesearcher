@@ -115,7 +115,7 @@ export type UseUtSession = {
   isSupported: boolean;
   /** 라이브 화면 프리뷰 <video> 에 스트림을 붙이는 ref 콜백. */
   attachPreview: (el: HTMLVideoElement | null) => void;
-  start: (rawTargetUrl: string) => Promise<void>;
+  start: (rawTargetUrl: string, opts?: { includeSiteAudio?: boolean }) => Promise<void>;
   stop: () => void;
   retryUpload: () => void;
   reset: () => void;
@@ -148,6 +148,10 @@ export function useUtSession(): UseUtSession {
   const audioExtRef = useRef<'mp4' | 'm4a' | 'webm'>('webm');
   const videoExtRef = useRef<'mp4' | 'm4a' | 'webm'>('webm');
   const blobsRef = useRef<Blobs | null>(null);
+  // 사이트 소리 믹싱용 — 켜졌을 때만 생성. 마이크 + 탭 오디오를 하나의 트랙으로
+  // 합쳐 영상에 싣는다. teardown 에서 close/stop.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const mixedAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const pendingStopRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
@@ -181,6 +185,14 @@ export function useUtSession(): UseUtSession {
     audioRecorderRef.current = null;
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    // 믹서(사이트 소리 결합)로 만든 트랙/컨텍스트 — screen/mic 스트림 밖이라
+    // 별도로 정리.
+    mixedAudioTrackRef.current?.stop();
+    mixedAudioTrackRef.current = null;
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
     screenStreamRef.current = null;
     micStreamRef.current = null;
     if (videoElRef.current) videoElRef.current.srcObject = null;
@@ -389,19 +401,22 @@ export function useUtSession(): UseUtSession {
   );
 
   const start = useCallback(
-    async (rawTargetUrl: string) => {
+    async (rawTargetUrl: string, opts?: { includeSiteAudio?: boolean }) => {
       if (phaseRef.current !== 'idle') return;
       setError(null);
       setResult(null);
 
+      const includeSiteAudio = opts?.includeSiteAudio ?? false;
       const targetUrl = normalizeTargetUrl(rawTargetUrl);
 
       // 1) 화면 공유 — 유저가 공유할 탭/창을 고른다. 취소하면 조용히 종료.
+      //    사이트 소리 옵션이 켜지면 audio:true 로 요청 → Chrome 이 탭 공유 시
+      //    "탭 오디오 공유" 체크박스를 띄운다(창/전체화면은 OS 에 따라 미제공).
       let screen: MediaStream;
       try {
         screen = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 30 },
-          audio: false,
+          audio: includeSiteAudio,
         });
       } catch (e) {
         handleMediaError(e, 'screen');
@@ -453,13 +468,42 @@ export function useUtSession(): UseUtSession {
       const video = pickVideo();
       videoMimeRef.current = video.mime || 'video/webm';
       videoExtRef.current = video.ext;
-      // 화면 비디오 + 마이크 음성을 한 스트림으로 합쳐 녹화 → 영상 파일에
-      // 발화가 함께 담긴다. 마이크 트랙은 별도 audioRecorder(전사·오디오
-      // 다운로드용)와 공유한다(같은 track 을 두 레코더가 읽어도 안전).
-      const combinedStream = new MediaStream([
-        ...screen.getVideoTracks(),
-        ...mic.getAudioTracks(),
-      ]);
+      // 영상에 실을 오디오 트랙을 만든다.
+      //   - 기본: 마이크 음성만(별도 audioRecorder 와 같은 track 공유 — 안전).
+      //   - 사이트 소리 옵션 ON + 탭 오디오 존재: WebAudio 로 마이크 + 사이트
+      //     소리를 한 트랙으로 믹싱해 싣는다. (옵션 ON 이어도 유저가 "탭 오디오
+      //     공유" 를 안 켜 오디오 트랙이 없으면 마이크만 — graceful.)
+      const siteAudioTracks = screen.getAudioTracks();
+      let videoAudioTrack: MediaStreamTrack | undefined;
+      if (includeSiteAudio && siteAudioTracks.length > 0) {
+        try {
+          const Ctx =
+            window.AudioContext ??
+            (window as unknown as { webkitAudioContext?: typeof AudioContext })
+              .webkitAudioContext;
+          const ctx = new Ctx();
+          const dest = ctx.createMediaStreamDestination();
+          ctx.createMediaStreamSource(new MediaStream(mic.getAudioTracks())).connect(dest);
+          ctx
+            .createMediaStreamSource(new MediaStream(siteAudioTracks))
+            .connect(dest);
+          audioCtxRef.current = ctx;
+          videoAudioTrack = dest.stream.getAudioTracks()[0];
+          mixedAudioTrackRef.current = videoAudioTrack ?? null;
+        } catch {
+          // 믹싱 실패 시 마이크만 싣는다(무회귀).
+          videoAudioTrack = mic.getAudioTracks()[0];
+        }
+      } else {
+        videoAudioTrack = mic.getAudioTracks()[0];
+      }
+
+      // 화면 비디오 + (마이크 또는 마이크+사이트 믹스) 를 한 스트림으로 녹화.
+      const combinedStream = new MediaStream(
+        [...screen.getVideoTracks(), videoAudioTrack].filter(
+          (t): t is MediaStreamTrack => Boolean(t),
+        ),
+      );
       const screenRecorder = new MediaRecorder(
         combinedStream,
         video.mime ? { mimeType: video.mime } : undefined,

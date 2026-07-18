@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
@@ -39,6 +40,7 @@ function formatElapsed(ms: number): string {
 export function UtSessionBody() {
   const session = useUtSession();
   const [targetUrl, setTargetUrl] = useState('');
+  const [includeSiteAudio, setIncludeSiteAudio] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
   const { isCurrent, renderInSlot, close } = useFullview('moderator_ai');
   const { setState } = useWidgetState();
@@ -80,7 +82,7 @@ export function UtSessionBody() {
   const handleStartClick = () => setConsentOpen(true);
   const handleConsent = () => {
     setConsentOpen(false);
-    void session.start(targetUrl);
+    void session.start(targetUrl, { includeSiteAudio });
   };
 
   // 현재 보이는 표면 — 프리뷰 <video> 를 여기에만 렌더(단일 스트림 부착).
@@ -173,6 +175,27 @@ export function UtSessionBody() {
               disabled={!session.isSupported}
             />
           </ControlBoardPanel.Input>
+          <ControlBoardPanel.Settings>
+            <label className="flex items-start gap-2 text-sm text-mute">
+              <Checkbox
+                checked={includeSiteAudio}
+                onChange={(e) => setIncludeSiteAudio(e.target.checked)}
+                disabled={!session.isSupported}
+                className="mt-[3px]"
+                aria-label="사이트 소리도 함께 녹음"
+              />
+              <span>
+                <span className="font-semibold text-ink-2">
+                  사이트 소리도 함께 녹음
+                </span>
+                <br />
+                <span className="text-xs-soft text-mute-soft">
+                  영상에 마이크 음성과 사이트 소리를 함께 담아요. 화면 공유
+                  창에서 &quot;탭 오디오 공유&quot;를 켜 주세요. (기본: 마이크 음성만)
+                </span>
+              </span>
+            </label>
+          </ControlBoardPanel.Settings>
         </ControlBoardPanel>
         <WidgetPrimaryCta
           label="세션 시작"
