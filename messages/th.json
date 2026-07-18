@@ -594,6 +594,7 @@
     },
     "adminPayments": "การชำระเงิน (แอดมิน)",
     "adminDesignSystem": "ระบบดีไซน์ (แอดมิน)",
+    "adminWritingSystem": "ระบบการเขียน (แอดมิน)",
     "adminAnalytics": "การวิเคราะห์ (แอดมิน)",
     "adminQaFeedback": "QA feedback (แอดมิน)",
     "adminRecruitingInvitations": "คำขอสรรหาผู้เข้าร่วม (แอดมิน)"
