@@ -1,15 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Locale key-parity gate (i18n Phase 2). Run in CI to keep `messages/*.json`
-// honest. Red conditions:
+// Locale key-parity gate (i18n Phase 2 → Phase 8 hard-lock). Run in CI to keep
+// `messages/*.json` honest. Red conditions:
 //
 //   1. Invalid JSON, or a duplicate key inside any object.
-//   2. ko ↔ en leaf-key sets differ (both are first-class — an orphan on
-//      either side is red).
-//   3. ja / th contain a key that en does not (they must be a subset of en;
-//      the en-base merge in src/i18n/request.ts covers whatever they omit).
+//   2. Every locale must have EXACTLY en's leaf-key set — en/ko/ja/th are all
+//      first-class. A key present in en but missing from any locale is red
+//      (would silently fall back to en — the "Thai mode shows English" leak);
+//      a key present in a locale but not en is an orphan and also red.
 //
-// Report-only (never red): per-locale untranslated counts (en − locale), and
-// a best-effort ICU-placeholder diff between ko and en for shared keys.
+// Phase 8 removed the ja/th `SUBSET_OF_EN` exemption: after the LLM backfill
+// (scripts/i18n-seed.ts) filled ja/th to 100%, partial coverage is no longer
+// tolerated, so en-fallback can never leak a foreign language again.
+//
+// Report-only (never red): per-locale untranslated counts (always 0 once
+// parity holds) and a best-effort ICU-placeholder diff between ko and en.
 //
 // Runnable:  node --experimental-strip-types scripts/check-i18n.ts
 // Importable: `import { checkI18n } from '.../check-i18n.ts'` (tests reuse it).
@@ -22,9 +26,8 @@ import { dirname, join } from 'node:path';
 export const LOCALES = ['en', 'ko', 'ja', 'th'] as const;
 export type Locale = (typeof LOCALES)[number];
 
-// ko/en must match exactly (checked explicitly below); ja/th only need to be
-// a subset of en.
-const SUBSET_OF_EN: Locale[] = ['ja', 'th'];
+// en is the source of truth; every other locale must match it exactly.
+const TRANSLATED: Locale[] = ['ko', 'ja', 'th'];
 
 type Json = Record<string, unknown>;
 
@@ -157,34 +160,29 @@ export function checkI18n(messagesDir: string): CheckResult {
 
   const en = keys.en;
 
-  // 2. ko ↔ en exact parity.
-  const koOnly = [...keys.ko].filter((k) => !en.has(k)).sort();
-  const enOnly = [...en].filter((k) => !keys.ko.has(k)).sort();
-  if (koOnly.length) {
-    errors.push(
-      `ko has ${koOnly.length} key(s) missing from en (orphans):\n  ${koOnly.slice(0, 20).join('\n  ')}` +
-        (koOnly.length > 20 ? `\n  … +${koOnly.length - 20} more` : ''),
-    );
-  }
-  if (enOnly.length) {
-    errors.push(
-      `en has ${enOnly.length} key(s) missing from ko (orphans):\n  ${enOnly.slice(0, 20).join('\n  ')}` +
-        (enOnly.length > 20 ? `\n  … +${enOnly.length - 20} more` : ''),
-    );
-  }
-  if (!koOnly.length && !enOnly.length) {
-    report.push(`ko ↔ en: exact parity (${en.size} keys).`);
-  }
-
-  // 3. ja / th ⊆ en.
-  for (const loc of SUBSET_OF_EN) {
+  // 2. Every translated locale must have EXACTLY en's leaf-key set.
+  //    Missing (falls back to en — the language-leak bug) and orphan (a key en
+  //    doesn't define) are both red. Applies uniformly to ko/ja/th now that
+  //    ja/th are backfilled to 100% (Phase 8 removed the subset exemption).
+  for (const loc of TRANSLATED) {
+    const missing = [...en].filter((k) => !keys[loc].has(k)).sort();
     const orphans = [...keys[loc]].filter((k) => !en.has(k)).sort();
+    if (missing.length) {
+      errors.push(
+        `${loc} is missing ${missing.length} key(s) present in en (would fall back to en):\n  ${missing
+          .slice(0, 20)
+          .join('\n  ')}` + (missing.length > 20 ? `\n  … +${missing.length - 20} more` : ''),
+      );
+    }
     if (orphans.length) {
       errors.push(
-        `${loc} has ${orphans.length} key(s) not present in en (must be a subset of en):\n  ${orphans
+        `${loc} has ${orphans.length} key(s) not present in en (orphans):\n  ${orphans
           .slice(0, 20)
           .join('\n  ')}` + (orphans.length > 20 ? `\n  … +${orphans.length - 20} more` : ''),
       );
+    }
+    if (!missing.length && !orphans.length) {
+      report.push(`${loc} ↔ en: exact parity (${en.size} keys).`);
     }
   }
 

@@ -1,4 +1,64 @@
 {
+  "AiUt": {
+    "consent": {
+      "title": "このセッションでは画面と音声が録画・録音されます",
+      "body": "このセッションでは<b>共有した画面</b>と<b>マイク</b>が録画・録音されます。録画中に表示されたものはすべて保存されます。",
+      "warning": "⚠ 画面上の機密情報（ログインパスワード、カード番号など）も記録される場合があります。共有するタブは慎重に選び、機密情報を入力する画面は避けてください。",
+      "note": "録画データと音声はご本人のみアクセスできるプライベートな場所に保管され、署名付きリンクを通じてのみダウンロードできます。",
+      "cancel": "キャンセル",
+      "confirm": "同意して開始"
+    },
+    "url": {
+      "label": "テスト対象サイトのURL",
+      "description": "テストしたいサイトのURLを入力してください。セッション開始時に新しいタブで開きます。"
+    },
+    "siteAudio": {
+      "label": "サイトの音声も録音する",
+      "description": "マイクとサイトの音声の両方を動画に含めます。画面共有ダイアログで「タブの音声を共有」をオンにしてください。（デフォルト：マイクのみ）"
+    },
+    "cta": {
+      "start": "セッションを開始",
+      "stop": "セッションを終了",
+      "newSession": "新しいセッションを開始",
+      "retryUpload": "アップロードを再試行"
+    },
+    "live": {
+      "recording": "録画中 · {time}",
+      "hint": "共有タブを自由に操作しながら、思ったことを声に出してください。セッション終了後に音声が文字起こしされます。"
+    },
+    "subtitle": {
+      "live": "セッション進行中",
+      "result": "セッション結果",
+      "idle": "画面共有＋音声によるユーザビリティテスト"
+    },
+    "unsupported": "このブラウザは画面共有録画に対応していません。ChromeやEdgeなど最新のデスクトップブラウザをご使用ください。",
+    "result": {
+      "uploading": "録画を保存しています…",
+      "transcribing": "音声を文字起こししています…",
+      "logTitle": "発話ログ",
+      "durationLabel": "長さ {duration}",
+      "logPlaceholderTranscribing": "文字起こしが完了すると、ここに発話内容が表示されます。",
+      "logPlaceholderEmpty": "文字起こしされた音声はありませんでした。",
+      "downloadTitle": "ダウンロード"
+    },
+    "download": {
+      "recording": "🎬 画面録画",
+      "recordingTitle": "画面録画をダウンロード（音声付き · mp4、非対応ブラウザの場合はwebm）",
+      "audio": "🎙 音声",
+      "audioTitle": "音声をダウンロード（m4a、非対応ブラウザはwebm）",
+      "transcript": "📄 文字起こし",
+      "transcriptTitle": "文字起こしテキストをダウンロード"
+    },
+    "error": {
+      "transcribe": "文字起こしに失敗しました。画面収録と音声は引き続きダウンロードできます。",
+      "upload": "アップロードに失敗しました。しばらくしてからもう一度お試しください。",
+      "screen": "画面共有を開始できませんでした。お使いのブラウザが画面共有に対応しているかご確認ください。",
+      "mic": "マイクへのアクセスが必要です。アドレスバーの鍵アイコン → サイトの設定からマイクを許可してください。",
+      "createSession": "セッションを開始できませんでした。しばらくしてからもう一度お試しください。",
+      "downloadLink": "ダウンロードリンクを作成できませんでした。しばらくしてからもう一度お試しください。",
+      "download": "ダウンロード中にエラーが発生しました。"
+    }
+  },
   "Brand": {
     "name": "Research-Canvas"
   },
@@ -6,6 +66,9 @@
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
     "metaDescription": "同じデスクに並ぶ8つの小さなツールが、急がないリサーチを支えます。",
     "nav": {
+      "features": "機能",
+      "workflow": "使い方",
+      "security": "セキュリティ",
       "pricing": "料金",
       "faq": "よくある質問",
       "signIn": "サインイン",
@@ -17,7 +80,253 @@
       "lead": "文字起こしからインタビュー分析、デスクリサーチ、本格的なレポートまで——<strong>8つのツール</strong>が一つのワークスペースで重労働を引き受けます。優れたリサーチを、徹夜なしで。",
       "ctaPrimary": "無料で始める →",
       "ctaSecondary": "デモを見る",
-      "postscript": "<b>P.S.</b> すべてのツールが最初の24時間は使い放題。カード登録は不要です。"
+      "postscript": "<b>P.S.</b> すべてのツールが最初の24時間は使い放題。カード登録は不要です。",
+      "canvasMeta": "RESEARCH CANVAS",
+      "canvasBrand": "Research-Canvas · キャンバス",
+      "canvasCredits": "2,840 クレジット",
+      "canvasSaved": "保存済み · たった今",
+      "widgetTranscriptsTitle": "文字起こし",
+      "widgetTranscriptsLine1": "P1 · 「気になったのは…」",
+      "widgetTranscriptsLine2": "P2 · 「デザインがとても印象的でした」",
+      "widgetTranscriptsLine3": "P3 · 「価格が少し高く感じました」",
+      "widgetTranslateTitle": "AI同時通訳",
+      "widgetTranslateHost": "ホスト · EN",
+      "widgetTranslateGuest": "ゲスト · KO",
+      "widgetTranslateLine": "「ブランドを選ぶとき、いつもどうやって決めますか？」",
+      "widgetTranslateGuestLine": "「デザインで選ぶことが多いです。」",
+      "widgetProbingTitle": "プロービングアシスタント",
+      "widgetProbingHint": "フォローアップの提案",
+      "widgetProbingQuestion": "「",
+      "widgetInsightsTitle": "インサイト分析",
+      "widgetInsightsCluster1": "価格重視 (12)",
+      "widgetInsightsCluster2": "ブランド信頼 (9)",
+      "widgetInsightsCluster3": "デザイン重視 (7)",
+      "widgetDeskTitle": "デスクリサーチ",
+      "widgetDeskSource1": "Statista · K-Beauty 2026",
+      "widgetDeskSource2": "Mintel · Gen Z cosmetics",
+      "widgetRecruitingTitle": "リクルーティング",
+      "widgetRecruitingSubtitle": "回答者スクリーニング",
+      "widgetRecruitingP1": "30代 働くママ",
+      "widgetRecruitingP1Status": "選択済み",
+      "widgetRecruitingP2": "20代 学生",
+      "widgetRecruitingP2Status": "保留中",
+      "widgetRecruitingP3": "40代 フリーランス",
+      "widgetRecruitingP3Status": "選択済み",
+      "widgetRecruitingCount": "選択済み 7 / 回答数 24"
+    },
+    "features": {
+      "meta": "キャンバス上で",
+      "title": "<hlPeach>6つのウィジェット</hlPeach>が、1つのキャンバスに。",
+      "subtitle": "各ウィジェットは単体でも強力ですが、キャンバス上で組み合わせることで、結果がスムーズにつながります。",
+      "translate": {
+        "title": "AI同時通訳",
+        "tag": "New",
+        "lead": "AI通訳ツールは数多くありますが、セッションを終えてみると、名前の表記がバラバラだったり、企業名が全く違っていたりすることがあります。",
+        "bullets": [
+          {
+            "highlight": "事前コンテキストの登録",
+            "rest": "開始前に名前や重要な用語を一度登録するだけで、セッション全体を通じて一貫した表記を維持します。"
+          },
+          {
+            "highlight": "二重検証",
+            "rest": "リアルタイム処理＋事後処理の二段階で、ハルシネーションをゼロに抑えます。"
+          },
+          {
+            "highlight": "話者の自動分離",
+            "rest": "インタビュアーと回答者のラベルを自動で付与します。"
+          }
+        ]
+      },
+      "probing": {
+        "title": "プロービングアシスタント",
+        "tag": "New",
+        "lead": "インタビューの後に「あの点、もう少し深く聞いておけばよかった」と思った経験はありませんか？",
+        "bullets": [
+          {
+            "highlight": "AIコパイロット",
+            "rest": "ためらい・矛盾・認知的ギャップをリアルタイムで検出"
+          },
+          {
+            "highlight": "決定的瞬間ポップアップ",
+            "rest": "「今すぐこれを聞いてください」— 的確な質問をその場でご提案"
+          },
+          {
+            "highlight": "ペルソナの自動生成",
+            "rest": "インタビュー終了と同時に、8つのパネルにわたる回答者プロフィールが完成"
+          }
+        ]
+      },
+      "insights": {
+        "title": "インサイトアナライザー",
+        "tag": "新機能",
+        "lead": "10件のインタビューを手作業で整理すると、数日かかってしまいます。",
+        "bullets": [
+          {
+            "highlight": "トピック別に自動グループ化",
+            "rest": "参加者 × トピック クロス集計"
+          },
+          {
+            "highlight": "韓国語の助詞を考慮した検索",
+            "rest": "「광고」と入力するだけで「광고는・광고를・광고에서」も自動的にヒット"
+          },
+          {
+            "highlight": "文脈付き引用",
+            "rest": "前後の発言も含めて、意味を損なわずそのまま貼り付け可能"
+          }
+        ]
+      },
+      "interviews": {
+        "title": "インタビュー結果",
+        "lead": "文字起こしを入力するだけで、マトリクス生成・パターン発見・レポート作成まで、すべてワンクリックで完了します。",
+        "bullets": [
+          {
+            "highlight": "回答 × 質問 マトリクス",
+            "rest": "誰がどのトピックについて何を語ったか、一目で把握できます"
+          },
+          {
+            "highlight": "パターン抽出",
+            "rest": "共通点・相違点・意外なシグナルを自動で検出"
+          },
+          {
+            "highlight": "ワンクリックでdocx出力",
+            "rest": "キャンバス上の他のウィジェットと即座に連携"
+          }
+        ]
+      },
+      "desk": {
+        "title": "デスクリサーチ",
+        "lead": "ChatGPTに「これを調べて」と頼むと、もっともらしい要約は返ってきます。でも、その情報はどこから来たのでしょうか？",
+        "bullets": [
+          {
+            "highlight": "複数ソースの並列調査",
+            "rest": "複数の情報源を同時に横断して調査"
+          },
+          {
+            "highlight": "質問の分解 + 多段階処理",
+            "rest": "AIが自らの成果物をレビューし、精度を高めます"
+          },
+          {
+            "highlight": "ソースリンク + 信頼度ティア",
+            "rest": "すべての引用はトレース可能 — 検証可能なエビデンス"
+          }
+        ]
+      },
+      "quotes": {
+        "title": "文字起こし",
+        "lead": "1時間のインタビューが、数分で整理された文字起こしに。",
+        "bullets": [
+          {
+            "highlight": "韓国語の助詞結合マッチング",
+            "rest": "「광고」と一度入力するだけで「광고는・광고를・광고에서」もまとめてヒット。Cmd+Fより賢い検索。"
+          },
+          {
+            "highlight": "文字起こしをまたいだ検索",
+            "rest": "複数のインタビューを一度に検索"
+          },
+          {
+            "highlight": "話者・タイムスタンプ・文脈",
+            "rest": "ラベルと前後の発話を自動表示"
+          }
+        ]
+      }
+    },
+    "workflow": {
+      "meta": "使い方",
+      "title": "<hl>3ステップ</hl>、それだけです。",
+      "subtitle": "必要なウィジェットを配置し、分析をウィジェット間で連携させて、結果をそのまま共有できます。",
+      "step1Num": "01",
+      "step1Title": "キャンバスにウィジェットを配置",
+      "step1Body": "必要なツールをキャンバスに並べましょう。文字起こし、翻訳、分析——すべてを横並びで。",
+      "step2Num": "02",
+      "step2Title": "分析が自動で流れる",
+      "step2Body": "ウィジェット同士が結果を受け渡し、次のステップが自動で進みます。タブの切り替えは不要です。",
+      "step3Num": "03",
+      "step3Title": "エクスポートまたは共有",
+      "step3Body": "レポート、引用、マトリクスをダウンロードするか、キャンバス全体をリンク一つで共有できます。"
+    },
+    "security": {
+      "meta": "安全設計",
+      "title": "あなたのデータは、<hlPeach>安全</hlPeach>です。",
+      "subtitle": "AIツール利用時に多くの方が心配されることを、私たちはあらかじめブロックしています。",
+      "cards": {
+        "ai": {
+          "title": "AIのトレーニングには使用しない",
+          "lead": "インタビューの文字起こし、通訳音声、ペルソナ分析——すべてOpenAIのAPIデータポリシーのもとで取り扱われます。",
+          "bullets": [
+            {
+              "highlight": "モデルのトレーニングなし",
+              "rest": "APIデータはモデルのトレーニングに使用されません"
+            },
+            {
+              "highlight": "30日後に自動削除",
+              "rest": "OpenAIの保持期間が終了すると、データは削除されます"
+            },
+            {
+              "highlight": "トレーニングにも使用しません",
+              "rest": "お客様のデータは当社のモデル改善には使用されません"
+            }
+          ]
+        },
+        "auth": {
+          "title": "お客様のデータは、お客様だけのものです",
+          "lead": "Supabase の行レベルセキュリティがすべてのDBクエリに適用されます — 他のユーザーがお客様のインタビューを閲覧することはできません。",
+          "bullets": [
+            {
+              "highlight": "行レベルセキュリティ",
+              "rest": "DBレイヤーで強制適用 — コードミスがあっても情報漏洩はゼロ"
+            },
+            {
+              "highlight": "チームワークスペースの分離",
+              "rest": "組織レベルの権限管理 — 招待されたメンバーのみアクセス可能"
+            },
+            {
+              "highlight": "Google OAuth + メール認証",
+              "rest": "パスワードは Supabase Auth によってハッシュ化・管理されます"
+            }
+          ]
+        },
+        "encryption": {
+          "title": "転送中および保存時に暗号化",
+          "lead": "データがブラウザを離れた瞬間からディスクに書き込まれるまで — 常に暗号化されています。",
+          "bullets": [
+            {
+              "highlight": "転送時 — TLS 1.3",
+              "rest": "すべてのページとAPIでHTTPSを使用"
+            },
+            {
+              "highlight": "保存時 — AES-256",
+              "rest": "Supabase が管理する Postgres のディスク暗号化"
+            },
+            {
+              "highlight": "バックアップも暗号化済み",
+              "rest": "インフラバックアップ全体で統一されたキーポリシーを適用"
+            }
+          ]
+        },
+        "payment": {
+          "title": "カード情報は保存しません",
+          "lead": "決済は PCI-DSS 認定ベンダー（Lemonsqueezy）が処理します。カード番号は当社のDBに一切保存されません。",
+          "bullets": [
+            {
+              "highlight": "カード情報の非保存",
+              "rest": "カードデータは当社のシステムに入ることはありません"
+            },
+            {
+              "highlight": "PCI-DSS 認定ベンダー",
+              "rest": "Lemonsqueezy がカード情報を管理 — 金融業界標準に準拠"
+            },
+            {
+              "highlight": "請求履歴のみ保持",
+              "rest": "クレジット残高と請求書のみ — カードデータはベンダー側で管理されます"
+            }
+          ]
+        }
+      },
+      "footer": {
+        "text": "利用規約 / 韓国PIPA準拠 / データのエクスポートおよび削除権利を保証。",
+        "linkText": "プライバシーポリシー + 利用規約 →",
+        "linkHref": "/privacy"
+      }
     },
     "pricing": {
       "meta": "クレジット · 使った分だけお支払い",
@@ -175,12 +484,71 @@
     "errorSamePassword": "以前と異なるパスワードをお選びください。",
     "errorInvalidEmail": "有効なメールアドレスを入力してください。",
     "errorLinkExpired": "このリンクは有効期限が切れているか、すでに使用されています。新しいリンクをリクエストしてください。",
-    "errorGeneric": "問題が発生しました。もう一度お試しください。"
+    "errorGeneric": "問題が発生しました。もう一度お試しください。",
+    "sessionExpiredTitle": "セッションの有効期限が切れました",
+    "sessionExpiredBody": "サインインセッションの有効期限が切れました。再度サインインしてください。",
+    "sessionExpiredCountdown": "{seconds}秒後にリダイレクトします…",
+    "sessionExpiredCta": "サインイン"
+  },
+  "Consent": {
+    "legend": "アカウントの同意",
+    "agreeAll": "すべてに同意する",
+    "privacy": "プライバシーポリシーに同意します",
+    "terms": "利用規約に同意します",
+    "marketing": "製品ニュースやイベント情報を受け取る",
+    "required": "（必須）",
+    "optional": "（任意）",
+    "errorRequired": "アカウントを作成するには、必須項目に同意してください。"
+  },
+  "CookieBanner": {
+    "title": "Cookieを使用しています",
+    "body": "認証、製品改善のための分析、およびオプトイン時のマーケティング目的でCookieを使用しています。",
+    "learnMore": "詳細を見る",
+    "preferencesLegend": "Cookieの設定",
+    "essential": "必須",
+    "alwaysOn": "（常にオン）",
+    "essentialDescription": "サインインおよびコア機能に必要です。",
+    "analytics": "分析",
+    "analyticsDescription": "製品改善のための匿名化された利用状況データです。",
+    "marketing": "マーケティング",
+    "marketingDescription": "関連するキャンペーンやイベント情報です。",
+    "customize": "カスタマイズ",
+    "hideDetails": "詳細を隠す",
+    "acceptAll": "すべて受け入れる",
+    "rejectAll": "すべて拒否する",
+    "savePreferences": "設定を保存する"
+  },
+  "Topbar": {
+    "tabs": {
+      "canvas": "キャンバス",
+      "projects": "プロジェクト",
+      "members": "メンバー",
+      "settings": "設定"
+    },
+    "viewMode": {
+      "label": "表示モード",
+      "canvas": "キャンバス表示",
+      "list": "リスト表示"
+    }
+  },
+  "QaFeedback": {
+    "label": "フィードバックを送る",
+    "noteAria": "テキストフィードバック",
+    "title": "テキストフィードバック",
+    "placeholder": "この画面についてのご意見をお聞かせください。",
+    "submit": "送信",
+    "cancel": "閉じる",
+    "submitDone": "フィードバックを送信しました",
+    "submitError": "保存に失敗しました: {message}",
+    "loginRequired": "サインインしてください",
+    "nudge": "ご意見をお聞かせください 🎤",
+    "nudgeDismiss": "通知を閉じる"
   },
   "Sidebar": {
     "dashboard": "ダッシュボード",
     "quotes": "文字起こし生成",
     "transcripts": "スクリプト生成",
+    "insights_analyzer": "インサイトアナライザー",
     "interviews": "インタビュー結果生成",
     "reports": "リサーチレポート生成",
     "scheduler": "参加者スケジューラー",
@@ -194,6 +562,11 @@
     "affinity_bubble": "アフィニティバブル",
     "video": "ビデオアナライザー",
     "translate": "AI同時通訳",
+    "probing": "プロービングアシスタント",
+    "slidegen": "スライドジェネレーター",
+    "guideline": "ガイドラインジェネレーター",
+    "moderator_ai": "AI UT",
+    "ppt_report": "ビデオアナライザー",
     "members": "メンバー",
     "organizations": "組織",
     "settings": "設定",
@@ -201,10 +574,12 @@
     "adminApiUsage": "API利用状況（管理者）",
     "credits": "クレジット",
     "viewProjects": "プロジェクトを見る",
+    "canvas": "キャンバス",
     "working": "実行中",
     "done": "完了",
     "progress": {
       "expanding": "拡張中",
+      "scoping": "スコーピング質問",
       "crawling": "収集中",
       "summarizing": "要約中",
       "uploading": "アップロード中",
@@ -217,7 +592,11 @@
       "normalizing": "正規化中",
       "generating": "作成中"
     },
-    "adminPayments": "決済管理（管理者）"
+    "adminPayments": "決済管理（管理者）",
+    "adminDesignSystem": "デザインシステム（管理者）",
+    "adminAnalytics": "アナリティクス（管理者）",
+    "adminQaFeedback": "QAフィードバック（管理者）",
+    "adminRecruitingInvitations": "リクルーティングリクエスト（管理者）"
   },
   "SidebarGroups": {
     "design": "リサーチ設計",
@@ -259,6 +638,7 @@
     "signIn": "サインイン"
   },
   "Projects": {
+    "emptyArtifacts": "このプロジェクトにはまだアイテムがありません。",
     "title": "プロジェクト",
     "description": "リサーチの成果物をプロジェクトごとにまとめて、整理しやすくします。",
     "newProject": "新規プロジェクト",
@@ -275,12 +655,27 @@
     "noActiveOrg": "ワークスペースを読み込み中、またはサインインが必要です。",
     "delete": "削除"
   },
+  "ProjectPicker": {
+    "placeholder": "プロジェクトを選択",
+    "newProject": "+ 新規プロジェクト",
+    "applyToAll": "すべてのウィジェットに適用",
+    "menu": "プロジェクトメニュー"
+  },
   "ComingSoon": {
     "eyebrow": "近日公開",
     "toast": "この機能は準備中です",
     "body": "現在仕上げの段階です。準備ができ次第すぐにお知らせします。"
   },
+  "WidgetGate": {
+    "title": "このツールは現在使用中です",
+    "body": "少々お待ちください。前の方が終了次第、自動的に開始されます。",
+    "positionAhead": "あなたの前に{count}件"
+  },
   "Common": {
+    "close": "閉じる",
+    "done": "完了",
+    "viewResult": "結果を見る",
+    "nSelected": " {count}件選択中",
     "language": "言語",
     "korean": "한국어",
     "english": "English",
@@ -291,6 +686,9 @@
     "freeCreditsRemaining": "無料 {count} · {date}まで",
     "generate": "生成",
     "loading": "読み込み中...",
+    "uploading": "アップロード中",
+    "uploadingFiles": "ファイルをアップロード中",
+    "transcribing": "文字起こし中",
     "comingSoon": "近日公開",
     "share": "共有",
     "save": "保存",
@@ -341,6 +739,7 @@
       "cost": "1クレジット"
     },
     "transcriptsView": {
+      "transcribingEta": "{elapsed} 経過 · 残り約{remain}（推定）",
       "languageConfirm": {
         "title": "この言語で文字起こししますか？",
         "body": "選択した言語で文字起こしを実行します。誤った設定のまま開始すると精度が大きく低下するため、一度ご確認ください。",
@@ -349,7 +748,59 @@
         "fileCountPlural": "ファイル{count}個",
         "proceedCta": "この言語で開始",
         "cancelCta": "キャンセル"
-      }
+      },
+      "inferredSpeakersBadge": "Q&Aの文脈で自動分割 — ホスト / ゲスト",
+      "inferredSpeakersHint": "音響的に1人の話者のみが検出されました（例：1人の通訳者が両方を担当している場合など）。そのため、会話の内容をもとに各ターンをホストまたはゲストとして判定しました。これは推定されたラベルです。手動での確認を推奨します。",
+      "uploadSlotWaiting": "待機中 — 文字起こしスロットを取得できませんでした。アップロード済みのファイルは、下の「文字起こしを開始」から再試行できます。",
+      "deleteJobConfirm": "この文字起こしジョブを削除しますか？",
+      "retryStarted": "文字起こしを再開しました",
+      "retryFailed": "再試行に失敗しました: {msg}",
+      "bulkDeleteDone": "{count}件削除しました",
+      "bulkDeletePartial": "{succeeded}件成功 · {failed}件失敗",
+      "fieldProject": "プロジェクト",
+      "fieldLanguage": "言語",
+      "countItems": "{count}",
+      "queueInProgress": "処理中 / 待機中",
+      "inProgress": "処理中",
+      "fullviewTitle": "文字起こし — すべて",
+      "fullviewSubtitle": "完了 {done} · 処理中 {queue}",
+      "fullviewSubtitleStuck": " · 停止中 {stuck}",
+      "searchPlaceholder": "ファイル名で検索…",
+      "searchAria": "文字起こしファイル名を検索",
+      "noSearchResults": "結果がありません。",
+      "noJobs": "文字起こしジョブはまだありません。",
+      "selectAll": "すべて選択",
+      "nSelected": "{count}件選択中",
+      "clearSelection": "選択を解除",
+      "zipDownload": "📥 ZIPダウンロード（{count}）",
+      "bulkDeleteBtn": "🗑 一括削除（{count}）",
+      "bulkDeleteModalTitle": "選択した文字起こしジョブを削除",
+      "bulkDeleteConfirmBody": "選択した<b>{count}</b>件の文字起こしジョブを削除しますか？この操作は元に戻せません。",
+      "deleting": "削除中…",
+      "deleteCount": "{count}件を削除",
+      "stuckPill": "スタック",
+      "selectAria": "{filename}を選択",
+      "transcriptFallbackTitle": "文字起こし",
+      "collapse": "折りたたむ",
+      "preview": "プレビュー",
+      "retry": "再試行",
+      "deleteJobAria": "文字起こしジョブを削除",
+      "cleanVersion": "クリーン済み",
+      "rawVersion": "未加工",
+      "correctionCount": "{touched}/{total}ターンを修正済み",
+      "loadingPreview": "読み込み中…",
+      "statusUploading": "アップロード中",
+      "statusQueued": "キュー待ち",
+      "statusSubmitting": "送信中",
+      "statusTranscribing": "文字起こし中",
+      "statusDone": "完了",
+      "statusError": "エラー",
+      "statusCancelled": "キャンセル済み"
+    },
+    "insights_analyzer": {
+      "title": "インサイトアナライザー",
+      "description": "インタビューや資料をアップロードすると、回答者横断マトリクス・統合インサイト・ビジュアライゼーション・完全なレポートを生成し、チャットで全出力を検索できます。",
+      "cost": "30 クレジット"
     },
     "interviews": {
       "title": "インタビュー結果生成",
@@ -457,6 +908,31 @@
       "title": "AI同時通訳",
       "description": "マイクの音声をOpenAI Realtimeがリアルタイムに通訳します。共有リンクを発行すれば、外部の視聴者も字幕と音声を選んで利用できます。",
       "cost": "実音声ベース — 開始時75クレジット（最初の10分・録音＋ダウンロード込み）、以降実音声10分ごとに10クレジット"
+    },
+    "probing": {
+      "title": "プロービングアシスタント",
+      "description": "リサーチゴールとKRQを入力すると、AIがリアルタイムで思考を展開しながら、必須質問をフローティングポップアップ（15秒で自動消去・重要度に応じた色付き視覚キュー）として表示します。下部には履歴が蓄積され、左ペインには8パネルのペルソナスナップショットが常に同期されます。",
+      "cost": "開始時25クレジット、以降1時間ごとに25クレジット（上限4時間＝100クレジット）"
+    },
+    "slidegen": {
+      "title": "スライドジェネレーター",
+      "description": "レポートを貼り付けると、図表中心のスライドデッキを生成します。これはスケルトン構築ステップです — 決定論的な分割とブレットフォールバックのみで、エディター・LLMクラシファイアー・エクスポートは後続PRで追加予定です。",
+      "cost": "プレビュー期間中は無料"
+    },
+    "guideline": {
+      "title": "ガイドライン生成",
+      "description": "インタビューガイドラインを自動生成します。",
+      "cost": "近日公開"
+    },
+    "moderator_ai": {
+      "title": "AI UT",
+      "description": "AI がユーザビリティテストを代わりに実施します。",
+      "cost": "近日公開"
+    },
+    "ppt_report": {
+      "title": "動画アナライザー",
+      "description": "動画をアップロードすると、自動で分析されます。",
+      "cost": "近日公開"
     }
   },
   "Quant": {
@@ -488,6 +964,8 @@
     "inquiry": "デモを依頼"
   },
   "Credits": {
+    "closeCheckout": "チェックアウトを閉じる",
+    "closeBankTransfer": "銀行振込情報を閉じる",
     "pageTitle": "クレジットを購入",
     "pageEyebrow": "請求",
     "pageSubtitle": "リサーチの生成に使うクレジットをチャージできます。",
@@ -501,6 +979,8 @@
     "bundleMax": "Max",
     "popular": "人気",
     "perCredit": "1クレジットあたり",
+    "bundleSavings": " {pct}% お得",
+    "billedInKrwNote": "{krw} で請求",
     "currencyLabel": "支払い通貨",
     "currencyKrw": "₩ KRW · 韓国",
     "currencyUsd": "$ USD · 海外",
@@ -539,6 +1019,7 @@
     "issueBankReference": "振込情報を取得",
     "requestQuote": "見積を依頼",
     "quoteSentToast": "見積依頼を送信しました。",
+    "bankEmailSent": "お支払い詳細をメールでお送りします。受信トレイをご確認ください。",
     "bankTitle": "銀行振込のご案内",
     "bankBody": "下記の口座へお振り込みください。入金確認後、1営業日以内にクレジットが付与されます。お振り込みの際は、依頼人名にリファレンスコードをご入力ください。",
     "bankBankName": "銀行",
@@ -560,7 +1041,14 @@
     "subTier_plus": "Plus",
     "subTier_pro": "Pro",
     "subPerMonth": "/ 月",
+    "subPerYear": "/ 年",
     "subIncludedCredits": "毎月 {count} クレジット付与",
+    "subIncludedCreditsAnnual": "年間 {count} クレジット付与・有効期限なし",
+    "subIntervalLabel": "請求サイクル",
+    "subIntervalMonthly": "月払い",
+    "subIntervalAnnual": "年払い",
+    "subAnnualBadge": "1ヶ月分無料",
+    "subAnnualEffective": "{annual}/年 = {monthly}/月",
     "subBenefitNoExpiry": "付与クレジットは無期限",
     "subBenefitPriority": "生成の優先処理",
     "subBenefitSeats": "チームシート共有",
@@ -576,6 +1064,20 @@
     "subUnavailableCta": "準備中",
     "subscribeSuccess": "サブスクリプションが有効になりました。クレジットが付与されました。"
   },
+  "Canvas": {
+    "navigator": {
+      "title": "ステータス",
+      "expand": "ウィジェットリストを展開",
+      "collapse": "ウィジェットリストを折りたたむ",
+      "dragHandle": "ドラッグして移動",
+      "resetPosition": "位置をリセット",
+      "stateRunning": "実行中",
+      "stateDone": "完了",
+      "stateError": "エラー",
+      "hideWidget": "ウィジェットを非表示にする",
+      "showWidget": "ウィジェットを表示する"
+    }
+  },
   "Desk": {
     "keywordLabel": "キーワード",
     "keywordPlaceholder": "キーワードを入力してEnterを押してください",
@@ -590,27 +1092,126 @@
     "range_year": "過去1年",
     "range_three_years": "過去3年",
     "range_custom": "カスタム",
+    "modeLabel": "リサーチの目的",
+    "modeTitle": {
+      "trend": "トレンドリサーチ",
+      "market": "市場調査"
+    },
+    "modeDesc": {
+      "trend": "ニュース・SNS・検索からの最新動向を、6つの軸（概要、拡散性、ポジティブ、ネガティブ、主要プレイヤー、今後の展望）で分析します。",
+      "market": "統計データや開示情報をもとにしたTAM/SAMの参照データセット — 近日公開予定。"
+    },
+    "modeSoonBadge": "近日公開予定",
+    "modeComingSoon": "近日公開予定",
+    "modeTrendSourcesHint": "ソースはAIが自動選択します（ニュース、ブログ、フォーラム、YouTube、研究機関のRSS、ウェブ検索を対象とし、統計・開示情報は除外）。選定の根拠はレポート上部のAI判断ログでご確認いただけます。",
     "sourcesLabel": "ソース",
+    "sourcePickerPlaceholder": "ソースを選択",
+    "sourceEnvHint": "一部のソースにはAPIキーが必要です",
     "sourcesUnit": "ソース",
+    "category": {
+      "news": "ニュース・ポータル",
+      "community": "コミュニティ",
+      "stats": "市場統計",
+      "academic": "学術",
+      "institute": "研究機関",
+      "thought": "オピニオンリーダー",
+      "video": "動画"
+    },
     "search": "検索",
     "error": "エラー",
     "errorNoKeyword": "キーワードを1つ以上追加してください",
     "similarKeywords": "拡張キーワード",
     "reportTitle": "要約レポート",
+    "researchQuestions": "リサーチクエスチョン",
+    "extractedClaims": "抽出された定量的な主張",
+    "importance": "重要度",
+    "viewSource": "ソースを表示",
     "collected": "収集した記事",
     "groupAll": "すべて選択",
     "groupNone": "クリア",
     "skippedTitle": "APIキー未設定のためスキップされたソース",
+    "skippedInvalidKey": "⚠️ 収集に失敗しました — APIキーが無効です（再登録が必要です）",
+    "skippedRateLimited": "一部の結果が除外されました — レート制限を超過しました",
+    "skippedFetchFailed": "収集に失敗しました — 一時的なエラーが発生しました",
     "downloadMd": ".mdをダウンロード",
     "downloadDocx": ".docxをダウンロード",
     "thinkingActive": "処理中",
     "thinkingDone": "アクティビティ",
+    "thinkingDetails": "アクティビティの詳細",
     "stop": "停止",
     "stopRequested": "停止中…",
+    "stopAndRefund": "停止して返金する",
     "cancelledNotice": "ユーザーによって実行がキャンセルされました。",
+    "errorTitle": "エラー — レポートを生成できませんでした",
+    "errorBody": "予期しないエラーにより実行が停止しました。しばらくしてから再度お試しください。",
+    "timeoutTitle": "タイムアウト — クレジットが返金されました",
+    "timeoutBody": "300秒の制限内にレポートを完了できなかったため、実行が停止されました。クレジットは自動的に返金されました。キーワードや日付範囲を絞り込んでお試しください。",
+    "stuckTitle": "AIが詳細を分析中です",
+    "stuckBodyCrawling": "ソースを収集中です — 情報量によって少し時間がかかる場合があります。",
+    "stuckBodySynthesizing": "レポートを作成中です — 通常1〜2分で完了します。",
+    "stuckBodyDefault": "AIが詳細を分析中です — もう少しお待ちください。",
+    "stuckBodyLong": "予想より時間がかかっています。このまま待つか、実行を停止してクレジットを回収することができます。",
+    "doneEmptyTitle": "レポートが空です",
+    "doneEmptyBody": "実行は完了しましたが、レポートの本文が保存されませんでした。再度お試しください。",
+    "fallbackTitle": "簡易レポートで完了しました",
+    "fallbackBody": "最終的なLLM合成ステップが制限時間内に実行できませんでした。収集した回答と根拠から簡易レポートが作成され、クレジットは自動的に返金されました。より詳細なレポートを得るには、キーワードや日付範囲を絞り込んで再試行してください。",
+    "rawDumpTitle": "生データのみ収集しました",
+    "rawDumpBody": "AI分析が制限時間内に実行できなかったため、収集した記事とソースリストをレポートとして返しました。クレジットは自動的に返金されました。完全なAI分析を得るには、キーワードを絞り込む（例：3つ以下）か、地域やソースの数を減らして再試行してください。",
+    "estimateLabel": "{kw} キーワード × {src} ソース × {region} 地域 = 約{count}件の検索",
+    "estimateOk": "所要時間の目安：1〜3分（レポート含む）",
+    "estimateHeavy": "このスコープは5分を超える可能性があります。時間が不足した場合、収集した生データのみが返される場合があります。キーワード、地域、またはソースを減らすことをご検討ください。",
+    "retry": "再試行",
+    "timingsLabel": "ステップごとの所要時間",
+    "elapsedLabel": "合計経過時間",
+    "skippedChipPrefix": "スキップ済み：",
     "regionLabel": "対象地域",
+    "controls": "コントロール",
+    "controlsSummaryKeywords": "{count}トピック",
+    "controlsSummaryEmpty": "トピックなし",
+    "boardTopicLabel": "トピック・キーワード",
+    "boardOptionsLabel": "オプション",
     "regionPortalsLabel": "主要メディア（Google News経由）",
     "regionKrOnlyHidden": "韓国限定のソース（Naver/Kakao/Daum）は非表示です。韓国以外のクエリではほぼ結果が得られません。",
+    "rqAnswersTitle": "リサーチクエスチョンの調査結果",
+    "quantSnapshotsTitle": "定量的スナップショット",
+    "quantSnapshotsEmpty": "定量的な主張は抽出されませんでした。",
+    "revenueCardTitle": "主要な企業収益",
+    "revenueChartCaption": "DARTの構造化ファイリングに基づく3年間の収益トレンド — 数値は以下の表と一致しています。",
+    "revenueChartMissing": "データなし",
+    "tierDistributionTitle": "ソース層の分布",
+    "tierUnknownLabel": "未分類",
+    "confidenceLabel": "信頼度",
+    "weaknessesLabel": "弱点を確認する",
+    "missingDataLabel": "未解決の質問",
+    "missingDataEmpty": "フォローアップが必要なギャップはありません。",
+    "cols": {
+      "subject": "主張",
+      "value": "値",
+      "source": "ソース",
+      "tier": "層",
+      "confidence": "信頼度"
+    },
+    "phaseLabel": {
+      "expanding": "キーワードを拡張中",
+      "crawling": "ソースをクロール中",
+      "summarizing": "要約中"
+    },
+    "stageFlow": {
+      "expand": "拡張",
+      "scope": "スコープ",
+      "crawl": "クロール",
+      "extract": "抽出",
+      "synthesize": "統合",
+      "summarize": "要約"
+    },
+    "stageFlowDesc": {
+      "expand": "関連する検索語でキーワードを拡張し、より多くのソースを探しています。",
+      "scope": "調査するソースと期間を決定しています。",
+      "crawl": "ニュース・ブログ・レポートなどのソースから関連資料を収集しています。",
+      "extract": "収集したドキュメントから本文と要点を抽出しています。",
+      "synthesize": "調査結果をデスクリサーチレポートとして下書き・精査・統合しています。",
+      "summarize": "内容を要約し、レポートを最終化しています。"
+    },
     "region": {
       "KR": "韓国",
       "US": "アメリカ",
@@ -619,26 +1220,99 @@
       "TH": "タイ",
       "JP": "日本",
       "GLOBAL": "グローバル"
+    },
+    "countryScopeLabel": "対象国の範囲",
+    "countryScopeTitle": {
+      "kr": "韓国のみ",
+      "global": "グローバル"
+    },
+    "countryScopeDesc": {
+      "kr": "国内ソースのみ（KOSIS・DART・韓国ニュース）。レポートは国内市場のみを対象とします。",
+      "global": "国内＋グローバルの開示情報（SEC・EDINET・世界銀行・OECD）。海外セクションおよび韓国対G7比較セクションを追加します。"
     }
   },
   "TranslateConsole": {
     "sourceLang": "原語",
     "targetLang": "翻訳先",
+    "project": "プロジェクト",
+    "lang": "言語",
+    "inputLang": "入力言語",
+    "outputLang": "出力言語",
+    "select": "選択",
     "inputSource": {
       "label": "入力ソース",
       "mic": "マイク",
       "tab": "オンライン会議（タブ音声）",
       "tabHint": "共有ダイアログでタブを選び「タブ音声を共有」をチェックしてください。Chrome デスクトップのみ対応です。"
     },
+    "captureMode": {
+      "label": "入力ソース",
+      "both": "マイク＋タブ（オンライン会議）",
+      "micOnly": "デバイスマイク",
+      "tabOnly": "ブラウザ音声入力",
+      "tabHint": "共有ダイアログでタブを選択し、「タブの音声を共有」にチェックを入れてください。Chrome デスクトップ版のみ対応しています。",
+      "bothCostHint": "両側同時 = OpenAI リアルタイムコスト2倍（マイクとタブは別々のセッションで動作します）",
+      "shortBoth": "マイク＋タブ",
+      "shortMic": "マイク",
+      "shortTab": "タブ"
+    },
+    "controlBoard": {
+      "expandAria": "設定を展開",
+      "collapseAria": "設定を折りたたむ",
+      "lockedHint": "セッション中は言語と入力モードを変更できません。変更するには、一度停止してから再開してください。"
+    },
+    "slotIndicator": {
+      "hostAria": "ホスト（マイク）キャプチャの状態",
+      "guestAria": "ゲスト（タブ）キャプチャの状態",
+      "degradedHost": "ホストのキャプチャが一時停止中 —",
+      "degradedGuest": "ゲストのキャプチャが一時停止中 —"
+    },
     "monitorMute": {
       "muteAria": "翻訳音声をローカルでミュート（視聴者には引き続き聞こえます）",
-      "unmuteAria": "翻訳音声をオン"
+      "unmuteAria": "翻訳音声をオン",
+      "on": "音声オン",
+      "off": "音声オフ（タップして有効にする）"
+    },
+    "onboarding": {
+      "title": "🎧 エコーを防ぐ方法",
+      "voiceOn": "🔊 音声オン",
+      "voiceOff": "🔇 音声オフ",
+      "voiceAria": "このデバイスのAI同時通訳音声を切り替える",
+      "voiceWarning": "スピーカーで聴くとエコーが発生する場合があります。イヤホンのご使用をお勧めします。",
+      "step1On": "このデバイスの音声は現在オンになっています",
+      "step1Off": "このデバイスの音声をミュートする · デフォルトでオン",
+      "step2": "共有リンクをコピーして、別のデバイス（スマートフォン／タブレット）で開いてください",
+      "step2Copy": "共有リンクをコピー",
+      "step2Copied": "コピーしました",
+      "step2Pending": "AI同時通訳が開始されるとリンクが作成されます",
+      "step3": "そちらでイヤホンを使ってお聴きください",
+      "connected": "他に {count} 台のデバイスが接続中 ✅",
+      "dismiss": "次回から表示しない",
+      "restore": "エコー対策のヒントを再表示する",
+      "stateOn": "音声オン",
+      "stateOff": "音声オフ（デフォルト）"
+    },
+    "ttsBlocked": {
+      "notice": "ブラウザによってAI同時通訳の音声がブロックされました",
+      "enable": "音声を有効にする"
+    },
+    "echoDetected": {
+      "notice": "🔊 エコーを検出しました — スピーカーの代わりにヘッドフォン／イヤホンをご使用ください"
     },
     "start": "通訳を開始",
     "stop": "停止",
     "starting": "接続中…",
+    "renewing": "🔄 セッションを更新中…",
     "prompter": {
       "empty": "通訳を開始すると、翻訳結果がここにストリームされます。"
+    },
+    "fullview": {
+      "controlHint": "開始・停止・共有はウィジェットカードから操作できます。",
+      "backToWidget": "ウィジェットに戻る"
+    },
+    "speaker": {
+      "host": "ホスト",
+      "guest": "ゲスト"
     },
     "recording": {
       "indicator": "録音中",
@@ -649,6 +1323,8 @@
       "notAvailable": "このセッションの録音はありません。",
       "preparing": "録音を仕上げています…",
       "audioOutput": "通訳音声 (.m4a)",
+      "zipOutput": "翻訳をダウンロード（.zip）",
+      "zipRevised": "修正済みをダウンロード（.zip）",
       "preparingFile": "ファイルを準備中…",
       "errors": {
         "recorder_failed": "録音を開始できませんでした。マイクまたはタブ音声の権限を確認してください。",
@@ -660,14 +1336,86 @@
         "insufficient": "クレジットが不足しています。チャージしてから再試行してください。",
         "object_missing": "元のファイルが見つかりません。クレジットを返金しました。",
         "input_audio_unavailable": "このセッションは元音声が個別に保存されていません。通訳音声と字幕は引き続きダウンロードできます。",
-        "locked": "まだロック解除されていません。"
+        "locked": "まだロック解除されていません。",
+        "revision_unavailable": "まず修正を実行してください — 下のパネルの「翻訳を修正する」をクリックしてください。結果が表示されるまで1〜5分かかります。",
+        "not_found": "録音が見つかりません。ページを更新して再度お試しください。",
+        "session_not_found": "このセッションを再読み込みできませんでした。ページを更新して再度お試しください。",
+        "forbidden": "この録音をダウンロードできるのは、セッションのホストのみです。",
+        "unauthorized": "ログインの有効期限が切れました。再度サインインしてお試しください。",
+        "transcode_failed": "音声の変換に失敗しました。しばらくしてから再度お試しください。",
+        "invalid_format": "不明なダウンロード形式が指定されました。"
+      }
+    },
+    "revise": {
+      "eyebrow": "意味の復元（翻訳修正）",
+      "title": "ソースの文字起こしから再翻訳する",
+      "hint": "AI同時通訳は負荷がかかると文章を圧縮・統合することがあります。保存されたソースの文字起こしを高精度モデルで再翻訳します。結果は上の「修正版をダウンロード（.zip）」から取得できます。{credits}クレジットが必要です。",
+      "doneHint": "修正が完了しました。上の「修正版をダウンロード（.zip）」から結果を取得してください。",
+      "trigger": "翻訳を修正する（{credits}クレジット）",
+      "running": "修正中…（1〜5分）",
+      "donePill": "修正完了",
+      "errors": {
+        "revision_trigger_failed": "修正のリクエストに失敗しました。再度お試しください。",
+        "revision_failed": "修正のLLM呼び出しに失敗しました。クレジットは返還されました。再度お試しください。",
+        "revision_in_progress": "修正がすでに実行中です。しばらくお待ちください。",
+        "session_not_ended": "セッションはまだ進行中です。終了してから再度お試しください。",
+        "transcript_unavailable": "このセッションではソースの文字起こしが保存されていません。開始前に「音声＋文字起こしを保存する」をオンにしておく必要があります。",
+        "transcript_empty": "ソースの文字起こしが空のため、修正するものがありません。",
+        "insufficient": "クレジットが不足しています。チャージしてから再度お試しください。",
+        "forbidden": "翻訳の修正を実行できるのは、このセッションのホストのみです。"
+      }
+    },
+    "glossary": {
+      "label": "カスタム用語",
+      "hint": "名前・ツール・略語の正式な表記を登録します。固有名詞の表記ゆれを防ぎます（後処理／修正時に適用）。",
+      "placeholder": "1行に1つの用語を入力してください（例：SDK、オンプレミス）",
+      "apply": "適用",
+      "applyTitle": "入力した用語を今すぐ適用します",
+      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください"
+    },
+    "postProcess": {
+      "eyebrow": "出力品質の修正（後処理LLM）",
+      "title": "翻訳をまとめて修正する",
+      "hint": "翻訳全体を再度見直し、単語の融合（例：\"hubthe\"）、固有名詞のスペル、意味の圧縮などを修正します。不確かな箇所は推測せず ⟦?⟧ でフラグを立てます。{credits} クレジットを消費します。",
+      "doneHint": "修正が完了しました。{flags} 箇所にレビュー用のフラグが立てられています。「修正済みをダウンロード」から修正ログ付きの結果を取得してください。",
+      "trigger": "修正オプション（{credits} クレジット）",
+      "running": "修正中…（1〜2 分）",
+      "donePill": "修正完了",
+      "download": "修正済みをダウンロード（.md）",
+      "downloading": "準備中…",
+      "modal": {
+        "title": "LLM 修正オプション",
+        "smoothLabel": "流暢さのスムージング（smooth）",
+        "smoothHint": "オフにすると原文に忠実なまま維持されます（推奨）。オンにすると、意味を変えずに不自然な翻訳調の表現を整えます。",
+        "smoothOn": "不自然な翻訳調を整える（意味の変更なし）",
+        "canonicalLabel": "正式名スペル（任意）",
+        "canonicalHint": "メインスピーカーの正式な英語スペルが分かっている場合は入力してください。グロッサリーより優先されます。",
+        "canonicalPlaceholder": "例：Seonmyeong",
+        "referenceLabel": "サブ文字起こし（任意）",
+        "referenceHint": "ネイティブスピーカーのラベル付き文字起こしが別途ある場合は添付してください（.txt / .md）。区切りやスペルのクロスチェックに使用されます。",
+        "referenceRemove": "添付を削除",
+        "run": "修正を実行（1〜2 分）",
+        "cancel": "キャンセル"
+      },
+      "errors": {
+        "postprocess_trigger_failed": "修正リクエストが失敗しました。もう一度お試しください。",
+        "postprocess_failed": "修正 LLM の呼び出しに失敗しました。クレジットは返還されました。もう一度お試しください。",
+        "postprocess_in_progress": "修正がすでに実行中です。しばらくお待ちください。",
+        "session_not_ended": "セッションはまだ進行中です。終了してからもう一度お試しください。",
+        "transcript_unavailable": "このセッションの翻訳が保存されていません。開始前に保存をオンにしてください。",
+        "transcript_empty": "翻訳が空のため、修正する内容がありません。",
+        "insufficient": "クレジットが不足しています。チャージしてからもう一度お試しください。",
+        "forbidden": "このセッションの修正を実行できるのはホストのみです。"
       }
     },
     "errorPrefix": "エラー:",
     "errors": {
       "microphone_denied": "マイクの権限が拒否されました。アドレスバーの鍵アイコンから許可してください。",
       "tab_audio_denied": "タブ音声の共有がキャンセルされました。もう一度開始して共有を承認してください。",
-      "tab_audio_unavailable": "選択した画面には共有可能な音声がありません。共有ダイアログで「Chrome タブ」を選び、下部の「タブの音声を共有」をオンにしてください。（Chrome デスクトップのみ対応）"
+      "tab_audio_unavailable": "選択した画面には共有可能な音声がありません。共有ダイアログで「Chrome タブ」を選び、下部の「タブの音声を共有」をオンにしてください。（Chrome デスクトップのみ対応）",
+      "tab_audio_failed": "タブの音声をキャプチャできませんでした。最新の Chrome デスクトップをお使いであること、および他のアプリがシステムの音声デバイスを占有していないことを確認してから、もう一度お試しください。",
+      "translate_timeout": "接続に予想以上の時間がかかり、完了しませんでした。自動的に数回再試行しましたが、引き続き失敗しています。ネットワーク／ファイアウォール（VPN、社内ネットワーク）または OpenAI のステータスを確認し、「AI同時通訳を開始」を再度押してください。（DevTools コンソールを \"[translate]\" でフィルタリングすると、進行状況をステップごとに確認できます。）",
+      "webrtc_failed": "接続に失敗しました。自動的に再試行しましたが、完了しませんでした。しばらく待ってから「AI同時通訳を開始」を再度押してください。（ネットワーク／ファイアウォールまたは OpenAI のステータスをご確認ください。）"
     },
     "status": {
       "idle": "待機",
@@ -685,12 +1433,324 @@
       "copied": "コピーしました",
       "revoke": "取り消し",
       "expiresIn4h": "4時間後に自動で失効"
+    },
+    "listeners": {
+      "title": "{count, plural, =0 {リスナーなし} one {# 人のリスナー} other {# 人のリスナー}}",
+      "empty": "まだリスナーはいません",
+      "unknownAgent": "不明なデバイス",
+      "justNow": "たった今",
+      "minutesAgo": "{count}分前",
+      "hoursAgo": "{count}時間前"
+    },
+    "fullviewTitle": "AI同時通訳",
+    "fullviewSubtitle": "マイク音声のリアルタイム音声認識とAI同時通訳"
+  },
+  "Process": {
+    "completeTitle": "完了しました！",
+    "newResearch": "新規リサーチ",
+    "desk": {
+      "expanding": "関連キーワードを展開中",
+      "scoping": "検索範囲を設定中",
+      "crawling": "ソースを収集中",
+      "extracting": "コンテンツを抽出中",
+      "drafting": "下書きを作成中",
+      "critiquing": "下書きを改善中",
+      "synthesizing": "統合レポートを執筆中",
+      "summarizing": "サマリーを仕上げ中"
+    },
+    "transcripts": {
+      "uploading": "ファイルをアップロード中",
+      "transcribing": "音声をテキストに変換中",
+      "md_conversion": "文字起こしをドキュメントに構造化中",
+      "speaker_diarization": "話者を分離中",
+      "typo_correction": "誤字を修正中",
+      "phrasing_polish": "表現を整えています"
+    },
+    "interviews": {
+      "uploading": "ファイルをアップロード中",
+      "parsing": "ドキュメントを解析中",
+      "chunking": "チャンクに分割中",
+      "embedding": "インデックスを作成中"
     }
+  },
+  "Widgets": {
+    "fullview": "全画面表示を開く",
+    "viewAll": "すべて見る →",
+    "transcriptRunning": "文字起こし中",
+    "transcriptDone": "文字起こし完了",
+    "transcriptStageUpload": "アップロード",
+    "transcriptStageTranscribe": "文字起こし",
+    "transcriptStageMd": "ドキュメント",
+    "transcriptStageSpeaker": "話者",
+    "transcriptStageTypo": "誤字",
+    "transcriptStagePhrasing": "校正",
+    "transcriptStageDetails": "ファイル別の詳細",
+    "transcriptStuckSection": "停止 / 失敗",
+    "transcriptStuckHint": "アップロード済みですが、文字起こしが停止または失敗しました。再試行するか、削除してください。",
+    "transcriptStop": "文字起こしを停止",
+    "transcriptStopRequested": "停止中…",
+    "deskRunning": "リサーチ進行中",
+    "deskDone": "リサーチ完了",
+    "interviewRunning": "分析中",
+    "interviewDone": "分析完了",
+    "interviewUploadProgress": "アップロード中",
+    "interviewUploadDone": "アップロード完了",
+    "recruitingDone": "リクルートフォームの準備完了",
+    "recruitingControlBar": "コントロール（リサーチ目標）",
+    "recruitingPublished": "公開済み",
+    "recruitingResponseCount": "{count}件の回答",
+    "recruitingResponseHint": "全画面表示を開いて回答をご確認ください",
+    "recruitingCriteriaEmptyBanner": "このフォームには保存された参加者条件がありません。",
+    "recruitingCriteriaEmptyBannerCta": "ウィザードで再公開",
+    "settings": "設定",
+    "settingsClose": "閉じる",
+    "upload": "ファイルをアップロード",
+    "uploadHint": "📤 最初にファイルをアップロードしてください",
+    "transcriptStart": "文字起こしを開始",
+    "transcriptReadyHint": "{count} 件のファイルが準備完了 — 「開始」を押して文字起こしを実行してください",
+    "transcriptModeLabel": "モード",
+    "transcriptModeResearch": "リサーチインタビュー",
+    "transcriptModeMeeting": "会議の文字起こし",
+    "transcriptSpeakerLabel": "スピーカー",
+    "transcriptSpeaker1": "スピーカー 1 名",
+    "transcriptSpeaker2": "スピーカー 2 名",
+    "transcriptSpeaker3": "3 名以上",
+    "transcriptRecordStart": "録音",
+    "transcriptRecordStop": "録音を停止",
+    "transcriptRecordStopAria": "録音を停止して文字起こしを開始",
+    "transcriptRecordFilePrefix": "録音中",
+    "transcriptRecordEmpty": "音声が録音されませんでした。もう一度お試しください。",
+    "transcriptRecordUnsupported": "このブラウザは録音に対応していません。代わりにファイルをアップロードしてください。",
+    "transcriptRecordPermissionDenied": "マイクの使用が拒否されました。アドレスバーの鍵アイコン → サイトの設定 → マイクから許可してから再試行するか、代わりにファイルをアップロードしてください。",
+    "transcriptRecordNoDevice": "マイクが見つかりません。接続を確認するか、代わりにファイルをアップロードしてください。",
+    "transcriptRecordError": "マイクエラー",
+    "onboardingSettings": "開始前にこちらをクリックして設定してください",
+    "onboardingUpload": "こちらをクリックしてファイルをアップロードしてください",
+    "onboardingDismiss": "ヒントを閉じる",
+    "probingConflictBadge": "競合",
+    "probingPrior": "変更前",
+    "probingCurrent": "変更後",
+    "probingConfidenceHigh": "シグナル強",
+    "probingConfidenceMedium": "シグナル中",
+    "probingConfidenceLow": "シグナル弱",
+    "probingConfidenceInsufficient": "手がかり不足",
+    "probingRemoveWidget": "ウィジェットを削除: {title}",
+    "probingInsufficientHint": "手がかり不足 — 発話が蓄積された後に表示されます"
+  },
+  "InterviewsV2": {
+    "fullviewTitle": "インタビュー結果ジェネレーター（V2）",
+    "fullviewSubtitle": "プロジェクトを作成し、インタビューファイルを収集して、横断検索を行います。",
+    "close": "閉じる",
+    "newProject": "新規プロジェクト",
+    "projectName": "プロジェクト名",
+    "projectNamePlaceholder": "例：2026年上半期 ユーザーインタビュー",
+    "projectDescription": "説明（任意）",
+    "projectDescriptionPlaceholder": "このプロジェクトに関する簡単なメモを入力してください。",
+    "create": "作成",
+    "creating": "作成中…",
+    "cancel": "キャンセル",
+    "createFailed": "プロジェクトの作成に失敗しました。",
+    "tabActive": "アクティブ",
+    "tabArchived": "アーカイブ済み",
+    "archivedEmptyTitle": "アーカイブ済みのプロジェクトはありません",
+    "archivedEmptyDescription": "プロジェクトカードの ⋯ メニューから「アーカイブ」を選択すると、ここに移動します。",
+    "projectMenu": "プロジェクトメニュー",
+    "menuRename": "名前を変更",
+    "menuEdit": "編集",
+    "menuArchive": "アーカイブ",
+    "menuRestore": "復元",
+    "menuDelete": "削除",
+    "renameTitle": "プロジェクト名の変更",
+    "editTitle": "プロジェクトの編集",
+    "editTagsLabel": "タグ",
+    "renameSave": "保存",
+    "renameSaving": "保存中…",
+    "renameFailed": "プロジェクト名を変更できませんでした。",
+    "archived": "プロジェクトをアーカイブしました。",
+    "restored": "プロジェクトを復元しました。",
+    "archiveFailed": "プロジェクトをアーカイブできませんでした。",
+    "deleteTitle": "プロジェクトを削除",
+    "deleteBody": "このプロジェクトおよびすべてのファイル、チャンク、検索履歴は完全に削除されます。この操作は元に戻せません。",
+    "deleteConfirm": "完全に削除",
+    "deleting": "削除中…",
+    "deleted": "プロジェクトを削除しました。",
+    "deleteFailed": "プロジェクトを削除できませんでした。",
+    "updatedAt": "{time} に更新",
+    "documentCount": "{count} 件のインタビュー",
+    "back": "戻る",
+    "upload": "ファイルをアップロード",
+    "cardIdleTitle": "インタビュー検索を開始",
+    "cardIdleHint": "プロジェクトを選択または作成し、インタビューファイルをアップロードしてください。",
+    "cardSelectProject": "プロジェクトを選択",
+    "cardUpload": "ファイルをアップロード",
+    "cardSearchStart": "検索を開始",
+    "cardAnalyze": "分析を開始",
+    "cardProjectLabel": "プロジェクト",
+    "cardSwitchProject": "プロジェクトを切り替え",
+    "cardBackToPicker": "プロジェクト選択に戻る",
+    "cardFilesCount": "{count} 件のファイル",
+    "cardAbstractDocsMetric": "{count} 件のドキュメント",
+    "cardAbstractViewAll": "すべて表示",
+    "cardAnalyzePromptTitle": "このプロジェクトはまだ分析されていません",
+    "cardAnalyzePromptHint": "下の「分析を開始」を押すと、アップロードされたインタビューをクロス分析し、トップラインレポートを作成します。",
+    "filesTitle": "アップロード済みファイル",
+    "statusPending": "保留中",
+    "statusIndexing": "インデックス作成中",
+    "statusDone": "インデックス済み",
+    "statusError": "インデックス作成失敗",
+    "statusConverting": "変換中",
+    "statusRetrying": "再試行中",
+    "statusDuplicate": "複製",
+    "uploadSkippedSummary": "{count}件の重複ファイルをスキップしました",
+    "uploadArtifactComplete": "アップロード完了",
+    "uploadArtifactRestoredNote": "インデックス作成はまだ進行中です",
+    "uploadArtifactFailedTitle": "失敗したファイル",
+    "uploadTitle": "ファイルをアップロード",
+    "uploadDropLabel": "ここにファイルをドロップ",
+    "uploadDropHelper": "複数ファイルを一度にアップロード · テキスト／ドキュメント／PDF／音声／動画 · 最大25MB",
+    "uploadNext": "次へ",
+    "uploadAction": "アップロード",
+    "uploadRemoveFile": "ファイルを削除",
+    "uploadProjectGateHint": "アップロードしたファイルを保存するプロジェクトを選択または作成してください。",
+    "uploadSelectProjectLabel": "既存のプロジェクト",
+    "uploadSelectProjectPlaceholder": "プロジェクトを選択",
+    "uploadPickToggle": "既存のプロジェクトを選択してください",
+    "noFilesTitle": "ファイルがまだありません",
+    "noFilesDescription": "上の「ファイルをアップロード」からインタビューファイルを追加してください。",
+    "searchComingTitle": "検索機能は近日公開予定",
+    "searchComingDescription": "ファイルのインデックス作成が完了すると、このプロジェクト内で検索や質問ができるようになります。",
+    "searchIntroTitle": "このプロジェクトに質問する",
+    "searchIntroHint": "回答はインデックス済みのインタビューに基づいています。例：",
+    "searchExample1": "回答者が最も多く挙げた課題は何ですか？",
+    "searchExample2": "価格に対する反応をまとめてください",
+    "searchExample3": "再購入意向が高い回答者の共通点は何ですか？",
+    "searchPlaceholder": "質問を入力してください（Enterで送信・Shift+Enterで改行）",
+    "searchSend": "送信",
+    "searchGenerating": "生成中",
+    "searchPhaseSending": "質問を送信中…",
+    "searchPhaseSearching": "インタビューからエビデンスを検索中…",
+    "searchPhaseAnswering": "回答を作成中…",
+    "searchPhaseArtifacts": "表とグラフを整理中…",
+    "searchError": "検索に失敗しました。しばらくしてからもう一度お試しください。",
+    "searchSources": "ソース",
+    "searchSourcesShow": "ソースを表示",
+    "searchSourcesHide": "ソースを非表示",
+    "searchSourcesSummary": "{count}件のソースを表示",
+    "searchScore": "一致",
+    "searchScope": "検索範囲",
+    "artifactTableFooter": "{count}人の回答者に基づく",
+    "artifactChartFooter": "合計{count}人の回答者に基づく",
+    "artifactChartTooltip": "{count}人の回答者",
+    "scopeThisProject": "このプロジェクト",
+    "scopeAll": "すべてのプロジェクト",
+    "crossSearch": "すべてのプロジェクトを検索",
+    "crossIntroTitle": "すべてのプロジェクトに対して質問する",
+    "crossIntroHint": "すべてのプロジェクトのインデックス済みインタビューに基づいて回答が生成されます。例：",
+    "pickerTitle": "検索するプロジェクトを選択",
+    "pickerSelectAll": "すべて選択",
+    "pickerClearAll": "すべてクリア",
+    "pickerCount": "{selected} / {total} 件選択中",
+    "pickerConfirm": "検索（{count}）",
+    "pickerEmptyTitle": "プロジェクトがまだありません",
+    "pickerEmptyDescription": "プロジェクトを作成し、インタビューファイルを追加してください。",
+    "pickerSelectVisible": "表示中をすべて選択",
+    "pickerHiddenNote": " {hidden}件非表示を含む",
+    "pickerFilteredEmptyTitle": "このタグに一致するプロジェクトはありません",
+    "pickerFilteredEmptyDescription": "別のタグを選択するか、フィルターをクリアしてください。",
+    "scopeCurrentProject": "現在のプロジェクト（{name}）",
+    "scopeSelected": "{count}件のプロジェクトを選択中",
+    "scopeCurrentFile": "このファイル（{name}）",
+    "fileSearchButton": "このファイル内を検索",
+    "fileIntroTitle": "このファイルに質問する",
+    "fileIntroHint": "回答はこのファイルの内容のみに基づいています。例：",
+    "fileSearchPlaceholder": "このファイルに質問する（送信：Enter・改行：Shift+Enter）",
+    "tagAdd": "タグ",
+    "tagPlaceholder": "タグを追加してEnterを押してください",
+    "tagRemove": "タグ「{tag}」を削除",
+    "tagFilterLabel": "タグで絞り込む",
+    "tagFilterClear": "すべてクリア",
+    "tagSaveFailed": "タグの保存に失敗しました。",
+    "toplineTab": "トップラインレポート",
+    "searchTab": "フリー検索",
+    "toplineReportLabel": "トップラインレポート",
+    "toplineExecSummaryLabel": "エグゼクティブサマリー",
+    "toplineLangLabel": "分析言語",
+    "toplineRegenerate": "レポートを再生成する",
+    "toplineGenerating": "トップラインを生成中…",
+    "toplineCancel": "生成を停止する",
+    "toplineMapProgress": "すべてのドキュメントを分析中 — {done}/{total}人の回答者",
+    "toplineReduceProgressStart": "レポートを作成中…",
+    "toplineReduceProgress": "レポートを作成中…（{count}ブロック）",
+    "toplineDoneToast": "トップラインレポートが完成しました — フルビューで開く",
+    "toplineErrorToast": "トップラインレポートの生成に失敗しました",
+    "toplineStaleBanner": "ファイルが変更されました — 最新の内容を反映するにはレポートを再生成してください。",
+    "toplineStuckBanner": "生成が止まっているようです — レポートを再生成してください。",
+    "toplineStuckTitle": "生成が停止しました",
+    "toplineStuckHint": "生成が途中で止まったようです。以下から再生成してください。",
+    "toplineNotIndexed": "インデックス作成が完了すると、トップラインレポートを生成できます。",
+    "toplineLoadError": "トップラインを読み込めませんでした。",
+    "toplineIntroTitle": "トップラインレポートはまだありません",
+    "toplineIntroHint": "アップロードされたすべてのインタビューをクロス分析し、6セクションのトップラインレポートを自動生成します。",
+    "toplineGenerateCta": "生成を開始",
+    "toplineErrorTitle": "レポートの生成に失敗しました",
+    "toplineErrorHint": "しばらくしてから再度お試しください。問題が続く場合は、ファイルのステータスをご確認ください。",
+    "toplineAskTitle": "選択範囲について質問する",
+    "toplineAskSelectedLabel": "選択中",
+    "toplineAskPlaceholder": "この段落についてさらに質問する…",
+    "toplineAskSend": "質問を送信",
+    "toplineAskThinking": "インタビューのエビデンスを検索中…",
+    "toplineAskThinkingWeb": "ウェブを検索中…",
+    "toplineAskError": "回答の生成に失敗しました",
+    "toplineAskWebUnavailable": "ウェブ検索はまだ設定されていません。インタビューエビデンスモードをご利用ください。",
+    "toplineAskKeep": "保持する",
+    "toplineAskDiscard": "破棄する",
+    "toplineAskAction": "質問する",
+    "toplineAskModeInterview": "インタビューエビデンス",
+    "toplineAskModeWeb": "ウェブ検索",
+    "toplineEditAction": "編集",
+    "toplineEditHint": "テキストの内容のみを編集します。書式はそのまま維持されます。",
+    "toplineEditSave": "保存",
+    "toplineEditCancel": "キャンセル",
+    "toplineEditSaved": "段落を保存しました。",
+    "toplineEditError": "段落を保存できませんでした",
+    "toplineRegenTitle": "レポートを再生成",
+    "toplineRegenDirectionHint": "書き直しの方向性をご指定ください（任意）。空白のままにすると、以前と同じ内容で再生成されます。",
+    "toplineRegenDirectionLabel": "分析の方向性",
+    "toplineRegenDirectionPlaceholder": "例：価格感度と購買意思決定の要因に焦点を当てる",
+    "toplineRegenWarnTitle": "再生成すると、追加したQ&Aが削除されます",
+    "toplineRegenWarnBody": "レポートを再生成すると、ドラッグして質問することで追加したすべてのQ&Aが削除されます。続行しますか？",
+    "toplineRegenWarnCancel": "キャンセル",
+    "toplineRegenWarnConfirm": "再生成",
+    "toplineRegenPreserveNote": "追加したセクションとフォローアップQ&Aは、再生成後もレポートに保持されます。",
+    "toplineSectionAdd": "セクションを追加",
+    "toplineSectionPlaceholder": "例：趣味に関するセクションを追加する",
+    "toplineSectionSubmit": "生成",
+    "toplineSectionCancel": "キャンセル",
+    "toplineSectionGenerating": "セクションを生成中…",
+    "toplineSectionError": "セクションを作成できませんでした",
+    "toplineSectionNoContent": "該当するセクションのインタビュー根拠が見つかりませんでした。",
+    "toplineExportWord": "Word",
+    "toplineShareGdoc": "Google Docsに共有",
+    "toplineSharing": "共有中…",
+    "toplineShareCopied": "リンクをコピーしました — 新しいタブで開いています。",
+    "toplineShareOpened": "Google Docsを新しいタブで開きました。",
+    "toplineShareError": "Google Docsへの共有に失敗しました",
+    "toplineShareUnavailable": "現在Google Docsへの共有はご利用いただけません。しばらくしてから再度お試しください。",
+    "toplineUploadCta": "レポートをアップロード",
+    "toplineUploadModeHint": "Claude、NotebookLMなどで作成済みのレポート（Markdown、DOCX、PDF、HTML）をお持ちですか？アップロードすると生成をスキップして、すぐに編集を開始できます。",
+    "toplineImporting": "レポートを読み込み中…",
+    "toplineImported": "レポートを読み込みました — 編集を開始できます。",
+    "toplineImportError": "レポートを読み込めませんでした",
+    "toplineImportEmpty": "レポートにコンテンツが見つかりませんでした — 見出しや段落を含むドキュメントであることをご確認ください。",
+    "toplineImportUnsupported": "サポートされていないファイル形式です — Markdown、DOCX、PDF、またはHTMLをアップロードしてください。",
+    "toplineImportTooLarge": "ファイルサイズが大きすぎます — 25MB以下のファイルをアップロードしてください。",
+    "toplineRegenUploadedNote": "このレポートはあなたがアップロードしたものです。再生成すると、アップロードされたコンテンツは破棄され、インタビューデータをもとに新しいレポートが作成されます。"
   },
   "Workspace": {
     "eyebrow": "ワークスペース",
     "expand": "ワークスペースを開く",
     "collapse": "閉じる",
+    "closeViewer": "閉じる",
     "empty": "まだ成果物がありません",
     "emptyHint": "各ツールで生成された成果物がここに表示されます。",
     "loading": "読み込み中…",
@@ -732,6 +1792,10 @@
     "confirmDeleteFolder": "「{name}」フォルダを削除しますか？中の成果物はプロジェクトルートに移動します。"
   },
   "Members": {
+    "authRequired": "サインインして組織を確認してください。",
+    "emptyTitle": "まだメンバーがいません",
+    "emptyHintManage": "上の招待フォームにメールアドレスを入力して、メンバーを追加してください。",
+    "emptyHintView": "オーナーまたは管理者が招待すると、メンバーがここに表示されます。",
     "title": "メンバー管理",
     "invite": "メンバーを招待",
     "role": "役割",
@@ -840,6 +1904,33 @@
       "exportXlsx": "XLSXエクスポート"
     }
   },
+  "AdminRagEval": {
+    "title": "インタビュー RAG 品質評価",
+    "subtitle": "チャンキング・インデックス・検索（A/B/C）の改善効果を定量化します。自動ゴールド＋LLMジャッジによる4つの指標を評価し、実行ごとにスナップショットを保存して前回との差分を表示します。",
+    "project": "プロジェクト",
+    "projectPlaceholder": "プロジェクトを選択",
+    "sampleSize": "チャンクをサンプリング",
+    "run": "評価を実行",
+    "running": "計測中…",
+    "runningHint": "チャンクのサンプリング → 質問の生成 → 検索 → LLMジャッジ。サンプルサイズによって、数十秒から数分かかる場合があります。",
+    "error": "エラー",
+    "runMeta": "{model} · {sha} · サンプル {sample} · K={k}",
+    "vsPrevious": "前回実行との差分",
+    "noPrevious": "このプロジェクトの初回実行です — ベースラインはまだありません",
+    "unavailable": "利用不可",
+    "recall": "検索 Recall@K",
+    "recallHint": "チャンクから生成された質問のうち、上位K件に自身のチャンクが含まれる割合。チャンキング・埋め込み品質の直接的な指標です。",
+    "recallDetail": "{hits}/{sampled} ヒット · MRR {mrr}",
+    "coverage": "回答者カバレッジ",
+    "coverageHint": "集約クエリ検索でカバーされるユニークドキュメントの割合。トップK RAGでは低く、map-reduce（B）では高くなります。",
+    "coverageDetail": "{cited}/{total} ドキュメントをカバー",
+    "faithfulness": "忠実度",
+    "faithfulnessHint": "生成された回答の主張のうち、引用された根拠に裏付けられている割合。低い場合はハルシネーションを示します。",
+    "faithfulnessDetail": "{supported}/{claims} 件の主張が裏付けあり",
+    "citation": "引用の有効性",
+    "citationHint": "引用された chunk_id のうち、実際に存在するものの割合。低い場合は架空の引用を示します。",
+    "citationDetail": "{valid}/{total} 件の引用が有効"
+  },
   "AdminApiUsage": {
     "label": "管理者",
     "title": "API利用状況 · コスト · 残高",
@@ -851,12 +1942,25 @@
       "connected": "接続済みサービス",
       "cost": "今月の累計コスト",
       "costHint": "ライブ取得可能なプロバイダのみ",
+      "estimated": "請求金額の見込み合計",
+      "estimatedHint": "ベースラインからの累計（現在 − ベースライン）",
       "balance": "残高（USD）",
       "balanceHint": "USD残高を提供するプロバイダのみ"
     },
     "row": {
       "cost": "コスト",
-      "balance": "残高"
+      "balance": "残高",
+      "current": "現在",
+      "baseline": "ベースライン",
+      "estimated": "請求予定額"
+    },
+    "snapshot": {
+      "save": "保存（ベースラインを設定）",
+      "saving": "保存中…",
+      "reset": "リセット（ゼロに戻す）",
+      "resetting": "リセット中…",
+      "noBaseline": "ベースラインなし — 「保存」をクリックして開始してください",
+      "baselineAt": "ベースライン保存日時：{time}"
     },
     "env": {
       "present": "設定済み",
@@ -867,6 +1971,387 @@
       "no-admin-api": "設定済み",
       "unconfigured": "未設定",
       "error": "エラー"
+    }
+  },
+  "ShareViewer": {
+    "eyebrow": "共有ビュー",
+    "readOnlyHint": "これは読み取り専用のビューです。編集および再生成は無効になっています。",
+    "toplineTitle": "インタビュートップライン",
+    "personaTitle": "プロービングペルソナ",
+    "personaGoal": "リサーチゴール",
+    "personaKrq": "主要リサーチクエスチョン",
+    "personaGrid": "回答者ペルソナ",
+    "personaQuestions": "確認・プロービング質問",
+    "personaQuestionsEmpty": "記録された質問はありません。",
+    "personaSnapshotMissing": "このセッションには保存済みのペルソナまたは質問スナップショットがありません。",
+    "personaThinking": "AIの推論",
+    "personaInjectHint": "入力した質問はホストセッションに即時反映されます — ホストが直接入力した場合と同様に、ウィジェットの作成およびAIの質問提案の誘導が行われます。",
+    "personaCollabHint": "ライブコラボレーションビューです。ウィジェットと推論は読み取り専用ですが、追加の質問を入力できます。",
+    "emptyContent": "表示できるコンテンツがまだありません。",
+    "gateTitle": "招待メールアドレスを確認してください",
+    "gateSubtitle": "このリンクは招待されたメールアドレスのみ閲覧可能です。メールアドレスを入力すると、確認コードをお送りします。",
+    "gateCodeSubtitle": "メールに送信された確認コードを入力してください。",
+    "gateSessionNotInvited": "サインイン中のアカウントのメールアドレスは招待されていません。招待済みのメールアドレスで確認してください。",
+    "emailLabel": "メールアドレス",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "確認コードを送信",
+    "sending": "送信中…",
+    "codeLabel": "確認コード",
+    "codePlaceholder": "6桁のコード",
+    "codeHelper": " {email} に送信されたコードを入力してください。",
+    "verify": "確認して表示",
+    "verifying": "確認中…",
+    "changeEmail": "別のメールアドレスを使用",
+    "resend": "コードを再送信",
+    "resendCountdown": " {seconds}秒後に再送信",
+    "resendHint": "メールが届いていませんか？迷惑メールフォルダをご確認ください。新しいコードは60秒後にリクエストできます。",
+    "notInvitedBody": "このメールアドレスは招待リストに含まれていません。リンクを共有した方に招待を依頼してください。",
+    "errorInvalidCode": "コードが正しくないか、有効期限が切れています。もう一度お試しください。",
+    "errorGeneric": "エラーが発生しました。しばらくしてからもう一度お試しください。",
+    "errorThrottled": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+    "invalidTitle": "無効なリンク",
+    "invalidBody": "この共有リンクが見つかりませんでした。リンクが正しいかご確認ください。",
+    "expiredTitle": "リンクの有効期限切れ",
+    "expiredBody": "この共有リンクは有効期限が切れています。共有した方に新しいリンクをご依頼ください。",
+    "revokedTitle": "リンクが無効化されました",
+    "revokedBody": "この共有リンクは現在ご利用いただけません。共有した方にお問い合わせください。"
+  },
+  "Share": {
+    "button": "共有リンク",
+    "buttonHint": "招待されたメールアドレスのみ開けるリンクを作成",
+    "title": "リンクで共有",
+    "notice": "招待されたメールアドレスのみ閲覧できます。公開リンクではなく、いつでも無効化できます。",
+    "loading": "読み込み中…",
+    "linkLabel": "共有リンク",
+    "copy": "コピー",
+    "copied": "リンクをコピーしました。",
+    "copyError": "リンクをコピーできませんでした。",
+    "expiresOn": " {date}に有効期限切れ",
+    "invitesLabel": "招待済みメールアドレス",
+    "invitesPlaceholder": "メールアドレスを入力してEnterキーを押してください",
+    "invitesHint": "Enterキーまたはカンマでメールアドレスを追加してください。追加したメールアドレスのみ閲覧できます。",
+    "removeInvite": "{email} の招待を削除",
+    "invalidEmail": "有効なメールアドレスではないようです。",
+    "inviteError": "招待の更新に失敗しました。",
+    "expiryLabel": "有効期限",
+    "expiryDays": "残り {days} 日で期限切れ",
+    "revoke": "リンクを無効化",
+    "revokeHint": "リンクを即座に無効化します。",
+    "revoked": "リンクを無効化しました。",
+    "revokeError": "リンクの無効化に失敗しました。",
+    "done": "閉じる",
+    "create": "リンクを作成",
+    "creating": "作成中…",
+    "createSuccess": "共有リンクを作成しました。",
+    "createError": "リンクの作成に失敗しました。"
+  },
+  "Shell": {
+    "locked": "近日公開",
+    "navLabel": "ウィジェットナビゲーション",
+    "outputsTotal": "合計 {count} 件",
+    "outputsMore": "もっと見る（{count}）",
+    "outputsEmpty": "出力結果はまだありません",
+    "headerColorSelect": "ヘッダーカラーを選択",
+    "headerColorPalette": "ヘッダーカラーパレット",
+    "hueSelect": "色相を選択",
+    "custom": "カスタム",
+    "default": "デフォルト",
+    "defaultYellow": "デフォルトイエロー",
+    "free": "無料",
+    "creditCost": "{count} クレジット",
+    "settings": "設定",
+    "uploadFile": "ファイルをアップロード"
+  },
+  "BackgroundJob": {
+    "converting": "変換中",
+    "extracting": "抽出中",
+    "analyzing": "分析中"
+  },
+  "Languages": {
+    "multi": "自動検出",
+    "ko": "韓国語",
+    "ja": "日本語",
+    "zh": "中国語（簡体字）",
+    "zh-TW": "中国語（繁体字）",
+    "en": "英語",
+    "en-GB": "英語（イギリス）",
+    "es": "スペイン語",
+    "fr": "フランス語",
+    "de": "ドイツ語",
+    "it": "イタリア語",
+    "nl": "オランダ語",
+    "pt": "ポルトガル語",
+    "sv": "スウェーデン語",
+    "da": "デンマーク語",
+    "no": "ノルウェー語",
+    "fi": "フィンランド語",
+    "ru": "ロシア語",
+    "pl": "ポーランド語",
+    "uk": "ウクライナ語",
+    "cs": "チェコ語",
+    "hu": "ハンガリー語",
+    "ro": "ルーマニア語",
+    "bg": "ブルガリア語",
+    "el": "ギリシャ語",
+    "tr": "トルコ語",
+    "ar": "アラビア語",
+    "hi": "ヒンディー語",
+    "id": "インドネシア語",
+    "ms": "マレー語",
+    "th": "タイ語",
+    "vi": "ベトナム語",
+    "tl": "タガログ語"
+  },
+  "LegalShell": {
+    "terms": "利用規約",
+    "privacy": "プライバシー",
+    "usePolicy": "利用ポリシー"
+  },
+  "StatusTheme": {
+    "toLight": "ライトモードに切り替える",
+    "toDark": "ダークモードに切り替える",
+    "light": "☀ ライト",
+    "dark": "☾ ダーク"
+  },
+  "DateRange": {
+    "allPeriod": "全期間",
+    "selectPeriod": "日付範囲を選択",
+    "prevMonth": "前の月",
+    "nextMonth": "次の月"
+  },
+  "ShareMenu": {
+    "shareFailed": "共有に失敗しました: {error}",
+    "sharedTo": "{dest} に共有しました。",
+    "shareError": "共有中にエラーが発生しました。",
+    "sharing": "共有中…"
+  },
+  "StatusBoard": {
+    "editBoard": "ボードを編集",
+    "exitEdit": "編集を完了",
+    "addWidget": "ウィジェットを追加",
+    "allPlaced": "すべてのウィジェットが配置済みです。",
+    "editHint": "ハンドル（⠿）をドラッグして移動・右端（またはヘッダー 1/2/3）をドラッグしてサイズ変更・× で削除。変更は自動保存され、すべてのデバイスに同期されます。",
+    "moveWidget": "ウィジェットを移動",
+    "dragToMove": "ドラッグして移動",
+    "spanColumns": "{n} 列にまたがる",
+    "removeWidget": "ウィジェットを削除",
+    "remove": "削除",
+    "resize": "サイズ変更",
+    "dragToResize": "ドラッグしてサイズを変更",
+    "emptyBoard": "ウィジェットが配置されていません。",
+    "emptyBoardHint": "「ボードを編集」→「＋ウィジェットを追加」からウィジェットを配置してください。",
+    "saving": "保存中…",
+    "saved": "保存済み · すべてのデバイスに同期しました",
+    "saveError": "保存に失敗しました — まもなく再試行します"
+  },
+  "Settings": {
+    "title": "設定",
+    "description": "アカウントとプライバシーを管理します。",
+    "export": {
+      "title": "データをエクスポート",
+      "description": "アカウントに紐づくすべてのデータをZIPファイルとしてダウンロードします。文字起こし・動画・インサイトなどの大容量添付ファイルは、24時間有効なダウンロードリンクとして含まれます。セキュリティ上の理由から、OAuthのリフレッシュトークン／アクセストークンは除外されます。",
+      "preparing": "準備中…",
+      "rateLimited": "しばらくしてから再度お試しください。（1時間あたりのエクスポート上限を超えました）",
+      "failed": "エクスポートに失敗しました。しばらくしてから再度お試しください。",
+      "unknownError": "不明なエラー",
+      "done": "エクスポートが完了しました — ダウンロードが自動的に開始されます。",
+      "filename": "ファイル名：",
+      "size": "サイズ：",
+      "expiry": "リンクの有効期限：{when}（24時間）",
+      "tables": "対象テーブル：{rows}行 / 合計{count}テーブル",
+      "redownload": "再ダウンロード"
+    },
+    "danger": {
+      "zone": "危険な操作",
+      "deleteAccount": "アカウントを削除",
+      "description": "アカウントに紐づくすべてのデータを完全に削除します。ワークスペース、アップロードされた素材、進行中の分析が含まれ、この操作は取り消せません。支払い・返金・監査の記録は、法的要件に基づき匿名化された形で保持されます。",
+      "deleteCta": "アカウントを削除…",
+      "confirmTitle": "アカウントを削除しますか？",
+      "confirmDescription": "この操作は取り消せません。確認のため、メールアドレスを正確に入力してください。",
+      "deleting": "削除中…",
+      "permanentDelete": "完全に削除する",
+      "emailReentry": "確認のため、アカウントのメールアドレス <b>{email}</b> を以下に入力してください。",
+      "confirmEmailLabel": "確認用メールアドレス",
+      "deleteFailed": "削除に失敗しました。",
+      "networkError": "ネットワークエラーが発生しました。"
+    }
+  },
+  "Probing": {
+    "card": {
+      "recordingNoAudioTab": "音声がキャプチャされませんでした。タブ共有セッションの場合は、「タブの音声を共有」がオンになっていたかご確認ください。",
+      "recordingUnsupported": "このブラウザはセッション録音に対応していません。",
+      "recordingStartFailed": "録音を開始できませんでした。",
+      "recordingNoAudio": "音声がキャプチャされませんでした。",
+      "recordingUploadFailed": "録音のアップロードに失敗しました。しばらくしてから再度お試しください。",
+      "thinkFailed": "AI推論に失敗しました。しばらくしてから再度お試しください",
+      "personaFailed": "ペルソナの生成に失敗しました。しばらくしてから再度お試しください",
+      "copied": "コピーしました",
+      "copyFailed": "コピーに失敗しました。手動で選択してコピーしてください",
+      "pinnedToHistory": "★ 履歴にピン留めしました",
+      "recordingUploadError": "セッションの録音アップロードに失敗しました。インタビュー自体は正常に終了しています。",
+      "recordingEmptyNotice": "このセッションの録音は保存されませんでした（音声がキャプチャされませんでした）。インタビュー自体は正常に終了しています。",
+      "recordingReady": "セッションの録音の準備ができました。ダウンロードいただけます。",
+      "pdfEyebrow": "回答者ペルソナ",
+      "pdfDefaultTitle": "プロービングインタビュー",
+      "pdfDownloaded": "ペルソナPDFをダウンロードしました",
+      "pdfExportFailed": "PDFエクスポートに失敗しました — {msg}",
+      "errorMicDenied": "マイクの使用が拒否されました。ブラウザの設定で許可してください",
+      "errorMicFailed": "マイクのキャプチャに失敗しました。他のアプリが使用中でないかご確認ください",
+      "errorTabDenied": "タブの共有がキャンセルされました",
+      "errorTabUnavailable": "Chromeの画面選択画面で「タブの音声を共有」にチェックを入れてください",
+      "errorTabFailed": "タブの音声キャプチャに失敗しました。別のタブから再度お試しください",
+      "errorSessionTimeout": "セッションのセットアップに時間がかかっています。しばらくしてから再起動してください",
+      "errorConnectTimeout": "ネットワーク接続を確認して再起動してください",
+      "errorSessionStart": "セッションを開始できませんでした。しばらくしてから再度お試しください",
+      "statusConnecting": "セッションに接続中…",
+      "statusStopping": "セッションを終了中…",
+      "statusError": "セッションエラー",
+      "statusRenewing": "🔄 セッションを更新中…",
+      "statusPersonaUpdating": "回答者のペルソナを更新中…",
+      "statusThinking": "AI推論を実行中…",
+      "statusWaiting": "待機中",
+      "injectDesc": "今すぐ質問する内容",
+      "widgetAdded": "ウィジェットを追加しました — '{label}'",
+      "widgetFull": "ウィジェットが上限（最大{max}個）に達しています — いくつか削除してから再試行してください",
+      "workingInFullview": "フルビューで作業中です — モーダルを閉じるとここに戻ります。",
+      "thinkFailedInline": "AI推論に失敗しました: {msg}",
+      "downloadRecordingTitle": "元のセッション音声をダウンロード",
+      "downloadRecording": "セッションの録音をダウンロード",
+      "savingRecording": "録音を保存中…",
+      "recordingNotSavedPrefix": "このセッションの録音は保存されませんでした — ",
+      "startSession": "セッションを開始",
+      "fullviewTitle": "プロービングアシスタント",
+      "fullviewSubtitleLive": "インタビュー進行中",
+      "fullviewSubtitleIdle": "回答者のペルソナ＋プロービング質問",
+      "exporting": "エクスポート中…",
+      "pdfExportTitleLive": "インタビューを終了してペルソナPDFをダウンロード",
+      "pdfExportTitleIdle": "ペルソナPDFをダウンロード",
+      "pdfExportCtaLive": "終了してPDFをエクスポート",
+      "pdfExportCtaIdle": "PDFをエクスポート",
+      "exportConfirmTitle": "インタビューを終了してペルソナをエクスポートしますか？",
+      "exportConfirmBody": "現在のセッションを停止し、回答者ペルソナグリッド（デフォルト9項目＋追加ウィジェット）をPDFとしてダウンロードします。停止後はこのセッションを再開できません。",
+      "cancel": "キャンセル"
+    },
+    "control": {
+      "sourceMic": "デバイスのマイク",
+      "sourceTab": "ブラウザの音声入力",
+      "fieldProject": "プロジェクト",
+      "fieldLanguage": "言語",
+      "outputLangAria": "分析結果の出力言語",
+      "select": "選択",
+      "fieldInputSource": "入力ソース",
+      "fieldResearchGoal": "リサーチゴール",
+      "goalPlaceholder": "例：人々が価値とプレミアムをどのように比較検討するかを理解する",
+      "unappliedChange": "未適用の変更があります — 「適用」を押して反映してください",
+      "applyGoalTitle": "入力したリサーチゴールを今すぐ適用します",
+      "apply": "適用",
+      "controlsLockedNote": "セッションの途中で入力ソースや言語を変更することはできません — 次のセッションから反映されます。",
+      "stop": "停止"
+    },
+    "inject": {
+      "placeholder": "例：その製品を知ったチャネルと購入したチャネルが異なったのはなぜですか？",
+      "label": "フォローアップ質問を挿入",
+      "description": "回答者にすぐ尋ねる質問です — 「挿入」を押すと、AIの質問ポップアップと左パネルのウィジェットに1回送信されます",
+      "injectTitle": "入力した質問を今すぐ挿入します（AIポップアップ＋左ウィジェット）",
+      "inject": "挿入",
+      "backfillRunning": "🔍 関連コンテンツを検索中…",
+      "backfillDone": "✓ 会話から {count} 件の発言を自動入力しました",
+      "backfillEmpty": "⚠ 関連コンテンツが見つかりませんでした — AIはこのウィジェットを埋める質問を優先します"
+    },
+    "thinking": {
+      "header": "AIの推論",
+      "empty": "発言が蓄積されると、AIの推論がここに表示されます…",
+      "pulseActive": "思考中",
+      "pulseIdle": "待機中"
+    },
+    "question": {
+      "paneTitle": "検証＆プロービング質問",
+      "thinkingShort": "思考中…",
+      "thinkAgainTitle": "今すぐ再考する",
+      "thinkAgain": "再考する",
+      "emptyNotLive": "セッションを開始すると、AIが推論とインスタント質問の送信を開始します。",
+      "emptyLiveNoTranscript": "発言が届き次第、AIはすぐに推論を開始します。"
+    },
+    "popup": {
+      "importanceHigh": "今すぐ質問する",
+      "importanceMedium": "次の質問候補",
+      "importanceLow": "時間があるときに",
+      "dialogAria": "AIが提案するインスタント質問",
+      "fillSection": "{label}を入力",
+      "copy": "コピー",
+      "copyAria": "質問テキストをコピー",
+      "pin": "ピン留め",
+      "pinAria": "ピン留め — すぐに星付きで履歴に保存します",
+      "close": "閉じる",
+      "closeAria": "このポップアップを閉じる",
+      "countdownAria": " {n}秒後に自動的に閉じます",
+      "paused": "（一時停止中）"
+    },
+    "technique": {
+      "contrast": "コントラスト",
+      "devils_advocate": "悪魔の代弁者",
+      "balance_game": "二択",
+      "clarification": "明確化",
+      "timeline": "タイムライン"
+    },
+    "history": {
+      "justNow": "たった今",
+      "minutesAgo": "{n}分前",
+      "hoursAgo": "{n}時間前",
+      "daysAgo": "{n}日前",
+      "title": "質問履歴 · {count}",
+      "empty": "まだ質問が記録されていません。",
+      "unstar": "星を外す",
+      "star": "星を付ける",
+      "copy": "コピー",
+      "delete": "削除"
+    },
+    "persona": {
+      "updatedJustNow": "たった今更新されました",
+      "updatedMinutesAgo": "{n}分前に更新されました",
+      "updatedHoursAgo": "{n}時間前に更新されました",
+      "updatedDaysAgo": "{n}日前に更新されました",
+      "updating": "更新中…",
+      "updateFailed": "更新に失敗しました",
+      "waiting": "待機中",
+      "heading": "回答者ペルソナ",
+      "refreshNow": "今すぐ更新",
+      "generating": "ペルソナ分析を生成中…",
+      "emptyNotLive": "セッションを開始すると、発言内容が9つのパネルからなる回答者ペルソナに整理されます。",
+      "emptyNoTranscript": "文字起こしが届き次第、最初のペルソナスナップショットが表示されます。",
+      "emptyLive": "発言が蓄積されるにつれて、ペルソナは自動的に更新されます。「今すぐ更新」を押すと、すぐに試すこともできます。",
+      "generateFailed": "ペルソナの生成に失敗しました：{error}"
+    },
+    "personaSection": {
+      "demographics": "デモグラフィック",
+      "values": "価値観",
+      "preferences": "好み",
+      "needs": "ニーズ",
+      "painpoints": "ペインポイント",
+      "brand_perception": "ブランド認知",
+      "decision_drivers": "意思決定の要因",
+      "behavioral_patterns": "行動パターン",
+      "etc": "その他"
+    },
+    "configurator": {
+      "label": "ペルソナセクションの設定",
+      "description": "有効なセクションのみ、フルビューウィジェットとして表示されデータが読み込まれます（無効にすると除外されます。デフォルトセクションは再度有効化でき、追加したセクションは再追加時に再生成されます）",
+      "limitReached": "上限に達しました",
+      "addSection": "セクションを追加",
+      "addModalTitle": "ペルソナセクションを追加",
+      "nameLabel": "セクション名",
+      "nameDesc": "フルビューウィジェットおよび設定カードに表示されるタイトル",
+      "namePlaceholder": "例：購買ジャーニー／競合ツールからの乗り換え理由",
+      "goalLabel": "リサーチゴール",
+      "goalDesc": "このセクションで把握したいこと（任意）",
+      "goalPlaceholder": "例：回答者が既存ツールを離れた決定的な瞬間ときっかけ",
+      "cancel": "キャンセル",
+      "add": "追加"
+    },
+    "canvasBody": {
+      "liveHint": "セッション進行中 · フルビューでAIの推論と提案された質問をご確認ください",
+      "startHint": "セッションを開始する",
+      "openFullview": "フルビューを開く"
     }
   }
 }

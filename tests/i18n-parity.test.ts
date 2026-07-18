@@ -32,18 +32,18 @@ describe('i18n parity gate logic — synthetic red conditions', () => {
     assert.equal(hasEnKoOrphan({ a: '1', nested: { x: '2' } }, { a: '1', nested: { x: '2' } }), false);
   });
 
-  it('a ja/th key absent from en breaks the subset rule', () => {
+  it('a ja/th key absent from en is an orphan (red)', () => {
     const en = leafKeys({ a: '1' });
     const ja = leafKeys({ a: '1', extra: '2' });
     const orphans = [...ja].filter((k) => !en.has(k));
     assert.deepEqual(orphans, ['extra']);
   });
 
-  it('ja/th as a strict subset of en is allowed (missing keys OK)', () => {
+  it('ja/th missing an en key is now red too (Phase 8 — no subset exemption)', () => {
     const en = leafKeys({ a: '1', b: '2', c: '3' });
     const ja = leafKeys({ a: '1' });
-    const orphans = [...ja].filter((k) => !en.has(k));
-    assert.equal(orphans.length, 0);
+    const missing = [...en].filter((k) => !ja.has(k));
+    assert.deepEqual(missing, ['b', 'c']);
   });
 });
 
