@@ -106,7 +106,7 @@ export function UtResultView({
             size="sm"
             onClick={onDownloadRecording}
             disabled={!hasRecording}
-            title="화면녹화(webm) 다운로드"
+            title="화면녹화 다운로드 (mp4, 미지원 브라우저는 webm)"
           >
             🎬 화면녹화
           </Button>
@@ -115,7 +115,7 @@ export function UtResultView({
             size="sm"
             onClick={onDownloadAudio}
             disabled={!hasAudio}
-            title="음성 오디오 다운로드"
+            title="음성 오디오 다운로드 (m4a, 미지원 브라우저는 webm)"
           >
             🎙 오디오
           </Button>

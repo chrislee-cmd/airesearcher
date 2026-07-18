@@ -49,23 +49,35 @@ export type UtSessionResult = {
 
 type Blobs = { audio: Blob | null; recording: Blob | null };
 
-// 보이스 트랙 mime — qa-voice-agent-button 과 동일 폴백 순서.
-function pickAudioMime(): string {
-  if (typeof MediaRecorder === 'undefined') return '';
-  for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']) {
-    if (MediaRecorder.isTypeSupported(t)) return t;
+// MediaRecorder 는 트랜스코딩을 못 하므로 다운로드 포맷 = 캡처 포맷. 그래서
+// 재생 호환성 높은 mp4(H.264)/m4a(AAC)를 먼저 시도하고, 지원 안 되는 엔진
+// (Firefox 등)만 webm 으로 폴백한다. ext 는 서버 upload-url 로 넘겨 스토리지
+// key 확장자·다운로드 파일명을 실제 컨테이너와 일치시킨다.
+type Picked = { mime: string; ext: 'mp4' | 'm4a' | 'webm' };
+
+// 보이스 트랙 — m4a(mp4/AAC) 우선, webm/opus 폴백.
+function pickAudio(): Picked {
+  if (typeof MediaRecorder === 'undefined') return { mime: '', ext: 'webm' };
+  for (const t of ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4']) {
+    if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'm4a' };
   }
-  return '';
+  for (const t of ['audio/webm;codecs=opus', 'audio/webm']) {
+    if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'webm' };
+  }
+  return { mime: '', ext: 'webm' };
 }
 
-// 화면 트랙 mime — vp9 → vp8 → 무코덱 webm 폴백. 서버/다운로드는 .webm 고정
-// (upload-url 이 항상 .webm key 를 발급) 이라, mp4 폴백은 두지 않는다.
-function pickVideoMime(): string {
-  if (typeof MediaRecorder === 'undefined') return '';
-  for (const t of ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']) {
-    if (MediaRecorder.isTypeSupported(t)) return t;
+// 화면 트랙 — mp4(H.264) 우선, webm(vp9→vp8) 폴백. 화면 레코더는 오디오
+// 트랙이 없어 비디오 코덱만 요청한다.
+function pickVideo(): Picked {
+  if (typeof MediaRecorder === 'undefined') return { mime: '', ext: 'webm' };
+  for (const t of ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4']) {
+    if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'mp4' };
   }
-  return '';
+  for (const t of ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']) {
+    if (MediaRecorder.isTypeSupported(t)) return { mime: t, ext: 'webm' };
+  }
+  return { mime: '', ext: 'webm' };
 }
 
 // 사용자가 스킴 없이 "example.com" 만 입력해도 새 탭 오픈 + 서버 검증(z.url())
@@ -128,6 +140,8 @@ export function useUtSession(): UseUtSession {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioMimeRef = useRef('audio/webm');
   const videoMimeRef = useRef('video/webm');
+  const audioExtRef = useRef<'mp4' | 'm4a' | 'webm'>('webm');
+  const videoExtRef = useRef<'mp4' | 'm4a' | 'webm'>('webm');
   const blobsRef = useRef<Blobs | null>(null);
   const pendingStopRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -191,10 +205,11 @@ export function useUtSession(): UseUtSession {
       blob: Blob,
       supabase: ReturnType<typeof createClient>,
     ) => {
+      const ext = kind === 'audio' ? audioExtRef.current : videoExtRef.current;
       const res = await fetchWithAuth(`/api/ut/sessions/${id}/upload-url`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind }),
+        body: JSON.stringify({ kind, ext }),
       });
       if (!res.ok) throw new Error(`upload_url_${kind}_${res.status}`);
       const { storage_key, token, bucket } = (await res.json()) as {
@@ -202,9 +217,12 @@ export function useUtSession(): UseUtSession {
         token: string;
         bucket: string;
       };
+      // 스토리지 content-type 은 codecs 파라미터를 뺀 base MIME 으로 저장해
+      // (video/mp4, audio/mp4) 다운로드/재생 시 깔끔하게 인식되게 한다.
+      const contentType = (blob.type || '').split(';')[0] || undefined;
       const { error: upErr } = await supabase.storage
         .from(bucket)
-        .uploadToSignedUrl(storage_key, token, blob, { contentType: blob.type });
+        .uploadToSignedUrl(storage_key, token, blob, { contentType });
       if (upErr) throw new Error(`upload_${kind}: ${upErr.message}`);
     },
     [],
@@ -427,11 +445,12 @@ export function useUtSession(): UseUtSession {
       micStreamRef.current = mic;
       if (videoElRef.current) videoElRef.current.srcObject = screen;
 
-      const videoMime = pickVideoMime();
-      videoMimeRef.current = videoMime || 'video/webm';
+      const video = pickVideo();
+      videoMimeRef.current = video.mime || 'video/webm';
+      videoExtRef.current = video.ext;
       const screenRecorder = new MediaRecorder(
         screen,
-        videoMime ? { mimeType: videoMime } : undefined,
+        video.mime ? { mimeType: video.mime } : undefined,
       );
       screenChunksRef.current = [];
       screenRecorder.ondataavailable = (ev) => {
@@ -439,11 +458,14 @@ export function useUtSession(): UseUtSession {
       };
       screenRecorder.onstop = () => onRecorderStopped();
 
-      const audioMime = pickAudioMime();
-      audioMimeRef.current = audioMime || 'audio/webm';
+      const audioPick = pickAudio();
+      audioMimeRef.current = audioPick.mime || 'audio/webm';
+      audioExtRef.current = audioPick.ext;
       const audioRecorder = new MediaRecorder(
         mic,
-        audioMime ? { mimeType: audioMime, audioBitsPerSecond: 128000 } : undefined,
+        audioPick.mime
+          ? { mimeType: audioPick.mime, audioBitsPerSecond: 128000 }
+          : undefined,
       );
       audioChunksRef.current = [];
       audioRecorder.ondataavailable = (ev) => {
