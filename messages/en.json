@@ -82,7 +82,9 @@
       "live": {
         "watching": "Watching live",
         "stop": "Stop monitoring",
-        "hint": "You're watching the participant's shared screen in real time. They control their own session."
+        "hint": "You're watching the participant's shared screen in real time. They control their own session.",
+        "captionLabel": "Live captions",
+        "captionWaiting": "Speech appears here in real time as the participant talks."
       },
       "review": {
         "pending": "The participant is still in the session. Results appear here once they finish.",

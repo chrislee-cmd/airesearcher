@@ -35,6 +35,11 @@ import {
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { normalizeTargetUrl } from './use-ut-session';
 import type { UtSessionResult } from './use-ut-session';
+import {
+  useUtLiveCaption,
+  type UtCaptionLine,
+  type UtLiveCaptionStatus,
+} from './use-ut-live-caption';
 
 export type UtRemotePhase =
   | 'idle'
@@ -71,6 +76,10 @@ export type UseUtRemoteSession = {
   hasParticipantVideo: boolean;
   /** 리뷰 표면이 읽어온 세션 결과(전사·다운로드 존재 여부). */
   result: UtSessionResult | null;
+  /** 라이브 캡션(모더 관전 중 참여자 발화 실시간 자막) 롤링 라인. */
+  captionLines: UtCaptionLine[];
+  /** 라이브 캡션 STT 상태 — error/idle 이면 캡션 영역 숨김(graceful). */
+  captionStatus: UtLiveCaptionStatus;
   /** 리뷰 원본 status (done/error/uploading/transcribing/live/waiting). */
   reviewStatus: string | null;
   /** 라이브 관전 <video> 에 참가자 화면을 붙이는 ref 콜백. */
@@ -100,6 +109,14 @@ export function useUtRemoteSession(): UseUtRemoteSession {
     tRef.current = t;
   }, [t]);
 
+  // 라이브 캡션(634) — 구독 오디오 트랙을 tee 해 스트리밍 STT. captionRef 로 이벤트
+  // 콜백/teardown 이 stale closure 없이 최신 API 를 부른다(tRef 패턴 동형).
+  const caption = useUtLiveCaption();
+  const captionRef = useRef(caption);
+  useEffect(() => {
+    captionRef.current = caption;
+  }, [caption]);
+
   const phaseRef = useRef<UtRemotePhase>('idle');
   const sessionIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -112,8 +129,10 @@ export function useUtRemoteSession(): UseUtRemoteSession {
   const monitorElRef = useRef<HTMLVideoElement | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Room 하드 teardown — detach 트랙 + audio element 제거 + disconnect.
+  // Room 하드 teardown — detach 트랙 + audio element 제거 + disconnect + 캡션 STT
+  // teardown(유휴 과금/누수 0). 관전 종료·리뷰 전환·언마운트가 모두 이 경로를 탄다.
   const disconnectRoom = useCallback(() => {
+    captionRef.current.stop();
     const room = roomRef.current;
     videoTrackRef.current?.detach().forEach((el) => {
       // <video> 는 body 소유(위젯 렌더) — srcObject 만 비우고 remove 안 함.
@@ -197,12 +216,20 @@ export function useUtRemoteSession(): UseUtRemoteSession {
           document.body.appendChild(el);
           audioElRef.current = el;
           el.play().catch(() => {});
+          // 라이브 캡션(634) — 같은 트랙을 clone 해 스트리밍 STT 에 tee. connectViewer
+          // 는 moderated 세션에서만 호출되므로 여기 도달 = moderated(캡션 대상). STT
+          // 는 clone 을 쓰므로 위 <audio> 재생과 간섭 0. 실패 시 캡션만 graceful 숨김.
+          const mst = (track as RemoteAudioTrack).mediaStreamTrack;
+          if (mst) captionRef.current.start(mst, id);
         }
       };
 
       const onTrackUnsubscribed = (track: RemoteTrack) => {
         if (track.kind === Track.Kind.Video) {
           setHasParticipantVideo(false);
+        } else if (track.kind === Track.Kind.Audio) {
+          // 참가자가 mic 트랙을 내리면 캡션 STT 도 종료(재구독 시 재시작).
+          captionRef.current.stop();
         }
       };
 
@@ -391,6 +418,8 @@ export function useUtRemoteSession(): UseUtRemoteSession {
     hasParticipantVideo,
     result,
     reviewStatus,
+    captionLines: caption.lines,
+    captionStatus: caption.status,
     attachMonitor,
     create,
     stopMonitoring,
