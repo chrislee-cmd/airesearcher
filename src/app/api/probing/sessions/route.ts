@@ -69,9 +69,13 @@ export async function POST(req: Request) {
       ? reqBody.session_id
       : null;
   const sessionId = renewId ?? randomUUID();
-  // 캡처 소스 (mic/tab) — probing_session_runs 계측용. 신규 start 에만 의미.
+  // 캡처 소스 (mic/tab/both) — probing_session_runs 계측용. 신규 start 에만 의미.
+  // 'both' = mic(진행자)+tab(응답자) 병렬 캡처. CHECK 제약은
+  // 20260719093814_probing_session_runs_source_both.sql 이 'both' 를 허용한다.
   const source =
-    reqBody?.source === 'mic' || reqBody?.source === 'tab'
+    reqBody?.source === 'mic' ||
+    reqBody?.source === 'tab' ||
+    reqBody?.source === 'both'
       ? reqBody.source
       : null;
 

@@ -2353,6 +2353,9 @@
       "errorTabFailed": "タブの音声キャプチャに失敗しました。別のタブから再度お試しください",
       "errorSessionTimeout": "セッションのセットアップに時間がかかっています。しばらくしてから再起動してください",
       "errorConnectTimeout": "ネットワーク接続を確認して再起動してください",
+      "degradedHost": "進行役（マイク）のキャプチャができませんでした —",
+      "degradedGuest": "回答者（タブ音声）のキャプチャができませんでした —",
+      "bothEchoNote": "進行役（マイク）と回答者（タブ音声）を同時に取得します — スピーカーではなくイヤホンを使うとエコーを防げます。",
       "errorSessionStart": "セッションを開始できませんでした。しばらくしてから再度お試しください",
       "statusConnecting": "セッションに接続中…",
       "statusStopping": "セッションを終了中…",
@@ -2386,6 +2389,7 @@
     "control": {
       "sourceMic": "デバイスのマイク",
       "sourceTab": "ブラウザの音声入力",
+      "sourceBoth": "進行役＋回答者（マイク＋タブ）",
       "fieldProject": "プロジェクト",
       "fieldLanguage": "言語",
       "outputLangAria": "分析結果の出力言語",
@@ -2398,6 +2402,15 @@
       "apply": "適用",
       "controlsLockedNote": "セッションの途中で入力ソースや言語を変更することはできません — 次のセッションから反映されます。",
       "stop": "停止"
+    },
+    "slotIndicator": {
+      "host": "進行役",
+      "guest": "回答者",
+      "live": "ライブ",
+      "connecting": "接続中",
+      "groupAria": "キャプチャスロットの状態",
+      "hostAria": "進行役キャプチャ（マイク）",
+      "guestAria": "回答者キャプチャ（タブ音声）"
     },
     "inject": {
       "placeholder": "例：その製品を知ったチャネルと購入したチャネルが異なったのはなぜですか？",

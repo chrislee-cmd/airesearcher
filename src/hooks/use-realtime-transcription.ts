@@ -2,17 +2,29 @@
 
 /* ────────────────────────────────────────────────────────────────────
    useRealtimeTranscription — OpenAI Realtime transcription with
-   mic OR tab-audio capture.
+   mic / tab-audio / both (mic+tab 병렬) 캡처.
 
    probing 위젯의 standalone 모드. translate-console 의존 없이 자체
    OpenAI Realtime transcription session 을 들고 transcript segments 를
    produce 한다.
 
-   - capture: getUserMedia (mic) 또는 getDisplayMedia (tab) — start() 인자로
-     선택. default 'mic' (PR-4 회귀 방지).
+   - capture: getUserMedia (mic) / getDisplayMedia (tab) / 둘 다(both) —
+     start() 인자로 선택. default 'mic' (PR-4 회귀 방지).
    - signalling: POST /api/probing/sessions (서버에서 client_secret 발급)
    - SDP exchange: https://api.openai.com/v1/realtime/calls
    - datachannel: `oai-events` 에서 `conversation.item.input_audio_*` 이벤트 수신
+
+   화자분리 (pr-probing-mic-plus-tab-dual-capture):
+   - 캡처 모드가 'both' 면 mic(진행자=host) + tab(응답자=guest) 두 병렬
+     transcription 세션을 띄운다. 각 슬롯은 독립 client_secret / PC / DC /
+     capture 스트림을 갖는다 (translate-console `both` 모델 이식). 슬롯당 라인은
+     SLOT_SPEAKER 로 speaker 태그(host/guest)가 붙어 소비자가 화자별로 구분한다.
+   - 단일 모드('mic'/'tab')는 종전 동작 100% — 세션 1개, speaker 태그 없음(null).
+   - graceful degradation: both 에서 한 슬롯이 실패해도(탭 오디오 미공유 등)
+     다른 슬롯이 살아 있으면 세션은 계속. 슬롯별 실패는 slotError 로 표면화.
+   - 크레딧: both 라도 세션 1개분만 과금 — 첫 슬롯이 /sessions 로 start-lump 를
+     차감하고, 둘째 슬롯은 같은 session_id 를 재사용해 client_secret 만 추가로
+     발급받는다(spend_credits 멱등 — renewal 과 동일 경로).
 
    탭 오디오 지원 (PR-5 / pr-probing-5-tab-audio):
    - raw passthrough — getDisplayMedia 의 트랙을 그대로 pc.addTrack. WebAudio
@@ -24,26 +36,22 @@
    - 10s connect watchdog — **capture(getDisplayMedia/getUserMedia) 완료 후**
      'connecting' 단계 진입 시 setTimeout 으로 arm, 'live' 도달 시 clear.
      사용자 조작(탭 선택/권한 승인) 시간은 제외 — watchdog 은 SDP/ICE/DC
-     네트워크 연결만 감시. 만료되면 phase 태그 + pc/dc 상태 dump +
-     `probing_connect_timeout` 에러. 세션 fetch 는 별도 8s AbortController
-     (`session_timeout`) 로 격리 — watchdog 이 서버 hang 을 대신 삼키지 않는다.
+     네트워크 연결만 감시. both 모드는 슬롯별로 독립 watchdog.
    - ICE 보강 — STUN 2개 + signaling/ice 상태 변화 콘솔 로그.
    - tab VAD 안전망 — 휴지 없는 continuous 콘텐츠 (YouTube/스트리밍) 가
      OpenAI VAD 가 end-of-speech 를 못 잡고 transcript 가 stall 되는 걸 방지.
      3초마다 400ms 트랙 mute 로 강제 utterance 끊김 신호 (translate-console
-     PR #396 패턴).
+     PR #396 패턴). tab 슬롯에만 적용.
 
    탭 오디오 캡처 의미 (사용자 mental model):
    - tab audio = 그 탭에서 **재생되는** 소리만 캡처 (browser audio output).
-   - 본인이 mic 으로 말한 건 echo cancellation 으로 본인 탭에서 재생되지 않음 →
-     캡처되지 않음. 본인 발화 캡처는 mic 모드로.
+   - both 모드 = 진행자(내 mic) + 응답자(브라우저 화상 인터뷰 상대방 탭 오디오)
+     양방향. 원격 화상 인터뷰에서 양쪽 발화를 화자분리해 잡는 것이 목적.
    - Zoom 데스크탑 앱 윈도우 공유는 macOS Chrome 에서 audio 캡처 불가 (OS 제약).
      Zoom 웹클라이언트 (zoom.us/wc) 사용해야 다른 참가자 발언 캡처 가능.
 
-   범위 밖: 화자 분리, 탭 vs 마이크 자동 detection. 동시 세션 (translate +
-   probing) 은 각자 별도 capture 호출 — 사용자가 picker 두 번 선택.
-
-   translate-console.tsx:807-1265 의 capture/WebRTC 흐름이 디자인 참조.
+   translate-console.tsx 의 capture/WebRTC 흐름(activeSlots/SLOT_SPEAKER/슬롯
+   표시등/graceful degradation)이 디자인 참조.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -58,7 +66,35 @@ export type TranscriptionStatus =
   | 'stopping'
   | 'error';
 
-export type TranscriptionSource = 'mic' | 'tab';
+// 캡처 모드 — 단일 슬롯('mic'/'tab') 또는 병렬('both'). 'both' 는 mic(진행자)
+// + tab(응답자) 두 세션을 동시에 띄운다.
+export type TranscriptionCaptureMode = 'mic' | 'tab' | 'both';
+// 하위호환 alias — 종전 `TranscriptionSource` 타입명을 소비하던 코드가 있으면
+// 그대로 캡처 모드로 해석된다.
+export type TranscriptionSource = TranscriptionCaptureMode;
+
+// 병렬 캡처의 두 소스 슬롯. 슬롯명 = 캡처 종류(mic/tab)이자 화자 역할의 근거
+// (SLOT_SPEAKER). translate-console `both` 모델 이식.
+export type SourceSlot = 'mic' | 'tab';
+
+// 슬롯 → 화자 역할. mic=진행자(host), tab=응답자(guest). both 모드에서만 speaker
+// 태그로 부착 — 단일 모드는 speaker null(태그 없음, 후방호환).
+export const SLOT_SPEAKER: Record<SourceSlot, 'host' | 'guest'> = {
+  mic: 'host',
+  tab: 'guest',
+};
+
+function activeSlots(mode: TranscriptionCaptureMode): SourceSlot[] {
+  if (mode === 'both') return ['mic', 'tab'];
+  if (mode === 'mic') return ['mic'];
+  return ['tab'];
+}
+
+// 슬롯별 값의 빈 레코드 팩토리 — 매 소비자가 자기 객체를 얻도록 함수로 유지
+// (Record 는 mutable ref 라 두 ref 가 같은 인스턴스를 alias 하지 않게).
+function emptySlotRecord<T>(value: T): Record<SourceSlot, T> {
+  return { mic: value, tab: value };
+}
 
 // start() 진행 단계 태그 — 실패/타임아웃 로그에 실려 "pc null 만 보고 추측"
 // 상황을 제거한다 (spec C). 'session_fetch' = 서버 client_secret 발급,
@@ -67,17 +103,19 @@ export type TranscriptionSource = 'mic' | 'tab';
 type StartPhase = 'idle' | 'session_fetch' | 'capture' | 'connecting';
 
 // 위젯 consumer 가 그대로 쓰는 segment shape — realtime-transcript-provider 의
-// TranscriptSegment 와 호환 (id/text/started_at/ended_at/locale). speaker
-// 필드는 transcription session 에서 추론 불가라 생략.
+// TranscriptSegment 와 호환 (id/text/started_at/ended_at/locale). speaker 는
+// both(병렬) 모드에서 슬롯별로 태깅(host/guest); 단일 모드는 null.
 export type TranscriptionSegment = {
   id: string;
   text: string;
   started_at: number;
   ended_at?: number;
   locale?: string;
+  // both 모드에서 슬롯별로 부착되는 화자 역할. 단일 모드 / legacy 는 null.
+  speaker?: 'host' | 'guest' | null;
 };
 
-export type StartOpts = { source?: TranscriptionSource };
+export type StartOpts = { source?: TranscriptionCaptureMode };
 
 // 세션 원본 녹음(#554) 표면 상태. STT 와 독립된 부가 경로 — MediaRecorder 가
 // capture 스트림에 병렬로 붙어 녹음하고, 종료 시 blob 을 업로드한다.
@@ -109,7 +147,8 @@ export type UseRealtimeTranscriptionResult = {
   segments: TranscriptionSegment[];
   error: string | null;
   // 세션이 OpenAI 30분 cap 도달로 재연결 중 (transcript 는 계속 흐른다).
-  // 위젯이 "🔄 세션 갱신 중…" 같은 subtle 힌트를 띄우는 용도.
+  // 위젯이 "🔄 세션 갱신 중…" 같은 subtle 힌트를 띄우는 용도. 슬롯 중 하나라도
+  // renewal 중이면 true.
   renewing: boolean;
   // 서버가 발급한 probing_sessions.id (start 성공 시 set, stop/cleanup 시 null).
   // renew(30분 cap 재연결)는 같은 session_id 를 재사용하므로 이 값이 불변 →
@@ -118,6 +157,13 @@ export type UseRealtimeTranscriptionResult = {
   sessionId: string | null;
   // 세션 원본 녹음(#554) 상태 — 종료 후 다운로드 표면용. STT 무간섭 부가 경로.
   recording: SessionRecordingState;
+  // 슬롯별 라이브 표시등 — PC 가 connected 되면 true. both 모드에서 "🎤 진행자 ·
+  // 📺 응답자" 배지의 점 색(라이브/연결중)을 그린다. 단일 모드는 해당 슬롯만.
+  slotActive: Record<SourceSlot, boolean>;
+  // 슬롯별 비치명 에러 — both 에서 한 슬롯만 실패(다른 슬롯은 라이브, graceful
+  // degradation). 사유 코드(tab_audio_unavailable 등)를 담는다. 세션 전체를
+  // 무너뜨리는 치명 실패는 별도 `error` 로 남긴다.
+  slotError: Record<SourceSlot, string | null>;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -167,7 +213,8 @@ const HEARTBEAT_MAX_TICK = 3;
 // 그대로 두면 30분 도달 시 transcript 가 끊긴다 (실 인터뷰/필드 조사는
 // 60~90분). 25분(마진 5분) 도달 시 새 client_secret 으로 새 PC 를 붙이고
 // 옛 PC 는 grace 후 close — 사용자 체감 gap <2초. 크레딧은 renewal 시
-// 재과금 없음 (같은 session_id → server 의 spend_credits idempotent).
+// 재과금 없음 (같은 session_id → server 의 spend_credits idempotent). both
+// 모드는 슬롯별 epoch 로 독립 renewal.
 const SESSION_MAX_MS = 25 * 60 * 1000;
 // startedAt 대비 경과를 폴링하는 주기. translate 패턴과 동일한 10초 tick.
 const RENEW_CHECK_INTERVAL_MS = 10_000;
@@ -222,7 +269,7 @@ function eventToItemId(ev: OaiEvent, fallback: string): string {
 
 // SDP munge — Opus fmtp 라인에 `stereo=0; sprop-stereo=0` 강제. Opus 기본값이
 // mono 라 Chrome 의 createOffer 가 보통 stereo= 파라미터를 명시 안 함 (= 기본
-// mono). 이 munge 는 그 기본값을 명시적으로 못박는 보수적 안전망. tab 모드만
+// mono). 이 munge 는 그 기본값을 명시적으로 못박는 보수적 안전망. tab 슬롯만
 // 적용 (mic 는 native mono 트랙이라 회귀 위험 0). transcription endpoint 가
 // stereo Opus 처리에 strict 한 케이스 (다른 OpenAI realtime model 보다) 대비.
 function forceOpusMonoSdp(sdp: string): string {
@@ -284,6 +331,13 @@ export function useRealtimeTranscription(opts?: {
   // sessionIdRef 의 reactive 미러 — 소비자에게 노출. ref 는 비동기 콜백용,
   // state 는 리셋 게이트 같은 렌더/effect 의존용.
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // 슬롯별 라이브 표시등 / 비치명 에러 — 매 start() 에서 리셋.
+  const [slotActive, setSlotActive] = useState<Record<SourceSlot, boolean>>(() =>
+    emptySlotRecord(false),
+  );
+  const [slotError, setSlotError] = useState<Record<SourceSlot, string | null>>(
+    () => emptySlotRecord<string | null>(null),
+  );
 
   // ─── 세션 원본 녹음(#554) ───
   // Supabase 브라우저 싱글턴 — storage 업로드 + signed URL 발급용.
@@ -292,12 +346,17 @@ export function useRealtimeTranscription(opts?: {
     useState<SessionRecordingState>(IDLE_RECORDING);
   // capture 스트림에 병렬로 붙는 MediaRecorder + in-memory chunk buffer.
   const recorderRef = useRef<MediaRecorder | null>(null);
-  // recorder 전용 클론 스트림 — tab silence-injection(원본 트랙 enabled 토글)이
+  // recorder 전용 클론 스트림 — tab 모드 silence-injection(원본 트랙 enabled 토글)이
   // 녹음 chunk 에 새지 않게 별도 트랙에서 녹음한다(#582). 원본 capture 는
   // captureStreamRef 가 소유, 이 클론은 recorder 종료/정리 시 별도로 stop.
   const recordStreamRef = useRef<MediaStream | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
   const recordMimeRef = useRef<string>('audio/webm');
+  // both 모드 녹음 믹서 — mic+tab 두 소스를 한 트랙으로 합쳐 하나의 파일로
+  // 녹음한다. 원본 트랙의 clone 을 소스로 써 tab silence-injection 이 녹음에
+  // 새지 않게 한다(단일 모드 클론 원리와 동일). cleanup 이 ctx close + clone stop.
+  const recordMixCtxRef = useRef<AudioContext | null>(null);
+  const recordMixCloneTracksRef = useRef<MediaStreamTrack[]>([]);
   // 녹음 시작 시각 — 종료 시 duration 계산. renewal 을 걸쳐도 갱신 안 함
   // (같은 capture 스트림이라 recorder 가 연속 → 전체 세션 길이).
   const recordStartedAtRef = useRef<number>(0);
@@ -314,24 +373,41 @@ export function useRealtimeTranscription(opts?: {
     notifyDeductionRef.current = notifyDeduction;
   });
 
-  // WebRTC / capture refs — close 안전을 위해 ref 로 보관.
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
+  // WebRTC / capture refs — 슬롯별 Record. both 모드는 mic/tab 두 슬롯이 각자
+  // 독립 PC/DC/capture 스트림을 갖는다. 단일 모드는 해당 슬롯만 채워지고 나머지
+  // 슬롯은 null 로 남아 cleanup 루프가 skip.
+  const pcRef = useRef<Record<SourceSlot, RTCPeerConnection | null>>(
+    emptySlotRecord<RTCPeerConnection | null>(null),
+  );
+  const dcRef = useRef<Record<SourceSlot, RTCDataChannel | null>>(
+    emptySlotRecord<RTCDataChannel | null>(null),
+  );
   // 원본 capture stream (mic 또는 raw tab). cleanup 시 트랙 stop 으로 Chrome
   // "탭 공유 중" 배너가 사라진다.
-  const captureStreamRef = useRef<MediaStream | null>(null);
-  // tab 모드 silence injection 타이머.
+  const captureStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
+    emptySlotRecord<MediaStream | null>(null),
+  );
+  // tab 슬롯 silence injection 타이머 (tab 만 존재 — single ref).
   const tabSilenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
-  // 10s connect watchdog. capture 완료 후에만 armed (사용자 조작 시간 제외).
-  const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 현재 start() 진행 단계 — 실패/타임아웃 진단 로그에 실린다 (spec C).
-  const phaseRef = useRef<StartPhase>('idle');
+  // 10s connect watchdog — 슬롯별. capture 완료 후에만 armed (사용자 조작 제외).
+  const connectWatchdogRef = useRef<Record<SourceSlot, ReturnType<typeof setTimeout> | null>>(
+    emptySlotRecord<ReturnType<typeof setTimeout> | null>(null),
+  );
+  // 현재 start() 진행 단계 — 슬롯별 진단 로그용.
+  const phaseRef = useRef<Record<SourceSlot, StartPhase>>(
+    emptySlotRecord<StartPhase>('idle'),
+  );
   // Server-issued probing session id — also the start-lump generation_id.
-  // Reused by the heartbeat ticker to derive subsequent tick generation_ids.
+  // Reused by the heartbeat ticker + 둘째 슬롯 client_secret 발급 + renewal.
   const sessionIdRef = useRef<string | null>(null);
-  // 10-min heartbeat ticker for incremental credit charges.
+  // 실행 중인 캡처 모드 — handleOaiEvent 의 speaker 태깅 판단(both 만 태깅).
+  const runningModeRef = useRef<TranscriptionCaptureMode>('mic');
+  // 현재 라이브(또는 연결 중)인 슬롯 목록 — renew 폴링이 순회한다.
+  const runningSlotsRef = useRef<SourceSlot[]>([]);
+  // 10-min heartbeat ticker for incremental credit charges (세션 레벨 — 슬롯
+  // 무관, both 라도 1개 세션 과금).
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Last successfully charged tick_index (0 = start lump). The ticker fires
   // tick_index+1 each interval. Stops sending once we hit HEARTBEAT_MAX_TICK
@@ -345,15 +421,19 @@ export function useRealtimeTranscription(opts?: {
   // /언마운트), 에러 경로가 cleanup 직전에 'error' 로 세팅. 탭 닫힘/크래시로
   // cleanup 이 아예 안 돌면 row 는 'active' 로 남아 퍼널의 "이탈" 버킷이 된다.
   const endReasonRef = useRef<'ended' | 'error'>('ended');
-  // auto-renewal 상태. startedAt = 현재 OpenAI 세션이 붙은 시각 (renewal 마다
-  // 갱신). sourceRef = 재연결 시 tab/mic 분기 재현용. renewTimer = 25분 폴링.
-  // renewInFlight = 재연결 중복 방지 (실패 시 10초 뒤 자동 재시도).
-  const startedAtRef = useRef<number>(0);
-  const sourceRef = useRef<TranscriptionSource>('mic');
+  // auto-renewal 상태 — 슬롯별. startedAt = 현재 OpenAI 세션이 붙은 시각(슬롯
+  // 별 renewal 마다 갱신). renewInFlight = 재연결 중복 방지. renewTimer 는 세션
+  // 하나(모든 슬롯 순회) 라 single ref.
+  const startedAtRef = useRef<Record<SourceSlot, number>>(
+    emptySlotRecord(0),
+  );
+  const renewInFlightRef = useRef<Record<SourceSlot, boolean>>(
+    emptySlotRecord(false),
+  );
   const renewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const renewInFlightRef = useRef(false);
   // 같은 item_id 가 delta 들 사이에서 일관되는 걸 가정한다. 새 utterance
-  // 가 시작될 때 started_at 을 보관 (segment.started_at).
+  // 가 시작될 때 started_at 을 보관 (segment.started_at). key 는 슬롯 네임스페이스
+  // (`${slot}:${item_id}`) 라 both 모드의 두 세션이 같은 item_id 를 내도 충돌 없음.
   const itemStartedAtRef = useRef<Map<string, number>>(new Map());
   // 누적 텍스트를 ref 에도 두는 이유: `*.delta` 가 incremental 인지
   // cumulative 인지 모델/시점에 따라 다른 사례가 있어 둘 다 흡수하기 위해
@@ -381,11 +461,16 @@ export function useRealtimeTranscription(opts?: {
       });
     }
     endReasonRef.current = 'ended';
-    if (connectWatchdogRef.current) {
-      clearTimeout(connectWatchdogRef.current);
-      connectWatchdogRef.current = null;
+    for (const slot of ['mic', 'tab'] as const) {
+      const w = connectWatchdogRef.current[slot];
+      if (w) {
+        clearTimeout(w);
+        connectWatchdogRef.current[slot] = null;
+      }
+      phaseRef.current[slot] = 'idle';
+      startedAtRef.current[slot] = 0;
+      renewInFlightRef.current[slot] = false;
     }
-    phaseRef.current = 'idle';
     if (heartbeatTimerRef.current) {
       clearInterval(heartbeatTimerRef.current);
       heartbeatTimerRef.current = null;
@@ -394,8 +479,7 @@ export function useRealtimeTranscription(opts?: {
       clearInterval(renewTimerRef.current);
       renewTimerRef.current = null;
     }
-    startedAtRef.current = 0;
-    renewInFlightRef.current = false;
+    runningSlotsRef.current = [];
     setRenewing(false);
     sessionIdRef.current = null;
     setSessionId(null);
@@ -404,30 +488,33 @@ export function useRealtimeTranscription(opts?: {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
     }
-    const dc = dcRef.current;
-    if (dc) {
-      try {
-        dc.close();
-      } catch {
-        /* already closed */
+    setSlotActive(emptySlotRecord(false));
+    for (const slot of ['mic', 'tab'] as const) {
+      const dc = dcRef.current[slot];
+      if (dc) {
+        try {
+          dc.close();
+        } catch {
+          /* already closed */
+        }
+        dcRef.current[slot] = null;
       }
-      dcRef.current = null;
-    }
-    const pc = pcRef.current;
-    if (pc) {
-      try {
-        pc.getSenders().forEach((s) => {
-          try {
-            s.track?.stop();
-          } catch {
-            /* track already stopped */
-          }
-        });
-        pc.close();
-      } catch {
-        /* already closed */
+      const pc = pcRef.current[slot];
+      if (pc) {
+        try {
+          pc.getSenders().forEach((s) => {
+            try {
+              s.track?.stop();
+            } catch {
+              /* track already stopped */
+            }
+          });
+          pc.close();
+        } catch {
+          /* already closed */
+        }
+        pcRef.current[slot] = null;
       }
-      pcRef.current = null;
     }
     // 녹음 recorder 정리 (best-effort, 업로드 없음). 정상 stop 은
     // finalizeRecording 이 이미 recorderRef 를 null 로 비웠으므로 여기 안 걸린다
@@ -456,23 +543,49 @@ export function useRealtimeTranscription(opts?: {
       });
       recordStreamRef.current = null;
     }
-    const cap = captureStreamRef.current;
-    if (cap) {
-      cap.getTracks().forEach((t) => {
-        try {
-          t.stop();
-        } catch {
-          /* already stopped */
-        }
-      });
-      captureStreamRef.current = null;
+    // both 모드 녹음 믹서 정리 — clone 트랙 stop + AudioContext close.
+    recordMixCloneTracksRef.current.forEach((t) => {
+      try {
+        t.stop();
+      } catch {
+        /* already stopped */
+      }
+    });
+    recordMixCloneTracksRef.current = [];
+    const mixCtx = recordMixCtxRef.current;
+    if (mixCtx) {
+      try {
+        void mixCtx.close();
+      } catch {
+        /* already closed */
+      }
+      recordMixCtxRef.current = null;
+    }
+    for (const slot of ['mic', 'tab'] as const) {
+      const cap = captureStreamRef.current[slot];
+      if (cap) {
+        cap.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {
+            /* already stopped */
+          }
+        });
+        captureStreamRef.current[slot] = null;
+      }
     }
     itemStartedAtRef.current.clear();
     lastTextRef.current.clear();
   }, []);
 
   const upsertSegment = useCallback(
-    (id: string, text: string, completed: boolean, wall: number) => {
+    (
+      id: string,
+      text: string,
+      completed: boolean,
+      wall: number,
+      speaker: 'host' | 'guest' | null,
+    ) => {
       let startedAt = itemStartedAtRef.current.get(id);
       if (startedAt === undefined) {
         startedAt = wall;
@@ -484,6 +597,7 @@ export function useRealtimeTranscription(opts?: {
         started_at: startedAt,
         ended_at: completed ? wall : undefined,
         locale,
+        speaker,
       };
       setSegments((prev) => {
         const idx = prev.findIndex((s) => s.id === id);
@@ -499,7 +613,7 @@ export function useRealtimeTranscription(opts?: {
           return next;
         }
         const copy = prev.slice();
-        copy[idx] = { ...copy[idx], text, ended_at: seg.ended_at, locale };
+        copy[idx] = { ...copy[idx], text, ended_at: seg.ended_at, locale, speaker };
         return copy;
       });
     },
@@ -507,7 +621,7 @@ export function useRealtimeTranscription(opts?: {
   );
 
   const handleOaiEvent = useCallback(
-    (raw: string) => {
+    (slot: SourceSlot, raw: string) => {
       let msg: OaiEvent;
       try {
         msg = JSON.parse(raw) as OaiEvent;
@@ -521,9 +635,14 @@ export function useRealtimeTranscription(opts?: {
       // 다른 (`response.*`, `session.*`) 이벤트는 transcription-only 세션
       // 에서 발생해도 위젯 표시에 의미가 없어 무시.
       const wall = Date.now();
+      // both 모드에서만 화자 태깅 — 단일 모드는 speaker null(후방호환).
+      const speaker: 'host' | 'guest' | null =
+        runningModeRef.current === 'both' ? SLOT_SPEAKER[slot] : null;
 
       if (type === 'conversation.item.input_audio_transcription.delta') {
-        const id = eventToItemId(msg, `seg-${wall}`);
+        // 슬롯 네임스페이스 id — both 모드에서 두 세션이 같은 item_id 를 내도
+        // segments / itemStartedAt / lastText 가 충돌하지 않게.
+        const id = `${slot}:${eventToItemId(msg, `seg-${wall}`)}`;
         const delta = typeof msg.delta === 'string' ? msg.delta : '';
         if (!delta) return;
         // cumulative vs incremental 흡수. 같은 id 의 마지막 텍스트를 기억해
@@ -539,30 +658,30 @@ export function useRealtimeTranscription(opts?: {
           next = prev + delta;
         }
         lastTextRef.current.set(id, next);
-        upsertSegment(id, next, false, wall);
+        upsertSegment(id, next, false, wall, speaker);
         return;
       }
 
       if (type === 'conversation.item.input_audio_transcription.completed') {
-        const id = eventToItemId(msg, `seg-${wall}`);
+        const id = `${slot}:${eventToItemId(msg, `seg-${wall}`)}`;
         const finalText =
           typeof msg.transcript === 'string'
             ? msg.transcript
             : lastTextRef.current.get(id) ?? '';
         if (!finalText.trim()) return;
         lastTextRef.current.set(id, finalText);
-        upsertSegment(id, finalText, true, wall);
+        upsertSegment(id, finalText, true, wall, speaker);
         return;
       }
-      // 진단성 — 알려지지 않은 이벤트는 첫 발견 시 한 번만 로깅 (전체
-      // session 동안 콘솔이 터지지 않게). transcription session beta 가
+      // 진단성 — 알려지지 않은 이벤트는 무시. transcription session beta 가
       // event shape 을 갈아엎으면 여기서 단서가 잡힌다.
     },
     [upsertSegment],
   );
 
   // 세션 renewal — OpenAI transcription 세션이 30분 cap 에 닿기 전(25분)에
-  // 새 client_secret 으로 새 PC 를 붙이고 옛 PC 를 grace 후 close 한다.
+  // 새 client_secret 으로 새 PC 를 붙이고 옛 PC 를 grace 후 close 한다. 슬롯별로
+  // 독립 동작(both 모드는 각 슬롯이 자기 epoch 로 renewal).
   // 핵심 불변식:
   //  - transcript(segments) 는 건드리지 않는다 → renewal 걸쳐 연속 유지.
   //  - capture 트랙은 재사용 → mic/tab picker 재프롬프트 없음. 옛 PC 를
@@ -570,112 +689,118 @@ export function useRealtimeTranscription(opts?: {
   //  - 서버에 같은 session_id 를 넘겨 spend_credits 가 idempotent → 재과금 0.
   //  - 실패해도 옛 PC 를 강제로 죽이지 않는다. startedAt 을 그대로 둬서
   //    다음 10초 tick 이 재시도 (세션이 완전히 끊기기 전 여러 번 기회).
-  const renewSession = useCallback(async () => {
-    if (renewInFlightRef.current) return;
-    const capture = captureStreamRef.current;
-    const sid = sessionIdRef.current;
-    // capture / session 이 없으면 이미 정리된 세션 — renewal 무의미.
-    if (!capture || !sid) return;
+  const renewSlot = useCallback(
+    async (slot: SourceSlot) => {
+      if (renewInFlightRef.current[slot]) return;
+      const capture = captureStreamRef.current[slot];
+      const sid = sessionIdRef.current;
+      // capture / session 이 없으면 이미 정리된 슬롯 — renewal 무의미.
+      if (!capture || !sid) return;
 
-    renewInFlightRef.current = true;
-    setRenewing(true);
-    console.info('[probing] session_renew_start', {
-      elapsed_ms: Date.now() - startedAtRef.current,
-      session_id: sid,
-    });
-
-    try {
-      // 1) 새 client_secret — 같은 session_id 를 generation_id 로 전달해
-      //    서버 spend_credits 가 기존 charge 를 보고 재과금 없이 통과.
-      const res = await fetch('/api/probing/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid }),
+      renewInFlightRef.current[slot] = true;
+      setRenewing(true);
+      console.info('[probing] session_renew_start', {
+        slot,
+        elapsed_ms: Date.now() - startedAtRef.current[slot],
+        session_id: sid,
       });
-      const json = (await res.json().catch(() => ({}))) as {
-        client_secret?: { value?: string };
-        error?: string;
-      };
-      if (!res.ok || !json.client_secret?.value) {
-        throw new Error(json.error ?? `renew_session_failed_${res.status}`);
+
+      try {
+        // 1) 새 client_secret — 같은 session_id 를 generation_id 로 전달해
+        //    서버 spend_credits 가 기존 charge 를 보고 재과금 없이 통과.
+        const res = await fetch('/api/probing/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          client_secret?: { value?: string };
+          error?: string;
+        };
+        if (!res.ok || !json.client_secret?.value) {
+          throw new Error(json.error ?? `renew_session_failed_${res.status}`);
+        }
+        const clientSecret = json.client_secret.value;
+
+        // 2) 새 PC + datachannel + SDP 교환. start() 의 connectSlot 과 동형 — tab
+        //    슬롯은 Opus mono 강제 (mic 는 native mono 라 munge 불필요).
+        const newPc = new RTCPeerConnection({ iceServers: [{ urls: STUN_URLS }] });
+        newPc.oniceconnectionstatechange = () => {
+          console.info('[probing] renew pc.iceConnectionState', slot, newPc.iceConnectionState);
+        };
+        capture.getAudioTracks().forEach((tr) => newPc.addTrack(tr, capture));
+
+        const newDc = newPc.createDataChannel('oai-events');
+        newDc.onerror = (ev) => {
+          console.warn('[probing] renew dc error', slot, ev);
+        };
+        newDc.onmessage = (ev) => handleOaiEvent(slot, String(ev.data));
+
+        const offer = await newPc.createOffer();
+        const offerSdp =
+          slot === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
+        await newPc.setLocalDescription({ type: 'offer', sdp: offerSdp });
+        const sdpRes = await fetch(REALTIME_SDP_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${clientSecret}`,
+            'Content-Type': 'application/sdp',
+          },
+          body: offerSdp,
+        });
+        if (!sdpRes.ok) {
+          const body = await sdpRes.text().catch(() => '');
+          console.warn('[probing] renew sdp error', slot, sdpRes.status, body.slice(0, 300));
+          try {
+            newPc.close();
+          } catch {
+            /* already closed */
+          }
+          throw new Error(`renew_openai_sdp_${sdpRes.status}`);
+        }
+        const answerSdp = await sdpRes.text();
+        await newPc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+        // 3) swap — 새 PC/DC 를 active 로. 옛 것은 grace 후 close (마지막 delta
+        //    수신). 트랙은 공유하므로 stop 하지 않고 PC/DC 만 닫는다.
+        const oldPc = pcRef.current[slot];
+        const oldDc = dcRef.current[slot];
+        pcRef.current[slot] = newPc;
+        dcRef.current[slot] = newDc;
+        startedAtRef.current[slot] = Date.now();
+        setTimeout(() => {
+          try {
+            oldDc?.close();
+          } catch {
+            /* already closed */
+          }
+          try {
+            oldPc?.close();
+          } catch {
+            /* already closed */
+          }
+        }, RENEW_OLD_PC_GRACE_MS);
+
+        console.info('[probing] session_renew_done', { slot, session_id: sid });
+      } catch (e) {
+        // 옛 PC 유지 — 다음 tick 재시도. 세션을 끊지 않는다 (best-effort).
+        console.warn('[probing] session_renew_failed', slot, e);
+      } finally {
+        renewInFlightRef.current[slot] = false;
+        // 다른 슬롯이 아직 renewal 중이 아니면 표시등 해제.
+        const anyRenewing =
+          renewInFlightRef.current.mic || renewInFlightRef.current.tab;
+        setRenewing(anyRenewing);
       }
-      const clientSecret = json.client_secret.value;
-
-      // 2) 새 PC + datachannel + SDP 교환. start() 의 step 3 와 동형 — tab
-      //    모드는 Opus mono 강제 (mic 는 native mono 라 munge 불필요).
-      const source = sourceRef.current;
-      const newPc = new RTCPeerConnection({ iceServers: [{ urls: STUN_URLS }] });
-      newPc.oniceconnectionstatechange = () => {
-        console.info('[probing] renew pc.iceConnectionState', newPc.iceConnectionState);
-      };
-      capture.getAudioTracks().forEach((tr) => newPc.addTrack(tr, capture));
-
-      const newDc = newPc.createDataChannel('oai-events');
-      newDc.onerror = (ev) => {
-        console.warn('[probing] renew dc error', ev);
-      };
-      newDc.onmessage = (ev) => handleOaiEvent(String(ev.data));
-
-      const offer = await newPc.createOffer();
-      const offerSdp =
-        source === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
-      await newPc.setLocalDescription({ type: 'offer', sdp: offerSdp });
-      const sdpRes = await fetch(REALTIME_SDP_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${clientSecret}`,
-          'Content-Type': 'application/sdp',
-        },
-        body: offerSdp,
-      });
-      if (!sdpRes.ok) {
-        const body = await sdpRes.text().catch(() => '');
-        console.warn('[probing] renew sdp error', sdpRes.status, body.slice(0, 300));
-        try {
-          newPc.close();
-        } catch {
-          /* already closed */
-        }
-        throw new Error(`renew_openai_sdp_${sdpRes.status}`);
-      }
-      const answerSdp = await sdpRes.text();
-      await newPc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-
-      // 3) swap — 새 PC/DC 를 active 로. 옛 것은 grace 후 close (마지막 delta
-      //    수신). 트랙은 공유하므로 stop 하지 않고 PC/DC 만 닫는다.
-      const oldPc = pcRef.current;
-      const oldDc = dcRef.current;
-      pcRef.current = newPc;
-      dcRef.current = newDc;
-      startedAtRef.current = Date.now();
-      setTimeout(() => {
-        try {
-          oldDc?.close();
-        } catch {
-          /* already closed */
-        }
-        try {
-          oldPc?.close();
-        } catch {
-          /* already closed */
-        }
-      }, RENEW_OLD_PC_GRACE_MS);
-
-      console.info('[probing] session_renew_done', { session_id: sid });
-    } catch (e) {
-      // 옛 PC 유지 — 다음 tick 재시도. 세션을 끊지 않는다 (best-effort).
-      console.warn('[probing] session_renew_failed', e);
-    } finally {
-      renewInFlightRef.current = false;
-      setRenewing(false);
-    }
-  }, [handleOaiEvent]);
+    },
+    [handleOaiEvent],
+  );
 
   // ─── 세션 원본 녹음(#554) ───
 
   // capture 스트림에 MediaRecorder 를 병렬로 붙인다. STT 의 RTCPeerConnection
   // 경로와 무간섭 — 같은 트랙을 읽기만 할 뿐. renewal 은 같은 capture 스트림을
-  // 재사용(renewSession 이 captureStreamRef 를 안 바꾸고, 옛 PC close 도 트랙을
+  // 재사용(renewSlot 이 captureStreamRef 를 안 바꾸고, 옛 PC close 도 트랙을
   // stop 하지 않음)하므로 recorder 는 renewal 을 걸쳐 연속 녹음한다 → 재바인딩
   // 불필요. 따라서 이 함수는 신규 start() 에서 한 번만 호출한다.
   const startRecorder = useCallback((stream: MediaStream) => {
@@ -761,6 +886,52 @@ export function useRealtimeTranscription(opts?: {
       });
     }
   }, []);
+
+  // both 모드 녹음 소스 — mic+tab 두 라이브 슬롯의 capture 트랙을 WebAudio 로
+  // 한 트랙에 믹스해 하나의 파일로 녹음한다. 원본 트랙의 clone 을 믹스 소스로
+  // 써 tab silence-injection(원본 enabled 토글)이 녹음에 새지 않게 한다(단일
+  // 모드 클론 원리와 동일). 믹스 실패 시 null → 호출부가 첫 슬롯 원본으로 폴백.
+  const buildRecordMixStream = useCallback(
+    (liveSlots: SourceSlot[]): MediaStream | null => {
+      try {
+        type WebkitWindow = Window &
+          typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+        const w = window as WebkitWindow;
+        const AudioCtx = w.AudioContext ?? w.webkitAudioContext;
+        if (!AudioCtx) return null;
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          void ctx.resume().catch(() => {
+            /* best-effort */
+          });
+        }
+        const dest = ctx.createMediaStreamDestination();
+        let wired = 0;
+        for (const slot of liveSlots) {
+          const st = captureStreamRef.current[slot];
+          const track = st?.getAudioTracks().find((t) => t.readyState === 'live');
+          if (!track) continue;
+          const clone = track.clone();
+          recordMixCloneTracksRef.current.push(clone);
+          const src = ctx.createMediaStreamSource(new MediaStream([clone]));
+          src.connect(dest);
+          wired += 1;
+        }
+        if (wired === 0) {
+          void ctx.close().catch(() => {
+            /* best-effort */
+          });
+          return null;
+        }
+        recordMixCtxRef.current = ctx;
+        return dest.stream;
+      } catch (e) {
+        console.warn('[probing][rec] record mix build failed', e);
+        return null;
+      }
+    },
+    [],
+  );
 
   // 업로드 — blob 을 probing-session-audio 버킷에 올리고, 메타 row 를 서버
   // 라우트로 남긴 뒤, 즉시 다운로드용 signed URL 을 발급한다. 전 과정
@@ -931,110 +1102,15 @@ export function useRealtimeTranscription(opts?: {
     setStatus('idle');
   }, [cleanup, finalizeRecording, status]);
 
-  const start = useCallback(
-    async (startOpts?: StartOpts) => {
-      const source: TranscriptionSource = startOpts?.source ?? 'mic';
-
-      if (startInFlightRef.current) return;
-      if (status === 'live' || status === 'starting') return;
-      startInFlightRef.current = true;
-      setError(null);
-      setSegments([]);
-      itemStartedAtRef.current.clear();
-      lastTextRef.current.clear();
-      // 새 세션 — 이전 녹음 표면 리셋 (다운로드 버튼/에러 초기화).
-      setRecording(IDLE_RECORDING);
-      setStatus('starting');
-
-      // start() 전체 경과의 기준점 — 실패/타임아웃 로그의 elapsed_ms 는
-      // 여기서부터 잰다 (어느 단계까지 갔다가 멈췄는지 phase 태그와 함께 파악).
-      const startedWallAt = Date.now();
-
-      // watchdog 은 여기서 armed 하지 않는다 — capture(getDisplayMedia/
-      // getUserMedia) 가 끝난 뒤 'connecting' 단계 진입 시점에 arm 한다.
-      // 사용자의 탭 선택/권한 승인 시간이 네트워크 watchdog 에 잡히던 P0
-      // 회귀를 막기 위함 (spec A).
-
-      // 1) 서버 세션 — client_secret 발급 + start-lump credit 차감.
-      // 서버가 반환하는 session_id 는 (a) start-lump 차감의 generation_id
-      // 이자 (b) 10분 heartbeat 의 session 핸들. cleanup() 에서 ref 가
-      // 초기화되므로 여기서만 set.
-      //
-      // 자체 AbortController 8s — 서버가 hang 하면 watchdog 이 아니라 여기서
-      // 명시적 `session_timeout` 으로 끊는다 (spec B). watchdog 은 아직
-      // armed 되지 않았으므로 이 단계의 hang 은 phase='session_fetch' 로 격리.
-      phaseRef.current = 'session_fetch';
-      let clientSecret: string;
+  // 슬롯 capture — mic=getUserMedia, tab=getDisplayMedia. 성공 시
+  // captureStreamRef[slot] 세팅 + (tab) silence-injection arm. 실패 시
+  // slotError[slot] 에 사유 코드를 남기고 false. 사용자 조작(picker/권한) 구간이라
+  // watchdog 은 아직 armed 되지 않는다.
+  const acquireSlot = useCallback(
+    async (slot: SourceSlot): Promise<boolean> => {
+      phaseRef.current[slot] = 'capture';
       try {
-        const fetchController = new AbortController();
-        const fetchTimer = setTimeout(
-          () => fetchController.abort(),
-          SESSION_FETCH_TIMEOUT_MS,
-        );
-        let res: Response;
-        try {
-          res = await fetch('/api/probing/sessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // source 는 probing_session_runs 계측용 (mic/tab). 신규 start 에만
-            // 의미 — renewal 은 renewSession() 이 별도로 처리한다.
-            body: JSON.stringify({ source }),
-            signal: fetchController.signal,
-          });
-        } finally {
-          clearTimeout(fetchTimer);
-        }
-        const json = (await res.json().catch(() => ({}))) as {
-          session_id?: string;
-          client_secret?: { value?: string };
-          error?: string;
-        };
-        if (!res.ok || !json.client_secret?.value) {
-          // 402 = insufficient_credits — 사용자 잔액 부족. 위젯이 별 paywall
-          // 토스트를 띄울 수 있게 명시적 error code 전달.
-          throw new Error(json.error ?? `session_failed_${res.status}`);
-        }
-        clientSecret = json.client_secret.value;
-        sessionIdRef.current = json.session_id ?? null;
-        setSessionId(json.session_id ?? null);
-        heartbeatTickRef.current = 0;
-        // start-lump 차감 성공 — 위젯 헤더 -N fly-up + topbar pulse.
-        notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
-      } catch (e) {
-        // AbortError = 8s 초과 = 서버 hang. generic session_failed 와 구분되는
-        // 명시적 `session_timeout` 으로 사용자가 원인(서버 지연)을 인지.
-        const aborted = e instanceof DOMException && e.name === 'AbortError';
-        console.warn('[probing] session fetch failed', {
-          phase: 'session_fetch',
-          source,
-          timeout: aborted,
-          elapsed_ms: Date.now() - startedWallAt,
-          error: e instanceof Error ? e.message : String(e),
-        });
-        setError(
-          aborted
-            ? 'session_timeout'
-            : e instanceof Error
-              ? e.message
-              : 'session_failed',
-        );
-        setStatus('error');
-        cleanup();
-        startInFlightRef.current = false;
-        return;
-      }
-
-      // 2) capture — source 분기. tab 모드는 getDisplayMedia 의 트랙을 그대로
-      // pc.addTrack (raw passthrough). WebAudio resample 그래프를 끼우면
-      // transcription endpoint 가 dc 를 즉시 close (PR #401 진단으로 확정).
-      //
-      // 이 단계 = 사용자 조작 다이얼로그(탭 선택 + "오디오 공유" 체크, 또는 mic
-      // 권한 승인). watchdog 은 여전히 정지 상태 — 사용자가 얼마나 오래 고르든
-      // 타임아웃 없음. 취소/거부는 아래 NotAllowedError 경로가 처리 (spec A).
-      phaseRef.current = 'capture';
-      let captureStream: MediaStream;
-      try {
-        if (source === 'tab') {
+        if (slot === 'tab') {
           // getDisplayMedia 는 모든 지원 브라우저에서 video 제약을 요구한다.
           // 가장 가벼운 surface (브라우저 탭) 를 요청하고 비디오 트랙은 즉시
           // stop — 우리는 화면이 아닌 오디오만 필요. `ideal` 제약 (not `exact`)
@@ -1056,82 +1132,78 @@ export function useRealtimeTranscription(opts?: {
             // Safari / 대부분 모바일도 같은 분기 (플랫폼 미지원). macOS Chrome
             // 의 window/screen surface 도 보통 여기 (네이티브 앱 audio 미캡처).
             display.getTracks().forEach((tr) => tr.stop());
-            setError('tab_audio_unavailable');
-            endReasonRef.current = 'error';
-            setStatus('error');
-            cleanup();
-            startInFlightRef.current = false;
-            return;
+            setSlotError((prev) => ({ ...prev, tab: 'tab_audio_unavailable' }));
+            return false;
           }
-          captureStream = new MediaStream(audioTracks);
-        } else {
-          captureStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
+          const captureStream = new MediaStream(audioTracks);
+          captureStreamRef.current.tab = captureStream;
+          // tab silence injection — 3초마다 400ms track.enabled=false 로 OpenAI
+          // server_vad 가 end-of-speech 를 잡아 utterance 를 commit 하게 강제.
+          const track = captureStream.getAudioTracks()[0];
+          if (track) {
+            tabSilenceTimerRef.current = setInterval(() => {
+              if (track.readyState !== 'live') return;
+              track.enabled = false;
+              setTimeout(() => {
+                if (track.readyState === 'live') track.enabled = true;
+              }, TAB_SILENCE_DURATION_MS);
+            }, TAB_SILENCE_INTERVAL_MS);
+          }
+          return true;
         }
+        const captureStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        captureStreamRef.current.mic = captureStream;
+        return true;
       } catch (e) {
-        // NotAllowedError → 사용자가 picker / 권한 prompt 를 명시적으로
-        // 취소. 그 외 DOMException 은 OS / 브라우저 레벨 capture 실패.
         const name = e instanceof DOMException ? e.name : '';
         console.warn('[probing] capture failed', {
-          phase: 'capture',
-          source,
+          slot,
           name,
-          elapsed_ms: Date.now() - startedWallAt,
           error: e,
         });
-        if (source === 'tab') {
-          setError(name === 'NotAllowedError' ? 'tab_audio_denied' : 'tab_audio_failed');
+        if (slot === 'tab') {
+          setSlotError((prev) => ({
+            ...prev,
+            tab: name === 'NotAllowedError' ? 'tab_audio_denied' : 'tab_audio_failed',
+          }));
         } else {
-          setError(
-            name === 'NotAllowedError' ? 'microphone_denied' : 'microphone_failed',
-          );
+          setSlotError((prev) => ({
+            ...prev,
+            mic: name === 'NotAllowedError' ? 'microphone_denied' : 'microphone_failed',
+          }));
         }
-        endReasonRef.current = 'error';
-        setStatus('error');
-        cleanup();
-        startInFlightRef.current = false;
-        return;
+        return false;
       }
-      captureStreamRef.current = captureStream;
+    },
+    [],
+  );
 
-      // 세션 원본 녹음(#554) — capture 스트림에 MediaRecorder 를 병렬로 붙인다.
-      // STT WebRTC(아래 pc.addTrack)와 무간섭. 실패해도 STT 는 정상 진행.
-      // renewal 은 같은 스트림 재사용이라 여기서 한 번만 시작하면 연속 녹음된다.
-      startRecorder(captureStream);
+  // 슬롯 connect — 이미 acquire 된 capture 스트림으로 PC/DC/SDP 교환. 성공 시
+  // slotActive[slot]=true + renewal epoch 세팅. 실패 시 그 슬롯 리소스만 정리하고
+  // slotError 를 남기고 false — 세션 전체를 무너뜨리지 않는다(graceful).
+  const connectSlot = useCallback(
+    async (slot: SourceSlot, clientSecret: string): Promise<boolean> => {
+      const capture = captureStreamRef.current[slot];
+      if (!capture) return false;
+      const startedWallAt = Date.now();
 
-      // tab 모드 silence injection — 3초마다 400ms track.enabled=false 로
-      // OpenAI server_vad 가 end-of-speech 를 잡아 utterance 를 commit 하게
-      // 강제. YouTube / 스트리밍처럼 휴지 없는 continuous content 에서 transcript
-      // 가 commit 안 되는 stall 회피 (translate-console PR #396 패턴).
-      if (source === 'tab') {
-        const track = captureStream.getAudioTracks()[0];
-        if (track) {
-          tabSilenceTimerRef.current = setInterval(() => {
-            if (track.readyState !== 'live') return;
-            track.enabled = false;
-            setTimeout(() => {
-              if (track.readyState === 'live') track.enabled = true;
-            }, TAB_SILENCE_DURATION_MS);
-          }, TAB_SILENCE_INTERVAL_MS);
-        }
-      }
-
-      // 3) RTCPeerConnection + datachannel + SDP 교환.
-      // 여기서 비로소 10s connect watchdog 을 arm 한다 — 사용자 조작(capture)
-      // 이 끝났고, 남은 건 순수 네트워크 연결(SDP/ICE/DC)뿐이라 watchdog 의
-      // 본래 감시 대상 (spec A). 'live' 도달 직전 clear, 실패 시 cleanup() 이
-      // clear. 만료 로그는 phase='connecting' + elapsed_ms 로 재발 시 즉시 격리.
-      phaseRef.current = 'connecting';
+      // connect watchdog — capture(사용자 조작)가 끝났고 남은 건 순수 네트워크
+      // 연결(SDP/ICE/DC)뿐이라 여기서 arm. 만료 시 이 슬롯만 실패 처리.
+      phaseRef.current[slot] = 'connecting';
       const connectArmedAt = Date.now();
-      if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
-      connectWatchdogRef.current = setTimeout(() => {
-        connectWatchdogRef.current = null;
-        const wpc = pcRef.current;
-        const wdc = dcRef.current;
+      let timedOut = false;
+      const existing = connectWatchdogRef.current[slot];
+      if (existing) clearTimeout(existing);
+      connectWatchdogRef.current[slot] = setTimeout(() => {
+        connectWatchdogRef.current[slot] = null;
+        timedOut = true;
+        const wpc = pcRef.current[slot];
+        const wdc = dcRef.current[slot];
         console.warn('[probing] connect timeout', {
-          phase: phaseRef.current,
-          source,
+          slot,
+          phase: phaseRef.current[slot],
           elapsed_ms: Date.now() - startedWallAt,
           connecting_ms: Date.now() - connectArmedAt,
           pcConnection: wpc?.connectionState ?? null,
@@ -1140,36 +1212,38 @@ export function useRealtimeTranscription(opts?: {
           pcGathering: wpc?.iceGatheringState ?? null,
           dcReadyState: wdc?.readyState ?? null,
         });
-        setError('probing_connect_timeout');
-        endReasonRef.current = 'error';
-        setStatus('error');
-        cleanup();
-        startInFlightRef.current = false;
+        setSlotError((prev) => ({ ...prev, [slot]: 'probing_connect_timeout' }));
+        const pc = pcRef.current[slot];
+        if (pc) {
+          try {
+            pc.close();
+          } catch {
+            /* already closed */
+          }
+          pcRef.current[slot] = null;
+        }
+        dcRef.current[slot] = null;
       }, CONNECT_TIMEOUT_MS);
 
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: STUN_URLS }],
-      });
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: STUN_URLS }] });
       pc.oniceconnectionstatechange = () => {
-        console.info('[probing] pc.iceConnectionState', pc.iceConnectionState);
+        console.info('[probing] pc.iceConnectionState', slot, pc.iceConnectionState);
       };
-      pcRef.current = pc;
-      captureStream
-        .getAudioTracks()
-        .forEach((tr) => pc.addTrack(tr, captureStream));
+      pcRef.current[slot] = pc;
+      capture.getAudioTracks().forEach((tr) => pc.addTrack(tr, capture));
 
       const dc = pc.createDataChannel('oai-events');
-      dcRef.current = dc;
+      dcRef.current[slot] = dc;
       dc.onerror = (ev) => {
-        console.warn('[probing] dc error', ev);
+        console.warn('[probing] dc error', slot, ev);
       };
-      dc.onmessage = (ev) => handleOaiEvent(String(ev.data));
+      dc.onmessage = (ev) => handleOaiEvent(slot, String(ev.data));
 
       try {
         const offer = await pc.createOffer();
-        // tab 모드만 Opus mono 강제. mic 는 native mono 라 munge 불필요 (회귀 방지).
+        // tab 슬롯만 Opus mono 강제. mic 는 native mono 라 munge 불필요 (회귀 방지).
         const offerSdp =
-          source === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
+          slot === 'tab' ? forceOpusMonoSdp(offer.sdp ?? '') : offer.sdp ?? '';
         await pc.setLocalDescription({ type: 'offer', sdp: offerSdp });
         const sdpRes = await fetch(REALTIME_SDP_URL, {
           method: 'POST',
@@ -1179,22 +1253,200 @@ export function useRealtimeTranscription(opts?: {
           },
           body: offerSdp,
         });
+        if (timedOut) return false; // watchdog 이 이미 이 슬롯을 접었다.
         if (!sdpRes.ok) {
           const body = await sdpRes.text().catch(() => '');
-          console.warn('[probing] sdp error', sdpRes.status, body.slice(0, 300));
+          console.warn('[probing] sdp error', slot, sdpRes.status, body.slice(0, 300));
           throw new Error(`openai_sdp_${sdpRes.status}`);
         }
         const answerSdp = await sdpRes.text();
         await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
       } catch (e) {
+        if (timedOut) return false;
         console.warn('[probing] connect failed', {
-          phase: 'connecting',
-          source,
+          slot,
           elapsed_ms: Date.now() - startedWallAt,
           connecting_ms: Date.now() - connectArmedAt,
           error: e instanceof Error ? e.message : String(e),
         });
-        setError(e instanceof Error ? e.message : 'webrtc_failed');
+        setSlotError((prev) => ({
+          ...prev,
+          [slot]: e instanceof Error ? e.message : 'webrtc_failed',
+        }));
+        const w = connectWatchdogRef.current[slot];
+        if (w) {
+          clearTimeout(w);
+          connectWatchdogRef.current[slot] = null;
+        }
+        try {
+          pc.close();
+        } catch {
+          /* already closed */
+        }
+        pcRef.current[slot] = null;
+        dcRef.current[slot] = null;
+        return false;
+      }
+
+      // connect 성공 — watchdog 해제 + 라이브 표시등 + renewal epoch.
+      const w = connectWatchdogRef.current[slot];
+      if (w) {
+        clearTimeout(w);
+        connectWatchdogRef.current[slot] = null;
+      }
+      phaseRef.current[slot] = 'idle';
+      startedAtRef.current[slot] = Date.now();
+      setSlotActive((prev) => ({ ...prev, [slot]: true }));
+      return true;
+    },
+    [handleOaiEvent],
+  );
+
+  const start = useCallback(
+    async (startOpts?: StartOpts) => {
+      const mode: TranscriptionCaptureMode = startOpts?.source ?? 'mic';
+      const slots = activeSlots(mode);
+
+      if (startInFlightRef.current) return;
+      if (status === 'live' || status === 'starting') return;
+      startInFlightRef.current = true;
+      setError(null);
+      setSegments([]);
+      setSlotError(emptySlotRecord<string | null>(null));
+      setSlotActive(emptySlotRecord(false));
+      itemStartedAtRef.current.clear();
+      lastTextRef.current.clear();
+      runningModeRef.current = mode;
+      // 새 세션 — 이전 녹음 표면 리셋 (다운로드 버튼/에러 초기화).
+      setRecording(IDLE_RECORDING);
+      setStatus('starting');
+
+      // start() 전체 경과의 기준점.
+      const startedWallAt = Date.now();
+
+      // 1) 서버 세션 — client_secret 발급 + start-lump credit 차감. both 라도
+      // 세션 1개분만 과금: 첫 호출이 start-lump 를 차감하고 session_id 를 받고,
+      // 둘째 슬롯은 그 session_id 를 재사용해 client_secret 만 추가 발급받는다
+      // (spend_credits 멱등 — renewal 과 동일). source 는 계측용(mic/tab/both).
+      //
+      // 자체 AbortController 8s — 서버가 hang 하면 명시적 `session_timeout`.
+      for (const slot of slots) phaseRef.current[slot] = 'session_fetch';
+      const secrets: Partial<Record<SourceSlot, string>> = {};
+      try {
+        const fetchController = new AbortController();
+        const fetchTimer = setTimeout(
+          () => fetchController.abort(),
+          SESSION_FETCH_TIMEOUT_MS,
+        );
+        let res: Response;
+        try {
+          res = await fetch('/api/probing/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // source = 캡처 모드 (mic/tab/both) — probing_session_runs 계측.
+            body: JSON.stringify({ source: mode }),
+            signal: fetchController.signal,
+          });
+        } finally {
+          clearTimeout(fetchTimer);
+        }
+        const json = (await res.json().catch(() => ({}))) as {
+          session_id?: string;
+          client_secret?: { value?: string };
+          error?: string;
+        };
+        if (!res.ok || !json.client_secret?.value) {
+          throw new Error(json.error ?? `session_failed_${res.status}`);
+        }
+        sessionIdRef.current = json.session_id ?? null;
+        setSessionId(json.session_id ?? null);
+        heartbeatTickRef.current = 0;
+        // 첫 슬롯에 첫 secret 할당.
+        secrets[slots[0]] = json.client_secret.value;
+        // start-lump 차감 성공 — 위젯 헤더 -N fly-up + topbar pulse (1회).
+        notifyDeductionRef.current('probing', FEATURE_COSTS.probing);
+
+        // both 모드 둘째 슬롯 — 같은 session_id 로 client_secret 만 추가 발급
+        // (재과금 없음). 실패해도 첫 슬롯은 진행(graceful) — 둘째만 slotError.
+        if (slots.length > 1) {
+          const sid = sessionIdRef.current;
+          try {
+            const res2 = await fetch('/api/probing/sessions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ session_id: sid }),
+            });
+            const json2 = (await res2.json().catch(() => ({}))) as {
+              client_secret?: { value?: string };
+              error?: string;
+            };
+            if (!res2.ok || !json2.client_secret?.value) {
+              throw new Error(json2.error ?? `session_failed_${res2.status}`);
+            }
+            secrets[slots[1]] = json2.client_secret.value;
+          } catch (e2) {
+            console.warn('[probing] second slot session fetch failed', {
+              slot: slots[1],
+              error: e2 instanceof Error ? e2.message : String(e2),
+            });
+            setSlotError((prev) => ({
+              ...prev,
+              [slots[1]]: 'session_failed',
+            }));
+          }
+        }
+      } catch (e) {
+        const aborted = e instanceof DOMException && e.name === 'AbortError';
+        console.warn('[probing] session fetch failed', {
+          phase: 'session_fetch',
+          mode,
+          timeout: aborted,
+          elapsed_ms: Date.now() - startedWallAt,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        setError(
+          aborted
+            ? 'session_timeout'
+            : e instanceof Error
+              ? e.message
+              : 'session_failed',
+        );
+        setStatus('error');
+        cleanup();
+        startInFlightRef.current = false;
+        return;
+      }
+
+      // 2) capture — 슬롯별 media 획득. 순서: tab 먼저(picker 가 먼저 뜨게),
+      // 그다음 mic. both 모드는 두 프롬프트가 원 Start 제스처 안에서 순차로.
+      // 사용자 조작 구간이라 watchdog 은 아직 정지.
+      const acquired: SourceSlot[] = [];
+      if (slots.includes('tab')) {
+        if (secrets.tab && (await acquireSlot('tab'))) acquired.push('tab');
+      }
+      if (slots.includes('mic')) {
+        if (secrets.mic && (await acquireSlot('mic'))) acquired.push('mic');
+      }
+
+      // 3) connect — 획득된 슬롯만 병렬 연결. graceful: 일부 슬롯만 성공해도
+      // 그 슬롯으로 세션 진행.
+      const results = await Promise.all(
+        acquired.map(async (slot) => ({
+          slot,
+          ok: await connectSlot(slot, secrets[slot] as string),
+        })),
+      );
+      const liveSlots = results.filter((r) => r.ok).map((r) => r.slot);
+
+      if (liveSlots.length === 0) {
+        // 모든 슬롯 실패 — 최선의 top-level 에러로 승격.
+        const reason =
+          mode === 'tab'
+            ? 'tab_audio_failed'
+            : mode === 'mic'
+              ? 'microphone_denied'
+              : 'session_start_failed';
+        setError(reason);
         endReasonRef.current = 'error';
         setStatus('error');
         cleanup();
@@ -1202,25 +1454,34 @@ export function useRealtimeTranscription(opts?: {
         return;
       }
 
-      // 'live' 도달 — watchdog 해제.
-      if (connectWatchdogRef.current) {
-        clearTimeout(connectWatchdogRef.current);
-        connectWatchdogRef.current = null;
+      runningSlotsRef.current = liveSlots;
+
+      // 세션 원본 녹음(#554) — both 면 두 슬롯 믹스, 단일이면 그 슬롯 스트림.
+      // 믹스 실패 시 첫 라이브 슬롯 원본으로 폴백(비블로킹 부가물).
+      if (liveSlots.length > 1) {
+        const mixStream = buildRecordMixStream(liveSlots);
+        const fallback = captureStreamRef.current[liveSlots[0]];
+        if (mixStream) startRecorder(mixStream);
+        else if (fallback) startRecorder(fallback);
+      } else {
+        const single = captureStreamRef.current[liveSlots[0]];
+        if (single) startRecorder(single);
       }
-      phaseRef.current = 'idle';
+
+      // 'live' 도달.
       setStatus('live');
       startInFlightRef.current = false;
 
-      // auto-renewal 무장 — 현재 OpenAI 세션 시작 시각 기록 + source 저장
-      // (재연결 시 tab/mic 분기 재현). 10초마다 경과를 보고 25분 넘으면
-      // renewSession() 발사. cleanup() 이 interval + startedAt 을 해제.
-      startedAtRef.current = Date.now();
-      sourceRef.current = source;
+      // auto-renewal 무장 — 10초마다 각 라이브 슬롯의 경과를 보고 25분 넘으면
+      // 그 슬롯을 renewSlot. cleanup() 이 interval 을 해제.
       if (!renewTimerRef.current) {
         renewTimerRef.current = setInterval(() => {
-          if (startedAtRef.current === 0) return;
-          if (Date.now() - startedAtRef.current >= SESSION_MAX_MS) {
-            void renewSession();
+          for (const slot of runningSlotsRef.current) {
+            const at = startedAtRef.current[slot];
+            if (at === 0) continue;
+            if (Date.now() - at >= SESSION_MAX_MS) {
+              void renewSlot(slot);
+            }
           }
         }, RENEW_CHECK_INTERVAL_MS);
       }
@@ -1267,7 +1528,15 @@ export function useRealtimeTranscription(opts?: {
         }, HEARTBEAT_INTERVAL_MS);
       }
     },
-    [cleanup, handleOaiEvent, renewSession, startRecorder, status],
+    [
+      acquireSlot,
+      buildRecordMixStream,
+      cleanup,
+      connectSlot,
+      renewSlot,
+      startRecorder,
+      status,
+    ],
   );
 
   // unmount 시 누수 방지. 세션이 살아 있으면 정리.
@@ -1284,6 +1553,8 @@ export function useRealtimeTranscription(opts?: {
     renewing,
     sessionId,
     recording,
+    slotActive,
+    slotError,
     start,
     stop,
   };

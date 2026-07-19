@@ -30,7 +30,10 @@ import type { ProbingOutputLang } from '@/lib/probing-prompts';
 import { PersonaSectionConfigurator } from './persona-section-configurator';
 import type { ProbingCustomSection } from '../probing-types';
 
-export type SourceKind = 'mic' | 'tab';
+// mic(진행자) / tab(응답자) / both(진행자+응답자 병렬 — 원격 화상 인터뷰 양방향).
+// both 는 mic+tab 두 병렬 realtime 세션을 띄우고 화자분리한다
+// (pr-probing-mic-plus-tab-dual-capture).
+export type SourceKind = 'mic' | 'tab' | 'both';
 
 const GOAL_MAX = 2_000;
 
@@ -80,6 +83,8 @@ function ControlFields({
   const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
     { value: 'mic', label: t('control.sourceMic') },
     { value: 'tab', label: t('control.sourceTab') },
+    // both = 진행자(mic) + 응답자(tab) 병렬 캡처 + 화자분리.
+    { value: 'both', label: t('control.sourceBoth') },
   ];
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와
   // 동일 패턴). 타이핑은 goalDraft 만 갱신하고 (키 입력마다 자동저장하지 않음),
@@ -212,6 +217,8 @@ export function ProbingControlPanel({
   onStop,
   stopDisabled,
   statusLabel,
+  slotKinds,
+  slotActive,
   customSections,
   hiddenSectionKeys,
   onHideSection,
@@ -235,6 +242,12 @@ export function ProbingControlPanel({
   onStop: () => void;
   stopDisabled: boolean;
   statusLabel: string | null;
+  // ─── 슬롯별 라이브 표시등 (pr-probing-mic-plus-tab-dual-capture) ───
+  // 실행 중인 캡처 모드의 각 슬롯을 화자 역할(🎤 진행자=mic / 📺 응답자=tab)로
+  // 표시. both 면 두 배지가 나란히, 단일 모드면 그 슬롯 하나만. slotActive[slot]
+  // = PC connected 여부 → 점 색으로 라이브/연결중 구분. isLive 일 때만 렌더.
+  slotKinds: ('mic' | 'tab')[];
+  slotActive: Record<'mic' | 'tab', boolean>;
   // ─── 페르소나 섹션 구성 (PR #470) — active-section SSOT 구성기 ───
   // 기본 9 on/off (숨김/복원) + custom add/remove 를 컨트롤 패널에서 관리.
   // 이 활성 목록이 전체보기 위젯 렌더 · persona 요청 · 데이터 적재를 관통.
@@ -279,6 +292,48 @@ export function ProbingControlPanel({
         <p className="text-xs text-mute-soft">
           {t('control.controlsLockedNote')}
         </p>
+      )}
+      {/* 슬롯별 라이브 표시등 — 실행 중인 캡처 모드의 각 슬롯을 화자 역할로
+          표시(🎤 진행자=mic / 📺 응답자=tab). both 면 두 배지, 단일 모드면 하나.
+          점 색으로 라이브(text-amore)/연결중(text-mute-soft) 구분. */}
+      {isLive && slotKinds.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-3"
+          role="group"
+          aria-label={t('slotIndicator.groupAria')}
+        >
+          {slotKinds.map((slot) => {
+            const isHost = slot === 'mic';
+            const on = slotActive[slot];
+            return (
+              <span
+                key={slot}
+                className="inline-flex items-center gap-1.5 text-xs text-mute"
+                aria-label={
+                  isHost
+                    ? t('slotIndicator.hostAria')
+                    : t('slotIndicator.guestAria')
+                }
+              >
+                <span aria-hidden>{isHost ? '🎤' : '📺'}</span>
+                <span>
+                  {isHost ? t('slotIndicator.host') : t('slotIndicator.guest')}
+                </span>
+                <span
+                  aria-hidden
+                  className={on ? 'text-amore' : 'text-mute-soft'}
+                  title={
+                    on
+                      ? t('slotIndicator.live')
+                      : t('slotIndicator.connecting')
+                  }
+                >
+                  ●
+                </span>
+              </span>
+            );
+          })}
+        </div>
       )}
       {/* 페르소나 섹션 구성 — 옛 전체보기 좌패널 (× / 위젯 추가 / 숨김 복원)
           을 컨트롤 패널로 이전. 세션 중에도 편집 가능 (다음 갱신 tick 에 반영).

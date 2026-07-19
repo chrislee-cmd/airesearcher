@@ -2260,6 +2260,9 @@
       "errorTabFailed": "Tab audio capture failed — try again from another tab",
       "errorSessionTimeout": "Session setup is taking a while — please restart shortly",
       "errorConnectTimeout": "Check your network and restart",
+      "degradedHost": "Host (mic) capture is unavailable —",
+      "degradedGuest": "Guest (tab audio) capture is unavailable —",
+      "bothEchoNote": "Captures host (mic) and guest (tab audio) at once — use earphones instead of speakers to avoid echo.",
       "errorSessionStart": "Couldn't start the session — please try again shortly",
       "statusConnecting": "Connecting session…",
       "statusStopping": "Ending session…",
@@ -2293,6 +2296,7 @@
     "control": {
       "sourceMic": "Device microphone",
       "sourceTab": "Browser audio input",
+      "sourceBoth": "Host + guest (mic + tab)",
       "fieldProject": "Project",
       "fieldLanguage": "Language",
       "outputLangAria": "Analysis output language",
@@ -2305,6 +2309,15 @@
       "apply": "Apply",
       "controlsLockedNote": "You can't change input source or language mid-session — they apply from the next session.",
       "stop": "Stop"
+    },
+    "slotIndicator": {
+      "host": "Host",
+      "guest": "Guest",
+      "live": "Live",
+      "connecting": "Connecting",
+      "groupAria": "Capture slot status",
+      "hostAria": "Host capture (microphone)",
+      "guestAria": "Guest capture (tab audio)"
     },
     "inject": {
       "placeholder": "e.g. Why was the channel where you discovered the product different from where you bought it?",

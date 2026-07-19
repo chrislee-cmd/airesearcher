@@ -2260,6 +2260,9 @@
       "errorTabFailed": "탭 오디오 캡처에 실패했습니다 — 다른 탭에서 다시 시도해 주세요",
       "errorSessionTimeout": "세션 준비가 지연되고 있습니다 — 잠시 후 다시 시작해 주세요",
       "errorConnectTimeout": "네트워크 확인 후 다시 시작해 주세요",
+      "degradedHost": "진행자(마이크) 캡처가 빠졌습니다 —",
+      "degradedGuest": "응답자(탭 오디오) 캡처가 빠졌습니다 —",
+      "bothEchoNote": "진행자(마이크)와 응답자(탭 오디오)를 동시에 잡습니다 — 스피커 대신 이어폰을 쓰면 에코를 막을 수 있어요.",
       "errorSessionStart": "세션 시작 실패 — 잠시 후 다시 시도해 주세요",
       "statusConnecting": "세션 연결 중…",
       "statusStopping": "세션 종료 중…",
@@ -2293,6 +2296,7 @@
     "control": {
       "sourceMic": "기기 마이크",
       "sourceTab": "브라우저 오디오 인풋",
+      "sourceBoth": "진행자+응답자 (마이크+탭)",
       "fieldProject": "프로젝트",
       "fieldLanguage": "언어",
       "outputLangAria": "분석 출력 언어",
@@ -2305,6 +2309,15 @@
       "apply": "적용",
       "controlsLockedNote": "세션 중에는 입력 소스·언어를 바꿀 수 없어요 — 다음 세션부터 적용됩니다.",
       "stop": "정지"
+    },
+    "slotIndicator": {
+      "host": "진행자",
+      "guest": "응답자",
+      "live": "라이브",
+      "connecting": "연결 중",
+      "groupAria": "캡처 슬롯 상태",
+      "hostAria": "진행자 캡처 (마이크)",
+      "guestAria": "응답자 캡처 (탭 오디오)"
     },
     "inject": {
       "placeholder": "예: 제품을 발견했던, 구매했던 채널이 왜 달랐나요?",
