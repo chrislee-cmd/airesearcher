@@ -20,10 +20,16 @@ export async function scribeTranscribe(
   apiKey: string,
   audio: Blob,
   filename: string,
+  // Optional STT language hint (ElevenLabs `language_code`, ISO 639-1/-3). When
+  // omitted Scribe auto-detects — the historical behaviour every existing caller
+  // (quotes/qa) still relies on, so this MUST stay optional and additive. Only
+  // the AI-UT pipeline passes it, from the researcher-chosen session language.
+  languageCode?: string,
 ): Promise<ScribeOutcome> {
   const form = new FormData();
   form.append('model_id', ELEVENLABS_API_MODEL);
   form.append('file', audio, filename);
+  if (languageCode) form.append('language_code', languageCode);
 
   let resp: Response;
   try {

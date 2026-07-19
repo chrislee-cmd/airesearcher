@@ -1,7 +1,12 @@
 // POST /api/ut/sessions
-//   local  (default): { target_url? }                       → { id }
-//   remote          : { mode:'remote', target_url?, task_goal?, session_kind? }
+//   local  (default): { input_language, target_url? }        → { id }
+//   remote          : { mode:'remote', input_language, target_url?, task_goal?, session_kind? }
 //                     → { id, participant_token, participant_url, livekit_room }
+//
+// input_language is REQUIRED (a languages.ts code, 'multi'/auto-detect excluded):
+// the researcher must pick the expected participant language so the transcript
+// gets an explicit Scribe hint instead of auto-detect — the single largest STT
+// accuracy regression. Missing/invalid → 400 invalid_input.
 //
 // Creates one AI-UT session for the authenticated user. The row is written via
 // the service role: ut_sessions RLS has NO self-insert policy, so the browser
@@ -24,18 +29,30 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { LANGUAGES } from '@/lib/transcripts/languages';
 import { env } from '@/env';
 
 export const runtime = 'nodejs';
 
-const Body = z
-  .object({
-    target_url: z.string().url().max(2000).optional(),
-    mode: z.enum(['local', 'remote']).optional(),
-    task_goal: z.string().trim().max(2000).optional(),
-    session_kind: z.enum(['moderated', 'unmoderated']).optional(),
-  })
-  .optional();
+// Valid participant-language codes = the transcription language registry MINUS
+// 'multi' (auto-detect). Excluding 'multi' server-side enforces the product
+// rule that a researcher must pick a concrete language — accepting it would
+// reintroduce the very auto-detect fallback this feature removes.
+const INPUT_LANGUAGE_CODES = LANGUAGES.filter((l) => l.code !== 'multi').map(
+  (l) => l.code,
+) as [string, ...string[]];
+
+// input_language is REQUIRED (no .optional()), and the object itself is no
+// longer optional — a bodyless/empty POST now 400s. New AI-UT sessions cannot
+// be created without an explicit participant language (server half of the
+// client guard); the DB column stays nullable only for legacy rows.
+const Body = z.object({
+  target_url: z.string().url().max(2000).optional(),
+  mode: z.enum(['local', 'remote']).optional(),
+  task_goal: z.string().trim().max(2000).optional(),
+  session_kind: z.enum(['moderated', 'unmoderated']).optional(),
+  input_language: z.enum(INPUT_LANGUAGE_CODES),
+});
 
 // URL-safe, unguessable share token — same construction as translate's
 // share_token (crypto.randomBytes, 21 chars) so the participant link can't be
@@ -72,10 +89,11 @@ export async function POST(req: Request) {
 
   const parsed = Body.safeParse(await req.json().catch(() => undefined));
   if (!parsed.success) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-  const target_url = parsed.data?.target_url ?? null;
-  const mode = parsed.data?.mode ?? 'local';
-  const task_goal = parsed.data?.task_goal?.trim() || null;
-  const session_kind = parsed.data?.session_kind ?? 'moderated';
+  const target_url = parsed.data.target_url ?? null;
+  const mode = parsed.data.mode ?? 'local';
+  const task_goal = parsed.data.task_goal?.trim() || null;
+  const session_kind = parsed.data.session_kind ?? 'moderated';
+  const input_language = parsed.data.input_language;
 
   // For remote sessions the live monitor needs LiveKit — fail early with a
   // clear signal so the caller can surface "원격 비활성" instead of a broken
@@ -95,6 +113,7 @@ export async function POST(req: Request) {
     mode,
     task_goal,
     session_kind,
+    input_language,
     // local starts 'recording' (unchanged); remote waits for the participant.
     status: mode === 'remote' ? 'waiting' : 'recording',
     participant_token: mode === 'remote' ? makeParticipantToken() : null,

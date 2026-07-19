@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { scribeTranscribe } from '@/lib/transcripts/scribe';
+import { getLanguage } from '@/lib/transcripts/languages';
 import { buildTurnsMs } from '@/lib/transcripts/elevenlabs';
 
 export type UtTranscribeResult =
@@ -20,7 +21,7 @@ export async function transcribeUtSession(
 ): Promise<UtTranscribeResult> {
   const { data: row, error: rowErr } = await admin
     .from('ut_sessions')
-    .select('id, audio_storage_key, status, meta, task_goal, target_url')
+    .select('id, audio_storage_key, status, meta, task_goal, target_url, input_language')
     .eq('id', sessionId)
     .single();
   if (rowErr || !row) return { ok: false, error: 'not_found', status: 404 };
@@ -73,7 +74,15 @@ export async function transcribeUtSession(
   // browsers that record mp4, not just webm. ElevenLabs sniffs the bytes but the
   // filename extension is a hint, so keep it truthful to the stored object.
   const audioExt = row.audio_storage_key.split('.').pop()?.toLowerCase() || 'webm';
-  const outcome = await scribeTranscribe(apiKey, audio, `ut-audio.${audioExt}`);
+  // Map the stored internal language code (e.g. 'ko', 'zh-TW') to the provider
+  // `language_code` Scribe accepts (getLanguage().dgLanguage doubles as the
+  // ElevenLabs code). New sessions always carry a value (API-enforced); legacy
+  // rows (null) — and any stray 'multi' — resolve to undefined so Scribe keeps
+  // auto-detecting for them (backward compatible, no regression).
+  const langEntry = row.input_language ? getLanguage(row.input_language) : null;
+  const languageCode =
+    langEntry && langEntry.code !== 'multi' ? langEntry.dgLanguage : undefined;
+  const outcome = await scribeTranscribe(apiKey, audio, `ut-audio.${audioExt}`, languageCode);
   if (!outcome.ok) {
     await failWith(outcome.error);
     return { ok: false, error: outcome.error, status: outcome.status };

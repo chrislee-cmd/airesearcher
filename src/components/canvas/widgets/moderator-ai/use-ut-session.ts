@@ -130,7 +130,10 @@ export type UseUtSession = {
   isSupported: boolean;
   /** 라이브 화면 프리뷰 <video> 에 스트림을 붙이는 ref 콜백. */
   attachPreview: (el: HTMLVideoElement | null) => void;
-  start: (rawTargetUrl: string, opts?: { includeSiteAudio?: boolean }) => Promise<void>;
+  start: (
+    rawTargetUrl: string,
+    opts?: { includeSiteAudio?: boolean; inputLanguage?: string },
+  ) => Promise<void>;
   stop: () => void;
   retryUpload: () => void;
   reset: () => void;
@@ -456,12 +459,16 @@ export function useUtSession(): UseUtSession {
   );
 
   const start = useCallback(
-    async (rawTargetUrl: string, opts?: { includeSiteAudio?: boolean }) => {
+    async (
+      rawTargetUrl: string,
+      opts?: { includeSiteAudio?: boolean; inputLanguage?: string },
+    ) => {
       if (phaseRef.current !== 'idle') return;
       setError(null);
       setResult(null);
 
       const includeSiteAudio = opts?.includeSiteAudio ?? false;
+      const inputLanguage = opts?.inputLanguage;
       const targetUrl = normalizeTargetUrl(rawTargetUrl);
 
       // 1) 화면 공유 — 유저가 공유할 탭/창을 고른다. 취소하면 조용히 종료.
@@ -500,7 +507,13 @@ export function useUtSession(): UseUtSession {
         const res = await fetchWithAuth('/api/ut/sessions', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(targetUrl ? { target_url: targetUrl } : {}),
+          // input_language is server-required; the caller guards the CTA so it's
+          // always set for new sessions, but keep it conditional to stay honest
+          // about the payload shape.
+          body: JSON.stringify({
+            ...(targetUrl ? { target_url: targetUrl } : {}),
+            ...(inputLanguage ? { input_language: inputLanguage } : {}),
+          }),
         });
         if (!res.ok) throw new Error(`create_${res.status}`);
         id = ((await res.json()) as { id: string }).id;

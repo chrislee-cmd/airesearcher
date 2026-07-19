@@ -22,6 +22,7 @@ import { ChromeInput } from '@/components/ui/chrome-input';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
+import { UtLanguageSelect } from './ut-language-select';
 import { UtResultView } from './ut-result';
 import type {
   UseUtRemoteSession,
@@ -45,6 +46,9 @@ type Props = {
   onTargetUrl: (v: string) => void;
   sessionKind: UtSessionKind;
   onSessionKind: (v: UtSessionKind) => void;
+  // 예상 참여자 언어 — 미선택('')이면 생성 불가(강제 선택). 부모 소유.
+  inputLanguage: string;
+  onInputLanguage: (v: string) => void;
 };
 
 export function UtRemoteBody({
@@ -59,6 +63,8 @@ export function UtRemoteBody({
   onTargetUrl,
   sessionKind,
   onSessionKind,
+  inputLanguage,
+  onInputLanguage,
 }: Props) {
   const t = useTranslations('AiUt');
   const [copied, setCopied] = useState(false);
@@ -248,7 +254,9 @@ export function UtRemoteBody({
 
   // ── idle / creating — 과제 입력 + 세션 생성 ─────────────────────────
   const isCreating = remote.phase === 'creating';
-  const startDisabled = isCreating || taskGoal.trim().length === 0;
+  // 언어 미선택('')이면 생성 불가 — 서버 400 가드의 클라 짝(강제 선택).
+  const startDisabled =
+    isCreating || taskGoal.trim().length === 0 || inputLanguage.length === 0;
   const idleError = remote.phase === 'error' && remote.error && (
     <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
       {remote.error}
@@ -288,6 +296,17 @@ export function UtRemoteBody({
             disabled={isCreating}
           />
         </ControlBoardPanel.Input>
+        <ControlBoardPanel.Input
+          label={t('language.label')}
+          description={t('language.description')}
+          required
+        >
+          <UtLanguageSelect
+            value={inputLanguage}
+            onChange={onInputLanguage}
+            disabled={isCreating}
+          />
+        </ControlBoardPanel.Input>
         <ControlBoardPanel.Settings>
           <div className="min-w-[180px]">
             <p className="mb-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
@@ -323,6 +342,7 @@ export function UtRemoteBody({
             taskGoal,
             rawTargetUrl: targetUrl,
             sessionKind,
+            inputLanguage,
           })
         }
       />

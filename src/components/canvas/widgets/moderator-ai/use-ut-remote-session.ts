@@ -50,6 +50,9 @@ export type CreateRemoteOpts = {
   taskGoal: string;
   rawTargetUrl: string;
   sessionKind: UtSessionKind;
+  // Expected participant language (languages.ts code) — server-required so the
+  // transcript gets an explicit Scribe language hint instead of auto-detect.
+  inputLanguage: string;
 };
 
 // 참가자 종료 후 리뷰가 폴링해 읽어오는 세션 표면. status 가 이 집합에 들면
@@ -280,6 +283,7 @@ export function useUtRemoteSession(): UseUtRemoteSession {
             mode: 'remote',
             task_goal: taskGoal,
             session_kind: opts.sessionKind,
+            input_language: opts.inputLanguage,
             ...(targetUrl ? { target_url: targetUrl } : {}),
           }),
         });

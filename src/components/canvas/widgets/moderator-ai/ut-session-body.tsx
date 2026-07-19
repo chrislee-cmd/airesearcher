@@ -32,6 +32,7 @@ import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useUtSession, normalizeTargetUrl } from './use-ut-session';
 import { useUtRemoteSession, type UtSessionKind } from './use-ut-remote-session';
+import { UtLanguageSelect } from './ut-language-select';
 import { UtConsentModal } from './consent-modal';
 import { UtResultView } from './ut-result';
 import { UtRemoteBody } from './ut-remote-body';
@@ -87,6 +88,10 @@ export function UtSessionBody() {
   const [mode, setMode] = useState<UtMode>('local');
   const [targetUrl, setTargetUrl] = useState('');
   const [includeSiteAudio, setIncludeSiteAudio] = useState(false);
+  // 예상 참여자 언어 — 미선택('') 이면 세션 시작 불가(강제 선택). auto-detect
+  // 선택지 없음. 로컬/원격 각자 소유(카드/전체보기 공유하도록 부모 소유).
+  const [inputLanguage, setInputLanguage] = useState('');
+  const [remoteInputLanguage, setRemoteInputLanguage] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
   // 원격 폼 상태 — 카드/전체보기가 공유하도록 부모 소유(로컬 targetUrl 과 동형).
   const [remoteTaskGoal, setRemoteTaskGoal] = useState('');
@@ -181,12 +186,13 @@ export function UtSessionBody() {
     session.phase === 'error';
 
   const urlValid = normalizeTargetUrl(targetUrl) !== null;
-  const startDisabled = !session.isSupported || !urlValid;
+  // 언어 미선택('')이면 시작 불가 — 서버 400 가드의 클라 짝(강제 선택).
+  const startDisabled = !session.isSupported || !urlValid || !inputLanguage;
 
   const handleStartClick = () => setConsentOpen(true);
   const handleConsent = () => {
     setConsentOpen(false);
-    void session.start(targetUrl, { includeSiteAudio });
+    void session.start(targetUrl, { includeSiteAudio, inputLanguage });
   };
 
   // 현재 보이는 표면 — 프리뷰 <video> 를 여기에만 렌더(단일 스트림 부착).
@@ -234,6 +240,8 @@ export function UtSessionBody() {
           onTargetUrl={setRemoteTargetUrl}
           sessionKind={remoteSessionKind}
           onSessionKind={setRemoteSessionKind}
+          inputLanguage={remoteInputLanguage}
+          onInputLanguage={setRemoteInputLanguage}
         />
       );
     }
@@ -297,6 +305,17 @@ export function UtSessionBody() {
               placeholder="https://example.com"
               inputMode="url"
               autoComplete="off"
+              disabled={!session.isSupported}
+            />
+          </ControlBoardPanel.Input>
+          <ControlBoardPanel.Input
+            label={t('language.label')}
+            description={t('language.description')}
+            required
+          >
+            <UtLanguageSelect
+              value={inputLanguage}
+              onChange={setInputLanguage}
               disabled={!session.isSupported}
             />
           </ControlBoardPanel.Input>
